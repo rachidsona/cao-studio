@@ -1,9 +1,10 @@
 """Strict parsing, canonicalisation and validation of CAO Studio documents.
 
 A document is the JSON description of a parametric part. It is shared with the
-TypeScript editor, so this module only enforces the envelope (format, schema
-version, units, feature list shape) and leaves feature-specific fields to the
-frontend.
+TypeScript editor. This module enforces the envelope (format, schema version,
+units, feature list shape) for every schema version. Schema v2 additionally
+validates parametric sketches (see ``sketch_validation``); other feature
+fields are left to the frontend.
 """
 from __future__ import annotations
 
@@ -12,8 +13,12 @@ import json
 import math
 from typing import Any
 
+from .sketch_validation import sketch_errors
+
 DOCUMENT_FORMAT = "cao-studio"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # current version, written by default_document()
+LEGACY_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION)
 ALLOWED_UNITS = frozenset({"mm", "cm", "m", "in"})
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024  # canonical UTF-8 size
 MAX_DEPTH = 64  # nesting depth of dicts/lists
@@ -111,6 +116,15 @@ def _features_errors(features: Any) -> list[str]:
     return errors
 
 
+def _v2_feature_errors(features: list) -> list[str]:
+    """Schema v2 specific checks; only sketches are validated in depth."""
+    errors: list[str] = []
+    for index, feature in enumerate(features):
+        if isinstance(feature, dict) and feature.get("type") == "sketch":
+            errors.extend(sketch_errors(index, feature))
+    return errors
+
+
 def validate_document(doc: Any) -> list[str]:
     """Return a list of French error messages; an empty list means valid."""
     if not isinstance(doc, dict):
@@ -125,8 +139,10 @@ def validate_document(doc: Any) -> list[str]:
         errors.append(f"« format » doit valoir « {DOCUMENT_FORMAT} ».")
 
     schema_version = doc.get("schemaVersion")
-    if type(schema_version) is not int or schema_version != SCHEMA_VERSION:
-        errors.append(f"« schemaVersion » doit être l'entier {SCHEMA_VERSION}.")
+    if type(schema_version) is not int or schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        allowed = " ou ".join(str(v) for v in SUPPORTED_SCHEMA_VERSIONS)
+        errors.append(f"« schemaVersion » doit être l'entier {allowed}.")
+        schema_version = None
 
     if doc.get("units") not in ALLOWED_UNITS:
         allowed = ", ".join(sorted(ALLOWED_UNITS))
@@ -136,6 +152,8 @@ def validate_document(doc: Any) -> list[str]:
         errors.append("« features » est obligatoire.")
     else:
         errors.extend(_features_errors(doc["features"]))
+        if schema_version == SCHEMA_VERSION and isinstance(doc["features"], list):
+            errors.extend(_v2_feature_errors(doc["features"]))
 
     if "parameters" in doc and not isinstance(doc["parameters"], dict):
         errors.append("« parameters » doit être un objet.")

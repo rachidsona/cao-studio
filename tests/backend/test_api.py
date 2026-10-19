@@ -16,7 +16,8 @@ def detail_url(project_id):
 
 def float_document():
     doc = default_document()
-    doc["features"][0]["entities"][0]["width"] = 80.25
+    doc["features"][0]["points"][2]["x"] = 40.125
+    doc["features"][0]["constraints"][5]["value"] = 80.25
     doc["features"][1]["distance"] = 12.5
     doc["features"][2]["diameter"] = 6.6
     doc["parameters"] = {"epaisseur": 0.1, "petit": 1e-7, "grand": 123456789.123, "nom": "Pièce é"}
@@ -249,8 +250,8 @@ def test_round_trip_preserves_document_and_checksum(client_logged, api):
     url = detail_url(created["id"])
     loaded = client_logged.get(url).json()
     assert loaded["document"] == doc
-    assert loaded["document"]["features"][0]["entities"][0]["width"] == 80.25
-    assert isinstance(loaded["document"]["features"][0]["entities"][0]["width"], float)
+    assert loaded["document"]["features"][0]["constraints"][5]["value"] == 80.25
+    assert isinstance(loaded["document"]["features"][0]["points"][2]["x"], float)
     assert loaded["checksum"] == created["checksum"] == compute_checksum(doc)
     assert compute_checksum(loaded["document"]) == loaded["checksum"]
 
@@ -263,3 +264,35 @@ def test_round_trip_preserves_document_and_checksum(client_logged, api):
     stored = ProjectVersion.objects.get(project_id=created["id"], number=2)
     stored.refresh_from_db()
     assert stored.document == doc
+
+
+def test_round_trip_v2_default_document(client_logged, api):
+    doc = default_document()
+    assert doc["schemaVersion"] == 2
+    created = api.post(client_logged, LIST_URL, {"name": "V2", "document": doc})
+    assert created.status_code == 201
+    created = created.json()
+    checksum = compute_checksum(doc)
+    assert created["document"] == doc and created["checksum"] == checksum
+    url = detail_url(created["id"])
+
+    loaded = client_logged.get(url).json()
+    assert loaded["document"] == doc and loaded["checksum"] == checksum
+
+    saved = api.put(client_logged, url, {"document": loaded["document"], "base_version": 1})
+    assert saved.status_code == 200
+    assert saved.json()["version"] == 2 and saved.json()["checksum"] == checksum
+
+    reloaded = client_logged.get(url).json()
+    assert reloaded["version"] == 2
+    assert reloaded["document"] == doc == default_document()
+    assert reloaded["checksum"] == checksum == compute_checksum(reloaded["document"])
+
+
+def test_create_rejects_invalid_v2_sketch(client_logged, api):
+    doc = default_document()
+    doc["features"][0]["curves"][0]["p2"] = "p9"
+    response = api.post(client_logged, LIST_URL, {"name": "x", "document": doc})
+    assert response.status_code == 400
+    assert response.json()["details"] == ["Opération 1 (sk1) : point « p9 » introuvable."]
+    assert Project.objects.count() == 0

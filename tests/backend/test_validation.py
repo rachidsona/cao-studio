@@ -19,11 +19,15 @@ def test_default_document_is_valid_and_matches_reference():
     doc = default_document()
     assert validate_document(doc) == []
     assert doc["format"] == "cao-studio"
-    assert doc["schemaVersion"] == 1
+    assert doc["schemaVersion"] == 2
     assert doc["units"] == "mm"
     assert [f["id"] for f in doc["features"]] == ["sk1", "ex1", "h1"]
-    assert doc["features"][0]["entities"][0] == {
-        "id": "r1", "kind": "rectangle", "cx": 0, "cy": 0, "width": 80, "height": 50,
+    sketch = doc["features"][0]
+    assert "entities" not in sketch
+    assert sketch["points"][0] == {"id": "p1", "x": -40, "y": -25}
+    assert sketch["curves"][0] == {"id": "l1", "kind": "line", "p1": "p1", "p2": "p2"}
+    assert sketch["constraints"][-1] == {
+        "id": "d2", "kind": "length", "line": "l2", "value": 50, "label": "Largeur",
     }
     assert doc["features"][2]["name"] == "Perçage 1"
     assert doc["features"][2]["depth"] == "through"
@@ -53,7 +57,7 @@ def test_wrong_format():
     assert len(errors) == 1 and "format" in errors[0]
 
 
-@pytest.mark.parametrize("value", [2, "1", 1.0, True, None])
+@pytest.mark.parametrize("value", [0, 3, -1, "1", "2", 1.0, 2.0, True, None])
 def test_wrong_schema_version(value):
     doc = default_document()
     doc["schemaVersion"] = value
