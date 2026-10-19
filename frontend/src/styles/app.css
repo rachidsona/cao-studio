@@ -1,0 +1,44 @@
+/* Tailwind CSS v4 entry: compiled to static/css/app.css (npm run build:css). */
+@import "tailwindcss";
+
+/* Sources scanned for utility classes. */
+@source "../../../templates";
+@source "../../../apps";
+@source "../";
+
+/* Theme follows the "dark" class set on <html> by templates/base.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    --viewport-bg: #e8ebef;
+    --viewport-grid: #9aa3ae;
+  }
+  .dark {
+    --viewport-bg: #16191f;
+    --viewport-grid: #4b5563;
+  }
+  html,
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .tool-btn {
+    @apply inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium
+      text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500
+      disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800;
+  }
+  .tool-btn-primary {
+    @apply bg-sky-600 text-white hover:bg-sky-700 dark:text-white dark:hover:bg-sky-500;
+  }
+  .panel-title {
+    @apply text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400;
+  }
+}

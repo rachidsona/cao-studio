@@ -68,7 +68,9 @@ def test_editor_renders_config(client_logged, project):
     response = client_logged.get(f"/projects/{project.id}/editor/")
     assert response.status_code == 200
     content = response.content.decode()
-    assert '<div id="app"></div>' in content
+    assert '<div id="editor"' in content
+    assert 'data-ref="viewport"' in content
+    assert '<script type="module" src="/static/js/editor.js"></script>' in content
     match = re.search(r'<script id="editor-config" type="application/json">(.*?)</script>', content, re.S)
     assert match
     assert json.loads(match.group(1)) == {

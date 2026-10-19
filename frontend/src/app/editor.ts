@@ -1,0 +1,359 @@
+/**
+ * Editor controller: wires the Django page, the document session, the
+ * geometry worker, the viewport and the panels together.
+ */
+import { addHole, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
+import type { CadDocument, DisplayUnit } from "../document/types";
+import type { GeometryClient } from "../geometry/client";
+import type { FaceInfo, RecomputeResponse } from "../geometry/protocol";
+import type { FeatureStatus } from "../history/recompute";
+import type { ExportFormat } from "../io/exporters";
+import { NATIVE_EXTENSION, parseNative, serializeNative } from "../io/native";
+import { formatLength, trim } from "../measurements/units";
+import { download, ref, slugify, toast } from "../ui/dom";
+import { renderProperties, type FeaturePatch } from "../ui/properties";
+import { renderTree } from "../ui/tree";
+import type { FacePick, StandardView, Viewport } from "../viewport/viewport";
+import type { DocumentSession, SaveState } from "./session";
+
+export interface EditorConfig {
+  projectId: string;
+  projectName: string;
+  apiUrl: string;
+  projectsUrl: string;
+}
+
+const SAVE_LABELS: Record<SaveState, string> = {
+  saved: "Enregistré",
+  modified: "Modifications non enregistrées",
+  saving: "Enregistrement…",
+  offline: "Non enregistré (copie locale)",
+  conflict: "Conflit de version",
+};
+
+export class Editor {
+  private statuses = new Map<string, FeatureStatus>();
+  private result: RecomputeResponse | null = null;
+  private selectedFeature: string | null = null;
+  private pick: FacePick | null = null;
+  private faceInfo: FaceInfo | null = null;
+  private recomputing = false;
+  private recomputeAgain = false;
+
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly config: EditorConfig,
+    private readonly session: DocumentSession,
+    private readonly geometry: GeometryClient,
+    private readonly viewport: Viewport,
+  ) {
+    session.onStateChange = (state, detail) => this.showSaveState(state, detail);
+    viewport.onPick = (pick) => void this.onPick(pick);
+    this.bindActions();
+    this.bindKeyboard();
+    ref<HTMLSelectElement>(root, "units").value = session.doc.units;
+    window.addEventListener("pagehide", () => session.flushOnExit());
+    window.addEventListener("beforeunload", (event) => {
+      // Without autosave, warn before losing changes (the recovery copy still exists).
+      if (session.dirty && !session.autosave) event.preventDefault();
+    });
+    new MutationObserver(() => viewport.applyTheme()).observe(document.documentElement, { attributeFilter: ["class"] });
+  }
+
+  get doc(): CadDocument {
+    return this.session.doc;
+  }
+
+  get unit(): DisplayUnit {
+    return this.doc.units;
+  }
+
+  private notify(message: string, kind: "info" | "success" | "error" = "info"): void {
+    toast(ref(this.root, "toasts"), message, kind);
+  }
+
+  // ---- regeneration -------------------------------------------------------
+
+  /** Regenerates the model; concurrent requests collapse into one extra pass. */
+  async recompute(fitView = false): Promise<void> {
+    if (this.recomputing) {
+      this.recomputeAgain = true;
+      return;
+    }
+    this.recomputing = true;
+    ref(this.root, "status-recompute").textContent = "Recalcul…";
+    try {
+      const result = await this.geometry.recompute(this.doc);
+      this.result = result;
+      this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
+      this.viewport.setBodies(result.bodies);
+      if (fitView) this.viewport.setView("iso");
+      const failures = result.statuses.filter((s) => s.state === "error").length;
+      ref(this.root, "status-recompute").textContent =
+        `Recalcul ${trim(result.durationMs, 0)} ms` + (failures ? ` — ${failures} erreur(s)` : "");
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : String(error), "error");
+      ref(this.root, "status-recompute").textContent = "Échec du recalcul";
+    } finally {
+      this.recomputing = false;
+    }
+    this.render();
+    if (this.recomputeAgain) {
+      this.recomputeAgain = false;
+      await this.recompute();
+    }
+  }
+
+  private change(next: CadDocument): Promise<void> {
+    this.session.apply(next);
+    this.updateHistoryButtons();
+    return this.recompute();
+  }
+
+  // ---- rendering ----------------------------------------------------------
+
+  render(): void {
+    renderTree(ref(this.root, "tree"), this.doc, this.statuses, this.selectedFeature, {
+      onSelect: (id) => this.selectFeature(id),
+      onToggleSuppress: (id) => this.toggleSuppress(id),
+      onDelete: (id) => this.removeFeature(id),
+    });
+    const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;
+    renderProperties(ref(this.root, "properties"), {
+      feature,
+      unit: this.unit,
+      body: this.bodyForPanel(),
+      face: this.faceInfo,
+      onCommit: (patch) => this.patchSelected(patch),
+    });
+    this.updateHistoryButtons();
+  }
+
+  private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
+    const bodies = this.result?.bodies ?? [];
+    let bodyId = this.pick?.bodyId ?? null;
+    if (!bodyId && this.selectedFeature) bodyId = latestBody(this.doc, this.selectedFeature);
+    bodyId ??= bodies[bodies.length - 1]?.bodyId ?? null;
+    const body = bodies.find((b) => b.bodyId === bodyId);
+    if (!body) return null;
+    return { name: findFeature(this.doc, body.bodyId)?.name ?? body.bodyId, metrics: body.metrics };
+  }
+
+  private updateHistoryButtons(): void {
+    ref<HTMLButtonElement>(this.root, "undo").disabled = !this.session.undo.canUndo;
+    ref<HTMLButtonElement>(this.root, "redo").disabled = !this.session.undo.canRedo;
+  }
+
+  private showSaveState(state: SaveState, detail?: string): void {
+    const node = ref(this.root, "status-save");
+    node.textContent = SAVE_LABELS[state];
+    node.dataset.state = state;
+    if (detail) this.notify(detail, state === "saved" ? "success" : state === "saving" ? "info" : "error");
+  }
+
+  // ---- selection ----------------------------------------------------------
+
+  private selectFeature(id: string | null): void {
+    this.selectedFeature = id;
+    this.openPanel("properties");
+    this.render();
+  }
+
+  private async onPick(pick: FacePick | null): Promise<void> {
+    this.pick = pick;
+    this.faceInfo = null;
+    const label = ref(this.root, "status-selection");
+    if (!pick) {
+      label.textContent = "Aucune sélection";
+      this.render();
+      return;
+    }
+    this.selectedFeature = pick.bodyId;
+    label.textContent = `Face ${pick.faceIndex + 1} — X ${formatLength(pick.point.x, this.unit)}, Y ${formatLength(pick.point.y, this.unit)}`;
+    try {
+      this.faceInfo = await this.geometry.faceInfo(pick.bodyId, pick.faceIndex);
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+    this.render();
+  }
+
+  // ---- commands -----------------------------------------------------------
+
+  private patchSelected(patch: FeaturePatch): void {
+    if (!this.selectedFeature) return;
+    void this.change(updateFeature(this.doc, this.selectedFeature, patch));
+  }
+
+  private toggleSuppress(id: string): void {
+    void this.change(updateFeature(this.doc, id, (f) => ({ ...f, suppressed: !f.suppressed })));
+  }
+
+  private removeFeature(id: string): void {
+    const feature = findFeature(this.doc, id);
+    if (!feature) return;
+    const next = deleteFeature(this.doc, id);
+    const lost = dependentsOf(this.doc, id).filter((d) => !findFeature(next, d));
+    if (lost.length > 0) {
+      const names = lost.map((d) => findFeature(this.doc, d)?.name ?? d).join(", ");
+      if (!window.confirm(`Supprimer « ${feature.name} » supprimera aussi : ${names}. Continuer ?`)) return;
+    }
+    if (this.selectedFeature && !findFeature(next, this.selectedFeature)) this.selectedFeature = null;
+    this.viewport.select(null);
+    void this.change(next);
+  }
+
+  private addPlateCommand(): void {
+    const bodies = this.result?.bodies ?? [];
+    const maxX = bodies.reduce((m, b) => Math.max(m, b.metrics.bbox[1][0]), Number.NEGATIVE_INFINITY);
+    let next = addPlate(this.doc);
+    if (Number.isFinite(maxX)) {
+      // Place the new plate beside the existing bodies instead of on top of them.
+      const sketch = next.features[next.features.length - 2];
+      next = updateFeature(next, sketch?.id ?? "", (f) =>
+        f.type === "sketch" ? { ...f, entities: f.entities.map((e) => ({ ...e, cx: maxX + 20 + 40 })) } : f,
+      );
+    }
+    this.selectedFeature = next.features[next.features.length - 1]?.id ?? null;
+    void this.change(next).then(() => this.viewport.fit());
+  }
+
+  private addHoleCommand(): void {
+    const bodies = this.result?.bodies ?? [];
+    const bodyId =
+      this.pick?.bodyId ??
+      (this.selectedFeature ? latestBody(this.doc, this.selectedFeature) : undefined) ??
+      bodies[bodies.length - 1]?.bodyId;
+    const body = bodies.find((b) => b.bodyId === bodyId);
+    if (!body) {
+      this.notify("Sélectionnez d'abord un corps solide valide.", "error");
+      return;
+    }
+    const [min, max] = body.metrics.bbox;
+    const x = this.pick ? this.pick.point.x : (min[0] + max[0]) / 2;
+    const y = this.pick ? this.pick.point.y : (min[1] + max[1]) / 2;
+    const next = addHole(this.doc, body.bodyId, Number(x.toFixed(3)), Number(y.toFixed(3)));
+    this.selectedFeature = next.features[next.features.length - 1]?.id ?? null;
+    this.viewport.select(null);
+    void this.change(next);
+  }
+
+  private historyStep(direction: "undo" | "redo"): void {
+    const moved = direction === "undo" ? this.session.stepBack() : this.session.stepForward();
+    if (!moved) return;
+    if (this.selectedFeature && !findFeature(this.doc, this.selectedFeature)) this.selectedFeature = null;
+    ref<HTMLSelectElement>(this.root, "units").value = this.doc.units;
+    void this.recompute();
+  }
+
+  private async save(): Promise<void> {
+    if (!this.session.dirty) {
+      this.notify("Aucune modification à enregistrer.");
+      return;
+    }
+    await this.session.save("Enregistrement manuel").catch(() => undefined);
+  }
+
+  private async exportGeometry(format: ExportFormat): Promise<void> {
+    try {
+      const names = Object.fromEntries(this.doc.features.map((f) => [f.id, f.name]));
+      const blob = await this.geometry.export(format, names);
+      download(blob, `${slugify(this.config.projectName)}.${format}`);
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  private async importNative(file: File): Promise<void> {
+    try {
+      const doc = parseNative(await file.text());
+      this.selectedFeature = null;
+      this.viewport.select(null);
+      this.session.apply(doc);
+      ref<HTMLSelectElement>(this.root, "units").value = doc.units;
+      await this.recompute(true);
+      this.notify(`« ${file.name} » importé.`, "success");
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  private openPanel(panel: "tree" | "properties" | null): void {
+    for (const name of ["tree", "properties"] as const) {
+      const aside = ref(this.root, `panel-${name}`);
+      aside.dataset.open = String(panel === name && aside.dataset.open !== "true");
+    }
+  }
+
+  // ---- bindings -----------------------------------------------------------
+
+  private bindActions(): void {
+    const actions: Record<string, (target: HTMLElement) => void> = {
+      save: () => void this.save(),
+      undo: () => this.historyStep("undo"),
+      redo: () => this.historyStep("redo"),
+      "add-plate": () => this.addPlateCommand(),
+      "add-hole": () => this.addHoleCommand(),
+      "export-step": () => void this.exportGeometry("step"),
+      "export-stl": () => void this.exportGeometry("stl"),
+      "export-native": () => download(serializeNative(this.doc), `${slugify(this.config.projectName)}${NATIVE_EXTENSION}`),
+      "import-native": () => ref<HTMLInputElement>(this.root, "import-file").click(),
+      view: (target) => this.viewport.setView(target.dataset.view as StandardView),
+      fit: () => this.viewport.fit(),
+      panel: (target) => this.openPanel(target.dataset.panel as "tree" | "properties"),
+      "close-panels": () => this.openPanel(null),
+      deselect: () => {
+        this.viewport.select(null);
+        this.selectFeature(null);
+      },
+    };
+    this.root.addEventListener("click", (event) => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
+      const action = target?.dataset.action;
+      if (target && action && actions[action]) actions[action](target);
+    });
+    ref<HTMLSelectElement>(this.root, "units").addEventListener("change", (event) => {
+      const units = (event.target as HTMLSelectElement).value as DisplayUnit;
+      this.session.apply({ ...this.doc, units });
+      this.render();
+    });
+    ref<HTMLInputElement>(this.root, "autosave").addEventListener("change", (event) => {
+      this.session.autosave = (event.target as HTMLInputElement).checked;
+    });
+    ref<HTMLInputElement>(this.root, "import-file").addEventListener("change", (event) => {
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      input.value = "";
+      if (file) void this.importNative(file);
+    });
+  }
+
+  private bindKeyboard(): void {
+    window.addEventListener("keydown", (event) => {
+      const editing = (event.target as HTMLElement).closest("input, textarea, select");
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (mod && key === "s") {
+        event.preventDefault();
+        void this.save();
+      } else if (editing) {
+        return;
+      } else if (mod && key === "z") {
+        event.preventDefault();
+        this.historyStep(event.shiftKey ? "redo" : "undo");
+      } else if (mod && key === "y") {
+        event.preventDefault();
+        this.historyStep("redo");
+      } else if (event.key === "Escape") {
+        this.viewport.select(null);
+        this.selectFeature(null);
+      } else if (event.key === "Delete" || event.key === "Backspace") {
+        if (this.selectedFeature) this.removeFeature(this.selectedFeature);
+      } else if (key === "f") {
+        this.viewport.fit();
+      } else if (key === "h") {
+        this.addHoleCommand();
+      }
+    });
+  }
+}

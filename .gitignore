@@ -17,3 +17,8 @@ static/css/app.css
 .claude-flow/
 .DS_Store
 coverage/
+
+# Claude Code worktrees
+.claude/worktrees/
+.swarm/
+ruvector.db

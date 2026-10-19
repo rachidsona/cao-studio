@@ -1,0 +1,95 @@
+/**
+ * Structural validation of untrusted documents (loaded from the server, from
+ * a local recovery copy or from an imported file). It mirrors the server-side
+ * check in apps/projects/validation.py and adds per-feature checks.
+ */
+import { DOCUMENT_FORMAT, SCHEMA_VERSION, type CadDocument } from "./types";
+
+const UNITS = new Set(["mm", "cm", "m", "in"]);
+const PLANES = new Set(["XY", "XZ", "YZ"]);
+const OPERATIONS = new Set(["new", "join", "cut"]);
+
+type Json = Record<string, unknown>;
+
+function isObject(v: unknown): v is Json {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+function checkNumbers(obj: Json, keys: string[], where: string, errors: string[]): void {
+  for (const key of keys) {
+    if (!isFiniteNumber(obj[key])) errors.push(`${where} : « ${key} » doit être un nombre fini.`);
+  }
+}
+
+function checkEntity(entity: unknown, where: string, errors: string[]): void {
+  if (!isObject(entity) || typeof entity.id !== "string") {
+    errors.push(`${where} : entité invalide.`);
+    return;
+  }
+  if (entity.kind === "rectangle") checkNumbers(entity, ["cx", "cy", "width", "height"], where, errors);
+  else if (entity.kind === "circle") checkNumbers(entity, ["cx", "cy", "diameter"], where, errors);
+  else errors.push(`${where} : type d'entité inconnu « ${String(entity.kind)} ».`);
+}
+
+function checkFeature(feature: Json, where: string, errors: string[]): void {
+  switch (feature.type) {
+    case "sketch":
+      if (!PLANES.has(feature.plane as string)) errors.push(`${where} : plan d'esquisse invalide.`);
+      checkNumbers(feature, ["offset"], where, errors);
+      if (!Array.isArray(feature.entities)) errors.push(`${where} : « entities » doit être une liste.`);
+      else feature.entities.forEach((e, i) => checkEntity(e, `${where}, entité ${i + 1}`, errors));
+      break;
+    case "extrude":
+      if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
+      checkNumbers(feature, ["distance"], where, errors);
+      if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
+      if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : cible invalide.`);
+      break;
+    case "hole":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      checkNumbers(feature, ["x", "y", "diameter"], where, errors);
+      if (feature.depth !== "through" && !isFiniteNumber(feature.depth)) {
+        errors.push(`${where} : profondeur invalide.`);
+      }
+      break;
+    default:
+      errors.push(`${where} : type d'opération inconnu « ${String(feature.type)} ».`);
+  }
+}
+
+/** Returns the list of problems found; an empty list means the document is usable. */
+export function validateDocument(input: unknown): string[] {
+  const errors: string[] = [];
+  if (!isObject(input)) return ["Le document doit être un objet JSON."];
+  if (input.format !== DOCUMENT_FORMAT) errors.push(`Format inconnu (attendu « ${DOCUMENT_FORMAT} »).`);
+  if (input.schemaVersion !== SCHEMA_VERSION) errors.push(`Version de schéma non prise en charge.`);
+  if (!UNITS.has(input.units as string)) errors.push("Unité d'affichage invalide.");
+  if (input.parameters !== undefined && !isObject(input.parameters)) errors.push("« parameters » doit être un objet.");
+  if (!Array.isArray(input.features)) {
+    errors.push("« features » doit être une liste.");
+    return errors;
+  }
+  const ids = new Set<string>();
+  input.features.forEach((feature, index) => {
+    const where = `Opération ${index + 1}`;
+    if (!isObject(feature) || typeof feature.id !== "string" || typeof feature.type !== "string") {
+      errors.push(`${where} : « id » et « type » sont obligatoires.`);
+      return;
+    }
+    if (ids.has(feature.id)) errors.push(`${where} : identifiant « ${feature.id} » dupliqué.`);
+    ids.add(feature.id);
+    checkFeature(feature, `${where} (${feature.id})`, errors);
+  });
+  return errors;
+}
+
+export function parseDocument(input: unknown): CadDocument {
+  const errors = validateDocument(input);
+  if (errors.length > 0) throw new Error(`Document invalide :\n- ${errors.join("\n- ")}`);
+  const doc = input as CadDocument;
+  return { ...doc, parameters: doc.parameters ?? {} };
+}

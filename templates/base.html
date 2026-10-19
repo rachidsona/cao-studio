@@ -22,13 +22,14 @@
 <body class="{% block body_class %}min-h-full bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100{% endblock %}">
   <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-sky-600 focus:px-4 focus:py-2 focus:text-white">Aller au contenu</a>
 
+  {% block header %}
   <header class="border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-gray-900/90">
-    <nav class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2" aria-label="Navigation principale">
-      <a href="{% url 'home' %}" class="flex min-h-11 items-center gap-2 text-lg font-semibold tracking-tight">
-        <span class="inline-flex size-8 items-center justify-center rounded-md bg-sky-600 text-sm font-bold text-white" aria-hidden="true">C</span>
+    <nav class="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2" aria-label="Navigation principale">
+      <a href="{% url 'home' %}" class="flex min-h-11 min-w-0 items-center gap-2 text-lg font-semibold tracking-tight whitespace-nowrap">
+        <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-600 text-sm font-bold text-white" aria-hidden="true">C</span>
         <span>CAO Studio</span>
       </a>
-      <div class="flex items-center gap-2">
+      <div class="flex shrink-0 items-center gap-1 sm:gap-2">
         <button type="button" data-theme-toggle
                 class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-gray-300 dark:hover:bg-gray-800"
                 aria-label="Basculer le thème clair/sombre" title="Thème clair/sombre">
@@ -40,7 +41,7 @@
           <span class="hidden text-sm text-gray-500 md:inline dark:text-gray-400">{{ user.get_username }}</span>
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-gray-200 dark:hover:bg-gray-800">Déconnexion</button>
+            <button type="submit" class="inline-flex min-h-11 items-center rounded-md px-2 text-sm whitespace-nowrap sm:px-3 font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-gray-200 dark:hover:bg-gray-800">Déconnexion</button>
           </form>
         {% else %}
           <a href="{% url 'login' %}" class="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800">Connexion</a>
@@ -58,9 +59,13 @@
     </div>
   {% endif %}
 
+  {% endblock %}
+
+  {% block main %}
   <main id="main" class="mx-auto w-full max-w-6xl px-4 py-8">
     {% block content %}{% endblock %}
   </main>
+  {% endblock %}
 
   <script>
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
