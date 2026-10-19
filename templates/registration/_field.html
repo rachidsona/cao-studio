@@ -1,0 +1,13 @@
+{# Renders one bound form field. Usage: {% include "registration/_field.html" with field=form.username %} #}
+<div class="space-y-1.5">
+  <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+  <div class="[&_input]:block [&_input]:min-h-11 [&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:border-gray-300 [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-base [&_input]:text-gray-900 [&_input]:shadow-sm [&_input]:placeholder:text-gray-400 [&_input]:focus:border-sky-500 [&_input]:focus:outline-2 [&_input]:focus:outline-sky-500/40 dark:[&_input]:border-gray-700 dark:[&_input]:bg-gray-900 dark:[&_input]:text-gray-100">
+    {{ field }}
+  </div>
+  {% if field.help_text %}
+    <div class="text-xs text-gray-500 dark:text-gray-400 [&_ul]:list-disc [&_ul]:space-y-0.5 [&_ul]:pl-4">{{ field.help_text|safe }}</div>
+  {% endif %}
+  {% for error in field.errors %}
+    <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+  {% endfor %}
+</div>
