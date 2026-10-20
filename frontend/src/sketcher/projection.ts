@@ -10,6 +10,7 @@
 import type { SketchCurve, SketchGeometry, SketchPoint } from "../document/sketch";
 import type { PlaneName, Vec3 } from "../document/types";
 import type { FaceOutline } from "../geometry/protocol";
+import { orientedArc } from "./arc";
 import { toSketch, type SketchFrame } from "./frame";
 
 const ALIGNED = 1 - 1e-6;
@@ -29,14 +30,14 @@ export function planeForFace(normal: Vec3, center: Vec3): { plane: PlaneName; of
 export function projectOutline(outline: FaceOutline, frame: SketchFrame): SketchGeometry {
   const points: SketchPoint[] = [];
   const curves: SketchCurve[] = [];
-  const point = (p: Vec3): string => {
-    const [x, y] = toSketch(frame, p);
+  const point2 = ([x, y]: [number, number]): string => {
     const existing = points.find((q) => Math.hypot(q.x - x, q.y - y) <= MERGE);
     if (existing) return existing.id;
     const id = `q${points.length + 1}`;
     points.push({ id, x, y, fixed: true });
     return id;
   };
+  const point = (p: Vec3): string => point2(toSketch(frame, p));
   const curveId = () => `r${curves.length + 1}`;
   const flags = { construction: true, projected: true } as const;
 
@@ -49,20 +50,18 @@ export function projectOutline(outline: FaceOutline, frame: SketchFrame): Sketch
       curves.push({ id: curveId(), kind: "circle", center: point(edge.center), radius: edge.radius, ...flags });
     } else {
       const center = point(edge.center);
-      const [cx, cy] = toSketch(frame, edge.center);
-      const angle = (p: Vec3) => {
-        const [x, y] = toSketch(frame, p);
-        return Math.atan2(y - cy, x - cx);
-      };
-      const twoPi = 2 * Math.PI;
-      const ccw = (from: number, to: number) => (((to - from) % twoPi) + twoPi) % twoPi;
-      // Sketch arcs run counter-clockwise: swap the ends when the face edge runs the other way.
-      let [a, b] = [edge.a, edge.b];
-      if (ccw(angle(a), angle(edge.mid)) > ccw(angle(a), angle(b))) [a, b] = [b, a];
-      const startAngle = angle(a);
-      let endAngle = angle(b);
-      if (endAngle <= startAngle) endAngle += twoPi;
-      curves.push({ id: curveId(), kind: "arc", center, start: point(a), end: point(b), radius: edge.radius, startAngle, endAngle, ...flags });
+      const arc = orientedArc(toSketch(frame, edge.center), toSketch(frame, edge.a), toSketch(frame, edge.mid), toSketch(frame, edge.b));
+      curves.push({
+        id: curveId(),
+        kind: "arc",
+        center,
+        start: point2(arc.start),
+        end: point2(arc.end),
+        radius: edge.radius,
+        startAngle: arc.startAngle,
+        endAngle: arc.endAngle,
+        ...flags,
+      });
     }
   }
   return { points, curves, constraints: [] };

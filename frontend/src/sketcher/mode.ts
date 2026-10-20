@@ -31,7 +31,9 @@ import * as THREE from "three";
 import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
 import { hitTest, snap, toggleTarget } from "./hit";
 import { SketchOverlay } from "./overlay";
+import { OffsetTool } from "./offset-tool";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
+import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
@@ -46,6 +48,8 @@ export interface SketchModeHost {
   unit(): DisplayUnit;
   /** Element the value keypad is placed in (the viewport area). */
   calculatorContainer(): HTMLElement;
+  /** Planar offset computed by the geometry kernel. */
+  offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
 }
 
 /** What a value typed in the keypad applies to: an existing dimension, or a new one. */
@@ -75,6 +79,8 @@ export class SketchMode implements PointerHandler {
   private annotations: Annotation[] = [];
   /** "Cote" tool: the selection shows its measurements, clickable to become dimensions. */
   private dimensionMode = false;
+  /** "Décalage" tool, while it is open. */
+  private offset: OffsetTool | null = null;
 
   constructor(
     feature: SketchFeature,
@@ -130,22 +136,30 @@ export class SketchMode implements PointerHandler {
     const known = new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
+    this.offset?.sync();
     this.render();
     this.ensureVisible();
   }
 
   exit(): void {
     closeCalculator();
+    this.offset?.dispose();
     this.overlay.dispose();
     this.viewport.exitSketch();
   }
 
-  get toolName(): ToolName | "dimension" {
+  get offsetActive(): boolean {
+    return this.offset !== null;
+  }
+
+  get toolName(): ToolName | "dimension" | "offset" {
+    if (this.offset) return "offset";
     if (this.dimensionMode) return "dimension";
     return this.tool?.name ?? "select";
   }
 
   get hint(): string {
+    if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote sélectionné se supprime avec Suppr";
   }
@@ -169,11 +183,19 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension"): void {
+  setTool(name: ToolName | "dimension" | "offset"): void {
     closeCalculator();
+    this.offset?.dispose();
+    this.offset = null;
     this.dimensionMode = name === "dimension";
     if (this.dimensionMode) this.selection.clear();
-    this.tool = name === "select" || name === "dimension" ? null : new DrawingTool(name, this.construction);
+    if (name === "offset") {
+      // Curves already selected are offset right away; anything else is dropped from the selection.
+      this.selection = new Set([...this.selection].filter((id) => findCurve(this.geometry, id)));
+      this.offset = new OffsetTool(this.offsetHost());
+      this.offset.start();
+    }
+    this.tool = name === "select" || name === "dimension" || name === "offset" ? null : new DrawingTool(name, this.construction);
     this.preview = null;
     this.render();
     this.host.changed();
@@ -191,7 +213,45 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
+  /** Confirms the offset being previewed (Enter). */
+  confirmOffset(): void {
+    void this.offset?.confirm();
+  }
+
+  private offsetHost(): ConstructorParameters<typeof OffsetTool>[0] {
+    const mode = this;
+    return {
+      geometry: () => this.geometry,
+      // The sketch replaces its selection set on undo/redo: always read the current one.
+      get selection() {
+        return mode.selection;
+      },
+      container: () => this.host.calculatorContainer(),
+      unit: () => this.host.unit(),
+      compute: (paths, distance, join) => this.host.offset(paths, distance, join),
+      apply: (geometry, success) => this.apply(geometry, success),
+      changed: () => {
+        this.preview = this.offset?.preview ?? null;
+        this.render();
+        this.host.changed();
+      },
+      closed: (created) => {
+        this.offset = null;
+        this.preview = null;
+        this.selection.clear();
+        for (const id of created) this.selection.add(id);
+        this.render();
+        this.host.changed();
+      },
+      notify: (message, kind) => this.host.notify(message, kind),
+    };
+  }
+
   cancel(): void {
+    if (this.offset) {
+      this.offset.cancel();
+      return;
+    }
     if (this.tool) {
       this.tool.reset();
       this.preview = null;
@@ -289,7 +349,7 @@ export class SketchMode implements PointerHandler {
 
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
-    if (this.tool) return false;
+    if (this.tool || this.offset) return false;
     const p = this.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(this.geometry, p, this.tolerance());
@@ -318,6 +378,8 @@ export class SketchMode implements PointerHandler {
       const s = snap(this.geometry, p, this.tolerance());
       this.hover = s.pointId ?? s.curveId ?? null;
       this.preview = this.tool.move(this.geometry, s);
+    } else if (this.offset) {
+      this.hover = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id))?.id ?? null;
     } else {
       this.hover = hitTest(this.geometry, p, this.tolerance())[0]?.id ?? null;
     }
@@ -349,6 +411,12 @@ export class SketchMode implements PointerHandler {
       }
       this.render();
       this.host.changed();
+      return true;
+    }
+    if (this.offset) {
+      // "Décalage": a click on a curve adds (or removes) it, with its chain; elsewhere nothing happens.
+      const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id));
+      if (curve) this.offset.toggle(curve.id);
       return true;
     }
     // Clicking again near a selected element deselects it, even if a close neighbour
@@ -511,7 +579,7 @@ export class SketchMode implements PointerHandler {
       annotations: [
         ...dimensionAnnotations(this.geometry, unit),
         ...measures,
-        ...previewAnnotations(this.preview, unit),
+        ...(this.offset ? [] : previewAnnotations(this.preview, unit)),
       ],
       showGlyphs: this.showGlyphs,
       regions,

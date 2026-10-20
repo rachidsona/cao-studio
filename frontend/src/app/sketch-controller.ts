@@ -8,6 +8,7 @@ import { emptySketchGeometry } from "../document/sketch";
 import { findCurve } from "../sketcher/edit";
 import { findFeature, uniqueId, updateFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit, PlaneName, SketchFeature } from "../document/types";
+import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { FaceOutline } from "../geometry/protocol";
 import { sketchFrame } from "../sketcher/frame";
 import { SketchMode } from "../sketcher/mode";
@@ -31,6 +32,7 @@ export interface SketchControllerHost {
   /** Planar face picked in the 3D model, if any (a new sketch is then drawn on it). */
   selectedFace(): FacePick | undefined;
   faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline>;
+  offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
 }
 
 const TOOL_KEYS: Record<string, ToolName> = { s: "select", l: "line", r: "rectangle", c: "circle", a: "arc" };
@@ -57,7 +59,7 @@ export class SketchController {
       if (target.dataset.newSketch) {
         (target.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
         this.create(target.dataset.newSketch as PlaneName);
-      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension");
+      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension" | "offset");
       else if (target.dataset.sketchCommand) this.command(target.dataset.sketchCommand);
     });
   }
@@ -121,6 +123,7 @@ export class SketchController {
       focusDimension: (id) => this.focusDimension(id),
       unit: () => this.host.unit(),
       calculatorContainer: () => this.root.querySelector("main") ?? this.root,
+      offset: (paths, distance, join) => this.host.offset(paths, distance, join),
     });
     this.host.select(featureId);
     this.root.dataset.mode = "sketch";
@@ -216,6 +219,11 @@ export class SketchController {
     const mode = this.mode;
     if (!mode || event.metaKey || event.ctrlKey || event.altKey) return false;
     const key = event.key.toLowerCase();
+    if (mode.offsetActive && (event.key === "Escape" || event.key === "Enter")) {
+      if (event.key === "Enter") mode.confirmOffset();
+      else mode.cancel();
+      return true;
+    }
     if (event.key === "Escape") {
       if (mode.tool || mode.selection.size) mode.cancel();
       else this.finish();
@@ -248,6 +256,10 @@ export class SketchController {
     }
     if (key === "d") {
       mode.setTool("dimension");
+      return true;
+    }
+    if (key === "o") {
+      mode.setTool("offset");
       return true;
     }
     return false;

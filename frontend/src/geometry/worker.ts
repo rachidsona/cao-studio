@@ -10,6 +10,7 @@ import { initSolver } from "../constraints/solver";
 import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
+import { offsetPaths } from "./offset";
 import { describeEdge, describeFace } from "./references";
 import type { BodyMesh, DescribeResponse, EdgeInfo, FaceInfo, FaceOutline, OutlineEdge, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
 
@@ -164,6 +165,8 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       const result: DescribeResponse = { edges, ...(faceShape ? { face: describeFace(shape, faceShape) } : {}) };
       return { result, transfer: [] };
     }
+    case "offset":
+      return { result: offsetPaths(request.paths, request.distance, request.join), transfer: [] };
     case "mesh": {
       const mesh = meshBody(request.bodyId);
       return { result: mesh, transfer: [mesh.vertices.buffer, mesh.normals.buffer, mesh.indices.buffer, mesh.edges.buffer] };

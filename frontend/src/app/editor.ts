@@ -82,6 +82,7 @@ export class Editor {
       extrude: () => this.extrudeCommand(),
       selectedFace: () => this.picked.lastFace,
       faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex),
+      offset: (paths, distance, join) => this.geometry.offset(paths, distance, join),
     });
     const main = root.querySelector("main") as HTMLElement;
     this.tools = new ToolLauncher({

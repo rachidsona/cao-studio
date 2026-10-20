@@ -1,6 +1,7 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
+import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 import type { BodyMesh, DescribeResponse, EdgeInfo, ExportResponse, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
 
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
@@ -62,6 +63,10 @@ export class GeometryClient {
 
   describe(bodyId: string, edges: number[], face?: number): Promise<DescribeResponse> {
     return this.call({ type: "describe", bodyId, edges, ...(face === undefined ? {} : { face }) });
+  }
+
+  offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome> {
+    return this.call({ type: "offset", paths, distance, join });
   }
 
   mesh(bodyId: string): Promise<BodyMesh> {

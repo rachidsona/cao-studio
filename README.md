@@ -99,7 +99,20 @@ serveur accepte les deux versions.
   - Limites : seules les faces parallèles aux plans XY, XZ et YZ sont prises en charge, et la
     projection n'est pas associative (si le corps change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
-  construction (X).
+  décalage (O), construction (X).
+- **Décalage** (touche O, bouton « Décalage ») : copie parallèle de lignes, segments, arcs, cercles,
+  polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :
+  - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Chaîne
+    connectée » est décochée), ou sélectionnez-les avant d'ouvrir l'outil ;
+  - la distance se saisit au clavier ou à la calculatrice, positive ou négative ; « Côté » choisit
+    extérieur/intérieur pour un contour fermé, gauche/droite du sens de tracé pour une chaîne ouverte ;
+  - coins arrondis (arc autour du coin) ou vifs (prolongés jusqu'à leur intersection) ;
+  - l'aperçu est le résultat réel du noyau, recalculé à chaque changement ; OK (Entrée) ajoute les
+    courbes à l'esquisse en une seule étape d'annulation, Échap annule ; l'original est conservé ;
+  - une distance qui fait disparaître la forme, ou une auto-intersection que le noyau ne sait pas
+    couper, donne un message d'erreur au lieu d'une géométrie fausse ;
+  - appliqué aux arêtes projetées d'une face, il donne un profil réel (retrait de poche, rebord) ;
+  - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
 - **Accrochage** : un clic sur un point existant le réutilise comme sommet partagé ; un clic sur une
   courbe ajoute une contrainte « point sur courbe » ; un segment presque horizontal ou vertical reçoit la
   contrainte correspondante.
@@ -202,6 +215,9 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   - Pas de détection des auto-intersections : les profils qui se croisent sont refusés par le noyau.
   - Les DDL sont globaux, il n'y a pas de couleur par entité.
   - Un îlot dans un trou donne un second solide, refusé (une extrusion produit un seul corps).
+- **Décalage** : 2D seulement. Le noyau sait décaler une face 3D, mais le résultat est une surface
+  (coque sans volume) et le modèle ne gère que des corps solides ; pour déplacer une face, utiliser
+  l'extrusion de face.
 - **Plans** : seul le plan XY est exposé dans l'interface. Le perçage suit toujours l'axe −Z
   depuis le dessus du corps.
 - **Références topologiques** : la correspondance est heuristique (type, direction, position

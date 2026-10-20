@@ -3,6 +3,7 @@ import type { CadDocument, EdgeRef, FaceRef } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import type { ExportFormat } from "../io/exporters";
 import type { BodyMetrics } from "./kernel";
+import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 
 export type WorkerRequest =
   | { type: "init" }
@@ -15,7 +16,11 @@ export type WorkerRequest =
   /** Persistent references for edges / a face picked on a body (topological naming). */
   | { type: "describe"; bodyId: string; edges: number[]; face?: number }
   /** Mesh of any body of the last recompute, including intermediate (consumed) ones. */
-  | { type: "mesh"; bodyId: string };
+  | { type: "mesh"; bodyId: string }
+  /** Planar offset of sketch paths (signed distance, mm). */
+  | { type: "offset"; paths: OffsetPath[]; distance: number; join: OffsetJoin };
+
+export type { OffsetCurve, OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 
 export interface BodyMesh {
   bodyId: string;
