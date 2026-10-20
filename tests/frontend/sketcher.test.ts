@@ -4,7 +4,7 @@ import { classify, COMMANDS } from "../../frontend/src/constraints/catalog";
 import { initSolver, solveSketch } from "../../frontend/src/constraints/solver";
 import { centeredRectangle, emptySketchGeometry, ORIGIN, type SketchGeometry } from "../../frontend/src/document/sketch";
 import { addConstraint, measure, removeEntities } from "../../frontend/src/sketcher/edit";
-import { hitTest, snap } from "../../frontend/src/sketcher/hit";
+import { hitTest, snap, toggleTarget } from "../../frontend/src/sketcher/hit";
 import { extractLoops } from "../../frontend/src/sketcher/profiles";
 import { DrawingTool } from "../../frontend/src/sketcher/tools";
 
@@ -143,5 +143,26 @@ describe("contraintes et cotes", () => {
     const g = centeredRectangle(80, 50);
     expect(hitTest(g, [-39.9, -25.1], 0.5).map((h) => h.id)).toEqual(["p1", "l1", "l4"]);
     expect(hitTest(g, [10, 0.2], 0.5).map((h) => h.id)).toEqual(["axisX"]);
+  });
+
+  it("désélectionne l'élément déjà choisi même si une ligne voisine est plus proche", () => {
+    // Two parallel lines 2 mm apart: a click between them hits both.
+    const g: SketchGeometry = {
+      points: [
+        { id: "a", x: 10, y: 10 },
+        { id: "b", x: 60, y: 10 },
+        { id: "c", x: 10, y: 12 },
+        { id: "d", x: 60, y: 12 },
+      ],
+      curves: [
+        { id: "l1", kind: "line", p1: "a", p2: "b" },
+        { id: "l2", kind: "line", p1: "c", p2: "d" },
+      ],
+      constraints: [],
+    };
+    const hits = hitTest(g, [35, 11.2], 3); // nearer to l2
+    expect(hits.map((h) => h.id)).toEqual(["l2", "l1"]);
+    expect(toggleTarget(hits, new Set())?.id).toBe("l2");
+    expect(toggleTarget(hits, new Set(["l1"]))?.id).toBe("l1");
   });
 });

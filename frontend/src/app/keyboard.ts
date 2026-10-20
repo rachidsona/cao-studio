@@ -17,7 +17,7 @@ export interface ShortcutTarget {
 
 export function bindShortcuts(target: ShortcutTarget): void {
   window.addEventListener("keydown", (event) => {
-    const typing = (event.target as HTMLElement).closest("input, textarea, select");
+    const typing = event.target instanceof Element ? event.target.closest("input, textarea, select") : null;
     const mod = event.metaKey || event.ctrlKey;
     const key = event.key.toLowerCase();
     const tool = target.activeTool();

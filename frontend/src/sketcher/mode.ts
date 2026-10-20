@@ -6,16 +6,19 @@
  */
 import { classify, COMMANDS } from "../constraints/catalog";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
-import { ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, SketchFeature } from "../document/types";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { closeCalculator, openCalculator } from "../ui/calculator";
 import {
   dimensionAnnotations,
+  dimensionLineDistance,
   existingDimension,
   measureAnnotations,
+  matchingDimension,
   pairAnnotation,
   placementOffset,
+  selectionSpec,
   previewAnnotations,
   type Annotation,
   type DimensionSpec,
@@ -23,10 +26,10 @@ import {
 import { extractLoops, regions as regionsOf, type Region } from "./loops";
 
 const GLYPHS_KEY = "cao-studio:sketch-glyphs";
-import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
+import { addConstraint, findCurve, measure, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
 import * as THREE from "three";
 import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
-import { hitTest, snap } from "./hit";
+import { hitTest, snap, toggleTarget } from "./hit";
 import { SketchOverlay } from "./overlay";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 
@@ -68,6 +71,8 @@ export class SketchMode implements PointerHandler {
   private preview: Preview | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
   private lastBounds: THREE.Box3 | null = null;
+  /** Annotations of the last render (to pick dimension lines). */
+  private annotations: Annotation[] = [];
   /** "Cote" tool: the selection shows its measurements, clickable to become dimensions. */
   private dimensionMode = false;
 
@@ -141,8 +146,8 @@ export class SketchMode implements PointerHandler {
   }
 
   get hint(): string {
-    if (this.dimensionMode) return "Cote : cliquez une ligne, un cercle ou deux éléments, puis cliquez la valeur affichée";
-    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte";
+    if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
+    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote sélectionné se supprime avec Suppr";
   }
 
   /** Constraint symbols (H, V, ∥…) are shown on demand; the choice is remembered. */
@@ -346,7 +351,25 @@ export class SketchMode implements PointerHandler {
       this.host.changed();
       return true;
     }
-    const [hit] = hitTest(this.geometry, p, this.tolerance());
+    // Clicking again near a selected element deselects it, even if a close neighbour
+    // (e.g. a parallel line 2 mm away) is nearer to the pointer.
+    const hits = hitTest(this.geometry, p, this.tolerance());
+    const hit = toggleTarget(hits, this.selection);
+    // A click on the lines of a placed dimension selects the dimension (Suppr deletes it).
+    const dimension = this.pickDimension(p);
+    if (dimension && (!hit || dimension.distance < hit.distance)) {
+      if (this.selection.has(dimension.id)) this.selection.delete(dimension.id);
+      else this.selection.add(dimension.id);
+      closeCalculator();
+      this.render();
+      this.host.changed();
+      return true;
+    }
+    if (this.dimensionMode && hit && this.selection.has(hit.id)) {
+      // "Cote" tool: the second click on a measured element places the dimension.
+      this.placeMeasurement();
+      return true;
+    }
     if (!hit) this.selection.clear();
     else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
     else {
@@ -362,6 +385,59 @@ export class SketchMode implements PointerHandler {
   }
 
   // ---- values (keypad) ------------------------------------------------------
+
+  /** Placed dimension whose drawn lines are under the pointer, if any. */
+  private pickDimension(p: Vec2): { id: string; distance: number } | null {
+    const px = this.viewport.worldPerPixel();
+    let best: { id: string; distance: number } | null = null;
+    for (const a of this.annotations) {
+      if (!a.dimensionId) continue;
+      const distance = dimensionLineDistance(a, p, px);
+      if (distance <= this.tolerance() && (!best || distance < best.distance)) best = { id: a.dimensionId, distance };
+    }
+    return best;
+  }
+
+  /**
+   * Turns the measurement of the selection into a dimension that stays on
+   * screen. Its value is changed by clicking it (keypad), not here.
+   */
+  private placeMeasurement(): void {
+    const spec = selectionSpec(this.geometry, [...this.selection]);
+    if (!spec) return;
+    if (matchingDimension(this.geometry, spec)) {
+      this.host.notify("Cette cote est déjà posée : cliquez sa valeur pour la modifier.", "info");
+      this.selection.clear();
+      this.render();
+      this.host.changed();
+      return;
+    }
+    const value = Number(measure(this.geometry, { ...spec, id: "", value: 0 } as DimensionConstraint).toFixed(6));
+    const added = addConstraint(this.geometry, { ...spec, value } as unknown as Omit<SketchConstraint, "id">);
+    // A dimension the sketch already determines would over-constrain it: place it as a
+    // reference dimension instead (shown between parentheses, never imposed).
+    let overConstrained = false;
+    try {
+      const check = solveSketch(added.geometry);
+      overConstrained = check.state !== "ok";
+    } catch {
+      overConstrained = true;
+    }
+    if (overConstrained) {
+      const reference = addConstraint(this.geometry, { ...spec, value, driving: false } as unknown as Omit<SketchConstraint, "id">);
+      if (this.apply(reference.geometry)) {
+        this.host.notify("Cette valeur est déjà imposée par l'esquisse : cote de référence ajoutée (entre parenthèses).", "info");
+      }
+      this.selection.clear();
+      this.render();
+      this.host.changed();
+      return;
+    }
+    if (!this.apply(added.geometry)) return;
+    this.selection.clear();
+    this.render();
+    this.host.changed();
+  }
 
   private editValue(target: ValueTarget, anchor: { x: number; y: number }): void {
     openCalculator({
@@ -424,6 +500,7 @@ export class SketchMode implements PointerHandler {
     } catch {
       // Open or branched profile: nothing to tint.
     }
+    this.annotations = [...dimensionAnnotations(this.geometry, unit), ...measures];
     this.overlay.render({
       geometry: this.geometry,
       selection: this.selection,

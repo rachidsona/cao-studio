@@ -72,3 +72,11 @@ export function snap(g: SketchGeometry, p: Vec2, tolerance: number, exclude: Rea
   if (best.kind === "point") return { pos: best.foot, pointId: best.id };
   return { pos: best.foot, curveId: best.id };
 }
+
+/**
+ * Element a click toggles: an already selected element under the pointer wins
+ * over a closer neighbour (so a second click deselects), otherwise the nearest.
+ */
+export function toggleTarget(hits: Hit[], selection: ReadonlySet<string>): Hit | undefined {
+  return hits.find((h) => selection.has(h.id)) ?? hits[0];
+}

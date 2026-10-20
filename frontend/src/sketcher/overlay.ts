@@ -10,7 +10,7 @@ import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type Sketch
 import type { DisplayUnit } from "../document/types";
 import { findCurve, pointPos, type Vec2 } from "./edit";
 import type { SketchFrame } from "./frame";
-import { outwardNormal, sketchCentre, type Annotation, type AnnotationRole } from "./annotations";
+import { dimensionLayout, outwardNormal, sketchCentre, type Annotation, type AnnotationRole } from "./annotations";
 import type { Region } from "./loops";
 import type { Preview } from "./tools";
 
@@ -166,7 +166,9 @@ export class SketchOverlay {
 
     this.renderRegions(state.regions);
     this.renderConstraints(state);
-    for (const annotation of state.annotations) this.renderAnnotation(annotation, state.flagged);
+    for (const annotation of state.annotations) {
+      this.renderAnnotation(annotation, state.flagged, !!annotation.dimensionId && state.selection.has(annotation.dimensionId));
+    }
   }
 
   private segment(a: Vec2, b: Vec2, color: THREE.Color): void {
@@ -224,56 +226,13 @@ export class SketchOverlay {
     this.group.add(object);
   }
 
-  private renderAnnotation(a: Annotation, flagged: ReadonlySet<string>): void {
-    const px = this.worldPerPixel();
-    const color = roleColor(a.role);
-    const shape = a.shape;
+  private renderAnnotation(a: Annotation, flagged: ReadonlySet<string>, selected: boolean): void {
+    const layout = dimensionLayout(a.shape, this.worldPerPixel());
+    const color = selected ? new THREE.Color(COLORS.selected) : roleColor(a.role);
+    for (const [from, to] of layout.lines) this.segment(from, to, color);
+    for (const { tip, dir } of layout.arrows) this.arrowhead(tip, dir, color);
     const isFlagged = !!a.dimensionId && flagged.has(a.dimensionId);
-    if (shape.kind === "label") {
-      this.dimensionText(a, shape.at, 0, isFlagged);
-      return;
-    }
-    if (shape.kind === "radial") {
-      const dir: Vec2 = [Math.cos(shape.angle), Math.sin(shape.angle)];
-      const rim: Vec2 = [shape.center[0] + dir[0] * shape.radius, shape.center[1] + dir[1] * shape.radius];
-      const start: Vec2 = shape.diameter ? [shape.center[0] - dir[0] * shape.radius, shape.center[1] - dir[1] * shape.radius] : shape.center;
-      const outside: Vec2 = [rim[0] + dir[0] * 24 * px, rim[1] + dir[1] * 24 * px];
-      this.segment(start, outside, color);
-      this.arrowhead(rim, dir, color);
-      if (shape.diameter) this.arrowhead(start, [-dir[0], -dir[1]], color);
-      this.dimensionText(a, [outside[0] + dir[0] * 14 * px, outside[1] + dir[1] * 14 * px], 0, isFlagged);
-      return;
-    }
-    // Linear: extension lines from both points to a common dimension line, offset along the normal.
-    const { p1, p2, normal } = shape;
-    const offset = shape.offset ?? 30 * px;
-    const level = Math.max(p1[0] * normal[0] + p1[1] * normal[1], p2[0] * normal[0] + p2[1] * normal[1]) + offset;
-    const lift = (p: Vec2): Vec2 => {
-      const k = level - (p[0] * normal[0] + p[1] * normal[1]);
-      return [p[0] + normal[0] * k, p[1] + normal[1] * k];
-    };
-    const d1 = lift(p1);
-    const d2 = lift(p2);
-    const side = Math.sign(offset) || 1;
-    const over = 6 * px * side;
-    const gap = 3 * px * side;
-    this.segment([p1[0] + normal[0] * gap, p1[1] + normal[1] * gap], [d1[0] + normal[0] * over, d1[1] + normal[1] * over], color);
-    this.segment([p2[0] + normal[0] * gap, p2[1] + normal[1] * gap], [d2[0] + normal[0] * over, d2[1] + normal[1] * over], color);
-    this.segment(d1, d2, color);
-    const len = Math.hypot(d2[0] - d1[0], d2[1] - d1[1]);
-    let angle = 0;
-    if (len > 1e-9) {
-      const dir: Vec2 = [(d2[0] - d1[0]) / len, (d2[1] - d1[1]) / len];
-      this.arrowhead(d2, dir, color);
-      this.arrowhead(d1, [-dir[0], -dir[1]], color);
-      angle = (Math.atan2(dir[1], dir[0]) * 180) / Math.PI;
-      // Keep the text readable (never upside down).
-      if (angle > 90) angle -= 180;
-      if (angle <= -90) angle += 180;
-    }
-    // Text just outside the dimension line.
-    const mid: Vec2 = [(d1[0] + d2[0]) / 2, (d1[1] + d2[1]) / 2];
-    this.dimensionText(a, [mid[0] + normal[0] * 9 * px * side, mid[1] + normal[1] * 9 * px * side], angle, isFlagged);
+    this.dimensionText(a, layout.text.at, layout.text.angle, isFlagged || selected);
   }
 
   /** Middle of the entities a constraint refers to, offset slightly so labels do not hide geometry. */

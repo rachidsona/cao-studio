@@ -8,7 +8,7 @@ import {
   specFor,
 } from "../../frontend/src/sketcher/annotations";
 import { addCircle, addConstraint } from "../../frontend/src/sketcher/edit";
-import { pairAnnotation, pairSpec } from "../../frontend/src/sketcher/annotations";
+import { dimensionLineDistance, matchingDimension, pairAnnotation, pairSpec, selectionSpec } from "../../frontend/src/sketcher/annotations";
 import { initSolver, solveSketch } from "../../frontend/src/constraints/solver";
 import { beforeAll } from "vitest";
 
@@ -95,5 +95,43 @@ describe("cote entre deux éléments sélectionnés", () => {
     expect(Math.abs((p4?.y ?? 0) - (p1?.y ?? 0))).toBeCloseTo(70, 6);
     // Once dimensioned, the relation is shown by the dimension itself, not as a measurement.
     expect(pairAnnotation(withDim, ["l1", "l3"], "mm")).toBeNull();
+  });
+});
+
+describe("pose d'une cote depuis la sélection", () => {
+  it("décrit la cote d'un élément seul ou d'une paire", () => {
+    const g = centeredRectangle(80, 50);
+    expect(selectionSpec(g, ["l1"])).toEqual({ kind: "length", line: "l1" });
+    expect(selectionSpec(g, ["l1", "l2"])).toEqual({ kind: "angle", a: "l1", b: "l2" });
+    expect(selectionSpec(g, ["p1"])).toBeNull();
+  });
+
+  it("retrouve une cote déjà posée pour ne pas la dupliquer", () => {
+    const g = centeredRectangle(80, 50);
+    expect(matchingDimension(g, { kind: "length", line: "l1" } as never)?.id).toBe("d1");
+    const spec = pairSpec(g, ["l1", "l3"]);
+    expect(spec && matchingDimension(g, spec)).toBeUndefined();
+    const withDim = addConstraint(g, { ...spec, value: 50 } as never).geometry;
+    expect(spec && matchingDimension(withDim, spec)?.kind).toBe("pointLineDistance");
+  });
+});
+
+describe("traits de cote cliquables", () => {
+  it("détecte un clic sur la ligne de cote et sur ses lignes d'attache", () => {
+    const g = centeredRectangle(80, 50);
+    const [width] = dimensionAnnotations(g, "mm"); // l1 (bottom, y = -25), drawn below
+    if (!width) throw new Error("annotation attendue");
+    const px = 0.1; // 1 pixel = 0.1 mm → default offset 3 mm
+    expect(dimensionLineDistance(width, [0, -28], px)).toBeCloseTo(0, 6); // on the dimension line
+    expect(dimensionLineDistance(width, [-40, -27], px)).toBeCloseTo(0, 6); // on an extension line
+    expect(dimensionLineDistance(width, [0, 0], px)).toBeGreaterThan(20); // centre of the part
+  });
+
+  it("dessine la ligne de cote à la position mémorisée", () => {
+    const g = centeredRectangle(80, 50);
+    g.constraints = g.constraints.map((c) => (c.id === "d1" ? { ...c, offset: 10 } : c));
+    const [width] = dimensionAnnotations(g, "mm");
+    if (!width) throw new Error("annotation attendue");
+    expect(dimensionLineDistance(width, [0, -35], 0.1)).toBeCloseTo(0, 6);
   });
 });

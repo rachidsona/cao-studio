@@ -255,6 +255,17 @@ function sameRelation(d: DimensionConstraint, spec: DimensionSpec): boolean {
   return false;
 }
 
+/** Dimension of the sketch already expressing `spec` (size of an element or relation between two). */
+export function matchingDimension(g: SketchGeometry, spec: DimensionSpec): DimensionConstraint | undefined {
+  return existingDimension(g, spec) ?? g.constraints.filter(isDimension).find((c) => sameRelation(c, spec));
+}
+
+/** Dimension describing the selection: size of one element, or relation between two. */
+export function selectionSpec(g: SketchGeometry, ids: string[]): DimensionSpec | null {
+  if (ids.length === 1) return specFor(g, ids[0] as string);
+  return pairSpec(g, ids);
+}
+
 /** Measurement between the two selected entities, unless a dimension already says it. */
 export function pairAnnotation(g: SketchGeometry, ids: string[], unit: DisplayUnit): Annotation | null {
   const spec = pairSpec(g, ids);
@@ -289,6 +300,73 @@ export function placementOffset(a: Annotation, p: Vec2): number | null {
     return Number(((Math.atan2(p[1] - shape.center[1], p[0] - shape.center[0]) * 180) / Math.PI).toFixed(2));
   }
   return null;
+}
+
+/** Lines, arrowheads and text position of a drawn dimension (sketch coordinates). */
+export interface DimensionLayout {
+  lines: [Vec2, Vec2][];
+  arrows: { tip: Vec2; dir: Vec2 }[];
+  text: { at: Vec2; angle: number };
+}
+
+/**
+ * Layout of a dimension, `px` being the size of a screen pixel in mm: used
+ * both to draw it and to pick its lines (so a click on the drawn line hits).
+ */
+export function dimensionLayout(shape: AnnotationShape, px: number): DimensionLayout {
+  if (shape.kind === "label") return { lines: [], arrows: [], text: { at: shape.at, angle: 0 } };
+  if (shape.kind === "radial") {
+    const dir: Vec2 = [Math.cos(shape.angle), Math.sin(shape.angle)];
+    const rim: Vec2 = [shape.center[0] + dir[0] * shape.radius, shape.center[1] + dir[1] * shape.radius];
+    const start: Vec2 = shape.diameter ? [shape.center[0] - dir[0] * shape.radius, shape.center[1] - dir[1] * shape.radius] : shape.center;
+    const outside: Vec2 = [rim[0] + dir[0] * 24 * px, rim[1] + dir[1] * 24 * px];
+    const arrows = [{ tip: rim, dir }];
+    if (shape.diameter) arrows.push({ tip: start, dir: [-dir[0], -dir[1]] });
+    return { lines: [[start, outside]], arrows, text: { at: [outside[0] + dir[0] * 14 * px, outside[1] + dir[1] * 14 * px], angle: 0 } };
+  }
+  // Linear: extension lines from both points to a common dimension line, offset along the normal.
+  const { p1, p2, normal } = shape;
+  const offset = shape.offset ?? 30 * px;
+  const level = Math.max(p1[0] * normal[0] + p1[1] * normal[1], p2[0] * normal[0] + p2[1] * normal[1]) + offset;
+  const lift = (p: Vec2): Vec2 => {
+    const k = level - (p[0] * normal[0] + p[1] * normal[1]);
+    return [p[0] + normal[0] * k, p[1] + normal[1] * k];
+  };
+  const d1 = lift(p1);
+  const d2 = lift(p2);
+  const side = Math.sign(offset) || 1;
+  const over = 6 * px * side;
+  const gap = 3 * px * side;
+  const lines: [Vec2, Vec2][] = [
+    [[p1[0] + normal[0] * gap, p1[1] + normal[1] * gap], [d1[0] + normal[0] * over, d1[1] + normal[1] * over]],
+    [[p2[0] + normal[0] * gap, p2[1] + normal[1] * gap], [d2[0] + normal[0] * over, d2[1] + normal[1] * over]],
+    [d1, d2],
+  ];
+  const span = len(sub(d2, d1));
+  const arrows: DimensionLayout["arrows"] = [];
+  let angle = 0;
+  if (span > 1e-9) {
+    const dir: Vec2 = [(d2[0] - d1[0]) / span, (d2[1] - d1[1]) / span];
+    arrows.push({ tip: d2, dir }, { tip: d1, dir: [-dir[0], -dir[1]] });
+    angle = (Math.atan2(dir[1], dir[0]) * 180) / Math.PI;
+    // Keep the text readable (never upside down).
+    if (angle > 90) angle -= 180;
+    if (angle <= -90) angle += 180;
+  }
+  const mid: Vec2 = [(d1[0] + d2[0]) / 2, (d1[1] + d2[1]) / 2];
+  return { lines, arrows, text: { at: [mid[0] + normal[0] * 9 * px * side, mid[1] + normal[1] * 9 * px * side], angle } };
+}
+
+function segmentDistance(p: Vec2, a: Vec2, b: Vec2): number {
+  const d = sub(b, a);
+  const l2 = d[0] * d[0] + d[1] * d[1] || 1;
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / l2));
+  return len([p[0] - a[0] - t * d[0], p[1] - a[1] - t * d[1]]);
+}
+
+/** Distance from `p` to the drawn lines of a dimension (Infinity when it has none). */
+export function dimensionLineDistance(a: Annotation, p: Vec2, px: number): number {
+  return Math.min(Infinity, ...dimensionLayout(a.shape, px).lines.map(([x, y]) => segmentDistance(p, x, y)));
 }
 
 /** Live measurements of the shape being drawn. */
