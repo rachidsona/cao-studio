@@ -166,7 +166,19 @@ export interface SplitFeature extends FeatureBase {
   keep: SplitKeep;
 }
 
+/**
+ * Move of a body: the same solid, translated. The translation is stored in
+ * the global frame (mm); a local frame in the tool only changes how it is
+ * entered. The feature replaces its target body, like a hole or a fillet.
+ */
+export interface MoveFeature extends FeatureBase {
+  type: "move";
+  target: string;
+  translate: Vec3;
+}
+
 export type Feature =
+  | MoveFeature
   | SplitFeature
   | SketchFeature
   | ExtrudeFeature
@@ -231,6 +243,7 @@ export function featureInputs(feature: Feature): string[] {
     case "fillet":
     case "chamfer":
     case "split":
+    case "move":
       return [feature.target];
     case "combine":
       return [feature.target, ...feature.tools];
@@ -252,6 +265,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "fillet":
     case "chamfer":
     case "split":
+    case "move":
       return [feature.target];
     case "extrude":
     case "revolve":
@@ -264,7 +278,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

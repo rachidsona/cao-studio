@@ -30,3 +30,12 @@ export function dragStep(worldPerPixel: number): number {
 export function roundTo(value: number, step: number): number {
   return Number((Math.round(value / step) * step).toFixed(6));
 }
+
+/** Point where the ray `origin + s·direction` meets the plane through `base` with normal `normal`; null when parallel or behind. */
+export function rayPlanePoint(base: Vec3, normal: Vec3, origin: Vec3, direction: Vec3): Vec3 | null {
+  const denom = dot(normal, direction);
+  if (Math.abs(denom) < 1e-9) return null;
+  const s = dot(normal, sub(base, origin)) / denom;
+  if (s < 0) return null;
+  return [origin[0] + direction[0] * s, origin[1] + direction[1] * s, origin[2] + direction[2] * s];
+}

@@ -65,6 +65,10 @@ export abstract class PanelTool implements PointerHandler {
   protected abstract feature(): Feature | string;
   /** Panel rows specific to the tool. */
   protected abstract rows(): (HTMLElement | null)[];
+  /** Title of the panel. */
+  protected heading(): string {
+    return this.editing ? `Modifier : ${this.editing.name}` : this.title;
+  }
   /** A reason the result cannot be validated yet (the preview failed): OK stays disabled. */
   protected blocker(): string | null {
     return null;
@@ -95,7 +99,7 @@ export abstract class PanelTool implements PointerHandler {
     const status = typeof built === "string" ? undefined : this.ctx.status(built.id);
     const problem = status && status.state !== "ok" ? status.message : undefined;
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? `Modifier : ${this.editing.name}` : this.title),
+      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.heading()),
       ...this.rows(),
       hint ? el("p", { class: "rounded-md bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, hint) : null,
       problem ? el("p", { class: "rounded-md bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,

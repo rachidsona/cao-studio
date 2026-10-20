@@ -60,7 +60,7 @@ export class SketchController {
       if (target.dataset.newSketch) {
         (target.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
         this.create(target.dataset.newSketch as PlaneName);
-      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension" | "offset");
+      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension" | "offset" | "move");
       else if (target.dataset.sketchCommand) this.command(target.dataset.sketchCommand);
     });
   }
@@ -246,8 +246,8 @@ export class SketchController {
     const mode = this.mode;
     if (!mode || event.metaKey || event.ctrlKey || event.altKey) return false;
     const key = event.key.toLowerCase();
-    if (mode.offsetActive && (event.key === "Escape" || event.key === "Enter")) {
-      if (event.key === "Enter") mode.confirmOffset();
+    if (mode.panelToolActive && (event.key === "Escape" || event.key === "Enter")) {
+      if (event.key === "Enter") mode.confirmPanelTool();
       else mode.cancel();
       return true;
     }
@@ -291,6 +291,10 @@ export class SketchController {
     }
     if (key === "o") {
       mode.setTool("offset");
+      return true;
+    }
+    if (key === "m") {
+      mode.setTool("move");
       return true;
     }
     return false;

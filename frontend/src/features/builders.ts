@@ -13,6 +13,7 @@ import { resolveFace } from "../geometry/references";
 import { applyOperation, MIN_LENGTH, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
 import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
 import { buildChamfer, buildCombine, buildFaceExtrude, buildFillet, buildRevolve } from "./solids";
+import { buildMove } from "./move";
 import { buildSplit } from "./split";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
@@ -149,5 +150,7 @@ export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOut
       return buildCombine(feature, lookup);
     case "split":
       return buildSplit(feature, lookup);
+    case "move":
+      return buildMove(feature, lookup);
   }
 }

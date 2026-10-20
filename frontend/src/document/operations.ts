@@ -120,8 +120,7 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   let next = cloneDocument(doc);
   if (replacement) {
     next.features = next.features.map((f) => {
-      if (f.type === "hole" && f.target === id) return { ...f, target: replacement };
-      if (f.type === "extrude" && f.target === id) return { ...f, target: replacement };
+      if ((f.type === "hole" || f.type === "extrude" || f.type === "move") && f.target === id) return { ...f, target: replacement };
       return f;
     });
   }

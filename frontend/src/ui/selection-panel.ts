@@ -11,6 +11,7 @@ export interface SelectionActions {
   hole(): void;
   combine(): void;
   split(): void;
+  move(): void;
   sketch(): void;
   clear(): void;
 }
@@ -57,6 +58,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   }
   if (bodies.length >= 2) buttons.push(action("⧉ Combiner", actions.combine, true));
   if (bodies.length === 1 || (planarFaces && edges.length === 0)) buttons.push(action("✂ Scinder le corps", actions.split));
+  buttons.push(action("✥ Déplacer", actions.move, bodies.length === 1 && faces.length + edges.length + vertices.length === 0));
   const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:hover:text-gray-200" }, "Tout désélectionner");
   clear.addEventListener("click", actions.clear);
   const parts = [

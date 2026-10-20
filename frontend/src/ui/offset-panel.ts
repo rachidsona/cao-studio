@@ -69,14 +69,14 @@ const FLIP = "M8 20V5M8 5L4.5 8.5M8 5l3.5 3.5M16 4v15M16 19l-3.5-3.5M16 19l3.5-3
 const ONE_SIDE = "M4 6h16M4 12h16M4 18h16";
 const TWO_SIDES = "M4 5h16M4 12h16M4 19h16";
 
-const BOX = "rounded-md border border-gray-300 bg-gray-100 text-xs text-gray-900 shadow-xl dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100";
-const TITLE = "flex h-7 items-center gap-1.5 rounded-t-md bg-gray-200 px-2 text-[11px] font-semibold tracking-wide uppercase dark:bg-neutral-700";
-const BODY = "space-y-2 px-3 py-3";
-const ROW = "grid min-h-8 grid-cols-[6.5rem_1fr] items-center gap-2";
-const FIELD =
+export const BOX = "rounded-md border border-gray-300 bg-gray-100 text-xs text-gray-900 shadow-xl dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100";
+export const TITLE = "flex h-7 items-center gap-1.5 rounded-t-md bg-gray-200 px-2 text-[11px] font-semibold tracking-wide uppercase dark:bg-neutral-700";
+export const BODY = "space-y-2 px-3 py-3";
+export const ROW = "grid min-h-8 grid-cols-[6.5rem_1fr] items-center gap-2";
+export const FIELD =
   "h-8 w-full min-w-0 rounded border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 " +
   "aria-invalid:border-red-500 dark:border-neutral-500 dark:bg-neutral-900";
-const BUTTON =
+export const BUTTON =
   "flex h-8 items-center justify-center gap-1.5 rounded border px-3 text-xs font-medium border-gray-300 bg-white hover:bg-gray-50 " +
   "dark:border-neutral-500 dark:bg-neutral-700 dark:hover:bg-neutral-600";
 
@@ -91,7 +91,7 @@ const HELP =
   "Cliquez les lignes, arcs ou cercles à décaler (un clic prend toute la chaîne connectée si la case est cochée). " +
   "La distance est négative pour décaler de l'autre côté. « Inverser » change le côté. L'original est conservé.";
 
-function row(label: string, control: Node): HTMLElement {
+export function row(label: string, control: Node): HTMLElement {
   return el("div", { class: ROW }, el("span", {}, label), control);
 }
 

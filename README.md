@@ -117,6 +117,19 @@ serveur accepte les deux versions.
     couper, donne un message d'erreur au lieu d'une géométrie fausse ;
   - appliqué aux arêtes projetées d'une face, il donne un profil réel (retrait de poche, rebord) ;
   - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
+- **Déplacer** (touche M, bouton « Déplacer ») : déplace des points, segments, cercles, arcs, un
+  rectangle ou un contour entier, ou plusieurs éléments à la fois.
+  - On clique les éléments (« Étendre aux contours » ajoute tout le contour d'une courbe choisie), puis on
+    les **tire à la souris** (le départ et l'arrivée s'accrochent aux points et à la grille) ou on
+    **saisit le déplacement** : relatif (ΔX, ΔY), distance et angle, ou position absolue du point de base
+    (le point sélectionné, sinon le centre de la sélection).
+  - L'**aperçu** en pointillés est le résultat résolu avec les contraintes ; rien n'est enregistré avant
+    OK, qui compte pour une seule étape d'annulation.
+  - Ce n'est pas un décalage visuel : les points déplacés sont imposés à leur nouvelle place et le solveur
+    recalcule l'esquisse. Les points liés par une contrainte (coïncidence, perpendiculaire, cote) suivent
+    comme le solveur le décide ; un déplacement qui contredit les contraintes (un point fixé, une cote
+    vers l'origine) est refusé avec les contraintes nommées. L'origine et les points fixes projetés d'un
+    corps ne se déplacent pas ; un cercle se déplace par son centre, son rayon est conservé.
 - **Accrochage** : un clic sur un point existant le réutilise comme sommet partagé ; un clic sur une
   courbe ajoute une contrainte « point sur courbe » ; un segment presque horizontal ou vertical reçoit la
   contrainte correspondante.
@@ -208,6 +221,26 @@ opération existante.
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
+- **Déplacer** (bouton « Déplacer », ou dans le panneau Sélection) : ce qui est déplacé dépend de la
+  sélection.
+  - un **corps** (filtre « Corps », navigateur, ou un sommet ou une arête de ce corps) : nouvelle opération
+    « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
+    exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
+    l'écran) ;
+  - une **esquisse** sélectionnée dans le navigateur : le long de sa normale, le décalage de son plan change ;
+    dans son plan, tous ses points se déplacent (refusé si des contraintes la lient à l'origine du plan) ;
+  - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
+    en modifiant le corps ; « Corps entier » déplace le corps, et la normale de la face sert de repère local ;
+  - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
+  - Le **manipulateur XYZ** (axe X rouge, Y vert, Z bleu) se tire par une flèche (déplacement le long d'un
+    axe) ou par un carré (dans le plan XY, XZ ou YZ) ; le pas s'adapte au zoom. On peut aussi saisir le
+    déplacement relatif (Δ), la distance sur un axe, ou la position absolue du centre.
+  - **Repère** : global, ou local (axes de la face plane choisie, ou de l'esquisse). Le déplacement est
+    toujours enregistré dans le repère global.
+  - L'aperçu est calculé par le noyau dans le navigateur (aucune requête au serveur pendant le geste) ;
+    OK reste désactivé tant qu'il échoue. Un déplacement se modifie, se supprime (les perçages, extrusions et
+    déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres
+    opérations.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :
@@ -287,6 +320,11 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 
 ## Limites connues (incrément 1)
 
+- **Déplacer** : translations seulement (pas de rotation), un corps à la fois (pas d'assemblage, donc
+  pas de contraintes entre composants). Les opérations suivantes qui désignent une position absolue (un
+  perçage en x, y) la gardent : après un déplacement, elles se placent sur le corps déplacé. En 2D, le
+  message d'un déplacement refusé liste l'ensemble des contraintes en conflit détectées par le solveur,
+  pas seulement celle qui en est la cause.
 - **Scission** : par des plans seulement (plan de construction ou face plane). Le moteur coupe un
   solide par un plan et indique de quel côté chaque morceau se trouve ; il n'y a pas de côté défini
   pour une surface courbe (cylindre, sphère), qui est refusée avec un message. Pour couper selon

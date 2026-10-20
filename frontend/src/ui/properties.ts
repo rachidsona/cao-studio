@@ -2,7 +2,7 @@
  * Properties panel: numeric editing of the selected feature (values typed in
  * the display unit, stored in mm) plus measurements of bodies and faces.
  */
-import type { ChamferFeature, CombineFeature, SplitFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
+import type { ChamferFeature, CombineFeature, MoveFeature, SplitFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
 import type { BodyMetrics } from "../geometry/kernel";
 import type { SelectionSummary } from "../app/model-selection";
 import { selectionSection, type SelectionActions } from "./selection-panel";
@@ -152,6 +152,18 @@ function splitSection(feature: SplitFeature, ctx: PropertiesContext): HTMLElemen
   );
 }
 
+function moveSection(feature: MoveFeature, ctx: PropertiesContext): HTMLElement {
+  const patch = (i: number, value: number) =>
+    ctx.onCommit((f) => (f.type === "move" ? { ...f, translate: f.translate.map((x, k) => (k === i ? value : x)) as MoveFeature["translate"] } : f));
+  return section(
+    "Déplacement",
+    editButton(ctx),
+    nameField(feature, ctx),
+    el("dl", { class: "space-y-1" }, row("Corps déplacé", ctx.bodyName(feature.target)), row("Repère", "Global")),
+    ...["ΔX", "ΔY", "ΔZ"].map((label, i) => numberField({ label, value: feature.translate[i] as number, unit: ctx.unit, signed: true, onCommit: (v) => patch(i, v) })),
+  );
+}
+
 function holeSection(feature: HoleFeature, ctx: PropertiesContext): HTMLElement {
   const patch = (update: Partial<HoleFeature>) => ctx.onCommit((f) => (f.type === "hole" ? { ...f, ...update } : f));
   const through = el("input", { type: "checkbox", class: "size-5 accent-sky-600", checked: feature.depth === "through" });
@@ -182,6 +194,7 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
   else if (feature?.type === "fillet" || feature?.type === "chamfer") sections.push(edgeSection(feature, ctx));
   else if (feature?.type === "combine") sections.push(combineSection(feature, ctx));
   else if (feature?.type === "split") sections.push(splitSection(feature, ctx));
+  else if (feature?.type === "move") sections.push(moveSection(feature, ctx));
 
   if (ctx.status?.state === "error" || ctx.status?.state === "blocked") {
     sections.unshift(

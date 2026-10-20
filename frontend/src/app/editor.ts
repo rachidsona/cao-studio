@@ -18,7 +18,7 @@ import { ExtrudeTool } from "./extrude-tool";
 import { FileCommands } from "./file-commands";
 import { bindShortcuts } from "./keyboard";
 import { ModelSelectionController } from "./model-selection";
-import { extrudeTargets, ToolLauncher, type PanelToolKind } from "./tool-launcher";
+import { extrudeTargets, ToolLauncher, toolOptions, type PanelToolKind } from "./tool-launcher";
 import { SketchController } from "./sketch-controller";
 import { SketchDisplay } from "./sketch-display";
 
@@ -247,6 +247,7 @@ export class Editor {
         hole: () => this.openTool("hole"),
         combine: () => this.openTool("combine"),
         split: () => this.openTool("split"),
+        move: () => this.openTool("move"),
         sketch: () => {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
@@ -406,13 +407,7 @@ export class Editor {
     this.extrudeTool?.cancel();
     const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
     this.root.dataset.tool = kind;
-    this.tools.open(kind, {
-      ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
-      ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
-      ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
-      ...((kind === "combine" || kind === "split") && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
-      ...(kind === "split" && this.picked.selection.faces.length ? { faces: this.picked.selection.faces } : {}),
-    });
+    this.tools.open(kind, toolOptions(kind, selected, this.picked));
   }
 
   private historyStep(direction: "undo" | "redo"): void {
@@ -445,6 +440,7 @@ export class Editor {
       chamfer: () => this.openTool("chamfer"),
       combine: () => this.openTool("combine"),
       split: () => this.openTool("split"),
+      move: () => this.openTool("move"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

@@ -109,6 +109,10 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       } else errors.push(`${where} : outil de coupe inconnu.`);
       break;
     }
+    case "move":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à déplacer manquant.`);
+      if (!isVec3(feature.translate)) errors.push(`${where} : déplacement invalide (trois nombres attendus).`);
+      break;
     case "combine":
       if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
       if (!Array.isArray(feature.tools) || !feature.tools.every((t) => typeof t === "string")) errors.push(`${where} : corps outils invalides.`);

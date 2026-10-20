@@ -34,6 +34,7 @@ import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
 import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
 import { SketchOverlay } from "./overlay";
 import { OffsetTool } from "./offset-tool";
+import { SketchMoveTool } from "./move-tool";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { OffsetRecord } from "../document/sketch";
@@ -86,6 +87,8 @@ export class SketchMode implements PointerHandler {
   private dimensionMode = false;
   /** "Décalage" tool, while it is open. */
   private offset: OffsetTool | null = null;
+  /** "Déplacer" tool, while it is open. */
+  private moveTool: SketchMoveTool | null = null;
 
   constructor(
     feature: SketchFeature,
@@ -150,6 +153,7 @@ export class SketchMode implements PointerHandler {
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
     this.offset?.sync();
+    this.moveTool?.sync();
     this.render();
     this.ensureVisible();
   }
@@ -157,22 +161,26 @@ export class SketchMode implements PointerHandler {
   exit(): void {
     closeCalculator();
     this.offset?.dispose();
+    this.moveTool?.dispose();
     this.overlay.dispose();
     this.viewport.exitSketch();
   }
 
-  get offsetActive(): boolean {
-    return this.offset !== null;
+  /** A tool with its own dialog (Décalage, Déplacer) is open: Enter confirms it, Échap cancels it. */
+  get panelToolActive(): boolean {
+    return this.offset !== null || this.moveTool !== null;
   }
 
-  get toolName(): ToolName | "dimension" | "offset" {
+  get toolName(): ToolName | "dimension" | "offset" | "move" {
     if (this.offset) return "offset";
+    if (this.moveTool) return "move";
     if (this.dimensionMode) return "dimension";
     return this.tool?.name ?? "select";
   }
 
   get hint(): string {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
+    if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
   }
@@ -238,10 +246,12 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension" | "offset", editing?: OffsetRecord): void {
+  setTool(name: ToolName | "dimension" | "offset" | "move", editing?: OffsetRecord): void {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
+    this.moveTool?.dispose();
+    this.moveTool = null;
     this.viewport.renderer.domElement.style.cursor = "";
     this.dimensionMode = name === "dimension";
     if (this.dimensionMode) this.selection.clear();
@@ -251,7 +261,11 @@ export class SketchMode implements PointerHandler {
       this.offset = new OffsetTool(this.offsetHost(), editing ?? null);
       this.offset.start();
     }
-    this.tool = name === "select" || name === "dimension" || name === "offset" ? null : new DrawingTool(name, this.construction);
+    if (name === "move") {
+      this.moveTool = new SketchMoveTool(this.moveHost());
+      this.moveTool.start();
+    }
+    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" ? null : new DrawingTool(name, this.construction);
     this.preview = null;
     this.render();
     this.host.changed();
@@ -269,9 +283,41 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  /** Confirms the offset being previewed (Enter). */
-  confirmOffset(): void {
+  /** Confirms the offset or the move being previewed (Enter). */
+  confirmPanelTool(): void {
     void this.offset?.confirm();
+    this.moveTool?.confirm();
+  }
+
+  private moveHost(): ConstructorParameters<typeof SketchMoveTool>[0] {
+    const mode = this;
+    return {
+      geometry: () => this.geometry,
+      get selection() {
+        return mode.selection;
+      },
+      container: () => this.host.calculatorContainer(),
+      unit: () => this.host.unit(),
+      toSketch: (event) => this.toSketch(event),
+      snap: (p, exclude) => {
+        const s = this.gridSnap ? snapToGrid(snap(this.geometry, p, this.tolerance(), exclude), this.viewport.gridStep) : snap(this.geometry, p, this.tolerance(), exclude);
+        return s.pos;
+      },
+      tolerance: () => this.tolerance(),
+      apply: (geometry, success) => this.apply(geometry, success),
+      changed: () => {
+        this.preview = this.moveTool?.preview ?? null;
+        this.render();
+        this.host.changed();
+      },
+      closed: () => {
+        this.moveTool = null;
+        this.preview = null;
+        this.render();
+        this.host.changed();
+      },
+      notify: (message, kind) => this.host.notify(message, kind),
+    };
   }
 
   private offsetHost(): ConstructorParameters<typeof OffsetTool>[0] {
@@ -314,6 +360,10 @@ export class SketchMode implements PointerHandler {
   cancel(): void {
     if (this.offset) {
       this.offset.cancel();
+      return;
+    }
+    if (this.moveTool) {
+      this.moveTool.cancel();
       return;
     }
     if (this.tool) {
@@ -416,6 +466,7 @@ export class SketchMode implements PointerHandler {
     if (this.tool) return false;
     // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
     if (this.offset) return this.offset.dragStart(event);
+    if (this.moveTool) return this.moveTool.down(event);
     const p = this.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(this.geometry, p, this.tolerance());
@@ -429,6 +480,10 @@ export class SketchMode implements PointerHandler {
 
   move(event: PointerEvent): void {
     if (this.offset?.dragMove(event)) return;
+    if (this.moveTool?.move(event)) {
+      this.render();
+      return;
+    }
     const p = this.toSketch(event);
     if (!p) return;
     if (this.drag) {
@@ -458,6 +513,7 @@ export class SketchMode implements PointerHandler {
 
   up(event: PointerEvent, isClick: boolean): boolean {
     if (this.offset?.dragEnd()) return true;
+    if (this.moveTool?.up()) return true;
     const drag = this.drag;
     this.drag = null;
     if (drag?.moved) {
@@ -488,6 +544,10 @@ export class SketchMode implements PointerHandler {
       // "Décalage": a click on a curve adds (or removes) it, with its chain; elsewhere nothing happens.
       const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id));
       if (curve) this.offset.toggle(curve.id);
+      return true;
+    }
+    if (this.moveTool) {
+      this.moveTool.click(p);
       return true;
     }
     // Clicking again near a selected element deselects it, even if a close neighbour
@@ -650,7 +710,7 @@ export class SketchMode implements PointerHandler {
       annotations: [
         ...dimensionAnnotations(this.geometry, unit),
         ...measures,
-        ...(this.offset ? [] : previewAnnotations(this.preview, unit)),
+        ...(this.offset || this.moveTool ? [] : previewAnnotations(this.preview, unit)),
       ],
       showGlyphs: this.showGlyphs,
       regions,

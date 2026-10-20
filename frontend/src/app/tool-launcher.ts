@@ -1,14 +1,15 @@
 /** Opens the panel tools (revolution, fillet, chamfer, combination, hole) on new or existing features. */
 import { findFeature } from "../document/operations";
 import type { CadDocument, Feature } from "../document/types";
-import type { EdgePick, FacePick } from "../viewport/viewport";
+import type { EdgePick, FacePick, ModelSelection, VertexPick } from "../viewport/viewport";
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
+import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -19,17 +20,37 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move"]);
+
+export interface ToolOptions {
+  featureId?: string;
+  sketchId?: string;
+  pick?: FacePick;
+  edges?: EdgePick[];
+  faces?: FacePick[];
+  vertices?: VertexPick[];
+  bodies?: string[];
+}
+
+/** What a tool starts with: the sketch selected in the navigator, and what is picked in the 3D view. */
+export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, picked: { lastFace: FacePick | undefined; selection: ModelSelection }): ToolOptions {
+  const { edges, faces, vertices, bodies } = picked.selection;
+  return {
+    ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move")) ? { sketchId: selected.id } : {}),
+    ...(kind === "hole" && picked.lastFace ? { pick: picked.lastFace } : {}),
+    ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move") && bodies.length ? { bodies } : {}),
+    ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
+    ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
+  };
+}
 
 export class ToolLauncher {
   active: PanelTool | null = null;
 
   constructor(private readonly context: Omit<ToolContext, "closed"> & { closed(): void }) {}
 
-  open(
-    kind: PanelToolKind,
-    options: { featureId?: string; sketchId?: string; pick?: FacePick; edges?: EdgePick[]; faces?: FacePick[]; bodies?: string[] } = {},
-  ): void {
+  open(kind: PanelToolKind, options: ToolOptions = {}): void {
     this.active?.cancel();
     const editing = options.featureId ? (findFeature(this.context.doc(), options.featureId) ?? null) : null;
     const ctx: ToolContext = {
@@ -59,6 +80,9 @@ export class ToolLauncher {
         void tool.open(options.faces ?? []);
         return;
       }
+      case "move":
+        void this.openMove(ctx, editing, options);
+        return;
       case "revolve":
         this.active = new RevolveTool(ctx, editing?.type === "revolve" ? editing : null, options.sketchId);
         break;
@@ -74,6 +98,50 @@ export class ToolLauncher {
       }
     }
     this.active.start();
+  }
+
+  /**
+   * Moves what is selected, told apart by the selection: a body (also when only its edges, corners or
+   * a face are picked: the face then gives the local frame, and "Face seule" hands over to the push/pull),
+   * else the sketch selected in the navigator, else the only body there is.
+   */
+  private async openMove(ctx: ToolContext, editing: Feature | null, options: ToolOptions): Promise<void> {
+    const run = (subject: MoveSubject, extra: MoveToolOptions = {}) => {
+      const tool = new MoveTool(ctx, editing, subject, extra);
+      this.active = tool;
+      tool.open();
+    };
+    if (editing?.type === "move") return run({ kind: "body", id: editing.target });
+    const bodyId = options.bodies?.[0] ?? options.faces?.[0]?.bodyId ?? options.edges?.[0]?.bodyId ?? options.vertices?.[0]?.bodyId;
+    if (!bodyId && options.sketchId) {
+      // The sketch is the thing edited: its own feature is replaced by the moved one.
+      const sketch = findFeature(ctx.doc(), options.sketchId);
+      if (sketch?.type === "sketch") {
+        const tool = new MoveTool(ctx, sketch, { kind: "sketch", id: sketch.id });
+        this.active = tool;
+        tool.open();
+        return;
+      }
+    }
+    const only = ctx.bodies();
+    const target = bodyId ?? (only.length === 1 ? only[0]?.id : undefined);
+    if (!target) {
+      ctx.notify("Sélectionnez un corps, une face, une esquisse ou un point à déplacer.", "info");
+      ctx.closed();
+      return;
+    }
+    const face = options.faces?.[0];
+    const extra: MoveToolOptions = {};
+    if (face && !options.bodies?.length) {
+      try {
+        const { face: ref } = await ctx.geometry.describe(face.bodyId, [], face.faceIndex);
+        if (ref?.type === "PLANE") extra.faceNormal = ref.normal;
+      } catch {
+        // No local frame: the global one is used.
+      }
+      extra.moveFace = () => this.open("faceExtrude", { faces: options.faces ?? [] });
+    }
+    run({ kind: "body", id: target }, extra);
   }
 
   /** Reopens the tool matching an existing feature. */
