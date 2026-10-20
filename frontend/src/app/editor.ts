@@ -71,7 +71,7 @@ export class Editor {
         this.render();
       },
     });
-    this.sketchDisplay = new SketchDisplay(viewport);
+    this.sketchDisplay = new SketchDisplay(viewport, { doc: () => this.doc, selected: () => this.selectedFeature, select: (id) => this.selectFeature(id) });
     this.sketches = new SketchController(root, viewport, {
       doc: () => this.doc,
       change: (next) => void this.change(next),
@@ -211,7 +211,7 @@ export class Editor {
   // ---- rendering ----------------------------------------------------------
 
   render(): void {
-    this.sketchDisplay.sync(this.doc, this.sketches.mode?.featureId ?? null);
+    this.sketchDisplay.sync(this.sketches.mode?.featureId ?? null);
     this.navigator.render();
     const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;
     const panel = ref(this.root, "properties");

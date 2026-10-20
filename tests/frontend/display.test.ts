@@ -5,7 +5,7 @@ import type { CadDocument, Feature } from "../../frontend/src/document/types";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { gridPoint, snapToGrid } from "../../frontend/src/sketcher/hit";
 import { addCircle, addLine, addRectangle } from "../../frontend/src/sketcher/edit";
-import { sketchPolylines } from "../../frontend/src/sketcher/polylines";
+import { sketchPolylines, sketchRegions } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
 
 beforeAll(setupKernel);
@@ -74,5 +74,29 @@ describe("masquer une esquisse", () => {
     const again = r.recompute(doc(true));
     expect(again.statuses.map((s) => [s.id, s.state, s.reused])).toEqual([["sk", "ok", true], ["ex", "ok", true]]);
     r.dispose();
+  });
+});
+
+describe("zones cliquables d'une esquisse", () => {
+  it("un rectangle donne une zone, un rectangle dans un autre une zone avec un trou", () => {
+    const one = addRectangle(empty(), { at: [0, 0] }, { at: [10, 5] }).geometry;
+    expect(sketchRegions(one)).toHaveLength(1);
+    expect(sketchRegions(one)[0]!.holes).toHaveLength(0);
+    const nested = addRectangle(one, { at: [2, 1] }, { at: [6, 4] }).geometry;
+    const regions = sketchRegions(nested);
+    expect(regions).toHaveLength(1); // the inner one is a hole of the outer one
+    expect(regions[0]!.holes).toHaveLength(1);
+  });
+
+  it("une esquisse ouverte, ou sans courbe, n'a pas de zone (et ne lève rien)", () => {
+    const open = addLine(empty(), { at: [0, 0] }, { at: [10, 0] }, { autoAlign: false }).geometry;
+    expect(sketchRegions(open)).toEqual([]);
+    expect(sketchRegions(empty())).toEqual([]);
+  });
+
+  it("un segment qui dépasse n'empêche pas de choisir le rectangle", () => {
+    const g = addRectangle(empty(), { at: [0, 0] }, { at: [10, 5] }).geometry;
+    const withSpur = addLine(g, { at: [3, 3] }, { at: [30, 30] }, { autoAlign: false }).geometry;
+    expect(sketchRegions(withSpur)).toHaveLength(1);
   });
 });

@@ -113,6 +113,9 @@ export class Navigator {
       },
     );
     renderTimeline(ref(this.root, "timeline"), operations, selectedId, (id, anchor) => this.open(id, anchor));
+    // Nothing picked in the model: say which sketch is selected (it is highlighted in the view).
+    const sketch = sketches.find((s) => s.id === selectedId);
+    if (this.host.selectedBodyId() === null) ref(this.root, "status-selection").textContent = sketch ? `Esquisse « ${sketch.name} » sélectionnée` : "Aucune sélection";
     const open = this.dialog.openItem;
     if (open) this.dialog.update(this.find(open.id, !!open.body));
   }

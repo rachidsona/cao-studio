@@ -68,6 +68,13 @@ export class Viewport {
   /** Sharp where the sketch is in front, faint where a body hides it: sketches stay apparent. */
   private sketchMaterial = new THREE.LineBasicMaterial({ color: 0x2563eb });
   private sketchGhostMaterial = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false });
+  /** The selected sketch is drawn in rose, with its areas tinted. */
+  private sketchSelectedMaterial = new THREE.LineBasicMaterial({ color: 0xe11d48 });
+  private sketchSelectedGhostMaterial = new THREE.LineBasicMaterial({ color: 0xe11d48, transparent: true, opacity: 0.8, depthTest: false, depthWrite: false });
+  private sketchFillMaterial = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  private sketchSelectedFillMaterial = new THREE.MeshBasicMaterial({ color: 0xe11d48, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  /** A sketch was clicked in the view (its id), or empty space was (null). */
+  onSketchPick: (sketchId: string | null) => void = () => {};
   private bodies = new Map<string, BodyObject>();
   private bodyMaterial: THREE.MeshStandardMaterial;
   /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
@@ -161,27 +168,49 @@ export class Viewport {
     this.grid.setColor(new THREE.Color(gridColor));
   }
 
-  /** Draws these sketches (curves already as polylines in sketch coordinates) on their planes. */
-  setSketchLines(items: { frame: SketchFrame; polylines: [number, number][][] }[]): void {
+  /**
+   * Draws these sketches on their planes: curves (as polylines in sketch coordinates) and a translucent
+   * fill of their closed areas, which makes them clickable. The selected one is highlighted.
+   */
+  setSketchLines(items: { id: string; frame: SketchFrame; polylines: [number, number][][]; regions: { outer: [number, number][]; holes: [number, number][][] }[]; selected: boolean }[]): void {
     for (const group of [...this.sketchGroup.children]) {
       this.sketchGroup.remove(group);
-      group.traverse((child) => child instanceof THREE.Line && child.geometry.dispose());
+      group.traverse((child) => (child instanceof THREE.Line || child instanceof THREE.Mesh) && child.geometry.dispose());
     }
-    for (const { frame, polylines } of items) {
+    for (const { id, frame, polylines, regions, selected } of items) {
       const group = new THREE.Group();
+      group.userData.sketchId = id;
       group.matrixAutoUpdate = false;
       const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...frame.u), new THREE.Vector3(...frame.v), new THREE.Vector3(...frame.normal));
       group.matrix.copy(basis.setPosition(new THREE.Vector3(...frame.origin)));
       for (const points of polylines) {
         const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
-        const ghost = new THREE.Line(geometry, this.sketchGhostMaterial);
+        const ghost = new THREE.Line(geometry, selected ? this.sketchSelectedGhostMaterial : this.sketchGhostMaterial);
         ghost.renderOrder = 4;
-        const line = new THREE.Line(geometry, this.sketchMaterial);
+        const line = new THREE.Line(geometry, selected ? this.sketchSelectedMaterial : this.sketchMaterial);
         line.renderOrder = 5;
+        ghost.userData.kind = line.userData.kind = "line";
         group.add(ghost, line);
+      }
+      for (const { outer, holes } of regions) {
+        const shape = new THREE.Shape(outer.map(([x, y]) => new THREE.Vector2(x, y)));
+        shape.holes = holes.map((hole) => new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))));
+        const fill = new THREE.Mesh(new THREE.ShapeGeometry(shape), selected ? this.sketchSelectedFillMaterial : this.sketchFillMaterial);
+        fill.renderOrder = 3;
+        fill.userData.kind = "fill";
+        group.add(fill);
       }
       this.sketchGroup.add(group);
     }
+  }
+
+  /** Sketch under the pointer: a curve within a few pixels, else (when nothing nearer hides it) the inside of an area. */
+  private pickSketch(event: PointerEvent, what: "line" | "fill", nearerThan: number | null = null): string | null {
+    const targets: THREE.Object3D[] = [];
+    this.sketchGroup.traverse((o) => o.userData.kind === what && targets.push(o));
+    const hit = this.intersect(event, targets, 6)[0];
+    if (!hit || (nearerThan !== null && hit.distance > nearerThan + 1e-3)) return null;
+    return (hit.object.parent?.userData.sketchId as string | undefined) ?? null;
   }
 
   /** Spacing of the grid lines now shown (mm): what drawing snaps to. */
@@ -451,14 +480,27 @@ export class Viewport {
   /** Click in model mode: an edge (priority, it is thin) or a face is toggled; empty space clears. */
   private selectAt(event: PointerEvent): void {
     const filter = this.selectionFilter;
+    // A body edge wins (a sketch along it, like the one of a plate, must not steal it for a fillet), then a sketch
+    // curve, as an edge does over a face; the inside of a sketch area only when no body is in front of it.
     const edge = filter === "auto" || filter === "edge" ? this.pickEdge(event) : null;
-    const face = edge || filter === "edge" ? null : this.pick(event);
+    const curve = edge ? null : this.pickSketch(event, "line");
+    const face = edge || curve || filter === "edge" ? null : this.pick(event);
+    const inside = edge || curve ? null : this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
+    const sketch = curve ?? inside;
+    if (sketch) {
+      this.selection.clear();
+      this.selection.render(this.bodies);
+      this.onSelectionChange(this.selection.snapshot());
+      this.onSketchPick(sketch);
+      return;
+    }
     if (edge) this.selection.toggleEdge(edge);
     else if (face && filter === "body") this.selection.toggleBody(face.bodyId);
     else if (face) this.selection.toggleFace(face);
     else this.selection.clear();
     this.selection.render(this.bodies);
     this.onSelectionChange(this.selection.snapshot());
+    if (!edge && !face) this.onSketchPick(null);
   }
 
   /** Edge of a displayed body under the pointer (within a few pixels). */
