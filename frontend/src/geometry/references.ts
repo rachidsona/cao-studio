@@ -63,7 +63,10 @@ export function describeEdge(shape: Shape3D, edge: Edge, box = boxOf(shape)): Ed
 
 function faceData(face: Face): { center: Vec3; normal: Vec3 } {
   const c = face.center;
-  return { center: vec(c), normal: vec(face.normalAt(c)) };
+  const center = vec(c); // read first: normalAt() releases the vector it is given
+  // The centre of mass of a curved face (a cylinder wall) lies off its surface, where the kernel has no normal.
+  if (face.geomType !== "PLANE") return { center, normal: vec(face.normalAt()) };
+  return { center, normal: vec(face.normalAt(c)) };
 }
 
 export function describeFace(shape: Shape3D, face: Face, box = boxOf(shape)): FaceRef {
@@ -120,4 +123,15 @@ export function resolveFace(shape: Shape3D, ref: FaceRef): Face {
   }
   if (!best) throw new GeometryError("Face d'appui introuvable après recalcul : replacez l'opération sur une face.");
   return best;
+}
+
+/** Plane (a point and the outward unit normal) of the planar face of `shape` matching `ref`. */
+export function resolveFacePlane(shape: Shape3D, ref: FaceRef): { origin: Vec3; normal: Vec3 } {
+  const face = resolveFace(shape, ref);
+  if (face.geomType !== "PLANE") {
+    throw new GeometryError("Seule une face plane peut servir d'outil de coupe : le moteur découpe un solide par des plans.");
+  }
+  const { center, normal } = faceData(face);
+  const length = Math.hypot(...normal) || 1;
+  return { origin: center, normal: [normal[0] / length, normal[1] / length, normal[2] / length] };
 }

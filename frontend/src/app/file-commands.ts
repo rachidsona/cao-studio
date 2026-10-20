@@ -11,6 +11,8 @@ export interface FileCommandsHost {
   geometry: GeometryClient;
   projectName: string;
   doc(): CadDocument;
+  /** Bodies of the model with their display names (a split gives several, with no feature of their own). */
+  bodies(): { id: string; name: string }[];
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** A document was imported: the editor resets its selection, units field and regenerates. */
   imported(doc: CadDocument): Promise<void>;
@@ -29,7 +31,7 @@ export class FileCommands {
 
   async exportGeometry(format: ExportFormat): Promise<void> {
     try {
-      const names = Object.fromEntries(this.host.doc().features.map((f) => [f.id, f.name]));
+      const names = Object.fromEntries(this.host.bodies().map((b) => [b.id, b.name]));
       const blob = await this.host.geometry.export(format, names);
       download(blob, `${slugify(this.host.projectName)}.${format}`);
     } catch (error) {

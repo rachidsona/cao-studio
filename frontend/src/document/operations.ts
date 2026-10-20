@@ -3,7 +3,17 @@
  * and never mutates its input, so every edit can be undone.
  */
 import { rectangleAt } from "./sketch";
-import { cloneDocument, consumedBodies, featureInputs, SOLID_FEATURES, type CadDocument, type Feature, type HoleFeature } from "./types";
+import {
+  cloneDocument,
+  consumedBodies,
+  featureInputs,
+  featureOfBody,
+  PART_SEPARATOR,
+  SOLID_FEATURES,
+  type CadDocument,
+  type Feature,
+  type HoleFeature,
+} from "./types";
 
 export function uniqueId(doc: CadDocument, prefix: string): string {
   const used = new Set(doc.features.map((f) => f.id));
@@ -91,7 +101,8 @@ export function addHole(doc: CadDocument, target: string, x: number, y: number, 
 export function dependentsOf(doc: CadDocument, id: string): string[] {
   const affected = new Set([id]);
   for (const feature of doc.features) {
-    if (featureInputs(feature).some((input) => affected.has(input))) affected.add(feature.id);
+    // Inputs may name one body of a multi-body feature ("split1#2").
+    if (featureInputs(feature).some((input) => affected.has(featureOfBody(input)))) affected.add(feature.id);
   }
   affected.delete(id);
   return doc.features.filter((f) => affected.has(f.id)).map((f) => f.id);
@@ -116,11 +127,10 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   }
   const removed = new Set([id, ...dependentsOf(next, id)]);
   next = { ...next, features: next.features.filter((f) => !removed.has(f.id)) };
-  if (next.bodyNames) {
-    // A freed id can be reused by a later feature: it must not inherit the name of a deleted body.
-    const names = Object.fromEntries(Object.entries(next.bodyNames).filter(([key]) => !removed.has(key)));
-    next = { ...next, bodyNames: names };
-  }
+  // A freed id can be reused by a later feature: it must not inherit the name (or the hidden state) of a deleted body.
+  const gone = (key: string) => removed.has(featureOfBody(key));
+  if (next.bodyNames) next = { ...next, bodyNames: Object.fromEntries(Object.entries(next.bodyNames).filter(([key]) => !gone(key))) };
+  if (next.hiddenBodies) next = { ...next, hiddenBodies: next.hiddenBodies.filter((key) => !gone(key)) };
   return next;
 }
 
@@ -133,10 +143,14 @@ export function latestBody(doc: CadDocument, bodyId: string): string {
   return current;
 }
 
-/** Feature that created a body: the first of its chain that consumes no body ("new" extrusion…). */
+/** A piece of a split ("sp1#2"): a body of its own, whereas a single solid keeps the body it comes from. */
+const isPiece = (bodyId: string) => bodyId.includes(PART_SEPARATOR);
+
+/** Feature (or piece) that created a body: the first of its chain that consumes no body ("new" extrusion…). */
 export function bodyOrigin(doc: CadDocument, bodyId: string): string {
   let id = bodyId;
   for (let guard = 0; guard <= doc.features.length; guard++) {
+    if (isPiece(id)) return id;
     const feature = findFeature(doc, id);
     const previous = feature ? consumedBodies(feature)[0] : undefined;
     if (!previous) return id;
@@ -145,11 +159,16 @@ export function bodyOrigin(doc: CadDocument, bodyId: string): string {
   return id;
 }
 
-/** Display name of a body: the name given to it, else "Corps n" in order of creation. */
+/** Display name of a body: the name given to it, else "Corps n" in order of creation, "… — pièce n" for a split. */
 export function bodyLabel(doc: CadDocument, bodyId: string): string {
   const origin = bodyOrigin(doc, bodyId);
   const given = doc.bodyNames?.[origin];
   if (given) return given;
+  if (isPiece(origin)) {
+    const split = findFeature(doc, featureOfBody(origin));
+    const n = Number(origin.slice(featureOfBody(origin).length + PART_SEPARATOR.length)) + 1;
+    return `${split?.type === "split" ? bodyLabel(doc, split.target) : featureOfBody(origin)} — pièce ${n}`;
+  }
   const origins = doc.features.filter((f) => SOLID_FEATURES.has(f.type) && consumedBodies(f).length === 0).map((f) => f.id);
   const n = origins.indexOf(origin) + 1;
   return n > 0 ? `Corps ${n}` : (findFeature(doc, origin)?.name ?? origin);
@@ -168,7 +187,16 @@ export function renameBody(doc: CadDocument, bodyId: string, name: string): CadD
   return { ...doc, bodyNames: { ...doc.bodyNames, [bodyOrigin(doc, bodyId)]: name } };
 }
 
-/** Shows or hides a feature in the 3D view (sketches, and the body a feature created). */
+/** Whether a body is hidden: through the feature that created it, or the list of hidden pieces. */
+export function isBodyHidden(doc: CadDocument, bodyId: string): boolean {
+  const origin = bodyOrigin(doc, bodyId);
+  return isPiece(origin) ? !!doc.hiddenBodies?.includes(origin) : !!findFeature(doc, origin)?.hidden;
+}
+
+/** Shows or hides a sketch, a body created by a feature, or one piece of a split ("sp1#2"). */
 export function toggleHidden(doc: CadDocument, id: string): CadDocument {
-  return updateFeature(doc, id, (f) => ({ ...f, hidden: !f.hidden }));
+  if (!isPiece(id)) return updateFeature(doc, id, (f) => ({ ...f, hidden: !f.hidden }));
+  const hidden = new Set(doc.hiddenBodies);
+  if (!hidden.delete(id)) hidden.add(id);
+  return { ...doc, hiddenBodies: [...hidden] };
 }

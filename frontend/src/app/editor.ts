@@ -2,8 +2,8 @@
  * Editor controller: wires the Django page, the document session, the
  * geometry worker, the viewport and the panels together.
  */
-import { addExtrude, addPlate, bodyLabel, bodyOrigin, dependentsOf, deleteFeature, findFeature, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
-import type { CadDocument, DisplayUnit, SketchFeature } from "../document/types";
+import { addExtrude, addPlate, bodyLabel, bodyOrigin, dependentsOf, deleteFeature, findFeature, isBodyHidden, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
+import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
 import type { FeatureStatus } from "../history/recompute";
@@ -92,6 +92,7 @@ export class Editor {
       geometry,
       projectName: config.projectName,
       doc: () => this.doc,
+      bodies: () => this.visibleBodies(),
       notify: (message, kind) => this.notify(message, kind),
       imported: async (doc) => {
         this.selectedFeature = null;
@@ -112,7 +113,7 @@ export class Editor {
       toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
       renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
-      removeBody: (id) => this.removeFeature(bodyOrigin(this.doc, id)),
+      removeBody: (id) => this.removeBody(id),
       renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
       editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
       removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),
@@ -183,8 +184,7 @@ export class Editor {
       this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
       this.picked.invalidate();
       // Bodies hidden with the eye of the browser stay in the document but are not drawn.
-      const shown = this.previewDoc ?? this.doc;
-      this.viewport.setBodies(result.bodies.filter((b) => !findFeature(shown, bodyOrigin(shown, b.bodyId))?.hidden));
+      this.viewport.setBodies(result.bodies.filter((b) => !isBodyHidden(this.previewDoc ?? this.doc, b.bodyId)));
       if (fitView) this.viewport.setView("iso");
       const failures = result.statuses.filter((s) => s.state === "error").length;
       ref(this.root, "status-recompute").textContent =
@@ -237,6 +237,7 @@ export class Editor {
       feature,
       status: feature ? this.statuses.get(feature.id) : undefined,
       unit: this.unit,
+      bodyName: (id) => bodyLabel(this.doc, id),
       body: this.bodyForPanel(),
       selection: this.picked.summary(),
       selectionActions: {
@@ -245,6 +246,7 @@ export class Editor {
         extrude: () => this.extrudeCommand(),
         hole: () => this.openTool("hole"),
         combine: () => this.openTool("combine"),
+        split: () => this.openTool("split"),
         sketch: () => {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
@@ -315,6 +317,14 @@ export class Editor {
   private changeSketch(id: string, change: (sketch: SketchFeature) => SketchFeature): void {
     void this.change(updateFeature(this.doc, id, (f) => (f.type === "sketch" ? change(f) : f)));
     this.sketches.sync();
+  }
+
+  /** Deleting a body deletes the feature that created it; a piece of a split takes the whole split with it. */
+  private removeBody(bodyId: string): void {
+    const origin = bodyOrigin(this.doc, bodyId);
+    const owner = findFeature(this.doc, featureOfBody(origin));
+    if (origin !== owner?.id && !window.confirm(`Supprimer cette pièce supprime la scission « ${owner?.name} » et donc toutes ses pièces. Continuer ?`)) return;
+    this.removeFeature(featureOfBody(origin));
   }
 
   private toggleSuppress(id: string): void {
@@ -400,7 +410,8 @@ export class Editor {
       ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
       ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
       ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
-      ...(kind === "combine" && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
+      ...((kind === "combine" || kind === "split") && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
+      ...(kind === "split" && this.picked.selection.faces.length ? { faces: this.picked.selection.faces } : {}),
     });
   }
 
@@ -433,6 +444,7 @@ export class Editor {
       fillet: () => this.openTool("fillet"),
       chamfer: () => this.openTool("chamfer"),
       combine: () => this.openTool("combine"),
+      split: () => this.openTool("split"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

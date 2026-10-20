@@ -70,7 +70,7 @@ export class Viewport {
   private sketchGhostMaterial = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false });
   private bodies = new Map<string, BodyObject>();
   private bodyMaterial: THREE.MeshStandardMaterial;
-  /** One subtle tint per body, so separate bodies stand out. */
+  /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
   private bodyMaterials: THREE.MeshStandardMaterial[] = [];
   private highlightMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });

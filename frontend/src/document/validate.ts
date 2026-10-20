@@ -95,6 +95,20 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, [feature.type === "fillet" ? "radius" : "distance"], where, errors);
       checkRefs(feature.edges, "edge", where, errors);
       break;
+    case "split": {
+      if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      if (!["both", "positive", "negative"].includes(feature.keep as string)) errors.push(`${where} : partie à conserver invalide.`);
+      const tool = feature.tool;
+      if (!isObject(tool)) errors.push(`${where} : outil de coupe manquant.`);
+      else if (tool.kind === "plane") {
+        if (!["XY", "XZ", "YZ"].includes(tool.plane as string)) errors.push(`${where} : plan de coupe invalide.`);
+        if (!isFiniteNumber(tool.offset)) errors.push(`${where} : décalage du plan de coupe invalide.`);
+      } else if (tool.kind === "face") {
+        if (typeof tool.body !== "string") errors.push(`${where} : corps de la face de coupe manquant.`);
+        checkRefs([tool.face], "face", where, errors);
+      } else errors.push(`${where} : outil de coupe inconnu.`);
+      break;
+    }
     case "combine":
       if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
       if (!Array.isArray(feature.tools) || !feature.tools.every((t) => typeof t === "string")) errors.push(`${where} : corps outils invalides.`);

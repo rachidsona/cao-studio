@@ -5,7 +5,8 @@
  * disable, delete). Builds what they show from the document and the last
  * regeneration; the editor does the actual changes.
  */
-import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
+import { bodyLabel, bodyOrigin, findFeature, isBodyHidden } from "../document/operations";
+import { featureOfBody } from "../document/types";
 import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser } from "../ui/browser";
@@ -76,11 +77,11 @@ export class Navigator {
       f.type === "sketch" ? (f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: "offset", hidden: false, offset: { sketchId: f.id } })) : [this.item(f)],
     );
     const bodies = this.host.bodyIds().flatMap((bodyId) => {
-      const feature = findFeature(doc, bodyId);
+      // A piece of a split ("sp1#2") has no feature of its own: it takes the state of the split.
+      const feature = findFeature(doc, featureOfBody(bodyId));
       const originId = bodyOrigin(doc, bodyId);
-      const origin = findFeature(doc, originId);
-      // A body is hidden through the feature that created it, so later operations keep it hidden.
-      return feature ? [{ ...this.item(feature, bodyLabel(doc, bodyId)), hidden: !!origin?.hidden, body: { originId } }] : [];
+      // A body is hidden through the feature that created it (or the hidden list, for a piece), so later operations keep it hidden.
+      return feature ? [{ ...this.item(feature, bodyLabel(doc, bodyId)), id: bodyId, hidden: isBodyHidden(doc, bodyId), body: { originId } }] : [];
     });
     return { sketches, operations, bodies };
   }

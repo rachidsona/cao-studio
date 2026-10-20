@@ -140,7 +140,34 @@ export interface CombineFeature extends FeatureBase {
   keepTools?: boolean;
 }
 
+/**
+ * Cutting tool of a split. The kernel splits by planes: a construction plane
+ * (a principal plane moved along its normal) or the plane of a planar face.
+ * The positive side is the side the plane's normal points to.
+ */
+export type SplitTool =
+  | { kind: "plane"; plane: PlaneName; offset: number }
+  /** Plane of a planar face of `body` (the face is found again after a regeneration). */
+  | { kind: "face"; body: string; face: FaceRef };
+
+/** Which parts a split keeps: both sides, or only one. */
+export type SplitKeep = "both" | "positive" | "negative";
+
+/**
+ * Split of a body by a plane. Pieces that are separate solids (a U-shaped
+ * body cut across its arms) are separate bodies, referred to as
+ * "<feature id>#<n>" (numbered in a stable spatial order); a single remaining
+ * solid is simply the same body, cut.
+ */
+export interface SplitFeature extends FeatureBase {
+  type: "split";
+  target: string;
+  tool: SplitTool;
+  keep: SplitKeep;
+}
+
 export type Feature =
+  | SplitFeature
   | SketchFeature
   | ExtrudeFeature
   | HoleFeature
@@ -164,6 +191,8 @@ export interface CadDocument {
   features: Feature[];
   /** Names given to bodies, keyed by the id of the feature that created each body. */
   bodyNames?: Record<string, string>;
+  /** Pieces of a split hidden in the 3D view ("sp1#2"); other bodies hide through their feature. */
+  hiddenBodies?: string[];
 }
 
 /** Reference part: 80 x 50 x 10 mm plate with a 10 mm through hole. */
@@ -201,10 +230,19 @@ export function featureInputs(feature: Feature): string[] {
     case "hole":
     case "fillet":
     case "chamfer":
+    case "split":
       return [feature.target];
     case "combine":
       return [feature.target, ...feature.tools];
   }
+}
+
+/** Separator between a feature id and the number of one of its bodies ("split1#2"). */
+export const PART_SEPARATOR = "#";
+
+/** Feature that produces a body id ("split1#2" → "split1"). */
+export function featureOfBody(bodyId: string): string {
+  return bodyId.split(PART_SEPARATOR)[0] as string;
 }
 
 /** Ids of bodies a feature consumes (they are replaced by its own result). */
@@ -213,6 +251,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "hole":
     case "fillet":
     case "chamfer":
+    case "split":
       return [feature.target];
     case "extrude":
     case "revolve":
@@ -225,7 +264,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

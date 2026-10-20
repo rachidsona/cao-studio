@@ -65,6 +65,10 @@ export abstract class PanelTool implements PointerHandler {
   protected abstract feature(): Feature | string;
   /** Panel rows specific to the tool. */
   protected abstract rows(): (HTMLElement | null)[];
+  /** A reason the result cannot be validated yet (the preview failed): OK stays disabled. */
+  protected blocker(): string | null {
+    return null;
+  }
 
   start(): void {
     this.ctx.viewport.setPointerHandler(this);
@@ -84,7 +88,7 @@ export abstract class PanelTool implements PointerHandler {
     cancel.addEventListener("click", () => this.cancel());
     const ok = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: hint !== null },
+      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: hint !== null || this.blocker() !== null },
       "OK",
     );
     ok.addEventListener("click", () => this.confirm());

@@ -183,6 +183,26 @@ opération existante.
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
+- **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
+  solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
+  un effet visuel) :
+  - *corps* : celui à scinder (liste, ou clic dans la vue) ;
+  - *outil de coupe* : un **plan de construction** (XY, XZ ou YZ, décalé le long de sa normale : on
+    tire la flèche dans la vue ou on tape la valeur ; il passe d'abord par le centre du corps) ou
+    le plan d'une **face plane** cliquée dans la vue (de ce corps ou d'un autre) ;
+  - *conserver* : les deux parties, ou seulement le côté positif (+) ou négatif (−) ; la normale du
+    plan indique le côté +. Un plan oblique est possible avec une face inclinée ;
+  - l'**aperçu** est le résultat réel du noyau, avec un plan orange pour situer la coupe ; OK reste
+    désactivé tant que la coupe est refusée ;
+  - chaque morceau séparé est un corps distinct (« Corps 1 — pièce 1 », « pièce 2 »…), même quand un
+    seul plan en donne plusieurs d'un même côté (un U coupé à travers ses bras) ; s'il ne reste qu'un
+    solide, c'est le même corps, coupé ;
+  - les pièces se renomment, se masquent et se modifient une à une (perçage, congé…) ;
+    supprimer la scission rétablit le corps d'origine et retire ce qui dépend de ses pièces ;
+  - refus avec un message clair, sans toucher au modèle : plan qui ne traverse pas le corps (ou
+    qui l'effleure seulement), face non plane, résultat incohérent (volume des pièces différent de
+    celui du corps) ou solide invalide. La scission est une opération de l'historique : annulable,
+    rétablissable, enregistrée avec le projet, modifiable depuis la barre « Historique ».
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
@@ -240,6 +260,12 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   basses.
 
 ## Limites connues (incrément 1)
+
+- **Scission** : par des plans seulement (plan de construction ou face plane). Le moteur coupe un
+  solide par un plan et indique de quel côté chaque morceau se trouve ; il n'y a pas de côté défini
+  pour une surface courbe (cylindre, sphère), qui est refusée avec un message. Pour couper selon
+  plusieurs plans, enchaîner plusieurs scissions. Les numéros de pièces suivent leur position
+  (x, puis y, puis z) : un nom ou un masquage donné à « pièce 2 » suit ce numéro si la scission change.
 
 - **Esquisses** :
   - Pas d'ellipse ni de polygone régulier.

@@ -14,6 +14,7 @@ export const TYPE_LABELS: Record<NavType, string> = {
   chamfer: "Chanfrein",
   combine: "Combinaison",
   offset: "Décalage",
+  split: "Scission",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -25,6 +26,7 @@ export const TYPE_ICONS: Record<NavType, string> = {
   chamfer: "◸",
   combine: "⧉",
   offset: "⇉",
+  split: "✂",
 };
 
 export const STATE_BADGES: Record<FeatureState, { label: string; dot: string }> = {
