@@ -209,14 +209,32 @@ export class Viewport {
   }
 
   fit(): void {
+    this.fitBox(this.sceneBounds());
+  }
+
+  /** Frames `box` keeping the current viewing direction; `margin` leaves room for labels. */
+  fitBox(box: THREE.Box3, margin = 1): void {
     const direction = this.camera.position.clone().sub(this.controls.target).normalize();
-    const box = this.sceneBounds();
     const center = box.getCenter(new THREE.Vector3());
-    const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
-    const distance = this.fitDistance(radius);
+    const radius = Math.max((box.getSize(new THREE.Vector3()).length() / 2) * margin, 1);
     this.controls.target.copy(center);
-    this.camera.position.copy(center).addScaledVector(direction, distance);
+    this.camera.position.copy(center).addScaledVector(direction, this.fitDistance(radius));
     this.controls.update();
+  }
+
+  /** True when every corner of `box` is on screen (inside `inset` of the normalised view). */
+  boxVisible(box: THREE.Box3, inset = 0.9): boolean {
+    this.camera.updateMatrixWorld();
+    const { min, max } = box;
+    for (const x of [min.x, max.x]) {
+      for (const y of [min.y, max.y]) {
+        for (const z of [min.z, max.z]) {
+          const p = new THREE.Vector3(x, y, z).project(this.camera);
+          if (Math.abs(p.x) > inset || Math.abs(p.y) > inset || p.z > 1) return false;
+        }
+      }
+    }
+    return true;
   }
 
   private bindPointer(): void {

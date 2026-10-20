@@ -116,6 +116,7 @@ export class SketchController {
     if (!mode) return;
     if (id === "finish") return this.finish();
     if (id === "extrude") return this.host.extrude();
+    if (id === "fit") return mode.ensureVisible(true);
     if (id === "construction") return mode.toggleConstruction();
     if (id === "delete") return mode.deleteSelection();
     const created = mode.runCommand(id);
@@ -144,7 +145,7 @@ export class SketchController {
         const selectedCurves = mode ? [...mode.selection].filter((s) => findCurve(mode.geometry, s)).length : 0;
         button.setAttribute("aria-pressed", String(!!mode?.construction && selectedCurves === 0));
       } else if (id === "delete") button.disabled = !mode || mode.selection.size === 0;
-      else if (id !== "finish" && id !== "extrude") button.disabled = !applicable.has(id);
+      else if (id !== "finish" && id !== "extrude" && id !== "fit") button.disabled = !applicable.has(id);
     }
     const hint = ref(this.root, "status-hint");
     hint.textContent = mode ? mode.hint : "";
@@ -186,6 +187,10 @@ export class SketchController {
     }
     if (key === "e") {
       this.host.extrude();
+      return true;
+    }
+    if (key === "f") {
+      mode.ensureVisible(true);
       return true;
     }
     if (key === "d") {

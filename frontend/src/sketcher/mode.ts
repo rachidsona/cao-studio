@@ -19,7 +19,8 @@ import {
   type DimensionSpec,
 } from "./annotations";
 import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
-import { rayToSketch, sketchFrame, type SketchFrame } from "./frame";
+import * as THREE from "three";
+import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
 import { hitTest, snap } from "./hit";
 import { SketchOverlay } from "./overlay";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
@@ -61,6 +62,7 @@ export class SketchMode implements PointerHandler {
   private hover: string | null = null;
   private preview: Preview | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
+  private lastBounds: THREE.Box3 | null = null;
 
   constructor(
     feature: SketchFeature,
@@ -84,6 +86,39 @@ export class SketchMode implements PointerHandler {
     };
     viewport.enterSketch(this.frame, this);
     this.render();
+    // An existing sketch may be larger than the part: show all of it.
+    if (this.geometry.points.length || this.geometry.curves.length) this.ensureVisible(true);
+  }
+
+  /**
+   * World bounding box of the sketch (points, circles and arcs), with room
+   * around it for the dimension lines.
+   */
+  private bounds(): THREE.Box3 {
+    const box = new THREE.Box3().expandByPoint(new THREE.Vector3(...toWorld(this.frame, 0, 0)));
+    const add = (x: number, y: number) => box.expandByPoint(new THREE.Vector3(...toWorld(this.frame, x, y)));
+    for (const p of this.geometry.points) add(p.x, p.y);
+    for (const c of this.geometry.curves) {
+      if (c.kind === "line") continue;
+      const center = c.center === ORIGIN ? { x: 0, y: 0 } : this.geometry.points.find((p) => p.id === c.center);
+      if (!center) continue;
+      add(center.x - c.radius, center.y - c.radius);
+      add(center.x + c.radius, center.y + c.radius);
+    }
+    return box;
+  }
+
+  /**
+   * Frames the whole sketch and its dimensions. Automatically (not `force`),
+   * only when the sketch has just grown beyond the screen: a view zoomed in on
+   * a detail on purpose is left alone.
+   */
+  ensureVisible(force = false): void {
+    const box = this.bounds();
+    const grew = !this.lastBounds || !this.lastBounds.containsBox(box);
+    this.lastBounds = box;
+    if (box.isEmpty()) return;
+    if (force || (grew && !this.viewport.boxVisible(box, 0.8))) this.viewport.fitBox(box, 1.35);
   }
 
   /** Reloads the geometry after an external change (undo/redo, properties panel). */
@@ -93,6 +128,7 @@ export class SketchMode implements PointerHandler {
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
     this.render();
+    this.ensureVisible();
   }
 
   exit(): void {
@@ -162,6 +198,7 @@ export class SketchMode implements PointerHandler {
     this.geometry = result.geometry;
     this.lastSolve = result;
     this.host.commit(this.featureId, result.geometry);
+    this.ensureVisible();
     if (result.state === "redundant") this.host.notify(`Contraintes redondantes : ${result.redundant.join(", ")}.`, "info");
     else if (success) this.host.notify(success, "success");
     this.render();
