@@ -198,6 +198,51 @@ export function addOffsetCurves(base: SketchGeometry, curves: OffsetCurve[], con
   return { geometry: g, created };
 }
 
+/** Where the on-screen arrow sits and which way a positive distance goes there. */
+export interface OffsetHandle {
+  /** Point on the first path, in sketch coordinates. */
+  at: Vec2;
+  /** Unit direction of the positive side (outside for a closed path, left of the travel for an open one). */
+  normal: Vec2;
+}
+
+const unitLeft = (from: Vec2, to: Vec2): Vec2 => {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const length = Math.hypot(dx, dy) || 1;
+  return [-dy / length, dx / length];
+};
+
+/** Signed area of the outline of a chain (arcs are taken through their middle point). */
+function chainArea(path: Extract<OffsetPath, { kind: "chain" }>): number {
+  const ring: Vec2[] = [path.start];
+  for (const step of path.steps) {
+    if (step.kind === "arc") ring.push(step.mid);
+    ring.push(step.to);
+  }
+  let area = 0;
+  ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length] as Vec2;
+    area += p[0] * q[1] - q[0] * p[1];
+  });
+  return area / 2;
+}
+
+/** Position and positive direction of the offset arrow, from the first path of the selection. */
+export function handleFor(paths: OffsetPath[]): OffsetHandle | null {
+  const path = paths[0];
+  if (!path) return null;
+  if (path.kind === "circle") return { at: [path.center[0], path.center[1] + path.radius], normal: [0, 1] };
+  const step = path.steps[0];
+  if (!step) return null;
+  const left = unitLeft(path.start, step.to);
+  // On an arc the tangent at its middle point is parallel to its chord, so the same left normal holds.
+  const at: Vec2 = step.kind === "arc" ? step.mid : [(path.start[0] + step.to[0]) / 2, (path.start[1] + step.to[1]) / 2];
+  // A counter-clockwise closed path has its outside on the right of the travel.
+  const outsideIsRight = path.closed && chainArea(path) > 0;
+  return { at, normal: outsideIsRight ? [-left[0], -left[1]] : left };
+}
+
 /** Preview shapes of offset curves, in the form the sketch overlay draws. */
 export function offsetPreview(curves: OffsetCurve[]): Preview {
   const preview: Preview = { lines: [], circles: [], arcs: [] };

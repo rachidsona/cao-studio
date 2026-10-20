@@ -187,6 +187,7 @@ export class SketchMode implements PointerHandler {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
+    this.viewport.renderer.domElement.style.cursor = "";
     this.dimensionMode = name === "dimension";
     if (this.dimensionMode) this.selection.clear();
     if (name === "offset") {
@@ -227,6 +228,12 @@ export class SketchMode implements PointerHandler {
         return mode.selection;
       },
       container: () => this.host.calculatorContainer(),
+      viewport: this.viewport,
+      world: ([x, y]) => toWorld(this.frame, x, y),
+      direction: ([x, y]) => {
+        const { u, v } = this.frame;
+        return [u[0] * x + v[0] * y, u[1] * x + v[1] * y, u[2] * x + v[2] * y];
+      },
       unit: () => this.host.unit(),
       compute: (paths, distance, join) => this.host.offset(paths, distance, join),
       apply: (geometry, success) => this.apply(geometry, success),
@@ -236,6 +243,7 @@ export class SketchMode implements PointerHandler {
         this.host.changed();
       },
       closed: (created) => {
+        this.viewport.renderer.domElement.style.cursor = "";
         this.offset = null;
         this.preview = null;
         this.selection.clear();
@@ -349,7 +357,9 @@ export class SketchMode implements PointerHandler {
 
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
-    if (this.tool || this.offset) return false;
+    if (this.tool) return false;
+    // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
+    if (this.offset) return this.offset.dragStart(event);
     const p = this.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(this.geometry, p, this.tolerance());
@@ -361,6 +371,7 @@ export class SketchMode implements PointerHandler {
   }
 
   move(event: PointerEvent): void {
+    if (this.offset?.dragMove(event)) return;
     const p = this.toSketch(event);
     if (!p) return;
     if (this.drag) {
@@ -380,6 +391,7 @@ export class SketchMode implements PointerHandler {
       this.preview = this.tool.move(this.geometry, s);
     } else if (this.offset) {
       this.hover = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id))?.id ?? null;
+      this.viewport.renderer.domElement.style.cursor = this.offset.overArrow(event) ? "grab" : "";
     } else {
       this.hover = hitTest(this.geometry, p, this.tolerance())[0]?.id ?? null;
     }
@@ -387,6 +399,7 @@ export class SketchMode implements PointerHandler {
   }
 
   up(event: PointerEvent, isClick: boolean): boolean {
+    if (this.offset?.dragEnd()) return true;
     const drag = this.drag;
     this.drag = null;
     if (drag?.moved) {

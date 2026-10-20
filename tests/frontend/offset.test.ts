@@ -5,7 +5,7 @@ import type { SketchGeometry } from "../../frontend/src/document/sketch";
 import { GeometryError } from "../../frontend/src/geometry/kernel";
 import { offsetPaths, type OffsetCurve, type OffsetPath } from "../../frontend/src/geometry/offset";
 import { addArc, addCircle, addLine, addRectangle, type Vec2 } from "../../frontend/src/sketcher/edit";
-import { addOffsetCurves, connectedChain, offsetPreview, OffsetSelectionError, pathsFromCurves } from "../../frontend/src/sketcher/offset";
+import { addOffsetCurves, connectedChain, handleFor, offsetPreview, OffsetSelectionError, pathsFromCurves } from "../../frontend/src/sketcher/offset";
 import { extractLoops } from "../../frontend/src/sketcher/loops";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import type { FaceOutline } from "../../frontend/src/geometry/protocol";
@@ -294,5 +294,52 @@ describe("décalage des arêtes projetées d'une face", () => {
     // Inset rectangle 74 × 44 with the hole offset inward to Ø4 (radius 2), 5 mm thick.
     expect(bodyMetrics(out.shape).volume).toBeCloseTo((74 * 44 - Math.PI * 4) * 5, 3);
     r.dispose();
+  });
+});
+
+describe("flèche de décalage : son côté positif est celui du noyau", () => {
+  /** Distance from a point to the previewed curves (sampled finely). */
+  function distanceToCurves(p: Vec2, curves: OffsetCurve[]): number {
+    const preview = offsetPreview(curves);
+    const samples: Vec2[] = [];
+    for (const [a, b] of preview.lines) for (let i = 0; i <= 200; i++) samples.push([a[0] + ((b[0] - a[0]) * i) / 200, a[1] + ((b[1] - a[1]) * i) / 200]);
+    for (const c of preview.circles) for (let i = 0; i < 720; i++) samples.push([c.center[0] + c.radius * Math.cos((i * Math.PI) / 360), c.center[1] + c.radius * Math.sin((i * Math.PI) / 360)]);
+    for (const a of preview.arcs) for (let i = 0; i <= 200; i++) samples.push([a.center[0] + a.radius * Math.cos(a.start + ((a.end - a.start) * i) / 200), a.center[1] + a.radius * Math.sin(a.start + ((a.end - a.start) * i) / 200)]);
+    return Math.min(...samples.map((q) => Math.hypot(q[0] - p[0], q[1] - p[1])));
+  }
+
+  const cases: [string, () => OffsetPath[]][] = [
+    ["rectangle tracé dans le sens antihoraire", () => pathsFromCurves(square(), ["l1", "l2", "l3", "l4"])],
+    ["cercle", () => { const g = addCircle(empty(), { at: [5, 5] }, 5).geometry; return pathsFromCurves(g, ["k1"]); }],
+    ["rainure (lignes et arcs)", () => pathsFromCurves(stadium(), ["l1", "a1", "l2", "a2"])],
+    ["segment seul", () => { const g = addLine(empty(), { at: [0, 0] }, { at: [10, 3] }, { autoAlign: false }).geometry; return pathsFromCurves(g, ["l1"]); }],
+    ["polyligne ouverte", () => {
+      let g = addLine(empty(), { at: [0, 0] }, { at: [10, 0] }, { autoAlign: false });
+      g = addLine(g.geometry, { pointId: g.lastPoint }, { at: [10, 10] }, { autoAlign: false });
+      return pathsFromCurves(g.geometry, ["l1", "l2"]);
+    }],
+    ["arc ouvert", () => pathsFromCurves(addArc(empty(), { at: [0, 0] }, { at: [5, 0] }, [0, 5]).geometry, ["a1"])],
+    ["ligne + arc ouverts", () => pathsFromCurves(stadium(), ["l1", "a1"])],
+  ];
+
+  for (const [name, build] of cases) {
+    it(name, () => {
+      const paths = build();
+      const handle = handleFor(paths);
+      expect(handle).not.toBeNull();
+      const { at, normal } = handle!;
+      expect(Math.hypot(normal[0], normal[1])).toBeCloseTo(1, 9);
+      // Positive distance: the copy passes through `at + 2·normal` (the arrow's tip), not through the opposite side.
+      const positive = offsetPaths(paths, 2, "round").curves;
+      expect(distanceToCurves([at[0] + 2 * normal[0], at[1] + 2 * normal[1]], positive)).toBeLessThan(0.05);
+      expect(distanceToCurves([at[0] - 2 * normal[0], at[1] - 2 * normal[1]], positive)).toBeGreaterThan(0.5);
+    });
+  }
+
+  it("polyligne dessinée à l'envers : la flèche change de côté avec le sens de tracé", () => {
+    const forward = addLine(empty(), { at: [0, 0] }, { at: [10, 0] }, { autoAlign: false }).geometry;
+    const backward = addLine(empty(), { at: [10, 0] }, { at: [0, 0] }, { autoAlign: false }).geometry;
+    expect(handleFor(pathsFromCurves(forward, ["l1"]))!.normal).toEqual([0, 1].map((v) => expect.closeTo(v, 9)));
+    expect(handleFor(pathsFromCurves(backward, ["l1"]))!.normal).toEqual([0, -1].map((v) => expect.closeTo(v, 9)));
   });
 });

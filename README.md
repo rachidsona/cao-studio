@@ -104,11 +104,12 @@ serveur accepte les deux versions.
   polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :
   - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Sélection en
     chaîne » est décochée), ou sélectionnez-les avant d'ouvrir l'outil ;
-  - la distance se saisit au clavier ou à la calculatrice, positive ou négative ; « Inverser » change
-    le côté ; pour un contour fermé, positif = extérieur ; pour une chaîne ouverte, positif = à gauche
-    du sens de tracé ;
+  - une flèche apparaît sur la forme sélectionnée : tirez-la pour régler la distance et le côté (vers
+    l'extérieur ou l'intérieur d'un contour fermé), cliquez sa valeur pour la saisir à la calculatrice ;
+    le champ « Distance » du panneau fait la même chose, et « Inverser » change le côté ;
   - « Direction » : un côté, ou deux côtés (une copie de chaque côté, à la même distance) ;
-  - la fenêtre se replie avec « − », « i » affiche l'aide ;
+  - pour un contour fermé, positif = extérieur ; pour une chaîne ouverte, positif = à gauche du sens de
+    tracé ;
   - coins arrondis (arc autour du coin) ou vifs (prolongés jusqu'à leur intersection) ;
   - l'aperçu est le résultat réel du noyau, recalculé à chaque changement ; OK (Entrée) ajoute les
     courbes à l'esquisse en une seule étape d'annulation, Échap annule ; l'original est conservé ;

@@ -10,9 +10,15 @@
 import type { SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
+import { formatLength } from "../measurements/units";
+import { openCalculator } from "../ui/calculator";
 import { renderOffsetPanel, type OffsetPanelState } from "../ui/offset-panel";
 import { el } from "../ui/dom";
-import { allConstruction, addOffsetCurves, connectedChain, OffsetSelectionError, offsetPreview, pathsFromCurves } from "./offset";
+import { ArrowHandle } from "../viewport/arrow-handle";
+import type { Viewport } from "../viewport/viewport";
+import type { Vec2 } from "./edit";
+import type { Vec3 } from "./frame";
+import { allConstruction, addOffsetCurves, connectedChain, handleFor, OffsetSelectionError, offsetPreview, pathsFromCurves } from "./offset";
 import type { Preview } from "./tools";
 
 export interface OffsetHost {
@@ -20,6 +26,11 @@ export interface OffsetHost {
   /** Curves highlighted in the sketch; shared with the sketch mode. */
   selection: Set<string>;
   container(): HTMLElement;
+  /** The 3D view (the arrow handle lives in its scene). */
+  viewport: Viewport;
+  /** Sketch coordinates → world position, and a sketch-plane direction → world direction. */
+  world(p: Vec2): Vec3;
+  direction(v: Vec2): Vec3;
   unit(): DisplayUnit;
   compute(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
   /** Stores the new geometry as one undo step; false when it was refused. */
@@ -52,7 +63,11 @@ export class OffsetTool {
   private latest: Promise<void> = Promise.resolve();
   private done = false;
   private redrawPending = false;
+  /** The arrow is being dragged; results are recomputed one at a time, keeping only the latest value. */
+  private dragging = false;
+  private rerun = false;
   private readonly panel: HTMLElement;
+  private readonly arrow: ArrowHandle;
 
   constructor(private readonly host: OffsetHost) {
     this.panel = el("div", {
@@ -63,6 +78,77 @@ export class OffsetTool {
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     host.container().append(this.panel);
+    // Arrow on the selected shape: drag to set the distance and the side; its label opens the keypad.
+    this.arrow = new ArrowHandle(host.viewport, (anchor) =>
+      openCalculator({
+        container: host.container(),
+        anchor,
+        value: this.shownDistance(),
+        unit: host.unit(),
+        title: "Distance de décalage",
+        locked: true,
+        allowNegative: true,
+        onSubmit: (value) => {
+          if (Math.abs(value) === 0) return false;
+          this.setSigned(value);
+          this.refresh();
+          return true;
+        },
+      }),
+    );
+  }
+
+  // ---- arrow ----------------------------------------------------------------------
+
+  /** Distance shown on the arrow: signed for one side, the magnitude for both. */
+  private shownDistance(): number {
+    return this.direction === "both" ? Math.abs(this.distance) : this.signed();
+  }
+
+  /** Sets the distance from the arrow or the keypad: the sign carries the side, so "Inverser" resets. */
+  private setSigned(value: number): void {
+    this.flip = false;
+    this.distance = this.direction === "both" ? Math.abs(value) : value;
+    lastDistance = this.distance;
+  }
+
+  private placeArrow(): void {
+    const handle = handleFor(this.paths);
+    if (!handle) {
+      this.arrow.object.visible = false;
+      return;
+    }
+    const value = this.shownDistance();
+    this.arrow.place(this.host.world(handle.at), this.host.direction(handle.normal), value, formatLength(value, this.host.unit()));
+  }
+
+  overArrow(event: PointerEvent): boolean {
+    return this.arrow.hovered(event);
+  }
+
+  /** Starts dragging the arrow when the pointer is on it. */
+  dragStart(event: PointerEvent): boolean {
+    this.dragging = this.arrow.dragStart(event);
+    return this.dragging;
+  }
+
+  /** Moves the arrow; true while a drag is in progress. */
+  dragMove(event: PointerEvent): boolean {
+    if (!this.dragging) return false;
+    const value = this.arrow.dragMove(event);
+    if (value === null) return true;
+    this.setSigned(value);
+    if (this.busy) {
+      this.rerun = true; // the running computation finishes first, then the latest value is computed
+      this.placeArrow();
+      this.draw();
+    } else this.refresh();
+    return true;
+  }
+
+  dragEnd(): boolean {
+    this.dragging = false;
+    return this.arrow.dragEnd();
   }
 
   /** Starts with the curves already selected in the sketch (if any). */
@@ -190,12 +276,14 @@ export class OffsetTool {
     this.problem = null;
     this.paths = [];
     const ids = this.curveIds();
+    this.placeArrow(); // hidden until there is something selected
     if (ids.length === 0) return this.settle(ticket, null, null);
     try {
       this.paths = pathsFromCurves(this.host.geometry(), ids);
     } catch (error) {
       return this.settle(ticket, null, error instanceof OffsetSelectionError ? error.message : String(error));
     }
+    this.placeArrow();
     this.busy = true;
     this.draw();
     try {
@@ -227,6 +315,10 @@ export class OffsetTool {
     this.preview = outcome ? offsetPreview(outcome.curves) : null;
     this.draw();
     this.host.changed();
+    if (this.rerun) {
+      this.rerun = false;
+      this.refresh();
+    }
   }
 
   async confirm(): Promise<void> {
@@ -256,6 +348,7 @@ export class OffsetTool {
     this.done = true;
     this.ticket++;
     this.preview = null;
+    this.arrow.dispose();
     this.panel.remove();
     this.host.closed(created);
   }
@@ -265,6 +358,7 @@ export class OffsetTool {
     this.done = true;
     this.ticket++;
     this.preview = null;
+    this.arrow.dispose();
     this.panel.remove();
   }
 }
