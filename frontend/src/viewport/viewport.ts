@@ -65,7 +65,7 @@ export class Viewport {
   private grid = new AdaptiveGrid();
   private bodies = new Map<string, BodyObject>();
   private bodyMaterial: THREE.MeshStandardMaterial;
-  /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
+  /** One subtle tint per body, so separate bodies stand out. */
   private bodyMaterials: THREE.MeshStandardMaterial[] = [];
   private highlightMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });

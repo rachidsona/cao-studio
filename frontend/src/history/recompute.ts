@@ -9,7 +9,7 @@
  * stay visible.
  */
 import { canonicalJson } from "../document/canonical";
-import { consumedBodies, featureInputs, featureOfBody, PART_SEPARATOR, type CadDocument, type Feature } from "../document/types";
+import { consumedBodies, featureInputs, type CadDocument, type Feature } from "../document/types";
 import { buildFeature } from "../features/builders";
 import { disposeOutput, type FeatureOutput } from "../features/outputs";
 import { GeometryError } from "../geometry/kernel";
@@ -38,14 +38,6 @@ export interface RecomputeResult {
 interface CacheEntry {
   key: string;
   output: FeatureOutput;
-}
-
-/** Cache key of an input; a piece of a multi-body feature depends on that feature. */
-function inputKey(keys: Map<string, string>, id: string): string {
-  const own = keys.get(id);
-  if (own !== undefined) return own;
-  const base = featureOfBody(id);
-  return `${keys.get(base) ?? ""}${PART_SEPARATOR}${id.slice(base.length + 1)}`;
 }
 
 /** Cache key ignores presentation-only fields (name). */
@@ -77,15 +69,8 @@ export class Recomputer {
   /** Outputs of the last pass (aliases for suppressed features are not owned). */
   private outputs = new Map<string, FeatureOutput>();
 
-  /** Output of a feature, or one body of a multi-body feature ("split1#2"). */
   output(id: string): FeatureOutput | undefined {
-    const direct = this.outputs.get(id);
-    if (direct) return direct;
-    const base = featureOfBody(id);
-    if (base === id) return undefined;
-    const parent = this.outputs.get(base);
-    const shape = parent?.kind === "solids" ? parent.shapes[Number(id.slice(base.length + 1))] : undefined;
-    return shape ? { kind: "solid", shape } : undefined;
+    return this.outputs.get(id);
   }
 
   recompute(doc: CadDocument): RecomputeResult {
@@ -110,14 +95,9 @@ export class Recomputer {
 
     this.evictStale(doc);
     const bodies = doc.features
+      .filter((f) => this.outputs.get(f.id)?.kind === "solid" && !consumedBy.has(f.id))
       .filter((f) => states.get(f.id) === "ok" || states.get(f.id) === "suppressed")
-      .flatMap((f) => {
-        const out = this.outputs.get(f.id);
-        if (out?.kind === "solid") return [f.id];
-        if (out?.kind === "solids") return out.shapes.map((_, i) => `${f.id}${PART_SEPARATOR}${i}`);
-        return [];
-      })
-      .filter((id) => !consumedBy.has(id));
+      .map((f) => f.id);
     return { statuses, bodies };
   }
 
@@ -130,7 +110,7 @@ export class Recomputer {
     const base = { id: feature.id, reused: false, durationMs: 0 };
     const inputs = featureInputs(feature);
     for (const input of inputs) {
-      if (!seen.has(featureOfBody(input))) {
+      if (!seen.has(input)) {
         this.drop(feature.id);
         return { ...base, state: "error", message: `Référence introuvable ou postérieure : « ${input} ».` };
       }
@@ -143,16 +123,16 @@ export class Recomputer {
     if (feature.suppressed) {
       // A suppressed feature passes its consumed body through unchanged.
       const passthrough = consumedBodies(feature)[0];
-      const alias = passthrough ? this.output(passthrough) : undefined;
-      if (alias && passthrough) {
+      const alias = passthrough ? this.outputs.get(passthrough) : undefined;
+      if (alias) {
         this.outputs.set(feature.id, alias);
-        keys.set(feature.id, inputKey(keys, passthrough));
+        keys.set(feature.id, keys.get(passthrough as string) ?? "");
       }
       this.drop(feature.id);
       return { ...base, state: "suppressed" };
     }
 
-    const key = featureKey(feature, inputs.map((id) => inputKey(keys, id)));
+    const key = featureKey(feature, inputs.map((id) => keys.get(id) ?? ""));
     keys.set(feature.id, key);
     const cached = this.cache.get(feature.id);
     if (cached && cached.key === key) {

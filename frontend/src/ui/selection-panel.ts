@@ -10,7 +10,6 @@ export interface SelectionActions {
   extrude(): void;
   hole(): void;
   combine(): void;
-  split(): void;
   sketch(): void;
   clear(): void;
 }
@@ -53,7 +52,6 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
     buttons.push(action("✎ Esquisse sur la face", actions.sketch, true), action("◎ Perçage", actions.hole));
   }
   if (bodies.length >= 2) buttons.push(action("⧉ Combiner", actions.combine, true));
-  if (bodies.length === 1 || (planarFaces && edges.length === 0)) buttons.push(action("✂ Scinder", actions.split));
   const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:hover:text-gray-200" }, "Tout désélectionner");
   clear.addEventListener("click", actions.clear);
   const parts = [

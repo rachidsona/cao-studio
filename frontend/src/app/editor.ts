@@ -209,7 +209,6 @@ export class Editor {
         extrude: () => this.extrudeCommand(),
         hole: () => this.openTool("hole"),
         combine: () => this.openTool("combine"),
-        split: () => this.openTool("split"),
         sketch: () => {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
@@ -371,8 +370,7 @@ export class Editor {
       ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
       ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
       ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
-      ...((kind === "combine" || kind === "split") && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
-      ...(kind === "split" && this.picked.selection.faces.length ? { faces: this.picked.selection.faces } : {}),
+      ...(kind === "combine" && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
     });
   }
 
@@ -437,7 +435,6 @@ export class Editor {
       fillet: () => this.openTool("fillet"),
       chamfer: () => this.openTool("chamfer"),
       combine: () => this.openTool("combine"),
-      split: () => this.openTool("split"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.exportGeometry("step"),
       "export-stl": () => void this.exportGeometry("stl"),

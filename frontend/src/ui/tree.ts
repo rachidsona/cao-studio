@@ -17,7 +17,6 @@ const TYPE_LABELS: Record<Feature["type"], string> = {
   fillet: "Congé",
   chamfer: "Chanfrein",
   combine: "Combinaison",
-  split: "Scission",
 };
 const TYPE_ICONS: Record<Feature["type"], string> = {
   sketch: "✎",
@@ -27,7 +26,6 @@ const TYPE_ICONS: Record<Feature["type"], string> = {
   fillet: "◜",
   chamfer: "◸",
   combine: "⧉",
-  split: "✂",
 };
 
 const STATE_BADGES: Record<FeatureState, { label: string; class: string }> = {

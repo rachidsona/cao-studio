@@ -26,16 +26,9 @@ export interface SolidOutput {
   shape: Shape3D;
 }
 
-/** Several bodies from one operation (split): body ids "<feature>#<n>". */
-export interface SolidsOutput {
-  kind: "solids";
-  shapes: Shape3D[];
-}
-
-export type FeatureOutput = ProfileOutput | SolidOutput | SolidsOutput;
+export type FeatureOutput = ProfileOutput | SolidOutput;
 
 export function disposeOutput(output: FeatureOutput): void {
   // Profiles hold 2D drawings, which replicad reclaims through garbage collection.
   if (output.kind === "solid") output.shape.delete();
-  else if (output.kind === "solids") for (const shape of output.shapes) shape.delete();
 }

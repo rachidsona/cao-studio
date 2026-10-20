@@ -155,10 +155,6 @@ opération existante.
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
-- **Scinder** : coupe un corps par les plans (infinis) de faces planes cliquées ; chaque morceau
-  devient un corps séparé (« Scission — pièce 1 », « pièce 2 »…), avec sa propre teinte. Exemple :
-  pour un cadre, les deux faces intérieures opposées (avant et arrière) donnent 4 planches, avant et
-  arrière pleine longueur. Les pièces se modifient ensuite une à une (perçage, congé…).
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
