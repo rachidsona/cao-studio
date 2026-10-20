@@ -1,5 +1,5 @@
 /** "Sélection" section of the properties panel: measurements and actions on picked faces/edges. */
-import { edgeText, faceText, type SelectionSummary } from "../app/model-selection";
+import { edgeText, faceText, pointText, type SelectionSummary } from "../app/model-selection";
 import type { DisplayUnit } from "../document/types";
 import { el } from "./dom";
 import { section } from "./fields";
@@ -22,11 +22,14 @@ function action(label: string, run: () => void, primary = false): HTMLElement {
 }
 
 export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, actions: SelectionActions): HTMLElement | null {
-  const { faces, edges, bodies } = summary;
-  if (faces.length === 0 && edges.length === 0 && bodies.length === 0) return null;
+  const { faces, edges, vertices, bodies } = summary;
+  if (faces.length === 0 && edges.length === 0 && vertices.length === 0 && bodies.length === 0) return null;
   const items = [
     ...bodies.map((b) =>
       el("li", { class: "flex justify-between gap-3" }, el("span", {}, "Corps"), el("span", { class: "font-medium" }, b.name)),
+    ),
+    ...vertices.map((v, i) =>
+      el("li", { class: "flex justify-between gap-3" }, el("span", {}, `Point ${i + 1}`), el("span", { class: "text-right font-mono text-xs tabular-nums" }, pointText(v.point, unit))),
     ),
     ...edges.map(({ pick, info }) =>
       el(
@@ -58,6 +61,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   clear.addEventListener("click", actions.clear);
   const parts = [
     bodies.length ? `${bodies.length} corps` : "",
+    vertices.length ? `${vertices.length} point${vertices.length > 1 ? "s" : ""}` : "",
     edges.length ? `${edges.length} arête${edges.length > 1 ? "s" : ""}` : "",
     faces.length ? `${faces.length} face${faces.length > 1 ? "s" : ""}` : "",
   ].filter(Boolean);
@@ -65,7 +69,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
     `Sélection (${parts.join(", ")})`,
     el("ul", { class: "space-y-1 text-sm" }, ...items),
     buttons.length ? el("div", { class: "flex flex-wrap gap-1.5" }, ...buttons) : null,
-    el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes ou corps."),
+    el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes, points ou corps. Un point de corps s'accroche dans une esquisse (contrainte Coïncidence)."),
     clear,
   );
 }

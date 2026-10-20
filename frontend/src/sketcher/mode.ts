@@ -24,6 +24,7 @@ import {
   type DimensionSpec,
 } from "./annotations";
 import { extractLoops, regions as regionsOf, type Region } from "./loops";
+import { pruneBodyPoints, withBodyPoints } from "./body-points";
 
 const GLYPHS_KEY = "cao-studio:sketch-glyphs";
 const GRID_SNAP_KEY = "cao-studio:sketch-grid-snap";
@@ -93,7 +94,7 @@ export class SketchMode implements PointerHandler {
   ) {
     this.featureId = feature.id;
     this.frame = sketchFrame(feature.plane, feature.offset);
-    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
+    this.geometry = this.withBodies(feature);
     this.lastSolve = solveSketch(this.geometry);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
     this.overlay.onAnnotationPointerDown = (annotation, event) => this.dimensionPointerDown(annotation, event);
@@ -101,7 +102,13 @@ export class SketchMode implements PointerHandler {
     viewport.enterSketch(this.frame, this);
     this.render();
     // An existing sketch may be larger than the part: show all of it.
-    if (this.geometry.points.length || this.geometry.curves.length) this.ensureVisible(true);
+    if (feature.points.length || feature.curves.length) this.ensureVisible(true);
+  }
+
+  /** The stored geometry plus the corners of the displayed bodies, offered as fixed points to snap on. */
+  private withBodies(feature: SketchFeature): SketchGeometry {
+    const stored = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
+    return withBodyPoints(stored, this.frame, this.viewport.bodyVertices());
   }
 
   /**
@@ -111,7 +118,8 @@ export class SketchMode implements PointerHandler {
   private bounds(): THREE.Box3 {
     const box = new THREE.Box3().expandByPoint(new THREE.Vector3(...toWorld(this.frame, 0, 0)));
     const add = (x: number, y: number) => box.expandByPoint(new THREE.Vector3(...toWorld(this.frame, x, y)));
-    for (const p of this.geometry.points) add(p.x, p.y);
+    // The body corners offered but unused do not widen the view.
+    for (const p of pruneBodyPoints(this.geometry).points) add(p.x, p.y);
     for (const c of this.geometry.curves) {
       if (c.kind === "line") continue;
       const center = c.center === ORIGIN ? { x: 0, y: 0 } : this.geometry.points.find((p) => p.id === c.center);
@@ -137,8 +145,8 @@ export class SketchMode implements PointerHandler {
 
   /** Reloads the geometry after an external change (undo/redo, properties panel). */
   sync(feature: SketchFeature): void {
-    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
-    const known = new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
+    this.geometry = this.withBodies(feature);
+    const known =new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
     this.offset?.sync();
@@ -339,7 +347,7 @@ export class SketchMode implements PointerHandler {
     }
     this.geometry = result.geometry;
     this.lastSolve = result;
-    this.host.commit(this.featureId, result.geometry);
+    this.host.commit(this.featureId, pruneBodyPoints(result.geometry));
     this.ensureVisible();
     if (result.state === "redundant") this.host.notify(`Contrainte redondante, déjà impliquée par les autres : ${describeConstraints(geometry, result.redundant)}.`, "info");
     else if (success) this.host.notify(success, "success");
@@ -411,7 +419,8 @@ export class SketchMode implements PointerHandler {
     const p = this.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(this.geometry, p, this.tolerance());
-    if (hit?.kind === "point" && hit.id !== ORIGIN) {
+    // A fixed point (projected body geometry) cannot be dragged: the gesture orbits the view instead.
+    if (hit?.kind === "point" && hit.id !== ORIGIN && !this.geometry.points.find((q) => q.id === hit.id)?.fixed) {
       this.drag = { point: hit.id, moved: false, base: this.geometry };
       return true;
     }
@@ -673,7 +682,7 @@ export class SketchMode implements PointerHandler {
       window.removeEventListener("pointerup", onUp);
       if (moved) {
         // Presentation only: stored in the document without solving again.
-        if (id && this.geometry !== base) this.host.commit(this.featureId, this.geometry);
+        if (id && this.geometry !== base) this.host.commit(this.featureId, pruneBodyPoints(this.geometry));
         return;
       }
       const anchor = { x: event.clientX, y: event.clientY };

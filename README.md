@@ -140,6 +140,12 @@ serveur accepte les deux versions.
   - Refusées d'emblée : deux points d'une même courbe (elle serait écrasée), une paire déjà liée.
   - La relation tient après déplacement, changement de cote, enregistrement et rechargement,
     annulation et rétablissement.
+  - **Entre corps** : tant qu'une esquisse est ouverte, les sommets de tous les corps affichés sont
+    projetés sur son plan en points violets fixes. On s'y accroche en traçant, ou on les sélectionne
+    avec un point de l'esquisse pour appliquer « Coïncidence » (ou une cote). Seuls les points utilisés
+    sont enregistrés avec l'esquisse ; comme pour la projection d'une face, ils ne suivent pas le corps
+    s'il change ensuite. Un sommet est projeté orthogonalement : un coin à une autre hauteur que le
+    plan tombe à la verticale du plan.
 - **Cotes** (D) : longueur, distance, distances horizontale et verticale signées, distance point-ligne,
   angle, rayon et diamètre. Une cote est créée avec la valeur mesurée, puis se modifie dans le panneau ou
   en cliquant son étiquette.
@@ -226,8 +232,9 @@ opération existante.
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
   - le filtre de la barre d'outils choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
-    sinon face), « Faces », « Arêtes » ou « Corps » (le corps entier, avec « Combiner » pour plusieurs
-    corps). Le choix est mémorisé ;
+    sinon face), « Faces », « Arêtes », « Points » (un sommet d'un corps : des points bleus marquent
+    ceux qu'on peut cliquer, ses coordonnées s'affichent dans le panneau et la barre d'état) ou « Corps »
+    (le corps entier, avec « Combiner » pour plusieurs corps). Le choix est mémorisé ;
   - la cote de chaque arête sélectionnée s'affiche dans la vue (longueur, Ø ou R) ;
   - le panneau « Sélection » donne les mesures et propose les actions : congé ou chanfrein sur les
     arêtes, extrusion ou perçage sur les faces.

@@ -8,11 +8,13 @@ import type { DisplayUnit } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { EdgeInfo, FaceInfo } from "../geometry/protocol";
 import { formatArea, formatLength } from "../measurements/units";
-import type { EdgePick, FacePick, ModelSelection, Viewport } from "../viewport/viewport";
+import type { Point3 } from "../viewport/body-points";
+import type { EdgePick, FacePick, ModelSelection, VertexPick, Viewport } from "../viewport/viewport";
 
 export interface SelectionSummary {
   faces: { pick: FacePick; info?: FaceInfo }[];
   edges: { pick: EdgePick; info?: EdgeInfo }[];
+  vertices: VertexPick[];
   bodies: { id: string; name: string }[];
 }
 
@@ -30,8 +32,13 @@ export function faceText(info: FaceInfo, unit: DisplayUnit): string {
   return `Face ${SURFACES[info.surface] ?? info.surface} — ${formatArea(info.area, unit)}`;
 }
 
+/** "X 12 · Y 0 · Z 5" in the display unit (the model's own axes, mm underneath). */
+export function pointText(point: Point3, unit: DisplayUnit): string {
+  return point.map((value, i) => `${"XYZ"[i]} ${formatLength(Math.abs(value) < 5e-7 ? 0 : value, unit)}`).join(" · ");
+}
+
 export class ModelSelectionController {
-  selection: ModelSelection = { faces: [], edges: [], bodies: [] };
+  selection: ModelSelection = { faces: [], edges: [], vertices: [], bodies: [] };
   private faceInfos = new Map<string, FaceInfo>();
   private edgeInfos = new Map<string, EdgeInfo>();
 
@@ -44,15 +51,17 @@ export class ModelSelectionController {
   }
 
   get empty(): boolean {
-    const { faces, edges, bodies } = this.selection;
-    return faces.length === 0 && edges.length === 0 && bodies.length === 0;
+    const { faces, edges, vertices, bodies } = this.selection;
+    return faces.length === 0 && edges.length === 0 && vertices.length === 0 && bodies.length === 0;
   }
 
   /** One-line summary for the status bar. */
   statusText(): string {
-    const { faces, edges, bodies } = this.selection;
+    const { faces, edges, vertices, bodies } = this.selection;
     if (this.empty) return "Aucune sélection";
     if (bodies.length) return `${bodies.length} corps sélectionné(s)`;
+    if (vertices.length === 1 && edges.length === 0 && faces.length === 0) return `Point sélectionné — ${pointText((vertices[0] as VertexPick).point, this.host.unit())}`;
+    if (vertices.length) return `${vertices.length} point(s), ${edges.length} arête(s), ${faces.length} face(s) sélectionné(s)`;
     return `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)`;
   }
 
@@ -63,13 +72,14 @@ export class ModelSelectionController {
 
   /** Body of the selection, if any (shown in the measurements panel). */
   get bodyId(): string | undefined {
-    return this.selection.bodies[0] ?? this.selection.edges[0]?.bodyId ?? this.selection.faces[0]?.bodyId;
+    return this.selection.bodies[0] ?? this.selection.edges[0]?.bodyId ?? this.selection.faces[0]?.bodyId ?? this.selection.vertices[0]?.bodyId;
   }
 
   summary(): SelectionSummary {
     return {
       faces: this.selection.faces.map((pick) => ({ pick, info: this.faceInfos.get(`${pick.bodyId}#${pick.faceIndex}`) })),
       edges: this.selection.edges.map((pick) => ({ pick, info: this.edgeInfos.get(`${pick.bodyId}#${pick.edgeIndex}`) })),
+      vertices: this.selection.vertices,
       bodies: this.selection.bodies.map((id) => ({ id, name: this.host.bodyName(id) })),
     };
   }

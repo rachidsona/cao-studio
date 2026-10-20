@@ -1,11 +1,11 @@
 /**
- * Selection filter of the 3D model toolbar (Auto / Faces / Arêtes / Corps):
+ * Selection filter of the 3D model toolbar (Auto / Faces / Arêtes / Points / Corps):
  * what a click selects. The choice is remembered per browser.
  */
 import type { SelectionFilter, Viewport } from "../viewport/viewport";
 
 const KEY = "cao-studio:selection-filter";
-const FILTERS: ReadonlySet<string> = new Set(["auto", "face", "edge", "body"]);
+const FILTERS: ReadonlySet<string> = new Set(["auto", "face", "edge", "vertex", "body"]);
 
 function stored(): SelectionFilter {
   try {

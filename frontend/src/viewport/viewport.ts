@@ -11,9 +11,10 @@ import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
 import { edgeAtVertex } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
-import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter } from "./selection-layer";
+import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter, type VertexPick } from "./selection-layer";
+import { addDistinct, bodyVertices, type Point3 } from "./body-points";
 
-export type { EdgePick, FacePick, ModelSelection, SelectionFilter } from "./selection-layer";
+export type { EdgePick, FacePick, ModelSelection, SelectionFilter, VertexPick } from "./selection-layer";
 
 export type StandardView = "iso" | "front" | "back" | "top" | "bottom" | "left" | "right";
 
@@ -88,8 +89,17 @@ export class Viewport {
   private resizeObserver: ResizeObserver;
   private frame = 0;
   onSelectionChange: (selection: ModelSelection) => void = () => {};
-  /** What a click selects: edge then face (auto), only faces, only edges, or whole bodies. */
-  selectionFilter: SelectionFilter = "auto";
+  private filter: SelectionFilter = "auto";
+
+  /** What a click selects: edge then face (auto), only faces, only edges, only corners, or whole bodies. */
+  get selectionFilter(): SelectionFilter {
+    return this.filter;
+  }
+
+  set selectionFilter(filter: SelectionFilter) {
+    this.filter = filter;
+    this.selection.setCornerHints(this.bodyVertices(), filter === "vertex");
+  }
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -243,7 +253,38 @@ export class Viewport {
     const before = this.selection.count;
     this.selection.prune(this.bodies);
     this.selection.render(this.bodies);
+    this.selection.setCornerHints(this.bodyVertices(), this.filter === "vertex");
     if (this.selection.count !== before) this.onSelectionChange(this.selection.snapshot());
+  }
+
+  /** Corners of the displayed bodies (model coordinates, mm), merged by position. */
+  bodyVertices(): Point3[] {
+    const all: Point3[] = [];
+    for (const body of this.bodies.values()) for (const p of bodyVertices(body.data)) addDistinct(all, p);
+    return all;
+  }
+
+  /** Corner of a displayed body within a few pixels of the pointer (the nearer one to the eye when they overlap). */
+  pickVertex(event: PointerEvent): VertexPick | null {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    const reach = matchMedia("(pointer: coarse)").matches ? 18 : 11;
+    let best: { pick: VertexPick; screen: number; depth: number } | null = null;
+    const v = new THREE.Vector3();
+    for (const body of this.bodies.values()) {
+      for (const point of bodyVertices(body.data)) {
+        v.set(...point).project(this.camera);
+        if (v.z < -1 || v.z > 1) continue;
+        const screen = Math.hypot(((v.x + 1) / 2) * rect.width - px, ((1 - v.y) / 2) * rect.height - py);
+        if (screen > reach) continue;
+        const depth = v.z;
+        if (!best || screen < best.screen - 1 || (screen < best.screen + 1 && depth < best.depth)) {
+          best = { pick: { bodyId: body.data.bodyId, point }, screen, depth };
+        }
+      }
+    }
+    return best?.pick ?? null;
   }
 
   private disposeBody(body: BodyObject): void {
@@ -480,12 +521,13 @@ export class Viewport {
   /** Click in model mode: an edge (priority, it is thin) or a face is toggled; empty space clears. */
   private selectAt(event: PointerEvent): void {
     const filter = this.selectionFilter;
+    const vertex = filter === "vertex" ? this.pickVertex(event) : null;
     // A body edge wins (a sketch along it, like the one of a plate, must not steal it for a fillet), then a sketch
     // curve, as an edge does over a face; the inside of a sketch area only when no body is in front of it.
-    const edge = filter === "auto" || filter === "edge" ? this.pickEdge(event) : null;
-    const curve = edge ? null : this.pickSketch(event, "line");
-    const face = edge || curve || filter === "edge" ? null : this.pick(event);
-    const inside = edge || curve ? null : this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
+    const edge = !vertex && (filter === "auto" || filter === "edge") ? this.pickEdge(event) : null;
+    const curve = vertex || edge ? null : this.pickSketch(event, "line");
+    const face = vertex || edge || curve || filter === "edge" || filter === "vertex" ? null : this.pick(event);
+    const inside = vertex || edge || curve ? null : this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
     const sketch = curve ?? inside;
     if (sketch) {
       this.selection.clear();
@@ -494,13 +536,14 @@ export class Viewport {
       this.onSketchPick(sketch);
       return;
     }
-    if (edge) this.selection.toggleEdge(edge);
+    if (vertex) this.selection.toggleVertex(vertex);
+    else if (edge) this.selection.toggleEdge(edge);
     else if (face && filter === "body") this.selection.toggleBody(face.bodyId);
     else if (face) this.selection.toggleFace(face);
     else this.selection.clear();
     this.selection.render(this.bodies);
     this.onSelectionChange(this.selection.snapshot());
-    if (!edge && !face) this.onSketchPick(null);
+    if (!vertex && !edge && !face) this.onSketchPick(null);
   }
 
   /** Edge of a displayed body under the pointer (within a few pixels). */

@@ -165,7 +165,7 @@ export class SketchOverlay {
     const points = [{ id: ORIGIN, x: 0, y: 0 }, ...g.points];
     const positions = points.flatMap((p) => [p.x, p.y, 0]);
     const colors = points.flatMap((p) => {
-      const c = new THREE.Color(state.selection.has(p.id) ? COLORS.selected : state.hover === p.id ? COLORS.hover : COLORS.point);
+      const c = new THREE.Color(state.selection.has(p.id) ? COLORS.selected : state.hover === p.id ? COLORS.hover : p.fixed ? COLORS.projected : COLORS.point);
       return [c.r, c.g, c.b];
     });
     const pointGeometry = new THREE.BufferGeometry();
