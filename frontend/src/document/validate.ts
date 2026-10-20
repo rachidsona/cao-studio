@@ -105,7 +105,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (!isFiniteNumber(tool.offset)) errors.push(`${where} : décalage du plan de coupe invalide.`);
       } else if (tool.kind === "face") {
         if (typeof tool.body !== "string") errors.push(`${where} : corps de la face de coupe manquant.`);
-        checkRefs([tool.face], "face", where, errors);
+        checkRefs(tool.face, "face", where, errors);
       } else errors.push(`${where} : outil de coupe inconnu.`);
       break;
     }

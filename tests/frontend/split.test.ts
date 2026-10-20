@@ -211,6 +211,15 @@ describe("sauvegarde et annulation", () => {
     r.dispose();
   });
 
+  it("une scission par une face se relit après enregistrement (le projet s'ouvre)", () => {
+    const tool: SplitTool = { kind: "face", body: "ex", face: { type: "PLANE", center: [37, 47, 25], rel: [0.5, 0.87, 0.5], normal: [0, -1, 0], area: 0 } };
+    const features = plate();
+    const d = doc(...features, split(tool, "both"));
+    const reloaded = parseDocument(JSON.parse(JSON.stringify(d)));
+    expect(reloaded.features.at(-1)).toEqual(d.features.at(-1));
+    expect(() => parseDocument(JSON.parse(JSON.stringify({ ...d, features: [...features, split({ kind: "face", body: "ex", face: { type: "PLANE" } as never }, "both")] })))).toThrow(/référence de face 1 invalide/);
+  });
+
   it("refuse une scission mal formée à l'ouverture", () => {
     const bad = (patch: Record<string, unknown>) => ({ ...doc(...plate(), split(plane("XY", 3))), features: [...plate(), { ...split(plane("XY", 3)), ...patch }] });
     expect(() => parseDocument(bad({ keep: "tout" }))).toThrow(/partie à conserver/);
