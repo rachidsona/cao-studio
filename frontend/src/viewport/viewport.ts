@@ -9,15 +9,14 @@ import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
+import { edgeAtVertex } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
+import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection } from "./selection-layer";
+
+export type { EdgePick, FacePick, ModelSelection } from "./selection-layer";
 
 export type StandardView = "iso" | "front" | "back" | "top" | "bottom" | "left" | "right";
 
-export interface FacePick {
-  bodyId: string;
-  faceIndex: number;
-  point: THREE.Vector3;
-}
 
 const VIEW_DIRECTIONS: Record<StandardView, [number, number, number]> = {
   iso: [1, -1, 0.8],
@@ -70,11 +69,11 @@ export class Viewport {
   private edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });
   private raycaster = new THREE.Raycaster();
   private timer = new THREE.Timer();
-  private selected: FacePick | null = null;
+  private selection: SelectionLayer;
   private pointerDown: { x: number; y: number } | null = null;
   private resizeObserver: ResizeObserver;
   private frame = 0;
-  onPick: (pick: FacePick | null) => void = () => {};
+  onSelectionChange: (selection: ModelSelection) => void = () => {};
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -120,6 +119,7 @@ export class Viewport {
     this.scene.add(this.camera);
     this.scene.add(this.grid.object);
     this.scene.add(this.makeAxes());
+    this.selection = new SelectionLayer(this.scene);
 
     this.setView("iso", 120);
     this.applyTheme();
@@ -162,15 +162,15 @@ export class Viewport {
       const edgeGeometry = new THREE.BufferGeometry();
       edgeGeometry.setAttribute("position", new THREE.BufferAttribute(data.edges, 3));
       const edges = new THREE.LineSegments(edgeGeometry, this.edgeMaterial);
+      edges.userData.bodyId = data.bodyId;
       this.scene.add(mesh, edges);
       this.bodies.set(data.bodyId, { mesh, edges, data });
     }
-    // Keep the face selection only if the same face still exists.
-    if (this.selected && !this.bodies.get(this.selected.bodyId)?.data.faceGroups[this.selected.faceIndex]) {
-      this.select(null);
-    } else {
-      this.paintSelection();
-    }
+    // Keep the selected faces/edges that still exist after regeneration.
+    const before = this.selection.faces.length + this.selection.edges.length;
+    this.selection.prune(this.bodies);
+    this.selection.render(this.bodies);
+    if (this.selection.faces.length + this.selection.edges.length !== before) this.onSelectionChange(this.selection.snapshot());
   }
 
   private disposeBody(body: BodyObject): void {
@@ -252,14 +252,14 @@ export class Viewport {
       }
       if (!isClick) return;
       if (!this.pointerHandler && this.viewHelper.handleClick(event)) return;
-      if (!this.pointerHandler) this.select(this.pick(event));
+      if (!this.pointerHandler) this.selectAt(event);
     });
   }
 
   /** Installs (or removes) the tool receiving pointer events, without changing the camera. */
   setPointerHandler(handler: PointerHandler | null): void {
     this.pointerHandler = handler;
-    if (handler) this.select(null);
+    if (handler) this.clearSelection();
   }
 
   /** Runs `listener` before every rendered frame (screen-size gizmos); returns a remover. */
@@ -268,10 +268,21 @@ export class Viewport {
     return () => this.frameListeners.delete(listener);
   }
 
-  /** Objects under the pointer, nearest first. */
-  intersect(event: PointerEvent, objects: THREE.Object3D[]): THREE.Intersection[] {
+  /** Objects under the pointer, nearest first; lines are hit within `linePx` screen pixels. */
+  intersect(event: PointerEvent, objects: THREE.Object3D[], linePx = 6): THREE.Intersection[] {
     this.rayFromEvent(event);
+    this.raycaster.params.Line = { threshold: linePx * this.worldPerPixel() };
     return this.raycaster.intersectObjects(objects, true);
+  }
+
+  /** Tessellation of a displayed body (edge/face picking by tools). */
+  bodyMesh(bodyId: string): BodyMesh | undefined {
+    return this.bodies.get(bodyId)?.data;
+  }
+
+  /** Face of a displayed body under the pointer. */
+  pickFace(event: PointerEvent): FacePick | null {
+    return this.pick(event);
   }
 
   /** Ray under the pointer, in world coordinates. */
@@ -372,19 +383,41 @@ export class Viewport {
     return faceIndex < 0 ? null : { bodyId, faceIndex, point: hit.point.clone() };
   }
 
-  select(pick: FacePick | null): void {
-    this.selected = pick;
-    this.paintSelection();
-    this.onPick(pick);
+  /** Click in model mode: an edge (priority, it is thin) or a face is toggled; empty space clears. */
+  private selectAt(event: PointerEvent): void {
+    const edge = this.pickEdge(event);
+    if (edge) this.selection.toggleEdge(edge);
+    else {
+      const face = this.pick(event);
+      if (face) this.selection.toggleFace(face);
+      else this.selection.clear();
+    }
+    this.selection.render(this.bodies);
+    this.onSelectionChange(this.selection.snapshot());
   }
 
-  private paintSelection(): void {
-    for (const body of this.bodies.values()) {
-      body.mesh.geometry.groups.forEach((group, index) => {
-        const isSelected = this.selected?.bodyId === body.data.bodyId && this.selected.faceIndex === index;
-        group.materialIndex = isSelected ? 1 : 0;
-      });
-    }
+  /** Edge of a displayed body under the pointer (within a few pixels). */
+  pickEdge(event: PointerEvent): EdgePick | null {
+    const lines = [...this.bodies.values()].map((b) => b.edges);
+    const hit = this.intersect(event, lines, 6)[0];
+    if (!hit || hit.index === undefined) return null;
+    const bodyId = hit.object.userData.bodyId as string;
+    const data = this.bodies.get(bodyId)?.data;
+    const edgeIndex = data ? edgeAtVertex(data, hit.index) : -1;
+    return edgeIndex < 0 ? null : { bodyId, edgeIndex };
+  }
+
+  clearSelection(): void {
+    if (this.selection.empty) return;
+    this.selection.clear();
+    this.selection.render(this.bodies);
+    this.onSelectionChange(this.selection.snapshot());
+  }
+
+  /** Dimension text displayed next to a selected edge. */
+  setEdgeLabel(pick: EdgePick, text: string): void {
+    this.selection.setEdgeLabel(pick, text);
+    this.selection.render(this.bodies);
   }
 
   private resize(): void {

@@ -3,21 +3,24 @@
  * geometry worker, the viewport and the panels together.
  */
 import { solveSketch } from "../constraints/solver";
-import { addExtrude, addHole, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
+import { addExtrude, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
 import { setDimensionValue } from "../sketcher/edit";
 import type { CadDocument, DisplayUnit } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
-import type { FaceInfo, RecomputeResponse } from "../geometry/protocol";
+import type { RecomputeResponse } from "../geometry/protocol";
 import type { FeatureStatus } from "../history/recompute";
 import type { ExportFormat } from "../io/exporters";
 import { NATIVE_EXTENSION, parseNative, serializeNative } from "../io/native";
-import { formatLength, trim } from "../measurements/units";
+import { trim } from "../measurements/units";
 import { download, ref, slugify, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
 import { renderTree } from "../ui/tree";
-import type { FacePick, StandardView, Viewport } from "../viewport/viewport";
+import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
 import { ExtrudeTool } from "./extrude-tool";
+import { bindShortcuts } from "./keyboard";
+import { ModelSelectionController } from "./model-selection";
+import { ToolLauncher, type PanelToolKind } from "./tool-launcher";
 import { SketchController } from "./sketch-controller";
 
 export interface EditorConfig {
@@ -39,13 +42,15 @@ export class Editor {
   private statuses = new Map<string, FeatureStatus>();
   private result: RecomputeResponse | null = null;
   private selectedFeature: string | null = null;
-  private pick: FacePick | null = null;
-  private faceInfo: FaceInfo | null = null;
+  private picked: ModelSelectionController;
   private recomputing = false;
   private recomputeAgain = false;
   private sketches: SketchController;
   private panelDeferred = false;
   private extrudeTool: ExtrudeTool | null = null;
+  private tools: ToolLauncher;
+  /** Provisional document shown while a tool previews its result (null: the real one). */
+  private previewDoc: CadDocument | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -55,7 +60,16 @@ export class Editor {
     private readonly viewport: Viewport,
   ) {
     session.onStateChange = (state, detail) => this.showSaveState(state, detail);
-    viewport.onPick = (pick) => void this.onPick(pick);
+    this.picked = new ModelSelectionController(viewport, geometry, {
+      unit: () => this.unit,
+      changed: () => {
+        const { faces, edges } = this.picked.selection;
+        ref(this.root, "status-selection").textContent =
+          faces.length + edges.length ? `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)` : "Aucune sélection";
+        if (!this.picked.empty) this.openPanel("properties");
+        this.render();
+      },
+    });
     this.sketches = new SketchController(root, viewport, {
       doc: () => this.doc,
       change: (next) => void this.change(next),
@@ -67,6 +81,30 @@ export class Editor {
       openPanel: (panel) => this.openPanel(panel),
       unit: () => this.unit,
       extrude: () => this.extrudeCommand(),
+    });
+    const main = root.querySelector("main") as HTMLElement;
+    this.tools = new ToolLauncher({
+      viewport,
+      geometry,
+      container: main,
+      doc: () => this.doc,
+      unit: () => this.unit,
+      bodies: () => this.visibleBodies(),
+      status: (id) => this.statuses.get(id),
+      preview: (doc) => {
+        this.previewDoc = doc;
+        return this.recompute();
+      },
+      commit: (doc, id) => {
+        this.previewDoc = null;
+        this.selectedFeature = id;
+        void this.change(doc);
+      },
+      notify: (message, kind) => this.notify(message, kind),
+      closed: () => {
+        this.root.dataset.tool = "";
+        this.render();
+      },
     });
     this.bindActions();
     this.bindKeyboard();
@@ -102,9 +140,10 @@ export class Editor {
     this.recomputing = true;
     ref(this.root, "status-recompute").textContent = "Recalcul…";
     try {
-      const result = await this.geometry.recompute(this.doc);
+      const result = await this.geometry.recompute(this.previewDoc ?? this.doc);
       this.result = result;
       this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
+      this.picked.invalidate();
       this.viewport.setBodies(result.bodies);
       if (fitView) this.viewport.setView("iso");
       const failures = result.statuses.filter((s) => s.state === "error").length;
@@ -162,7 +201,14 @@ export class Editor {
       status: feature ? this.statuses.get(feature.id) : undefined,
       unit: this.unit,
       body: this.bodyForPanel(),
-      face: this.faceInfo,
+      selection: this.picked.summary(),
+      selectionActions: {
+        fillet: () => this.openTool("fillet"),
+        chamfer: () => this.openTool("chamfer"),
+        extrude: () => this.extrudeCommand(),
+        hole: () => this.openTool("hole"),
+        clear: () => this.viewport.clearSelection(),
+      },
       targets: this.extrudeTargets(feature?.id ?? null),
       sketch: {
         editing,
@@ -173,6 +219,7 @@ export class Editor {
         onOffset: (value) => this.patchSelected((f) => (f.type === "sketch" ? { ...f, offset: value } : f)),
       },
       onEditExtrude: () => feature?.type === "extrude" && this.extrudeCommand(feature.id),
+      onEditFeature: () => feature && this.tools.edit(feature.id),
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
@@ -207,7 +254,7 @@ export class Editor {
 
   private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
     const bodies = this.result?.bodies ?? [];
-    let bodyId = this.pick?.bodyId ?? null;
+    let bodyId = this.picked.bodyId ?? null;
     if (!bodyId && this.selectedFeature) bodyId = latestBody(this.doc, this.selectedFeature);
     bodyId ??= bodies[bodies.length - 1]?.bodyId ?? null;
     const body = bodies.find((b) => b.bodyId === bodyId);
@@ -235,25 +282,6 @@ export class Editor {
     this.render();
   }
 
-  private async onPick(pick: FacePick | null): Promise<void> {
-    this.pick = pick;
-    this.faceInfo = null;
-    const label = ref(this.root, "status-selection");
-    if (!pick) {
-      label.textContent = "Aucune sélection";
-      this.render();
-      return;
-    }
-    this.selectedFeature = pick.bodyId;
-    label.textContent = `Face ${pick.faceIndex + 1} — X ${formatLength(pick.point.x, this.unit)}, Y ${formatLength(pick.point.y, this.unit)}`;
-    try {
-      this.faceInfo = await this.geometry.faceInfo(pick.bodyId, pick.faceIndex);
-    } catch (error) {
-      this.notify(error instanceof Error ? error.message : String(error), "error");
-    }
-    this.render();
-  }
-
   // ---- commands -----------------------------------------------------------
 
   private patchSelected(patch: FeaturePatch): void {
@@ -276,7 +304,7 @@ export class Editor {
     }
     if (this.selectedFeature && !findFeature(next, this.selectedFeature)) this.selectedFeature = null;
     if (this.sketches.mode && !findFeature(next, this.sketches.mode.featureId)) this.sketches.finish();
-    this.viewport.select(null);
+    this.viewport.clearSelection();
     void this.change(next);
   }
 
@@ -286,10 +314,21 @@ export class Editor {
    * otherwise waiting for a profile click in the view.
    */
   private extrudeCommand(featureId?: string): void {
+    // Faces picked in the model, or an extrusion made from faces: push/pull tool.
+    const edited = featureId ? findFeature(this.doc, featureId) : undefined;
+    const faces = this.picked.selection.faces;
+    this.openPanel(null);
+    if ((edited?.type === "extrude" && edited.faces) || (!featureId && faces.length && !this.sketches.active)) {
+      this.extrudeTool?.cancel();
+      this.root.dataset.tool = "extrude";
+      this.tools.open("faceExtrude", featureId ? { featureId } : { faces });
+      return;
+    }
     const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
     const sketchId = this.sketches.mode?.featureId ?? (selected?.type === "sketch" ? selected.id : undefined);
     if (this.sketches.active) this.sketches.finish();
     this.extrudeTool?.cancel();
+    this.tools.active?.cancel();
     const main = this.root.querySelector("main");
     if (!main) return;
     this.extrudeTool = new ExtrudeTool(this.viewport, {
@@ -318,24 +357,23 @@ export class Editor {
     void this.change(next).then(() => this.viewport.fit());
   }
 
-  private addHoleCommand(): void {
-    const bodies = this.result?.bodies ?? [];
-    const bodyId =
-      this.pick?.bodyId ??
-      (this.selectedFeature ? latestBody(this.doc, this.selectedFeature) : undefined) ??
-      bodies[bodies.length - 1]?.bodyId;
-    const body = bodies.find((b) => b.bodyId === bodyId);
-    if (!body) {
-      this.notify("Sélectionnez d'abord un corps solide valide.", "error");
-      return;
-    }
-    const [min, max] = body.metrics.bbox;
-    const x = this.pick ? this.pick.point.x : (min[0] + max[0]) / 2;
-    const y = this.pick ? this.pick.point.y : (min[1] + max[1]) / 2;
-    const next = addHole(this.doc, body.bodyId, Number(x.toFixed(3)), Number(y.toFixed(3)));
-    this.selectedFeature = next.features[next.features.length - 1]?.id ?? null;
-    this.viewport.select(null);
-    void this.change(next);
+  /** Bodies currently displayed, with their feature names. */
+  private visibleBodies(): { id: string; name: string }[] {
+    return (this.result?.bodies ?? []).map((b) => ({ id: b.bodyId, name: findFeature(this.doc, b.bodyId)?.name ?? b.bodyId }));
+  }
+
+  /** Opens a panel tool; a face already selected places the hole directly. */
+  private openTool(kind: PanelToolKind): void {
+    this.openPanel(null); // phones: the tool panel takes the bottom of the screen
+    if (this.sketches.active) this.sketches.finish();
+    this.extrudeTool?.cancel();
+    const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
+    this.root.dataset.tool = kind;
+    this.tools.open(kind, {
+      ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
+      ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
+      ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
+    });
   }
 
   private historyStep(direction: "undo" | "redo"): void {
@@ -369,7 +407,7 @@ export class Editor {
     try {
       const doc = parseNative(await file.text());
       this.selectedFeature = null;
-      this.viewport.select(null);
+      this.viewport.clearSelection();
       this.session.apply(doc);
       ref<HTMLSelectElement>(this.root, "units").value = doc.units;
       await this.recompute(true);
@@ -394,7 +432,11 @@ export class Editor {
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
       "add-plate": () => this.addPlateCommand(),
-      "add-hole": () => this.addHoleCommand(),
+      "add-hole": () => this.openTool("hole"),
+      revolve: () => this.openTool("revolve"),
+      fillet: () => this.openTool("fillet"),
+      chamfer: () => this.openTool("chamfer"),
+      combine: () => this.openTool("combine"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.exportGeometry("step"),
       "export-stl": () => void this.exportGeometry("stl"),
@@ -405,7 +447,7 @@ export class Editor {
       panel: (target) => this.openPanel(target.dataset.panel as "tree" | "properties"),
       "close-panels": () => this.openPanel(null),
       deselect: () => {
-        this.viewport.select(null);
+        this.viewport.clearSelection();
         this.selectFeature(null);
       },
     };
@@ -431,37 +473,20 @@ export class Editor {
   }
 
   private bindKeyboard(): void {
-    window.addEventListener("keydown", (event) => {
-      const editing = (event.target as HTMLElement).closest("input, textarea, select");
-      const mod = event.metaKey || event.ctrlKey;
-      const key = event.key.toLowerCase();
-      if (this.extrudeTool && (event.key === "Escape" || (event.key === "Enter" && !editing))) {
-        if (this.extrudeTool.handleKey(event)) event.preventDefault();
-      } else if (mod && key === "s") {
-        event.preventDefault();
-        void this.save();
-      } else if (editing) {
-        return;
-      } else if (this.sketches.handleKey(event)) {
-        event.preventDefault();
-      } else if (mod && key === "z") {
-        event.preventDefault();
-        this.historyStep(event.shiftKey ? "redo" : "undo");
-      } else if (mod && key === "y") {
-        event.preventDefault();
-        this.historyStep("redo");
-      } else if (event.key === "Escape") {
-        this.viewport.select(null);
+    bindShortcuts({
+      activeTool: () => this.extrudeTool ?? this.tools.active,
+      sketchKey: (event) => this.sketches.handleKey(event),
+      save: () => void this.save(),
+      undo: () => this.historyStep("undo"),
+      redo: () => this.historyStep("redo"),
+      escape: () => {
+        this.viewport.clearSelection();
         this.selectFeature(null);
-      } else if (event.key === "Delete" || event.key === "Backspace") {
-        if (this.selectedFeature) this.removeFeature(this.selectedFeature);
-      } else if (key === "f") {
-        this.viewport.fit();
-      } else if (key === "h") {
-        this.addHoleCommand();
-      } else if (key === "e") {
-        this.extrudeCommand();
-      }
+      },
+      deleteSelected: () => this.selectedFeature && this.removeFeature(this.selectedFeature),
+      fit: () => this.viewport.fit(),
+      hole: () => this.openTool("hole"),
+      extrude: () => this.extrudeCommand(),
     });
   }
 }

@@ -183,6 +183,33 @@ export function measureAnnotations(g: SketchGeometry, entityIds: string[], unit:
   return out;
 }
 
+/**
+ * Curves whose size stays displayed in the sketch: every non-construction
+ * curve, except a line parallel to and as long as one already shown (the
+ * opposite side of a rectangle), to keep the drawing readable.
+ */
+export function persistentMeasureIds(g: SketchGeometry): string[] {
+  const shownLines: { dir: Vec2; length: number }[] = [];
+  const ids: string[] = [];
+  for (const curve of g.curves) {
+    if (curve.construction) continue;
+    if (curve.kind !== "line") {
+      ids.push(curve.id);
+      continue;
+    }
+    const [a, b] = [pointPos(g, curve.p1), pointPos(g, curve.p2)];
+    const d = sub(b, a);
+    const length = len(d);
+    if (length < 1e-9) continue;
+    const dir: Vec2 = [d[0] / length, d[1] / length];
+    const twin = shownLines.some((s) => Math.abs(s.dir[0] * dir[1] - s.dir[1] * dir[0]) < 1e-6 && Math.abs(s.length - length) < 1e-6);
+    if (twin) continue;
+    shownLines.push({ dir, length });
+    ids.push(curve.id);
+  }
+  return ids;
+}
+
 /** Live measurements of the shape being drawn. */
 export function previewAnnotations(preview: Preview | null, unit: DisplayUnit): Annotation[] {
   if (!preview) return [];

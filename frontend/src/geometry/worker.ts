@@ -10,7 +10,8 @@ import { initSolver } from "../constraints/solver";
 import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
-import type { BodyMesh, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
+import { describeEdge, describeFace } from "./references";
+import type { BodyMesh, DescribeResponse, EdgeInfo, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -45,8 +46,33 @@ function meshBody(bodyId: string): BodyMesh {
     indices: Uint32Array.from(mesh.triangles),
     faceGroups: mesh.faceGroups,
     edges: Float32Array.from(edges.lines),
+    edgeGroups: edges.edgeGroups.map(({ start, count }) => ({ start, count })),
     metrics: bodyMetrics(shape),
   };
+}
+
+/** Radius of the circle through three points (circular edges). */
+function circumradius(a: number[], b: number[], c: number[]): number {
+  const ab = Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!);
+  const bc = Math.hypot(b[0]! - c[0]!, b[1]! - c[1]!, b[2]! - c[2]!);
+  const ca = Math.hypot(c[0]! - a[0]!, c[1]! - a[1]!, c[2]! - a[2]!);
+  const s = (ab + bc + ca) / 2;
+  const area = Math.sqrt(Math.max(s * (s - ab) * (s - bc) * (s - ca), 0));
+  return area > 1e-12 ? (ab * bc * ca) / (4 * area) : 0;
+}
+
+function edgeInfo(bodyId: string, edgeIndex: number): EdgeInfo {
+  const edge = solid(bodyId).edges[edgeIndex];
+  if (!edge) throw new GeometryError(`Arête ${edgeIndex} introuvable.`);
+  const info: EdgeInfo = { bodyId, edgeIndex, curve: edge.geomType, length: edge.length };
+  if (edge.geomType === "CIRCLE") {
+    const p = (t: number) => {
+      const v = edge.pointAt(t);
+      return [v.x, v.y, v.z];
+    };
+    info.radius = circumradius(p(0), p(1 / 3), p(2 / 3));
+  }
+  return info;
 }
 
 function faceInfo(bodyId: string, faceIndex: number): FaceInfo {
@@ -75,6 +101,25 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
     }
     case "faceInfo":
       return { result: faceInfo(request.bodyId, request.faceIndex), transfer: [] };
+    case "edgeInfo":
+      return { result: edgeInfo(request.bodyId, request.edgeIndex), transfer: [] };
+    case "describe": {
+      const shape = solid(request.bodyId);
+      const all = shape.edges;
+      const edges = request.edges.map((i) => {
+        const edge = all[i];
+        if (!edge) throw new GeometryError(`Arête ${i} introuvable.`);
+        return describeEdge(shape, edge);
+      });
+      const faceShape = request.face === undefined ? undefined : shape.faces[request.face];
+      if (request.face !== undefined && !faceShape) throw new GeometryError(`Face ${request.face} introuvable.`);
+      const result: DescribeResponse = { edges, ...(faceShape ? { face: describeFace(shape, faceShape) } : {}) };
+      return { result, transfer: [] };
+    }
+    case "mesh": {
+      const mesh = meshBody(request.bodyId);
+      return { result: mesh, transfer: [mesh.vertices.buffer, mesh.normals.buffer, mesh.indices.buffer, mesh.edges.buffer] };
+    }
   }
 }
 

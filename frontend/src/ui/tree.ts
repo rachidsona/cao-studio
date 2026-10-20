@@ -9,8 +9,24 @@ export interface TreeHandlers {
   onDelete(id: string): void;
 }
 
-const TYPE_LABELS: Record<Feature["type"], string> = { sketch: "Esquisse", extrude: "Extrusion", hole: "Perçage" };
-const TYPE_ICONS: Record<Feature["type"], string> = { sketch: "✎", extrude: "▣", hole: "◎" };
+const TYPE_LABELS: Record<Feature["type"], string> = {
+  sketch: "Esquisse",
+  extrude: "Extrusion",
+  hole: "Perçage",
+  revolve: "Révolution",
+  fillet: "Congé",
+  chamfer: "Chanfrein",
+  combine: "Combinaison",
+};
+const TYPE_ICONS: Record<Feature["type"], string> = {
+  sketch: "✎",
+  extrude: "▣",
+  hole: "◎",
+  revolve: "⟲",
+  fillet: "◜",
+  chamfer: "◸",
+  combine: "⧉",
+};
 
 const STATE_BADGES: Record<FeatureState, { label: string; class: string }> = {
   ok: { label: "OK", class: "bg-emerald-500" },

@@ -14,11 +14,11 @@ import {
   dimensionAnnotations,
   existingDimension,
   measureAnnotations,
+  persistentMeasureIds,
   previewAnnotations,
-  specFor,
   type DimensionSpec,
 } from "./annotations";
-import { addConstraint, findCurve, measure, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
+import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
 import { rayToSketch, sketchFrame, type SketchFrame } from "./frame";
 import { hitTest, snap } from "./hit";
 import { SketchOverlay } from "./overlay";
@@ -61,8 +61,6 @@ export class SketchMode implements PointerHandler {
   private hover: string | null = null;
   private preview: Preview | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
-  /** Curves of the last drawn shape, whose measurements stay visible until the next action. */
-  private recent: string[] = [];
 
   constructor(
     feature: SketchFeature,
@@ -113,7 +111,6 @@ export class SketchMode implements PointerHandler {
 
   setTool(name: ToolName): void {
     closeCalculator();
-    this.recent = [];
     this.tool = name === "select" ? null : new DrawingTool(name, this.construction);
     this.preview = null;
     this.render();
@@ -207,7 +204,6 @@ export class SketchMode implements PointerHandler {
   deleteSelection(): void {
     if (this.selection.size === 0) return;
     closeCalculator();
-    this.recent = [];
     const ids = [...this.selection].filter((id) => id !== ORIGIN);
     this.selection.clear();
     this.apply(removeEntities(this.geometry, ids));
@@ -282,11 +278,7 @@ export class SketchMode implements PointerHandler {
       try {
         const result = this.tool.click(this.geometry, snap(this.geometry, p, this.tolerance()));
         if (result.kind === "commit") {
-          if (this.apply(result.geometry)) {
-            // A rectangle shows its width and height; other shapes their own size.
-            this.recent = result.created.length === 4 ? result.created.slice(0, 2) : result.created;
-            if (!result.done) this.preview = null;
-          }
+          if (this.apply(result.geometry) && !result.done) this.preview = null;
         } else this.preview = result.preview;
       } catch (error) {
         this.host.notify(error instanceof Error ? error.message : String(error), "error");
@@ -300,25 +292,14 @@ export class SketchMode implements PointerHandler {
     if (!hit) this.selection.clear();
     else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
     else this.selection.add(hit.id);
-    this.recent = [];
-    // A single line, circle or arc selected: show its size and the keypad to change it.
-    const [only] = this.selection;
-    const spec = this.selection.size === 1 && only ? specFor(this.geometry, only) : null;
-    if (spec) this.openForSpec(spec, { x: event.clientX, y: event.clientY });
-    else closeCalculator();
+    // Clicking geometry only selects it; values are changed by clicking their dimension.
+    closeCalculator();
     this.render();
     this.host.changed();
     return true;
   }
 
   // ---- values (keypad) ------------------------------------------------------
-
-  private openForSpec(spec: DimensionSpec, anchor: { x: number; y: number }): void {
-    const existing = existingDimension(this.geometry, spec);
-    const value = existing?.value ?? measure(this.geometry, { ...spec, id: "", value: 0 } as never);
-    const title = spec.kind === "length" ? "Longueur" : spec.kind === "diameter" ? "Diamètre" : "Rayon";
-    this.editValue({ dimensionId: existing?.id, spec, value, angle: false, signed: false, title }, anchor);
-  }
 
   private editValue(target: ValueTarget, anchor: { x: number; y: number }): void {
     openCalculator({
@@ -363,7 +344,8 @@ export class SketchMode implements PointerHandler {
   render(): void {
     const flagged = new Set([...this.lastSolve.conflicting, ...this.lastSolve.redundant]);
     const unit = this.host.unit();
-    const shown = new Set([...this.recent, ...[...this.selection].filter((id) => findCurve(this.geometry, id))]);
+    // Every curve shows its size (until it gets a dimension); selected construction curves too.
+    const shown = new Set([...persistentMeasureIds(this.geometry), ...[...this.selection].filter((id) => findCurve(this.geometry, id))]);
     this.overlay.render({
       geometry: this.geometry,
       selection: this.selection,

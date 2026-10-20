@@ -4,8 +4,9 @@ Application web de conception mécanique paramétrique : Django (comptes, projet
 + éditeur 3D TypeScript (Three.js) + noyau B-rep exact OpenCascade (WASM, via replicad)
 exécuté dans un Web Worker.
 
-**État : phase 4 (esquisses paramétriques).** Noyau B-rep, historique paramétrique,
-enregistrement, éditeur 3D et esquisses 2D contraintes (solveur planegcs) fonctionnent.
+**État : phase 5 (opérations solides).** Noyau B-rep, historique paramétrique,
+enregistrement, éditeur 3D, esquisses 2D contraintes (solveur planegcs), extrusion, révolution,
+congés, chanfreins, combinaison de corps et perçages sur face fonctionnent.
 
 ## Installation (macOS)
 
@@ -108,8 +109,10 @@ serveur accepte les deux versions.
   fait un trou). Un profil ouvert ou ramifié est signalé avec la position du sommet fautif.
 - **Cotes à l'écran** :
   - les dimensions de la forme en cours de tracé s'affichent en direct ;
-  - après le tracé, les mesures restent visibles ;
-  - cliquer une ligne, un cercle ou une valeur ouvre une petite calculatrice. On peut y saisir des
+  - les tailles des courbes restent affichées (un seul côté par paire de côtés opposés d'un
+    rectangle) ;
+  - cliquer une valeur ouvre une petite calculatrice ; cliquer une ligne la sélectionne seulement
+    (pour les contraintes). On peut y saisir des
     expressions (`1 m + 20 cm`, `2×120`, unités mm, cm, m ou deg).
   - Le cadenas fermé crée une cote pilotante. Ouvert, la forme est redimensionnée une seule fois,
     sans contrainte.
@@ -122,6 +125,42 @@ serveur accepte les deux versions.
     le corps cible ;
   - Entrée valide, Échap annule ;
   - « Modifier avec la flèche » rouvre une extrusion existante.
+
+## Opérations solides (phase 5)
+
+Tous les outils s'ouvrent dans un panneau compact à droite de la vue. Ils affichent un aperçu
+calculé par le vrai noyau (seule la nouvelle opération est recalculée). OK ou Entrée valide,
+Annuler ou Échap abandonne. « Modifier dans la vue », dans les propriétés, rouvre l'outil d'une
+opération existante.
+
+- **Révolution** : un profil fermé, un axe (axe X ou Y de l'esquisse, ou une ligne de l'esquisse,
+  de préférence en construction), un angle de 0 à 360°, puis l'opération.
+- **Congé et chanfrein** : cliquez les arêtes, cliquez à nouveau pour en retirer une. Le rayon ou
+  la distance se règle au clavier ou à la calculatrice.
+- **Combiner** : union, soustraction ou intersection d'un corps cible avec un ou plusieurs corps
+  outils. Les corps outils peuvent être conservés.
+- **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
+  ou à une profondeur donnée.
+- **Intersection** : disponible aussi pour l'extrusion et la révolution.
+- **Sélection dans le modèle 3D** :
+  - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
+    vide la sélection ;
+  - la cote de chaque arête sélectionnée s'affiche dans la vue (longueur, Ø ou R) ;
+  - le panneau « Sélection » donne les mesures et propose les actions : congé ou chanfrein sur les
+    arêtes, extrusion ou perçage sur les faces.
+- **Extrusion de faces** (pousser-tirer) :
+  - sélectionnez une ou plusieurs faces planes, puis Extrusion ;
+  - tirez la flèche (ajout de matière) ou poussez-la (creusement), ou cliquez sa valeur pour la saisir.
+
+**Références topologiques.** Une arête ou une face choisie est enregistrée par :
+- son type (droite, cercle, plan…) ;
+- sa direction ;
+- sa position relative à la boîte englobante du corps.
+
+Ainsi un congé posé sur les arêtes verticales des coins reste sur ces arêtes quand la plaque
+s'élargit, et un perçage sur une face latérale suit cette face si la pièce s'allonge. Si aucune
+arête ne correspond plus, l'opération passe en erreur avec le message « … introuvable après
+recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre arête en silence.
 
 ## Utilisation de l'éditeur
 
@@ -149,8 +188,11 @@ serveur accepte les deux versions.
   - Un îlot dans un trou donne un second solide, refusé (une extrusion produit un seul corps).
 - **Plans** : seul le plan XY est exposé dans l'interface. Le perçage suit toujours l'axe −Z
   depuis le dessus du corps.
-- **Références** : les opérations référencent des coordonnées, pas des faces. Le nommage
-  topologique persistant reste à concevoir avant d'ajouter congés et chanfreins sur arêtes.
+- **Références topologiques** : la correspondance est heuristique (type, direction, position
+  relative). Une modification qui change fortement la forme (par exemple ajouter des arêtes au
+  même endroit relatif) peut demander de resélectionner les arêtes.
+- **Congés et chanfreins** : rayon ou distance constants ; pas de congé à rayon variable ni de
+  chanfrein à deux distances dans l'interface.
 - **Chargement** : le noyau WASM pèse 23 Mo (7,3 Mo en gzip). Le premier chargement prend
   plusieurs secondes. En production, il faut servir les fichiers compressés (Brotli/gzip) et
   les mettre en cache (service worker PWA, phase 9).

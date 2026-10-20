@@ -3,6 +3,7 @@
  * its OpenCascade objects and must be disposed exactly once.
  */
 import type { Drawing, Shape3D } from "replicad";
+import type { SketchGeometry } from "../document/sketch";
 import type { PlaneName } from "../document/types";
 
 export interface ProfileOutput {
@@ -16,6 +17,8 @@ export interface ProfileOutput {
   /** Remaining degrees of freedom of the solved sketch. */
   dof: number;
   redundant: string[];
+  /** Solved sketch geometry (axes of revolutions, display). */
+  geometry: SketchGeometry;
 }
 
 export interface SolidOutput {

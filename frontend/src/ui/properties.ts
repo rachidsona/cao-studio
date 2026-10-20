@@ -2,9 +2,10 @@
  * Properties panel: numeric editing of the selected feature (values typed in
  * the display unit, stored in mm) plus measurements of bodies and faces.
  */
-import type { DisplayUnit, ExtrudeFeature, Feature, HoleFeature } from "../document/types";
+import type { ChamferFeature, CombineFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
 import type { BodyMetrics } from "../geometry/kernel";
-import type { FaceInfo } from "../geometry/protocol";
+import type { SelectionSummary } from "../app/model-selection";
+import { selectionSection, type SelectionActions } from "./selection-panel";
 import type { FeatureStatus } from "../history/recompute";
 import { formatArea, formatLength, formatVolume } from "../measurements/units";
 import { el } from "./dom";
@@ -18,22 +19,19 @@ export interface PropertiesContext {
   status: FeatureStatus | undefined;
   unit: DisplayUnit;
   body: { name: string; metrics: BodyMetrics } | null;
-  face: FaceInfo | null;
+  /** Faces and edges picked in the 3D view, with their measurements and actions. */
+  selection: SelectionSummary;
+  selectionActions: SelectionActions;
   /** Bodies an extrusion can join or cut (features before it). */
   targets: { id: string; name: string }[];
   sketch: SketchPanelActions;
   /** Reopens the interactive extrusion (arrow) on the selected extrusion. */
   onEditExtrude?: () => void;
+  /** Reopens the tool of the selected revolution, fillet, chamfer, combination or hole. */
+  onEditFeature?: () => void;
   onCommit(patch: FeaturePatch): void;
 }
 
-const SURFACE_LABELS: Record<string, string> = {
-  PLANE: "Plane",
-  CYLINDRE: "Cylindrique",
-  CONE: "Conique",
-  SPHERE: "Sphérique",
-  TORUS: "Torique",
-};
 
 function nameField(feature: Feature, ctx: PropertiesContext): HTMLElement {
   const name = el("input", { type: "text", class: textInputClass, value: feature.name, maxlength: 80, "aria-label": "Nom" });
@@ -81,16 +79,73 @@ function extrudeSection(feature: ExtrudeFeature, ctx: PropertiesContext): HTMLEl
   );
 }
 
+function editButton(ctx: PropertiesContext): HTMLElement {
+  const button = el("button", { type: "button", class: "tool-btn tool-btn-primary w-full", "data-action": "edit-feature" }, "✎ Modifier dans la vue");
+  button.addEventListener("click", () => ctx.onEditFeature?.());
+  return button;
+}
+
+const OPERATION_NAMES = { new: "Nouveau corps", join: "Union", cut: "Soustraction", intersect: "Intersection" };
+
+function revolveSection(feature: RevolveFeature, ctx: PropertiesContext): HTMLElement {
+  return section(
+    "Révolution",
+    editButton(ctx),
+    nameField(feature, ctx),
+    numberField({
+      label: "Angle",
+      value: feature.angle,
+      unit: "deg",
+      onCommit: (v) => (v > 360 ? false : ctx.onCommit((f) => (f.type === "revolve" ? { ...f, angle: v } : f))),
+    }),
+    el("dl", { class: "space-y-1" }, row("Axe", feature.axis), row("Opération", OPERATION_NAMES[feature.operation])),
+  );
+}
+
+function edgeSection(feature: FilletFeature | ChamferFeature, ctx: PropertiesContext): HTMLElement {
+  const isFillet = feature.type === "fillet";
+  return section(
+    isFillet ? "Congé" : "Chanfrein",
+    editButton(ctx),
+    nameField(feature, ctx),
+    numberField({
+      label: isFillet ? "Rayon" : "Distance",
+      value: isFillet ? feature.radius : feature.distance,
+      unit: ctx.unit,
+      onCommit: (v) =>
+        ctx.onCommit((f) => (f.type === "fillet" ? { ...f, radius: v } : f.type === "chamfer" ? { ...f, distance: v } : f)),
+    }),
+    el("dl", {}, row("Arêtes", String(feature.edges.length))),
+  );
+}
+
+function combineSection(feature: CombineFeature, ctx: PropertiesContext): HTMLElement {
+  return section(
+    "Combinaison",
+    editButton(ctx),
+    nameField(feature, ctx),
+    el(
+      "dl",
+      { class: "space-y-1" },
+      row("Opération", OPERATION_NAMES[feature.operation]),
+      row("Cible", feature.target),
+      row("Outils", feature.tools.join(", ")),
+    ),
+  );
+}
+
 function holeSection(feature: HoleFeature, ctx: PropertiesContext): HTMLElement {
   const patch = (update: Partial<HoleFeature>) => ctx.onCommit((f) => (f.type === "hole" ? { ...f, ...update } : f));
   const through = el("input", { type: "checkbox", class: "size-5 accent-sky-600", checked: feature.depth === "through" });
   through.addEventListener("change", () => patch({ depth: through.checked ? "through" : 10 }));
+  const onFace = feature.origin !== undefined;
   return section(
     "Perçage",
+    editButton(ctx),
     nameField(feature, ctx),
     numberField({ label: "Diamètre", value: feature.diameter, unit: ctx.unit, onCommit: (v) => patch({ diameter: v }) }),
-    numberField({ label: "Position X", value: feature.x, unit: ctx.unit, signed: true, onCommit: (v) => patch({ x: v }) }),
-    numberField({ label: "Position Y", value: feature.y, unit: ctx.unit, signed: true, onCommit: (v) => patch({ y: v }) }),
+    onFace ? null : numberField({ label: "Position X", value: feature.x, unit: ctx.unit, signed: true, onCommit: (v) => patch({ x: v }) }),
+    onFace ? null : numberField({ label: "Position Y", value: feature.y, unit: ctx.unit, signed: true, onCommit: (v) => patch({ y: v }) }),
     feature.depth === "through"
       ? null
       : numberField({ label: "Profondeur", value: feature.depth, unit: ctx.unit, onCommit: (v) => patch({ depth: v }) }),
@@ -105,6 +160,9 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
     sections.push(section("Nom", nameField(feature, ctx)), ...sketchSections(feature, ctx.status, ctx.unit, ctx.sketch));
   } else if (feature?.type === "extrude") sections.push(extrudeSection(feature, ctx));
   else if (feature?.type === "hole") sections.push(holeSection(feature, ctx));
+  else if (feature?.type === "revolve") sections.push(revolveSection(feature, ctx));
+  else if (feature?.type === "fillet" || feature?.type === "chamfer") sections.push(edgeSection(feature, ctx));
+  else if (feature?.type === "combine") sections.push(combineSection(feature, ctx));
 
   if (ctx.status?.state === "error" || ctx.status?.state === "blocked") {
     sections.unshift(
@@ -129,13 +187,9 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
       ),
     );
   }
-  if (ctx.face) {
-    sections.push(
-      section(
-        `Face n° ${ctx.face.faceIndex + 1}`,
-        el("dl", { class: "space-y-1.5" }, row("Type", SURFACE_LABELS[ctx.face.surface] ?? ctx.face.surface), row("Aire", formatArea(ctx.face.area, ctx.unit))),
-      ),
-    );
+  if (!ctx.sketch.editing) {
+    const picked = selectionSection(ctx.selection, ctx.unit, ctx.selectionActions);
+    if (picked) sections.unshift(picked);
   }
   if (sections.length === 0) {
     sections.push(section("Propriétés", el("p", { class: "text-sm text-gray-500" }, "Sélectionnez une opération dans l'arbre ou une face dans la vue.")));

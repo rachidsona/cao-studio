@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static assets %}<!doctype html>
 <html lang="fr" class="h-full">
 <head>
   <meta charset="utf-8">
@@ -16,7 +16,7 @@
       document.documentElement.classList.toggle("dark", dark);
     })();
   </script>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% versioned_static 'css/app.css' %}">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}min-h-full bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100{% endblock %}">

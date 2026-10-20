@@ -8,7 +8,6 @@
  * exact B-rep is computed by the kernel only when the feature is committed.
  */
 import * as THREE from "three";
-import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { closeCalculator, openCalculator } from "../ui/calculator";
 import { addExtrude, findFeature, updateFeature } from "../document/operations";
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
@@ -17,7 +16,7 @@ import { sketchFrame, toWorld, type SketchFrame, type Vec3 } from "../sketcher/f
 import { centroid, extractLoops, regions, type Region } from "../sketcher/loops";
 import { el } from "../ui/dom";
 import { textInputClass } from "../ui/fields";
-import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
+import { ArrowHandle } from "../viewport/arrow-handle";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 
 export interface ExtrudeToolHost {
@@ -41,9 +40,7 @@ const COMPACT_INPUT =
   "h-8 w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none " +
   "focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 
-const COLORS: Record<BooleanOperation, number> = { new: 0x0ea5e9, join: 0x22c55e, cut: 0xef4444 };
-const ARROW_PX = 70;
-
+const COLORS: Record<BooleanOperation, number> = { new: 0x0ea5e9, join: 0x22c55e, cut: 0xef4444, intersect: 0xa855f7 };
 function frameMatrix(frame: SketchFrame): THREE.Matrix4 {
   const m = new THREE.Matrix4().makeBasis(new THREE.Vector3(...frame.u), new THREE.Vector3(...frame.v), new THREE.Vector3(...frame.normal));
   return m.setPosition(new THREE.Vector3(...frame.origin));
@@ -55,41 +52,19 @@ function toShape(region: Region): THREE.Shape {
   return shape;
 }
 
-function makeArrow(): THREE.Group {
-  const arrow = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({ color: 0x0284c7, depthTest: false });
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 12), material);
-  shaft.position.y = 0.375;
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.25, 20), material);
-  head.position.y = 0.875;
-  // Wide invisible grip: easy to grab with a finger.
-  const grip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.22, 1.1, 8),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false }),
-  );
-  grip.position.y = 0.55;
-  for (const part of [shaft, head, grip]) part.renderOrder = 20;
-  arrow.add(shaft, head, grip);
-  return arrow;
-}
-
 export class ExtrudeTool implements PointerHandler {
   private root = new THREE.Group();
   private profiles: Profile[] = [];
   private selected: Profile | null = null;
   private preview: THREE.Mesh | null = null;
-  private arrow = makeArrow();
+  private arrow: ArrowHandle;
   private dialog: HTMLElement;
   private distance = 10;
   private operation: BooleanOperation = "new";
   private target: string | undefined;
   private editing: string | null = null;
-  private drag: { tDown: number; start: number } | null = null;
   private hovered: Profile | null = null;
-  private stopFrame: () => void;
   private container: HTMLElement;
-  private tipLabel: HTMLButtonElement;
-  private tip: CSS2DObject;
 
   constructor(
     private readonly viewport: Viewport,
@@ -97,8 +72,6 @@ export class ExtrudeTool implements PointerHandler {
     container: HTMLElement,
   ) {
     viewport.scene.add(this.root);
-    this.arrow.visible = false;
-    viewport.scene.add(this.arrow);
     // Compact panel docked on the right of the view, like desktop CAD tools; bottom strip on phones.
     this.dialog = el("div", {
       class:
@@ -110,15 +83,11 @@ export class ExtrudeTool implements PointerHandler {
     });
     container.append(this.dialog);
     this.container = container;
-    // Distance shown at the tip of the arrow; click it to type a value.
-    this.tipLabel = el("button", { type: "button", class: "cad-dimension pointer-events-auto" });
-    this.tipLabel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    this.tipLabel.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const r = this.tipLabel.getBoundingClientRect();
+    // Arrow along the sketch normal; its value label opens the keypad.
+    this.arrow = new ArrowHandle(viewport, (anchor) =>
       openCalculator({
         container: this.container,
-        anchor: { x: r.right, y: r.top + r.height / 2 },
+        anchor,
         value: Math.abs(this.distance),
         unit: this.host.unit(),
         title: "Distance d'extrusion",
@@ -128,12 +97,8 @@ export class ExtrudeTool implements PointerHandler {
           this.setDistance(value);
           return true;
         },
-      });
-    });
-    this.tip = new CSS2DObject(this.tipLabel);
-    this.tip.position.set(0, 1.25, 0);
-    this.arrow.add(this.tip);
-    this.stopFrame = viewport.onEachFrame(() => this.placeArrow());
+      }),
+    );
   }
 
   /** Opens the tool: on a given sketch, on an existing extrusion, or waiting for a profile click. */
@@ -224,7 +189,7 @@ export class ExtrudeTool implements PointerHandler {
     }
     const profile = this.selected;
     if (!profile) {
-      this.arrow.visible = false;
+      this.arrow.object.visible = false;
       return;
     }
     const geometry = new THREE.ExtrudeGeometry(profile.regions.map(toShape), { depth: Math.abs(this.distance), bevelEnabled: false });
@@ -237,20 +202,15 @@ export class ExtrudeTool implements PointerHandler {
     const holder = (profile.meshes[0] as THREE.Mesh).parent as THREE.Group;
     holder.add(mesh);
     this.preview = mesh;
-    this.arrow.visible = true;
     this.placeArrow();
   }
 
-  /** Keeps the arrow at the extrusion end, pointing outward, at a constant size on screen. */
+  /** Arrow at the extrusion end, pointing outward. */
   private placeArrow(): void {
     const base = this.base();
     if (!base || !this.selected) return;
-    const n = new THREE.Vector3(...this.selected.frame.normal);
-    const direction = n.clone().multiplyScalar(this.distance < 0 ? -1 : 1);
-    this.arrow.position.copy(new THREE.Vector3(...base).addScaledVector(n, this.distance));
-    this.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    this.arrow.scale.setScalar(ARROW_PX * this.viewport.worldPerPixel());
-    this.tipLabel.textContent = `${trim(toDisplay(this.distance, this.host.unit()), 3)} ${UNIT_LABELS[this.host.unit()]}`;
+    const unit = this.host.unit();
+    this.arrow.place(base, this.selected.frame.normal, this.distance, `${trim(toDisplay(this.distance, unit), 3)} ${UNIT_LABELS[unit]}`);
   }
 
   private setDistance(value: number): void {
@@ -263,32 +223,19 @@ export class ExtrudeTool implements PointerHandler {
 
   // ---- pointer ----------------------------------------------------------------
 
-  private axisT(event: PointerEvent): number | null {
-    const base = this.base();
-    if (!base || !this.selected) return null;
-    const { origin, direction } = this.viewport.rayFromEvent(event);
-    return axisParameter(base, this.selected.frame.normal, origin, direction);
-  }
-
   down(event: PointerEvent): boolean {
-    if (!this.arrow.visible || this.viewport.intersect(event, [this.arrow]).length === 0) return false;
-    const t = this.axisT(event);
-    if (t === null) return false;
-    this.drag = { tDown: t, start: this.distance };
-    return true;
+    return this.selected !== null && this.arrow.dragStart(event);
   }
 
   move(event: PointerEvent): void {
-    if (this.drag) {
-      const t = this.axisT(event);
-      if (t === null) return;
-      const step = dragStep(this.viewport.worldPerPixel());
-      this.setDistance(roundTo(this.drag.start + t - this.drag.tDown, step));
+    const dragged = this.arrow.dragMove(event);
+    if (dragged !== null) {
+      this.setDistance(dragged);
       return;
     }
     const hit = this.viewport.intersect(event, this.profiles.flatMap((p) => p.meshes))[0];
     const hovered = hit ? (this.profiles.find((p) => p.meshes.includes(hit.object as THREE.Mesh)) ?? null) : null;
-    const overArrow = this.arrow.visible && this.viewport.intersect(event, [this.arrow]).length > 0;
+    const overArrow = this.arrow.hovered(event);
     this.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : hovered ? "pointer" : "";
     if (hovered !== this.hovered) {
       this.hovered = hovered;
@@ -297,10 +244,7 @@ export class ExtrudeTool implements PointerHandler {
   }
 
   up(event: PointerEvent, isClick: boolean): boolean {
-    if (this.drag) {
-      this.drag = null;
-      return true;
-    }
+    if (this.arrow.dragEnd()) return true;
     if (!isClick) return false;
     const hit = this.viewport.intersect(event, this.profiles.flatMap((p) => p.meshes))[0];
     const profile = hit ? this.profiles.find((p) => p.meshes.includes(hit.object as THREE.Mesh)) : undefined;
@@ -365,6 +309,7 @@ export class ExtrudeTool implements PointerHandler {
           ["new", "Nouveau corps"],
           ["join", "Union"],
           ["cut", "Soustraction"],
+          ["intersect", "Intersection"],
         ] as const
       ).map(([v, label]) => el("option", { value: v, selected: v === this.operation }, label)),
     );
@@ -463,11 +408,10 @@ export class ExtrudeTool implements PointerHandler {
 
   private close(): void {
     closeCalculator();
-    this.tipLabel.remove();
-    this.stopFrame();
+    this.arrow.dispose();
     this.viewport.setPointerHandler(null);
     this.viewport.renderer.domElement.style.cursor = "";
-    for (const object of [this.root, this.arrow]) {
+    for (const object of [this.root]) {
       object.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.geometry.dispose();

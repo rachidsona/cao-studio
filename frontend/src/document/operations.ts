@@ -12,7 +12,7 @@ export function uniqueId(doc: CadDocument, prefix: string): string {
   return `${prefix}${n}`;
 }
 
-function uniqueName(doc: CadDocument, base: string): string {
+export function uniqueName(doc: CadDocument, base: string): string {
   const used = new Set(doc.features.map((f) => f.name));
   let n = 1;
   while (used.has(`${base} ${n}`)) n++;
