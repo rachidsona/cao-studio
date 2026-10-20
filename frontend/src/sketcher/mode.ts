@@ -367,9 +367,11 @@ export class SketchMode implements PointerHandler {
       return;
     }
     if (this.tool) {
-      this.tool.reset();
-      this.preview = null;
-    } else this.selection.clear();
+      // Échap ends the drawing (an open polyline stays as drawn) and goes back to the selection tool.
+      this.setTool("select");
+      return;
+    }
+    this.selection.clear();
     this.render();
     this.host.changed();
   }
@@ -530,7 +532,11 @@ export class SketchMode implements PointerHandler {
       try {
         const result = this.tool.click(this.geometry, this.snapAt(p));
         if (result.kind === "commit") {
-          if (this.apply(result.geometry) && !result.done) this.preview = null;
+          // A finished shape (rectangle, circle, arc, closed polyline) hands back to the selection tool.
+          if (this.apply(result.geometry)) {
+            if (result.done) this.setTool("select");
+            else this.preview = null;
+          }
         } else this.preview = result.preview;
       } catch (error) {
         this.host.notify(error instanceof Error ? error.message : String(error), "error");

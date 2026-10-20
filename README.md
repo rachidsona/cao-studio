@@ -100,6 +100,9 @@ serveur accepte les deux versions.
     projection n'est pas associative (si le corps change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+  Une fois une forme terminée (rectangle, cercle, arc, polyligne refermée), on revient à l'outil Sélection ;
+  Échap termine une polyligne ouverte et revient aussi à la Sélection. Les autres outils (cotes,
+  contraintes, Décalage, Déplacer) ne changent pas.
 - **Décalage** (touche O, bouton « Décalage ») : copie parallèle de lignes, segments, arcs, cercles,
   polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :
   - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Sélection en
