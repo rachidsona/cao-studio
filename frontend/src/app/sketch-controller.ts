@@ -5,7 +5,8 @@
  */
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
-import { findCurve } from "../sketcher/edit";
+import { solveSketch } from "../constraints/solver";
+import { findCurve, setDimensionValue } from "../sketcher/edit";
 import { findFeature, uniqueId, updateFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit, PlaneName, SketchFeature } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
@@ -154,10 +155,26 @@ export class SketchController {
     this.refresh();
   }
 
-  /** Dimension edited in the properties panel; returns false when the solver refuses it. */
-  setDimension(id: string, value: number): boolean {
-    if (this.mode) return this.mode.setDimension(id, value);
-    return false;
+  /**
+   * Dimension edited in the properties panel, in the sketch being edited or in another one:
+   * solved first, refused (false) if the sketch cannot satisfy it.
+   */
+  setDimensionOf(featureId: string, dimensionId: string, value: number): boolean {
+    if (this.mode?.featureId === featureId) return this.mode.setDimension(dimensionId, value);
+    const feature = findFeature(this.host.doc(), featureId);
+    if (feature?.type !== "sketch") return false;
+    try {
+      const result = solveSketch(setDimensionValue(feature, dimensionId, value));
+      if (result.state === "conflicting" || result.state === "failed") {
+        this.host.notify("Cote refusée : l'esquisse ne peut pas la respecter.", "error");
+        return false;
+      }
+      this.commit(featureId, result.geometry);
+      return true;
+    } catch (error) {
+      this.host.notify(error instanceof Error ? error.message : String(error), "error");
+      return false;
+    }
   }
 
   removeConstraint(id: string): void {

@@ -3,7 +3,7 @@
  * and never mutates its input, so every edit can be undone.
  */
 import { rectangleAt } from "./sketch";
-import { cloneDocument, consumedBodies, featureInputs, type CadDocument, type Feature, type HoleFeature } from "./types";
+import { cloneDocument, consumedBodies, featureInputs, SOLID_FEATURES, type CadDocument, type Feature, type HoleFeature } from "./types";
 
 export function uniqueId(doc: CadDocument, prefix: string): string {
   const used = new Set(doc.features.map((f) => f.id));
@@ -116,6 +116,11 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   }
   const removed = new Set([id, ...dependentsOf(next, id)]);
   next = { ...next, features: next.features.filter((f) => !removed.has(f.id)) };
+  if (next.bodyNames) {
+    // A freed id can be reused by a later feature: it must not inherit the name of a deleted body.
+    const names = Object.fromEntries(Object.entries(next.bodyNames).filter(([key]) => !removed.has(key)));
+    next = { ...next, bodyNames: names };
+  }
   return next;
 }
 
@@ -128,7 +133,34 @@ export function latestBody(doc: CadDocument, bodyId: string): string {
   return current;
 }
 
-/** Display name of a body: the name of the feature that produces it. */
+/** Feature that created a body: the first of its chain that consumes no body ("new" extrusion…). */
+export function bodyOrigin(doc: CadDocument, bodyId: string): string {
+  let id = bodyId;
+  for (let guard = 0; guard <= doc.features.length; guard++) {
+    const feature = findFeature(doc, id);
+    const previous = feature ? consumedBodies(feature)[0] : undefined;
+    if (!previous) return id;
+    id = previous;
+  }
+  return id;
+}
+
+/** Display name of a body: the name given to it, else "Corps n" in order of creation. */
 export function bodyLabel(doc: CadDocument, bodyId: string): string {
-  return findFeature(doc, bodyId)?.name ?? bodyId;
+  const origin = bodyOrigin(doc, bodyId);
+  const given = doc.bodyNames?.[origin];
+  if (given) return given;
+  const origins = doc.features.filter((f) => SOLID_FEATURES.has(f.type) && consumedBodies(f).length === 0).map((f) => f.id);
+  const n = origins.indexOf(origin) + 1;
+  return n > 0 ? `Corps ${n}` : (findFeature(doc, origin)?.name ?? origin);
+}
+
+/** Gives a body its own name (kept with the feature that created it). */
+export function renameBody(doc: CadDocument, bodyId: string, name: string): CadDocument {
+  return { ...doc, bodyNames: { ...doc.bodyNames, [bodyOrigin(doc, bodyId)]: name } };
+}
+
+/** Shows or hides a feature in the 3D view (sketches, and the body a feature created). */
+export function toggleHidden(doc: CadDocument, id: string): CadDocument {
+  return updateFeature(doc, id, (f) => ({ ...f, hidden: !f.hidden }));
 }

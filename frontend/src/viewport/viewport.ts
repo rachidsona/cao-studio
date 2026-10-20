@@ -472,6 +472,14 @@ export class Viewport {
     return edgeIndex < 0 ? null : { bodyId, edgeIndex };
   }
 
+  /** Selects one whole body (from the browser), replacing the current selection. */
+  selectBody(bodyId: string): void {
+    this.selection.clear();
+    if (this.bodies.has(bodyId)) this.selection.toggleBody(bodyId);
+    this.selection.render(this.bodies);
+    this.onSelectionChange(this.selection.snapshot());
+  }
+
   clearSelection(): void {
     if (this.selection.empty) return;
     this.selection.clear();

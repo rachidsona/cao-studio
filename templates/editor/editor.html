@@ -128,22 +128,25 @@
 
   <div class="relative flex min-h-0 flex-1">
     {# ---- Model tree (left panel on large screens, bottom sheet on phones/tablets) ---- #}
-    <aside data-ref="panel-tree" data-open="false" aria-label="Arborescence du modèle"
+    <aside data-ref="panel-tree" data-open="false" aria-label="Navigateur : corps et esquisses"
            class="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-white lg:flex dark:border-gray-800 dark:bg-gray-900
                   max-lg:fixed max-lg:inset-x-0 max-lg:bottom-16 max-lg:z-30 max-lg:max-h-[55dvh] max-lg:w-auto max-lg:rounded-t-xl max-lg:border-t max-lg:shadow-2xl
                   data-[open=true]:flex">
       <div class="flex items-center justify-between px-4 pt-3 pb-1">
-        <h2 class="panel-title">Historique paramétrique</h2>
+        <h2 class="panel-title">Navigateur</h2>
         <button type="button" class="tool-btn lg:hidden" data-action="close-panels" aria-label="Fermer">✕</button>
       </div>
       <div data-ref="tree" class="flex-1 overflow-y-auto px-2 pb-3"></div>
     </aside>
 
-    {# ---- 3D viewport ---- #}
-    <main id="main" class="relative min-w-0 flex-1">
-      <div data-ref="viewport" class="absolute inset-0"></div>
-      <div data-ref="toasts" class="pointer-events-none absolute top-3 left-1/2 z-40 flex w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 flex-col items-center gap-2" aria-live="polite"></div>
-    </main>
+    {# ---- 3D viewport with the operations timeline below it ---- #}
+    <div data-ref="workspace" class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <main id="main" class="relative min-h-0 min-w-0 flex-1">
+        <div data-ref="viewport" class="absolute inset-0"></div>
+        <div data-ref="toasts" class="pointer-events-none absolute top-3 left-1/2 z-40 flex w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 flex-col items-center gap-2" aria-live="polite"></div>
+      </main>
+      <div data-ref="timeline" class="shrink-0 border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"></div>
+    </div>
 
     {# ---- Properties ---- #}
     <aside data-ref="panel-properties" data-open="false" aria-label="Propriétés"

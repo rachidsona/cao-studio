@@ -160,6 +160,8 @@ export interface CadDocument {
   units: DisplayUnit;
   parameters: Record<string, Parameter>;
   features: Feature[];
+  /** Names given to bodies, keyed by the id of the feature that created each body. */
+  bodyNames?: Record<string, string>;
 }
 
 /** Reference part: 80 x 50 x 10 mm plate with a 10 mm through hole. */

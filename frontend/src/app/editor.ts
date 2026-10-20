@@ -2,22 +2,19 @@
  * Editor controller: wires the Django page, the document session, the
  * geometry worker, the viewport and the panels together.
  */
-import { solveSketch } from "../constraints/solver";
-import { addExtrude, addPlate, bodyLabel, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
-import { setDimensionValue } from "../sketcher/edit";
+import { addExtrude, addPlate, bodyLabel, bodyOrigin, dependentsOf, deleteFeature, findFeature, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
 import type { FeatureStatus } from "../history/recompute";
-import type { ExportFormat } from "../io/exporters";
-import { NATIVE_EXTENSION, parseNative, serializeNative } from "../io/native";
 import { trim } from "../measurements/units";
-import { download, ref, slugify, toast } from "../ui/dom";
+import { ref, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
-import { renderTree } from "../ui/tree";
+import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
 import { ExtrudeTool } from "./extrude-tool";
+import { FileCommands } from "./file-commands";
 import { bindShortcuts } from "./keyboard";
 import { ModelSelectionController } from "./model-selection";
 import { extrudeTargets, ToolLauncher, type PanelToolKind } from "./tool-launcher";
@@ -48,6 +45,8 @@ export class Editor {
   private recomputeAgain = false;
   private sketches: SketchController;
   private sketchDisplay: SketchDisplay;
+  private navigator: Navigator;
+  private files: FileCommands;
   private panelDeferred = false;
   private extrudeTool: ExtrudeTool | null = null;
   private tools: ToolLauncher;
@@ -86,6 +85,36 @@ export class Editor {
       selectedFace: () => this.picked.lastFace,
       faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex),
       offset: (paths, distance, join) => this.geometry.offset(paths, distance, join),
+    });
+    this.files = new FileCommands({
+      session,
+      geometry,
+      projectName: config.projectName,
+      doc: () => this.doc,
+      notify: (message, kind) => this.notify(message, kind),
+      imported: async (doc) => {
+        this.selectedFeature = null;
+        this.viewport.clearSelection();
+        this.session.apply(doc);
+        ref<HTMLSelectElement>(this.root, "units").value = doc.units;
+        await this.recompute(true);
+      },
+    });
+    this.navigator = new Navigator(root, {
+      doc: () => this.doc,
+      statuses: () => this.statuses,
+      bodyIds: () => (this.result?.bodies ?? []).map((b) => b.bodyId),
+      selectedId: () => this.selectedFeature,
+      selectedBodyId: () => this.picked.bodyId ?? null,
+      selectFeature: (id) => this.selectFeature(id),
+      selectBody: (id) => ((this.selectedFeature = id), this.viewport.selectBody(id), this.render()),
+      toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
+      rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
+      renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
+      removeBody: (id) => this.removeFeature(bodyOrigin(this.doc, id)),
+      edit: (id) => this.editFeature(id),
+      toggleSuppress: (id) => this.toggleSuppress(id),
+      remove: (id) => this.removeFeature(id),
     });
     const main = root.querySelector("main") as HTMLElement;
     this.tools = new ToolLauncher({
@@ -149,7 +178,9 @@ export class Editor {
       this.result = result;
       this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
       this.picked.invalidate();
-      this.viewport.setBodies(result.bodies);
+      // Bodies hidden with the eye of the browser stay in the document but are not drawn.
+      const shown = this.previewDoc ?? this.doc;
+      this.viewport.setBodies(result.bodies.filter((b) => !findFeature(shown, bodyOrigin(shown, b.bodyId))?.hidden));
       if (fitView) this.viewport.setView("iso");
       const failures = result.statuses.filter((s) => s.state === "error").length;
       ref(this.root, "status-recompute").textContent =
@@ -177,12 +208,7 @@ export class Editor {
 
   render(): void {
     this.sketchDisplay.sync(this.doc, this.sketches.mode?.featureId ?? null);
-    renderTree(ref(this.root, "tree"), this.doc, this.statuses, this.selectedFeature, {
-      onSelect: (id) => this.selectFeature(id),
-      onToggleSuppress: (id) => this.toggleSuppress(id),
-      onToggleHidden: (id) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, hidden: !f.hidden }))),
-      onDelete: (id) => this.removeFeature(id),
-    });
+    this.navigator.render();
     const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;
     const panel = ref(this.root, "properties");
     // Never rebuild the panel under the user's fingers: wait until the field being edited loses focus.
@@ -225,8 +251,7 @@ export class Editor {
       sketch: {
         editing,
         onEdit: () => feature && this.sketches.open(feature.id),
-        onDimension: (id, value) =>
-          editing ? this.sketches.setDimension(id, value) : feature ? this.setSketchDimension(feature.id, id, value) : false,
+        onDimension: (id, value) => (feature ? this.sketches.setDimensionOf(feature.id, id, value) : false),
         onRemoveConstraint: (id) => this.sketches.removeConstraint(id),
         onOffset: (value) => this.patchSelected((f) => (f.type === "sketch" ? { ...f, offset: value } : f)),
       },
@@ -235,24 +260,6 @@ export class Editor {
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
-  }
-
-  /** Edits a dimension outside sketch mode: solved first, refused if the sketch cannot satisfy it. */
-  private setSketchDimension(featureId: string, dimensionId: string, value: number): boolean {
-    const feature = findFeature(this.doc, featureId);
-    if (feature?.type !== "sketch") return false;
-    try {
-      const result = solveSketch(setDimensionValue(feature, dimensionId, value));
-      if (result.state === "conflicting" || result.state === "failed") {
-        this.notify("Cote refusée : l'esquisse ne peut pas la respecter.", "error");
-        return false;
-      }
-      void this.change(updateFeature(this.doc, featureId, (f) => (f.type === "sketch" ? { ...f, ...result.geometry } : f)));
-      return true;
-    } catch (error) {
-      this.notify(error instanceof Error ? error.message : String(error), "error");
-      return false;
-    }
   }
 
   private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
@@ -292,6 +299,14 @@ export class Editor {
     void this.change(updateFeature(this.doc, this.selectedFeature, patch));
   }
 
+  /** Reopens the tool of a feature: the sketch editor, the extrusion arrow, or the panel tool. */
+  private editFeature(id: string): void {
+    const feature = findFeature(this.doc, id);
+    if (feature?.type === "sketch") this.sketches.open(id);
+    else if (feature?.type === "extrude") this.extrudeCommand(id);
+    else if (feature) this.tools.edit(id);
+  }
+
   private toggleSuppress(id: string): void {
     void this.change(updateFeature(this.doc, id, (f) => ({ ...f, suppressed: !f.suppressed })));
   }
@@ -311,7 +326,6 @@ export class Editor {
     void this.change(next);
   }
 
-  /** Extrudes the selected sketch (or the last one) as a new body. */
   /**
    * Opens the interactive extrusion: on the sketch being edited or selected,
    * otherwise waiting for a profile click in the view.
@@ -389,38 +403,6 @@ export class Editor {
     void this.recompute();
   }
 
-  private async save(): Promise<void> {
-    if (!this.session.dirty) {
-      this.notify("Aucune modification à enregistrer.");
-      return;
-    }
-    await this.session.save("Enregistrement manuel").catch(() => undefined);
-  }
-
-  private async exportGeometry(format: ExportFormat): Promise<void> {
-    try {
-      const names = Object.fromEntries(this.doc.features.map((f) => [f.id, f.name]));
-      const blob = await this.geometry.export(format, names);
-      download(blob, `${slugify(this.config.projectName)}.${format}`);
-    } catch (error) {
-      this.notify(error instanceof Error ? error.message : String(error), "error");
-    }
-  }
-
-  private async importNative(file: File): Promise<void> {
-    try {
-      const doc = parseNative(await file.text());
-      this.selectedFeature = null;
-      this.viewport.clearSelection();
-      this.session.apply(doc);
-      ref<HTMLSelectElement>(this.root, "units").value = doc.units;
-      await this.recompute(true);
-      this.notify(`« ${file.name} » importé.`, "success");
-    } catch (error) {
-      this.notify(error instanceof Error ? error.message : String(error), "error");
-    }
-  }
-
   openPanel(panel: "tree" | "properties" | null): void {
     for (const name of ["tree", "properties"] as const) {
       const aside = ref(this.root, `panel-${name}`);
@@ -432,7 +414,7 @@ export class Editor {
 
   private bindActions(): void {
     const actions: Record<string, (target: HTMLElement) => void> = {
-      save: () => void this.save(),
+      save: () => void this.files.save(),
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
       "add-plate": () => this.addPlateCommand(),
@@ -442,9 +424,9 @@ export class Editor {
       chamfer: () => this.openTool("chamfer"),
       combine: () => this.openTool("combine"),
       extrude: () => this.extrudeCommand(),
-      "export-step": () => void this.exportGeometry("step"),
-      "export-stl": () => void this.exportGeometry("stl"),
-      "export-native": () => download(serializeNative(this.doc), `${slugify(this.config.projectName)}${NATIVE_EXTENSION}`),
+      "export-step": () => void this.files.exportGeometry("step"),
+      "export-stl": () => void this.files.exportGeometry("stl"),
+      "export-native": () => this.files.exportNative(),
       "import-native": () => ref<HTMLInputElement>(this.root, "import-file").click(),
       view: (target) => this.viewport.setView(target.dataset.view as StandardView),
       fit: () => this.viewport.fit(),
@@ -472,7 +454,7 @@ export class Editor {
       const input = event.target as HTMLInputElement;
       const file = input.files?.[0];
       input.value = "";
-      if (file) void this.importNative(file);
+      if (file) void this.files.importNative(file);
     });
   }
 
@@ -480,7 +462,7 @@ export class Editor {
     bindShortcuts({
       activeTool: () => this.extrudeTool ?? this.tools.active,
       sketchKey: (event) => this.sketches.handleKey(event),
-      save: () => void this.save(),
+      save: () => void this.files.save(),
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
       escape: () => {

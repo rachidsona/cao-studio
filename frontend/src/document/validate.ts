@@ -114,6 +114,9 @@ export function validateDocument(input: unknown): string[] {
   if (input.schemaVersion !== SCHEMA_VERSION) errors.push(`Version de schéma non prise en charge.`);
   if (!UNITS.has(input.units as string)) errors.push("Unité d'affichage invalide.");
   if (input.parameters !== undefined && !isObject(input.parameters)) errors.push("« parameters » doit être un objet.");
+  if (input.bodyNames !== undefined && (!isObject(input.bodyNames) || !Object.values(input.bodyNames).every((v) => typeof v === "string"))) {
+    errors.push("« bodyNames » doit associer un nom à chaque corps.");
+  }
   if (!Array.isArray(input.features)) {
     errors.push("« features » doit être une liste.");
     return errors;

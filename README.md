@@ -65,7 +65,7 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 | `frontend/src/sketcher/` | Repères de plan, outils de dessin, accrochage, profils fermés, rendu et mode esquisse |
 | `frontend/src/history/` | Recalcul incrémental (cache par clé de dépendances), annuler/rétablir |
 | `frontend/src/viewport/` | Scène Three.js en Z vers le haut, grille adaptative, gizmo, vues, sélection de faces |
-| `frontend/src/ui/`, `app/` | Arbre, propriétés, session (enregistrement automatique, récupération) |
+| `frontend/src/ui/`, `app/` | Navigateur, ligne de temps, propriétés, session (enregistrement automatique, récupération) |
 | `frontend/src/io/` | Export STEP/STL, import/export du format natif `.cao.json` |
 | `frontend/src/persistence/` | API Django (CSRF, conflits de version), copie locale de secours |
 
@@ -79,7 +79,7 @@ Principes :
   `keepalive` à la fermeture de la page.
 - Chaque enregistrement crée une version. Un `base_version` périmé renvoie 409 et la copie
   locale est conservée.
-- Une opération en échec est signalée dans l'arbre, ses dépendantes sont marquées
+- Une opération en échec est signalée dans le navigateur et la ligne de temps, ses dépendantes sont marquées
   « bloquées », et le dernier corps valide reste affiché.
 
 ## Esquisses (phase 4)
@@ -209,11 +209,19 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 ## Utilisation de l'éditeur
 
 - **Esquisses visibles** : les esquisses restent affichées dans la vue 3D (nettes devant les corps,
-  atténuées à travers) ; l'icône œil à côté de chaque esquisse, dans l'arbre, la masque ou la réaffiche.
+  atténuées à travers) ; l'icône œil à côté de chaque esquisse, dans le navigateur, la masque ou la réaffiche.
   Le choix est enregistré avec le document (champ `hidden`) et s'annule comme le reste ; il ne
   recalcule rien. Les lignes de construction et les arêtes projetées ne sont pas dessinées.
-- **Arbre** : sélectionner une opération, la désactiver (●/◌) ou la supprimer (✕). Supprimer
-  un perçage relie les perçages suivants au corps précédent.
+- **Navigateur** (à gauche) : les **corps** et les **esquisses** du document. Chaque ligne a un œil pour
+  l'afficher ou la masquer (un corps masqué reste dans le document, il n'est pas dessiné ; le choix est
+  enregistré et s'annule). Un clic sélectionne ; le bouton « ⋯ » ouvre la fenêtre de l'élément.
+  Un corps s'appelle « Corps 1 », « Corps 2 »… dans l'ordre de création, quelles que soient ses
+  opérations, et se renomme (le nom suit le corps à travers ses opérations suivantes) ; supprimer un
+  corps supprime l'opération qui l'a créé et celles qui en dépendent, après confirmation.
+- **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
+  chanfrein, combinaison). Un clic ouvre une fenêtre pour **renommer**, **modifier** (rouvre l'outil
+  de l'opération : flèche de l'extrusion, panneau de l'outil), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
+  les perçages suivants au corps précédent.
 - **Propriétés** : saisir les cotes dans l'unité d'affichage (virgule acceptée), puis Entrée
   pour recalculer.
 - **Plaque** : nouveau corps (esquisse rectangle + extrusion).
@@ -223,7 +231,7 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 - **Navigation** : clic gauche pour l'orbite, clic droit ou molette-clic pour le panoramique,
   molette pour le zoom. Au doigt : un doigt pour l'orbite, deux doigts pour le zoom et le
   panoramique.
-- **Petits écrans** (moins de 1024 px) : l'arbre et les propriétés s'ouvrent en feuilles
+- **Petits écrans** (moins de 1024 px) : le navigateur et les propriétés s'ouvrent en feuilles
   basses.
 
 ## Limites connues (incrément 1)
