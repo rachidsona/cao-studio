@@ -102,10 +102,13 @@ serveur accepte les deux versions.
   décalage (O), construction (X).
 - **Décalage** (touche O, bouton « Décalage ») : copie parallèle de lignes, segments, arcs, cercles,
   polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :
-  - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Chaîne
-    connectée » est décochée), ou sélectionnez-les avant d'ouvrir l'outil ;
-  - la distance se saisit au clavier ou à la calculatrice, positive ou négative ; « Côté » choisit
-    extérieur/intérieur pour un contour fermé, gauche/droite du sens de tracé pour une chaîne ouverte ;
+  - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Sélection en
+    chaîne » est décochée), ou sélectionnez-les avant d'ouvrir l'outil ;
+  - la distance se saisit au clavier ou à la calculatrice, positive ou négative ; « Inverser » change
+    le côté ; pour un contour fermé, positif = extérieur ; pour une chaîne ouverte, positif = à gauche
+    du sens de tracé ;
+  - « Direction » : un côté, ou deux côtés (une copie de chaque côté, à la même distance) ;
+  - la fenêtre se replie avec « − », « i » affiche l'aide ;
   - coins arrondis (arc autour du coin) ou vifs (prolongés jusqu'à leur intersection) ;
   - l'aperçu est le résultat réel du noyau, recalculé à chaque changement ; OK (Entrée) ajoute les
     courbes à l'esquisse en une seule étape d'annulation, Échap annule ; l'original est conservé ;

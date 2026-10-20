@@ -40,6 +40,10 @@ export class OffsetTool {
   private flip = false;
   private join: OffsetJoin = "round";
   private chain = true;
+  /** "one": a single copy on the chosen side; "both": a copy on each side, at the same distance. */
+  private direction: "one" | "both" = "one";
+  private collapsed = false;
+  private showHelp = false;
   private outcome: OffsetOutcome | null = null;
   private problem: string | null = null;
   private busy = false;
@@ -52,9 +56,7 @@ export class OffsetTool {
 
   constructor(private readonly host: OffsetHost) {
     this.panel = el("div", {
-      class:
-        "absolute top-2 right-2 z-30 w-64 space-y-2 rounded-lg border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
-        "max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto dark:border-gray-700 dark:bg-gray-900/95",
+      class: "absolute top-2 right-2 z-30 w-72 max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto",
       role: "dialog",
       "aria-label": "Décalage",
     });
@@ -105,6 +107,9 @@ export class OffsetTool {
       flip: this.flip,
       join: this.join,
       chain: this.chain,
+      direction: this.direction,
+      collapsed: this.collapsed,
+      showHelp: this.showHelp,
       selected: this.curveIds().length,
       paths: this.paths.length,
       sides: kinds.size === 0 ? "none" : kinds.size > 1 ? "mixed" : kinds.has("open") ? "open" : "closed",
@@ -152,6 +157,22 @@ export class OffsetTool {
         this.chain = chain;
         this.draw();
       },
+      setDirection: (direction) => {
+        this.direction = direction;
+        this.refresh();
+      },
+      clearSelection: () => {
+        this.host.selection.clear();
+        this.refresh();
+      },
+      toggleCollapsed: () => {
+        this.collapsed = !this.collapsed;
+        this.draw();
+      },
+      toggleHelp: () => {
+        this.showHelp = !this.showHelp;
+        this.draw();
+      },
       confirm: () => void this.confirm(),
       cancel: () => this.cancel(),
     });
@@ -178,11 +199,24 @@ export class OffsetTool {
     this.busy = true;
     this.draw();
     try {
-      const outcome = await this.host.compute(this.paths, this.signed(), this.join);
+      const outcome = await this.compute();
       this.settle(ticket, outcome, null);
     } catch (error) {
       this.settle(ticket, null, error instanceof Error ? error.message : String(error));
     }
+  }
+
+  /** One copy on the chosen side, or one on each side (a side that disappears is reported, not fatal). */
+  private async compute(): Promise<OffsetOutcome> {
+    if (this.direction === "one") return this.host.compute(this.paths, this.signed(), this.join);
+    const d = Math.abs(this.distance);
+    const results = await Promise.allSettled([this.host.compute(this.paths, d, this.join), this.host.compute(this.paths, -d, this.join)]);
+    const done = results.filter((r): r is PromiseFulfilledResult<OffsetOutcome> => r.status === "fulfilled");
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (done.length === 0) throw failed?.reason;
+    const warnings = done.flatMap((r) => r.value.warnings);
+    if (failed) warnings.push(`Un des deux côtés est ignoré : ${failed.reason instanceof Error ? failed.reason.message : String(failed.reason)}`);
+    return { curves: done.flatMap((r) => r.value.curves), warnings };
   }
 
   private settle(ticket: number, outcome: OffsetOutcome | null, problem: string | null): void {
