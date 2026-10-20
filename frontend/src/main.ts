@@ -1,5 +1,6 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
+import { bindSelectionFilter } from "./app/selection-filter";
 import { DocumentSession } from "./app/session";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
 import { initSolver } from "./constraints/solver";
@@ -55,6 +56,7 @@ async function start(): Promise<void> {
     else clearRecovery(config.projectId);
   }
 
+  bindSelectionFilter(root, viewport);
   const editor = new Editor(root, config, session, geometry, viewport);
   editor.render();
   await editor.recompute(true);

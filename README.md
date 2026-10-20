@@ -149,6 +149,9 @@ opération existante.
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
+  - le filtre de la barre d'outils choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
+    sinon face), « Faces », « Arêtes » ou « Corps » (le corps entier, avec « Combiner » pour plusieurs
+    corps). Le choix est mémorisé ;
   - la cote de chaque arête sélectionnée s'affiche dans la vue (longueur, Ø ou R) ;
   - le panneau « Sélection » donne les mesures et propose les actions : congé ou chanfrein sur les
     arêtes, extrusion ou perçage sur les faces.

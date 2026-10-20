@@ -127,14 +127,16 @@ export class CombineTool extends PanelTool {
   private operation: CombineFeature["operation"];
   private keepTools: boolean;
 
-  constructor(ctx: ToolContext, editing: CombineFeature | null) {
+  /** `preselected`: bodies picked in the model (first = target, others = tools). */
+  constructor(ctx: ToolContext, editing: CombineFeature | null, preselected: string[] = []) {
     super(ctx, "Combiner des corps", editing);
     const doc = ctx.doc();
     this.id = editing?.id ?? uniqueId(doc, "cb");
     this.name = editing?.name ?? uniqueName(doc, "Combinaison");
     const bodies = ctx.bodies();
-    this.target = editing?.target ?? bodies[0]?.id;
-    this.tools = new Set(editing?.tools ?? (bodies[1] ? [bodies[1].id] : []));
+    const [first, ...others] = preselected;
+    this.target = editing?.target ?? first ?? bodies[0]?.id;
+    this.tools = new Set(editing?.tools ?? (first ? others : bodies[1] ? [bodies[1].id] : []));
     this.operation = editing?.operation ?? "join";
     this.keepTools = editing?.keepTools ?? false;
   }

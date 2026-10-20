@@ -62,10 +62,14 @@ export class Editor {
     session.onStateChange = (state, detail) => this.showSaveState(state, detail);
     this.picked = new ModelSelectionController(viewport, geometry, {
       unit: () => this.unit,
+      bodyName: (id) => findFeature(this.doc, id)?.name ?? id,
       changed: () => {
-        const { faces, edges } = this.picked.selection;
-        ref(this.root, "status-selection").textContent =
-          faces.length + edges.length ? `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)` : "Aucune sélection";
+        const { faces, edges, bodies } = this.picked.selection;
+        ref(this.root, "status-selection").textContent = this.picked.empty
+          ? "Aucune sélection"
+          : bodies.length
+            ? `${bodies.length} corps sélectionné(s)`
+            : `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)`;
         if (!this.picked.empty) this.openPanel("properties");
         this.render();
       },
@@ -207,6 +211,7 @@ export class Editor {
         chamfer: () => this.openTool("chamfer"),
         extrude: () => this.extrudeCommand(),
         hole: () => this.openTool("hole"),
+        combine: () => this.openTool("combine"),
         clear: () => this.viewport.clearSelection(),
       },
       targets: this.extrudeTargets(feature?.id ?? null),
@@ -373,6 +378,7 @@ export class Editor {
       ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
       ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
       ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
+      ...(kind === "combine" && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
     });
   }
 

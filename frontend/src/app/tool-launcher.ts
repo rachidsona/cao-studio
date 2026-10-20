@@ -18,7 +18,7 @@ export class ToolLauncher {
 
   open(
     kind: PanelToolKind,
-    options: { featureId?: string; sketchId?: string; pick?: FacePick; edges?: EdgePick[]; faces?: FacePick[] } = {},
+    options: { featureId?: string; sketchId?: string; pick?: FacePick; edges?: EdgePick[]; faces?: FacePick[]; bodies?: string[] } = {},
   ): void {
     this.active?.cancel();
     const editing = options.featureId ? (findFeature(this.context.doc(), options.featureId) ?? null) : null;
@@ -47,7 +47,7 @@ export class ToolLauncher {
         this.active = new RevolveTool(ctx, editing?.type === "revolve" ? editing : null, options.sketchId);
         break;
       case "combine":
-        this.active = new CombineTool(ctx, editing?.type === "combine" ? editing : null);
+        this.active = new CombineTool(ctx, editing?.type === "combine" ? editing : null, options.bodies ?? []);
         break;
       case "hole": {
         const tool = new HoleTool(ctx, editing?.type === "hole" ? editing : null);

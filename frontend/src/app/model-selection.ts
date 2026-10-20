@@ -13,6 +13,7 @@ import type { EdgePick, FacePick, ModelSelection, Viewport } from "../viewport/v
 export interface SelectionSummary {
   faces: { pick: FacePick; info?: FaceInfo }[];
   edges: { pick: EdgePick; info?: EdgeInfo }[];
+  bodies: { id: string; name: string }[];
 }
 
 const SURFACES: Record<string, string> = { PLANE: "plane", CYLINDRE: "cylindrique", CONE: "conique", SPHERE: "sphérique", TORUS: "torique" };
@@ -30,20 +31,21 @@ export function faceText(info: FaceInfo, unit: DisplayUnit): string {
 }
 
 export class ModelSelectionController {
-  selection: ModelSelection = { faces: [], edges: [] };
+  selection: ModelSelection = { faces: [], edges: [], bodies: [] };
   private faceInfos = new Map<string, FaceInfo>();
   private edgeInfos = new Map<string, EdgeInfo>();
 
   constructor(
     private readonly viewport: Viewport,
     private readonly geometry: GeometryClient,
-    private readonly host: { unit(): DisplayUnit; changed(): void },
+    private readonly host: { unit(): DisplayUnit; changed(): void; bodyName(id: string): string },
   ) {
     viewport.onSelectionChange = (selection) => void this.update(selection);
   }
 
   get empty(): boolean {
-    return this.selection.faces.length === 0 && this.selection.edges.length === 0;
+    const { faces, edges, bodies } = this.selection;
+    return faces.length === 0 && edges.length === 0 && bodies.length === 0;
   }
 
   /** Last face clicked (holes are placed on it). */
@@ -53,13 +55,14 @@ export class ModelSelectionController {
 
   /** Body of the selection, if any (shown in the measurements panel). */
   get bodyId(): string | undefined {
-    return this.selection.edges[0]?.bodyId ?? this.selection.faces[0]?.bodyId;
+    return this.selection.bodies[0] ?? this.selection.edges[0]?.bodyId ?? this.selection.faces[0]?.bodyId;
   }
 
   summary(): SelectionSummary {
     return {
       faces: this.selection.faces.map((pick) => ({ pick, info: this.faceInfos.get(`${pick.bodyId}#${pick.faceIndex}`) })),
       edges: this.selection.edges.map((pick) => ({ pick, info: this.edgeInfos.get(`${pick.bodyId}#${pick.edgeIndex}`) })),
+      bodies: this.selection.bodies.map((id) => ({ id, name: this.host.bodyName(id) })),
     };
   }
 

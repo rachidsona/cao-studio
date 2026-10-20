@@ -11,9 +11,9 @@ import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
 import { edgeAtVertex } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
-import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection } from "./selection-layer";
+import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter } from "./selection-layer";
 
-export type { EdgePick, FacePick, ModelSelection } from "./selection-layer";
+export type { EdgePick, FacePick, ModelSelection, SelectionFilter } from "./selection-layer";
 
 export type StandardView = "iso" | "front" | "back" | "top" | "bottom" | "left" | "right";
 
@@ -74,6 +74,8 @@ export class Viewport {
   private resizeObserver: ResizeObserver;
   private frame = 0;
   onSelectionChange: (selection: ModelSelection) => void = () => {};
+  /** What a click selects: edge then face (auto), only faces, only edges, or whole bodies. */
+  selectionFilter: SelectionFilter = "auto";
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -167,10 +169,10 @@ export class Viewport {
       this.bodies.set(data.bodyId, { mesh, edges, data });
     }
     // Keep the selected faces/edges that still exist after regeneration.
-    const before = this.selection.faces.length + this.selection.edges.length;
+    const before = this.selection.count;
     this.selection.prune(this.bodies);
     this.selection.render(this.bodies);
-    if (this.selection.faces.length + this.selection.edges.length !== before) this.onSelectionChange(this.selection.snapshot());
+    if (this.selection.count !== before) this.onSelectionChange(this.selection.snapshot());
   }
 
   private disposeBody(body: BodyObject): void {
@@ -406,13 +408,13 @@ export class Viewport {
 
   /** Click in model mode: an edge (priority, it is thin) or a face is toggled; empty space clears. */
   private selectAt(event: PointerEvent): void {
-    const edge = this.pickEdge(event);
+    const filter = this.selectionFilter;
+    const edge = filter === "auto" || filter === "edge" ? this.pickEdge(event) : null;
+    const face = edge || filter === "edge" ? null : this.pick(event);
     if (edge) this.selection.toggleEdge(edge);
-    else {
-      const face = this.pick(event);
-      if (face) this.selection.toggleFace(face);
-      else this.selection.clear();
-    }
+    else if (face && filter === "body") this.selection.toggleBody(face.bodyId);
+    else if (face) this.selection.toggleFace(face);
+    else this.selection.clear();
     this.selection.render(this.bodies);
     this.onSelectionChange(this.selection.snapshot());
   }

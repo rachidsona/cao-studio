@@ -22,7 +22,12 @@ export interface EdgePick {
 export interface ModelSelection {
   faces: FacePick[];
   edges: EdgePick[];
+  /** Whole bodies (selection filter "Corps"). */
+  bodies: string[];
 }
+
+/** What a click selects in the 3D model. */
+export type SelectionFilter = "auto" | "face" | "edge" | "body";
 
 interface BodyView {
   mesh: THREE.Mesh;
@@ -34,6 +39,7 @@ const key = (e: EdgePick) => `${e.bodyId}#${e.edgeIndex}`;
 export class SelectionLayer {
   faces: FacePick[] = [];
   edges: EdgePick[] = [];
+  bodies: string[] = [];
   private group = new THREE.Group();
   private labels = new Map<string, string>();
 
@@ -43,11 +49,21 @@ export class SelectionLayer {
   }
 
   get empty(): boolean {
-    return this.faces.length === 0 && this.edges.length === 0;
+    return this.faces.length === 0 && this.edges.length === 0 && this.bodies.length === 0;
+  }
+
+  get count(): number {
+    return this.faces.length + this.edges.length + this.bodies.length;
   }
 
   snapshot(): ModelSelection {
-    return { faces: [...this.faces], edges: [...this.edges] };
+    return { faces: [...this.faces], edges: [...this.edges], bodies: [...this.bodies] };
+  }
+
+  toggleBody(bodyId: string): void {
+    const i = this.bodies.indexOf(bodyId);
+    if (i >= 0) this.bodies.splice(i, 1);
+    else this.bodies.push(bodyId);
   }
 
   toggleFace(pick: FacePick): void {
@@ -65,6 +81,7 @@ export class SelectionLayer {
   clear(): void {
     this.faces = [];
     this.edges = [];
+    this.bodies = [];
   }
 
   /** Text shown next to a selected edge (its length or diameter). */
@@ -76,12 +93,14 @@ export class SelectionLayer {
   prune(bodies: Map<string, BodyView>): void {
     this.faces = this.faces.filter((f) => !!bodies.get(f.bodyId)?.data.faceGroups[f.faceIndex]);
     this.edges = this.edges.filter((e) => !!bodies.get(e.bodyId)?.data.edgeGroups[e.edgeIndex]);
+    this.bodies = this.bodies.filter((id) => bodies.has(id));
   }
 
   render(bodies: Map<string, BodyView>): void {
     for (const body of bodies.values()) {
       body.mesh.geometry.groups.forEach((group, index) => {
-        const selected = this.faces.some((f) => f.bodyId === body.data.bodyId && f.faceIndex === index);
+        const selected =
+          this.bodies.includes(body.data.bodyId) || this.faces.some((f) => f.bodyId === body.data.bodyId && f.faceIndex === index);
         group.materialIndex = selected ? 1 : 0;
       });
     }

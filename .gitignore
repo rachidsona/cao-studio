@@ -22,3 +22,6 @@ coverage/
 .claude/worktrees/
 .swarm/
 ruvector.db
+
+# IDE settings
+.idea/

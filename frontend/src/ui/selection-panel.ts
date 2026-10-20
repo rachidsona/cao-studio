@@ -9,6 +9,7 @@ export interface SelectionActions {
   chamfer(): void;
   extrude(): void;
   hole(): void;
+  combine(): void;
   clear(): void;
 }
 
@@ -19,9 +20,12 @@ function action(label: string, run: () => void, primary = false): HTMLElement {
 }
 
 export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, actions: SelectionActions): HTMLElement | null {
-  const { faces, edges } = summary;
-  if (faces.length === 0 && edges.length === 0) return null;
+  const { faces, edges, bodies } = summary;
+  if (faces.length === 0 && edges.length === 0 && bodies.length === 0) return null;
   const items = [
+    ...bodies.map((b) =>
+      el("li", { class: "flex justify-between gap-3" }, el("span", {}, "Corps"), el("span", { class: "font-medium" }, b.name)),
+    ),
     ...edges.map(({ pick, info }) =>
       el(
         "li",
@@ -44,13 +48,19 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   if (edges.length) buttons.push(action("◜ Congé", actions.fillet, true), action("◸ Chanfrein", actions.chamfer));
   if (planarFaces && edges.length === 0) buttons.push(action("⇧ Extruder", actions.extrude, true));
   if (planarFaces && faces.length === 1 && edges.length === 0) buttons.push(action("◎ Perçage", actions.hole));
+  if (bodies.length >= 2) buttons.push(action("⧉ Combiner", actions.combine, true));
   const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:hover:text-gray-200" }, "Tout désélectionner");
   clear.addEventListener("click", actions.clear);
+  const parts = [
+    bodies.length ? `${bodies.length} corps` : "",
+    edges.length ? `${edges.length} arête${edges.length > 1 ? "s" : ""}` : "",
+    faces.length ? `${faces.length} face${faces.length > 1 ? "s" : ""}` : "",
+  ].filter(Boolean);
   return section(
-    `Sélection (${edges.length} arête${edges.length > 1 ? "s" : ""}, ${faces.length} face${faces.length > 1 ? "s" : ""})`,
+    `Sélection (${parts.join(", ")})`,
     el("ul", { class: "space-y-1 text-sm" }, ...items),
     buttons.length ? el("div", { class: "flex flex-wrap gap-1.5" }, ...buttons) : null,
-    el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres arêtes ou faces pour les ajouter, recliquez pour les retirer."),
+    el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes ou corps."),
     clear,
   );
 }
