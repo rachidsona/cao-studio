@@ -4,8 +4,10 @@
  * throw GeometryError with an explicit message instead of producing bad
  * geometry.
  */
-import { drawCircle, drawRectangle, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
-import type { ExtrudeFeature, Feature, HoleFeature, SketchEntity, SketchFeature } from "../document/types";
+import { makeCylinder, measureVolume, type Shape3D } from "replicad";
+import { solveSketch, SketchError } from "../constraints/solver";
+import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature } from "../document/types";
+import { buildProfile, ProfileError } from "../sketcher/profiles";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
 
@@ -21,29 +23,25 @@ function requirePositive(value: number, label: string): void {
   if (!(value >= MIN_LENGTH)) throw new GeometryError(`${label} doit être supérieur à ${MIN_LENGTH} mm.`);
 }
 
-function entityDrawing(entity: SketchEntity): Drawing {
-  if (entity.kind === "rectangle") {
-    requirePositive(entity.width, "La largeur du rectangle");
-    requirePositive(entity.height, "La hauteur du rectangle");
-    return drawRectangle(entity.width, entity.height).translate(entity.cx, entity.cy);
-  }
-  requirePositive(entity.diameter, "Le diamètre du cercle");
-  return drawCircle(entity.diameter / 2).translate(entity.cx, entity.cy);
-}
-
 function buildSketch(feature: SketchFeature): ProfileOutput {
-  if (feature.entities.length === 0) throw new GeometryError("L'esquisse ne contient aucun profil fermé.");
-  let drawing: Drawing | undefined;
-  for (const entity of feature.entities) {
-    const next = entityDrawing(entity);
-    if (!drawing) {
-      drawing = next;
-      continue;
-    }
-    // 2D drawings are reclaimed by replicad's garbage collection (no delete()).
-    drawing = drawing.fuse(next);
+  let solved;
+  try {
+    solved = solveSketch(feature);
+  } catch (error) {
+    if (error instanceof SketchError) throw new GeometryError(error.message);
+    throw error;
   }
-  return { kind: "profile", plane: feature.plane, offset: feature.offset, drawing: drawing as Drawing };
+  if (solved.state === "conflicting") {
+    throw new GeometryError(`Esquisse surcontrainte : contraintes en conflit (${solved.conflicting.join(", ")}).`);
+  }
+  if (solved.state === "failed") throw new GeometryError("Le solveur de contraintes n'a pas trouvé de solution.");
+  const base = { kind: "profile" as const, plane: feature.plane, offset: feature.offset, dof: solved.dof, redundant: solved.redundant };
+  try {
+    return { ...base, drawing: buildProfile(solved.geometry), openReason: null };
+  } catch (error) {
+    if (error instanceof ProfileError) return { ...base, drawing: null, openReason: error.message };
+    throw error;
+  }
 }
 
 function requireProfile(lookup: OutputLookup, id: string): ProfileOutput {
@@ -61,6 +59,9 @@ function requireSolid(lookup: OutputLookup, id: string): SolidOutput {
 function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput {
   if (!(Math.abs(feature.distance) >= MIN_LENGTH)) throw new GeometryError("La distance d'extrusion ne peut pas être nulle.");
   const profile = requireProfile(lookup, feature.sketch);
+  if (!profile.drawing) {
+    throw new GeometryError(`${feature.name} : ${profile.openReason ?? "l'esquisse ne contient aucun profil fermé."}`);
+  }
   const sketch = profile.drawing.clone().sketchOnPlane(profile.plane, profile.offset);
   const prism = sketch.extrude(feature.distance) as Shape3D;
   if (feature.operation === "new") {

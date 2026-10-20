@@ -2,8 +2,11 @@
  * Structural validation of untrusted documents (loaded from the server, from
  * a local recovery copy or from an imported file). It mirrors the server-side
  * check in apps/projects/validation.py and adds per-feature checks.
+ * Older schema versions are migrated by parseDocument before validation.
  */
+import { migrateDocument } from "./migrate";
 import { DOCUMENT_FORMAT, SCHEMA_VERSION, type CadDocument } from "./types";
+import { validateSketch } from "./validate-sketch";
 
 const UNITS = new Set(["mm", "cm", "m", "in"]);
 const PLANES = new Set(["XY", "XZ", "YZ"]);
@@ -25,23 +28,12 @@ function checkNumbers(obj: Json, keys: string[], where: string, errors: string[]
   }
 }
 
-function checkEntity(entity: unknown, where: string, errors: string[]): void {
-  if (!isObject(entity) || typeof entity.id !== "string") {
-    errors.push(`${where} : entité invalide.`);
-    return;
-  }
-  if (entity.kind === "rectangle") checkNumbers(entity, ["cx", "cy", "width", "height"], where, errors);
-  else if (entity.kind === "circle") checkNumbers(entity, ["cx", "cy", "diameter"], where, errors);
-  else errors.push(`${where} : type d'entité inconnu « ${String(entity.kind)} ».`);
-}
-
 function checkFeature(feature: Json, where: string, errors: string[]): void {
   switch (feature.type) {
     case "sketch":
       if (!PLANES.has(feature.plane as string)) errors.push(`${where} : plan d'esquisse invalide.`);
       checkNumbers(feature, ["offset"], where, errors);
-      if (!Array.isArray(feature.entities)) errors.push(`${where} : « entities » doit être une liste.`);
-      else feature.entities.forEach((e, i) => checkEntity(e, `${where}, entité ${i + 1}`, errors));
+      validateSketch(feature, where, errors);
       break;
     case "extrude":
       if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
@@ -87,9 +79,11 @@ export function validateDocument(input: unknown): string[] {
   return errors;
 }
 
+/** Validates an untrusted document, upgrading older schema versions first. */
 export function parseDocument(input: unknown): CadDocument {
-  const errors = validateDocument(input);
+  const upgraded = migrateDocument(input);
+  const errors = validateDocument(upgraded);
   if (errors.length > 0) throw new Error(`Document invalide :\n- ${errors.join("\n- ")}`);
-  const doc = input as CadDocument;
+  const doc = upgraded as CadDocument;
   return { ...doc, parameters: doc.parameters ?? {} };
 }

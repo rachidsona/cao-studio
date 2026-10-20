@@ -27,10 +27,11 @@ function hole(doc: CadDocument): HoleFeature {
   return doc.features[2] as HoleFeature;
 }
 
-function setRectangle(doc: CadDocument, patch: { width?: number; height?: number }): void {
-  const rect = sketch(doc).entities[0];
-  if (rect?.kind !== "rectangle") throw new Error("rectangle expected");
-  Object.assign(rect, patch);
+/** Changes a driving dimension of the plate sketch (d1 = longueur X, d2 = largeur Y). */
+function setDimension(doc: CadDocument, id: "d1" | "d2", value: number): void {
+  const dim = sketch(doc).constraints.find((c) => c.id === id);
+  if (!dim || !("value" in dim)) throw new Error("dimension expected");
+  dim.value = value;
 }
 
 describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
@@ -61,7 +62,7 @@ describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
     const doc = createReferencePlate();
     recomputer.recompute(doc);
 
-    setRectangle(doc, { height: 60 });
+    setDimension(doc, "d2", 60);
     const result = recomputer.recompute(doc);
 
     expect(result.statuses.every((s) => s.state === "ok" && !s.reused)).toBe(true);
@@ -118,7 +119,7 @@ describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
   it("refuse une largeur qui coupe la plaque en deux", () => {
     recomputer = new Recomputer();
     const doc = createReferencePlate();
-    setRectangle(doc, { height: 8 });
+    setDimension(doc, "d2", 8);
     const result = recomputer.recompute(doc);
     expect(result.statuses[1]?.state).toBe("ok");
     expect(result.statuses[2]?.message).toMatch(/2 solides/);
@@ -127,12 +128,12 @@ describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
   it("bloque les opérations dépendantes d'une esquisse invalide puis se rétablit", () => {
     recomputer = new Recomputer();
     const doc = createReferencePlate();
-    setRectangle(doc, { width: -5 });
+    setDimension(doc, "d1", -5);
     let result = recomputer.recompute(doc);
     expect(result.statuses.map((s) => s.state)).toEqual(["error", "blocked", "blocked"]);
     expect(result.bodies).toEqual([]);
 
-    setRectangle(doc, { width: 90 });
+    setDimension(doc, "d1", 90);
     result = recomputer.recompute(doc);
     expect(result.statuses.map((s) => s.state)).toEqual(["ok", "ok", "ok"]);
     expect(bodyMetrics(plateShape(recomputer)).volume).toBeCloseTo(90 * 50 * 10 - HOLE_AREA * 10, 6);
@@ -174,7 +175,7 @@ describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
   it("conserve paramètres et géométrie après sérialisation du document", () => {
     recomputer = new Recomputer();
     const doc = createReferencePlate();
-    setRectangle(doc, { height: 62.5 });
+    setDimension(doc, "d2", 62.5);
     const reloaded = parseDocument(JSON.parse(JSON.stringify(doc)));
     expect(reloaded).toEqual(doc);
 

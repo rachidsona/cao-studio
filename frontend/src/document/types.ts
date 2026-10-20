@@ -1,5 +1,5 @@
 /**
- * Native CAO Studio document model (format "cao-studio", schema v1).
+ * Native CAO Studio document model (format "cao-studio", schema v2).
  *
  * The document is the single source of truth: it stores the parametric
  * history (sketches, features, parameters), never meshes. Geometry is always
@@ -7,31 +7,13 @@
  * `units` is only the display preference of the project.
  */
 
+import { centeredRectangle, type SketchConstraint, type SketchCurve, type SketchPoint } from "./sketch";
+
 export const DOCUMENT_FORMAT = "cao-studio";
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type DisplayUnit = "mm" | "cm" | "m" | "in";
 export type PlaneName = "XY" | "XZ" | "YZ";
-
-export interface RectangleEntity {
-  id: string;
-  kind: "rectangle";
-  /** Centre of the rectangle in sketch coordinates (mm). */
-  cx: number;
-  cy: number;
-  width: number;
-  height: number;
-}
-
-export interface CircleEntity {
-  id: string;
-  kind: "circle";
-  cx: number;
-  cy: number;
-  diameter: number;
-}
-
-export type SketchEntity = RectangleEntity | CircleEntity;
 
 interface FeatureBase {
   id: string;
@@ -44,7 +26,9 @@ export interface SketchFeature extends FeatureBase {
   plane: PlaneName;
   /** Offset of the sketch plane along its normal (mm). */
   offset: number;
-  entities: SketchEntity[];
+  points: SketchPoint[];
+  curves: SketchCurve[];
+  constraints: SketchConstraint[];
 }
 
 export type BooleanOperation = "new" | "join" | "cut";
@@ -100,7 +84,7 @@ export function createReferencePlate(): CadDocument {
         name: "Esquisse 1",
         plane: "XY",
         offset: 0,
-        entities: [{ id: "r1", kind: "rectangle", cx: 0, cy: 0, width: 80, height: 50 }],
+        ...centeredRectangle(80, 50),
       },
       { id: "ex1", type: "extrude", name: "Extrusion 1", sketch: "sk1", distance: 10, operation: "new" },
       { id: "h1", type: "hole", name: "Perçage 1", target: "ex1", x: 0, y: 0, diameter: 10, depth: "through" },

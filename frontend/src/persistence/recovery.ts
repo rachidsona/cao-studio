@@ -3,6 +3,7 @@
  * localStorage so it survives a closed tab or a lost connection.
  */
 import type { CadDocument } from "../document/types";
+import { migrateDocument } from "../document/migrate";
 import { validateDocument } from "../document/validate";
 
 export interface RecoveryEntry {
@@ -27,6 +28,7 @@ export function readRecovery(projectId: string): RecoveryEntry | null {
     const raw = localStorage.getItem(key(projectId));
     if (!raw) return null;
     const entry = JSON.parse(raw) as RecoveryEntry;
+    entry.document = migrateDocument(entry.document) as CadDocument;
     if (validateDocument(entry.document).length > 0 || !Number.isInteger(entry.baseVersion)) return null;
     return entry;
   } catch {

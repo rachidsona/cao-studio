@@ -5,6 +5,8 @@
 import { measureArea, type Shape3D } from "replicad";
 import init from "replicad-opencascadejs";
 import wasmUrl from "replicad-opencascadejs/wasm?url";
+import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
+import { initSolver } from "../constraints/solver";
 import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
@@ -20,6 +22,7 @@ const recomputer = new Recomputer();
 let visibleBodies: string[] = [];
 
 async function ensureKernel(): Promise<void> {
+  await initSolver({ locateFile: () => gcsWasmUrl });
   if (isKernelReady()) return;
   const oc = await init({ locateFile: () => wasmUrl });
   initKernel(oc);

@@ -2,7 +2,9 @@
  * Editor controller: wires the Django page, the document session, the
  * geometry worker, the viewport and the panels together.
  */
-import { addHole, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
+import { solveSketch } from "../constraints/solver";
+import { addExtrude, addHole, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
+import { setDimensionValue } from "../sketcher/edit";
 import type { CadDocument, DisplayUnit } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceInfo, RecomputeResponse } from "../geometry/protocol";
@@ -15,6 +17,8 @@ import { renderProperties, type FeaturePatch } from "../ui/properties";
 import { renderTree } from "../ui/tree";
 import type { FacePick, StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
+import { ExtrudeTool } from "./extrude-tool";
+import { SketchController } from "./sketch-controller";
 
 export interface EditorConfig {
   projectId: string;
@@ -39,6 +43,9 @@ export class Editor {
   private faceInfo: FaceInfo | null = null;
   private recomputing = false;
   private recomputeAgain = false;
+  private sketches: SketchController;
+  private panelDeferred = false;
+  private extrudeTool: ExtrudeTool | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -49,6 +56,18 @@ export class Editor {
   ) {
     session.onStateChange = (state, detail) => this.showSaveState(state, detail);
     viewport.onPick = (pick) => void this.onPick(pick);
+    this.sketches = new SketchController(root, viewport, {
+      doc: () => this.doc,
+      change: (next) => void this.change(next),
+      notify: (message, kind) => this.notify(message, kind),
+      select: (id) => {
+        this.selectedFeature = id;
+      },
+      render: () => this.render(),
+      openPanel: (panel) => this.openPanel(panel),
+      unit: () => this.unit,
+      extrude: () => this.extrudeCommand(),
+    });
     this.bindActions();
     this.bindKeyboard();
     ref<HTMLSelectElement>(root, "units").value = session.doc.units;
@@ -119,14 +138,71 @@ export class Editor {
       onDelete: (id) => this.removeFeature(id),
     });
     const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;
-    renderProperties(ref(this.root, "properties"), {
+    const panel = ref(this.root, "properties");
+    // Never rebuild the panel under the user's fingers: wait until the field being edited loses focus.
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && panel.contains(active) && active.matches("input, select")) {
+      if (!this.panelDeferred) {
+        this.panelDeferred = true;
+        panel.addEventListener(
+          "focusout",
+          () => {
+            this.panelDeferred = false;
+            setTimeout(() => this.render(), 0);
+          },
+          { once: true },
+        );
+      }
+      this.updateHistoryButtons();
+      return;
+    }
+    const editing = feature !== null && this.sketches.mode?.featureId === feature.id;
+    renderProperties(panel, {
       feature,
+      status: feature ? this.statuses.get(feature.id) : undefined,
       unit: this.unit,
       body: this.bodyForPanel(),
       face: this.faceInfo,
+      targets: this.extrudeTargets(feature?.id ?? null),
+      sketch: {
+        editing,
+        onEdit: () => feature && this.sketches.open(feature.id),
+        onDimension: (id, value) =>
+          editing ? this.sketches.setDimension(id, value) : feature ? this.setSketchDimension(feature.id, id, value) : false,
+        onRemoveConstraint: (id) => this.sketches.removeConstraint(id),
+        onOffset: (value) => this.patchSelected((f) => (f.type === "sketch" ? { ...f, offset: value } : f)),
+      },
+      onEditExtrude: () => feature?.type === "extrude" && this.extrudeCommand(feature.id),
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
+  }
+
+  /** Bodies created before `featureId` that an extrusion may join or cut. */
+  private extrudeTargets(featureId: string | null): { id: string; name: string }[] {
+    const index = this.doc.features.findIndex((f) => f.id === featureId);
+    return this.doc.features
+      .slice(0, index < 0 ? undefined : index)
+      .filter((f) => f.type === "extrude" || f.type === "hole")
+      .map((f) => ({ id: f.id, name: f.name }));
+  }
+
+  /** Edits a dimension outside sketch mode: solved first, refused if the sketch cannot satisfy it. */
+  private setSketchDimension(featureId: string, dimensionId: string, value: number): boolean {
+    const feature = findFeature(this.doc, featureId);
+    if (feature?.type !== "sketch") return false;
+    try {
+      const result = solveSketch(setDimensionValue(feature, dimensionId, value));
+      if (result.state === "conflicting" || result.state === "failed") {
+        this.notify("Cote refusée : l'esquisse ne peut pas la respecter.", "error");
+        return false;
+      }
+      void this.change(updateFeature(this.doc, featureId, (f) => (f.type === "sketch" ? { ...f, ...result.geometry } : f)));
+      return true;
+    } catch (error) {
+      this.notify(error instanceof Error ? error.message : String(error), "error");
+      return false;
+    }
   }
 
   private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
@@ -199,21 +275,45 @@ export class Editor {
       if (!window.confirm(`Supprimer « ${feature.name} » supprimera aussi : ${names}. Continuer ?`)) return;
     }
     if (this.selectedFeature && !findFeature(next, this.selectedFeature)) this.selectedFeature = null;
+    if (this.sketches.mode && !findFeature(next, this.sketches.mode.featureId)) this.sketches.finish();
     this.viewport.select(null);
     void this.change(next);
+  }
+
+  /** Extrudes the selected sketch (or the last one) as a new body. */
+  /**
+   * Opens the interactive extrusion: on the sketch being edited or selected,
+   * otherwise waiting for a profile click in the view.
+   */
+  private extrudeCommand(featureId?: string): void {
+    const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
+    const sketchId = this.sketches.mode?.featureId ?? (selected?.type === "sketch" ? selected.id : undefined);
+    if (this.sketches.active) this.sketches.finish();
+    this.extrudeTool?.cancel();
+    const main = this.root.querySelector("main");
+    if (!main) return;
+    this.extrudeTool = new ExtrudeTool(this.viewport, {
+      doc: () => this.doc,
+      change: (next) => void this.change(next),
+      notify: (message, kind) => this.notify(message, kind),
+      bodies: () => (this.result?.bodies ?? []).map((b) => ({ id: b.bodyId, name: findFeature(this.doc, b.bodyId)?.name ?? b.bodyId })),
+      unit: () => this.unit,
+      closed: (id) => {
+        this.extrudeTool = null;
+        this.root.dataset.tool = "";
+        if (id) this.selectedFeature = id;
+        this.render();
+      },
+    }, main);
+    this.root.dataset.tool = "extrude";
+    this.extrudeTool.start(featureId ? { featureId } : { sketchId });
   }
 
   private addPlateCommand(): void {
     const bodies = this.result?.bodies ?? [];
     const maxX = bodies.reduce((m, b) => Math.max(m, b.metrics.bbox[1][0]), Number.NEGATIVE_INFINITY);
-    let next = addPlate(this.doc);
-    if (Number.isFinite(maxX)) {
-      // Place the new plate beside the existing bodies instead of on top of them.
-      const sketch = next.features[next.features.length - 2];
-      next = updateFeature(next, sketch?.id ?? "", (f) =>
-        f.type === "sketch" ? { ...f, entities: f.entities.map((e) => ({ ...e, cx: maxX + 20 + 40 })) } : f,
-      );
-    }
+    // Place the new plate beside the existing bodies instead of on top of them.
+    const next = Number.isFinite(maxX) ? addPlate(this.doc, 80, 50, 10, maxX + 20 + 40, 0) : addPlate(this.doc);
     this.selectedFeature = next.features[next.features.length - 1]?.id ?? null;
     void this.change(next).then(() => this.viewport.fit());
   }
@@ -243,6 +343,7 @@ export class Editor {
     if (!moved) return;
     if (this.selectedFeature && !findFeature(this.doc, this.selectedFeature)) this.selectedFeature = null;
     ref<HTMLSelectElement>(this.root, "units").value = this.doc.units;
+    this.sketches.sync();
     void this.recompute();
   }
 
@@ -278,7 +379,7 @@ export class Editor {
     }
   }
 
-  private openPanel(panel: "tree" | "properties" | null): void {
+  openPanel(panel: "tree" | "properties" | null): void {
     for (const name of ["tree", "properties"] as const) {
       const aside = ref(this.root, `panel-${name}`);
       aside.dataset.open = String(panel === name && aside.dataset.open !== "true");
@@ -294,6 +395,7 @@ export class Editor {
       redo: () => this.historyStep("redo"),
       "add-plate": () => this.addPlateCommand(),
       "add-hole": () => this.addHoleCommand(),
+      extrude: () => this.extrudeCommand(),
       "export-step": () => void this.exportGeometry("step"),
       "export-stl": () => void this.exportGeometry("stl"),
       "export-native": () => download(serializeNative(this.doc), `${slugify(this.config.projectName)}${NATIVE_EXTENSION}`),
@@ -333,11 +435,15 @@ export class Editor {
       const editing = (event.target as HTMLElement).closest("input, textarea, select");
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
-      if (mod && key === "s") {
+      if (this.extrudeTool && (event.key === "Escape" || (event.key === "Enter" && !editing))) {
+        if (this.extrudeTool.handleKey(event)) event.preventDefault();
+      } else if (mod && key === "s") {
         event.preventDefault();
         void this.save();
       } else if (editing) {
         return;
+      } else if (this.sketches.handleKey(event)) {
+        event.preventDefault();
       } else if (mod && key === "z") {
         event.preventDefault();
         this.historyStep(event.shiftKey ? "redo" : "undo");
@@ -353,6 +459,8 @@ export class Editor {
         this.viewport.fit();
       } else if (key === "h") {
         this.addHoleCommand();
+      } else if (key === "e") {
+        this.extrudeCommand();
       }
     });
   }

@@ -6,6 +6,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js";
+import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
+import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
 import { AdaptiveGrid } from "./grid";
 
@@ -27,6 +29,23 @@ const VIEW_DIRECTIONS: Record<StandardView, [number, number, number]> = {
   right: [1, 0, 0],
 };
 
+/**
+ * Receives canvas pointer events while a tool is active (sketch mode, extrusion…).
+ * `down` returns true to take the pointer exclusively (handle drag): the camera
+ * controls then ignore that gesture.
+ */
+export interface PointerHandler {
+  down(event: PointerEvent): boolean;
+  move(event: PointerEvent): void;
+  up(event: PointerEvent, isClick: boolean): boolean;
+}
+
+interface SavedCamera {
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+  up: THREE.Vector3;
+}
+
 interface BodyObject {
   mesh: THREE.Mesh;
   edges: THREE.LineSegments;
@@ -35,8 +54,13 @@ interface BodyObject {
 
 export class Viewport {
   readonly renderer: THREE.WebGLRenderer;
-  private scene = new THREE.Scene();
-  private camera: THREE.PerspectiveCamera;
+  readonly scene = new THREE.Scene();
+  readonly camera: THREE.PerspectiveCamera;
+  private labels = new CSS2DRenderer();
+  private pointerHandler: PointerHandler | null = null;
+  private exclusivePointer: number | null = null;
+  private frameListeners = new Set<() => void>();
+  private savedCamera: SavedCamera | null = null;
   private controls: OrbitControls;
   private viewHelper: ViewHelper;
   private grid = new AdaptiveGrid();
@@ -58,6 +82,12 @@ export class Viewport {
     this.renderer.autoClear = false;
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.classList.add("block", "h-full", "w-full", "touch-none");
+    // HTML labels (dimensions, constraint glyphs) drawn above the canvas.
+    const labelLayer = this.labels.domElement;
+    labelLayer.style.position = "absolute";
+    labelLayer.style.inset = "0";
+    labelLayer.style.pointerEvents = "none";
+    container.appendChild(labelLayer);
 
     THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100000);
@@ -191,17 +221,138 @@ export class Viewport {
 
   private bindPointer(): void {
     const canvas = this.renderer.domElement;
-    canvas.addEventListener("pointerdown", (event) => {
-      this.pointerDown = { x: event.clientX, y: event.clientY };
-    });
+    // Capture phase on the container runs before OrbitControls' own listener on the canvas,
+    // so a tool can claim a gesture (e.g. dragging a handle) before the camera reacts.
+    this.container.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (event.target !== canvas) return;
+        this.pointerDown = { x: event.clientX, y: event.clientY };
+        if (this.pointerHandler && event.button === 0 && this.pointerHandler.down(event)) {
+          event.stopPropagation();
+          canvas.setPointerCapture(event.pointerId);
+          this.exclusivePointer = event.pointerId;
+          this.controls.enabled = false;
+        }
+      },
+      { capture: true },
+    );
+    canvas.addEventListener("pointermove", (event) => this.pointerHandler?.move(event));
     canvas.addEventListener("pointerup", (event) => {
       const start = this.pointerDown;
       this.pointerDown = null;
+      if (this.exclusivePointer === event.pointerId) {
+        this.exclusivePointer = null;
+        this.controls.enabled = true;
+      }
       // A click (not a drag) selects; drags belong to the camera controls.
-      if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5) return;
-      if (this.viewHelper.handleClick(event)) return;
-      this.select(this.pick(event));
+      const isClick = !!start && Math.hypot(event.clientX - start.x, event.clientY - start.y) <= 5;
+      if (this.pointerHandler && event.button === 0) {
+        if (this.pointerHandler.up(event, isClick)) return;
+      }
+      if (!isClick) return;
+      if (!this.pointerHandler && this.viewHelper.handleClick(event)) return;
+      if (!this.pointerHandler) this.select(this.pick(event));
     });
+  }
+
+  /** Installs (or removes) the tool receiving pointer events, without changing the camera. */
+  setPointerHandler(handler: PointerHandler | null): void {
+    this.pointerHandler = handler;
+    if (handler) this.select(null);
+  }
+
+  /** Runs `listener` before every rendered frame (screen-size gizmos); returns a remover. */
+  onEachFrame(listener: () => void): () => void {
+    this.frameListeners.add(listener);
+    return () => this.frameListeners.delete(listener);
+  }
+
+  /** Objects under the pointer, nearest first. */
+  intersect(event: PointerEvent, objects: THREE.Object3D[]): THREE.Intersection[] {
+    this.rayFromEvent(event);
+    return this.raycaster.intersectObjects(objects, true);
+  }
+
+  /** Ray under the pointer, in world coordinates. */
+  rayFromEvent(event: PointerEvent): { origin: Vec3; direction: Vec3 } {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const { origin, direction } = this.raycaster.ray;
+    return { origin: [origin.x, origin.y, origin.z], direction: [direction.x, direction.y, direction.z] };
+  }
+
+  /** Size of one screen pixel at the camera target, in mm (used for pick tolerances). */
+  worldPerPixel(): number {
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    const height = this.renderer.domElement.clientHeight || 1;
+    return (2 * distance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)) / height;
+  }
+
+  /**
+   * Enters sketch mode: camera normal to the sketch plane, rotation disabled
+   * (left button and one finger go to the sketch tools), bodies see-through.
+   */
+  enterSketch(frame: SketchFrame, handler: PointerHandler): void {
+    this.savedCamera ??= {
+      position: this.camera.position.clone(),
+      target: this.controls.target.clone(),
+      up: this.camera.up.clone(),
+    };
+    this.setPointerHandler(handler);
+    const normal = new THREE.Vector3(...frame.normal);
+    const origin = new THREE.Vector3(...frame.origin);
+    const box = this.sceneBounds();
+    const center = box.getCenter(new THREE.Vector3());
+    // Project the scene centre onto the plane so the sketch area stays in view.
+    const target = center.clone().sub(normal.clone().multiplyScalar(center.clone().sub(origin).dot(normal)));
+    // Frame the part as seen along the normal: its depth along the normal does not matter.
+    const size = box.getSize(new THREE.Vector3());
+    const across = size.clone().sub(normal.clone().multiplyScalar(size.dot(normal)));
+    const radius = Math.max(across.length() / 2, 30) * 1.15;
+    this.camera.up.set(...frame.v);
+    this.controls.target.copy(target);
+    this.camera.position.copy(target).addScaledVector(normal, this.fitDistance(radius));
+    this.camera.lookAt(target);
+    this.controls.enableRotate = false;
+    this.controls.mouseButtons = { LEFT: -1 as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+    this.controls.touches = { ONE: -1 as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_PAN };
+    this.grid.object.visible = false;
+    this.setBodyOpacity(0.25);
+    this.controls.update();
+  }
+
+  exitSketch(): void {
+    this.pointerHandler = null;
+    this.controls.enableRotate = true;
+    this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+    this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    this.grid.object.visible = true;
+    this.setBodyOpacity(1);
+    if (this.savedCamera) {
+      this.camera.up.copy(this.savedCamera.up);
+      this.camera.position.copy(this.savedCamera.position);
+      this.controls.target.copy(this.savedCamera.target);
+      this.savedCamera = null;
+    }
+    this.controls.update();
+  }
+
+  get inSketch(): boolean {
+    return this.pointerHandler !== null;
+  }
+
+  private setBodyOpacity(opacity: number): void {
+    for (const material of [this.bodyMaterial, this.highlightMaterial, this.edgeMaterial]) {
+      material.transparent = opacity < 1;
+      material.opacity = opacity;
+      material.depthWrite = opacity === 1;
+      material.needsUpdate = true;
+    }
   }
 
   private pick(event: PointerEvent): FacePick | null {
@@ -240,6 +391,7 @@ export class Viewport {
     const { clientWidth, clientHeight } = this.container;
     if (clientWidth === 0 || clientHeight === 0) return;
     this.renderer.setSize(clientWidth, clientHeight, false);
+    this.labels.setSize(clientWidth, clientHeight);
     this.camera.aspect = clientWidth / clientHeight;
     this.camera.updateProjectionMatrix();
   }
@@ -251,9 +403,11 @@ export class Viewport {
     if (this.viewHelper.animating) this.viewHelper.update(delta);
     this.controls.update();
     this.grid.update(this.camera.position.distanceTo(this.controls.target));
+    for (const listener of this.frameListeners) listener();
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
-    this.viewHelper.render(this.renderer);
+    this.labels.render(this.scene, this.camera);
+    if (!this.pointerHandler) this.viewHelper.render(this.renderer);
   };
 
   dispose(): void {
@@ -264,5 +418,6 @@ export class Viewport {
     this.viewHelper.dispose();
     this.timer.dispose();
     this.renderer.dispose();
+    this.labels.domElement.remove();
   }
 }

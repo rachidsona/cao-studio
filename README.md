@@ -4,9 +4,8 @@ Application web de conception mécanique paramétrique : Django (comptes, projet
 + éditeur 3D TypeScript (Three.js) + noyau B-rep exact OpenCascade (WASM, via replicad)
 exécuté dans un Web Worker.
 
-**État : incrément 1.** Le noyau, l'historique paramétrique, l'enregistrement et l'éditeur
-fonctionnent sur la pièce de référence. Les esquisses interactives et les contraintes ne sont
-pas encore implémentées.
+**État : phase 4 (esquisses paramétriques).** Noyau B-rep, historique paramétrique,
+enregistrement, éditeur 3D et esquisses 2D contraintes (solveur planegcs) fonctionnent.
 
 ## Installation (macOS)
 
@@ -36,7 +35,7 @@ npm run watch:js
 
 ```bash
 .venv/bin/pytest          # backend Django : modèles, validation, API, CSRF, pages
-npm test                  # Vitest : noyau OpenCascade réel, historique, documents
+npm test                  # Vitest : noyau OpenCascade et solveur planegcs réels, esquisses, historique
 npm run typecheck         # TypeScript strict
 .venv/bin/python manage.py check --deploy   # avec DJANGO_DEBUG=false et DJANGO_SECRET_KEY
 ```
@@ -61,6 +60,8 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 | `frontend/src/document/` | Format natif `cao-studio` v1, validation, éditions pures (annulables) |
 | `frontend/src/geometry/` | Adaptateur du noyau, worker, protocole worker ↔ interface |
 | `frontend/src/features/` | Constructeurs d'opérations : esquisse, extrusion, perçage |
+| `frontend/src/constraints/` | Solveur planegcs (DDL, redondances, conflits), catalogue des contraintes |
+| `frontend/src/sketcher/` | Repères de plan, outils de dessin, accrochage, profils fermés, rendu et mode esquisse |
 | `frontend/src/history/` | Recalcul incrémental (cache par clé de dépendances), annuler/rétablir |
 | `frontend/src/viewport/` | Scène Three.js en Z vers le haut, grille adaptative, gizmo, vues, sélection de faces |
 | `frontend/src/ui/`, `app/` | Arbre, propriétés, session (enregistrement automatique, récupération) |
@@ -78,6 +79,49 @@ Principes :
   locale est conservée.
 - Une opération en échec est signalée dans l'arbre, ses dépendantes sont marquées
   « bloquées », et le dernier corps valide reste affiché.
+
+## Esquisses (phase 4)
+
+Le format natif v2 décrit une esquisse par des points, des courbes (ligne, cercle, arc, éventuellement
+en construction) et des contraintes. Les documents v1 sont migrés automatiquement au chargement, et le
+serveur accepte les deux versions.
+
+- **Création** : « Esquisse » puis le plan XY, XZ ou YZ (avec décalage le long de la normale). « Modifier
+  l'esquisse » rouvre une esquisse existante.
+- **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
+  construction (X).
+- **Accrochage** : un clic sur un point existant le réutilise comme sommet partagé ; un clic sur une
+  courbe ajoute une contrainte « point sur courbe » ; un segment presque horizontal ou vertical reçoit la
+  contrainte correspondante.
+- **Contraintes** : coïncidence, horizontale, verticale, parallèle, perpendiculaire, tangence, égalité,
+  symétrie (par rapport à un point ou une ligne), concentricité, fixation, point sur courbe, milieu.
+  Seules celles qui s'appliquent à la sélection en cours sont actives.
+- **Cotes** (D) : longueur, distance, distances horizontale et verticale signées, distance point-ligne,
+  angle, rayon et diamètre. Une cote est créée avec la valeur mesurée, puis se modifie dans le panneau ou
+  en cliquant son étiquette.
+- **Résolution** : toute modification est résolue avant d'être enregistrée. Une modification qui rend
+  l'esquisse impossible (contraintes en conflit) est refusée avec la liste des contraintes en cause. Les
+  redondances sont signalées. L'état affiché est « Entièrement contrainte », « n DDL » ou « Redondante ».
+- **Glisser** un point déplace la géométrie en respectant les contraintes ; le geste entier compte comme
+  une seule étape d'annulation.
+- **Profils** : les boucles fermées non construction suivent la règle pair-impair (une boucle intérieure
+  fait un trou). Un profil ouvert ou ramifié est signalé avec la position du sommet fautif.
+- **Cotes à l'écran** :
+  - les dimensions de la forme en cours de tracé s'affichent en direct ;
+  - après le tracé, les mesures restent visibles ;
+  - cliquer une ligne, un cercle ou une valeur ouvre une petite calculatrice. On peut y saisir des
+    expressions (`1 m + 20 cm`, `2×120`, unités mm, cm, m ou deg).
+  - Le cadenas fermé crée une cote pilotante. Ouvert, la forme est redimensionnée une seule fois,
+    sans contrainte.
+- **Extrusion**, comme dans Fusion 360 :
+  - le bouton (ou la touche E) surligne les profils fermés ;
+  - on clique un profil, puis on tire la flèche le long de la normale, ou on clique la valeur à son
+    extrémité pour la saisir ;
+  - l'aperçu est translucide ;
+  - le panneau compact, à droite de la vue, règle l'opération (nouveau corps, union, soustraction) et
+    le corps cible ;
+  - Entrée valide, Échap annule ;
+  - « Modifier avec la flèche » rouvre une extrusion existante.
 
 ## Utilisation de l'éditeur
 
@@ -97,9 +141,12 @@ Principes :
 
 ## Limites connues (incrément 1)
 
-- **Esquisses** : pas d'esquisse interactive ni de solveur de contraintes. Une esquisse ne
-  contient que des rectangles ou cercles fusionnés, édités numériquement. Le solveur prévu est
-  planegcs (LGPL), en phase 4.
+- **Esquisses** :
+  - Pas d'ellipse ni de polygone régulier.
+  - Pas d'ajustement ni de prolongement de courbes.
+  - Pas de détection des auto-intersections : les profils qui se croisent sont refusés par le noyau.
+  - Les DDL sont globaux, il n'y a pas de couleur par entité.
+  - Un îlot dans un trou donne un second solide, refusé (une extrusion produit un seul corps).
 - **Plans** : seul le plan XY est exposé dans l'interface. Le perçage suit toujours l'axe −Z
   depuis le dessus du corps.
 - **Références** : les opérations référencent des coordonnées, pas des faces. Le nommage
@@ -118,9 +165,10 @@ Principes :
 | three | 0.186 | MIT |
 | replicad | 1.1.0 | MIT |
 | replicad-opencascadejs (OCCT WASM) | 1.1.0 | LGPL-2.1 |
+| @salusoft89/planegcs (solveur FreeCAD, WASM) | 1.3.0 | LGPL-2.0-or-later |
 | tailwindcss | 4.3 | MIT |
 | vite / vitest / typescript | 8.3 / 5.0 / 7.0 | MIT / MIT / Apache-2.0 |
 
-OpenCascade est distribué sous forme d'un fichier `.wasm` séparé, non modifié et remplaçable
-(`static/js/assets/replicad_single-*.wasm`), ce qui respecte la LGPL. Conserver la notice de
-licence d'OCCT lors d'une distribution.
+OpenCascade et planegcs sont distribués sous forme de fichiers `.wasm` séparés, non modifiés et
+remplaçables (`static/js/assets/*.wasm`), ce qui respecte la LGPL. Conserver leurs notices de
+licence lors d'une distribution.

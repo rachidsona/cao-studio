@@ -1,6 +1,8 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
 import { DocumentSession } from "./app/session";
+import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
+import { initSolver } from "./constraints/solver";
 import { sameDocument } from "./document/canonical";
 import { GeometryClient } from "./geometry/client";
 import { loadProject } from "./persistence/api";
@@ -31,6 +33,8 @@ async function start(): Promise<void> {
   kernelStatus.textContent = "Chargement du noyau…";
   const [snapshot] = await Promise.all([
     loadProject(config.apiUrl),
+    // The sketcher solves interactively on the main thread (small, fast module).
+    initSolver({ locateFile: () => gcsWasmUrl }),
     geometry.init().then(() => {
       kernelStatus.textContent = "Noyau OpenCascade prêt";
       kernelStatus.dataset.state = "ready";

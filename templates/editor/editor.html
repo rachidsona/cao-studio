@@ -12,7 +12,7 @@
 {% block header %}{% endblock %}
 
 {% block main %}
-<div id="editor" class="flex h-dvh flex-col">
+<div id="editor" data-mode="model" class="group/editor flex h-dvh flex-col">
   {# ---- Top bar: project, file and history commands ---- #}
   <header class="flex items-center gap-1 border-b border-gray-200 bg-white px-2 pt-[env(safe-area-inset-top)] dark:border-gray-800 dark:bg-gray-900">
     <a href="{% url 'projects:list' %}" class="tool-btn" title="Mes projets" aria-label="Retour à mes projets">
@@ -55,10 +55,20 @@
     </details>
   </header>
 
-  {# ---- Toolbar: only implemented commands ---- #}
-  <div class="flex items-center gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils">
+  {# ---- Toolbar (3D model): only implemented commands ---- #}
+  <div class="flex items-center gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils du modèle">
     <button type="button" class="tool-btn" data-action="deselect" title="Sélection (Échap)"><span aria-hidden="true">⌖</span><span class="hidden sm:inline">Sélection</span></button>
     <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+    <details class="relative shrink-0">
+      <summary class="tool-btn cursor-pointer list-none" title="Nouvelle esquisse sur un plan"><span aria-hidden="true">✎</span><span>Esquisse</span></summary>
+      <div class="fixed z-40 mt-1 w-56 space-y-1 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+        <p class="panel-title px-2 pt-1">Plan de l'esquisse</p>
+        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XY">Plan XY (dessus)</button>
+        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XZ">Plan XZ (face)</button>
+        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="YZ">Plan YZ (droite)</button>
+      </div>
+    </details>
+    <button type="button" class="tool-btn" data-action="extrude" title="Extruder l'esquisse sélectionnée"><span aria-hidden="true">⇧</span><span>Extrusion</span></button>
     <button type="button" class="tool-btn" data-action="add-plate" title="Nouvelle plaque (esquisse + extrusion)"><span aria-hidden="true">▣</span><span>Plaque</span></button>
     <button type="button" class="tool-btn" data-action="add-hole" title="Perçage sur la face sélectionnée (H)"><span aria-hidden="true">◎</span><span>Perçage</span></button>
     <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
@@ -67,6 +77,39 @@
     <button type="button" class="tool-btn" data-action="view" data-view="top" title="Vue de dessus">Dessus</button>
     <button type="button" class="tool-btn" data-action="view" data-view="right" title="Vue de droite">Droite</button>
     <button type="button" class="tool-btn" data-action="fit" title="Ajuster à la fenêtre (F)">Ajuster</button>
+  </div>
+
+  {# ---- Toolbar (sketch mode) ---- #}
+  <div class="hidden items-center gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
+    <button type="button" class="tool-btn tool-btn-primary" data-sketch-command="finish" title="Terminer l'esquisse (Entrée)">✓ <span>Terminer</span></button>
+    <button type="button" class="tool-btn" data-sketch-command="extrude" title="Terminer et extruder cette esquisse (E)">⇧ <span>Extrusion</span></button>
+    <span data-ref="sketch-dof" class="shrink-0 rounded px-2 py-1 text-xs font-medium data-[state=free]:bg-sky-100 data-[state=free]:text-sky-900 data-[state=full]:bg-emerald-100 data-[state=full]:text-emerald-900 data-[state=warn]:bg-amber-100 data-[state=warn]:text-amber-900"></span>
+    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+    <button type="button" class="tool-btn" data-sketch-tool="select" title="Sélection (S)">⌖</button>
+    <button type="button" class="tool-btn" data-sketch-tool="line" title="Ligne / polyligne (L)">╱ <span class="hidden md:inline">Ligne</span></button>
+    <button type="button" class="tool-btn" data-sketch-tool="rectangle" title="Rectangle (R)">▭ <span class="hidden md:inline">Rectangle</span></button>
+    <button type="button" class="tool-btn" data-sketch-tool="circle" title="Cercle (C)">○ <span class="hidden md:inline">Cercle</span></button>
+    <button type="button" class="tool-btn" data-sketch-tool="arc" title="Arc par centre (A)">◜ <span class="hidden md:inline">Arc</span></button>
+    <button type="button" class="tool-btn" data-sketch-command="construction" title="Géométrie de construction (X)">┄ <span class="hidden md:inline">Construction</span></button>
+    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+    <button type="button" class="tool-btn" data-sketch-command="dimension" title="Cote : longueur, distance, angle, rayon, diamètre (D)">↔ <span class="hidden md:inline">Cote</span></button>
+    <button type="button" class="tool-btn" data-sketch-command="dimensionX" title="Cote horizontale">⇿</button>
+    <button type="button" class="tool-btn" data-sketch-command="dimensionY" title="Cote verticale">↕</button>
+    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+    <button type="button" class="tool-btn" data-sketch-command="coincident" title="Coïncidence">⦿</button>
+    <button type="button" class="tool-btn" data-sketch-command="horizontal" title="Horizontale">H</button>
+    <button type="button" class="tool-btn" data-sketch-command="vertical" title="Verticale">V</button>
+    <button type="button" class="tool-btn" data-sketch-command="parallel" title="Parallèle">∥</button>
+    <button type="button" class="tool-btn" data-sketch-command="perpendicular" title="Perpendiculaire">⟂</button>
+    <button type="button" class="tool-btn" data-sketch-command="tangent" title="Tangence">◠</button>
+    <button type="button" class="tool-btn" data-sketch-command="equal" title="Égalité">=</button>
+    <button type="button" class="tool-btn" data-sketch-command="symmetric" title="Symétrie (2 points + axe)">⋈</button>
+    <button type="button" class="tool-btn" data-sketch-command="concentric" title="Concentricité">◎</button>
+    <button type="button" class="tool-btn" data-sketch-command="fix" title="Fixer le point">⚓</button>
+    <button type="button" class="tool-btn" data-sketch-command="pointOnCurve" title="Point sur courbe">⊸</button>
+    <button type="button" class="tool-btn" data-sketch-command="midpoint" title="Milieu d'une ligne">◇</button>
+    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+    <button type="button" class="tool-btn" data-sketch-command="delete" title="Supprimer la sélection (Suppr)">✕</button>
   </div>
 
   <div class="relative flex min-h-0 flex-1">
@@ -104,7 +147,8 @@
   <footer class="flex items-center gap-4 overflow-x-auto border-t border-gray-200 bg-white px-3 py-1 text-xs whitespace-nowrap text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
     <span data-ref="status-kernel" class="data-[state=error]:text-red-600 data-[state=ready]:text-emerald-700 dark:data-[state=ready]:text-emerald-400">Initialisation…</span>
     <span data-ref="status-recompute"></span>
-    <span data-ref="status-selection" class="hidden sm:inline">Aucune sélection</span>
+    <span data-ref="status-selection" class="hidden sm:inline group-data-[mode=sketch]/editor:hidden">Aucune sélection</span>
+    <span data-ref="status-hint" class="hidden text-sky-700 group-data-[mode=sketch]/editor:inline dark:text-sky-300"></span>
     <span data-ref="status-save" data-state="saved" class="ml-auto font-medium data-[state=conflict]:text-red-600 data-[state=modified]:text-amber-600 data-[state=offline]:text-red-600 data-[state=saved]:text-emerald-700 dark:data-[state=saved]:text-emerald-400">Enregistré</span>
   </footer>
 

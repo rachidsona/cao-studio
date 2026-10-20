@@ -35,10 +35,34 @@
       text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500
       disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800;
   }
+  .tool-btn[aria-pressed="true"] {
+    @apply bg-sky-100 text-sky-900 ring-1 ring-sky-400 dark:bg-sky-900/60 dark:text-sky-50;
+  }
   .tool-btn-primary {
     @apply bg-sky-600 text-white hover:bg-sky-700 dark:text-white dark:hover:bg-sky-500;
   }
   .panel-title {
     @apply text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400;
+  }
+}
+
+/* Sketch labels rendered by the CSS2D layer above the viewport. */
+@layer components {
+  .cad-dimension {
+    @apply cursor-pointer rounded border border-sky-500 bg-white/95 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-sky-900
+      shadow-sm hover:bg-sky-50 dark:bg-gray-900/95 dark:text-sky-100;
+  }
+  .cad-measure {
+    @apply cursor-pointer rounded bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm
+      hover:bg-gray-700 dark:bg-gray-100/90 dark:text-gray-900;
+  }
+  .cad-glyph {
+    @apply rounded bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
+  }
+  .cad-flagged {
+    @apply border-red-500 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200;
+  }
+  .cad-reference {
+    @apply border-dashed text-gray-500;
   }
 }

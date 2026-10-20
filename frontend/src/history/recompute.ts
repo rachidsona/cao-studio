@@ -20,6 +20,10 @@ export interface FeatureStatus {
   id: string;
   state: FeatureState;
   message?: string;
+  /** Informative note shown in the tree (e.g. degrees of freedom of a sketch). */
+  detail?: string;
+  /** Sketch solving summary, for sketch features. */
+  sketch?: { dof: number; redundant: string[]; closed: boolean };
   /** True when the cached result was reused without running the kernel. */
   reused: boolean;
   durationMs: number;
@@ -46,6 +50,18 @@ function errorMessage(error: unknown): string {
   if (error instanceof GeometryError) return error.message;
   const detail = error instanceof Error ? error.message : String(error);
   return `Échec du noyau géométrique : ${detail}`;
+}
+
+/** Sketch summary attached to a status: degrees of freedom, redundancy, closed profile. */
+function describe(output: FeatureOutput): Pick<FeatureStatus, "detail" | "sketch"> {
+  if (output.kind !== "profile") return {};
+  const parts = [output.dof === 0 ? "Entièrement contrainte" : `${output.dof} degré(s) de liberté`];
+  if (output.redundant.length) parts.push(`contraintes redondantes : ${output.redundant.join(", ")}`);
+  if (output.openReason) parts.push(output.openReason);
+  return {
+    detail: parts.join(" — "),
+    sketch: { dof: output.dof, redundant: output.redundant, closed: output.drawing !== null },
+  };
 }
 
 export class Recomputer {
@@ -121,7 +137,7 @@ export class Recomputer {
     const cached = this.cache.get(feature.id);
     if (cached && cached.key === key) {
       this.outputs.set(feature.id, cached.output);
-      return { ...base, state: "ok", reused: true };
+      return { ...base, ...describe(cached.output), state: "ok", reused: true };
     }
 
     this.drop(feature.id);
@@ -129,7 +145,7 @@ export class Recomputer {
       const output = buildFeature(feature, (id) => this.outputs.get(id));
       this.cache.set(feature.id, { key, output });
       this.outputs.set(feature.id, output);
-      return { ...base, state: "ok" };
+      return { ...base, ...describe(output), state: "ok" };
     } catch (error) {
       return { ...base, state: "error", message: errorMessage(error) };
     }

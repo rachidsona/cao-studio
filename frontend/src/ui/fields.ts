@@ -1,0 +1,118 @@
+/** Form building blocks of the side panels (numeric fields in display units, sections, rows). */
+import type { DisplayUnit } from "../document/types";
+import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
+import { el } from "./dom";
+
+export const inputClass =
+  "min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-right font-mono text-sm tabular-nums " +
+  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 " +
+  "dark:border-gray-600 dark:bg-gray-900";
+
+export const textInputClass = inputClass.replace("text-right font-mono", "text-left");
+
+export interface NumberFieldOptions {
+  label: string;
+  /** Stored value: mm for lengths, degrees for angles. */
+  value: number;
+  unit: DisplayUnit | "deg";
+  /** Allows zero and negative values. */
+  signed?: boolean;
+  /** Receives the new stored value; returns false when the change was refused. */
+  onCommit(value: number): boolean | void;
+  dataset?: Record<string, string>;
+  trailing?: HTMLElement | null;
+}
+
+export function numberField(options: NumberFieldOptions): HTMLElement {
+  const isAngle = options.unit === "deg";
+  const unitLabel = isAngle ? "°" : UNIT_LABELS[options.unit as DisplayUnit];
+  const shown = isAngle ? options.value : toDisplay(options.value, options.unit as DisplayUnit);
+  const input = el("input", {
+    type: "text",
+    inputmode: "decimal",
+    class: inputClass,
+    value: trim(shown, 6),
+    "aria-label": `${options.label} (${unitLabel})`,
+  });
+  for (const [key, value] of Object.entries(options.dataset ?? {})) input.dataset[key] = value;
+  const error = el("p", { class: "col-span-full hidden text-xs text-red-600 dark:text-red-400", role: "alert" });
+  const fail = (message: string) => {
+    input.setAttribute("aria-invalid", message ? "true" : "false");
+    error.textContent = message;
+    error.classList.toggle("hidden", !message);
+  };
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") input.blur();
+    if (event.key === "Escape") {
+      input.value = trim(shown, 6);
+      fail("");
+      input.blur();
+    }
+  });
+  input.addEventListener("change", () => {
+    const parsed = parseNumber(input.value);
+    if (parsed === null) return fail("Saisissez un nombre.");
+    if (!options.signed && parsed <= 0) return fail("La valeur doit être strictement positive.");
+    fail("");
+    const stored = isAngle ? parsed : fromDisplay(parsed, options.unit as DisplayUnit);
+    if (stored === options.value) return;
+    if (options.onCommit(stored) === false) {
+      input.value = trim(shown, 6);
+      fail("Valeur refusée par le solveur.");
+    }
+  });
+  return el(
+    "label",
+    { class: `grid ${options.trailing ? "grid-cols-[1fr_7rem_auto]" : "grid-cols-[1fr_8rem]"} items-center gap-x-2 gap-y-1 text-sm` },
+    el("span", { class: "text-gray-600 dark:text-gray-300" }, `${options.label} (${unitLabel})`),
+    input,
+    options.trailing ?? null,
+    error,
+  );
+}
+
+export function section(title: string, ...children: (Node | null)[]): HTMLElement {
+  return el(
+    "section",
+    { class: "space-y-3 border-b border-gray-200 p-4 last:border-0 dark:border-gray-700" },
+    el("h3", { class: "panel-title" }, title),
+    ...children,
+  );
+}
+
+export function row(label: string, value: string, valueClass = ""): HTMLElement {
+  return el(
+    "div",
+    { class: "flex justify-between gap-4 text-sm" },
+    el("dt", { class: "text-gray-600 dark:text-gray-300" }, label),
+    el("dd", { class: `font-mono tabular-nums text-right ${valueClass}` }, value),
+  );
+}
+
+export function selectField(label: string, value: string, options: [string, string][], onChange: (value: string) => void): HTMLElement {
+  const select = el(
+    "select",
+    { class: `${textInputClass} pr-8`, "aria-label": label },
+    ...options.map(([v, text]) => el("option", { value: v, selected: v === value }, text)),
+  );
+  select.addEventListener("change", () => onChange(select.value));
+  return el(
+    "label",
+    { class: "grid grid-cols-[1fr_10rem] items-center gap-x-3 text-sm" },
+    el("span", { class: "text-gray-600 dark:text-gray-300" }, label),
+    select,
+  );
+}
+
+export function iconButton(label: string, glyph: string, onClick: () => void, extra = ""): HTMLButtonElement {
+  const button = el(
+    "button",
+    { type: "button", class: `size-9 shrink-0 rounded text-gray-500 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 ${extra}`, title: label, "aria-label": label },
+    glyph,
+  );
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    onClick();
+  });
+  return button;
+}

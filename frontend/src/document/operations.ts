@@ -2,6 +2,7 @@
  * Pure edits of the parametric history. Each function returns a new document
  * and never mutates its input, so every edit can be undone.
  */
+import { rectangleAt } from "./sketch";
 import { cloneDocument, consumedBodies, featureInputs, type CadDocument, type Feature, type HoleFeature } from "./types";
 
 export function uniqueId(doc: CadDocument, prefix: string): string {
@@ -33,7 +34,7 @@ export function updateFeature(doc: CadDocument, id: string, patch: (feature: Fea
 }
 
 /** Adds a rectangular plate as a new body: a sketch plus a "new body" extrusion. */
-export function addPlate(doc: CadDocument, width = 80, height = 50, thickness = 10): CadDocument {
+export function addPlate(doc: CadDocument, width = 80, height = 50, thickness = 10, cx = 0, cy = 0): CadDocument {
   const next = cloneDocument(doc);
   const sketchId = uniqueId(next, "sk");
   next.features.push({
@@ -42,7 +43,7 @@ export function addPlate(doc: CadDocument, width = 80, height = 50, thickness = 
     name: uniqueName(next, "Esquisse"),
     plane: "XY",
     offset: 0,
-    entities: [{ id: "r1", kind: "rectangle", cx: 0, cy: 0, width, height }],
+    ...rectangleAt(cx, cy, width, height),
   });
   next.features.push({
     id: uniqueId(next, "ex"),
@@ -50,6 +51,20 @@ export function addPlate(doc: CadDocument, width = 80, height = 50, thickness = 
     name: uniqueName(next, "Extrusion"),
     sketch: sketchId,
     distance: thickness,
+    operation: "new",
+  });
+  return next;
+}
+
+/** Extrudes a sketch as a new body. */
+export function addExtrude(doc: CadDocument, sketchId: string, distance = 10): CadDocument {
+  const next = cloneDocument(doc);
+  next.features.push({
+    id: uniqueId(next, "ex"),
+    type: "extrude",
+    name: uniqueName(next, "Extrusion"),
+    sketch: sketchId,
+    distance,
     operation: "new",
   });
   return next;

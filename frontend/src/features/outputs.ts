@@ -9,7 +9,13 @@ export interface ProfileOutput {
   kind: "profile";
   plane: PlaneName;
   offset: number;
-  drawing: Drawing;
+  /** Region bounded by the closed loops, or null when the sketch has none. */
+  drawing: Drawing | null;
+  /** Why no region could be built (open or branched profile). */
+  openReason: string | null;
+  /** Remaining degrees of freedom of the solved sketch. */
+  dof: number;
+  redundant: string[];
 }
 
 export interface SolidOutput {

@@ -43,7 +43,7 @@ export function renderTree(
           type: "button",
           class: "flex min-h-11 flex-1 items-center gap-2 text-left",
           "aria-pressed": selected ? "true" : "false",
-          title: status?.message ?? `${TYPE_LABELS[feature.type]} — ${badge.label}`,
+          title: status?.message ?? `${TYPE_LABELS[feature.type]} — ${status?.detail ?? badge.label}`,
           "data-feature": feature.id,
         },
         el("span", { class: "w-5 text-center text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, TYPE_ICONS[feature.type]),
