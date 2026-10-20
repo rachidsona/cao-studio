@@ -71,7 +71,7 @@ export class Editor {
         this.render();
       },
     });
-    this.sketchDisplay = new SketchDisplay(viewport, { doc: () => this.doc, selected: () => this.selectedFeature, select: (id) => this.selectFeature(id) });
+    this.sketchDisplay = new SketchDisplay(viewport, { doc: () => this.previewDoc ?? this.doc, selected: () => this.selectedFeature, select: (id) => this.selectFeature(id) });
     this.sketches = new SketchController(root, viewport, {
       doc: () => this.doc,
       change: (next) => void this.change(next),

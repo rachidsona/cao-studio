@@ -227,7 +227,9 @@ opération existante.
     « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
     exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
     l'écran) ;
-  - une **esquisse** sélectionnée dans le navigateur : elle se déplace d'un bloc, comme dans Fusion. Le long
+  - une **esquisse** sélectionnée dans le navigateur ou dans la vue : elle se déplace d'un bloc, comme dans
+    Fusion, avec le même principe de pivot et cible (le pivot est un point de l'esquisse : tous ses points
+    sont affichés ; la cible est un point ou une face d'un corps, ou un point d'une autre esquisse). Le long
     de sa normale, le décalage de son plan change ; dans son plan, c'est son origine qui se déplace
     (« shift » de l'esquisse) : la géométrie et les contraintes ne changent pas, même si elles la lient à
     l'origine. Les corps extrudés de cette esquisse suivent ;
@@ -244,6 +246,8 @@ opération existante.
     - un clic à l'intérieur d'une **face plane** d'un autre corps amène le corps sur le plan de cette face
       (déplacement le long de sa normale seulement) ;
     - ou bien on tire les flèches depuis le pivot, ou on saisit ΔX, ΔY, ΔZ.
+    Les **points d'esquisse** (extrémités, centres, milieux des lignes) des esquisses visibles servent
+    aussi de cible quand on s'en approche.
     Rose = pivot, vert = cible ; « Changer le pivot » et « Changer la cible » recommencent un choix. Un
     pivot pris sur un autre corps fait de ce corps celui à déplacer. Raccourci : avec le filtre
     « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
@@ -276,6 +280,9 @@ opération existante.
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
+  - **éléments superposés** : un nouveau clic au même endroit sélectionne l'élément suivant sous le curseur
+    (arête, puis ligne d'esquisse, puis face, puis zone d'esquisse) ; une esquisse posée sur une face ou liée
+    aux coins d'un corps par des coïncidences reste ainsi sélectionnable dans la vue ;
   - le filtre de la barre d'outils choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
     sinon face), « Faces », « Arêtes », « Points » (un sommet d'un corps : des points bleus marquent
     ceux qu'on peut cliquer, ses coordonnées s'affichent dans le panneau et la barre d'état) ou « Corps »

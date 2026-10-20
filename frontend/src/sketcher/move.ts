@@ -18,7 +18,7 @@ import { describeConstraints } from "../constraints/catalog";
 import { curvePoints, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { SketchFeature, Vec3 } from "../document/types";
 import { cloneGeometry, pointPos, type Vec2 } from "./edit";
-import { sketchFrame } from "./frame";
+import { sketchFrame, toWorld } from "./frame";
 import { connectedChain } from "./offset";
 import type { Preview } from "./tools";
 
@@ -143,6 +143,23 @@ export function movePreview(before: SketchGeometry, after: SketchGeometry): Prev
   }
   // A moved point on its own (no curve) has nothing to draw: the sketch shows it where it will be once confirmed.
   return preview;
+}
+
+/** Points of a sketch a move can snap to, in model coordinates: its points and the middles of its lines. */
+export function sketchSnapPoints(sketch: SketchFeature): Vec3[] {
+  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const out: Vec3[] = [];
+  const add = (x: number, y: number) => {
+    const p = toWorld(frame, x, y);
+    if (!out.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < 1e-6)) out.push(p);
+  };
+  for (const p of sketch.points) add(p.x, p.y);
+  for (const c of sketch.curves) {
+    if (c.kind !== "line") continue;
+    const [a, b] = [pointPos(sketch, c.p1), pointPos(sketch, c.p2)];
+    add((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+  }
+  return out;
 }
 
 /**

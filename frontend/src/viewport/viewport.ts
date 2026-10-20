@@ -530,32 +530,54 @@ export class Viewport {
     return faceIndex < 0 ? null : { bodyId, faceIndex, point: hit.point.clone() };
   }
 
-  /** Click in model mode: an edge (priority, it is thin) or a face is toggled; empty space clears. */
+  /** Last click in model mode, to cycle through what lies under the same spot. */
+  private lastClick: { x: number; y: number; index: number } | null = null;
+
+  /**
+   * Click in model mode. What lies under the pointer is listed by priority: a corner (filter "Points"),
+   * a body edge (thin: it wins, a sketch along it must not steal it for a fillet), a sketch curve, the
+   * inside of a sketch area in front of the body, the face, then a sketch area behind it. A click toggles
+   * the first; clicking again at the same spot selects the next one instead (a sketch lying on a body, or
+   * tied to its corners by coincidences, stays selectable). Empty space clears.
+   */
   private selectAt(event: PointerEvent): void {
     const filter = this.selectionFilter;
+    type Candidate = { kind: "vertex"; pick: VertexPick } | { kind: "edge"; pick: EdgePick } | { kind: "sketch"; id: string } | { kind: "face"; pick: FacePick };
+    const list: Candidate[] = [];
     const vertex = filter === "vertex" ? this.pickVertex(event) : null;
-    // A body edge wins (a sketch along it, like the one of a plate, must not steal it for a fillet), then a sketch
-    // curve, as an edge does over a face; the inside of a sketch area only when no body is in front of it.
-    const edge = !vertex && (filter === "auto" || filter === "edge") ? this.pickEdge(event) : null;
-    const curve = vertex || edge ? null : this.pickSketch(event, "line");
-    const face = vertex || edge || curve || filter === "edge" || filter === "vertex" ? null : this.pick(event);
-    const inside = vertex || edge || curve ? null : this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
-    const sketch = curve ?? inside;
-    if (sketch) {
+    if (vertex) list.push({ kind: "vertex", pick: vertex });
+    const edge = filter === "auto" || filter === "edge" ? this.pickEdge(event) : null;
+    if (edge) list.push({ kind: "edge", pick: edge });
+    const curve = this.pickSketch(event, "line");
+    if (curve) list.push({ kind: "sketch", id: curve });
+    const face = filter === "edge" || filter === "vertex" ? null : this.pick(event);
+    const inFront = this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
+    if (inFront && inFront !== curve) list.push({ kind: "sketch", id: inFront });
+    if (face) list.push({ kind: "face", pick: face });
+    const behind = face ? this.pickSketch(event, "fill") : null;
+    if (behind && behind !== curve && behind !== inFront) list.push({ kind: "sketch", id: behind });
+
+    const again = this.lastClick && Math.hypot(event.clientX - this.lastClick.x, event.clientY - this.lastClick.y) <= 4 && list.length > 1;
+    const index = again && this.lastClick ? (this.lastClick.index + 1) % list.length : 0;
+    this.lastClick = { x: event.clientX, y: event.clientY, index };
+    const chosen = list[index];
+    // Cycling replaces what the previous click at this spot selected.
+    if (again) this.selection.clear();
+    if (chosen?.kind === "sketch") {
       this.selection.clear();
       this.selection.render(this.bodies);
       this.onSelectionChange(this.selection.snapshot());
-      this.onSketchPick(sketch);
+      this.onSketchPick(chosen.id);
       return;
     }
-    if (vertex) this.selection.toggleVertex(vertex);
-    else if (edge) this.selection.toggleEdge(edge);
-    else if (face && filter === "body") this.selection.toggleBody(face.bodyId);
-    else if (face) this.selection.toggleFace(face);
+    if (chosen?.kind === "vertex") this.selection.toggleVertex(chosen.pick);
+    else if (chosen?.kind === "edge") this.selection.toggleEdge(chosen.pick);
+    else if (chosen?.kind === "face" && filter === "body") this.selection.toggleBody(chosen.pick.bodyId);
+    else if (chosen?.kind === "face") this.selection.toggleFace(chosen.pick);
     else this.selection.clear();
     this.selection.render(this.bodies);
     this.onSelectionChange(this.selection.snapshot());
-    if (!vertex && !edge && !face) this.onSketchPick(null);
+    this.onSketchPick(null);
   }
 
   /** Edge of a displayed body under the pointer (within a few pixels). */

@@ -15,7 +15,7 @@ import { featureOfBody } from "../document/types";
 import { MIN_LENGTH } from "../features/common";
 import { GLOBAL_FRAME, faceFrame, toGlobal, toLocal, type MoveFrame } from "../features/move";
 import { sketchFrame, toWorld } from "../sketcher/frame";
-import { moveSketchPlane } from "../sketcher/move";
+import { moveSketchPlane, sketchSnapPoints } from "../sketcher/move";
 import { dragStep, roundTo } from "../viewport/axis-drag";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
@@ -60,7 +60,15 @@ export class MoveTool extends PanelTool {
   private pickStep: "source" | "reach" = "source";
   private markers: THREE.Points | null = null;
   /** Snap points of the face under the pointer, and the one under the pointer (Fusion's point picking). */
-  private hover: { bodyId: string; snaps: FaceSnaps; points: Vec3[]; index: number } | null = null;
+  private hover: {
+    points: Vec3[];
+    /** What each point belongs to: a body id, or "sketch:<id>". */
+    owners: string[];
+    /** Index of the point under the pointer, -1 when none. */
+    index: number;
+    /** The body face under the pointer, if it can be a target (its plane). */
+    face: FaceSnaps | null;
+  } | null = null;
   private snapLayer: THREE.Points | null = null;
 
   constructor(ctx: ToolContext, editing: Feature | null, subject: MoveSubject, private readonly options: MoveToolOptions = {}) {
@@ -84,7 +92,7 @@ export class MoveTool extends PanelTool {
     this.gizmo = new MoveGizmo(ctx.viewport);
     this.measure();
     // A new body move starts like Fusion's: hover a face to see its points, click one to put the manipulator there.
-    if (!this.sketch && !editing) this.inputMode = "points";
+    if (!editing || this.sketch) this.inputMode = "points";
     if (options.points && !this.sketch) {
       this.inputMode = "points";
       this.source = options.points.source;
@@ -257,11 +265,15 @@ export class MoveTool extends PanelTool {
         this.info(
           this.source
             ? `Pivot : ${pointText(this.source, unit)}`
-            : "Pivot : survolez une face du corps, ses coins et son centre apparaissent ; cliquez le point où placer les flèches.",
+            : this.sketch
+              ? "Pivot : cliquez un point de l'esquisse (extrémité, centre ou milieu d'une ligne) où placer les flèches."
+              : "Pivot : survolez une face du corps, ses coins et son centre apparaissent ; cliquez le point où placer les flèches.",
         ),
         this.source ? this.linkButton("Changer le pivot", () => ((this.pickStep = "source"), (this.hover = null), this.sync())) : null,
         this.source && !this.reach
-          ? this.info("Cible : cliquez un point (coin ou centre) d'une face d'un autre corps, ou l'intérieur d'une face plane pour amener le corps sur son plan — ou tirez les flèches.")
+          ? this.info(
+              `Cible : cliquez un point (coin ou milieu) d'une face ${this.sketch ? "d'un corps" : "d'un autre corps"} ou un point d'une autre esquisse, ou l'intérieur d'une face plane pour amener ${this.sketch ? "l'esquisse" : "le corps"} sur son plan — ou tirez les flèches.`,
+            )
           : null,
         this.reach ? this.info(this.reachFace ? `Cible : plan de la face passant par ${pointText(this.reach, unit)}` : `Cible : ${pointText(this.reach, unit)}`) : null,
         this.reach ? this.linkButton("Changer la cible", () => ((this.pickStep = "reach"), (this.hover = null), this.sync())) : null,
@@ -297,7 +309,7 @@ export class MoveTool extends PanelTool {
         "Saisie",
         this.inputMode,
         [
-          ...(this.sketch ? [] : [["points", "Pivot et cible (points, faces)"] as [string, string]]),
+          ["points", "Pivot et cible (points, faces)"],
           ["relative", "Relatif (Δ)"],
           ["distance", "Distance sur un axe"],
           ["absolute", "Position absolue"],
@@ -338,7 +350,7 @@ export class MoveTool extends PanelTool {
 
   /** A point of a face under the pointer is picked by a click: it wins over the manipulator (which may sit on it). */
   private onSnap(): boolean {
-    return this.inputMode === "points" && !this.sketch && !!this.hover && this.hover.index >= 0;
+    return this.inputMode === "points" && !!this.hover && this.hover.index >= 0;
   }
 
   override down(event: PointerEvent): boolean {
@@ -354,36 +366,9 @@ export class MoveTool extends PanelTool {
       this.setTranslate(this.dragged(handle, delta));
       return;
     }
-    if (this.inputMode === "points" && !this.sketch) this.hoverSnaps(event);
+    if (this.inputMode === "points") this.hoverSnaps(event);
     const onGizmo = !this.onSnap() && this.gizmo.hovered(event) !== null;
     this.ctx.viewport.renderer.domElement.style.cursor = this.onSnap() ? "crosshair" : onGizmo ? "grab" : "";
-  }
-
-  /** Points of the face under the pointer that a click can pick (own body for the pivot, another body for the target). */
-  private hoverSnaps(event: PointerEvent | null): void {
-    const pick = event ? this.ctx.viewport.pickFace(event) : null;
-    const own = (id: string) => id === this.subject.id || id === this.id;
-    const usable = pick && (this.pickStep === "source" ? !this.editing || own(pick.bodyId) : !own(pick.bodyId));
-    const mesh = usable && pick ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
-    const snaps = mesh && pick ? faceSnaps(mesh, pick.faceIndex) : null;
-    if (!pick || !snaps || !event) {
-      if (this.hover) {
-        this.hover = null;
-        this.placeSnaps();
-        this.placeGizmo();
-      }
-      return;
-    }
-    const points: Vec3[] = [...snaps.corners, snaps.center];
-    let index = -1;
-    let best = 16;
-    points.forEach((p, i) => {
-      const d = this.ctx.viewport.screenDistance(event, p);
-      if (d < best) [best, index] = [d, i];
-    });
-    this.hover = { bodyId: pick.bodyId, snaps, points, index };
-    this.placeSnaps();
-    this.placeGizmo();
   }
 
   /** Translation after a drag by `delta`, rounded to the zoom on the axes the handle really moves along. */
@@ -403,40 +388,104 @@ export class MoveTool extends PanelTool {
     return isClick;
   }
 
+  /** Sketch points a click may pick now: the moved sketch's own for its pivot, those of the other sketches as targets. */
+  private sketchCandidates(): { owner: string; point: Vec3 }[] {
+    if (this.pickStep === "source" && !this.sketch) return [];
+    const list: { owner: string; point: Vec3 }[] = [];
+    for (const f of this.ctx.doc().features) {
+      if (f.type !== "sketch" || f.suppressed || f.hidden) continue;
+      const mine = f.id === this.sketch?.id;
+      if (this.pickStep === "source" ? !mine : mine) continue;
+      for (const point of sketchSnapPoints(mine && this.sketch ? this.sketch : f)) list.push({ owner: `sketch:${f.id}`, point });
+    }
+    return list;
+  }
+
   /**
-   * Pivot then target, as in Fusion: a click on a point of a face (a corner or its centre) puts the pivot
-   * there; then a point of a face of another body is the target (the pivot comes onto it), or the inside of
-   * a planar face (the body comes onto its plane, along its normal).
+   * Points a click can pick under the pointer, as Fusion shows them: the corners and middle of the body face
+   * under it (the moved body's for the pivot, another body's for the target), and sketch points (all those of
+   * a moved sketch for its pivot, those near the pointer of the other sketches for the target).
+   */
+  private hoverSnaps(event: PointerEvent | null): void {
+    const points: Vec3[] = [];
+    const owners: string[] = [];
+    let face: FaceSnaps | null = null;
+    const pick = event ? this.ctx.viewport.pickFace(event) : null;
+    if (pick) {
+      const own = pick.bodyId === this.subject.id || pick.bodyId === this.id;
+      const usable = this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
+      const mesh = usable ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
+      const snaps = mesh ? faceSnaps(mesh, pick.faceIndex) : null;
+      if (snaps) {
+        for (const p of [...snaps.corners, snaps.center]) {
+          points.push(p);
+          owners.push(pick.bodyId);
+        }
+        face = snaps;
+      }
+    }
+    if (event) {
+      const all = this.sketch !== null && this.pickStep === "source";
+      for (const c of this.sketchCandidates()) {
+        if (!all && this.ctx.viewport.screenDistance(event, c.point) > 40) continue;
+        points.push(c.point);
+        owners.push(c.owner);
+      }
+    }
+    if (!event || points.length === 0) {
+      if (this.hover) {
+        this.hover = null;
+        this.placeSnaps();
+        this.placeGizmo();
+      }
+      return;
+    }
+    let index = -1;
+    let best = 16;
+    points.forEach((p, i) => {
+      const d = this.ctx.viewport.screenDistance(event, p);
+      if (d < best) [best, index] = [d, i];
+    });
+    this.hover = { points, owners, index, face };
+    this.placeSnaps();
+    this.placeGizmo();
+  }
+
+  /**
+   * Pivot then target, as in Fusion: a click on a point (a corner or the middle of a face, a sketch point)
+   * puts the pivot there; then a point of another body or sketch is the target (the pivot comes onto it), or
+   * the inside of a planar face (what is moved comes onto its plane, along its normal).
    */
   private pickPoint(event: PointerEvent): void {
     this.hoverSnaps(event);
     const hover = this.hover;
     if (!hover) return;
     const point = hover.index >= 0 ? hover.points[hover.index] : undefined;
+    const owner = hover.index >= 0 ? hover.owners[hover.index] : undefined;
     if (this.pickStep === "source") {
-      if (!point) {
-        this.ctx.notify("Cliquez un des points de la face (un coin ou le centre) pour y placer les flèches.", "info");
+      if (!point || !owner) {
+        this.ctx.notify("Cliquez un des points affichés pour y placer les flèches.", "info");
         return;
       }
-      if (hover.bodyId !== this.subject.id && hover.bodyId !== this.id) {
+      if (!this.sketch && owner !== this.subject.id && owner !== this.id) {
         // A point of another body: that body is the one to move.
-        this.subject = { kind: "body", id: hover.bodyId };
+        this.subject = { kind: "body", id: owner };
         this.measure();
         this.translate = [0, 0, 0];
         this.reach = null;
       }
-      // A point of the preview is shown moved: take it back to where it was.
-      this.source = hover.bodyId === this.id ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
+      // A point of the body's preview is shown moved: take it back to where it was.
+      this.source = owner === this.id && !this.sketch ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
       this.pickStep = "reach";
     } else if (point) {
       this.reach = point;
       this.reachFace = false;
-    } else if (hover.snaps.normal) {
-      this.reach = hover.snaps.center;
-      this.reachNormal = hover.snaps.normal;
+    } else if (hover.face?.normal) {
+      this.reach = hover.face.center;
+      this.reachNormal = hover.face.normal;
       this.reachFace = true;
     } else {
-      this.ctx.notify("Face courbe : cliquez un de ses points (un coin ou le centre).", "info");
+      this.ctx.notify("Cliquez un point affiché, ou l'intérieur d'une face plane.", "info");
       return;
     }
     this.hover = null;
@@ -449,7 +498,7 @@ export class MoveTool extends PanelTool {
 
   /** A click on another body takes it as the body to move. */
   protected override click(event: PointerEvent): void {
-    if (this.inputMode === "points" && !this.sketch) {
+    if (this.inputMode === "points") {
       this.pickPoint(event);
       return;
     }

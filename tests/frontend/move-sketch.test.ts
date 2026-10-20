@@ -6,7 +6,7 @@ import type { CadDocument, Feature, SketchFeature } from "../../frontend/src/doc
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { addCircle, addConstraint, addLine, addRectangle, pointPos } from "../../frontend/src/sketcher/edit";
-import { basePoint, deltaToPolar, immovable, movablePoints, moveGeometry, movePreview, moveSketchPlane, polarToDelta, withContours } from "../../frontend/src/sketcher/move";
+import { basePoint, deltaToPolar, sketchSnapPoints, immovable, movablePoints, moveGeometry, movePreview, moveSketchPlane, polarToDelta, withContours } from "../../frontend/src/sketcher/move";
 import { setupKernel } from "./kernel-setup";
 
 beforeAll(setupKernel);
@@ -161,5 +161,18 @@ describe("déplacer une esquisse entière en 3D", () => {
     const frontMoved = bbox(doc(moveSketchPlane(sketch({ plane: "XZ" }), [30, 0, 7])));
     [0, 1, 2].forEach((i) => expect(frontMoved[0][i]! - front[0][i]!).toBeCloseTo([30, 0, 7][i]!, 6));
     [0, 1, 2].forEach((i) => expect(frontMoved[1][i]! - front[1][i]!).toBeCloseTo([30, 0, 7][i]!, 6));
+  });
+});
+
+describe("points d'accroche d'une esquisse (pivot et cible de Déplacer)", () => {
+  it("ses points et les milieux de ses lignes, dans le repère du modèle (plan, décalage, origine déplacée)", () => {
+    const g = rect(); // (0,0)–(20,10)
+    const onXY = sketchSnapPoints({ id: "s", type: "sketch", name: "E", plane: "XY", offset: 3, ...g });
+    expect(onXY).toHaveLength(8); // 4 corners + 4 middles
+    expect(onXY).toContainEqual([20, 10, 3]);
+    expect(onXY).toContainEqual([10, 0, 3]);
+    // Plane XZ: u = X, v = Z, its origin at −Y × offset; a moved sketch carries its shift.
+    const onXZ = sketchSnapPoints({ id: "s", type: "sketch", name: "E", plane: "XZ", offset: 2, shift: [5, 1], ...g });
+    expect(onXZ).toContainEqual([25, -2, 11]);
   });
 });
