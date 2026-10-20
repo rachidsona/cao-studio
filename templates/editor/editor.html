@@ -55,79 +55,133 @@
     </details>
   </header>
 
-  {# ---- Toolbar (3D model): only implemented commands ---- #}
-  <div class="flex items-center gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils du modèle">
-    <button type="button" class="tool-btn" data-action="deselect" title="Sélection (Échap)"><span aria-hidden="true">⌖</span><span class="hidden sm:inline">Sélection</span></button>
-    <div class="flex shrink-0 items-center rounded-md border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="Filtre de sélection">
-      <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="auto" aria-pressed="true" title="Arête en priorité, sinon face">Auto</button>
-      <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="face" aria-pressed="false" title="Sélectionner seulement des faces">Faces</button>
-      <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="edge" aria-pressed="false" title="Sélectionner seulement des arêtes (lignes)">Arêtes</button>
-      <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="vertex" aria-pressed="false" title="Sélectionner un point (sommet) d'un corps">Points</button>
-      <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="body" aria-pressed="false" title="Sélectionner le corps entier">Corps</button>
-    </div>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <details class="relative shrink-0">
-      <summary class="tool-btn cursor-pointer list-none" data-sketch-entry title="Nouvelle esquisse : sur la face sélectionnée, sinon sur un plan"><span aria-hidden="true">✎</span><span>Esquisse</span></summary>
-      <div class="fixed z-40 mt-1 w-56 space-y-1 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
-        <p class="panel-title px-2 pt-1">Plan de l'esquisse</p>
-        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XY">Plan XY (dessus)</button>
-        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XZ">Plan XZ (face)</button>
-        <button type="button" class="tool-btn w-full justify-start" data-new-sketch="YZ">Plan YZ (droite)</button>
+  {% include "editor/_icons.html" %}
+
+  {# ---- Toolbar (3D model): icons grouped as a ribbon, each with its name in a tooltip ---- #}
+  <div class="flex items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils du modèle">
+    <div class="ribbon-group" role="group" aria-label="Sélection">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-action="deselect" title="Sélection (Échap)" aria-label="Sélection"><svg class="tool-icon" aria-hidden="true"><use href="#i-select"/></svg></button>
+        <div class="flex shrink-0 items-center rounded-md border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="Filtre de sélection">
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="auto" aria-pressed="true" title="Arête en priorité, sinon face">Auto</button>
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="face" aria-pressed="false" title="Sélectionner seulement des faces">Faces</button>
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="edge" aria-pressed="false" title="Sélectionner seulement des arêtes (lignes)">Arêtes</button>
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="vertex" aria-pressed="false" title="Sélectionner un point (sommet) d'un corps">Points</button>
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="body" aria-pressed="false" title="Sélectionner le corps entier">Corps</button>
+        </div>
       </div>
-    </details>
-    <button type="button" class="tool-btn" data-action="extrude" title="Extruder l'esquisse sélectionnée"><span aria-hidden="true">⇧</span><span>Extrusion</span></button>
-    <button type="button" class="tool-btn" data-action="revolve" title="Révolution d'un profil autour d'un axe"><span aria-hidden="true">⟲</span><span>Révolution</span></button>
-    <button type="button" class="tool-btn" data-action="fillet" title="Congé sur des arêtes"><span aria-hidden="true">◜</span><span>Congé</span></button>
-    <button type="button" class="tool-btn" data-action="chamfer" title="Chanfrein sur des arêtes"><span aria-hidden="true">◸</span><span>Chanfrein</span></button>
-    <button type="button" class="tool-btn" data-action="combine" title="Union, soustraction ou intersection de corps"><span aria-hidden="true">⧉</span><span>Combiner</span></button>
-    <button type="button" class="tool-btn" data-action="split" title="Scinder le corps par un plan ou une face plane"><span aria-hidden="true">✂</span><span>Scinder le corps</span></button>
-    <button type="button" class="tool-btn" data-action="move" title="Déplacer un corps (manipulateur XYZ) ou une esquisse, avec saisie numérique"><span aria-hidden="true">✥</span><span>Déplacer</span></button>
-    <button type="button" class="tool-btn" data-action="add-plate" title="Nouvelle plaque (esquisse + extrusion)"><span aria-hidden="true">▣</span><span>Plaque</span></button>
-    <button type="button" class="tool-btn" data-action="add-hole" title="Perçage sur une face plane (H)"><span aria-hidden="true">◎</span><span>Perçage</span></button>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <button type="button" class="tool-btn" data-action="view" data-view="iso" title="Vue isométrique">Iso</button>
-    <button type="button" class="tool-btn" data-action="view" data-view="front" title="Vue de face">Face</button>
-    <button type="button" class="tool-btn" data-action="view" data-view="top" title="Vue de dessus">Dessus</button>
-    <button type="button" class="tool-btn" data-action="view" data-view="right" title="Vue de droite">Droite</button>
-    <button type="button" class="tool-btn" data-action="fit" title="Ajuster à la fenêtre (F)">Ajuster</button>
+      <span class="ribbon-caption" aria-hidden="true">Sélection</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Créer">
+      <div class="ribbon-row">
+        <details class="relative shrink-0">
+          <summary class="tool-btn icon-btn cursor-pointer list-none" data-sketch-entry title="Nouvelle esquisse : sur la face sélectionnée, sinon sur un plan" aria-label="Esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-sketch"/></svg></summary>
+          <div class="fixed z-40 mt-1 w-56 space-y-1 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+            <p class="panel-title px-2 pt-1">Plan de l'esquisse</p>
+            <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XY">Plan XY (dessus)</button>
+            <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XZ">Plan XZ (face)</button>
+            <button type="button" class="tool-btn w-full justify-start" data-new-sketch="YZ">Plan YZ (droite)</button>
+          </div>
+        </details>
+        <button type="button" class="tool-btn icon-btn" data-action="extrude" title="Extrusion : extruder l&#x27;esquisse sélectionnée" aria-label="Extrusion"><svg class="tool-icon" aria-hidden="true"><use href="#i-extrude"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="revolve" title="Révolution d&#x27;un profil autour d&#x27;un axe" aria-label="Révolution"><svg class="tool-icon" aria-hidden="true"><use href="#i-revolve"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="add-plate" title="Plaque : nouveau corps (esquisse + extrusion)" aria-label="Plaque"><svg class="tool-icon" aria-hidden="true"><use href="#i-plate"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="add-hole" title="Perçage sur une face plane (H)" aria-label="Perçage"><svg class="tool-icon" aria-hidden="true"><use href="#i-hole"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Créer</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Modifier">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-action="fillet" title="Congé sur des arêtes" aria-label="Congé"><svg class="tool-icon" aria-hidden="true"><use href="#i-fillet"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="chamfer" title="Chanfrein sur des arêtes" aria-label="Chanfrein"><svg class="tool-icon" aria-hidden="true"><use href="#i-chamfer"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="combine" title="Combiner : union, soustraction ou intersection de corps" aria-label="Combiner"><svg class="tool-icon" aria-hidden="true"><use href="#i-combine"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="split" title="Scinder le corps par un plan ou une face plane" aria-label="Scinder le corps"><svg class="tool-icon" aria-hidden="true"><use href="#i-split"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="move" title="Déplacer un corps ou une esquisse (pivot et cible, manipulateur XYZ, saisie)" aria-label="Déplacer"><svg class="tool-icon" aria-hidden="true"><use href="#i-move"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Modifier</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Vue">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="iso" title="Vue isométrique" aria-label="Vue isométrique"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-iso"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="front" title="Vue de face" aria-label="Vue de face"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-front"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="top" title="Vue de dessus" aria-label="Vue de dessus"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-top"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="right" title="Vue de droite" aria-label="Vue de droite"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-right"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="fit" title="Ajuster à la fenêtre (F)" aria-label="Ajuster"><svg class="tool-icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Vue</span>
+    </div>
   </div>
 
-  {# ---- Toolbar (sketch mode) ---- #}
-  <div class="hidden items-center gap-1 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
-    <button type="button" class="tool-btn tool-btn-primary" data-sketch-command="finish" title="Terminer l'esquisse (Entrée)">✓ <span>Terminer</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="extrude" title="Terminer et extruder cette esquisse (E)">⇧ <span>Extrusion</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="fit" title="Ajuster la vue à l'esquisse (F)">⤢ <span class="hidden md:inline">Ajuster</span></button>
-    <span data-ref="sketch-dof" class="shrink-0 rounded px-2 py-1 text-xs font-medium data-[state=free]:bg-sky-100 data-[state=free]:text-sky-900 data-[state=full]:bg-emerald-100 data-[state=full]:text-emerald-900 data-[state=warn]:bg-amber-100 data-[state=warn]:text-amber-900"></span>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <button type="button" class="tool-btn" data-sketch-tool="select" title="Sélection (S)">⌖</button>
-    <button type="button" class="tool-btn" data-sketch-tool="line" title="Ligne / polyligne (L)">╱ <span class="hidden md:inline">Ligne</span></button>
-    <button type="button" class="tool-btn" data-sketch-tool="rectangle" title="Rectangle (R)">▭ <span class="hidden md:inline">Rectangle</span></button>
-    <button type="button" class="tool-btn" data-sketch-tool="circle" title="Cercle (C)">○ <span class="hidden md:inline">Cercle</span></button>
-    <button type="button" class="tool-btn" data-sketch-tool="arc" title="Arc par centre (A)">◜ <span class="hidden md:inline">Arc</span></button>
-    <button type="button" class="tool-btn" data-sketch-tool="offset" title="Décalage : copie parallèle des éléments sélectionnés à une distance (O)">⇉ <span class="hidden md:inline">Décalage</span></button>
-    <button type="button" class="tool-btn" data-sketch-tool="move" title="Déplacer : points, lignes, cercles, contours — à la souris ou par saisie, avec les contraintes (M)">✥ <span class="hidden md:inline">Déplacer</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="construction" title="Géométrie de construction (X)">┄ <span class="hidden md:inline">Construction</span></button>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <button type="button" class="tool-btn" data-sketch-tool="dimension" title="Cote : cliquez un ou deux éléments pour voir la mesure, recliquez pour poser la cote (D)">↔ <span class="hidden md:inline">Cote</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="dimensionX" title="Cote horizontale">⇿</button>
-    <button type="button" class="tool-btn" data-sketch-command="dimensionY" title="Cote verticale">↕</button>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <button type="button" class="tool-btn" data-sketch-command="gridsnap" title="Accrochage à la grille (G)">▦ <span class="hidden md:inline">Grille</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="glyphs" title="Afficher les symboles de contraintes (H, V, ∥…)">👁 <span class="hidden md:inline">Contraintes</span></button>
-    <button type="button" class="tool-btn" data-sketch-command="coincident" title="Coïncidence : deux points au même endroit, liés pour de bon (différent de « Point sur courbe »)" aria-label="Coïncidence">⦿</button>
-    <button type="button" class="tool-btn" data-sketch-command="horizontal" title="Horizontale">H</button>
-    <button type="button" class="tool-btn" data-sketch-command="vertical" title="Verticale">V</button>
-    <button type="button" class="tool-btn" data-sketch-command="parallel" title="Parallèle">∥</button>
-    <button type="button" class="tool-btn" data-sketch-command="perpendicular" title="Perpendiculaire">⟂</button>
-    <button type="button" class="tool-btn" data-sketch-command="tangent" title="Tangence">◠</button>
-    <button type="button" class="tool-btn" data-sketch-command="equal" title="Égalité">=</button>
-    <button type="button" class="tool-btn" data-sketch-command="symmetric" title="Symétrie (2 points + axe)">⋈</button>
-    <button type="button" class="tool-btn" data-sketch-command="concentric" title="Concentricité">◎</button>
-    <button type="button" class="tool-btn" data-sketch-command="fix" title="Fixer le point">⚓</button>
-    <button type="button" class="tool-btn" data-sketch-command="pointOnCurve" title="Point sur courbe : le point reste sur la courbe mais peut y glisser (différent de « Coïncidence »)" aria-label="Point sur courbe">⊸</button>
-    <button type="button" class="tool-btn" data-sketch-command="midpoint" title="Milieu d'une ligne">◇</button>
-    <span class="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
-    <button type="button" class="tool-btn" data-sketch-command="delete" title="Supprimer la sélection (Suppr)">✕</button>
+  {# ---- Toolbar (sketch mode): icons grouped as a ribbon, each with its name in a tooltip ---- #}
+  <div class="hidden items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
+    <div class="ribbon-group" role="group" aria-label="Terminer">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn tool-btn-primary" data-sketch-command="finish" title="Terminer l&#x27;esquisse (Entrée)" aria-label="Terminer l&#x27;esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-finish"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="extrude" title="Terminer et extruder cette esquisse (E)" aria-label="Extrusion"><svg class="tool-icon" aria-hidden="true"><use href="#i-extrude"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Terminer</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Créer">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="select" title="Sélection (S)" aria-label="Sélection"><svg class="tool-icon" aria-hidden="true"><use href="#i-select"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="line" title="Ligne / polyligne (L)" aria-label="Ligne"><svg class="tool-icon" aria-hidden="true"><use href="#i-line"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="rectangle" title="Rectangle (R)" aria-label="Rectangle"><svg class="tool-icon" aria-hidden="true"><use href="#i-rect"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="circle" title="Cercle (C)" aria-label="Cercle"><svg class="tool-icon" aria-hidden="true"><use href="#i-circle"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="arc" title="Arc par centre (A)" aria-label="Arc"><svg class="tool-icon" aria-hidden="true"><use href="#i-arc"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="construction" title="Géométrie de construction (X)" aria-label="Construction"><svg class="tool-icon" aria-hidden="true"><use href="#i-construction"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Créer</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Modifier">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="offset" title="Décalage : copie parallèle des éléments sélectionnés à une distance (O)" aria-label="Décalage"><svg class="tool-icon" aria-hidden="true"><use href="#i-offset"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="move" title="Déplacer : points, lignes, cercles, contours — à la souris ou par saisie, avec les contraintes (M)" aria-label="Déplacer"><svg class="tool-icon" aria-hidden="true"><use href="#i-move"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="delete" title="Supprimer la sélection (Suppr)" aria-label="Supprimer"><svg class="tool-icon" aria-hidden="true"><use href="#i-delete"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Modifier</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Cotes">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="dimension" title="Cote : cliquez un ou deux éléments pour voir la mesure, recliquez pour poser la cote (D)" aria-label="Cote"><svg class="tool-icon" aria-hidden="true"><use href="#i-dimension"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="dimensionX" title="Cote horizontale" aria-label="Cote horizontale"><svg class="tool-icon" aria-hidden="true"><use href="#i-dimension-x"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="dimensionY" title="Cote verticale" aria-label="Cote verticale"><svg class="tool-icon" aria-hidden="true"><use href="#i-dimension-y"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Cotes</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Contraintes">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="coincident" title="Coïncidence : deux points au même endroit, liés pour de bon (différent de « Point sur courbe »)" aria-label="Coïncidence"><svg class="tool-icon" aria-hidden="true"><use href="#i-coincident"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="horizontal" title="Horizontale" aria-label="Horizontale"><svg class="tool-icon" aria-hidden="true"><use href="#i-horizontal"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="vertical" title="Verticale" aria-label="Verticale"><svg class="tool-icon" aria-hidden="true"><use href="#i-vertical"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="parallel" title="Parallèle" aria-label="Parallèle"><svg class="tool-icon" aria-hidden="true"><use href="#i-parallel"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="perpendicular" title="Perpendiculaire" aria-label="Perpendiculaire"><svg class="tool-icon" aria-hidden="true"><use href="#i-perpendicular"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="tangent" title="Tangence" aria-label="Tangence"><svg class="tool-icon" aria-hidden="true"><use href="#i-tangent"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="equal" title="Égalité" aria-label="Égalité"><svg class="tool-icon" aria-hidden="true"><use href="#i-equal"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="symmetric" title="Symétrie (2 points + axe)" aria-label="Symétrie"><svg class="tool-icon" aria-hidden="true"><use href="#i-symmetric"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="concentric" title="Concentricité" aria-label="Concentricité"><svg class="tool-icon" aria-hidden="true"><use href="#i-concentric"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="fix" title="Fixer le point" aria-label="Fixer"><svg class="tool-icon" aria-hidden="true"><use href="#i-fix"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="pointOnCurve" title="Point sur courbe : le point reste sur la courbe mais peut y glisser (différent de « Coïncidence »)" aria-label="Point sur courbe"><svg class="tool-icon" aria-hidden="true"><use href="#i-point-on-curve"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="midpoint" title="Milieu d&#x27;une ligne" aria-label="Milieu"><svg class="tool-icon" aria-hidden="true"><use href="#i-midpoint"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Contraintes</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Affichage">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="glyphs" title="Afficher les symboles de contraintes (H, V, ∥…)" aria-label="Symboles de contraintes"><svg class="tool-icon" aria-hidden="true"><use href="#i-glyphs"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="gridsnap" title="Accrochage à la grille (G)" aria-label="Accrochage à la grille"><svg class="tool-icon" aria-hidden="true"><use href="#i-grid"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="fit" title="Ajuster la vue à l&#x27;esquisse (F)" aria-label="Ajuster la vue à l&#x27;esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
+        <span data-ref="sketch-dof" class="shrink-0 rounded px-2 py-1 text-xs font-medium data-[state=free]:bg-sky-100 data-[state=free]:text-sky-900 data-[state=full]:bg-emerald-100 data-[state=full]:text-emerald-900 data-[state=warn]:bg-amber-100 data-[state=warn]:text-amber-900"></span>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Affichage</span>
+    </div>
   </div>
 
   <div class="relative flex min-h-0 flex-1">

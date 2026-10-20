@@ -21,6 +21,11 @@
     --sketch-dim: #15803d;
     --sketch-ref: #6b7280;
     --sketch-preview: #0284c7;
+    /* Toolbar icons: accents (points, arrows), constraints, dimensions. */
+    --ic-accent: #0284c7;
+    --ic-accent-fill: rgb(2 132 199 / 0.18);
+    --ic-constraint: #dc2626;
+    --ic-dim: #15803d;
   }
   .dark {
     --viewport-bg: #2b313b;
@@ -28,6 +33,10 @@
     --sketch-dim: #8fd14f;
     --sketch-ref: #9ca3af;
     --sketch-preview: #38bdf8;
+    --ic-accent: #38bdf8;
+    --ic-accent-fill: rgb(56 189 248 / 0.2);
+    --ic-constraint: #f87171;
+    --ic-dim: #8fd14f;
   }
   html,
   body {
@@ -46,6 +55,30 @@
   }
   .tool-btn-primary {
     @apply bg-sky-600 text-white hover:bg-sky-700 dark:text-white dark:hover:bg-sky-500;
+  }
+  /* Ribbon toolbars: icon buttons in captioned groups (the name of each tool is its tooltip). */
+  .icon-btn {
+    @apply min-h-11 min-w-11 px-1.5;
+  }
+  .tool-icon {
+    @apply size-7 shrink-0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ribbon-group {
+    @apply flex shrink-0 flex-col items-center justify-between gap-0.5 px-1;
+  }
+  .ribbon-row {
+    @apply flex items-center gap-0.5;
+  }
+  .ribbon-caption {
+    @apply text-[10px] leading-3 font-semibold tracking-wider text-gray-500 uppercase select-none dark:text-gray-400;
+  }
+  .ribbon-sep {
+    @apply mx-1 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-700;
   }
   .panel-title {
     @apply text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400;
