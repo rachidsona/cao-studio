@@ -120,6 +120,10 @@ serveur accepte les deux versions.
 - **Accrochage** : un clic sur un point existant le réutilise comme sommet partagé ; un clic sur une
   courbe ajoute une contrainte « point sur courbe » ; un segment presque horizontal ou vertical reçoit la
   contrainte correspondante.
+- **Grille** : le dessin s'accroche aux lignes de la grille affichée (touche G ou bouton « Grille » pour
+  l'activer ou la couper, choix mémorisé) ; le pas suit le zoom (1, 10, 100 mm…) et les lignes passent
+  par l'origine de l'esquisse. Un point ou une courbe existants gardent la priorité sur la grille.
+  Le déplacement d'un point à la souris s'accroche aussi.
 - **Contraintes** : coïncidence, horizontale, verticale, parallèle, perpendiculaire, tangence, égalité,
   symétrie (par rapport à un point ou une ligne), concentricité, fixation, point sur courbe, milieu.
   Seules celles qui s'appliquent à la sélection en cours sont actives.

@@ -171,6 +171,7 @@ export class SketchController {
     if (id === "extrude") return this.host.extrude();
     if (id === "fit") return mode.ensureVisible(true);
     if (id === "glyphs") return mode.toggleGlyphs();
+    if (id === "gridsnap") return mode.toggleGridSnap();
     if (id === "construction") return mode.toggleConstruction();
     if (id === "delete") return mode.deleteSelection();
     const created = mode.runCommand(id);
@@ -195,7 +196,9 @@ export class SketchController {
     const applicable = new Set(mode?.applicableCommands() ?? []);
     for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-sketch-command]")) {
       const id = button.dataset.sketchCommand as string;
-      if (id === "glyphs") {
+      if (id === "gridsnap") {
+        button.setAttribute("aria-pressed", String(!!mode?.gridSnap));
+      } else if (id === "glyphs") {
         button.setAttribute("aria-pressed", String(!!mode?.showGlyphs));
       } else if (id === "construction") {
         const selectedCurves = mode ? [...mode.selection].filter((s) => findCurve(mode.geometry, s)).length : 0;
@@ -256,6 +259,10 @@ export class SketchController {
     }
     if (key === "d") {
       mode.setTool("dimension");
+      return true;
+    }
+    if (key === "g") {
+      mode.toggleGridSnap();
       return true;
     }
     if (key === "o") {

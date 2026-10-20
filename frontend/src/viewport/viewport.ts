@@ -184,6 +184,11 @@ export class Viewport {
     }
   }
 
+  /** Spacing of the grid lines now shown (mm): what drawing snaps to. */
+  get gridStep(): number {
+    return this.grid.currentStep;
+  }
+
   setBodies(meshes: BodyMesh[]): void {
     for (const body of this.bodies.values()) this.disposeBody(body);
     this.bodies.clear();

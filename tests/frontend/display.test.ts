@@ -1,8 +1,9 @@
-/** Sketches kept visible in the 3D view and hidden with the eye icon. */
+/** Sketches kept visible in the 3D view (eye icon) and drawing snapped to the grid. */
 import { beforeAll, describe, expect, it } from "vitest";
 import type { SketchGeometry } from "../../frontend/src/document/sketch";
 import type { CadDocument, Feature } from "../../frontend/src/document/types";
 import { Recomputer } from "../../frontend/src/history/recompute";
+import { gridPoint, snapToGrid } from "../../frontend/src/sketcher/hit";
 import { addCircle, addLine, addRectangle } from "../../frontend/src/sketcher/edit";
 import { sketchPolylines } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
@@ -38,6 +39,28 @@ describe("polylignes d'une esquisse", () => {
     g = addLine(g, { at: [0, 1] }, { at: [10, 1] }, { autoAlign: false, construction: true }).geometry;
     g.curves.push({ id: "r1", kind: "line", p1: g.points[0]!.id, p2: g.points[1]!.id, construction: true, projected: true });
     expect(sketchPolylines(g)).toHaveLength(1);
+  });
+});
+
+describe("accrochage à la grille", () => {
+  it("arrondit au point de grille le plus proche, sans -0", () => {
+    expect(gridPoint([12.4, 7.6], 5)).toEqual([10, 10]);
+    expect(gridPoint([-0.4, 0.4], 1)).toEqual([0, 0]);
+    expect(Object.is(gridPoint([-0.4, 0.4], 1)[0], 0)).toBe(true);
+    expect(gridPoint([0.26, 0.74], 0.5)).toEqual([0.5, 0.5]);
+    expect(gridPoint([3.3, 4.4], 0)).toEqual([3.3, 4.4]); // no valid step: unchanged
+  });
+
+  it("garde l'accroche sur un point ou une courbe existants, sinon va à la grille", () => {
+    expect(snapToGrid({ pos: [12.4, 7.6] }, 5).pos).toEqual([10, 10]);
+    expect(snapToGrid({ pos: [12.4, 7.6], pointId: "p1" }, 5)).toEqual({ pos: [12.4, 7.6], pointId: "p1" });
+    expect(snapToGrid({ pos: [12.4, 7.6], curveId: "l1" }, 5)).toEqual({ pos: [12.4, 7.6], curveId: "l1" });
+  });
+
+  it("un rectangle tracé sur des points de grille a des cotes rondes", () => {
+    const [a, b] = [gridPoint([0.3, 0.2], 5), gridPoint([39.8, 24.6], 5)];
+    expect(a).toEqual([0, 0]);
+    expect(b).toEqual([40, 25]);
   });
 });
 

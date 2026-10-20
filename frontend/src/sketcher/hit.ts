@@ -73,6 +73,18 @@ export function snap(g: SketchGeometry, p: Vec2, tolerance: number, exclude: Rea
   return { pos: best.foot, curveId: best.id };
 }
 
+/** Nearest point of the grid (lines every `step` mm, through the sketch origin). */
+export function gridPoint(p: Vec2, step: number): Vec2 {
+  if (!(step > 0)) return p;
+  // `+ 0` turns a rounded -0 into 0.
+  return [Math.round(p[0] / step) * step + 0, Math.round(p[1] / step) * step + 0];
+}
+
+/** A free position goes to the nearest grid point; a snap on an existing point or curve is kept. */
+export function snapToGrid(s: Snap, step: number): Snap {
+  return s.pointId || s.curveId ? s : { pos: gridPoint(s.pos, step) };
+}
+
 /**
  * Element a click toggles: an already selected element under the pointer wins
  * over a closer neighbour (so a second click deselects), otherwise the nearest.

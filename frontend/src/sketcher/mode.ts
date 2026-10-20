@@ -26,10 +26,11 @@ import {
 import { extractLoops, regions as regionsOf, type Region } from "./loops";
 
 const GLYPHS_KEY = "cao-studio:sketch-glyphs";
+const GRID_SNAP_KEY = "cao-studio:sketch-grid-snap";
 import { addConstraint, findCurve, measure, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
 import * as THREE from "three";
 import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
-import { hitTest, snap, toggleTarget } from "./hit";
+import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
 import { SketchOverlay } from "./overlay";
 import { OffsetTool } from "./offset-tool";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
@@ -162,6 +163,31 @@ export class SketchMode implements PointerHandler {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote sélectionné se supprime avec Suppr";
+  }
+
+  /** Drawing snaps to the grid lines shown (on by default); the choice is remembered. */
+  get gridSnap(): boolean {
+    try {
+      return localStorage.getItem(GRID_SNAP_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  }
+
+  toggleGridSnap(): void {
+    try {
+      localStorage.setItem(GRID_SNAP_KEY, this.gridSnap ? "0" : "1");
+    } catch {
+      // Private mode: the toggle simply does not persist.
+    }
+    this.host.changed();
+    this.host.notify(this.gridSnap ? "Accrochage à la grille activé." : "Accrochage à la grille désactivé.", "info");
+  }
+
+  /** Where a pointer position lands: on an existing point or curve, else on the nearest grid point. */
+  private snapAt(p: Vec2) {
+    const s = snap(this.geometry, p, this.tolerance());
+    return this.gridSnap ? snapToGrid(s, this.viewport.gridStep) : s;
   }
 
   /** Constraint symbols (H, V, ∥…) are shown on demand; the choice is remembered. */
@@ -377,7 +403,8 @@ export class SketchMode implements PointerHandler {
     if (this.drag) {
       this.drag.moved = true;
       try {
-        const result = solveSketch(this.drag.base, { drag: { point: this.drag.point, x: p[0], y: p[1] }, diagnose: false });
+        const target = this.gridSnap ? gridPoint(p, this.viewport.gridStep) : p;
+        const result = solveSketch(this.drag.base, { drag: { point: this.drag.point, x: target[0], y: target[1] }, diagnose: false });
         if (result.state !== "conflicting" && result.state !== "failed") this.geometry = result.geometry;
       } catch {
         // Keep the last valid drag position.
@@ -386,7 +413,7 @@ export class SketchMode implements PointerHandler {
       return;
     }
     if (this.tool) {
-      const s = snap(this.geometry, p, this.tolerance());
+      const s = this.snapAt(p);
       this.hover = s.pointId ?? s.curveId ?? null;
       this.preview = this.tool.move(this.geometry, s);
     } else if (this.offset) {
@@ -414,7 +441,7 @@ export class SketchMode implements PointerHandler {
     if (!p) return true;
     if (this.tool) {
       try {
-        const result = this.tool.click(this.geometry, snap(this.geometry, p, this.tolerance()));
+        const result = this.tool.click(this.geometry, this.snapAt(p));
         if (result.kind === "commit") {
           if (this.apply(result.geometry) && !result.done) this.preview = null;
         } else this.preview = result.preview;
