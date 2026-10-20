@@ -71,6 +71,11 @@ export interface ExtrudeFeature extends FeatureBase {
    * outward normal (positive distance adds material, negative digs in).
    */
   faces?: FaceRef[];
+  /**
+   * Areas of the sketch to extrude, each given by a point inside it (sketch plane, mm).
+   * Absent: every material area by the even–odd rule.
+   */
+  regions?: [number, number][];
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
   operation: BooleanOperation;

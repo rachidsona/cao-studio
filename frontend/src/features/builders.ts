@@ -4,7 +4,7 @@
  * throw GeometryError with an explicit message instead of producing bad
  * geometry.
  */
-import { makeCylinder, measureVolume, type Shape3D } from "replicad";
+import { makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
 import { buildProfile, ProfileError } from "../sketcher/profiles";
@@ -52,7 +52,16 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
   if (feature.faces) return buildFaceExtrude(feature, lookup);
   if (!feature.sketch) throw new GeometryError(`${feature.name} : choisissez une esquisse ou des faces à extruder.`);
   const profile = requireProfile(lookup, feature.sketch);
-  const sketch = profileDrawing(feature.name, profile).clone().sketchOnPlane(profile.plane, profile.offset);
+  let drawing: Drawing;
+  if (feature.regions) {
+    try {
+      drawing = buildProfile(profile.geometry, feature.regions) as Drawing;
+    } catch (error) {
+      if (error instanceof ProfileError) throw new GeometryError(`${feature.name} : ${error.message}`);
+      throw error;
+    }
+  } else drawing = profileDrawing(feature.name, profile).clone();
+  const sketch = drawing.sketchOnPlane(profile.plane, profile.offset);
   const prism = sketch.extrude(feature.distance) as Shape3D;
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }

@@ -147,6 +147,13 @@ serveur accepte les deux versions.
 - Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.
 - **Extrusion**, comme dans Fusion 360 :
   - le bouton (ou la touche E) surligne les profils fermés ;
+  - chaque zone fermée de l'esquisse est un profil à part : pour deux rectangles imbriqués, le cadre
+    entre les deux et le milieu se choisissent séparément (un îlot dans un trou aussi) ; par défaut
+    les zones pleines sont extrudées, le premier clic en choisit une seule, les suivants en ajoutent
+    ou en retirent ; si des esquisses se superposent dans le même plan, l'esquisse choisie passe
+    d'abord, puis la plus petite zone ;
+  - les zones choisies sont mémorisées par un point intérieur ; si l'esquisse change au point
+    qu'une zone n'existe plus, l'extrusion le dit au lieu de produire une forme fausse ;
   - on clique un profil, puis on tire la flèche le long de la normale, ou on clique la valeur à son
     extrémité pour la saisir ;
   - l'aperçu est translucide ;

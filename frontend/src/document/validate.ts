@@ -63,6 +63,12 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (typeof feature.target !== "string") errors.push(`${where} : corps des faces manquant.`);
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
+      if (
+        feature.regions !== undefined &&
+        (!Array.isArray(feature.regions) || feature.regions.length === 0 || !feature.regions.every((p) => Array.isArray(p) && p.length === 2 && p.every(isFiniteNumber)))
+      ) {
+        errors.push(`${where} : zones à extruder invalides.`);
+      }
       if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
       if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : cible invalide.`);
       break;

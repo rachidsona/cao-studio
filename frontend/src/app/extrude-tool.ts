@@ -13,7 +13,7 @@ import { addExtrude, findFeature, latestBody, updateFeature } from "../document/
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
 import { UNIT_LABELS, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import { sketchFrame, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
-import { centroid, extractLoops, regions, type Region } from "../sketcher/loops";
+import { centroid, extractLoops, interiorPoint, pointInPolygon, sketchFaces, type Region, type SketchFace } from "../sketcher/loops";
 import { el } from "../ui/dom";
 import { textInputClass } from "../ui/fields";
 import { ArrowHandle } from "../viewport/arrow-handle";
@@ -29,11 +29,18 @@ export interface ExtrudeToolHost {
   closed(featureId: string | null): void;
 }
 
+/** One bounded area of a sketch: pickable, and extruded when chosen. */
+interface Face {
+  region: SketchFace;
+  /** A point strictly inside the area (stored in the feature to find the area again). */
+  probe: [number, number];
+  mesh: THREE.Mesh;
+}
+
 interface Profile {
   sketch: SketchFeature;
   frame: SketchFrame;
-  regions: Region[];
-  meshes: THREE.Mesh[];
+  faces: Face[];
 }
 
 const COMPACT_INPUT =
@@ -56,6 +63,10 @@ export class ExtrudeTool implements PointerHandler {
   private root = new THREE.Group();
   private profiles: Profile[] = [];
   private selected: Profile | null = null;
+  /** Areas of the selected sketch that are extruded. */
+  private chosen = new Set<Face>();
+  /** False while the choice is the default (every material area); the first click then picks one area. */
+  private explicit = false;
   private preview: THREE.Mesh | null = null;
   private arrow: ArrowHandle;
   private dialog: HTMLElement;
@@ -65,7 +76,7 @@ export class ExtrudeTool implements PointerHandler {
   private operationChosen = false;
   private target: string | undefined;
   private editing: string | null = null;
-  private hovered: Profile | null = null;
+  private hovered: Face | null = null;
   private container: HTMLElement;
 
   constructor(
@@ -115,7 +126,12 @@ export class ExtrudeTool implements PointerHandler {
     this.buildProfiles();
     const sketchId = existing?.type === "extrude" ? existing.sketch : options.sketchId;
     const profile = this.profiles.find((p) => p.sketch.id === sketchId) ?? (this.profiles.length === 1 ? this.profiles[0] : undefined);
-    if (profile) this.select(profile);
+    if (profile) {
+      // An existing extrusion that chose its areas gets them back (found again from their points).
+      const saved = existing?.type === "extrude" ? existing.regions : undefined;
+      const faces = saved ? new Set(saved.map((p) => faceAt(profile, p)).filter((f): f is Face => f !== undefined)) : null;
+      this.select(profile, faces && faces.size > 0 ? [...faces] : undefined);
+    }
     else if (this.profiles.length === 0) this.host.notify("Aucune esquisse ne contient de profil fermé à extruder.", "error");
     this.viewport.setPointerHandler(this);
     this.renderDialog();
@@ -126,9 +142,9 @@ export class ExtrudeTool implements PointerHandler {
   private buildProfiles(): void {
     for (const feature of this.host.doc().features) {
       if (feature.type !== "sketch" || feature.suppressed) continue;
-      let found: Region[];
+      let found: SketchFace[];
       try {
-        found = regions(extractLoops(feature));
+        found = sketchFaces(extractLoops(feature));
       } catch {
         continue; // open or branched profile: not extrudable
       }
@@ -137,7 +153,7 @@ export class ExtrudeTool implements PointerHandler {
       const group = new THREE.Group();
       group.matrixAutoUpdate = false;
       group.matrix.copy(frameMatrix(frame));
-      const meshes = found.map((region) => {
+      const faces = found.map((region): Face => {
         const mesh = new THREE.Mesh(
           new THREE.ShapeGeometry(toShape(region)),
           new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false }),
@@ -145,26 +161,56 @@ export class ExtrudeTool implements PointerHandler {
         mesh.position.z = 0.02;
         mesh.renderOrder = 15;
         group.add(mesh);
-        return mesh;
+        return { region, probe: interiorPoint(region), mesh };
       });
       this.root.add(group);
-      this.profiles.push({ sketch: feature, frame, regions: found, meshes });
+      this.profiles.push({ sketch: feature, frame, faces });
     }
+  }
+
+  private allFaces(): Face[] {
+    return this.profiles.flatMap((p) => p.faces);
+  }
+
+  /**
+   * The area under the pointer. Areas of different sketches can lie in the same plane, on top of each
+   * other: among those at the nearest depth, the chosen sketch wins, then the smallest area.
+   */
+  private faceUnder(event: PointerEvent): { profile: Profile; face: Face } | null {
+    const hits = this.viewport.intersect(event, this.allFaces().map((f) => f.mesh));
+    const nearest = hits[0]?.distance;
+    if (nearest === undefined) return null;
+    const found = hits
+      .filter((hit) => hit.distance <= nearest + 0.5)
+      .flatMap((hit) => {
+        const profile = this.profiles.find((p) => p.faces.some((f) => f.mesh === hit.object));
+        const face = profile?.faces.find((f) => f.mesh === hit.object);
+        return profile && face ? [{ profile, face }] : [];
+      });
+    const rank = (c: { profile: Profile; face: Face }) => [c.profile === this.selected ? 0 : 1, Math.abs(area(c.face.region.outer))] as const;
+    return found.sort((a, b) => rank(a)[0] - rank(b)[0] || rank(a)[1] - rank(b)[1])[0] ?? null;
   }
 
   private paintProfiles(): void {
     for (const p of this.profiles) {
-      for (const mesh of p.meshes) {
-        const material = mesh.material as THREE.MeshBasicMaterial;
-        const active = p === this.selected;
+      for (const face of p.faces) {
+        const material = face.mesh.material as THREE.MeshBasicMaterial;
+        const active = p === this.selected && this.chosen.has(face);
         material.color.set(active ? 0x0284c7 : 0x38bdf8);
-        material.opacity = active ? 0.45 : p === this.hovered ? 0.4 : 0.22;
+        material.opacity = active ? 0.45 : face === this.hovered ? 0.4 : 0.22;
       }
     }
   }
 
-  private select(profile: Profile): void {
+  /** Every area that is material by the even–odd rule: what an extrusion takes unless areas are chosen. */
+  private defaultFaces(profile: Profile): Face[] {
+    return profile.faces.filter((f) => f.region.depth % 2 === 0);
+  }
+
+  private select(profile: Profile, faces?: Face[]): void {
     this.selected = profile;
+    this.explicit = faces !== undefined;
+    this.chosen = new Set(faces ?? this.defaultFaces(profile));
     // A sketch drawn on a body face adds to that body by default.
     const support = profile.sketch.support;
     if (!this.editing && !this.operationChosen && support) {
@@ -180,14 +226,26 @@ export class ExtrudeTool implements PointerHandler {
     this.renderDialog();
   }
 
+  /** A click on an area: another sketch starts over; in the same sketch the first click picks that area, the next ones add or remove. */
+  private pick(profile: Profile, face: Face): void {
+    if (profile !== this.selected) return this.select(profile, [face]);
+    if (!this.explicit) this.chosen = new Set([face]);
+    else if (this.chosen.has(face)) this.chosen.delete(face);
+    else this.chosen.add(face);
+    this.explicit = true;
+    this.paintProfiles();
+    this.updatePreview();
+    this.renderDialog();
+  }
+
   // ---- preview and arrow ------------------------------------------------------
 
-  /** Base of the arrow: centroid of the largest region, on the sketch plane. */
+  /** Base of the arrow: centroid of the largest chosen area, on the sketch plane. */
   private base(): Vec3 | null {
     const profile = this.selected;
-    if (!profile) return null;
-    const largest = profile.regions.reduce((a, b) => (Math.abs(area(b.outer)) > Math.abs(area(a.outer)) ? b : a));
-    const [x, y] = centroid(largest.outer);
+    if (!profile || this.chosen.size === 0) return null;
+    const largest = [...this.chosen].reduce((a, b) => (Math.abs(area(b.region.outer)) > Math.abs(area(a.region.outer)) ? b : a));
+    const [x, y] = centroid(largest.region.outer);
     return toWorld(profile.frame, x, y);
   }
 
@@ -199,18 +257,18 @@ export class ExtrudeTool implements PointerHandler {
       this.preview = null;
     }
     const profile = this.selected;
-    if (!profile) {
+    if (!profile || this.chosen.size === 0) {
       this.arrow.object.visible = false;
       return;
     }
-    const geometry = new THREE.ExtrudeGeometry(profile.regions.map(toShape), { depth: Math.abs(this.distance), bevelEnabled: false });
+    const geometry = new THREE.ExtrudeGeometry([...this.chosen].map((f) => toShape(f.region)), { depth: Math.abs(this.distance), bevelEnabled: false });
     const mesh = new THREE.Mesh(
       geometry,
       new THREE.MeshStandardMaterial({ color: COLORS[this.operation], transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
     );
     mesh.position.z = Math.min(0, this.distance);
     mesh.renderOrder = 16;
-    const holder = (profile.meshes[0] as THREE.Mesh).parent as THREE.Group;
+    const holder = (profile.faces[0] as Face).mesh.parent as THREE.Group;
     holder.add(mesh);
     this.preview = mesh;
     this.placeArrow();
@@ -244,8 +302,7 @@ export class ExtrudeTool implements PointerHandler {
       this.setDistance(dragged);
       return;
     }
-    const hit = this.viewport.intersect(event, this.profiles.flatMap((p) => p.meshes))[0];
-    const hovered = hit ? (this.profiles.find((p) => p.meshes.includes(hit.object as THREE.Mesh)) ?? null) : null;
+    const hovered = this.faceUnder(event)?.face ?? null;
     const overArrow = this.arrow.hovered(event);
     this.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : hovered ? "pointer" : "";
     if (hovered !== this.hovered) {
@@ -257,9 +314,8 @@ export class ExtrudeTool implements PointerHandler {
   up(event: PointerEvent, isClick: boolean): boolean {
     if (this.arrow.dragEnd()) return true;
     if (!isClick) return false;
-    const hit = this.viewport.intersect(event, this.profiles.flatMap((p) => p.meshes))[0];
-    const profile = hit ? this.profiles.find((p) => p.meshes.includes(hit.object as THREE.Mesh)) : undefined;
-    if (profile) this.select(profile);
+    const under = this.faceUnder(event);
+    if (under) this.pick(under.profile, under.face);
     return true;
   }
 
@@ -279,7 +335,8 @@ export class ExtrudeTool implements PointerHandler {
 
   private renderDialog(): void {
     const unit = this.host.unit();
-    const profileText = this.selected ? this.selected.sketch.name : "Cliquez un profil dans la vue";
+    const count = this.chosen.size;
+    const profileText = this.selected ? `${this.selected.sketch.name}${this.explicit ? ` — ${count} zone${count > 1 ? "s" : ""}` : ""}` : "Cliquez un profil dans la vue";
     const distance = el("input", {
       type: "text",
       inputmode: "decimal",
@@ -359,7 +416,7 @@ export class ExtrudeTool implements PointerHandler {
     cancel.addEventListener("click", () => this.cancel());
     const ok = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: !this.selected },
+      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: !this.selected || this.chosen.size === 0 },
       "OK",
     );
     ok.addEventListener("click", () => this.confirm());
@@ -371,6 +428,9 @@ export class ExtrudeTool implements PointerHandler {
         el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? "Modifier l'extrusion" : "Extrusion"),
         el("span", { class: `truncate pl-2 ${this.selected ? "text-sky-700 dark:text-sky-300" : "text-amber-700 dark:text-amber-300"}` }, this.selected ? profileText : "Cliquez un profil"),
       ),
+      this.selected && this.selected.faces.length > 1
+        ? el("p", { class: "text-gray-600 dark:text-gray-300" }, this.chosen.size === 0 ? "Cliquez une zone à extruder." : "Cliquez des zones pour choisir ce qui est extrudé ; recliquez pour en retirer.")
+        : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr_auto] items-center gap-1.5" }, `Distance`, distance, flip),
       el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Opération", operation),
       target,
@@ -383,7 +443,7 @@ export class ExtrudeTool implements PointerHandler {
 
   confirm(): void {
     const profile = this.selected;
-    if (!profile) {
+    if (!profile || this.chosen.size === 0) {
       this.host.notify("Sélectionnez d'abord un profil à extruder.", "error");
       return;
     }
@@ -392,8 +452,12 @@ export class ExtrudeTool implements PointerHandler {
       return;
     }
     const doc = this.host.doc();
-    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "operation" | "target"> = {
+    // Chosen areas are stored only when they differ from the default (every material area).
+    const defaults = this.defaultFaces(profile);
+    const isDefault = this.chosen.size === defaults.length && defaults.every((f) => this.chosen.has(f));
+    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "operation" | "target" | "regions"> = {
       sketch: profile.sketch.id,
+      regions: isDefault ? undefined : [...this.chosen].map((f) => f.probe),
       distance: this.distance,
       operation: this.operation,
       target: this.operation === "new" ? undefined : this.target,
@@ -434,6 +498,13 @@ export class ExtrudeTool implements PointerHandler {
     }
     this.dialog.remove();
   }
+}
+
+/** Smallest area of the sketch that contains the point. */
+function faceAt(profile: Profile, p: [number, number]): Face | undefined {
+  return profile.faces
+    .filter((f) => pointInPolygon(p, f.region.outer))
+    .sort((a, b) => Math.abs(area(a.region.outer)) - Math.abs(area(b.region.outer)))[0];
 }
 
 function area(polygon: [number, number][]): number {

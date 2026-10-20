@@ -227,16 +227,68 @@ export interface Region {
   loop: number;
 }
 
-export function regions(loops: Loop[]): Region[] {
+/** A bounded area of the sketch: a loop minus the loops directly inside it, at any nesting depth. */
+export interface SketchFace extends Region {
+  /** Number of loops that contain this one (even: material by the even–odd rule). */
+  depth: number;
+  /** Indices of the loops directly inside (the holes of this area). */
+  children: number[];
+}
+
+/**
+ * Every bounded area of the sketch, like the profiles a desktop CAD tool lets
+ * you pick: the frame between two nested rectangles and the area inside the
+ * inner one are two different faces.
+ */
+export function sketchFaces(loops: Loop[]): SketchFace[] {
   const depth = loopDepths(loops);
-  return loops.flatMap((loop, i) => {
+  return loops.map((loop, i) => {
     const d = depth[i] as number;
-    if (d % 2 !== 0) return [];
-    const holes = loops
-      .filter((inner, j) => depth[j] === d + 1 && inner.area < loop.area && pointInPolygon(inner.polygon[0] as Vec, loop.polygon))
-      .map((inner) => inner.polygon);
-    return [{ outer: loop.polygon, holes, loop: i }];
+    const children = loops.flatMap((inner, j) =>
+      depth[j] === d + 1 && inner.area < loop.area && pointInPolygon(inner.polygon[0] as Vec, loop.polygon) ? [j] : [],
+    );
+    return { outer: loop.polygon, holes: children.map((j) => (loops[j] as Loop).polygon), loop: i, depth: d, children };
   });
+}
+
+/** Material regions by the even–odd rule (what an extrusion without a chosen area uses). */
+export function regions(loops: Loop[]): Region[] {
+  return sketchFaces(loops).filter((face) => face.depth % 2 === 0);
+}
+
+/** Index of the innermost loop containing `p`, or -1: the face a point selects. */
+export function loopAt(loops: Loop[], p: Vec): number {
+  let best = -1;
+  loops.forEach((loop, i) => {
+    if (pointInPolygon(p, loop.polygon) && (best < 0 || loop.area < (loops[best] as Loop).area)) best = i;
+  });
+  return best;
+}
+
+/** A point strictly inside the face (not in a hole), used to refer to it from a feature. */
+export function interiorPoint(face: Region): Vec {
+  const rings = [face.outer, ...face.holes];
+  const ys = face.outer.map((p) => p[1]);
+  const [lo, hi] = [Math.min(...ys), Math.max(...ys)];
+  let best: { width: number; point: Vec } | null = null;
+  for (const t of [0.5, 0.37, 0.63, 0.25, 0.75, 0.13, 0.87]) {
+    const y = lo + t * (hi - lo);
+    const xs: number[] = [];
+    for (const ring of rings) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i] as Vec;
+        const [xj, yj] = ring[j] as Vec;
+        if (yi > y !== yj > y) xs.push(xi + ((y - yi) * (xj - xi)) / (yj - yi));
+      }
+    }
+    xs.sort((a, b) => a - b);
+    // Between the 1st and 2nd crossing, the 3rd and 4th… the line is inside the face.
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const width = (xs[k + 1] as number) - (xs[k] as number);
+      if (!best || width > best.width) best = { width, point: [((xs[k] as number) + (xs[k + 1] as number)) / 2, y] };
+    }
+  }
+  return best ? best.point : centroid(face.outer);
 }
 
 /** Area-weighted centroid of a polygon. */
