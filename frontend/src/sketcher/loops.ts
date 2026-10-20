@@ -1,34 +1,22 @@
 /**
- * Closed-loop extraction from the solved (non-construction) curves of a
- * sketch, and the regions they bound. Nested loops follow the even–odd rule
- * (a loop inside another is a hole, an island inside a hole is material
- * again). Pure geometry: used by the kernel (profiles.ts) and by the editor
- * for profile selection and extrusion previews.
+ * Closed areas of a sketch, and the nesting of their boundaries. The curves
+ * are first cut where they cross or touch (arrangement.ts), so shapes that
+ * share an edge, overlap, or are split by a line give separate areas. Loops
+ * nested in another follow the even–odd rule (a loop inside another is a
+ * hole, an island inside a hole is material again). Pure geometry: used by
+ * the kernel (profiles.ts) and by the editor for profile selection and
+ * extrusion previews.
  */
-import type { SketchGeometry, SketchPoint } from "../document/sketch";
-import { ORIGIN } from "../document/sketch";
+import type { SketchGeometry } from "../document/sketch";
+import { arrange, type Cycle } from "./arrangement";
+
+export { ProfileError } from "./arrangement";
+import { ProfileError } from "./arrangement";
 
 /** Points closer than this (mm) are the same vertex. */
 export const VERTEX_TOLERANCE = 1e-6;
 
-export class ProfileError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ProfileError";
-  }
-}
-
 type Vec = [number, number];
-
-interface Segment {
-  curveId: string;
-  kind: "line" | "arc";
-  from: number;
-  to: number;
-  /** Arc only: centre and radius (always counter-clockwise from `from` to `to` in the model). */
-  center?: Vec;
-  radius?: number;
-}
 
 /** Exact description of a loop, enough to rebuild it in the B-rep kernel. */
 export type LoopShape =
@@ -40,21 +28,8 @@ export interface Loop {
   polygon: Vec[];
   area: number;
   shape: LoopShape;
-}
-
-class UnionFind {
-  private parent: number[] = [];
-  add(): number {
-    this.parent.push(this.parent.length);
-    return this.parent.length - 1;
-  }
-  find(i: number): number {
-    while (this.parent[i] !== i) i = this.parent[i] = this.parent[this.parent[i] as number] as number;
-    return i;
-  }
-  union(a: number, b: number): void {
-    this.parent[this.find(a)] = this.find(b);
-  }
+  /** A point strictly inside the loop (never on its boundary): what containment is tested with. */
+  probe: Vec;
 }
 
 function signedArea(polygon: Vec[]): number {
@@ -96,126 +71,54 @@ function arcPoints(center: Vec, radius: number, from: Vec, to: Vec, reversed: bo
   return out;
 }
 
+function loopOfCycle(cycle: Cycle): Loop {
+  const polygon: Vec[] = [];
+  const steps: Extract<LoopShape, { kind: "chain" }>["steps"] = [];
+  let from = cycle.start;
+  for (const step of cycle.steps) {
+    if (step.kind === "line") {
+      polygon.push(step.to);
+      steps.push({ kind: "line", to: step.to });
+    } else {
+      polygon.push(...arcPoints(step.center, step.radius, from, step.to, step.reversed));
+      steps.push({ kind: "arc", to: step.to, mid: arcPoints(step.center, step.radius, from, step.to, step.reversed, 2)[0] as Vec });
+    }
+    from = step.to;
+  }
+  return withProbe({ polygon, area: Math.abs(signedArea(polygon)), shape: { kind: "chain", start: cycle.start, steps }, probe: cycle.start });
+}
+
+function withProbe(loop: Loop): Loop {
+  return { ...loop, probe: interiorPoint({ outer: loop.polygon, holes: [], loop: -1 }) };
+}
+
+/**
+ * Closed areas of the solved, non-construction curves of a sketch. Curves that
+ * enclose nothing (a stray line, a free end) are ignored; when there is no
+ * closed area at all and such curves exist, the profile is reported open.
+ */
 export function extractLoops(geometry: SketchGeometry): Loop[] {
-  const points = new Map<string, SketchPoint>(geometry.points.map((p) => [p.id, p]));
-  points.set(ORIGIN, { id: ORIGIN, x: 0, y: 0 });
-  const coord = (id: string): Vec => {
-    const p = points.get(id);
-    if (!p) throw new ProfileError(`Point « ${id} » introuvable.`);
-    return [p.x, p.y];
-  };
-
+  const arrangement = arrange(geometry);
   const loops: Loop[] = [];
-  const uf = new UnionFind();
-  const nodeOf = new Map<string, number>();
-  const nodePos: Vec[] = [];
-  const node = (pointId: string): number => {
-    const existing = nodeOf.get(pointId);
-    if (existing !== undefined) return existing;
-    const pos = coord(pointId);
-    const index = uf.add();
-    nodePos.push(pos);
-    nodeOf.set(pointId, index);
-    // Merge with any vertex at the same position (coincident after solving).
-    nodePos.forEach((other, i) => {
-      if (i !== index && Math.hypot(other[0] - pos[0], other[1] - pos[1]) <= VERTEX_TOLERANCE) uf.union(index, i);
+  for (const { center, radius } of arrangement.circles) {
+    const polygon = Array.from({ length: 64 }, (_, i): Vec => {
+      const t = (i / 64) * 2 * Math.PI;
+      return [center[0] + radius * Math.cos(t), center[1] + radius * Math.sin(t)];
     });
-    return index;
-  };
-
-  const segments: Segment[] = [];
-  for (const curve of geometry.curves) {
-    if (curve.construction) continue;
-    if (curve.kind === "circle") {
-      const center = coord(curve.center);
-      const r = curve.radius;
-      const polygon = Array.from({ length: 64 }, (_, i): Vec => {
-        const t = (i / 64) * 2 * Math.PI;
-        return [center[0] + r * Math.cos(t), center[1] + r * Math.sin(t)];
-      });
-      loops.push({ polygon, area: Math.PI * r * r, shape: { kind: "circle", center, radius: r } });
-      continue;
-    }
-    const [a, b] = curve.kind === "line" ? [curve.p1, curve.p2] : [curve.start, curve.end];
-    const from = node(a);
-    const to = node(b);
-    if (uf.find(from) === uf.find(to)) throw new ProfileError(`La courbe « ${curve.id} » a une longueur nulle.`);
-    segments.push(
-      curve.kind === "line"
-        ? { curveId: curve.id, kind: "line", from, to }
-        : { curveId: curve.id, kind: "arc", from, to, center: coord(curve.center), radius: curve.radius },
-    );
+    loops.push(withProbe({ polygon, area: Math.PI * radius * radius, shape: { kind: "circle", center, radius }, probe: center }));
   }
-
-  // Every vertex of a closed profile joins exactly two curves.
-  const incident = new Map<number, number[]>();
-  segments.forEach((s, i) => {
-    for (const end of [uf.find(s.from), uf.find(s.to)]) incident.set(end, [...(incident.get(end) ?? []), i]);
-  });
-  for (const [vertex, list] of incident) {
-    if (list.length !== 2) {
-      const [x, y] = nodePos[vertex] as Vec;
-      const where = `(${x.toFixed(3)} ; ${y.toFixed(3)})`;
-      throw new ProfileError(
-        list.length === 1 ? `Profil ouvert au point ${where}.` : `Profil ramifié au point ${where} (${list.length} courbes).`,
-      );
-    }
+  for (const cycle of arrangement.cycles) loops.push(loopOfCycle(cycle));
+  if (loops.length === 0 && arrangement.open) {
+    const [x, y] = arrangement.open;
+    throw new ProfileError(`Profil ouvert au point (${x.toFixed(3)} ; ${y.toFixed(3)}).`);
   }
-
-  const used = new Set<number>();
-  segments.forEach((_, start) => {
-    if (used.has(start)) return;
-    const chain: { segment: Segment; reversed: boolean }[] = [];
-    let current = start;
-    let vertex = uf.find((segments[start] as Segment).from);
-    const first = vertex;
-    do {
-      const segment = segments[current] as Segment;
-      used.add(current);
-      const reversed = uf.find(segment.from) !== vertex;
-      chain.push({ segment, reversed });
-      vertex = uf.find(reversed ? segment.from : segment.to);
-      const next = (incident.get(vertex) ?? []).find((i) => i !== current);
-      if (next === undefined) break;
-      current = next;
-    } while (vertex !== first);
-
-    const vertexPos = (s: Segment, end: "start" | "end", reversed: boolean): Vec => {
-      const id = (end === "start") !== reversed ? s.from : s.to;
-      return nodePos[uf.find(id)] as Vec;
-    };
-    const polygon: Vec[] = [];
-    for (const { segment, reversed } of chain) {
-      const from = vertexPos(segment, "start", reversed);
-      const to = vertexPos(segment, "end", reversed);
-      if (segment.kind === "line") polygon.push(to);
-      else polygon.push(...arcPoints(segment.center as Vec, segment.radius as number, from, to, reversed));
-    }
-    const head = chain[0] as (typeof chain)[0];
-    loops.push({
-      polygon,
-      area: Math.abs(signedArea(polygon)),
-      shape: {
-        kind: "chain",
-        start: vertexPos(head.segment, "start", head.reversed),
-        steps: chain.map(({ segment, reversed }) => {
-          const from = vertexPos(segment, "start", reversed);
-          const to = vertexPos(segment, "end", reversed);
-          if (segment.kind === "line") return { kind: "line" as const, to };
-          const mid = arcPoints(segment.center as Vec, segment.radius as number, from, to, reversed, 2)[0] as Vec;
-          return { kind: "arc" as const, to, mid };
-        }),
-      },
-    });
-  });
   return loops;
 }
 
 /** Nesting depth of each loop (number of larger loops containing it). */
 export function loopDepths(loops: Loop[]): number[] {
   return loops.map((loop, i) => {
-    const probe = loop.polygon[0] as Vec;
-    return loops.filter((other, j) => j !== i && other.area > loop.area && pointInPolygon(probe, other.polygon)).length;
+    return loops.filter((other, j) => j !== i && other.area > loop.area && pointInPolygon(loop.probe, other.polygon)).length;
   });
 }
 
@@ -245,7 +148,7 @@ export function sketchFaces(loops: Loop[]): SketchFace[] {
   return loops.map((loop, i) => {
     const d = depth[i] as number;
     const children = loops.flatMap((inner, j) =>
-      depth[j] === d + 1 && inner.area < loop.area && pointInPolygon(inner.polygon[0] as Vec, loop.polygon) ? [j] : [],
+      depth[j] === d + 1 && inner.area < loop.area && pointInPolygon(inner.probe, loop.polygon) ? [j] : [],
     );
     return { outer: loop.polygon, holes: children.map((j) => (loops[j] as Loop).polygon), loop: i, depth: d, children };
   });

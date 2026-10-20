@@ -100,12 +100,13 @@ describe("profils fermés", () => {
     expect(extrudedVolume(geometry).message).toMatch(/Profil ouvert/);
   });
 
-  it("signale un profil ramifié", () => {
+  it("ignore un segment qui dépasse : seule la zone fermée est extrudée", () => {
+    // A spur from the corner to the middle used to make the whole sketch "branched" and unextrudable.
     const geometry = merge(centeredRectangle(80, 50), {
       points: [{ id: "m", x: 0, y: 0 }],
       curves: [{ id: "spur", kind: "line", p1: "p1", p2: "m" }],
     });
-    expect(extrudedVolume(geometry).message).toMatch(/ramifié/);
+    expect(extrudedVolume(geometry).volume).toBeCloseTo(40000, 6);
   });
 });
 
