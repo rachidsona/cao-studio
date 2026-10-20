@@ -55,6 +55,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "sketch":
       if (!PLANES.has(feature.plane as string)) errors.push(`${where} : plan d'esquisse invalide.`);
       checkNumbers(feature, ["offset"], where, errors);
+      if (feature.shift !== undefined && !(Array.isArray(feature.shift) && feature.shift.length === 2 && feature.shift.every(isFiniteNumber))) {
+        errors.push(`${where} : déplacement de l'esquisse dans son plan invalide.`);
+      }
       validateSketch(feature, where, errors);
       break;
     case "extrude":

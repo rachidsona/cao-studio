@@ -10,6 +10,8 @@ export interface ProfileOutput {
   kind: "profile";
   plane: PlaneName;
   offset: number;
+  /** Move of the sketch origin inside its plane (mm), if the sketch was moved. */
+  shift?: [number, number];
   /** Region bounded by the closed loops, or null when the sketch has none. */
   drawing: Drawing | null;
   /** Why no region could be built (open or branched profile). */

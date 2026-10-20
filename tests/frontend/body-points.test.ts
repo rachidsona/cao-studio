@@ -7,6 +7,7 @@ import { isBodyPoint, pruneBodyPoints, withBodyPoints } from "../../frontend/src
 import { addConstraint } from "../../frontend/src/sketcher/edit";
 import { sketchFrame } from "../../frontend/src/sketcher/frame";
 import { bodyVertices, type Point3 } from "../../frontend/src/viewport/body-points";
+import { faceSnaps, ontoPlane } from "../../frontend/src/viewport/face-snaps";
 import { setupKernel } from "./kernel-setup";
 
 beforeAll(setupKernel);
@@ -102,5 +103,44 @@ describe("sommets de corps dans une esquisse", () => {
     const reopened = withBodyPoints(stored, frame, [[4, 3, 12], [50, 50, 0]]);
     expect(reopened.points.map((p) => p.id)).toEqual(["a", "b", "bp1", "bp2"]);
     expect(reopened.constraints).toEqual(stored.constraints);
+  });
+});
+
+describe("points d'accroche d'une face (Déplacer, comme Fusion)", () => {
+  /** A square face 10 × 10 at z = 2 (two triangles), its four edges, and a stray edge elsewhere. */
+  const square = (): BodyMesh => {
+    const corners: Point3[] = [[0, 0, 2], [10, 0, 2], [10, 10, 2], [0, 10, 2]];
+    const mesh = meshOf([
+      [corners[0]!, corners[1]!],
+      [corners[1]!, corners[2]!],
+      [corners[2]!, corners[3]!],
+      [corners[3]!, corners[0]!],
+      [[50, 50, 50], [60, 50, 50]],
+    ]);
+    return { ...mesh, vertices: Float32Array.from(corners.flat()), indices: Uint32Array.from([0, 1, 2, 0, 2, 3]), faceGroups: [{ start: 0, count: 6, faceId: 0 }] };
+  };
+
+  it("une face plane donne ses quatre coins, son centre et sa normale", () => {
+    const snaps = faceSnaps(square(), 0)!;
+    expect(snaps.corners).toHaveLength(4); // the stray edge's ends are not on the face
+    expect(snaps.center).toEqual([5, 5, 2]);
+    expect(snaps.normal).toEqual([0, 0, 1]);
+  });
+
+  it("le milieu d'une face est le centre de son étendue, même avec des triangles inégaux", () => {
+    // Same square cut in three triangles of different sizes: the middle stays (5, 5).
+    const mesh = { ...square(), vertices: Float32Array.from([0, 0, 2, 10, 0, 2, 10, 10, 2, 0, 10, 2, 9, 1, 2]), indices: Uint32Array.from([0, 1, 4, 0, 4, 2, 0, 2, 3]), faceGroups: [{ start: 0, count: 9, faceId: 0 }] };
+    expect(faceSnaps(mesh, 0)?.center).toEqual([5, 5, 2]);
+  });
+
+  it("une face courbe n'a pas de normale ; une face inconnue rien", () => {
+    const bent = { ...square(), vertices: Float32Array.from([0, 0, 2, 10, 0, 2, 10, 10, 2, 0, 10, 7]) };
+    expect(faceSnaps(bent, 0)?.normal).toBeNull();
+    expect(faceSnaps(square(), 3)).toBeNull();
+  });
+
+  it("amener un point sur le plan d'une face : seulement le long de sa normale", () => {
+    expect(ontoPlane([3, 4, 9], [0, 0, 2], [0, 0, 1])).toEqual([0, 0, -7]);
+    expect(ontoPlane([3, 4, 2], [0, 0, 2], [0, 0, 1])).toEqual([0, 0, 0]);
   });
 });

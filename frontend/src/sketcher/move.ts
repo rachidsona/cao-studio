@@ -11,11 +11,11 @@
  * move.
  *
  * Also the move of a whole sketch in 3D: along its normal (its plane offset)
- * or inside its plane (all its points).
+ * or inside its plane (its origin).
  */
 import { solveSketch, SketchError } from "../constraints/solver";
 import { describeConstraints } from "../constraints/catalog";
-import { constraintRefs, curvePoints, ORIGIN, RESERVED_IDS, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { curvePoints, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { SketchFeature, Vec3 } from "../document/types";
 import { cloneGeometry, pointPos, type Vec2 } from "./edit";
 import { sketchFrame } from "./frame";
@@ -146,26 +146,17 @@ export function movePreview(before: SketchGeometry, after: SketchGeometry): Prev
 }
 
 /**
- * Moves a whole sketch by a displacement in the global frame: the part along
- * its normal changes the offset of its plane, the part inside the plane
- * shifts all its points. An in-plane shift is refused when the sketch is
- * tied to the origin of its plane (a constraint, a curve centred on it).
+ * Moves a whole sketch by a displacement in the global frame, as the sketch
+ * placement moves in Fusion: the part along its normal changes the offset of
+ * its plane, the part inside the plane moves its origin (`shift`). The
+ * geometry and its constraints are untouched, so a sketch tied to its own
+ * origin moves as one piece.
  */
-export function moveSketchPlane(sketch: SketchFeature, delta: Vec3): SketchFeature | string {
-  const frame = sketchFrame(sketch.plane, sketch.offset);
+export function moveSketchPlane(sketch: SketchFeature, delta: Vec3): SketchFeature {
+  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
   const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  const du = dot(delta, frame.u);
-  const dv = dot(delta, frame.v);
-  const dn = dot(delta, frame.normal);
-  const offset = Number((sketch.offset + dn).toFixed(6));
-  if (Math.hypot(du, dv) < 1e-9) return { ...sketch, offset };
-  const tied =
-    sketch.constraints.some((c) => constraintRefs(c).some((id) => RESERVED_IDS.has(id))) || sketch.curves.some((c) => curvePoints(c).includes(ORIGIN));
-  if (tied) return "L'esquisse est liée à l'origine de son plan par des contraintes : seul un déplacement le long de sa normale est possible.";
-  return {
-    ...sketch,
-    offset,
-    points: sketch.points.map((p) => ({ ...p, x: p.x + du, y: p.y + dv })),
-    constraints: sketch.constraints.map((c) => (c.kind === "fix" ? { ...c, x: c.x + du, y: c.y + dv } : c)),
-  };
+  const round = (x: number) => Number(x.toFixed(6));
+  const shift: [number, number] = [round((sketch.shift?.[0] ?? 0) + dot(delta, frame.u)), round((sketch.shift?.[1] ?? 0) + dot(delta, frame.v))];
+  const { shift: _old, ...rest } = sketch;
+  return { ...rest, offset: round(sketch.offset + dot(delta, frame.normal)), ...(shift[0] !== 0 || shift[1] !== 0 ? { shift } : {}) };
 }

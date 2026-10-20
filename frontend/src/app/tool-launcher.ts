@@ -132,6 +132,9 @@ export class ToolLauncher {
     }
     const face = options.faces?.[0];
     const extra: MoveToolOptions = {};
+    // Corners picked in the view: the first is the point to move from, the second (of another body) the point to reach.
+    const [from, to] = options.vertices ?? [];
+    if (from && from.bodyId === target) extra.points = { source: from.point, ...(to && to.bodyId !== target ? { target: to.point } : {}) };
     if (face && !options.bodies?.length) {
       try {
         const { face: ref } = await ctx.geometry.describe(face.bodyId, [], face.faceIndex);

@@ -28,6 +28,8 @@ export interface SketchFeature extends FeatureBase {
   plane: PlaneName;
   /** Offset of the sketch plane along its normal (mm). */
   offset: number;
+  /** Move of the sketch inside its plane: where its origin is, along the plane's u and v axes (mm). */
+  shift?: [number, number];
   points: SketchPoint[];
   curves: SketchCurve[];
   constraints: SketchConstraint[];

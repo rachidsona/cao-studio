@@ -9,13 +9,13 @@ import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, Rev
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveEdges, resolveFace } from "../geometry/references";
 import { sketchFrame, toWorld } from "../sketcher/frame";
-import { applyOperation, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import { applyOperation, planeOrigin, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
 import type { SolidOutput } from "./outputs";
 
 /** Axis of a revolution, in world coordinates, from a sketch line or a sketch axis. */
 function revolveAxis(feature: RevolveFeature, lookup: OutputLookup): { origin: [number, number, number]; direction: [number, number, number] } {
   const profile = requireProfile(lookup, feature.sketch);
-  const frame = sketchFrame(profile.plane, profile.offset);
+  const frame = sketchFrame(profile.plane, profile.offset, profile.shift);
   let a: [number, number];
   let b: [number, number];
   if (feature.axis === AXIS_X) [a, b] = [[0, 0], [1, 0]];
@@ -45,7 +45,7 @@ export function buildRevolve(feature: RevolveFeature, lookup: OutputLookup): Sol
   const { origin, direction } = revolveAxis(feature, lookup);
   let tool: Shape3D;
   try {
-    tool = drawing.clone().sketchOnPlane(profile.plane, profile.offset).revolve(direction, { origin, angle: feature.angle }) as Shape3D;
+    tool = drawing.clone().sketchOnPlane(profile.plane, planeOrigin(profile)).revolve(direction, { origin, angle: feature.angle }) as Shape3D;
   } catch {
     throw new GeometryError(`${feature.name} : révolution impossible (le profil coupe-t-il l'axe ?).`);
   }

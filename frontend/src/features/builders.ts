@@ -10,7 +10,7 @@ import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "
 import { buildProfile, ProfileError } from "../sketcher/profiles";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveFace } from "../geometry/references";
-import { applyOperation, MIN_LENGTH, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import { applyOperation, MIN_LENGTH, planeOrigin, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
 import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
 import { buildChamfer, buildCombine, buildFaceExtrude, buildFillet, buildRevolve } from "./solids";
 import { buildMove } from "./move";
@@ -37,6 +37,7 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
     kind: "profile" as const,
     plane: feature.plane,
     offset: feature.offset,
+    ...(feature.shift ? { shift: feature.shift } : {}),
     dof: solved.dof,
     redundant: solved.redundant,
     geometry: solved.geometry,
@@ -63,7 +64,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
       throw error;
     }
   } else drawing = profileDrawing(feature.name, profile).clone();
-  const sketch = drawing.sketchOnPlane(profile.plane, profile.offset);
+  const sketch = drawing.sketchOnPlane(profile.plane, planeOrigin(profile));
   const prism = sketch.extrude(feature.distance) as Shape3D;
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }

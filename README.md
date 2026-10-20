@@ -227,14 +227,26 @@ opération existante.
     « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
     exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
     l'écran) ;
-  - une **esquisse** sélectionnée dans le navigateur : le long de sa normale, le décalage de son plan change ;
-    dans son plan, tous ses points se déplacent (refusé si des contraintes la lient à l'origine du plan) ;
+  - une **esquisse** sélectionnée dans le navigateur : elle se déplace d'un bloc, comme dans Fusion. Le long
+    de sa normale, le décalage de son plan change ; dans son plan, c'est son origine qui se déplace
+    (« shift » de l'esquisse) : la géométrie et les contraintes ne changent pas, même si elles la lient à
+    l'origine. Les corps extrudés de cette esquisse suivent ;
   - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
     en modifiant le corps ; « Corps entier » déplace le corps, et la normale de la face sert de repère local ;
   - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
   - Le **manipulateur XYZ** (axe X rouge, Y vert, Z bleu) se tire par une flèche (déplacement le long d'un
     axe) ou par un carré (dans le plan XY, XZ ou YZ) ; le pas s'adapte au zoom. On peut aussi saisir le
     déplacement relatif (Δ), la distance sur un axe, ou la position absolue du centre.
+  - **Pivot et cible** (mode par défaut, comme le déplacement de Fusion) : en survolant une face, ses
+    **coins** et son **milieu** apparaissent (points blancs, celui sous le curseur en orange) et le
+    manipulateur suit ce point ; un clic y place le **pivot** (les flèches). Ensuite :
+    - un clic sur un coin ou le milieu d'une face d'**un autre corps** amène le pivot sur ce point ;
+    - un clic à l'intérieur d'une **face plane** d'un autre corps amène le corps sur le plan de cette face
+      (déplacement le long de sa normale seulement) ;
+    - ou bien on tire les flèches depuis le pivot, ou on saisit ΔX, ΔY, ΔZ.
+    Rose = pivot, vert = cible ; « Changer le pivot » et « Changer la cible » recommencent un choix. Un
+    pivot pris sur un autre corps fait de ce corps celui à déplacer. Raccourci : avec le filtre
+    « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
   - **Repère** : global, ou local (axes de la face plane choisie, ou de l'esquisse). Le déplacement est
     toujours enregistré dans le repère global.
   - L'aperçu est calculé par le noyau dans le navigateur (aucune requête au serveur pendant le geste) ;

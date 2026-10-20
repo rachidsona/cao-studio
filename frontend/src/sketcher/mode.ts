@@ -96,7 +96,7 @@ export class SketchMode implements PointerHandler {
     private readonly host: SketchModeHost,
   ) {
     this.featureId = feature.id;
-    this.frame = sketchFrame(feature.plane, feature.offset);
+    this.frame = sketchFrame(feature.plane, feature.offset, feature.shift);
     this.geometry = this.withBodies(feature);
     this.lastSolve = solveSketch(this.geometry);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());

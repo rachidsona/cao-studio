@@ -117,44 +117,49 @@ describe("déplacement avec le solveur", () => {
 
 describe("déplacer une esquisse entière en 3D", () => {
   const sketch = (over: Partial<SketchFeature> = {}): SketchFeature => ({ id: "sk", type: "sketch", name: "Esquisse", plane: "XY", offset: 0, ...rectangleAt(0, 0, 40, 20), ...over });
-
-  it("le long de sa normale : le décalage du plan change", () => {
-    const moved = moveSketchPlane(sketch(), [0, 0, 12.5]);
-    expect(typeof moved).toBe("object");
-    expect(moved).toMatchObject({ offset: 12.5 });
-    const xz = moveSketchPlane(sketch({ plane: "XZ" }), [0, 4, 0]); // XZ has its normal along −Y
-    expect(xz).toMatchObject({ offset: -4 });
+  const doc = (s: SketchFeature): CadDocument => ({
+    format: "cao-studio",
+    schemaVersion: 2,
+    units: "mm",
+    parameters: {},
+    features: [s, { id: "ex", type: "extrude", name: "Extrusion", sketch: "sk", distance: 5, operation: "new" } as Feature],
   });
-
-  it("dans son plan : tous les points suivent, les cotes d'origine l'interdisent", () => {
-    const free: SketchFeature = { id: "sk", type: "sketch", name: "E", plane: "XY", offset: 0, ...rect() };
-    const moved = moveSketchPlane(free, [10, -5, 0]);
-    if (typeof moved === "string") throw new Error(moved);
-    expect(moved.points[0]).toMatchObject({ x: 10, y: -5 });
-    expect(moved.offset).toBe(0);
-    // The reference plate is tied to the origin by its constraints: refused with a reason, the normal move stays possible.
-    expect(moveSketchPlane(sketch(), [10, 0, 0])).toMatch(/liée à l'origine/);
-    expect(moveSketchPlane(sketch(), [0, 0, 3])).toMatchObject({ offset: 3 });
-  });
-
-  it("agit sur le modèle réel : le corps extrudé se retrouve déplacé", () => {
-    const free: SketchFeature = { id: "sk", type: "sketch", name: "E", plane: "XY", offset: 0, ...rect() };
-    const doc = (s: SketchFeature): CadDocument => ({
-      format: "cao-studio",
-      schemaVersion: 2,
-      units: "mm",
-      parameters: {},
-      features: [s, { id: "ex", type: "extrude", name: "Extrusion", sketch: "sk", distance: 5, operation: "new" } as Feature],
-    });
+  const bbox = (d: CadDocument) => {
     const r = new Recomputer();
-    r.recompute(doc(free));
-    const moved = moveSketchPlane(free, [30, 0, 8]);
-    if (typeof moved === "string") throw new Error(moved);
-    const result = r.recompute(doc(moved));
+    const result = r.recompute(d);
     expect(result.statuses.every((s) => s.state === "ok")).toBe(true);
     const out = r.output("ex");
     if (out?.kind !== "solid") throw new Error("solid expected");
-    expect(bodyMetrics(out.shape).bbox).toEqual([[30, 0, 8], [50, 10, 13]]);
+    const b = bodyMetrics(out.shape).bbox;
     r.dispose();
+    return b;
+  };
+
+  it("le long de sa normale : le décalage du plan change", () => {
+    expect(moveSketchPlane(sketch(), [0, 0, 12.5])).toMatchObject({ offset: 12.5 });
+    expect(moveSketchPlane(sketch({ plane: "XZ" }), [0, 4, 0])).toMatchObject({ offset: -4 }); // XZ has its normal along −Y
+  });
+
+  it("dans son plan : l'origine de l'esquisse se déplace, géométrie et contraintes intactes", () => {
+    // The reference plate is tied to the origin by its constraints: it moves as one piece, like a sketch in Fusion.
+    const before = sketch();
+    const moved = moveSketchPlane(before, [10, -5, 0]);
+    expect(moved.shift).toEqual([10, -5]);
+    expect(moved.offset).toBe(0);
+    expect(moved.points).toEqual(before.points);
+    expect(moved.constraints).toEqual(before.constraints);
+    expect(solveSketch(moved).dof).toBe(solveSketch(before).dof);
+    // Moving back removes the shift.
+    expect(moveSketchPlane(moved, [-10, 5, 0]).shift).toBeUndefined();
+  });
+
+  it("agit sur le modèle réel : le corps extrudé se retrouve déplacé, dans tous les plans", () => {
+    expect(bbox(doc(sketch()))).toEqual([[-20, -10, 0], [20, 10, 5]]);
+    expect(bbox(doc(moveSketchPlane(sketch(), [30, 4, 8])))).toEqual([[10, -6, 8], [50, 14, 13]]);
+    // Plane XZ: u = X, v = Z, extrusion along −Y.
+    const front = bbox(doc(sketch({ plane: "XZ" })));
+    const frontMoved = bbox(doc(moveSketchPlane(sketch({ plane: "XZ" }), [30, 0, 7])));
+    [0, 1, 2].forEach((i) => expect(frontMoved[0][i]! - front[0][i]!).toBeCloseTo([30, 0, 7][i]!, 6));
+    [0, 1, 2].forEach((i) => expect(frontMoved[1][i]! - front[1][i]!).toBeCloseTo([30, 0, 7][i]!, 6));
   });
 });

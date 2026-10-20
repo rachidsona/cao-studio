@@ -98,7 +98,11 @@ export class Viewport {
 
   set selectionFilter(filter: SelectionFilter) {
     this.filter = filter;
-    this.selection.setCornerHints(this.bodyVertices(), filter === "vertex");
+    this.refreshHints();
+  }
+
+  private refreshHints(): void {
+    this.selection.setCornerHints(this.bodyVertices(), this.filter === "vertex");
   }
 
   constructor(private readonly container: HTMLElement) {
@@ -253,7 +257,7 @@ export class Viewport {
     const before = this.selection.count;
     this.selection.prune(this.bodies);
     this.selection.render(this.bodies);
-    this.selection.setCornerHints(this.bodyVertices(), this.filter === "vertex");
+    this.refreshHints();
     if (this.selection.count !== before) this.onSelectionChange(this.selection.snapshot());
   }
 
@@ -427,6 +431,14 @@ export class Viewport {
     this.raycaster.setFromCamera(ndc, this.camera);
     const { origin, direction } = this.raycaster.ray;
     return { origin: [origin.x, origin.y, origin.z], direction: [direction.x, direction.y, direction.z] };
+  }
+
+  /** Distance in screen pixels between the pointer and a point of the model (Infinity when it is behind the eye). */
+  screenDistance(event: PointerEvent, p: Vec3): number {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const v = new THREE.Vector3(...p).project(this.camera);
+    if (v.z < -1 || v.z > 1) return Infinity;
+    return Math.hypot(((v.x + 1) / 2) * rect.width - (event.clientX - rect.left), ((1 - v.y) / 2) * rect.height - (event.clientY - rect.top));
   }
 
   /** Size of one screen pixel at the camera target, in mm (used for pick tolerances). */

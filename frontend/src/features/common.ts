@@ -2,10 +2,19 @@
 import type { Shape3D } from "replicad";
 import type { BooleanOperation } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
+import { sketchFrame } from "../sketcher/frame";
 import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
 
 /** Smallest dimension accepted by the modeller (mm). */
 export const MIN_LENGTH = 1e-3;
+
+/**
+ * Where a profile's plane is for the kernel: its offset along the normal, or the origin point when the sketch
+ * was also moved inside its plane.
+ */
+export function planeOrigin(profile: ProfileOutput): number | [number, number, number] {
+  return profile.shift ? sketchFrame(profile.plane, profile.offset, profile.shift).origin : profile.offset;
+}
 
 export type OutputLookup = (id: string) => FeatureOutput | undefined;
 

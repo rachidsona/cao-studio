@@ -149,7 +149,7 @@ export class ExtrudeTool implements PointerHandler {
         continue; // open or branched profile: not extrudable
       }
       if (found.length === 0) continue;
-      const frame = sketchFrame(feature.plane, feature.offset);
+      const frame = sketchFrame(feature.plane, feature.offset, feature.shift);
       const group = new THREE.Group();
       group.matrixAutoUpdate = false;
       group.matrix.copy(frameMatrix(frame));

@@ -41,7 +41,7 @@ export class SketchDisplay {
     this.shown = visible;
     this.highlighted = selected;
     this.viewport.setSketchLines(
-      visible.map((f) => ({ id: f.id, frame: sketchFrame(f.plane, f.offset), polylines: sketchPolylines(f), regions: sketchRegions(f), selected: f.id === selected })),
+      visible.map((f) => ({ id: f.id, frame: sketchFrame(f.plane, f.offset, f.shift), polylines: sketchPolylines(f), regions: sketchRegions(f), selected: f.id === selected })),
     );
   }
 }

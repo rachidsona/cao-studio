@@ -23,9 +23,19 @@ const AXES: Record<PlaneName, { u: Vec3; v: Vec3; normal: Vec3 }> = {
   YZ: { u: [0, 1, 0], v: [0, 0, 1], normal: [1, 0, 0] },
 };
 
-export function sketchFrame(plane: PlaneName, offset: number): SketchFrame {
+/**
+ * Frame of a sketch plane: the plane `offset` along its normal, with its origin moved by `shift` inside
+ * the plane (a sketch that was moved as a whole keeps its geometry and constraints, its origin goes along).
+ */
+export function sketchFrame(plane: PlaneName, offset: number, shift?: readonly [number, number]): SketchFrame {
   const { u, v, normal } = AXES[plane];
-  return { u, v, normal, origin: [normal[0] * offset, normal[1] * offset, normal[2] * offset] };
+  const [su, sv] = shift ?? [0, 0];
+  return {
+    u,
+    v,
+    normal,
+    origin: [0, 1, 2].map((i) => normal[i]! * offset + u[i]! * su + v[i]! * sv) as Vec3,
+  };
 }
 
 export function toWorld(frame: SketchFrame, x: number, y: number): Vec3 {
