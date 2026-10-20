@@ -50,6 +50,18 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
     errors.push(`${where} : esquisse trop volumineuse.`);
     return;
   }
+  if (feature.offsets !== undefined) {
+    const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+    const valid =
+      Array.isArray(feature.offsets) &&
+      feature.offsets.length <= MAX_SKETCH_CURVES &&
+      feature.offsets.every(
+        (o) =>
+          isObject(o) && typeof o.id === "string" && typeof o.name === "string" && strings(o.curves) && strings(o.source) &&
+          isFiniteNumber(o.distance) && typeof o.both === "boolean" && (o.join === "round" || o.join === "sharp"),
+      );
+    if (!valid) errors.push(`${where} : décalages invalides.`);
+  }
   const categories = new Map<string, RefCategory>([
     [ORIGIN, "point"],
     [AXIS_X, "line"],

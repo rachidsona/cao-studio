@@ -3,13 +3,14 @@
  * geometry worker, the viewport and the panels together.
  */
 import { addExtrude, addPlate, bodyLabel, bodyOrigin, dependentsOf, deleteFeature, findFeature, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
-import type { CadDocument, DisplayUnit } from "../document/types";
+import type { CadDocument, DisplayUnit, SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
 import type { FeatureStatus } from "../history/recompute";
 import { trim } from "../measurements/units";
 import { ref, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
+import { removeOffsetFrom, renameOffsetIn } from "../sketcher/offset";
 import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
@@ -112,6 +113,9 @@ export class Editor {
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
       renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
       removeBody: (id) => this.removeFeature(bodyOrigin(this.doc, id)),
+      renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
+      editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
+      removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),
       edit: (id) => this.editFeature(id),
       toggleSuppress: (id) => this.toggleSuppress(id),
       remove: (id) => this.removeFeature(id),
@@ -305,6 +309,12 @@ export class Editor {
     if (feature?.type === "sketch") this.sketches.open(id);
     else if (feature?.type === "extrude") this.extrudeCommand(id);
     else if (feature) this.tools.edit(id);
+  }
+
+  /** Changes a sketch from outside the sketch mode; the sketch being edited is re-read so it cannot write back old data. */
+  private changeSketch(id: string, change: (sketch: SketchFeature) => SketchFeature): void {
+    void this.change(updateFeature(this.doc, id, (f) => (f.type === "sketch" ? change(f) : f)));
+    this.sketches.sync();
   }
 
   private toggleSuppress(id: string): void {

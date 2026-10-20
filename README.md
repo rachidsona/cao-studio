@@ -219,9 +219,14 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   opérations, et se renomme (le nom suit le corps à travers ses opérations suivantes) ; supprimer un
   corps supprime l'opération qui l'a créé et celles qui en dépendent, après confirmation.
 - **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
-  chanfrein, combinaison). Un clic ouvre une fenêtre pour **renommer**, **modifier** (rouvre l'outil
-  de l'opération : flèche de l'extrusion, panneau de l'outil), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
+  chanfrein, combinaison, et les décalages, placés où est leur esquisse). Un clic ouvre une fenêtre pour
+  **renommer**, **modifier** (rouvre l'outil de l'opération : flèche de l'extrusion, panneau de l'outil,
+  esquisse et outil Décalage), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
   les perçages suivants au corps précédent.
+- **Décalages** : chaque décalage validé est enregistré avec son esquisse (nom, courbes créées,
+  courbes décalées, distance, côtés, coins). Dans l'historique, « Modifier » rouvre l'esquisse avec la
+  sélection et les réglages restaurés ; valider remplace les courbes du décalage. « Supprimer » retire
+  le décalage et les courbes qu'il a créées, jamais l'original.
 - **Propriétés** : saisir les cotes dans l'unité d'affichage (virgule acceptée), puis Entrée
   pour recalculer.
 - **Plaque** : nouveau corps (esquisse rectangle + extrusion).

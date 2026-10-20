@@ -7,7 +7,7 @@
  * `units` is only the display preference of the project.
  */
 
-import { centeredRectangle, type SketchConstraint, type SketchCurve, type SketchPoint } from "./sketch";
+import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint } from "./sketch";
 
 export const DOCUMENT_FORMAT = "cao-studio";
 export const SCHEMA_VERSION = 2;
@@ -33,6 +33,8 @@ export interface SketchFeature extends FeatureBase {
   constraints: SketchConstraint[];
   /** Body whose face this sketch was drawn on (extrusions then default to a union with it). */
   support?: string;
+  /** Offsets made in this sketch (shown in the timeline). */
+  offsets?: OffsetRecord[];
 }
 
 export type BooleanOperation = "new" | "join" | "cut" | "intersect";

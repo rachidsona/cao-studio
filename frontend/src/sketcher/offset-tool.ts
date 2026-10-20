@@ -7,7 +7,7 @@
  * State and sequencing only: kernel calls arrive through the host, geometry
  * conversions are in offset.ts and the panel is drawn by ui/offset-panel.ts.
  */
-import type { SketchGeometry } from "../document/sketch";
+import type { OffsetRecord, SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import { formatLength } from "../measurements/units";
@@ -16,9 +16,9 @@ import { renderOffsetPanel, type OffsetPanelState } from "../ui/offset-panel";
 import { el } from "../ui/dom";
 import { ArrowHandle } from "../viewport/arrow-handle";
 import type { Viewport } from "../viewport/viewport";
-import type { Vec2 } from "./edit";
+import { removeEntities, type Vec2 } from "./edit";
 import type { Vec3 } from "./frame";
-import { allConstruction, addOffsetCurves, connectedChain, handleFor, OffsetSelectionError, offsetPreview, pathsFromCurves } from "./offset";
+import { allConstruction, addOffsetCurves, connectedChain, handleFor, OffsetSelectionError, offsetName, offsetPreview, pathsFromCurves } from "./offset";
 import type { Preview } from "./tools";
 
 export interface OffsetHost {
@@ -40,6 +40,8 @@ export interface OffsetHost {
   /** The tool ended (confirmed or cancelled); `created` are the new curves to select. */
   closed(created: string[]): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
+  /** An id for a new offset record, unique in the document. */
+  newOffsetId(): string;
 }
 
 /** Last distance used, kept for the next offset of the session (mm). */
@@ -69,7 +71,16 @@ export class OffsetTool {
   private readonly panel: HTMLElement;
   private readonly arrow: ArrowHandle;
 
-  constructor(private readonly host: OffsetHost) {
+  /** `editing`: the offset to redo (its settings are restored, its curves replaced on confirmation). */
+  constructor(
+    private readonly host: OffsetHost,
+    private readonly editing: OffsetRecord | null = null,
+  ) {
+    if (editing) {
+      this.distance = editing.distance;
+      this.direction = editing.both ? "both" : "one";
+      this.join = editing.join;
+    }
     this.panel = el("div", {
       class: "absolute top-2 right-2 z-30 w-72 max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto",
       role: "dialog",
@@ -329,13 +340,27 @@ export class OffsetTool {
       this.host.notify(this.problem ?? "Sélectionnez les lignes, arcs ou cercles à décaler.", "error");
       return;
     }
-    const base = this.host.geometry();
+    const current = this.host.geometry();
+    // Redoing an offset replaces the curves it made before.
+    const base = this.editing ? removeEntities(current, this.editing.curves) : current;
     const { geometry, created } = addOffsetCurves(base, this.outcome.curves, allConstruction(base, this.curveIds()));
     if (created.length === 0) {
       this.host.notify("Le décalage n'a produit aucune courbe.", "error");
       return;
     }
-    if (!this.host.apply(geometry, `Décalage : ${created.length} courbe(s) ajoutée(s), l'original est conservé.`)) return;
+    const record: OffsetRecord = {
+      id: this.editing?.id ?? this.host.newOffsetId(),
+      name: this.editing?.name ?? offsetName(current),
+      curves: created,
+      source: this.curveIds(),
+      distance: this.shownDistance(),
+      both: this.direction === "both",
+      join: this.join,
+    };
+    const previous = current.offsets ?? [];
+    geometry.offsets = this.editing ? previous.map((o) => (o.id === record.id ? record : o)) : [...previous, record];
+    const done = this.editing ? "mis à jour" : `${created.length} courbe(s) ajoutée(s), l'original est conservé`;
+    if (!this.host.apply(geometry, `${record.name} : ${done}.`)) return;
     this.finish(created);
   }
 

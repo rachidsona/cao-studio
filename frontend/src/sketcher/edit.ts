@@ -17,7 +17,7 @@ import {
 export type Vec2 = [number, number];
 
 export function cloneGeometry(g: SketchGeometry): SketchGeometry {
-  return structuredClone({ points: g.points, curves: g.curves, constraints: g.constraints });
+  return structuredClone({ points: g.points, curves: g.curves, constraints: g.constraints, ...(g.offsets ? { offsets: g.offsets } : {}) });
 }
 
 export function nextId(g: SketchGeometry, prefix: string): string {
@@ -173,6 +173,14 @@ export function removeEntities(base: SketchGeometry, ids: string[]): SketchGeome
   g.constraints = g.constraints.filter((c) => !removed.has(c.id) && !constraintRefs(c).some((r) => removed.has(r)));
   const used = new Set<string>([...g.curves.flatMap(curvePoints), ...g.constraints.flatMap(constraintRefs)]);
   g.points = g.points.filter((p) => !removed.has(p.id) && used.has(p.id));
+  if (g.offsets) {
+    // An offset whose curves are all gone no longer exists; the others forget the curves removed from them.
+    const offsets = g.offsets
+      .map((o) => ({ ...o, curves: o.curves.filter((id) => keptCurves.has(id)), source: o.source.filter((id) => keptCurves.has(id)) }))
+      .filter((o) => o.curves.length > 0);
+    if (offsets.length) g.offsets = offsets;
+    else delete g.offsets;
+  }
   return g;
 }
 

@@ -42,7 +42,8 @@ interface CacheEntry {
 
 /** Cache key ignores presentation-only fields (name, hidden). */
 function featureKey(feature: Feature, inputKeys: string[]): string {
-  const { name: _name, hidden: _hidden, ...geometric } = feature;
+  // The offsets of a sketch only describe how some of its curves were made (timeline), not its geometry.
+  const { name: _name, hidden: _hidden, offsets: _offsets, ...geometric } = feature as Feature & { offsets?: unknown };
   return `${canonicalJson(geometric)}|${inputKeys.join("|")}`;
 }
 

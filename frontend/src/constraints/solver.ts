@@ -279,6 +279,7 @@ function fromPrimitives(geometry: SketchGeometry, prims: Prim[]): SketchGeometry
       return { ...curve, radius: solved.radius as number, startAngle: solved.start_angle as number, endAngle: solved.end_angle as number };
     }),
     constraints: geometry.constraints,
+    ...(geometry.offsets ? { offsets: geometry.offsets } : {}),
   };
 }
 

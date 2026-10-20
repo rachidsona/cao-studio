@@ -27,6 +27,9 @@ export interface NavigatorHost {
   toggleHidden(id: string): void;
   rename(id: string, name: string): void;
   renameBody(bodyId: string, name: string): void;
+  renameOffset(sketchId: string, offsetId: string, name: string): void;
+  editOffset(sketchId: string, offsetId: string): void;
+  removeOffset(sketchId: string, offsetId: string): void;
   edit(id: string): void;
   toggleSuppress(id: string): void;
   remove(id: string): void;
@@ -42,10 +45,12 @@ export class Navigator {
     private readonly host: NavigatorHost,
   ) {
     this.dialog = new FeatureDialog(ref(root, "workspace"), {
-      rename: (item, name) => (item.body ? host.renameBody(item.id, name) : host.rename(item.id, name)),
-      edit: (item) => host.edit(item.id),
+      rename: (item, name) =>
+        item.body ? host.renameBody(item.id, name) : item.offset ? host.renameOffset(item.offset.sketchId, item.id, name) : host.rename(item.id, name),
+      edit: (item) => (item.offset ? host.editOffset(item.offset.sketchId, item.id) : host.edit(item.id)),
       toggleSuppress: (item) => host.toggleSuppress(item.id),
-      remove: (item) => (item.body ? host.removeBody(item.id) : host.remove(item.id)),
+      remove: (item) =>
+        item.body ? host.removeBody(item.id) : item.offset ? host.removeOffset(item.offset.sketchId, item.id) : host.remove(item.id),
     });
   }
 
@@ -66,7 +71,10 @@ export class Navigator {
   private items(): { sketches: NavItem[]; operations: NavItem[]; bodies: NavItem[] } {
     const doc = this.host.doc();
     const sketches = doc.features.filter((f) => f.type === "sketch").map((f) => this.item(f));
-    const operations = doc.features.filter((f) => f.type !== "sketch").map((f) => this.item(f));
+    // The timeline follows the history: an offset comes where its sketch is.
+    const operations = doc.features.flatMap((f) =>
+      f.type === "sketch" ? (f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: "offset", hidden: false, offset: { sketchId: f.id } })) : [this.item(f)],
+    );
     const bodies = this.host.bodyIds().flatMap((bodyId) => {
       const feature = findFeature(doc, bodyId);
       const originId = bodyOrigin(doc, bodyId);
@@ -79,9 +87,9 @@ export class Navigator {
 
   /** Opens the window of a feature (or of a body) next to `anchor`; it is selected too. */
   private open(id: string, anchor: DOMRect, body = false): void {
-    if (body) this.host.selectBody(id);
-    else this.host.selectFeature(id);
     const item = this.find(id, body);
+    if (body) this.host.selectBody(id);
+    else this.host.selectFeature(item?.offset?.sketchId ?? id);
     if (item) this.dialog.open(item, anchor);
   }
 

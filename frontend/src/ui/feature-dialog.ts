@@ -126,7 +126,7 @@ export class FeatureDialog {
       this.actions.edit(item);
     });
     const suppress =
-      item.type === "sketch" || item.body
+      item.type === "sketch" || item.body || item.offset
         ? null
         : el("button", { type: "button", class: BUTTON }, item.suppressed ? "Réactiver" : "Désactiver");
     suppress?.addEventListener("click", () => this.actions.toggleSuppress(item));

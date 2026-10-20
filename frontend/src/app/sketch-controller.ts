@@ -7,7 +7,7 @@ import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
 import { solveSketch } from "../constraints/solver";
 import { findCurve, setDimensionValue } from "../sketcher/edit";
-import { findFeature, uniqueId, updateFeature } from "../document/operations";
+import { findFeature, uniqueId, uniqueOffsetId, updateFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit, PlaneName, SketchFeature } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { FaceOutline } from "../geometry/protocol";
@@ -125,10 +125,17 @@ export class SketchController {
       unit: () => this.host.unit(),
       calculatorContainer: () => this.root.querySelector("main") ?? this.root,
       offset: (paths, distance, join) => this.host.offset(paths, distance, join),
+      offsetId: () => uniqueOffsetId(this.host.doc()),
     });
     this.host.select(featureId);
     this.root.dataset.mode = "sketch";
     this.refresh();
+  }
+
+  /** Opens the sketch and redoes one of its offsets (from the timeline). */
+  editOffset(sketchId: string, offsetId: string): void {
+    this.open(sketchId);
+    this.mode?.editOffset(offsetId);
   }
 
   finish(): void {

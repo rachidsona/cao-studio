@@ -35,6 +35,7 @@ import { SketchOverlay } from "./overlay";
 import { OffsetTool } from "./offset-tool";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
+import type { OffsetRecord } from "../document/sketch";
 
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
@@ -51,6 +52,8 @@ export interface SketchModeHost {
   calculatorContainer(): HTMLElement;
   /** Planar offset computed by the geometry kernel. */
   offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
+  /** An id for a new offset record, unique in the document. */
+  offsetId(): string;
 }
 
 /** What a value typed in the keypad applies to: an existing dimension, or a new one. */
@@ -90,7 +93,7 @@ export class SketchMode implements PointerHandler {
   ) {
     this.featureId = feature.id;
     this.frame = sketchFrame(feature.plane, feature.offset);
-    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints };
+    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
     this.lastSolve = solveSketch(this.geometry);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
     this.overlay.onAnnotationPointerDown = (annotation, event) => this.dimensionPointerDown(annotation, event);
@@ -133,7 +136,7 @@ export class SketchMode implements PointerHandler {
 
   /** Reloads the geometry after an external change (undo/redo, properties panel). */
   sync(feature: SketchFeature): void {
-    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints };
+    this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
     const known = new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
@@ -209,7 +212,16 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension" | "offset"): void {
+  /** Reopens a "Décalage" of the timeline: its source curves selected, its settings restored. */
+  editOffset(id: string): void {
+    const record = this.geometry.offsets?.find((o) => o.id === id);
+    if (!record) return;
+    const known = new Set(this.geometry.curves.map((c) => c.id));
+    this.selection = new Set(record.source.filter((s) => known.has(s)));
+    this.setTool("offset", record);
+  }
+
+  setTool(name: ToolName | "dimension" | "offset", editing?: OffsetRecord): void {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
@@ -219,7 +231,7 @@ export class SketchMode implements PointerHandler {
     if (name === "offset") {
       // Curves already selected are offset right away; anything else is dropped from the selection.
       this.selection = new Set([...this.selection].filter((id) => findCurve(this.geometry, id)));
-      this.offset = new OffsetTool(this.offsetHost());
+      this.offset = new OffsetTool(this.offsetHost(), editing ?? null);
       this.offset.start();
     }
     this.tool = name === "select" || name === "dimension" || name === "offset" ? null : new DrawingTool(name, this.construction);
@@ -262,6 +274,7 @@ export class SketchMode implements PointerHandler {
       },
       unit: () => this.host.unit(),
       compute: (paths, distance, join) => this.host.offset(paths, distance, join),
+      newOffsetId: () => this.host.offsetId(),
       apply: (geometry, success) => this.apply(geometry, success),
       changed: () => {
         this.preview = this.offset?.preview ?? null;

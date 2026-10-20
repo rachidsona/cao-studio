@@ -5,9 +5,10 @@
  * never touched. Computation itself is in geometry/offset.ts.
  */
 import type { SketchCurve, SketchGeometry } from "../document/sketch";
+import type { SketchFeature } from "../document/types";
 import type { OffsetCurve, OffsetPath, OffsetStep } from "../geometry/offset";
 import { orientedArc } from "./arc";
-import { cloneGeometry, inferAlignment, nextId, pointPos, type Vec2 } from "./edit";
+import { cloneGeometry, inferAlignment, nextId, pointPos, removeEntities, type Vec2 } from "./edit";
 import type { Preview } from "./tools";
 
 /** Points closer than this (mm) are one vertex. */
@@ -145,6 +146,27 @@ export function pathsFromCurves(g: SketchGeometry, ids: Iterable<string>): Offse
     paths.push({ kind: "chain", start: graph.nodes[start] as Vec2, steps, closed });
   });
   return paths;
+}
+
+/** The sketch with one of its offsets renamed. */
+export function renameOffsetIn(sketch: SketchFeature, id: string, name: string): SketchFeature {
+  return { ...sketch, offsets: sketch.offsets?.map((o) => (o.id === id ? { ...o, name } : o)) };
+}
+
+/** The sketch without one offset: the curves it made are removed with it. */
+export function removeOffsetFrom(sketch: SketchFeature, id: string): SketchFeature {
+  const record = sketch.offsets?.find((o) => o.id === id);
+  if (!record) return sketch;
+  const geometry = removeEntities(sketch, record.curves);
+  return { ...sketch, ...geometry, offsets: geometry.offsets };
+}
+
+/** "Décalage n": the first number not used by an offset of this sketch. */
+export function offsetName(g: SketchGeometry): string {
+  const used = new Set((g.offsets ?? []).map((o) => o.name));
+  let n = 1;
+  while (used.has(`Décalage ${n}`)) n++;
+  return `Décalage ${n}`;
 }
 
 /**

@@ -120,10 +120,30 @@ export function isDimension(c: SketchConstraint): c is DimensionConstraint {
   return DIMENSION_KINDS.has(c.kind);
 }
 
+/**
+ * A "Décalage" made in the sketch: listed in the timeline, where it can be
+ * renamed, edited again or deleted. The curves it created are ordinary curves
+ * of the sketch; this record only remembers how they were made.
+ */
+export interface OffsetRecord {
+  id: string;
+  name: string;
+  /** Curves it created in this sketch. */
+  curves: string[];
+  /** Curves that were offset. */
+  source: string[];
+  /** Signed distance in mm, as on the arrow (the magnitude when `both`). */
+  distance: number;
+  /** One copy on each side, at the same distance. */
+  both: boolean;
+  join: "round" | "sharp";
+}
+
 export interface SketchGeometry {
   points: SketchPoint[];
   curves: SketchCurve[];
   constraints: SketchConstraint[];
+  offsets?: OffsetRecord[];
 }
 
 /** Ids of the points a curve is built on. */

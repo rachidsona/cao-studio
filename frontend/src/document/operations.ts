@@ -155,6 +155,14 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
   return n > 0 ? `Corps ${n}` : (findFeature(doc, origin)?.name ?? origin);
 }
 
+/** "ofN": an id for a new offset, unused by any feature or by the offsets of the sketches. */
+export function uniqueOffsetId(doc: CadDocument): string {
+  const used = new Set<string>(doc.features.flatMap((f) => [f.id, ...(f.type === "sketch" ? (f.offsets ?? []).map((o) => o.id) : [])]));
+  let n = 1;
+  while (used.has(`of${n}`)) n++;
+  return `of${n}`;
+}
+
 /** Gives a body its own name (kept with the feature that created it). */
 export function renameBody(doc: CadDocument, bodyId: string, name: string): CadDocument {
   return { ...doc, bodyNames: { ...doc.bodyNames, [bodyOrigin(doc, bodyId)]: name } };
