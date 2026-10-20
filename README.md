@@ -204,6 +204,10 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 
 ## Utilisation de l'éditeur
 
+- **Esquisses visibles** : les esquisses restent affichées dans la vue 3D (nettes devant les corps,
+  atténuées à travers) ; l'icône œil à côté de chaque esquisse, dans l'arbre, la masque ou la réaffiche.
+  Le choix est enregistré avec le document (champ `hidden`) et s'annule comme le reste ; il ne
+  recalcule rien. Les lignes de construction et les arêtes projetées ne sont pas dessinées.
 - **Arbre** : sélectionner une opération, la désactiver (●/◌) ou la supprimer (✕). Supprimer
   un perçage relie les perçages suivants au corps précédent.
 - **Propriétés** : saisir les cotes dans l'unité d'affichage (virgule acceptée), puis Entrée

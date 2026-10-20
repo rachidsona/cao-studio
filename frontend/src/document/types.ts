@@ -19,6 +19,8 @@ interface FeatureBase {
   id: string;
   name: string;
   suppressed?: boolean;
+  /** Sketches only: not drawn in the 3D view (the eye icon of the tree). Presentation, not geometry. */
+  hidden?: boolean;
 }
 
 export interface SketchFeature extends FeatureBase {

@@ -63,6 +63,11 @@ export class Viewport {
   private controls: OrbitControls;
   private viewHelper: ViewHelper;
   private grid = new AdaptiveGrid();
+  /** Sketches drawn in the view when they are not being edited (one group per sketch). */
+  private sketchGroup = new THREE.Group();
+  /** Sharp where the sketch is in front, faint where a body hides it: sketches stay apparent. */
+  private sketchMaterial = new THREE.LineBasicMaterial({ color: 0x2563eb });
+  private sketchGhostMaterial = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false });
   private bodies = new Map<string, BodyObject>();
   private bodyMaterial: THREE.MeshStandardMaterial;
   /** One subtle tint per body, so separate bodies stand out. */
@@ -121,6 +126,7 @@ export class Viewport {
     }
     this.highlightMaterial.color.set(0x0ea5e9);
 
+    this.scene.add(this.sketchGroup);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.6));
     const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(1, -2, 3);
@@ -153,6 +159,29 @@ export class Viewport {
     const gridColor = styles.getPropertyValue("--viewport-grid").trim() || "#9ca3af";
     this.renderer.setClearColor(new THREE.Color(background));
     this.grid.setColor(new THREE.Color(gridColor));
+  }
+
+  /** Draws these sketches (curves already as polylines in sketch coordinates) on their planes. */
+  setSketchLines(items: { frame: SketchFrame; polylines: [number, number][][] }[]): void {
+    for (const group of [...this.sketchGroup.children]) {
+      this.sketchGroup.remove(group);
+      group.traverse((child) => child instanceof THREE.Line && child.geometry.dispose());
+    }
+    for (const { frame, polylines } of items) {
+      const group = new THREE.Group();
+      group.matrixAutoUpdate = false;
+      const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...frame.u), new THREE.Vector3(...frame.v), new THREE.Vector3(...frame.normal));
+      group.matrix.copy(basis.setPosition(new THREE.Vector3(...frame.origin)));
+      for (const points of polylines) {
+        const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
+        const ghost = new THREE.Line(geometry, this.sketchGhostMaterial);
+        ghost.renderOrder = 4;
+        const line = new THREE.Line(geometry, this.sketchMaterial);
+        line.renderOrder = 5;
+        group.add(ghost, line);
+      }
+      this.sketchGroup.add(group);
+    }
   }
 
   setBodies(meshes: BodyMesh[]): void {

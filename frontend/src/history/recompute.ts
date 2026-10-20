@@ -40,9 +40,9 @@ interface CacheEntry {
   output: FeatureOutput;
 }
 
-/** Cache key ignores presentation-only fields (name). */
+/** Cache key ignores presentation-only fields (name, hidden). */
 function featureKey(feature: Feature, inputKeys: string[]): string {
-  const { name: _name, ...geometric } = feature;
+  const { name: _name, hidden: _hidden, ...geometric } = feature;
   return `${canonicalJson(geometric)}|${inputKeys.join("|")}`;
 }
 

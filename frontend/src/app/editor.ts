@@ -22,6 +22,7 @@ import { bindShortcuts } from "./keyboard";
 import { ModelSelectionController } from "./model-selection";
 import { extrudeTargets, ToolLauncher, type PanelToolKind } from "./tool-launcher";
 import { SketchController } from "./sketch-controller";
+import { SketchDisplay } from "./sketch-display";
 
 export interface EditorConfig {
   projectId: string;
@@ -46,6 +47,7 @@ export class Editor {
   private recomputing = false;
   private recomputeAgain = false;
   private sketches: SketchController;
+  private sketchDisplay: SketchDisplay;
   private panelDeferred = false;
   private extrudeTool: ExtrudeTool | null = null;
   private tools: ToolLauncher;
@@ -69,6 +71,7 @@ export class Editor {
         this.render();
       },
     });
+    this.sketchDisplay = new SketchDisplay(viewport);
     this.sketches = new SketchController(root, viewport, {
       doc: () => this.doc,
       change: (next) => void this.change(next),
@@ -173,9 +176,11 @@ export class Editor {
   // ---- rendering ----------------------------------------------------------
 
   render(): void {
+    this.sketchDisplay.sync(this.doc, this.sketches.mode?.featureId ?? null);
     renderTree(ref(this.root, "tree"), this.doc, this.statuses, this.selectedFeature, {
       onSelect: (id) => this.selectFeature(id),
       onToggleSuppress: (id) => this.toggleSuppress(id),
+      onToggleHidden: (id) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, hidden: !f.hidden }))),
       onDelete: (id) => this.removeFeature(id),
     });
     const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;
