@@ -119,6 +119,7 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
         errors.push(`${where} : valeur de ${owner} invalide.`);
       }
       if (constraint.driving !== undefined && typeof constraint.driving !== "boolean") errors.push(`${where} : ${owner} est invalide.`);
+      if (constraint.offset !== undefined && !isFiniteNumber(constraint.offset)) errors.push(`${where} : position de ${owner} invalide.`);
       if (constraint.label !== undefined && (typeof constraint.label !== "string" || constraint.label.length > 80)) {
         errors.push(`${where} : libellé de ${owner} invalide.`);
       }

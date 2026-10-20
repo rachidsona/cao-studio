@@ -3,6 +3,7 @@
  * current selection, and the constraints they create.
  */
 import { AXIS_X, AXIS_Y, ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { pairSpec } from "../sketcher/annotations";
 import { findCurve, measure } from "../sketcher/edit";
 
 export type EntityKind = "point" | "line" | "circle" | "arc";
@@ -152,13 +153,14 @@ export const COMMANDS: Command[] = [
     label: "Cote",
     glyph: "↔",
     dimension: true,
-    applies: (s) =>
-      only(s, 0, 1, 0) || only(s, 2, 0, 0) || only(s, 1, 1, 0) || only(s, 0, 2, 0) || only(s, 0, 0, 1) || only(s, 1, 0, 0),
+    applies: (s) => count(s) === 2 || only(s, 0, 1, 0) || only(s, 0, 0, 1) || only(s, 1, 0, 0),
     build: (s, g) => {
+      if (count(s) === 2) {
+        // Distance between points/centres, point–line, parallel lines; angle between other lines.
+        const spec = pairSpec(g, s.order);
+        return spec ? [dimension(spec as never, g)] : [];
+      }
       if (only(s, 0, 1, 0)) return [dimension({ kind: "length", line: s.lines[0] } as never, g)];
-      if (only(s, 2, 0, 0)) return [dimension({ kind: "distance", a: s.points[0], b: s.points[1] } as never, g)];
-      if (only(s, 1, 1, 0)) return [dimension({ kind: "pointLineDistance", point: s.points[0], line: s.lines[0] } as never, g)];
-      if (only(s, 0, 2, 0)) return [dimension({ kind: "angle", a: s.lines[0], b: s.lines[1] } as never, g)];
       if (s.circles.length) return [dimension({ kind: "diameter", curve: s.circles[0] } as never, g)];
       if (s.arcs.length) return [dimension({ kind: "radius", curve: s.arcs[0] } as never, g)];
       // A single point: position relative to the origin.

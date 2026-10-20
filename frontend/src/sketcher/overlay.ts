@@ -10,7 +10,8 @@ import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type Sketch
 import type { DisplayUnit } from "../document/types";
 import { findCurve, pointPos, type Vec2 } from "./edit";
 import type { SketchFrame } from "./frame";
-import type { Annotation, AnnotationRole } from "./annotations";
+import { outwardNormal, sketchCentre, type Annotation, type AnnotationRole } from "./annotations";
+import type { Region } from "./loops";
 import type { Preview } from "./tools";
 
 const COLORS = {
@@ -33,14 +34,19 @@ export interface OverlayState {
   flagged: ReadonlySet<string>;
   /** Dimension lines and measurements to draw (see annotations.ts). */
   annotations: Annotation[];
+  /** Show the geometric constraint symbols (H, V, ∥…); flagged ones are always shown. */
+  showGlyphs: boolean;
+  /** Closed regions of the sketch, lightly tinted like a profile. */
+  regions: Region[];
 }
 
-const ROLE_COLORS: Record<AnnotationRole, number> = {
-  driving: 0x0284c7,
-  reference: 0x64748b,
-  measure: 0x64748b,
-  preview: 0x0ea5e9,
-};
+/** Colours of the dimension roles, from the theme (CSS variables). */
+function roleColor(role: AnnotationRole): THREE.Color {
+  const styles = getComputedStyle(document.documentElement);
+  const name = role === "driving" ? "--sketch-dim" : role === "preview" ? "--sketch-preview" : "--sketch-ref";
+  return new THREE.Color(styles.getPropertyValue(name).trim() || "#64748b");
+}
+
 
 function arcPolyline(center: Vec2, radius: number, start: number, end: number, segments = 64): Vec2[] {
   const out: Vec2[] = [];
@@ -51,7 +57,7 @@ function arcPolyline(center: Vec2, radius: number, start: number, end: number, s
   return out;
 }
 
-function material(color: number, dashed = false): THREE.LineBasicMaterial {
+function material(color: number | THREE.Color, dashed = false): THREE.LineBasicMaterial {
   const m = dashed
     ? new THREE.LineDashedMaterial({ color, dashSize: 2, gapSize: 1.5, depthTest: false })
     : new THREE.LineBasicMaterial({ color, depthTest: false });
@@ -60,7 +66,8 @@ function material(color: number, dashed = false): THREE.LineBasicMaterial {
 
 export class SketchOverlay {
   private group = new THREE.Group();
-  onAnnotationClick: (annotation: Annotation, anchor: { x: number; y: number }) => void = () => {};
+  /** Pointer pressed on a dimension text: the sketch mode decides between a click (keypad) and a drag (move it). */
+  onAnnotationPointerDown: (annotation: Annotation, event: PointerEvent) => void = () => {};
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -79,7 +86,7 @@ export class SketchOverlay {
     scene.add(this.group);
   }
 
-  private polyline(points: Vec2[], color: number, dashed = false): void {
+  private polyline(points: Vec2[], color: number | THREE.Color, dashed = false): void {
     const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
     const line = new THREE.Line(geometry, material(color, dashed));
     if (dashed) line.computeLineDistances();
@@ -157,48 +164,89 @@ export class SketchOverlay {
     pointObject.renderOrder = 11;
     this.group.add(pointObject);
 
+    this.renderRegions(state.regions);
     this.renderConstraints(state);
     for (const annotation of state.annotations) this.renderAnnotation(annotation, state.flagged);
   }
 
-  private segment(a: Vec2, b: Vec2, color: number): void {
+  private segment(a: Vec2, b: Vec2, color: THREE.Color): void {
     this.polyline([a, b], color);
   }
 
   /** Arrowhead at `tip` pointing along `dir` (unit), sized in screen pixels. */
-  private arrowhead(tip: Vec2, dir: Vec2, color: number): void {
+  private arrowhead(tip: Vec2, dir: Vec2, color: THREE.Color): void {
     const px = this.worldPerPixel();
-    const l = 9 * px;
-    const w = 3.5 * px;
+    const l = 8 * px;
+    const w = 2.5 * px;
     const back: Vec2 = [tip[0] - dir[0] * l, tip[1] - dir[1] * l];
     const n: Vec2 = [-dir[1], dir[0]];
     this.polyline([[back[0] + n[0] * w, back[1] + n[1] * w], tip, [back[0] - n[0] * w, back[1] - n[1] * w]], color);
   }
 
+  /** Light tint of the closed regions (the profiles an extrusion would use). */
+  private renderRegions(regions: Region[]): void {
+    for (const region of regions) {
+      const shape = new THREE.Shape(region.outer.map(([x, y]) => new THREE.Vector2(x, y)));
+      shape.holes = region.holes.map((h) => new THREE.Path(h.map(([x, y]) => new THREE.Vector2(x, y))));
+      const mesh = new THREE.Mesh(
+        new THREE.ShapeGeometry(shape),
+        new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.12, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      mesh.renderOrder = 9;
+      this.group.add(mesh);
+    }
+  }
+
+  /**
+   * Dimension text, drawing style: no box, coloured by role, rotated along the
+   * dimension line, between parentheses when it is only a measurement.
+   */
+  private dimensionText(a: Annotation, at: Vec2, angleDeg: number, flagged: boolean): void {
+    const text = a.role === "measure" || a.role === "reference" ? `(${a.text})` : a.text;
+    const node = document.createElement("span");
+    node.className = `cad-dim cad-dim-${a.role}${flagged ? " cad-flagged" : ""}`;
+    const inner = document.createElement("span");
+    inner.textContent = text;
+    inner.style.display = "inline-block";
+    inner.style.transform = `rotate(${-angleDeg}deg)`;
+    node.append(inner);
+    if (a.role !== "preview") {
+      node.style.pointerEvents = "auto";
+      node.title = a.role === "driving" ? "Cliquer : modifier la valeur — glisser : déplacer la cote" : "Cliquer : poser cette cote";
+      node.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        this.onAnnotationPointerDown(a, event);
+      });
+    }
+    const object = new CSS2DObject(node);
+    object.position.set(at[0], at[1], 0);
+    this.group.add(object);
+  }
+
   private renderAnnotation(a: Annotation, flagged: ReadonlySet<string>): void {
     const px = this.worldPerPixel();
-    const color = ROLE_COLORS[a.role];
+    const color = roleColor(a.role);
     const shape = a.shape;
-    const className = `${a.role === "driving" ? "cad-dimension" : "cad-measure"}${a.dimensionId && flagged.has(a.dimensionId) ? " cad-flagged" : ""}`;
-    const click = a.role === "preview" ? undefined : (anchor: { x: number; y: number }) => this.onAnnotationClick(a, anchor);
+    const isFlagged = !!a.dimensionId && flagged.has(a.dimensionId);
     if (shape.kind === "label") {
-      this.label(a.text, shape.at, className, click);
+      this.dimensionText(a, shape.at, 0, isFlagged);
       return;
     }
     if (shape.kind === "radial") {
       const dir: Vec2 = [Math.cos(shape.angle), Math.sin(shape.angle)];
       const rim: Vec2 = [shape.center[0] + dir[0] * shape.radius, shape.center[1] + dir[1] * shape.radius];
       const start: Vec2 = shape.diameter ? [shape.center[0] - dir[0] * shape.radius, shape.center[1] - dir[1] * shape.radius] : shape.center;
-      const outside: Vec2 = [rim[0] + dir[0] * 28 * px, rim[1] + dir[1] * 28 * px];
+      const outside: Vec2 = [rim[0] + dir[0] * 24 * px, rim[1] + dir[1] * 24 * px];
       this.segment(start, outside, color);
       this.arrowhead(rim, dir, color);
       if (shape.diameter) this.arrowhead(start, [-dir[0], -dir[1]], color);
-      this.label(a.text, [outside[0] + dir[0] * 8 * px, outside[1] + dir[1] * 8 * px], className, click);
+      this.dimensionText(a, [outside[0] + dir[0] * 14 * px, outside[1] + dir[1] * 14 * px], 0, isFlagged);
       return;
     }
-    // Linear: extension lines from both points to a common dimension line offset along the normal.
+    // Linear: extension lines from both points to a common dimension line, offset along the normal.
     const { p1, p2, normal } = shape;
-    const offset = 26 * px;
+    const offset = shape.offset ?? 30 * px;
     const level = Math.max(p1[0] * normal[0] + p1[1] * normal[1], p2[0] * normal[0] + p2[1] * normal[1]) + offset;
     const lift = (p: Vec2): Vec2 => {
       const k = level - (p[0] * normal[0] + p[1] * normal[1]);
@@ -206,18 +254,26 @@ export class SketchOverlay {
     };
     const d1 = lift(p1);
     const d2 = lift(p2);
-    const over = 5 * px;
-    const gap = 3 * px;
+    const side = Math.sign(offset) || 1;
+    const over = 6 * px * side;
+    const gap = 3 * px * side;
     this.segment([p1[0] + normal[0] * gap, p1[1] + normal[1] * gap], [d1[0] + normal[0] * over, d1[1] + normal[1] * over], color);
     this.segment([p2[0] + normal[0] * gap, p2[1] + normal[1] * gap], [d2[0] + normal[0] * over, d2[1] + normal[1] * over], color);
     this.segment(d1, d2, color);
     const len = Math.hypot(d2[0] - d1[0], d2[1] - d1[1]);
+    let angle = 0;
     if (len > 1e-9) {
       const dir: Vec2 = [(d2[0] - d1[0]) / len, (d2[1] - d1[1]) / len];
       this.arrowhead(d2, dir, color);
       this.arrowhead(d1, [-dir[0], -dir[1]], color);
+      angle = (Math.atan2(dir[1], dir[0]) * 180) / Math.PI;
+      // Keep the text readable (never upside down).
+      if (angle > 90) angle -= 180;
+      if (angle <= -90) angle += 180;
     }
-    this.label(a.text, [(d1[0] + d2[0]) / 2, (d1[1] + d2[1]) / 2], className, click);
+    // Text just outside the dimension line.
+    const mid: Vec2 = [(d1[0] + d2[0]) / 2, (d1[1] + d2[1]) / 2];
+    this.dimensionText(a, [mid[0] + normal[0] * 9 * px * side, mid[1] + normal[1] * 9 * px * side], angle, isFlagged);
   }
 
   /** Middle of the entities a constraint refers to, offset slightly so labels do not hide geometry. */
@@ -237,9 +293,19 @@ export class SketchOverlay {
     const positions = refs.map(refPos);
     const x = positions.reduce((s, p) => s + p[0], 0) / positions.length;
     const y = positions.reduce((s, p) => s + p[1], 0) / positions.length;
-    // Dimensions sit on their entity; glyphs are stacked beside it so labels never overlap.
     const px = this.worldPerPixel();
     if (slot < 0) return [x, y];
+    // Glyphs of a single line sit on its inner side (dimension lines are drawn outside),
+    // stacked along the line when there are several.
+    const line = refs.length === 1 ? findCurve(g, refs[0] as string) : undefined;
+    if (line?.kind === "line") {
+      const [a, b] = [pointPos(g, line.p1), pointPos(g, line.p2)];
+      const out = outwardNormal(a, b, sketchCentre(g));
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const along: Vec2 = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+      const shift = 18 * slot * px;
+      return [x - out[0] * 16 * px + along[0] * shift, y - out[1] * 16 * px + along[1] * shift];
+    }
     return [x + (12 + 18 * slot) * px, y - 14 * px];
   }
 
@@ -259,6 +325,7 @@ export class SketchOverlay {
       }
       const flagged = state.flagged.has(c.id);
       if (isDimension(c)) continue; // drawn as annotations
+      if (!state.showGlyphs && !flagged) continue; // symbols on demand; problems always visible
       const glyph = CONSTRAINT_GLYPHS[c.kind];
       if (glyph) this.label(glyph, at, `cad-glyph${flagged ? " cad-flagged" : ""}`);
     }

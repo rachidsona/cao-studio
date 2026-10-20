@@ -18,10 +18,16 @@
   :root {
     --viewport-bg: #e8ebef;
     --viewport-grid: #9aa3ae;
+    --sketch-dim: #15803d;
+    --sketch-ref: #6b7280;
+    --sketch-preview: #0284c7;
   }
   .dark {
-    --viewport-bg: #16191f;
+    --viewport-bg: #2b313b;
     --viewport-grid: #4b5563;
+    --sketch-dim: #8fd14f;
+    --sketch-ref: #9ca3af;
+    --sketch-preview: #38bdf8;
   }
   html,
   body {
@@ -51,6 +57,25 @@
   .cad-dimension {
     @apply cursor-pointer rounded border border-sky-500 bg-white/95 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-sky-900
       shadow-sm hover:bg-sky-50 dark:bg-gray-900/95 dark:text-sky-100;
+  }
+  /* Dimension text, drawing style (no box). */
+  .cad-dim {
+    @apply cursor-pointer px-0.5 font-mono text-[13px] leading-none whitespace-nowrap select-none;
+    text-shadow: 0 0 3px var(--viewport-bg), 0 0 3px var(--viewport-bg);
+  }
+  .cad-dim-driving {
+    color: var(--sketch-dim);
+  }
+  .cad-dim-measure,
+  .cad-dim-reference {
+    color: var(--sketch-ref);
+  }
+  .cad-dim-preview {
+    color: var(--sketch-preview);
+    cursor: default;
+  }
+  .cad-dim.cad-flagged {
+    @apply text-red-500;
   }
   .cad-measure {
     @apply cursor-pointer rounded bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm

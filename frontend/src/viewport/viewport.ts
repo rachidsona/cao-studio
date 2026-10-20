@@ -350,7 +350,9 @@ export class Viewport {
     this.controls.enableRotate = false;
     this.controls.mouseButtons = { LEFT: -1 as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
     this.controls.touches = { ONE: -1 as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_PAN };
-    this.grid.object.visible = false;
+    // Grid on the sketch plane (drawing-board look).
+    this.grid.object.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+    this.grid.object.position.copy(origin);
     this.setBodyOpacity(0.25);
     this.controls.update();
   }
@@ -360,7 +362,8 @@ export class Viewport {
     this.controls.enableRotate = true;
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
     this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-    this.grid.object.visible = true;
+    this.grid.object.quaternion.identity();
+    this.grid.object.position.set(0, 0, 0);
     this.setBodyOpacity(1);
     if (this.savedCamera) {
       this.camera.up.copy(this.savedCamera.up);

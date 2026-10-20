@@ -75,6 +75,12 @@ interface DimensionBase {
   /** Reference dimensions are measured, never imposed. */
   driving?: boolean;
   value: number;
+  /**
+   * Where the dimension is drawn (presentation only, set by dragging it):
+   * distance (mm) of a linear dimension line beyond the geometry, or angle
+   * (degrees) of the leader of a radius/diameter.
+   */
+  offset?: number;
 }
 
 /** Dimensional constraints (mm, or degrees for angles). */

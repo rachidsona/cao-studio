@@ -6,7 +6,7 @@
  *  - live measurements of the shape being drawn.
  * Pure geometry: the overlay turns the shapes into lines, arrows and labels.
  */
-import { AXIS_X, AXIS_Y, isDimension, type DimensionConstraint, type SketchGeometry } from "../document/sketch";
+import { AXIS_X, AXIS_Y, ORIGIN, isDimension, type DimensionConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { findCurve, measure, pointPos, type Vec2 } from "./edit";
@@ -14,7 +14,8 @@ import type { Preview } from "./tools";
 
 export type AnnotationShape =
   /** Dimension line parallel to p1→p2 (or along `normal` offsets for X/Y distances). */
-  | { kind: "linear"; p1: Vec2; p2: Vec2; normal: Vec2 }
+  /** `offset`: distance (mm) of the dimension line beyond the geometry, when it was placed by hand. */
+  | { kind: "linear"; p1: Vec2; p2: Vec2; normal: Vec2; offset?: number }
   | { kind: "radial"; center: Vec2; radius: number; angle: number; diameter: boolean }
   | { kind: "label"; at: Vec2 };
 
@@ -38,9 +39,15 @@ export interface Annotation {
 
 const unitText = (unit: DisplayUnit) => UNIT_LABELS[unit];
 
+/** Dimension text as on a drawing: value in the project unit (implicit), Ø/R prefix, degrees for angles. */
 export function formatValue(value: number, angle: boolean, unit: DisplayUnit, prefix = ""): string {
   if (angle) return `${trim(value, 2)}°`;
-  return `${prefix}${trim(toDisplay(value, unit), 3)} ${unitText(unit)}`;
+  return `${prefix}${trim(toDisplay(value, unit), 3)}`;
+}
+
+/** Unit label of the project, shown in tooltips. */
+export function unitSuffix(unit: DisplayUnit): string {
+  return unitText(unit);
 }
 
 const sub = (a: Vec2, b: Vec2): Vec2 => [a[0] - b[0], a[1] - b[1]];
@@ -116,7 +123,15 @@ function shapeOf(g: SketchGeometry, d: DimensionSpec, centre: Vec2): AnnotationS
 }
 
 function prefixOf(kind: DimensionSpec["kind"]): string {
-  return kind === "diameter" ? "Ø " : kind === "radius" ? "R " : "";
+  return kind === "diameter" ? "Ø" : kind === "radius" ? "R" : "";
+}
+
+/** Applies a hand-placed position (DimensionConstraint.offset) to the drawn shape. */
+function placed(shape: AnnotationShape, offset: number | undefined): AnnotationShape {
+  if (offset === undefined) return shape;
+  if (shape.kind === "linear") return { ...shape, offset };
+  if (shape.kind === "radial") return { ...shape, angle: (offset * Math.PI) / 180 };
+  return shape;
 }
 
 /** Annotations of the sketch's own dimensions. */
@@ -130,7 +145,7 @@ export function dimensionAnnotations(g: SketchGeometry, unit: DisplayUnit): Anno
       out.push({
         key: c.id,
         role: c.driving === false ? "reference" : "driving",
-        shape: shapeOf(g, c, centre),
+        shape: placed(shapeOf(g, c, centre), c.offset),
         value: c.value,
         angle,
         text: formatValue(c.driving === false ? measure(g, c) : c.value, angle, unit, prefixOf(c.kind)),
@@ -183,31 +198,97 @@ export function measureAnnotations(g: SketchGeometry, entityIds: string[], unit:
   return out;
 }
 
+type EntityKind = "point" | "line" | "round";
+
+function entityKind(g: SketchGeometry, id: string): EntityKind | null {
+  if (id === ORIGIN || g.points.some((p) => p.id === id)) return "point";
+  if (id === AXIS_X || id === AXIS_Y) return "line";
+  const c = findCurve(g, id);
+  if (!c) return null;
+  return c.kind === "line" ? "line" : "round";
+}
+
+function centreOf(g: SketchGeometry, id: string): string {
+  const c = findCurve(g, id);
+  if (!c || c.kind === "line") throw new Error("cercle attendu");
+  return c.center;
+}
+
 /**
- * Curves whose size stays displayed in the sketch: every non-construction
- * curve, except a line parallel to and as long as one already shown (the
- * opposite side of a rectangle), to keep the drawing readable.
+ * Dimension describing the relation between two selected entities:
+ * distance between two points (or centres), point–line distance, distance
+ * between two parallel lines, or the angle between two lines.
  */
-export function persistentMeasureIds(g: SketchGeometry): string[] {
-  const shownLines: { dir: Vec2; length: number }[] = [];
-  const ids: string[] = [];
-  for (const curve of g.curves) {
-    if (curve.construction) continue;
-    if (curve.kind !== "line") {
-      ids.push(curve.id);
-      continue;
-    }
-    const [a, b] = [pointPos(g, curve.p1), pointPos(g, curve.p2)];
-    const d = sub(b, a);
-    const length = len(d);
-    if (length < 1e-9) continue;
-    const dir: Vec2 = [d[0] / length, d[1] / length];
-    const twin = shownLines.some((s) => Math.abs(s.dir[0] * dir[1] - s.dir[1] * dir[0]) < 1e-6 && Math.abs(s.length - length) < 1e-6);
-    if (twin) continue;
-    shownLines.push({ dir, length });
-    ids.push(curve.id);
+export function pairSpec(g: SketchGeometry, ids: string[]): DimensionSpec | null {
+  if (ids.length !== 2) return null;
+  const [a, b] = ids as [string, string];
+  const ka = entityKind(g, a);
+  const kb = entityKind(g, b);
+  if (!ka || !kb) return null;
+  const asPoint = (id: string, k: EntityKind) => (k === "round" ? centreOf(g, id) : id);
+  if (ka !== "line" && kb !== "line") {
+    const pa = asPoint(a, ka);
+    const pb = asPoint(b, kb);
+    return pa === pb ? null : ({ kind: "distance", a: pa, b: pb } as DimensionSpec);
   }
-  return ids;
+  if (ka === "line" && kb === "line") {
+    const [a1, a2] = lineEnds(g, a);
+    const [b1, b2] = lineEnds(g, b);
+    const da = sub(a2, a1);
+    const db = sub(b2, b1);
+    const cross = (da[0] * db[1] - da[1] * db[0]) / ((len(da) || 1) * (len(db) || 1));
+    if (Math.abs(cross) > 1e-6) return { kind: "angle", a, b } as DimensionSpec;
+    // Parallel lines: distance from an end point of the first line to the second one.
+    const line = findCurve(g, a);
+    const point = line?.kind === "line" ? line.p1 : ORIGIN;
+    return { kind: "pointLineDistance", point, line: b, label: "Distance entre lignes" } as DimensionSpec;
+  }
+  const [lineId, otherId, otherKind] = ka === "line" ? [a, b, kb] : [b, a, ka];
+  return { kind: "pointLineDistance", point: asPoint(otherId, otherKind), line: lineId } as DimensionSpec;
+}
+
+function sameRelation(d: DimensionConstraint, spec: DimensionSpec): boolean {
+  if (d.kind !== spec.kind) return false;
+  if (d.kind === "distance" && spec.kind === "distance") return (d.a === spec.a && d.b === spec.b) || (d.a === spec.b && d.b === spec.a);
+  if (d.kind === "angle" && spec.kind === "angle") return (d.a === spec.a && d.b === spec.b) || (d.a === spec.b && d.b === spec.a);
+  if (d.kind === "pointLineDistance" && spec.kind === "pointLineDistance") return d.point === spec.point && d.line === spec.line;
+  return false;
+}
+
+/** Measurement between the two selected entities, unless a dimension already says it. */
+export function pairAnnotation(g: SketchGeometry, ids: string[], unit: DisplayUnit): Annotation | null {
+  const spec = pairSpec(g, ids);
+  if (!spec || g.constraints.some((c) => isDimension(c) && sameRelation(c, spec))) return null;
+  const angle = spec.kind === "angle";
+  const value = measure(g, { ...spec, id: "", value: 0 } as DimensionConstraint);
+  if (!angle && value < 1e-9) return null;
+  return {
+    key: `measure:${ids.join("+")}`,
+    role: "measure",
+    shape: shapeOf(g, spec, sketchCentre(g)),
+    value,
+    angle,
+    text: formatValue(value, angle, unit),
+    spec,
+  };
+}
+
+/**
+ * Placement of a dimension dragged to sketch point `p`: distance of a linear
+ * dimension line beyond the geometry (mm), or leader angle of a radius /
+ * diameter (degrees). Null for shapes that cannot be moved.
+ */
+export function placementOffset(a: Annotation, p: Vec2): number | null {
+  const shape = a.shape;
+  if (shape.kind === "linear") {
+    const n = shape.normal;
+    const level = Math.max(shape.p1[0] * n[0] + shape.p1[1] * n[1], shape.p2[0] * n[0] + shape.p2[1] * n[1]);
+    return Number((p[0] * n[0] + p[1] * n[1] - level).toFixed(4));
+  }
+  if (shape.kind === "radial") {
+    return Number(((Math.atan2(p[1] - shape.center[1], p[0] - shape.center[0]) * 180) / Math.PI).toFixed(2));
+  }
+  return null;
 }
 
 /** Live measurements of the shape being drawn. */
@@ -238,7 +319,7 @@ export function previewAnnotations(preview: Preview | null, unit: DisplayUnit): 
       shape: { kind: "radial", center: c.center, radius: c.radius, angle: Math.PI / 4, diameter: true },
       value: 2 * c.radius,
       angle: false,
-      text: formatValue(2 * c.radius, false, unit, "Ø "),
+      text: formatValue(2 * c.radius, false, unit, "Ø"),
     });
   }
   for (const a of preview.arcs) {
@@ -248,7 +329,7 @@ export function previewAnnotations(preview: Preview | null, unit: DisplayUnit): 
       shape: { kind: "radial", center: a.center, radius: a.radius, angle: (a.start + a.end) / 2, diameter: false },
       value: a.radius,
       angle: false,
-      text: formatValue(a.radius, false, unit, "R "),
+      text: formatValue(a.radius, false, unit, "R"),
     });
   }
   return out;

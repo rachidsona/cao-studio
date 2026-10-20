@@ -42,7 +42,7 @@ export class SketchController {
       if (target.dataset.newSketch) {
         (target.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
         this.create(target.dataset.newSketch as PlaneName);
-      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName);
+      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension");
       else if (target.dataset.sketchCommand) this.command(target.dataset.sketchCommand);
     });
   }
@@ -117,6 +117,7 @@ export class SketchController {
     if (id === "finish") return this.finish();
     if (id === "extrude") return this.host.extrude();
     if (id === "fit") return mode.ensureVisible(true);
+    if (id === "glyphs") return mode.toggleGlyphs();
     if (id === "construction") return mode.toggleConstruction();
     if (id === "delete") return mode.deleteSelection();
     const created = mode.runCommand(id);
@@ -141,11 +142,13 @@ export class SketchController {
     const applicable = new Set(mode?.applicableCommands() ?? []);
     for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-sketch-command]")) {
       const id = button.dataset.sketchCommand as string;
-      if (id === "construction") {
+      if (id === "glyphs") {
+        button.setAttribute("aria-pressed", String(!!mode?.showGlyphs));
+      } else if (id === "construction") {
         const selectedCurves = mode ? [...mode.selection].filter((s) => findCurve(mode.geometry, s)).length : 0;
         button.setAttribute("aria-pressed", String(!!mode?.construction && selectedCurves === 0));
       } else if (id === "delete") button.disabled = !mode || mode.selection.size === 0;
-      else if (id !== "finish" && id !== "extrude" && id !== "fit") button.disabled = !applicable.has(id);
+      else if (id !== "finish" && id !== "extrude" && id !== "fit" && id !== "glyphs") button.disabled = !applicable.has(id);
     }
     const hint = ref(this.root, "status-hint");
     hint.textContent = mode ? mode.hint : "";
@@ -194,7 +197,7 @@ export class SketchController {
       return true;
     }
     if (key === "d") {
-      this.command("dimension");
+      mode.setTool("dimension");
       return true;
     }
     return false;

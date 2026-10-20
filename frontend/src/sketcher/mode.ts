@@ -14,10 +14,15 @@ import {
   dimensionAnnotations,
   existingDimension,
   measureAnnotations,
-  persistentMeasureIds,
+  pairAnnotation,
+  placementOffset,
   previewAnnotations,
+  type Annotation,
   type DimensionSpec,
 } from "./annotations";
+import { extractLoops, regions as regionsOf, type Region } from "./loops";
+
+const GLYPHS_KEY = "cao-studio:sketch-glyphs";
 import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
 import * as THREE from "three";
 import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
@@ -63,6 +68,8 @@ export class SketchMode implements PointerHandler {
   private preview: Preview | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
   private lastBounds: THREE.Box3 | null = null;
+  /** "Cote" tool: the selection shows its measurements, clickable to become dimensions. */
+  private dimensionMode = false;
 
   constructor(
     feature: SketchFeature,
@@ -74,16 +81,7 @@ export class SketchMode implements PointerHandler {
     this.geometry = { points: feature.points, curves: feature.curves, constraints: feature.constraints };
     this.lastSolve = solveSketch(this.geometry);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
-    this.overlay.onAnnotationClick = (annotation, anchor) => {
-      if (annotation.role === "driving" && annotation.dimensionId) {
-        this.editValue(
-          { dimensionId: annotation.dimensionId, value: annotation.value, angle: annotation.angle, signed: annotation.angle, title: "Cote" },
-          anchor,
-        );
-      } else if (annotation.spec) {
-        this.editValue({ spec: annotation.spec, value: annotation.value, angle: false, signed: false, title: "Nouvelle cote" }, anchor);
-      }
-    };
+    this.overlay.onAnnotationPointerDown = (annotation, event) => this.dimensionPointerDown(annotation, event);
     viewport.enterSketch(this.frame, this);
     this.render();
     // An existing sketch may be larger than the part: show all of it.
@@ -137,17 +135,40 @@ export class SketchMode implements PointerHandler {
     this.viewport.exitSketch();
   }
 
-  get toolName(): ToolName {
+  get toolName(): ToolName | "dimension" {
+    if (this.dimensionMode) return "dimension";
     return this.tool?.name ?? "select";
   }
 
   get hint(): string {
-    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte ou une cote";
+    if (this.dimensionMode) return "Cote : cliquez une ligne, un cercle ou deux éléments, puis cliquez la valeur affichée";
+    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte";
   }
 
-  setTool(name: ToolName): void {
+  /** Constraint symbols (H, V, ∥…) are shown on demand; the choice is remembered. */
+  get showGlyphs(): boolean {
+    try {
+      return localStorage.getItem(GLYPHS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  toggleGlyphs(): void {
+    try {
+      localStorage.setItem(GLYPHS_KEY, this.showGlyphs ? "0" : "1");
+    } catch {
+      // Private mode: the toggle simply does not persist.
+    }
+    this.render();
+    this.host.changed();
+  }
+
+  setTool(name: ToolName | "dimension"): void {
     closeCalculator();
-    this.tool = name === "select" ? null : new DrawingTool(name, this.construction);
+    this.dimensionMode = name === "dimension";
+    if (this.dimensionMode) this.selection.clear();
+    this.tool = name === "select" || name === "dimension" ? null : new DrawingTool(name, this.construction);
     this.preview = null;
     this.render();
     this.host.changed();
@@ -328,7 +349,11 @@ export class SketchMode implements PointerHandler {
     const [hit] = hitTest(this.geometry, p, this.tolerance());
     if (!hit) this.selection.clear();
     else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
-    else this.selection.add(hit.id);
+    else {
+      // The dimension tool measures one or two elements: a third click starts a new measurement.
+      if (this.dimensionMode && this.selection.size >= 2) this.selection.clear();
+      this.selection.add(hit.id);
+    }
     // Clicking geometry only selects it; values are changed by clicking their dimension.
     closeCalculator();
     this.render();
@@ -375,14 +400,30 @@ export class SketchMode implements PointerHandler {
         return false;
       }
     }
-    return this.apply(geometry);
+    const ok = this.apply(geometry);
+    if (ok && this.dimensionMode && target.spec) {
+      this.selection.clear();
+      this.render();
+    }
+    return ok;
   }
 
   render(): void {
     const flagged = new Set([...this.lastSolve.conflicting, ...this.lastSolve.redundant]);
     const unit = this.host.unit();
-    // Every curve shows its size (until it gets a dimension); selected construction curves too.
-    const shown = new Set([...persistentMeasureIds(this.geometry), ...[...this.selection].filter((id) => findCurve(this.geometry, id))]);
+    // Measurements of the selection only with the "Cote" tool; placed dimensions are always shown.
+    const selected = [...this.selection];
+    const measures = !this.dimensionMode
+      ? []
+      : selected.length === 1
+        ? measureAnnotations(this.geometry, selected.filter((id) => findCurve(this.geometry, id)), unit)
+        : [pairAnnotation(this.geometry, selected, unit)].filter((a): a is NonNullable<typeof a> => a !== null);
+    let regions: Region[] = [];
+    try {
+      regions = regionsOf(extractLoops(this.geometry));
+    } catch {
+      // Open or branched profile: nothing to tint.
+    }
     this.overlay.render({
       geometry: this.geometry,
       selection: this.selection,
@@ -392,9 +433,48 @@ export class SketchMode implements PointerHandler {
       flagged,
       annotations: [
         ...dimensionAnnotations(this.geometry, unit),
-        ...measureAnnotations(this.geometry, [...shown], unit),
+        ...measures,
         ...previewAnnotations(this.preview, unit),
       ],
+      showGlyphs: this.showGlyphs,
+      regions,
     });
+  }
+
+  // ---- dimension text: click = keypad, drag = move the dimension -----------------
+
+  private dimensionPointerDown(annotation: Annotation, down: PointerEvent): void {
+    const start = { x: down.clientX, y: down.clientY };
+    const id = annotation.role === "driving" ? annotation.dimensionId : undefined;
+    const base = this.geometry;
+    let moved = false;
+    const onMove = (event: PointerEvent) => {
+      if (!moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 4) return;
+      moved = true;
+      if (!id) return;
+      const p = this.toSketch(event);
+      const offset = p ? placementOffset(annotation, p) : null;
+      if (offset === null) return;
+      this.geometry = {
+        ...base,
+        constraints: base.constraints.map((c) => (c.id === id && "value" in c ? { ...c, offset } : c)),
+      };
+      this.render();
+    };
+    const onUp = (event: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (moved) {
+        // Presentation only: stored in the document without solving again.
+        if (id && this.geometry !== base) this.host.commit(this.featureId, this.geometry);
+        return;
+      }
+      const anchor = { x: event.clientX, y: event.clientY };
+      const common = { value: annotation.value, angle: annotation.angle, signed: annotation.angle };
+      if (id) this.editValue({ ...common, dimensionId: id, title: "Cote" }, anchor);
+      else if (annotation.spec) this.editValue({ ...common, spec: annotation.spec, title: "Nouvelle cote" }, anchor);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   }
 }

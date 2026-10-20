@@ -107,15 +107,19 @@ serveur accepte les deux versions.
   une seule étape d'annulation.
 - **Profils** : les boucles fermées non construction suivent la règle pair-impair (une boucle intérieure
   fait un trou). Un profil ouvert ou ramifié est signalé avec la position du sommet fautif.
-- **Cotes à l'écran** :
-  - les dimensions de la forme en cours de tracé s'affichent en direct ;
-  - les tailles des courbes restent affichées (un seul côté par paire de côtés opposés d'un
-    rectangle) ;
-  - cliquer une valeur ouvre une petite calculatrice ; cliquer une ligne la sélectionne seulement
-    (pour les contraintes). On peut y saisir des
-    expressions (`1 m + 20 cm`, `2×120`, unités mm, cm, m ou deg).
-  - Le cadenas fermé crée une cote pilotante. Ouvert, la forme est redimensionnée une seule fois,
-    sans contrainte.
+- **Cotes à l'écran**, style mise en plan :
+  - le texte n'a pas de cadre et suit la ligne de cote : vert pour une cote pilotante, gris entre
+    parenthèses pour une simple mesure ;
+  - les cotes posées restent toujours affichées ; un clic sur la valeur ouvre la calculatrice, un
+    glisser déplace la cote (sa position est enregistrée) ;
+  - pendant le tracé, les dimensions de la forme s'affichent en direct.
+- **Outil « Cote »** (touche D) : cliquez une ligne, un cercle, ou deux éléments (deux lignes, deux
+  points, point et ligne, deux cercles). Leur mesure apparaît (distance, distance entre lignes
+  parallèles, angle, entraxe) ; un clic dessus la transforme en cote. Hors de cet outil, cliquer une
+  ligne la sélectionne seulement.
+- **Symboles de contraintes** (H, V, ∥…) : masqués par défaut, affichés avec le bouton
+  « Contraintes ». Une contrainte en conflit reste toujours visible en rouge.
+- Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.
 - **Extrusion**, comme dans Fusion 360 :
   - le bouton (ou la touche E) surligne les profils fermés ;
   - on clique un profil, puis on tire la flèche le long de la normale, ou on clique la valeur à son
