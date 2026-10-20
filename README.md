@@ -127,6 +127,19 @@ serveur accepte les deux versions.
 - **Contraintes** : coïncidence, horizontale, verticale, parallèle, perpendiculaire, tangence, égalité,
   symétrie (par rapport à un point ou une ligne), concentricité, fixation, point sur courbe, milieu.
   Seules celles qui s'appliquent à la sélection en cours sont actives.
+- **Coïncidence** (⦿) : deux points exactement au même endroit, par le solveur (planegcs), pas par un
+  simple rapprochement visuel. Elle s'applique à deux points quelconques : extrémités de lignes et
+  d'arcs, centres de cercles et d'arcs, points de construction, origine.
+  - Distincte de « Point sur courbe » (⊸) : celle-ci laisse le point glisser le long de la courbe
+    (1 degré de liberté en moins), la coïncidence retire les deux coordonnées.
+  - Son symbole ⦿ est toujours affiché au point ; cliquez-le pour sélectionner la contrainte, Suppr
+    la supprime sans toucher aux géométries (ou la croix de la liste « Contraintes » du panneau).
+  - Les points fixes ne bougent pas : l'autre vient à eux. Deux points fixes éloignés, ou une cote
+    incompatible, sont refusés avec les contraintes en conflit nommées ; une coïncidence déjà
+    impliquée par les autres est acceptée et signalée comme redondante.
+  - Refusées d'emblée : deux points d'une même courbe (elle serait écrasée), une paire déjà liée.
+  - La relation tient après déplacement, changement de cote, enregistrement et rechargement,
+    annulation et rétablissement.
 - **Cotes** (D) : longueur, distance, distances horizontale et verticale signées, distance point-ligne,
   angle, rayon et diamètre. Une cote est créée avec la valeur mesurée, puis se modifie dans le panneau ou
   en cliquant son étiquette.

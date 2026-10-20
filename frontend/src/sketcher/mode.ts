@@ -4,7 +4,7 @@
  * rule: every change is solved first and rejected if it over-constrains the
  * sketch, so the document only ever holds solvable sketches.
  */
-import { classify, COMMANDS } from "../constraints/catalog";
+import { classify, COMMANDS, describeConstraints } from "../constraints/catalog";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
 import { ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, SketchFeature } from "../document/types";
@@ -97,6 +97,7 @@ export class SketchMode implements PointerHandler {
     this.lastSolve = solveSketch(this.geometry);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
     this.overlay.onAnnotationPointerDown = (annotation, event) => this.dimensionPointerDown(annotation, event);
+    this.overlay.onGlyphClick = (id) => this.toggleSelected(id);
     viewport.enterSketch(this.frame, this);
     this.render();
     // An existing sketch may be larger than the part: show all of it.
@@ -165,7 +166,7 @@ export class SketchMode implements PointerHandler {
   get hint(): string {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
-    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote sélectionné se supprime avec Suppr";
+    return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
   }
 
   /** Drawing snaps to the grid lines shown (on by default); the choice is remembered. */
@@ -219,6 +220,14 @@ export class SketchMode implements PointerHandler {
     const known = new Set(this.geometry.curves.map((c) => c.id));
     this.selection = new Set(record.source.filter((s) => known.has(s)));
     this.setTool("offset", record);
+  }
+
+  /** Selects or deselects one entity or constraint (the symbol of a constraint was clicked). */
+  private toggleSelected(id: string): void {
+    if (!this.selection.delete(id)) this.selection.add(id);
+    closeCalculator();
+    this.render();
+    this.host.changed();
   }
 
   setTool(name: ToolName | "dimension" | "offset", editing?: OffsetRecord): void {
@@ -319,7 +328,7 @@ export class SketchMode implements PointerHandler {
       return false;
     }
     if (result.state === "conflicting") {
-      this.host.notify(`Modification refusée : contraintes en conflit (${result.conflicting.join(", ")}).`, "error");
+      this.host.notify(`Modification refusée : contraintes en conflit (${describeConstraints(geometry, result.conflicting)}).`, "error");
       this.render();
       return false;
     }
@@ -332,7 +341,7 @@ export class SketchMode implements PointerHandler {
     this.lastSolve = result;
     this.host.commit(this.featureId, result.geometry);
     this.ensureVisible();
-    if (result.state === "redundant") this.host.notify(`Contraintes redondantes : ${result.redundant.join(", ")}.`, "info");
+    if (result.state === "redundant") this.host.notify(`Contrainte redondante, déjà impliquée par les autres : ${describeConstraints(geometry, result.redundant)}.`, "info");
     else if (success) this.host.notify(success, "success");
     this.render();
     this.host.changed();

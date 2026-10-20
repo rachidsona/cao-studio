@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import { CONSTRAINT_GLYPHS } from "../constraints/catalog";
+import { CONSTRAINT_GLYPHS, CONSTRAINT_LABELS } from "../constraints/catalog";
 import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { findCurve, pointPos, type Vec2 } from "./edit";
@@ -69,6 +69,8 @@ export class SketchOverlay {
   private group = new THREE.Group();
   /** Pointer pressed on a dimension text: the sketch mode decides between a click (keypad) and a drag (move it). */
   onAnnotationPointerDown: (annotation: Annotation, event: PointerEvent) => void = () => {};
+  /** Click on the symbol of a constraint: the sketch mode selects it (Suppr then deletes the constraint only). */
+  onGlyphClick: (constraintId: string) => void = () => {};
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -95,10 +97,11 @@ export class SketchOverlay {
     this.group.add(line);
   }
 
-  private label(text: string, at: Vec2, className: string, onClick?: (anchor: { x: number; y: number }) => void): void {
+  private label(text: string, at: Vec2, className: string, onClick?: (anchor: { x: number; y: number }) => void, title?: string): void {
     const node = document.createElement(onClick ? "button" : "span");
     node.textContent = text;
     node.className = className;
+    if (title) node.title = title;
     if (onClick) {
       node.style.pointerEvents = "auto";
       node.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -295,9 +298,12 @@ export class SketchOverlay {
       }
       const flagged = state.flagged.has(c.id);
       if (isDimension(c)) continue; // drawn as annotations
-      if (!state.showGlyphs && !flagged) continue; // symbols on demand; problems always visible
+      const selected = state.selection.has(c.id);
+      // Symbols on demand, except a coincidence (it marks a point, it does not clutter), problems and the selected one.
+      if (!state.showGlyphs && !flagged && !selected && c.kind !== "coincident") continue;
       const glyph = CONSTRAINT_GLYPHS[c.kind];
-      if (glyph) this.label(glyph, at, `cad-glyph${flagged ? " cad-flagged" : ""}`);
+      const title = `${CONSTRAINT_LABELS[c.kind] ?? c.kind} — cliquer pour sélectionner, Suppr pour supprimer la contrainte`;
+      if (glyph) this.label(glyph, at, `cad-glyph${flagged ? " cad-flagged" : ""}${selected ? " cad-selected" : ""}`, () => this.onGlyphClick(c.id), title);
     }
   }
 

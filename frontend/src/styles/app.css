@@ -82,7 +82,10 @@
       hover:bg-gray-700 dark:bg-gray-100/90 dark:text-gray-900;
   }
   .cad-glyph {
-    @apply rounded bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
+    @apply cursor-pointer rounded bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
+  }
+  .cad-glyph.cad-selected {
+    @apply bg-rose-600 text-white dark:bg-rose-500 dark:text-white;
   }
   .cad-flagged {
     @apply border-red-500 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200;

@@ -2,7 +2,7 @@
  * Constraint and dimension commands of the sketcher: which ones apply to the
  * current selection, and the constraints they create.
  */
-import { AXIS_X, AXIS_Y, ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { AXIS_X, AXIS_Y, curvePoints, ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import { pairSpec } from "../sketcher/annotations";
 import { findCurve, measure } from "../sketcher/edit";
 
@@ -61,7 +61,16 @@ export const COMMANDS: Command[] = [
     label: "Coïncidence",
     glyph: "⦿",
     applies: (s) => only(s, 2, 0, 0),
-    build: (s) => [{ kind: "coincident", a: s.points[0], b: s.points[1] } as NewConstraint],
+    build: (s, g) => {
+      const [a, b] = s.points as [string, string];
+      if (g.constraints.some((c) => c.kind === "coincident" && ((c.a === a && c.b === b) || (c.a === b && c.b === a)))) {
+        throw new Error("Ces deux points sont déjà coïncidents.");
+      }
+      // Two points of one curve (both ends of a line, an arc and its own centre…) would collapse it.
+      const shared = g.curves.find((c) => curvePoints(c).includes(a) && curvePoints(c).includes(b));
+      if (shared) throw new Error(`Ces deux points appartiennent à la même courbe (« ${shared.id} ») : les rendre coïncidents l'écraserait.`);
+      return [{ kind: "coincident", a, b } as NewConstraint];
+    },
   },
   {
     id: "horizontal",
@@ -225,3 +234,13 @@ export const CONSTRAINT_GLYPHS: Record<string, string> = {
   pointOnCurve: "⊸",
   midpoint: "◇",
 };
+
+/** "Coïncidence k1, Distance k2": constraints named for a message (id unknown to the sketch: shown as is). */
+export function describeConstraints(g: SketchGeometry, ids: string[]): string {
+  return ids
+    .map((id) => {
+      const kind = g.constraints.find((c) => c.id === id)?.kind;
+      return kind ? `${CONSTRAINT_LABELS[kind] ?? kind} ${id}` : id;
+    })
+    .join(", ");
+}
