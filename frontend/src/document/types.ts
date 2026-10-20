@@ -172,7 +172,7 @@ export function createReferencePlate(): CadDocument {
   return {
     format: DOCUMENT_FORMAT,
     schemaVersion: SCHEMA_VERSION,
-    units: "mm",
+    units: "cm",
     parameters: {},
     features: [
       {

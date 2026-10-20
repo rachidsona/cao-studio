@@ -72,7 +72,8 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 Principes :
 
 - Le document stocke l'historique paramétrique, jamais de maillage. Toutes les longueurs sont
-  en mm ; `units` ne sert qu'à l'affichage (mm, cm, m, pouce).
+  stockées en mm ; `units` ne sert qu'à l'affichage (cm par défaut pour un nouveau projet, ou mm, m,
+  pouce).
 - La géométrie est calculée dans le navigateur. Django ne reçoit que des documents complets :
   enregistrement automatique 4 s après une modification, manuel avec ⌘S, et envoi
   `keepalive` à la fermeture de la page.

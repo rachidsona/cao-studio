@@ -20,7 +20,7 @@ def test_default_document_is_valid_and_matches_reference():
     assert validate_document(doc) == []
     assert doc["format"] == "cao-studio"
     assert doc["schemaVersion"] == 2
-    assert doc["units"] == "mm"
+    assert doc["units"] == "cm"
     assert [f["id"] for f in doc["features"]] == ["sk1", "ex1", "h1"]
     sketch = doc["features"][0]
     assert "entities" not in sketch

@@ -17,7 +17,8 @@ def default_document() -> dict[str, Any]:
     return {
         "format": "cao-studio",
         "schemaVersion": 2,
-        "units": "mm",
+        # Display unit of new projects (lengths are always stored in mm).
+        "units": "cm",
         "parameters": {},
         "features": [
             {

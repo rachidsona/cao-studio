@@ -13,7 +13,7 @@ from apps.projects.sketch_validation import (
 from apps.projects.validation import compute_checksum, parse_json_strict, validate_document
 
 REFERENCE_V2 = json.loads("""
-{"format":"cao-studio","schemaVersion":2,"units":"mm","parameters":{},
+{"format":"cao-studio","schemaVersion":2,"units":"cm","parameters":{},
  "features":[
   {"id":"sk1","type":"sketch","name":"Esquisse 1","plane":"XY","offset":0,
    "points":[{"id":"p1","x":-40,"y":-25},{"id":"p2","x":40,"y":-25},{"id":"p3","x":40,"y":25},{"id":"p4","x":-40,"y":25}],
