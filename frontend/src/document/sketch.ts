@@ -17,12 +17,16 @@ export interface SketchPoint {
   id: string;
   x: number;
   y: number;
+  /** Fixed in place (projected body geometry): the solver never moves it. */
+  fixed?: boolean;
 }
 
 interface CurveBase {
   id: string;
   /** Construction geometry guides the sketch but never forms a profile. */
   construction?: boolean;
+  /** Projected from a body edge: fixed reference geometry, drawn in purple, used for snapping. */
+  projected?: boolean;
 }
 
 export interface LineCurve extends CurveBase {

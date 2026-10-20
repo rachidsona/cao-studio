@@ -10,6 +10,8 @@ export type WorkerRequest =
   | { type: "export"; format: ExportFormat; names: Record<string, string> }
   | { type: "faceInfo"; bodyId: string; faceIndex: number }
   | { type: "edgeInfo"; bodyId: string; edgeIndex: number }
+  /** Boundary of a face (outer and inner loops), to project it into a sketch. */
+  | { type: "faceOutline"; bodyId: string; faceIndex: number }
   /** Persistent references for edges / a face picked on a body (topological naming). */
   | { type: "describe"; bodyId: string; edges: number[]; face?: number }
   /** Mesh of any body of the last recompute, including intermediate (consumed) ones. */
@@ -49,6 +51,21 @@ export interface EdgeInfo {
   length: number;
   /** Radius for circular edges (full circles and arcs). */
   radius?: number;
+}
+
+type P3 = [number, number, number];
+
+export type OutlineEdge =
+  | { kind: "line"; a: P3; b: P3 }
+  | { kind: "circle"; center: P3; radius: number }
+  | { kind: "arc"; center: P3; radius: number; a: P3; b: P3; mid: P3 };
+
+export interface FaceOutline {
+  surface: string;
+  center: P3;
+  /** Outward unit normal. */
+  normal: P3;
+  edges: OutlineEdge[];
 }
 
 export interface DescribeResponse {

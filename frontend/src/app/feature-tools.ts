@@ -1,6 +1,6 @@
 /** Revolution, combination of bodies and hole-on-face tools (see panel-tool.ts). */
 import { AXIS_X, AXIS_Y } from "../document/sketch";
-import { findFeature, uniqueId, uniqueName } from "../document/operations";
+import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, CombineFeature, FaceRef, HoleFeature, RevolveFeature, SketchFeature, Vec3 } from "../document/types";
 import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
@@ -145,7 +145,7 @@ export class CombineTool extends PanelTool {
   private bodies(): { id: string; name: string }[] {
     const list = [...this.ctx.bodies()].filter((b) => b.id !== this.id);
     for (const id of [this.target, ...this.tools]) {
-      if (id && !list.some((b) => b.id === id)) list.push({ id, name: findFeature(this.ctx.doc(), id)?.name ?? id });
+      if (id && !list.some((b) => b.id === id)) list.push({ id, name: bodyLabel(this.ctx.doc(), id) });
     }
     return list;
   }

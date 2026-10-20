@@ -89,6 +89,15 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, [feature.type === "fillet" ? "radius" : "distance"], where, errors);
       checkRefs(feature.edges, "edge", where, errors);
       break;
+    case "split":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      if (
+        !Array.isArray(feature.planes) ||
+        !feature.planes.every((p) => isObject(p) && isVec3(p.point) && isVec3(p.normal))
+      ) {
+        errors.push(`${where} : plans de coupe invalides.`);
+      }
+      break;
     case "combine":
       if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
       if (!Array.isArray(feature.tools) || !feature.tools.every((t) => typeof t === "string")) errors.push(`${where} : corps outils invalides.`);

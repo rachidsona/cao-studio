@@ -9,7 +9,7 @@
  */
 import * as THREE from "three";
 import { closeCalculator, openCalculator } from "../ui/calculator";
-import { addExtrude, findFeature, updateFeature } from "../document/operations";
+import { addExtrude, findFeature, latestBody, updateFeature } from "../document/operations";
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
 import { UNIT_LABELS, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import { sketchFrame, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
@@ -61,6 +61,8 @@ export class ExtrudeTool implements PointerHandler {
   private dialog: HTMLElement;
   private distance = 10;
   private operation: BooleanOperation = "new";
+  /** The user picked the operation: stop deriving it from the sketch's support face. */
+  private operationChosen = false;
   private target: string | undefined;
   private editing: string | null = null;
   private hovered: Profile | null = null;
@@ -163,6 +165,15 @@ export class ExtrudeTool implements PointerHandler {
 
   private select(profile: Profile): void {
     this.selected = profile;
+    // A sketch drawn on a body face adds to that body by default.
+    const support = profile.sketch.support;
+    if (!this.editing && !this.operationChosen && support) {
+      const body = latestBody(this.host.doc(), support);
+      if (this.host.bodies().some((b) => b.id === body)) {
+        this.operation = "join";
+        this.target = body;
+      }
+    }
     if (!this.editing && this.operation !== "new" && !this.target) this.target = this.host.bodies().at(-1)?.id;
     this.paintProfiles();
     this.updatePreview();
@@ -315,6 +326,7 @@ export class ExtrudeTool implements PointerHandler {
     );
     operation.addEventListener("change", () => {
       this.operation = operation.value as BooleanOperation;
+      this.operationChosen = true;
       if (this.operation !== "new" && !this.target) this.target = this.host.bodies().at(-1)?.id;
       this.updatePreview();
       this.renderDialog();

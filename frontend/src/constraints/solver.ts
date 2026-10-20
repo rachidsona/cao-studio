@@ -240,8 +240,18 @@ function dimensionPrimitives(geometry: SketchGeometry, c: SketchConstraint): Pri
 
 function toPrimitives(geometry: SketchGeometry, drag?: DragTarget): Prim[] {
   const prims: Prim[] = referencePrimitives();
-  for (const point of geometry.points) prims.push({ id: point.id, type: "point", x: point.x, y: point.y, fixed: false } as Prim);
-  for (const curve of geometry.curves) prims.push(...curvePrimitives(curve));
+  for (const point of geometry.points) prims.push({ id: point.id, type: "point", x: point.x, y: point.y, fixed: point.fixed === true } as Prim);
+  for (const curve of geometry.curves) {
+    prims.push(...curvePrimitives(curve));
+    // Projected circles and arcs keep the body's radius (internal constraint, not shown).
+    if (curve.projected && curve.kind !== "line") {
+      prims.push(
+        (curve.kind === "circle"
+          ? { id: `${curve.id}${PART}fixr`, type: "circle_radius", c_id: curve.id, radius: curve.radius }
+          : { id: `${curve.id}${PART}fixr`, type: "arc_radius", a_id: curve.id, radius: curve.radius }) as Prim,
+      );
+    }
+  }
   for (const constraint of geometry.constraints) prims.push(...constraintPrimitives(geometry, constraint));
   if (drag) {
     prims.push(

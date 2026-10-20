@@ -76,6 +76,7 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
   for (const point of points) {
     if (!isObject(point) || !declare(point.id, "point")) continue;
     if (!isFiniteNumber(point.x) || !isFiniteNumber(point.y)) errors.push(`${where} : point « ${String(point.id)} » invalide.`);
+    if (point.fixed !== undefined && typeof point.fixed !== "boolean") errors.push(`${where} : point « ${String(point.id)} » invalide.`);
   }
   for (const curve of curves) {
     if (!isObject(curve)) continue;
@@ -87,6 +88,7 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
     if (!declare(curve.id, kind === "line" ? "line" : "curve")) continue;
     const owner = `la courbe « ${String(curve.id)} »`;
     if (curve.construction !== undefined && typeof curve.construction !== "boolean") errors.push(`${where} : ${owner} est invalide.`);
+    if (curve.projected !== undefined && typeof curve.projected !== "boolean") errors.push(`${where} : ${owner} est invalide.`);
     if (kind === "line") {
       requireRef(curve.p1, "point", owner);
       requireRef(curve.p2, "point", owner);

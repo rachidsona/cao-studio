@@ -1,15 +1,25 @@
 /** Opens the panel tools (revolution, fillet, chamfer, combination, hole) on new or existing features. */
 import { findFeature } from "../document/operations";
-import type { Feature } from "../document/types";
+import type { CadDocument, Feature } from "../document/types";
 import type { EdgePick, FacePick } from "../viewport/viewport";
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
+import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split";
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole"]);
+/** Bodies created before `featureId` that an extrusion may join or cut. */
+export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
+  const index = doc.features.findIndex((f) => f.id === featureId);
+  return doc.features
+    .slice(0, index < 0 ? undefined : index)
+    .filter((f) => f.type === "extrude" || f.type === "hole")
+    .map((f) => ({ id: f.id, name: f.name }));
+}
+
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split"]);
 
 export class ToolLauncher {
   active: PanelTool | null = null;
@@ -39,6 +49,12 @@ export class ToolLauncher {
       }
       case "faceExtrude": {
         const tool = new FaceExtrudeTool(ctx, editing?.type === "extrude" && editing.faces ? editing : null);
+        this.active = tool;
+        void tool.open(options.faces ?? []);
+        return;
+      }
+      case "split": {
+        const tool = new SplitTool(ctx, editing?.type === "split" ? editing : null, options.bodies?.[0]);
         this.active = tool;
         void tool.open(options.faces ?? []);
         return;

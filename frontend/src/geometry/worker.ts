@@ -11,7 +11,7 @@ import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
 import { describeEdge, describeFace } from "./references";
-import type { BodyMesh, DescribeResponse, EdgeInfo, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, FaceInfo, FaceOutline, OutlineEdge, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -75,6 +75,52 @@ function edgeInfo(bodyId: string, edgeIndex: number): EdgeInfo {
   return info;
 }
 
+/** Centre of the circle through three 3D points. */
+function circumcentre(a: number[], b: number[], c: number[]): [number, number, number] {
+  const ab = [b[0]! - a[0]!, b[1]! - a[1]!, b[2]! - a[2]!];
+  const ac = [c[0]! - a[0]!, c[1]! - a[1]!, c[2]! - a[2]!];
+  const n = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
+  const n2 = n[0]! ** 2 + n[1]! ** 2 + n[2]! ** 2 || 1e-30;
+  const ab2 = ab[0]! ** 2 + ab[1]! ** 2 + ab[2]! ** 2;
+  const ac2 = ac[0]! ** 2 + ac[1]! ** 2 + ac[2]! ** 2;
+  // ((|ac|² (ab × ac) × ab) + (|ab|² ac × (ab × ac))) / (2 |ab × ac|²)
+  const cross = (u: number[], v: number[]) => [u[1]! * v[2]! - u[2]! * v[1]!, u[2]! * v[0]! - u[0]! * v[2]!, u[0]! * v[1]! - u[1]! * v[0]!];
+  const t1 = cross(n, ab).map((x) => x * ac2);
+  const t2 = cross(ac, n).map((x) => x * ab2);
+  return [0, 1, 2].map((i) => a[i]! + (t1[i]! + t2[i]!) / (2 * n2)) as [number, number, number];
+}
+
+function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
+  const face = solid(bodyId).faces[faceIndex];
+  if (!face) throw new GeometryError(`Face ${faceIndex} introuvable.`);
+  const p = (v: { x: number; y: number; z: number }): [number, number, number] => [v.x, v.y, v.z];
+  const c = face.center;
+  // Read the centre before normalAt(), which releases the vector it is given.
+  const centre = p(c);
+  const n = face.normalAt(c);
+  const length = Math.hypot(n.x, n.y, n.z) || 1;
+  const edges: OutlineEdge[] = [];
+  // face.wires gives every loop (outer and holes); outerWire() then innerWires() fails in replicad 1.1.
+  for (const wire of face.wires) {
+    for (const edge of wire.edges) {
+      if (edge.geomType === "LINE") {
+        edges.push({ kind: "line", a: p(edge.startPoint), b: p(edge.endPoint) });
+      } else if (edge.geomType === "CIRCLE") {
+        const q = (t: number) => p(edge.pointAt(t));
+        const centre = circumcentre(q(0), q(1 / 3), q(2 / 3));
+        const radius = Math.hypot(...q(0).map((v, i) => v - centre[i]!));
+        if (edge.isClosed) edges.push({ kind: "circle", center: centre, radius });
+        else edges.push({ kind: "arc", center: centre, radius, a: p(edge.startPoint), b: p(edge.endPoint), mid: q(0.5) });
+      } else {
+        // Other curves: polyline approximation (reference only).
+        const steps = 12;
+        for (let i = 0; i < steps; i++) edges.push({ kind: "line", a: p(edge.pointAt(i / steps)), b: p(edge.pointAt((i + 1) / steps)) });
+      }
+    }
+  }
+  return { surface: face.geomType, center: centre, normal: [n.x / length, n.y / length, n.z / length], edges };
+}
+
 function faceInfo(bodyId: string, faceIndex: number): FaceInfo {
   const face = solid(bodyId).faces[faceIndex];
   if (!face) throw new GeometryError(`Face ${faceIndex} introuvable.`);
@@ -103,6 +149,8 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       return { result: faceInfo(request.bodyId, request.faceIndex), transfer: [] };
     case "edgeInfo":
       return { result: edgeInfo(request.bodyId, request.edgeIndex), transfer: [] };
+    case "faceOutline":
+      return { result: faceOutline(request.bodyId, request.faceIndex), transfer: [] };
     case "describe": {
       const shape = solid(request.bodyId);
       const all = shape.edges;

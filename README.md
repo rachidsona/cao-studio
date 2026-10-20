@@ -89,6 +89,14 @@ serveur accepte les deux versions.
 
 - **Création** : « Esquisse » puis le plan XY, XZ ou YZ (avec décalage le long de la normale). « Modifier
   l'esquisse » rouvre une esquisse existante.
+- **Esquisse sur une face** :
+  - avec une face plane sélectionnée, « Esquisse » (ou « Esquisse sur la face » dans le panneau
+    Sélection) démarre directement sur cette face, sans choix de plan ;
+  - le contour de la face et ses trous sont projetés en violet comme géométrie de référence fixe, sur
+    laquelle on s'accroche : tracer sur les coins projetés reproduit exactement les mesures du corps ;
+  - l'extrusion d'une telle esquisse propose par défaut une union avec le corps de la face.
+  - Limites : seules les faces parallèles aux plans XY, XZ et YZ sont prises en charge, et la
+    projection n'est pas associative (si le corps change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   construction (X).
 - **Accrochage** : un clic sur un point existant le réutilise comme sommet partagé ; un clic sur une
@@ -146,6 +154,10 @@ opération existante.
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
+- **Scinder** : coupe un corps par les plans (infinis) de faces planes cliquées ; chaque morceau
+  devient un corps séparé (« Scission — pièce 1 », « pièce 2 »…), avec sa propre teinte. Exemple :
+  pour un cadre, les deux faces intérieures opposées (avant et arrière) donnent 4 planches, avant et
+  arrière pleine longueur. Les pièces se modifient ensuite une à une (perçage, congé…).
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;

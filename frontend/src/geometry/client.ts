@@ -1,7 +1,7 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
-import type { BodyMesh, DescribeResponse, EdgeInfo, ExportResponse, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, ExportResponse, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
 
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
@@ -54,6 +54,10 @@ export class GeometryClient {
 
   edgeInfo(bodyId: string, edgeIndex: number): Promise<EdgeInfo> {
     return this.call({ type: "edgeInfo", bodyId, edgeIndex });
+  }
+
+  faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline> {
+    return this.call({ type: "faceOutline", bodyId, faceIndex });
   }
 
   describe(bodyId: string, edges: number[], face?: number): Promise<DescribeResponse> {

@@ -17,6 +17,7 @@ import type { Preview } from "./tools";
 const COLORS = {
   line: 0x1d4ed8,
   construction: 0xf59e0b,
+  projected: 0xa855f7,
   selected: 0xe11d48,
   hover: 0x0ea5e9,
   preview: 0x0ea5e9,
@@ -130,15 +131,25 @@ export class SketchOverlay {
     this.polyline([[-extent, 0], [extent, 0]], COLORS.axis, true);
     this.polyline([[0, -extent], [0, extent]], COLORS.axis, true);
 
-    const colorOf = (id: string, construction?: boolean) =>
-      state.selection.has(id) ? COLORS.selected : state.hover === id ? COLORS.hover : construction ? COLORS.construction : COLORS.line;
+    const colorOf = (id: string, construction?: boolean, projected?: boolean) =>
+      state.selection.has(id)
+        ? COLORS.selected
+        : state.hover === id
+          ? COLORS.hover
+          : projected
+            ? COLORS.projected
+            : construction
+              ? COLORS.construction
+              : COLORS.line;
     for (const curve of g.curves) {
-      const color = colorOf(curve.id, curve.construction);
-      if (curve.kind === "line") this.polyline([pointPos(g, curve.p1), pointPos(g, curve.p2)], color, curve.construction);
-      else if (curve.kind === "circle") this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, 0, 2 * Math.PI), color, curve.construction);
+      const color = colorOf(curve.id, curve.construction, curve.projected);
+      // Projected body edges are reference lines: solid, not dashed.
+      const dashed = curve.construction && !curve.projected;
+      if (curve.kind === "line") this.polyline([pointPos(g, curve.p1), pointPos(g, curve.p2)], color, dashed);
+      else if (curve.kind === "circle") this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, 0, 2 * Math.PI), color, dashed);
       else {
         const end = curve.endAngle <= curve.startAngle ? curve.endAngle + 2 * Math.PI : curve.endAngle;
-        this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, curve.startAngle, end), color, curve.construction);
+        this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, curve.startAngle, end), color, dashed);
       }
     }
 

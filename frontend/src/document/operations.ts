@@ -3,7 +3,16 @@
  * and never mutates its input, so every edit can be undone.
  */
 import { rectangleAt } from "./sketch";
-import { cloneDocument, consumedBodies, featureInputs, type CadDocument, type Feature, type HoleFeature } from "./types";
+import {
+  cloneDocument,
+  consumedBodies,
+  featureInputs,
+  featureOfBody,
+  PART_SEPARATOR,
+  type CadDocument,
+  type Feature,
+  type HoleFeature,
+} from "./types";
 
 export function uniqueId(doc: CadDocument, prefix: string): string {
   const used = new Set(doc.features.map((f) => f.id));
@@ -91,7 +100,8 @@ export function addHole(doc: CadDocument, target: string, x: number, y: number, 
 export function dependentsOf(doc: CadDocument, id: string): string[] {
   const affected = new Set([id]);
   for (const feature of doc.features) {
-    if (featureInputs(feature).some((input) => affected.has(input))) affected.add(feature.id);
+    // Inputs may name one body of a multi-body feature ("split1#2").
+    if (featureInputs(feature).some((input) => affected.has(featureOfBody(input)))) affected.add(feature.id);
   }
   affected.delete(id);
   return doc.features.filter((f) => affected.has(f.id)).map((f) => f.id);
@@ -126,4 +136,11 @@ export function latestBody(doc: CadDocument, bodyId: string): string {
     if (consumedBodies(feature).includes(current)) current = feature.id;
   }
   return current;
+}
+
+/** Display name of a body: its feature's name, numbered for the pieces of a split. */
+export function bodyLabel(doc: CadDocument, bodyId: string): string {
+  const base = featureOfBody(bodyId);
+  const name = findFeature(doc, base)?.name ?? base;
+  return base === bodyId ? name : `${name} — pièce ${Number(bodyId.slice(base.length + PART_SEPARATOR.length)) + 1}`;
 }

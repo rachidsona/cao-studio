@@ -3,7 +3,7 @@
  * geometry worker, the viewport and the panels together.
  */
 import { solveSketch } from "../constraints/solver";
-import { addExtrude, addPlate, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
+import { addExtrude, addPlate, bodyLabel, dependentsOf, deleteFeature, findFeature, latestBody, updateFeature } from "../document/operations";
 import { setDimensionValue } from "../sketcher/edit";
 import type { CadDocument, DisplayUnit } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
@@ -20,7 +20,7 @@ import type { DocumentSession, SaveState } from "./session";
 import { ExtrudeTool } from "./extrude-tool";
 import { bindShortcuts } from "./keyboard";
 import { ModelSelectionController } from "./model-selection";
-import { ToolLauncher, type PanelToolKind } from "./tool-launcher";
+import { extrudeTargets, ToolLauncher, type PanelToolKind } from "./tool-launcher";
 import { SketchController } from "./sketch-controller";
 
 export interface EditorConfig {
@@ -62,14 +62,9 @@ export class Editor {
     session.onStateChange = (state, detail) => this.showSaveState(state, detail);
     this.picked = new ModelSelectionController(viewport, geometry, {
       unit: () => this.unit,
-      bodyName: (id) => findFeature(this.doc, id)?.name ?? id,
+      bodyName: (id) => bodyLabel(this.doc, id),
       changed: () => {
-        const { faces, edges, bodies } = this.picked.selection;
-        ref(this.root, "status-selection").textContent = this.picked.empty
-          ? "Aucune sélection"
-          : bodies.length
-            ? `${bodies.length} corps sélectionné(s)`
-            : `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)`;
+        ref(this.root, "status-selection").textContent = this.picked.statusText();
         if (!this.picked.empty) this.openPanel("properties");
         this.render();
       },
@@ -85,6 +80,8 @@ export class Editor {
       openPanel: (panel) => this.openPanel(panel),
       unit: () => this.unit,
       extrude: () => this.extrudeCommand(),
+      selectedFace: () => this.picked.lastFace,
+      faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex),
     });
     const main = root.querySelector("main") as HTMLElement;
     this.tools = new ToolLauncher({
@@ -212,9 +209,14 @@ export class Editor {
         extrude: () => this.extrudeCommand(),
         hole: () => this.openTool("hole"),
         combine: () => this.openTool("combine"),
+        split: () => this.openTool("split"),
+        sketch: () => {
+          const face = this.picked.lastFace;
+          if (face) void this.sketches.createOnFace(face);
+        },
         clear: () => this.viewport.clearSelection(),
       },
-      targets: this.extrudeTargets(feature?.id ?? null),
+      targets: extrudeTargets(this.doc, feature?.id ?? null),
       sketch: {
         editing,
         onEdit: () => feature && this.sketches.open(feature.id),
@@ -228,15 +230,6 @@ export class Editor {
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
-  }
-
-  /** Bodies created before `featureId` that an extrusion may join or cut. */
-  private extrudeTargets(featureId: string | null): { id: string; name: string }[] {
-    const index = this.doc.features.findIndex((f) => f.id === featureId);
-    return this.doc.features
-      .slice(0, index < 0 ? undefined : index)
-      .filter((f) => f.type === "extrude" || f.type === "hole")
-      .map((f) => ({ id: f.id, name: f.name }));
   }
 
   /** Edits a dimension outside sketch mode: solved first, refused if the sketch cannot satisfy it. */
@@ -264,7 +257,7 @@ export class Editor {
     bodyId ??= bodies[bodies.length - 1]?.bodyId ?? null;
     const body = bodies.find((b) => b.bodyId === bodyId);
     if (!body) return null;
-    return { name: findFeature(this.doc, body.bodyId)?.name ?? body.bodyId, metrics: body.metrics };
+    return { name: bodyLabel(this.doc, body.bodyId), metrics: body.metrics };
   }
 
   private updateHistoryButtons(): void {
@@ -340,7 +333,7 @@ export class Editor {
       doc: () => this.doc,
       change: (next) => void this.change(next),
       notify: (message, kind) => this.notify(message, kind),
-      bodies: () => (this.result?.bodies ?? []).map((b) => ({ id: b.bodyId, name: findFeature(this.doc, b.bodyId)?.name ?? b.bodyId })),
+      bodies: () => this.visibleBodies(),
       unit: () => this.unit,
       closed: (id) => {
         this.extrudeTool = null;
@@ -364,7 +357,7 @@ export class Editor {
 
   /** Bodies currently displayed, with their feature names. */
   private visibleBodies(): { id: string; name: string }[] {
-    return (this.result?.bodies ?? []).map((b) => ({ id: b.bodyId, name: findFeature(this.doc, b.bodyId)?.name ?? b.bodyId }));
+    return (this.result?.bodies ?? []).map((b) => ({ id: b.bodyId, name: bodyLabel(this.doc, b.bodyId) }));
   }
 
   /** Opens a panel tool; a face already selected places the hole directly. */
@@ -378,7 +371,8 @@ export class Editor {
       ...(selected?.type === "sketch" ? { sketchId: selected.id } : {}),
       ...(kind === "hole" && this.picked.lastFace ? { pick: this.picked.lastFace } : {}),
       ...((kind === "fillet" || kind === "chamfer") && this.picked.selection.edges.length ? { edges: this.picked.selection.edges } : {}),
-      ...(kind === "combine" && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
+      ...((kind === "combine" || kind === "split") && this.picked.selection.bodies.length ? { bodies: this.picked.selection.bodies } : {}),
+      ...(kind === "split" && this.picked.selection.faces.length ? { faces: this.picked.selection.faces } : {}),
     });
   }
 
@@ -443,6 +437,7 @@ export class Editor {
       fillet: () => this.openTool("fillet"),
       chamfer: () => this.openTool("chamfer"),
       combine: () => this.openTool("combine"),
+      split: () => this.openTool("split"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.exportGeometry("step"),
       "export-stl": () => void this.exportGeometry("stl"),

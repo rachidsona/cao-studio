@@ -29,6 +29,8 @@ export interface SketchFeature extends FeatureBase {
   points: SketchPoint[];
   curves: SketchCurve[];
   constraints: SketchConstraint[];
+  /** Body whose face this sketch was drawn on (extrusions then default to a union with it). */
+  support?: string;
 }
 
 export type BooleanOperation = "new" | "join" | "cut" | "intersect";
@@ -129,7 +131,19 @@ export interface CombineFeature extends FeatureBase {
   keepTools?: boolean;
 }
 
+/**
+ * Split of a body by planes: every piece becomes a separate body, referred to
+ * as "<feature id>#<n>" (pieces numbered in a stable spatial order).
+ */
+export interface SplitFeature extends FeatureBase {
+  type: "split";
+  target: string;
+  /** Cutting planes (infinite), in world coordinates: a point and a unit normal. */
+  planes: { point: Vec3; normal: Vec3 }[];
+}
+
 export type Feature =
+  | SplitFeature
   | SketchFeature
   | ExtrudeFeature
   | HoleFeature
@@ -188,10 +202,19 @@ export function featureInputs(feature: Feature): string[] {
     case "hole":
     case "fillet":
     case "chamfer":
+    case "split":
       return [feature.target];
     case "combine":
       return [feature.target, ...feature.tools];
   }
+}
+
+/** Separator between a feature id and the number of one of its bodies ("split1#2"). */
+export const PART_SEPARATOR = "#";
+
+/** Feature that produces a body id ("split1#2" → "split1"). */
+export function featureOfBody(bodyId: string): string {
+  return bodyId.split(PART_SEPARATOR)[0] as string;
 }
 
 /** Ids of bodies a feature consumes (they are replaced by its own result). */
@@ -200,6 +223,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "hole":
     case "fillet":
     case "chamfer":
+    case "split":
       return [feature.target];
     case "extrude":
     case "revolve":
@@ -212,7 +236,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

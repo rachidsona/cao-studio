@@ -65,6 +65,8 @@ export class Viewport {
   private grid = new AdaptiveGrid();
   private bodies = new Map<string, BodyObject>();
   private bodyMaterial: THREE.MeshStandardMaterial;
+  /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
+  private bodyMaterials: THREE.MeshStandardMaterial[] = [];
   private highlightMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });
   private raycaster = new THREE.Raycaster();
@@ -112,6 +114,11 @@ export class Viewport {
       polygonOffsetUnits: 1,
     });
     this.highlightMaterial = this.bodyMaterial.clone();
+    for (const color of [0xb8c4d1, 0xc8bba4, 0xaec4b6, 0xbfb6cc, 0xb4c0d8, 0xcfc3a9]) {
+      const material = this.bodyMaterial.clone();
+      material.color.set(color);
+      this.bodyMaterials.push(material);
+    }
     this.highlightMaterial.color.set(0x0ea5e9);
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.6));
@@ -151,14 +158,15 @@ export class Viewport {
   setBodies(meshes: BodyMesh[]): void {
     for (const body of this.bodies.values()) this.disposeBody(body);
     this.bodies.clear();
-    for (const data of meshes) {
+    for (const [index, data] of meshes.entries()) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(data.vertices, 3));
       geometry.setAttribute("normal", new THREE.BufferAttribute(data.normals, 3));
       geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
       for (const group of data.faceGroups) geometry.addGroup(group.start, group.count, 0);
       geometry.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geometry, [this.bodyMaterial, this.highlightMaterial]);
+      const tint = this.bodyMaterials[index % this.bodyMaterials.length] as THREE.MeshStandardMaterial;
+      const mesh = new THREE.Mesh(geometry, [tint, this.highlightMaterial]);
       mesh.userData.bodyId = data.bodyId;
 
       const edgeGeometry = new THREE.BufferGeometry();
@@ -381,7 +389,7 @@ export class Viewport {
   }
 
   private setBodyOpacity(opacity: number): void {
-    for (const material of [this.bodyMaterial, this.highlightMaterial, this.edgeMaterial]) {
+    for (const material of [...this.bodyMaterials, this.highlightMaterial, this.edgeMaterial]) {
       material.transparent = opacity < 1;
       material.opacity = opacity;
       material.depthWrite = opacity === 1;

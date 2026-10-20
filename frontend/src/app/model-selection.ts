@@ -48,6 +48,14 @@ export class ModelSelectionController {
     return faces.length === 0 && edges.length === 0 && bodies.length === 0;
   }
 
+  /** One-line summary for the status bar. */
+  statusText(): string {
+    const { faces, edges, bodies } = this.selection;
+    if (this.empty) return "Aucune sélection";
+    if (bodies.length) return `${bodies.length} corps sélectionné(s)`;
+    return `${edges.length} arête(s), ${faces.length} face(s) sélectionnée(s)`;
+  }
+
   /** Last face clicked (holes are placed on it). */
   get lastFace(): FacePick | undefined {
     return this.selection.faces.at(-1);

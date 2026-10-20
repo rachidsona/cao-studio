@@ -8,7 +8,11 @@ import { emptySketchGeometry } from "../document/sketch";
 import { findCurve } from "../sketcher/edit";
 import { findFeature, uniqueId, updateFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit, PlaneName, SketchFeature } from "../document/types";
+import type { FaceOutline } from "../geometry/protocol";
+import { sketchFrame } from "../sketcher/frame";
 import { SketchMode } from "../sketcher/mode";
+import { planeForFace, projectOutline } from "../sketcher/projection";
+import type { FacePick } from "../viewport/viewport";
 import type { ToolName } from "../sketcher/tools";
 import { ref } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
@@ -24,6 +28,9 @@ export interface SketchControllerHost {
   unit(): DisplayUnit;
   /** Leaves the sketch and starts the interactive extrusion on it. */
   extrude(): void;
+  /** Planar face picked in the 3D model, if any (a new sketch is then drawn on it). */
+  selectedFace(): FacePick | undefined;
+  faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline>;
 }
 
 const TOOL_KEYS: Record<string, ToolName> = { s: "select", l: "line", r: "rectangle", c: "circle", a: "arc" };
@@ -37,6 +44,14 @@ export class SketchController {
     private readonly host: SketchControllerHost,
   ) {
     root.addEventListener("click", (event) => {
+      // "Esquisse" with a face selected: sketch directly on that face, no plane menu.
+      const entry = (event.target as HTMLElement).closest("[data-sketch-entry]");
+      const face = entry ? this.host.selectedFace() : undefined;
+      if (face) {
+        event.preventDefault();
+        void this.createOnFace(face);
+        return;
+      }
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-sketch-tool],[data-sketch-command],[data-new-sketch]");
       if (!target) return;
       if (target.dataset.newSketch) {
@@ -58,6 +73,41 @@ export class SketchController {
     const feature: SketchFeature = { id, type: "sketch", name: `Esquisse ${count}`, plane, offset: 0, ...emptySketchGeometry() };
     this.host.change({ ...doc, features: [...doc.features, feature] });
     this.open(id);
+  }
+
+  /**
+   * New sketch on a planar body face: plane from the face, face boundary
+   * projected as fixed reference geometry to snap on.
+   */
+  async createOnFace(face: FacePick): Promise<void> {
+    let outline: FaceOutline;
+    try {
+      outline = await this.host.faceOutline(face.bodyId, face.faceIndex);
+    } catch (error) {
+      this.host.notify(error instanceof Error ? error.message : String(error), "error");
+      return;
+    }
+    const placement = outline.surface === "PLANE" ? planeForFace(outline.normal, outline.center) : null;
+    if (!placement) {
+      this.host.notify("Esquisse possible seulement sur une face plane parallèle aux plans XY, XZ ou YZ.", "error");
+      return;
+    }
+    const doc = this.host.doc();
+    const id = uniqueId(doc, "sk");
+    const count = doc.features.filter((f) => f.type === "sketch").length + 1;
+    const geometry = projectOutline(outline, sketchFrame(placement.plane, placement.offset));
+    const feature: SketchFeature = {
+      id,
+      type: "sketch",
+      name: `Esquisse ${count}`,
+      plane: placement.plane,
+      offset: Number(placement.offset.toFixed(6)),
+      ...geometry,
+      support: face.bodyId,
+    };
+    this.host.change({ ...doc, features: [...doc.features, feature] });
+    this.open(id);
+    this.host.notify("Esquisse sur la face : les arêtes du corps (en violet) servent d'accroche.", "info");
   }
 
   open(featureId: string): void {
