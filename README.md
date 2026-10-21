@@ -297,6 +297,9 @@ opération existante.
 - **Sélection dans le modèle 3D** :
   - un clic sur une arête ou une face la sélectionne ; un nouveau clic la retire, un clic dans le vide
     vide la sélection ;
+  - **éléments d'esquisse** : avec les filtres « Points », « Arêtes » et « Faces », un clic choisit aussi un point,
+    un trait ou une zone d'une esquisse affichée (en orange), avec ses coordonnées, sa longueur ou son aire
+    dans le panneau Sélection ; en « Auto », un clic sur une esquisse la sélectionne en entier ;
   - **éléments superposés** : un nouveau clic au même endroit sélectionne l'élément suivant sous le curseur
     (arête, puis ligne d'esquisse, puis face, puis zone d'esquisse) ; une esquisse posée sur une face ou liée
     aux coins d'un corps par des coïncidences reste ainsi sélectionnable dans la vue ;

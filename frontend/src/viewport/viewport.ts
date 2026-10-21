@@ -11,10 +11,10 @@ import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
 import { edgeAtVertex } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
-import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter, type VertexPick } from "./selection-layer";
+import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter, type SketchPick, type VertexPick } from "./selection-layer";
 import { addDistinct, bodyVertices, type Point3 } from "./body-points";
 
-export type { EdgePick, FacePick, ModelSelection, SelectionFilter, VertexPick } from "./selection-layer";
+export type { EdgePick, FacePick, ModelSelection, SelectionFilter, SketchPick, VertexPick } from "./selection-layer";
 
 export type StandardView = "iso" | "front" | "back" | "top" | "bottom" | "left" | "right";
 
@@ -186,36 +186,99 @@ export class Viewport {
    * Draws these sketches on their planes: curves (as polylines in sketch coordinates) and a translucent
    * fill of their closed areas, which makes them clickable. The selected one is highlighted.
    */
-  setSketchLines(items: { id: string; frame: SketchFrame; polylines: [number, number][][]; regions: { outer: [number, number][]; holes: [number, number][][] }[]; selected: boolean }[]): void {
+  setSketchLines(
+    items: {
+      id: string;
+      frame: SketchFrame;
+      curves: { id: string; points: [number, number][] }[];
+      points: { id: string; at: [number, number] }[];
+      regions: { outer: [number, number][]; holes: [number, number][][] }[];
+      selected: boolean;
+    }[],
+  ): void {
     for (const group of [...this.sketchGroup.children]) {
       this.sketchGroup.remove(group);
       group.traverse((child) => (child instanceof THREE.Line || child instanceof THREE.Mesh) && child.geometry.dispose());
     }
-    for (const { id, frame, polylines, regions, selected } of items) {
+    for (const { id, frame, curves, points, regions, selected } of items) {
       const group = new THREE.Group();
       group.userData.sketchId = id;
+      group.userData.points = points;
       group.matrixAutoUpdate = false;
       const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...frame.u), new THREE.Vector3(...frame.v), new THREE.Vector3(...frame.normal));
       group.matrix.copy(basis.setPosition(new THREE.Vector3(...frame.origin)));
-      for (const points of polylines) {
-        const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
+      for (const curve of curves) {
+        const geometry = new THREE.BufferGeometry().setFromPoints(curve.points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
         const ghost = new THREE.Line(geometry, selected ? this.sketchSelectedGhostMaterial : this.sketchGhostMaterial);
         ghost.renderOrder = 4;
         const line = new THREE.Line(geometry, selected ? this.sketchSelectedMaterial : this.sketchMaterial);
         line.renderOrder = 5;
         ghost.userData.kind = line.userData.kind = "line";
+        ghost.userData.curveId = line.userData.curveId = curve.id;
         group.add(ghost, line);
       }
-      for (const { outer, holes } of regions) {
+      for (const [index, { outer, holes }] of regions.entries()) {
         const shape = new THREE.Shape(outer.map(([x, y]) => new THREE.Vector2(x, y)));
         shape.holes = holes.map((hole) => new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))));
         const fill = new THREE.Mesh(new THREE.ShapeGeometry(shape), selected ? this.sketchSelectedFillMaterial : this.sketchFillMaterial);
         fill.renderOrder = 3;
         fill.userData.kind = "fill";
+        fill.userData.regionIndex = index;
+        fill.userData.area = Math.abs(THREE.ShapeUtils.area(shape.getPoints())) - holes.reduce((sum, h) => sum + Math.abs(THREE.ShapeUtils.area(h.map(([x, y]) => new THREE.Vector2(x, y)))), 0);
         group.add(fill);
       }
       this.sketchGroup.add(group);
     }
+    // Picked sketch elements whose sketch is no longer drawn (hidden, deleted, being edited) are dropped.
+    if (this.selection.pruneSketch(new Set(items.map((i) => i.id)))) {
+      this.selection.render(this.bodies);
+      this.onSelectionChange(this.selection.snapshot());
+    }
+  }
+
+  /**
+   * One element of a sketch drawn in the view, under the pointer: a point (within a few pixels), a curve,
+   * or the inside of an area (only when nothing nearer, like a body face, hides it).
+   */
+  pickSketchItem(event: PointerEvent, kind: SketchPick["kind"], nearerThan: number | null = null): (SketchPick & { distance: number }) | null {
+    this.sketchGroup.updateMatrixWorld(true);
+    if (kind === "point") {
+      let best: (SketchPick & { distance: number }) | null = null;
+      for (const group of this.sketchGroup.children) {
+        for (const p of (group.userData.points ?? []) as { id: string; at: [number, number] }[]) {
+          const w = new THREE.Vector3(p.at[0], p.at[1], 0).applyMatrix4(group.matrixWorld);
+          const d = this.screenDistance(event, [w.x, w.y, w.z]);
+          if (d <= 10 && (!best || d < best.distance)) best = { sketchId: group.userData.sketchId as string, kind, id: p.id, points: [[w.x, w.y, w.z]], distance: d };
+        }
+      }
+      return best;
+    }
+    const targets: THREE.Object3D[] = [];
+    this.sketchGroup.traverse((o) => o.userData.kind === (kind === "curve" ? "line" : "fill") && targets.push(o));
+    const hit = this.intersect(event, targets, 6)[0];
+    if (!hit || (nearerThan !== null && hit.distance > nearerThan + 1e-3)) return null;
+    const object = hit.object as THREE.Mesh | THREE.Line;
+    const sketchId = object.parent?.userData.sketchId as string;
+    const world = (object.geometry.getAttribute("position") as THREE.BufferAttribute);
+    const points: Point3[] = [];
+    for (let i = 0; i < world.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(world, i).applyMatrix4(object.matrixWorld);
+      points.push([v.x, v.y, v.z]);
+    }
+    if (kind === "curve") {
+      let length = 0;
+      for (let i = 1; i < points.length; i++) length += Math.hypot(points[i]![0] - points[i - 1]![0], points[i]![1] - points[i - 1]![1], points[i]![2] - points[i - 1]![2]);
+      return { sketchId, kind, id: object.userData.curveId as string, points, measure: length, distance: hit.distance };
+    }
+    return {
+      sketchId,
+      kind,
+      id: String(object.userData.regionIndex),
+      points: [],
+      measure: object.userData.area as number,
+      fill: { geometry: object.geometry.clone(), matrix: object.matrixWorld.clone() },
+      distance: hit.distance,
+    };
   }
 
   /** Sketch under the pointer: a curve within a few pixels, else (when nothing nearer hides it) the inside of an area. */
@@ -542,20 +605,48 @@ export class Viewport {
    */
   private selectAt(event: PointerEvent): void {
     const filter = this.selectionFilter;
-    type Candidate = { kind: "vertex"; pick: VertexPick } | { kind: "edge"; pick: EdgePick } | { kind: "sketch"; id: string } | { kind: "face"; pick: FacePick };
+    type Candidate =
+      | { kind: "vertex"; pick: VertexPick }
+      | { kind: "edge"; pick: EdgePick }
+      | { kind: "sketch"; id: string }
+      | { kind: "face"; pick: FacePick }
+      | { kind: "item"; pick: SketchPick };
     const list: Candidate[] = [];
-    const vertex = filter === "vertex" ? this.pickVertex(event) : null;
-    if (vertex) list.push({ kind: "vertex", pick: vertex });
-    const edge = filter === "auto" || filter === "edge" ? this.pickEdge(event) : null;
-    if (edge) list.push({ kind: "edge", pick: edge });
-    const curve = this.pickSketch(event, "line");
-    if (curve) list.push({ kind: "sketch", id: curve });
-    const face = filter === "edge" || filter === "vertex" ? null : this.pick(event);
-    const inFront = this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
-    if (inFront && inFront !== curve) list.push({ kind: "sketch", id: inFront });
-    if (face) list.push({ kind: "face", pick: face });
-    const behind = face ? this.pickSketch(event, "fill") : null;
-    if (behind && behind !== curve && behind !== inFront) list.push({ kind: "sketch", id: behind });
+    if (filter === "vertex" || filter === "edge" || filter === "face") {
+      // "Points", "Arêtes", "Faces": the corners, edges and faces of bodies, and the points, curves and areas of sketches.
+      if (filter === "vertex") {
+        const vertex = this.pickVertex(event);
+        const point = this.pickSketchItem(event, "point");
+        const vertexDistance = vertex ? this.screenDistance(event, vertex.point) : Infinity;
+        if (point && point.distance <= vertexDistance) list.push({ kind: "item", pick: point });
+        if (vertex) list.push({ kind: "vertex", pick: vertex });
+        if (point && point.distance > vertexDistance) list.push({ kind: "item", pick: point });
+      } else if (filter === "edge") {
+        const edge = this.pickEdge(event);
+        if (edge) list.push({ kind: "edge", pick: edge });
+        const curve = this.pickSketchItem(event, "curve");
+        if (curve) list.push({ kind: "item", pick: curve });
+      } else {
+        const face = this.pick(event);
+        const inFront = this.pickSketchItem(event, "region", face ? face.point.distanceTo(this.camera.position) : null);
+        if (inFront) list.push({ kind: "item", pick: inFront });
+        if (face) list.push({ kind: "face", pick: face });
+        const behind = face ? this.pickSketchItem(event, "region") : null;
+        if (behind && !inFront) list.push({ kind: "item", pick: behind });
+      }
+    } else {
+      // "Auto" and "Corps": a body edge (thin: it wins over a sketch along it), a whole sketch, a face or body.
+      const edge = filter === "auto" ? this.pickEdge(event) : null;
+      if (edge) list.push({ kind: "edge", pick: edge });
+      const curve = this.pickSketch(event, "line");
+      if (curve) list.push({ kind: "sketch", id: curve });
+      const face = this.pick(event);
+      const inFront = this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
+      if (inFront && inFront !== curve) list.push({ kind: "sketch", id: inFront });
+      if (face) list.push({ kind: "face", pick: face });
+      const behind = face ? this.pickSketch(event, "fill") : null;
+      if (behind && behind !== curve && behind !== inFront) list.push({ kind: "sketch", id: behind });
+    }
 
     const again = this.lastClick && Math.hypot(event.clientX - this.lastClick.x, event.clientY - this.lastClick.y) <= 4 && list.length > 1;
     const index = again && this.lastClick ? (this.lastClick.index + 1) % list.length : 0;
@@ -572,6 +663,7 @@ export class Viewport {
     }
     if (chosen?.kind === "vertex") this.selection.toggleVertex(chosen.pick);
     else if (chosen?.kind === "edge") this.selection.toggleEdge(chosen.pick);
+    else if (chosen?.kind === "item") this.selection.toggleSketchItem(chosen.pick);
     else if (chosen?.kind === "face" && filter === "body") this.selection.toggleBody(chosen.pick.bodyId);
     else if (chosen?.kind === "face") this.selection.toggleFace(chosen.pick);
     else this.selection.clear();

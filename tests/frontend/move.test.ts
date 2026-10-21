@@ -158,7 +158,7 @@ describe("manipulateur : glisser le long d'un axe ou dans un plan", () => {
 });
 
 describe("ce que Déplacer prend selon la sélection", () => {
-  const none = { lastFace: undefined, selection: { faces: [], edges: [], vertices: [], bodies: [] } };
+  const none = { lastFace: undefined, selection: { faces: [], edges: [], vertices: [], sketch: [], bodies: [] } };
   const sketch: Feature = { id: "sk", type: "sketch", name: "E", plane: "XY", offset: 0, points: [], curves: [], constraints: [] };
 
   it("un corps, une face ou un point désignent le corps ; une esquisse du navigateur sert sinon", () => {

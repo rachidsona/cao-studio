@@ -27,11 +27,27 @@ export interface VertexPick {
   point: Point3;
 }
 
+/** A point, a curve or an area of a sketch drawn in the view (filters "Points", "Arêtes", "Faces"). */
+export interface SketchPick {
+  sketchId: string;
+  kind: "point" | "curve" | "region";
+  /** Point or curve id; for an area, its index among the sketch's areas. */
+  id: string;
+  /** Model coordinates: the point, or the curve as a polyline. */
+  points: Point3[];
+  /** Length of a curve, area of a region (mm, mm²). */
+  measure?: number;
+  /** Triangles of an area and their placement, to tint it. */
+  fill?: { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4 };
+}
+
 export interface ModelSelection {
   faces: FacePick[];
   edges: EdgePick[];
   /** Corners (selection filter "Points"). */
   vertices: VertexPick[];
+  /** Points, curves and areas of sketches. */
+  sketch: SketchPick[];
   /** Whole bodies (selection filter "Corps"). */
   bodies: string[];
 }
@@ -50,6 +66,7 @@ export class SelectionLayer {
   faces: FacePick[] = [];
   edges: EdgePick[] = [];
   vertices: VertexPick[] = [];
+  sketch: SketchPick[] = [];
   bodies: string[] = [];
   private group = new THREE.Group();
   private labels = new Map<string, string>();
@@ -81,11 +98,11 @@ export class SelectionLayer {
   }
 
   get count(): number {
-    return this.faces.length + this.edges.length + this.vertices.length + this.bodies.length;
+    return this.faces.length + this.edges.length + this.vertices.length + this.sketch.length + this.bodies.length;
   }
 
   snapshot(): ModelSelection {
-    return { faces: [...this.faces], edges: [...this.edges], vertices: [...this.vertices], bodies: [...this.bodies] };
+    return { faces: [...this.faces], edges: [...this.edges], vertices: [...this.vertices], sketch: [...this.sketch], bodies: [...this.bodies] };
   }
 
   toggleBody(bodyId: string): void {
@@ -112,10 +129,24 @@ export class SelectionLayer {
     else this.vertices.push(pick);
   }
 
+  toggleSketchItem(pick: SketchPick): void {
+    const i = this.sketch.findIndex((p) => p.sketchId === pick.sketchId && p.kind === pick.kind && p.id === pick.id);
+    if (i >= 0) this.sketch.splice(i, 1);
+    else this.sketch.push(pick);
+  }
+
+  /** Drops the picked elements of sketches no longer drawn; true when something was dropped. */
+  pruneSketch(drawn: ReadonlySet<string>): boolean {
+    const before = this.sketch.length;
+    this.sketch = this.sketch.filter((p) => drawn.has(p.sketchId));
+    return this.sketch.length !== before;
+  }
+
   clear(): void {
     this.faces = [];
     this.edges = [];
     this.vertices = [];
+    this.sketch = [];
     this.bodies = [];
   }
 
@@ -146,13 +177,28 @@ export class SelectionLayer {
     for (const child of [...this.group.children]) {
       this.group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
-      if (child instanceof THREE.LineSegments || child instanceof THREE.Points) {
+      if (child instanceof THREE.Mesh) (child.material as THREE.Material).dispose(); // its geometry belongs to the pick
+      else if (child instanceof THREE.Line || child instanceof THREE.Points) {
         child.geometry.dispose();
         (child.material as THREE.Material).dispose();
       }
     }
-    if (this.vertices.length) {
-      const geometry = new THREE.BufferGeometry().setFromPoints(this.vertices.map((v) => new THREE.Vector3(...v.point)));
+    for (const pick of this.sketch) {
+      if (pick.kind === "region" && pick.fill) {
+        const tint = new THREE.Mesh(pick.fill.geometry, new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthTest: false, depthWrite: false }));
+        tint.matrixAutoUpdate = false;
+        tint.matrix.copy(pick.fill.matrix);
+        tint.renderOrder = 39;
+        this.group.add(tint);
+      } else if (pick.kind === "curve") {
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pick.points.map((p) => new THREE.Vector3(...p))), new THREE.LineBasicMaterial({ color: 0xf59e0b, depthTest: false }));
+        line.renderOrder = 40;
+        this.group.add(line);
+      }
+    }
+    const points = [...this.vertices.map((v) => v.point), ...this.sketch.filter((p) => p.kind === "point").flatMap((p) => p.points)];
+    if (points.length) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(...p)));
       const dots = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xe11d48, size: 13, sizeAttenuation: false, depthTest: false }));
       dots.renderOrder = 41;
       this.group.add(dots);

@@ -22,6 +22,8 @@ export interface NavigatorHost {
   bodyIds(): string[];
   selectedId(): string | null;
   selectedBodyId(): string | null;
+  /** Something is picked in the 3D view (it writes its own status line). */
+  modelPicked(): boolean;
   selectFeature(id: string): void;
   selectBody(bodyId: string): void;
   /** Shows or hides a sketch, or the body created by this feature. */
@@ -115,7 +117,7 @@ export class Navigator {
     renderTimeline(ref(this.root, "timeline"), operations, selectedId, (id, anchor) => this.open(id, anchor));
     // Nothing picked in the model: say which sketch is selected (it is highlighted in the view).
     const sketch = sketches.find((s) => s.id === selectedId);
-    if (this.host.selectedBodyId() === null) ref(this.root, "status-selection").textContent = sketch ? `Esquisse « ${sketch.name} » sélectionnée` : "Aucune sélection";
+    if (!this.host.modelPicked()) ref(this.root, "status-selection").textContent = sketch ? `Esquisse « ${sketch.name} » sélectionnée` : "Aucune sélection";
     const open = this.dialog.openItem;
     if (open) this.dialog.update(this.find(open.id, !!open.body));
   }

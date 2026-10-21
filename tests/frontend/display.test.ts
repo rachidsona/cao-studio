@@ -5,7 +5,7 @@ import type { CadDocument, Feature } from "../../frontend/src/document/types";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { gridPoint, snapToGrid } from "../../frontend/src/sketcher/hit";
 import { addCircle, addLine, addRectangle } from "../../frontend/src/sketcher/edit";
-import { sketchPolylines, sketchRegions } from "../../frontend/src/sketcher/polylines";
+import { sketchCurves, sketchPoints, sketchPolylines, sketchRegions } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
 
 beforeAll(setupKernel);
@@ -98,5 +98,17 @@ describe("zones cliquables d'une esquisse", () => {
     const g = addRectangle(empty(), { at: [0, 0] }, { at: [10, 5] }).geometry;
     const withSpur = addLine(g, { at: [3, 3] }, { at: [30, 30] }, { autoAlign: false }).geometry;
     expect(sketchRegions(withSpur)).toHaveLength(1);
+  });
+});
+
+describe("éléments d'une esquisse choisis dans la vue (filtres Points, Arêtes, Faces)", () => {
+  it("chaque trait garde son identifiant, chaque point une seule fois ; construction et projection exclues", () => {
+    const rect = addRectangle(empty(), { at: [0, 0] }, { at: [10, 5] }).geometry;
+    expect(sketchCurves(rect).map((c) => c.id)).toEqual(["l1", "l2", "l3", "l4"]);
+    expect(sketchPoints(rect)).toHaveLength(4);
+    expect(sketchPoints(rect).find((p) => p.id === "p3")?.at).toEqual([10, 5]);
+    const withGuide = addLine(rect, { at: [0, 0] }, { at: [10, 5] }, { construction: true }).geometry;
+    expect(sketchCurves(withGuide)).toHaveLength(4);
+    expect(sketchPoints(withGuide)).toHaveLength(4);
   });
 });

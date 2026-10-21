@@ -1,5 +1,6 @@
 /** "Sélection" section of the properties panel: measurements and actions on picked faces/edges. */
 import { edgeText, faceText, pointText, type SelectionSummary } from "../app/model-selection";
+import { formatArea, formatLength } from "../measurements/units";
 import type { DisplayUnit } from "../document/types";
 import { el } from "./dom";
 import { section } from "./fields";
@@ -23,11 +24,24 @@ function action(label: string, run: () => void, primary = false): HTMLElement {
 }
 
 export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, actions: SelectionActions): HTMLElement | null {
-  const { faces, edges, vertices, bodies } = summary;
-  if (faces.length === 0 && edges.length === 0 && vertices.length === 0 && bodies.length === 0) return null;
+  const { faces, edges, vertices, sketch, bodies } = summary;
+  if (faces.length === 0 && edges.length === 0 && vertices.length === 0 && sketch.length === 0 && bodies.length === 0) return null;
+  const SKETCH_KINDS = { point: "Point", curve: "Trait", region: "Zone" } as const;
   const items = [
     ...bodies.map((b) =>
       el("li", { class: "flex justify-between gap-3" }, el("span", {}, "Corps"), el("span", { class: "font-medium" }, b.name)),
+    ),
+    ...sketch.map((p) =>
+      el(
+        "li",
+        { class: "flex justify-between gap-3" },
+        el("span", {}, `${SKETCH_KINDS[p.kind]} — ${p.sketchName}`),
+        el(
+          "span",
+          { class: "text-right font-mono text-xs tabular-nums" },
+          p.kind === "point" && p.points[0] ? pointText(p.points[0], unit) : p.kind === "curve" ? formatLength(p.measure ?? 0, unit) : formatArea(p.measure ?? 0, unit),
+        ),
+      ),
     ),
     ...vertices.map((v, i) =>
       el("li", { class: "flex justify-between gap-3" }, el("span", {}, `Point ${i + 1}`), el("span", { class: "text-right font-mono text-xs tabular-nums" }, pointText(v.point, unit))),
@@ -58,12 +72,13 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   }
   if (bodies.length >= 2) buttons.push(action("⧉ Combiner", actions.combine, true));
   if (bodies.length === 1 || (planarFaces && edges.length === 0)) buttons.push(action("✂ Scinder le corps", actions.split));
-  buttons.push(action("✥ Déplacer", actions.move, bodies.length === 1 && faces.length + edges.length + vertices.length === 0));
+  if (sketch.length === 0) buttons.push(action("✥ Déplacer", actions.move, bodies.length === 1 && faces.length + edges.length + vertices.length === 0));
   const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:hover:text-gray-200" }, "Tout désélectionner");
   clear.addEventListener("click", actions.clear);
   const parts = [
     bodies.length ? `${bodies.length} corps` : "",
     vertices.length ? `${vertices.length} point${vertices.length > 1 ? "s" : ""}` : "",
+    sketch.length ? `${sketch.length} élément${sketch.length > 1 ? "s" : ""} d'esquisse` : "",
     edges.length ? `${edges.length} arête${edges.length > 1 ? "s" : ""}` : "",
     faces.length ? `${faces.length} face${faces.length > 1 ? "s" : ""}` : "",
   ].filter(Boolean);

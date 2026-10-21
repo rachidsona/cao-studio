@@ -7,7 +7,7 @@
  */
 import type { CadDocument, SketchFeature } from "../document/types";
 import { sketchFrame } from "../sketcher/frame";
-import { sketchPolylines, sketchRegions } from "../sketcher/polylines";
+import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
 import type { Viewport } from "../viewport/viewport";
 
 export interface SketchDisplayHost {
@@ -41,7 +41,14 @@ export class SketchDisplay {
     this.shown = visible;
     this.highlighted = selected;
     this.viewport.setSketchLines(
-      visible.map((f) => ({ id: f.id, frame: sketchFrame(f.plane, f.offset, f.shift), polylines: sketchPolylines(f), regions: sketchRegions(f), selected: f.id === selected })),
+      visible.map((f) => ({
+        id: f.id,
+        frame: sketchFrame(f.plane, f.offset, f.shift),
+        curves: sketchCurves(f),
+        points: sketchPoints(f),
+        regions: sketchRegions(f),
+        selected: f.id === selected,
+      })),
     );
   }
 }

@@ -65,6 +65,7 @@ export class Editor {
     this.picked = new ModelSelectionController(viewport, geometry, {
       unit: () => this.unit,
       bodyName: (id) => bodyLabel(this.doc, id),
+      sketchName: (id) => findFeature(this.doc, id)?.name ?? id,
       changed: () => {
         ref(this.root, "status-selection").textContent = this.picked.statusText();
         if (!this.picked.empty) this.openPanel("properties");
@@ -108,6 +109,7 @@ export class Editor {
       bodyIds: () => (this.result?.bodies ?? []).map((b) => b.bodyId),
       selectedId: () => this.selectedFeature,
       selectedBodyId: () => this.picked.bodyId ?? null,
+      modelPicked: () => !this.picked.empty,
       selectFeature: (id) => this.selectFeature(id),
       selectBody: (id) => ((this.selectedFeature = id), this.viewport.selectBody(id), this.render()),
       toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
