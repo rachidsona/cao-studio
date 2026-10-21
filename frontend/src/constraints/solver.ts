@@ -337,6 +337,12 @@ export function solveSketch(geometry: SketchGeometry, options: SolveOptions = {}
     pass = runPass(toPrimitives(solved));
     solved = fromPrimitives(solved, pass.prims);
   }
+  // An arc whose centre and ends are all fixed (a projected edge of a body) is over-determined by its own
+  // rules: that is not the user's doing, so it is not reported.
+  const fixedArcs = new Set(
+    geometry.curves.filter((c) => c.kind === "arc" && [c.center, c.start, c.end].every((id) => geometry.points.find((q) => q.id === id)?.fixed === true)).map((c) => c.id),
+  );
+  pass = { ...pass, redundant: pass.redundant.filter((id) => !fixedArcs.has(id)) };
   const failed = pass.status === SolveStatus.Failed || pass.status === SolveStatus.SuccessfulSolutionInvalid;
   const conflicting = first.conflicting.length ? first.conflicting : pass.conflicting;
   let state: SketchState = "ok";

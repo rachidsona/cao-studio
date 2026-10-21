@@ -294,6 +294,14 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
+- **Tracé sur face** (groupe « Menuiserie », comme DIO de Curic) : sur une face plane d'un corps, on survole la
+  face près d'une arête ; le trait parallèle à l'arête suit le pointeur, à la distance affichée (tapée au
+  clavier si besoin), et un clic le garde.
+  - *Une ligne* : la bande entre l'arête et le trait (feuillure, chant) ; *Deux lignes* : une bande d'une
+    largeur donnée, en retrait de l'arête (rainure) ;
+  - OK crée une esquisse « Tracé n » sur la face (contour projeté + bande fermée) : avec « Extrusion », on
+    creuse la bande (Couper) ou on l'ajoute ;
+  - la bande suit la forme de la face (face en L, face trouée).
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :

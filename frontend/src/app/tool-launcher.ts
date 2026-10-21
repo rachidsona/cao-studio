@@ -7,11 +7,12 @@ import { FaceExtrudeTool } from "./face-extrude-tool";
 import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
 import { PanelsTool } from "./panels-tool";
 import { CabinetTool } from "./cabinet-tool";
+import { FaceStripTool } from "./face-strip-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -39,7 +40,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
   const { edges, faces, vertices, bodies } = picked.selection;
   return {
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
-    ...(kind === "hole" && picked.lastFace ? { pick: picked.lastFace } : {}),
+    ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
     ...((kind === "combine" || kind === "split" || kind === "move") && bodies.length ? { bodies } : {}),
     ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
@@ -85,6 +86,12 @@ export class ToolLauncher {
       case "move":
         void this.openMove(ctx, editing, options);
         return;
+      case "faceStrip": {
+        const tool = new FaceStripTool(ctx);
+        this.active = tool;
+        void tool.open(options.pick);
+        return;
+      }
       case "cabinet":
         this.active = new CabinetTool(ctx, editing?.type === "cabinet" ? editing : null);
         break;

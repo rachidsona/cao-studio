@@ -443,7 +443,7 @@ export class Editor {
       combine: () => this.openTool("combine"),
       split: () => this.openTool("split"),
       move: () => this.openTool("move"),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),
