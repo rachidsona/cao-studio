@@ -167,6 +167,7 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
   if (isPiece(origin)) {
     const split = findFeature(doc, featureOfBody(origin));
     const n = Number(origin.slice(featureOfBody(origin).length + PART_SEPARATOR.length)) + 1;
+    if (split?.type === "panels") return `${split.name} — panneau ${n}`;
     if (split?.type === "cabinet") return `${split.name} — ${cabinetPartNames(split)[n - 1] ?? `pièce ${n}`}`;
     return `${split?.type === "split" ? bodyLabel(doc, split.target) : featureOfBody(origin)} — pièce ${n}`;
   }

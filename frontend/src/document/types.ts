@@ -180,6 +180,24 @@ export interface MoveFeature extends FeatureBase {
 }
 
 /**
+ * Boards made from a skeleton sketch (furniture design): every line of the
+ * sketch becomes a board of the given thickness, extruded by the depth along
+ * the sketch normal. Each board is a body ("<id>#<n>").
+ */
+export interface PanelsFeature extends FeatureBase {
+  type: "panels";
+  sketch: string;
+  /** Board thickness (mm). */
+  thickness: number;
+  /** Extrusion along the sketch normal (mm, signed). */
+  depth: number;
+  /** Side of the outline lines the boards lie on (inner lines are centred). */
+  align: "inside" | "center" | "outside";
+  /** Boards kept whole at the corners; the others are cut against them. */
+  through: "vertical" | "horizontal";
+}
+
+/**
  * Parametric cabinet (kitchen unit, wardrobe, cupboard): its parts (sides,
  * bottom, top, back, shelves) are separate bodies ("<id>#<n>") built from
  * the outer dimensions. Origin: front-left-bottom corner; X width, Y depth
@@ -206,6 +224,7 @@ export interface CabinetFeature extends FeatureBase {
 
 export type Feature =
   | CabinetFeature
+  | PanelsFeature
   | MoveFeature
   | SplitFeature
   | SketchFeature
@@ -267,6 +286,8 @@ export function featureInputs(feature: Feature): string[] {
       return feature.target && feature.operation !== "new" ? [feature.sketch ?? "", feature.target] : [feature.sketch ?? ""];
     case "revolve":
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];
+    case "panels":
+      return [feature.sketch];
     case "cabinet":
       return [];
     case "hole":
@@ -303,13 +324,14 @@ export function consumedBodies(feature: Feature): string[] {
     case "combine":
       return feature.keepTools ? [feature.target] : [feature.target, ...feature.tools];
     case "sketch":
+    case "panels":
     case "cabinet":
       return [];
   }
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "cabinet"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

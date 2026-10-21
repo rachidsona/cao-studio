@@ -5,12 +5,13 @@ import type { EdgePick, FacePick, ModelSelection, VertexPick } from "../viewport
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
 import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
+import { PanelsTool } from "./panels-tool";
 import { CabinetTool } from "./cabinet-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "cabinet";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -21,7 +22,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "cabinet"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -37,7 +38,7 @@ export interface ToolOptions {
 export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, picked: { lastFace: FacePick | undefined; selection: ModelSelection }): ToolOptions {
   const { edges, faces, vertices, bodies } = picked.selection;
   return {
-    ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move")) ? { sketchId: selected.id } : {}),
+    ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...(kind === "hole" && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
     ...((kind === "combine" || kind === "split" || kind === "move") && bodies.length ? { bodies } : {}),
@@ -86,6 +87,9 @@ export class ToolLauncher {
         return;
       case "cabinet":
         this.active = new CabinetTool(ctx, editing?.type === "cabinet" ? editing : null);
+        break;
+      case "panels":
+        this.active = new PanelsTool(ctx, editing?.type === "panels" ? editing : null, options.sketchId);
         break;
       case "revolve":
         this.active = new RevolveTool(ctx, editing?.type === "revolve" ? editing : null, options.sketchId);

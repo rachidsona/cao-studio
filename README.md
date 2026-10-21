@@ -284,6 +284,16 @@ opération existante.
     dessous toute largeur. Les pièces ne partagent jamais de matière.
   - Un nouveau caisson se place à droite des corps existants, sur le même sol et le même alignement avant
     (position X, Y, Z modifiable : coin avant gauche en bas). Il se modifie depuis l'historique ou les Propriétés.
+- **Panneaux** (groupe « Menuiserie », comme la conception de squelette de JoinerCAD) : on dessine le squelette
+  du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
+  étagère), puis chaque ligne devient une planche, un corps à part.
+  - *Épaisseur* (18 mm par défaut) et *profondeur* (le long de la normale de l'esquisse, signée) ;
+  - *Côté* : sur le contour, les planches vont vers l'intérieur (les traits sont les cotes extérieures), sont
+    centrées sur les traits, ou vont vers l'extérieur ; une ligne intérieure (étagère) est toujours centrée ;
+  - *Aux coins* : les montants passent (dessus, dessous et étagères s'arrêtent entre eux) ou l'inverse ; les
+    planches ne partagent jamais de matière ;
+  - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
+    Propriétés, et suit l'esquisse quand on la modifie.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :

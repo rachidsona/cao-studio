@@ -14,6 +14,7 @@ import { applyOperation, MIN_LENGTH, planeOrigin, profileDrawing, requirePositiv
 import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
 import { buildChamfer, buildCombine, buildFaceExtrude, buildFillet, buildRevolve } from "./solids";
 import { buildMove } from "./move";
+import { buildPanels } from "./panels";
 import { buildCabinet } from "./cabinet";
 import { buildSplit } from "./split";
 
@@ -154,6 +155,8 @@ export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOut
       return buildSplit(feature, lookup);
     case "move":
       return buildMove(feature, lookup);
+    case "panels":
+      return buildPanels(feature, lookup);
     case "cabinet":
       return buildCabinet(feature);
   }

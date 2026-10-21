@@ -16,6 +16,7 @@ export const TYPE_LABELS: Record<NavType, string> = {
   offset: "Décalage",
   split: "Scission",
   move: "Déplacement",
+  panels: "Panneaux",
   cabinet: "Caisson",
 };
 
@@ -30,6 +31,7 @@ export const TYPE_ICONS: Record<NavType, string> = {
   offset: "⇉",
   split: "✂",
   move: "✥",
+  panels: "▤",
   cabinet: "▥",
 };
 

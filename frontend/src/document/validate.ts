@@ -118,6 +118,12 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
       break;
+    case "panels":
+      if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse squelette manquante.`);
+      checkNumbers(feature, ["thickness", "depth"], where, errors);
+      if (!["inside", "center", "outside"].includes(feature.align as string)) errors.push(`${where} : côté des panneaux invalide.`);
+      if (!["vertical", "horizontal"].includes(feature.through as string)) errors.push(`${where} : priorité aux coins invalide.`);
+      break;
     case "move":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à déplacer manquant.`);
       if (!isVec3(feature.translate)) errors.push(`${where} : déplacement invalide (trois nombres attendus).`);
