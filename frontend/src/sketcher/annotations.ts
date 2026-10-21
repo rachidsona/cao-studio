@@ -10,6 +10,7 @@ import { AXIS_X, AXIS_Y, ORIGIN, isDimension, type DimensionConstraint, type Ske
 import type { DisplayUnit } from "../document/types";
 import { toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { findCurve, measure, pointPos, type Vec2 } from "./edit";
+import { connectedChain } from "./offset";
 import type { Preview } from "./tools";
 
 export type AnnotationShape =
@@ -411,4 +412,64 @@ export function previewAnnotations(preview: Preview | null, unit: DisplayUnit): 
     });
   }
   return out;
+}
+
+/** The line a length-like dimension measures: its line, or the line whose two ends it spans. */
+function measuredLine(g: SketchGeometry, d: DimensionSpec): string | null {
+  if (d.kind === "length") return d.line;
+  if (d.kind !== "distance" && d.kind !== "distanceX" && d.kind !== "distanceY") return null;
+  const ends = new Set([d.a, d.b]);
+  return g.curves.find((c) => c.kind === "line" && ends.has(c.p1) && ends.has(c.p2))?.id ?? null;
+}
+
+/**
+ * The dimension that comes after `current` when the keypad goes to the next one (→, Tab, ↓), as Fusion
+ * goes from the width of a rectangle to its height: the next side of the same contour that is not
+ * parallel to the measured one. Its existing dimension (on it or on a side parallel to it) is edited;
+ * without one, a length dimension is proposed with its current length. Null when there is no such side.
+ */
+export function nextSideDimension(
+  g: SketchGeometry,
+  current: DimensionSpec,
+): { dimensionId: string; value: number } | { spec: DimensionSpec; value: number } | null {
+  const line = measuredLine(g, current);
+  if (!line) return null;
+  const vector = (id: string): Vec2 | null => {
+    const c = findCurve(g, id);
+    if (c?.kind !== "line") return null;
+    const [a, b] = [pointPos(g, c.p1), pointPos(g, c.p2)];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return l > 1e-9 ? [(b[0] - a[0]) / l, (b[1] - a[1]) / l] : null;
+  };
+  const parallel = (u: Vec2, v: Vec2) => Math.abs(u[0] * v[1] - u[1] * v[0]) < 0.2;
+  const v0 = vector(line);
+  if (!v0) return null;
+  const chain = connectedChain(g, line);
+  const across = chain.filter((id) => {
+    const v = vector(id);
+    return v !== null && !parallel(v0, v);
+  });
+  // The side that continues from the end of the measured one (a rectangle drawn corner to corner: width, then height).
+  const measured = findCurve(g, line);
+  const touches = (id: string, point: string | undefined) => {
+    const c = findCurve(g, id);
+    return !!point && c?.kind === "line" && (c.p1 === point || c.p2 === point);
+  };
+  const end = measured?.kind === "line" ? measured.p2 : undefined;
+  const begin = measured?.kind === "line" ? measured.p1 : undefined;
+  const next = across.find((id) => touches(id, end)) ?? across.find((id) => touches(id, begin)) ?? across[0];
+  if (!next) return null;
+  const vn = vector(next) as Vec2;
+  const family = new Set(chain.filter((id) => {
+    const v = vector(id);
+    return v !== null && parallel(vn, v);
+  }));
+  const existing = g.constraints.find((c): c is DimensionConstraint => {
+    if (!isDimension(c)) return false;
+    const measured = measuredLine(g, c);
+    return measured !== null && family.has(measured);
+  });
+  if (existing) return { dimensionId: existing.id, value: existing.value };
+  const spec = { kind: "length", line: next } as DimensionSpec;
+  return { spec, value: Number(measure(g, { ...spec, id: "", value: 0 } as DimensionConstraint).toFixed(6)) };
 }

@@ -189,6 +189,10 @@ serveur accepte les deux versions.
   points, point et ligne, deux cercles). Leur mesure apparaît (distance, distance entre lignes
   parallèles, angle, entraxe) ; un clic dessus la transforme en cote. Hors de cet outil, cliquer une
   ligne la sélectionne seulement.
+- **Cote suivante** (comme Fusion) : dans le pavé de saisie d'une cote de longueur, le bouton « Cote suivante → »,
+  Tab ou les flèches ↑ ↓ valident la valeur et ouvrent aussitôt la cote du côté suivant du contour (la largeur
+  d'un rectangle, puis sa hauteur). Si ce côté, ou son côté opposé, a déjà une cote, c'est elle qui est
+  modifiée ; sinon une cote de longueur est proposée avec la longueur actuelle.
 - **Symboles de contraintes** (H, V, ∥…) : masqués par défaut, affichés avec le bouton
   « Contraintes ». Une contrainte en conflit reste toujours visible en rouge.
 - Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.

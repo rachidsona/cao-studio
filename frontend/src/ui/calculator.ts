@@ -21,6 +21,11 @@ export interface CalculatorOptions {
   allowNegative?: boolean;
   /** Receives the value (mm or degrees); returns false when it was refused (popup stays open). */
   onSubmit(value: number, locked: boolean): boolean;
+  /**
+   * Validates and goes to the next value (the other side of a rectangle…), from the → key, Tab or the
+   * up/down arrows; returns false when the value was refused (popup stays open).
+   */
+  onNext?(value: number, locked: boolean): boolean;
   onClose?(): void;
 }
 
@@ -73,11 +78,15 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     input.focus();
   };
 
-  const submit = () => {
+  const submit = (next = false) => {
     try {
       const value = evaluateExpression(input.value, o.unit);
       if (!o.allowNegative && value <= 0) throw new ExpressionError("La valeur doit être positive.");
-      if (o.onSubmit(value, locked)) handle.close();
+      // "Next" opens the following value's keypad itself (which replaces this one).
+      if (next && o.onNext) {
+        if (!o.onNext(value, locked)) showError("Valeur refusée : l'esquisse ne peut pas la respecter.");
+        else if (current === handle) handle.close();
+      } else if (o.onSubmit(value, locked)) handle.close();
       else showError("Valeur refusée : l'esquisse ne peut pas la respecter.");
     } catch (e) {
       showError(e instanceof Error ? e.message : String(e));
@@ -102,7 +111,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     return b;
   };
   const units = o.unit === "deg" ? ["deg"] : ["mm", "cm", "m"];
-  const ok = key("✓", submit, "row-span-2 h-auto bg-rose-500 text-xl hover:bg-rose-400 active:bg-rose-600", "Valider");
+  const ok = key("✓", () => submit(), "row-span-2 h-auto bg-rose-500 text-xl hover:bg-rose-400 active:bg-rose-600", "Valider");
 
   const popup = el(
     "div",
@@ -145,6 +154,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
       key(",", () => insert(",")),
       key("+", () => insert("+"), "", "Ajouter"),
     ),
+    o.onNext ? key("Cote suivante →", () => submit(true), "h-9 w-full text-sm", "Valider et passer à la cote suivante (Tab, ↑ ↓)") : null,
   );
   // Keep viewport gestures from reacting to taps on the keypad.
   popup.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -153,6 +163,9 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     if (event.key === "Enter") {
       event.preventDefault();
       submit();
+    } else if (o.onNext && (event.key === "Tab" || event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      event.preventDefault();
+      submit(true);
     } else if (event.key === "Escape") {
       event.preventDefault();
       handle.close();

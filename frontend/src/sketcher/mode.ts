@@ -16,6 +16,7 @@ import {
   existingDimension,
   measureAnnotations,
   matchingDimension,
+  nextSideDimension,
   pairAnnotation,
   placementOffset,
   selectionSpec,
@@ -685,6 +686,14 @@ export class SketchMode implements PointerHandler {
       locked: true,
       allowNegative: target.signed,
       onSubmit: (value, locked) => this.applyValue(target, value, locked),
+      // As in Fusion: the value is applied, then the other side of the contour is asked for (width, then height…).
+      onNext: (value, locked) => {
+        const spec = target.spec ?? (target.dimensionId ? this.geometry.constraints.find((c) => c.id === target.dimensionId) : undefined);
+        if (!this.applyValue(target, value, locked)) return false;
+        const next = spec && !target.angle ? nextSideDimension(this.geometry, spec as DimensionSpec) : null;
+        if (next) this.editValue({ ...next, angle: false, signed: false, title: "Cote" }, anchor);
+        return true;
+      },
     });
   }
 
