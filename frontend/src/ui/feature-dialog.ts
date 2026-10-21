@@ -15,7 +15,7 @@ export interface FeatureDialogActions {
 }
 
 const BUTTON =
-  "h-9 rounded-md border border-gray-300 px-3 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+  "h-7 flex-1 rounded border border-gray-300 px-2 text-xs font-medium whitespace-nowrap hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
 export class FeatureDialog {
   private root: HTMLElement | null = null;
@@ -45,8 +45,8 @@ export class FeatureDialog {
     this.current = item;
     this.root = el("div", {
       class:
-        "absolute z-40 w-72 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-2xl " +
-        "dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 max-sm:right-2 max-sm:left-2 max-sm:w-auto",
+        "absolute z-40 w-52 rounded-md border border-gray-300 bg-white text-xs text-gray-900 shadow-xl " +
+        "dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100",
       role: "dialog",
       "aria-label": `${item.body ? "Corps" : TYPE_LABELS[item.type]} ${item.name}`,
     });
@@ -79,7 +79,7 @@ export class FeatureDialog {
     const root = this.root;
     if (!root) return;
     const box = this.host.getBoundingClientRect();
-    const width = root.offsetWidth || 288;
+    const width = root.offsetWidth || 208;
     const left = Math.max(8, Math.min(anchor.left - box.left, box.width - width - 8));
     root.style.left = `${left}px`;
     // Above the anchor when it is in the lower half (timeline), below it otherwise (browser).
@@ -91,13 +91,13 @@ export class FeatureDialog {
     const root = this.root;
     if (!root) return;
     const badge = STATE_BADGES[item.state];
-    const close = el("button", { type: "button", class: "ml-auto size-7 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
+    const close = el("button", { type: "button", class: "ml-auto size-5 rounded text-[11px] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
     close.addEventListener("click", () => this.close());
 
     const name = el("input", {
       type: "text",
       class:
-        "h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-gray-600 dark:bg-gray-950",
+        "h-7 w-full rounded border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-gray-600 dark:bg-gray-950",
       value: item.name,
       maxlength: "80",
       "aria-label": "Nom",
@@ -120,7 +120,7 @@ export class FeatureDialog {
     // A body has no tool of its own: its operations are edited from the timeline.
     const edit = item.body
       ? null
-      : el("button", { type: "button", class: `${BUTTON} flex-1 border-sky-600 bg-sky-600 text-white hover:bg-sky-700 dark:hover:bg-sky-700` }, item.type === "sketch" ? "✎ Modifier l'esquisse" : "✎ Modifier");
+      : el("button", { type: "button", class: `${BUTTON} border-sky-600 bg-sky-600 text-white hover:bg-sky-700 dark:hover:bg-sky-700` }, "Modifier");
     edit?.addEventListener("click", () => {
       this.close();
       this.actions.edit(item);
@@ -130,7 +130,7 @@ export class FeatureDialog {
         ? null
         : el("button", { type: "button", class: BUTTON }, item.suppressed ? "Réactiver" : "Désactiver");
     suppress?.addEventListener("click", () => this.actions.toggleSuppress(item));
-    const remove = el("button", { type: "button", class: `${BUTTON} text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950` }, item.body ? "Supprimer le corps" : "Supprimer");
+    const remove = el("button", { type: "button", class: `${BUTTON} text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950` }, "Supprimer");
     remove.addEventListener("click", () => {
       this.close();
       this.actions.remove(item);
@@ -139,18 +139,18 @@ export class FeatureDialog {
     root.replaceChildren(
       el(
         "div",
-        { class: "flex items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-700" },
+        { class: "flex items-center gap-1.5 border-b border-gray-200 px-2 py-1 dark:border-gray-700" },
         el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, item.body ? "◼" : TYPE_ICONS[item.type]),
-        el("h2", { class: "text-xs font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
-        el("span", { class: `size-2.5 rounded-full ${badge.dot}`, title: badge.label, "aria-label": badge.label }),
+        el("h2", { class: "text-[10px] font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
+        el("span", { class: `size-2 rounded-full ${badge.dot}`, title: badge.label, "aria-label": badge.label }),
         close,
       ),
       el(
         "div",
-        { class: "space-y-2 px-3 py-3" },
-        el("label", { class: "block text-xs text-gray-600 dark:text-gray-300" }, "Nom", el("div", { class: "pt-1" }, name)),
+        { class: "space-y-1.5 p-2" },
+        name,
         item.message ? el("p", { class: "rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, item.message) : null,
-        el("div", { class: "flex flex-wrap gap-1.5 pt-1" }, edit, suppress, remove),
+        el("div", { class: "flex gap-1" }, edit, suppress, remove),
       ),
     );
   }
