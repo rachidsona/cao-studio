@@ -112,6 +112,12 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       } else errors.push(`${where} : outil de coupe inconnu.`);
       break;
     }
+    case "cabinet":
+      if (!isVec3(feature.origin)) errors.push(`${where} : position du caisson invalide.`);
+      checkNumbers(feature, ["width", "height", "depth", "thickness", "backThickness", "shelves", "plinth"], where, errors);
+      if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
+      if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
+      break;
     case "move":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à déplacer manquant.`);
       if (!isVec3(feature.translate)) errors.push(`${where} : déplacement invalide (trois nombres attendus).`);

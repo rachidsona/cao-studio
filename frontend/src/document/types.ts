@@ -179,7 +179,33 @@ export interface MoveFeature extends FeatureBase {
   translate: Vec3;
 }
 
+/**
+ * Parametric cabinet (kitchen unit, wardrobe, cupboard): its parts (sides,
+ * bottom, top, back, shelves) are separate bodies ("<id>#<n>") built from
+ * the outer dimensions. Origin: front-left-bottom corner; X width, Y depth
+ * (towards the back), Z height.
+ */
+export interface CabinetFeature extends FeatureBase {
+  type: "cabinet";
+  origin: Vec3;
+  width: number;
+  height: number;
+  depth: number;
+  /** Board thickness of the carcass (mm). */
+  thickness: number;
+  /** Back panel: none, screwed on the back (full size), or inset between the sides. */
+  back: "none" | "applied" | "inset";
+  backThickness: number;
+  /** Number of shelves, evenly spaced. */
+  shelves: number;
+  /** Height of the plinth under the bottom (0: none). */
+  plinth: number;
+  /** Sides run full height, or top and bottom run full width. */
+  construction: "sides-through" | "top-bottom-through";
+}
+
 export type Feature =
+  | CabinetFeature
   | MoveFeature
   | SplitFeature
   | SketchFeature
@@ -241,6 +267,8 @@ export function featureInputs(feature: Feature): string[] {
       return feature.target && feature.operation !== "new" ? [feature.sketch ?? "", feature.target] : [feature.sketch ?? ""];
     case "revolve":
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];
+    case "cabinet":
+      return [];
     case "hole":
     case "fillet":
     case "chamfer":
@@ -275,12 +303,13 @@ export function consumedBodies(feature: Feature): string[] {
     case "combine":
       return feature.keepTools ? [feature.target] : [feature.target, ...feature.tools];
     case "sketch":
+    case "cabinet":
       return [];
   }
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "cabinet"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

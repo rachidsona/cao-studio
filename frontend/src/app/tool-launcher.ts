@@ -5,11 +5,12 @@ import type { EdgePick, FacePick, ModelSelection, VertexPick } from "../viewport
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
 import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
+import { CabinetTool } from "./cabinet-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "cabinet";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -20,7 +21,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "cabinet"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -83,6 +84,9 @@ export class ToolLauncher {
       case "move":
         void this.openMove(ctx, editing, options);
         return;
+      case "cabinet":
+        this.active = new CabinetTool(ctx, editing?.type === "cabinet" ? editing : null);
+        break;
       case "revolve":
         this.active = new RevolveTool(ctx, editing?.type === "revolve" ? editing : null, options.sketchId);
         break;

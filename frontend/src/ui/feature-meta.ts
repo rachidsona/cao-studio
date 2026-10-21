@@ -16,6 +16,7 @@ export const TYPE_LABELS: Record<NavType, string> = {
   offset: "Décalage",
   split: "Scission",
   move: "Déplacement",
+  cabinet: "Caisson",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -29,6 +30,7 @@ export const TYPE_ICONS: Record<NavType, string> = {
   offset: "⇉",
   split: "✂",
   move: "✥",
+  cabinet: "▥",
 };
 
 export const STATE_BADGES: Record<FeatureState, { label: string; dot: string }> = {

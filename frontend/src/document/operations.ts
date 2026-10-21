@@ -2,6 +2,7 @@
  * Pure edits of the parametric history. Each function returns a new document
  * and never mutates its input, so every edit can be undone.
  */
+import { cabinetPartNames } from "../features/cabinet-parts";
 import { rectangleAt } from "./sketch";
 import {
   cloneDocument,
@@ -166,6 +167,7 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
   if (isPiece(origin)) {
     const split = findFeature(doc, featureOfBody(origin));
     const n = Number(origin.slice(featureOfBody(origin).length + PART_SEPARATOR.length)) + 1;
+    if (split?.type === "cabinet") return `${split.name} — ${cabinetPartNames(split)[n - 1] ?? `pièce ${n}`}`;
     return `${split?.type === "split" ? bodyLabel(doc, split.target) : featureOfBody(origin)} — pièce ${n}`;
   }
   const origins = doc.features.filter((f) => SOLID_FEATURES.has(f.type) && consumedBodies(f).length === 0).map((f) => f.id);

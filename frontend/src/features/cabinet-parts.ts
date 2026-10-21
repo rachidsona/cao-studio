@@ -1,0 +1,67 @@
+/**
+ * Parts of a parametric cabinet as boxes (pure geometry, no kernel: also used
+ * to name its bodies). See cabinet.ts for the construction rules.
+ */
+import type { CabinetFeature, Vec3 } from "../document/types";
+
+/** Smallest dimension accepted (mm), as the modeller's. */
+const MIN_LENGTH = 1e-3;
+
+/** One part of the cabinet: its name and its box (two opposite corners, mm). */
+export interface CabinetPart {
+  name: string;
+  from: Vec3;
+  to: Vec3;
+}
+
+type Dimensions = Pick<CabinetFeature, "width" | "height" | "depth" | "thickness" | "back" | "backThickness" | "shelves" | "plinth">;
+
+/** Why these dimensions cannot make a cabinet, or null. */
+export function cabinetProblem(f: Dimensions): string | null {
+  const values = [f.width, f.height, f.depth, f.thickness, f.backThickness, f.plinth, f.shelves];
+  if (!values.every(Number.isFinite)) return "Une cote du caisson n'est pas un nombre.";
+  if (!Number.isInteger(f.shelves) || f.shelves < 0) return "Le nombre d'étagères doit être un entier positif ou nul.";
+  if (f.thickness < MIN_LENGTH || f.width <= 2 * f.thickness) return "La largeur doit dépasser deux épaisseurs de panneau.";
+  if (f.plinth < 0) return "Le socle ne peut pas être négatif.";
+  if (f.height - f.plinth - 2 * f.thickness <= f.shelves * f.thickness) return "La hauteur est trop faible pour le socle, le dessus, le dessous et les étagères.";
+  if (f.back !== "none" && f.backThickness < MIN_LENGTH) return "L'épaisseur du fond doit être positive.";
+  if (f.depth <= (f.back === "none" ? 0 : f.backThickness) + MIN_LENGTH) return "La profondeur doit dépasser l'épaisseur du fond.";
+  return null;
+}
+
+/** The parts of a cabinet, in a fixed order (their bodies are numbered in this order); none when its dimensions are impossible. */
+export function cabinetParts(f: CabinetFeature): CabinetPart[] {
+  if (cabinetProblem(f)) return [];
+  const [ox, oy, oz] = f.origin;
+  const { width: W, height: H, depth: D, thickness: t, plinth: p } = f;
+  const bt = f.back === "none" ? 0 : f.backThickness;
+  // A screwed-on back makes the whole carcass shallower; an inset one only the boards in front of it.
+  const sideDepth = f.back === "applied" ? D - bt : D;
+  const boardDepth = D - bt;
+  const sidesThrough = f.construction === "sides-through";
+  const parts: CabinetPart[] = [];
+  const box = (name: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) =>
+    parts.push({ name, from: [ox + x0, oy + y0, oz + z0], to: [ox + x1, oy + y1, oz + z1] });
+
+  const [sz0, sz1] = sidesThrough ? [0, H] : [p + t, H - t];
+  box("Côté gauche", 0, t, 0, sideDepth, sz0, sz1);
+  box("Côté droit", W - t, W, 0, sideDepth, sz0, sz1);
+  const [hx0, hx1] = sidesThrough ? [t, W - t] : [0, W];
+  box("Dessous", hx0, hx1, 0, boardDepth, p, p + t);
+  box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
+  if (f.back === "applied") box("Fond", 0, W, D - bt, D, p, H);
+  else if (f.back === "inset") box("Fond", t, W - t, D - bt, D, p + t, H - t);
+  // Shelves evenly spaced in the inner height.
+  const z0 = p + t;
+  const gap = (H - t - z0 - f.shelves * t) / (f.shelves + 1);
+  for (let i = 0; i < f.shelves; i++) {
+    const z = z0 + gap * (i + 1) + t * i;
+    box(`Étagère ${i + 1}`, t, W - t, 0, boardDepth, z, z + t);
+  }
+  return parts;
+}
+
+/** Names of the bodies of a cabinet, in body order. */
+export function cabinetPartNames(f: CabinetFeature): string[] {
+  return cabinetParts(f).map((p) => p.name);
+}

@@ -2,7 +2,7 @@
  * Properties panel: numeric editing of the selected feature (values typed in
  * the display unit, stored in mm) plus measurements of bodies and faces.
  */
-import type { ChamferFeature, CombineFeature, MoveFeature, SplitFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
+import type { CabinetFeature, ChamferFeature, CombineFeature, MoveFeature, SplitFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
 import type { BodyMetrics } from "../geometry/kernel";
 import type { SelectionSummary } from "../app/model-selection";
 import { selectionSection, type SelectionActions } from "./selection-panel";
@@ -152,6 +152,22 @@ function splitSection(feature: SplitFeature, ctx: PropertiesContext): HTMLElemen
   );
 }
 
+function cabinetSection(feature: CabinetFeature, ctx: PropertiesContext): HTMLElement {
+  const patch = (update: Partial<CabinetFeature>) => ctx.onCommit((f) => (f.type === "cabinet" ? { ...f, ...update } : f));
+  const length = (label: string, key: "width" | "height" | "depth" | "thickness") =>
+    numberField({ label, value: feature[key], unit: ctx.unit, onCommit: (v) => patch({ [key]: v } as Partial<CabinetFeature>) });
+  return section(
+    "Caisson",
+    editButton(ctx),
+    nameField(feature, ctx),
+    length("Largeur", "width"),
+    length("Hauteur", "height"),
+    length("Profondeur", "depth"),
+    length("Épaisseur", "thickness"),
+    selectField("Étagères", String(feature.shelves), Array.from({ length: 11 }, (_, n): [string, string] => [String(n), String(n)]), (v) => patch({ shelves: Number(v) })),
+  );
+}
+
 function moveSection(feature: MoveFeature, ctx: PropertiesContext): HTMLElement {
   const patch = (i: number, value: number) =>
     ctx.onCommit((f) => (f.type === "move" ? { ...f, translate: f.translate.map((x, k) => (k === i ? value : x)) as MoveFeature["translate"] } : f));
@@ -195,6 +211,7 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
   else if (feature?.type === "combine") sections.push(combineSection(feature, ctx));
   else if (feature?.type === "split") sections.push(splitSection(feature, ctx));
   else if (feature?.type === "move") sections.push(moveSection(feature, ctx));
+  else if (feature?.type === "cabinet") sections.push(cabinetSection(feature, ctx));
 
   if (ctx.status?.state === "error" || ctx.status?.state === "blocked") {
     sections.unshift(

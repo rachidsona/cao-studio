@@ -274,6 +274,16 @@ opération existante.
     OK reste désactivé tant qu'il échoue. Un déplacement se modifie, se supprime (les perçages, extrusions et
     déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres
     opérations.
+- **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
+  corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
+  - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
+    penderie 1000 × 2400, placard 800 × 2000 ; tout reste modifiable.
+  - *Largeur, hauteur, profondeur, épaisseur* ; *socle* (le dessous est relevé, les côtés descendent au sol) ;
+    *étagères* (0 à 10, réparties également) ; *fond* vissé derrière (taille extérieure, le caisson est moins
+    profond d'autant), encastré entre les côtés, ou sans fond ; *construction* côtés toute hauteur ou dessus et
+    dessous toute largeur. Les pièces ne partagent jamais de matière.
+  - Un nouveau caisson se place à droite des corps existants, sur le même sol et le même alignement avant
+    (position X, Y, Z modifiable : coin avant gauche en bas). Il se modifie depuis l'historique ou les Propriétés.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :
