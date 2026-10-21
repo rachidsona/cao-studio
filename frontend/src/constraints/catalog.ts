@@ -40,6 +40,12 @@ export interface Command {
   /** Short glyph shown on the toolbar button. */
   glyph: string;
   dimension?: boolean;
+  /**
+   * Started with nothing (or the wrong things) selected, the command waits for clicks, as in Fusion:
+   * what a click may pick, and what to tell the user to click.
+   */
+  accepts: EntityKind[];
+  pick: string;
   applies(sel: Selection): boolean;
   build(sel: Selection, g: SketchGeometry): NewConstraint[];
 }
@@ -60,6 +66,8 @@ export const COMMANDS: Command[] = [
     id: "coincident",
     label: "Coïncidence",
     glyph: "⦿",
+    accepts: ["point"],
+    pick: "cliquez deux points",
     applies: (s) => only(s, 2, 0, 0),
     build: (s, g) => {
       const [a, b] = s.points as [string, string];
@@ -76,6 +84,8 @@ export const COMMANDS: Command[] = [
     id: "horizontal",
     label: "Horizontale",
     glyph: "H",
+    accepts: ["line"],
+    pick: "cliquez une ligne",
     applies: (s) => s.lines.length > 0 && count(s) === s.lines.length && !s.lines.some((l) => l === AXIS_X || l === AXIS_Y),
     build: (s) => s.lines.map((line) => ({ kind: "horizontal", line }) as NewConstraint),
   },
@@ -83,6 +93,8 @@ export const COMMANDS: Command[] = [
     id: "vertical",
     label: "Verticale",
     glyph: "V",
+    accepts: ["line"],
+    pick: "cliquez une ligne",
     applies: (s) => s.lines.length > 0 && count(s) === s.lines.length && !s.lines.some((l) => l === AXIS_X || l === AXIS_Y),
     build: (s) => s.lines.map((line) => ({ kind: "vertical", line }) as NewConstraint),
   },
@@ -90,6 +102,8 @@ export const COMMANDS: Command[] = [
     id: "parallel",
     label: "Parallèle",
     glyph: "∥",
+    accepts: ["line"],
+    pick: "cliquez deux lignes",
     applies: (s) => only(s, 0, 2, 0),
     build: (s) => [{ kind: "parallel", a: s.lines[0], b: s.lines[1] } as NewConstraint],
   },
@@ -97,6 +111,8 @@ export const COMMANDS: Command[] = [
     id: "perpendicular",
     label: "Perpendiculaire",
     glyph: "⟂",
+    accepts: ["line"],
+    pick: "cliquez deux lignes",
     applies: (s) => only(s, 0, 2, 0),
     build: (s) => [{ kind: "perpendicular", a: s.lines[0], b: s.lines[1] } as NewConstraint],
   },
@@ -104,6 +120,8 @@ export const COMMANDS: Command[] = [
     id: "tangent",
     label: "Tangence",
     glyph: "◠",
+    accepts: ["line", "circle", "arc"],
+    pick: "cliquez une ligne et un cercle ou un arc, ou deux arcs",
     applies: (s) => s.points.length === 0 && count(s) === 2 && roundCurves(s).length >= 1,
     build: (s) => [{ kind: "tangent", a: s.order[0], b: s.order[1] } as NewConstraint],
   },
@@ -111,6 +129,8 @@ export const COMMANDS: Command[] = [
     id: "equal",
     label: "Égalité",
     glyph: "=",
+    accepts: ["line", "circle", "arc"],
+    pick: "cliquez deux lignes, ou deux cercles ou arcs",
     applies: (s) => s.points.length === 0 && count(s) >= 2 && (s.lines.length === count(s) || roundCurves(s).length === count(s)),
     build: (s) => anyCurve(s).slice(1).map((b) => ({ kind: "equal", a: anyCurve(s)[0], b }) as NewConstraint),
   },
@@ -118,6 +138,8 @@ export const COMMANDS: Command[] = [
     id: "symmetric",
     label: "Symétrie",
     glyph: "⋈",
+    accepts: ["point", "line"],
+    pick: "cliquez deux points, puis la ligne (ou le point) de symétrie",
     applies: (s) => count(s) === 3 && (only(s, 2, 1, 0) || only(s, 3, 0, 0)),
     build: (s) => {
       const axis = s.lines[0] ?? (s.points[2] as string);
@@ -129,6 +151,8 @@ export const COMMANDS: Command[] = [
     id: "concentric",
     label: "Concentricité",
     glyph: "◎",
+    accepts: ["circle", "arc"],
+    pick: "cliquez deux cercles ou arcs",
     applies: (s) => only(s, 0, 0, 2),
     build: (s) => [{ kind: "concentric", a: roundCurves(s)[0], b: roundCurves(s)[1] } as NewConstraint],
   },
@@ -136,6 +160,8 @@ export const COMMANDS: Command[] = [
     id: "fix",
     label: "Fixer",
     glyph: "⚓",
+    accepts: ["point"],
+    pick: "cliquez un point",
     applies: (s) => s.points.length > 0 && count(s) === s.points.length && !s.points.includes(ORIGIN),
     build: (s, g) =>
       s.points.map((point) => {
@@ -147,6 +173,8 @@ export const COMMANDS: Command[] = [
     id: "pointOnCurve",
     label: "Point sur courbe",
     glyph: "⊸",
+    accepts: ["point", "line", "circle", "arc"],
+    pick: "cliquez un point et une courbe",
     applies: (s) => s.points.length === 1 && count(s) === 2,
     build: (s) => [{ kind: "pointOnCurve", point: s.points[0], curve: anyCurve(s)[0] } as NewConstraint],
   },
@@ -154,6 +182,8 @@ export const COMMANDS: Command[] = [
     id: "midpoint",
     label: "Milieu",
     glyph: "◇",
+    accepts: ["point", "line"],
+    pick: "cliquez un point et une ligne",
     applies: (s) => only(s, 1, 1, 0) && s.lines[0] !== AXIS_X && s.lines[0] !== AXIS_Y,
     build: (s) => [{ kind: "midpoint", point: s.points[0], line: s.lines[0] } as NewConstraint],
   },
@@ -162,6 +192,8 @@ export const COMMANDS: Command[] = [
     label: "Cote",
     glyph: "↔",
     dimension: true,
+    accepts: ["point", "line", "circle", "arc"],
+    pick: "cliquez un ou deux éléments",
     applies: (s) => count(s) === 2 || only(s, 0, 1, 0) || only(s, 0, 0, 1) || only(s, 1, 0, 0),
     build: (s, g) => {
       if (count(s) === 2) {
@@ -184,6 +216,8 @@ export const COMMANDS: Command[] = [
     label: "Cote horizontale",
     glyph: "⇿",
     dimension: true,
+    accepts: ["point"],
+    pick: "cliquez deux points",
     applies: (s) => only(s, 2, 0, 0),
     build: (s, g) => [dimension({ kind: "distanceX", a: s.points[0], b: s.points[1] } as never, g)],
   },
@@ -192,6 +226,8 @@ export const COMMANDS: Command[] = [
     label: "Cote verticale",
     glyph: "↕",
     dimension: true,
+    accepts: ["point"],
+    pick: "cliquez deux points",
     applies: (s) => only(s, 2, 0, 0),
     build: (s, g) => [dimension({ kind: "distanceY", a: s.points[0], b: s.points[1] } as never, g)],
   },

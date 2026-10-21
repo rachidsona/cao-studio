@@ -149,7 +149,10 @@ serveur accepte les deux versions.
   Le déplacement d'un point à la souris s'accroche aussi.
 - **Contraintes** : coïncidence, horizontale, verticale, parallèle, perpendiculaire, tangence, égalité,
   symétrie (par rapport à un point ou une ligne), concentricité, fixation, point sur courbe, milieu.
-  Seules celles qui s'appliquent à la sélection en cours sont actives.
+  Toutes sont toujours disponibles, comme dans Fusion : avec la bonne sélection, la contrainte
+  s'applique aussitôt ; sinon elle attend les clics (« Horizontale : cliquez une ligne » dans la barre d'état,
+  seuls les éléments qui conviennent se laissent choisir), s'applique dès que tout est choisi, puis attend
+  les suivants ; Échap arrête et revient à la Sélection.
 - **Coïncidence** (⦿) : deux points exactement au même endroit, par le solveur (planegcs), pas par un
   simple rapprochement visuel. Elle s'applique à deux points quelconques : extrémités de lignes et
   d'arcs, centres de cercles et d'arcs, points de construction, origine.

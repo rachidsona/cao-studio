@@ -228,7 +228,12 @@ export class SketchController {
         const selectedCurves = mode ? [...mode.selection].filter((s) => findCurve(mode.geometry, s)).length : 0;
         button.setAttribute("aria-pressed", String(!!mode?.construction && selectedCurves === 0));
       } else if (id === "delete") button.disabled = !mode || mode.selection.size === 0;
-      else if (id !== "finish" && id !== "extrude" && id !== "fit" && id !== "glyphs") button.disabled = !applicable.has(id);
+      else if (id !== "finish" && id !== "extrude" && id !== "fit" && id !== "glyphs") {
+        // Constraints are always available (as in Fusion): with the right selection they apply at once,
+        // otherwise they wait for the clicks (the waiting one shows pressed).
+        button.disabled = !mode;
+        button.setAttribute("aria-pressed", String(mode?.waitingCommand === id));
+      }
     }
     const hint = ref(this.root, "status-hint");
     hint.textContent = mode ? mode.hint : "";
@@ -252,7 +257,7 @@ export class SketchController {
       return true;
     }
     if (event.key === "Escape") {
-      // Échap first leaves the tool (drawing, Prolonger), then the selection, then the sketch.
+      // Échap first leaves the tool (drawing, Prolonger, a waiting constraint, Cote), then the selection, then the sketch.
       if (mode.toolActive || mode.selection.size) mode.cancel();
       else this.finish();
       return true;

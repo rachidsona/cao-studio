@@ -89,6 +89,8 @@ export class SketchMode implements PointerHandler {
   private dimensionMode = false;
   /** "Prolonger": hovering an end of a line or an arc previews its extension, a click makes it. */
   private extendMode = false;
+  /** A constraint chosen with nothing (or the wrong things) selected: it waits for the clicks, as in Fusion. */
+  private pendingCommand: string | null = null;
   /** "Décalage" tool, while it is open. */
   private offset: OffsetTool | null = null;
   /** "Déplacer" tool, while it is open. */
@@ -177,7 +179,12 @@ export class SketchMode implements PointerHandler {
 
   /** A tool other than the selection is active (Échap returns to the selection before leaving the sketch). */
   get toolActive(): boolean {
-    return this.tool !== null || this.extendMode;
+    return this.tool !== null || this.extendMode || this.pendingCommand !== null || this.dimensionMode;
+  }
+
+  /** The constraint waiting for its elements, if any (its button shows pressed). */
+  get waitingCommand(): string | null {
+    return this.pendingCommand;
   }
 
   get toolName(): ToolName | "dimension" | "offset" | "move" | "extend" {
@@ -190,6 +197,8 @@ export class SketchMode implements PointerHandler {
 
   get hint(): string {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
+    const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
+    if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
     if (this.extendMode) return "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection";
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
@@ -266,6 +275,7 @@ export class SketchMode implements PointerHandler {
     this.viewport.renderer.domElement.style.cursor = "";
     this.dimensionMode = name === "dimension";
     this.extendMode = name === "extend";
+    this.pendingCommand = null;
     if (this.dimensionMode) this.selection.clear();
     if (name === "offset") {
       // Curves already selected are offset right away; anything else is dropped from the selection.
@@ -378,6 +388,16 @@ export class SketchMode implements PointerHandler {
       this.moveTool.cancel();
       return;
     }
+    if (this.pendingCommand) {
+      // The elements picked so far for the waiting constraint are dropped with it.
+      this.selection.clear();
+      this.setTool("select");
+      return;
+    }
+    if (this.dimensionMode && this.selection.size === 0) {
+      this.setTool("select");
+      return;
+    }
     if (this.extendMode) {
       this.setTool("select");
       return;
@@ -429,10 +449,22 @@ export class SketchMode implements PointerHandler {
     return COMMANDS.filter((c) => c.applies(sel)).map((c) => c.id);
   }
 
+  /**
+   * Runs a constraint command on the selection; when the selection does not fit, the command waits for the
+   * elements to be clicked (Fusion's way), and is applied as soon as they are.
+   */
   runCommand(id: string): string[] {
     const command = COMMANDS.find((c) => c.id === id);
     const sel = classify(this.geometry, [...this.selection]);
-    if (!command || !command.applies(sel)) return [];
+    if (!command) return [];
+    if (!command.applies(sel)) {
+      this.setTool("select");
+      this.selection.clear();
+      this.pendingCommand = id;
+      this.render();
+      this.host.changed();
+      return [];
+    }
     let geometry = this.geometry;
     const created: string[] = [];
     try {
@@ -590,7 +622,9 @@ export class SketchMode implements PointerHandler {
     }
     // Clicking again near a selected element deselects it, even if a close neighbour
     // (e.g. a parallel line 2 mm away) is nearer to the pointer.
-    const hits = hitTest(this.geometry, p, this.tolerance());
+    const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
+    // A waiting constraint only picks the kinds of elements it takes (a line for "Horizontale"…).
+    const hits = hitTest(this.geometry, p, this.tolerance()).filter((h) => !waiting || waiting.accepts.includes(h.kind));
     const hit = toggleTarget(hits, this.selection);
     // A click on the lines of a placed dimension selects the dimension (Suppr deletes it).
     const dimension = this.pickDimension(p);
@@ -607,12 +641,20 @@ export class SketchMode implements PointerHandler {
       this.placeMeasurement();
       return true;
     }
-    if (!hit) this.selection.clear();
-    else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
+    if (!hit) {
+      if (!waiting) this.selection.clear();
+    } else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
     else {
       // The dimension tool measures one or two elements: a third click starts a new measurement.
       if (this.dimensionMode && this.selection.size >= 2) this.selection.clear();
       this.selection.add(hit.id);
+    }
+    if (waiting && waiting.applies(classify(this.geometry, [...this.selection]))) {
+      // Everything it needs is picked: applied at once; the command keeps waiting for the next ones.
+      this.runCommand(waiting.id);
+      this.pendingCommand = waiting.id;
+      this.host.changed();
+      return true;
     }
     // Clicking geometry only selects it; values are changed by clicking their dimension.
     closeCalculator();
