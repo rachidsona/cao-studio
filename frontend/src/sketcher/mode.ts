@@ -35,6 +35,7 @@ import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
 import { SketchOverlay } from "./overlay";
 import { OffsetTool } from "./offset-tool";
 import { SketchMoveTool } from "./move-tool";
+import { applyExtension, findExtension } from "./extend";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { OffsetRecord } from "../document/sketch";
@@ -85,6 +86,8 @@ export class SketchMode implements PointerHandler {
   private annotations: Annotation[] = [];
   /** "Cote" tool: the selection shows its measurements, clickable to become dimensions. */
   private dimensionMode = false;
+  /** "Prolonger": hovering an end of a line or an arc previews its extension, a click makes it. */
+  private extendMode = false;
   /** "Décalage" tool, while it is open. */
   private offset: OffsetTool | null = null;
   /** "Déplacer" tool, while it is open. */
@@ -171,7 +174,13 @@ export class SketchMode implements PointerHandler {
     return this.offset !== null || this.moveTool !== null;
   }
 
-  get toolName(): ToolName | "dimension" | "offset" | "move" {
+  /** A tool other than the selection is active (Échap returns to the selection before leaving the sketch). */
+  get toolActive(): boolean {
+    return this.tool !== null || this.extendMode;
+  }
+
+  get toolName(): ToolName | "dimension" | "offset" | "move" | "extend" {
+    if (this.extendMode) return "extend";
     if (this.offset) return "offset";
     if (this.moveTool) return "move";
     if (this.dimensionMode) return "dimension";
@@ -180,6 +189,7 @@ export class SketchMode implements PointerHandler {
 
   get hint(): string {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
+    if (this.extendMode) return "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection";
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
@@ -246,7 +256,7 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension" | "offset" | "move", editing?: OffsetRecord): void {
+  setTool(name: ToolName | "dimension" | "offset" | "move" | "extend", editing?: OffsetRecord): void {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
@@ -254,6 +264,7 @@ export class SketchMode implements PointerHandler {
     this.moveTool = null;
     this.viewport.renderer.domElement.style.cursor = "";
     this.dimensionMode = name === "dimension";
+    this.extendMode = name === "extend";
     if (this.dimensionMode) this.selection.clear();
     if (name === "offset") {
       // Curves already selected are offset right away; anything else is dropped from the selection.
@@ -265,7 +276,7 @@ export class SketchMode implements PointerHandler {
       this.moveTool = new SketchMoveTool(this.moveHost());
       this.moveTool.start();
     }
-    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" ? null : new DrawingTool(name, this.construction);
+    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" || name === "extend" ? null : new DrawingTool(name, this.construction);
     this.preview = null;
     this.render();
     this.host.changed();
@@ -364,6 +375,10 @@ export class SketchMode implements PointerHandler {
     }
     if (this.moveTool) {
       this.moveTool.cancel();
+      return;
+    }
+    if (this.extendMode) {
+      this.setTool("select");
       return;
     }
     if (this.tool) {
@@ -465,7 +480,7 @@ export class SketchMode implements PointerHandler {
 
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
-    if (this.tool) return false;
+    if (this.tool || this.extendMode) return false;
     // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
     if (this.offset) return this.offset.dragStart(event);
     if (this.moveTool) return this.moveTool.down(event);
@@ -509,6 +524,13 @@ export class SketchMode implements PointerHandler {
       this.viewport.renderer.domElement.style.cursor = this.offset.overArrow(event) ? "grab" : "";
     } else {
       this.hover = hitTest(this.geometry, p, this.tolerance())[0]?.id ?? null;
+      if (this.extendMode) {
+        // The end nearest the pointer, extended to the next curve, is shown dashed before the click.
+        const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => h.kind === "line" || h.kind === "arc");
+        const ext = curve ? findExtension(this.geometry, curve.id, p) : null;
+        this.hover = curve?.id ?? null;
+        this.preview = ext && typeof ext === "object" ? ext.preview : null;
+      }
     }
     this.render();
   }
@@ -554,6 +576,15 @@ export class SketchMode implements PointerHandler {
     }
     if (this.moveTool) {
       this.moveTool.click(p);
+      return true;
+    }
+    if (this.extendMode) {
+      const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => h.kind === "line" || h.kind === "arc");
+      const ext = curve ? findExtension(this.geometry, curve.id, p) : null;
+      this.preview = null;
+      if (typeof ext === "string") this.host.notify(ext, "info");
+      else if (ext) this.apply(applyExtension(this.geometry, ext), "Prolongée jusqu'à la courbe suivante.");
+      this.render();
       return true;
     }
     // Clicking again near a selected element deselects it, even if a close neighbour
@@ -716,7 +747,7 @@ export class SketchMode implements PointerHandler {
       annotations: [
         ...dimensionAnnotations(this.geometry, unit),
         ...measures,
-        ...(this.offset || this.moveTool ? [] : previewAnnotations(this.preview, unit)),
+        ...(this.offset || this.moveTool || this.extendMode ? [] : previewAnnotations(this.preview, unit)),
       ],
       showGlyphs: this.showGlyphs,
       regions,

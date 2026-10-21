@@ -120,6 +120,13 @@ serveur accepte les deux versions.
     couper, donne un message d'erreur au lieu d'une géométrie fausse ;
   - appliqué aux arêtes projetées d'une face, il donne un profil réel (retrait de poche, rebord) ;
   - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
+- **Prolonger** (bouton « Prolonger », groupe Modifier), comme dans Fusion : en survolant une ligne ou un
+  arc, le prolongement de l'extrémité la plus proche du curseur jusqu'à la première courbe rencontrée
+  (ligne, cercle, arc, géométrie de construction ou projetée) s'affiche en pointillés ; un clic le fait.
+  L'extrémité est alors liée à cette courbe (contrainte « point sur courbe ») ; l'outil reste actif,
+  Échap revient à la Sélection. Une extrémité reliée à une autre courbe (un coin) se prolonge aussi :
+  elle se détache et l'autre courbe garde le coin. Une extrémité fixe (projetée) ou qui ne rencontre rien
+  n'est pas prolongée (un message l'explique). Une ligne garde sa direction, un arc son cercle.
 - **Déplacer** (touche M, bouton « Déplacer ») : déplace des points, segments, cercles, arcs, un
   rectangle ou un contour entier, ou plusieurs éléments à la fois.
   - On clique les éléments (« Étendre aux contours » ajoute tout le contour d'une courbe choisie), puis on
