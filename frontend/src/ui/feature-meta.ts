@@ -18,6 +18,11 @@ export const TYPE_LABELS: Record<NavType, string> = {
   move: "Déplacement",
   panels: "Panneaux",
   cabinet: "Caisson",
+  mirror: "Symétrie",
+  align: "Alignement",
+  stretch: "Étirement",
+  array: "Réseau",
+  rotate: "Rotation",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -33,6 +38,11 @@ export const TYPE_ICONS: Record<NavType, string> = {
   move: "✥",
   panels: "▤",
   cabinet: "▥",
+  mirror: "⇋",
+  align: "⫼",
+  stretch: "⟷",
+  array: "⁞",
+  rotate: "↻",
 };
 
 export const STATE_BADGES: Record<FeatureState, { label: string; dot: string }> = {

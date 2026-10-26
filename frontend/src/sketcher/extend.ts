@@ -7,8 +7,9 @@
  *
  * An end shared with another curve (a corner), or tied to one by a
  * coincidence, is extended too, as in Fusion: the extended curve gets an end
- * point of its own, and the other curve keeps the corner where it was. Pure
- * functions on the geometry; the sketch mode solves and stores the result.
+ * point of its own, and the other curve keeps the corner where it was. An end
+ * extended again goes through the curve it had reached, which stays in place.
+ * Pure functions on the geometry; the sketch mode solves and stores the result.
  */
 import { curvePoints, type ArcCurve, type SketchConstraint, type SketchCurve, type SketchGeometry } from "../document/sketch";
 import { cloneGeometry, nextId, pointPos, type Vec2 } from "./edit";
@@ -193,6 +194,8 @@ export function applyExtension(g: SketchGeometry, ext: Extension): SketchGeometr
   } else {
     const point = next.points.find((p) => p.id === ext.pointId);
     if (point) [point.x, point.y] = ext.to;
+    // The end leaves the curve it was on (a previous extension): kept on it, the solver would drag that curve along.
+    next.constraints = next.constraints.filter((c) => !(c.kind === "pointOnCurve" && c.point === ext.pointId));
   }
   if (ext.angle) {
     const arc = next.curves.find((c) => c.id === ext.curveId);

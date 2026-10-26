@@ -16,6 +16,7 @@ import { buildChamfer, buildCombine, buildFaceExtrude, buildFillet, buildRevolve
 import { buildMove } from "./move";
 import { buildPanels } from "./panels";
 import { buildCabinet } from "./cabinet";
+import { buildAlign, buildArray, buildMirror, buildRotate, buildStretch } from "./curic";
 import { buildSplit } from "./split";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
@@ -159,5 +160,15 @@ export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOut
       return buildPanels(feature, lookup);
     case "cabinet":
       return buildCabinet(feature);
+    case "mirror":
+      return buildMirror(feature, lookup);
+    case "align":
+      return buildAlign(feature, lookup);
+    case "stretch":
+      return buildStretch(feature, lookup);
+    case "array":
+      return buildArray(feature, lookup);
+    case "rotate":
+      return buildRotate(feature, lookup);
   }
 }

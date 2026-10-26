@@ -23,6 +23,8 @@ import { pointText } from "./model-selection";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** What is moved: a body of the model, or a sketch. */
+const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), `${i + 1} copie${i ? "s" : ""} (l'original reste)`])];
+
 export type MoveSubject = { kind: "body"; id: string } | { kind: "sketch"; id: string };
 
 type InputMode = "relative" | "distance" | "absolute" | "points";
@@ -70,6 +72,9 @@ export class MoveTool extends PanelTool {
     face: FaceSnaps | null;
   } | null = null;
   private snapLayer: THREE.Points | null = null;
+  /** Copies made instead of moving (as Curic Gizmo's copy): the original stays, copy k is moved k times. */
+  private copies = 0;
+  private readonly copy: { id: string; name: string };
 
   constructor(ctx: ToolContext, editing: Feature | null, subject: MoveSubject, private readonly options: MoveToolOptions = {}) {
     super(ctx, subject.kind === "body" ? "Déplacer le corps" : "Déplacer l'esquisse", editing);
@@ -85,6 +90,7 @@ export class MoveTool extends PanelTool {
       this.id = this.sketch ? this.sketch.id : uniqueId(doc, "mv");
       this.name = this.sketch ? this.sketch.name : uniqueName(doc, "Déplacement");
     }
+    this.copy = { id: uniqueId(doc, "ar"), name: uniqueName(doc, "Copie") };
     if (this.sketch) {
       const f = sketchFrame(this.sketch.plane, this.sketch.offset, this.sketch.shift);
       this.localFrame = { x: f.u, y: f.v, z: f.normal };
@@ -206,12 +212,13 @@ export class MoveTool extends PanelTool {
     if (length < MIN_LENGTH) return "Tirez le manipulateur ou saisissez un déplacement.";
     if (this.sketch) return moveSketchPlane(this.sketch, this.translate);
     const translate = this.translate.map((x) => Number(x.toFixed(6))) as Vec3;
+    if (this.copies > 0 && !this.editing) return { ...this.copy, type: "array", targets: [this.subject.id], step: translate, count: this.copies };
     return { id: this.id, type: "move", name: this.name, target: this.subject.id, translate } satisfies MoveFeature;
   }
 
   /** The result cannot be validated while the kernel refuses it. */
   protected override blocker(): string | null {
-    const status = this.ctx.status(this.id);
+    const status = this.ctx.status(this.copies > 0 ? this.copy.id : this.id);
     return status && status.state !== "ok" ? (status.message ?? "Le déplacement est invalide.") : null;
   }
 
@@ -293,6 +300,7 @@ export class MoveTool extends PanelTool {
       this.options.moveFace && !this.sketch
         ? this.selectRow("Objet", "body", [["body", "Corps entier"], ["face", "Face seule (pousser/tirer)"]], (v) => v === "face" && this.options.moveFace?.())
         : null,
+      this.subject.kind === "body" && !this.editing ? this.selectRow("Copier", String(this.copies), COPIES, (v) => ((this.copies = Number(v)), this.sync())) : null,
       this.subject.kind === "body" && !this.editing && bodies.length > 1
         ? this.selectRow("Corps", this.subject.id, bodies.map((b): [string, string] => [b.id, b.name]), (v) => {
             this.subject = { kind: "body", id: v };
@@ -412,7 +420,7 @@ export class MoveTool extends PanelTool {
     let face: FaceSnaps | null = null;
     const pick = event ? this.ctx.viewport.pickFace(event) : null;
     if (pick) {
-      const own = pick.bodyId === this.subject.id || pick.bodyId === this.id;
+      const own = pick.bodyId === this.subject.id || pick.bodyId === this.id || pick.bodyId.startsWith(`${this.copy.id}#`);
       const usable = this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
       const mesh = usable ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
       const snaps = mesh ? faceSnaps(mesh, pick.faceIndex) : null;

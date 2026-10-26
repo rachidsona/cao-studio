@@ -8,11 +8,16 @@ import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
 import { PanelsTool } from "./panels-tool";
 import { CabinetTool } from "./cabinet-tool";
 import { FaceStripTool } from "./face-strip-tool";
+import { MirrorTool } from "./mirror-tool";
+import { AlignTool } from "./align-tool";
+import { StretchTool } from "./stretch-tool";
+import { ArrayTool } from "./array-tool";
+import { RotateTool } from "./rotate-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -23,7 +28,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -33,6 +38,8 @@ export interface ToolOptions {
   faces?: FacePick[];
   vertices?: VertexPick[];
   bodies?: string[];
+  /** Whole sketches picked (Curic tools also work on sketches). */
+  sketches?: string[];
 }
 
 /** What a tool starts with: the sketch selected in the navigator, and what is picked in the 3D view. */
@@ -42,10 +49,17 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate") && bodies.length ? { bodies } : {}),
+    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
+}
+
+/** The sketches a Curic tool works on: those of the multiple selection, and the one selected in the browser. */
+function curicSketches(selected: Feature | undefined, picked: string[]): { sketches?: string[] } {
+  const sketches = [...picked, ...(selected?.type === "sketch" && !picked.includes(selected.id) ? [selected.id] : [])];
+  return sketches.length ? { sketches } : {};
 }
 
 export class ToolLauncher {
@@ -92,6 +106,21 @@ export class ToolLauncher {
         void tool.open(options.pick);
         return;
       }
+      case "mirror":
+        this.active = new MirrorTool(ctx, editing?.type === "mirror" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "align":
+        this.active = new AlignTool(ctx, editing?.type === "align" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "array":
+        this.active = new ArrayTool(ctx, editing?.type === "array" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "rotate":
+        this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "stretch":
+        this.active = new StretchTool(ctx, editing?.type === "stretch" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
       case "cabinet":
         this.active = new CabinetTool(ctx, editing?.type === "cabinet" ? editing : null);
         break;

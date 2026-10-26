@@ -108,11 +108,20 @@ export abstract class PanelTool implements PointerHandler {
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
-  /** Document with the provisional feature inserted (or replacing the edited one). */
+  /** Further new features made with the main one (one per body for Aligner, Étirer), in the same undo step. */
+  protected companions(): Feature[] {
+    return [];
+  }
+
+  /**
+   * Document with the provisional feature inserted (or replacing the edited one). A feature whose id is already in
+   * the document replaces it (a sketch moved or stretched in place by a Curic tool).
+   */
   private provisional(feature: Feature): CadDocument {
     const doc = this.ctx.doc();
     if (this.editing) return updateFeature(doc, this.editing.id, () => feature);
-    return { ...doc, features: [...doc.features, feature] };
+    const put = (d: CadDocument, f: Feature): CadDocument => (d.features.some((x) => x.id === f.id) ? updateFeature(d, f.id, () => f) : { ...d, features: [...d.features, f] });
+    return [feature, ...this.companions()].reduce(put, doc);
   }
 
   /**

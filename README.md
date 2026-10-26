@@ -240,7 +240,8 @@ opération existante.
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
 - **Déplacer** (bouton « Déplacer », ou dans le panneau Sélection) : ce qui est déplacé dépend de la
-  sélection.
+  sélection. Pour un corps, l'option **« Copier »** (comme Curic Gizmo) garde l'original et pose 1 à 10 copies, la k-ième
+  décalée k fois du déplacement (une opération « Copie n » de type réseau).
   - un **corps** (filtre « Corps », navigateur, ou un sommet ou une arête de ce corps) : nouvelle opération
     « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
     exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
@@ -295,14 +296,90 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
-- **Tracé sur face** (groupe « Menuiserie », comme DIO de Curic) : sur une face plane d'un corps, on survole la
-  face près d'une arête ; le trait parallèle à l'arête suit le pointeur, à la distance affichée (tapée au
-  clavier si besoin), et un clic le garde.
-  - *Une ligne* : la bande entre l'arête et le trait (feuillure, chant) ; *Deux lignes* : une bande d'une
-    largeur donnée, en retrait de l'arête (rainure) ;
-  - OK crée une esquisse « Tracé n » sur la face (contour projeté + bande fermée) : avec « Extrusion », on
-    creuse la bande (Couper) ou on l'ajoute ;
-  - la bande suit la forme de la face (face en L, face trouée).
+- **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
+  aussitôt, en trois gestes :
+  1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face
+     (teintée). **Ctrl** passe d'une ligne au double trait.
+  2. **Après un clic sur une arête**, sa copie parallèle suit le pointeur — sur sa face, ou **sur une autre face**
+     où on l'amène (arête du haut d'une cloison copiée sur le sol…). **Après un clic sur un coin**, le trait traverse la
+     face, à la distance du coin comptée le long du côté suivi. Les **cotes vers les deux bords** s'affichent dans la vue
+     et dans le panneau ; la distance se tape aussi (elle fige le trait). En **double trait**, la largeur proposée est
+     l'**épaisseur du panneau** ; **Tab** place le pointeur sur le 1er trait, le 2e ou au centre ; le retrait peut
+     valoir 0 (le premier trait est l'arête) ; la largeur proposée est l'épaisseur réelle sous le pointeur. Un clic pose le trait ; OK à cette étape crée le tracé seul.
+  3. **Tirer ou pousser** la bande (ou la face cliquée à l'étape 1) : **tirer ajoute** de la matière (union : une
+     cloison qui sort d'un mur), **pousser creuse** (soustraction : une rainure, une feuillure) ; **Tab** inverse. La
+     hauteur suit le pointeur ou se tape. **Viser un coin ou un trait** d'un corps — un autre, ou le même — arrête la
+     hauteur à son niveau (point vert), comme la cible de « Déplacer » dans Fusion : une cloison s'arrête pile à la
+     hauteur de la paroi d'en face. Clic, OK ou Entrée termine ; Échap revient d'une étape.
+  - **Zone d'esquisse** : à l'étape 1, l'intérieur d'une zone fermée d'une esquisse (devant les corps) se tire comme
+    une face : un nouveau corps, ou, pour une esquisse dessinée sur un corps, un ajout (tirer) ou un creusement (pousser).
+  - Le résultat : une esquisse « Tracé n » sur la face et une « Extrusion n » de sa bande sur le corps, en une seule
+    annulation ; la bande suit la forme de la face (face en L, face trouée).
+- **Sélection++** (bouton du groupe Sélection, comme Curic Select++) : en survolant un corps à la souris, ses niveaux
+  s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), la pièce,
+  la face — et le niveau courant est en vert dans la vue. **Ctrl** descend d'un niveau (puis revient en haut) ; le
+  niveau choisi est gardé en passant d'une pièce à l'autre. Un clic sélectionne le niveau courant, Maj + clic l'ajoute.
+  Actif avec les filtres « Auto » et « Corps » (en « Auto », une arête sous le pointeur garde son clic habituel) ;
+  rien au doigt. Le bouton l'active ou le coupe (mémorisé dans le navigateur). Sur une esquisse, les niveaux sont
+  l'esquisse puis le trait ou la zone sous le pointeur (avec sa longueur ou son aire).
+- **Les outils Curic marchent aussi sur les esquisses** (sélection multiple, esquisse choisie dans l'arbre, ou clic
+  sur une esquisse dans la vue pendant l'outil) :
+- **Symétrie** (groupe « Curic », comme Curic Mirror) : copie miroir des corps et des esquisses choisis par rapport à
+  un plan perpendiculaire à X, Y ou Z, dessiné en orange. Le plan se place contre le côté + de la sélection (les copies
+  viennent juste à côté), au centre, contre le côté −, ou à une position saisie. Les originaux restent ; les copies de
+  corps s'appellent « … — symétrie », celles d'esquisses « … (symétrie) » (nouvelles esquisses, retournées dans leur
+  plan ou posées sur un plan parallèle).
+- **Aligner** (groupe « Curic », comme Curic Align) : les corps et les esquisses choisis s'alignent sur une référence —
+  un corps ou une esquisse — axe par axe : côté − aligné, centré, côté + aligné, accolé après (+) ou avant (−), ou sans
+  bouger. Par défaut : accolé après en X, même face avant (Y), même sol (Z) — des caissons côte à côte. Avec plusieurs
+  éléments sélectionnés, le dernier est la référence. Un corps aligné sur un corps suit sa référence si l'historique
+  change ; sur une esquisse, il est déplacé ; une esquisse est déplacée (son plan et son origine). Une seule annulation.
+- **Étirer** (groupe « Curic », comme Curic Stretch) : un plan à travers le meuble (orange), perpendiculaire à X, Y ou Z,
+  et une distance. Les corps traversés par le plan s'allongent (la section au plan est prolongée, le résultat reste une
+  seule planche), ceux au-delà se déplacent, ceux avant restent : un caisson de 600 passe à 800 en une fois. Les
+  esquisses aussi : leurs points au-delà du plan bougent, les traits qui le traversent s'allongent, les cotes suivent.
+  Distance négative : raccourcir. Ce qui est concerné : la sélection, sinon tous les corps visibles et les esquisses
+  libres (une esquisse déjà extrudée n'est pas étirée deux fois). Un clic sur un corps place le plan à cet endroit.
+- **Réseau** (groupe « Curic », comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis
+  le long de X, Y ou Z — avec un **pas** entre copies (une étagère tous les 32 cm), ou **réparties sur une distance**
+  (3 copies sur 60 cm : une tous les 20 cm). 1 à 30 copies ; le pas proposé est la taille de ce qui est copié (copies
+  accolées). Les originaux restent ; les copies de corps s'appellent « … — Réseau 1 (2) », celles d'esquisses
+  « … (copie 2) ». Une seule annulation ; le réseau se modifie depuis l'historique.
+  **Réseau rectangulaire** (bouton dans le groupe « Créer », comme le réseau rectangulaire de Fusion) : une grille sur
+  **deux directions**, chacune avec son axe, sa quantité (l'original compris : 3 = 2 copies) et son pas ou sa distance
+  répartie ; le panneau donne le nombre total de copies. Pour les corps comme pour les esquisses (les copies
+  d'esquisses sont de nouvelles esquisses). Une quantité de 1 dans une direction la désactive ; au plus 400 copies.
+  **Dans l'esquisse** : le même *Réseau rectangulaire* est dans le groupe « Modifier » de l'éditeur d'esquisse. Cliquez
+  points, lignes, cercles ou arcs (ou « Ajouter les contours entiers »), réglez l'**angle** de la direction 1 (0° = le long
+  de X ; la direction 2 lui est perpendiculaire), la quantité et le pas ou la distance de chaque direction : les
+  copies s'affichent en pointillés, OK les crée en une seule annulation. Les copies gardent les contraintes qui lient
+  leurs éléments entre eux (un rectangle reste un rectangle, une cote garde sa valeur) mais ne sont liées ni à
+  l'original ni à l'origine.
+  **Linéaire dans un rectangle** (même outil, menu « Type ») : choisissez une ligne (un côté du rectangle convient) et un
+  nombre de lignes n : elles sont réparties à **égale distance à l'intérieur d'un rectangle** de l'esquisse (n lignes
+  font n + 1 espaces égaux) — cloisons, étagères, façades de tiroirs. Le rectangle est celui qui entoure la sélection,
+  ou celui dont vous touchez un côté (« Choisir le rectangle ») ; le sens est automatique (une ligne verticale se répartit
+  en X, une horizontale en Y) ou imposé. Par défaut chaque copie va **d'un côté à l'autre** et ses extrémités sont
+  **liées aux côtés** (point sur courbe) : elle suit le rectangle quand on le redimensionne ; sans cette case, ce sont
+  de simples copies de la sélection centrées sur chaque coupe.
+  « **Égaliser** » choisit ce qui est égal : par défaut **les ouvertures entre les panneaux** — pour des planches de
+  l'épaisseur indiquée (celle de l'outil *Panneaux*, réglage partagé) dont celles du contour sont dans, sur ou hors du
+  contour — les lignes sont posées pour que les n + 1 ouvertures libres aient exactement la même largeur (des lignes à
+  égale distance donneraient une ouverture du milieu plus large d'une demi-épaisseur) ; ou **les lignes** (axes à égale
+  distance). L'aperçu affiche la **mesure de chaque ouverture** (n lignes = n + 1 cotes) sur le bord bas ou gauche du
+  rectangle, pour la lire avant de valider.
+  **Réseau circulaire** : choisissez « Autour d'un axe » — les copies tournent de k × l'angle autour d'un axe parallèle
+  à X, Y ou Z passant par le centre de ce qui est copié (cercle complet à égale distance, ou angle saisi) : pieds de
+  table, tiroirs en étoile. Les copies de corps seulement (pas d'esquisses).
+  **Composants liés** : une copie est une fonction du corps d'origine ; modifier l'original (cotes de son esquisse, du
+  caisson…) met à jour toutes ses copies (test `composants liés` dans `tests/frontend/curic.test.ts`).
+- **Tourner** (groupe « Curic », comme Curic Rotate) : corps et esquisses choisis tournent autour d'un axe parallèle à
+  X, Y ou Z, par quarts de tour (−90°, +90°, 180°) ou d'un angle saisi, autour du centre de la sélection ou d'un **coin
+  de corps cliqué** (point vert). Une esquisse ne tourne que dans son plan (autour de sa normale) ; ses contraintes
+  horizontale/verticale s'échangent au quart de tour.
+- **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
+  voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
+  n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :

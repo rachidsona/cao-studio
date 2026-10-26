@@ -554,6 +554,15 @@ export class Viewport {
     return this.raycaster.intersectObjects(objects, true);
   }
 
+  /** Thickness of a body under a point of its surface: how far a ray going in (along `inward`) travels inside it. */
+  depthAt(bodyId: string, point: Vec3, inward: Vec3): number | null {
+    const body = this.bodies.get(bodyId);
+    if (!body) return null;
+    const ray = new THREE.Raycaster(new THREE.Vector3(...point).addScaledVector(new THREE.Vector3(...inward), 1e-3), new THREE.Vector3(...inward).normalize());
+    const hit = ray.intersectObject(body.mesh, false)[0];
+    return hit ? hit.distance + 1e-3 : null;
+  }
+
   /** Tessellation of a displayed body (edge/face picking by tools). */
   bodyMesh(bodyId: string): BodyMesh | undefined {
     return this.bodies.get(bodyId)?.data;
@@ -837,6 +846,23 @@ export class Viewport {
     const sketch = this.pickSketch(event, "line") ?? this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
     if (sketch) return { kind: "sketch", id: sketch };
     return face ? { kind: "body", id: face.bodyId, face } : null;
+  }
+
+  /**
+   * Section of the view (as Curic Section): what lies beyond the plane perpendicular to `axis` at `position` is
+   * hidden (with `flip`, what lies before it); null shows everything again. The view only: nothing is cut.
+   */
+  setSection(section: { axis: 0 | 1 | 2; position: number; flip: boolean } | null): void {
+    const normal = new THREE.Vector3();
+    if (section) normal.setComponent(section.axis, section.flip ? 1 : -1);
+    const planes = section ? [new THREE.Plane(normal, section.flip ? -section.position : section.position)] : [];
+    this.renderer.localClippingEnabled = planes.length > 0;
+    const materials: THREE.Material[] = [...this.bodyMaterials, this.highlightMaterial, this.edgeMaterial, this.hoverTint, this.hoverMaterial];
+    materials.push(this.sketchMaterial, this.sketchGhostMaterial, this.sketchSelectedMaterial, this.sketchSelectedGhostMaterial, this.sketchFillMaterial, this.sketchSelectedFillMaterial);
+    for (const material of materials) {
+      material.clippingPlanes = planes;
+      material.needsUpdate = true;
+    }
   }
 
   /** Ids of the bodies displayed. */

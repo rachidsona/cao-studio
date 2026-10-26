@@ -67,6 +67,18 @@ export function polygonEdges(poly: Vec2[]): FaceEdge[] {
   return poly.map((a, i) => ({ a, b: poly[(i + 1) % poly.length] as Vec2 }));
 }
 
+/** The edge of the polygon nearest to p, and how far it is. */
+export function nearestEdge(poly: Vec2[], p: Vec2): { edge: FaceEdge; d: number } | null {
+  let best: { edge: FaceEdge; d: number } | null = null;
+  for (const edge of polygonEdges(poly)) {
+    const ab: Vec2 = [edge.b[0] - edge.a[0], edge.b[1] - edge.a[1]];
+    const t = Math.max(0, Math.min(1, ((p[0] - edge.a[0]) * ab[0] + (p[1] - edge.a[1]) * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1] || 1)));
+    const d = Math.hypot(p[0] - (edge.a[0] + t * ab[0]), p[1] - (edge.a[1] + t * ab[1]));
+    if (!best || d < best.d) best = { edge, d };
+  }
+  return best;
+}
+
 /** Unit normal of the edge pointing into the polygon. */
 export function inwardNormal(poly: Vec2[], edge: FaceEdge): Vec2 {
   const d = sub(edge.b, edge.a);
@@ -99,12 +111,86 @@ function clipHalf(poly: Vec2[], origin: Vec2, n: Vec2): Vec2[] {
   return out;
 }
 
+/** Where the distances are measured from: a line through `origin`, distances growing along the unit `normal`. */
+export interface StripReference {
+  origin: Vec2;
+  normal: Vec2;
+}
+
+/** Reference of an edge: its own line, distances measured into the face. */
+export function edgeReference(poly: Vec2[], edge: FaceEdge): StripReference {
+  return { origin: edge.a, normal: inwardNormal(poly, edge) };
+}
+
+/**
+ * Reference of a corner of the face (as DIO starting from a point): the line through the corner across the face,
+ * distances measured along the side the pointer goes along from the corner (of the two sides meeting there, the
+ * one most in the pointer's direction). Null when the pointer is on the corner itself.
+ */
+export function cornerReference(poly: Vec2[], index: number, pointer: Vec2): StripReference | null {
+  const n = poly.length;
+  const corner = poly[index] as Vec2;
+  const away = sub(pointer, corner);
+  if (Math.hypot(...away) < MERGE) return null;
+  let best: Vec2 | null = null;
+  for (const next of [poly[(index + 1) % n] as Vec2, poly[(index + n - 1) % n] as Vec2]) {
+    const d = sub(next, corner);
+    const l = Math.hypot(...d) || 1;
+    const u: Vec2 = [d[0] / l, d[1] / l];
+    if (!best || dot(away, u) > dot(away, best)) best = u;
+  }
+  return best ? { origin: corner, normal: best } : null;
+}
+
+/** Distance from the reference to p, along its normal. */
+export function referenceDistance(ref: StripReference, p: Vec2): number {
+  return dot(sub(p, ref.origin), ref.normal);
+}
+
+/**
+ * Distances from p to the boundary of the face on both sides of a line through p (perpendicular to `normal`):
+ * backwards (−normal) and forwards (+normal), the nearest crossing each way. Null on a side with no boundary.
+ */
+export function sideDistances(poly: Vec2[], p: Vec2, normal: Vec2): { back: number | null; ahead: number | null } {
+  let back: number | null = null;
+  let ahead: number | null = null;
+  for (const { a, b } of polygonEdges(poly)) {
+    // Crossing of the ray p + t·normal with the segment a–b.
+    const e = sub(b, a);
+    const den = normal[0] * e[1] - normal[1] * e[0];
+    if (Math.abs(den) < 1e-12) continue;
+    const w = sub(a, p);
+    const t = (w[0] * e[1] - w[1] * e[0]) / den;
+    const u = (w[0] * normal[1] - w[1] * normal[0]) / den;
+    if (u < -MERGE || u > 1 + MERGE) continue;
+    if (t >= -MERGE && (ahead === null || t < ahead)) ahead = Math.max(0, t);
+    if (t <= MERGE && (back === null || -t < back)) back = Math.max(0, -t);
+  }
+  return { back, ahead };
+}
+
+/** Where a double line sits with respect to the pointer line: it starts there, ends there, or is centred on it. */
+export type GrooveAnchor = "start" | "end" | "center";
+
+/** Distances (from, to) of the band from the reference: one line, or a double line of `width` placed by `anchor`. */
+export function bandRange(mode: "line" | "groove", anchor: GrooveAnchor, distance: number, width: number): [number, number] {
+  if (mode === "line") return [0, distance];
+  if (anchor === "end") return [distance - width, distance];
+  if (anchor === "center") return [distance - width / 2, distance + width / 2];
+  return [distance, distance + width];
+}
+
 /** The part of the face between the lines at distances `from` and `to` from the edge (inward), or null when empty. */
 export function bandPolygon(poly: Vec2[], edge: FaceEdge, from: number, to: number): Vec2[] | null {
+  return stripPolygon(poly, edgeReference(poly, edge), from, to);
+}
+
+/** The part of the face between the lines at distances `from` and `to` from a reference, or null when empty. */
+export function stripPolygon(poly: Vec2[], ref: StripReference, from: number, to: number): Vec2[] | null {
   if (!(to > from + MERGE)) return null;
-  const n = inwardNormal(poly, edge);
-  const near: Vec2 = [edge.a[0] + n[0] * from, edge.a[1] + n[1] * from];
-  const far: Vec2 = [edge.a[0] + n[0] * to, edge.a[1] + n[1] * to];
+  const n = ref.normal;
+  const near: Vec2 = [ref.origin[0] + n[0] * from, ref.origin[1] + n[1] * from];
+  const far: Vec2 = [ref.origin[0] + n[0] * to, ref.origin[1] + n[1] * to];
   const clipped = clipHalf(clipHalf(poly, near, n), far, [-n[0], -n[1]]);
   // Drop repeated corners left by the clipping.
   const unique = clipped.filter((p, i) => {

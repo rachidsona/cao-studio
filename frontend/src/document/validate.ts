@@ -23,6 +23,8 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
 
+const ALIGN_MODES: ReadonlySet<string> = new Set(["none", "min", "center", "max", "after", "before"]);
+
 function checkNumbers(obj: Json, keys: string[], where: string, errors: string[]): void {
   for (const key of keys) {
     if (!isFiniteNumber(obj[key])) errors.push(`${where} : « ${key} » doit être un nombre fini.`);
@@ -123,6 +125,40 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["thickness", "depth"], where, errors);
       if (!["inside", "center", "outside"].includes(feature.align as string)) errors.push(`${where} : côté des panneaux invalide.`);
       if (!["vertical", "horizontal"].includes(feature.through as string)) errors.push(`${where} : priorité aux coins invalide.`);
+      break;
+    case "mirror":
+      if (!Array.isArray(feature.targets) || !feature.targets.every((t) => typeof t === "string")) errors.push(`${where} : corps à copier invalides.`);
+      if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe de symétrie invalide.`);
+      checkNumbers(feature, ["position"], where, errors);
+      break;
+    case "array":
+      if (!Array.isArray(feature.targets) || !feature.targets.every((t) => typeof t === "string")) errors.push(`${where} : corps à copier invalides.`);
+      if (!isVec3(feature.step)) errors.push(`${where} : pas de répétition invalide (trois nombres attendus).`);
+      if (!Number.isInteger(feature.count) || (feature.count as number) < 1 || (feature.count as number) > 200) errors.push(`${where} : nombre de copies invalide (1 à 200).`);
+      if (feature.second !== undefined) {
+        const second = feature.second;
+        if (!isObject(second) || !isVec3(second.step) || !Number.isInteger(second.count) || (second.count as number) < 1 || (second.count as number) > 200) errors.push(`${where} : seconde direction du réseau invalide.`);
+        else if (((feature.count as number) + 1) * ((second.count as number) + 1) - 1 > 400) errors.push(`${where} : réseau trop grand (400 copies au plus).`);
+      }
+      if (feature.around !== undefined) {
+        const around = feature.around;
+        if (!isObject(around) || ![0, 1, 2].includes(around.axis as number) || !isVec3(around.center) || !isFiniteNumber(around.angle)) errors.push(`${where} : réseau circulaire invalide (axe, centre et angle attendus).`);
+      }
+      break;
+    case "rotate":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à tourner manquant.`);
+      if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe de rotation invalide.`);
+      if (!isVec3(feature.center)) errors.push(`${where} : centre de rotation invalide.`);
+      checkNumbers(feature, ["angle"], where, errors);
+      break;
+    case "align":
+      if (typeof feature.target !== "string" || typeof feature.reference !== "string") errors.push(`${where} : corps à aligner ou référence manquant.`);
+      if (!Array.isArray(feature.modes) || feature.modes.length !== 3 || !feature.modes.every((m) => ALIGN_MODES.has(m as string))) errors.push(`${where} : alignements invalides.`);
+      break;
+    case "stretch":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à étirer manquant.`);
+      if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe d'étirement invalide.`);
+      checkNumbers(feature, ["position", "distance"], where, errors);
       break;
     case "move":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à déplacer manquant.`);

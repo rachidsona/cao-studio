@@ -78,7 +78,8 @@
     @apply text-[10px] leading-3 font-semibold tracking-wider text-gray-500 uppercase select-none dark:text-gray-400;
   }
   .ribbon-sep {
-    @apply mx-1 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-700;
+    @apply mx-0.5 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-700;
+  }
   }
   .panel-title {
     @apply text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400;

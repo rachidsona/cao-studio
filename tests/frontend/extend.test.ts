@@ -35,6 +35,22 @@ describe("prolonger une ligne", () => {
     expect(pos(solved.geometry, "b")).toEqual([10, 0]);
   });
 
+  it("prolongé une 2e fois, le trait traverse la ligne atteinte sans la déplacer ni l'effacer", () => {
+    const g = sketch(["near", [10, -5], [10, 5]], ["far", [20, -5], [20, 5]]);
+    const once = solveSketch(applyExtension(g, findExtension(g, "l1", [4.5, 0.2]) as Extension)).geometry;
+    expect(pos(once, "b")).toEqual([10, 0]);
+    const ext = findExtension(once, "l1", [9.5, 0.2]) as Extension;
+    expect(ext).toMatchObject({ pointId: "b", target: "far" });
+    const twice = applyExtension(once, ext);
+    // The end left "near": it is no longer tied to it.
+    expect(twice.constraints.filter((c) => c.kind === "pointOnCurve" && c.point === "b").map((c) => (c.kind === "pointOnCurve" ? c.curve : ""))).toEqual(["far"]);
+    const solved = solveSketch(twice);
+    expect(solved.state).not.toBe("conflicting");
+    expect(pos(solved.geometry, "b")).toEqual([20, 0]);
+    expect([pos(solved.geometry, "nears"), pos(solved.geometry, "neare")]).toEqual([[10, -5], [10, 5]]); // the line crossed stays put
+    expect(solved.geometry.curves.map((c) => c.id)).toEqual(["l1", "near", "far"]);
+  });
+
   it("de l'autre côté, ou si le segment visé n'est pas sur le chemin, rien n'est atteint", () => {
     const g = sketch(["v", [10, 2], [10, 5]]);
     expect(findExtension(g, "l1", [4.5, 0])).toMatch(/Aucune courbe/);

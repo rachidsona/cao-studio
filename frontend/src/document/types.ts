@@ -222,7 +222,100 @@ export interface CabinetFeature extends FeatureBase {
   construction: "sides-through" | "top-bottom-through";
 }
 
+/** Principal axis: 0 = X, 1 = Y, 2 = Z. */
+export type Axis = 0 | 1 | 2;
+
+/**
+ * Mirror copies of bodies (as Curic Mirror) across the plane perpendicular to
+ * `axis` at the coordinate `position` (mm). The originals stay; each copy is a
+ * new body ("<id>#<n>").
+ */
+export interface MirrorFeature extends FeatureBase {
+  type: "mirror";
+  targets: string[];
+  axis: Axis;
+  position: number;
+}
+
+/**
+ * How a body lines up with the reference along one axis: not at all, on its
+ * low side, centre or high side, or placed against it after (+) or before (−).
+ */
+export type AlignMode = "none" | "min" | "center" | "max" | "after" | "before";
+
+/**
+ * Moves a body so that it lines up with a reference body (as Curic Align),
+ * independently along X, Y and Z. Computed from the bodies themselves, so it
+ * follows the reference when the history above changes.
+ */
+export interface AlignFeature extends FeatureBase {
+  type: "align";
+  target: string;
+  reference: string;
+  modes: [AlignMode, AlignMode, AlignMode];
+}
+
+/**
+ * Stretch of a body across a plane (as Curic Stretch): what lies beyond the
+ * plane perpendicular to `axis` at `position` moves by `distance` along the
+ * axis, and the section at the plane fills the gap (a negative distance
+ * removes a slab instead). A body entirely beyond the plane only moves.
+ */
+export interface StretchFeature extends FeatureBase {
+  type: "stretch";
+  target: string;
+  axis: Axis;
+  position: number;
+  distance: number;
+}
+
+/**
+ * Copies of bodies repeated along a vector (as Curic's arrays, or a copy made
+ * while moving): copy k is the body moved by k × step, for k = 1..count. The
+ * originals stay; each copy is a new body ("<id>#<n>", copies of the first
+ * body first).
+ */
+export interface ArrayFeature extends FeatureBase {
+  type: "array";
+  targets: string[];
+  step: Vec3;
+  count: number;
+  /** Circular array: copy k is turned by k × `angle` degrees around the axis (parallel to X, Y or Z) through `center`; `step` is then unused. */
+  around?: { axis: Axis; center: Vec3; angle: number };
+  /**
+   * Rectangular array (as Fusion's): a second direction. The copies make a grid — every j × `second.step` (j = 0..
+   * second.count) combined with every k × `step` (k = 0..count) — except the original at (0, 0).
+   */
+  second?: { step: Vec3; count: number };
+}
+
+/** Offsets of the copies of an array, one per copy: k × step, and with a second direction the whole grid. */
+export function arrayOffsets(array: Pick<ArrayFeature, "step" | "count" | "second">): Vec3[] {
+  const out: Vec3[] = [];
+  for (let j = 0; j <= (array.second?.count ?? 0); j++) {
+    for (let k = 0; k <= array.count; k++) {
+      if (j === 0 && k === 0) continue;
+      out.push([0, 1, 2].map((i) => (array.step[i] as number) * k + (array.second ? (array.second.step[i] as number) * j : 0)) as Vec3);
+    }
+  }
+  return out;
+}
+
+/** Rotation of a body (as Curic Rotate) by `angle` degrees around the axis parallel to X, Y or Z through `center`. */
+export interface RotateFeature extends FeatureBase {
+  type: "rotate";
+  target: string;
+  axis: Axis;
+  angle: number;
+  center: Vec3;
+}
+
 export type Feature =
+  | ArrayFeature
+  | RotateFeature
+  | MirrorFeature
+  | AlignFeature
+  | StretchFeature
   | CabinetFeature
   | PanelsFeature
   | MoveFeature
@@ -290,6 +383,14 @@ export function featureInputs(feature: Feature): string[] {
       return [feature.sketch];
     case "cabinet":
       return [];
+    case "mirror":
+    case "array":
+      return [...feature.targets];
+    case "rotate":
+      return [feature.target];
+    case "align":
+      return [feature.target, feature.reference];
+    case "stretch":
     case "hole":
     case "fillet":
     case "chamfer":
@@ -317,6 +418,9 @@ export function consumedBodies(feature: Feature): string[] {
     case "chamfer":
     case "split":
     case "move":
+    case "align":
+    case "stretch":
+    case "rotate":
       return [feature.target];
     case "extrude":
     case "revolve":
@@ -326,6 +430,8 @@ export function consumedBodies(feature: Feature): string[] {
     case "sketch":
     case "panels":
     case "cabinet":
+    case "mirror":
+    case "array":
       return [];
   }
 }
