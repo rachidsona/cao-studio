@@ -379,6 +379,14 @@ export interface CadDocument {
   bodyInfo?: Record<string, BodyInfo>;
   /** Saved views (scenes): where the camera was. */
   views?: SavedView[];
+  /** Guide lines laid with the tape measure (SketchUp-style), to snap to. */
+  guides?: Guide[];
+}
+
+/** A guide line between two points (mm). */
+export interface Guide {
+  from: Vec3;
+  to: Vec3;
 }
 
 /** What a board is cut from (cabinet making). */

@@ -380,6 +380,22 @@ export class Viewport {
     if (this.selection.count !== before) this.onSelectionChange(this.selection.snapshot());
   }
 
+  /**
+   * Shows a body moved (a door open, a drawer out) without changing the model: a rotation (row-major 3×3) and a
+   * translation applied to its mesh and edges; null puts it back. Lost at the next regeneration.
+   */
+  setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void {
+    const body = this.bodies.get(bodyId);
+    if (!body) return;
+    const r = pose?.rotation ?? [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const t = pose?.translation ?? [0, 0, 0];
+    for (const object of [body.mesh, body.edges]) {
+      object.matrixAutoUpdate = false;
+      object.matrix.set(r[0]!, r[1]!, r[2]!, t[0], r[3]!, r[4]!, r[5]!, t[1], r[6]!, r[7]!, r[8]!, t[2], 0, 0, 0, 1);
+      object.updateMatrixWorld(true);
+    }
+  }
+
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
   setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
     this.appearance = appearance;
@@ -496,6 +512,22 @@ export class Viewport {
 
   fit(): void {
     this.fitBox(this.sceneBounds());
+  }
+
+  /** Where the camera is (for saved views, scenes). */
+  cameraState(): { position: Vec3; target: Vec3; up: Vec3 } {
+    const { position, up } = this.camera;
+    const target = this.controls.target;
+    return { position: [position.x, position.y, position.z], target: [target.x, target.y, target.z], up: [up.x, up.y, up.z] };
+  }
+
+  /** Puts the camera back where `cameraState` read it. */
+  setCameraState(state: { position: Vec3; target: Vec3; up: Vec3 }): void {
+    this.camera.up.set(...state.up);
+    this.controls.target.set(...state.target);
+    this.camera.position.set(...state.position);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
   }
 
   /** Frames `box` keeping the current viewing direction; `margin` leaves room for labels. */

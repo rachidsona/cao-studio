@@ -215,6 +215,7 @@ export function validateDocument(input: unknown): string[] {
     errors.push("« bodyNames » doit associer un nom à chaque corps.");
   }
   if (input.bodyInfo !== undefined && (!isObject(input.bodyInfo) || !Object.values(input.bodyInfo).every(isObject))) errors.push("« bodyInfo » doit décrire chaque corps.");
+  if (input.guides !== undefined && (!Array.isArray(input.guides) || !input.guides.every((g) => isObject(g) && isVec3(g.from) && isVec3(g.to)))) errors.push("« guides » doit être une liste de lignes de guide.");
   if (input.views !== undefined && (!Array.isArray(input.views) || !input.views.every((v) => isObject(v) && typeof v.name === "string" && isVec3(v.position) && isVec3(v.target) && isVec3(v.up)))) {
     errors.push("« views » doit être une liste de vues enregistrées.");
   }
