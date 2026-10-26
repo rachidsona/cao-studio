@@ -60,7 +60,7 @@ export class SketchController {
       if (target.dataset.newSketch) {
         (target.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
         this.create(target.dataset.newSketch as PlaneName);
-      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension" | "offset" | "move" | "extend");
+      } else if (target.dataset.sketchTool) this.mode?.setTool(target.dataset.sketchTool as ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "array");
       else if (target.dataset.sketchCommand) this.command(target.dataset.sketchCommand);
     });
   }

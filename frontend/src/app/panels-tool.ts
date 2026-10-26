@@ -6,11 +6,10 @@
  * undo step), each board being a body of its own.
  */
 import { findFeature, uniqueId, uniqueName } from "../document/operations";
+import { panelDefaults } from "../document/panel-defaults";
 import type { PanelsFeature, SketchFeature } from "../document/types";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
-/** Last values used, kept for the next panels of the session (mm). */
-let last = { thickness: 18, depth: 400 };
 
 export class PanelsTool extends PanelTool {
   private readonly id: string;
@@ -28,9 +27,9 @@ export class PanelsTool extends PanelTool {
     this.name = editing?.name ?? uniqueName(doc, "Panneaux");
     const candidates = this.sketches();
     this.sketch = editing?.sketch ?? (candidates.some((s) => s.id === preferredSketch) ? preferredSketch : candidates.at(-1)?.id);
-    this.thickness = editing?.thickness ?? last.thickness;
-    this.depth = editing?.depth ?? last.depth;
-    this.align = editing?.align ?? "inside";
+    this.thickness = editing?.thickness ?? panelDefaults.thickness;
+    this.depth = editing?.depth ?? panelDefaults.depth;
+    this.align = editing?.align ?? panelDefaults.align;
     this.through = editing?.through ?? "vertical";
   }
 
@@ -58,7 +57,7 @@ export class PanelsTool extends PanelTool {
       this.ctx.notify(reason, "error");
       return;
     }
-    last = { thickness: this.thickness, depth: this.depth };
+    Object.assign(panelDefaults, { thickness: this.thickness, depth: this.depth, align: this.align });
     super.confirm();
   }
 

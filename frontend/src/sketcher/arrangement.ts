@@ -68,7 +68,7 @@ interface CirclePrim {
   c: Vec;
   r: number;
 }
-type Prim = LinePrim | ArcPrim | CirclePrim;
+export type Prim = LinePrim | ArcPrim | CirclePrim;
 type Round = ArcPrim | CirclePrim;
 
 const dist = (a: Vec, b: Vec) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -80,7 +80,7 @@ const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1]];
 // ---- parameters along a primitive ------------------------------------------------
 
 /** Parameter of the point of the primitive nearest to `p`: t in [0, 1] for a line, an angle (from the start) otherwise. */
-function paramOf(p: Vec, prim: Prim): number {
+export function paramOf(p: Vec, prim: Prim): number {
   if (prim.kind === "line") {
     const d = sub(prim.b, prim.a);
     return Math.max(0, Math.min(1, ((p[0] - prim.a[0]) * d[0] + (p[1] - prim.a[1]) * d[1]) / (d[0] * d[0] + d[1] * d[1])));
@@ -91,7 +91,7 @@ function paramOf(p: Vec, prim: Prim): number {
   return TWO_PI - s < s - prim.sweep ? 0 : prim.sweep; // off the arc: the nearer end
 }
 
-function pointAt(prim: Prim, param: number): Vec {
+export function pointAt(prim: Prim, param: number): Vec {
   if (prim.kind === "line") return [prim.a[0] + param * (prim.b[0] - prim.a[0]), prim.a[1] + param * (prim.b[1] - prim.a[1])];
   const angle = (prim.kind === "arc" ? prim.a0 : 0) + param;
   return [prim.c[0] + prim.r * Math.cos(angle), prim.c[1] + prim.r * Math.sin(angle)];
@@ -161,7 +161,7 @@ function roundRound(p: Round, q: Round): Vec[] {
   return candidates.filter((point) => inSweep(p, point) && inSweep(q, point));
 }
 
-function crossings(p: Prim, q: Prim): Vec[] {
+export function crossings(p: Prim, q: Prim): Vec[] {
   if (p.kind === "line") return q.kind === "line" ? lineLine(p, q) : lineRound(p, q);
   return q.kind === "line" ? lineRound(q, p) : roundRound(p, q);
 }
@@ -177,6 +177,21 @@ interface Edge {
   r: number;
   a0: number;
   a1: number;
+}
+
+/** The primitive a curve of the sketch is (an arc whose ends meet is a circle). */
+export function primOf(g: SketchGeometry, curve: SketchGeometry["curves"][number]): Prim {
+  const coord = (id: string): Vec => (id === ORIGIN ? [0, 0] : (() => {
+    const p = g.points.find((q) => q.id === id);
+    if (!p) throw new ProfileError(`Point « ${id} » introuvable.`);
+    return [p.x, p.y] as Vec;
+  })());
+  if (curve.kind === "line") return { kind: "line", a: coord(curve.p1), b: coord(curve.p2) };
+  if (curve.kind === "circle") return { kind: "circle", c: coord(curve.center), r: curve.radius };
+  const [c, a, b] = [coord(curve.center), coord(curve.start), coord(curve.end)];
+  const a0 = angleOf(a, c);
+  const sweep = norm(angleOf(b, c) - a0);
+  return sweep < EPS || sweep > TWO_PI - EPS ? { kind: "circle", c, r: curve.radius } : { kind: "arc", c, r: curve.radius, a0, sweep, a, b };
 }
 
 export function arrange(geometry: SketchGeometry): Arrangement {

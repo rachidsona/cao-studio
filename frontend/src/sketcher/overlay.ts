@@ -39,6 +39,14 @@ export interface OverlayState {
   showGlyphs: boolean;
   /** Closed regions of the sketch, lightly tinted like a profile. */
   regions: Region[];
+  /** Where the drawing tool's pointer is snapped: the cross cursor becomes a square there (as in Fusion). */
+  snapMark?: SnapMark | null;
+}
+
+/** What the pointer is snapped to: a grid point, an existing point or a curve. */
+export interface SnapMark {
+  pos: Vec2;
+  kind: "grid" | "point" | "curve";
 }
 
 /** Colours of the dimension roles, from the theme (CSS variables). */
@@ -95,6 +103,26 @@ export class SketchOverlay {
     if (dashed) line.computeLineDistances();
     line.renderOrder = 10;
     this.group.add(line);
+  }
+
+  /** The pointer's snap indicator: a square (a diamond on a curve) with short arms, a few pixels wide on screen. */
+  private snapMarker({ pos, kind }: SnapMark): void {
+    const px = this.worldPerPixel();
+    const [x, y] = pos;
+    const color = kind === "curve" ? 0x16a34a : 0xf97316;
+    const diamond = kind === "curve";
+    // Lines are one pixel wide: two nested outlines make a firmer mark.
+    for (const half of [6 * px, 7 * px]) {
+      const h = diamond ? half * 1.3 : half;
+      this.polyline(diamond ? [[x, y + h], [x + h, y], [x, y - h], [x - h, y], [x, y + h]] : [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h], [x - h, y - h]], color);
+    }
+    // The cross the cursor was, kept as four arms around the square.
+    const inner = (diamond ? 7 * 1.3 : 7) * px;
+    const reach = inner + 7 * px;
+    this.polyline([[x - reach, y], [x - inner, y]], color);
+    this.polyline([[x + inner, y], [x + reach, y]], color);
+    this.polyline([[x, y - reach], [x, y - inner]], color);
+    this.polyline([[x, y + inner], [x, y + reach]], color);
   }
 
   private label(text: string, at: Vec2, className: string, onClick?: (anchor: { x: number; y: number }) => void, title?: string): void {
@@ -161,6 +189,8 @@ export class SketchOverlay {
       for (const c of state.preview.circles) this.polyline(arcPolyline(c.center, c.radius, 0, 2 * Math.PI), COLORS.preview, true);
       for (const a of state.preview.arcs) this.polyline(arcPolyline(a.center, a.radius, a.start, a.end), COLORS.preview, true);
     }
+
+    if (state.snapMark) this.snapMarker(state.snapMark);
 
     const points = [{ id: ORIGIN, x: 0, y: 0 }, ...g.points];
     const positions = points.flatMap((p) => [p.x, p.y, 0]);

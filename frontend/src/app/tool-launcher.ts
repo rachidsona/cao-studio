@@ -19,7 +19,7 @@ import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -51,8 +51,8 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining") && bodies.length ? { bodies } : {}),
-    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" ? curicSketches(selected, picked.selection.sketches) : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "rectArray") && bodies.length ? { bodies } : {}),
+    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
@@ -119,6 +119,9 @@ export class ToolLauncher {
         break;
       case "rotate":
         this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "rectArray":
+        this.active = new ArrayTool(ctx, null, options.bodies ?? [], options.sketches ?? [], "rect");
         break;
       case "sweep":
         this.active = new SweepTool(ctx, editing?.type === "sweep" ? editing : null, options.sketches ?? []);

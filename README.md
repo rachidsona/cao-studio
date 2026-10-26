@@ -120,6 +120,13 @@ serveur accepte les deux versions.
     couper, donne un message d'erreur au lieu d'une géométrie fausse ;
   - appliqué aux arêtes projetées d'une face, il donne un profil réel (retrait de poche, rebord) ;
   - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
+- **Couper** (bouton « Couper », groupe Modifier), comme dans Fusion : en survolant une ligne, un arc ou un cercle, la
+  partie **entre les deux croisements** autour du pointeur s'affiche ; un clic la supprime. Sans croisement d'un côté, la
+  partie va jusqu'au bout de la courbe (elle est raccourcie) ; sans aucun croisement, la courbe entière disparaît. Une ligne
+  coupée au milieu devient deux lignes, un arc deux arcs, un cercle coupé entre deux croisements l'arc qui reste. Les
+  nouvelles extrémités sont sur les croisements (un point existant y est réutilisé, sinon un point « sur courbe » les y
+  maintient) ; les cotes de la courbe coupée sont retirées (leur valeur n'est plus la sienne). Les courbes de construction
+  et projetées ne se coupent pas ; les courbes qui se croisent sont celles de l'esquisse (construction exclue).
 - **Prolonger** (bouton « Prolonger », groupe Modifier), comme dans Fusion : en survolant une ligne ou un
   arc, le prolongement de l'extrémité la plus proche du curseur jusqu'à la première courbe rencontrée
   (ligne, cercle, arc, géométrie de construction ou projetée) s'affiche en pointillés ; un clic le fait.
@@ -148,6 +155,9 @@ serveur accepte les deux versions.
   l'activer ou la couper, choix mémorisé) ; le pas suit le zoom (1, 10, 100 mm…) et les lignes passent
   par l'origine de l'esquisse. Un point ou une courbe existants gardent la priorité sur la grille.
   Le déplacement d'un point à la souris s'accroche aussi.
+- **Curseur de dessin** (comme Fusion) : avec la ligne, le rectangle, le cercle ou l'arc, le curseur est une **croix** ;
+  dès que le pointeur s'accroche — à un point de la grille ou à un point existant (carré orange), à une courbe (losange
+  vert) — la croix devient ce **carré** posé exactement sur le point d'accrochage, avec quatre petits bras.
 - **Contraintes** : coïncidence, horizontale, verticale, parallèle, perpendiculaire, tangence, égalité,
   symétrie (par rapport à un point ou une ligne), concentricité, fixation, point sur courbe, milieu.
   Toutes sont toujours disponibles, comme dans Fusion : avec la bonne sélection, la contrainte

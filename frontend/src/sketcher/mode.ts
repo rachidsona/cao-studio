@@ -33,10 +33,12 @@ import { addConstraint, findCurve, measure, removeEntities, setDimensionValue, t
 import * as THREE from "three";
 import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
 import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
-import { SketchOverlay } from "./overlay";
+import { SketchOverlay, type SnapMark } from "./overlay";
 import { OffsetTool } from "./offset-tool";
 import { SketchMoveTool } from "./move-tool";
+import { SketchArrayTool } from "./array-tool";
 import { applyExtension, findExtension } from "./extend";
+import { applyTrim, findTrim } from "./trim";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { OffsetRecord } from "../document/sketch";
@@ -80,6 +82,8 @@ export class SketchMode implements PointerHandler {
   lastSolve: SolveResult;
   private overlay: SketchOverlay;
   private hover: string | null = null;
+  /** Where the drawing tool's pointer snaps (the cursor becomes a square there), or null. */
+  private snapMark: SnapMark | null = null;
   private preview: Preview | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
   private lastBounds: THREE.Box3 | null = null;
@@ -89,12 +93,15 @@ export class SketchMode implements PointerHandler {
   private dimensionMode = false;
   /** "Prolonger": hovering an end of a line or an arc previews its extension, a click makes it. */
   private extendMode = false;
+  /** "Couper": the part of a curve between two crossings goes when it is clicked. */
+  private trimMode = false;
   /** A constraint chosen with nothing (or the wrong things) selected: it waits for the clicks, as in Fusion. */
   private pendingCommand: string | null = null;
   /** "Décalage" tool, while it is open. */
   private offset: OffsetTool | null = null;
   /** "Déplacer" tool, while it is open. */
   private moveTool: SketchMoveTool | null = null;
+  private arrayTool: SketchArrayTool | null = null;
 
   constructor(
     feature: SketchFeature,
@@ -160,6 +167,7 @@ export class SketchMode implements PointerHandler {
     this.lastSolve = solveSketch(this.geometry);
     this.offset?.sync();
     this.moveTool?.sync();
+    this.arrayTool?.sync();
     this.render();
     this.ensureVisible();
   }
@@ -168,18 +176,19 @@ export class SketchMode implements PointerHandler {
     closeCalculator();
     this.offset?.dispose();
     this.moveTool?.dispose();
+    this.arrayTool?.dispose();
     this.overlay.dispose();
     this.viewport.exitSketch();
   }
 
   /** A tool with its own dialog (Décalage, Déplacer) is open: Enter confirms it, Échap cancels it. */
   get panelToolActive(): boolean {
-    return this.offset !== null || this.moveTool !== null;
+    return this.offset !== null || this.moveTool !== null || this.arrayTool !== null;
   }
 
   /** A tool other than the selection is active (Échap returns to the selection before leaving the sketch). */
   get toolActive(): boolean {
-    return this.tool !== null || this.extendMode || this.pendingCommand !== null || this.dimensionMode;
+    return this.tool !== null || this.extendMode || this.trimMode || this.pendingCommand !== null || this.dimensionMode;
   }
 
   /** The constraint waiting for its elements, if any (its button shows pressed). */
@@ -187,10 +196,12 @@ export class SketchMode implements PointerHandler {
     return this.pendingCommand;
   }
 
-  get toolName(): ToolName | "dimension" | "offset" | "move" | "extend" {
+  get toolName(): ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "array" {
     if (this.extendMode) return "extend";
+    if (this.trimMode) return "trim";
     if (this.offset) return "offset";
     if (this.moveTool) return "move";
+    if (this.arrayTool) return "array";
     if (this.dimensionMode) return "dimension";
     return this.tool?.name ?? "select";
   }
@@ -200,7 +211,9 @@ export class SketchMode implements PointerHandler {
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
     if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
     if (this.extendMode) return "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection";
+    if (this.trimMode) return "Couper : survolez la partie d'une ligne, d'un arc ou d'un cercle entre deux croisements (elle s'affiche), cliquez pour la supprimer — Échap revient à la sélection";
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
+    if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions, puis OK (Entrée) — Échap annule";
     if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
   }
@@ -266,15 +279,19 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension" | "offset" | "move" | "extend", editing?: OffsetRecord): void {
+  setTool(name: ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "array", editing?: OffsetRecord): void {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
     this.moveTool?.dispose();
     this.moveTool = null;
+    this.arrayTool?.dispose();
+    this.arrayTool = null;
+    this.snapMark = null;
     this.viewport.renderer.domElement.style.cursor = "";
     this.dimensionMode = name === "dimension";
     this.extendMode = name === "extend";
+    this.trimMode = name === "trim";
     this.pendingCommand = null;
     if (this.dimensionMode) this.selection.clear();
     if (name === "offset") {
@@ -287,7 +304,13 @@ export class SketchMode implements PointerHandler {
       this.moveTool = new SketchMoveTool(this.moveHost());
       this.moveTool.start();
     }
-    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" || name === "extend" ? null : new DrawingTool(name, this.construction);
+    if (name === "array") {
+      this.arrayTool = new SketchArrayTool(this.arrayHost());
+      this.arrayTool.start();
+    }
+    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" || name === "extend" || name === "trim" || name === "array" ? null : new DrawingTool(name, this.construction);
+    // A drawing tool (line, rectangle, circle, arc) has the cross cursor.
+    if (this.tool) this.viewport.renderer.domElement.style.cursor = "crosshair";
     this.preview = null;
     this.render();
     this.host.changed();
@@ -309,6 +332,33 @@ export class SketchMode implements PointerHandler {
   confirmPanelTool(): void {
     void this.offset?.confirm();
     this.moveTool?.confirm();
+    this.arrayTool?.confirm();
+  }
+
+  private arrayHost(): ConstructorParameters<typeof SketchArrayTool>[0] {
+    const mode = this;
+    return {
+      geometry: () => this.geometry,
+      get selection() {
+        return mode.selection;
+      },
+      container: () => this.host.calculatorContainer(),
+      unit: () => this.host.unit(),
+      tolerance: () => this.tolerance(),
+      apply: (geometry, success) => this.apply(geometry, success),
+      changed: () => {
+        this.preview = this.arrayTool?.preview ?? null;
+        this.render();
+        this.host.changed();
+      },
+      closed: () => {
+        this.arrayTool = null;
+        this.preview = null;
+        this.render();
+        this.host.changed();
+      },
+      notify: (message, kind) => this.host.notify(message, kind),
+    };
   }
 
   private moveHost(): ConstructorParameters<typeof SketchMoveTool>[0] {
@@ -388,6 +438,10 @@ export class SketchMode implements PointerHandler {
       this.moveTool.cancel();
       return;
     }
+    if (this.arrayTool) {
+      this.arrayTool.cancel();
+      return;
+    }
     if (this.pendingCommand) {
       // The elements picked so far for the waiting constraint are dropped with it.
       this.selection.clear();
@@ -398,7 +452,7 @@ export class SketchMode implements PointerHandler {
       this.setTool("select");
       return;
     }
-    if (this.extendMode) {
+    if (this.extendMode || this.trimMode) {
       this.setTool("select");
       return;
     }
@@ -507,16 +561,22 @@ export class SketchMode implements PointerHandler {
     return rayToSketch(this.frame, origin, direction);
   }
 
+  /** The line, arc or circle of the sketch under the pointer (not an axis, not construction), or null. */
+  private curveToTrim(p: Vec2): string | null {
+    return hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id) && !findCurve(this.geometry, h.id)?.construction)?.id ?? null;
+  }
+
   private tolerance(): number {
     return PICK_PX * this.viewport.worldPerPixel();
   }
 
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
-    if (this.tool || this.extendMode) return false;
+    if (this.tool || this.extendMode || this.trimMode) return false;
     // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
     if (this.offset) return this.offset.dragStart(event);
     if (this.moveTool) return this.moveTool.down(event);
+    if (this.arrayTool) return false;
     const p = this.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(this.geometry, p, this.tolerance());
@@ -552,6 +612,9 @@ export class SketchMode implements PointerHandler {
       const s = this.snapAt(p);
       this.hover = s.pointId ?? s.curveId ?? null;
       this.preview = this.tool.move(this.geometry, s);
+      // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
+      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : this.gridSnap ? { pos: s.pos, kind: "grid" } : null;
+      this.viewport.renderer.domElement.style.cursor = this.snapMark ? "none" : "crosshair";
     } else if (this.offset) {
       this.hover = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id))?.id ?? null;
       this.viewport.renderer.domElement.style.cursor = this.offset.overArrow(event) ? "grab" : "";
@@ -563,6 +626,13 @@ export class SketchMode implements PointerHandler {
         const ext = curve ? findExtension(this.geometry, curve.id, p) : null;
         this.hover = curve?.id ?? null;
         this.preview = ext && typeof ext === "object" ? ext.preview : null;
+      }
+      if (this.trimMode) {
+        // The part that would go, between the two crossings round the pointer, is shown before the click.
+        const curve = this.curveToTrim(p);
+        const trim = curve ? findTrim(this.geometry, curve, p) : null;
+        this.hover = curve;
+        this.preview = trim && typeof trim === "object" ? trim.preview : null;
       }
     }
     this.render();
@@ -609,6 +679,19 @@ export class SketchMode implements PointerHandler {
     }
     if (this.moveTool) {
       this.moveTool.click(p);
+      return true;
+    }
+    if (this.arrayTool) {
+      this.arrayTool.click(p);
+      return true;
+    }
+    if (this.trimMode) {
+      const curve = this.curveToTrim(p);
+      const trim = curve ? findTrim(this.geometry, curve, p) : null;
+      this.preview = null;
+      if (typeof trim === "string") this.host.notify(trim, "info");
+      else if (trim) this.apply(applyTrim(this.geometry, trim), trim.whole ? "Courbe supprimée." : "Partie coupée.");
+      this.render();
       return true;
     }
     if (this.extendMode) {
@@ -798,10 +881,12 @@ export class SketchMode implements PointerHandler {
       annotations: [
         ...dimensionAnnotations(this.geometry, unit),
         ...measures,
-        ...(this.offset || this.moveTool || this.extendMode ? [] : previewAnnotations(this.preview, unit)),
+        ...(this.offset || this.moveTool || this.arrayTool || this.extendMode || this.trimMode ? [] : previewAnnotations(this.preview, unit)),
+        ...(this.arrayTool?.annotations ?? []),
       ],
       showGlyphs: this.showGlyphs,
       regions,
+      snapMark: this.tool ? this.snapMark : null,
     });
   }
 
