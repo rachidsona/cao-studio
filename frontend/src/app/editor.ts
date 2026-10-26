@@ -2,7 +2,9 @@
  * Editor controller: wires the Django page, the document session, the
  * geometry worker, the viewport and the panels together.
  */
-import { addExtrude, addPlate, bodyLabel, bodyOrigin, dependentsOf, deleteFeature, findFeature, isBodyHidden, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
+import { confirmDeletion, deletionOf } from "./delete-selection";
+import { askConfirm } from "../ui/confirm-dialog";
+import { addExtrude, addPlate, bodyLabel, deleteFeatures, findFeature, isBodyHidden, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
@@ -41,7 +43,7 @@ export class Editor {
   private statuses = new Map<string, FeatureStatus>();
   private result: RecomputeResponse | null = null;
   private selectedFeature: string | null = null;
-  private picked: ModelSelectionController;
+  readonly picked: ModelSelectionController;
   private recomputing = false;
   private recomputeAgain = false;
   private sketches: SketchController;
@@ -110,12 +112,13 @@ export class Editor {
       selectedId: () => this.selectedFeature,
       selectedBodyId: () => this.picked.bodyId ?? null,
       modelPicked: () => !this.picked.empty,
+      pickedIds: () => this.picked.selection, toggleInSelection: (kind, id) => this.viewport.toggleInSelection(kind, id),
       selectFeature: (id) => this.selectFeature(id),
       selectBody: (id) => ((this.selectedFeature = id), this.viewport.selectBody(id), this.render()),
       toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
       renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
-      removeBody: (id) => this.removeBody(id),
+      removeBody: (id) => this.removePicked({ bodies: [id] }),
       renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
       editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
       removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),
@@ -166,7 +169,7 @@ export class Editor {
     return this.doc.units;
   }
 
-  private notify(message: string, kind: "info" | "success" | "error" = "info"): void {
+  notify(message: string, kind: "info" | "success" | "error" = "info"): void {
     toast(ref(this.root, "toasts"), message, kind);
   }
 
@@ -254,7 +257,7 @@ export class Editor {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
         },
-        clear: () => this.viewport.clearSelection(),
+        clear: () => this.viewport.clearSelection(), remove: () => this.removePicked(this.picked.selection),
       },
       targets: extrudeTargets(this.doc, feature?.id ?? null),
       sketch: {
@@ -322,27 +325,25 @@ export class Editor {
     this.sketches.sync();
   }
 
-  /** Deleting a body deletes the feature that created it; a piece of a split takes the whole split with it. */
-  private removeBody(bodyId: string): void {
-    const origin = bodyOrigin(this.doc, bodyId);
-    const owner = findFeature(this.doc, featureOfBody(origin));
-    if (origin !== owner?.id && !window.confirm(`Supprimer cette pièce supprime la scission « ${owner?.name} » et donc toutes ses pièces. Continuer ?`)) return;
-    this.removeFeature(featureOfBody(origin));
+  /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, lines and points of sketches. */
+  private async removePicked(selection: Parameters<typeof deletionOf>[1]): Promise<void> {
+    const plan = deletionOf(this.doc, selection);
+    if (!plan.features.length && !plan.edits.length) return void (plan.skipped && this.notify("Une zone ne se supprime pas : sélectionnez ses traits, ou l'esquisse entière.", "info"));
+    if (await confirmDeletion(this.doc, plan)) await this.removeFeature(plan.features, plan.edits);
   }
 
   private toggleSuppress(id: string): void {
     void this.change(updateFeature(this.doc, id, (f) => ({ ...f, suppressed: !f.suppressed })));
   }
 
-  private removeFeature(id: string): void {
-    const feature = findFeature(this.doc, id);
-    if (!feature) return;
-    const next = deleteFeature(this.doc, id);
-    const lost = dependentsOf(this.doc, id).filter((d) => !findFeature(next, d));
-    if (lost.length > 0) {
-      const names = lost.map((d) => findFeature(this.doc, d)?.name ?? d).join(", ");
-      if (!window.confirm(`Supprimer « ${feature.name} » supprimera aussi : ${names}. Continuer ?`)) return;
-    }
+  /** Deletes features (several at once: one undo step), after asking when other features go with them. */
+  private async removeFeature(ids: string | string[], edits: SketchFeature[] = []): Promise<void> {
+    const base = edits.reduce((d, sketch) => updateFeature(d, sketch.id, () => sketch), this.doc);
+    const list = (typeof ids === "string" ? [ids] : ids).filter((id) => findFeature(base, id));
+    if (list.length === 0 && edits.length === 0) return;
+    const { next, lost } = deleteFeatures(base, list);
+    const names = (of: string[]) => of.map((d) => findFeature(this.doc, d)?.name ?? d).join(", ");
+    if (lost.length > 0 && !(await askConfirm(`Supprimer « ${names(list)} » supprimera aussi : ${names(lost)}. Continuer ?`, "Supprimer"))) return;
     if (this.selectedFeature && !findFeature(next, this.selectedFeature)) this.selectedFeature = null;
     if (this.sketches.mode && !findFeature(next, this.sketches.mode.featureId)) this.sketches.finish();
     this.viewport.clearSelection();
@@ -453,10 +454,7 @@ export class Editor {
       fit: () => this.viewport.fit(),
       panel: (target) => this.openPanel(target.dataset.panel as "tree" | "properties"),
       "close-panels": () => this.openPanel(null),
-      deselect: () => {
-        this.viewport.clearSelection();
-        this.selectFeature(null);
-      },
+      deselect: () => (this.viewport.clearSelection(), this.selectFeature(null)),
     };
     this.root.addEventListener("click", (event) => {
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
@@ -486,11 +484,8 @@ export class Editor {
       save: () => void this.files.save(),
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
-      escape: () => {
-        this.viewport.clearSelection();
-        this.selectFeature(null);
-      },
-      deleteSelected: () => this.selectedFeature && this.removeFeature(this.selectedFeature),
+      escape: () => (this.viewport.clearSelection(), this.selectFeature(null)),
+      deleteSelected: () => (this.picked.empty ? this.selectedFeature && this.removeFeature(this.selectedFeature) : this.removePicked(this.picked.selection)),
       fit: () => this.viewport.fit(),
       hole: () => this.openTool("hole"),
       extrude: () => this.extrudeCommand(),

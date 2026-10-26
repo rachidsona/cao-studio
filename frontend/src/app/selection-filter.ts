@@ -1,6 +1,7 @@
 /**
  * Selection filter of the 3D model toolbar (Auto / Faces / Arêtes / Points / Corps):
- * what a click selects. The choice is remembered per browser.
+ * what a click selects. The choice is remembered per browser. The "Fenêtre" button
+ * makes a drag draw a selection window instead of turning the view.
  */
 import type { SelectionFilter, Viewport } from "../viewport/viewport";
 
@@ -24,6 +25,12 @@ export function bindSelectionFilter(root: HTMLElement, viewport: Viewport): void
     }
   };
   root.addEventListener("click", (event) => {
+    const windowButton = (event.target as HTMLElement).closest<HTMLElement>("[data-select-window]");
+    if (windowButton) {
+      viewport.windowSelect = !viewport.windowSelect;
+      windowButton.setAttribute("aria-pressed", String(viewport.windowSelect));
+      return;
+    }
     const button = (event.target as HTMLElement).closest<HTMLElement>("[data-select-filter]");
     const filter = button?.dataset.selectFilter;
     if (!filter || !FILTERS.has(filter)) return;

@@ -18,6 +18,8 @@ export interface SelectionSummary {
   /** Points, curves and areas of sketches, with the name of their sketch. */
   sketch: (SketchPick & { sketchName: string })[];
   bodies: { id: string; name: string }[];
+  /** Whole sketches of a multiple selection. */
+  sketches: { id: string; name: string }[];
 }
 
 const SURFACES: Record<string, string> = { PLANE: "plane", CYLINDRE: "cylindrique", CONE: "conique", SPHERE: "sphérique", TORUS: "torique" };
@@ -40,7 +42,7 @@ export function pointText(point: Point3, unit: DisplayUnit): string {
 }
 
 export class ModelSelectionController {
-  selection: ModelSelection = { faces: [], edges: [], vertices: [], sketch: [], bodies: [] };
+  selection: ModelSelection = { faces: [], edges: [], vertices: [], sketch: [], bodies: [], sketches: [] };
   private faceInfos = new Map<string, FaceInfo>();
   private edgeInfos = new Map<string, EdgeInfo>();
 
@@ -53,14 +55,18 @@ export class ModelSelectionController {
   }
 
   get empty(): boolean {
-    const { faces, edges, vertices, sketch, bodies } = this.selection;
-    return faces.length === 0 && edges.length === 0 && vertices.length === 0 && sketch.length === 0 && bodies.length === 0;
+    const { faces, edges, vertices, sketch, bodies, sketches } = this.selection;
+    return faces.length === 0 && edges.length === 0 && vertices.length === 0 && sketch.length === 0 && bodies.length === 0 && sketches.length === 0;
   }
 
   /** One-line summary for the status bar. */
   statusText(): string {
-    const { faces, edges, vertices, sketch, bodies } = this.selection;
+    const { faces, edges, vertices, sketch, bodies, sketches } = this.selection;
     if (this.empty) return "Aucune sélection";
+    if (sketches.length) {
+      const parts = [bodies.length ? `${bodies.length} corps` : "", `${sketches.length} esquisse${sketches.length > 1 ? "s" : ""}`].filter(Boolean);
+      return `${parts.join(" et ")} sélectionné${bodies.length + sketches.length > 1 ? "s" : ""}`;
+    }
     if (sketch.length) {
       const n = (kind: SketchPick["kind"]) => sketch.filter((p) => p.kind === kind).length;
       const parts = [
@@ -94,6 +100,7 @@ export class ModelSelectionController {
       vertices: this.selection.vertices,
       sketch: this.selection.sketch.map((p) => ({ ...p, sketchName: this.host.sketchName(p.sketchId) })),
       bodies: this.selection.bodies.map((id) => ({ id, name: this.host.bodyName(id) })),
+      sketches: this.selection.sketches.map((id) => ({ id, name: this.host.sketchName(id) })),
     };
   }
 

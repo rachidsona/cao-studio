@@ -48,8 +48,10 @@ export interface ModelSelection {
   vertices: VertexPick[];
   /** Points, curves and areas of sketches. */
   sketch: SketchPick[];
-  /** Whole bodies (selection filter "Corps"). */
+  /** Whole bodies (selection filter "Corps", Ctrl/Maj + clic, window). */
   bodies: string[];
+  /** Whole sketches, several at once (Ctrl/Maj + clic, filter "Corps", window). */
+  sketches: string[];
 }
 
 /** What a click selects in the 3D model. */
@@ -68,6 +70,7 @@ export class SelectionLayer {
   vertices: VertexPick[] = [];
   sketch: SketchPick[] = [];
   bodies: string[] = [];
+  sketches: string[] = [];
   private group = new THREE.Group();
   private labels = new Map<string, string>();
   /** Small dots on every corner, shown while corners are what a click selects. */
@@ -98,17 +101,29 @@ export class SelectionLayer {
   }
 
   get count(): number {
-    return this.faces.length + this.edges.length + this.vertices.length + this.sketch.length + this.bodies.length;
+    return this.faces.length + this.edges.length + this.vertices.length + this.sketch.length + this.bodies.length + this.sketches.length;
   }
 
   snapshot(): ModelSelection {
-    return { faces: [...this.faces], edges: [...this.edges], vertices: [...this.vertices], sketch: [...this.sketch], bodies: [...this.bodies] };
+    return { faces: [...this.faces], edges: [...this.edges], vertices: [...this.vertices], sketch: [...this.sketch], bodies: [...this.bodies], sketches: [...this.sketches] };
   }
 
   toggleBody(bodyId: string): void {
     const i = this.bodies.indexOf(bodyId);
     if (i >= 0) this.bodies.splice(i, 1);
     else this.bodies.push(bodyId);
+  }
+
+  toggleSketch(sketchId: string): void {
+    const i = this.sketches.indexOf(sketchId);
+    if (i >= 0) this.sketches.splice(i, 1);
+    else this.sketches.push(sketchId);
+  }
+
+  /** Adds bodies and sketches not selected yet (window selection). */
+  add(bodies: string[], sketches: string[]): void {
+    for (const id of bodies) if (!this.bodies.includes(id)) this.bodies.push(id);
+    for (const id of sketches) if (!this.sketches.includes(id)) this.sketches.push(id);
   }
 
   toggleFace(pick: FacePick): void {
@@ -135,11 +150,12 @@ export class SelectionLayer {
     else this.sketch.push(pick);
   }
 
-  /** Drops the picked elements of sketches no longer drawn; true when something was dropped. */
+  /** Drops the sketches, and picked elements of sketches, no longer drawn; true when something was dropped. */
   pruneSketch(drawn: ReadonlySet<string>): boolean {
-    const before = this.sketch.length;
+    const before = this.sketch.length + this.sketches.length;
     this.sketch = this.sketch.filter((p) => drawn.has(p.sketchId));
-    return this.sketch.length !== before;
+    this.sketches = this.sketches.filter((id) => drawn.has(id));
+    return this.sketch.length + this.sketches.length !== before;
   }
 
   clear(): void {
@@ -148,6 +164,7 @@ export class SelectionLayer {
     this.vertices = [];
     this.sketch = [];
     this.bodies = [];
+    this.sketches = [];
   }
 
   /** Text shown next to a selected edge (its length or diameter). */

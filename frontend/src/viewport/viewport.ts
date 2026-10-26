@@ -13,6 +13,7 @@ import { edgeAtVertex } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
 import { SelectionLayer, type EdgePick, type FacePick, type ModelSelection, type SelectionFilter, type SketchPick, type VertexPick } from "./selection-layer";
 import { addDistinct, bodyVertices, type Point3 } from "./body-points";
+import { takenByWindow, windowFrom, WindowOverlay, type ScreenPoint } from "./window-select";
 
 export type { EdgePick, FacePick, ModelSelection, SelectionFilter, SketchPick, VertexPick } from "./selection-layer";
 
@@ -90,6 +91,10 @@ export class Viewport {
   private frame = 0;
   onSelectionChange: (selection: ModelSelection) => void = () => {};
   private filter: SelectionFilter = "auto";
+  /** "Fenêtre" button: a drag draws a selection window instead of turning the view (Maj + glisser does it anyway). */
+  windowSelect = false;
+  private windowDrag: { pointerId: number; start: ScreenPoint; end: ScreenPoint } | null = null;
+  private windowOverlay: WindowOverlay;
 
   /** What a click selects: edge then face (auto), only faces, only edges, only corners, or whole bodies. */
   get selectionFilter(): SelectionFilter {
@@ -117,6 +122,7 @@ export class Viewport {
     labelLayer.style.inset = "0";
     labelLayer.style.pointerEvents = "none";
     container.appendChild(labelLayer);
+    this.windowOverlay = new WindowOverlay(container);
 
     THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100000);
@@ -204,6 +210,7 @@ export class Viewport {
       const group = new THREE.Group();
       group.userData.sketchId = id;
       group.userData.points = points;
+      group.userData.selected = selected;
       group.matrixAutoUpdate = false;
       const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(...frame.u), new THREE.Vector3(...frame.v), new THREE.Vector3(...frame.normal));
       group.matrix.copy(basis.setPosition(new THREE.Vector3(...frame.origin)));
@@ -211,6 +218,7 @@ export class Viewport {
         const geometry = new THREE.BufferGeometry().setFromPoints(curve.points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
         const ghost = new THREE.Line(geometry, selected ? this.sketchSelectedGhostMaterial : this.sketchGhostMaterial);
         ghost.renderOrder = 4;
+        ghost.userData.ghost = true;
         const line = new THREE.Line(geometry, selected ? this.sketchSelectedMaterial : this.sketchMaterial);
         line.renderOrder = 5;
         ghost.userData.kind = line.userData.kind = "line";
@@ -229,11 +237,44 @@ export class Viewport {
       }
       this.sketchGroup.add(group);
     }
-    // Picked sketch elements whose sketch is no longer drawn (hidden, deleted, being edited) are dropped.
-    if (this.selection.pruneSketch(new Set(items.map((i) => i.id)))) {
-      this.selection.render(this.bodies);
-      this.onSelectionChange(this.selection.snapshot());
+    // Picked sketches and sketch elements no longer drawn (hidden, deleted, being edited) are dropped.
+    if (this.selection.pruneSketch(new Set(items.map((i) => i.id)))) this.emitSelection();
+    else this.paintSketches();
+  }
+
+  /** Draws in rose the sketch selected alone (in the browser) and the sketches of a multiple selection. */
+  private paintSketches(): void {
+    for (const group of this.sketchGroup.children) {
+      const on = group.userData.selected === true || this.selection.sketches.includes(group.userData.sketchId as string);
+      for (const child of group.children) {
+        if (child.userData.kind === "fill") (child as THREE.Mesh).material = on ? this.sketchSelectedFillMaterial : this.sketchFillMaterial;
+        else if (child.userData.kind === "line") {
+          const ghost = child.userData.ghost === true;
+          (child as THREE.Line).material = on ? (ghost ? this.sketchSelectedGhostMaterial : this.sketchSelectedMaterial) : ghost ? this.sketchGhostMaterial : this.sketchMaterial;
+        }
+      }
     }
+  }
+
+  private emitSelection(): void {
+    this.selection.render(this.bodies);
+    this.paintSketches();
+    this.onSelectionChange(this.selection.snapshot());
+  }
+
+  /** The sketch selected alone in the browser joins a multiple selection being made (Ctrl/Maj + clic, window). */
+  private carryAloneSketch(): void {
+    const alone = this.sketchGroup.children.find((g) => g.userData.selected === true)?.userData.sketchId as string | undefined;
+    if (alone) this.selection.add([], [alone]);
+  }
+
+  /** Adds or removes a whole body or sketch (Ctrl/Maj + clic in the browser). */
+  toggleInSelection(kind: "body" | "sketch", id: string): void {
+    this.carryAloneSketch();
+    if (kind === "sketch") this.selection.toggleSketch(id);
+    else if (this.bodies.has(id)) this.selection.toggleBody(id);
+    this.emitSelection();
+    this.onSketchPick(null);
   }
 
   /**
@@ -296,6 +337,7 @@ export class Viewport {
   }
 
   setBodies(meshes: BodyMesh[]): void {
+    this.setHoverHighlight(null);
     for (const body of this.bodies.values()) this.disposeBody(body);
     this.bodies.clear();
     for (const [index, data] of meshes.entries()) {
@@ -426,7 +468,21 @@ export class Viewport {
       "pointerdown",
       (event) => {
         if (event.target !== canvas) return;
+        if (this.windowDrag) {
+          // A second finger: the window gives way to the camera.
+          this.windowDrag = null;
+          this.windowOverlay.hide();
+          return;
+        }
         this.pointerDown = { x: event.clientX, y: event.clientY };
+        if (!this.pointerHandler && event.button === 0 && (event.shiftKey || this.windowSelect)) {
+          // Window selection: Maj + glisser, or any drag while the "Fenêtre" button is on.
+          event.stopPropagation();
+          canvas.setPointerCapture(event.pointerId);
+          const at = this.canvasPoint(event);
+          this.windowDrag = { pointerId: event.pointerId, start: at, end: at };
+          return;
+        }
         if (this.pointerHandler && event.button === 0 && this.pointerHandler.down(event)) {
           event.stopPropagation();
           canvas.setPointerCapture(event.pointerId);
@@ -436,10 +492,33 @@ export class Viewport {
       },
       { capture: true },
     );
-    canvas.addEventListener("pointermove", (event) => this.pointerHandler?.move(event));
+    canvas.addEventListener("pointermove", (event) => {
+      if (this.windowDrag?.pointerId === event.pointerId) {
+        this.windowDrag.end = this.canvasPoint(event);
+        if (Math.hypot(this.windowDrag.end[0] - this.windowDrag.start[0], this.windowDrag.end[1] - this.windowDrag.start[1]) > 5) this.windowOverlay.show(this.windowDrag.start, this.windowDrag.end);
+        return;
+      }
+      this.pointerHandler?.move(event);
+    });
+    canvas.addEventListener("pointercancel", () => {
+      this.windowDrag = null;
+      this.windowOverlay.hide();
+    });
     canvas.addEventListener("pointerup", (event) => {
       const start = this.pointerDown;
       this.pointerDown = null;
+      const drag = this.windowDrag?.pointerId === event.pointerId ? this.windowDrag : null;
+      if (drag) {
+        this.windowDrag = null;
+        this.windowOverlay.hide();
+        drag.end = this.canvasPoint(event);
+        // A click without dragging stays a click (Maj + clic adds to the selection).
+        if (Math.hypot(drag.end[0] - drag.start[0], drag.end[1] - drag.start[1]) <= 5) {
+          if (!this.clickOverride?.(event)) this.selectAt(event);
+        }
+        else this.finishWindow(drag.start, drag.end);
+        return;
+      }
       if (this.exclusivePointer === event.pointerId) {
         this.exclusivePointer = null;
         this.controls.enabled = true;
@@ -451,6 +530,7 @@ export class Viewport {
       }
       if (!isClick) return;
       if (!this.pointerHandler && this.viewHelper.handleClick(event)) return;
+      if (!this.pointerHandler && this.clickOverride?.(event)) return;
       if (!this.pointerHandler) this.selectAt(event);
     });
   }
@@ -605,6 +685,8 @@ export class Viewport {
    */
   private selectAt(event: PointerEvent): void {
     const filter = this.selectionFilter;
+    // Ctrl, Cmd or Maj: adds whole bodies and sketches to the selection (several at once), as in Fusion.
+    const adding = event.shiftKey || event.ctrlKey || event.metaKey;
     type Candidate =
       | { kind: "vertex"; pick: VertexPick }
       | { kind: "edge"; pick: EdgePick }
@@ -654,22 +736,181 @@ export class Viewport {
     const chosen = list[index];
     // Cycling replaces what the previous click at this spot selected.
     if (again) this.selection.clear();
-    if (chosen?.kind === "sketch") {
+    const multi = adding || filter === "body" || this.selection.bodies.length > 0 || this.selection.sketches.length > 0;
+    if (chosen?.kind === "sketch" && !multi) {
+      // A sketch clicked alone becomes the sketch selected in the browser.
       this.selection.clear();
-      this.selection.render(this.bodies);
-      this.onSelectionChange(this.selection.snapshot());
+      this.emitSelection();
       this.onSketchPick(chosen.id);
       return;
     }
-    if (chosen?.kind === "vertex") this.selection.toggleVertex(chosen.pick);
+    if (adding || chosen?.kind === "sketch") this.carryAloneSketch();
+    if (chosen?.kind === "sketch") this.selection.toggleSketch(chosen.id);
+    else if (chosen?.kind === "vertex") this.selection.toggleVertex(chosen.pick);
     else if (chosen?.kind === "edge") this.selection.toggleEdge(chosen.pick);
     else if (chosen?.kind === "item") this.selection.toggleSketchItem(chosen.pick);
-    else if (chosen?.kind === "face" && filter === "body") this.selection.toggleBody(chosen.pick.bodyId);
+    else if (chosen?.kind === "face" && (filter === "body" || (adding && filter === "auto"))) this.selection.toggleBody(chosen.pick.bodyId);
     else if (chosen?.kind === "face") this.selection.toggleFace(chosen.pick);
-    else this.selection.clear();
-    this.selection.render(this.bodies);
-    this.onSelectionChange(this.selection.snapshot());
+    else if (!adding) this.selection.clear();
+    this.emitSelection();
     this.onSketchPick(null);
+  }
+
+  /** Pointer position on the canvas (pixels from its top-left corner). */
+  private canvasPoint(event: PointerEvent): ScreenPoint {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    return [event.clientX - rect.left, event.clientY - rect.top];
+  }
+
+  /**
+   * Ends a selection window: the bodies and sketches it holds are added to the selection (left to right:
+   * entirely inside; right to left: touched).
+   */
+  private finishWindow(start: ScreenPoint, end: ScreenPoint): void {
+    const { rect, mode } = windowFrom(start, end);
+    const { clientWidth: w, clientHeight: h } = this.renderer.domElement;
+    const screen = (v: THREE.Vector3): ScreenPoint | null => {
+      const p = v.project(this.camera);
+      return p.z < -1 || p.z > 1 ? null : [((p.x + 1) / 2) * w, ((1 - p.y) / 2) * h];
+    };
+    /** Screen polylines of an object, or null when part of it is behind the camera (a window cannot hold it). */
+    const project = (lines: THREE.Vector3[][]): ScreenPoint[][] | null => {
+      const out: ScreenPoint[][] = [];
+      for (const line of lines) {
+        const points = line.map(screen);
+        if (points.some((p) => p === null)) {
+          if (mode === "window") return null;
+          continue;
+        }
+        out.push(points as ScreenPoint[]);
+      }
+      return out;
+    };
+    // A crossing window inside a single face touches no edge: the body under its centre is taken too.
+    const center = mode === "crossing" ? this.bodyAtScreen((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2) : null;
+    const bodies = [...this.bodies.values()].filter(({ data, mesh }) => {
+      if (data.bodyId === center) return true;
+      const lines: THREE.Vector3[][] = [];
+      for (let i = 0; i + 5 < data.edges.length; i += 6) {
+        lines.push([new THREE.Vector3(data.edges[i], data.edges[i + 1], data.edges[i + 2]), new THREE.Vector3(data.edges[i + 3], data.edges[i + 4], data.edges[i + 5])]);
+      }
+      const position = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+      for (let i = 0; i < position.count; i++) lines.push([new THREE.Vector3().fromBufferAttribute(position, i)]);
+      const polylines = project(lines);
+      return polylines !== null && takenByWindow(rect, mode, polylines);
+    });
+    this.sketchGroup.updateMatrixWorld(true);
+    const sketches = this.sketchGroup.children.filter((group) => {
+      const lines: THREE.Vector3[][] = [];
+      for (const child of group.children) {
+        if (child.userData.kind !== "line" || child.userData.ghost) continue;
+        const position = (child as THREE.Line).geometry.getAttribute("position") as THREE.BufferAttribute;
+        const line: THREE.Vector3[] = [];
+        for (let i = 0; i < position.count; i++) line.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(child.matrixWorld));
+        lines.push(line);
+      }
+      for (const p of (group.userData.points ?? []) as { at: [number, number] }[]) lines.push([new THREE.Vector3(p.at[0], p.at[1], 0).applyMatrix4(group.matrixWorld)]);
+      const polylines = project(lines);
+      return polylines !== null && takenByWindow(rect, mode, polylines);
+    });
+    this.carryAloneSketch();
+    this.selection.add(
+      bodies.map((b) => b.data.bodyId),
+      sketches.map((g) => g.userData.sketchId as string),
+    );
+    this.emitSelection();
+    this.onSketchPick(null);
+  }
+
+  /**
+   * What the pointer is over (Sélection++, as Curic Select++): a sketch line or area in front, else the face
+   * of a body. Nothing while a tool or a selection window has the pointer.
+   */
+  hoverTarget(event: PointerEvent): { kind: "sketch"; id: string } | { kind: "body"; id: string; face: FacePick } | null {
+    if (this.pointerHandler || this.windowDrag) return null;
+    return this.hoverTargetForTool(event);
+  }
+
+  /** The same, for a tool that has the pointer (a click choosing a body or a sketch). */
+  hoverTargetForTool(event: PointerEvent): { kind: "sketch"; id: string } | { kind: "body"; id: string; face: FacePick } | null {
+    const face = this.pick(event);
+    const sketch = this.pickSketch(event, "line") ?? this.pickSketch(event, "fill", face ? face.point.distanceTo(this.camera.position) : null);
+    if (sketch) return { kind: "sketch", id: sketch };
+    return face ? { kind: "body", id: face.bodyId, face } : null;
+  }
+
+  /** Ids of the bodies displayed. */
+  get displayedBodies(): string[] {
+    return [...this.bodies.keys()];
+  }
+
+  /** Sélection++: a click is handled there first (true: handled, the usual selection does not run). */
+  clickOverride: ((event: PointerEvent) => boolean) | null = null;
+
+  private hoverOutline: THREE.Group | null = null;
+  private hoverMaterial = new THREE.LineBasicMaterial({ color: 0x22c55e, depthTest: false, transparent: true, opacity: 0.95 });
+  private hoverTint = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, side: THREE.DoubleSide });
+
+  /**
+   * Shows in green what a click would select: whole bodies (edges over everything, faces tinted), or one face of
+   * a body; null removes it.
+   */
+  setHoverHighlight(target: { bodies: string[] } | { face: FacePick } | null): void {
+    if (this.hoverOutline) {
+      this.scene.remove(this.hoverOutline);
+      // Geometries made for a face are released; those of whole bodies belong to the bodies.
+      this.hoverOutline.traverse((o) => o.userData.own && (o as THREE.Mesh).geometry.dispose());
+      this.hoverOutline = null;
+    }
+    if (!target) return;
+    const group = new THREE.Group();
+    if ("face" in target) {
+      const body = this.bodies.get(target.face.bodyId);
+      const range = body?.data.faceGroups[target.face.faceIndex];
+      if (!body || !range) return;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", body.mesh.geometry.getAttribute("position"));
+      geometry.setIndex(new THREE.BufferAttribute(body.data.indices.slice(range.start, range.start + range.count), 1));
+      const tint = new THREE.Mesh(geometry, this.hoverTint);
+      tint.userData.own = true;
+      tint.renderOrder = 44;
+      group.add(tint);
+    } else {
+      for (const id of target.bodies) {
+        const body = this.bodies.get(id);
+        if (!body) continue;
+        const edges = new THREE.LineSegments(body.edges.geometry, this.hoverMaterial);
+        edges.renderOrder = 45;
+        const tint = new THREE.Mesh(body.mesh.geometry, this.hoverTint);
+        tint.renderOrder = 44;
+        group.add(tint, edges);
+      }
+    }
+    this.hoverOutline = group;
+    this.scene.add(group);
+  }
+
+  /**
+   * Sélection++: selects what a level holds (whole bodies, or one face), instead of the selection (or in
+   * addition to it with `adding`); a level already wholly selected is removed when adding.
+   */
+  selectLevel(target: { bodies: string[] } | { face: FacePick } | { sketches: string[] } | { item: SketchPick }, adding: boolean): void {
+    if (!adding) this.selection.clear();
+    if ("face" in target) this.selection.toggleFace(target.face);
+    else if ("item" in target) this.selection.toggleSketchItem(target.item);
+    else if ("sketches" in target) for (const id of target.sketches) this.selection.toggleSketch(id);
+    else if (adding && target.bodies.every((id) => this.selection.bodies.includes(id))) for (const id of target.bodies) this.selection.toggleBody(id);
+    else this.selection.add(target.bodies, []);
+    this.emitSelection();
+    this.onSketchPick(null);
+  }
+
+  /** Body seen at this canvas point (pixels), if any. */
+  private bodyAtScreen(x: number, y: number): string | null {
+    const { clientWidth: w, clientHeight: h } = this.renderer.domElement;
+    this.raycaster.setFromCamera(new THREE.Vector2((x / w) * 2 - 1, 1 - (y / h) * 2), this.camera);
+    const hit = this.raycaster.intersectObjects([...this.bodies.values()].map((b) => b.mesh), false)[0];
+    return (hit?.object.userData.bodyId as string | undefined) ?? null;
   }
 
   /** Edge of a displayed body under the pointer (within a few pixels). */
@@ -687,15 +928,13 @@ export class Viewport {
   selectBody(bodyId: string): void {
     this.selection.clear();
     if (this.bodies.has(bodyId)) this.selection.toggleBody(bodyId);
-    this.selection.render(this.bodies);
-    this.onSelectionChange(this.selection.snapshot());
+    this.emitSelection();
   }
 
   clearSelection(): void {
     if (this.selection.empty) return;
     this.selection.clear();
-    this.selection.render(this.bodies);
-    this.onSelectionChange(this.selection.snapshot());
+    this.emitSelection();
   }
 
   /** Dimension text displayed next to a selected edge. */
@@ -736,5 +975,6 @@ export class Viewport {
     this.timer.dispose();
     this.renderer.dispose();
     this.labels.domElement.remove();
+    this.windowOverlay.dispose();
   }
 }

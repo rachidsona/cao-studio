@@ -126,7 +126,8 @@ serveur accepte les deux versions.
   L'extrémité est alors liée à cette courbe (contrainte « point sur courbe ») ; l'outil reste actif,
   Échap revient à la Sélection. Une extrémité reliée à une autre courbe (un coin) se prolonge aussi :
   elle se détache et l'autre courbe garde le coin. Une extrémité fixe (projetée) ou qui ne rencontre rien
-  n'est pas prolongée (un message l'explique). Une ligne garde sa direction, un arc son cercle.
+  n'est pas prolongée (un message l'explique). Une ligne garde sa direction, un arc son cercle. Prolongée à nouveau, une
+  extrémité traverse la courbe qu'elle avait atteinte jusqu'à la suivante : la courbe traversée reste en place, entière.
 - **Déplacer** (touche M, bouton « Déplacer ») : déplace des points, segments, cercles, arcs, un
   rectangle ou un contour entier, ou plusieurs éléments à la fois.
   - On clique les éléments (« Étendre aux contours » ajoute tout le contour d'une courbe choisie), puis on
@@ -328,6 +329,21 @@ opération existante.
   - **éléments d'esquisse** : avec les filtres « Points », « Arêtes » et « Faces », un clic choisit aussi un point,
     un trait ou une zone d'une esquisse affichée (en orange), avec ses coordonnées, sa longueur ou son aire
     dans le panneau Sélection ; en « Auto », un clic sur une esquisse la sélectionne en entier ;
+  - **plusieurs corps et esquisses** : Ctrl (Cmd sur Mac) ou Maj + clic ajoute ou retire un corps entier ou une
+    esquisse entière, dans la vue comme dans l'arbre ; avec le filtre « Corps », un simple clic suffit. L'esquisse
+    déjà sélectionnée seule rejoint la sélection. Les esquisses choisies sont en rose, les lignes de l'arbre surlignées ;
+  - **supprimer la sélection** : touche **Suppr** (ou « delete » sur Mac) ou bouton « 🗑 Supprimer » du panneau Sélection,
+    quelle que soit la sélection, en une seule annulation (Ctrl+Z remet tout) : corps et esquisses entiers ; un corps
+    dont seule une face, une arête ou un coin est sélectionné (le corps entier, après confirmation) ; les traits et
+    points d'esquisse choisis dans la vue, retirés de leur esquisse avec leurs contraintes (une zone ne se supprime
+    pas : ses traits, ou l'esquisse entière). Les questions s'affichent dans la page (Entrée confirme, Échap annule), et
+    non dans une boîte du navigateur, que certains navigateurs intégrés bloquent. Supprimer un corps supprime
+    l'opération qui l'a créé (son esquisse reste) ; une pièce d'un caisson, de panneaux ou d'une scission emporte toute l'opération
+    (confirmation demandée), et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont nommées) ;
+  - **sélection par fenêtre** (comme Fusion) : Maj + glisser dans la vue, ou bouton « Fenêtre » (pratique au doigt :
+    tant qu'il est enfoncé, glisser trace la fenêtre au lieu de tourner la vue). De gauche à droite (cadre bleu), seuls
+    les corps et esquisses entièrement dedans sont pris ; de droite à gauche (cadre vert pointillé), tout ce qui est
+    touché. La fenêtre ajoute à la sélection ; un clic dans le vide la vide ;
   - **éléments superposés** : un nouveau clic au même endroit sélectionne l'élément suivant sous le curseur
     (arête, puis ligne d'esquisse, puis face, puis zone d'esquisse) ; une esquisse posée sur une face ou liée
     aux coins d'un corps par des coïncidences reste ainsi sélectionnable dans la vue ;
@@ -387,7 +403,7 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 
 ## Limites connues (incrément 1)
 
-- **Déplacer** : translations seulement (pas de rotation), un corps à la fois (pas d'assemblage, donc
+- **Déplacer** : translations seulement (la rotation est l'outil « Tourner »), un corps à la fois (pas d'assemblage, donc
   pas de contraintes entre composants). Les opérations suivantes qui désignent une position absolue (un
   perçage en x, y) la gardent : après un déplacement, elles se placent sur le corps déplacé. En 2D, le
   message d'un déplacement refusé liste l'ensemble des contraintes en conflit détectées par le solveur,

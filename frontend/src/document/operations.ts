@@ -134,6 +134,32 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   return next;
 }
 
+/**
+ * The features that deleting these bodies and sketches deletes: what made each body (a part of a multi-body
+ * operation — a cabinet, panels, a split — takes the whole operation, listed in `wholes`), and the sketches.
+ */
+export function featuresOfPick(doc: CadDocument, bodies: string[], sketches: string[]): { ids: string[]; wholes: string[] } {
+  const ids = new Set<string>();
+  const wholes = new Set<string>();
+  for (const body of bodies) {
+    const origin = bodyOrigin(doc, body);
+    const owner = featureOfBody(origin);
+    if (!findFeature(doc, owner)) continue;
+    ids.add(owner);
+    if (origin !== owner) wholes.add(owner);
+  }
+  for (const id of sketches) if (findFeature(doc, id)) ids.add(id);
+  return { ids: [...ids], wholes: [...wholes] };
+}
+
+/** Deletes several features in one go (one undo step); `lost` lists the other features that go with them. */
+export function deleteFeatures(doc: CadDocument, ids: string[]): { next: CadDocument; lost: string[] } {
+  let next = doc;
+  for (const id of ids) if (findFeature(next, id)) next = deleteFeature(next, id);
+  const lost = doc.features.filter((f) => !ids.includes(f.id) && !findFeature(next, f.id)).map((f) => f.id);
+  return { next, lost };
+}
+
 /** The body that results from `bodyId` after every later feature consuming it. */
 export function latestBody(doc: CadDocument, bodyId: string): string {
   let current = bodyId;

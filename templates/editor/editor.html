@@ -67,8 +67,9 @@
           <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="face" aria-pressed="false" title="Sélectionner des faces de corps ou des zones d'esquisse">Faces</button>
           <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="edge" aria-pressed="false" title="Sélectionner des arêtes de corps ou des traits d'esquisse">Arêtes</button>
           <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="vertex" aria-pressed="false" title="Sélectionner des sommets de corps ou des points d'esquisse">Points</button>
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="body" aria-pressed="false" title="Sélectionner le corps entier">Corps</button>
+          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="body" aria-pressed="false" title="Sélectionner des corps et des esquisses entiers (plusieurs à la fois)">Corps</button>
         </div>
+        <button type="button" class="tool-btn icon-btn" data-select-window aria-pressed="false" title="Sélection par fenêtre (ou Maj + glisser) : de gauche à droite, ce qui est entièrement dedans ; de droite à gauche, ce qui est touché" aria-label="Sélection par fenêtre"><svg class="tool-icon" aria-hidden="true"><use href="#i-window"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Sélection</span>
     </div>
@@ -106,7 +107,6 @@
     <div class="ribbon-group" role="group" aria-label="Menuiserie">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="cabinet" title="Caisson : bas ou haut de cuisine, colonne, penderie, placard — côtés, dessus, dessous, fond et étagères" aria-label="Caisson"><svg class="tool-icon" aria-hidden="true"><use href="#i-cabinet"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="face-strip" title="Tracé sur face (comme Curic DIO) : une ligne parallèle à une arête, ou une rainure, à tirer ou à saisir, puis à creuser" aria-label="Tracé sur face"><svg class="tool-icon" aria-hidden="true"><use href="#i-face-strip"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="panels" title="Panneaux depuis un squelette : chaque ligne d'une esquisse devient une planche (épaisseur, profondeur)" aria-label="Panneaux"><svg class="tool-icon" aria-hidden="true"><use href="#i-panels"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Menuiserie</span>

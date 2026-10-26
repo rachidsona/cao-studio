@@ -1,7 +1,8 @@
 /**
  * Model browser (left panel), like the browser of desktop CAD tools: the
  * bodies and the sketches of the document, each with an eye icon to show or
- * hide it. A click selects; the "⋯" button opens the dialog to edit, rename
+ * hide it. A click selects; Ctrl, Cmd or Maj + clic adds bodies and sketches
+ * to the selection (several at once); the "⋯" button opens the dialog to edit, rename
  * or delete. Operations (extrusion, hole…) are in the timeline instead.
  */
 import { el } from "./dom";
@@ -9,8 +10,9 @@ import { STATE_BADGES, TYPE_ICONS, type NavItem } from "./feature-meta";
 import { dotsIcon, eyeIcon } from "./icons";
 
 export interface BrowserHandlers {
-  onSelectBody(bodyId: string): void;
-  onSelectSketch(id: string): void;
+  /** `adding`: Ctrl, Cmd or Maj was held (adds to, or removes from, a multiple selection). */
+  onSelectBody(bodyId: string, adding: boolean): void;
+  onSelectSketch(id: string, adding: boolean): void;
   onToggleHidden(id: string): void;
   /** The "⋯" button of a row (`body`: the row is a body, `id` its latest feature). */
   onMenu(id: string, anchor: DOMRect, body: boolean): void;
@@ -81,11 +83,11 @@ function section(title: string, count: number, rows: HTMLElement[], empty: strin
 
 export function renderBrowser(
   container: HTMLElement,
-  data: { bodies: NavItem[]; sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null },
+  data: { bodies: NavItem[]; sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null; picked: { bodies: string[]; sketches: string[] } },
   handlers: BrowserHandlers,
 ): void {
-  const bodies = data.bodies.map((b) => row(b, b.id === data.selectedBodyId, `body:${b.id}`, "◼", b.id));
-  const sketches = data.sketches.map((s) => row(s, s.id === data.selectedId, `sketch:${s.id}`, TYPE_ICONS.sketch));
+  const bodies = data.bodies.map((b) => row(b, b.id === data.selectedBodyId || data.picked.bodies.includes(b.id), `body:${b.id}`, "◼", b.id));
+  const sketches = data.sketches.map((s) => row(s, s.id === data.selectedId || data.picked.sketches.includes(s.id), `sketch:${s.id}`, TYPE_ICONS.sketch));
   const root = el(
     "div",
     {},
@@ -95,10 +97,20 @@ export function renderBrowser(
   root.addEventListener("click", (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-menu]");
     if (!target) return;
+    const adding = event.shiftKey || event.ctrlKey || event.metaKey;
     if (target.dataset.hide) handlers.onToggleHidden(target.dataset.hide);
     else if (target.dataset.menu) handlers.onMenu(target.dataset.menu, target.getBoundingClientRect(), !!target.closest("[data-bodies]"));
-    else if (target.dataset.select?.startsWith("body:")) handlers.onSelectBody(target.dataset.select.slice(5));
-    else if (target.dataset.select?.startsWith("sketch:")) handlers.onSelectSketch(target.dataset.select.slice(7));
+    else if (target.dataset.select?.startsWith("body:")) handlers.onSelectBody(target.dataset.select.slice(5), adding);
+    else if (target.dataset.select?.startsWith("sketch:")) handlers.onSelectSketch(target.dataset.select.slice(7), adding);
+  });
+  // On a Mac, Ctrl + clic opens the context menu instead of clicking: it adds to the selection too.
+  root.addEventListener("contextmenu", (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select]");
+    if (!event.ctrlKey || !target?.dataset.select) return;
+    event.preventDefault();
+    const [kind, id] = [target.dataset.select.slice(0, target.dataset.select.indexOf(":")), target.dataset.select.slice(target.dataset.select.indexOf(":") + 1)];
+    if (kind === "body") handlers.onSelectBody(id, true);
+    else handlers.onSelectSketch(id, true);
   });
   container.replaceChildren(root);
 }

@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { canonicalJson, sameDocument } from "../../frontend/src/document/canonical";
-import { addHole, addPlate, deleteFeature, dependentsOf, latestBody } from "../../frontend/src/document/operations";
+import { addHole, addPlate, deleteFeature, deleteFeatures, dependentsOf, featuresOfPick, latestBody } from "../../frontend/src/document/operations";
+import * as THREE from "three";
+import { deletionOf, deletionQuestion } from "../../frontend/src/app/delete-selection";
+import { rectangleAt } from "../../frontend/src/document/sketch";
+import type { CadDocument } from "../../frontend/src/document/types";
 import { createReferencePlate } from "../../frontend/src/document/types";
 import { validateDocument } from "../../frontend/src/document/validate";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
@@ -51,6 +55,50 @@ describe("opérations sur l'historique", () => {
     const recomputer = new Recomputer();
     expect(recomputer.recompute(next).bodies).toEqual(["h1", "ex2"]);
     recomputer.dispose();
+  });
+});
+
+describe("supprimer la sélection (corps et esquisses)", () => {
+  /** The reference plate (sk1 → ex1, drilled by h1, then h2), a free sketch sk9, and a cabinet cb1 of several parts. */
+  const doc = (): CadDocument => {
+    const base = addHole(createReferencePlate(), "ex1", 20, 10, 6);
+    return {
+      ...base,
+      features: [
+        ...base.features,
+        { id: "sk9", type: "sketch", name: "Libre", plane: "XY", offset: 0, points: [], curves: [], constraints: [] },
+        { id: "cb1", type: "cabinet", name: "Caisson 1", origin: [0, 0, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "none", backThickness: 3, shelves: 0, plinth: 0, construction: "sides-through" },
+      ],
+    };
+  };
+
+  it("un corps supprime l'opération qui l'a créé ; une pièce emporte toute son opération", () => {
+    expect(featuresOfPick(doc(), ["h2"], ["sk9"])).toEqual({ ids: ["ex1", "sk9"], wholes: [] });
+    expect(featuresOfPick(doc(), ["cb1#1", "cb1#2"], [])).toEqual({ ids: ["cb1"], wholes: ["cb1"] });
+  });
+
+  it("plusieurs à la fois, en une seule fois ; les opérations qui en dépendent partent avec", () => {
+    const { next, lost } = deleteFeatures(doc(), ["ex1", "sk9", "cb1"]);
+    expect(next.features.map((f) => f.id)).toEqual(["sk1"]);
+    expect(lost).toEqual(["h1", "h2"]); // the holes go with the plate (one confirmation lists them)
+  });
+
+  it("Suppr sur une face supprime son corps entier (en le demandant) ; sur des traits d'esquisse, les enlève de l'esquisse", () => {
+    const base = doc();
+    const withRect: CadDocument = { ...base, features: base.features.map((f) => (f.id === "sk9" ? { ...f, ...rectangleAt(50, 25, 100, 50) } : f)) };
+    const face = deletionOf(withRect, { faces: [{ bodyId: "h2", faceIndex: 0, point: new THREE.Vector3() }] });
+    expect(face.features).toEqual(["ex1"]);
+    expect(face.implied).toEqual(["h2"]);
+    expect(deletionQuestion(withRect, face)).toContain("le corps entier");
+    const sketch = withRect.features.find((f) => f.id === "sk9");
+    if (sketch?.type !== "sketch") throw new Error("sketch expected");
+    const line = sketch.curves[0]!.id;
+    const lines = deletionOf(withRect, { sketch: [{ sketchId: "sk9", kind: "curve", id: line, points: [] }, { sketchId: "sk9", kind: "region", id: "0", points: [] }] });
+    expect(lines.features).toEqual([]);
+    expect(lines.edits[0]?.curves.map((c) => c.id)).not.toContain(line);
+    expect(lines.edits[0]?.curves).toHaveLength(sketch.curves.length - 1);
+    expect(lines.skipped).toBe(1);
+    expect(deletionQuestion(withRect, lines)).toBeNull();
   });
 });
 

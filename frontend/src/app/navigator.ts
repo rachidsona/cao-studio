@@ -24,6 +24,10 @@ export interface NavigatorHost {
   selectedBodyId(): string | null;
   /** Something is picked in the 3D view (it writes its own status line). */
   modelPicked(): boolean;
+  /** Whole bodies and sketches of the multiple selection (highlighted in the browser). */
+  pickedIds(): { bodies: string[]; sketches: string[] };
+  /** Ctrl/Maj + clic in the browser: adds or removes a body or a sketch. */
+  toggleInSelection(kind: "body" | "sketch", id: string): void;
   selectFeature(id: string): void;
   selectBody(bodyId: string): void;
   /** Shows or hides a sketch, or the body created by this feature. */
@@ -106,10 +110,10 @@ export class Navigator {
     const selectedId = this.host.selectedId();
     renderBrowser(
       ref(this.root, "tree"),
-      { bodies, sketches, selectedId, selectedBodyId: this.host.selectedBodyId() },
+      { bodies, sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.host.pickedIds() },
       {
-        onSelectBody: (bodyId) => this.host.selectBody(bodyId),
-        onSelectSketch: (id) => this.host.selectFeature(id),
+        onSelectBody: (bodyId, adding) => (adding ? this.host.toggleInSelection("body", bodyId) : this.host.selectBody(bodyId)),
+        onSelectSketch: (id, adding) => (adding ? this.host.toggleInSelection("sketch", id) : this.host.selectFeature(id)),
         onToggleHidden: (id) => this.host.toggleHidden(id),
         onMenu: (id, anchor, body) => this.open(id, anchor, body),
       },
