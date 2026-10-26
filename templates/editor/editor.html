@@ -57,8 +57,13 @@
 
   {% include "editor/_icons.html" %}
 
+  {# ---- Tabs of the toolbar (3D model): the groups of a tab only are shown, so nothing runs off the page ---- #}
+  <div class="flex items-center gap-1 border-b border-gray-200 bg-white px-2 py-0.5 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" data-ribbon-bar="model">
+    <div class="flex min-h-11 min-w-0 flex-1 items-center justify-start gap-0.5 overflow-x-auto" role="group" aria-label="Mes outils" data-quickbar data-ribbon-zone="quick" data-empty-text="Mes outils : cliquez Personnaliser, puis touchez un outil de la barre du bas et ici pour le monter."></div>
+    <button type="button" class="ribbon-tab shrink-0" data-ribbon-customize aria-pressed="false" title="Personnaliser : choisissez dans quelle barre va chaque icône">Personnaliser</button>
+  </div>
   {# ---- Toolbar (3D model): icons grouped as a ribbon, each with its name in a tooltip ---- #}
-  <div class="flex items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils du modèle">
+  <div class="flex flex-wrap items-stretch gap-y-1 border-b max-sm:flex-nowrap max-sm:overflow-x-auto border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle">
     <div class="ribbon-group" role="group" aria-label="Sélection">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="deselect" title="Sélection (Échap)" aria-label="Sélection"><svg class="tool-icon" aria-hidden="true"><use href="#i-select"/></svg></button>
@@ -113,6 +118,37 @@
       <span class="ribbon-caption" aria-hidden="true">Menuiserie</span>
     </div>
     <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Curic">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-action="face-strip" title="Truelle (comme Curic DIO 2) : cliquez une arête ou un coin pour tracer un trait (Ctrl : double trait), posez-le, puis tirez pour ajouter ou poussez pour creuser ; ou cliquez une face pour la tirer/pousser" aria-label="Truelle — tracé et extrusion"><svg class="tool-icon" aria-hidden="true"><use href="#i-face-strip"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="draw-on-face" title="Dessiner sur le corps (comme Curic DIO) : ligne, rectangle ou cercle tracé directement sur une face, avec les distances aux bords les plus proches (saisissables) ; un tracé fermé enchaîne avec tirer / pousser" aria-label="Dessiner sur le corps"><svg class="tool-icon" aria-hidden="true"><use href="#i-draw-on-face"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="mirror" title="Symétrie (comme Curic Mirror) : copie miroir des corps choisis, contre un côté ou au centre" aria-label="Symétrie"><svg class="tool-icon" aria-hidden="true"><use href="#i-mirror"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="align" title="Aligner (comme Curic Align) : accoler ou aligner des corps sur un corps de référence, en X, Y et Z" aria-label="Aligner"><svg class="tool-icon" aria-hidden="true"><use href="#i-align"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="stretch" title="Étirer (comme Curic Stretch) : un plan à travers le meuble, les panneaux traversés s'allongent, les autres se déplacent" aria-label="Étirer"><svg class="tool-icon" aria-hidden="true"><use href="#i-stretch"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="array" title="Réseau (comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis, avec un pas ou réparties sur une distance" aria-label="Réseau"><svg class="tool-icon" aria-hidden="true"><use href="#i-array"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="rotate" title="Tourner (comme Curic Rotate) : par quarts de tour ou d'un angle, autour du centre ou d'un coin cliqué" aria-label="Tourner"><svg class="tool-icon" aria-hidden="true"><use href="#i-rotate"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-section aria-pressed="false" title="Coupe (comme Curic Section) : cacher ce qui est au-delà d'un plan pour voir l'intérieur du meuble" aria-label="Coupe"><svg class="tool-icon" aria-hidden="true"><use href="#i-section"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Curic</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
+    <div class="ribbon-group" role="group" aria-label="Atelier">
+      <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-action="sweep" title="Suivre-moi (comme Follow Me de SketchUp) : un profil fermé balayé le long d'un chemin d'une autre esquisse — plinthes, moulures, corniches" aria-label="Suivre-moi"><svg class="tool-icon" aria-hidden="true"><use href="#i-sweep"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="machining" title="Usinage : perçages 32, charnières, rainure de fond, et assemblages (tourillons, confirmat, mi-bois, tenon-mortaise) entre deux planches" aria-label="Usinage"><svg class="tool-icon" aria-hidden="true"><use href="#i-machining"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="render" aria-pressed="true" title="Rendu des matières : colore chaque corps selon sa matière, avec le veinage du bois dans le sens du fil" aria-label="Rendu des matières"><svg class="tool-icon" aria-hidden="true"><use href="#i-render"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="material" aria-pressed="false" title="Matière et chants : matière, sens du fil et chants des corps sélectionnés" aria-label="Matière et chants"><svg class="tool-icon" aria-hidden="true"><use href="#i-material"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="parameters" aria-pressed="false" title="Paramètres : des valeurs nommées (largeur, épaisseur…) liées aux cotes par des formules ; modifier une valeur met à jour tout le meuble" aria-label="Paramètres"><svg class="tool-icon" aria-hidden="true"><use href="#i-parameters"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="measure" aria-pressed="false" title="Mètre et guides (comme le mètre de SketchUp) : mesurez entre deux points accrochés aux coins et arêtes, ou posez des lignes de guide enregistrées" aria-label="Mètre et guides"><svg class="tool-icon" aria-hidden="true"><use href="#i-measure"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="scenes" aria-pressed="false" title="Scènes : enregistrez des vues nommées de la caméra et revenez-y d'un clic" aria-label="Scènes"><svg class="tool-icon" aria-hidden="true"><use href="#i-scenes"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="motion" aria-pressed="false" title="Mouvements : ouvrez une porte ou sortez un tiroir pour voir s'il heurte quelque chose (vue seulement, le modèle ne change pas)" aria-label="Mouvements"><svg class="tool-icon" aria-hidden="true"><use href="#i-motion"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="drawing" title="Mise en plan : trois vues cotées (face, droite, dessus) avec lignes cachées, échelle normalisée et cartouche ; impression, PDF ou SVG" aria-label="Mise en plan"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawing"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="cutlist" title="Liste de débit : toutes les pièces avec leurs cotes, matière, chants et quantités ; export CSV ou impression" aria-label="Liste de débit"><svg class="tool-icon" aria-hidden="true"><use href="#i-cutlist"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="nesting" title="Optimisation de découpe : placement des pièces sur des panneaux standard, trait de scie et chutes" aria-label="Optimisation de découpe"><svg class="tool-icon" aria-hidden="true"><use href="#i-nesting"/></svg></button>
+      </div>
+      <span class="ribbon-caption" aria-hidden="true">Atelier</span>
+    </div>
+    <span class="ribbon-sep" aria-hidden="true"></span>
     <div class="ribbon-group" role="group" aria-label="Vue">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="view" data-view="iso" title="Vue isométrique" aria-label="Vue isométrique"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-iso"/></svg></button>
@@ -125,8 +161,13 @@
     </div>
   </div>
 
+  {# ---- Tabs of the toolbar (sketch mode) ---- #}
+  <div class="hidden items-center gap-1 border-b border-gray-200 bg-white px-2 py-0.5 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" data-ribbon-bar="sketch">
+    <div class="flex min-h-11 min-w-0 flex-1 items-center justify-start gap-0.5 overflow-x-auto" role="group" aria-label="Mes outils" data-quickbar data-ribbon-zone="quick" data-empty-text="Mes outils : cliquez Personnaliser, puis touchez un outil de la barre du bas et ici pour le monter."></div>
+    <button type="button" class="ribbon-tab shrink-0" data-ribbon-customize aria-pressed="false" title="Personnaliser : choisissez dans quelle barre va chaque icône">Personnaliser</button>
+  </div>
   {# ---- Toolbar (sketch mode): icons grouped as a ribbon, each with its name in a tooltip ---- #}
-  <div class="hidden items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
+  <div class="hidden flex-wrap items-stretch gap-y-1 border-b max-sm:flex-nowrap max-sm:overflow-x-auto border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
     <div class="ribbon-group" role="group" aria-label="Terminer">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn tool-btn-primary" data-sketch-command="finish" title="Terminer l&#x27;esquisse (Entrée)" aria-label="Terminer l&#x27;esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-finish"/></svg></button>

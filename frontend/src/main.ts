@@ -18,6 +18,7 @@ import { GeometryClient } from "./geometry/client";
 import { loadProject } from "./persistence/api";
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
+import { bindRibbonLayout } from "./ui/ribbon-layout";
 import { Viewport } from "./viewport/viewport";
 
 function readConfig(): EditorConfig {
@@ -65,6 +66,7 @@ async function start(): Promise<void> {
     else clearRecovery(config.projectId);
   }
 
+  bindRibbonLayout(root);
   bindSelectionFilter(root, viewport);
   const editor = new Editor(root, config, session, geometry, viewport);
   bindSelectPlus(root, viewport, { doc: () => editor.doc, unit: () => editor.unit });

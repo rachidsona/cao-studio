@@ -380,6 +380,13 @@ opération existante.
 - **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
+- **Deux barres d'outils** : la barre du bas contient **tous** les outils, rangés en groupes, et passe sur plusieurs
+  lignes plutôt que de dépasser la largeur de la page (sur téléphone elle défile). La barre du haut, « Mes outils », est
+  vide au départ : c'est vous qui y **montez** les outils que vous voulez avoir sous la main. « Personnaliser » rend les
+  icônes déplaçables — glissez une icône vers l'autre barre ou vers un autre groupe ; sans glisser (écran tactile),
+  touchez une icône puis l'endroit voulu (une autre icône : avant elle ; un groupe ou « Mes outils » : à la fin). Les
+  icônes ne lancent rien pendant ce temps ; « Terminé » reprend le travail. La disposition est mémorisée par barre
+  (modèle, esquisse) dans le navigateur ; « Réinitialiser » remet celle d'origine. Un groupe vidé disparaît.
 - **Atelier** (groupe « Atelier », ébénisterie) :
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
     MDF, contreplaqué, massif, fond HDF), le sens du fil, les chants (L1/L2 : grands côtés, l1/l2 : petits) et leur
