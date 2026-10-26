@@ -51,6 +51,16 @@ interface BodyObject {
   mesh: THREE.Mesh;
   edges: THREE.LineSegments;
   data: BodyMesh;
+  /** The plain colour of the body, put back when it has no appearance. */
+  tint: THREE.Material;
+}
+
+/** How a body looks when it has a material (cabinet making): its colour, and a wood grain along an axis. */
+export interface BodyAppearance {
+  color: string;
+  wood?: boolean;
+  /** Axis of the grain (the boards' length): the stripes run along it. */
+  grainAxis?: 0 | 1 | 2;
 }
 
 export class Viewport {
@@ -81,6 +91,9 @@ export class Viewport {
   private bodyMaterial: THREE.MeshStandardMaterial;
   /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
   private bodyMaterials: THREE.MeshStandardMaterial[] = [];
+  private appearance: ((bodyId: string) => BodyAppearance | null) | null = null;
+  private appearanceMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  private bodyOpacity = 1;
   private highlightMaterial: THREE.MeshStandardMaterial;
   private edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });
   private raycaster = new THREE.Raycaster();
@@ -356,14 +369,64 @@ export class Viewport {
       const edges = new THREE.LineSegments(edgeGeometry, this.edgeMaterial);
       edges.userData.bodyId = data.bodyId;
       this.scene.add(mesh, edges);
-      this.bodies.set(data.bodyId, { mesh, edges, data });
+      this.bodies.set(data.bodyId, { mesh, edges, data, tint });
     }
+    this.applyAppearance();
     // Keep the selected faces/edges that still exist after regeneration.
     const before = this.selection.count;
     this.selection.prune(this.bodies);
     this.selection.render(this.bodies);
     this.refreshHints();
     if (this.selection.count !== before) this.onSelectionChange(this.selection.snapshot());
+  }
+
+  /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
+  setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
+    this.appearance = appearance;
+    this.applyAppearance();
+  }
+
+  private applyAppearance(): void {
+    for (const [id, body] of this.bodies) {
+      const look = this.appearance?.(id);
+      (body.mesh.material as THREE.Material[])[0] = look ? this.appearanceMaterial(look) : body.tint;
+    }
+  }
+
+  /** One material per look; the wood grain is stripes in world space along the grain axis, drawn by the shader. */
+  private appearanceMaterial(look: BodyAppearance): THREE.MeshStandardMaterial {
+    const wood = look.wood === true;
+    const axis = look.grainAxis ?? 0;
+    const key = `${look.color}|${wood}|${axis}`;
+    let material = this.appearanceMaterials.get(key);
+    if (material) return material;
+    material = (this.bodyMaterials[0] as THREE.MeshStandardMaterial).clone();
+    material.color.set(look.color);
+    material.metalness = 0;
+    material.roughness = wood ? 0.75 : 0.6;
+    material.transparent = this.bodyOpacity < 1;
+    material.opacity = this.bodyOpacity;
+    material.depthWrite = this.bodyOpacity === 1;
+    if (wood) {
+      const across = [1, 1, 1].map((c, i) => (i === axis ? 0 : c));
+      const length = Math.hypot(...across);
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms.uAcross = { value: new THREE.Vector3(...across).divideScalar(length) };
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vWorld;")
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWorld = (modelMatrix * vec4(position, 1.0)).xyz;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vWorld;\nuniform vec3 uAcross;")
+          .replace(
+            "#include <color_fragment>",
+            "#include <color_fragment>\n{ float t = dot(vWorld, uAcross) * 0.35; float ring = sin(t + 2.2 * sin(t * 0.21) + 0.9 * sin(dot(vWorld, vec3(0.013, 0.011, 0.017)))); diffuseColor.rgb *= 0.84 + 0.16 * (0.5 + 0.5 * ring) + 0.05 * sin(t * 5.3); }",
+          );
+      };
+      material.customProgramCacheKey = () => key;
+    }
+    material.clippingPlanes = (this.bodyMaterials[0] as THREE.Material).clippingPlanes;
+    this.appearanceMaterials.set(key, material);
+    return material;
   }
 
   /** Corners of the displayed bodies (model coordinates, mm), merged by position. */
@@ -657,7 +720,8 @@ export class Viewport {
   }
 
   private setBodyOpacity(opacity: number): void {
-    for (const material of [...this.bodyMaterials, this.highlightMaterial, this.edgeMaterial]) {
+    this.bodyOpacity = opacity;
+    for (const material of [...this.bodyMaterials, ...this.appearanceMaterials.values(), this.highlightMaterial, this.edgeMaterial]) {
       material.transparent = opacity < 1;
       material.opacity = opacity;
       material.depthWrite = opacity === 1;
@@ -857,7 +921,7 @@ export class Viewport {
     if (section) normal.setComponent(section.axis, section.flip ? 1 : -1);
     const planes = section ? [new THREE.Plane(normal, section.flip ? -section.position : section.position)] : [];
     this.renderer.localClippingEnabled = planes.length > 0;
-    const materials: THREE.Material[] = [...this.bodyMaterials, this.highlightMaterial, this.edgeMaterial, this.hoverTint, this.hoverMaterial];
+    const materials: THREE.Material[] = [...this.bodyMaterials, ...this.appearanceMaterials.values(), this.highlightMaterial, this.edgeMaterial, this.hoverTint, this.hoverMaterial];
     materials.push(this.sketchMaterial, this.sketchGhostMaterial, this.sketchSelectedMaterial, this.sketchSelectedGhostMaterial, this.sketchFillMaterial, this.sketchSelectedFillMaterial);
     for (const material of materials) {
       material.clippingPlanes = planes;

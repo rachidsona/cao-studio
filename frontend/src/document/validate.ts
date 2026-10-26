@@ -186,6 +186,10 @@ export function validateDocument(input: unknown): string[] {
   if (input.bodyNames !== undefined && (!isObject(input.bodyNames) || !Object.values(input.bodyNames).every((v) => typeof v === "string"))) {
     errors.push("« bodyNames » doit associer un nom à chaque corps.");
   }
+  if (input.bodyInfo !== undefined && (!isObject(input.bodyInfo) || !Object.values(input.bodyInfo).every(isObject))) errors.push("« bodyInfo » doit décrire chaque corps.");
+  if (input.views !== undefined && (!Array.isArray(input.views) || !input.views.every((v) => isObject(v) && typeof v.name === "string" && isVec3(v.position) && isVec3(v.target) && isVec3(v.up)))) {
+    errors.push("« views » doit être une liste de vues enregistrées.");
+  }
   if (!Array.isArray(input.features)) {
     errors.push("« features » doit être une liste.");
     return errors;

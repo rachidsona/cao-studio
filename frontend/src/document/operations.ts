@@ -132,6 +132,7 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   const gone = (key: string) => removed.has(featureOfBody(key));
   if (next.bodyNames) next = { ...next, bodyNames: Object.fromEntries(Object.entries(next.bodyNames).filter(([key]) => !gone(key))) };
   if (next.hiddenBodies) next = { ...next, hiddenBodies: next.hiddenBodies.filter((key) => !gone(key)) };
+  if (next.bodyInfo) next = { ...next, bodyInfo: Object.fromEntries(Object.entries(next.bodyInfo).filter(([key]) => !gone(key))) };
   return next;
 }
 

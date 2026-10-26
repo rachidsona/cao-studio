@@ -380,6 +380,42 @@ opération existante.
 - **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
+- **Atelier** (groupe « Atelier », ébénisterie) :
+  - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
+    MDF, contreplaqué, massif, fond HDF), le sens du fil, les chants (L1/L2 : grands côtés, l1/l2 : petits) et leur
+    épaisseur. Enregistré dans le document (`bodyInfo`), avec la pièce qui l'a créée.
+  - *Liste de débit* : toutes les pièces, groupées quand elles sont identiques (quantité), cotes finies (L ≥ l ≥
+    épaisseur) et **cotes de coupe** (moins les chants), matière, fil, chants ; totaux par matière (m², mètres de chant).
+    Export CSV (séparateur « ; », ouvert directement dans un tableur) ou impression / PDF.
+  - *Optimisation de découpe* : les pièces placées sur les panneaux standard de leur matière (2800×2070 pour les
+    mélaminés), en bandes comme une scie à format, trait de scie 4 mm, marge 10 mm, fil respecté (une pièce sans fil
+    peut tourner). Un schéma SVG par panneau avec le taux de chutes ; impression / PDF.
+  - *Usinage* : un outil, sept préréglages, tous des coupes exactes du noyau (une opération « Usinage » par planche,
+    qui remplace la planche et la **suit** quand elle se déplace) —
+    sur une **face** cliquée : *perçages 32* (rangée de trous Ø5 × 12 tous les 32 mm, à 37 mm du bord, 1 ou 2 files),
+    *charnières* (cuvettes Ø35 × 13 à 22,5 mm du bord, 2 à 5), *rainure de fond* (4 × 8 mm à 10 mm du bord) ; entre
+    **deux planches** : *tourillons* (Ø8 × 15, un tous les 96 mm), *confirmat* (Ø7 traversant, Ø5 en pilote),
+    *mi-bois* (chaque planche perd la moitié de la hauteur commune), *tenon et mortaise* (tiers de l'épaisseur,
+    épaulements de 10 mm). Un usinage qui ne touche pas le corps est une erreur, jamais un silence.
+  - *Paramètres* : des valeurs nommées (`largeur`, `ep`…), qui peuvent être des formules d'autres paramètres, et des
+    **liens** entre une cote d'une fonction (largeur du caisson, déplacement, distance…) et une formule
+    (`largeur - 2 * ep`). Changer un paramètre réécrit toutes les cotes liées, en une seule annulation. Formules :
+    `+ − * / ^ ( )`, `pi`, `min(a; b)`, `max`, `abs`, `round`, `floor`, `ceil`, `sqrt` (analyseur sûr, sans `eval`) ;
+    cycles et noms inconnus signalés.
+  - *Scènes* : des vues de la caméra nommées, enregistrées dans le document ; un clic y emmène la caméra.
+  - *Mètre et guides* (comme le mètre de SketchUp) : deux clics, accrochés aux coins, arêtes et guides, donnent la
+    distance et ΔX, ΔY, ΔZ ; en mode « Guide » le second clic pose une ligne de guide enregistrée.
+  - *Rendu des matières* : chaque corps prend la couleur de sa matière, avec le veinage du bois dans le sens du fil
+    (bouton à bascule, mémorisé).
+  - *Mouvements* : un corps glisse (tiroir) ou tourne autour d'une charnière (porte) avec un curseur ou en animation,
+    et le panneau dit ce qu'il heurte (contrôle sur les boîtes englobantes, exact pour des planches). La vue
+    seulement : le modèle ne change pas.
+  - *Mise en plan* : trois vues (face, droite, dessus, projection européenne) avec lignes cachées en pointillés, cotes
+    générales, cartouche et échelle normalisée choisie pour que tout tienne (A3 ou A4 paysage) ; impression / PDF ou
+    export SVG.
+- **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
+  et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
+  dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :

@@ -207,7 +207,8 @@ export class Editor {
     }
   }
 
-  private change(next: CadDocument): Promise<void> {
+  /** Applies a new document as one undo step (also used by the workshop tools: materials, parameters, scenes…). */
+  change(next: CadDocument): Promise<void> {
     this.session.apply(next);
     this.updateHistoryButtons();
     return this.recompute();
@@ -272,7 +273,11 @@ export class Editor {
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
+    this.onRender();
   }
+
+  /** Called after every render: the workshop panels and the body colours follow the document. */
+  onRender: () => void = () => {};
 
   private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
     const bodies = this.result?.bodies ?? [];

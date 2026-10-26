@@ -3,6 +3,7 @@ import { Editor, type EditorConfig } from "./app/editor";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
+import { bindWorkshop } from "./app/workshop";
 import { askConfirm } from "./ui/confirm-dialog";
 import { DocumentSession } from "./app/session";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -63,6 +64,7 @@ async function start(): Promise<void> {
   const editor = new Editor(root, config, session, geometry, viewport);
   bindSelectPlus(root, viewport, { doc: () => editor.doc, unit: () => editor.unit });
   bindSection(root, viewport, { unit: () => editor.unit });
+  bindWorkshop(root, viewport, editor);
   editor.render();
   await editor.recompute(true);
 }

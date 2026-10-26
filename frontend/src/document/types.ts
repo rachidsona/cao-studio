@@ -345,6 +345,29 @@ export interface CadDocument {
   bodyNames?: Record<string, string>;
   /** Pieces of a split hidden in the 3D view ("sp1#2"); other bodies hide through their feature. */
   hiddenBodies?: string[];
+  /** Material, grain and edge bands of bodies, keyed like `bodyNames`. */
+  bodyInfo?: Record<string, BodyInfo>;
+  /** Saved views (scenes): where the camera was. */
+  views?: SavedView[];
+}
+
+/** What a board is cut from (cabinet making). */
+export interface BodyInfo {
+  /** Id of a material of the catalogue (document/materials.ts). */
+  material?: string;
+  /** Grain along the board's length, its width, or none (it may then be turned on the sheet). */
+  grain?: "length" | "width" | "none";
+  /** Edge bands on the two long edges and the two short edges of the board's face. */
+  edges?: { length1: boolean; length2: boolean; width1: boolean; width2: boolean };
+  /** Edge band thickness (mm). */
+  band?: number;
+}
+
+export interface SavedView {
+  name: string;
+  position: Vec3;
+  target: Vec3;
+  up: Vec3;
 }
 
 /** Reference part: 80 x 50 x 10 mm plate with a 10 mm through hole. */
