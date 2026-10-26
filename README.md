@@ -311,6 +311,17 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
+- **Dessiner sur le corps** (groupe « Curic », comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
+  on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
+  *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
+  ↕, ici en pointillés rouge et bleu avec leur valeur) s'affichent et peuvent être **saisies** (« Bord ↔ », « Bord ↕ »)
+  pour placer le premier point exactement. Le pointeur s'accroche aux coins et aux milieux d'arêtes de la face, sinon les
+  distances aux bords sont arrondies. Ensuite : *longueur* et *angle* d'une ligne, *largeur* et *hauteur* d'un rectangle,
+  *rayon* d'un cercle, à saisir ou à cliquer ; une ligne se poursuit jusqu'à Entrée (ou un clic sur son dernier point),
+  Échap reprend le tracé. Le résultat est une esquisse sur la face (le contour de la face en référence), et, comme le
+  mode 3D de DIO, un tracé **fermé** (rectangle, cercle) enchaîne avec **tirer / pousser** (case « Puis tirer / pousser »).
+  Survoler une autre face avant le premier point change d'objet (le « Get Object » de DIO). Les maths sont dans
+  `sketcher/face-draw.ts`.
 - **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face

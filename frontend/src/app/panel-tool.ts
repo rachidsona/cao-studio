@@ -27,8 +27,10 @@ export interface ToolContext {
   status(id: string): FeatureStatus | undefined;
   /** Shows the regeneration of `doc` (null: back to the real document). */
   preview(doc: CadDocument | null): Promise<void>;
-  /** Applies the final document as one undo step. */
-  commit(doc: CadDocument, selectId: string): void;
+  /** Applies the final document as one undo step (`after` runs once it is applied). */
+  commit(doc: CadDocument, selectId: string, after?: () => void): void;
+  /** Opens the extrusion tool on the selected sketch or faces (a tool that draws a closed shape goes on with it). */
+  extrude?(): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
   closed(): void;
 }

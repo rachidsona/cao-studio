@@ -139,12 +139,12 @@ export class Editor {
         this.previewDoc = doc;
         return this.recompute();
       },
-      commit: (doc, id) => {
+      commit: (doc, id, after) => {
         this.previewDoc = null;
         this.selectedFeature = id;
-        void this.change(doc);
+        void this.change(doc).then(after);
       },
-      notify: (message, kind) => this.notify(message, kind),
+      notify: (message, kind) => this.notify(message, kind), extrude: () => this.extrudeCommand(),
       closed: () => {
         this.root.dataset.tool = "";
         this.render();
@@ -449,7 +449,7 @@ export class Editor {
       combine: () => this.openTool("combine"),
       split: () => this.openTool("split"),
       move: () => this.openTool("move"),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

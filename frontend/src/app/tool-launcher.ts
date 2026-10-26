@@ -15,11 +15,12 @@ import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
 import { MachiningTool } from "./machining-tool";
 import { SweepTool } from "./sweep-tool";
+import { DrawOnFaceTool } from "./draw-on-face-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -119,6 +120,9 @@ export class ToolLauncher {
         break;
       case "rotate":
         this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "drawOnFace":
+        this.active = new DrawOnFaceTool(ctx);
         break;
       case "rectArray":
         this.active = new ArrayTool(ctx, null, options.bodies ?? [], options.sketches ?? [], "rect");
