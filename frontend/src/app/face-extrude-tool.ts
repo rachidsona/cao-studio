@@ -5,11 +5,12 @@
  */
 import { uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, ExtrudeFeature, FaceRef } from "../document/types";
-import { toDisplay, trim, UNIT_LABELS } from "../measurements/units";
+import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { openCalculator } from "../ui/calculator";
 import { ArrowHandle } from "../viewport/arrow-handle";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
 
 const OPERATIONS: [BooleanOperation, string][] = [
   ["join", "Union (ajouter)"],
@@ -28,6 +29,8 @@ export class FaceExtrudeTool extends PanelTool {
   /** The operation follows the direction until the user chooses one. */
   private autoOperation: boolean;
   private arrow: ArrowHandle;
+  /** Corners, edges and faces of the bodies as they were when the tool opened, to take a distance from. */
+  private reference: ReferencePicker;
 
   constructor(ctx: ToolContext, editing: ExtrudeFeature | null) {
     super(ctx, "Extrusion de faces", editing);
@@ -39,6 +42,7 @@ export class FaceExtrudeTool extends PanelTool {
     this.autoOperation = !editing;
     this.target = editing?.target;
     this.faces = editing?.faces ?? [];
+    this.reference = new ReferencePicker(ctx.viewport);
     this.arrow = new ArrowHandle(ctx.viewport, (anchor) =>
       openCalculator({
         container: ctx.container,
@@ -58,6 +62,7 @@ export class FaceExtrudeTool extends PanelTool {
 
   /** Describes the picked faces (kernel references), then shows the arrow on the first one. */
   async open(picks: FacePick[]): Promise<void> {
+    this.reference.capture();
     const [first] = picks;
     if (!this.editing && first) {
       this.target = first.bodyId;
@@ -91,6 +96,19 @@ export class FaceExtrudeTool extends PanelTool {
     this.schedulePreview();
   }
 
+  /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
+  protected override click(event: PointerEvent): void {
+    const face = this.faces[0];
+    if (!face) return;
+    // The faces and edges of the tool's own preview are not references.
+    const reference = this.reference.find(event, (id) => id === this.id || id.startsWith(`${this.id}#`));
+    if (!reference) return;
+    const taken = referenceDistance(reference, face.center, face.normal, getEdgeTake());
+    if (!taken) return this.ctx.notify("Ce point est au niveau de la face : la distance serait nulle.", "info");
+    this.setDistance(taken.value);
+    this.ctx.notify(`Distance prise : ${formatLength(Math.abs(taken.value), this.ctx.unit())} (${taken.what}).`, "info");
+  }
+
   protected feature(): ExtrudeFeature | string {
     if (!this.target || this.faces.length === 0) return "Sélectionnez une ou plusieurs faces planes du corps, puis Extrusion.";
     return {
@@ -108,6 +126,16 @@ export class FaceExtrudeTool extends PanelTool {
     return [
       this.info(`${this.faces.length} face(s) — tirez la flèche ou saisissez la distance (négative pour creuser).`),
       this.numberRow("Distance", this.distance, this.ctx.unit(), (v) => this.setDistance(v), true),
+      this.info("Ou cliquez un point, une arête ou une face d'un corps : sa mesure devient la distance."),
+      this.selectRow(
+        "Arête",
+        getEdgeTake(),
+        [
+          ["level", "Son niveau"],
+          ["length", "Sa longueur"],
+        ],
+        (v) => setEdgeTake(v as EdgeTake),
+      ),
       this.selectRow("Opération", this.operation, OPERATIONS, (v) => {
         this.operation = v as BooleanOperation;
         this.autoOperation = false;

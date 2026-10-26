@@ -212,6 +212,11 @@ serveur accepte les deux versions.
 - Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.
 - **Extrusion**, comme dans Fusion 360 :
   - le bouton (ou la touche E) surligne les profils fermés ;
+  - **prendre une mesure sur le modèle** : pendant qu'on règle la distance, cliquez un **point** (coin), une **arête** ou
+    une **face** d'un corps (le même, ou un autre) : un coin ou une face donne son **niveau** — l'extrusion s'arrête
+    exactement là, au-dessus ou en dessous du profil — et une arête donne son niveau ou sa **longueur** (choix « Arête »
+    du panneau). Le coin est cherché à quelques pixels, puis l'arête, puis la face ; un clic sur une zone du profil
+    choisit toujours la zone. Même chose pour l'*Extrusion de faces* ;
   - les zones sont calculées en découpant les courbes là où elles se croisent ou se touchent
     (croisements, jonctions en T, arêtes partagées) : deux rectangles côte à côte ou qui se
     chevauchent, une ligne qui traverse une forme, un cercle qui en coupe une autre donnent chacun

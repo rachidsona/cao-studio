@@ -11,12 +11,13 @@ import * as THREE from "three";
 import { closeCalculator, openCalculator } from "../ui/calculator";
 import { addExtrude, findFeature, latestBody, updateFeature } from "../document/operations";
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
-import { UNIT_LABELS, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
+import { UNIT_LABELS, formatLength, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import { sketchFrame, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
 import { centroid, extractLoops, interiorPoint, pointInPolygon, sketchFaces, type Region, type SketchFace } from "../sketcher/loops";
 import { el } from "../ui/dom";
 import { textInputClass } from "../ui/fields";
 import { ArrowHandle } from "../viewport/arrow-handle";
+import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 
 export interface ExtrudeToolHost {
@@ -69,6 +70,8 @@ export class ExtrudeTool implements PointerHandler {
   private explicit = false;
   private preview: THREE.Mesh | null = null;
   private arrow: ArrowHandle;
+  /** Corners, edges and faces of the bodies, to take a distance from (a click that is not on a profile). */
+  private reference: ReferencePicker;
   private dialog: HTMLElement;
   private distance = 10;
   private operation: BooleanOperation = "new";
@@ -96,6 +99,7 @@ export class ExtrudeTool implements PointerHandler {
     });
     container.append(this.dialog);
     this.container = container;
+    this.reference = new ReferencePicker(viewport);
     // Arrow along the sketch normal; its value label opens the keypad.
     this.arrow = new ArrowHandle(viewport, (anchor) =>
       openCalculator({
@@ -123,6 +127,7 @@ export class ExtrudeTool implements PointerHandler {
       this.operation = existing.operation;
       this.target = existing.target;
     }
+    this.reference.capture();
     this.buildProfiles();
     const sketchId = existing?.type === "extrude" ? existing.sketch : options.sketchId;
     const profile = this.profiles.find((p) => p.sketch.id === sketchId) ?? (this.profiles.length === 1 ? this.profiles[0] : undefined);
@@ -316,7 +321,20 @@ export class ExtrudeTool implements PointerHandler {
     if (!isClick) return false;
     const under = this.faceUnder(event);
     if (under) this.pick(under.profile, under.face);
+    else this.takeReference(event);
     return true;
+  }
+
+  /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
+  private takeReference(event: PointerEvent): void {
+    const base = this.base();
+    if (!base || !this.selected) return;
+    const reference = this.reference.find(event);
+    if (!reference) return;
+    const taken = referenceDistance(reference, base, this.selected.frame.normal, getEdgeTake());
+    if (!taken) return this.host.notify("Ce point est au niveau du profil : la distance serait nulle.", "info");
+    this.setDistance(taken.value);
+    this.host.notify(`Distance prise : ${formatLength(Math.abs(taken.value), this.host.unit())} (${taken.what}).`, "info");
   }
 
   handleKey(event: KeyboardEvent): boolean {
@@ -389,6 +407,14 @@ export class ExtrudeTool implements PointerHandler {
       this.renderDialog();
     });
 
+    const edgeTake = el(
+      "select",
+      { class: COMPACT_INPUT, "aria-label": "Mesure prise sur une arête" },
+      el("option", { value: "level", selected: getEdgeTake() === "level" }, "Son niveau"),
+      el("option", { value: "length", selected: getEdgeTake() === "length" }, "Sa longueur"),
+    );
+    edgeTake.addEventListener("change", () => setEdgeTake(edgeTake.value as EdgeTake));
+
     const bodies = this.host.bodies().filter((b) => b.id !== this.editing);
     const target =
       this.operation === "new"
@@ -432,6 +458,10 @@ export class ExtrudeTool implements PointerHandler {
         ? el("p", { class: "text-gray-600 dark:text-gray-300" }, this.chosen.size === 0 ? "Cliquez une zone à extruder." : "Cliquez des zones pour choisir ce qui est extrudé ; recliquez pour en retirer.")
         : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr_auto] items-center gap-1.5" }, `Distance`, distance, flip),
+      this.selected
+        ? el("p", { class: "text-gray-600 dark:text-gray-300" }, "Ou cliquez un point, une arête ou une face d'un corps : sa mesure devient la distance.")
+        : null,
+      this.selected ? el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Arête", edgeTake) : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Opération", operation),
       target,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
