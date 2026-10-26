@@ -19,6 +19,8 @@ interface FeatureBase {
   id: string;
   name: string;
   suppressed?: boolean;
+  /** Formulas driving numbers of this feature, by field ("width", "translate.0"): see document/expressions.ts. */
+  expressions?: Record<string, string>;
   /** Sketches only: not drawn in the 3D view (the eye icon of the tree). Presentation, not geometry. */
   hidden?: boolean;
 }
@@ -359,6 +361,8 @@ export interface Parameter {
   value: number;
   unit: "mm" | "deg" | "";
   comment?: string;
+  /** A formula in other parameters: it sets `value` (document/expressions.ts). */
+  expression?: string;
 }
 
 export interface CadDocument {

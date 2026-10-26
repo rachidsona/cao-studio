@@ -3,6 +3,7 @@ import { Editor, type EditorConfig } from "./app/editor";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
+import { bindParameters } from "./app/parameters";
 import { bindWorkshop } from "./app/workshop";
 import { askConfirm } from "./ui/confirm-dialog";
 import { DocumentSession } from "./app/session";
@@ -65,6 +66,7 @@ async function start(): Promise<void> {
   bindSelectPlus(root, viewport, { doc: () => editor.doc, unit: () => editor.unit });
   bindSection(root, viewport, { unit: () => editor.unit });
   bindWorkshop(root, viewport, editor);
+  bindParameters(root, viewport, editor);
   editor.render();
   await editor.recompute(true);
 }

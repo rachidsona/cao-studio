@@ -4,6 +4,7 @@
  * check in apps/projects/validation.py and adds per-feature checks.
  * Older schema versions are migrated by parseDocument before validation.
  */
+import { nameProblem } from "./expressions";
 import { migrateDocument } from "./migrate";
 import { DOCUMENT_FORMAT, SCHEMA_VERSION, type CadDocument } from "./types";
 import { validateSketch } from "./validate-sketch";
@@ -203,6 +204,13 @@ export function validateDocument(input: unknown): string[] {
   if (input.schemaVersion !== SCHEMA_VERSION) errors.push(`Version de schéma non prise en charge.`);
   if (!UNITS.has(input.units as string)) errors.push("Unité d'affichage invalide.");
   if (input.parameters !== undefined && !isObject(input.parameters)) errors.push("« parameters » doit être un objet.");
+  else if (isObject(input.parameters)) {
+    for (const [name, p] of Object.entries(input.parameters)) {
+      const problem = nameProblem(name);
+      if (problem) errors.push(`Paramètre « ${name} » : ${problem}`);
+      else if (!isObject(p) || !isFiniteNumber(p.value) || (p.expression !== undefined && typeof p.expression !== "string")) errors.push(`Paramètre « ${name} » invalide (valeur numérique attendue).`);
+    }
+  }
   if (input.bodyNames !== undefined && (!isObject(input.bodyNames) || !Object.values(input.bodyNames).every((v) => typeof v === "string"))) {
     errors.push("« bodyNames » doit associer un nom à chaque corps.");
   }
@@ -223,6 +231,7 @@ export function validateDocument(input: unknown): string[] {
     }
     if (ids.has(feature.id)) errors.push(`${where} : identifiant « ${feature.id} » dupliqué.`);
     ids.add(feature.id);
+    if (feature.expressions !== undefined && (!isObject(feature.expressions) || !Object.values(feature.expressions).every((e) => typeof e === "string"))) errors.push(`${where} : formules invalides.`);
     checkFeature(feature, `${where} (${feature.id})`, errors);
   });
   return errors;
