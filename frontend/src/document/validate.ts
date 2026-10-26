@@ -162,6 +162,11 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe d'étirement invalide.`);
       checkNumbers(feature, ["position", "distance"], where, errors);
       break;
+    case "sweep":
+      if (typeof feature.profile !== "string" || typeof feature.path !== "string") errors.push(`${where} : profil ou chemin manquant.`);
+      if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
+      if (feature.operation !== "new" && typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      break;
     case "machining": {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à usiner manquant.`);
       if (!MACHINING_KINDS.has(feature.kind as string)) errors.push(`${where} : type d'usinage inconnu.`);

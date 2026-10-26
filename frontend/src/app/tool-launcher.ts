@@ -14,11 +14,12 @@ import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
 import { MachiningTool } from "./machining-tool";
+import { SweepTool } from "./sweep-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -29,7 +30,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "sweep"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -51,7 +52,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
     ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining") && bodies.length ? { bodies } : {}),
-    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" ? curicSketches(selected, picked.selection.sketches) : {}),
+    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
@@ -118,6 +119,9 @@ export class ToolLauncher {
         break;
       case "rotate":
         this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "sweep":
+        this.active = new SweepTool(ctx, editing?.type === "sweep" ? editing : null, options.sketches ?? []);
         break;
       case "machining":
         this.active = new MachiningTool(ctx, options.bodies ?? []);

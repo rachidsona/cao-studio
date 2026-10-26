@@ -337,7 +337,22 @@ export interface MachiningFeature extends FeatureBase {
   anchor?: Vec3;
 }
 
+/**
+ * Follow Me: the closed profile of one sketch swept along the path (lines and arcs) of another: skirting boards,
+ * mouldings, cornices. Joined to or cut from a body, or a new body.
+ */
+export interface SweepFeature extends FeatureBase {
+  type: "sweep";
+  profile: string;
+  path: string;
+  operation: BooleanOperation;
+  target?: string;
+  /** Keep the profile turning with the path's curvature (Frenet frame) instead of its plane. */
+  frenet?: boolean;
+}
+
 export type Feature =
+  | SweepFeature
   | MachiningFeature
   | ArrayFeature
   | RotateFeature
@@ -440,6 +455,8 @@ export function featureInputs(feature: Feature): string[] {
       return feature.target && feature.operation !== "new" ? [feature.sketch ?? "", feature.target] : [feature.sketch ?? ""];
     case "revolve":
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];
+    case "sweep":
+      return feature.target && feature.operation !== "new" ? [feature.profile, feature.path, feature.target] : [feature.profile, feature.path];
     case "panels":
       return [feature.sketch];
     case "cabinet":
@@ -488,6 +505,7 @@ export function consumedBodies(feature: Feature): string[] {
       return [feature.target];
     case "extrude":
     case "revolve":
+    case "sweep":
       return feature.operation !== "new" && feature.target ? [feature.target] : [];
     case "combine":
       return feature.keepTools ? [feature.target] : [feature.target, ...feature.tools];
@@ -501,7 +519,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);
