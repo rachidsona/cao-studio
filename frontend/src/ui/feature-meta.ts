@@ -23,6 +23,7 @@ export const TYPE_LABELS: Record<NavType, string> = {
   stretch: "Étirement",
   array: "Réseau",
   rotate: "Rotation",
+  machining: "Usinage",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -43,6 +44,7 @@ export const TYPE_ICONS: Record<NavType, string> = {
   stretch: "⟷",
   array: "⁞",
   rotate: "↻",
+  machining: "⛭",
 };
 
 export const STATE_BADGES: Record<FeatureState, { label: string; dot: string }> = {

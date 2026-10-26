@@ -11,6 +11,7 @@ import { validateSketch } from "./validate-sketch";
 const UNITS = new Set(["mm", "cm", "m", "in"]);
 const PLANES = new Set(["XY", "XZ", "YZ"]);
 const OPERATIONS = new Set(["new", "join", "cut", "intersect"]);
+const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "halflap", "tenon", "custom"]);
 const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect"]);
 
 type Json = Record<string, unknown>;
@@ -160,6 +161,25 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe d'étirement invalide.`);
       checkNumbers(feature, ["position", "distance"], where, errors);
       break;
+    case "machining": {
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à usiner manquant.`);
+      if (!MACHINING_KINDS.has(feature.kind as string)) errors.push(`${where} : type d'usinage inconnu.`);
+      if (feature.anchor !== undefined && !isVec3(feature.anchor)) errors.push(`${where} : point d'ancrage invalide.`);
+      const ops = feature.ops;
+      if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) errors.push(`${where} : usinages invalides (1 à 500).`);
+      else
+        for (const op of ops) {
+          const valid =
+            isObject(op) &&
+            ((op.kind === "hole" && isVec3(op.at) && isVec3(op.dir) && isFiniteNumber(op.diameter) && op.diameter > 0 && isFiniteNumber(op.depth) && op.depth > 0) ||
+              (op.kind === "box" && isVec3(op.from) && isVec3(op.to) && (op.mode === "cut" || op.mode === "join")));
+          if (!valid) {
+            errors.push(`${where} : un usinage est invalide.`);
+            break;
+          }
+        }
+      break;
+    }
     case "move":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à déplacer manquant.`);
       if (!isVec3(feature.translate)) errors.push(`${where} : déplacement invalide (trois nombres attendus).`);

@@ -18,6 +18,7 @@ import { buildPanels } from "./panels";
 import { buildCabinet } from "./cabinet";
 import { buildAlign, buildArray, buildMirror, buildRotate, buildStretch } from "./curic";
 import { buildSplit } from "./split";
+import { buildMachining } from "./machining";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
 
@@ -170,5 +171,7 @@ export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOut
       return buildArray(feature, lookup);
     case "rotate":
       return buildRotate(feature, lookup);
+    case "machining":
+      return buildMachining(feature, lookup);
   }
 }

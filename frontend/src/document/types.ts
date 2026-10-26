@@ -310,7 +310,33 @@ export interface RotateFeature extends FeatureBase {
   center: Vec3;
 }
 
+/** One machining operation, in model coordinates (mm). */
+export type MachiningOp =
+  /** A blind hole: `at` on the surface, `dir` the unit direction into the material. */
+  | { kind: "hole"; at: Vec3; dir: Vec3; diameter: number; depth: number }
+  /** A box removed from the body (groove, half-lap, mortise) or added to it (tenon). */
+  | { kind: "box"; from: Vec3; to: Vec3; mode: "cut" | "join" };
+
+/**
+ * Machining of a board (cabinet making): the 32 mm drilling rows, hinge cups,
+ * back grooves and joints (dowels, confirmat screws, half-laps, mortise and
+ * tenon) as exact cuts of the target body, which the result replaces.
+ */
+export interface MachiningFeature extends FeatureBase {
+  type: "machining";
+  target: string;
+  /** What the machining is, for the name and the tool when edited. */
+  kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "halflap" | "tenon" | "custom";
+  ops: MachiningOp[];
+  /**
+   * Low corner of the target's box when the machining was made. The operations follow the board: they are moved by
+   * how far that corner has moved since (a cabinet made wider carries its right side, and its holes, along).
+   */
+  anchor?: Vec3;
+}
+
 export type Feature =
+  | MachiningFeature
   | ArrayFeature
   | RotateFeature
   | MirrorFeature
@@ -414,6 +440,8 @@ export function featureInputs(feature: Feature): string[] {
     case "align":
       return [feature.target, feature.reference];
     case "stretch":
+    case "machining":
+      return [feature.target];
     case "hole":
     case "fillet":
     case "chamfer":
@@ -444,6 +472,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "align":
     case "stretch":
     case "rotate":
+    case "machining":
       return [feature.target];
     case "extrude":
     case "revolve":
