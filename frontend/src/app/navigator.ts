@@ -5,11 +5,12 @@
  * disable, delete). Builds what they show from the document and the last
  * regeneration; the editor does the actual changes.
  */
+import { bodyTree, type BodyLeaf } from "../document/body-tree";
 import { bodyLabel, bodyOrigin, findFeature, isBodyHidden } from "../document/operations";
 import { featureOfBody } from "../document/types";
 import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
-import { renderBrowser } from "../ui/browser";
+import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
 import { ref } from "../ui/dom";
 import { FeatureDialog } from "../ui/feature-dialog";
 import type { NavItem } from "../ui/feature-meta";
@@ -105,15 +106,38 @@ export class Navigator {
     return (body ? bodies : [...sketches, ...operations]).find((i) => i.id === id);
   }
 
+  /** The bodies as a tree: folders of the bodies made together, each body with its history. */
+  private tree(bodies: NavItem[]): BodyEntry[] {
+    const doc = this.host.doc();
+    const byId = new Map(bodies.map((b) => [b.id, b]));
+    const toRow = (leaf: BodyLeaf): BodyRow | null => {
+      const item = byId.get(leaf.bodyId);
+      const history = leaf.history.flatMap((id) => {
+        const feature = findFeature(doc, id);
+        return feature ? [this.item(feature)] : [];
+      });
+      return item ? { item, label: leaf.label, history } : null;
+    };
+    return bodyTree(doc, bodies.map((b) => b.id)).flatMap((node): BodyEntry[] => {
+      if (node.kind === "body") {
+        const body = toRow(node.body);
+        return body ? [{ body }] : [];
+      }
+      const rows = node.group.bodies.map(toRow).filter((r): r is BodyRow => r !== null);
+      return [{ group: { id: node.group.id, name: node.group.name, bodies: rows } }];
+    });
+  }
+
   render(): void {
     const { sketches, operations, bodies } = this.items();
     const selectedId = this.host.selectedId();
     renderBrowser(
       ref(this.root, "tree"),
-      { bodies, sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.host.pickedIds() },
+      { bodies: this.tree(bodies), sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.host.pickedIds() },
       {
         onSelectBody: (bodyId, adding) => (adding ? this.host.toggleInSelection("body", bodyId) : this.host.selectBody(bodyId)),
         onSelectSketch: (id, adding) => (adding ? this.host.toggleInSelection("sketch", id) : this.host.selectFeature(id)),
+        onSelectFeature: (id) => this.host.selectFeature(id),
         onToggleHidden: (id) => this.host.toggleHidden(id),
         onMenu: (id, anchor, body) => this.open(id, anchor, body),
       },
