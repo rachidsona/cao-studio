@@ -16,6 +16,7 @@ import { initSolver } from "./constraints/solver";
 import { sameDocument } from "./document/canonical";
 import { GeometryClient } from "./geometry/client";
 import { loadProject } from "./persistence/api";
+import { describeError, installErrorReporting, sendReport } from "./persistence/error-report";
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
 import { bindRibbonLayout } from "./ui/ribbon-layout";
@@ -36,6 +37,7 @@ function showFatal(root: HTMLElement, message: string): void {
 async function start(): Promise<void> {
   const root = document.getElementById("editor");
   if (!root) return;
+  installErrorReporting();
   const config = readConfig();
   const viewport = new Viewport(ref(root, "viewport"));
   const geometry = new GeometryClient();
@@ -85,5 +87,6 @@ start().catch((error: unknown) => {
   const root = document.getElementById("editor");
   const message = error instanceof Error ? error.message : String(error);
   if (root) showFatal(root, `Erreur : ${message}`);
+  sendReport(describeError(error, "démarrage"));
   console.error(error);
 });

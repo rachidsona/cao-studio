@@ -1,8 +1,9 @@
 from django.urls import path, re_path
 
-from . import api
+from . import api, monitoring
 
 urlpatterns = [
+    path("client-errors/", monitoring.client_error, name="api-client-errors"),
     path("projects/", api.project_collection, name="api-projects"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),

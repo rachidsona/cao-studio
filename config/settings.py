@@ -6,6 +6,7 @@ Configuration is read from environment variables:
 - DJANGO_ALLOWED_HOSTS (comma separated)
 - DJANGO_CSRF_TRUSTED_ORIGINS (comma separated, optional)
 - POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_HOST / POSTGRES_PORT
+- DJANGO_ADMINS (e-mail addresses that receive server errors, optional) / DJANGO_SERVER_EMAIL
 """
 import mimetypes
 import os
@@ -62,6 +63,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves the static files in production, compressed (gzip/brotli) and cached (see STORAGES below).
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -128,6 +131,20 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# collectstatic writes a gzip and a brotli copy of each file (the 23 MB OpenCascade kernel shrinks to a few MB).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
+
+def immutable_static(path: str, url: str) -> bool:
+    """Files the bundler named after their content (js/chunks/…, js/assets/…) never change: cached for a year."""
+    return "/static/js/chunks/" in url or "/static/js/assets/" in url
+
+
+WHITENOISE_IMMUTABLE_FILE_TEST = immutable_static
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/projects/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
@@ -157,11 +174,22 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 
+# Server errors (500) and the editor's errors reported by browsers ("apps.client") go to the console, which the
+# host collects; with DJANGO_ADMINS (e-mail addresses, comma separated) and Django's mailer configured, server
+# errors are also mailed.
+ADMINS = env_list("DJANGO_ADMINS")
+SERVER_EMAIL = os.environ.get("DJANGO_SERVER_EMAIL", "root@localhost")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "formatters": {"plain": {"format": "{asctime} {levelname} {name} : {message}", "style": "{"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+        "mail_admins": {"class": "django.utils.log.AdminEmailHandler", "level": "ERROR"},
+    },
     "loggers": {
         "apps": {"handlers": ["console"], "level": "INFO"},
+        "django.request": {"handlers": ["console", *(["mail_admins"] if ADMINS and not DEBUG else [])], "level": "ERROR", "propagate": False},
     },
 }
