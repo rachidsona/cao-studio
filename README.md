@@ -23,7 +23,9 @@ npm run build                 # typecheck + Tailwind (static/css) + Vite (static
 ```
 
 Ouvrir http://127.0.0.1:8765/ → « Mes projets » → créer un projet. Chaque nouveau projet
-contient la plaque de référence.
+contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé chêne, fond HDF)
+pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
+touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
 
 Développement (recompilation continue, dans deux terminaux) :
 
@@ -38,8 +40,32 @@ npm run watch:js
 .venv/bin/pytest          # backend Django : modèles, validation, API, CSRF, pages
 npm test                  # Vitest : noyau OpenCascade et solveur planegcs réels, esquisses, historique
 npm run typecheck         # TypeScript strict
+npm run test:e2e          # Playwright : parcours dans un vrai navigateur (après npm run build)
 .venv/bin/python manage.py check --deploy   # avec DJANGO_DEBUG=false et DJANGO_SECRET_KEY
 ```
+
+Les tests de bout en bout (`tests/e2e/`) lancent leur propre serveur Django sur le port 8799 avec une base à part
+(`.e2e/db.sqlite3`, recréée à chaque fois) : ouvrir un projet, tracer une ligne dans une esquisse et la retrouver
+après rechargement, ouvrir le projet exemple (six panneaux, devis, aide), la liste de débit. En local ils utilisent
+Google Chrome ; la CI installe Chromium.
+
+**Intégration continue** (`.github/workflows/ci.yml`, à chaque push) : types, styles et build, tests Vitest, tests
+Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL.
+
+## Mise en production
+
+- Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
+  `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
+  `DJANGO_TRUST_X_FORWARDED_PROTO=true` derrière un proxy HTTPS ; `DJANGO_ADMINS` (adresses) pour recevoir les erreurs
+  serveur par courriel.
+- `npm run build` puis `python manage.py collectstatic` : WhiteNoise sert les fichiers statiques compressés (gzip et
+  brotli : le noyau de 23 Mo descend à 5 Mo) ; les fichiers nommés d'après leur contenu (`js/chunks/`, `js/assets/`)
+  sont mis en cache un an, `editor.js` porte un numéro de version. Three.js et les bibliothèques sont dans des fichiers
+  à part, gardés en cache d'une version de l'application à l'autre.
+- `GET /healthz` répond `{"status": "ok"}` (503 si la base ne répond pas) pour la surveillance de l'hébergeur.
+- Les erreurs de l'éditeur dans le navigateur des utilisateurs sont envoyées au journal du serveur
+  (`POST /api/client-errors/`, journal `apps.client`), chaque erreur une seule fois et dix au plus par page.
+- Au chargement, un écran suit le téléchargement du noyau 3D (barre de progression), puis le calcul du projet.
 
 Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une plaque de
 80 × 50 × 10 mm avec un perçage Ø10 et vérifie :
@@ -120,8 +146,21 @@ serveur accepte les deux versions.
     couper, donne un message d'erreur au lieu d'une géométrie fausse ;
   - appliqué aux arêtes projetées d'une face, il donne un profil réel (retrait de poche, rebord) ;
   - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
-- **Couper** (bouton « Couper », groupe Modifier), comme dans Fusion : en survolant une ligne, un arc ou un cercle, la
-  partie **entre les deux croisements** autour du pointeur s'affiche ; un clic la supprime. Sans croisement d'un côté, la
+- **Lire et choisir les traits** (mode esquisse) : les traits sont dessinés **épais** (2,2 px, 3,2 px quand ils sont
+  survolés ou choisis) pour être faciles à viser. Le trait sous le pointeur — celui qu'un clic choisirait — passe en
+  **jaune** ; les traits et points **choisis** sont en **vert** (#5DD62C) ; les **zones fermées** sont teintées en bleu
+  (#2078CF), plus fort sous le pointeur quand aucun trait n'est visé. Un clic **à l'intérieur d'une forme** choisit ses
+  côtés (la plus petite zone sous le pointeur, même un rectangle dans un autre) ; un second clic les relâche. Quand deux
+  traits sont superposés (un côté commun), **recliquer au même endroit** passe au trait suivant.
+- **Couper** (bouton « Couper », groupe Modifier), comme le « Couper » (Break) de Fusion : coupe une ligne, un arc ou
+  un cercle **en morceaux** là où d'autres courbes le croisent, **sans rien supprimer**. En survolant la courbe, des
+  **croix rouges** montrent où elle sera coupée (les deux croisements autour du pointeur, ou un seul vers le bout) et le
+  morceau sous le pointeur s'affiche ; un clic coupe. Une ligne ou un arc donne jusqu'à trois morceaux, un cercle deux
+  arcs. Les morceaux partagent leurs bouts, tenus sur la courbe qui croise ; une ligne horizontale ou verticale le reste
+  morceau par morceau ; les cotes et égalités de la courbe entière sont retirées. Une courbe que rien ne croise ne se
+  coupe pas.
+- **Ajuster** (bouton « Ajuster », groupe Modifier), le « Ajuster » (Trim) de Fusion : en survolant une ligne, un arc
+  ou un cercle, la partie **entre les deux croisements** autour du pointeur s'affiche ; un clic la supprime. Sans croisement d'un côté, la
   partie va jusqu'au bout de la courbe (elle est raccourcie) ; sans aucun croisement, la courbe entière disparaît. Une ligne
   coupée au milieu devient deux lignes, un arc deux arcs, un cercle coupé entre deux croisements l'arc qui reste. Les
   nouvelles extrémités sont sur les croisements (un point existant y est réutilisé, sinon un point « sur courbe » les y
@@ -185,10 +224,11 @@ serveur accepte les deux versions.
     plan tombe à la verticale du plan.
 - **Cotes** (D) : longueur, distance, distances horizontale et verticale signées, distance point-ligne,
   angle, rayon et diamètre. Une cote est créée avec la valeur mesurée, puis se modifie dans le panneau ou
-  en cliquant son étiquette.
+  en cliquant son étiquette. « Cote horizontale » et « Cote verticale » se posent sur deux points ou sur
+  une ligne (entre ses deux bouts) ; la valeur proposée est toujours positive.
 - **Résolution** : toute modification est résolue avant d'être enregistrée. Une modification qui rend
   l'esquisse impossible (contraintes en conflit) est refusée avec la liste des contraintes en cause. Les
-  redondances sont signalées. L'état affiché est « Entièrement contrainte », « n DDL » ou « Redondante ».
+  redondances sont signalées. L'état affiché est « Entièrement contrainte », « n à fixer » (cotes ou contraintes manquantes) ou « Redondante ».
 - **Glisser** un point déplace la géométrie en respectant les contraintes ; le geste entier compte comme
   une seule étape d'annulation.
 - **Profils** : les boucles fermées non construction suivent la règle pair-impair (une boucle intérieure
@@ -322,6 +362,16 @@ opération existante.
   mode 3D de DIO, un tracé **fermé** (rectangle, cercle) enchaîne avec **tirer / pousser** (case « Puis tirer / pousser »).
   Survoler une autre face avant le premier point change d'objet (le « Get Object » de DIO). Les maths sont dans
   `sketcher/face-draw.ts`.
+  Les mesures ne s'écrivent plus dans la vue : elles s'affichent dans une **boîte de valeur en bas** de la vue (comme la
+  boîte « Mesures » de SketchUp), en direct quand le pointeur bouge, et les chiffres tapés au clavier y vont
+  **directement**, sans cliquer de champ — Entrée les applique : deux distances aux bords pour le premier point
+  (`120;45`), puis longueur et angle (`500;90`), largeur et hauteur (`300;150`), rayon, ou décalage ; « ; » sépare deux
+  valeurs, une valeur vide est laissée au pointeur, Retour arrière efface, Échap vide la saisie. Seuls restent dans la vue
+  les pointillés rouge et bleu qui montrent d'où les distances aux bords sont mesurées.
+  **Décalage du contour** (même outil) : le contour de la face survolée, décalé vers l'intérieur de la distance qui sépare
+  le pointeur du bord le plus proche (ou de la distance tapée ; négative : vers l'extérieur), angles vifs conservés, même
+  pour une face en L. Un clic le pose en esquisse sur la face et enchaîne avec tirer / pousser (cadre, feuillure,
+  panneau en creux) ; un décalage trop grand pour la face est refusé.
 - **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face
@@ -423,6 +473,12 @@ opération existante.
   - *Optimisation de découpe* : les pièces placées sur les panneaux standard de leur matière (2800×2070 pour les
     mélaminés), en bandes comme une scie à format, trait de scie 4 mm, marge 10 mm, fil respecté (une pièce sans fil
     peut tourner). Un schéma SVG par panneau avec le taux de chutes ; impression / PDF.
+  - *Export DXF commande numérique* : chaque panneau mis à plat sur sa grande face, avec le **contour exact** du noyau
+    (lignes, arcs) et les **perçages en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm,
+    calques CONTOUR, PERCAGE et TEXTE, lu par les logiciels de FAO.
+  - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
+    découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
+    navigateur) ; impression / PDF et CSV.
   - *Usinage* : un outil, sept préréglages, tous des coupes exactes du noyau (une opération « Usinage » par planche,
     qui remplace la planche et la **suit** quand elle se déplace) —
     sur une **face** cliquée : *perçages 32* (rangée de trous Ø5 × 12 tous les 32 mm, à 37 mm du bord, 1 ou 2 files),
@@ -526,6 +582,12 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   Un corps s'appelle « Corps 1 », « Corps 2 »… dans l'ordre de création, quelles que soient ses
   opérations, et se renomme (le nom suit le corps à travers ses opérations suivantes) ; supprimer un
   corps supprime l'opération qui l'a créé et celles qui en dépendent, après confirmation.
+  Les corps forment un **arbre dépliant** (flèche ▸ à gauche) : les corps faits ensemble par une même
+  opération (pièces d'une scission, panneaux d'un squelette, pièces d'un caisson, copies d'un réseau ou
+  d'une symétrie) sont rangés dans un dossier à leur nom (« Corps 1 » › « pièce 1 », « pièce 2 ») ; chaque
+  corps se déplie sur l'historique qui l'a construit (esquisses et opérations, de la plus ancienne à la
+  plus récente) : un clic sélectionne l'opération, « ⋯ » ouvre sa fenêtre. Ce qui est déplié est
+  retenu par le navigateur web.
 - **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
   chanfrein, combinaison, et les décalages, placés où est leur esquisse). Un clic ouvre une fenêtre pour
   **renommer**, **modifier** (rouvre l'outil de l'opération : flèche de l'extrusion, panneau de l'outil,
@@ -539,8 +601,9 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   pour recalculer.
 - **Plaque** : nouveau corps (esquisse rectangle + extrusion).
 - **Perçage** : Ø10 traversant au point cliqué sur une face, sinon au centre du corps.
-- **Raccourcis** : ⌘Z / ⇧⌘Z annuler/rétablir, ⌘S enregistrer, H perçage, F ajuster, Échap
-  désélectionner, Suppr supprimer l'opération sélectionnée.
+- **Raccourcis** : touche **?** pour la liste complète (3D et esquisse). ⌘Z / ⇧⌘Z annuler/rétablir, ⌘S
+  enregistrer, E extrusion, H perçage, F cadrer, Échap désélectionner, Suppr supprimer.
+- **Opérations booléennes** : les mêmes mots partout, ceux de Fusion — Nouveau corps, Joindre, Couper, Intersection.
 - **Navigation** : clic gauche pour l'orbite, clic droit ou molette-clic pour le panoramique,
   molette pour le zoom. Au doigt : un doigt pour l'orbite, deux doigts pour le zoom et le
   panoramique.
@@ -562,7 +625,6 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 
 - **Esquisses** :
   - Pas d'ellipse ni de polygone régulier.
-  - Pas d'ajustement ni de prolongement de courbes.
   - Pas de détection des auto-intersections : les profils qui se croisent sont refusés par le noyau.
   - Les DDL sont globaux, il n'y a pas de couleur par entité.
   - Un îlot dans un trou donne un second solide, refusé (une extrusion produit un seul corps).
@@ -576,11 +638,12 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   même endroit relatif) peut demander de resélectionner les arêtes.
 - **Congés et chanfreins** : rayon ou distance constants ; pas de congé à rayon variable ni de
   chanfrein à deux distances dans l'interface.
-- **Chargement** : le noyau WASM pèse 23 Mo (7,3 Mo en gzip). Le premier chargement prend
-  plusieurs secondes. En production, il faut servir les fichiers compressés (Brotli/gzip) et
-  les mettre en cache (service worker PWA, phase 9).
-- **PostgreSQL** : chemin non testé ; ajouter `psycopg[binary]` si `POSTGRES_DB` est défini.
-- **Non encore implémenté** : DXF, SVG, PDF, mise en plan et assemblages.
+- **Chargement** : le noyau WASM pèse 23 Mo (5 Mo servi en brotli). Le premier chargement prend quelques secondes,
+  les suivants viennent du cache du navigateur.
+- **PostgreSQL** : testé par la CI ; ajouter `psycopg[binary]` si `POSTGRES_DB` est défini.
+- **Export DXF** : une vue à plat par panneau (sa grande face) ; les usinages qui ne débouchent pas sur cette face
+  (rainures sur la tranche, perçages de chant) n'y figurent pas.
+- **Non encore implémenté** : assemblages avec contraintes entre composants.
 
 ## Dépendances et licences
 
@@ -593,6 +656,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 | @salusoft89/planegcs (solveur FreeCAD, WASM) | 1.3.0 | LGPL-2.0-or-later |
 | tailwindcss | 4.3 | MIT |
 | vite / vitest / typescript | 8.3 / 5.0 / 7.0 | MIT / MIT / Apache-2.0 |
+| whitenoise (+ brotli) | 6.12 | MIT |
+| @playwright/test (tests seulement) | 1.56 | Apache-2.0 |
 
 OpenCascade et planegcs sont distribués sous forme de fichiers `.wasm` séparés, non modifiés et
 remplaçables (`static/js/assets/*.wasm`), ce qui respecte la LGPL. Conserver leurs notices de
