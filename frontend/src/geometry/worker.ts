@@ -9,6 +9,7 @@ import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?ur
 import { initSolver } from "../constraints/solver";
 import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
+import { readWithProgress } from "./download";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
 import { offsetPaths } from "./offset";
 import { describeEdge, describeFace } from "./references";
@@ -23,10 +24,17 @@ const scope = self as unknown as WorkerScope;
 const recomputer = new Recomputer();
 let visibleBodies: string[] = [];
 
-async function ensureKernel(): Promise<void> {
+async function ensureKernel(requestId: number): Promise<void> {
   await initSolver({ locateFile: () => gcsWasmUrl });
   if (isKernelReady()) return;
-  const oc = await init({ locateFile: () => wasmUrl });
+  // The kernel is downloaded here (not by the module loader) so its progress reaches the loading screen.
+  let last = 0;
+  const wasmBinary = await readWithProgress(await fetch(wasmUrl), OC_WASM_BYTES, (loaded, total) => {
+    if (loaded - last < 256 * 1024 && loaded < total) return;
+    last = loaded;
+    scope.postMessage({ id: requestId, progress: { loaded, total } });
+  });
+  const oc = await (init as (options: object) => ReturnType<typeof init>)({ locateFile: () => wasmUrl, wasmBinary });
   initKernel(oc);
 }
 
@@ -129,7 +137,7 @@ function faceInfo(bodyId: string, faceIndex: number): FaceInfo {
 }
 
 async function handle(request: WorkerEnvelope): Promise<{ result: unknown; transfer: Transferable[] }> {
-  await ensureKernel();
+  await ensureKernel(request.id);
   switch (request.type) {
     case "init":
       return { result: true, transfer: [] };

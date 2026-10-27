@@ -10,11 +10,17 @@ export class GeometryClient {
   private worker: Worker;
   private nextId = 1;
   private pending = new Map<number, Pending>();
+  /** Download of the kernel (bytes), while it starts. */
+  onProgress: (loaded: number, total: number) => void = () => {};
 
   constructor() {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
     this.worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
       const message = event.data;
+      if ("progress" in message) {
+        this.onProgress(message.progress.loaded, message.progress.total);
+        return;
+      }
       const entry = this.pending.get(message.id);
       if (!entry) return;
       this.pending.delete(message.id);

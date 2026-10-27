@@ -19,6 +19,7 @@ import { loadProject } from "./persistence/api";
 import { describeError, installErrorReporting, sendReport } from "./persistence/error-report";
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
+import { LoadingScreen } from "./ui/loading";
 import { bindRibbonLayout } from "./ui/ribbon-layout";
 import { Viewport } from "./viewport/viewport";
 
@@ -44,6 +45,8 @@ async function start(): Promise<void> {
 
   const kernelStatus = ref(root, "status-kernel");
   kernelStatus.textContent = "Chargement du noyau…";
+  loading.show("Démarrage du noyau 3D…", 0.05);
+  geometry.onProgress = (loaded, total) => loading.download(loaded, total);
   const [snapshot] = await Promise.all([
     loadProject(config.apiUrl),
     // The sketcher solves interactively on the main thread (small, fast module).
@@ -51,6 +54,7 @@ async function start(): Promise<void> {
     geometry.init().then(() => {
       kernelStatus.textContent = "Noyau OpenCascade prêt";
       kernelStatus.dataset.state = "ready";
+      loading.show("Préparation du projet…", 0.9);
     }),
   ]);
 
@@ -80,13 +84,18 @@ async function start(): Promise<void> {
   bindMotion(root, viewport, editor);
   bindDrawing(root, viewport, editor);
   editor.render();
+  loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);
+  loading.done();
 }
+
+const loading = new LoadingScreen(document.querySelector<HTMLElement>('[data-ref="loading"]'));
 
 start().catch((error: unknown) => {
   const root = document.getElementById("editor");
   const message = error instanceof Error ? error.message : String(error);
   if (root) showFatal(root, `Erreur : ${message}`);
+  loading.fail(`Erreur : ${message}.`);
   sendReport(describeError(error, "démarrage"));
   console.error(error);
 });

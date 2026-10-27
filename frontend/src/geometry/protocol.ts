@@ -84,6 +84,8 @@ export interface ExportResponse {
 
 export type WorkerResponse =
   | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; error: string };
+  | { id: number; ok: false; error: string }
+  /** Download of the kernel, while "init" runs (bytes). */
+  | { id: number; progress: { loaded: number; total: number } };
 
 export type WorkerEnvelope = WorkerRequest & { id: number };
