@@ -1,33 +1,37 @@
 /**
- * "Dessiner sur le corps" (as Curic DIO's Line, Rectangle and Circle): lines, rectangles and circles drawn directly
- * on a face of a body, from the 3D view, without opening a sketch first. Over a face, the distances from the pointer
- * to the nearest edges (the SnapDims: red along X, blue along Y) are shown and can be typed; the point snaps to the
- * corners and the middles of the edges, else those distances are rounded. Clicking places points (a line goes on
- * until Entrée or a click on its last point, a rectangle and a circle take two); the result is a sketch on the face,
- * made of the face's projected outline and the drawing, and a closed shape goes on with the push/pull (extrusion).
- * The maths are in sketcher/face-draw.ts. A click over another body's face before the first point picks that
- * object (Curic's "Get Object").
+ * "Dessiner sur le corps" (as Curic DIO's Line, Rectangle and Circle, and Curic's Offset): lines, rectangles and
+ * circles drawn directly on a face of a body, from the 3D view, without opening a sketch first, or the face's outline
+ * offset inward (a frame, a recess). The measures are not written in the view: they show in the value box at the
+ * bottom (as SketchUp's), live as the pointer moves, and numbers typed on the keyboard go there directly — Entrée
+ * applies them: two distances to the nearest edges for the first point ("120;45"), then a length and an angle, a
+ * width and a height, a radius, or the offset. Over a face, dashed lines (red along X, blue along Y) show where the
+ * distances to the edges are measured; the point snaps to the corners and the middles of the edges, else those
+ * distances are rounded. The result is a sketch on the face (its projected outline and the drawing), and a closed
+ * shape goes on with the push/pull. The maths are in sketcher/face-draw.ts. Before the first point, the face under
+ * the pointer is the one drawn on (Curic's "Get Object").
  */
 import { uniqueId, uniqueName } from "../document/operations";
 import type { Feature, SketchFeature } from "../document/types";
-import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
+import { formatLength, fromDisplay, parseNumber, trim, UNIT_LABELS } from "../measurements/units";
 import { addCircle, addLine, addRectangle, type Vec2, type VertexInput } from "../sketcher/edit";
-import { pointAtLength, snapDims, snapOnFace, withTypedDistances } from "../sketcher/face-draw";
+import { offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../sketcher/face-draw";
+import { bandSketch } from "../sketcher/face-strip";
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { projectOutline } from "../sketcher/projection";
-import { dragStep } from "../viewport/axis-drag";
-import { el } from "../ui/dom";
+import { ValueBox } from "../ui/value-box";
+import { dragStep, roundTo } from "../viewport/axis-drag";
 import { Marks } from "./measure";
 import { loadFace, type LoadedFace } from "./face-strip-view";
-import { COMPACT_INPUT, PanelTool, type ToolContext } from "./panel-tool";
+import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
 
-type Shape = "line" | "rectangle" | "circle";
+type Shape = "line" | "rectangle" | "circle" | "offset";
 const SHAPES: [Shape, string][] = [
   ["line", "Ligne / polyligne"],
   ["rectangle", "Rectangle"],
   ["circle", "Cercle"],
+  ["offset", "Décalage du contour"],
 ];
 
 /** Kept for the session: what was drawn last, and whether a closed shape goes on with the push/pull. */
@@ -37,20 +41,31 @@ const RED = 0xdc2626;
 const BLUE = 0x2563eb;
 const ORANGE = 0xf97316;
 
+type Typed = { x: number | null; y: number | null; length: number | null; angle: number | null };
+const NOTHING: Typed = { x: null, y: null, length: null, angle: null };
+
+/** Keys the value box takes while the tool is active: digits, decimal separators, minus, separators. */
+const TYPING = /^[0-9.,;\- ]$/;
+
 export class DrawOnFaceTool extends PanelTool {
   private shape: Shape = last.shape;
   private thenPull = last.thenPull;
   /** The face the drawing is on: set with the first point, which locks it. */
   private face: LoadedFace | null = null;
   private points: Vec2[] = [];
-  /** Where the pointer lands (snapped, typed values applied), with its face. */
+  /** Where the pointer lands (snapped, typed values applied). */
   private cursor: Vec2 | null = null;
   private hoverFace: LoadedFace | null = null;
   private lastEvent: PointerEvent | null = null;
-  /** Typed values: distances to the edges for the first point; then length and angle, width and height, or radius. */
-  private typed: { x: number | null; y: number | null; length: number | null; angle: number | null } = { x: null, y: null, length: null, angle: null };
+  /** Values typed and applied: distances to the edges for the first point; then length and angle, width and height, radius, or offset. */
+  private typed: Typed = { ...NOTHING };
+  /** The text being typed in the value box, or null. */
+  private buffer: string | null = null;
+  /** The offset the pointer (or a typed value) asks for, and the outline it gives. */
+  private offsetDistance = 0;
+  private offsetOutline: Vec2[] | null = null;
   private readonly marks: Marks;
-  private readonly readout = el("p", { class: "font-mono text-gray-600 dark:text-gray-300" }, "");
+  private readonly box: ValueBox;
   private readonly loaded = new Map<string, LoadedFace | null>();
   private readonly loading = new Set<string>();
   private readonly sketchId: string;
@@ -62,6 +77,9 @@ export class DrawOnFaceTool extends PanelTool {
     this.sketchId = uniqueId(doc, "sk");
     this.sketchName = uniqueName(doc, "Tracé");
     this.marks = new Marks(ctx.viewport.scene);
+    this.box = new ValueBox(ctx.container);
+    window.addEventListener("keydown", this.onKey, true);
+    this.showValues();
   }
 
   // ---- faces and the pointer ---------------------------------------------------------------
@@ -104,16 +122,24 @@ export class DrawOnFaceTool extends PanelTool {
     const { origin, direction } = this.ctx.viewport.rayFromEvent(event);
     const raw = rayToSketch(face.frame, origin, direction);
     if (!raw) return null;
+    if (this.shape === "offset") {
+      // The pointer's distance to the nearest edge (rounded), unless one was typed.
+      this.offsetDistance = this.typed.length ?? roundTo(pointerOffset(face.polygon, raw), this.step());
+      this.offsetOutline = offsetPolygon(face.polygon, this.offsetDistance);
+      return raw;
+    }
     const tolerance = 10 * this.ctx.viewport.worldPerPixel();
     let p = this.points.length === 0 && !this.inside(face, raw) ? raw : snapOnFace(face.polygon, raw, this.step(), tolerance).point;
     const first = this.points.at(-1);
     if (!first) return withTypedDistances(face.polygon, p, this.typed);
     const { length, angle } = this.typed;
     if (this.shape === "rectangle" && length !== null) {
-      // Typed width (and height, in the angle field): from the first corner toward the pointer's quadrant.
+      // Typed width (and height, in the angle slot): from the first corner toward the pointer's quadrant.
       const sx = p[0] >= first[0] ? 1 : -1;
       const sy = p[1] >= first[1] ? 1 : -1;
       p = [first[0] + sx * length, first[1] + sy * (angle ?? Math.abs(p[1] - first[1]))];
+    } else if (this.shape === "rectangle" && angle !== null) {
+      p = [p[0], first[1] + (p[1] >= first[1] ? 1 : -1) * angle];
     } else if (length !== null) p = pointAtLength(first, p, length, this.shape === "line" ? angle : null);
     else if (this.shape === "line" && angle !== null) p = pointAtLength(first, p, Math.hypot(p[0] - first[0], p[1] - first[1]) || 1, angle);
     return p;
@@ -129,71 +155,131 @@ export class DrawOnFaceTool extends PanelTool {
       this.hoverFace = face;
       viewport.setHoverHighlight(pick ? { face: pick } : null);
     }
-    if (!face) {
-      this.cursor = null;
-      this.draw();
-      return;
-    }
-    this.cursor = this.pointOn(face, event);
+    this.cursor = face ? this.pointOn(face, event) : null;
     this.draw();
   }
 
-  // ---- drawing the marks -------------------------------------------------------------------
+  // ---- what is shown: dashed lines and the shape in the view, the measures in the box -------------
 
   private draw(): void {
     this.marks.clear();
     const face = this.face ?? this.hoverFace;
-    const unit = this.ctx.unit();
-    const fmt = (mm: number) => formatLength(mm, unit);
-    let note = "";
     if (face && this.cursor) {
       const p = this.cursor;
       const at = (q: Vec2) => this.world(face, q);
-      // The SnapDims: distances to the nearest edges, red along X and blue along Y.
-      if (this.inside(face, p)) {
-        for (const dim of snapDims(face.polygon, p)) {
-          if (dim.distance < 1e-6) continue;
-          const color = dim.axis === 0 ? RED : BLUE;
-          this.marks.line(at(dim.from), at(dim.to), color, true);
-          const mid: Vec2 = [(dim.from[0] + dim.to[0]) / 2, (dim.from[1] + dim.to[1]) / 2];
-          this.marks.label(at(mid), fmt(dim.distance));
+      if (this.shape === "offset") {
+        const outline = this.offsetOutline;
+        if (outline) outline.forEach((q, i) => this.marks.line(at(q), at(outline[(i + 1) % outline.length] as Vec2), ORANGE, false));
+      } else {
+        // Where the distances to the nearest edges are measured: red along X, blue along Y (their values are in the box).
+        if (this.points.length === 0 && this.inside(face, p)) {
+          for (const dim of snapDims(face.polygon, p)) if (dim.distance > 1e-6) this.marks.line(at(dim.from), at(dim.to), dim.axis === 0 ? RED : BLUE, true);
         }
-        note = snapDims(face.polygon, p).map((d) => `${d.axis === 0 ? "↔" : "↕"} ${fmt(d.distance)}`).join("   ");
+        this.marks.dot(at(p), ORANGE);
+        const chain = [...this.points, p];
+        const lastPoint = this.points.at(-1);
+        if (this.shape === "line") chain.slice(1).forEach((q, i) => this.marks.line(at(chain[i] as Vec2), at(q), ORANGE, false));
+        else if (lastPoint && this.shape === "rectangle") {
+          const corners: Vec2[] = [lastPoint, [p[0], lastPoint[1]], p, [lastPoint[0], p[1]]];
+          corners.forEach((c, i) => this.marks.line(at(c), at(corners[(i + 1) % 4] as Vec2), ORANGE, false));
+        } else if (lastPoint && this.shape === "circle") {
+          const r = Math.hypot(p[0] - lastPoint[0], p[1] - lastPoint[1]);
+          const ring = Array.from({ length: 49 }, (_, i): Vec2 => [lastPoint[0] + r * Math.cos((i / 48) * 2 * Math.PI), lastPoint[1] + r * Math.sin((i / 48) * 2 * Math.PI)]);
+          ring.slice(1).forEach((q, i) => this.marks.line(at(ring[i] as Vec2), at(q), ORANGE, false));
+          this.marks.line(at(lastPoint), at(p), ORANGE, true);
+        }
+        for (const q of this.points) this.marks.dot(at(q), ORANGE);
       }
-      this.marks.dot(at(p), ORANGE);
-      // What is drawn so far, and the shape the next point would give.
-      const chain = [...this.points, p];
-      const last = this.points.at(-1);
-      if (this.shape === "line") {
-        chain.slice(1).forEach((q, i) => {
-          const a = chain[i] as Vec2;
-          this.marks.line(at(a), at(q), ORANGE, false);
-          if (i === chain.length - 2) this.marks.label(at([(a[0] + q[0]) / 2, (a[1] + q[1]) / 2]), fmt(Math.hypot(q[0] - a[0], q[1] - a[1])));
-        });
-      } else if (last && this.shape === "rectangle") {
-        const corners: Vec2[] = [last, [p[0], last[1]], p, [last[0], p[1]]];
-        corners.forEach((c, i) => this.marks.line(at(c), at(corners[(i + 1) % 4] as Vec2), ORANGE, false));
-        this.marks.label(at([(last[0] + p[0]) / 2, last[1]]), fmt(Math.abs(p[0] - last[0])));
-        this.marks.label(at([p[0], (last[1] + p[1]) / 2]), fmt(Math.abs(p[1] - last[1])));
-      } else if (last && this.shape === "circle") {
-        const r = Math.hypot(p[0] - last[0], p[1] - last[1]);
-        const ring = Array.from({ length: 49 }, (_, i): Vec2 => [last[0] + r * Math.cos((i / 48) * 2 * Math.PI), last[1] + r * Math.sin((i / 48) * 2 * Math.PI)]);
-        ring.slice(1).forEach((q, i) => this.marks.line(at(ring[i] as Vec2), at(q), ORANGE, false));
-        this.marks.line(at(last), at(p), ORANGE, true);
-        this.marks.label(at([(last[0] + p[0]) / 2, (last[1] + p[1]) / 2]), `R ${fmt(r)}`);
-      }
-      for (const q of this.points) this.marks.dot(at(q), ORANGE);
     }
-    this.readout.textContent = note || (face ? "" : "Survolez une face.");
+    this.showValues();
   }
 
-  // ---- clicks and typed values --------------------------------------------------------------
+  /** The value box: what the values are, their live reading, and how to type them. */
+  private showValues(): void {
+    const unit = this.ctx.unit();
+    const fmt = (mm: number) => formatLength(mm, unit);
+    const face = this.face ?? this.hoverFace;
+    const p = this.cursor;
+    if (!face || !p) {
+      this.box.show("Mesures", "—", "Survolez une face du corps.");
+    } else if (this.shape === "offset") {
+      this.box.show("Décalage", this.offsetOutline ? fmt(this.offsetDistance) : `${fmt(this.offsetDistance)} — trop grand`, "Tapez la distance puis Entrée (− : vers l'extérieur), ou cliquez.");
+    } else if (this.points.length === 0) {
+      const dims = this.inside(face, p) ? snapDims(face.polygon, p) : [];
+      const dx = dims.find((d) => d.axis === 0);
+      const dy = dims.find((d) => d.axis === 1);
+      this.box.show("Bords ↔ ; ↕", dx && dy ? `${fmt(dx.distance)} ; ${fmt(dy.distance)}` : "—", "Tapez deux distances aux bords (120;45) puis Entrée, ou cliquez.");
+    } else {
+      const a = this.points.at(-1) as Vec2;
+      const length = Math.hypot(p[0] - a[0], p[1] - a[1]);
+      if (this.shape === "line") {
+        const angle = (((Math.atan2(p[1] - a[1], p[0] - a[0]) * 180) / Math.PI) + 360) % 360;
+        this.box.show("Longueur ; angle", `${fmt(length)} ; ${trim(angle, 1)}°`, "Tapez la longueur (et l'angle : 500;90) puis Entrée.");
+      } else if (this.shape === "rectangle") this.box.show("Largeur ; hauteur", `${fmt(Math.abs(p[0] - a[0]))} ; ${fmt(Math.abs(p[1] - a[1]))}`, "Tapez largeur;hauteur puis Entrée.");
+      else this.box.show("Rayon", fmt(length), "Tapez le rayon puis Entrée.");
+    }
+    this.box.setTyped(this.buffer);
+  }
+
+  // ---- typing on the keyboard --------------------------------------------------------------------
+
+  /** Numbers go to the value box without a field; Entrée applies them, Retour arrière erases, Échap empties. */
+  private readonly onKey = (event: KeyboardEvent): void => {
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest("input, textarea, select, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey)) return;
+    const consume = () => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.showValues();
+    };
+    if (TYPING.test(event.key)) {
+      if (event.key === " " && this.buffer === null) return;
+      this.buffer = (this.buffer ?? "") + event.key;
+      return consume();
+    }
+    if (this.buffer === null) return;
+    if (event.key === "Backspace") {
+      this.buffer = this.buffer.slice(0, -1) || null;
+      return consume();
+    }
+    if (event.key === "Escape") {
+      this.buffer = null;
+      return consume();
+    }
+    if (event.key === "Enter") {
+      this.applyTyped();
+      return consume();
+    }
+  };
+
+  /** Applies what was typed: in the display unit (degrees for an angle), then places the point or the shape. */
+  private applyTyped(): void {
+    const text = this.buffer ?? "";
+    this.buffer = null;
+    const unit = this.ctx.unit();
+    const values = parseTyped(text, parseNumber);
+    if (values.length === 0) return;
+    if (values.some((v, i) => v === null && text.split(/\s*;\s*|\s+/)[i] !== "")) return this.ctx.notify(`« ${text} » n'est pas une mesure.`, "error");
+    const length = (v: number | null | undefined) => (v === null || v === undefined ? null : fromDisplay(v, unit));
+    const [a, b] = values;
+    if (this.shape === "offset") this.typed = { ...NOTHING, length: length(a) };
+    else if (this.points.length === 0) this.typed = { ...NOTHING, x: length(a), y: length(b) };
+    else if (this.shape === "line") this.typed = { ...NOTHING, length: length(a), angle: b ?? null };
+    else if (this.shape === "rectangle") this.typed = { ...NOTHING, length: length(a), angle: length(b) };
+    else this.typed = { ...NOTHING, length: length(a) };
+    if (this.lastEvent) this.move(this.lastEvent);
+    if (!this.cursor) return this.ctx.notify("Survolez d'abord une face du corps.", "info");
+    this.place();
+  }
+
+  // ---- clicks ------------------------------------------------------------------------------------
 
   private get closedShape(): boolean {
     return this.shape !== "line";
   }
 
   private ready(): boolean {
+    if (this.shape === "offset") return this.face !== null && this.offsetOutline !== null;
     return this.shape === "line" ? this.points.length >= 2 : this.points.length === 2;
   }
 
@@ -201,40 +287,44 @@ export class DrawOnFaceTool extends PanelTool {
     this.place();
   }
 
-  /** Places the point under the pointer (the first one locks the face); the last one ends a rectangle or a circle. */
+  /** Places the point under the pointer (the first one locks the face); the last one ends a rectangle or a circle; an offset is placed at once. */
   private place(): void {
     const face = this.face ?? this.hoverFace;
     const p = this.cursor;
     if (!face || !p) return;
+    if (this.shape === "offset") {
+      if (!this.offsetOutline) return this.ctx.notify("Ce décalage est trop grand pour la face.", "error");
+      this.face = face;
+      this.typed = { ...NOTHING };
+      return this.confirm();
+    }
     if (!this.face) this.face = face;
     const lastPoint = this.points.at(-1);
     // A line ends where it is clicked again.
     if (this.shape === "line" && lastPoint && Math.hypot(p[0] - lastPoint[0], p[1] - lastPoint[1]) < 1e-6) return this.confirm();
     if (this.shape !== "line" && lastPoint && Math.hypot(p[0] - lastPoint[0], p[1] - lastPoint[1]) < 1e-6) return;
     this.points.push(p);
-    this.typed = { x: null, y: null, length: null, angle: null };
+    this.typed = { ...NOTHING };
     this.ctx.viewport.setHoverHighlight(null);
     if (this.shape !== "line" && this.points.length === 2) return this.confirm();
     this.render();
     this.draw();
   }
 
-  /** Lengths and angles are typed in the fields: the point is placed with Entrée. */
+  /** Échap starts the drawing over (or leaves); Entrée ends a line. Typed values are handled by the value box first. */
   override handleKey(event: KeyboardEvent): boolean {
     if (event.key === "Escape") {
       if (this.points.length) {
         this.points = [];
         this.face = null;
-        this.typed = { x: null, y: null, length: null, angle: null };
+        this.typed = { ...NOTHING };
         this.render();
         this.draw();
       } else this.cancel();
       return true;
     }
     if (event.key === "Enter") {
-      const pending = Object.values(this.typed).some((v) => v !== null);
-      if (pending && this.cursor) this.place();
-      else this.confirm();
+      this.confirm();
       return true;
     }
     return false;
@@ -249,6 +339,7 @@ export class DrawOnFaceTool extends PanelTool {
   }
 
   private geometry(face: LoadedFace): SketchGeometry | null {
+    if (this.shape === "offset") return this.offsetOutline ? bandSketch(face.outline, face.frame, this.offsetOutline) : null;
     let g = projectOutline(face.outline, face.frame);
     try {
       if (this.shape === "line") {
@@ -266,8 +357,8 @@ export class DrawOnFaceTool extends PanelTool {
   }
 
   protected feature(): Feature | string {
-    if (!this.face) return "Cliquez sur une face du corps pour poser le premier point.";
-    if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : "Cliquez un point du cercle.";
+    if (!this.face) return this.shape === "offset" ? "Survolez une face : le contour décalé suit le pointeur ; cliquez pour le poser." : "Cliquez sur une face du corps pour poser le premier point.";
+    if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : this.shape === "circle" ? "Cliquez un point du cercle." : "Ce décalage est trop grand pour la face.";
     const g = this.geometry(this.face);
     if (!g) return "Ce dessin est impossible (longueur ou rayon nul).";
     const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...g, support: this.face.pick.bodyId };
@@ -289,60 +380,42 @@ export class DrawOnFaceTool extends PanelTool {
 
   // ---- panel ---------------------------------------------------------------------------------
 
-  /** A number the user may type, or leave empty to let the pointer decide. */
-  private optional(label: string, key: "x" | "y" | "length" | "angle", angle = false): HTMLElement {
-    const unit = this.ctx.unit();
-    const value = this.typed[key];
-    const input = el("input", { type: "text", inputmode: "decimal", class: `${COMPACT_INPUT} text-right font-mono`, placeholder: "pointeur", value: value === null ? "" : trim(angle ? value : toDisplay(value, unit), 4), "aria-label": label });
-    input.addEventListener("keydown", (event) => event.stopPropagation());
-    const apply = () => {
-      const text = input.value.trim();
-      const parsed = text === "" ? null : parseNumber(text);
-      input.setAttribute("aria-invalid", String(text !== "" && parsed === null));
-      if (text !== "" && parsed === null) return;
-      this.typed[key] = parsed === null ? null : angle ? parsed : fromDisplay(parsed, unit);
-      if (this.lastEvent) this.move(this.lastEvent);
-    };
-    input.addEventListener("input", apply);
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        apply();
-        if (this.cursor) this.place();
-      }
-    });
-    return el("label", { class: "grid grid-cols-[6.5rem_1fr] items-center gap-1.5" }, `${label}${angle ? " (°)" : ` (${UNIT_LABELS[unit]})`}`, input);
-  }
-
   protected rows(): (HTMLElement | null)[] {
-    const rows: (HTMLElement | null)[] = [
+    const unit = UNIT_LABELS[this.ctx.unit()];
+    const step =
+      this.shape === "offset"
+        ? "Survolez une face : le contour décalé suit le pointeur (sa distance au bord) ; cliquez pour le poser."
+        : this.points.length === 0
+          ? "Cliquez sur une face du corps : les distances aux bords les plus proches s'affichent en bas."
+          : this.shape === "line"
+            ? "Point suivant : cliquez ; Entrée termine."
+            : this.shape === "rectangle"
+              ? "Cliquez le coin opposé."
+              : "Cliquez un point du cercle.";
+    return [
       this.selectRow("Tracé", this.shape, SHAPES, (v) => {
         this.shape = v as Shape;
         this.points = [];
         this.face = null;
-        this.typed = { x: null, y: null, length: null, angle: null };
+        this.typed = { ...NOTHING };
+        this.buffer = null;
         this.render();
-        this.draw();
+        if (this.lastEvent) this.move(this.lastEvent);
+        else this.draw();
       }),
-      this.info(this.points.length === 0 ? "Cliquez sur une face du corps : les distances aux bords s'affichent." : this.shape === "line" ? "Point suivant : cliquez ; Entrée termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : "Cliquez un point du cercle."),
-      this.readout,
+      this.info(step),
+      this.closedShape
+        ? this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {
+            this.thenPull = v;
+          })
+        : null,
+      this.info(`Les mesures s'affichent en bas : tapez-les au clavier (en ${unit}, « ; » entre deux valeurs) puis Entrée. Échap reprend le tracé.`),
     ];
-    if (this.points.length === 0) rows.push(this.optional("Bord ↔", "x"), this.optional("Bord ↕", "y"));
-    else if (this.shape === "line") rows.push(this.optional("Longueur", "length"), this.optional("Angle", "angle", true));
-    else if (this.shape === "rectangle") rows.push(this.optional("Largeur", "length"), this.optional("Hauteur", "angle"));
-    else rows.push(this.optional("Rayon", "length"));
-    if (this.closedShape) {
-      rows.push(
-        this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {
-          this.thenPull = v;
-        }),
-      );
-    }
-    rows.push(this.info("Une pression sur Échap reprend le tracé ; survoler une autre face avant le premier point change d'objet."));
-    return rows;
   }
 
   protected override dispose(): void {
+    window.removeEventListener("keydown", this.onKey, true);
+    this.box.dispose();
     this.marks.clear();
     this.ctx.viewport.setHoverHighlight(null);
   }

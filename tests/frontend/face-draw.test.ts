@@ -1,6 +1,7 @@
 /** Drawing directly on a face (as Curic DIO): the distances to the nearest edges and the snapping. */
 import { describe, expect, it } from "vitest";
-import { coordinateAt, pointAtLength, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
+import { coordinateAt, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
+import { parseNumber } from "../../frontend/src/measurements/units";
 
 /** A face 400 × 300. */
 const FACE: [number, number][] = [[0, 0], [400, 0], [400, 300], [0, 300]];
@@ -59,5 +60,54 @@ describe("accrochage sur la face", () => {
     const [u, v] = pointAtLength([0, 0], [1, 1], 100, 90);
     expect(u).toBeCloseTo(0, 9);
     expect(v).toBeCloseTo(100, 9);
+  });
+});
+
+describe("boîte de valeur (saisie au clavier)", () => {
+  it("une ou deux valeurs, séparées par « ; » ou une espace, virgule décimale acceptée", () => {
+    expect(parseTyped("120", parseNumber)).toEqual([120]);
+    expect(parseTyped("120;45", parseNumber)).toEqual([120, 45]);
+    expect(parseTyped("12,5 30", parseNumber)).toEqual([12.5, 30]);
+    expect(parseTyped("-8", parseNumber)).toEqual([-8]);
+  });
+
+  it("une valeur laissée vide revient au pointeur", () => {
+    expect(parseTyped("120;", parseNumber)).toEqual([120, null]);
+    expect(parseTyped(";45", parseNumber)).toEqual([null, 45]);
+    expect(parseTyped("  ", parseNumber)).toEqual([]);
+  });
+});
+
+describe("décalage du contour", () => {
+  const near = (a: number[][], b: number[][]) => a.forEach((p, i) => p.forEach((v, j) => expect(v).toBeCloseTo(b[i]![j]!, 6)));
+
+  it("vers l'intérieur : un rectangle plus petit de deux fois la distance, coins à angle droit", () => {
+    near(offsetPolygon(FACE, 40)!, [[40, 40], [360, 40], [360, 260], [40, 260]]);
+  });
+
+  it("le sens de parcours du contour ne change rien", () => {
+    const reversed = [...FACE].reverse();
+    const out = offsetPolygon(reversed, 40)!;
+    expect(out.map((p) => p[0]).sort((a, b) => a - b)).toEqual([40, 40, 360, 360]);
+  });
+
+  it("négatif : vers l'extérieur", () => {
+    near(offsetPolygon(FACE, -10)!, [[-10, -10], [410, -10], [410, 310], [-10, 310]]);
+  });
+
+  it("une face en L garde sa forme, l'angle rentrant compris", () => {
+    const L: [number, number][] = [[0, 0], [400, 0], [400, 100], [200, 100], [200, 300], [0, 300]];
+    near(offsetPolygon(L, 20)!, [[20, 20], [380, 20], [380, 80], [180, 80], [180, 280], [20, 280]]);
+  });
+
+  it("trop grand pour la face : pas de contour", () => {
+    expect(offsetPolygon(FACE, 150)).toBeNull();
+    expect(offsetPolygon(FACE, 200)).toBeNull();
+  });
+
+  it("la distance que demande le pointeur : au bord le plus proche, positive dedans, négative dehors", () => {
+    expect(pointerOffset(FACE, [100, 30])).toBe(30);
+    expect(pointerOffset(FACE, [395, 150])).toBe(5);
+    expect(pointerOffset(FACE, [100, -12])).toBe(-12);
   });
 });
