@@ -18,7 +18,7 @@ const SELECT = "h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-
 const EDGE_NAMES: [keyof Edges, string][] = [["length1", "L1"], ["length2", "L2"], ["width1", "l1"], ["width2", "l2"]];
 
 /** Every displayed body as a part of the cut list. */
-function partsOf(viewport: Viewport): PartInput[] {
+export function partsOf(viewport: Viewport): PartInput[] {
   const parts: PartInput[] = [];
   for (const id of viewport.displayedBodies) {
     const metrics = viewport.bodyMesh(id)?.metrics;

@@ -172,6 +172,17 @@ describe("plaque de référence 80 × 50 × 10 avec perçage Ø10", () => {
     expect(bytes.byteLength).toBe(84 + triangles * 50);
   });
 
+  it("exporte plusieurs corps dans un seul STL, sans abîmer les corps", async () => {
+    recomputer = new Recomputer();
+    recomputer.recompute(createReferencePlate());
+    const plate = plateShape(recomputer);
+    const one = new DataView(await exportBodies([{ name: "Plaque", shape: plate }], "stl").arrayBuffer()).getUint32(80, true);
+    const both = new DataView(await exportBodies([{ name: "A", shape: plate }, { name: "B", shape: plateShape(recomputer, "ex1") }], "stl").arrayBuffer()).getUint32(80, true);
+    expect(both).toBeGreaterThan(one);
+    // The bodies are still usable after the export.
+    expect(isShapeValid(plate)).toBe(true);
+  });
+
   it("conserve paramètres et géométrie après sérialisation du document", () => {
     recomputer = new Recomputer();
     const doc = createReferencePlate();

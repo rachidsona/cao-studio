@@ -10,6 +10,7 @@ import { bindMotion } from "./app/motion";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/scenes";
 import { bindWorkshop } from "./app/workshop";
+import { bindWorkshopDocuments } from "./app/workshop-documents";
 import { askConfirm } from "./ui/confirm-dialog";
 import { DocumentSession } from "./app/session";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -79,6 +80,7 @@ async function start(): Promise<void> {
   bindSelectPlus(root, viewport, { doc: () => editor.doc, unit: () => editor.unit });
   bindSection(root, viewport, { unit: () => editor.unit });
   bindWorkshop(root, viewport, editor);
+  bindWorkshopDocuments(root, viewport, editor, geometry);
   bindParameters(root, viewport, editor);
   bindScenes(root, viewport, editor);
   bindMeasure(root, viewport, editor);

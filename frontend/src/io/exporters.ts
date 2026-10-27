@@ -2,7 +2,7 @@
  * Export of computed bodies to exchange formats. STEP keeps the exact B-rep
  * (millimetres); STL is a tessellation intended for 3D printing.
  */
-import { exportSTEP, type Shape3D } from "replicad";
+import { exportSTEP, makeCompound, type Shape3D } from "replicad";
 import { GeometryError } from "../geometry/kernel";
 
 export type ExportFormat = "step" | "stl";
@@ -20,7 +20,13 @@ export function exportBodies(bodies: NamedBody[], format: ExportFormat): Blob {
       { unit: "MM", modelUnit: "MM" },
     );
   }
-  if (bodies.length > 1) throw new GeometryError("L'export STL multi-corps n'est pas encore pris en charge.");
-  const [body] = bodies as [NamedBody];
-  return body.shape.blobSTL({ tolerance: 0.01, angularTolerance: 0.1, binary: true });
+  const options = { tolerance: 0.01, angularTolerance: 0.1, binary: true };
+  if (bodies.length === 1) return (bodies[0] as NamedBody).shape.blobSTL(options);
+  // Several bodies: one STL of their compound, made of copies (makeCompound releases the shapes it is given).
+  const compound = makeCompound(bodies.map((b) => b.shape.clone())) as Shape3D;
+  try {
+    return compound.blobSTL(options);
+  } finally {
+    compound.delete();
+  }
 }

@@ -62,6 +62,22 @@ test("une ligne tracée dans l'esquisse est enregistrée et retrouvée après re
   expect(await sketchCurves(page, api, "sk1")).toBe(before + 1);
 });
 
+test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page }) => {
+  await newProject(page, "Compte e2e");
+  await page.goto("/projects/");
+  await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
+  await page.waitForURL("**/editor/");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('[data-select^="body:"]')).toHaveCount(6);
+  await page.locator('[data-workshop="quote"]').click();
+  const quote = page.getByRole("dialog", { name: "Devis" });
+  await expect(quote).toContainText("Mélaminé chêne 18 mm");
+  await expect(quote).toContainText("Total TTC");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("?");
+  await expect(page.getByRole("dialog", { name: "Aide et raccourcis clavier" })).toBeVisible();
+});
+
 test("la liste de débit s'ouvre avec les pièces du modèle", async ({ page }) => {
   await newProject(page, "Débit e2e");
   await page.locator('[data-workshop="cutlist"]').click();
