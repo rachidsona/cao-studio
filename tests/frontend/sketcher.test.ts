@@ -90,6 +90,14 @@ describe("contraintes et cotes", () => {
     const g = centeredRectangle(80, 50);
     const available = (ids: string[]) => COMMANDS.filter((c) => c.applies(classify(g, ids))).map((c) => c.id);
     expect(available(["l1", "l3"])).toEqual(["horizontal", "vertical", "parallel", "perpendicular", "equal", "dimension"]);
+    expect(available(["l2"])).toEqual(expect.arrayContaining(["dimension", "dimensionX", "dimensionY"]));
+    // On one line, the horizontal and vertical dimensions measure between its ends.
+    const build = (id: string) => COMMANDS.find((c) => c.id === id)!.build(classify(g, ["l1"]), g)[0];
+    expect(build("dimensionX")).toMatchObject({ kind: "distanceX", a: "p1", b: "p2", value: 80 });
+    expect(build("dimensionY")).toMatchObject({ kind: "distanceY", a: "p1", b: "p2", value: 0 });
+    // A line drawn downwards still gets a positive value (its lower end comes first).
+    const down = { ...g, curves: g.curves.map((c) => (c.id === "l2" && c.kind === "line" ? { ...c, p1: c.p2, p2: c.p1 } : c)) };
+    expect(COMMANDS.find((c) => c.id === "dimensionY")!.build(classify(down, ["l2"]), down)[0]).toMatchObject({ value: 50 });
     expect(available(["p1", "p3"])).toEqual(["coincident", "fix", "dimension", "dimensionX", "dimensionY"]);
     expect(available(["p1", "p2", "l2"])).toEqual(["symmetric"]);
     expect(available(["p1", "l2"])).toEqual(["pointOnCurve", "midpoint", "dimension"]);

@@ -56,6 +56,20 @@ const anyCurve = (sel: Selection) => [...sel.lines, ...sel.circles, ...sel.arcs]
 const only = (sel: Selection, points: number, lines: number, round: number) =>
   sel.points.length === points && sel.lines.length === lines && roundCurves(sel).length === round;
 
+/** A single drawn line (not an axis): its ends are measured by the horizontal and vertical dimensions. */
+const oneLine = (sel: Selection) => only(sel, 0, 1, 0) && sel.lines[0] !== AXIS_X && sel.lines[0] !== AXIS_Y;
+
+/**
+ * The two points a horizontal or vertical dimension measures: the two picked points, or the ends of the line,
+ * the lower one first along `axis` so that the value shown is positive.
+ */
+function ends(sel: Selection, g: SketchGeometry, axis: "x" | "y"): { a: string; b: string } {
+  const line = sel.lines[0] ? findCurve(g, sel.lines[0]) : undefined;
+  const [a, b] = line?.kind === "line" ? [line.p1, line.p2] : [sel.points[0] as string, sel.points[1] as string];
+  const at = (id: string) => (id === ORIGIN ? 0 : (g.points.find((p) => p.id === id)?.[axis] ?? 0));
+  return at(b) < at(a) ? { a: b, b: a } : { a, b };
+}
+
 function dimension(d: Omit<DimensionConstraint, "id" | "value">, g: SketchGeometry): NewConstraint {
   const value = measure(g, { ...d, id: "", value: 0 } as DimensionConstraint);
   return { ...d, value: Number(value.toFixed(6)) } as NewConstraint;
@@ -216,20 +230,20 @@ export const COMMANDS: Command[] = [
     label: "Cote horizontale",
     glyph: "⇿",
     dimension: true,
-    accepts: ["point"],
-    pick: "cliquez deux points",
-    applies: (s) => only(s, 2, 0, 0),
-    build: (s, g) => [dimension({ kind: "distanceX", a: s.points[0], b: s.points[1] } as never, g)],
+    accepts: ["point", "line"],
+    pick: "cliquez deux points ou une ligne",
+    applies: (s) => only(s, 2, 0, 0) || oneLine(s),
+    build: (s, g) => [dimension({ kind: "distanceX", ...ends(s, g, "x") } as never, g)],
   },
   {
     id: "dimensionY",
     label: "Cote verticale",
     glyph: "↕",
     dimension: true,
-    accepts: ["point"],
-    pick: "cliquez deux points",
-    applies: (s) => only(s, 2, 0, 0),
-    build: (s, g) => [dimension({ kind: "distanceY", a: s.points[0], b: s.points[1] } as never, g)],
+    accepts: ["point", "line"],
+    pick: "cliquez deux points ou une ligne",
+    applies: (s) => only(s, 2, 0, 0) || oneLine(s),
+    build: (s, g) => [dimension({ kind: "distanceY", ...ends(s, g, "y") } as never, g)],
   },
 ];
 
