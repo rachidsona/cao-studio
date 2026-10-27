@@ -19,6 +19,7 @@ import { textInputClass } from "../ui/fields";
 import { ArrowHandle } from "../viewport/arrow-handle";
 import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
+import { operationChoices } from "../ui/feature-meta";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
@@ -390,14 +391,7 @@ export class ExtrudeTool implements PointerHandler {
     const operation = el(
       "select",
       { class: COMPACT_INPUT, "aria-label": "Opération" },
-      ...(
-        [
-          ["new", "Nouveau corps"],
-          ["join", "Union"],
-          ["cut", "Soustraction"],
-          ["intersect", "Intersection"],
-        ] as const
-      ).map(([v, label]) => el("option", { value: v, selected: v === this.operation }, label)),
+      ...operationChoices("new", "join", "cut", "intersect").map(([v, label]) => el("option", { value: v, selected: v === this.operation }, label)),
     );
     operation.addEventListener("change", () => {
       this.operation = operation.value as BooleanOperation;
@@ -478,7 +472,7 @@ export class ExtrudeTool implements PointerHandler {
       return;
     }
     if (this.operation !== "new" && !this.target) {
-      this.host.notify("Choisissez le corps cible de l'union ou de la soustraction.", "error");
+      this.host.notify("Choisissez le corps cible (Joindre, Couper ou Intersection).", "error");
       return;
     }
     const doc = this.host.doc();

@@ -4,6 +4,7 @@ import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
 import { bindDrawing } from "./app/drawing-view";
+import { bindHelp } from "./app/help";
 import { bindMeasure } from "./app/measure";
 import { bindMotion } from "./app/motion";
 import { bindParameters } from "./app/parameters";
@@ -83,6 +84,7 @@ async function start(): Promise<void> {
   bindMeasure(root, viewport, editor);
   bindMotion(root, viewport, editor);
   bindDrawing(root, viewport, editor);
+  bindHelp(root);
   editor.render();
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);

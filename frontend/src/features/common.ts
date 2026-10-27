@@ -35,10 +35,10 @@ export function requireSolid(lookup: OutputLookup, id: string): SolidOutput {
 }
 
 const OPERATION_LABELS: Record<BooleanOperation, string> = {
-  new: "nouveau corps",
-  join: "union",
-  cut: "soustraction",
-  intersect: "intersection",
+  new: "Nouveau corps",
+  join: "Joindre",
+  cut: "Couper",
+  intersect: "Intersection",
 };
 
 /**

@@ -136,7 +136,7 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
   const hint = hasSelection
     ? "Tirez la sélection à la souris, ou saisissez le déplacement. L'aperçu (pointillés) montre le résultat avec les contraintes."
     : "Cliquez des points, lignes, cercles ou arcs — plusieurs si besoin — puis tirez-les ou saisissez le déplacement.";
-  const dof = state.dof === null ? null : state.dof === 0 ? "Esquisse entièrement contrainte après le déplacement." : `${state.dof} degré(s) de liberté après le déplacement.`;
+  const dof = state.dof === null ? null : state.dof === 0 ? "Esquisse entièrement contrainte après le déplacement." : `${state.dof} cote(s) ou contrainte(s) manquante(s) après le déplacement.`;
   const ok = el("button", { type: "button", class: "h-8 min-w-20 rounded bg-sky-600 px-3 text-xs font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-neutral-600 dark:disabled:text-neutral-400", disabled: !state.ready }, "OK");
   ok.addEventListener("click", actions.confirm);
   const cancel = el("button", { type: "button", class: `${BUTTON} min-w-20` }, "Annuler");

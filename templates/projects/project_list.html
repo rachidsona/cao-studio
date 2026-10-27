@@ -41,6 +41,11 @@
         {% include "registration/_field.html" with field=form.name %}
         <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-sky-600 px-4 text-base font-medium text-white shadow-sm hover:bg-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
       </form>
+      <form method="post" action="{% url 'projects:list' %}" class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+        {% csrf_token %}
+        <p class="text-sm text-gray-600 dark:text-gray-300">Pour découvrir l'application : un caisson de cuisine prêt à explorer (liste de débit, calepinage, mise en plan).</p>
+        <button type="submit" name="example" value="1" class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-gray-300 px-4 text-base font-medium hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-600 dark:hover:bg-gray-800">Ouvrir le projet exemple</button>
+      </form>
     </div>
   </aside>
 </div>

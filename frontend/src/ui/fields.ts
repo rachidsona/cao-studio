@@ -58,7 +58,7 @@ export function numberField(options: NumberFieldOptions): HTMLElement {
     if (stored === options.value) return;
     if (options.onCommit(stored) === false) {
       input.value = trim(shown, 6);
-      fail("Valeur refusée par le solveur.");
+      fail("Valeur impossible avec les autres contraintes de l'esquisse.");
     }
   });
   return el(

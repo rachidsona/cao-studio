@@ -64,7 +64,7 @@ function errorMessage(error: unknown): string {
 /** Sketch summary attached to a status: degrees of freedom, redundancy, closed profile. */
 function describe(output: FeatureOutput): Pick<FeatureStatus, "detail" | "sketch"> {
   if (output.kind !== "profile") return {};
-  const parts = [output.dof === 0 ? "Entièrement contrainte" : `${output.dof} degré(s) de liberté`];
+  const parts = [output.dof === 0 ? "Entièrement contrainte" : `${output.dof} cote(s) ou contrainte(s) manquante(s)`];
   if (output.redundant.length) parts.push(`contraintes redondantes : ${output.redundant.join(", ")}`);
   if (output.openReason) parts.push(output.openReason);
   return {

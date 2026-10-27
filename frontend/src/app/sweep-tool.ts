@@ -8,12 +8,9 @@
 import { uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, SketchFeature, SweepFeature } from "../document/types";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { operationChoices } from "../ui/feature-meta";
 
-const OPERATIONS: [BooleanOperation, string][] = [
-  ["new", "Nouveau corps"],
-  ["join", "Union"],
-  ["cut", "Soustraction"],
-];
+const OPERATIONS = operationChoices("new", "join", "cut");
 
 export class SweepTool extends PanelTool {
   private readonly id: string;

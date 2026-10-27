@@ -298,7 +298,7 @@ export class FaceStripTool extends PanelTool {
         },
         true,
       ),
-      this.info(Math.abs(this.height) < 1e-3 ? "Tirez pour ajouter, poussez pour creuser." : this.area && !this.area.support ? "Crée un nouveau corps." : op === "join" ? "Ajoute de la matière (union)." : "Creuse le corps (soustraction)."),
+      this.info(Math.abs(this.height) < 1e-3 ? "Tirez pour ajouter, poussez pour creuser." : this.area && !this.area.support ? "Crée un nouveau corps." : op === "join" ? "Ajoute de la matière (Joindre)." : "Creuse le corps (Couper)."),
       this.checkRow("Inverser tirer/pousser (Tab)", this.reversed, (v) => {
         this.reversed = v;
         changed();

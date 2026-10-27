@@ -319,7 +319,7 @@ export class SketchMode implements PointerHandler {
       return false;
     }
     if (result.state === "conflicting" || result.state === "failed") {
-      this.host.notify(result.state === "conflicting" ? `Modification refusée : contraintes en conflit (${describeConstraints(geometry, result.conflicting)}).` : "Modification refusée : le solveur ne trouve pas de solution.", "error");
+      this.host.notify(result.state === "conflicting" ? `Modification refusée : contraintes en conflit (${describeConstraints(geometry, result.conflicting)}).` : "Modification refusée : aucune forme ne respecte toutes les contraintes et cotes.", "error");
       this.render();
       return false;
     }

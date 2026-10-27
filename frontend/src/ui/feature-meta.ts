@@ -1,5 +1,5 @@
 /** Labels, icons and state colours of the history features, shared by the navigator, the timeline and the dialog. */
-import type { Feature } from "../document/types";
+import type { BooleanOperation, Feature } from "../document/types";
 import type { FeatureState } from "../history/recompute";
 
 /** Feature types, plus the offsets made inside sketches. */
@@ -48,6 +48,19 @@ export const TYPE_ICONS: Record<NavType, string> = {
   machining: "⛭",
   sweep: "⤳",
 };
+
+/** Names of the boolean operations, the same everywhere in the interface (Fusion's words). */
+export const OPERATION_LABELS: Record<BooleanOperation, string> = {
+  new: "Nouveau corps",
+  join: "Joindre",
+  cut: "Couper",
+  intersect: "Intersection",
+};
+
+/** Choices of an operation menu, in this order. */
+export function operationChoices<T extends BooleanOperation>(...operations: T[]): [T, string][] {
+  return operations.map((op) => [op, OPERATION_LABELS[op]]);
+}
 
 export const STATE_BADGES: Record<FeatureState, { label: string; dot: string }> = {
   ok: { label: "OK", dot: "bg-emerald-500" },

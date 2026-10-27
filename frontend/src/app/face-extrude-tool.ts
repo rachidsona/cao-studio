@@ -11,12 +11,13 @@ import { ArrowHandle } from "../viewport/arrow-handle";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
+import { OPERATION_LABELS } from "../ui/feature-meta";
 
 const OPERATIONS: [BooleanOperation, string][] = [
-  ["join", "Union (ajouter)"],
-  ["cut", "Soustraction (creuser)"],
-  ["new", "Nouveau corps"],
-  ["intersect", "Intersection"],
+  ["join", `${OPERATION_LABELS.join} (ajouter)`],
+  ["cut", `${OPERATION_LABELS.cut} (creuser)`],
+  ["new", OPERATION_LABELS.new],
+  ["intersect", OPERATION_LABELS.intersect],
 ];
 
 export class FaceExtrudeTool extends PanelTool {

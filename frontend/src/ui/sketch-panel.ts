@@ -30,7 +30,7 @@ function stateBadge(status: FeatureStatus | undefined): HTMLElement {
       text = "Entièrement contrainte";
       tone = "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200";
     } else {
-      text = `Sous-contrainte : ${sketch.dof} degré(s) de liberté`;
+      text = `À compléter : ${sketch.dof} cote(s) ou contrainte(s) manquante(s) pour figer la forme`;
       tone = "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200";
     }
   }

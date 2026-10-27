@@ -5,13 +5,9 @@ import type { BooleanOperation, CombineFeature, FaceRef, HoleFeature, RevolveFea
 import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { operationChoices } from "../ui/feature-meta";
 
-const OPERATIONS: [BooleanOperation, string][] = [
-  ["new", "Nouveau corps"],
-  ["join", "Union"],
-  ["cut", "Soustraction"],
-  ["intersect", "Intersection"],
-];
+const OPERATIONS = operationChoices("new", "join", "cut", "intersect");
 
 export class RevolveTool extends PanelTool {
   private readonly id: string;
@@ -172,11 +168,7 @@ export class CombineTool extends PanelTool {
       this.selectRow(
         "Opération",
         this.operation,
-        [
-          ["join", "Union"],
-          ["cut", "Soustraction"],
-          ["intersect", "Intersection"],
-        ],
+        operationChoices("join", "cut", "intersect"),
         (v) => {
           this.operation = v as CombineFeature["operation"];
           changed();

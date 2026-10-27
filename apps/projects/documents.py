@@ -69,3 +69,47 @@ def default_document() -> dict[str, Any]:
             },
         ],
     }
+
+
+def example_document() -> dict[str, Any]:
+    """Return the example project offered to new users: a base cabinet (caisson de cuisine).
+
+    600 × 720 × 560 mm on a 100 mm plinth, 18 mm boards, a 3 mm back screwed on, one shelf: every board is
+    a body of its own, ready for the cut list, the cutting layout and the drawings.
+    """
+    return {
+        "format": "cao-studio",
+        "schemaVersion": 2,
+        "units": "mm",
+        "parameters": {},
+        "features": [
+            {
+                "id": "cb1",
+                "type": "cabinet",
+                "name": "Caisson bas",
+                "origin": [0, 0, 0],
+                "width": 600,
+                "height": 720,
+                "depth": 560,
+                "thickness": 18,
+                "back": "applied",
+                "backThickness": 3,
+                "shelves": 1,
+                "plinth": 100,
+                "construction": "sides-through",
+            },
+        ],
+        # Oak-look melamine with a 1 mm band on the front edge; an HDF back (pieces: sides, bottom, top, back, shelf).
+        "bodyInfo": {
+            **{
+                f"cb1#{n}": {
+                    "material": "melamine-oak",
+                    "grain": "length",
+                    "edges": {"length1": True, "length2": False, "width1": False, "width2": False},
+                    "band": 1,
+                }
+                for n in (0, 1, 2, 3, 5)
+            },
+            "cb1#4": {"material": "hdf", "grain": "none"},
+        },
+    }

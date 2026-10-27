@@ -5,7 +5,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 
-from apps.projects.documents import default_document
+from apps.projects.documents import default_document, example_document
+from apps.projects.validation import validate_document
 from apps.projects.models import Project
 
 
@@ -55,6 +56,15 @@ def test_create_project_from_form(client_logged, user):
     assert response["Location"] == f"/projects/{project.id}/editor/"
     assert project.owner == user and project.current_version == 1
     assert project.versions.get().document == default_document()
+
+
+def test_create_example_project(client_logged, user):
+    response = client_logged.post("/projects/", {"example": "1"})
+    project = Project.objects.get(name="Caisson exemple")
+    assert response["Location"] == f"/projects/{project.id}/editor/"
+    assert project.owner == user
+    assert project.versions.get().document == example_document()
+    assert validate_document(example_document()) == []
 
 
 def test_create_project_form_errors(client_logged):

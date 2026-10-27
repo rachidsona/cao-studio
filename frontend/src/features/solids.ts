@@ -101,7 +101,7 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
     if (owned) current.delete();
     throw error;
   }
-  const messages = { join: "les corps ne se touchent pas", cut: "la soustraction sépare le corps", intersect: "les corps n'ont pas de volume commun" };
+  const messages = { join: "les corps ne se touchent pas", cut: "la coupe sépare le corps", intersect: "les corps n'ont pas de volume commun" };
   if (current.solids.length !== 1) {
     const count = current.solids.length;
     current.delete();

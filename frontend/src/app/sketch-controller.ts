@@ -240,7 +240,7 @@ export class SketchController {
     const dof = ref(this.root, "sketch-dof");
     if (mode) {
       const { state, dof: n } = mode.lastSolve;
-      dof.textContent = state === "redundant" ? "Redondante" : n === 0 ? "Entièrement contrainte" : `${n} DDL`;
+      dof.textContent = state === "redundant" ? "Redondante" : n === 0 ? "Entièrement contrainte" : `${n} à fixer`;
       dof.dataset.state = state === "redundant" ? "warn" : n === 0 ? "full" : "free";
     }
     this.host.render();

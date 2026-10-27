@@ -114,7 +114,7 @@ export function moveGeometry(g: SketchGeometry, pointIds: string[], delta: Vec2)
         : "Déplacement refusé : il contredit les contraintes de l'esquisse.",
     };
   }
-  if (result.state === "failed") return { ok: false, reason: "Déplacement refusé : le solveur ne trouve pas de solution avec les contraintes." };
+  if (result.state === "failed") return { ok: false, reason: "Déplacement refusé : les contraintes de l'esquisse l'empêchent." };
   const geometry: SketchGeometry = { ...result.geometry, constraints: g.constraints };
   return { ok: true, geometry, unchanged: false, dof: solveDof(geometry) };
 }

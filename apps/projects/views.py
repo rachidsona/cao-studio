@@ -6,7 +6,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from . import services
-from .documents import default_document
+from .documents import default_document, example_document
 from .forms import ProjectCreateForm
 from .models import Project
 
@@ -14,6 +14,10 @@ from .models import Project
 @login_required
 @require_http_methods(["GET", "POST"])
 def project_list(request):
+    if request.method == "POST" and "example" in request.POST:
+        # The example project: a cabinet to explore (cut list, cutting layout, drawings).
+        project, _ = services.create_project(request.user, "Caisson exemple", example_document())
+        return redirect("projects:editor", project_id=project.id)
     if request.method == "POST":
         form = ProjectCreateForm(request.POST)
         if form.is_valid():

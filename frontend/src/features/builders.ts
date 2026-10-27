@@ -37,7 +37,7 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
   if (solved.state === "conflicting") {
     throw new GeometryError(`Esquisse surcontrainte : contraintes en conflit (${solved.conflicting.join(", ")}).`);
   }
-  if (solved.state === "failed") throw new GeometryError("Le solveur de contraintes n'a pas trouvé de solution.");
+  if (solved.state === "failed") throw new GeometryError("Les contraintes de l'esquisse ne peuvent pas toutes être respectées : retirez ou modifiez une contrainte ou une cote.");
   const base = {
     kind: "profile" as const,
     plane: feature.plane,

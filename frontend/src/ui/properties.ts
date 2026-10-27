@@ -9,6 +9,7 @@ import { selectionSection, type SelectionActions } from "./selection-panel";
 import type { FeatureStatus } from "../history/recompute";
 import { formatArea, formatLength, formatVolume } from "../measurements/units";
 import { el } from "./dom";
+import { OPERATION_LABELS, operationChoices } from "./feature-meta";
 import { numberField, row, section, selectField, textInputClass } from "./fields";
 import { sketchSections, type SketchPanelActions } from "./sketch-panel";
 
@@ -49,11 +50,7 @@ function extrudeSection(feature: ExtrudeFeature, ctx: PropertiesContext): HTMLEl
   const operation = selectField(
     "Opération",
     feature.operation,
-    [
-      ["new", "Nouveau corps"],
-      ["join", "Union"],
-      ["cut", "Soustraction"],
-    ],
+    operationChoices("new", "join", "cut"),
     (value) => {
       const op = value as ExtrudeFeature["operation"];
       if (op === "new") patch({ operation: op, target: undefined });
@@ -88,7 +85,7 @@ function editButton(ctx: PropertiesContext): HTMLElement {
 }
 
 const SPLIT_KEEP = { both: "Les deux parties", positive: "Côté positif (+)", negative: "Côté négatif (−)" };
-const OPERATION_NAMES = { new: "Nouveau corps", join: "Union", cut: "Soustraction", intersect: "Intersection" };
+const OPERATION_NAMES = OPERATION_LABELS;
 
 function revolveSection(feature: RevolveFeature, ctx: PropertiesContext): HTMLElement {
   return section(
