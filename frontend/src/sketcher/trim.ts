@@ -15,7 +15,7 @@ const EPS = 1e-9;
 const TWO_PI = 2 * Math.PI;
 
 /** A place where another curve crosses the one being cut. */
-interface Cut {
+export interface Cut {
   /** Parameter along the curve: t in [0, 1] for a line, the angle from the start for an arc or a circle. */
   param: number;
   at: Vec2;
@@ -84,7 +84,7 @@ function pointInUse(g: SketchGeometry, id: string, ignore: ReadonlySet<string> =
 }
 
 /** A point at `at` for a new end: an existing one there, else a new one kept on the curve that cut (if any). */
-function endPoint(g: SketchGeometry, cut: Cut): string {
+export function endPoint(g: SketchGeometry, cut: Cut): string {
   const near = g.points.find((p) => Math.hypot(p.x - cut.at[0], p.y - cut.at[1]) <= NODE_TOLERANCE);
   if (near) return near.id;
   const id = nextId(g, "p");

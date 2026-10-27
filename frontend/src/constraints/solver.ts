@@ -338,9 +338,14 @@ export function solveSketch(geometry: SketchGeometry, options: SolveOptions = {}
     solved = fromPrimitives(solved, pass.prims);
   }
   // An arc whose centre and ends are all fixed (a projected edge of a body) is over-determined by its own
-  // rules: that is not the user's doing, so it is not reported.
+  // rules: that is not the user's doing, so it is not reported. Neither are two arcs with the same centre and
+  // the same two ends (a circle cut in two by "Couper"): each one's rules repeat the other's.
+  const arcs = geometry.curves.filter((c) => c.kind === "arc");
+  const ends = (c: (typeof arcs)[number]) => (c.kind === "arc" ? `${c.center}|${[c.start, c.end].sort().join("|")}` : "");
   const fixedArcs = new Set(
-    geometry.curves.filter((c) => c.kind === "arc" && [c.center, c.start, c.end].every((id) => geometry.points.find((q) => q.id === id)?.fixed === true)).map((c) => c.id),
+    arcs
+      .filter((c) => c.kind === "arc" && ([c.center, c.start, c.end].every((id) => geometry.points.find((q) => q.id === id)?.fixed === true) || arcs.some((o) => o.id !== c.id && ends(o) === ends(c))))
+      .map((c) => c.id),
   );
   pass = { ...pass, redundant: pass.redundant.filter((id) => !fixedArcs.has(id)) };
   const failed = pass.status === SolveStatus.Failed || pass.status === SolveStatus.SuccessfulSolutionInvalid;

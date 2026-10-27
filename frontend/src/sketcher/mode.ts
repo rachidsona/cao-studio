@@ -3,48 +3,44 @@
  * tools, selection, point dragging), constraint commands, and the commit
  * rule: every change is solved first and rejected if it over-constrains the
  * sketch, so the document only ever holds solvable sketches.
+ *
+ * The pointer lives in sketch-pointer, the dimension values in sketch-values, the panel tools' hosts in
+ * tool-hosts and the remembered choices in sketch-prefs; their shared state is public here.
  */
+import * as THREE from "three";
 import { classify, COMMANDS, describeConstraints } from "../constraints/catalog";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
-import { ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { ORIGIN, type OffsetRecord, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, SketchFeature } from "../document/types";
-import type { PointerHandler, Viewport } from "../viewport/viewport";
-import { closeCalculator, openCalculator } from "../ui/calculator";
-import {
-  dimensionAnnotations,
-  dimensionLineDistance,
-  existingDimension,
-  measureAnnotations,
-  matchingDimension,
-  nextSideDimension,
-  pairAnnotation,
-  placementOffset,
-  selectionSpec,
-  previewAnnotations,
-  type Annotation,
-  type DimensionSpec,
-} from "./annotations";
-import { extractLoops, regions as regionsOf, type Region } from "./loops";
-import { pruneBodyPoints, withBodyPoints } from "./body-points";
-
-const GLYPHS_KEY = "cao-studio:sketch-glyphs";
-const GRID_SNAP_KEY = "cao-studio:sketch-grid-snap";
-import { addConstraint, findCurve, measure, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
-import * as THREE from "three";
-import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
-import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
-import { SketchOverlay, type SnapMark } from "./overlay";
-import { OffsetTool } from "./offset-tool";
-import { SketchMoveTool } from "./move-tool";
-import { SketchArrayTool } from "./array-tool";
-import { applyExtension, findExtension } from "./extend";
-import { applyTrim, findTrim } from "./trim";
-import { DrawingTool, type Preview, type ToolName } from "./tools";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
-import type { OffsetRecord } from "../document/sketch";
+import { closeCalculator } from "../ui/calculator";
+import type { PointerHandler, Viewport } from "../viewport/viewport";
+import { dimensionAnnotations, measureAnnotations, pairAnnotation, previewAnnotations, type Annotation } from "./annotations";
+import { SketchArrayTool } from "./array-tool";
+import { pruneBodyPoints, withBodyPoints } from "./body-points";
+import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
+import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
+import { extractLoops, regions as regionsOf, sketchFaces, type Region } from "./loops";
+import { SketchMoveTool } from "./move-tool";
+import { OffsetTool } from "./offset-tool";
+import { SketchOverlay } from "./overlay";
+import { sketchPrefs } from "./sketch-prefs";
+import { SketchPointer } from "./sketch-pointer";
+import { SketchValues } from "./sketch-values";
+import { arrayHost, moveHost, offsetHost } from "./tool-hosts";
+import { DrawingTool, type Preview, type ToolName } from "./tools";
 
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
+
+export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "array";
+
+/**
+ * What a click does when no drawing or panel tool is open: select ("select"), measure ("dimension" — the
+ * selection shows its measurements, clickable to become dimensions), "extend" (Prolonger), "trim" (Ajuster:
+ * the part between two crossings goes) or "break" (Couper: the curve is cut at the crossings, nothing goes).
+ */
+export type ClickKind = "select" | "dimension" | "extend" | "trim" | "break";
 
 export interface SketchModeHost {
   /** Stores a solved geometry in the document (one undo step). */
@@ -62,15 +58,12 @@ export interface SketchModeHost {
   offsetId(): string;
 }
 
-/** What a value typed in the keypad applies to: an existing dimension, or a new one. */
-interface ValueTarget {
-  dimensionId?: string;
-  spec?: DimensionSpec;
-  value: number;
-  angle: boolean;
-  signed: boolean;
-  title: string;
-}
+const HINTS: Record<Exclude<ClickKind, "select">, string> = {
+  dimension: "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier",
+  extend: "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection",
+  trim: "Ajuster : survolez la partie d'une ligne, d'un arc ou d'un cercle entre deux croisements (elle s'affiche), cliquez pour la supprimer — Échap revient à la sélection",
+  break: "Couper : survolez une ligne, un arc ou un cercle (les croix rouges montrent où il sera coupé), cliquez pour le couper en morceaux — Échap revient à la sélection",
+};
 
 export class SketchMode implements PointerHandler {
   readonly frame: SketchFrame;
@@ -80,40 +73,36 @@ export class SketchMode implements PointerHandler {
   tool: DrawingTool | null = null;
   construction = false;
   lastSolve: SolveResult;
-  private overlay: SketchOverlay;
-  private hover: string | null = null;
-  /** Where the drawing tool's pointer snaps (the cursor becomes a square there), or null. */
-  private snapMark: SnapMark | null = null;
-  private preview: Preview | null = null;
-  private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
-  private lastBounds: THREE.Box3 | null = null;
+  kind: ClickKind = "select";
+  preview: Preview | null = null;
+  /** Every closed area of the sketch (a profile, at any depth): what a click inside a shape chooses. */
+  faces: Region[] = [];
   /** Annotations of the last render (to pick dimension lines). */
-  private annotations: Annotation[] = [];
-  /** "Cote" tool: the selection shows its measurements, clickable to become dimensions. */
-  private dimensionMode = false;
-  /** "Prolonger": hovering an end of a line or an arc previews its extension, a click makes it. */
-  private extendMode = false;
-  /** "Couper": the part of a curve between two crossings goes when it is clicked. */
-  private trimMode = false;
+  annotations: Annotation[] = [];
   /** A constraint chosen with nothing (or the wrong things) selected: it waits for the clicks, as in Fusion. */
-  private pendingCommand: string | null = null;
-  /** "Décalage" tool, while it is open. */
-  private offset: OffsetTool | null = null;
-  /** "Déplacer" tool, while it is open. */
-  private moveTool: SketchMoveTool | null = null;
-  private arrayTool: SketchArrayTool | null = null;
+  pendingCommand: string | null = null;
+  /** Panel tools, while they are open. */
+  offset: OffsetTool | null = null;
+  moveTool: SketchMoveTool | null = null;
+  arrayTool: SketchArrayTool | null = null;
+  readonly values: SketchValues;
+  private readonly pointer: SketchPointer;
+  private overlay: SketchOverlay;
+  private lastBounds: THREE.Box3 | null = null;
 
   constructor(
     feature: SketchFeature,
-    private readonly viewport: Viewport,
-    private readonly host: SketchModeHost,
+    readonly viewport: Viewport,
+    readonly host: SketchModeHost,
   ) {
     this.featureId = feature.id;
     this.frame = sketchFrame(feature.plane, feature.offset, feature.shift);
     this.geometry = this.withBodies(feature);
     this.lastSolve = solveSketch(this.geometry);
+    this.values = new SketchValues(this);
+    this.pointer = new SketchPointer(this);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
-    this.overlay.onAnnotationPointerDown = (annotation, event) => this.dimensionPointerDown(annotation, event);
+    this.overlay.onAnnotationPointerDown = (annotation, event) => this.values.pointerDown(annotation, event);
     this.overlay.onGlyphClick = (id) => this.toggleSelected(id);
     viewport.enterSketch(this.frame, this);
     this.render();
@@ -127,10 +116,7 @@ export class SketchMode implements PointerHandler {
     return withBodyPoints(stored, this.frame, this.viewport.bodyVertices());
   }
 
-  /**
-   * World bounding box of the sketch (points, circles and arcs), with room
-   * around it for the dimension lines.
-   */
+  /** World bounding box of the sketch (points, circles and arcs), with room around it for the dimension lines. */
   private bounds(): THREE.Box3 {
     const box = new THREE.Box3().expandByPoint(new THREE.Vector3(...toWorld(this.frame, 0, 0)));
     const add = (x: number, y: number) => box.expandByPoint(new THREE.Vector3(...toWorld(this.frame, x, y)));
@@ -147,9 +133,8 @@ export class SketchMode implements PointerHandler {
   }
 
   /**
-   * Frames the whole sketch and its dimensions. Automatically (not `force`),
-   * only when the sketch has just grown beyond the screen: a view zoomed in on
-   * a detail on purpose is left alone.
+   * Frames the whole sketch and its dimensions. Automatically (not `force`), only when the sketch has just
+   * grown beyond the screen: a view zoomed in on a detail on purpose is left alone.
    */
   ensureVisible(force = false): void {
     const box = this.bounds();
@@ -162,7 +147,7 @@ export class SketchMode implements PointerHandler {
   /** Reloads the geometry after an external change (undo/redo, properties panel). */
   sync(feature: SketchFeature): void {
     this.geometry = this.withBodies(feature);
-    const known =new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
+    const known = new Set([ORIGIN, ...this.geometry.points.map((p) => p.id), ...this.geometry.curves.map((c) => c.id)]);
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
     this.offset?.sync();
@@ -188,7 +173,7 @@ export class SketchMode implements PointerHandler {
 
   /** A tool other than the selection is active (Échap returns to the selection before leaving the sketch). */
   get toolActive(): boolean {
-    return this.tool !== null || this.extendMode || this.trimMode || this.pendingCommand !== null || this.dimensionMode;
+    return this.tool !== null || this.kind !== "select" || this.pendingCommand !== null;
   }
 
   /** The constraint waiting for its elements, if any (its button shows pressed). */
@@ -196,13 +181,12 @@ export class SketchMode implements PointerHandler {
     return this.pendingCommand;
   }
 
-  get toolName(): ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "array" {
-    if (this.extendMode) return "extend";
-    if (this.trimMode) return "trim";
+  get toolName(): SketchToolName {
+    if (this.kind !== "select" && this.kind !== "dimension") return this.kind;
     if (this.offset) return "offset";
     if (this.moveTool) return "move";
     if (this.arrayTool) return "array";
-    if (this.dimensionMode) return "dimension";
+    if (this.kind === "dimension") return "dimension";
     return this.tool?.name ?? "select";
   }
 
@@ -210,54 +194,31 @@ export class SketchMode implements PointerHandler {
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
     if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
-    if (this.extendMode) return "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection";
-    if (this.trimMode) return "Couper : survolez la partie d'une ligne, d'un arc ou d'un cercle entre deux croisements (elle s'affiche), cliquez pour la supprimer — Échap revient à la sélection";
+    if (this.kind !== "select" && this.kind !== "dimension") return HINTS[this.kind];
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
     if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions, puis OK (Entrée) — Échap annule";
-    if (this.dimensionMode) return "Cote : cliquez un élément (ou deux) pour voir la mesure, recliquez pour la poser — cliquez une valeur pour la modifier";
+    if (this.kind === "dimension") return HINTS.dimension;
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
   }
 
   /** Drawing snaps to the grid lines shown (on by default); the choice is remembered. */
   get gridSnap(): boolean {
-    try {
-      return localStorage.getItem(GRID_SNAP_KEY) !== "0";
-    } catch {
-      return true;
-    }
+    return sketchPrefs.gridSnap;
   }
 
   toggleGridSnap(): void {
-    try {
-      localStorage.setItem(GRID_SNAP_KEY, this.gridSnap ? "0" : "1");
-    } catch {
-      // Private mode: the toggle simply does not persist.
-    }
+    sketchPrefs.gridSnap = !sketchPrefs.gridSnap;
     this.host.changed();
     this.host.notify(this.gridSnap ? "Accrochage à la grille activé." : "Accrochage à la grille désactivé.", "info");
   }
 
-  /** Where a pointer position lands: on an existing point or curve, else on the nearest grid point. */
-  private snapAt(p: Vec2) {
-    const s = snap(this.geometry, p, this.tolerance());
-    return this.gridSnap ? snapToGrid(s, this.viewport.gridStep) : s;
-  }
-
   /** Constraint symbols (H, V, ∥…) are shown on demand; the choice is remembered. */
   get showGlyphs(): boolean {
-    try {
-      return localStorage.getItem(GLYPHS_KEY) === "1";
-    } catch {
-      return false;
-    }
+    return sketchPrefs.glyphs;
   }
 
   toggleGlyphs(): void {
-    try {
-      localStorage.setItem(GLYPHS_KEY, this.showGlyphs ? "0" : "1");
-    } catch {
-      // Private mode: the toggle simply does not persist.
-    }
+    sketchPrefs.glyphs = !sketchPrefs.glyphs;
     this.render();
     this.host.changed();
   }
@@ -279,7 +240,7 @@ export class SketchMode implements PointerHandler {
     this.host.changed();
   }
 
-  setTool(name: ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "array", editing?: OffsetRecord): void {
+  setTool(name: SketchToolName, editing?: OffsetRecord): void {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
@@ -287,28 +248,27 @@ export class SketchMode implements PointerHandler {
     this.moveTool = null;
     this.arrayTool?.dispose();
     this.arrayTool = null;
-    this.snapMark = null;
+    this.pointer.reset();
     this.viewport.renderer.domElement.style.cursor = "";
-    this.dimensionMode = name === "dimension";
-    this.extendMode = name === "extend";
-    this.trimMode = name === "trim";
+    this.kind = name === "dimension" || name === "extend" || name === "trim" || name === "break" ? name : "select";
     this.pendingCommand = null;
-    if (this.dimensionMode) this.selection.clear();
+    if (this.kind === "dimension") this.selection.clear();
     if (name === "offset") {
       // Curves already selected are offset right away; anything else is dropped from the selection.
       this.selection = new Set([...this.selection].filter((id) => findCurve(this.geometry, id)));
-      this.offset = new OffsetTool(this.offsetHost(), editing ?? null);
+      this.offset = new OffsetTool(offsetHost(this), editing ?? null);
       this.offset.start();
     }
     if (name === "move") {
-      this.moveTool = new SketchMoveTool(this.moveHost());
+      this.moveTool = new SketchMoveTool(moveHost(this));
       this.moveTool.start();
     }
     if (name === "array") {
-      this.arrayTool = new SketchArrayTool(this.arrayHost());
+      this.arrayTool = new SketchArrayTool(arrayHost(this));
       this.arrayTool.start();
     }
-    this.tool = name === "select" || name === "dimension" || name === "offset" || name === "move" || name === "extend" || name === "trim" || name === "array" ? null : new DrawingTool(name, this.construction);
+    const drawing = name !== "select" && name !== "offset" && name !== "move" && name !== "array" && this.kind === "select";
+    this.tool = drawing ? new DrawingTool(name as Exclude<ToolName, "select">, this.construction) : null;
     // A drawing tool (line, rectangle, circle, arc) has the cross cursor.
     if (this.tool) this.viewport.renderer.domElement.style.cursor = "crosshair";
     this.preview = null;
@@ -335,132 +295,13 @@ export class SketchMode implements PointerHandler {
     this.arrayTool?.confirm();
   }
 
-  private arrayHost(): ConstructorParameters<typeof SketchArrayTool>[0] {
-    const mode = this;
-    return {
-      geometry: () => this.geometry,
-      get selection() {
-        return mode.selection;
-      },
-      container: () => this.host.calculatorContainer(),
-      unit: () => this.host.unit(),
-      tolerance: () => this.tolerance(),
-      apply: (geometry, success) => this.apply(geometry, success),
-      changed: () => {
-        this.preview = this.arrayTool?.preview ?? null;
-        this.render();
-        this.host.changed();
-      },
-      closed: () => {
-        this.arrayTool = null;
-        this.preview = null;
-        this.render();
-        this.host.changed();
-      },
-      notify: (message, kind) => this.host.notify(message, kind),
-    };
-  }
-
-  private moveHost(): ConstructorParameters<typeof SketchMoveTool>[0] {
-    const mode = this;
-    return {
-      geometry: () => this.geometry,
-      get selection() {
-        return mode.selection;
-      },
-      container: () => this.host.calculatorContainer(),
-      unit: () => this.host.unit(),
-      toSketch: (event) => this.toSketch(event),
-      snap: (p, exclude) => {
-        const s = this.gridSnap ? snapToGrid(snap(this.geometry, p, this.tolerance(), exclude), this.viewport.gridStep) : snap(this.geometry, p, this.tolerance(), exclude);
-        return s.pos;
-      },
-      tolerance: () => this.tolerance(),
-      apply: (geometry, success) => this.apply(geometry, success),
-      changed: () => {
-        this.preview = this.moveTool?.preview ?? null;
-        this.render();
-        this.host.changed();
-      },
-      closed: () => {
-        this.moveTool = null;
-        this.preview = null;
-        this.render();
-        this.host.changed();
-      },
-      notify: (message, kind) => this.host.notify(message, kind),
-    };
-  }
-
-  private offsetHost(): ConstructorParameters<typeof OffsetTool>[0] {
-    const mode = this;
-    return {
-      geometry: () => this.geometry,
-      // The sketch replaces its selection set on undo/redo: always read the current one.
-      get selection() {
-        return mode.selection;
-      },
-      container: () => this.host.calculatorContainer(),
-      viewport: this.viewport,
-      world: ([x, y]) => toWorld(this.frame, x, y),
-      direction: ([x, y]) => {
-        const { u, v } = this.frame;
-        return [u[0] * x + v[0] * y, u[1] * x + v[1] * y, u[2] * x + v[2] * y];
-      },
-      unit: () => this.host.unit(),
-      compute: (paths, distance, join) => this.host.offset(paths, distance, join),
-      newOffsetId: () => this.host.offsetId(),
-      apply: (geometry, success) => this.apply(geometry, success),
-      changed: () => {
-        this.preview = this.offset?.preview ?? null;
-        this.render();
-        this.host.changed();
-      },
-      closed: (created) => {
-        this.viewport.renderer.domElement.style.cursor = "";
-        this.offset = null;
-        this.preview = null;
-        this.selection.clear();
-        for (const id of created) this.selection.add(id);
-        this.render();
-        this.host.changed();
-      },
-      notify: (message, kind) => this.host.notify(message, kind),
-    };
-  }
-
   cancel(): void {
-    if (this.offset) {
-      this.offset.cancel();
-      return;
-    }
-    if (this.moveTool) {
-      this.moveTool.cancel();
-      return;
-    }
-    if (this.arrayTool) {
-      this.arrayTool.cancel();
-      return;
-    }
-    if (this.pendingCommand) {
-      // The elements picked so far for the waiting constraint are dropped with it.
-      this.selection.clear();
-      this.setTool("select");
-      return;
-    }
-    if (this.dimensionMode && this.selection.size === 0) {
-      this.setTool("select");
-      return;
-    }
-    if (this.extendMode || this.trimMode) {
-      this.setTool("select");
-      return;
-    }
-    if (this.tool) {
-      // Échap ends the drawing (an open polyline stays as drawn) and goes back to the selection tool.
-      this.setTool("select");
-      return;
-    }
+    const panel = this.offset ?? this.moveTool ?? this.arrayTool;
+    if (panel) return panel.cancel();
+    // The elements picked so far for a waiting constraint are dropped with it.
+    if (this.pendingCommand) this.selection.clear();
+    // Échap ends a tool (an open polyline stays as drawn) and goes back to the selection; the "Cote" tool first drops its measurement.
+    if (this.pendingCommand || this.tool || (this.kind !== "select" && !(this.kind === "dimension" && this.selection.size > 0))) return this.setTool("select");
     this.selection.clear();
     this.render();
     this.host.changed();
@@ -477,13 +318,8 @@ export class SketchMode implements PointerHandler {
       this.host.notify(error instanceof SketchError ? error.message : String(error), "error");
       return false;
     }
-    if (result.state === "conflicting") {
-      this.host.notify(`Modification refusée : contraintes en conflit (${describeConstraints(geometry, result.conflicting)}).`, "error");
-      this.render();
-      return false;
-    }
-    if (result.state === "failed") {
-      this.host.notify("Modification refusée : le solveur ne trouve pas de solution.", "error");
+    if (result.state === "conflicting" || result.state === "failed") {
+      this.host.notify(result.state === "conflicting" ? `Modification refusée : contraintes en conflit (${describeConstraints(geometry, result.conflicting)}).` : "Modification refusée : le solveur ne trouve pas de solution.", "error");
       this.render();
       return false;
     }
@@ -554,304 +390,27 @@ export class SketchMode implements PointerHandler {
     this.apply(removeEntities(this.geometry, [id]));
   }
 
-  // ---- pointer --------------------------------------------------------------
+  // ---- pointer (see sketch-pointer) ------------------------------------------------
 
-  private toSketch(event: PointerEvent): Vec2 | null {
+  toSketch(event: PointerEvent): Vec2 | null {
     const { origin, direction } = this.viewport.rayFromEvent(event);
     return rayToSketch(this.frame, origin, direction);
   }
 
-  /** The line, arc or circle of the sketch under the pointer (not an axis, not construction), or null. */
-  private curveToTrim(p: Vec2): string | null {
-    return hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id) && !findCurve(this.geometry, h.id)?.construction)?.id ?? null;
-  }
-
-  private tolerance(): number {
+  tolerance(): number {
     return PICK_PX * this.viewport.worldPerPixel();
   }
 
-  /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
-    if (this.tool || this.extendMode || this.trimMode) return false;
-    // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
-    if (this.offset) return this.offset.dragStart(event);
-    if (this.moveTool) return this.moveTool.down(event);
-    if (this.arrayTool) return false;
-    const p = this.toSketch(event);
-    if (!p) return false;
-    const [hit] = hitTest(this.geometry, p, this.tolerance());
-    // A fixed point (projected body geometry) cannot be dragged: the gesture orbits the view instead.
-    if (hit?.kind === "point" && hit.id !== ORIGIN && !this.geometry.points.find((q) => q.id === hit.id)?.fixed) {
-      this.drag = { point: hit.id, moved: false, base: this.geometry };
-      return true;
-    }
-    return false;
+    return this.pointer.down(event);
   }
 
   move(event: PointerEvent): void {
-    if (this.offset?.dragMove(event)) return;
-    if (this.moveTool?.move(event)) {
-      this.render();
-      return;
-    }
-    const p = this.toSketch(event);
-    if (!p) return;
-    if (this.drag) {
-      this.drag.moved = true;
-      try {
-        const target = this.gridSnap ? gridPoint(p, this.viewport.gridStep) : p;
-        const result = solveSketch(this.drag.base, { drag: { point: this.drag.point, x: target[0], y: target[1] }, diagnose: false });
-        if (result.state !== "conflicting" && result.state !== "failed") this.geometry = result.geometry;
-      } catch {
-        // Keep the last valid drag position.
-      }
-      this.render();
-      return;
-    }
-    if (this.tool) {
-      const s = this.snapAt(p);
-      this.hover = s.pointId ?? s.curveId ?? null;
-      this.preview = this.tool.move(this.geometry, s);
-      // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
-      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : this.gridSnap ? { pos: s.pos, kind: "grid" } : null;
-      this.viewport.renderer.domElement.style.cursor = this.snapMark ? "none" : "crosshair";
-    } else if (this.offset) {
-      this.hover = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id))?.id ?? null;
-      this.viewport.renderer.domElement.style.cursor = this.offset.overArrow(event) ? "grab" : "";
-    } else {
-      this.hover = hitTest(this.geometry, p, this.tolerance())[0]?.id ?? null;
-      if (this.extendMode) {
-        // The end nearest the pointer, extended to the next curve, is shown dashed before the click.
-        const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => h.kind === "line" || h.kind === "arc");
-        const ext = curve ? findExtension(this.geometry, curve.id, p) : null;
-        this.hover = curve?.id ?? null;
-        this.preview = ext && typeof ext === "object" ? ext.preview : null;
-      }
-      if (this.trimMode) {
-        // The part that would go, between the two crossings round the pointer, is shown before the click.
-        const curve = this.curveToTrim(p);
-        const trim = curve ? findTrim(this.geometry, curve, p) : null;
-        this.hover = curve;
-        this.preview = trim && typeof trim === "object" ? trim.preview : null;
-      }
-    }
-    this.render();
+    this.pointer.move(event);
   }
 
   up(event: PointerEvent, isClick: boolean): boolean {
-    if (this.offset?.dragEnd()) return true;
-    if (this.moveTool?.up()) return true;
-    const drag = this.drag;
-    this.drag = null;
-    if (drag?.moved) {
-      // One undo step for the whole drag; the full solve also refreshes diagnostics.
-      const dragged = this.geometry;
-      this.geometry = drag.base;
-      this.apply(dragged);
-      return true;
-    }
-    if (!isClick) return false;
-    const p = this.toSketch(event);
-    if (!p) return true;
-    if (this.tool) {
-      try {
-        const result = this.tool.click(this.geometry, this.snapAt(p));
-        if (result.kind === "commit") {
-          // A finished shape (rectangle, circle, arc, closed polyline) hands back to the selection tool.
-          if (this.apply(result.geometry)) {
-            if (result.done) this.setTool("select");
-            else this.preview = null;
-          }
-        } else this.preview = result.preview;
-      } catch (error) {
-        this.host.notify(error instanceof Error ? error.message : String(error), "error");
-        this.tool.reset();
-      }
-      this.render();
-      this.host.changed();
-      return true;
-    }
-    if (this.offset) {
-      // "Décalage": a click on a curve adds (or removes) it, with its chain; elsewhere nothing happens.
-      const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => findCurve(this.geometry, h.id));
-      if (curve) this.offset.toggle(curve.id);
-      return true;
-    }
-    if (this.moveTool) {
-      this.moveTool.click(p);
-      return true;
-    }
-    if (this.arrayTool) {
-      this.arrayTool.click(p);
-      return true;
-    }
-    if (this.trimMode) {
-      const curve = this.curveToTrim(p);
-      const trim = curve ? findTrim(this.geometry, curve, p) : null;
-      this.preview = null;
-      if (typeof trim === "string") this.host.notify(trim, "info");
-      else if (trim) this.apply(applyTrim(this.geometry, trim), trim.whole ? "Courbe supprimée." : "Partie coupée.");
-      this.render();
-      return true;
-    }
-    if (this.extendMode) {
-      const curve = hitTest(this.geometry, p, this.tolerance()).find((h) => h.kind === "line" || h.kind === "arc");
-      const ext = curve ? findExtension(this.geometry, curve.id, p) : null;
-      this.preview = null;
-      if (typeof ext === "string") this.host.notify(ext, "info");
-      else if (ext) this.apply(applyExtension(this.geometry, ext), "Prolongée jusqu'à la courbe suivante.");
-      this.render();
-      return true;
-    }
-    // Clicking again near a selected element deselects it, even if a close neighbour
-    // (e.g. a parallel line 2 mm away) is nearer to the pointer.
-    const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
-    // A waiting constraint only picks the kinds of elements it takes (a line for "Horizontale"…).
-    const hits = hitTest(this.geometry, p, this.tolerance()).filter((h) => !waiting || waiting.accepts.includes(h.kind));
-    const hit = toggleTarget(hits, this.selection);
-    // A click on the lines of a placed dimension selects the dimension (Suppr deletes it).
-    const dimension = this.pickDimension(p);
-    if (dimension && (!hit || dimension.distance < hit.distance)) {
-      if (this.selection.has(dimension.id)) this.selection.delete(dimension.id);
-      else this.selection.add(dimension.id);
-      closeCalculator();
-      this.render();
-      this.host.changed();
-      return true;
-    }
-    if (this.dimensionMode && hit && this.selection.has(hit.id)) {
-      // "Cote" tool: the second click on a measured element places the dimension.
-      this.placeMeasurement();
-      return true;
-    }
-    if (!hit) {
-      if (!waiting) this.selection.clear();
-    } else if (this.selection.has(hit.id)) this.selection.delete(hit.id);
-    else {
-      // The dimension tool measures one or two elements: a third click starts a new measurement.
-      if (this.dimensionMode && this.selection.size >= 2) this.selection.clear();
-      this.selection.add(hit.id);
-    }
-    if (waiting && waiting.applies(classify(this.geometry, [...this.selection]))) {
-      // Everything it needs is picked: applied at once; the command keeps waiting for the next ones.
-      this.runCommand(waiting.id);
-      this.pendingCommand = waiting.id;
-      this.host.changed();
-      return true;
-    }
-    // Clicking geometry only selects it; values are changed by clicking their dimension.
-    closeCalculator();
-    this.render();
-    this.host.changed();
-    return true;
-  }
-
-  // ---- values (keypad) ------------------------------------------------------
-
-  /** Placed dimension whose drawn lines are under the pointer, if any. */
-  private pickDimension(p: Vec2): { id: string; distance: number } | null {
-    const px = this.viewport.worldPerPixel();
-    let best: { id: string; distance: number } | null = null;
-    for (const a of this.annotations) {
-      if (!a.dimensionId) continue;
-      const distance = dimensionLineDistance(a, p, px);
-      if (distance <= this.tolerance() && (!best || distance < best.distance)) best = { id: a.dimensionId, distance };
-    }
-    return best;
-  }
-
-  /**
-   * Turns the measurement of the selection into a dimension that stays on
-   * screen. Its value is changed by clicking it (keypad), not here.
-   */
-  private placeMeasurement(): void {
-    const spec = selectionSpec(this.geometry, [...this.selection]);
-    if (!spec) return;
-    if (matchingDimension(this.geometry, spec)) {
-      this.host.notify("Cette cote est déjà posée : cliquez sa valeur pour la modifier.", "info");
-      this.selection.clear();
-      this.render();
-      this.host.changed();
-      return;
-    }
-    const value = Number(measure(this.geometry, { ...spec, id: "", value: 0 } as DimensionConstraint).toFixed(6));
-    const added = addConstraint(this.geometry, { ...spec, value } as unknown as Omit<SketchConstraint, "id">);
-    // A dimension the sketch already determines would over-constrain it: place it as a
-    // reference dimension instead (shown between parentheses, never imposed).
-    let overConstrained = false;
-    try {
-      const check = solveSketch(added.geometry);
-      overConstrained = check.state !== "ok";
-    } catch {
-      overConstrained = true;
-    }
-    if (overConstrained) {
-      const reference = addConstraint(this.geometry, { ...spec, value, driving: false } as unknown as Omit<SketchConstraint, "id">);
-      if (this.apply(reference.geometry)) {
-        this.host.notify("Cette valeur est déjà imposée par l'esquisse : cote de référence ajoutée (entre parenthèses).", "info");
-      }
-      this.selection.clear();
-      this.render();
-      this.host.changed();
-      return;
-    }
-    if (!this.apply(added.geometry)) return;
-    this.selection.clear();
-    this.render();
-    this.host.changed();
-  }
-
-  private editValue(target: ValueTarget, anchor: { x: number; y: number }): void {
-    openCalculator({
-      container: this.host.calculatorContainer(),
-      anchor,
-      value: target.value,
-      unit: target.angle ? "deg" : this.host.unit(),
-      title: target.title,
-      locked: true,
-      allowNegative: target.signed,
-      onSubmit: (value, locked) => this.applyValue(target, value, locked),
-      // As in Fusion: the value is applied, then the other side of the contour is asked for (width, then height…).
-      onNext: (value, locked) => {
-        const spec = target.spec ?? (target.dimensionId ? this.geometry.constraints.find((c) => c.id === target.dimensionId) : undefined);
-        if (!this.applyValue(target, value, locked)) return false;
-        const next = spec && !target.angle ? nextSideDimension(this.geometry, spec as DimensionSpec) : null;
-        if (next) this.editValue({ ...next, angle: false, signed: false, title: "Cote" }, anchor);
-        return true;
-      },
-    });
-  }
-
-  /**
-   * Applies a typed value. Locked: the value becomes (or updates) a driving
-   * dimension. Unlocked: the shape is resized once and the dimension dropped.
-   */
-  private applyValue(target: ValueTarget, value: number, locked: boolean): boolean {
-    let geometry: SketchGeometry;
-    let id: string;
-    if (target.dimensionId) {
-      geometry = setDimensionValue(this.geometry, target.dimensionId, value);
-      id = target.dimensionId;
-    } else if (target.spec) {
-      const added = addConstraint(this.geometry, { ...target.spec, value } as unknown as Omit<SketchConstraint, "id">);
-      geometry = added.geometry;
-      id = added.id;
-    } else return false;
-    if (!locked) {
-      try {
-        const solved = solveSketch(geometry);
-        if (solved.state === "conflicting" || solved.state === "failed") return false;
-        geometry = removeEntities(solved.geometry, [id]);
-      } catch {
-        return false;
-      }
-    }
-    const ok = this.apply(geometry);
-    if (ok && this.dimensionMode && target.spec) {
-      this.selection.clear();
-      this.render();
-    }
-    return ok;
+    return this.pointer.up(event, isClick);
   }
 
   render(): void {
@@ -859,71 +418,41 @@ export class SketchMode implements PointerHandler {
     const unit = this.host.unit();
     // Measurements of the selection only with the "Cote" tool; placed dimensions are always shown.
     const selected = [...this.selection];
-    const measures = !this.dimensionMode
-      ? []
-      : selected.length === 1
-        ? measureAnnotations(this.geometry, selected.filter((id) => findCurve(this.geometry, id)), unit)
-        : [pairAnnotation(this.geometry, selected, unit)].filter((a): a is NonNullable<typeof a> => a !== null);
+    const measures =
+      this.kind !== "dimension"
+        ? []
+        : selected.length === 1
+          ? measureAnnotations(this.geometry, selected.filter((id) => findCurve(this.geometry, id)), unit)
+          : [pairAnnotation(this.geometry, selected, unit)].filter((a): a is NonNullable<typeof a> => a !== null);
     let regions: Region[] = [];
+    this.faces = [];
     try {
-      regions = regionsOf(extractLoops(this.geometry));
+      const loops = extractLoops(this.geometry);
+      regions = regionsOf(loops);
+      this.faces = sketchFaces(loops);
     } catch {
       // Open or branched profile: nothing to tint.
     }
     this.annotations = [...dimensionAnnotations(this.geometry, unit), ...measures];
+    const curveTool = this.kind === "extend" || this.kind === "trim" || this.kind === "break";
     this.overlay.render({
       geometry: this.geometry,
       selection: this.selection,
-      hover: this.hover,
+      hover: this.pointer.hover,
       preview: this.preview,
       unit,
       flagged,
       annotations: [
-        ...dimensionAnnotations(this.geometry, unit),
-        ...measures,
-        ...(this.offset || this.moveTool || this.arrayTool || this.extendMode || this.trimMode ? [] : previewAnnotations(this.preview, unit)),
+        ...this.annotations,
+        ...(this.panelToolActive || curveTool ? [] : previewAnnotations(this.preview, unit)),
         ...(this.arrayTool?.annotations ?? []),
       ],
       showGlyphs: this.showGlyphs,
       regions,
-      snapMark: this.tool ? this.snapMark : null,
+      snapMark: this.tool ? this.pointer.snapMark : null,
+      cutMarks: this.kind === "break" ? this.pointer.cutMarks : [],
+      resolution: [this.viewport.renderer.domElement.clientWidth, this.viewport.renderer.domElement.clientHeight],
+      hoverRegion: this.pointer.hoverRegion,
     });
-  }
-
-  // ---- dimension text: click = keypad, drag = move the dimension -----------------
-
-  private dimensionPointerDown(annotation: Annotation, down: PointerEvent): void {
-    const start = { x: down.clientX, y: down.clientY };
-    const id = annotation.role === "driving" ? annotation.dimensionId : undefined;
-    const base = this.geometry;
-    let moved = false;
-    const onMove = (event: PointerEvent) => {
-      if (!moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 4) return;
-      moved = true;
-      if (!id) return;
-      const p = this.toSketch(event);
-      const offset = p ? placementOffset(annotation, p) : null;
-      if (offset === null) return;
-      this.geometry = {
-        ...base,
-        constraints: base.constraints.map((c) => (c.id === id && "value" in c ? { ...c, offset } : c)),
-      };
-      this.render();
-    };
-    const onUp = (event: PointerEvent) => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      if (moved) {
-        // Presentation only: stored in the document without solving again.
-        if (id && this.geometry !== base) this.host.commit(this.featureId, pruneBodyPoints(this.geometry));
-        return;
-      }
-      const anchor = { x: event.clientX, y: event.clientY };
-      const common = { value: annotation.value, angle: annotation.angle, signed: annotation.angle };
-      if (id) this.editValue({ ...common, dimensionId: id, title: "Cote" }, anchor);
-      else if (annotation.spec) this.editValue({ ...common, spec: annotation.spec, title: "Nouvelle cote" }, anchor);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
   }
 }

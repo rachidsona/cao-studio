@@ -4,6 +4,9 @@
  * drawn in sketch coordinates inside a group placed on the sketch plane.
  */
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { CONSTRAINT_GLYPHS, CONSTRAINT_LABELS } from "../constraints/catalog";
 import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
@@ -14,13 +17,22 @@ import { dimensionLayout, outwardNormal, sketchCentre, type Annotation, type Ann
 import type { Region } from "./loops";
 import type { Preview } from "./tools";
 
+/** Widths (screen pixels) of what is drawn: the drawing's own lines are thick, the helpers thin. */
+const WIDTH = { curve: 2.2, active: 3.2, preview: 1.8, helper: 1.5, axis: 1.2 };
+
 const COLORS = {
   line: 0x1d4ed8,
   construction: 0xf59e0b,
   projected: 0xa855f7,
-  selected: 0xe11d48,
-  hover: 0x0ea5e9,
+  /** The chosen lines and points. */
+  selected: 0x5dd62c,
+  /** The line under the pointer (the one a click would choose). */
+  hover: 0xffd60a,
+  /** The closed areas of the sketch. */
+  region: 0x2078cf,
   preview: 0x0ea5e9,
+  /** Where "Couper" will cut. */
+  cut: 0xef4444,
   point: 0x111827,
   axis: 0x94a3b8,
 };
@@ -41,6 +53,12 @@ export interface OverlayState {
   regions: Region[];
   /** Where the drawing tool's pointer is snapped: the cross cursor becomes a square there (as in Fusion). */
   snapMark?: SnapMark | null;
+  /** Size of the view in pixels: the lines are drawn with a width in pixels. */
+  resolution?: [number, number];
+  /** The closed area under the pointer when no line is, drawn stronger so it can be picked. */
+  hoverRegion?: Region | null;
+  /** Where "Couper" will cut the curve under the pointer: red crosses, as in Fusion. */
+  cutMarks?: Vec2[];
 }
 
 /** What the pointer is snapped to: a grid point, an existing point or a curve. */
@@ -64,13 +82,6 @@ function arcPolyline(center: Vec2, radius: number, start: number, end: number, s
     out.push([center[0] + radius * Math.cos(t), center[1] + radius * Math.sin(t)]);
   }
   return out;
-}
-
-function material(color: number | THREE.Color, dashed = false): THREE.LineBasicMaterial {
-  const m = dashed
-    ? new THREE.LineDashedMaterial({ color, dashSize: 2, gapSize: 1.5, depthTest: false })
-    : new THREE.LineBasicMaterial({ color, depthTest: false });
-  return m;
 }
 
 export class SketchOverlay {
@@ -97,9 +108,15 @@ export class SketchOverlay {
     scene.add(this.group);
   }
 
-  private polyline(points: Vec2[], color: number | THREE.Color, dashed = false): void {
-    const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
-    const line = new THREE.Line(geometry, material(color, dashed));
+  /** Size of the view (pixels), for the width of the lines. */
+  private resolution: [number, number] = [800, 600];
+
+  private polyline(points: Vec2[], color: number | THREE.Color, dashed = false, width = WIDTH.helper): void {
+    const geometry = new LineGeometry();
+    geometry.setPositions(points.flatMap(([x, y]) => [x, y, 0]));
+    const material = new LineMaterial({ color, linewidth: width, dashed, dashSize: 2, gapSize: 1.5, depthTest: false });
+    material.resolution.set(this.resolution[0], this.resolution[1]);
+    const line = new Line2(geometry, material);
     if (dashed) line.computeLineDistances();
     line.renderOrder = 10;
     this.group.add(line);
@@ -148,7 +165,7 @@ export class SketchOverlay {
     for (const child of [...this.group.children]) {
       this.group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
-      if (child instanceof THREE.Line || child instanceof THREE.Points) {
+      if (child instanceof Line2 || child instanceof THREE.Line || child instanceof THREE.Points) {
         child.geometry.dispose();
         (child.material as THREE.Material).dispose();
       }
@@ -156,11 +173,12 @@ export class SketchOverlay {
   }
 
   render(state: OverlayState): void {
+    if (state.resolution) this.resolution = state.resolution;
     this.clear();
     const g = state.geometry;
     const extent = 1e4;
-    this.polyline([[-extent, 0], [extent, 0]], COLORS.axis, true);
-    this.polyline([[0, -extent], [0, extent]], COLORS.axis, true);
+    this.polyline([[-extent, 0], [extent, 0]], COLORS.axis, true, WIDTH.axis);
+    this.polyline([[0, -extent], [0, extent]], COLORS.axis, true, WIDTH.axis);
 
     const colorOf = (id: string, construction?: boolean, projected?: boolean) =>
       state.selection.has(id)
@@ -176,21 +194,28 @@ export class SketchOverlay {
       const color = colorOf(curve.id, curve.construction, curve.projected);
       // Projected body edges are reference lines: solid, not dashed.
       const dashed = curve.construction && !curve.projected;
-      if (curve.kind === "line") this.polyline([pointPos(g, curve.p1), pointPos(g, curve.p2)], color, dashed);
-      else if (curve.kind === "circle") this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, 0, 2 * Math.PI), color, dashed);
+      const active = state.selection.has(curve.id) || state.hover === curve.id;
+      const width = active ? WIDTH.active : dashed ? WIDTH.preview : WIDTH.curve;
+      if (curve.kind === "line") this.polyline([pointPos(g, curve.p1), pointPos(g, curve.p2)], color, dashed, width);
+      else if (curve.kind === "circle") this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, 0, 2 * Math.PI), color, dashed, width);
       else {
         const end = curve.endAngle <= curve.startAngle ? curve.endAngle + 2 * Math.PI : curve.endAngle;
-        this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, curve.startAngle, end), color, dashed);
+        this.polyline(arcPolyline(pointPos(g, curve.center), curve.radius, curve.startAngle, end), color, dashed, width);
       }
     }
 
     if (state.preview) {
-      for (const [a, b] of state.preview.lines) this.polyline([a, b], COLORS.preview, true);
-      for (const c of state.preview.circles) this.polyline(arcPolyline(c.center, c.radius, 0, 2 * Math.PI), COLORS.preview, true);
-      for (const a of state.preview.arcs) this.polyline(arcPolyline(a.center, a.radius, a.start, a.end), COLORS.preview, true);
+      for (const [a, b] of state.preview.lines) this.polyline([a, b], COLORS.preview, true, WIDTH.preview);
+      for (const c of state.preview.circles) this.polyline(arcPolyline(c.center, c.radius, 0, 2 * Math.PI), COLORS.preview, true, WIDTH.preview);
+      for (const a of state.preview.arcs) this.polyline(arcPolyline(a.center, a.radius, a.start, a.end), COLORS.preview, true, WIDTH.preview);
     }
 
     if (state.snapMark) this.snapMarker(state.snapMark);
+    for (const [x, y] of state.cutMarks ?? []) {
+      const h = 6 * this.worldPerPixel();
+      this.polyline([[x - h, y - h], [x + h, y + h]], COLORS.cut, false, WIDTH.active);
+      this.polyline([[x - h, y + h], [x + h, y - h]], COLORS.cut, false, WIDTH.active);
+    }
 
     const points = [{ id: ORIGIN, x: 0, y: 0 }, ...g.points];
     const positions = points.flatMap((p) => [p.x, p.y, 0]);
@@ -203,12 +228,12 @@ export class SketchOverlay {
     pointGeometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     const pointObject = new THREE.Points(
       pointGeometry,
-      new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, vertexColors: true, depthTest: false }),
+      new THREE.PointsMaterial({ size: 11, sizeAttenuation: false, vertexColors: true, depthTest: false }),
     );
     pointObject.renderOrder = 11;
     this.group.add(pointObject);
 
-    this.renderRegions(state.regions);
+    this.renderRegions(state.regions, state.hoverRegion ?? null);
     this.renderConstraints(state);
     for (const annotation of state.annotations) {
       this.renderAnnotation(annotation, state.flagged, !!annotation.dimensionId && state.selection.has(annotation.dimensionId));
@@ -230,13 +255,14 @@ export class SketchOverlay {
   }
 
   /** Light tint of the closed regions (the profiles an extrusion would use). */
-  private renderRegions(regions: Region[]): void {
-    for (const region of regions) {
+  private renderRegions(regions: Region[], hovered: Region | null): void {
+    // An area nested in a hole is not tinted by default, but is drawn when it is the one under the pointer.
+    for (const region of hovered && !regions.includes(hovered) ? [...regions, hovered] : regions) {
       const shape = new THREE.Shape(region.outer.map(([x, y]) => new THREE.Vector2(x, y)));
       shape.holes = region.holes.map((h) => new THREE.Path(h.map(([x, y]) => new THREE.Vector2(x, y))));
       const mesh = new THREE.Mesh(
         new THREE.ShapeGeometry(shape),
-        new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.12, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+        new THREE.MeshBasicMaterial({ color: COLORS.region, transparent: true, opacity: region === hovered ? 0.5 : 0.28, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
       );
       mesh.renderOrder = 9;
       this.group.add(mesh);
