@@ -24,6 +24,31 @@ jobs:
       - name: Tests frontend
         run: npm test
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: npm ci
+      - run: pip install -r requirements.txt
+      - run: npx playwright install --with-deps chromium
+      - name: Build de l'éditeur
+        run: npm run build
+      - name: Parcours de bout en bout (Playwright)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+
   backend:
     runs-on: ubuntu-latest
     services:
