@@ -5,8 +5,8 @@
  */
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import type { Appearance } from "./library";
-import { appearanceMaterial, tileOf } from "./three-materials";
+import { appearanceKey, type Appearance } from "./library";
+import { appearanceMaterial, motifReady, tileOf } from "./three-materials";
 
 const SIZE = 112;
 /** Diameter of the sphere (mm), so the motifs show at their real scale. */
@@ -99,10 +99,11 @@ function work(): void {
 
 /** The swatch of an appearance (PNG data URL), or null without WebGL; drawn soon after the first call. */
 export function swatch(appearance: Appearance, color?: string): Promise<string | null> {
-  const key = `${appearance.id}|${color ?? ""}`;
+  const key = `${appearanceKey(appearance)}|${color ?? ""}`;
   const known = cache.get(key);
   if (known) return Promise.resolve(known);
-  return new Promise((resolve) => {
+  // A photo is drawn on the sphere once it is loaded.
+  return motifReady(appearance).then(() => new Promise((resolve) => {
     const job = waiting.get(key);
     if (job) job.done.push(resolve);
     else waiting.set(key, { appearance, color, done: [resolve] });
@@ -110,5 +111,5 @@ export function swatch(appearance: Appearance, color?: string): Promise<string |
       scheduled = true;
       requestAnimationFrame(work);
     }
-  });
+  }));
 }

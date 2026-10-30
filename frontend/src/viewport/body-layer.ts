@@ -5,6 +5,7 @@
  */
 import * as THREE from "three";
 import type { BodyAppearance } from "../appearance/assign";
+import { appearanceKey } from "../appearance/library";
 import { appearanceMaterial, applyUvs, tileOf } from "../appearance/three-materials";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Vec3 } from "../sketcher/frame";
@@ -154,7 +155,7 @@ export class BodyLayer {
 
   /** One material per appearance and colour (library: colour or computed texture, relief, glass see-through). */
   private appearanceMaterial(look: BodyAppearance): THREE.MeshPhysicalMaterial {
-    const key = `${look.appearance.id}|${look.color ?? ""}`;
+    const key = `${appearanceKey(look.appearance)}|${look.color ?? ""}`;
     let material = this.appearanceMaterials.get(key);
     if (material) return material;
     material = appearanceMaterial(look.appearance, look.color, "view");

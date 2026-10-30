@@ -699,8 +699,11 @@ opération existante.
   Le **clic droit** ouvre un menu sur tout ce qu'on veut (`ui/browser-actions.ts`) :
   - sur un corps, un groupe ou plusieurs corps sélectionnés : Masquer/Afficher, Modifier, Nouveau dossier, Ranger dans un dossier, Sortir du dossier, Supprimer ;
   - sur un dossier : Renommer, Défaire (garder ses corps), Supprimer avec ses corps ;
-  - sur une esquisse : Masquer/Afficher, Modifier, Supprimer.
+  - sur une esquisse : Masquer/Afficher, Modifier, Supprimer ; sur plusieurs esquisses sélectionnées : Masquer/Afficher et Supprimer, toutes d'un coup.
 
+  Le titre **« Esquisses »** a lui aussi son œil (masquer ou afficher toutes les esquisses) et sa corbeille. La corbeille supprime toutes les esquisses en une seule annulation : elle demande d'abord, puis nomme les corps qui partent avec elles.
+
+  L'élément **sélectionné** (dans le navigateur ou dans la vue 3D) est éclairé en **#F8F8F8**, écrit en encre foncée, avec un liseré bleu à gauche. S'il est dans un dossier fermé, ce dossier s'ouvre. S'il est plus bas dans la liste, elle défile jusqu'à lui.
   Sur Mac, Ctrl + clic ajoute toujours à la sélection. L'écriture du navigateur est plus petite (12 px), et les yeux, les ⋯ et les icônes sont plus petits, en trait fin. Les autres corps et les dossiers d'un caisson restent comme avant (`ui/body-kinds.ts`). La liste du navigateur défile **sans barre de défilement** : une petite flèche ▼ en bas (▲ en haut) montre qu'il y a une suite et y fait défiler d'un clic ; la molette, le pavé tactile et le doigt défilent comme d'habitude (`ui/scroll-arrows.ts`).
 - **Fenêtres des outils à droite, en onglets** : les fenêtres des outils (mètre, calques, paramètres, scènes, coupe,
   extrusion, caisson, façades, usinage, réseau, décalage, apparence, rendu…) s'ouvrent dans le panneau de droite,
@@ -792,7 +795,15 @@ opération existante.
     plexiglas transparent et opale), **tissus et cuirs** (lin, chiné, velours, cuirs cognac, noir, blanc), **bétons et
     sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, cernes et fibres du bois,
     mouchetures du granit, armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans
-    couture ; le motif du bois suit le fil de chaque planche. Un clic sur une vignette la donne aux corps
+    couture ; le motif du bois suit le fil de chaque planche.
+    **Bois en photo** : 8 vrais bois photographiés (chêne clair, chêne, noyer, wengé, hêtre, bouleau, merisier, pin
+    noueux), tirés d'ambientCG sous licence CC0 (`static/textures/bois/`, avec `LICENCE.txt`). Leur relief est
+    calculé d'après leurs nuances, et leur fil suit celui de chaque planche.
+    **Mes motifs** : « Importer une image… » fait une apparence d'une image prise ailleurs, depuis son ordinateur
+    (photo de bois, de pierre, de tissu… en PNG, JPEG ou WebP). L'image est réduite à 1024 px et gardée avec le
+    projet ; la taille en millimètres dit combien elle couvre. Elle est appliquée aux corps sélectionnés et rangée
+    dans la catégorie « Mes motifs (images importées) », où ✕ la retire (`appearance/custom.ts`).
+    Un clic sur une vignette la donne aux corps
     sélectionnés ; on peut aussi **glisser une vignette sur un corps** de la vue (surligné pendant le glisser).
     « Couleur au choix » applique une couleur à une laque, une peinture, un plastique ou un tissu ; « Dans ce
     modèle » montre les apparences utilisées ; « Retirer l'apparence » rend celle de la matière. L'apparence est
@@ -819,6 +830,10 @@ opération existante.
   - *Mouvements* : un corps glisse (tiroir) ou tourne autour d'une charnière (porte) avec un curseur ou en animation,
     et le panneau dit ce qu'il heurte (contrôle sur les boîtes englobantes, exact pour des planches). La vue
     seulement : le modèle ne change pas.
+  - *Tiroirs d'un clic* : dans la vue 3D, un clic sur un tiroir (sa façade ou une pièce de son caisson, d'un Tiroirs
+    de niche ou de façades de caisson) l'**ouvre** : toutes ses pièces glissent ensemble du côté de sa façade. Un
+    second clic le **referme**. La vue seulement, comme Mouvements : une régénération du modèle les referme ; rien
+    pendant un outil ni avec Ctrl, Cmd ou Maj (`app/drawer-toggle.ts`, `features/drawer-open.ts`).
   - *Mise en plan* : trois vues (face, droite, dessus, projection européenne) avec lignes cachées en pointillés, cotes
     générales, cartouche et échelle normalisée choisie pour que tout tienne (A3 ou A4 paysage) ; impression / PDF ou
     export SVG.

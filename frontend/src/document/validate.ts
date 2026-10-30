@@ -275,6 +275,9 @@ export function validateDocument(input: unknown): string[] {
   if (input.folders !== undefined && (!Array.isArray(input.folders) || !input.folders.every((f) => isObject(f) && typeof f.id === "string" && typeof f.name === "string" && Array.isArray(f.bodies) && f.bodies.every((b) => typeof b === "string")))) {
     errors.push("« folders » doit être une liste de dossiers (id, name, bodies).");
   }
+  if (input.appearances !== undefined && (!Array.isArray(input.appearances) || !input.appearances.every((a) => isObject(a) && typeof a.id === "string" && typeof a.name === "string" && typeof a.image === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(a.image) && Array.isArray(a.tile) && a.tile.length === 2 && a.tile.every((t) => typeof t === "number" && t > 0)))) {
+    errors.push("« appearances » doit être une liste d'images (id, name, image en data URL, tile).");
+  }
   if (input.removedBodies !== undefined && (!Array.isArray(input.removedBodies) || !input.removedBodies.every((k) => typeof k === "string"))) {
     errors.push("« removedBodies » doit être une liste de pièces.");
   }

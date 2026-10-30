@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { ENV_ROTATION_X, environmentNorm, environmentPixels } from "./environments";
 import type { BodyAppearance } from "../appearance/assign";
-import { DEFAULT_APPEARANCE, appearanceById } from "../appearance/library";
+import { DEFAULT_APPEARANCE, appearanceById, appearanceKey } from "../appearance/library";
 import { appearanceMaterial, applyUvs, motifTextures, tileOf } from "../appearance/three-materials";
 import type { RenderSettings } from "./settings";
 
@@ -92,7 +92,7 @@ export class RenderScene {
   /** One physical material per appearance, colour and finish (library: textures, relief, glass, metals…). */
   private material(look: BodyAppearance, settings: RenderSettings): THREE.MeshPhysicalMaterial {
     const finish = settings.finishes[look.appearance.id] ?? "auto";
-    const key = `${look.appearance.id}|${look.color ?? ""}|${finish}`;
+    const key = `${appearanceKey(look.appearance)}|${look.color ?? ""}|${finish}`;
     let material = this.materials.get(key);
     if (!material) {
       material = appearanceMaterial(look.appearance, look.color, "render", finish);

@@ -508,6 +508,17 @@ export interface CadDocument {
   configurations?: Configuration[];
   /** Folders of the navigator (Fusion's): bodies put together by hand — a placard, a dressing… */
   folders?: Folder[];
+  /** Appearances made from images imported by hand (« Mes motifs »): appearance/custom.ts. */
+  appearances?: CustomAppearance[];
+}
+
+/** An image of one's own as an appearance: the image (a data URL, kept with the project) and the size of one tile. */
+export interface CustomAppearance {
+  id: string;
+  name: string;
+  image: string;
+  /** Size of one tile of the image (mm): along the grain, across it. */
+  tile: [number, number];
 }
 
 /** A folder of the navigator: its bodies by origin (the id of what created each, as in `bodyNames`). */

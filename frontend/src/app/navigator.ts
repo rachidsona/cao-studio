@@ -13,6 +13,7 @@ import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
 import { groupByCorps } from "../ui/body-kinds";
+import { askConfirm } from "../ui/confirm-dialog";
 import { ref } from "../ui/dom";
 import { FeatureDialog } from "../ui/feature-dialog";
 import type { NavItem } from "../ui/feature-meta";
@@ -45,7 +46,8 @@ export interface NavigatorHost {
   removeOffset(sketchId: string, offsetId: string): void;
   edit(id: string): void;
   toggleSuppress(id: string): void;
-  remove(id: string): void;
+  /** Deletes features (several at once: one undo step). */
+  remove(ids: string | string[]): void;
   /** Deletes a body: the feature that created it and everything built on it. */
   removeBody(bodyId: string): void;
   /** Deletes all these bodies, after asking (one undo step); false when it was not done. */
@@ -167,7 +169,10 @@ export class Navigator {
         onSetHidden: (ids, hidden) => this.host.setHidden(ids, hidden),
         onRemoveBodies: (ids) => void this.host.removeBodies(ids),
         onMenu: (id, anchor, body) => this.open(id, anchor, body),
-        onRemoveFeature: (id) => this.host.remove(id),
+        onRemoveSketches: async (ids) => {
+          if (ids.length > 1 && !(await askConfirm(`Supprimer les ${ids.length} esquisses ? (Ctrl+Z pour annuler)`, "Supprimer"))) return;
+          this.host.remove(ids);
+        },
         onNewFolder: (bodies) => this.host.changeDoc(addFolder(this.host.doc(), "Dossier", bodies).doc),
         onRenameFolder: (folder, name) => this.host.changeDoc(renameFolder(this.host.doc(), folder, name)),
         onMoveToFolder: (bodies, folder) => this.host.changeDoc(moveToFolder(this.host.doc(), bodies, folder)),

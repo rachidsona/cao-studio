@@ -24,7 +24,8 @@ describe("catalogue d'apparences", () => {
       expect(a.roughness).toBeLessThanOrEqual(1);
       if (a.pattern !== "plain") expect(a.color2 ?? a.color).toMatch(/^#[0-9a-f]{6}$/i);
     }
-    for (const c of CATEGORIES) expect(APPEARANCES.some((a) => a.category === c.id)).toBe(true);
+    // « Mes motifs » holds only the images imported in a project.
+    for (const c of CATEGORIES.filter((c) => c.id !== "custom")) expect(APPEARANCES.some((a) => a.category === c.id)).toBe(true);
   });
 
   it("donne une apparence à chaque matière de l'atelier", () => {

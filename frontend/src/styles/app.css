@@ -332,6 +332,13 @@
   html.dark.palette-mocha :is([data-ref="tree"], .cad-tree) [data-group] > div:hover {
     color: rgb(4 62 25) !important;
   }
+  /* The selected row, lit in #F8F8F8: its eye and its ⋯ in dark ink, readable on it in every theme. */
+  :is([data-ref="tree"], .cad-tree) [data-selected] button:not([data-select]) {
+    color: #374151;
+  }
+  :is([data-ref="tree"], .cad-tree) [data-selected] [data-hide][aria-pressed="true"] {
+    color: #0369a1;
+  }
 }
 
 /* Sketch labels rendered by the CSS2D layer above the viewport. */

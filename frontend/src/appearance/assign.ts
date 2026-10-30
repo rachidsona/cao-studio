@@ -5,6 +5,7 @@
  */
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import type { CadDocument } from "../document/types";
+import { syncCustom } from "./custom";
 import { MATERIAL_APPEARANCE, WALL_APPEARANCE, appearanceById, type Appearance } from "./library";
 
 export interface BodyAppearance {
@@ -19,6 +20,7 @@ export const isColor = (value: unknown): value is string => typeof value === "st
 
 /** How a body looks, from its box (min, max corners); null when it has neither appearance nor material. */
 export function bodyAppearance(doc: CadDocument, bodyId: string, box: [number[], number[]] | undefined): BodyAppearance | null {
+  syncCustom(doc);
   const info = bodyInfo(doc, bodyId);
   const appearance = appearanceById(info.appearance) ?? appearanceById(MATERIAL_APPEARANCE[info.material ?? ""]) ?? (info.room ? WALL_APPEARANCE : undefined);
   if (!appearance) return null;
@@ -30,6 +32,7 @@ export function bodyAppearance(doc: CadDocument, bodyId: string, box: [number[],
 
 /** Gives these bodies an appearance (null: back to their material's), with a colour for a paintable one. */
 export function setBodyAppearance(doc: CadDocument, bodyIds: string[], appearanceId: string | null, color?: string): CadDocument {
+  syncCustom(doc);
   const appearance = appearanceById(appearanceId ?? undefined);
   return setBodyInfo(doc, bodyIds, { appearance: appearance?.id, color: appearance?.paintable && isColor(color) ? color : undefined });
 }

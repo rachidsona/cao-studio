@@ -9,6 +9,7 @@ import { bindLayers } from "./app/layers-panel";
 import { bindLinkedCopy } from "./app/linked-copy";
 import { bindMeasure } from "./app/measure";
 import { bindMotion } from "./app/motion";
+import { bindDrawers } from "./app/drawer-toggle";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/scenes";
 import { bindWorkshop } from "./app/workshop";
@@ -103,6 +104,7 @@ async function start(): Promise<void> {
   bindScenes(root, viewport, editor);
   bindMeasure(root, viewport, editor);
   bindMotion(root, viewport, editor);
+  bindDrawers(viewport, editor);
   bindDrawing(root, viewport, editor);
   bindHelp(root);
   bindLayers(root, viewport, editor);

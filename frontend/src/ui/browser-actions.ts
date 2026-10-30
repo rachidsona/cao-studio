@@ -15,8 +15,9 @@ export interface TreeContext {
   /** The folder made by hand that holds a body, by body id. */
   folderOf: Map<string, string>;
   folders: { id: string; name: string }[];
-  /** Bodies of the multiple selection. */
+  /** Bodies and sketches of the multiple selection. */
   picked: string[];
+  pickedSketches: string[];
   sketches: NavItem[];
   handlers: BrowserHandlers;
 }
@@ -61,12 +62,23 @@ export function treeMenu(event: MouseEvent, root: HTMLElement, ctx: TreeContext)
     const sketch = ctx.sketches.find((s) => s.id === sketchKey.slice(7));
     if (!sketch) return false;
     const rect = target.getBoundingClientRect();
+    // On a sketch of the multiple selection: on every selected sketch.
+    const several = ctx.pickedSketches.length > 1 && ctx.pickedSketches.includes(sketch.id) ? ctx.sketches.filter((s) => ctx.pickedSketches.includes(s.id)) : [];
+    if (several.length > 1) {
+      const hidden = several.every((s) => s.hidden);
+      return at([
+        { heading: `${several.length} esquisses sélectionnées` },
+        { label: hidden ? "Afficher" : "Masquer", run: () => ctx.handlers.onSetHidden(several.map((s) => s.id), !hidden) },
+        "separator",
+        { label: `Supprimer ces ${several.length} esquisses`, danger: true, run: () => ctx.handlers.onRemoveSketches(several.map((s) => s.id)) },
+      ]);
+    }
     return at([
       { heading: sketch.name },
       { label: sketch.hidden ? "Afficher" : "Masquer", run: () => ctx.handlers.onToggleHidden(sketch.id) },
       { label: "Modifier, renommer…", run: () => ctx.handlers.onMenu(sketch.id, rect, false) },
       "separator",
-      { label: "Supprimer l'esquisse", danger: true, run: () => ctx.handlers.onRemoveFeature(sketch.id) },
+      { label: "Supprimer l'esquisse", danger: true, run: () => ctx.handlers.onRemoveSketches([sketch.id]) },
     ]);
   }
   const head = target.closest<HTMLElement>("[data-head]")?.dataset.head ?? (target.closest<HTMLElement>("li[data-body]") ? `body:${target.closest<HTMLElement>("li[data-body]")?.dataset.body}` : null);

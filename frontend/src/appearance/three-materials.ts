@@ -1,6 +1,6 @@
 /**
- * Matières three.js des apparences, communes à la vue d'édition, au rendu et aux vignettes : couleur ou texture
- * calculée, carte de relief, rugosité, métal, vernis, velours, et pour le verre la transmission (rendu) ou une simple
+ * Matières three.js des apparences, communes à la vue d'édition, au rendu et aux vignettes : couleur, texture
+ * calculée ou photo (son relief tiré de ses nuances), carte de relief, rugosité, métal, vernis, velours, et pour le verre la transmission (rendu) ou une simple
  * transparence (vue d'édition). Coordonnées de texture des planches posées dans le sens du fil.
  */
 import * as THREE from "three";
@@ -52,7 +52,52 @@ export function applyUvs(geometry: THREE.BufferGeometry, look: BodyAppearance): 
   geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance)), 2));
 }
 
-const textures = new Map<string, { map: THREE.DataTexture; normal: THREE.DataTexture | null }>();
+const textures = new Map<string, { map: THREE.Texture; normal: THREE.Texture | null }>();
+/** The photos being loaded (or loaded), by URL. */
+const photos = new Map<string, { map: THREE.Texture; normal: THREE.DataTexture; ready: Promise<void> }>();
+
+/** The photo of an appearance as textures, loaded once and shared; its relief computed from its shades on load. */
+function photoTextures(appearance: Appearance & { image: string }): { map: THREE.Texture; normal: THREE.DataTexture | null; ready: Promise<void> } {
+  let found = photos.get(appearance.image);
+  if (!found) {
+    // Flat until the photo is there.
+    const normal = dataTexture(new Uint8Array([128, 128, 255, 255]), 1, false);
+    let done = () => {};
+    const ready = new Promise<void>((resolve) => (done = resolve));
+    const map = new THREE.TextureLoader().load(
+      appearance.image,
+      (texture) => {
+        const image = texture.image as HTMLImageElement;
+        const size = 512;
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (context) {
+          context.drawImage(image, 0, 0, size, size);
+          const pixels = context.getImageData(0, 0, size, size).data;
+          const height = new Float32Array(size * size);
+          for (let i = 0; i < height.length; i++) height[i] = (0.299 * pixels[i * 4]! + 0.587 * pixels[i * 4 + 1]! + 0.114 * pixels[i * 4 + 2]!) / 255;
+          normal.image = { data: normalMap(height, size, (appearance.relief ?? 0.2) * 6), width: size, height: size };
+          normal.needsUpdate = true;
+        }
+        done();
+      },
+      undefined,
+      () => done(),
+    );
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.anisotropy = 8;
+    found = { map, normal, ready };
+    photos.set(appearance.image, found);
+  }
+  return { ...found, normal: (appearance.relief ?? 0) > 0 ? found.normal : null };
+}
+
+/** Resolves once the textures of an appearance can be drawn (at once, but for a photo still loading). */
+export function motifReady(appearance: Appearance): Promise<void> {
+  return appearance.image ? photoTextures(appearance as Appearance & { image: string }).ready : Promise.resolve();
+}
 
 function dataTexture(data: Uint8Array, size: number, srgb: boolean): THREE.DataTexture {
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -70,7 +115,8 @@ function dataTexture(data: Uint8Array, size: number, srgb: boolean): THREE.DataT
  * The motif's colour and relief textures (computed once per appearance, colour and size, then shared); `small` for
  * the library's swatches.
  */
-export function motifTextures(appearance: Appearance, color = appearance.color, small = false): { map: THREE.DataTexture; normal: THREE.DataTexture | null } | null {
+export function motifTextures(appearance: Appearance, color = appearance.color, small = false): { map: THREE.Texture; normal: THREE.Texture | null } | null {
+  if (appearance.image) return photoTextures(appearance as Appearance & { image: string });
   if (appearance.pattern === "plain") return null;
   const size = small ? 128 : appearance.pattern === "fabric" || appearance.pattern === "leather" ? 256 : 512;
   const key = `${appearance.id}|${color}|${size}`;

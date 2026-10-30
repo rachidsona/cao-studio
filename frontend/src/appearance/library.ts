@@ -2,11 +2,12 @@
  * Bibliothèque d'apparences (comme celle de Fusion) : bois de différentes essences, mélaminés, verres, marbres et
  * pierres, métaux, laques et peintures (teintes RAL), plastiques, tissus et cuirs, bétons. Chaque apparence décrit sa
  * surface (couleurs, motif calculé, rugosité, métal, vernis, transparence) ; les textures sont calculées
- * (appearance/textures.ts), sans image à télécharger. Une matière de l'atelier a son apparence par défaut.
+ * (appearance/textures.ts), sauf les bois en photo (static/textures/bois, CC0) et les images qu'on importe soi-même
+ * (« Mes motifs », gardées avec le projet : appearance/custom.ts). Une matière de l'atelier a son apparence par défaut.
  */
 
 export type Pattern = "plain" | "wood" | "marble" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
-export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "metal" | "paint" | "plastic" | "textile" | "concrete";
+export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "metal" | "paint" | "plastic" | "textile" | "concrete" | "custom";
 
 export interface Appearance {
   id: string;
@@ -33,6 +34,8 @@ export interface Appearance {
   relief?: number;
   /** The colour may be chosen (paints, lacquers, plastics). */
   paintable?: boolean;
+  /** A photo of the surface (its URL): drawn instead of the computed motif, its relief taken from its shades. */
+  image?: string;
 }
 
 export const CATEGORIES: { id: CategoryId; name: string }[] = [
@@ -45,6 +48,7 @@ export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "plastic", name: "Plastiques" },
   { id: "textile", name: "Tissus et cuirs" },
   { id: "concrete", name: "Bétons et sols" },
+  { id: "custom", name: "Mes motifs (images importées)" },
 ];
 
 const WOOD_TILE: [number, number] = [900, 300];
@@ -61,6 +65,14 @@ const wood = (id: string, name: string, color: string, color2: string, finish: "
   clearcoatRoughness: 0.15,
   tile: WOOD_TILE,
   relief: finish === "raw" ? 0.35 : 0.15,
+});
+
+/** A wood in photo (static/textures/bois, from ambientCG, CC0): `color` is its mean shade, for its swatch while it loads. */
+const photo = (id: string, name: string, file: string, color: string, finish: "oiled" | "varnished" = "oiled"): Appearance => ({
+  ...wood(id, name, color, color, finish),
+  image: `/static/textures/bois/${file}.jpg`,
+  tile: [1000, 1000],
+  relief: 0.2,
 });
 
 /** RAL colours most used in furniture, as satin lacquers. */
@@ -92,6 +104,15 @@ const RAL: [string, string, string][] = [
 ];
 
 export const APPEARANCES: Appearance[] = [
+  // ---- Bois en photo ----
+  photo("photo-oak-light", "Chêne clair (photo)", "chene-clair", "#b09066"),
+  photo("photo-oak", "Chêne (photo)", "chene", "#7b634e"),
+  photo("photo-walnut", "Noyer (photo)", "noyer", "#41342e", "varnished"),
+  photo("photo-wenge", "Wengé (photo)", "wenge", "#2f2017"),
+  photo("photo-beech", "Hêtre (photo)", "hetre", "#ac8a6c"),
+  photo("photo-birch", "Bouleau (photo)", "bouleau", "#ad8c62"),
+  photo("photo-cherry", "Merisier (photo)", "merisier", "#b0733f", "varnished"),
+  photo("photo-pine", "Pin noueux (photo)", "pin-noueux", "#b49d85"),
   // ---- Bois ----
   wood("wood-oak", "Chêne naturel huilé", "#c69c6d", "#8e6239"),
   wood("wood-oak-light", "Chêne blanchi", "#ddc8a8", "#a88e6c"),
@@ -210,8 +231,23 @@ export const MATERIAL_APPEARANCE: Record<string, string> = {
 
 const byId = new Map(APPEARANCES.map((a) => [a.id, a]));
 
+/** The images imported in the open project (« Mes motifs »), set by appearance/custom.ts. */
+let custom = new Map<string, Appearance>();
+
+export function setCustomAppearances(list: Appearance[]): void {
+  custom = new Map(list.map((a) => [a.id, a]));
+}
+
+/** What tells an appearance apart in the caches: its id, and for an imported image which image it is. */
+export const appearanceKey = (a: Appearance): string => (a.image?.startsWith("data:") ? `${a.id}@${a.image.length}:${a.image.slice(-32)}` : a.id);
+
+/** The library and the images of the open project. */
+export function allAppearances(): Appearance[] {
+  return [...APPEARANCES, ...custom.values()];
+}
+
 export function appearanceById(id: string | undefined): Appearance | undefined {
-  return id ? byId.get(id) : undefined;
+  return id ? (byId.get(id) ?? custom.get(id)) : undefined;
 }
 
 const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -219,5 +255,5 @@ const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toL
 /** Appearances of a category (all when null) whose name holds every word of the query (accents and case ignored). */
 export function searchAppearances(query: string, category: CategoryId | null): Appearance[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
-  return APPEARANCES.filter((a) => (!category || a.category === category) && words.every((w) => fold(`${a.name} ${a.id}`).includes(w)));
+  return allAppearances().filter((a) => (!category || a.category === category) && words.every((w) => fold(`${a.name} ${a.id}`).includes(w)));
 }

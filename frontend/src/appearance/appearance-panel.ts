@@ -2,11 +2,13 @@
  * Panneau « Apparence » (comme la bibliothèque d'apparences de Fusion) : les apparences de ce modèle, puis la
  * bibliothèque par catégorie avec recherche, en vignettes sphériques. Un clic donne l'apparence aux corps
  * sélectionnés ; on peut aussi glisser une vignette sur un corps de la vue. Une couleur au choix s'applique aux laques,
- * peintures, plastiques et tissus. « Retirer » rend aux corps l'apparence de leur matière.
+ * peintures, plastiques et tissus. « Retirer » rend aux corps l'apparence de leur matière. « Importer une image »
+ * fait une apparence d'une photo prise ailleurs (« Mes motifs », gardés avec le projet).
  */
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
-import { APPEARANCES, CATEGORIES, appearanceById, searchAppearances, type Appearance, type CategoryId } from "./library";
+import { imageFileToDataUrl } from "./custom";
+import { APPEARANCES, CATEGORIES, allAppearances, appearanceById, searchAppearances, type Appearance, type CategoryId } from "./library";
 import { swatch } from "./swatches";
 
 /** Type of the data carried by a swatch being dragged onto the view. */
@@ -22,6 +24,9 @@ export interface AppearancePanelHost {
   used(): { appearance: Appearance; color?: string; count: number }[];
   targetColor(): string | undefined;
   apply(bodyIds: string[], appearanceId: string | null, color?: string): void;
+  /** An image of one's own as a new appearance, given to `bodyIds` (if any); `tile`: how many mm the image covers. */
+  importImage(name: string, image: string, tile: [number, number], bodyIds: string[]): void;
+  removeImage(appearanceId: string): void;
   notify(message: string): void;
   close(): void;
 }
@@ -34,6 +39,7 @@ export class AppearancePanel {
   private category: CategoryId | null = "wood";
   private colour = "#d9d4ca";
   private paint = "lacquer-satin";
+  private imageTile = 1000;
 
   constructor(container: HTMLElement, private readonly host: AppearancePanelHost) {
     const shut = el("button", { type: "button", class: "size-7 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": "Fermer Apparence" }, "✕");
@@ -62,6 +68,14 @@ export class AppearancePanel {
       note ? el("span", { class: "text-[10px] text-gray-500" }, note) : null,
     );
     button.addEventListener("click", () => this.applyToSelection(appearance.id, color));
+    if (appearance.category === "custom" && !note) {
+      const remove = el("button", { type: "button", class: "absolute top-0 right-0 size-5 bg-white/90 text-[10px] text-gray-600 hover:text-red-600 dark:bg-gray-900/90", title: "Retirer ce motif du projet", "aria-label": `Retirer le motif ${appearance.name}` }, "✕");
+      remove.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.host.removeImage(appearance.id);
+      });
+      return el("div", { class: "relative" }, button, remove);
+    }
     button.addEventListener("dragstart", (event) => {
       event.dataTransfer?.setData(DRAG_TYPE, JSON.stringify({ id: appearance.id, color }));
       event.dataTransfer?.setData("text/plain", appearance.name);
@@ -94,7 +108,7 @@ export class AppearancePanel {
       "select",
       { class: INPUT, "aria-label": "Catégorie" },
       el("option", { value: "", selected: this.category === null }, "Toutes les catégories"),
-      ...CATEGORIES.map((c) => el("option", { value: c.id, selected: c.id === this.category }, `${c.name} (${APPEARANCES.filter((a) => a.category === c.id).length})`)),
+      ...CATEGORIES.map((c) => el("option", { value: c.id, selected: c.id === this.category }, `${c.name} (${allAppearances().filter((a) => a.category === c.id).length})`)),
     );
     category.addEventListener("change", () => {
       this.category = (category.value || null) as CategoryId | null;
@@ -112,6 +126,25 @@ export class AppearancePanel {
     const paint = el("button", { type: "button", class: BUTTON }, "Appliquer");
     paint.addEventListener("click", () => this.applyToSelection(this.paint, colour.value));
 
+    // An image taken elsewhere (a file of the computer): a new appearance of the project.
+    const file = el("input", { type: "file", accept: "image/png,image/jpeg,image/webp", class: "hidden", "aria-label": "Image du motif" });
+    const pick = el("button", { type: "button", class: `${BUTTON} min-w-0 flex-1 whitespace-nowrap` }, "Importer une image…");
+    pick.addEventListener("click", () => file.click());
+    const size = el("input", { type: "number", min: "10", step: "10", value: String(this.imageTile), class: "h-8 w-20 shrink-0 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900", title: "Largeur couverte par l'image (mm)", "aria-label": "Taille du motif en millimètres" });
+    size.addEventListener("change", () => (this.imageTile = Math.max(10, Number(size.value) || 1000)));
+    file.addEventListener("change", () => {
+      const chosen = file.files?.[0];
+      file.value = "";
+      if (!chosen) return;
+      imageFileToDataUrl(chosen)
+        .then((image) => {
+          this.category = "custom";
+          this.query = "";
+          this.host.importImage(chosen.name.replace(/\.[^.]+$/, ""), image, [this.imageTile, this.imageTile], this.host.targets());
+        })
+        .catch((error: Error) => this.host.notify(error.message));
+    });
+
     const parts: (HTMLElement | null)[] = [
       el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""} (clic sur une vignette).` : "Sélectionnez des corps puis cliquez une vignette, ou glissez une vignette sur un corps de la vue."),
       used.length
@@ -119,6 +152,13 @@ export class AppearancePanel {
         : null,
       el("div", { class: "flex gap-1" }, remove),
       el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Couleur au choix"), el("div", { class: "flex gap-1" }, colour, kind), paint),
+      el(
+        "div",
+        { class: "space-y-1" },
+        el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Mes motifs"),
+        el("div", { class: "flex items-center gap-1" }, pick, size, el("span", { class: "text-gray-500" }, "mm"), file),
+        el("p", { class: "text-[10px] text-gray-500" }, "Une photo de bois, de pierre, de tissu… depuis votre ordinateur. Elle est gardée avec le projet ; la taille dit combien de millimètres l'image couvre."),
+      ),
       el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Bibliothèque"), search, category),
       this.grid,
     ];

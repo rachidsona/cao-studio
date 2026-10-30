@@ -29,8 +29,8 @@ export interface BrowserHandlers {
   onRemoveBodies(bodyIds: string[]): void;
   /** The "⋯" button of a row (`body`: the row is a body, `id` its latest feature). */
   onMenu(id: string, anchor: DOMRect, body: boolean): void;
-  /** Deletes a sketch (from its right click). */
-  onRemoveFeature(id: string): void;
+  /** Deletes sketches (its right click, the bin of the « Esquisses » heading): asked first when there are several. */
+  onRemoveSketches(ids: string[]): void;
   /** Folders made by hand; bodies go by origin (what `onToggleHidden` takes). */
   onNewFolder(bodies: string[]): void;
   onRenameFolder(folder: string, name: string): void;
@@ -112,9 +112,9 @@ function chevron(key: string, name: string): HTMLElement {
 export const CARD =
   "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
   "dark:border-gray-700 dark:bg-gray-800 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]";
-/** A row of a card: flat, blue when selected. */
+/** A row of a card: flat; the selected one lit in #F8F8F8 with dark ink and a blue edge, to be seen at once. */
 const flat = (selected: boolean, idle = "hover:bg-gray-100 dark:hover:bg-gray-700/60") =>
-  selected ? " bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : ` ${idle}`;
+  selected ? " bg-[#F8F8F8] text-[#111827] shadow-[inset_3px_0_0_#0284c7]" : ` ${idle}`;
 
 /** Rows under a folder or a body, shifted right with a guide line. */
 const children = (key: string, rows: HTMLElement[]) =>
@@ -162,6 +162,7 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = ite
     "div",
     {
       class: `flex items-center gap-1 px-1 text-xs ${flat(selected)}`,
+      ...(selected ? { "data-selected": "" } : {}),
       ...(menuKind === "body" ? { "data-head": `body:${item.id}`, draggable: "true" } : {}),
     },
     toggle ?? el("span", { class: "w-5 shrink-0", "aria-hidden": "true" }),
@@ -177,6 +178,7 @@ function historyRow(item: NavItem, selected: boolean): HTMLElement {
   return el(
     "li",
     {
+      ...(selected ? { "data-selected": "" } : {}),
       class: `flex items-center gap-1 px-1 text-[11px] ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
     },
     el(
@@ -249,28 +251,28 @@ function groupNode(group: BodyFolder, s: Selection): HTMLElement {
 /** Buttons of the "Corps" heading, acting on every body: a new folder, the triangle that folds them, the eye, the bin. */
 const HEAD_BUTTON = "flex size-7 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
 
-function bodiesActions(rows: BodyRow[]): HTMLElement[] {
-  const allHidden = rows.every((r) => r.item.hidden);
+/** The eye and the bin of a heading (`all`: « tous les corps », « toutes les esquisses »), tagged `data-hide-<kind>` and `data-remove-<kind>`. */
+function eyeAndBin(all: string, allHidden: boolean, kind: string): HTMLElement[] {
+  const hide = `${allHidden ? "Afficher" : "Masquer"} ${all}`;
   return [
-    el("button", { type: "button", class: HEAD_BUTTON, title: "Nouveau dossier (avec les corps sélectionnés)", "aria-label": "Nouveau dossier", "data-new-folder": "" }, fine(folderIcon(true), 15)),
-    el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
     el(
       "button",
-      {
-        type: "button",
-        class: `${HEAD_BUTTON} ${allHidden ? "" : "text-sky-700 dark:text-sky-300"}`,
-        title: allHidden ? "Afficher tous les corps" : "Masquer tous les corps",
-        "aria-label": allHidden ? "Afficher tous les corps" : "Masquer tous les corps",
-        "aria-pressed": String(!allHidden),
-        "data-hide-all": allHidden ? "show" : "hide",
-      },
+      { type: "button", class: `${HEAD_BUTTON} ${allHidden ? "" : "text-sky-700 dark:text-sky-300"}`, title: hide, "aria-label": hide, "aria-pressed": String(!allHidden), [`data-hide-${kind}`]: allHidden ? "show" : "hide" },
       fine(eyeIcon(!allHidden), 15),
     ),
     el(
       "button",
-      { type: "button", class: `${HEAD_BUTTON} hover:text-red-600 dark:hover:text-red-400`, title: "Supprimer tous les corps", "aria-label": "Supprimer tous les corps", "data-remove-all": "" },
+      { type: "button", class: `${HEAD_BUTTON} hover:text-red-600 dark:hover:text-red-400`, title: `Supprimer ${all}`, "aria-label": `Supprimer ${all}`, [`data-remove-${kind}`]: "" },
       fine(trashIcon(), 15),
     ),
+  ];
+}
+
+function bodiesActions(rows: BodyRow[]): HTMLElement[] {
+  return [
+    el("button", { type: "button", class: HEAD_BUTTON, title: "Nouveau dossier (avec les corps sélectionnés)", "aria-label": "Nouveau dossier", "data-new-folder": "" }, fine(folderIcon(true), 15)),
+    el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
+    ...eyeAndBin("tous les corps", rows.every((r) => r.item.hidden), "all"),
   ];
 }
 
@@ -302,7 +304,7 @@ export function renderBrowser(
     "div",
     {},
     section("Corps", all.length, bodies, "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all) : [], true),
-    section("Esquisses", sketches.length, sketches, "Aucune esquisse."),
+    section("Esquisses", sketches.length, sketches, "Aucune esquisse.", sketches.length ? eyeAndBin("toutes les esquisses", data.sketches.every((s) => s.hidden), "sketches") : []),
   );
   const foldAll = root.querySelector<HTMLElement>("[data-fold-all]");
   if (foldAll) {
@@ -334,8 +336,19 @@ export function renderBrowser(
     event.stopPropagation();
     handlers.onRemoveBodies(all.map((r) => r.item.id));
   });
+  // The same for every sketch.
+  root.querySelector("[data-hide-sketches]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.onSetHidden(data.sketches.map((s) => s.id), (event.currentTarget as HTMLElement).dataset.hideSketches === "hide");
+  });
+  root.querySelector("[data-remove-sketches]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.onRemoveSketches(data.sketches.map((s) => s.id));
+  });
   // Every body and folder of the tree, for the eyes of the folders, the right click and dragging.
-  const ctx: TreeContext = { rows: new Map(all.map((r) => [r.item.id, r])), groups: new Map(), folderOf: new Map(), folders: [], picked: data.picked.bodies, sketches: data.sketches, handlers };
+  const ctx: TreeContext = { rows: new Map(all.map((r) => [r.item.id, r])), groups: new Map(), folderOf: new Map(), folders: [], picked: data.picked.bodies, pickedSketches: data.picked.sketches, sketches: data.sketches, handlers };
   const index = (entry: BodyEntry): void => {
     if (!("group" in entry)) return;
     const inside = entryBodies(entry);
@@ -384,6 +397,24 @@ export function renderBrowser(
     else if (kind === "sketch") handlers.onSelectSketch(id, true);
   });
   container.replaceChildren(root);
+  reveal(root, data);
+}
+
+/** The row last brought into view: a new selection (in the 3D view too) opens its folders and scrolls to it, once. */
+let revealed = "";
+
+function reveal(root: HTMLElement, data: { sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null }): void {
+  const key = data.selectedBodyId ? `body:${data.selectedBodyId}` : data.sketches.some((s) => s.id === data.selectedId) ? `sketch:${data.selectedId}` : "";
+  if (key === revealed) return;
+  revealed = key;
+  const target = key ? root.querySelector<HTMLElement>(`[data-select="${CSS.escape(key)}"]`) : null;
+  if (!target) return;
+  for (let list = target.closest<HTMLElement>("[data-children]"); list; list = list.parentElement?.closest<HTMLElement>("[data-children]") ?? null) {
+    if (list.hidden && list.dataset.children) toggle(root, list.dataset.children);
+  }
+  const section = target.closest("details");
+  if (section) section.open = true;
+  target.scrollIntoView({ block: "nearest" });
 }
 
 /** The triangle of the "Corps" heading: ▾ folds everything open, ▸ unfolds every assembly and body. */

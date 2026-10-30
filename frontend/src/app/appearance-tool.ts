@@ -5,6 +5,7 @@
  */
 import { AppearancePanel, DRAG_TYPE, droppedAppearance } from "../appearance/appearance-panel";
 import { bodyAppearance, setBodyAppearance } from "../appearance/assign";
+import { addCustomAppearance, removeCustomAppearance } from "../appearance/custom";
 import type { Appearance } from "../appearance/library";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -19,11 +20,21 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     const { bodies, faces } = editor.picked.selection;
     return [...new Set([...bodies, ...faces.map((f) => f.bodyId)])];
   };
-  const apply = (bodyIds: string[], appearanceId: string | null, color?: string) => {
-    void editor.change(setBodyAppearance(editor.doc, bodyIds, appearanceId, color));
-    // The view shows appearances ("Rendu des matières" on).
+  // The view shows appearances ("Rendu des matières" on).
+  const showAppearances = () => {
     const toggle = root.querySelector<HTMLButtonElement>('[data-workshop="render"]');
     if (toggle?.getAttribute("aria-pressed") === "false") toggle.click();
+  };
+  const apply = (bodyIds: string[], appearanceId: string | null, color?: string) => {
+    void editor.change(setBodyAppearance(editor.doc, bodyIds, appearanceId, color));
+    showAppearances();
+  };
+  /** An imported image: added to the project and given to the selected bodies, in one step. */
+  const importImage = (name: string, image: string, tile: [number, number], bodyIds: string[]) => {
+    const added = addCustomAppearance(editor.doc, name, image, tile);
+    void editor.change(bodyIds.length ? setBodyAppearance(added.doc, bodyIds, added.id) : added.doc);
+    editor.notify(bodyIds.length ? `Motif « ${name} » importé et appliqué.` : `Motif « ${name} » importé : cliquez-le pour l'appliquer aux corps sélectionnés.`, "success");
+    if (bodyIds.length) showAppearances();
   };
 
   const close = () => {
@@ -52,6 +63,8 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
         return first ? look(first)?.color : undefined;
       },
       apply,
+      importImage,
+      removeImage: (id) => void editor.change(removeCustomAppearance(editor.doc, id)),
       notify: (message) => editor.notify(message, "info"),
       close,
     });
