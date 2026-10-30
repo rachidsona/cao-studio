@@ -6,15 +6,17 @@
  * regeneration; the editor does the actual changes.
  */
 import { bodyTree, type BodyLeaf } from "../document/body-tree";
+import { addFolder, folderIndex, foldersOf, moveToFolder, removeFolder, renameFolder } from "../document/folders";
 import { bodyLabel, bodyOrigin, findFeature, isBodyHidden } from "../document/operations";
-import { featureOfBody } from "../document/types";
+import { PART_SEPARATOR, featureInputs, featureOfBody } from "../document/types";
 import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
-import { groupByKind } from "../ui/body-kinds";
+import { groupByCorps } from "../ui/body-kinds";
 import { ref } from "../ui/dom";
 import { FeatureDialog } from "../ui/feature-dialog";
 import type { NavItem } from "../ui/feature-meta";
+import { isPartition } from "../sketcher/partition-history";
 import { renderTimeline } from "../ui/timeline";
 
 export interface NavigatorHost {
@@ -46,8 +48,10 @@ export interface NavigatorHost {
   remove(id: string): void;
   /** Deletes a body: the feature that created it and everything built on it. */
   removeBody(bodyId: string): void;
-  /** Deletes all these bodies, after asking (one undo step). */
-  removeBodies(bodyIds: string[]): void;
+  /** Deletes all these bodies, after asking (one undo step); false when it was not done. */
+  removeBodies(bodyIds: string[]): Promise<boolean>;
+  /** Stores this change of the document (one undo step): the folders of the browser. */
+  changeDoc(doc: CadDocument): void;
 }
 
 export class Navigator {
@@ -123,16 +127,30 @@ export class Navigator {
       });
       return item ? { item, label: leaf.label, history } : null;
     };
-    const entries = bodyTree(doc, bodies.map((b) => b.id)).flatMap((node): BodyEntry[] => {
-      if (node.kind === "body") {
-        const body = toRow(node.body);
-        return body ? [{ body }] : [];
-      }
-      const rows = node.group.bodies.map(toRow).filter((r): r is BodyRow => r !== null);
-      return [{ group: { id: node.group.id, name: node.group.name, bodies: rows } }];
-    });
-    // The pieces of a Répartition in a folder per kind: Étagères, Côtés, Dessous…
-    return groupByKind(entries);
+    const corpsOf = (entry: BodyEntry) => {
+      const origin = "group" in entry ? entry.group.id : bodyOrigin(doc, entry.body.item.id);
+      const feature = findFeature(doc, origin.includes(PART_SEPARATOR) ? featureOfBody(origin) : origin);
+      const sketch = feature?.type === "extrude" || feature?.type === "niche" ? findFeature(doc, featureInputs(feature)[0] ?? "") : undefined;
+      return sketch?.type === "sketch" && sketch.offsets?.some(isPartition) ? { id: sketch.id, name: sketch.name } : null;
+    };
+    // A folder per corps (a Répartition), its pieces inside in a folder per kind: Étagères, Côtés, Dessous…
+    const build = (ids: string[], scope = ""): BodyEntry[] => {
+      const entries = bodyTree(doc, ids).flatMap((node): BodyEntry[] => {
+        if (node.kind === "body") {
+          const body = toRow(node.body);
+          return body ? [{ body }] : [];
+        }
+        const rows = node.group.bodies.map(toRow).filter((r): r is BodyRow => r !== null);
+        return [{ group: { id: node.group.id, name: node.group.name, entries: rows.map((body) => ({ body })) } }];
+      });
+      return groupByCorps(entries, corpsOf, scope);
+    };
+    // The folders made by hand first (as in Fusion), each with its bodies; then the bodies in no folder.
+    const index = folderIndex(doc);
+    const ids = bodies.map((b) => b.id);
+    const inFolder = (id: string) => index.get(bodyOrigin(doc, id));
+    const folders = foldersOf(doc).map((f): BodyEntry => ({ group: { id: `folder:${f.id}`, name: f.name, folder: f.id, entries: build(ids.filter((id) => inFolder(id) === f.id), `${f.id}:`) } }));
+    return [...folders, ...build(ids.filter((id) => !inFolder(id)))];
   }
 
   render(): void {
@@ -147,8 +165,16 @@ export class Navigator {
         onSelectFeature: (id) => this.host.selectFeature(id),
         onToggleHidden: (id) => this.host.toggleHidden(id),
         onSetHidden: (ids, hidden) => this.host.setHidden(ids, hidden),
-        onRemoveBodies: (ids) => this.host.removeBodies(ids),
+        onRemoveBodies: (ids) => void this.host.removeBodies(ids),
         onMenu: (id, anchor, body) => this.open(id, anchor, body),
+        onRemoveFeature: (id) => this.host.remove(id),
+        onNewFolder: (bodies) => this.host.changeDoc(addFolder(this.host.doc(), "Dossier", bodies).doc),
+        onRenameFolder: (folder, name) => this.host.changeDoc(renameFolder(this.host.doc(), folder, name)),
+        onMoveToFolder: (bodies, folder) => this.host.changeDoc(moveToFolder(this.host.doc(), bodies, folder)),
+        onRemoveFolder: async (folder, bodyIds) => {
+          if (bodyIds.length && !(await this.host.removeBodies(bodyIds))) return;
+          this.host.changeDoc(removeFolder(this.host.doc(), folder));
+        },
       },
     );
     renderTimeline(ref(this.root, "timeline"), operations, selectedId, (id, anchor) => this.open(id, anchor));

@@ -122,9 +122,8 @@ export class Editor {
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
       renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
       removeBody: (id) => this.removePicked({ bodies: [id] }),
-      removeBodies: async (ids) => {
-        if (await askConfirm(`Supprimer ${ids.length > 1 ? `les ${ids.length} corps` : "le corps"} ? (Ctrl+Z pour annuler)`, "Supprimer")) await this.removePicked({ bodies: ids });
-      },
+      removeBodies: async (ids) => (await askConfirm(`Supprimer ${ids.length > 1 ? `les ${ids.length} corps` : "le corps"} ? (Ctrl+Z pour annuler)`, "Supprimer")) && this.removePicked({ bodies: ids }).then(() => true),
+      changeDoc: (doc) => void this.change(doc),
       renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
       editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
       removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),

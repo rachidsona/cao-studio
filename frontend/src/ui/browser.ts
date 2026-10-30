@@ -8,10 +8,13 @@
  * The bodies form a tree that unfolds: the bodies made together (pieces of a
  * split, panels, parts of a cabinet…) are in one folder, and each body opens
  * on the history that built it. What is open is remembered in this browser.
+ * Folders made by hand (Fusion's) come first; a right click, dragging and
+ * renaming in place are in browser-actions.ts.
  */
 import { el } from "./dom";
 import { STATE_BADGES, TYPE_ICONS, type NavItem } from "./feature-meta";
-import { dotsIcon, eyeIcon, trashIcon } from "./icons";
+import { renameFolder, treeMenu, wireDrag, type TreeContext } from "./browser-actions";
+import { dotsIcon, eyeIcon, fine, folderIcon, trashIcon } from "./icons";
 
 export interface BrowserHandlers {
   /** `adding`: Ctrl, Cmd or Maj was held (adds to, or removes from, a multiple selection). */
@@ -26,6 +29,15 @@ export interface BrowserHandlers {
   onRemoveBodies(bodyIds: string[]): void;
   /** The "⋯" button of a row (`body`: the row is a body, `id` its latest feature). */
   onMenu(id: string, anchor: DOMRect, body: boolean): void;
+  /** Deletes a sketch (from its right click). */
+  onRemoveFeature(id: string): void;
+  /** Folders made by hand; bodies go by origin (what `onToggleHidden` takes). */
+  onNewFolder(bodies: string[]): void;
+  onRenameFolder(folder: string, name: string): void;
+  /** Puts these bodies in a folder (null: out of their folder). */
+  onMoveToFolder(bodies: string[], folder: string | null): void;
+  /** Removes a folder, with these bodies (none: they stay, out of any folder). */
+  onRemoveFolder(folder: string, bodyIds: string[]): void;
 }
 
 /** A body of the tree, with the features that built it. */
@@ -36,7 +48,25 @@ export interface BodyRow {
   history: NavItem[];
 }
 
-export type BodyEntry = { body: BodyRow } | { group: { id: string; name: string; bodies: BodyRow[] } };
+/** A folder of the tree: a corps (a Répartition and what equips it), the bodies made together, a kind of pieces. */
+export interface BodyFolder {
+  id: string;
+  name: string;
+  entries: BodyEntry[];
+  /** A folder made by hand (document/folders.ts): it can be renamed, removed, and bodies dropped in it. */
+  folder?: string;
+}
+
+export type BodyEntry = { body: BodyRow } | { group: BodyFolder };
+
+/** Every body of an entry, in the folders inside it too. */
+export function entryBodies(entry: BodyEntry): BodyRow[] {
+  return "group" in entry ? entry.group.entries.flatMap(entryBodies) : [entry.body];
+}
+
+function entryNode(entry: BodyEntry, s: Selection): HTMLElement {
+  return "group" in entry ? groupNode(entry.group, s) : bodyNode(entry.body, s);
+}
 
 const OPEN_KEY = "cao.browser.open";
 
@@ -68,7 +98,7 @@ function chevron(key: string, name: string): HTMLElement {
     "button",
     {
       type: "button",
-      class: "size-6 shrink-0 text-base leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700",
+      class: "size-5 shrink-0 text-xs leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700",
       title: open ? "Replier" : "Déplier",
       "aria-label": `${open ? "Replier" : "Déplier"} ${name}`,
       "aria-expanded": String(open),
@@ -79,7 +109,7 @@ function chevron(key: string, name: string): HTMLElement {
 }
 
 /** The bodies, and the sketches, are each in one card with a strong shadow; the rows inside are flat. */
-const CARD =
+export const CARD =
   "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
   "dark:border-gray-700 dark:bg-gray-800 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]";
 /** A row of a card: flat, blue when selected. */
@@ -96,19 +126,19 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = ite
     "button",
     {
       type: "button",
-      class: `size-8 shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 ${item.hidden ? "text-gray-400 dark:text-gray-500" : "text-sky-700 dark:text-sky-300"}`,
+      class: `size-6 shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 ${item.hidden ? "text-gray-400 dark:text-gray-500" : "text-sky-700 dark:text-sky-300"}`,
       title: item.hidden ? "Afficher" : "Masquer",
       "aria-label": `${item.hidden ? "Afficher" : "Masquer"} ${item.name}`,
       "aria-pressed": String(!item.hidden),
       "data-hide": item.body?.originId ?? item.id,
     },
-    eyeIcon(!item.hidden),
+    fine(eyeIcon(!item.hidden)),
   );
   const select = el(
     "button",
     {
       type: "button",
-      class: "flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left",
+      class: "flex min-h-7 min-w-0 flex-1 items-center gap-2 text-left",
       "aria-pressed": String(selected),
       title: item.message ?? `${item.name} — ${badge.label}`,
       "data-select": onSelectKey,
@@ -120,20 +150,21 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = ite
     "button",
     {
       type: "button",
-      class: "size-8 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700",
+      class: "size-6 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700",
       title: "Modifier, renommer, supprimer",
       "aria-label": `Options de ${item.name}`,
       "data-menu": menuId,
       ...(menuKind ? { "data-menu-kind": menuKind } : {}),
     },
-    dotsIcon(),
+    fine(dotsIcon()),
   );
   return el(
     "div",
     {
-      class: `flex items-center gap-1 px-1 text-sm ${flat(selected)}`,
+      class: `flex items-center gap-1 px-1 text-xs ${flat(selected)}`,
+      ...(menuKind === "body" ? { "data-head": `body:${item.id}`, draggable: "true" } : {}),
     },
-    toggle ?? el("span", { class: "w-6 shrink-0", "aria-hidden": "true" }),
+    toggle ?? el("span", { class: "w-5 shrink-0", "aria-hidden": "true" }),
     eye,
     select,
     menu,
@@ -146,19 +177,19 @@ function historyRow(item: NavItem, selected: boolean): HTMLElement {
   return el(
     "li",
     {
-      class: `flex items-center gap-1 px-1 text-xs ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
+      class: `flex items-center gap-1 px-1 text-[11px] ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
     },
     el(
       "button",
-      { type: "button", class: "flex min-h-7 min-w-0 flex-1 items-center gap-2 text-left", "aria-pressed": String(selected), title: item.message ?? `${item.name} — ${badge.label}`, "data-select": `feature:${item.id}` },
+      { type: "button", class: "flex min-h-6 min-w-0 flex-1 items-center gap-2 text-left", "aria-pressed": String(selected), title: item.message ?? `${item.name} — ${badge.label}`, "data-select": `feature:${item.id}` },
       el("span", { class: "w-4 shrink-0 text-center text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, TYPE_ICONS[item.type]),
       el("span", { class: `flex-1 truncate ${item.suppressed ? "line-through opacity-60" : ""}` }, item.name),
       item.state === "ok" ? null : el("span", { class: `size-2 shrink-0 rounded-full ${badge.dot}`, "aria-label": badge.label }),
     ),
     el(
       "button",
-      { type: "button", class: "size-7 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", title: "Modifier, renommer, supprimer", "aria-label": `Options de ${item.name}`, "data-menu": item.id },
-      dotsIcon(),
+      { type: "button", class: "size-6 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", title: "Modifier, renommer, supprimer", "aria-label": `Options de ${item.name}`, "data-menu": item.id },
+      fine(dotsIcon(), 12),
     ),
   );
 }
@@ -173,28 +204,55 @@ function bodyNode(body: BodyRow, s: Selection): HTMLElement {
   const key = `body:${body.item.body?.originId ?? body.item.id}`;
   const selected = body.item.id === s.selectedBodyId || s.picked.bodies.includes(body.item.id);
   const head = row({ ...body.item, name: body.label }, selected, `body:${body.item.id}`, body.item.id, body.history.length ? chevron(key, body.label) : null, "body");
-  return el("li", {}, head, body.history.length ? children(key, body.history.map((h) => historyRow(h, h.id === s.selectedId))) : null);
+  return el("li", { "data-body": body.item.id }, head, body.history.length ? children(key, body.history.map((h) => historyRow(h, h.id === s.selectedId))) : null);
 }
 
-function groupNode(group: { id: string; name: string; bodies: BodyRow[] }, s: Selection): HTMLElement {
+function groupNode(group: BodyFolder, s: Selection): HTMLElement {
   const key = `group:${group.id}`;
+  const bodies = group.entries.flatMap(entryBodies);
+  // The eye of a folder hides every body inside it (or shows them all again when they are all hidden).
+  const hidden = bodies.every((b) => b.item.hidden);
+  const eye = el(
+    "button",
+    {
+      type: "button",
+      class: `size-6 shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 ${hidden ? "text-gray-400 dark:text-gray-500" : "text-sky-700 dark:text-sky-300"}`,
+      title: hidden ? "Afficher le groupe" : "Masquer le groupe",
+      "aria-label": `${hidden ? "Afficher" : "Masquer"} ${group.name}`,
+      "aria-pressed": String(!hidden),
+      "data-hide-group": group.id,
+      "data-hide-mode": hidden ? "show" : "hide",
+    },
+    fine(eyeIcon(!hidden)),
+  );
+  // A folder made by hand: a folder icon, bodies dropped on it, its name renamed by a double click.
+  const mark = group.folder
+    ? el("span", { class: `w-5 shrink-0 text-amber-600 dark:text-amber-400 ${hidden ? "opacity-60" : ""}`, "aria-hidden": "true" }, fine(folderIcon()))
+    : el("span", { class: `w-5 shrink-0 text-center text-amber-600 dark:text-amber-400 ${hidden ? "opacity-60" : ""}`, "aria-hidden": "true" }, "▰");
   const head = el(
     "div",
-    { class: "flex min-h-9 items-center gap-1 px-1 text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700/60" },
+    {
+      class: "flex min-h-7 items-center gap-1 px-1 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-700/60",
+      "data-head": `group:${group.id}`,
+      draggable: "true",
+      ...(group.folder ? { "data-drop": group.folder } : {}),
+    },
     chevron(key, group.name),
-    el("span", { class: "w-8 shrink-0 text-center text-amber-600 dark:text-amber-400", "aria-hidden": "true" }, "▰"),
-    el("span", { class: "flex-1 truncate" }, group.name),
-    el("span", { class: "px-2 text-xs text-gray-500 dark:text-gray-400" }, String(group.bodies.length)),
+    eye,
+    mark,
+    el("span", { class: `flex-1 truncate ${hidden ? "opacity-60" : ""}`, ...(group.folder ? { "data-folder-name": group.folder, title: "Double-cliquez pour renommer" } : {}) }, group.name),
+    el("span", { class: "px-1.5 text-[10px] text-gray-500 dark:text-gray-400" }, String(bodies.length)),
   );
-  return el("li", { "data-group": group.id }, head, children(key, group.bodies.map((b) => bodyNode(b, s))));
+  return el("li", { "data-group": group.id }, head, children(key, group.entries.map((e) => entryNode(e, s))));
 }
 
-/** Buttons of the "Corps" heading, acting on every body: the triangle that folds them, the eye, the bin. */
+/** Buttons of the "Corps" heading, acting on every body: a new folder, the triangle that folds them, the eye, the bin. */
 const HEAD_BUTTON = "flex size-7 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
 
 function bodiesActions(rows: BodyRow[]): HTMLElement[] {
   const allHidden = rows.every((r) => r.item.hidden);
   return [
+    el("button", { type: "button", class: HEAD_BUTTON, title: "Nouveau dossier (avec les corps sélectionnés)", "aria-label": "Nouveau dossier", "data-new-folder": "" }, fine(folderIcon(true), 15)),
     el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
     el(
       "button",
@@ -206,24 +264,24 @@ function bodiesActions(rows: BodyRow[]): HTMLElement[] {
         "aria-pressed": String(!allHidden),
         "data-hide-all": allHidden ? "show" : "hide",
       },
-      eyeIcon(!allHidden),
+      fine(eyeIcon(!allHidden), 15),
     ),
     el(
       "button",
       { type: "button", class: `${HEAD_BUTTON} hover:text-red-600 dark:hover:text-red-400`, title: "Supprimer tous les corps", "aria-label": "Supprimer tous les corps", "data-remove-all": "" },
-      trashIcon(),
+      fine(trashIcon(), 15),
     ),
   ];
 }
 
-function section(title: string, count: number, rows: HTMLElement[], empty: string, actions: HTMLElement[] = []): HTMLElement {
-  const bodies = actions.length > 0;
+function section(title: string, count: number, rows: HTMLElement[], empty: string, actions: HTMLElement[] = [], bodies = false): HTMLElement {
   return el(
     "details",
     { class: `group/section mx-1.5 mt-1 mb-4 p-1 ${CARD}`, open: true, ...(bodies ? { "data-bodies": "" } : {}) },
     el(
       "summary",
-      { class: "flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase select-none dark:text-sky-400" },
+      // Bodies dropped on the « Corps » heading leave their folder.
+      { ...(bodies ? { "data-drop": "" } : {}), class: "flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase select-none dark:text-sky-400" },
       el("span", { class: "inline-block w-3 transition-transform group-open/section:rotate-90", "aria-hidden": "true" }, "▸"),
       el("span", { class: "flex-1" }, `${title} (${count})`),
       ...actions,
@@ -237,13 +295,13 @@ export function renderBrowser(
   data: { bodies: BodyEntry[]; sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null; picked: { bodies: string[]; sketches: string[] } },
   handlers: BrowserHandlers,
 ): void {
-  const bodies = data.bodies.map((entry) => ("group" in entry ? groupNode(entry.group, data) : bodyNode(entry.body, data)));
-  const all = data.bodies.flatMap((entry) => ("group" in entry ? entry.group.bodies : [entry.body]));
+  const bodies = data.bodies.map((entry) => entryNode(entry, data));
+  const all = data.bodies.flatMap(entryBodies);
   const sketches = data.sketches.map((s) => el("li", {}, row(s, s.id === data.selectedId || data.picked.sketches.includes(s.id), `sketch:${s.id}`)));
   const root = el(
     "div",
     {},
-    section("Corps", all.length, bodies, "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all) : []),
+    section("Corps", all.length, bodies, "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all) : [], true),
     section("Esquisses", sketches.length, sketches, "Aucune esquisse."),
   );
   const foldAll = root.querySelector<HTMLElement>("[data-fold-all]");
@@ -266,16 +324,43 @@ export function renderBrowser(
     const hide = (event.currentTarget as HTMLElement).dataset.hideAll === "hide";
     handlers.onSetHidden([...new Set(all.map((r) => r.item.body?.originId ?? r.item.id))], hide);
   });
+  root.querySelector("[data-new-folder]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.onNewFolder([...new Set(all.filter((r) => data.picked.bodies.includes(r.item.id)).map((r) => r.item.body?.originId ?? r.item.id))]);
+  });
   root.querySelector("[data-remove-all]")?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     handlers.onRemoveBodies(all.map((r) => r.item.id));
   });
+  // Every body and folder of the tree, for the eyes of the folders, the right click and dragging.
+  const ctx: TreeContext = { rows: new Map(all.map((r) => [r.item.id, r])), groups: new Map(), folderOf: new Map(), folders: [], picked: data.picked.bodies, sketches: data.sketches, handlers };
+  const index = (entry: BodyEntry): void => {
+    if (!("group" in entry)) return;
+    const inside = entryBodies(entry);
+    ctx.groups.set(entry.group.id, { group: entry.group, bodies: inside });
+    if (entry.group.folder) {
+      ctx.folders.push({ id: entry.group.folder, name: entry.group.name });
+      for (const r of inside) ctx.folderOf.set(r.item.id, entry.group.folder);
+    }
+    entry.group.entries.forEach(index);
+  };
+  data.bodies.forEach(index);
+  wireDrag(root, ctx);
+  root.addEventListener("dblclick", (event) => {
+    const folder = (event.target as HTMLElement).closest<HTMLElement>("[data-folder-name]")?.dataset.folderName;
+    if (folder) renameFolder(root, folder, handlers);
+  });
   root.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-menu],[data-toggle]");
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-hide-group],[data-menu],[data-toggle]");
     if (!target) return;
     const adding = event.shiftKey || event.ctrlKey || event.metaKey;
-    if (target.dataset.toggle) {
+    if (target.dataset.hideGroup) {
+      const rows = ctx.groups.get(target.dataset.hideGroup)?.bodies ?? [];
+      handlers.onSetHidden([...new Set(rows.map((r) => r.item.body?.originId ?? r.item.id))], target.dataset.hideMode === "hide");
+    }
+    else if (target.dataset.toggle) {
       toggle(root, target.dataset.toggle);
       if (foldAll) syncFoldAll(root, foldAll);
     }
@@ -285,10 +370,14 @@ export function renderBrowser(
     else if (target.dataset.select?.startsWith("sketch:")) handlers.onSelectSketch(target.dataset.select.slice(7), adding);
     else if (target.dataset.select?.startsWith("feature:")) handlers.onSelectFeature(target.dataset.select.slice(8));
   });
-  // On a Mac, Ctrl + clic opens the context menu instead of clicking: it adds to the selection too.
+  // A right click opens the menu of what is under it. On a Mac, Ctrl + clic opens the context menu instead of
+  // clicking: there, it adds to the selection as elsewhere.
   root.addEventListener("contextmenu", (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select]");
-    if (!event.ctrlKey || !target?.dataset.select) return;
+    if (!event.ctrlKey || !target?.dataset.select) {
+      if (treeMenu(event, root, ctx)) event.preventDefault();
+      return;
+    }
     event.preventDefault();
     const [kind, id] = [target.dataset.select.slice(0, target.dataset.select.indexOf(":")), target.dataset.select.slice(target.dataset.select.indexOf(":") + 1)];
     if (kind === "body") handlers.onSelectBody(id, true);

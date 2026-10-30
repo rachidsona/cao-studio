@@ -695,7 +695,13 @@ opération existante.
   le panneau de droite sont des cartes aux coins carrés, avec une ombre portée, posées sur un fond gris et séparées
   d'un petit espace (thèmes clair et sombre). Sur téléphone et tablette, les panneaux restent des feuilles qui montent
   du bas.
-  Le titre **« Navigateur »** est lui aussi une carte, alignée sur celles des corps et des esquisses. Les pièces d'une répartition y sont **rangées par sorte**, dans un dossier chacune dès qu'il y en a deux : **Dessous, Dessus, Côtés, Étagères, Cloisons** (avec leur nombre), fermés au départ, ouverts d'un clic (l'état est retenu) ; les autres corps et les dossiers d'un caisson restent comme avant (`ui/body-kinds.ts`). La liste du navigateur défile **sans barre de défilement** : une petite flèche ▼ en bas (▲ en haut) montre qu'il y a une suite et y fait défiler d'un clic ; la molette, le pavé tactile et le doigt défilent comme d'habitude (`ui/scroll-arrows.ts`).
+  Le titre **« Navigateur »** est lui aussi une carte, alignée sur celles des corps et des esquisses. Chaque **corps** (une Répartition, avec ses divisions et les Penderies et Tiroirs de ses niches) a **son propre dossier**, au nom de son esquisse (« Dressing — mur A »…), ouvert au départ. À l'intérieur, ses pièces sont **rangées par sorte**, dans un dossier chacune dès qu'il y en a deux : **Dessous, Dessus, Côtés, Étagères, Cloisons** (avec leur nombre), fermés au départ, ouverts d'un clic (l'état est retenu). Les Étagères de deux meubles ne sont donc jamais mélangées. Chaque dossier (corps, sorte de pièces, penderie, tiroirs, caisson) a **son œil** : un clic masque tous les corps qu'il contient, un autre les réaffiche. On crée aussi **ses propres dossiers**, comme dans Fusion (« Placard », « Dressing »…). Le bouton dossier+ du titre « Corps » en crée un, avec les corps sélectionnés s'il y en a. On y range des corps en les **glissant** sur le dossier, ou par le **clic droit**. Un double clic renomme le dossier. Glisser un corps sur le titre « Corps » le sort de son dossier. Les dossiers sont enregistrés avec le projet (`document/folders.ts`).
+  Le **clic droit** ouvre un menu sur tout ce qu'on veut (`ui/browser-actions.ts`) :
+  - sur un corps, un groupe ou plusieurs corps sélectionnés : Masquer/Afficher, Modifier, Nouveau dossier, Ranger dans un dossier, Sortir du dossier, Supprimer ;
+  - sur un dossier : Renommer, Défaire (garder ses corps), Supprimer avec ses corps ;
+  - sur une esquisse : Masquer/Afficher, Modifier, Supprimer.
+
+  Sur Mac, Ctrl + clic ajoute toujours à la sélection. L'écriture du navigateur est plus petite (12 px), et les yeux, les ⋯ et les icônes sont plus petits, en trait fin. Les autres corps et les dossiers d'un caisson restent comme avant (`ui/body-kinds.ts`). La liste du navigateur défile **sans barre de défilement** : une petite flèche ▼ en bas (▲ en haut) montre qu'il y a une suite et y fait défiler d'un clic ; la molette, le pavé tactile et le doigt défilent comme d'habitude (`ui/scroll-arrows.ts`).
 - **Fenêtres des outils à droite, en onglets** : les fenêtres des outils (mètre, calques, paramètres, scènes, coupe,
   extrusion, caisson, façades, usinage, réseau, décalage, apparence, rendu…) s'ouvrent dans le panneau de droite,
   chacune dans son **onglet** en haut du panneau, à côté de l'onglet **Sélection** (les propriétés) : l'outil qu'on
@@ -863,7 +869,10 @@ opération existante.
   chaque mur, module par module, de gauche à droite : **penderie longue** (étagère chapeau à 30 cm du haut, tringle
   dessous), **double penderie** (deux tringles l'une sur l'autre), **étagères** (tous les 35 cm environ), **tiroirs et
   étagères** (3 tiroirs dans 72 cm en bas, étagères au-dessus), **penderie et tiroirs** (3 tiroirs en bas, tringle
-  au-dessus). « Proposer un programme selon les longueurs » met environ un module par 80 cm. Le panneau donne la
+  au-dessus). Le programme se présente **comme le navigateur** : une carte, un dossier par mur (replié ou déplié d'un
+  clic, son nombre de modules, « + » pour en ajouter un), et une ligne par module avec son icône, sa sorte à choisir
+  et une corbeille, écrits comme les tableaux de gestion menuiserie. « Proposer un programme selon les longueurs » met
+  environ un module par 80 cm. Le panneau donne la
   largeur de chaque module (une penderie est plus large qu'une colonne d'étagères) et prévient quand une tringle dépasse
   120 cm. L'aperçu se fait en direct ; OK met tout dans l'historique en une seule annulation. Chaque mur devient une
   **Répartition** (« Dressing — mur A ») avec ses **Étagères**, **Penderies** et **Tiroirs** : des étapes ordinaires,

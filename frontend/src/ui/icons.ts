@@ -51,3 +51,19 @@ export function trashIcon(): SVGElement {
     { tag: "path", attrs: { d: "M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" } },
   ]);
 }
+
+/** A folder of the navigator (`plus`: to make a new one). */
+export function folderIcon(plus = false): SVGElement {
+  const shapes: Parameters<typeof icon>[0] = [{ tag: "path", attrs: { d: "M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z" } }];
+  if (plus) shapes.push({ tag: "path", attrs: { d: "M12 11v6M9 14h6" } });
+  return icon(shapes);
+}
+
+/** The same icon smaller and drawn with a fine line (the rows of the navigator). */
+export function fine<T extends SVGElement>(svg: T, size = 14): T {
+  svg.setAttribute("class", "mx-auto");
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  for (const node of svg.children) if (node.getAttribute("stroke-width")) node.setAttribute("stroke-width", "1.25");
+  return svg;
+}

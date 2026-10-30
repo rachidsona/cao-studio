@@ -10,18 +10,27 @@ import { DRESSING, MODULES, defaultProgram, dressingDocument, dressingProblem, p
 import type { CadDocument, Feature } from "../document/types";
 import { formatLength } from "../measurements/units";
 import { partitionLayout } from "../sketcher/partition";
+import { CARD } from "../ui/browser";
+import { el } from "../ui/dom";
+import { toolIcon, trashIcon } from "../ui/icons";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** Kept for the session: the last dressing set. */
 let last: DressingSettings = structuredClone(DRESSING);
 
 const MODULE_OPTIONS = (Object.keys(MODULES) as ModuleKind[]).map((k): [string, string] => [k, MODULES[k].label]);
+/** The toolbar icon of each module, in the program's tree. */
+const MODULE_ICONS: Record<ModuleKind, string> = { long: "i-rod", double: "i-rod", shelves: "i-shelves", drawers: "i-drawers", "rod-drawers": "i-drawers" };
+const MAX_MODULES = 10;
+const ROW_BUTTON = "flex size-7 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700";
 /** Beyond this, a rod bends: a wider hanging module is said (mm). */
 const LONGEST_ROD = 1200;
 
 export class DressingTool extends PanelTool {
   private readonly s: DressingSettings = structuredClone(last);
   private cache: { key: string; doc: CadDocument; result: DressingResult } | null = null;
+  /** The walls folded in the program's tree. */
+  private readonly folded = new Set<WallName>();
 
   constructor(ctx: ToolContext) {
     super(ctx, "Dressing", null);
@@ -89,28 +98,77 @@ export class DressingTool extends PanelTool {
     return `Mur ${wall} : ${widths.map((w) => formatLength(Math.round(w), unit)).join(" · ")}${long ? ` — une tringle dépasse ${formatLength(LONGEST_ROD, unit)} : ajoutez un module` : ""}.`;
   }
 
+  /**
+   * The program drawn as the navigator: in a card, a folder per wall (its modules counted, « + » to add one), and a
+   * row per module with its icon, its kind to choose and a bin.
+   */
+  private programTree(): HTMLElement {
+    const s = this.s;
+    const folders = wallsOf(s).map((wall) => {
+      const program = s.programs[wall];
+      const open = !this.folded.has(wall);
+      const chevron = el(
+        "button",
+        { type: "button", class: "size-6 shrink-0 text-base leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700", title: open ? "Replier" : "Déplier", "aria-expanded": String(open), "aria-label": `${open ? "Replier" : "Déplier"} le mur ${wall}` },
+        el("span", { class: `inline-block transition-transform ${open ? "rotate-90" : ""}`, "aria-hidden": "true" }, "▸"),
+      );
+      chevron.addEventListener("click", () => {
+        if (!this.folded.delete(wall)) this.folded.add(wall);
+        this.render();
+      });
+      const add = el("button", { type: "button", class: `${ROW_BUTTON} text-base`, title: "Ajouter un module", "aria-label": `Ajouter un module au mur ${wall}`, disabled: program.length >= MAX_MODULES }, "+");
+      add.addEventListener("click", () => {
+        const proposed = defaultProgram(wallRun(s, wall).length);
+        this.setProgram(wall, [...program, proposed[program.length % proposed.length] ?? "shelves"]);
+      });
+      const head = el(
+        "div",
+        { class: "flex min-h-9 items-center gap-1 px-1 text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700/60" },
+        chevron,
+        el("span", { class: "w-7 shrink-0 text-center text-amber-600 dark:text-amber-400", "aria-hidden": "true" }, "▰"),
+        el("span", { class: "flex-1 truncate" }, `Mur ${wall}`),
+        el("span", { class: "px-1 text-xs text-gray-500 dark:text-gray-400" }, String(program.length)),
+        add,
+      );
+      const rows = program.map((kind, i) => {
+        const select = el(
+          "select",
+          { class: "min-h-8 min-w-0 flex-1 cursor-pointer truncate bg-transparent text-sm focus:outline-none", "aria-label": `Module ${wall}${i + 1}`, "data-select": `${wall}${i}` },
+          ...MODULE_OPTIONS.map(([v, t]) => el("option", { value: v, selected: v === kind }, t)),
+        );
+        select.addEventListener("change", () => this.setProgram(wall, program.map((k, j) => (j === i ? (select.value as ModuleKind) : k))));
+        const remove = el("button", { type: "button", class: `${ROW_BUTTON} hover:text-red-600 dark:hover:text-red-400`, title: "Retirer ce module", "aria-label": `Retirer le module ${wall}${i + 1}`, disabled: program.length <= 1 }, trashIcon());
+        remove.addEventListener("click", () => this.setProgram(wall, program.filter((_, j) => j !== i)));
+        return el(
+          "li",
+          { class: "flex items-center gap-1 px-1 hover:bg-gray-100 dark:hover:bg-gray-700/60" },
+          el("span", { class: "w-7 shrink-0 text-center text-[11px] text-gray-500 dark:text-gray-400" }, `${wall}${i + 1}`),
+          toolIcon(MODULE_ICONS[kind], "size-5 shrink-0"),
+          select,
+          remove,
+        );
+      });
+      return el(
+        "li",
+        { "data-group": wall },
+        head,
+        el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-600", ...(open ? {} : { hidden: "" }) }, ...rows),
+      );
+    });
+    return el(
+      "div",
+      { class: `cad-tree p-1 ${CARD}` },
+      el("p", { class: "flex min-h-8 items-center px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400" }, `Programme (${wallsOf(s).reduce((n, w) => n + s.programs[w].length, 0)} modules)`),
+      el("ul", { class: "space-y-0.5" }, ...folders),
+    );
+  }
+
   protected rows(): (HTMLElement | null)[] {
     const unit = this.ctx.unit();
     const s = this.s;
     const len = (label: string, key: "lengthA" | "lengthB" | "lengthC" | "height" | "depth" | "thickness" | "plinth") =>
       this.numberRow(label, s[key], unit, (v) => ((s[key] = Math.max(0, v)), this.changed()));
-    const programRows = wallsOf(s).flatMap((wall) => {
-      const program = s.programs[wall];
-      const count = this.selectRow(
-        `Modules du mur ${wall}`,
-        String(program.length),
-        Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), String(i + 1)]),
-        (v) => {
-          const n = Number(v);
-          const proposed = defaultProgram(wallRun(s, wall).length);
-          this.setProgram(wall, Array.from({ length: n }, (_, i) => program[i] ?? proposed[i % proposed.length] ?? "shelves"));
-        },
-      );
-      const modules = program.map((kind, i) =>
-        this.selectRow(`${wall}${i + 1}`, kind, MODULE_OPTIONS, (v) => this.setProgram(wall, program.map((k, j) => (j === i ? (v as ModuleKind) : k)))),
-      );
-      return [count, ...modules];
-    });
+    const programRows = [this.programTree()];
     const problem = dressingProblem(s);
     const left = problem ? [] : this.plan().problems;
     const button = document.createElement("button");

@@ -272,6 +272,9 @@ export function validateDocument(input: unknown): string[] {
     }
   }
   if (input.layers !== undefined && (!Array.isArray(input.layers) || !input.layers.every((l) => isObject(l) && typeof l.id === "string" && typeof l.name === "string" && typeof l.visible === "boolean"))) errors.push("« layers » doit être une liste de calques (id, name, visible).");
+  if (input.folders !== undefined && (!Array.isArray(input.folders) || !input.folders.every((f) => isObject(f) && typeof f.id === "string" && typeof f.name === "string" && Array.isArray(f.bodies) && f.bodies.every((b) => typeof b === "string")))) {
+    errors.push("« folders » doit être une liste de dossiers (id, name, bodies).");
+  }
   if (input.removedBodies !== undefined && (!Array.isArray(input.removedBodies) || !input.removedBodies.every((k) => typeof k === "string"))) {
     errors.push("« removedBodies » doit être une liste de pièces.");
   }

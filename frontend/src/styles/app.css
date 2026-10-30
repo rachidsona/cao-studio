@@ -306,30 +306,30 @@
   .panel-title {
     @apply text-xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400;
   }
-  /* The navigator written as the rows of gestion menuiserie's tables: bold, silver grey, vivid green under the
+  /* The navigator (and the lists drawn like it, `.cad-tree`) written as the rows of gestion menuiserie's tables: bold, silver grey, vivid green under the
      pointer (the selected row keeps its colours). Light theme and Mocha Mist: the ink, a dark green. */
-  [data-ref="tree"] [data-select] {
+  :is([data-ref="tree"], .cad-tree) [data-select] {
     @apply font-bold;
     transition: color 150ms;
   }
-  .dark [data-ref="tree"] [data-select]:not([aria-pressed="true"]),
-  .dark [data-ref="tree"] [data-group] > div {
+  .dark :is([data-ref="tree"], .cad-tree) [data-select]:not([aria-pressed="true"]),
+  .dark :is([data-ref="tree"], .cad-tree) [data-group] > div {
     color: #c0c0c0;
   }
-  [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
-  [data-ref="tree"] [data-group] > div:hover {
+  :is([data-ref="tree"], .cad-tree) :hover > [data-select]:not([aria-pressed="true"]),
+  :is([data-ref="tree"], .cad-tree) [data-group] > div:hover {
     color: #15803d !important;
   }
-  .dark [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
-  .dark [data-ref="tree"] [data-group] > div:hover {
+  .dark :is([data-ref="tree"], .cad-tree) :hover > [data-select]:not([aria-pressed="true"]),
+  .dark :is([data-ref="tree"], .cad-tree) [data-group] > div:hover {
     color: #00ff00 !important;
   }
-  html.dark.palette-mocha [data-ref="tree"] [data-select]:not([aria-pressed="true"]),
-  html.dark.palette-mocha [data-ref="tree"] [data-group] > div {
+  html.dark.palette-mocha :is([data-ref="tree"], .cad-tree) [data-select]:not([aria-pressed="true"]),
+  html.dark.palette-mocha :is([data-ref="tree"], .cad-tree) [data-group] > div {
     color: rgb(var(--ink));
   }
-  html.dark.palette-mocha [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
-  html.dark.palette-mocha [data-ref="tree"] [data-group] > div:hover {
+  html.dark.palette-mocha :is([data-ref="tree"], .cad-tree) :hover > [data-select]:not([aria-pressed="true"]),
+  html.dark.palette-mocha :is([data-ref="tree"], .cad-tree) [data-group] > div:hover {
     color: rgb(4 62 25) !important;
   }
 }

@@ -506,6 +506,15 @@ export interface CadDocument {
   layers?: Layer[];
   /** Variants of the model: named sets of parameter values. */
   configurations?: Configuration[];
+  /** Folders of the navigator (Fusion's): bodies put together by hand — a placard, a dressing… */
+  folders?: Folder[];
+}
+
+/** A folder of the navigator: its bodies by origin (the id of what created each, as in `bodyNames`). */
+export interface Folder {
+  id: string;
+  name: string;
+  bodies: string[];
 }
 
 /** A variant of the model: the values of its plain parameters. */

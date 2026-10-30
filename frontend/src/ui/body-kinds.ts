@@ -1,7 +1,8 @@
 /**
- * The bodies of the navigator grouped by what they are: the pieces of a Répartition and of its divisions — Dessous,
- * Dessus, Côté, Étagère, Cloison, numbered — go in a folder each (« Étagères », « Côtés »…), where the first of
- * them stood, as soon as there are two of a kind. The other bodies, and the folders already made (a cabinet), stay.
+ * The bodies of the navigator grouped by corps, then by what they are. Each corps — a Répartition, with its divisions
+ * and what equips its niches — has its folder, where its first body stood; inside it, the pieces — Dessous, Dessus,
+ * Côté, Étagère, Cloison, numbered — go in a folder each (« Étagères », « Côtés »…) as soon as there are two of a kind,
+ * so that the Étagères of two cabinets are never mixed. The other bodies, and the folders already made, stay.
  */
 import type { BodyEntry, BodyRow } from "./browser";
 
@@ -20,7 +21,8 @@ export function bodyKind(name: string): { id: string; folder: string } | null {
   return kind ? { id: kind[1], folder: kind[2] } : null;
 }
 
-export function groupByKind(entries: BodyEntry[]): BodyEntry[] {
+/** The pieces in a folder per kind; `scope` keeps the folders of two corps apart (and their fold remembered apart). */
+export function groupByKind(entries: BodyEntry[], scope = ""): BodyEntry[] {
   const members = new Map<string, BodyRow[]>();
   for (const entry of entries) {
     if (!("body" in entry)) continue;
@@ -38,7 +40,31 @@ export function groupByKind(entries: BodyEntry[]): BodyEntry[] {
     }
     if (placed.has(kind.id)) continue;
     placed.add(kind.id);
-    out.push({ group: { id: `kind:${kind.id}`, name: kind.folder, bodies: rows } });
+    out.push({ group: { id: `kind:${scope}${kind.id}`, name: kind.folder, entries: rows.map((body) => ({ body })) } });
   }
   return out;
+}
+
+/**
+ * A folder per corps (`corpsOf`: the corps of an entry, null for a body of its own), its pieces grouped by kind inside;
+ * then the pieces left outside any corps grouped by kind as before.
+ */
+export function groupByCorps(entries: BodyEntry[], corpsOf: (entry: BodyEntry) => { id: string; name: string } | null, scope = ""): BodyEntry[] {
+  const members = new Map<string, BodyEntry[]>();
+  const corps = entries.map(corpsOf);
+  entries.forEach((entry, i) => {
+    const c = corps[i];
+    if (c) members.set(c.id, [...(members.get(c.id) ?? []), entry]);
+  });
+  const out: BodyEntry[] = [];
+  const placed = new Set<string>();
+  entries.forEach((entry, i) => {
+    const c = corps[i];
+    if (!c) out.push(entry);
+    else if (!placed.has(c.id)) {
+      placed.add(c.id);
+      out.push({ group: { id: `corps:${scope}${c.id}`, name: c.name, entries: groupByKind(members.get(c.id) ?? [], `${scope}${c.id}:`) } });
+    }
+  });
+  return groupByKind(out, scope);
 }
