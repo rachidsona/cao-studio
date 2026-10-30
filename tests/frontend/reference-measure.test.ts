@@ -1,6 +1,6 @@
 /** Taking a measure from the model: what a corner, an edge or a face gives as the distance of an extrusion. */
 import { describe, expect, it } from "vitest";
-import { planeOfFace, referenceDistance, type Reference } from "../../frontend/src/app/reference-measure";
+import { planeOfFace, referenceDistance, ReferencePicker, type Reference } from "../../frontend/src/app/reference-measure";
 
 const BASE: [number, number, number] = [100, 100, 0];
 const UP: [number, number, number] = [0, 0, 1];
@@ -53,5 +53,32 @@ describe("plan d'une face", () => {
   it("une face dont les normales diffèrent n'a pas de plan ; une face inconnue non plus", () => {
     expect(planeOfFace(mesh, 1)).toBeNull();
     expect(planeOfFace(mesh, 7)).toBeNull();
+  });
+});
+
+describe("choix d'un arrêt à proximité du pointeur", () => {
+  // A viewport where the screen is the xy plane: the distance on screen is the distance in x, y.
+  const viewport = {
+    screenDistance: (event: { x: number; y: number }, p: [number, number, number]) => Math.hypot(event.x - p[0], event.y - p[1]),
+    rayFromEvent: (event: { x: number; y: number }) => ({ origin: [event.x, event.y, 100] as [number, number, number], direction: [0, 0, -1] as [number, number, number] }),
+    pickFace: () => null,
+  };
+  const picker = new ReferencePicker(viewport as never);
+  (picker as unknown as { targets: unknown }).targets = { corners: [[0, 0, 0]], segments: [[[0, 0, 50], [200, 0, 50]]] };
+  const at = (x: number, y: number) => ({ x, y }) as unknown as PointerEvent;
+
+  it("prend un coin à une quinzaine de pixels, pas à vingt", () => {
+    expect(picker.near(at(14, 0))).toMatchObject({ kind: "point" });
+    expect(picker.near(at(0, 22))).toBeNull();
+  });
+
+  it("prend une arête à une dizaine de pixels de son tracé", () => {
+    expect(picker.near(at(100, 10))).toMatchObject({ kind: "edge", point: [100, 0, 50] });
+    expect(picker.near(at(100, 16))).toBeNull();
+  });
+
+  it("le coin passe avant l'arête, et near() ne donne jamais de face", () => {
+    expect(picker.near(at(5, 4))).toMatchObject({ kind: "point" });
+    expect(picker.find(at(100, 60))).toBeNull();
   });
 });

@@ -84,7 +84,7 @@ export class MirrorTool extends PanelTool {
       this.schedulePreview();
     };
     const place = (label: string, where: "min" | "center" | "max") => {
-      const button = el("button", { type: "button", class: "h-7 flex-1 rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
+      const button = el("button", { type: "button", class: "h-7 flex-1 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
       button.addEventListener("click", () => {
         this.position = this.sidePosition(where);
         changed();

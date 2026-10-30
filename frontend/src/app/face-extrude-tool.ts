@@ -3,6 +3,7 @@
  * the face, dragged along its normal; pulling adds material (union), pushing
  * digs into the body (subtraction). The kernel result is previewed live.
  */
+import { THIN_CROSSHAIR } from "../ui/cursor";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, ExtrudeFeature, FaceRef } from "../document/types";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
@@ -11,6 +12,7 @@ import { ArrowHandle } from "../viewport/arrow-handle";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
+import { ReferenceMarker } from "./reference-marker";
 import { OPERATION_LABELS } from "../ui/feature-meta";
 
 const OPERATIONS: [BooleanOperation, string][] = [
@@ -32,6 +34,8 @@ export class FaceExtrudeTool extends PanelTool {
   private arrow: ArrowHandle;
   /** Corners, edges and faces of the bodies as they were when the tool opened, to take a distance from. */
   private reference: ReferencePicker;
+  /** Lights up the corner, edge or face a click would take. */
+  private marker: ReferenceMarker;
 
   constructor(ctx: ToolContext, editing: ExtrudeFeature | null) {
     super(ctx, "Extrusion de faces", editing);
@@ -44,6 +48,7 @@ export class FaceExtrudeTool extends PanelTool {
     this.target = editing?.target;
     this.faces = editing?.faces ?? [];
     this.reference = new ReferencePicker(ctx.viewport);
+    this.marker = new ReferenceMarker(ctx.viewport);
     this.arrow = new ArrowHandle(ctx.viewport, (anchor) =>
       openCalculator({
         container: ctx.container,
@@ -152,8 +157,11 @@ export class FaceExtrudeTool extends PanelTool {
 
   override move(event: PointerEvent): void {
     const value = this.arrow.dragMove(event);
-    if (value !== null) this.setDistance(value);
-    else this.ctx.viewport.renderer.domElement.style.cursor = this.arrow.hovered(event) ? "grab" : "";
+    if (value !== null) return this.setDistance(value);
+    const overArrow = this.arrow.hovered(event);
+    const stop = overArrow ? null : this.reference.find(event, (id) => id === this.id || id.startsWith(`${this.id}#`));
+    this.marker.show(stop);
+    this.ctx.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : stop ? THIN_CROSSHAIR : "";
   }
 
   override up(event: PointerEvent, isClick: boolean): boolean {
@@ -163,6 +171,7 @@ export class FaceExtrudeTool extends PanelTool {
 
   protected override dispose(): void {
     this.arrow.dispose();
+    this.marker.dispose();
     this.ctx.viewport.renderer.domElement.style.cursor = "";
   }
 }

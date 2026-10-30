@@ -1,26 +1,26 @@
 /**
- * Documents de fabrication de l'Atelier : le fichier DXF des pièces pour la commande numérique (chaque panneau
- * mis à plat sur sa grande face, contour exact et perçages) et le devis chiffré à partir de la liste de débit,
- * avec des tarifs réglables (retenus par le navigateur), imprimable et exportable en CSV.
+ * Documents de fabrication de l'Atelier : le devis chiffré à partir de la liste de débit, avec des tarifs réglables
+ * (retenus par le navigateur), imprimable et exportable en CSV ; la commande numérique et les étiquettes sont dans
+ * workshop-cnc.ts.
  */
-import { bodyLabel } from "../document/operations";
 import { cutList } from "../document/cut-list";
 import { DEFAULT_RATES, euros, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../document/quote";
 import type { GeometryClient } from "../geometry/client";
-import { flattenOutline, largestFlatFace, partsDxf, type FlatPart } from "../io/dxf";
+import { modelHardware } from "../document/hardware";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
+import { bindCnc } from "./workshop-cnc";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 
 const RATES_KEY = "cao.quote-rates";
-const INPUT = "h-8 w-24 rounded-md border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
+const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
 
 function loadRates(): QuoteRates {
   try {
     const saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
-    return saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards } } : structuredClone(DEFAULT_RATES);
+    return saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards }, hardware: { ...DEFAULT_RATES.hardware, ...saved.hardware } } : structuredClone(DEFAULT_RATES);
   } catch {
     return structuredClone(DEFAULT_RATES);
   }
@@ -32,31 +32,6 @@ function saveRates(rates: QuoteRates): void {
   } catch {
     // Not remembered: only this window.
   }
-}
-
-/** The DXF of every displayed board, laid flat side by side. */
-async function exportDxf(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
-  const parts: FlatPart[] = [];
-  const skipped: string[] = [];
-  for (const id of viewport.displayedBodies) {
-    const mesh = viewport.bodyMesh(id);
-    const face = mesh ? largestFlatFace(mesh) : -1;
-    const name = bodyLabel(editor.doc, id);
-    if (!mesh || face < 0) {
-      skipped.push(name);
-      continue;
-    }
-    const box = mesh.metrics.bbox;
-    const thickness = Math.min(...[0, 1, 2].map((i) => box[1][i]! - box[0][i]!));
-    try {
-      parts.push(flattenOutline(await geometry.faceOutline(id, face), name, thickness));
-    } catch {
-      skipped.push(name);
-    }
-  }
-  if (!parts.length) return editor.notify("Aucune pièce à plat à exporter.", "info");
-  downloadText("pieces-cnc.dxf", partsDxf(parts), "application/dxf");
-  editor.notify(`DXF exporté : ${parts.length} pièce${parts.length > 1 ? "s" : ""}${skipped.length ? ` (sans face plane : ${skipped.join(", ")})` : ""}.`, "success");
 }
 
 const quoteHtml = (quote: Quote) =>
@@ -73,7 +48,8 @@ const quoteHtml = (quote: Quote) =>
     .join("")}</tbody></table>`;
 
 function showQuote(viewport: Viewport, editor: Editor): void {
-  const { totals } = cutList(editor.doc, partsOf(viewport));
+  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
+  const hardware = modelHardware(editor.doc);
   if (!totals.length) return editor.notify("Aucune pièce à chiffrer.", "info");
   const rates = loadRates();
   const table = el("div", {
@@ -95,6 +71,7 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     "div",
     { class: "grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" },
     ...boards,
+    ...hardware.map((h) => field(h.name, rates.hardware[h.name] ?? 0, "€", (v) => (rates.hardware[h.name] = v))),
     field("Chutes", rates.waste, "%", (v) => (rates.waste = v)),
     field("Chant collé", rates.band, "€/m", (v) => (rates.band = v)),
     field("Découpe par pièce", rates.cutPerPart, "€", (v) => (rates.cutPerPart = v)),
@@ -103,16 +80,16 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     field("Marge", rates.margin, "%", (v) => (rates.margin = v)),
     field("TVA", rates.vat, "%", (v) => (rates.vat = v)),
   );
-  let quote = makeQuote(totals, rates);
+  let quote = makeQuote(totals, rates, hardware, editor.unit);
   const refresh = () => {
-    quote = makeQuote(totals, rates);
+    quote = makeQuote(totals, rates, hardware, editor.unit);
     table.innerHTML = quoteHtml(quote);
   };
   refresh();
   const content = el(
     "div",
     { class: "space-y-4" },
-    el("details", { class: "rounded-md border border-gray-200 p-3 dark:border-gray-700" }, el("summary", { class: "cursor-pointer text-sm font-medium" }, "Tarifs (indicatifs, modifiables)"), el("div", { class: "pt-3" }, settings)),
+    el("details", { class: " border border-gray-200 p-3 dark:border-gray-700" }, el("summary", { class: "cursor-pointer text-sm font-medium" }, "Tarifs (indicatifs, modifiables)"), el("div", { class: "pt-3" }, settings)),
     table,
   );
   const close = openModal("Devis", content, [
@@ -122,7 +99,13 @@ function showQuote(viewport: Viewport, editor: Editor): void {
   ]);
 }
 
+/** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
+export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
+  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
+  return totals.length ? makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit).gross : null;
+}
+
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {
-  root.querySelector('[data-workshop="dxf"]')?.addEventListener("click", () => void exportDxf(viewport, editor, geometry));
+  bindCnc(root, viewport, editor, geometry);
   root.querySelector('[data-workshop="quote"]')?.addEventListener("click", () => showQuote(viewport, editor));
 }

@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { canonicalJson, sameDocument } from "../../frontend/src/document/canonical";
-import { addHole, addPlate, deleteFeature, deleteFeatures, dependentsOf, featuresOfPick, latestBody } from "../../frontend/src/document/operations";
+import { addHole, addPlate, deleteFeature, deleteFeatures, dependentsOf, featuresOfPick, isRemovedBody, latestBody, removePieces } from "../../frontend/src/document/operations";
 import * as THREE from "three";
 import { deletionOf, deletionQuestion } from "../../frontend/src/app/delete-selection";
+import { parseDocument } from "../../frontend/src/document/validate";
 import { rectangleAt } from "../../frontend/src/document/sketch";
 import type { CadDocument } from "../../frontend/src/document/types";
 import { createReferencePlate } from "../../frontend/src/document/types";
@@ -72,9 +73,15 @@ describe("supprimer la sélection (corps et esquisses)", () => {
     };
   };
 
-  it("un corps supprime l'opération qui l'a créé ; une pièce emporte toute son opération", () => {
-    expect(featuresOfPick(doc(), ["h2"], ["sk9"])).toEqual({ ids: ["ex1", "sk9"], wholes: [] });
-    expect(featuresOfPick(doc(), ["cb1#1", "cb1#2"], [])).toEqual({ ids: ["cb1"], wholes: ["cb1"] });
+  it("un corps supprime l'opération qui l'a créé ; une pièce part seule, son opération reste", () => {
+    expect(featuresOfPick(doc(), ["h2"], ["sk9"])).toEqual({ ids: ["ex1", "sk9"], pieces: [] });
+    expect(featuresOfPick(doc(), ["cb1#1", "cb1#2"], [])).toEqual({ ids: [], pieces: ["cb1#1", "cb1#2"] });
+    const without = removePieces(doc(), ["cb1#2"]);
+    expect(without.features.map((f) => f.id)).toContain("cb1");
+    expect(isRemovedBody(without, "cb1#2")).toBe(true);
+    expect(isRemovedBody(without, "cb1#1")).toBe(false);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(without)))).not.toThrow();
+    expect(deletionQuestion(doc(), deletionOf(doc(), { bodies: ["cb1#2"] }))).toBeNull();
   });
 
   it("plusieurs à la fois, en une seule fois ; les opérations qui en dépendent partent avec", () => {
@@ -131,5 +138,20 @@ describe("utilitaires", () => {
     expect(gridStepFor(200)).toBe(10);
     expect(gridStepFor(20)).toBe(1);
     expect(gridStepFor(2000)).toBe(100);
+  });
+});
+
+describe("supprimer une seule pièce", () => {
+  it("le dessus d'un caisson part seul : les autres pièces restent dans le modèle", async () => {
+    const { setupKernel } = await import("./kernel-setup");
+    await setupKernel();
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const cabinet = { id: "cb1", type: "cabinet" as const, name: "Caisson", origin: [0, 0, 0] as [number, number, number], width: 600, height: 720, depth: 560, thickness: 18, back: "applied" as const, backThickness: 3, shelves: 1, plinth: 0, construction: "sides-through" as const };
+    const doc = { ...createReferencePlate(), features: [cabinet] };
+    const all = new Recomputer().recompute(doc).bodies;
+    const without = new Recomputer().recompute(removePieces(doc, ["cb1#3"])).bodies;
+    expect(all).toContain("cb1#3");
+    expect(without).not.toContain("cb1#3");
+    expect(without).toHaveLength(all.length - 1);
   });
 });

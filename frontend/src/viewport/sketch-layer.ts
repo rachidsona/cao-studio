@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { Point3 } from "./body-points";
+import { SELECTED_LINE } from "./colors";
 import type { SketchPick } from "./selection-layer";
 
 export interface SketchDrawing {
@@ -29,9 +30,9 @@ export class SketchLayer {
   /** Sharp where the sketch is in front, faint where a body hides it: sketches stay apparent. */
   private line = new THREE.LineBasicMaterial({ color: 0x2563eb });
   private ghost = new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false });
-  /** The selected sketch is drawn in rose, with its areas tinted. */
-  private selectedLine = new THREE.LineBasicMaterial({ color: 0xe11d48 });
-  private selectedGhost = new THREE.LineBasicMaterial({ color: 0xe11d48, transparent: true, opacity: 0.8, depthTest: false, depthWrite: false });
+  /** The selected sketch is drawn in green (as the lines chosen in a sketch), with its areas tinted. */
+  private selectedLine = new THREE.LineBasicMaterial({ color: SELECTED_LINE });
+  private selectedGhost = new THREE.LineBasicMaterial({ color: SELECTED_LINE, transparent: true, opacity: 0.8, depthTest: false, depthWrite: false });
   private fill = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
   private selectedFill = new THREE.MeshBasicMaterial({ color: 0xe11d48, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
 

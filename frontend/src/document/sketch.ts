@@ -120,6 +120,75 @@ export function isDimension(c: SketchConstraint): c is DimensionConstraint {
   return DIMENSION_KINDS.has(c.kind);
 }
 
+/** A divider: one panel, two back to back, or none (the two cases on each side make one niche). */
+export type DividerKind = "single" | "double" | "none";
+/** Which runs through at a junction: the top and bottom board (across), or the side (over the full height). */
+export type Pass = "board" | "side";
+/** The outer sides can also meet the top and the bottom « d'onglet »: both cut at 45° along the corner's diagonal. */
+export type OuterPass = Pass | "miter";
+/** How the niches share the height: all equal, the bottom one fixed, or the top one fixed. */
+export type ShelfMode = "equal" | "bottom" | "top";
+
+/** What a « Répartition » is made from (see sketcher/partition.ts). */
+export interface PartitionParams {
+  /** Along x. */
+  length: number;
+  /** Along y. */
+  height: number;
+  /** Thickness of every panel (and height of the top). */
+  thickness: number;
+  /** Number of cases (doors), 2 or more. */
+  cases: number;
+  /** The dividers from left to right (cases − 1 of them). */
+  dividers: DividerKind[];
+  /**
+   * The share of the free length each case gets, from the left (absent: all equal). « 1, 2 »: the second case is
+   * twice as wide as the first (a cabinet of 1 door + 2 doors).
+   */
+  widths?: number[];
+  /** Top and bottom panels. */
+  boards: boolean;
+  /** The bottom board is raised by this height, which leaves a plinth under it (mm; 0: no plinth). */
+  plinth: number;
+  /** Which runs through where the outer sides, the simple dividers and the double ones meet the boards. */
+  outer: OuterPass;
+  single: Pass;
+  double: Pass;
+}
+
+/** What a division of a niche by shelves is made from (see sketcher/shelves.ts). */
+export interface ShelfParams {
+  /** Number of shelves; n shelves make n + 1 niches. */
+  count: number;
+  /** Thickness of each shelf. */
+  thickness: number;
+  mode: ShelfMode;
+  /** Height of the fixed niche (mode "bottom" or "top"). */
+  fixed: number;
+  /**
+   * « Cloisons »: upright panels dividing the niche from left to right (the niches share its width; "bottom" is then
+   * the left one, "top" the right one). Absent: shelves.
+   */
+  vertical?: boolean;
+}
+
+/**
+ * The parametric history of a « Répartition »: the partition itself, then the divisions of its niches by shelves
+ * (each its own step, after it). The curves are made again from these steps whenever one of them is changed.
+ */
+export type PartitionStep =
+  | { kind: "partition"; input: PartitionParams; origin: [number, number]; /** Depth of the bodies made from the panels (mm), when extruded. */ depth?: number }
+  | {
+      kind: "shelves";
+      /** The partition whose niche this divides. */
+      of: string;
+      /** Which niche: the case (from the left), then the niche of each earlier division (from the bottom). */
+      niche: number[];
+      input: ShelfParams;
+      /** Depth of the bodies made from the shelves (mm), when extruded. */
+      depth?: number;
+    };
+
 /**
  * A "Décalage" made in the sketch: listed in the timeline, where it can be
  * renamed, edited again or deleted. The curves it created are ordinary curves
@@ -137,6 +206,20 @@ export interface OffsetRecord {
   /** One copy on each side, at the same distance. */
   both: boolean;
   join: "round" | "sharp";
+  /** A « Répartition » or a division by shelves: how it was made, to make it again (the fields above are then empty). */
+  step?: PartitionStep;
+  /** The extrusions made with it (feature ids), one body per element. */
+  bodies?: string[];
+}
+
+/** A text of a sketch: its baseline starts at (x, y), letters `height` mm high, turned by `angle` degrees. */
+export interface SketchText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  height: number;
+  angle?: number;
 }
 
 export interface SketchGeometry {
@@ -144,6 +227,8 @@ export interface SketchGeometry {
   curves: SketchCurve[];
   constraints: SketchConstraint[];
   offsets?: OffsetRecord[];
+  /** Texts written in the sketch (not seen by the solver). */
+  texts?: SketchText[];
 }
 
 /** Ids of the points a curve is built on. */

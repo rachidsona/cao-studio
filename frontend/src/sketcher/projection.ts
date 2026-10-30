@@ -9,8 +9,9 @@
  */
 import type { SketchCurve, SketchGeometry, SketchPoint } from "../document/sketch";
 import type { PlaneName, Vec3 } from "../document/types";
-import type { FaceOutline } from "../geometry/protocol";
+import type { EdgeOutline, FaceOutline } from "../geometry/protocol";
 import { orientedArc } from "./arc";
+import { cloneGeometry } from "./edit";
 import { toSketch, type SketchFrame } from "./frame";
 
 const ALIGNED = 1 - 1e-6;
@@ -65,4 +66,57 @@ export function projectOutline(outline: FaceOutline, frame: SketchFrame): Sketch
     }
   }
   return { points, curves, constraints: [] };
+}
+
+/**
+ * Projects one body edge into a sketch as fixed reference geometry (purple, to snap on): a line stays a line; a
+ * circle or an arc parallel to the sketch plane stays exact; any other edge becomes points along it joined by lines.
+ * Points already there (within a micron) are reused. A reason (string) when the edge projects to a point.
+ */
+export function projectEdge(g: SketchGeometry, outline: EdgeOutline, frame: SketchFrame): SketchGeometry | string {
+  const next: SketchGeometry = cloneGeometry(g);
+  const used = new Set<string>([...next.points, ...next.curves, ...next.constraints].map((e) => e.id));
+  const fresh = (prefix: string) => {
+    let n = 1;
+    while (used.has(`${prefix}${n}`)) n++;
+    used.add(`${prefix}${n}`);
+    return `${prefix}${n}`;
+  };
+  const point2 = ([x, y]: [number, number]): string => {
+    const existing = next.points.find((q) => q.fixed && Math.hypot(q.x - x, q.y - y) <= MERGE);
+    if (existing) return existing.id;
+    const id = fresh("q");
+    next.points.push({ id, x: Number(x.toFixed(9)), y: Number(y.toFixed(9)), fixed: true });
+    return id;
+  };
+  const flags = { construction: true, projected: true } as const;
+  const before = next.curves.length;
+  const n = frame.normal;
+  const parallel = (samples: Vec3[]) => {
+    const [a, b, c] = [samples[0]!, samples[Math.floor(samples.length / 3)]!, samples[Math.floor((2 * samples.length) / 3)]!];
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const m = [u[1]! * v[2]! - u[2]! * v[1]!, u[2]! * v[0]! - u[0]! * v[2]!, u[0]! * v[1]! - u[1]! * v[0]!];
+    const l = Math.hypot(...m) || 1;
+    return Math.abs((m[0]! * n[0] + m[1]! * n[1] + m[2]! * n[2]) / l) >= ALIGNED;
+  };
+  const exactRound = outline.edges.length === 1 && outline.edges[0]!.kind !== "line" && parallel(outline.samples);
+  if (outline.edges.every((e) => e.kind === "line") || exactRound) {
+    const geometry = projectOutline({ surface: "PLANE", center: [0, 0, 0], normal: n, edges: outline.edges }, frame);
+    // Re-number the projected entities into the sketch, reusing the points already there.
+    const ids = new Map(geometry.points.map((p) => [p.id, point2([p.x, p.y])]));
+    for (const c of geometry.curves) {
+      const id = fresh("r");
+      if (c.kind === "line") {
+        const [p1, p2] = [ids.get(c.p1)!, ids.get(c.p2)!];
+        if (p1 !== p2) next.curves.push({ ...c, id, p1, p2, ...flags });
+      } else if (c.kind === "circle") next.curves.push({ ...c, id, center: ids.get(c.center)!, ...flags });
+      else next.curves.push({ ...c, id, center: ids.get(c.center)!, start: ids.get(c.start)!, end: ids.get(c.end)!, ...flags });
+    }
+  } else {
+    // Slanted or free curve: its points, seen along the sketch's normal, joined by lines.
+    const pts = outline.samples.map((p) => point2(toSketch(frame, p)));
+    for (let i = 1; i < pts.length; i++) if (pts[i] !== pts[i - 1]) next.curves.push({ id: fresh("r"), kind: "line", p1: pts[i - 1]!, p2: pts[i]!, ...flags });
+  }
+  return next.curves.length === before ? "Cette arête est vue de bout depuis le plan de l'esquisse : sa projection est un point." : next;
 }

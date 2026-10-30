@@ -1,7 +1,7 @@
 /**
  * Selection of faces and edges in the 3D model: fetches their measurements
  * from the kernel (edge length / diameter, face type and area), labels the
- * selected edges in the view, and exposes the selection to the tools
+ * selected edges in the view (two parallel edges: the distance between them), and exposes the selection to the tools
  * (fillet/chamfer on edges, extrusion or hole on faces).
  */
 import type { DisplayUnit } from "../document/types";
@@ -9,6 +9,8 @@ import type { GeometryClient } from "../geometry/client";
 import type { EdgeInfo, FaceInfo } from "../geometry/protocol";
 import { formatArea, formatLength } from "../measurements/units";
 import type { Point3 } from "../viewport/body-points";
+import { edgePoints } from "../viewport/edge-geometry";
+import { parallelGap, type ParallelGap } from "../viewport/parallel-gap";
 import type { EdgePick, FacePick, ModelSelection, SketchPick, VertexPick, Viewport } from "../viewport/viewport";
 
 export interface SelectionSummary {
@@ -20,6 +22,8 @@ export interface SelectionSummary {
   bodies: { id: string; name: string }[];
   /** Whole sketches of a multiple selection. */
   sketches: { id: string; name: string }[];
+  /** Two parallel straight edges: the distance between them (mm). */
+  gap?: number;
 }
 
 const SURFACES: Record<string, string> = { PLANE: "plane", CYLINDRE: "cylindrique", CONE: "conique", SPHERE: "sphérique", TORUS: "torique" };
@@ -101,7 +105,23 @@ export class ModelSelectionController {
       sketch: this.selection.sketch.map((p) => ({ ...p, sketchName: this.host.sketchName(p.sketchId) })),
       bodies: this.selection.bodies.map((id) => ({ id, name: this.host.bodyName(id) })),
       sketches: this.selection.sketches.map((id) => ({ id, name: this.host.sketchName(id) })),
+      ...(this.gap() ? { gap: (this.gap() as ParallelGap).distance } : {}),
     };
+  }
+
+  /** The distance between the two selected edges, when there are two and they are parallel and straight. */
+  private gap(): ParallelGap | null {
+    const [a, b] = this.selection.edges;
+    if (this.selection.edges.length !== 2 || !a || !b) return null;
+    const ma = this.viewport.bodyMesh(a.bodyId);
+    const mb = this.viewport.bodyMesh(b.bodyId);
+    return ma && mb ? parallelGap(edgePoints(ma, a.edgeIndex), edgePoints(mb, b.edgeIndex)) : null;
+  }
+
+  /** Draws (or removes) the distance between two parallel edges in the view. */
+  private showGap(): void {
+    const gap = this.gap();
+    this.viewport.setEdgeGap(gap ? { from: gap.from, to: gap.to, text: formatLength(gap.distance, this.host.unit()) } : null);
   }
 
   /** Relabels the selected edges (after a change of display unit). */
@@ -110,10 +130,12 @@ export class ModelSelectionController {
       const info = this.edgeInfos.get(`${pick.bodyId}#${pick.edgeIndex}`);
       if (info) this.viewport.setEdgeLabel(pick, edgeText(info, this.host.unit()));
     }
+    this.showGap();
   }
 
   private async update(selection: ModelSelection): Promise<void> {
     this.selection = selection;
+    this.showGap();
     this.host.changed();
     try {
       await Promise.all([

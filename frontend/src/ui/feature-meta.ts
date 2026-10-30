@@ -3,7 +3,7 @@ import type { BooleanOperation, Feature } from "../document/types";
 import type { FeatureState } from "../history/recompute";
 
 /** Feature types, plus the offsets made inside sketches. */
-export type NavType = Feature["type"] | "offset";
+export type NavType = Feature["type"] | "offset" | "partition" | "shelves" | "cloisons";
 
 export const TYPE_LABELS: Record<NavType, string> = {
   sketch: "Esquisse",
@@ -14,6 +14,9 @@ export const TYPE_LABELS: Record<NavType, string> = {
   chamfer: "Chanfrein",
   combine: "Combinaison",
   offset: "Décalage",
+  partition: "Répartition",
+  shelves: "Étagères",
+  cloisons: "Cloisons",
   split: "Scission",
   move: "Déplacement",
   panels: "Panneaux",
@@ -25,6 +28,11 @@ export const TYPE_LABELS: Record<NavType, string> = {
   rotate: "Rotation",
   machining: "Usinage",
   sweep: "Suivre-moi",
+  shell: "Coque",
+  loft: "Lissage",
+  modifier: "Modificateur",
+  fronts: "Façades",
+  niche: "Équipement de niche",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -36,6 +44,9 @@ export const TYPE_ICONS: Record<NavType, string> = {
   chamfer: "◸",
   combine: "⧉",
   offset: "⇉",
+  partition: "▥",
+  shelves: "☰",
+  cloisons: "▯",
   split: "✂",
   move: "✥",
   panels: "▤",
@@ -47,6 +58,42 @@ export const TYPE_ICONS: Record<NavType, string> = {
   rotate: "↻",
   machining: "⛭",
   sweep: "⤳",
+  shell: "◫",
+  loft: "⏢",
+  modifier: "≈",
+  fronts: "▯",
+  niche: "⌒",
+};
+
+/** The toolbar icon (sprite id, templates/editor/_icons.html) of each type: the history shows these instead of names. */
+export const TYPE_SPRITES: Record<NavType, string> = {
+  sketch: "i-sketch",
+  extrude: "i-extrude",
+  hole: "i-hole",
+  revolve: "i-revolve",
+  fillet: "i-fillet",
+  chamfer: "i-chamfer",
+  combine: "i-combine",
+  offset: "i-offset",
+  partition: "i-partition",
+  shelves: "i-shelves",
+  cloisons: "i-cloisons",
+  split: "i-split",
+  move: "i-move-3d",
+  panels: "i-panels",
+  cabinet: "i-cabinet",
+  mirror: "i-mirror",
+  align: "i-align",
+  stretch: "i-stretch",
+  array: "i-array",
+  rotate: "i-rotate",
+  machining: "i-machining",
+  sweep: "i-sweep",
+  shell: "i-shell",
+  loft: "i-loft",
+  modifier: "i-modifier",
+  fronts: "i-fronts",
+  niche: "i-rod",
 };
 
 /** Names of the boolean operations, the same everywhere in the interface (Fusion's words). */

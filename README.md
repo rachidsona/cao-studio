@@ -57,7 +57,9 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
   `DJANGO_TRUST_X_FORWARDED_PROTO=true` derrière un proxy HTTPS ; `DJANGO_ADMINS` (adresses) pour recevoir les erreurs
-  serveur par courriel.
+  serveur par courriel ; `ANTHROPIC_API_KEY` (clé de l'API Claude) pour l'assistant de modélisation — sans elle,
+  l'assistant répond « non configuré » et le reste fonctionne.
+- `python manage.py migrate` à chaque mise à jour (la migration `0002_sharing` ajoute liens client et commentaires).
 - `npm run build` puis `python manage.py collectstatic` : WhiteNoise sert les fichiers statiques compressés (gzip et
   brotli : le noyau de 23 Mo descend à 5 Mo) ; les fichiers nommés d'après leur contenu (`js/chunks/`, `js/assets/`)
   sont mis en cache un an, `editor.js` porte un numéro de version. Three.js et les bibliothèques sont dans des fichiers
@@ -116,19 +118,52 @@ serveur accepte les deux versions.
 
 - **Création** : « Esquisse » puis le plan XY, XZ ou YZ (avec décalage le long de la normale). « Modifier
   l'esquisse » rouvre une esquisse existante.
+- **Plan de construction** (« Esquisse › Plan de construction… », comme les plans de Fusion) : un plan principal
+  **décalé et incliné** d'un angle autour de son axe x ou y, ou le plan passant par **trois coins** de corps
+  cliqués. Le plan est montré dans la vue (carré orange, axe x en rouge) pendant le réglage, puis « Esquisser sur ce
+  plan ». Le plan est enregistré avec l'esquisse (`frame` : origine, axe x, normale) ; le noyau extrude, tourne et
+  balaie exactement ce qui est dessiné. Le « décalage du plan » du panneau déplace le plan le long de sa normale.
 - **Esquisse sur une face** :
   - avec une face plane sélectionnée, « Esquisse » (ou « Esquisse sur la face » dans le panneau
     Sélection) démarre directement sur cette face, sans choix de plan ;
   - le contour de la face et ses trous sont projetés en violet comme géométrie de référence fixe, sur
     laquelle on s'accroche : tracer sur les coins projetés reproduit exactement les mesures du corps ;
   - l'extrusion d'une telle esquisse propose par défaut une union avec le corps de la face.
-  - Limites : seules les faces parallèles aux plans XY, XZ et YZ sont prises en charge, et la
-    projection n'est pas associative (si le corps change, l'esquisse ne suit pas).
+  - une face **inclinée** reçoit un plan de construction, son axe x le long de sa plus grande arête ;
+  - Limites : faces planes seulement (pas de face courbe), et la projection n'est pas associative (si le corps
+    change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+- **Polygone et oblong** (comme Fusion) : *polygone régulier* (centre puis un sommet ; chiffres 3 à 9 pour le
+  nombre de côtés), côtés égaux et sommets sur un cercle de construction, libre en centre, taille et orientation ;
+  *oblong* de centre à centre (deux centres puis la largeur), deux demi-cercles de même rayon.
+- **Ovale et courbe lissée** : l'*ovale à quatre centres* du tracé de menuiserie (centre puis un coin du rectangle
+  qui l'entoure) et la *courbe lissée* passant par des points cliqués (recliquer le dernier point pour finir, le
+  premier pour fermer). Les deux sont faits d'arcs tangents (« biarcs ») : ajuster, décaler, extruder et l'export DXF
+  en arcs fonctionnent comme pour le reste ; à chaque raccord, les deux centres et le point restent alignés.
+- **Texte** : cliquez où commence la ligne de base, tapez le texte, sa hauteur et son angle (Roboto, licence OFL) ;
+  recliquez un texte pour le modifier ou le supprimer. Les lettres sont extrudées avec le profil de l'esquisse : pour
+  **graver**, écrivez le texte dans une esquisse sur la face et extrudez-la en « Couper ». Un texte de plusieurs
+  lettres ne peut pas faire seul un « Nouveau corps » (chaque lettre serait un solide à part).
+- **Projeter** : cliquez des arêtes des corps ; elles s'ajoutent en violet comme repères fixes (exactes quand elles
+  sont parallèles au plan de l'esquisse, sinon en points reliés).
+- **Congé et chanfrein de coin** : cliquez un coin où deux lignes se rejoignent, tapez le rayon (arc tangent aux
+  deux lignes) ou la distance (ligne de coupe). Le coin d'origine reste comme *coin virtuel* sur les deux lignes
+  prolongées : les cotes qui le visaient continuent de valoir et l'esquisse garde la même liberté.
   Une fois une forme terminée (rectangle, cercle, arc, polyligne refermée), on revient à l'outil Sélection ;
   Échap termine une polyligne ouverte et revient aussi à la Sélection. Les autres outils (cotes,
   contraintes, Décalage, Déplacer) ne changent pas.
+- **Décaler l'arête** (bouton à côté de « Décalage », comme Shapr3D) : **sans fenêtre**. Dans l'esquisse, un clic sur
+  un trait, une **arête d'un corps** ou une **face** (toutes ses arêtes) en fait aussitôt la copie parallèle, à la
+  **dernière distance utilisée** (gardée d'une fois sur l'autre), vers l'intérieur de la forme ou de la face. Une flèche
+  sur la copie se **tire** pour régler la distance (au-delà du trait : l'autre côté), ou bien on **tape** la valeur : un
+  chiffre (aussi la rangée du haut d'un clavier AZERTY sans Maj) l'ouvre à sa place, Entrée l'applique, « - » passe
+  de l'autre côté ; le champ **calcule** (« 250-180 », « (250-180)/2+5 », « 1 m - 20 cm ») ; un **clic sur l'étiquette**
+  ouvre la **calculatrice** (touches, parenthèses, mm / cm / m) avec la distance dedans, pour calculer une mesure. Chaque réglage est une étape d'annulation. Un autre clic fait une autre copie
+  (aussi de la copie qu'on vient de faire) ; l'outil reste actif jusqu'à **Échap**, et les copies restent. Les arêtes
+  des corps sont projetées en repères violets (sans doubler celles déjà dans l'esquisse) ; les copies sont de vrais
+  traits, listées dans l'historique (« Arête décalée n »). Le calcul est dans `sketcher/edge-offset-tool.ts` et
+  `sketcher/offset-edge.ts`.
 - **Décalage** (touche O, bouton « Décalage ») : copie parallèle de lignes, segments, arcs, cercles,
   polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :
   - cliquez les éléments (un clic prend toute la chaîne connectée, ou un seul élément si « Sélection en
@@ -148,7 +183,7 @@ serveur accepte les deux versions.
   - le décalage n'est pas associatif : si l'original change ensuite, la copie ne suit pas.
 - **Lire et choisir les traits** (mode esquisse) : les traits sont dessinés **épais** (2,2 px, 3,2 px quand ils sont
   survolés ou choisis) pour être faciles à viser. Le trait sous le pointeur — celui qu'un clic choisirait — passe en
-  **jaune** ; les traits et points **choisis** sont en **vert** (#5DD62C) ; les **zones fermées** sont teintées en bleu
+  **jaune** ; les traits et points **choisis** sont en **vert** (#63DF0F, comme les arêtes choisies et l'esquisse sélectionnée dans la vue 3D) ; les **zones fermées** sont teintées en bleu
   (#2078CF), plus fort sous le pointeur quand aucun trait n'est visé. Un clic **à l'intérieur d'une forme** choisit ses
   côtés (la plus petite zone sous le pointeur, même un rectangle dans un autre) ; un second clic les relâche. Quand deux
   traits sont superposés (un côté commun), **recliquer au même endroit** passe au trait suivant.
@@ -159,6 +194,10 @@ serveur accepte les deux versions.
   arcs. Les morceaux partagent leurs bouts, tenus sur la courbe qui croise ; une ligne horizontale ou verticale le reste
   morceau par morceau ; les cotes et égalités de la courbe entière sont retirées. Une courbe que rien ne croise ne se
   coupe pas.
+- **Supprimer un morceau** (comme Shapr3D) : avec l'outil Sélection, cliquez une ligne là où d'autres la croisent — le
+  morceau compris entre les deux croisements autour du clic s'affiche en pointillés — puis **Suppr** : seul ce morceau
+  part (le bout d'un montant qui dépasse dans une traverse…), le reste de la ligne reste. Une ligne que rien ne croise,
+  ou choisie par fenêtre ou en cliquant dans une forme, part entière comme avant (`sketcher/segment-delete.ts`).
 - **Ajuster** (bouton « Ajuster », groupe Modifier), le « Ajuster » (Trim) de Fusion : en survolant une ligne, un arc
   ou un cercle, la partie **entre les deux croisements** autour du pointeur s'affiche ; un clic la supprime. Sans croisement d'un côté, la
   partie va jusqu'au bout de la courbe (elle est raccourcie) ; sans aucun croisement, la courbe entière disparaît. Une ligne
@@ -251,7 +290,20 @@ serveur accepte les deux versions.
   « Contraintes ». Une contrainte en conflit reste toujours visible en rouge.
 - Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.
 - **Extrusion**, comme dans Fusion 360 :
-  - le bouton (ou la touche E) surligne les profils fermés ;
+  - le bouton (ou la touche E) surligne les profils fermés ; quand l'esquisse a **plusieurs zones**, aucune n'est
+    choisie d'avance (comme Shapr3D) : cliquez celle à extruder, la flèche vient dessus, puis d'autres pour les
+    ajouter. Une esquisse d'une seule zone, ou une extrusion qu'on modifie, garde ses zones ;
+  - **plusieurs solides séparés** : des profils écartés extrudés ensemble (les quatre pieds d'une table), un îlot dans
+    un trou, ou une coupe qui traverse tout un panneau donnent **un corps par solide** (« Extrusion 1 — pièce 1 », « — pièce 2 »…,
+    numérotés de gauche à droite), au lieu d'une erreur. Même chose pour la révolution, le lissage et le balayage ;
+  - **départ** : « Plan du profil », ou « Décalé » comme dans Fusion — l'extrusion commence à une distance du plan de
+    l'esquisse, le long de sa normale (négative : de l'autre côté), puis s'étend de sa distance ; l'aperçu et la flèche
+    partent du plan décalé. Le décalage est enregistré avec l'extrusion (`startOffset`, en mm) et peut être lié à un
+    paramètre ;
+  - **viser facilement un arrêt** : ce qu'un clic prendrait s'allume avant de cliquer — un anneau orange sur un coin,
+    une ligne orange sur une arête, la teinte de survol sur une face — et le curseur devient une croix. Un coin se prend
+    jusqu'à une quinzaine de pixels, une arête jusqu'à une dizaine, **même par-dessus une zone de l'esquisse** ; seul un
+    coin ou une arête au niveau du profil lui-même laisse le clic choisir la zone. Même chose pour l'extrusion de faces ;
   - **prendre une mesure sur le modèle** : pendant qu'on règle la distance, cliquez un **point** (coin), une **arête** ou
     une **face** d'un corps (le même, ou un autre) : un coin ou une face donne son **niveau** — l'extrusion s'arrête
     exactement là, au-dessus ou en dessous du profil — et une arête donne son niveau ou sa **longueur** (choix « Arête »
@@ -310,12 +362,22 @@ opération existante.
   - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
     en modifiant le corps ; « Corps entier » déplace le corps, et la normale de la face sert de repère local ;
   - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
-  - Le **manipulateur XYZ** (axe X rouge, Y vert, Z bleu) se tire par une flèche (déplacement le long d'un
-    axe) ou par un carré (dans le plan XY, XZ ou YZ) ; le pas s'adapte au zoom. On peut aussi saisir le
-    déplacement relatif (Δ), la distance sur un axe, ou la position absolue du centre.
-  - **Pivot et cible** (mode par défaut, comme le déplacement de Fusion) : en survolant une face, ses
-    **coins** et son **milieu** apparaissent (points blancs, celui sous le curseur en orange) et le
-    manipulateur suit ce point ; un clic y place le **pivot** (les flèches). Ensuite :
+  - Le **manipulateur**, dans l'esprit de Shapr3D : tout blanc et sobre, de taille constante à l'écran. Une
+    **flèche fine** par axe (un filet rouge, vert ou bleu au départ dit l'axe : X rouge, Y vert, Z bleu) déplace
+    le long de l'axe ; une **petite tuile** déplace dans un plan (XY, XZ ou YZ) ; le **point central** avec son
+    anneau déplace librement dans le plan de l'écran ; trois **flèches courbes** font tourner autour de X, Y ou
+    Z. La poignée survolée grossit et prend la couleur de son axe. Une flèche courbe ouvre l'outil **Tourner** sur
+    le même corps (ou la même esquisse), autour de cet axe, et le geste continue : l'angle suit le curseur par pas
+    de 5° (Maj : angle libre) avec l'aperçu en direct, et se règle aussi dans le panneau ; le pivot est le centre
+    de la sélection ou un coin cliqué. Les flèches courbes tournent autour des axes globaux : elles sont masquées
+    dans un repère local. Le même manipulateur, avec les seules flèches du plan et le point, sert à déplacer une
+    esquisse. On peut aussi saisir le déplacement relatif (Δ), la distance sur un axe, ou la position absolue du
+    centre.
+  - **Pivot et cible** (mode par défaut, comme le déplacement de Fusion) : en survolant un élément, **tous
+    ses coins** (ceux d'un panneau mince en entier, pas seulement ceux de la face visée) et le **milieu** de la face
+    apparaissent en **carrés vides** bien lisibles, comme dans l'esquisse (bord sombre autour d'un trait blanc ; celui
+    sous le curseur devient un carré orange plein, un peu plus grand ; le pivot est un carré rose, la cible un carré
+    vert) et le manipulateur suit ce point ; un clic y place le **pivot** (les flèches). Ensuite :
     - un clic sur un coin ou le milieu d'une face d'**un autre corps** amène le pivot sur ce point ;
     - un clic à l'intérieur d'une **face plane** d'un autre corps amène le corps sur le plan de cette face
       (déplacement le long de sa normale seulement) ;
@@ -341,6 +403,108 @@ opération existante.
     dessous toute largeur. Les pièces ne partagent jamais de matière.
   - Un nouveau caisson se place à droite des corps existants, sur le même sol et le même alignement avant
     (position X, Y, Z modifiable : coin avant gauche en bas). Il se modifie depuis l'historique ou les Propriétés.
+- **Répartition** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères » et « Cloisons ») : elle se
+  travaille **directement dans la vue 3D**, comme dans Polyboard, la caméra libre et les corps opaques : les panneaux
+  qu'elle fera sont montrés en **volumes orange** (à la profondeur demandée) pendant qu'on règle les valeurs, un clic
+  dans la vue pose son coin bas-gauche sur le plan de face, et l'OK (Entrée) les fait. Ses lignes vont dans une
+  **nouvelle esquisse du plan XZ** (de face : le meuble est debout, ses niches ouvertes vers l'avant), qu'on n'a pas
+  à ouvrir ; « Extruder les panneaux » est coché. C'est un rectangle de **hauteur × longueur** (par exemple 250 × 180 cm) divisé en
+  **2 à 12 cases égales, une par porte**, avec ses côtés dessinés à leur épaisseur (deux traits, 18 mm par défaut).
+  - **Côtés** : chacun est **simple** (un panneau) ou **double** (deux panneaux dos à dos, où deux modules se
+    rejoignent). Au départ : 2 cases = un simple ; 3 = simple et double ; 4 = simple, double, simple ; 5 = simple,
+    double, double, simple (les doubles au milieu) ; et chaque côté se change un par un (« Côté 1 », « Côté 2 »…).
+  - **Largeur d'une case** : `(longueur − 2 × épaisseur − côtés) / cases` (1500 mm, 18 mm, 3 cases : 470 mm, comme
+    l'esquisse du lit), écrite dans la vue pendant qu'on règle.
+  - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
+    il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
+    « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.
+  - **Sans côté** : chaque liste « Côté n » (quel que soit le nombre de cases, de 2 à 12) propose, en plus de Simple
+    et Double, **« Sans côté »** : les deux cases voisines ne font qu'une niche, large des deux cases **plus
+    l'épaisseur du côté absent** (les cases gardent la largeur qu'elles auraient avec lui). Par exemple 3 cases,
+    Côté 1 Double et Côté 2 Sans côté : une niche étroite et une niche de 2 cases + 1 épaisseur. Le panneau donne la
+    largeur de chaque niche.
+  - **Largeur des cases** : « Égales » par défaut, ou **« En proportions »** : chaque case reçoit un nombre de parts
+    (Case 1, Case 2…), et le panneau montre sa largeur à côté. 1 et 2 : la seconde case est deux fois plus large
+    (une armoire d'1 porte + 2 portes) ; 1, 2, 1 : la case du milieu deux fois plus large que les deux autres.
+    Les côtés et les dessus gardent leur épaisseur, seule la longueur libre est partagée.
+  - **Côté double (3 cases)** : trois niches égales avec un seul côté double, **à droite** (2 portes + 1, par défaut)
+    ou **à gauche** (1 + 2 portes), choisi d'une liste ; les listes Côté 1 et Côté 2 suivent.
+  - **Qui passe aux angles** : pour les côtés extérieurs, les simples et les doubles, on choisit « Le dessus passe » (le
+    dessus et le dessous d'un seul tenant, le côté s'arrête contre eux) ou « Le côté passe » (il monte de bout en bout
+    et **coupe** le dessus et le dessous en morceaux). Par défaut les **doubles coupent** le dessus et le dessous : 3
+    cases = 2 modules, 5 cases = 3 modules (2 + 1 + 2 portes). Les **côtés extérieurs** peuvent aussi être assemblés
+    **« D'onglet (45°) »** : le dessus et le côté se rejoignent sur la diagonale de l'angle, coupés tous deux à 45°, et
+    de même pour le dessous quand il n'y a pas de socle (avec un socle, le côté descend jusqu'au sol et le dessous
+    s'appuie contre lui). Les panneaux d'onglet sont montrés avec leur coupe dans l'aperçu en volume.
+  - **Extrusion** (option « Extruder les panneaux », avec sa **profondeur**, 50 cm au départ) : en même temps que la
+    répartition, **chaque élément est extrudé en un corps à part** (les panneaux se touchent : une seule extrusion les
+    souderait), **nommé** d'après ce qu'il est : **Dessous** et **Dessus** (« Dessous 1 », « Dessous 2 »… quand les
+    côtés qui passent les coupent en morceaux) et **Côté 1, 2, 3…** de gauche à droite (la suite si on en ajoute
+    d'autres) ; les niches restent vides. L'esquisse et toutes les extrusions forment une seule étape d'annulation.
+  - **Position** : un clic dans la vue pose le coin bas-gauche (ou « Coin X / Y »), et la répartition se voit en
+    pointillés dans l'esquisse avant OK ; elle s'ajoute à l'esquisse ouverte (qui garde ce qu'elle a), en une étape
+    d'annulation. **Chaque panneau, chaque morceau de dessus et de dessous et chaque case est une zone fermée**, prête
+    à extruder zone par zone, et chaque niche se divise ensuite avec **Étagères**. Le calcul est dans
+    `sketcher/partition.ts`, l'outil dans `sketcher/partition-tool.ts`.
+- **Points des lignes** : les petits carrés noirs aux extrémités des lignes ne sont plus affichés au départ (ils
+  restent cliquables, et s'affichent quand on les survole ou les choisit) ; le bouton « Points » du groupe Affichage
+  les montre de nouveau, le choix est retenu. Les points violets (arêtes de corps) et l'origine restent visibles.
+- **Historique paramétrique de la Répartition** : la répartition et chaque division de ses niches par des étagères
+  sont des **étapes de l'historique** (la barre « Historique » en bas), dans l'ordre : « Répartition 3 cases »,
+  « Étagères 1 », « Étagères 2 »… Cliquez une étape pour ouvrir sa fiche (nom, **Modifier**, **Supprimer**) : **Modifier**
+  rouvre l'outil avec ses valeurs, et à l'OK **tout est refait dans l'ordre** : on change le nombre de cases, les côtés,
+  l'épaisseur, le socle, ou le nombre d'étagères d'une niche, et les étagères suivent leur niche (une niche désignée
+  par sa case, puis par les divisions faites dedans). Une division dont la niche n'existe plus (moins de cases) est
+  retirée, en le disant. Les corps extrudés sont refaits aussi (les anciens sont remplacés). Supprimer la répartition
+  supprime aussi les divisions de ses niches. Seules les répartitions faites avec cette version ont leur historique ;
+  les anciennes restent des lignes ordinaires. Le moteur est dans `sketcher/partition-history.ts`.
+- **Étagères** (bouton du ruban **3D**, groupe **Menuiserie**, comme la division d'un compartiment de Polyboard) :
+  elle se travaille **dans la vue 3D** : les niches de la répartition (celle choisie dans le navigateur, sinon la
+  dernière) qui peuvent encore être divisées sont des **volumes bleus** entre les panneaux, celui sous le pointeur
+  s'éclaire, un clic le choisit (vert), les étagères à faire sont montrées en **volumes orange**, et l'OK (Entrée)
+  les fait, « Extruder les étagères » coché à la profondeur des panneaux ; les niches obtenues sont aussitôt
+  cliquables, « Terminer » (Échap) ferme l'outil. Dans l'esquisse de la **Répartition**, on clique une **niche** (une case, une zone fermée rectangulaire) et on la
+  divise par des étagères, dessinées à leur épaisseur (deux traits). On peut **choisir plusieurs niches** (un clic
+  ajoute une niche, un clic sur une niche choisie la retire) : elles reçoivent toutes les mêmes étagères, en un seul OK. On règle le **nombre d'étagères** (1 à 20),
+  l'**épaisseur** (18 mm au départ) et le partage de la hauteur : **niches égales**, ou la **niche du bas** (ou **du
+  haut**) à une hauteur donnée, les autres se partageant le reste. Entre le dessous et une étagère, entre deux
+  étagères ou entre une étagère et le dessus, on obtient une **niche**, que l'on peut cliquer et **diviser à son
+  tour** : l'outil reste actif jusqu'à Échap (« Terminer »). Les étagères se voient en pointillés avant OK, et chaque
+  niche et chaque étagère est une zone fermée, à extruder. L'option **« Extruder les étagères »** (même
+  profondeur que celle de la Répartition) fait de **chaque étagère un corps** nommé **Étagère 1, 2, 3…** (la suite
+  d'une niche à l'autre). Le calcul est dans `sketcher/shelves.ts`.
+- **Cloisons** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères ») : la même division que les
+  étagères, mais **en travers** : des panneaux **debout**, du bas au haut de la niche, qui la coupent **de gauche à
+  droite**. On clique une ou plusieurs niches de la répartition, on règle le **nombre de cloisons** (1 à 20), leur
+  **épaisseur** et le partage de la largeur (niches **égales**, ou **celle de gauche** / **celle de droite** à une
+  largeur fixe) ; elles sont dessinées en pointillés avant l'OK. Chaque cloison devient un corps « **Cloison n** »
+  (extrusion cochée, à la profondeur des panneaux). Les niches obtenues se divisent à leur tour, par des étagères ou
+  d'autres cloisons. Chaque division est une étape « **Cloisons n** » de l'historique paramétrique, modifiable ou
+  supprimable comme celles des étagères ; quand la répartition est refaite, les corps refaits sont numérotés à partir
+  de 1. Changer une étape (Répartition, Étagères, Cloisons) depuis l'**Historique** rouvre son outil dans la vue 3D,
+  sa niche choisie. Le calcul est celui des étagères (`sketcher/shelves.ts`, champ `vertical`) ; la vue 3D de ces
+  outils est dans `app/joinery-3d.ts` et `viewport/joinery-view.ts`.
+- **Penderie** et **Tiroirs** (groupe **Menuiserie**, pour les dressings) : on **équipe une niche** d'une répartition,
+  dans la vue 3D comme avec Étagères — on clique une ou plusieurs niches (une niche choisie se reclique pour la
+  retirer), on règle, les pièces sont montrées en **orange**, puis OK (une seule annulation). La liste « Équipement »
+  du panneau passe de l'un à l'autre.
+  - **Penderie** : une **tringle Ø25** (diamètre réglable de 10 à 50 mm) d'un côté à l'autre de la niche, à
+    **mi-profondeur**, son axe à **6 cm sous le haut** (réglable), sur **deux supports** contre les côtés. Le panneau
+    donne la longueur de la tringle et sa hauteur au-dessus du bas de la niche. Tringle et supports comptent au
+    **devis** (la tringle **au mètre**, 8 € HT/m, les supports à la pièce, 2,50 €, prix réglables) mais **ni au débit
+    ni à l'export CNC**. Pour une double penderie, on divise d'abord la niche par une étagère, puis une tringle dans
+    chaque niche.
+  - **Tiroirs** : **1 à 8 tiroirs encastrés** qui se partagent la hauteur de la niche : façades au nu des panneaux,
+    avec le **jeu** voulu tout autour et entre elles (3 mm), à l'**épaisseur** voulue (18 mm), chacune avec son
+    **caisson** (côtés, avant, arrière en contreplaqué bouleau, fond en HDF) sur **coulisses** de 12,5 mm, de la
+    longueur du commerce qui tient dans la profondeur (350 mm pour 40 cm de profondeur), et ses **trous de poignée**
+    (entraxe 128 mm) si on le demande. Coulisses et poignées vont au devis, les pièces au débit. Pour des tiroirs sous
+    une penderie, on divise d'abord la niche par une étagère.
+  - Chaque niche équipée est une opération de l'historique (« **Penderie 1** », « **Tiroirs 1** »), dont les pièces
+    sont des corps (« Penderie 1 — Tringle », « Tiroirs 1 — Façade tiroir 1 »…). Elle **suit sa niche** : changer la
+    répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le
+    dit. La modifier depuis l'historique rouvre l'outil, sa niche choisie. Les calculs sont dans
+    `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/niche-tool.ts`.
 - **Panneaux** (groupe « Menuiserie », comme la conception de squelette de JoinerCAD) : on dessine le squelette
   du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
   étagère), puis chaque ligne devient une planche, un corps à part.
@@ -355,8 +519,10 @@ opération existante.
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
   ↕, ici en pointillés rouge et bleu avec leur valeur) s'affichent et peuvent être **saisies** (« Bord ↔ », « Bord ↕ »)
-  pour placer le premier point exactement. Le pointeur s'accroche aux coins et aux milieux d'arêtes de la face, sinon les
-  distances aux bords sont arrondies. Ensuite : *longueur* et *angle* d'une ligne, *largeur* et *hauteur* d'un rectangle,
+  pour placer le premier point exactement. Le **centre de la face** et le **milieu de chaque trait** (arête) sont marqués d'une
+  **croix** bleue : le pointeur s'y accroche (de loin : une dizaine de pixels pour un coin, dix-huit pour une croix),
+  la croix visée devient orange et la boîte du bas dit « Centre de la face » ou « Milieu du trait » ; les croix restent
+  pendant le tracé. Sinon les distances aux bords sont arrondies. Ensuite : *longueur* et *angle* d'une ligne, *largeur* et *hauteur* d'un rectangle,
   *rayon* d'un cercle, à saisir ou à cliquer ; une ligne se poursuit jusqu'à Entrée (ou un clic sur son dernier point),
   Échap reprend le tracé. Le résultat est une esquisse sur la face (le contour de la face en référence), et, comme le
   mode 3D de DIO, un tracé **fermé** (rectangle, cercle) enchaîne avec **tirer / pousser** (case « Puis tirer / pousser »).
@@ -456,13 +622,97 @@ opération existante.
 - **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
-- **Deux barres d'outils** : la barre du bas contient **tous** les outils, rangés en groupes, et passe sur plusieurs
-  lignes plutôt que de dépasser la largeur de la page (sur téléphone elle défile). La barre du haut, « Mes outils », est
-  vide au départ : c'est vous qui y **montez** les outils que vous voulez avoir sous la main. « Personnaliser » rend les
-  icônes déplaçables — glissez une icône vers l'autre barre ou vers un autre groupe ; sans glisser (écran tactile),
-  touchez une icône puis l'endroit voulu (une autre icône : avant elle ; un groupe ou « Mes outils » : à la fin). Les
-  icônes ne lancent rien pendant ce temps ; « Terminé » reprend le travail. La disposition est mémorisée par barre
-  (modèle, esquisse) dans le navigateur ; « Réinitialiser » remet celle d'origine. Un groupe vidé disparaît.
+- **Barre d'outils** (comme Fusion) : les outils sont rangés en groupes ; chaque groupe montre ceux dont on se sert le
+  plus et son nom (« CRÉER ▾ », « ATELIER ▾ »…) ouvre la liste de **tous** ses outils. Un clic lance l'outil ;
+  l'**épingle** 📌 l'affiche dans la barre ou le range dans le menu. Au départ, les outils moins courants sont rangés
+  (révolution, coque, lissage, étirer, mise en plan, G-code, lien client…, et en esquisse polygone, ovale, texte,
+  projeter…). Le choix est mémorisé par barre (modèle, esquisse) dans le navigateur ; « Par défaut » dans un menu remet
+  son groupe comme à l'origine. Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
+  l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
+  seule ligne** : quand la fenêtre est trop étroite, les icônes se replient une à une dans le menu de leur groupe —
+  celles de **Menuiserie d'abord**, puis Atelier, Curic, Modifier et Créer (en esquisse : Affichage, Contraintes, Cotes,
+  Modifier, Créer), chaque groupe en commençant par sa dernière icône — et reviennent quand la fenêtre s'élargit.
+- **Coins carrés partout** : cartes, boutons, champs de saisie, menus, panneaux d'outils, étiquettes et pages n'ont
+  plus de coins arrondis (les rayons du thème sont à zéro et les classes d'arrondi retirées) ; seules les pastilles
+  rondes (flèche de défilement, points de couleur) restent rondes.
+- **Thèmes de « gestion menuiserie »** : l'interface reprend les thèmes de l'application de gestion (Atelier des
+  Nobles). En sombre, la palette **Atelier** par défaut (fond bleu nuit #0B1428, accent cyan #08B8FF) ou l'une des
+  **neuf palettes** : Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal
+  Charcoal, Crimson Terre et Mocha Mist (la seule claire). On la choisit dans le menu **« ⋯ » → Palette**, sur des
+  vignettes qui montrent son dégradé et son accent ; le choix est gardé dans le navigateur (`localStorage`
+  « palette ») et posé avant le premier affichage, sur toutes les pages. Les cartes (barre d'outils, cartes du
+  navigateur et des propriétés) prennent le **dégradé de la palette**, un cadre et un halo de son accent ; les
+  boutons principaux (Enregistrer, Créer, les OK) son dégradé de boutons, en blanc, qui se lève au survol. Le thème
+  **clair** l'emporte sur les palettes (fonds blancs, accent bleu), les boutons gardant le dégradé de la palette,
+  comme dans la gestion. Techniquement, les gris et les bleus de Tailwind (`gray`, `sky`) sont tirés des variables
+  de la palette (`styles/palettes.css`) : tout le reste suit sans toucher aux gabarits.
+- **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
+  réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
+  esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne
+  sélectionnée gardant ses couleurs ; les en-têtes (« CORPS (n) », « ESQUISSES », titres des panneaux) en petites
+  majuscules espacées, de la couleur d'accent. En thème clair et en Mocha Mist : l'encre de la page, un vert foncé.
+- **Chiffres sans Maj** (clavier français AZERTY) : dans tous les champs de nombres (cotes, épaisseurs, distances,
+  calculatrice…), les touches de la rangée des chiffres tapent leur chiffre même sans Maj ni Verr. Maj (& é " ' ( § è
+  ! ç à → 1 2 3 4 5 6 7 8 9 0). Le « - » reste un signe moins ; dans les champs qui calculent (calculatrice,
+  distance de « Décaler l'arête »), la « ( » reste une parenthèse (`ui/digit-keys.ts`).
+- **Fond de la vue 3D** : un dégradé bleu nuit, de #1f2f40 en haut à #101d26 en bas (barre d'historique comprise),
+  dans les deux thèmes ; la grille et les couleurs d'esquisse sont choisies pour ce fond sombre (variables
+  `--viewport-gradient`, `--viewport-grid`, `--sketch-*` de `app.css`).
+- **Qualité du rendu des corps** : éclairage de studio (lumière d'ambiance et reflets doux), lumière principale et
+  lumière d'appoint qui suivent la caméra, et **ombres douces** portées par une lumière fixe : les étagères ombrent
+  leur niche, les faces se distinguent nettement. Les matières unies sont mates (non métalliques). Les **arêtes et
+  traits choisis** (vue 3D) sont dessinés en lignes de 2,5 px en vert #63DF0F, lisibles sur tous les corps ; une arête
+  droite choisie porte une **flèche à chaque bout** (comme une cote) qui montre où elle commence et s'arrête, de taille
+  constante à l'écran (`viewport/edge-arrows.ts`).
+  **Pré-sélection et curseur** : comme dans Fusion, ce qu'un clic choisirait s'éclaire en **bleu clair** sous la
+  souris, avant le clic : la **face** teintée, l'**arête** (ou le trait d'une esquisse) en trait large, le **point**
+  marqué (les coins ne sont plus tous pointés avec le filtre « Points » : seul celui sous la souris s'affiche), ou tout
+  le **corps** avec le filtre « Corps » — selon le filtre de la sélection (Auto, Faces, Arêtes,
+  Points, Corps), le même choix que le clic (`viewport/preselection.ts`). Rien ne s'éclaire pendant un outil, un
+  glissé, une fenêtre de sélection ou Sélection++ (qui montre ses propres niveaux). Le curseur de la vue 3D est une
+  **petite croix aux traits très fins** (un pixel blanc bordé d'ombre, lisible sur tous les corps, `ui/cursor.ts`), aussi
+  pour les outils qui visent un point.
+  **Écart entre deux arêtes parallèles** : quand on choisit exactement deux arêtes droites et parallèles (les deux
+  faces d'un panneau, les bords d'une niche), la vue trace en ambre la distance perpendiculaire entre elles, avec sa
+  cote, et le panneau Sélection l'affiche (« Écart entre les arêtes ») ; les longueurs des deux arêtes restent dans le
+  panneau (`viewport/parallel-gap.ts`).
+  La **profondeur de la caméra suit sa distance** (plan proche à 1/200 de la distance) : la précision reste sous le
+  centième de millimètre, si bien que deux panneaux qui se touchent et leurs arêtes ne se chevauchent plus en
+  pointillés. Les ombres sont calculées en 4096 × 4096.
+  Les **coutures** ne sont pas dessinées : une planche extrudée d'un contour dont un bord est en plusieurs morceaux
+  (le dessus d'une Répartition, coupé là où les côtés le rejoignent) a une face faite de plusieurs morceaux plats ;
+  les arêtes entre deux faces d'un même plan (`geometry/seams.ts`) restent sélectionnables mais ne sont pas tracées,
+  et la planche apparaît d'un seul tenant. La numérotation des faces et des arêtes ne change pas : les lignes dessinées
+  gardent la table de l'arête que chacune est (`drawnEdges`), si bien qu'un clic sur une arête d'un côté, d'un dessus,
+  d'un dessous ou d'une étagère choisit bien cette arête, et non sa voisine.
+  Parmi les traits à portée du pointeur, c'est le **plus proche du pointeur à l'écran** qui est pris (à égalité,
+  celui de devant), et pas le plus proche de l'œil ; un trait caché derrière une face est ignoré. Les traits serrés
+  d'un côté double (trois traits en 3,6 cm) se choisissent donc chacun là où on clique.
+  Une esquisse sur le plan **XY** est « à plat » : le meuble dessiné dedans est couché (les étagères font face à la
+  vue de face et ferment les niches) ; pour un meuble debout, on dessine dans une esquisse du plan **XZ**, ce que la
+  Répartition fait d'elle-même.
+- **Présentation en cartes** (grand écran) : la barre d'outils, le navigateur, la vue 3D, la colonne de sélection et
+  le panneau de droite sont des cartes aux coins carrés, avec une ombre portée, posées sur un fond gris et séparées
+  d'un petit espace (thèmes clair et sombre). Sur téléphone et tablette, les panneaux restent des feuilles qui montent
+  du bas.
+  Le titre **« Navigateur »** est lui aussi une carte, alignée sur celles des corps et des esquisses. Les pièces d'une répartition y sont **rangées par sorte**, dans un dossier chacune dès qu'il y en a deux : **Dessous, Dessus, Côtés, Étagères, Cloisons** (avec leur nombre), fermés au départ, ouverts d'un clic (l'état est retenu) ; les autres corps et les dossiers d'un caisson restent comme avant (`ui/body-kinds.ts`). La liste du navigateur défile **sans barre de défilement** : une petite flèche ▼ en bas (▲ en haut) montre qu'il y a une suite et y fait défiler d'un clic ; la molette, le pavé tactile et le doigt défilent comme d'habitude (`ui/scroll-arrows.ts`).
+- **Fenêtres des outils à droite, en onglets** : les fenêtres des outils (mètre, calques, paramètres, scènes, coupe,
+  extrusion, caisson, façades, usinage, réseau, décalage, apparence, rendu…) s'ouvrent dans le panneau de droite,
+  chacune dans son **onglet** en haut du panneau, à côté de l'onglet **Sélection** (les propriétés) : l'outil qu'on
+  ouvre s'affiche aussitôt, sans faire défiler ; un clic sur un onglet passe de l'outil aux propriétés et
+  inversement ; quand l'outil se ferme, son onglet disparaît. La vue 3D reste dégagée. Sur un écran étroit (moins de
+  1024 px), où ce panneau est replié, elles restent posées sur la vue.
+- **Mes outils** (comme le grand jeu d'outils de SketchUp) : une barre verticale à gauche de la vue, avec les outils
+  qu'on utilise souvent. On les choisit avec l'étoile ⭐ des menus de groupe (« CRÉER ▾ », « ATELIER ▾ »…) ; un clic
+  droit sur une icône la retire. Chaque icône lance l'outil (même rangé ou replié dans la barre du haut) et en reprend
+  l'état (enfoncé quand l'outil est actif). Une barre pour le modèle, une pour l'esquisse, retenues par le navigateur.
+  La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
+  quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
+  poignée la remet en haut à gauche. Sa place et son sens sont retenus.
+- **Colonne de sélection et de vue**, à droite de la vue 3D (contre le panneau Mesures) : l'outil Sélection, les cinq
+  filtres (Auto, Faces, Arêtes, Points, Corps), Sélection++ et la sélection par fenêtre, puis « Ajuster ». Elle reste
+  en mode modèle (l'esquisse a ses propres outils). Les vues isométrique, de face, de dessus et de droite sont dans le
+  menu ⋯ (rubrique « Vue ») et sur le cube de navigation.
 - **Atelier** (groupe « Atelier », ébénisterie) :
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
     MDF, contreplaqué, massif, fond HDF), le sens du fil, les chants (L1/L2 : grands côtés, l1/l2 : petits) et leur
@@ -473,9 +723,20 @@ opération existante.
   - *Optimisation de découpe* : les pièces placées sur les panneaux standard de leur matière (2800×2070 pour les
     mélaminés), en bandes comme une scie à format, trait de scie 4 mm, marge 10 mm, fil respecté (une pièce sans fil
     peut tourner). Un schéma SVG par panneau avec le taux de chutes ; impression / PDF.
-  - *Export DXF commande numérique* : chaque panneau mis à plat sur sa grande face, avec le **contour exact** du noyau
-    (lignes, arcs) et les **perçages en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm,
-    calques CONTOUR, PERCAGE et TEXTE, lu par les logiciels de FAO.
+  - *Export DXF commande numérique* : chaque panneau mis à plat sur celle de ses deux grandes faces qui porte le plus
+    de perçages (une porte montre ses cuvettes), avec le **contour exact** du noyau (lignes, arcs) et les **perçages
+    en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm, calques CONTOUR, PERCAGE et
+    TEXTE, lu par les logiciels de FAO.
+  - *G-code* : le programme de la défonceuse, prêt à lancer. Les pièces d'une même matière et épaisseur sont rangées
+    en bandes sur les panneaux bruts (une pause M0 entre deux panneaux) ; pour chacun, les perçages au foret de leur
+    diamètre (T2, T3…) et à leur **vraie profondeur** (lue sur le maillage : borgne ou traversant), les grands trous
+    (cuvettes Ø35) vidés en cercles concentriques à la fraise (T1), les découpes intérieures, puis le contour détouré
+    en plusieurs passes jusque dans le martyr. La fraise est compensée dans le calcul (arcs aux angles saillants,
+    angles rentrants coupés à l'intersection ; une partie plus étroite que la fraise est signalée), en opposition.
+    Réglages retenus par le navigateur : diamètre de fraise, passe, avances, broche, hauteur de sécurité, martyr,
+    foret maximal, écarts. Les perçages borgnes de l'autre face sont signalés (pièce à retourner).
+  - *Étiquettes* : une par pièce, avec un **QR code** (projet, pièce, cotes, matière, chants), les cotes, la matière,
+    les chants et le fil ; planche A4 de 3 × 8 étiquettes 70 × 37 mm à imprimer et coller à la sortie de la machine.
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur) ; impression / PDF et CSV.
@@ -485,30 +746,149 @@ opération existante.
     *charnières* (cuvettes Ø35 × 13 à 22,5 mm du bord, 2 à 5), *rainure de fond* (4 × 8 mm à 10 mm du bord) ; entre
     **deux planches** : *tourillons* (Ø8 × 15, un tous les 96 mm), *confirmat* (Ø7 traversant, Ø5 en pilote),
     *mi-bois* (chaque planche perd la moitié de la hauteur commune), *tenon et mortaise* (tiers de l'épaisseur,
-    épaulements de 10 mm). Un usinage qui ne touche pas le corps est une erreur, jamais un silence.
+    épaulements de 10 mm). Un usinage qui ne touche pas le corps est une erreur, jamais un silence. Chaque trou suit
+    le bout de la planche dont il était le plus près : un dessous allongé emporte ses avant-trous de droite.
+  - *Règles d'assemblage* : une règle (confirmat Ø7 tous les 128 mm, ou tourillons Ø8 tous les 96 mm, avec la marge
+    aux bouts) appliquée d'un coup à toutes les jonctions des planches choisies — la sélection, sinon tout ce qui est
+    visible ; un clic ajoute ou retire une planche. Une jonction est le chant d'une planche contre la face d'une autre ;
+    les panneaux plus minces qu'un seuil (fonds) ou plus épais que 30 mm (plans de travail), les murs et les
+    façades sont ignorés. Une opération « Usinage » par planche, et la visserie
+    (vis confirmat, tourillons) est comptée dans le devis.
   - *Paramètres* : des valeurs nommées (`largeur`, `ep`…), qui peuvent être des formules d'autres paramètres, et des
     **liens** entre une cote d'une fonction (largeur du caisson, déplacement, distance…) et une formule
     (`largeur - 2 * ep`). Changer un paramètre réécrit toutes les cotes liées, en une seule annulation. Formules :
     `+ − * / ^ ( )`, `pi`, `min(a; b)`, `max`, `abs`, `round`, `floor`, `ceil`, `sqrt` (analyseur sûr, sans `eval`) ;
     cycles et noms inconnus signalés.
+  - *Configurations* (dans le panneau Paramètres) : des variantes nommées du meuble (« Petit 600 », « Grand 900 »),
+    chacune un jeu de valeurs des paramètres. Un clic applique la variante (les formules et les cotes liées suivent,
+    en une annulation) ; la variante active est en surbrillance ; ↻ la remplace par les valeurs du moment.
+  - *Calques* (groupe Vue, comme les étiquettes de SketchUp) : créer un calque, le renommer, y mettre les corps
+    sélectionnés, le montrer ou le cacher d'un clic sur l'œil ; un calque caché cache ses corps dans la vue, le
+    navigateur et la liste de débit. Supprimer un calque rend ses corps (sans calque).
+  - *Rapporteur* : troisième mode du mètre (« Angle ») : le sommet puis un point de chaque côté ; l'angle s'affiche.
   - *Scènes* : des vues de la caméra nommées, enregistrées dans le document ; un clic y emmène la caméra.
   - *Mètre et guides* (comme le mètre de SketchUp) : deux clics, accrochés aux coins, arêtes et guides, donnent la
-    distance et ΔX, ΔY, ΔZ ; en mode « Guide » le second clic pose une ligne de guide enregistrée.
+    distance et ΔX, ΔY, ΔZ ; en mode « Guide » le second clic pose une ligne de guide enregistrée. « Mesurer entre »
+    choisit ce que les deux clics désignent : **points**, **traits** (arêtes), **faces** ou **corps** — la plus courte
+    distance entre les deux éléments, calculée exactement sur leur maillage et tracée entre leurs points les plus
+    proches (0 quand ils se touchent), avec, pour deux faces planes ou deux traits droits, « parallèles »,
+    « perpendiculaires » ou leur angle. Le premier élément choisi est souligné en orange.
   - *Rendu des matières* : chaque corps prend la couleur de sa matière, avec le veinage du bois dans le sens du fil
     (bouton à bascule, mémorisé).
+  - *Apparence* (comme la bibliothèque d'apparences de Fusion) : plus de 100 apparences réelles, en vignettes
+    sphériques, par catégorie et avec recherche (accents ignorés) : **bois** (chêne naturel, blanchi, fumé, verni,
+    brut, noyer, noyer américain, hêtre, frêne, érable, merisier, pin, teck, wengé, acajou, bouleau, bambou, zebrano),
+    **mélaminés et panneaux** (blanc, gris perle, anthracite, noir, chêne, noyer, MDF, HDF, contreplaqué, OSB),
+    **laques et peintures** (24 teintes RAL du mobilier, laques brillantes, laque satinée et peinture mate à la
+    couleur choisie), **verres et miroirs** (clair, extra-clair, dépoli, fumé, bronze, vert, laqué, miroir), **marbres
+    et pierres** (Carrare, Calacatta, Marquina, vert, rose, travertin, granits, quartz, terrazzo, ardoise),
+    **métaux** (inox et aluminium brossés, anodisé noir, chrome, laiton, or, cuivre, acier), **plastiques** (dont
+    plexiglas transparent et opale), **tissus et cuirs** (lin, chiné, velours, cuirs cognac, noir, blanc), **bétons et
+    sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, cernes et fibres du bois,
+    mouchetures du granit, armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans
+    couture ; le motif du bois suit le fil de chaque planche. Un clic sur une vignette la donne aux corps
+    sélectionnés ; on peut aussi **glisser une vignette sur un corps** de la vue (surligné pendant le glisser).
+    « Couleur au choix » applique une couleur à une laque, une peinture, un plastique ou un tissu ; « Dans ce
+    modèle » montre les apparences utilisées ; « Retirer l'apparence » rend celle de la matière. L'apparence est
+    gardée dans le document (annulable), en plus de la matière d'atelier : elle ne change ni la liste de débit ni le
+    devis. Elle s'affiche dans la vue d'édition (reflets d'un studio, verre transparent) et dans le Rendu.
+  - *Rendu* (comme l'espace Rendu de Fusion, avec des idées de KeyShot et d'Enscape) : la vue passe en **lancer de
+    rayons progressif** (three-gpu-pathtracer) — l'image s'affine tant que la caméra est immobile, en basse
+    résolution pendant qu'on tourne autour. La barre du rendu remplace les outils de modélisation (Pause,
+    Recommencer, Rendre l'image, Quitter le rendu ; Échap pour quitter) et le panneau de droite règle :
+    - **Environnement** : studio clair, studio sombre (boîtes à lumière), intérieur avec fenêtre, extérieur avec le
+      soleil selon l'**heure** (6 h – 20 h, levant à l'est, plein sud à 13 h), ciel couvert ; luminosité,
+      **rotation** de l'éclairage ; fond = l'environnement (flou réglable), une couleur unie ou le fond de l'éditeur.
+      Les environnements sont calculés (images HDR équirectangulaires), sans fichier à télécharger.
+    - **Sol** : ombres seules (attrape-ombres : le fond reste visible, assombri par les ombres et éclairci par les
+      reflets), sol de studio coloré, parquet, ou aucun ; reflets réglables.
+    - **Caméra** : focale (12–200 mm), exposition (IL), tonalité (filmique ACES, naturelle AgX, neutre),
+      **profondeur de champ** (ouverture f/1,4 à f/22, mise au point au centre du modèle ou sur un point cliqué).
+    - **Finitions** : pour chaque apparence du modèle (bois, mélaminés, laques, pierres, plastiques, bétons), celle de
+      l'apparence ou mat, satiné, brillant, laqué. Le verre laisse passer la lumière (transmission, réfraction).
+    - **Qualité** (échantillons, rebonds) et **Image** : HD, 4K, carré, A4 paysage 300 dpi ou la vue actuelle,
+      rendue avec le nombre d'échantillons choisi puis rangée dans la **galerie** du panneau (téléchargement PNG).
+    Les réglages sont gardés dans le navigateur. La scène du rendu est une copie : elle suit les régénérations, les
+    portes ouvertes et les matières, sans toucher au modèle. Le moteur n'est chargé qu'à la première ouverture.
   - *Mouvements* : un corps glisse (tiroir) ou tourne autour d'une charnière (porte) avec un curseur ou en animation,
     et le panneau dit ce qu'il heurte (contrôle sur les boîtes englobantes, exact pour des planches). La vue
     seulement : le modèle ne change pas.
   - *Mise en plan* : trois vues (face, droite, dessus, projection européenne) avec lignes cachées en pointillés, cotes
     générales, cartouche et échelle normalisée choisie pour que tout tienne (A3 ou A4 paysage) ; impression / PDF ou
     export SVG.
+- **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
+  cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Lissage** (groupe Modifier, comme Fusion) : un solide passant par les profils fermés de plusieurs esquisses, dans
+  l'ordre de l'historique, courbe ou droit entre eux (pied galbé, trémie, moulure qui change de section) ; nouveau
+  corps, joindre ou couper. Chaque profil doit être un seul contour fermé, sans trou, dans des plans séparés.
+- **Modificateur de planche** (groupe Modifier, comme les modificateurs de 3ds Max), dans l'historique : la planche
+  (une boîte droite) est reconstruite exactement depuis sa section — *cintrée* sur sa longueur (rayon au milieu de
+  l'épaisseur, la longueur est gardée), *effilée* (section réduite à un pourcentage au bout) ou *vrillée* (section
+  tournée jusqu'à un angle au bout).
+- **Copie liée** (groupe Modifier, comme les composants de SketchUp) : une copie des corps sélectionnés, posée à côté,
+  qui suit toute modification de l'original ; on la place avec Déplacer ou Tourner, elle reste liée (c'est un réseau
+  d'une copie dans l'historique).
+- **Assistant de modélisation** (groupe « Atelier », l'étincelle violette) : on écrit en français ce qu'on veut
+  (« un bas de 600 avec trois tiroirs à droite du caisson », « implante une cuisine en L de 3 m sur 2,4 m »,
+  « passe les façades en chêne », ou une question de métier). Claude (Opus 5.5, par l'API Anthropic, appelé **depuis
+  le serveur** : la clé reste dans la variable d'environnement `ANTHROPIC_API_KEY`) répond et propose des actions
+  d'une liste fermée — ajouter ou modifier un caisson, l'habiller de façades, implanter une cuisine, changer une
+  matière ou un paramètre, renommer, supprimer — imposée par un schéma JSON (sorties structurées). Les actions
+  s'affichent en clair et ne s'appliquent qu'au clic sur « Appliquer », par les mêmes fonctions que les outils, en
+  une seule annulation ; une action impossible est refusée avec sa raison. L'assistant reçoit un résumé du modèle
+  (opérations, cotes des caissons, paramètres, matières), jamais la géométrie. 40 demandes par utilisateur et par
+  heure ; en cas de refus de sécurité, la demande est reprise par le modèle de repli recommandé (`fallbacks`).
+- **Lien client et commentaires** (groupe « Atelier ») : *Lien client* fige le meuble affiché (sans les murs) en un
+  modèle GLB en mètres, posé au sol, avec un résumé (dimensions, nombre de pièces, prix TTC du devis si on le veut),
+  et donne une adresse publique `/s/<jeton>/` à envoyer au client (copiée, avec son QR code), révocable d'un clic.
+  Sans compte, le client tourne le meuble en 3D, le **pose chez lui en réalité augmentée** depuis son téléphone
+  (Scene Viewer sur Android, Quick Look sur iPhone avec un USDZ fabriqué dans la page ; sur ordinateur, un QR code
+  ouvre la page sur le téléphone) et laisse des **commentaires**, attachés s'il le veut à un point du meuble (pastille
+  numérotée). Dans l'éditeur, *Commentaires* les liste (le bouton s'entoure d'orange quand il y en a à traiter) :
+  « Voir » marque le point dans la vue, on répond (le client lit la réponse sur sa page) et on coche « Traité ».
+  Côté serveur : modèles `ShareLink` et `Comment` (migration `0002_sharing`), modèle GLB de 20 Mo au plus, messages
+  limités (2000 caractères, 10 par adresse et par lien toutes les 10 minutes, 300 par lien), pages non indexées.
+- **Implantation de cuisine** (groupe « Menuiserie ») : une cuisine entière le long d'un mur (I) ou de deux murs en
+  angle (L). Chaque mur est découpé en modules du commerce (600 d'abord, puis le plus grand de 300 à 900 qui tient, le
+  reste en fileur) ; meubles bas (hauteur, profondeur, socle réglables) avec leurs façades (tiroirs et portes en
+  alternance, tiroirs ou portes partout ; deux portes au-delà de 600), plan de travail débordant de 20 mm, meubles
+  hauts au-dessus si on veut, et les murs. En L, l'angle est un angle mort fermé par deux fileurs, pour que portes et
+  tiroirs s'ouvrent sans se heurter ; les meubles du mur B sont des caissons tournés de 90°. Tout arrive dans
+  l'historique en une annulation et reste modifiable pièce par pièce ; les matières sont posées (caissons mélaminé
+  blanc, fonds HDF, façades et plan de travail au choix), les murs vont sur le calque « Pièce », hors du débit, du
+  devis et du fichier DXF.
+- **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
+  murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
+  proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de
+  chaque mur, module par module, de gauche à droite : **penderie longue** (étagère chapeau à 30 cm du haut, tringle
+  dessous), **double penderie** (deux tringles l'une sur l'autre), **étagères** (tous les 35 cm environ), **tiroirs et
+  étagères** (3 tiroirs dans 72 cm en bas, étagères au-dessus), **penderie et tiroirs** (3 tiroirs en bas, tringle
+  au-dessus). « Proposer un programme selon les longueurs » met environ un module par 80 cm. Le panneau donne la
+  largeur de chaque module (une penderie est plus large qu'une colonne d'étagères) et prévient quand une tringle dépasse
+  120 cm. L'aperçu se fait en direct ; OK met tout dans l'historique en une seule annulation. Chaque mur devient une
+  **Répartition** (« Dressing — mur A ») avec ses **Étagères**, **Penderies** et **Tiroirs** : des étapes ordinaires,
+  qu'on retouche ensuite niche par niche avec les outils de menuiserie. En L et en U, l'angle appartient au mur A ; les
+  murs B (à gauche) et C (à droite) commencent derrière sa profondeur, leurs façades tournées vers la pièce. Les murs
+  sont dessinés (option) sur le calque « Pièce », hors débit et devis. Le calcul est dans `document/dressing-plan.ts`,
+  le panneau dans `app/dressing-tool.ts`.
+- **Orientation des caissons** : un caisson tourne de 90, 180 ou 270° autour de son coin avant gauche (face vers
+  +X, vers le fond, vers −X) ; ses façades tournent avec lui.
+- **Façades** (groupe « Menuiserie », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
+  tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
+  voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du
+  commerce (250 à 600 mm) qui tient dans la profondeur. Charnières à boîtier Ø35 × 13 (2 à 4 selon la hauteur de la
+  porte) et poignées entraxe 128 mm percées à la demande. L'opération suit les cotes du caisson ; les façades prennent
+  sa matière, les tiroirs du contreplaqué bouleau (fonds en HDF), et la quincaillerie s'ajoute au **devis** (prix
+  unitaires réglables avec les autres tarifs).
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :
-  - *corps* : celui à scinder (liste, ou clic dans la vue) ;
+  - *corps* : celui à scinder — dans la liste, ou à la souris : « Choisir le corps dans la vue », le corps survolé
+    s'éclaire et le clic le choisit (même en mode « Face plane », où les autres clics choisissent la face de coupe ;
+    Échap annule) ;
   - *outil de coupe* : un **plan de construction** (XY, XZ ou YZ, décalé le long de sa normale : on
     tire la flèche dans la vue ou on tape la valeur ; il passe d'abord par le centre du corps) ou
     le plan d'une **face plane** cliquée dans la vue (de ce corps ou d'un autre) ;
@@ -540,8 +920,10 @@ opération existante.
     points d'esquisse choisis dans la vue, retirés de leur esquisse avec leurs contraintes (une zone ne se supprime
     pas : ses traits, ou l'esquisse entière). Les questions s'affichent dans la page (Entrée confirme, Échap annule), et
     non dans une boîte du navigateur, que certains navigateurs intégrés bloquent. Supprimer un corps supprime
-    l'opération qui l'a créé (son esquisse reste) ; une pièce d'un caisson, de panneaux ou d'une scission emporte toute l'opération
-    (confirmation demandée), et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont nommées) ;
+    l'opération qui l'a créé (son esquisse reste) ; une **pièce** d'un caisson, de façades, de panneaux ou d'une scission
+    (le dessus d'un caisson…) est retirée **seule** — l'opération et ses autres pièces restent (`removedBodies` du
+    document ; Ctrl+Z la fait revenir) — et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont
+    nommées) ;
   - **sélection par fenêtre** (comme Fusion) : Maj + glisser dans la vue, ou bouton « Fenêtre » (pratique au doigt :
     tant qu'il est enfoncé, glisser trace la fenêtre au lieu de tourner la vue). De gauche à droite (cadre bleu), seuls
     les corps et esquisses entièrement dedans sont pris ; de droite à gauche (cadre vert pointillé), tout ce qui est
@@ -549,7 +931,7 @@ opération existante.
   - **éléments superposés** : un nouveau clic au même endroit sélectionne l'élément suivant sous le curseur
     (arête, puis ligne d'esquisse, puis face, puis zone d'esquisse) ; une esquisse posée sur une face ou liée
     aux coins d'un corps par des coïncidences reste ainsi sélectionnable dans la vue ;
-  - le filtre de la barre d'outils choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
+  - le filtre (cinq icônes de cube, leur nom en infobulle) choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
     sinon face), « Faces », « Arêtes », « Points » (un sommet d'un corps : des points bleus marquent
     ceux qu'on peut cliquer, ses coordonnées s'affichent dans le panneau et la barre d'état) ou « Corps »
     (le corps entier, avec « Combiner » pour plusieurs corps). Le choix est mémorisé ;
@@ -576,6 +958,12 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   atténuées à travers) ; l'icône œil à côté de chaque esquisse, dans le navigateur, la masque ou la réaffiche.
   Le choix est enregistré avec le document (champ `hidden`) et s'annule comme le reste ; il ne
   recalcule rien. Les lignes de construction et les arêtes projetées ne sont pas dessinées.
+- **Tout replier / tout déplier** : le triangle à droite de « CORPS (n) » replie d'un clic tous les assemblages et
+  corps du navigateur (▾), puis les déplie tous (▸).
+- **Masquer ou supprimer tous les corps** : à côté de ce triangle, l'**œil** masque d'un clic tous les corps
+  (les esquisses restent), puis les réaffiche tous ; la **corbeille** supprime tous les corps après
+  confirmation (« Supprimer les 40 corps ? »). Chacun ne fait qu'une modification : un seul Ctrl+Z la défait
+  (`setHidden` dans `document/operations.ts`).
 - **Navigateur** (à gauche) : les **corps** et les **esquisses** du document. Chaque ligne a un œil pour
   l'afficher ou la masquer (un corps masqué reste dans le document, il n'est pas dessiné ; le choix est
   enregistré et s'annule). Un clic sélectionne ; le bouton « ⋯ » ouvre la fenêtre de l'élément.
@@ -589,16 +977,34 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   plus récente) : un clic sélectionne l'opération, « ⋯ » ouvre sa fenêtre. Ce qui est déplié est
   retenu par le navigateur web.
 - **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
-  chanfrein, combinaison, et les décalages, placés où est leur esquisse). Un clic ouvre une fenêtre pour
+  chanfrein, combinaison, et les décalages, placés où est leur esquisse), chacune par l'**icône de son outil** (le
+  nom, le type et l'état sont dans l'info-bulle ; une opération en erreur ou désactivée porte un point de couleur,
+  et la désactivée est grisée). Un clic ouvre une fenêtre pour
   **renommer**, **modifier** (rouvre l'outil de l'opération : flèche de l'extrusion, panneau de l'outil,
   esquisse et outil Décalage), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
-  les perçages suivants au corps précédent.
+  les perçages suivants au corps précédent. Cette fenêtre s'ouvre dans le panneau de l'élément cliqué : sous la ligne
+  dans le Navigateur (à la largeur du panneau), au-dessus de l'opération dans l'Historique. Ses actions sont des
+  boutons-icônes colorés, dans le style de la barre d'outils (cube et crayon : modifier ; cube gris et pastille
+  « pause » : désactiver, cube bleu et pastille verte : réactiver ; corbeille rouge : supprimer), le nom en info-bulle.
 - **Décalages** : chaque décalage validé est enregistré avec son esquisse (nom, courbes créées,
   courbes décalées, distance, côtés, coins). Dans l'historique, « Modifier » rouvre l'esquisse avec la
   sélection et les réglages restaurés ; valider remplace les courbes du décalage. « Supprimer » retire
   le décalage et les courbes qu'il a créées, jamais l'original.
+- **Unité d'affichage** : les **centimètres** par défaut, pour tous les projets ; menu ⋯ › Unités pour choisir mm, cm,
+  m ou pouces (le choix est retenu par le navigateur et vaut pour tous les projets). Le modèle reste enregistré en
+  millimètres : seuls l'affichage et la saisie changent — cotes, mesures, mètre, liste de débit (et son CSV),
+  optimisation de découpe, devis, étiquettes, page client. Restent en millimètres : les paramètres et leurs formules,
+  l'épaisseur des chants, les réglages et le programme de la commande numérique (G21).
 - **Propriétés** : saisir les cotes dans l'unité d'affichage (virgule acceptée), puis Entrée
-  pour recalculer.
+  pour recalculer. Chaque rubrique (Nom, Esquisse, Cotes, Contraintes, Sélection, Caisson…) est une **carte
+  dépliable** : un clic sur son titre (▶) la plie ou la déplie, et une carte pliée le reste (retenu par le navigateur). Les champs sont compacts (même hauteur que dans les fenêtres des outils) ; le panneau ne
+  montre plus le bloc « Mesures » du corps (volume, surface, encombrement) — le Mètre mesure à la demande.
+  Les boutons d'action de la sélection (Extruder, Esquisse sur la face, Scinder, Supprimer, Déplacer, Congé,
+  Chanfrein, Combiner) portent les mêmes icônes que la barre du haut : l'icône seule quand le panneau est étroit (le
+  nom en info-bulle), le nom aussi quand il est large. Le Perçage reste dans la barre (groupe Créer).
+- **Panneaux redimensionnables** (grands écrans) : glisser le bord intérieur du navigateur (à gauche) ou des
+  propriétés (à droite) pour les élargir ou les réduire ; flèches du clavier sur la poignée, double-clic pour revenir
+  à la largeur d'origine. La largeur est retenue d'une session à l'autre.
 - **Plaque** : nouveau corps (esquisse rectangle + extrusion).
 - **Perçage** : Ø10 traversant au point cliqué sur une face, sinon au centre du corps.
 - **Raccourcis** : touche **?** pour la liste complète (3D et esquisse). ⌘Z / ⇧⌘Z annuler/rétablir, ⌘S
@@ -631,8 +1037,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 - **Décalage** : 2D seulement. Le noyau sait décaler une face 3D, mais le résultat est une surface
   (coque sans volume) et le modèle ne gère que des corps solides ; pour déplacer une face, utiliser
   l'extrusion de face.
-- **Plans** : seul le plan XY est exposé dans l'interface. Le perçage suit toujours l'axe −Z
-  depuis le dessus du corps.
+- **Plans** : les scissions coupent par un plan principal ou une face plane, pas encore par un plan de
+  construction incliné. Le perçage suit toujours l'axe −Z depuis le dessus du corps.
 - **Références topologiques** : la correspondance est heuristique (type, direction, position
   relative). Une modification qui change fortement la forme (par exemple ajouter des arêtes au
   même endroit relatif) peut demander de resélectionner les arêtes.
@@ -657,6 +1063,9 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 | tailwindcss | 4.3 | MIT |
 | vite / vitest / typescript | 8.3 / 5.0 / 7.0 | MIT / MIT / Apache-2.0 |
 | whitenoise (+ brotli) | 6.12 | MIT |
+| anthropic (SDK Python de l'API Claude) | 1.17.0 | MIT |
+| qrcode-generator | 2.0.4 | MIT |
+| three-gpu-pathtracer (+ three-mesh-bvh, xatlas-web) | 0.0.27 (0.9.16, 0.1.0) | MIT |
 | @playwright/test (tests seulement) | 1.56 | Apache-2.0 |
 
 OpenCascade et planegcs sont distribués sous forme de fichiers `.wasm` séparés, non modifiés et

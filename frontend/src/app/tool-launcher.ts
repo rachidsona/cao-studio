@@ -1,6 +1,6 @@
 /** Opens the panel tools (revolution, fillet, chamfer, combination, hole) on new or existing features. */
 import { findFeature } from "../document/operations";
-import type { CadDocument, Feature } from "../document/types";
+import type { Axis, CadDocument, Feature } from "../document/types";
 import type { EdgePick, FacePick, ModelSelection, VertexPick } from "../viewport/viewport";
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
@@ -19,8 +19,14 @@ import { DrawOnFaceTool } from "./draw-on-face-tool";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
+import { LoftTool, ShellTool } from "./shell-loft-tools";
+import { ModifierTool } from "./modifier-tool";
+import { FrontsTool } from "./fronts-tool";
+import { AssemblyTool } from "./assembly-tool";
+import { KitchenTool } from "./kitchen-tool";
+import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -31,7 +37,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "sweep"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "sweep", "shell", "loft", "modifier", "fronts"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -43,6 +49,8 @@ export interface ToolOptions {
   bodies?: string[];
   /** Whole sketches picked (Curic tools also work on sketches). */
   sketches?: string[];
+  /** Axis the rotation tool starts with (a curved arrow of the Move manipulator was taken). */
+  axis?: Axis;
 }
 
 /** What a tool starts with: the sketch selected in the navigator, and what is picked in the 3D view. */
@@ -52,9 +60,10 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "rectArray") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" ? curicSketches(selected, picked.selection.sketches) : {}),
-    ...((kind === "split" || kind === "move") && faces.length ? { faces } : {}),
+    ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
+    ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
 }
@@ -75,6 +84,12 @@ export class ToolLauncher {
     const editing = options.featureId ? (findFeature(this.context.doc(), options.featureId) ?? null) : null;
     const ctx: ToolContext = {
       ...this.context,
+      // A curved arrow of the Move manipulator: the Rotation tool takes over, on the same thing, around that axis.
+      // The pointer is still down: the new tool goes on with the same gesture.
+      turn: (axis, subject, event) => {
+        this.open("rotate", { axis, ...(subject.kind === "body" ? { bodies: [subject.id] } : { sketches: [subject.id] }) });
+        this.active?.down(event);
+      },
       closed: () => {
         this.active = null;
         this.context.closed();
@@ -88,6 +103,21 @@ export class ToolLauncher {
         void tool.open(options.edges ?? []);
         return;
       }
+      case "shell": {
+        const tool = new ShellTool(ctx, editing?.type === "shell" ? editing : null);
+        this.active = tool;
+        void tool.open(options.faces ?? []);
+        return;
+      }
+      case "fronts":
+        this.active = new FrontsTool(ctx, editing?.type === "fronts" ? editing : null);
+        break;
+      case "modifier":
+        this.active = new ModifierTool(ctx, editing?.type === "modifier" ? editing : null, options.bodies ?? []);
+        break;
+      case "loft":
+        this.active = new LoftTool(ctx, editing?.type === "loft" ? editing : null, options.sketches ?? []);
+        break;
       case "faceExtrude": {
         const tool = new FaceExtrudeTool(ctx, editing?.type === "extrude" && editing.faces ? editing : null);
         this.active = tool;
@@ -119,7 +149,7 @@ export class ToolLauncher {
         this.active = new ArrayTool(ctx, editing?.type === "array" ? editing : null, options.bodies ?? [], options.sketches ?? []);
         break;
       case "rotate":
-        this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        this.active = new RotateTool(ctx, editing?.type === "rotate" ? editing : null, options.bodies ?? [], options.sketches ?? [], options.axis);
         break;
       case "drawOnFace":
         this.active = new DrawOnFaceTool(ctx);
@@ -132,6 +162,15 @@ export class ToolLauncher {
         break;
       case "machining":
         this.active = new MachiningTool(ctx, options.bodies ?? []);
+        break;
+      case "kitchen":
+        this.active = new KitchenTool(ctx);
+        break;
+      case "dressing":
+        this.active = new DressingTool(ctx);
+        break;
+      case "assembly":
+        this.active = new AssemblyTool(ctx, options.bodies ?? []);
         break;
       case "stretch":
         this.active = new StretchTool(ctx, editing?.type === "stretch" ? editing : null, options.bodies ?? [], options.sketches ?? []);

@@ -4,7 +4,7 @@
  */
 import { confirmDeletion, deletionOf } from "./delete-selection";
 import { askConfirm } from "../ui/confirm-dialog";
-import { addExtrude, addPlate, bodyLabel, deleteFeatures, findFeature, isBodyHidden, latestBody, renameBody, toggleHidden, updateFeature } from "../document/operations";
+import { addExtrude, addPlate, bodyLabel, deleteFeatures, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
@@ -13,6 +13,7 @@ import { trim } from "../measurements/units";
 import { ref, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
 import { removeOffsetFrom, renameOffsetIn } from "../sketcher/offset";
+import { withPlaneOffset } from "../sketcher/frame";
 import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
@@ -23,6 +24,7 @@ import { ModelSelectionController } from "./model-selection";
 import { extrudeTargets, ToolLauncher, toolOptions, type PanelToolKind } from "./tool-launcher";
 import { SketchController } from "./sketch-controller";
 import { SketchDisplay } from "./sketch-display";
+import { preferredUnit, setPreferredUnit } from "../measurements/unit-preference";
 
 export interface EditorConfig {
   projectId: string;
@@ -41,7 +43,7 @@ const SAVE_LABELS: Record<SaveState, string> = {
 
 export class Editor {
   private statuses = new Map<string, FeatureStatus>();
-  private result: RecomputeResponse | null = null;
+  /** Last regeneration (every body, hidden ones included). */ result: RecomputeResponse | null = null;
   private selectedFeature: string | null = null;
   readonly picked: ModelSelectionController;
   private recomputing = false;
@@ -87,7 +89,7 @@ export class Editor {
       unit: () => this.unit,
       extrude: () => this.extrudeCommand(),
       selectedFace: () => this.picked.lastFace,
-      faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex),
+      faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex), edgeOutline: (bodyId, edgeIndex) => this.geometry.edgeOutline(bodyId, edgeIndex),
       offset: (paths, distance, join) => this.geometry.offset(paths, distance, join),
     });
     this.files = new FileCommands({
@@ -101,7 +103,7 @@ export class Editor {
         this.selectedFeature = null;
         this.viewport.clearSelection();
         this.session.apply(doc);
-        ref<HTMLSelectElement>(this.root, "units").value = doc.units;
+        ref<HTMLSelectElement>(this.root, "units").value = this.unit;
         await this.recompute(true);
       },
     });
@@ -116,9 +118,13 @@ export class Editor {
       selectFeature: (id) => this.selectFeature(id),
       selectBody: (id) => ((this.selectedFeature = id), this.viewport.selectBody(id), this.render()),
       toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
+      setHidden: (ids, hidden) => void this.change(setHidden(this.doc, ids, hidden)),
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
       renameBody: (id, name) => void this.change(renameBody(this.doc, id, name)),
       removeBody: (id) => this.removePicked({ bodies: [id] }),
+      removeBodies: async (ids) => {
+        if (await askConfirm(`Supprimer ${ids.length > 1 ? `les ${ids.length} corps` : "le corps"} ? (Ctrl+Z pour annuler)`, "Supprimer")) await this.removePicked({ bodies: ids });
+      },
       renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
       editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
       removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),
@@ -152,7 +158,7 @@ export class Editor {
     });
     this.bindActions();
     this.bindKeyboard();
-    ref<HTMLSelectElement>(root, "units").value = session.doc.units;
+    ref<HTMLSelectElement>(root, "units").value = this.unit;
     window.addEventListener("pagehide", () => session.flushOnExit());
     window.addEventListener("beforeunload", (event) => {
       // Without autosave, warn before losing changes (the recovery copy still exists).
@@ -164,10 +170,7 @@ export class Editor {
   get doc(): CadDocument {
     return this.session.doc;
   }
-
-  get unit(): DisplayUnit {
-    return this.doc.units;
-  }
+  get unit(): DisplayUnit { return preferredUnit(); }
 
   notify(message: string, kind: "info" | "success" | "error" = "info"): void {
     toast(ref(this.root, "toasts"), message, kind);
@@ -244,13 +247,11 @@ export class Editor {
       status: feature ? this.statuses.get(feature.id) : undefined,
       unit: this.unit,
       bodyName: (id) => bodyLabel(this.doc, id),
-      body: this.bodyForPanel(),
       selection: this.picked.summary(),
       selectionActions: {
         fillet: () => this.openTool("fillet"),
         chamfer: () => this.openTool("chamfer"),
         extrude: () => this.extrudeCommand(),
-        hole: () => this.openTool("hole"),
         combine: () => this.openTool("combine"),
         split: () => this.openTool("split"),
         move: () => this.openTool("move"),
@@ -266,7 +267,7 @@ export class Editor {
         onEdit: () => feature && this.sketches.open(feature.id),
         onDimension: (id, value) => (feature ? this.sketches.setDimensionOf(feature.id, id, value) : false),
         onRemoveConstraint: (id) => this.sketches.removeConstraint(id),
-        onOffset: (value) => this.patchSelected((f) => (f.type === "sketch" ? { ...f, offset: value } : f)),
+        onOffset: (value) => this.patchSelected((f) => (f.type === "sketch" ? withPlaneOffset(f, value) : f)),
       },
       onEditExtrude: () => feature?.type === "extrude" && this.extrudeCommand(feature.id),
       onEditFeature: () => feature && this.tools.edit(feature.id),
@@ -278,16 +279,6 @@ export class Editor {
 
   /** Called after every render: the workshop panels and the body colours follow the document. */
   onRender: () => void = () => {};
-
-  private bodyForPanel(): { name: string; metrics: NonNullable<RecomputeResponse["bodies"][number]["metrics"]> } | null {
-    const bodies = this.result?.bodies ?? [];
-    let bodyId = this.picked.bodyId ?? null;
-    if (!bodyId && this.selectedFeature) bodyId = latestBody(this.doc, this.selectedFeature);
-    bodyId ??= bodies[bodies.length - 1]?.bodyId ?? null;
-    const body = bodies.find((b) => b.bodyId === bodyId);
-    if (!body) return null;
-    return { name: bodyLabel(this.doc, body.bodyId), metrics: body.metrics };
-  }
 
   private updateHistoryButtons(): void {
     ref<HTMLButtonElement>(this.root, "undo").disabled = !this.session.undo.canUndo;
@@ -321,6 +312,7 @@ export class Editor {
     const feature = findFeature(this.doc, id);
     if (feature?.type === "sketch") this.sketches.open(id);
     else if (feature?.type === "extrude") this.extrudeCommand(id);
+    else if (feature?.type === "niche") this.sketches.startEquip(feature.fill, feature.sketch, feature);
     else if (feature) this.tools.edit(id);
   }
 
@@ -333,8 +325,8 @@ export class Editor {
   /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, lines and points of sketches. */
   private async removePicked(selection: Parameters<typeof deletionOf>[1]): Promise<void> {
     const plan = deletionOf(this.doc, selection);
-    if (!plan.features.length && !plan.edits.length) return void (plan.skipped && this.notify("Une zone ne se supprime pas : sélectionnez ses traits, ou l'esquisse entière.", "info"));
-    if (await confirmDeletion(this.doc, plan)) await this.removeFeature(plan.features, plan.edits);
+    if (!plan.features.length && !plan.edits.length && !plan.pieces.length) return void (plan.skipped && this.notify("Une zone ne se supprime pas : sélectionnez ses traits, ou l'esquisse entière.", "info"));
+    if (await confirmDeletion(this.doc, plan)) await this.removeFeature(plan.features, plan.edits, plan.pieces);
   }
 
   private toggleSuppress(id: string): void {
@@ -342,10 +334,10 @@ export class Editor {
   }
 
   /** Deletes features (several at once: one undo step), after asking when other features go with them. */
-  private async removeFeature(ids: string | string[], edits: SketchFeature[] = []): Promise<void> {
-    const base = edits.reduce((d, sketch) => updateFeature(d, sketch.id, () => sketch), this.doc);
+  private async removeFeature(ids: string | string[], edits: SketchFeature[] = [], pieces: string[] = []): Promise<void> {
+    const base = removePieces(edits.reduce((d, sketch) => updateFeature(d, sketch.id, () => sketch), this.doc), pieces);
     const list = (typeof ids === "string" ? [ids] : ids).filter((id) => findFeature(base, id));
-    if (list.length === 0 && edits.length === 0) return;
+    if (list.length === 0 && edits.length === 0 && pieces.length === 0) return;
     const { next, lost } = deleteFeatures(base, list);
     const names = (of: string[]) => of.map((d) => findFeature(this.doc, d)?.name ?? d).join(", ");
     if (lost.length > 0 && !(await askConfirm(`Supprimer « ${names(list)} » supprimera aussi : ${names(lost)}. Continuer ?`, "Supprimer"))) return;
@@ -412,6 +404,7 @@ export class Editor {
   private openTool(kind: PanelToolKind): void {
     this.openPanel(null); // phones: the tool panel takes the bottom of the screen
     if (this.sketches.active) this.sketches.finish();
+    this.sketches.cancelJoinery();
     this.extrudeTool?.cancel();
     const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
     this.root.dataset.tool = kind;
@@ -422,7 +415,7 @@ export class Editor {
     const moved = direction === "undo" ? this.session.stepBack() : this.session.stepForward();
     if (!moved) return;
     if (this.selectedFeature && !findFeature(this.doc, this.selectedFeature)) this.selectedFeature = null;
-    ref<HTMLSelectElement>(this.root, "units").value = this.doc.units;
+    ref<HTMLSelectElement>(this.root, "units").value = this.unit;
     this.sketches.sync();
     void this.recompute();
   }
@@ -449,13 +442,18 @@ export class Editor {
       combine: () => this.openTool("combine"),
       split: () => this.openTool("split"),
       move: () => this.openTool("move"),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), "rect-array": () => this.openTool("rectArray"),
+      partition: () => this.sketches.startJoinery("partition", this.selectedFeature),
+      shelves: () => this.sketches.startJoinery("shelves", this.selectedFeature),
+      cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
+      penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
+      tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), kitchen: () => this.openTool("kitchen"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),
       "export-native": () => this.files.exportNative(),
       "import-native": () => ref<HTMLInputElement>(this.root, "import-file").click(),
-      view: (target) => this.viewport.setView(target.dataset.view as StandardView),
+      view: (target) => (this.viewport.setView(target.dataset.view as StandardView), target.closest("details")?.removeAttribute("open")),
       fit: () => this.viewport.fit(),
       panel: (target) => this.openPanel(target.dataset.panel as "tree" | "properties"),
       "close-panels": () => this.openPanel(null),
@@ -468,6 +466,7 @@ export class Editor {
     });
     ref<HTMLSelectElement>(this.root, "units").addEventListener("change", (event) => {
       const units = (event.target as HTMLSelectElement).value as DisplayUnit;
+      setPreferredUnit(units);
       this.session.apply({ ...this.doc, units });
       this.render();
     });

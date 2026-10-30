@@ -11,7 +11,7 @@
  */
 import { el } from "./dom";
 import { STATE_BADGES, TYPE_ICONS, type NavItem } from "./feature-meta";
-import { dotsIcon, eyeIcon } from "./icons";
+import { dotsIcon, eyeIcon, trashIcon } from "./icons";
 
 export interface BrowserHandlers {
   /** `adding`: Ctrl, Cmd or Maj was held (adds to, or removes from, a multiple selection). */
@@ -20,6 +20,10 @@ export interface BrowserHandlers {
   /** A step of the history of a body. */
   onSelectFeature(id: string): void;
   onToggleHidden(id: string): void;
+  /** The eye of the "Corps" heading: shows or hides every body (`ids`: what `onToggleHidden` takes). */
+  onSetHidden(ids: string[], hidden: boolean): void;
+  /** The bin of the "Corps" heading: deletes every body. */
+  onRemoveBodies(bodyIds: string[]): void;
   /** The "⋯" button of a row (`body`: the row is a body, `id` its latest feature). */
   onMenu(id: string, anchor: DOMRect, body: boolean): void;
 }
@@ -54,7 +58,9 @@ function saveToggled(toggled: Set<string>): void {
 }
 
 const toggled = loadToggled();
-const isOpen = (key: string) => (key.startsWith("group:") ? !toggled.has(key) : toggled.has(key));
+// Folders of a cabinet open by default; the folders of the kinds of pieces (Étagères, Côtés… : body-kinds.ts) closed,
+// so that a long cabinet fits; a click remembers the other state.
+const isOpen = (key: string) => (key.startsWith("group:") && !key.startsWith("group:kind:") ? !toggled.has(key) : toggled.has(key));
 
 function chevron(key: string, name: string): HTMLElement {
   const open = isOpen(key);
@@ -62,7 +68,7 @@ function chevron(key: string, name: string): HTMLElement {
     "button",
     {
       type: "button",
-      class: "size-6 shrink-0 rounded text-base leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700",
+      class: "size-6 shrink-0 text-base leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700",
       title: open ? "Replier" : "Déplier",
       "aria-label": `${open ? "Replier" : "Déplier"} ${name}`,
       "aria-expanded": String(open),
@@ -72,17 +78,25 @@ function chevron(key: string, name: string): HTMLElement {
   );
 }
 
+/** The bodies, and the sketches, are each in one card with a strong shadow; the rows inside are flat. */
+const CARD =
+  "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
+  "dark:border-gray-700 dark:bg-gray-800 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]";
+/** A row of a card: flat, blue when selected. */
+const flat = (selected: boolean, idle = "hover:bg-gray-100 dark:hover:bg-gray-700/60") =>
+  selected ? " bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : ` ${idle}`;
+
 /** Rows under a folder or a body, shifted right with a guide line. */
 const children = (key: string, rows: HTMLElement[]) =>
-  el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-700", "data-children": key, ...(isOpen(key) ? {} : { hidden: "" }) }, ...rows);
+  el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-600", "data-children": key, ...(isOpen(key) ? {} : { hidden: "" }) }, ...rows);
 
-function row(item: NavItem, selected: boolean, onSelectKey: string, kindIcon: string, menuId = item.id, toggle: HTMLElement | null = null, menuKind = ""): HTMLElement {
+function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = item.id, toggle: HTMLElement | null = null, menuKind = ""): HTMLElement {
   const badge = STATE_BADGES[item.state];
   const eye = el(
     "button",
     {
       type: "button",
-      class: `size-8 shrink-0 rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${item.hidden ? "text-gray-400 dark:text-gray-500" : "text-sky-700 dark:text-sky-300"}`,
+      class: `size-8 shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 ${item.hidden ? "text-gray-400 dark:text-gray-500" : "text-sky-700 dark:text-sky-300"}`,
       title: item.hidden ? "Afficher" : "Masquer",
       "aria-label": `${item.hidden ? "Afficher" : "Masquer"} ${item.name}`,
       "aria-pressed": String(!item.hidden),
@@ -99,7 +113,6 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, kindIcon: st
       title: item.message ?? `${item.name} — ${badge.label}`,
       "data-select": onSelectKey,
     },
-    el("span", { class: "w-4 shrink-0 text-center text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, kindIcon),
     el("span", { class: `flex-1 truncate ${item.hidden ? "opacity-60" : ""}` }, item.name),
     item.state === "ok" ? null : el("span", { class: `size-2.5 shrink-0 rounded-full ${badge.dot}`, "aria-label": badge.label }),
   );
@@ -107,7 +120,7 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, kindIcon: st
     "button",
     {
       type: "button",
-      class: "size-8 shrink-0 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700",
+      class: "size-8 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700",
       title: "Modifier, renommer, supprimer",
       "aria-label": `Options de ${item.name}`,
       "data-menu": menuId,
@@ -118,7 +131,7 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, kindIcon: st
   return el(
     "div",
     {
-      class: `flex items-center gap-1 rounded-md px-1 text-sm ${selected ? "bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`,
+      class: `flex items-center gap-1 px-1 text-sm ${flat(selected)}`,
     },
     toggle ?? el("span", { class: "w-6 shrink-0", "aria-hidden": "true" }),
     eye,
@@ -133,7 +146,7 @@ function historyRow(item: NavItem, selected: boolean): HTMLElement {
   return el(
     "li",
     {
-      class: `flex items-center gap-1 rounded-md px-1 text-xs ${selected ? "bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"}`,
+      class: `flex items-center gap-1 px-1 text-xs ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
     },
     el(
       "button",
@@ -144,7 +157,7 @@ function historyRow(item: NavItem, selected: boolean): HTMLElement {
     ),
     el(
       "button",
-      { type: "button", class: "size-7 shrink-0 rounded text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", title: "Modifier, renommer, supprimer", "aria-label": `Options de ${item.name}`, "data-menu": item.id },
+      { type: "button", class: "size-7 shrink-0 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", title: "Modifier, renommer, supprimer", "aria-label": `Options de ${item.name}`, "data-menu": item.id },
       dotsIcon(),
     ),
   );
@@ -159,7 +172,7 @@ interface Selection {
 function bodyNode(body: BodyRow, s: Selection): HTMLElement {
   const key = `body:${body.item.body?.originId ?? body.item.id}`;
   const selected = body.item.id === s.selectedBodyId || s.picked.bodies.includes(body.item.id);
-  const head = row({ ...body.item, name: body.label }, selected, `body:${body.item.id}`, "◼", body.item.id, body.history.length ? chevron(key, body.label) : null, "body");
+  const head = row({ ...body.item, name: body.label }, selected, `body:${body.item.id}`, body.item.id, body.history.length ? chevron(key, body.label) : null, "body");
   return el("li", {}, head, body.history.length ? children(key, body.history.map((h) => historyRow(h, h.id === s.selectedId))) : null);
 }
 
@@ -167,7 +180,7 @@ function groupNode(group: { id: string; name: string; bodies: BodyRow[] }, s: Se
   const key = `group:${group.id}`;
   const head = el(
     "div",
-    { class: "flex min-h-9 items-center gap-1 rounded-md px-1 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800" },
+    { class: "flex min-h-9 items-center gap-1 px-1 text-sm font-bold hover:bg-gray-100 dark:hover:bg-gray-700/60" },
     chevron(key, group.name),
     el("span", { class: "w-8 shrink-0 text-center text-amber-600 dark:text-amber-400", "aria-hidden": "true" }, "▰"),
     el("span", { class: "flex-1 truncate" }, group.name),
@@ -176,15 +189,44 @@ function groupNode(group: { id: string; name: string; bodies: BodyRow[] }, s: Se
   return el("li", { "data-group": group.id }, head, children(key, group.bodies.map((b) => bodyNode(b, s))));
 }
 
-function section(title: string, count: number, rows: HTMLElement[], empty: string, bodies = false): HTMLElement {
+/** Buttons of the "Corps" heading, acting on every body: the triangle that folds them, the eye, the bin. */
+const HEAD_BUTTON = "flex size-7 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
+
+function bodiesActions(rows: BodyRow[]): HTMLElement[] {
+  const allHidden = rows.every((r) => r.item.hidden);
+  return [
+    el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
+    el(
+      "button",
+      {
+        type: "button",
+        class: `${HEAD_BUTTON} ${allHidden ? "" : "text-sky-700 dark:text-sky-300"}`,
+        title: allHidden ? "Afficher tous les corps" : "Masquer tous les corps",
+        "aria-label": allHidden ? "Afficher tous les corps" : "Masquer tous les corps",
+        "aria-pressed": String(!allHidden),
+        "data-hide-all": allHidden ? "show" : "hide",
+      },
+      eyeIcon(!allHidden),
+    ),
+    el(
+      "button",
+      { type: "button", class: `${HEAD_BUTTON} hover:text-red-600 dark:hover:text-red-400`, title: "Supprimer tous les corps", "aria-label": "Supprimer tous les corps", "data-remove-all": "" },
+      trashIcon(),
+    ),
+  ];
+}
+
+function section(title: string, count: number, rows: HTMLElement[], empty: string, actions: HTMLElement[] = []): HTMLElement {
+  const bodies = actions.length > 0;
   return el(
     "details",
-    { class: "group/section mb-1", open: true, ...(bodies ? { "data-bodies": "" } : {}) },
+    { class: `group/section mx-1.5 mt-1 mb-4 p-1 ${CARD}`, open: true, ...(bodies ? { "data-bodies": "" } : {}) },
     el(
       "summary",
-      { class: "flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2 text-xs font-semibold tracking-wide text-gray-500 uppercase select-none dark:text-gray-400" },
+      { class: "flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase select-none dark:text-sky-400" },
       el("span", { class: "inline-block w-3 transition-transform group-open/section:rotate-90", "aria-hidden": "true" }, "▸"),
-      `${title} (${count})`,
+      el("span", { class: "flex-1" }, `${title} (${count})`),
+      ...actions,
     ),
     rows.length ? el("ul", { class: "space-y-0.5" }, ...rows) : el("p", { class: "px-6 pb-1 text-xs text-gray-500 dark:text-gray-400" }, empty),
   );
@@ -196,19 +238,47 @@ export function renderBrowser(
   handlers: BrowserHandlers,
 ): void {
   const bodies = data.bodies.map((entry) => ("group" in entry ? groupNode(entry.group, data) : bodyNode(entry.body, data)));
-  const count = data.bodies.reduce((n, entry) => n + ("group" in entry ? entry.group.bodies.length : 1), 0);
-  const sketches = data.sketches.map((s) => el("li", {}, row(s, s.id === data.selectedId || data.picked.sketches.includes(s.id), `sketch:${s.id}`, TYPE_ICONS.sketch)));
+  const all = data.bodies.flatMap((entry) => ("group" in entry ? entry.group.bodies : [entry.body]));
+  const sketches = data.sketches.map((s) => el("li", {}, row(s, s.id === data.selectedId || data.picked.sketches.includes(s.id), `sketch:${s.id}`)));
   const root = el(
     "div",
     {},
-    section("Corps", count, bodies, "Aucun corps. Extrudez une esquisse.", true),
+    section("Corps", all.length, bodies, "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all) : []),
     section("Esquisses", sketches.length, sketches, "Aucune esquisse."),
   );
+  const foldAll = root.querySelector<HTMLElement>("[data-fold-all]");
+  if (foldAll) {
+    syncFoldAll(root, foldAll);
+    foldAll.addEventListener("click", (event) => {
+      // In the section's summary: fold or unfold the bodies, not the section.
+      event.preventDefault();
+      event.stopPropagation();
+      const keys = [...new Set([...root.querySelectorAll<HTMLElement>("[data-bodies] [data-toggle]")].map((b) => b.dataset.toggle as string))];
+      const open = !keys.some(isOpen);
+      for (const key of keys) if (isOpen(key) !== open) toggle(root, key);
+      syncFoldAll(root, foldAll);
+    });
+  }
+  // The eye and the bin of the heading: on every body, without folding the section.
+  root.querySelector("[data-hide-all]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const hide = (event.currentTarget as HTMLElement).dataset.hideAll === "hide";
+    handlers.onSetHidden([...new Set(all.map((r) => r.item.body?.originId ?? r.item.id))], hide);
+  });
+  root.querySelector("[data-remove-all]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.onRemoveBodies(all.map((r) => r.item.id));
+  });
   root.addEventListener("click", (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-menu],[data-toggle]");
     if (!target) return;
     const adding = event.shiftKey || event.ctrlKey || event.metaKey;
-    if (target.dataset.toggle) toggle(root, target.dataset.toggle);
+    if (target.dataset.toggle) {
+      toggle(root, target.dataset.toggle);
+      if (foldAll) syncFoldAll(root, foldAll);
+    }
     else if (target.dataset.hide) handlers.onToggleHidden(target.dataset.hide);
     else if (target.dataset.menu) handlers.onMenu(target.dataset.menu, target.getBoundingClientRect(), target.dataset.menuKind === "body");
     else if (target.dataset.select?.startsWith("body:")) handlers.onSelectBody(target.dataset.select.slice(5), adding);
@@ -225,6 +295,14 @@ export function renderBrowser(
     else if (kind === "sketch") handlers.onSelectSketch(id, true);
   });
   container.replaceChildren(root);
+}
+
+/** The triangle of the "Corps" heading: ▾ folds everything open, ▸ unfolds every assembly and body. */
+function syncFoldAll(root: HTMLElement, button: HTMLElement): void {
+  const anyOpen = [...root.querySelectorAll<HTMLElement>("[data-bodies] [data-toggle]")].some((b) => isOpen(b.dataset.toggle as string));
+  button.textContent = anyOpen ? "▾" : "▸";
+  button.title = anyOpen ? "Tout replier" : "Tout déplier";
+  button.setAttribute("aria-label", anyOpen ? "Replier tous les corps" : "Déplier tous les corps");
 }
 
 /** Folds or unfolds a folder or a body in place (no new render) and remembers it. */

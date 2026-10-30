@@ -11,6 +11,7 @@ import { featureOfBody } from "../document/types";
 import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
+import { groupByKind } from "../ui/body-kinds";
 import { ref } from "../ui/dom";
 import { FeatureDialog } from "../ui/feature-dialog";
 import type { NavItem } from "../ui/feature-meta";
@@ -33,6 +34,8 @@ export interface NavigatorHost {
   selectBody(bodyId: string): void;
   /** Shows or hides a sketch, or the body created by this feature. */
   toggleHidden(id: string): void;
+  /** Shows or hides all these sketches or bodies at once. */
+  setHidden(ids: string[], hidden: boolean): void;
   rename(id: string, name: string): void;
   renameBody(bodyId: string, name: string): void;
   renameOffset(sketchId: string, offsetId: string, name: string): void;
@@ -43,6 +46,8 @@ export interface NavigatorHost {
   remove(id: string): void;
   /** Deletes a body: the feature that created it and everything built on it. */
   removeBody(bodyId: string): void;
+  /** Deletes all these bodies, after asking (one undo step). */
+  removeBodies(bodyIds: string[]): void;
 }
 
 export class Navigator {
@@ -81,7 +86,7 @@ export class Navigator {
     const sketches = doc.features.filter((f) => f.type === "sketch").map((f) => this.item(f));
     // The timeline follows the history: an offset comes where its sketch is.
     const operations = doc.features.flatMap((f) =>
-      f.type === "sketch" ? (f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: "offset", hidden: false, offset: { sketchId: f.id } })) : [this.item(f)],
+      f.type === "sketch" ? (f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: o.step?.kind === "shelves" && o.step.input.vertical ? "cloisons" : (o.step?.kind ?? "offset"), hidden: false, offset: { sketchId: f.id } })) : [this.item(f)],
     );
     const bodies = this.host.bodyIds().flatMap((bodyId) => {
       // A piece of a split ("sp1#2") has no feature of its own: it takes the state of the split.
@@ -118,7 +123,7 @@ export class Navigator {
       });
       return item ? { item, label: leaf.label, history } : null;
     };
-    return bodyTree(doc, bodies.map((b) => b.id)).flatMap((node): BodyEntry[] => {
+    const entries = bodyTree(doc, bodies.map((b) => b.id)).flatMap((node): BodyEntry[] => {
       if (node.kind === "body") {
         const body = toRow(node.body);
         return body ? [{ body }] : [];
@@ -126,6 +131,8 @@ export class Navigator {
       const rows = node.group.bodies.map(toRow).filter((r): r is BodyRow => r !== null);
       return [{ group: { id: node.group.id, name: node.group.name, bodies: rows } }];
     });
+    // The pieces of a Répartition in a folder per kind: Étagères, Côtés, Dessous…
+    return groupByKind(entries);
   }
 
   render(): void {
@@ -139,6 +146,8 @@ export class Navigator {
         onSelectSketch: (id, adding) => (adding ? this.host.toggleInSelection("sketch", id) : this.host.selectFeature(id)),
         onSelectFeature: (id) => this.host.selectFeature(id),
         onToggleHidden: (id) => this.host.toggleHidden(id),
+        onSetHidden: (ids, hidden) => this.host.setHidden(ids, hidden),
+        onRemoveBodies: (ids) => this.host.removeBodies(ids),
         onMenu: (id, anchor, body) => this.open(id, anchor, body),
       },
     );

@@ -20,6 +20,7 @@ import { removeEntities, type Vec2 } from "./edit";
 import type { Vec3 } from "./frame";
 import { allConstruction, addOffsetCurves, connectedChain, handleFor, OffsetSelectionError, offsetName, offsetPreview, pathsFromCurves } from "./offset";
 import type { Preview } from "./tools";
+import { placePanel } from "../ui/dock";
 
 export interface OffsetHost {
   geometry(): SketchGeometry;
@@ -88,7 +89,7 @@ export class OffsetTool {
     });
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    host.container().append(this.panel);
+    placePanel(host.container(), this.panel);
     // Arrow on the selected shape: drag to set the distance and the side; its label opens the keypad.
     this.arrow = new ArrowHandle(host.viewport, (anchor) =>
       openCalculator({

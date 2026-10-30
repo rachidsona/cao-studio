@@ -4,11 +4,15 @@
  * drawn by the mode, which forgets them when they close.
  */
 import type { SketchArrayTool } from "./array-tool";
+import type { ShelvesTool } from "./shelves-tool";
+import type { SketchPartitionTool } from "./partition-tool";
+import * as THREE from "three";
 import { toWorld } from "./frame";
 import { snap, snapToGrid } from "./hit";
 import type { SketchMode } from "./mode";
 import type { SketchMoveTool } from "./move-tool";
 import type { OffsetTool } from "./offset-tool";
+import type { EdgeOffsetTool } from "./edge-offset-tool";
 
 /** Draws the tool's preview again. */
 function refresh(mode: SketchMode, preview: SketchMode["preview"]): void {
@@ -45,6 +49,9 @@ export function moveHost(mode: SketchMode): ConstructorParameters<typeof SketchM
     },
     container: () => mode.host.calculatorContainer(),
     unit: () => mode.host.unit(),
+    viewport: mode.viewport,
+    frame: () => mode.frame,
+    world: ([x, y]) => toWorld(mode.frame, x, y),
     toSketch: (event) => mode.toSketch(event),
     snap: (p, exclude) => {
       const s = snap(mode.geometry, p, mode.tolerance(), exclude);
@@ -58,6 +65,75 @@ export function moveHost(mode: SketchMode): ConstructorParameters<typeof SketchM
       refresh(mode, null);
     },
     notify: (message, kind) => mode.host.notify(message, kind),
+  };
+}
+
+export function shelvesHost(mode: SketchMode): ConstructorParameters<typeof ShelvesTool>[0] {
+  return {
+    geometry: () => mode.geometry,
+    regions: () => mode.faces,
+    // The sketch replaces its selection set on undo/redo: always read the current one.
+    get selection() {
+      return mode.selection;
+    },
+    container: () => mode.host.calculatorContainer(),
+    unit: () => mode.host.unit(),
+    apply: (geometry, success, extrusion) => mode.apply(geometry, success, extrusion),
+    offsetId: () => mode.host.offsetId(),
+    changed: () => refresh(mode, mode.shelves?.preview ?? null),
+    closed: () => {
+      mode.shelves = null;
+      refresh(mode, null);
+    },
+    notify: (message, kind) => mode.host.notify(message, kind),
+  };
+}
+
+export function partitionHost(mode: SketchMode): ConstructorParameters<typeof SketchPartitionTool>[0] {
+  return {
+    geometry: () => mode.geometry,
+    container: () => mode.host.calculatorContainer(),
+    unit: () => mode.host.unit(),
+    apply: (geometry, success, extrusion) => mode.apply(geometry, success, extrusion),
+    offsetId: () => mode.host.offsetId(),
+    flat: () => Math.abs(mode.frame.normal[2]) > 0.9,
+    changed: () => refresh(mode, mode.partition?.preview ?? null),
+    fit: ([x0, y0], [x1, y1]) => {
+      const box = new THREE.Box3().setFromPoints([new THREE.Vector3(...toWorld(mode.frame, x0, y0)), new THREE.Vector3(...toWorld(mode.frame, x1, y1))]);
+      mode.viewport.fitBox(box, 1.35);
+    },
+    closed: () => {
+      mode.partition = null;
+      refresh(mode, null);
+    },
+    notify: (message, kind) => mode.host.notify(message, kind),
+  };
+}
+
+export function edgeOffsetHost(mode: SketchMode): ConstructorParameters<typeof EdgeOffsetTool>[0] {
+  return {
+    geometry: () => mode.geometry,
+    display: (geometry, preview) => {
+      mode.geometry = geometry;
+      refresh(mode, preview);
+    },
+    container: () => mode.host.calculatorContainer(),
+    viewport: mode.viewport,
+    world: ([x, y]) => toWorld(mode.frame, x, y),
+    direction: ([x, y]) => {
+      const { u, v } = mode.frame;
+      return [u[0] * x + v[0] * y, u[1] * x + v[1] * y, u[2] * x + v[2] * y];
+    },
+    unit: () => mode.host.unit(),
+    compute: (paths, distance, join) => mode.host.offset(paths, distance, join),
+    newOffsetId: () => mode.host.offsetId(),
+    apply: (geometry, success) => mode.apply(geometry, success),
+    notify: (message, kind) => mode.host.notify(message, kind),
+    // Échap: back to the selection tool, the copies made stay.
+    closed: () => {
+      mode.edgeOffset = null;
+      mode.setTool("select");
+    },
   };
 }
 

@@ -10,8 +10,8 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { floatingPanel } from "./workshop-ui";
 
-const INPUT = "h-8 min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
-const BUTTON = "h-8 shrink-0 rounded-md border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+const INPUT = "h-8 min-w-0 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const BUTTON = "h-8 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
 const lerp = (a: number[], b: number[], t: number) => a.map((x, i) => x + ((b[i] as number) - x) * t) as [number, number, number];
 

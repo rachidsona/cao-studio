@@ -2,11 +2,13 @@
  * "Paramètres" panel (Atelier group): named values (largeur, ep…), possibly
  * built from each other, and formulas that link the numbers of features to
  * them. Changing a parameter rewrites every linked number in one undo step.
- * The maths is in document/expressions.ts.
+ * Configurations keep named sets of values (variants of the model), applied
+ * in one click. The maths is in document/expressions.ts.
  */
 import {
   applyExpressions, evaluate, nameProblem, namesIn, numericFields, parameterUsage, resolveParameters,
 } from "../document/expressions";
+import { activeConfiguration, applyConfiguration, configurationsOf, removeConfiguration, saveConfiguration, updateConfiguration } from "../document/configurations";
 import { findFeature, updateFeature } from "../document/operations";
 import type { CadDocument, Feature, Parameter } from "../document/types";
 import { askConfirm } from "../ui/confirm-dialog";
@@ -15,8 +17,8 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { floatingPanel } from "./workshop-ui";
 
-const INPUT = "h-8 min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
-const BUTTON = "h-8 shrink-0 rounded-md border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+const INPUT = "h-8 min-w-0 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const BUTTON = "h-8 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
 const FIELD_LABELS: Record<string, string> = {
   width: "Largeur", height: "Hauteur", depth: "Profondeur", thickness: "Épaisseur", backThickness: "Épaisseur du fond", shelves: "Nombre d'étagères",
@@ -109,6 +111,29 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
     return el("div", { class: "grid grid-cols-[1fr_1fr_auto] gap-1.5" }, name, value, add);
   };
 
+  const configurationSection = (): HTMLElement[] => {
+    const doc = editor.doc;
+    const active = activeConfiguration(doc);
+    const rows = configurationsOf(doc).map((c) => {
+      const isActive = c.id === active;
+      const apply = el("button", { type: "button", class: `${BUTTON} min-w-0 flex-1 truncate text-left ${isActive ? "border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200" : ""}`, "aria-pressed": String(isActive), title: Object.entries(c.values).map(([n, v]) => `${n} = ${v}`).join(", ") || "Aucune valeur" }, c.name);
+      apply.addEventListener("click", () => commit(applyConfiguration(editor.doc, c.id)));
+      const update = el("button", { type: "button", class: `${BUTTON} w-8`, title: "Remplacer par les valeurs actuelles", "aria-label": `Mettre à jour ${c.name}` }, "↻");
+      update.addEventListener("click", () => void editor.change(updateConfiguration(editor.doc, c.id)));
+      const remove = el("button", { type: "button", class: `${BUTTON} w-8`, "aria-label": `Supprimer ${c.name}` }, "✕");
+      remove.addEventListener("click", () => void editor.change(removeConfiguration(editor.doc, c.id)));
+      return el("div", { class: "flex items-center gap-1.5" }, apply, update, remove);
+    });
+    const name = el("input", { type: "text", class: `${INPUT} w-full`, placeholder: "Grand 900", "aria-label": "Nom de la configuration" });
+    name.addEventListener("keydown", (event) => event.stopPropagation());
+    const save = el("button", { type: "button", class: BUTTON, disabled: !Object.keys(doc.parameters).length }, "Enregistrer");
+    save.addEventListener("click", () => void editor.change(saveConfiguration(editor.doc, name.value).doc));
+    return [
+      ...(rows.length ? rows : [el("p", { class: "text-gray-500" }, "Aucune configuration. Enregistrez les valeurs actuelles pour revenir à cette variante d'un clic.")]),
+      el("div", { class: "grid grid-cols-[1fr_auto] gap-1.5" }, name, save),
+    ];
+  };
+
   const linkSection = (values: Record<string, number>): HTMLElement[] => {
     const doc = editor.doc;
     const candidates = doc.features.filter((f) => f.type !== "sketch" && numericFields(f).length > 0);
@@ -163,9 +188,11 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
     panel.body.replaceChildren(
       ...(names.length ? names.map((n) => parameterRow(n, parameters[n] as Parameter, errors[n])) : [el("p", { class: "text-gray-500" }, "Aucun paramètre. Ajoutez-en un : la largeur, l'épaisseur des panneaux…")]),
       addRow(),
+      el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Configurations"),
+      ...configurationSection(),
       el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Liens avec les cotes"),
       ...linkSection(values),
-      el("p", { class: "text-[11px] text-gray-500" }, "Formules : + − * / ^ ( ), pi, min(a; b), max, round, floor, ceil, sqrt. Valeurs en mm. Modifier un paramètre met à jour toutes les cotes liées."),
+      el("p", { class: "text-[11px] text-gray-500" }, "Formules : + − * / ^ ( ), pi, min(a; b), max, round, floor, ceil, sqrt. Les paramètres et formules sont en millimètres (1 cm = 10). Modifier un paramètre met à jour toutes les cotes liées."),
     );
   };
 

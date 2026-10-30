@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from apps.projects import sharing
 from apps.projects.monitoring import healthz
 
 urlpatterns = [
@@ -12,4 +13,8 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("projects/", include("apps.projects.urls")),
     path("api/", include("apps.projects.api_urls")),
+    # Client links: public, by token.
+    path("s/<str:token>/", sharing.share_page, name="share-page"),
+    path("s/<str:token>/model.glb", sharing.share_model, name="share-model"),
+    path("s/<str:token>/comments/", sharing.share_comments, name="share-comments"),
 ]

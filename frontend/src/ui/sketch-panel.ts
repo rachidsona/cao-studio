@@ -3,7 +3,7 @@ import { CONSTRAINT_GLYPHS, CONSTRAINT_LABELS } from "../constraints/catalog";
 import { isDimension, type DimensionConstraint } from "../document/sketch";
 import type { DisplayUnit, SketchFeature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
-import { PLANE_LABELS } from "../sketcher/frame";
+import { PLANE_LABELS, planeOffsetOf } from "../sketcher/frame";
 import { el } from "./dom";
 import { iconButton, numberField, row, section } from "./fields";
 
@@ -38,7 +38,7 @@ function stateBadge(status: FeatureStatus | undefined): HTMLElement {
   return el(
     "div",
     { class: "space-y-1" },
-    el("p", { class: `rounded-md px-3 py-2 text-sm ${tone}`, "data-ref": "sketch-state" }, text),
+    el("p", { class: ` px-3 py-2 text-sm ${tone}`, "data-ref": "sketch-state" }, text),
     profile ? el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, profile) : null,
   );
 }
@@ -65,8 +65,8 @@ export function sketchSections(
     "Esquisse",
     editButton,
     stateBadge(status),
-    el("dl", {}, row("Plan", PLANE_LABELS[feature.plane])),
-    numberField({ label: "Décalage du plan", value: feature.offset, unit, signed: true, onCommit: (v) => actions.onOffset(v) }),
+    el("dl", {}, row("Plan", feature.frame ? `Plan de construction, proche de ${feature.plane}` : PLANE_LABELS[feature.plane])),
+    numberField({ label: "Décalage du plan", value: planeOffsetOf(feature), unit, signed: true, onCommit: (v) => actions.onOffset(v) }),
   );
 
   const dimensionList = dimensions.length

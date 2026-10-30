@@ -18,6 +18,7 @@ import type { Annotation } from "./annotations";
 import { divideRectangle, gapAnnotations, rectangleAround, rectangleOfCurve, spreadAxis, type BoardSpec, type SketchRectangle } from "./sketch-divide";
 import type { Preview } from "./tools";
 import type { SketchGeometry } from "../document/sketch";
+import { placePanel } from "../ui/dock";
 
 export interface ArrayHost {
   geometry(): SketchGeometry;
@@ -43,7 +44,7 @@ interface Direction {
 }
 
 const FIELD =
-  "h-8 w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
+  "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const QUANTITIES = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export class SketchArrayTool {
@@ -71,14 +72,14 @@ export class SketchArrayTool {
   constructor(private readonly host: ArrayHost) {
     this.panel = el("div", {
       class:
-        "absolute top-2 right-2 z-30 w-64 space-y-2 rounded-lg border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
+        "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
         "max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto dark:border-gray-700 dark:bg-gray-900/95",
       role: "dialog",
       "aria-label": "Réseau",
     });
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    host.container().append(this.panel);
+    placePanel(host.container(), this.panel);
   }
 
   /** Starts with the elements already selected in the sketch (if any). */
@@ -210,11 +211,11 @@ export class SketchArrayTool {
       this.place = place.value as "step" | "spread";
       this.recompute();
     });
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 rounded-md border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
+    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
     cancel.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: !this.ready }, "OK");
+    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: !this.ready }, "OK");
     ok.addEventListener("click", () => this.confirm());
-    const contours = el("button", { type: "button", class: "h-8 w-full rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Ajouter les contours entiers");
+    const contours = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Ajouter les contours entiers");
     contours.addEventListener("click", () => {
       for (const id of withContours(this.host.geometry(), this.host.selection)) this.host.selection.add(id);
       this.fitSteps();
@@ -249,7 +250,7 @@ export class SketchArrayTool {
       length("Pas 2", this.d2),
       ]),
       this.outcome?.ok ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `${this.outcome.copies} copie${this.outcome.copies > 1 ? "s" : ""}.`) : null,
-      message ? el("p", { class: "rounded-md bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, message) : null,
+      message ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, message) : null,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
@@ -259,7 +260,7 @@ export class SketchArrayTool {
   private insideRows(unit: DisplayUnit, number: (label: string, value: number, suffix: string, show: (v: number) => number, set: (v: number) => void) => HTMLElement): (HTMLElement | null)[] {
     const rect = this.rectangle();
     const size = rect ? `${formatLength(rect.max[0] - rect.min[0], unit)} × ${formatLength(rect.max[1] - rect.min[1], unit)}` : "aucun";
-    const choose = el("button", { type: "button", class: `h-8 w-full rounded-md border ${this.picking ? "border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100" : "border-gray-300"} hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800`, "aria-pressed": String(this.picking) }, this.picking ? "Cliquez un côté du rectangle…" : "Choisir le rectangle");
+    const choose = el("button", { type: "button", class: `h-8 w-full border ${this.picking ? "border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100" : "border-gray-300"} hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800`, "aria-pressed": String(this.picking) }, this.picking ? "Cliquez un côté du rectangle…" : "Choisir le rectangle");
     choose.addEventListener("click", () => {
       this.picking = !this.picking;
       this.draw();

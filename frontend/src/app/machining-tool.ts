@@ -96,7 +96,7 @@ export class MachiningTool extends PanelTool {
       if (!target || !box || !this.face) return "Cliquez une face de la planche à usiner.";
       const ops: MachiningOp[] = this.kind === "drilling32" ? drilling32(box, this.face, this.drill) : this.kind === "hinge" ? hinges(box, this.face, this.cups) : groove(box, this.face, this.slot);
       const [slot] = freshFeatureIds(doc, "mc", NAMES[this.kind] as string, 1);
-      return [{ id: slot!.id, type: "machining", name: slot!.name, target, kind: this.kind, ops, anchor: [...box[0]] }];
+      return [{ id: slot!.id, type: "machining", name: slot!.name, target, kind: this.kind, ops, anchor: [...box[0]], anchorHigh: [...box[1]] }];
     }
     const joint = this.jointOf();
     if (typeof joint === "string") return joint;
@@ -107,7 +107,7 @@ export class MachiningTool extends PanelTool {
     ];
     return parts.flatMap((p, i): MachiningFeature[] => {
       const box = this.box(p.target);
-      return p.ops.length && box ? [{ id: slots[i]!.id, type: "machining", name: slots[i]!.name, target: p.target, kind: this.kind, ops: p.ops, anchor: [...box[0]] }] : [];
+      return p.ops.length && box ? [{ id: slots[i]!.id, type: "machining", name: slots[i]!.name, target: p.target, kind: this.kind, ops: p.ops, anchor: [...box[0]], anchorHigh: [...box[1]] }] : [];
     });
   }
 

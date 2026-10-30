@@ -12,7 +12,7 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { downloadText, openModal, printHtml } from "./workshop-ui";
 
-const SELECT = "h-8 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const SELECT = "h-8 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 /// Above this many triangles the hidden lines are not computed (the check is quadratic).
 const MAX_TRIANGLES = 60000;
 
@@ -31,7 +31,7 @@ export function bindDrawing(root: HTMLElement, viewport: Viewport, editor: Edito
     const slow = triangles > MAX_TRIANGLES;
     const state = { sheet: "A3" as SheetName, scale: null as number | null, hidden: !slow };
     const title = document.title.split(" · ")[0] || "Mise en plan";
-    const preview = el("div", { class: "mx-auto max-w-full overflow-auto rounded border border-gray-200 bg-white dark:border-gray-700" });
+    const preview = el("div", { class: "mx-auto max-w-full overflow-auto border border-gray-200 bg-white dark:border-gray-700" });
     const build = () =>
       buildSheet(meshes, { ...state, title, format: (mm) => formatLength(mm, editor.unit), date: new Date().toLocaleDateString("fr-FR") });
     let svg = "";

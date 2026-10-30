@@ -6,6 +6,9 @@
  * the sketch and shown dashed before it is confirmed; nothing is stored until
  * OK, and confirming is one undo step.
  *
+ * Besides dragging the elements themselves, the selection has the arrow manipulator of the 3D Move tool (Shapr3D
+ * style): an arrow along each axis of the sketch and a ball to move freely in its plane.
+ *
  * State and sequencing only: the maths are in move.ts, the dialog in
  * ui/move-panel.ts, the document is reached through the host.
  */
@@ -17,6 +20,11 @@ import type { Vec2 } from "./edit";
 import { hitTest, toggleTarget } from "./hit";
 import { basePoint, immovable, movablePoints, moveGeometry, movePreview, withContours, type MoveOutcome } from "./move";
 import type { Preview } from "./tools";
+import { placePanel } from "../ui/dock";
+import { dragStep, roundTo } from "../viewport/axis-drag";
+import { MoveGizmo } from "../viewport/move-gizmo";
+import type { Viewport } from "../viewport/viewport";
+import type { SketchFrame, Vec3 } from "./frame";
 
 export interface MoveHost {
   geometry(): SketchGeometry;
@@ -24,6 +32,11 @@ export interface MoveHost {
   selection: Set<string>;
   container(): HTMLElement;
   unit(): DisplayUnit;
+  /** The 3D view and the sketch plane's frame, for the arrow manipulator. */
+  viewport: Viewport;
+  frame(): SketchFrame;
+  /** A position of the sketch plane → its place in the 3D view. */
+  world(p: Vec2): Vec3;
   /** Pointer → position in the sketch plane. */
   toSketch(event: PointerEvent): Vec2 | null;
   /** Snap of a position on the points and curves not in `exclude`, else on the grid. */
@@ -50,6 +63,9 @@ export class SketchMoveTool {
   private delta: Vec2 = [0, 0];
   private outcome: MoveOutcome | null = null;
   private drag: { start: Vec2; moved: boolean } | null = null;
+  /** The arrow manipulator, and the displacement when it was taken. */
+  private readonly gizmo: MoveGizmo;
+  private gizmoFrom: Vec2 = [0, 0];
   private done = false;
   private redrawPending = false;
   private readonly panel: HTMLElement;
@@ -62,7 +78,8 @@ export class SketchMoveTool {
     });
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    host.container().append(this.panel);
+    placePanel(host.container(), this.panel);
+    this.gizmo = new MoveGizmo(host.viewport, { planar: true });
   }
 
   /** Starts with the elements already selected in the sketch (if any). */
@@ -99,8 +116,17 @@ export class SketchMoveTool {
     const ids = this.pointIds();
     this.outcome = ids.length === 0 ? null : moveGeometry(g, ids, this.delta);
     this.preview = this.outcome?.ok && !this.outcome.unchanged ? movePreview(g, this.outcome.geometry) : null;
+    this.placeGizmo();
     this.draw();
     this.host.changed();
+  }
+
+  /** The manipulator sits on the base point, where the selection will land (nothing selected: hidden). */
+  private placeGizmo(): void {
+    const base = basePoint(this.host.geometry(), this.host.selection, this.pointIds());
+    if (!base || this.done) return this.gizmo.hide();
+    const { u, v, normal } = this.host.frame();
+    this.gizmo.place(this.host.world([base.pos[0] + this.delta[0], base.pos[1] + this.delta[1]]), { x: u, y: v, z: normal });
   }
 
   private setDelta(delta: Vec2): void {
@@ -182,6 +208,10 @@ export class SketchMoveTool {
 
   /** Takes the pointer to drag the selection when it starts on a selected element (or on any element when nothing is selected yet). */
   down(event: PointerEvent): boolean {
+    if (this.gizmo.dragStart(event)) {
+      this.gizmoFrom = [...this.delta];
+      return true;
+    }
     const p = this.host.toSketch(event);
     if (!p) return false;
     const hit = hitTest(this.host.geometry(), p, this.host.tolerance()).find((h) => !RESERVED.has(h.id));
@@ -199,7 +229,21 @@ export class SketchMoveTool {
 
   /** Drags the selection: true while a drag is in progress. */
   move(event: PointerEvent): boolean {
-    if (!this.drag) return false;
+    const pull = this.gizmo.dragMove(event);
+    if (pull) {
+      // The displacement of the manipulator, in the sketch's axes, rounded to the zoom.
+      const { u, v } = this.host.frame();
+      const step = dragStep(this.host.viewport.worldPerPixel());
+      const along = (axis: Vec3) => axis[0] * pull[0] + axis[1] * pull[1] + axis[2] * pull[2];
+      this.setDelta([roundTo(this.gizmoFrom[0] + along(u), step), roundTo(this.gizmoFrom[1] + along(v), step)]);
+      return true;
+    }
+    if (!this.drag) {
+      // Over the manipulator: a hand, and the handle lights up.
+      const over = this.gizmo.hovered(event) !== null;
+      this.host.viewport.renderer.domElement.style.cursor = over ? "grab" : "";
+      return false;
+    }
     const p = this.host.toSketch(event);
     if (!p) return true;
     // The elements being moved are not snap targets for themselves.
@@ -213,6 +257,7 @@ export class SketchMoveTool {
 
   /** Ends a drag (the preview stays until OK); true when there was one. */
   up(): boolean {
+    if (this.gizmo.dragEnd()) return true;
     const was = this.drag !== null;
     this.drag = null;
     return was;
@@ -244,6 +289,7 @@ export class SketchMoveTool {
   /** Removes the panel without notifying the host (the sketch mode is switching tools itself). */
   dispose(): void {
     this.done = true;
+    this.gizmo.dispose();
     this.preview = null;
     this.drag = null;
     this.panel.remove();

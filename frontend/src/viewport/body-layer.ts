@@ -1,12 +1,16 @@
 /**
  * Bodies drawn in the 3D view, from the meshes of the geometry worker: one subtle tint per body (separate
- * pieces stand out), the colour and wood grain of their material, the see-through look of the sketch mode, and a
- * pose that shows a door open without changing the model.
+ * pieces stand out), their appearance (library: wood, stone, metal, glass… or their material's), the see-through
+ * look of the sketch mode, and a pose that shows a door open without changing the model.
  */
 import * as THREE from "three";
+import type { BodyAppearance } from "../appearance/assign";
+import { appearanceMaterial, applyUvs, tileOf } from "../appearance/three-materials";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Vec3 } from "../sketcher/frame";
 import { addDistinct, bodyVertices, type Point3 } from "./body-points";
+
+export type { BodyAppearance };
 
 export interface BodyObject {
   mesh: THREE.Mesh;
@@ -16,12 +20,39 @@ export interface BodyObject {
   tint: THREE.Material;
 }
 
-/** How a body looks when it has a material (cabinet making): its colour, and a wood grain along an axis. */
-export interface BodyAppearance {
-  color: string;
-  wood?: boolean;
-  /** Axis of the grain (the boards' length): the stripes run along it. */
-  grainAxis?: 0 | 1 | 2;
+/** The edge lines drawn for a body, and which B-rep edge each run of their vertices is (for picking). */
+export interface DrawnEdges {
+  positions: Float32Array;
+  /** Vertex ranges of `positions` (in vertex units), each with the index of its edge in the body's edges. */
+  groups: { start: number; count: number; edge: number }[];
+}
+
+/**
+ * The edge lines drawn for a body: all its edges but the seams between coplanar faces. Leaving the seams out shifts
+ * the vertices of the edges after them: `groups` keeps, for each drawn run, the number of the edge it is, so that a
+ * click on a line selects that very edge.
+ */
+export function drawnEdges(data: Pick<BodyMesh, "edges" | "edgeGroups" | "seams">): DrawnEdges {
+  const seams = new Set(data.seams ?? []);
+  if (seams.size === 0) return { positions: data.edges, groups: data.edgeGroups.map((g, edge) => ({ start: g.start, count: g.count, edge })) };
+  const groups: DrawnEdges["groups"] = [];
+  let at = 0;
+  data.edgeGroups.forEach((g, edge) => {
+    if (seams.has(edge)) return;
+    groups.push({ start: at, count: g.count, edge });
+    at += g.count;
+  });
+  const positions = new Float32Array(at * 3);
+  groups.forEach((g) => {
+    const source = data.edgeGroups[g.edge] as { start: number; count: number };
+    positions.set(data.edges.subarray(source.start * 3, (source.start + source.count) * 3), g.start * 3);
+  });
+  return { positions, groups };
+}
+
+/** The B-rep edge of a drawn vertex of a body's edge lines (-1 for none). */
+export function drawnEdgeAt(groups: DrawnEdges["groups"], vertexIndex: number): number {
+  return groups.find((g) => vertexIndex >= g.start && vertexIndex < g.start + g.count)?.edge ?? -1;
 }
 
 export class BodyLayer {
@@ -32,11 +63,15 @@ export class BodyLayer {
   /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
   private tints: THREE.MeshStandardMaterial[] = [];
   private appearance: ((bodyId: string) => BodyAppearance | null) | null = null;
-  private appearanceMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
   private opacity = 1;
 
-  constructor(private readonly scene: THREE.Scene) {
-    const base = new THREE.MeshStandardMaterial({ color: 0xb8c4d1, metalness: 0.25, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  /** `environment`: what the appearances reflect (a studio), so metals and lacquers look like them. */
+  constructor(
+    private readonly scene: THREE.Scene,
+    private readonly environment: THREE.Texture | null = null,
+  ) {
+    const base = new THREE.MeshStandardMaterial({ color: 0xb8c4d1, metalness: 0, roughness: 0.62, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     this.highlightMaterial = base.clone();
     this.highlightMaterial.color.set(0x0ea5e9);
     for (const color of [0xb8c4d1, 0xc8bba4, 0xaec4b6, 0xbfb6cc, 0xb4c0d8, 0xcfc3a9]) {
@@ -65,11 +100,16 @@ export class BodyLayer {
       const tint = this.tints[index % this.tints.length] as THREE.MeshStandardMaterial;
       const mesh = new THREE.Mesh(geometry, [tint, this.highlightMaterial]);
       mesh.userData.bodyId = data.bodyId;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
 
       const edgeGeometry = new THREE.BufferGeometry();
-      edgeGeometry.setAttribute("position", new THREE.BufferAttribute(data.edges, 3));
+      const drawn = drawnEdges(data);
+      edgeGeometry.setAttribute("position", new THREE.BufferAttribute(drawn.positions, 3));
       const edges = new THREE.LineSegments(edgeGeometry, this.edgeMaterial);
       edges.userData.bodyId = data.bodyId;
+      // Which edge each drawn line is (the seams left out shift them).
+      edges.userData.drawnGroups = drawn.groups;
       this.scene.add(mesh, edges);
       this.bodies.set(data.bodyId, { mesh, edges, data, tint });
     }
@@ -103,54 +143,46 @@ export class BodyLayer {
     for (const [id, body] of this.bodies) {
       const look = this.appearance?.(id);
       (body.mesh.material as THREE.Material[])[0] = look ? this.appearanceMaterial(look) : body.tint;
+      if (!look || look.appearance.pattern === "plain") continue;
+      // Texture coordinates along the board's grain, redone only when the axis or the motif's tile changes.
+      const key = `${look.grainAxis}|${tileOf(look.appearance).join("x")}`;
+      if (body.mesh.geometry.userData.uvKey === key) continue;
+      applyUvs(body.mesh.geometry, look);
+      body.mesh.geometry.userData.uvKey = key;
     }
   }
 
-  /** One material per look; the wood grain is stripes in world space along the grain axis, drawn by the shader. */
-  private appearanceMaterial(look: BodyAppearance): THREE.MeshStandardMaterial {
-    const wood = look.wood === true;
-    const axis = look.grainAxis ?? 0;
-    const key = `${look.color}|${wood}|${axis}`;
+  /** One material per appearance and colour (library: colour or computed texture, relief, glass see-through). */
+  private appearanceMaterial(look: BodyAppearance): THREE.MeshPhysicalMaterial {
+    const key = `${look.appearance.id}|${look.color ?? ""}`;
     let material = this.appearanceMaterials.get(key);
     if (material) return material;
-    material = (this.tints[0] as THREE.MeshStandardMaterial).clone();
-    material.color.set(look.color);
-    material.metalness = 0;
-    material.roughness = wood ? 0.75 : 0.6;
-    material.transparent = this.opacity < 1;
-    material.opacity = this.opacity;
-    material.depthWrite = this.opacity === 1;
-    if (wood) {
-      const across = [1, 1, 1].map((c, i) => (i === axis ? 0 : c));
-      const length = Math.hypot(...across);
-      material.onBeforeCompile = (shader) => {
-        shader.uniforms.uAcross = { value: new THREE.Vector3(...across).divideScalar(length) };
-        shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nvarying vec3 vWorld;")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWorld = (modelMatrix * vec4(position, 1.0)).xyz;");
-        shader.fragmentShader = shader.fragmentShader
-          .replace("#include <common>", "#include <common>\nvarying vec3 vWorld;\nuniform vec3 uAcross;")
-          .replace(
-            "#include <color_fragment>",
-            "#include <color_fragment>\n{ float t = dot(vWorld, uAcross) * 0.35; float ring = sin(t + 2.2 * sin(t * 0.21) + 0.9 * sin(dot(vWorld, vec3(0.013, 0.011, 0.017)))); diffuseColor.rgb *= 0.84 + 0.16 * (0.5 + 0.5 * ring) + 0.05 * sin(t * 5.3); }",
-          );
-      };
-      material.customProgramCacheKey = () => key;
-    }
+    material = appearanceMaterial(look.appearance, look.color, "view");
+    material.envMap = this.environment;
+    material.envMapIntensity = 0.7;
+    material.polygonOffset = true;
+    material.polygonOffsetFactor = 1;
+    material.polygonOffsetUnits = 1;
+    material.userData.baseOpacity = material.opacity;
+    this.fade(material);
     material.clippingPlanes = (this.tints[0] as THREE.Material).clippingPlanes;
     this.appearanceMaterials.set(key, material);
     return material;
   }
 
+  /** The sketch mode's see-through look over a material's own opacity (glass stays more transparent). */
+  private fade(material: THREE.Material): void {
+    const opacity = this.opacity * ((material.userData.baseOpacity as number | undefined) ?? 1);
+    material.transparent = opacity < 1;
+    material.opacity = opacity;
+    material.depthWrite = opacity === 1;
+    material.needsUpdate = true;
+  }
+
   /** See-through bodies (sketch mode) or solid ones. */
   setOpacity(opacity: number): void {
     this.opacity = opacity;
-    for (const material of this.materials()) {
-      material.transparent = opacity < 1;
-      material.opacity = opacity;
-      material.depthWrite = opacity === 1;
-      material.needsUpdate = true;
-    }
+    for (const material of this.materials()) this.fade(material);
   }
 
   /** Corners of the displayed bodies (model coordinates, mm), merged by position. */

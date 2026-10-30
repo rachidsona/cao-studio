@@ -75,7 +75,7 @@ function helpContent(): HTMLElement {
         "dl",
         { class: "grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm" },
         ...keys.flatMap(([key, what]) => [
-          el("dt", {}, el("kbd", { class: "rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap dark:border-gray-600 dark:bg-gray-800" }, key)),
+          el("dt", {}, el("kbd", { class: " border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap dark:border-gray-600 dark:bg-gray-800" }, key)),
           el("dd", { class: "text-gray-700 dark:text-gray-300" }, what),
         ]),
       ),

@@ -9,6 +9,7 @@
  * stay visible.
  */
 import { canonicalJson } from "../document/canonical";
+import { isRemovedBody } from "../document/operations";
 import { consumedBodies, featureInputs, featureOfBody, PART_SEPARATOR, type CadDocument, type Feature } from "../document/types";
 import { buildFeature } from "../features/builders";
 import { disposeOutput, type FeatureOutput } from "../features/outputs";
@@ -97,6 +98,7 @@ export class Recomputer {
     this.outputs = new Map();
     const seen = new Set<string>();
 
+    this.features = new Map(doc.features.map((f) => [f.id, f]));
     for (const feature of doc.features) {
       const started = performance.now();
       const status = this.evaluate(feature, keys, states, seen);
@@ -118,9 +120,12 @@ export class Recomputer {
         if (out?.kind === "solids") return out.shapes.map((_, i) => `${f.id}${PART_SEPARATOR}${i}`);
         return [];
       })
-      .filter((id) => !consumedBy.has(id));
+      .filter((id) => !consumedBy.has(id) && !isRemovedBody(doc, id));
     return { statuses, bodies };
   }
+
+  /** The features of the document being regenerated (a feature built from another's settings reads them here). */
+  private features = new Map<string, Feature>();
 
   private evaluate(
     feature: Feature,
@@ -163,7 +168,7 @@ export class Recomputer {
 
     this.drop(feature.id);
     try {
-      const output = buildFeature(feature, (id) => this.output(id));
+      const output = buildFeature(feature, (id) => this.output(id), (id) => this.features.get(id));
       this.cache.set(feature.id, { key, output });
       this.outputs.set(feature.id, output);
       return { ...base, ...describe(output), state: "ok" };

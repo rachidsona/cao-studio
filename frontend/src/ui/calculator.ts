@@ -39,7 +39,7 @@ export function closeCalculator(): void {
   current?.close();
 }
 
-const KEY = "flex h-11 items-center justify-center rounded-md bg-gray-700/80 text-base font-medium text-white active:bg-gray-500 hover:bg-gray-600";
+const KEY = "flex h-11 items-center justify-center bg-gray-700/80 text-base font-medium text-white active:bg-gray-500 hover:bg-gray-600";
 
 export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   current?.close();
@@ -49,10 +49,12 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   const input = el("input", {
     type: "text",
     inputmode: "decimal",
-    class: "min-h-10 w-full rounded-md border-2 border-gray-400 bg-gray-800 px-3 font-mono text-base text-white focus:border-sky-400 focus:outline-none",
+    class: "min-h-10 w-full border-2 border-gray-400 bg-gray-800 px-3 font-mono text-base text-white focus:border-sky-400 focus:outline-none",
     value: trim(shown, 4),
     "aria-label": `${o.title ?? "Valeur"} (${unitLabel})`,
     autocomplete: "off",
+    // A calculation: « ( » stays what it is (digit-keys.ts).
+    "data-expression": "",
   });
   const error = el("p", { class: "hidden px-1 text-xs text-red-300", role: "alert" });
   const insert = (text: string) => {
@@ -116,7 +118,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   const popup = el(
     "div",
     {
-      class: "absolute z-40 w-60 space-y-2 rounded-xl border border-gray-600 bg-gray-900/95 p-2 shadow-2xl backdrop-blur select-none",
+      class: "absolute z-40 w-60 space-y-2 border border-gray-600 bg-gray-900/95 p-2 shadow-2xl backdrop-blur select-none",
       role: "dialog",
       "aria-label": o.title ?? "Saisie de cote",
     },

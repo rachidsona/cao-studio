@@ -32,8 +32,12 @@ describe("liste de débit", () => {
     expect([shelves.cutLength, shelves.cutWidth]).toEqual([564, 557]);
     expect(totals.find((t) => t.material === "Mélaminé blanc")?.parts).toBe(2);
     const csv = cutListCsv(rows);
-    expect(csv.split("\r\n")[0]).toContain('"Pièce";"Qté";"Longueur"');
+    expect(csv.split("\r\n")[0]).toContain('"Pièce";"Qté";"Longueur (mm)"');
     expect(csv).toContain('"Caisson 1 — Côté gauche, Caisson 1 — Côté droit";2;720;557;18');
+    // In centimetres, as chosen in the settings.
+    const cm = cutListCsv(rows, "cm");
+    expect(cm.split("\r\n")[0]).toContain('"Longueur (cm)"');
+    expect(cm).toContain('"Caisson 1 — Côté gauche, Caisson 1 — Côté droit";2;72;55,7;1,8');
   });
 });
 
@@ -58,5 +62,14 @@ describe("optimisation de découpe", () => {
         expect(overlap).toBe(false);
       }
     }
+  });
+});
+
+describe("rapporteur", () => {
+  it("donne l'angle au sommet entre deux côtés", async () => {
+    const { angleText } = await import("../../frontend/src/app/measure");
+    expect(angleText([0, 0, 0], [10, 0, 0], [0, 5, 0])).toBe("90°");
+    expect(angleText([0, 0, 0], [10, 0, 0], [10, 10, 0])).toBe("45°");
+    expect(angleText([1, 1, 1], [2, 1, 1], [1 + Math.cos(0.5), 1 + Math.sin(0.5), 1])).toBe("28,6°");
   });
 });

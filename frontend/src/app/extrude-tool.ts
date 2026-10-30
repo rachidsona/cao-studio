@@ -7,19 +7,23 @@
  * The preview is a Three.js extrusion of the profile polygons (instant); the
  * exact B-rep is computed by the kernel only when the feature is committed.
  */
+import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { closeCalculator, openCalculator } from "../ui/calculator";
 import { addExtrude, findFeature, latestBody, updateFeature } from "../document/operations";
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
 import { UNIT_LABELS, formatLength, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
-import { sketchFrame, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
+import { frameOf, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
 import { centroid, extractLoops, interiorPoint, pointInPolygon, sketchFaces, type Region, type SketchFace } from "../sketcher/loops";
 import { el } from "../ui/dom";
+import { textBox } from "../sketcher/text-outline";
 import { textInputClass } from "../ui/fields";
 import { ArrowHandle } from "../viewport/arrow-handle";
-import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
+import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake, type Reference } from "./reference-measure";
+import { ReferenceMarker } from "./reference-marker";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { operationChoices } from "../ui/feature-meta";
+import { placePanel } from "../ui/dock";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
@@ -46,7 +50,7 @@ interface Profile {
 }
 
 const COMPACT_INPUT =
-  "h-8 w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none " +
+  "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none " +
   "focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 
 const COLORS: Record<BooleanOperation, number> = { new: 0x0ea5e9, join: 0x22c55e, cut: 0xef4444, intersect: 0xa855f7 };
@@ -73,8 +77,12 @@ export class ExtrudeTool implements PointerHandler {
   private arrow: ArrowHandle;
   /** Corners, edges and faces of the bodies, to take a distance from (a click that is not on a profile). */
   private reference: ReferencePicker;
+  /** Lights up the corner, edge or face a click would take as the stop. */
+  private marker: ReferenceMarker;
   private dialog: HTMLElement;
   private distance = 10;
+  /** Fusion's "Start": from the sketch plane, or this far from it along its normal (mm). */
+  private startOffset: number | null = null;
   private operation: BooleanOperation = "new";
   /** The user picked the operation: stop deriving it from the sketch's support face. */
   private operationChosen = false;
@@ -92,15 +100,16 @@ export class ExtrudeTool implements PointerHandler {
     // Compact panel docked on the right of the view, like desktop CAD tools; bottom strip on phones.
     this.dialog = el("div", {
       class:
-        "absolute top-2 right-2 z-30 w-56 space-y-2 rounded-lg border border-gray-200 bg-white/95 p-2.5 text-xs " +
+        "absolute top-2 right-2 z-30 w-56 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs " +
         "shadow-xl backdrop-blur max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto " +
         "dark:border-gray-700 dark:bg-gray-900/95",
       role: "dialog",
       "aria-label": "Extrusion",
     });
-    container.append(this.dialog);
+    placePanel(container, this.dialog);
     this.container = container;
     this.reference = new ReferencePicker(viewport);
+    this.marker = new ReferenceMarker(viewport);
     // Arrow along the sketch normal; its value label opens the keypad.
     this.arrow = new ArrowHandle(viewport, (anchor) =>
       openCalculator({
@@ -125,6 +134,7 @@ export class ExtrudeTool implements PointerHandler {
     if (existing?.type === "extrude") {
       this.editing = existing.id;
       this.distance = existing.distance;
+      this.startOffset = existing.startOffset ? existing.startOffset : null;
       this.operation = existing.operation;
       this.target = existing.target;
     }
@@ -152,10 +162,17 @@ export class ExtrudeTool implements PointerHandler {
       try {
         found = sketchFaces(extractLoops(feature));
       } catch {
-        continue; // open or branched profile: not extrudable
+        found = []; // open or branched profile: only its texts can be extruded
+      }
+      // The texts of the sketch are picked through the box around their letters (they are extruded with the profile).
+      const boxes = (feature.texts ?? []).map(textBox);
+      if (boxes.length) {
+        const [x0, y0] = [Math.min(...boxes.map((b) => b[0][0])), Math.min(...boxes.map((b) => b[0][1]))];
+        const [x1, y1] = [Math.max(...boxes.map((b) => b[1][0])), Math.max(...boxes.map((b) => b[1][1]))];
+        found.push({ outer: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], holes: [], loop: -1, depth: 0, children: [] });
       }
       if (found.length === 0) continue;
-      const frame = sketchFrame(feature.plane, feature.offset, feature.shift);
+      const frame = frameOf(feature);
       const group = new THREE.Group();
       group.matrixAutoUpdate = false;
       group.matrix.copy(frameMatrix(frame));
@@ -216,7 +233,10 @@ export class ExtrudeTool implements PointerHandler {
   private select(profile: Profile, faces?: Face[]): void {
     this.selected = profile;
     this.explicit = faces !== undefined;
-    this.chosen = new Set(faces ?? this.defaultFaces(profile));
+    // Several areas: none is chosen until one is clicked, and the arrow comes on that one (as in Shapr3D).
+    // A single area, or an extrusion being edited, starts with them all.
+    const defaults = this.defaultFaces(profile);
+    this.chosen = new Set(faces ?? (defaults.length > 1 && !this.editing ? [] : defaults));
     // A sketch drawn on a body face adds to that body by default.
     const support = profile.sketch.support;
     if (!this.editing && !this.operationChosen && support) {
@@ -246,13 +266,16 @@ export class ExtrudeTool implements PointerHandler {
 
   // ---- preview and arrow ------------------------------------------------------
 
-  /** Base of the arrow: centroid of the largest chosen area, on the sketch plane. */
+  /** Base of the arrow: centroid of the largest chosen area, on the sketch plane (moved by the start offset). */
   private base(): Vec3 | null {
     const profile = this.selected;
     if (!profile || this.chosen.size === 0) return null;
     const largest = [...this.chosen].reduce((a, b) => (Math.abs(area(b.region.outer)) > Math.abs(area(a.region.outer)) ? b : a));
     const [x, y] = centroid(largest.region.outer);
-    return toWorld(profile.frame, x, y);
+    const p = toWorld(profile.frame, x, y);
+    const n = profile.frame.normal;
+    const o = this.startOffset ?? 0;
+    return [p[0] + n[0] * o, p[1] + n[1] * o, p[2] + n[2] * o];
   }
 
   private updatePreview(): void {
@@ -272,7 +295,7 @@ export class ExtrudeTool implements PointerHandler {
       geometry,
       new THREE.MeshStandardMaterial({ color: COLORS[this.operation], transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
     );
-    mesh.position.z = Math.min(0, this.distance);
+    mesh.position.z = Math.min(0, this.distance) + (this.startOffset ?? 0);
     mesh.renderOrder = 16;
     const holder = (profile.faces[0] as Face).mesh.parent as THREE.Group;
     holder.add(mesh);
@@ -310,7 +333,10 @@ export class ExtrudeTool implements PointerHandler {
     }
     const hovered = this.faceUnder(event)?.face ?? null;
     const overArrow = this.arrow.hovered(event);
-    this.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : hovered ? "pointer" : "";
+    // What a click would take as the stop is lit up (a corner, an edge, a face), so that it is easy to aim at.
+    const stop = overArrow ? null : this.stopAt(event, hovered !== null);
+    this.marker.show(stop);
+    this.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : stop ? THIN_CROSSHAIR : hovered ? "pointer" : "";
     if (hovered !== this.hovered) {
       this.hovered = hovered;
       this.paintProfiles();
@@ -321,17 +347,29 @@ export class ExtrudeTool implements PointerHandler {
     if (this.arrow.dragEnd()) return true;
     if (!isClick) return false;
     const under = this.faceUnder(event);
-    if (under) this.pick(under.profile, under.face);
-    else this.takeReference(event);
+    const stop = this.stopAt(event, under !== null);
+    if (stop) this.takeReference(stop);
+    else if (under) this.pick(under.profile, under.face);
     return true;
   }
 
+  /**
+   * The stop a click would take: a corner or an edge near the pointer — even over an area of the sketch, unless it is at
+   * the level of the profile itself (then the click picks the area) — else, off the areas, the face under the pointer.
+   */
+  private stopAt(event: PointerEvent, overArea: boolean): Reference | null {
+    const base = this.base();
+    if (!base || !this.selected) return null;
+    const normal = this.selected.frame.normal;
+    const near = this.reference.near(event);
+    if (near && referenceDistance(near, base, normal, getEdgeTake())) return near;
+    return overArea ? null : this.reference.find(event);
+  }
+
   /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
-  private takeReference(event: PointerEvent): void {
+  private takeReference(reference: Reference): void {
     const base = this.base();
     if (!base || !this.selected) return;
-    const reference = this.reference.find(event);
-    if (!reference) return;
     const taken = referenceDistance(reference, base, this.selected.frame.normal, getEdgeTake());
     if (!taken) return this.host.notify("Ce point est au niveau du profil : la distance serait nulle.", "info");
     this.setDistance(taken.value);
@@ -383,10 +421,31 @@ export class ExtrudeTool implements PointerHandler {
     });
     const flip = el(
       "button",
-      { type: "button", class: "size-8 shrink-0 rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Inverser le sens", "aria-label": "Inverser le sens" },
+      { type: "button", class: "size-8 shrink-0 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Inverser le sens", "aria-label": "Inverser le sens" },
       "⇅",
     );
     flip.addEventListener("click", () => this.setDistance(-this.distance));
+
+    const start = el(
+      "select",
+      { class: COMPACT_INPUT, "aria-label": "Départ de l'extrusion" },
+      el("option", { value: "profile", selected: this.startOffset === null }, "Plan du profil"),
+      el("option", { value: "offset", selected: this.startOffset !== null }, "Décalé"),
+    );
+    start.addEventListener("change", () => {
+      this.startOffset = start.value === "offset" ? (this.startOffset ?? 0) : null;
+      this.updatePreview();
+      this.renderDialog();
+    });
+    const offset = el("input", { type: "text", inputmode: "decimal", class: `${COMPACT_INPUT} text-right font-mono`, value: trim(toDisplay(this.startOffset ?? 0, unit), 4), "aria-label": `Décalage du départ (${UNIT_LABELS[unit]})` });
+    offset.addEventListener("input", () => {
+      const value = parseNumber(offset.value);
+      offset.setAttribute("aria-invalid", String(value === null));
+      if (value === null) return;
+      this.startOffset = fromDisplay(value, unit);
+      this.updatePreview();
+    });
+    offset.addEventListener("keydown", (event) => event.stopPropagation());
 
     const operation = el(
       "select",
@@ -430,13 +489,13 @@ export class ExtrudeTool implements PointerHandler {
 
     const cancel = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" },
+      { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" },
       "Annuler",
     );
     cancel.addEventListener("click", () => this.cancel());
     const ok = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: !this.selected || this.chosen.size === 0 },
+      { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: !this.selected || this.chosen.size === 0 },
       "OK",
     );
     ok.addEventListener("click", () => this.confirm());
@@ -451,6 +510,8 @@ export class ExtrudeTool implements PointerHandler {
       this.selected && this.selected.faces.length > 1
         ? el("p", { class: "text-gray-600 dark:text-gray-300" }, this.chosen.size === 0 ? "Cliquez une zone à extruder." : "Cliquez des zones pour choisir ce qui est extrudé ; recliquez pour en retirer.")
         : null,
+      el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Départ", start),
+      this.startOffset !== null ? el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Décalage", offset) : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr_auto] items-center gap-1.5" }, `Distance`, distance, flip),
       this.selected
         ? el("p", { class: "text-gray-600 dark:text-gray-300" }, "Ou cliquez un point, une arête ou une face d'un corps : sa mesure devient la distance.")
@@ -479,10 +540,11 @@ export class ExtrudeTool implements PointerHandler {
     // Chosen areas are stored only when they differ from the default (every material area).
     const defaults = this.defaultFaces(profile);
     const isDefault = this.chosen.size === defaults.length && defaults.every((f) => this.chosen.has(f));
-    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "operation" | "target" | "regions"> = {
+    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "startOffset" | "operation" | "target" | "regions"> = {
       sketch: profile.sketch.id,
       regions: isDefault ? undefined : [...this.chosen].map((f) => f.probe),
       distance: this.distance,
+      startOffset: this.startOffset ? this.startOffset : undefined,
       operation: this.operation,
       target: this.operation === "new" ? undefined : this.target,
     };
@@ -509,6 +571,7 @@ export class ExtrudeTool implements PointerHandler {
   private close(): void {
     closeCalculator();
     this.arrow.dispose();
+    this.marker.dispose();
     this.viewport.setPointerHandler(null);
     this.viewport.renderer.domElement.style.cursor = "";
     for (const object of [this.root]) {

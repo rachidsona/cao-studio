@@ -1,0 +1,275 @@
+/*
+ * The themes of « gestion menuiserie » (Atelier des Nobles): a dark theme in deep blue with a cyan accent by default,
+ * nine palettes built each on two colours (a class on <html>, chosen in the « ⋯ » menu and kept in localStorage
+ * "palette"), and the light theme. A palette only redefines variables:
+ *   --night, --night-light, --night-table  the page, the panels, the tables (r g b);
+ *   --ink, --ink-muted, --edge              the text, the secondary text, the hairlines;
+ *   --brand, --brand-plein                  the accent (text, borders, glows) and its solid tone;
+ *   --degrade-*, --bouton-*                 the gradients of the cards and of the primary buttons.
+ * Tailwind's « gray » and « sky », used by every panel and button of the app, are derived from them (app.css), so the
+ * whole interface takes the palette. As in gestion menuiserie, the light theme wins over the palettes (they are dark
+ * ones, Mocha Mist excepted), and the primary buttons keep the palette's gradient in both.
+ */
+@layer base {
+  :root {
+    /* Light theme: Tailwind's own greys and blues. */
+    --g50: #f9fafb;
+    --g100: #f3f4f6;
+    --g200: #e5e7eb;
+    --g300: #d1d5db;
+    --g400: #9ca3af;
+    --g500: #6b7280;
+    --g600: #4b5563;
+    --g700: #374151;
+    --g800: #1f2937;
+    --g900: #111827;
+    --g950: #030712;
+    --s50: #f0f9ff;
+    --s100: #e0f2fe;
+    --s200: #bae6fd;
+    --s300: #7dd3fc;
+    --s400: #38bdf8;
+    --s500: #0ea5e9;
+    --s600: #0284c7;
+    --s700: #0369a1;
+    --s800: #075985;
+    --s900: #0c4a6e;
+    --s950: #082f49;
+    --brand: 3 105 161;
+
+    /* The default palette (« Atelier »): deep blue, cyan accent. */
+    --night: 11 20 40;
+    --night-light: 17 29 53;
+    --night-table: 18 43 80;
+    --ink: 232 240 255;
+    --ink-muted: 139 154 181;
+    --brand-plein: 30 90 168;
+    --degrade-bas: #12376e;
+    --degrade-milieu: #122d56;
+    --degrade-haut: #1e2943;
+    --bouton-1: #1f5fb8;
+    --bouton-2: #1b4a90;
+    --bouton-3: #2b3c5e;
+    --bouton-survol-1: #2a72ce;
+    --bouton-survol-2: #215ab0;
+    --bouton-survol-3: #33486f;
+  }
+
+  /* Dark theme: the greys and the accent come from the palette. */
+  .dark {
+    --brand: 8 184 255;
+    --g950: rgb(var(--night));
+    --g900: rgb(var(--night-light));
+    --g800: rgb(var(--night-table));
+    --g700: color-mix(in srgb, rgb(var(--night-table)) 70%, rgb(var(--ink-muted)));
+    --g600: color-mix(in srgb, rgb(var(--night-table)) 40%, rgb(var(--ink-muted)));
+    --g500: color-mix(in srgb, rgb(var(--ink-muted)) 85%, rgb(var(--night)));
+    --g400: rgb(var(--ink-muted));
+    --g300: color-mix(in srgb, rgb(var(--ink-muted)) 50%, rgb(var(--ink)));
+    --g200: color-mix(in srgb, rgb(var(--ink)) 80%, rgb(var(--ink-muted)));
+    --g100: rgb(var(--ink));
+    --g50: rgb(var(--ink));
+    --s50: color-mix(in srgb, rgb(var(--brand)) 15%, white);
+    --s100: color-mix(in srgb, rgb(var(--brand)) 30%, white);
+    --s200: color-mix(in srgb, rgb(var(--brand)) 55%, white);
+    --s300: color-mix(in srgb, rgb(var(--brand)) 80%, white);
+    --s400: rgb(var(--brand));
+    --s500: rgb(var(--brand));
+    --s600: color-mix(in srgb, rgb(var(--brand)) 50%, rgb(var(--brand-plein)));
+    --s700: rgb(var(--brand-plein));
+    --s800: color-mix(in srgb, rgb(var(--brand-plein)) 70%, rgb(var(--night)));
+    --s900: color-mix(in srgb, rgb(var(--brand-plein)) 45%, rgb(var(--night)));
+    --s950: color-mix(in srgb, rgb(var(--brand-plein)) 25%, rgb(var(--night)));
+  }
+
+  /* --- The nine palettes (two colours each) --- */
+  html.palette-navy {
+    /* Navy Mirage : #141E30 et #35577D */
+    --night: 12 19 30;
+    --night-light: 16 25 39;
+    --night-table: 41 68 98;
+    --brand-plein: 50 85 124;
+    --degrade-bas: #35577d;
+    --degrade-milieu: #243a56;
+    --degrade-haut: #141e30;
+    --bouton-1: #3f72ac;
+    --bouton-2: #315987;
+    --bouton-3: #253044;
+    --bouton-survol-1: #5789c2;
+    --bouton-survol-2: #3c6da4;
+    --bouton-survol-3: #2d3b54;
+  }
+  html.dark.palette-navy {
+    --brand: 169 207 249;
+  }
+
+  html.palette-ocean {
+    /* Ocean Sunset : #0F2027 et #2C5364 */
+    --night: 9 20 24;
+    --night-light: 12 26 32;
+    --night-table: 34 65 78;
+    --brand-plein: 51 101 122;
+    --degrade-bas: #2c5364;
+    --degrade-milieu: #1e3a46;
+    --degrade-haut: #0f2027;
+    --bouton-1: #3e83a2;
+    --bouton-2: #31677f;
+    --bouton-3: #1c2f37;
+    --bouton-survol-1: #549ebe;
+    --bouton-survol-2: #3c7f9c;
+    --bouton-survol-3: #233a44;
+  }
+  html.dark.palette-ocean {
+    --brand: 108 203 244;
+  }
+
+  html.palette-crimson {
+    /* Crimson Velvet : #2C0F12 et #6B1E23 */
+    --night: 27 9 11;
+    --night-light: 36 12 15;
+    --night-table: 83 23 27;
+    --brand-plein: 138 36 42;
+    --degrade-bas: #6b1e23;
+    --degrade-milieu: #4c161a;
+    --degrade-haut: #2c0f12;
+    --bouton-1: #af262e;
+    --bouton-2: #8a1e25;
+    --bouton-3: #3e1e21;
+    --bouton-survol-1: #d3313c;
+    --bouton-survol-2: #a9242d;
+    --bouton-survol-3: #4c2428;
+  }
+  html.dark.palette-crimson {
+    --brand: 228 139 151;
+  }
+
+  html.palette-amber {
+    /* Amber Blaze : #660000 et #E48200 (the amber, too bright to carry text, is the accent) */
+    --night: 54 9 9;
+    --night-light: 72 12 12;
+    --night-table: 103 17 17;
+    --brand-plein: 137 16 16;
+    --degrade-bas: #990000;
+    --degrade-milieu: #800000;
+    --degrade-haut: #660000;
+    --bouton-1: #8e0b0b;
+    --bouton-2: #6f0808;
+    --bouton-3: #521919;
+    --bouton-survol-1: #9d0c0c;
+    --bouton-survol-2: #7e0909;
+    --bouton-survol-3: #5e1d1d;
+  }
+  html.dark.palette-amber {
+    --brand: 228 130 0;
+  }
+
+  html.palette-braise {
+    /* Crimson Braise : #5B1E1A et #A23A33 */
+    --night: 56 19 16;
+    --night-light: 75 25 21;
+    --night-table: 126 45 40;
+    --brand-plein: 134 45 39;
+    --degrade-bas: #a23a33;
+    --degrade-milieu: #7e2c26;
+    --degrade-haut: #5b1e1a;
+    --bouton-1: #922c25;
+    --bouton-2: #71221d;
+    --bouton-3: #5a2926;
+    --bouton-survol-1: #932c25;
+    --bouton-survol-2: #78241d;
+    --bouton-survol-3: #5e2c28;
+  }
+  html.dark.palette-braise {
+    --brand: 249 160 154;
+  }
+
+  html.palette-violet {
+    /* Royal Violet : #02060E et #9303C5 */
+    --night: 2 4 8;
+    --night-light: 3 5 10;
+    --night-table: 104 24 132;
+    --brand-plein: 105 18 135;
+    --degrade-bas: #9303c5;
+    --degrade-milieu: #4a046a;
+    --degrade-haut: #02060e;
+    --bouton-1: #6c0c8d;
+    --bouton-2: #540a6e;
+    --bouton-3: #070b11;
+    --bouton-survol-1: #810fa9;
+    --bouton-survol-2: #670c87;
+    --bouton-survol-3: #090d15;
+  }
+  html.dark.palette-violet {
+    --brand: 208 102 245;
+  }
+
+  html.palette-charbon {
+    /* Royal Charcoal : #1E1F22 et #4C4E51 (the accent stays grey) */
+    --night: 19 19 21;
+    --night-light: 25 25 28;
+    --night-table: 59 61 63;
+    --brand-plein: 84 86 90;
+    --degrade-bas: #4c4e51;
+    --degrade-milieu: #35363a;
+    --degrade-haut: #1e1f22;
+    --bouton-1: #71747a;
+    --bouton-2: #585b5f;
+    --bouton-3: #2f3034;
+    --bouton-survol-1: #898c91;
+    --bouton-survol-2: #6c7075;
+    --bouton-survol-3: #3a3b40;
+  }
+  html.dark.palette-charbon {
+    --brand: 157 160 165;
+  }
+
+  html.palette-terre {
+    /* Crimson Terre : #5A2A27 et #9A4D42 */
+    --night: 56 26 24;
+    --night-light: 74 34 32;
+    --night-table: 120 60 51;
+    --brand-plein: 123 59 50;
+    --degrade-bas: #9a4d42;
+    --degrade-milieu: #7a3c34;
+    --degrade-haut: #5a2a27;
+    --bouton-1: #843c31;
+    --bouton-2: #682f26;
+    --bouton-3: #52302e;
+    --bouton-survol-1: #7c382f;
+    --bouton-survol-2: #642d25;
+    --bouton-survol-3: #4f2e2c;
+  }
+  html.dark.palette-terre {
+    --brand: 249 175 164;
+  }
+
+  html.palette-mocha {
+    /* Mocha Mist : #A47971 et #C29E95, the only light palette: dark ink, dark hairlines. */
+    --night: 216 205 202;
+    --night-light: 226 221 219;
+    --night-table: 189 150 140;
+    --ink: 34 24 22;
+    --ink-muted: 118 82 76;
+    --brand-plein: 77 31 20;
+    --degrade-bas: #c29e95;
+    --degrade-milieu: #b38c83;
+    --degrade-haut: #a47971;
+    --bouton-1: #6a4a44;
+    --bouton-2: #543b36;
+    --bouton-3: #3e2b28;
+    --bouton-survol-1: #6b4a45;
+    --bouton-survol-2: #573d38;
+    --bouton-survol-3: #44302c;
+  }
+  html.dark.palette-mocha {
+    --brand: 45 18 11;
+    /* Its accent is dark on a light page: the tones written as text (50 to 300 in the dark theme) are dark, the tones
+       used as backgrounds (900, 950) are light. */
+    --s50: rgb(var(--brand));
+    --s100: rgb(var(--brand));
+    --s200: color-mix(in srgb, rgb(var(--brand)) 85%, rgb(var(--night-light)));
+    --s300: color-mix(in srgb, rgb(var(--brand)) 75%, rgb(var(--night-light)));
+    --s900: color-mix(in srgb, rgb(var(--brand)) 22%, rgb(var(--night-light)));
+    --s950: color-mix(in srgb, rgb(var(--brand)) 12%, rgb(var(--night-light)));
+  }
+}

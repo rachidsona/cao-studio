@@ -62,6 +62,20 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.shift !== undefined && !(Array.isArray(feature.shift) && feature.shift.length === 2 && feature.shift.every(isFiniteNumber))) {
         errors.push(`${where} : déplacement de l'esquisse dans son plan invalide.`);
       }
+      if (feature.texts !== undefined) {
+        const ok =
+          Array.isArray(feature.texts) &&
+          feature.texts.length <= 200 &&
+          feature.texts.every(
+            (t) => isObject(t) && typeof t.id === "string" && typeof t.text === "string" && t.text.length <= 500 && isFiniteNumber(t.x) && isFiniteNumber(t.y) && isFiniteNumber(t.height) && (t.height as number) > 0 && (t.angle === undefined || isFiniteNumber(t.angle)),
+          );
+        if (!ok) errors.push(`${where} : textes de l'esquisse invalides.`);
+      }
+      if (feature.frame !== undefined) {
+        const f = feature.frame as Json;
+        const length = (v: unknown) => (isVec3(v) ? Math.hypot(...(v as number[])) : 0);
+        if (!isObject(f) || !isVec3(f.origin) || length(f.xDir) < 1e-9 || length(f.normal) < 1e-9) errors.push(`${where} : plan de construction invalide.`);
+      }
       validateSketch(feature, where, errors);
       break;
     case "extrude":
@@ -70,6 +84,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (typeof feature.target !== "string") errors.push(`${where} : corps des faces manquant.`);
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
+      if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (
         feature.regions !== undefined &&
         (!Array.isArray(feature.regions) || feature.regions.length === 0 || !feature.regions.every((p) => Array.isArray(p) && p.length === 2 && p.every(isFiniteNumber)))
@@ -121,6 +136,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["width", "height", "depth", "thickness", "backThickness", "shelves", "plinth"], where, errors);
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
+      if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation du caisson invalide (0, 90, 180 ou 270°).`);
       break;
     case "panels":
       if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse squelette manquante.`);
@@ -167,10 +183,39 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
       if (feature.operation !== "new" && typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
       break;
+    case "shell":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à creuser manquant.`);
+      checkRefs(feature.faces, "faces", where, errors);
+      checkNumbers(feature, ["thickness"], where, errors);
+      break;
+    case "fronts":
+      if (typeof feature.cabinet !== "string") errors.push(`${where} : caisson manquant.`);
+      if (!["door", "doors", "drawers"].includes(feature.layout as string)) errors.push(`${where} : disposition des façades inconnue.`);
+      if (!["overlay", "inset"].includes(feature.mount as string)) errors.push(`${where} : pose des façades inconnue.`);
+      checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
+      if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
+      break;
+    case "niche":
+      if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
+      if (!Array.isArray(feature.niche) || !feature.niche.every((n) => Number.isInteger(n) && (n as number) >= 0)) errors.push(`${where} : niche invalide.`);
+      if (!["rod", "drawers"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
+      if (typeof feature.handles !== "boolean") errors.push(`${where} : réglage des poignées invalide.`);
+      break;
+    case "modifier":
+      if (typeof feature.target !== "string") errors.push(`${where} : planche à modifier manquante.`);
+      if (!["bend", "taper", "twist"].includes(feature.kind as string)) errors.push(`${where} : modificateur inconnu.`);
+      checkNumbers(feature, ["amount"], where, errors);
+      break;
+    case "loft":
+      if (!Array.isArray(feature.profiles) || feature.profiles.length < 2 || !feature.profiles.every((p) => typeof p === "string")) errors.push(`${where} : il faut au moins deux esquisses à relier.`);
+      if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
+      if (feature.operation !== "new" && typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      break;
     case "machining": {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à usiner manquant.`);
       if (!MACHINING_KINDS.has(feature.kind as string)) errors.push(`${where} : type d'usinage inconnu.`);
-      if (feature.anchor !== undefined && !isVec3(feature.anchor)) errors.push(`${where} : point d'ancrage invalide.`);
+      if ((feature.anchor !== undefined && !isVec3(feature.anchor)) || (feature.anchorHigh !== undefined && !isVec3(feature.anchorHigh))) errors.push(`${where} : point d'ancrage invalide.`);
       const ops = feature.ops;
       if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) errors.push(`${where} : usinages invalides (1 à 500).`);
       else
@@ -220,6 +265,19 @@ export function validateDocument(input: unknown): string[] {
     errors.push("« bodyNames » doit associer un nom à chaque corps.");
   }
   if (input.bodyInfo !== undefined && (!isObject(input.bodyInfo) || !Object.values(input.bodyInfo).every(isObject))) errors.push("« bodyInfo » doit décrire chaque corps.");
+  else if (input.bodyInfo !== undefined) {
+    for (const info of Object.values(input.bodyInfo as Record<string, Record<string, unknown>>)) {
+      if (info.appearance !== undefined && typeof info.appearance !== "string") errors.push("« bodyInfo » : l'apparence d'un corps doit être un identifiant.");
+      if (info.color !== undefined && !(typeof info.color === "string" && /^#[0-9a-f]{6}$/i.test(info.color))) errors.push("« bodyInfo » : la couleur d'un corps doit être de la forme #rrggbb.");
+    }
+  }
+  if (input.layers !== undefined && (!Array.isArray(input.layers) || !input.layers.every((l) => isObject(l) && typeof l.id === "string" && typeof l.name === "string" && typeof l.visible === "boolean"))) errors.push("« layers » doit être une liste de calques (id, name, visible).");
+  if (input.removedBodies !== undefined && (!Array.isArray(input.removedBodies) || !input.removedBodies.every((k) => typeof k === "string"))) {
+    errors.push("« removedBodies » doit être une liste de pièces.");
+  }
+  if (input.configurations !== undefined && (!Array.isArray(input.configurations) || !input.configurations.every((c) => isObject(c) && typeof c.id === "string" && typeof c.name === "string" && isObject(c.values) && Object.values(c.values).every((v) => typeof v === "number" && Number.isFinite(v))))) {
+    errors.push("« configurations » doit être une liste de configurations (id, name, values).");
+  }
   if (input.guides !== undefined && (!Array.isArray(input.guides) || !input.guides.every((g) => isObject(g) && isVec3(g.from) && isVec3(g.to)))) errors.push("« guides » doit être une liste de lignes de guide.");
   if (input.views !== undefined && (!Array.isArray(input.views) || !input.views.every((v) => isObject(v) && typeof v.name === "string" && isVec3(v.position) && isVec3(v.target) && isVec3(v.up)))) {
     errors.push("« views » doit être une liste de vues enregistrées.");

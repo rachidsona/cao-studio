@@ -8,14 +8,14 @@ import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveEdges, resolveFace } from "../geometry/references";
-import { sketchFrame, toWorld } from "../sketcher/frame";
-import { applyOperation, planeOrigin, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
-import type { SolidOutput } from "./outputs";
+import { frameOf, toWorld } from "../sketcher/frame";
+import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import type { SolidOutput, SolidsOutput } from "./outputs";
 
 /** Axis of a revolution, in world coordinates, from a sketch line or a sketch axis. */
 function revolveAxis(feature: RevolveFeature, lookup: OutputLookup): { origin: [number, number, number]; direction: [number, number, number] } {
   const profile = requireProfile(lookup, feature.sketch);
-  const frame = sketchFrame(profile.plane, profile.offset, profile.shift);
+  const frame = frameOf(profile);
   let a: [number, number];
   let b: [number, number];
   if (feature.axis === AXIS_X) [a, b] = [[0, 0], [1, 0]];
@@ -38,14 +38,14 @@ function revolveAxis(feature: RevolveFeature, lookup: OutputLookup): { origin: [
   return { origin, direction };
 }
 
-export function buildRevolve(feature: RevolveFeature, lookup: OutputLookup): SolidOutput {
+export function buildRevolve(feature: RevolveFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   if (!(feature.angle > 0 && feature.angle <= 360)) throw new GeometryError("L'angle de révolution doit être compris entre 0 et 360°.");
   const profile = requireProfile(lookup, feature.sketch);
   const drawing = profileDrawing(feature.name, profile);
   const { origin, direction } = revolveAxis(feature, lookup);
   let tool: Shape3D;
   try {
-    tool = drawing.clone().sketchOnPlane(profile.plane, planeOrigin(profile)).revolve(direction, { origin, angle: feature.angle }) as Shape3D;
+    tool = onProfilePlane(drawing.clone(), profile).revolve(direction, { origin, angle: feature.angle }) as Shape3D;
   } catch {
     throw new GeometryError(`${feature.name} : révolution impossible (le profil coupe-t-il l'axe ?).`);
   }
@@ -114,7 +114,7 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
  * Push/pull of planar faces: each face is swept along its outward normal by
  * `distance` (negative: into the body), then combined with the target.
  */
-export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput {
+export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   const faces = feature.faces ?? [];
   if (faces.length === 0) throw new GeometryError(`${feature.name} : sélectionnez au moins une face.`);
   if (!feature.target) throw new GeometryError(`${feature.name} : corps des faces manquant.`);

@@ -7,11 +7,12 @@
 import { makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
+import { frameOf } from "../sketcher/frame";
 import { buildProfile, ProfileError } from "../sketcher/profiles";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveFace } from "../geometry/references";
-import { applyOperation, MIN_LENGTH, planeOrigin, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
-import type { FeatureOutput, ProfileOutput, SolidOutput } from "./outputs";
+import { applyOperation, MIN_LENGTH, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import type { FeatureOutput, ProfileOutput, SolidOutput, SolidsOutput } from "./outputs";
 import { buildChamfer, buildCombine, buildFaceExtrude, buildFillet, buildRevolve } from "./solids";
 import { buildMove } from "./move";
 import { buildPanels } from "./panels";
@@ -20,6 +21,11 @@ import { buildAlign, buildArray, buildMirror, buildRotate, buildStretch } from "
 import { buildSplit } from "./split";
 import { buildMachining } from "./machining";
 import { buildSweep } from "./sweep";
+import { textDrawing } from "./text";
+import { buildLoft, buildShell } from "./shell-loft";
+import { buildModifier } from "./modifiers";
+import { buildFronts } from "./fronts";
+import { buildNiche } from "./niche";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
 
@@ -43,19 +49,24 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
     plane: feature.plane,
     offset: feature.offset,
     ...(feature.shift ? { shift: feature.shift } : {}),
+    ...(feature.frame ? { frame: feature.frame } : {}),
     dof: solved.dof,
     redundant: solved.redundant,
     geometry: solved.geometry,
   };
+  // The texts of the sketch are written with its profile (or alone when it has no closed loop).
+  const letters = textDrawing(feature.texts);
   try {
-    return { ...base, drawing: buildProfile(solved.geometry), openReason: null };
+    const drawing = buildProfile(solved.geometry);
+    return { ...base, drawing: drawing && letters ? drawing.fuse(letters) : (drawing ?? letters), openReason: null };
   } catch (error) {
+    if (letters && error instanceof ProfileError) return { ...base, drawing: letters, openReason: null };
     if (error instanceof ProfileError) return { ...base, drawing: null, openReason: error.message };
     throw error;
   }
 }
 
-function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput {
+function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   if (!(Math.abs(feature.distance) >= MIN_LENGTH)) throw new GeometryError("La distance d'extrusion ne peut pas être nulle.");
   if (feature.faces) return buildFaceExtrude(feature, lookup);
   if (!feature.sketch) throw new GeometryError(`${feature.name} : choisissez une esquisse ou des faces à extruder.`);
@@ -69,8 +80,13 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
       throw error;
     }
   } else drawing = profileDrawing(feature.name, profile).clone();
-  const sketch = drawing.sketchOnPlane(profile.plane, planeOrigin(profile));
-  const prism = sketch.extrude(feature.distance) as Shape3D;
+  const sketch = onProfilePlane(drawing, profile);
+  let prism = sketch.extrude(feature.distance) as Shape3D;
+  if (feature.startOffset) {
+    // Fusion's "Start: Offset": the solid starts this far from the sketch plane.
+    const n = frameOf(profile).normal;
+    prism = prism.translate([n[0] * feature.startOffset, n[1] * feature.startOffset, n[2] * feature.startOffset]) as Shape3D;
+  }
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }
 
@@ -138,7 +154,7 @@ function buildHole(feature: HoleFeature, lookup: OutputLookup): SolidOutput {
   }
 }
 
-export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOutput {
+export function buildFeature(feature: Feature, lookup: OutputLookup, featureOf: (id: string) => Feature | undefined = () => undefined): FeatureOutput {
   switch (feature.type) {
     case "sketch":
       return buildSketch(feature);
@@ -176,5 +192,19 @@ export function buildFeature(feature: Feature, lookup: OutputLookup): FeatureOut
       return buildMachining(feature, lookup);
     case "sweep":
       return buildSweep(feature, lookup);
+    case "shell":
+      return buildShell(feature, lookup);
+    case "loft":
+      return buildLoft(feature, lookup);
+    case "modifier":
+      return buildModifier(feature, lookup);
+    case "fronts": {
+      const cabinet = featureOf(feature.cabinet);
+      return buildFronts(feature, lookup, cabinet?.type === "cabinet" ? cabinet : undefined);
+    }
+    case "niche": {
+      const sketch = featureOf(feature.sketch);
+      return buildNiche(feature, sketch?.type === "sketch" ? sketch : undefined);
+    }
   }
 }

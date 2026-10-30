@@ -1,11 +1,13 @@
 /**
  * Floating window of one feature or body (opened from the timeline or the
  * browser): rename it, edit it again (reopens its tool), disable it, or delete it.
- * It is placed next to the item that opened it and closes on Escape or on a
- * click elsewhere.
+ * It is placed next to the item that opened it, inside the panel that holds that
+ * item (the browser on the left, the view for the timeline), and closes on
+ * Escape or on a click elsewhere.
  */
 import { el } from "./dom";
-import { STATE_BADGES, TYPE_ICONS, TYPE_LABELS, type NavItem } from "./feature-meta";
+import { STATE_BADGES, TYPE_LABELS, TYPE_SPRITES, type NavItem } from "./feature-meta";
+import { toolIcon } from "./icons";
 
 export interface FeatureDialogActions {
   rename(item: NavItem, name: string): void;
@@ -14,8 +16,15 @@ export interface FeatureDialogActions {
   remove(item: NavItem): void;
 }
 
+/** An icon button (the coloured icon of the toolbar's style): the action's name is its tooltip. */
 const BUTTON =
-  "h-7 flex-1 rounded border border-gray-300 px-2 text-xs font-medium whitespace-nowrap hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+  "flex h-10 flex-1 items-center justify-center border border-gray-300 bg-white hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700";
+
+function iconButton(label: string, sprite: string): HTMLButtonElement {
+  const button = el("button", { type: "button", class: BUTTON, title: label, "aria-label": label });
+  button.append(toolIcon(sprite, "tool-icon size-8"));
+  return button;
+}
 
 export class FeatureDialog {
   private root: HTMLElement | null = null;
@@ -29,7 +38,7 @@ export class FeatureDialog {
     if (event.key === "Escape" && this.root) this.close();
   };
 
-  /** `host` is the positioned element the dialog is placed in. */
+  /** `host` holds the dialog when the item's own panel cannot be found (the dialog is placed over the page). */
   constructor(
     private readonly host: HTMLElement,
     private readonly actions: FeatureDialogActions,
@@ -45,12 +54,12 @@ export class FeatureDialog {
     this.current = item;
     this.root = el("div", {
       class:
-        "absolute z-40 w-52 rounded-md border border-gray-300 bg-white text-xs text-gray-900 shadow-xl " +
+        "fixed z-50 w-52 border border-gray-300 bg-white text-xs text-gray-900 shadow-xl " +
         "dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100",
       role: "dialog",
       "aria-label": `${item.body ? "Corps" : TYPE_LABELS[item.type]} ${item.name}`,
     });
-    this.host.append(this.root);
+    document.body.append(this.root);
     this.fill(item);
     this.place(anchor);
     document.addEventListener("pointerdown", this.onDocPointer, true);
@@ -75,29 +84,38 @@ export class FeatureDialog {
     document.removeEventListener("keydown", this.onKey);
   }
 
+  /** The panel holding the item that opened the dialog: the browser, the view (timeline), else the host. */
+  private area(anchor: DOMRect): DOMRect {
+    const under = document.elementFromPoint(anchor.left + anchor.width / 2, anchor.top + anchor.height / 2);
+    const panel = under?.closest<HTMLElement>('[data-ref="panel-tree"], [data-ref="workspace"]') ?? this.host;
+    return panel.getBoundingClientRect();
+  }
+
   private place(anchor: DOMRect): void {
     const root = this.root;
     if (!root) return;
-    const box = this.host.getBoundingClientRect();
-    const width = root.offsetWidth || 208;
-    const left = Math.max(8, Math.min(anchor.left - box.left, box.width - width - 8));
-    root.style.left = `${left}px`;
-    // Above the anchor when it is in the lower half (timeline), below it otherwise (browser).
-    if (anchor.top - box.top > box.height / 2) root.style.bottom = `${Math.max(8, box.bottom - anchor.top + 6)}px`;
-    else root.style.top = `${Math.max(8, anchor.bottom - box.top + 4)}px`;
+    const box = this.area(anchor);
+    // Inside the panel, narrower when the panel is (a narrow browser), and always on screen.
+    const width = Math.max(160, Math.min(208, box.width - 8));
+    root.style.width = `${width}px`;
+    const left = Math.max(box.left + 4, Math.min(anchor.left, box.right - width - 4));
+    root.style.left = `${Math.max(4, Math.min(left, window.innerWidth - width - 4))}px`;
+    // Above the anchor when it is in the lower half of its panel (timeline), below it otherwise (browser).
+    if (anchor.top - box.top > box.height / 2) root.style.bottom = `${Math.max(8, window.innerHeight - anchor.top + 6)}px`;
+    else root.style.top = `${Math.max(8, anchor.bottom + 4)}px`;
   }
 
   private fill(item: NavItem): void {
     const root = this.root;
     if (!root) return;
     const badge = STATE_BADGES[item.state];
-    const close = el("button", { type: "button", class: "ml-auto size-5 rounded text-[11px] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
+    const close = el("button", { type: "button", class: "ml-auto size-5 text-[11px] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
     close.addEventListener("click", () => this.close());
 
     const name = el("input", {
       type: "text",
       class:
-        "h-7 w-full rounded border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-gray-600 dark:bg-gray-950",
+        "h-7 w-full border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-gray-600 dark:bg-gray-950",
       value: item.name,
       maxlength: "80",
       "aria-label": "Nom",
@@ -118,19 +136,15 @@ export class FeatureDialog {
     });
 
     // A body has no tool of its own: its operations are edited from the timeline.
-    const edit = item.body
-      ? null
-      : el("button", { type: "button", class: `${BUTTON} border-sky-600 bg-sky-600 text-white hover:bg-sky-700 dark:hover:bg-sky-700` }, "Modifier");
+    const edit = item.body ? null : iconButton("Modifier", "i-op-edit");
     edit?.addEventListener("click", () => {
       this.close();
       this.actions.edit(item);
     });
     const suppress =
-      item.type === "sketch" || item.body || item.offset
-        ? null
-        : el("button", { type: "button", class: BUTTON }, item.suppressed ? "Réactiver" : "Désactiver");
+      item.type === "sketch" || item.body || item.offset ? null : iconButton(item.suppressed ? "Réactiver" : "Désactiver", item.suppressed ? "i-op-restore" : "i-op-suppress");
     suppress?.addEventListener("click", () => this.actions.toggleSuppress(item));
-    const remove = el("button", { type: "button", class: `${BUTTON} text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950` }, "Supprimer");
+    const remove = iconButton("Supprimer", "i-op-trash");
     remove.addEventListener("click", () => {
       this.close();
       this.actions.remove(item);
@@ -140,7 +154,7 @@ export class FeatureDialog {
       el(
         "div",
         { class: "flex items-center gap-1.5 border-b border-gray-200 px-2 py-1 dark:border-gray-700" },
-        el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, item.body ? "◼" : TYPE_ICONS[item.type]),
+        item.body ? el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, "◼") : toolIcon(TYPE_SPRITES[item.type], "size-5 shrink-0"),
         el("h2", { class: "text-[10px] font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
         el("span", { class: `size-2 rounded-full ${badge.dot}`, title: badge.label, "aria-label": badge.label }),
         close,
@@ -149,7 +163,7 @@ export class FeatureDialog {
         "div",
         { class: "space-y-1.5 p-2" },
         name,
-        item.message ? el("p", { class: "rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, item.message) : null,
+        item.message ? el("p", { class: " bg-red-50 px-2 py-1.5 text-xs text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, item.message) : null,
         el("div", { class: "flex gap-1" }, edit, suppress, remove),
       ),
     );

@@ -17,7 +17,7 @@ import {
 export type Vec2 = [number, number];
 
 export function cloneGeometry(g: SketchGeometry): SketchGeometry {
-  return structuredClone({ points: g.points, curves: g.curves, constraints: g.constraints, ...(g.offsets ? { offsets: g.offsets } : {}) });
+  return structuredClone({ points: g.points, curves: g.curves, constraints: g.constraints, ...(g.offsets ? { offsets: g.offsets } : {}), ...(g.texts ? { texts: g.texts } : {}) });
 }
 
 export function nextId(g: SketchGeometry, prefix: string): string {

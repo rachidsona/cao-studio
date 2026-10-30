@@ -280,6 +280,7 @@ function fromPrimitives(geometry: SketchGeometry, prims: Prim[]): SketchGeometry
     }),
     constraints: geometry.constraints,
     ...(geometry.offsets ? { offsets: geometry.offsets } : {}),
+    ...(geometry.texts ? { texts: geometry.texts } : {}),
   };
 }
 

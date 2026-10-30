@@ -9,7 +9,7 @@ export class ValueBox {
   private readonly root: HTMLElement;
   private readonly label = el("span", { class: "whitespace-nowrap text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" });
   private readonly value = el("span", { class: "whitespace-nowrap font-mono tabular-nums" });
-  private readonly typed = el("span", { class: "hidden whitespace-nowrap rounded bg-sky-100 px-1 font-mono text-sky-900 dark:bg-sky-900 dark:text-sky-100" });
+  private readonly typed = el("span", { class: "hidden whitespace-nowrap bg-sky-100 px-1 font-mono text-sky-900 dark:bg-sky-900 dark:text-sky-100" });
   private readonly hint = el("span", { class: "hidden truncate text-[11px] text-gray-500 lg:inline" });
 
   constructor(container: HTMLElement) {
@@ -17,7 +17,7 @@ export class ValueBox {
       "div",
       {
         class:
-          "pointer-events-none absolute bottom-2 left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-md border border-gray-300 bg-white/95 px-3 py-1.5 text-sm shadow-lg backdrop-blur dark:border-gray-600 dark:bg-gray-900/95",
+          "pointer-events-none absolute bottom-2 left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 border border-gray-300 bg-white/95 px-3 py-1.5 text-sm shadow-lg backdrop-blur dark:border-gray-600 dark:bg-gray-900/95",
         role: "status",
         "aria-live": "polite",
         "aria-label": "Mesures",

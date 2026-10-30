@@ -19,13 +19,24 @@ export default defineConfig(({ mode }) => ({
     // Three.js alone is ~630 kB (160 kB compressed), cached in its own chunk: no warning for it.
     chunkSizeWarningLimit: 700,
     rollupOptions: {
-      input: { editor: "frontend/src/main.ts" },
+      // The editor, and the page of a client link (a viewer only).
+      input: { editor: "frontend/src/main.ts", share: "frontend/src/share.ts" },
       output: {
         entryFileNames: "[name].js",
         chunkFileNames: "chunks/[name]-[hash].js",
         // Libraries change far less often than the editor: in chunks of their own (named after their content),
         // browsers keep them cached across releases of the application.
-        manualChunks: (id: string) => (id.includes("node_modules/three/") ? "three" : id.includes("node_modules/") ? "vendor" : undefined),
+        // The path tracer of the render mode stays out of these chunks: it gets one of its own, loaded only when the
+        // mode first opens. (Only libraries may be loaded apart: a chunk of the application would import editor.js
+        // without the page's « ?v= » and run it a second time.)
+        manualChunks: (id: string) =>
+          id.includes("node_modules/three/")
+            ? "three"
+            : /node_modules\/(three-gpu-pathtracer|three-mesh-bvh|xatlas-web)\//.test(id)
+              ? undefined
+              : id.includes("node_modules/")
+                ? "vendor"
+                : undefined,
         assetFileNames: "assets/[name]-[hash][extname]",
       },
     },

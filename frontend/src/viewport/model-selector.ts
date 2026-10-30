@@ -146,6 +146,17 @@ export class ModelSelector {
     this.emit();
   }
 
+  /** The arrows at the ends of the selected edges keep their size on the screen (called every frame). */
+  fitArrows(camera: THREE.PerspectiveCamera, viewHeight: number): void {
+    this.layer.fitArrows(camera, viewHeight);
+  }
+
+  /** The distance shown between two selected parallel edges (null: none). */
+  setEdgeGap(gap: Parameters<SelectionLayer["setGap"]>[0]): void {
+    this.layer.setGap(gap);
+    this.layer.render(this.bodies);
+  }
+
   /** Dimension text displayed next to a selected edge. */
   setEdgeLabel(pick: EdgePick, text: string): void {
     this.layer.setEdgeLabel(pick, text);

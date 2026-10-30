@@ -1,6 +1,6 @@
 /** Bodies of the browser: their name, the feature that created them, hiding and deleting. */
 import { describe, expect, it } from "vitest";
-import { addExtrude, addHole, addPlate, bodyLabel, bodyOrigin, deleteFeature, renameBody, toggleHidden } from "../../frontend/src/document/operations";
+import { addExtrude, addHole, addPlate, bodyLabel, bodyOrigin, deleteFeature, isBodyHidden, renameBody, setHidden, toggleHidden } from "../../frontend/src/document/operations";
 import { createReferencePlate } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 
@@ -42,6 +42,21 @@ describe("corps", () => {
     const hidden = toggleHidden(doc, "ex1");
     expect(hidden.features.find((f) => f.id === "ex1")).toMatchObject({ hidden: true });
     expect(toggleHidden(hidden, "ex1").features.find((f) => f.id === "ex1")).toMatchObject({ hidden: false });
+    expect(doc.features.find((f) => f.id === "ex1")).not.toHaveProperty("hidden"); // the input is not modified
+  });
+
+  it("masquer tous les corps d'un coup : opérations et morceaux, puis tout réafficher", () => {
+    const two = addPlate(createReferencePlate(), 20, 20, 5, 200, 0);
+    const second = two.features.at(-1)!.id;
+    const doc = { ...two, hiddenBodies: ["sp1#2"] };
+    const hidden = setHidden(doc, ["ex1", second, "sp1#1"], true);
+    expect(isBodyHidden(hidden, "h1")).toBe(true);
+    expect(isBodyHidden(hidden, second)).toBe(true);
+    expect(hidden.hiddenBodies).toEqual(["sp1#2", "sp1#1"]);
+    expect(hidden.features.find((f) => f.id === "sk1")).not.toHaveProperty("hidden"); // the sketch is not touched
+    const shown = setHidden(hidden, ["ex1", second, "sp1#1", "sp1#2"], false);
+    expect(isBodyHidden(shown, "h1") || isBodyHidden(shown, second)).toBe(false);
+    expect(shown.hiddenBodies).toEqual([]);
     expect(doc.features.find((f) => f.id === "ex1")).not.toHaveProperty("hidden"); // the input is not modified
   });
 

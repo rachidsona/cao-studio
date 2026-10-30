@@ -45,6 +45,8 @@ export class SplitTool extends PanelTool {
   private offset = 0;
   private face: { body: string; ref: FaceRef; label: string } | null = null;
   private keep: SplitKeep = "both";
+  /** "Choisir le corps dans la vue": the next click picks the body to split (not the cutting face). */
+  private pickingBody = false;
   /** Centre and size of the target (for the plane indicator and the arrow). */
   private center: Vec3 = [0, 0, 0];
   private extent = 100;
@@ -190,12 +192,13 @@ export class SplitTool extends PanelTool {
             this.face ? this.linkButton("Choisir une autre face", () => ((this.face = null), this.sync())) : null,
           ];
     return [
-      this.selectRow("Corps", this.target ?? "", bodies.map((b): [string, string] => [b.id, b.name]), (v) => {
-        this.target = v;
-        this.measureTarget();
-        if (this.mode === "plane") this.offset = this.centreOffset();
-        this.sync();
-      }),
+      this.selectRow("Corps", this.target ?? "", bodies.map((b): [string, string] => [b.id, b.name]), (v) => this.setTarget(v)),
+      this.pickingBody
+        ? this.info("Cliquez dans la vue le corps à scinder (Échap : annuler).")
+        : this.linkButton("Choisir le corps dans la vue (souris)", () => {
+            this.pickingBody = true;
+            this.render();
+          }),
       this.selectRow("Outil", this.mode, [["plane", "Plan de construction"], ["face", "Face plane (clic dans la vue)"]], (v) => {
         this.mode = v as "plane" | "face";
         this.face = null; // pick again: the target is shown whole until a face is chosen
@@ -209,6 +212,28 @@ export class SplitTool extends PanelTool {
       }),
       sides ? this.info(`Côté + : vers ${directionText(sides.normal)}. Chaque morceau séparé devient un corps.`) : null,
     ];
+  }
+
+  private setTarget(id: string): void {
+    this.target = id;
+    this.measureTarget();
+    if (this.mode === "plane") this.offset = this.centreOffset();
+    this.sync();
+  }
+
+  override handleKey(event: KeyboardEvent): boolean {
+    if (event.key === "Escape" && this.pickingBody) {
+      this.stopPickingBody();
+      return true;
+    }
+    return super.handleKey(event);
+  }
+
+  private stopPickingBody(): void {
+    this.pickingBody = false;
+    this.ctx.viewport.setHoverHighlight(null);
+    this.ctx.viewport.renderer.domElement.style.cursor = "";
+    this.render();
   }
 
   private linkButton(label: string, run: () => void): HTMLElement {
@@ -276,6 +301,7 @@ export class SplitTool extends PanelTool {
 
   protected override dispose(): void {
     closeCalculator();
+    this.ctx.viewport.setHoverHighlight(null);
     this.removeIndicator();
     this.arrow.dispose();
   }
@@ -287,6 +313,14 @@ export class SplitTool extends PanelTool {
   }
 
   override move(event: PointerEvent): void {
+    if (this.pickingBody) {
+      // The body under the pointer lights up; the preview's pieces stand for the body already chosen.
+      const pick = this.ctx.viewport.pickFace(event);
+      const id = pick && featureOfBody(pick.bodyId) !== this.id ? pick.bodyId : null;
+      this.ctx.viewport.setHoverHighlight(id ? { bodies: [id] } : null);
+      this.ctx.viewport.renderer.domElement.style.cursor = id ? "pointer" : "";
+      return;
+    }
     const dragged = this.arrow.dragMove(event);
     if (dragged !== null) {
       this.setOffset(dragged);
@@ -304,6 +338,12 @@ export class SplitTool extends PanelTool {
   protected override click(event: PointerEvent): void {
     const pick = this.ctx.viewport.pickFace(event);
     if (!pick) return;
+    if (this.pickingBody) {
+      const id = featureOfBody(pick.bodyId) === this.id ? this.target : pick.bodyId;
+      this.stopPickingBody();
+      if (id && id !== this.target) this.setTarget(id);
+      return;
+    }
     // The pieces of the preview are this feature's own result: they can be neither the body nor the tool.
     if (featureOfBody(pick.bodyId) === this.id) {
       this.ctx.notify("Choisissez une face d'un autre corps, ou passez à « Plan de construction ».", "info");

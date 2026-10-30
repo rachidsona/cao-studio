@@ -3,6 +3,8 @@
  * and never mutates its input, so every edit can be undone.
  */
 import { cabinetPartNames } from "../features/cabinet-parts";
+import { frontsPartNames } from "../features/fronts-parts";
+import { nichePartNames } from "../features/niche-parts";
 import { rectangleAt } from "./sketch";
 import {
   cloneDocument,
@@ -132,26 +134,38 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   const gone = (key: string) => removed.has(featureOfBody(key));
   if (next.bodyNames) next = { ...next, bodyNames: Object.fromEntries(Object.entries(next.bodyNames).filter(([key]) => !gone(key))) };
   if (next.hiddenBodies) next = { ...next, hiddenBodies: next.hiddenBodies.filter((key) => !gone(key)) };
+  if (next.removedBodies) next = { ...next, removedBodies: next.removedBodies.filter((key) => !gone(key)) };
   if (next.bodyInfo) next = { ...next, bodyInfo: Object.fromEntries(Object.entries(next.bodyInfo).filter(([key]) => !gone(key))) };
   return next;
 }
 
 /**
- * The features that deleting these bodies and sketches deletes: what made each body (a part of a multi-body
- * operation — a cabinet, panels, a split — takes the whole operation, listed in `wholes`), and the sketches.
+ * What deleting these bodies and sketches deletes: the features that made whole bodies, and the sketches; a piece of
+ * a multi-body operation (a cabinet's top, a piece of a split) is listed in `pieces`, to be removed on its own.
  */
-export function featuresOfPick(doc: CadDocument, bodies: string[], sketches: string[]): { ids: string[]; wholes: string[] } {
+export function featuresOfPick(doc: CadDocument, bodies: string[], sketches: string[]): { ids: string[]; pieces: string[] } {
   const ids = new Set<string>();
-  const wholes = new Set<string>();
+  const pieces = new Set<string>();
   for (const body of bodies) {
     const origin = bodyOrigin(doc, body);
     const owner = featureOfBody(origin);
     if (!findFeature(doc, owner)) continue;
-    ids.add(owner);
-    if (origin !== owner) wholes.add(owner);
+    if (origin !== owner) pieces.add(origin);
+    else ids.add(owner);
   }
   for (const id of sketches) if (findFeature(doc, id)) ids.add(id);
-  return { ids: [...ids], wholes: [...wholes] };
+  return { ids: [...ids], pieces: [...pieces] };
+}
+
+/** The document without these pieces (they stay out of the model; undo brings them back). */
+export function removePieces(doc: CadDocument, pieces: string[]): CadDocument {
+  if (!pieces.length) return doc;
+  return { ...doc, removedBodies: [...new Set([...(doc.removedBodies ?? []), ...pieces])] };
+}
+
+/** True when the body is, or comes from, a piece deleted on its own. */
+export function isRemovedBody(doc: CadDocument, bodyId: string): boolean {
+  return !!doc.removedBodies?.length && doc.removedBodies.includes(bodyOrigin(doc, bodyId));
 }
 
 /** Deletes several features in one go (one undo step); `lost` lists the other features that go with them. */
@@ -202,7 +216,13 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
     }
     if (split?.type === "mirror") return `${bodyLabel(doc, split.targets[n - 1] ?? "")} — symétrie`;
     if (split?.type === "cabinet") return `${split.name} — ${cabinetPartNames(split)[n - 1] ?? `pièce ${n}`}`;
-    return `${split?.type === "split" ? bodyLabel(doc, split.target) : featureOfBody(origin)} — pièce ${n}`;
+    if (split?.type === "fronts") {
+      const cabinet = findFeature(doc, split.cabinet);
+      return `${split.name} — ${frontsPartNames(split, cabinet?.type === "cabinet" ? cabinet : undefined)[n - 1] ?? `pièce ${n}`}`;
+    }
+    if (split?.type === "niche") return `${split.name} — ${nichePartNames(doc.features, split)[n - 1] ?? `pièce ${n}`}`;
+    // A split names its pieces after the body cut; an extrusion that fell apart, after itself.
+    return `${split?.type === "split" ? bodyLabel(doc, split.target) : (split?.name ?? featureOfBody(origin))} — pièce ${n}`;
   }
   const origins = doc.features.filter((f) => SOLID_FEATURES.has(f.type) && consumedBodies(f).length === 0).map((f) => f.id);
   const n = origins.indexOf(origin) + 1;
@@ -225,6 +245,9 @@ export function renameBody(doc: CadDocument, bodyId: string, name: string): CadD
 /** Whether a body is hidden: through the feature that created it, or the list of hidden pieces. */
 export function isBodyHidden(doc: CadDocument, bodyId: string): boolean {
   const origin = bodyOrigin(doc, bodyId);
+  // A body on a hidden layer is hidden with it.
+  const layer = doc.bodyInfo?.[origin]?.layer;
+  if (layer && doc.layers?.some((l) => l.id === layer && !l.visible)) return true;
   return isPiece(origin) ? !!doc.hiddenBodies?.includes(origin) : !!findFeature(doc, origin)?.hidden;
 }
 
@@ -234,4 +257,19 @@ export function toggleHidden(doc: CadDocument, id: string): CadDocument {
   const hidden = new Set(doc.hiddenBodies);
   if (!hidden.delete(id)) hidden.add(id);
   return { ...doc, hiddenBodies: [...hidden] };
+}
+
+/** Shows or hides several sketches, bodies or pieces at once (one change, one undo step). */
+export function setHidden(doc: CadDocument, ids: string[], hide: boolean): CadDocument {
+  const features = new Set(ids.filter((id) => !isPiece(id)));
+  const hidden = new Set(doc.hiddenBodies);
+  for (const id of ids.filter(isPiece)) {
+    if (hide) hidden.add(id);
+    else hidden.delete(id);
+  }
+  return {
+    ...doc,
+    features: doc.features.map((f) => (features.has(f.id) && !!f.hidden !== hide ? { ...f, hidden: hide } : f)),
+    ...(doc.hiddenBodies || hidden.size ? { hiddenBodies: [...hidden] } : {}),
+  };
 }

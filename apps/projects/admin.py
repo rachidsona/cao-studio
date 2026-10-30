@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Project, ProjectVersion
+from .models import Comment, Project, ProjectVersion, ShareLink
 
 
 class ProjectVersionInline(admin.TabularInline):
@@ -36,3 +36,19 @@ class ProjectVersionAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ShareLink)
+class ShareLinkAdmin(admin.ModelAdmin):
+    list_display = ("title", "project", "model_size", "allow_comments", "created_at", "revoked_at")
+    list_select_related = ("project",)
+    exclude = ("model",)
+    readonly_fields = ("token", "model_size", "created_at")
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ("author", "project", "from_owner", "resolved", "created_at")
+    list_filter = ("resolved", "from_owner")
+    list_select_related = ("project",)
+    search_fields = ("author", "body")

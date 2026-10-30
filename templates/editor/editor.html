@@ -28,7 +28,7 @@
 
     <details class="relative">
       <summary class="tool-btn cursor-pointer list-none" aria-label="Fichier et réglages">⋯</summary>
-      <div class="absolute right-0 z-40 mt-1 w-64 space-y-1 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+      <div class="absolute right-0 z-40 mt-1 max-h-[calc(100dvh-4rem)] w-72 space-y-1 overflow-y-auto border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
         <p class="panel-title px-2 pt-1">Exporter</p>
         <button type="button" class="tool-btn w-full justify-start" data-action="export-step">STEP (solide exact)</button>
         <button type="button" class="tool-btn w-full justify-start" data-action="export-stl">STL (impression 3D)</button>
@@ -36,10 +36,15 @@
         <p class="panel-title px-2 pt-2">Importer</p>
         <button type="button" class="tool-btn w-full justify-start" data-action="import-native">Projet natif (.cao.json)</button>
         <input type="file" accept=".json,application/json" class="hidden" data-ref="import-file">
+        <p class="panel-title px-2 pt-2">Vue</p>
+        <button type="button" class="tool-btn w-full justify-start gap-2" data-action="view" data-view="iso"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-view-iso"/></svg>Vue isométrique</button>
+        <button type="button" class="tool-btn w-full justify-start gap-2" data-action="view" data-view="front"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-view-front"/></svg>Vue de face</button>
+        <button type="button" class="tool-btn w-full justify-start gap-2" data-action="view" data-view="top"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-view-top"/></svg>Vue de dessus</button>
+        <button type="button" class="tool-btn w-full justify-start gap-2" data-action="view" data-view="right"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-view-right"/></svg>Vue de droite</button>
         <p class="panel-title px-2 pt-2">Réglages</p>
         <label class="flex min-h-11 items-center justify-between gap-2 px-3 text-sm">
           Unités
-          <select data-ref="units" class="min-h-9 rounded-md border border-gray-300 bg-white px-2 dark:border-gray-600 dark:bg-gray-800">
+          <select data-ref="units" class="min-h-9 border border-gray-300 bg-white px-2 dark:border-gray-600 dark:bg-gray-800">
             <option value="mm">Millimètre</option>
             <option value="cm">Centimètre</option>
             <option value="m">Mètre</option>
@@ -51,6 +56,19 @@
           <input type="checkbox" data-ref="autosave" class="size-5 accent-sky-600" checked>
         </label>
         <button type="button" class="tool-btn w-full justify-start" data-theme-toggle>Thème clair / sombre</button>
+        <p class="panel-title px-2 pt-2">Palette <span class="normal-case font-normal tracking-normal">(thème sombre)</span></p>
+        <div class="grid grid-cols-2 gap-1.5 px-1 pb-1">
+          <button type="button" class="palette-swatch" data-palette="" title="Atelier" aria-label="Palette Atelier"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#12376e,#1e2943)"><span class="palette-swatch-accent" style="background:#08b8ff"></span></span><span class="palette-swatch-name">Atelier</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-navy" title="Navy Mirage" aria-label="Palette Navy Mirage"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#35577d,#141e30)"><span class="palette-swatch-accent" style="background:#a9cff9"></span></span><span class="palette-swatch-name">Navy Mirage</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-ocean" title="Ocean Sunset" aria-label="Palette Ocean Sunset"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#2c5364,#0f2027)"><span class="palette-swatch-accent" style="background:#6ccbf4"></span></span><span class="palette-swatch-name">Ocean Sunset</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-crimson" title="Crimson Velvet" aria-label="Palette Crimson Velvet"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#6b1e23,#2c0f12)"><span class="palette-swatch-accent" style="background:#e48b97"></span></span><span class="palette-swatch-name">Crimson Velvet</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-amber" title="Amber Blaze" aria-label="Palette Amber Blaze"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#990000,#660000)"><span class="palette-swatch-accent" style="background:#e48200"></span></span><span class="palette-swatch-name">Amber Blaze</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-braise" title="Crimson Braise" aria-label="Palette Crimson Braise"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#a23a33,#5b1e1a)"><span class="palette-swatch-accent" style="background:#f9a09a"></span></span><span class="palette-swatch-name">Crimson Braise</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-violet" title="Royal Violet" aria-label="Palette Royal Violet"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#9303c5,#02060e)"><span class="palette-swatch-accent" style="background:#d066f5"></span></span><span class="palette-swatch-name">Royal Violet</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-charbon" title="Royal Charcoal" aria-label="Palette Royal Charcoal"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#4c4e51,#1e1f22)"><span class="palette-swatch-accent" style="background:#9da0a5"></span></span><span class="palette-swatch-name">Royal Charcoal</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-terre" title="Crimson Terre" aria-label="Palette Crimson Terre"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#9a4d42,#5a2a27)"><span class="palette-swatch-accent" style="background:#f9afa4"></span></span><span class="palette-swatch-name">Crimson Terre</span></button>
+          <button type="button" class="palette-swatch" data-palette="palette-mocha" title="Mocha Mist" aria-label="Palette Mocha Mist"><span class="palette-swatch-gradient" style="background:linear-gradient(to top,#c29e95,#a47971)"><span class="palette-swatch-accent" style="background:#2d120b"></span></span><span class="palette-swatch-name">Mocha Mist</span></button>
+        </div>
         <p class="panel-title px-2 pt-2">Aide</p>
         <button type="button" class="tool-btn w-full justify-start" data-action="help">Prise en main et raccourcis <kbd class="ml-auto font-mono text-xs text-gray-500">?</kbd></button>
       </div>
@@ -59,38 +77,18 @@
 
   {% include "editor/_icons.html" %}
 
-  {# ---- Tabs of the toolbar (3D model): the groups of a tab only are shown, so nothing runs off the page ---- #}
-  <div class="flex items-center gap-1 border-b border-gray-200 bg-white px-2 py-0.5 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" data-ribbon-bar="model">
-    <div class="flex min-h-11 min-w-0 flex-1 items-center justify-start gap-0.5 overflow-x-auto" role="group" aria-label="Mes outils" data-quickbar data-ribbon-zone="quick" data-empty-text="Mes outils : cliquez Personnaliser, puis touchez un outil de la barre du bas et ici pour le monter."></div>
-    <button type="button" class="ribbon-tab shrink-0" data-ribbon-customize aria-pressed="false" title="Personnaliser : choisissez dans quelle barre va chaque icône">Personnaliser</button>
-  </div>
   {# ---- Toolbar (3D model): icons grouped as a ribbon, each with its name in a tooltip ---- #}
-  <div class="flex flex-wrap items-stretch gap-y-1 border-b max-sm:flex-nowrap max-sm:overflow-x-auto border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle">
-    <div class="ribbon-group" role="group" aria-label="Sélection">
-      <div class="ribbon-row">
-        <button type="button" class="tool-btn icon-btn" data-action="deselect" title="Sélection (Échap)" aria-label="Sélection"><svg class="tool-icon" aria-hidden="true"><use href="#i-select"/></svg></button>
-        <div class="flex shrink-0 items-center rounded-md border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="Filtre de sélection">
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="auto" aria-pressed="true" title="Arête en priorité, sinon face">Auto</button>
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="face" aria-pressed="false" title="Sélectionner des faces de corps ou des zones d'esquisse">Faces</button>
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="edge" aria-pressed="false" title="Sélectionner des arêtes de corps ou des traits d'esquisse">Arêtes</button>
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="vertex" aria-pressed="false" title="Sélectionner des sommets de corps ou des points d'esquisse">Points</button>
-          <button type="button" class="tool-btn min-h-9 px-2 text-xs" data-select-filter="body" aria-pressed="false" title="Sélectionner des corps et des esquisses entiers (plusieurs à la fois)">Corps</button>
-        </div>
-        <button type="button" class="tool-btn icon-btn" data-select-plus aria-pressed="true" title="Sélection++ (comme Curic Select++) : au survol, les niveaux (ensemble › pièce › face) ; Ctrl descend d'un niveau, clic sélectionne, Maj + clic ajoute" aria-label="Sélection++"><svg class="tool-icon" aria-hidden="true"><use href="#i-select-plus"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-select-window aria-pressed="false" title="Sélection par fenêtre (ou Maj + glisser) : de gauche à droite, ce qui est entièrement dedans ; de droite à gauche, ce qui est touché" aria-label="Sélection par fenêtre"><svg class="tool-icon" aria-hidden="true"><use href="#i-window"/></svg></button>
-      </div>
-      <span class="ribbon-caption" aria-hidden="true">Sélection</span>
-    </div>
-    <span class="ribbon-sep" aria-hidden="true"></span>
+  <div class="flex flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle" data-ribbon="model">
     <div class="ribbon-group" role="group" aria-label="Créer">
       <div class="ribbon-row">
         <details class="relative shrink-0">
           <summary class="tool-btn icon-btn cursor-pointer list-none" data-sketch-entry title="Nouvelle esquisse : sur la face sélectionnée, sinon sur un plan" aria-label="Esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-sketch"/></svg></summary>
-          <div class="fixed z-40 mt-1 w-56 space-y-1 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+          <div class="fixed z-40 mt-1 w-56 space-y-1 border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
             <p class="panel-title px-2 pt-1">Plan de l'esquisse</p>
             <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XY">Plan XY (dessus)</button>
             <button type="button" class="tool-btn w-full justify-start" data-new-sketch="XZ">Plan XZ (face)</button>
             <button type="button" class="tool-btn w-full justify-start" data-new-sketch="YZ">Plan YZ (droite)</button>
+            <button type="button" class="tool-btn w-full justify-start" data-construction-plane title="Plan décalé et incliné, ou passant par trois coins">Plan de construction…</button>
           </div>
         </details>
         <button type="button" class="tool-btn icon-btn" data-action="extrude" title="Extrusion : extruder l&#x27;esquisse sélectionnée" aria-label="Extrusion"><svg class="tool-icon" aria-hidden="true"><use href="#i-extrude"/></svg></button>
@@ -106,6 +104,10 @@
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="fillet" title="Congé sur des arêtes" aria-label="Congé"><svg class="tool-icon" aria-hidden="true"><use href="#i-fillet"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="chamfer" title="Chanfrein sur des arêtes" aria-label="Chanfrein"><svg class="tool-icon" aria-hidden="true"><use href="#i-chamfer"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="shell" title="Coque : creuser le corps à une épaisseur de paroi, les faces cliquées restant ouvertes (bac, tiroir, boîte)" aria-label="Coque"><svg class="tool-icon" aria-hidden="true"><use href="#i-shell"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="loft" title="Lissage : un solide passant par les profils fermés de plusieurs esquisses (pied galbé, trémie)" aria-label="Lissage"><svg class="tool-icon" aria-hidden="true"><use href="#i-loft"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="modifier" title="Modificateur de planche : cintrer, effiler ou vriller (dans l'historique)" aria-label="Modificateur"><svg class="tool-icon" aria-hidden="true"><use href="#i-modifier"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-linked-copy title="Copie liée : une copie des corps sélectionnés qui suit les modifications de l'original" aria-label="Copie liée"><svg class="tool-icon" aria-hidden="true"><use href="#i-linked-copy"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="combine" title="Combiner : joindre, couper ou intersection de corps" aria-label="Combiner"><svg class="tool-icon" aria-hidden="true"><use href="#i-combine"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="split" title="Scinder le corps par un plan ou une face plane" aria-label="Scinder le corps"><svg class="tool-icon" aria-hidden="true"><use href="#i-split"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="move" title="Déplacer un corps ou une esquisse (pivot et cible, manipulateur XYZ, saisie)" aria-label="Déplacer"><svg class="tool-icon" aria-hidden="true"><use href="#i-move-3d"/></svg></button>
@@ -116,6 +118,14 @@
     <div class="ribbon-group" role="group" aria-label="Menuiserie">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="cabinet" title="Caisson : bas ou haut de cuisine, colonne, penderie, placard — côtés, dessus, dessous, fond et étagères" aria-label="Caisson"><svg class="tool-icon" aria-hidden="true"><use href="#i-cabinet"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="fronts" title="Façades : portes ou tiroirs d'un caisson (en applique ou encastrés), charnières et poignées percées, quincaillerie comptée dans le devis" aria-label="Façades"><svg class="tool-icon" aria-hidden="true"><use href="#i-fronts"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="kitchen" title="Implantation : une cuisine entière le long d'un mur ou de deux murs en L — meubles bas et hauts aux largeurs du commerce, façades, plan de travail, fileurs et murs (hors débit)" aria-label="Implantation de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="dressing" title="Dressing : un dressing entier le long d&#x27;un mur (I), de deux (L) ou de trois (U) — longueurs, hauteur, profondeur et programme de modules (penderies, étagères, tiroirs), chaque mur une Répartition modifiable ensuite niche par niche" aria-label="Assistant Dressing"><svg class="tool-icon" aria-hidden="true"><use href="#i-dressing"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="partition" title="Répartition : un rectangle (hauteur × longueur) divisé en 2 à 12 cases pour autant de portes, avec côtés simples et doubles (deux traits d&#x27;épaisseur) ; dessinée de face (meuble debout), chaque panneau extrudé en corps ; cliquez dans la vue pour poser son coin, puis divisez les niches avec Étagères" aria-label="Répartition"><svg class="tool-icon" aria-hidden="true"><use href="#i-partition"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="shelves" title="Étagères (comme Polyboard) : cliquez une niche — une case d&#x27;une répartition — et divisez-la par des étagères ; entre le dessous, les étagères et le dessus, chaque niche peut être divisée à son tour" aria-label="Étagères"><svg class="tool-icon" aria-hidden="true"><use href="#i-shelves"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="cloisons" title="Cloisons (comme Polyboard) : cliquez une niche d&#x27;une répartition et divisez-la de gauche à droite par des cloisons debout ; chaque niche obtenue peut être divisée à son tour, par des étagères ou d&#x27;autres cloisons" aria-label="Cloisons"><svg class="tool-icon" aria-hidden="true"><use href="#i-cloisons"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="penderie" title="Penderie : cliquez une niche d&#x27;une répartition pour y poser une tringle Ø25 sur deux supports, à mi-profondeur ; elle suit sa niche, compte au devis (au mètre) et pas au débit" aria-label="Penderie"><svg class="tool-icon" aria-hidden="true"><use href="#i-rod"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="tiroirs" title="Tiroirs : cliquez une niche d&#x27;une répartition pour la remplir de 1 à 8 tiroirs encastrés (façades, caissons sur coulisses, trous de poignée) ; ils suivent leur niche" aria-label="Tiroirs"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawers"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="panels" title="Panneaux depuis un squelette : chaque ligne d'une esquisse devient une planche (épaisseur, profondeur)" aria-label="Panneaux"><svg class="tool-icon" aria-hidden="true"><use href="#i-panels"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Menuiserie</span>
@@ -130,6 +140,7 @@
         <button type="button" class="tool-btn icon-btn" data-action="stretch" title="Étirer (comme Curic Stretch) : un plan à travers le meuble, les panneaux traversés s'allongent, les autres se déplacent" aria-label="Étirer"><svg class="tool-icon" aria-hidden="true"><use href="#i-stretch"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="array" title="Réseau (comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis, avec un pas ou réparties sur une distance" aria-label="Réseau"><svg class="tool-icon" aria-hidden="true"><use href="#i-array"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="rotate" title="Tourner (comme Curic Rotate) : par quarts de tour ou d'un angle, autour du centre ou d'un coin cliqué" aria-label="Tourner"><svg class="tool-icon" aria-hidden="true"><use href="#i-rotate"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="layers" aria-pressed="false" title="Calques : ranger les corps par familles (caisson, façades, quincaillerie…), les montrer ou les cacher" aria-label="Calques"><svg class="tool-icon" aria-hidden="true"><use href="#i-layers"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-section aria-pressed="false" title="Coupe (comme Curic Section) : cacher ce qui est au-delà d'un plan pour voir l'intérieur du meuble" aria-label="Coupe"><svg class="tool-icon" aria-hidden="true"><use href="#i-section"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Curic</span>
@@ -139,7 +150,10 @@
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="sweep" title="Suivre-moi (comme Follow Me de SketchUp) : un profil fermé balayé le long d'un chemin d'une autre esquisse — plinthes, moulures, corniches" aria-label="Suivre-moi"><svg class="tool-icon" aria-hidden="true"><use href="#i-sweep"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="machining" title="Usinage : perçages 32, charnières, rainure de fond, et assemblages (tourillons, confirmat, mi-bois, tenon-mortaise) entre deux planches" aria-label="Usinage"><svg class="tool-icon" aria-hidden="true"><use href="#i-machining"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="assembly" title="Règles d'assemblage : confirmat ou tourillons sur toutes les jonctions des planches (la sélection, sinon tout le meuble) en une fois, visserie comptée dans le devis" aria-label="Règles d'assemblage"><svg class="tool-icon" aria-hidden="true"><use href="#i-assembly"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="render-mode" title="Rendu (comme Fusion) : image réaliste en lancer de rayons — environnement studio, intérieur ou ciel, sol, caméra, finitions, images haute résolution" aria-label="Rendu"><svg class="tool-icon" aria-hidden="true"><use href="#i-render-studio"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="render" aria-pressed="true" title="Rendu des matières : colore chaque corps selon sa matière, avec le veinage du bois dans le sens du fil" aria-label="Rendu des matières"><svg class="tool-icon" aria-hidden="true"><use href="#i-render"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="appearance" aria-pressed="false" title="Apparence (comme Fusion) : bibliothèque de bois, verres, marbres, métaux, laques RAL, tissus, cuirs, bétons — clic pour les corps sélectionnés, ou glisser sur un corps" aria-label="Apparence"><svg class="tool-icon" aria-hidden="true"><use href="#i-appearance"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="material" aria-pressed="false" title="Matière et chants : matière, sens du fil et chants des corps sélectionnés" aria-label="Matière et chants"><svg class="tool-icon" aria-hidden="true"><use href="#i-material"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="parameters" aria-pressed="false" title="Paramètres : des valeurs nommées (largeur, épaisseur…) liées aux cotes par des formules ; modifier une valeur met à jour tout le meuble" aria-label="Paramètres"><svg class="tool-icon" aria-hidden="true"><use href="#i-parameters"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="measure" aria-pressed="false" title="Mètre et guides (comme le mètre de SketchUp) : mesurez entre deux points accrochés aux coins et arêtes, ou posez des lignes de guide enregistrées" aria-label="Mètre et guides"><svg class="tool-icon" aria-hidden="true"><use href="#i-measure"/></svg></button>
@@ -149,30 +163,30 @@
         <button type="button" class="tool-btn icon-btn" data-workshop="cutlist" title="Liste de débit : toutes les pièces avec leurs cotes, matière, chants et quantités ; export CSV ou impression" aria-label="Liste de débit"><svg class="tool-icon" aria-hidden="true"><use href="#i-cutlist"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="nesting" title="Optimisation de découpe : placement des pièces sur des panneaux standard, trait de scie et chutes" aria-label="Optimisation de découpe"><svg class="tool-icon" aria-hidden="true"><use href="#i-nesting"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="dxf" title="DXF pour la commande numérique : chaque panneau à plat (contour exact, perçages), côte à côte" aria-label="Export DXF commande numérique"><svg class="tool-icon" aria-hidden="true"><use href="#i-dxf"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="gcode" title="G-code : programme de la défonceuse à commande numérique — perçages, cuvettes et contours, pièces rangées sur les panneaux bruts" aria-label="G-code commande numérique"><svg class="tool-icon" aria-hidden="true"><use href="#i-gcode"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="labels" title="Étiquettes : une par pièce, avec QR code, cotes, matière et chants, à imprimer sur une planche A4 (3 × 8)" aria-label="Étiquettes à QR code"><svg class="tool-icon" aria-hidden="true"><use href="#i-labels"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="quote" title="Devis : matières, chants, découpe et montage d'après la liste de débit ; tarifs réglables, impression et CSV" aria-label="Devis"><svg class="tool-icon" aria-hidden="true"><use href="#i-quote"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="assistant" title="Assistant : décrivez en français ce que vous voulez construire ou modifier ; Claude propose, vous appliquez" aria-label="Assistant de modélisation" aria-pressed="false"><svg class="tool-icon" aria-hidden="true"><use href="#i-assistant"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="share" title="Lien client : le meuble en 3D et en réalité augmentée pour votre client, avec ses commentaires, sans compte" aria-label="Lien client"><svg class="tool-icon" aria-hidden="true"><use href="#i-share"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="comments" title="Commentaires des clients" aria-label="Commentaires des clients" aria-pressed="false"><svg class="tool-icon" aria-hidden="true"><use href="#i-comments"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Atelier</span>
     </div>
-    <span class="ribbon-sep" aria-hidden="true"></span>
-    <div class="ribbon-group" role="group" aria-label="Vue">
-      <div class="ribbon-row">
-        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="iso" title="Vue isométrique" aria-label="Vue isométrique"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-iso"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="front" title="Vue de face" aria-label="Vue de face"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-front"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="top" title="Vue de dessus" aria-label="Vue de dessus"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-top"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="view" data-view="right" title="Vue de droite" aria-label="Vue de droite"><svg class="tool-icon" aria-hidden="true"><use href="#i-view-right"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="fit" title="Ajuster à la fenêtre (F)" aria-label="Ajuster"><svg class="tool-icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
-      </div>
-      <span class="ribbon-caption" aria-hidden="true">Vue</span>
-    </div>
   </div>
 
-  {# ---- Tabs of the toolbar (sketch mode) ---- #}
-  <div class="hidden items-center gap-1 border-b border-gray-200 bg-white px-2 py-0.5 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" data-ribbon-bar="sketch">
-    <div class="flex min-h-11 min-w-0 flex-1 items-center justify-start gap-0.5 overflow-x-auto" role="group" aria-label="Mes outils" data-quickbar data-ribbon-zone="quick" data-empty-text="Mes outils : cliquez Personnaliser, puis touchez un outil de la barre du bas et ici pour le monter."></div>
-    <button type="button" class="ribbon-tab shrink-0" data-ribbon-customize aria-pressed="false" title="Personnaliser : choisissez dans quelle barre va chaque icône">Personnaliser</button>
+  {# ---- Render bar (render mode, render/render-mode.ts): replaces the modelling tools ---- #}
+  <div class="hidden flex-nowrap items-center gap-2 overflow-x-auto border-b border-gray-200 bg-white px-3 py-1.5 group-data-[render=on]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Rendu" data-render-bar>
+    <svg class="tool-icon size-7" aria-hidden="true"><use href="#i-render-studio"/></svg>
+    <span class="text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Rendu</span>
+    <span data-render-status class="min-w-0 flex-1 truncate text-xs text-gray-600 tabular-nums dark:text-gray-300"></span>
+    <button type="button" class="tool-btn min-h-9 border border-gray-300 text-xs dark:border-gray-600" data-render="pause" aria-pressed="false" title="Mettre en pause ou reprendre l'affinage">⏸ Pause</button>
+    <button type="button" class="tool-btn min-h-9 border border-gray-300 text-xs dark:border-gray-600" data-render="restart" title="Recommencer l'affinage depuis le début">↻ Recommencer</button>
+    <button type="button" class="tool-btn min-h-9 border border-gray-300 text-xs dark:border-gray-600" data-render="capture" title="Rendre une image au format choisi dans le panneau (galerie)"><svg class="size-5 shrink-0" aria-hidden="true"><use href="#i-scenes"/></svg>Rendre l'image</button>
+    <button type="button" class="tool-btn tool-btn-primary min-h-9 text-xs" data-render="exit" title="Revenir à la modélisation (Échap)">Quitter le rendu</button>
   </div>
+
   {# ---- Toolbar (sketch mode): icons grouped as a ribbon, each with its name in a tooltip ---- #}
-  <div class="hidden flex-wrap items-stretch gap-y-1 border-b max-sm:flex-nowrap max-sm:overflow-x-auto border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse">
+  <div class="hidden flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse" data-ribbon="sketch">
     <div class="ribbon-group" role="group" aria-label="Terminer">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn tool-btn-primary" data-sketch-command="finish" title="Terminer l&#x27;esquisse (Entrée)" aria-label="Terminer l&#x27;esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-finish"/></svg></button>
@@ -188,6 +202,11 @@
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="rectangle" title="Rectangle (R)" aria-label="Rectangle"><svg class="tool-icon" aria-hidden="true"><use href="#i-rect"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="circle" title="Cercle (C)" aria-label="Cercle"><svg class="tool-icon" aria-hidden="true"><use href="#i-circle"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="arc" title="Arc par centre (A)" aria-label="Arc"><svg class="tool-icon" aria-hidden="true"><use href="#i-arc"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="polygon" title="Polygone régulier : centre puis un sommet ; chiffres 3 à 9 pour le nombre de côtés" aria-label="Polygone"><svg class="tool-icon" aria-hidden="true"><use href="#i-polygon"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="slot" title="Oblong : premier centre, second centre, puis la largeur" aria-label="Oblong"><svg class="tool-icon" aria-hidden="true"><use href="#i-slot"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="oval" title="Ovale à quatre centres (tracé de menuiserie) : centre puis un coin du rectangle qui l'entoure" aria-label="Ovale"><svg class="tool-icon" aria-hidden="true"><use href="#i-oval"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="curve" title="Courbe lissée : cliquez des points ; recliquez le dernier pour finir, le premier pour fermer (arcs tangents)" aria-label="Courbe lissée"><svg class="tool-icon" aria-hidden="true"><use href="#i-curve"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="text" title="Texte : cliquez où il commence, tapez-le ; pour le graver, extrudez l'esquisse en « Couper »" aria-label="Texte"><svg class="tool-icon" aria-hidden="true"><use href="#i-text"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-command="construction" title="Géométrie de construction (X)" aria-label="Construction"><svg class="tool-icon" aria-hidden="true"><use href="#i-construction"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Créer</span>
@@ -196,11 +215,15 @@
     <div class="ribbon-group" role="group" aria-label="Modifier">
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="offset" title="Décalage : copie parallèle des éléments sélectionnés à une distance (O)" aria-label="Décalage"><svg class="tool-icon" aria-hidden="true"><use href="#i-offset"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="offsetEdge" title="Décaler l&#x27;arête (comme Shapr3D) : cliquez des arêtes ou une face d&#x27;un corps (ou des traits de l&#x27;esquisse) ; elles sont projetées et décalées vers l&#x27;intérieur de la face, en vrais traits" aria-label="Décaler l&#x27;arête"><svg class="tool-icon" aria-hidden="true"><use href="#i-offset-edge"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="extend" title="Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante" aria-label="Prolonger"><svg class="tool-icon" aria-hidden="true"><use href="#i-extend"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="fillet" title="Congé de coin : cliquez un coin de deux lignes, tapez le rayon" aria-label="Congé d'esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-sketch-fillet"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="chamfer" title="Chanfrein de coin : cliquez un coin de deux lignes, tapez la distance" aria-label="Chanfrein d'esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-sketch-chamfer"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="project" title="Projeter : cliquez des arêtes des corps pour les ajouter à l'esquisse comme repères fixes" aria-label="Projeter"><svg class="tool-icon" aria-hidden="true"><use href="#i-project"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="trim" title="Ajuster (comme Fusion) : survolez la partie d'une ligne, d'un arc ou d'un cercle entre deux croisements, cliquez pour la supprimer" aria-label="Ajuster"><svg class="tool-icon" aria-hidden="true"><use href="#i-trim"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="break" title="Couper (comme Fusion) : coupe une ligne, un arc ou un cercle en morceaux là où d'autres courbes le croisent ; survolez pour voir où (croix rouges), cliquez pour couper" aria-label="Couper"><svg class="tool-icon" aria-hidden="true"><use href="#i-break"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-tool="move" title="Déplacer : points, lignes, cercles, contours — à la souris ou par saisie, avec les contraintes (M)" aria-label="Déplacer"><svg class="tool-icon" aria-hidden="true"><use href="#i-move"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-sketch-tool="array" title="Réseau (comme Fusion) : copie les éléments choisis en grille sur deux directions, ou répartit des lignes à égale distance à l'intérieur d'un rectangle" aria-label="Réseau"><svg class="tool-icon" aria-hidden="true"><use href="#i-rect-array"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-sketch-tool="array" title="Réseau (comme Fusion) : copie les éléments choisis en grille sur deux directions, ou répartit des lignes à égale distance à l'intérieur d'un rectangle" aria-label="Réseau"><svg class="tool-icon" aria-hidden="true"><use href="#i-sketch-array"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-command="delete" title="Supprimer la sélection (Suppr)" aria-label="Supprimer"><svg class="tool-icon" aria-hidden="true"><use href="#i-delete"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Modifier</span>
@@ -235,26 +258,33 @@
     <span class="ribbon-sep" aria-hidden="true"></span>
     <div class="ribbon-group" role="group" aria-label="Affichage">
       <div class="ribbon-row">
+        <button type="button" class="tool-btn icon-btn" data-sketch-command="points" aria-pressed="false" title="Afficher les points des lignes (les petits carrés noirs aux extrémités) : cachés au départ, ils s&#x27;affichent quand on les survole" aria-label="Points"><svg class="tool-icon" aria-hidden="true"><use href="#i-points"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-command="glyphs" title="Afficher les symboles de contraintes (H, V, ∥…)" aria-label="Symboles de contraintes"><svg class="tool-icon" aria-hidden="true"><use href="#i-glyphs"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-command="gridsnap" title="Accrochage à la grille (G)" aria-label="Accrochage à la grille"><svg class="tool-icon" aria-hidden="true"><use href="#i-grid"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-sketch-command="fit" title="Ajuster la vue à l&#x27;esquisse (F)" aria-label="Ajuster la vue à l&#x27;esquisse"><svg class="tool-icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
-        <span data-ref="sketch-dof" class="shrink-0 rounded px-2 py-1 text-xs font-medium data-[state=free]:bg-sky-100 data-[state=free]:text-sky-900 data-[state=full]:bg-emerald-100 data-[state=full]:text-emerald-900 data-[state=warn]:bg-amber-100 data-[state=warn]:text-amber-900"></span>
+        <span data-ref="sketch-dof" class="shrink-0 px-2 py-1 text-xs font-medium data-[state=free]:bg-sky-100 data-[state=free]:text-sky-900 data-[state=full]:bg-emerald-100 data-[state=full]:text-emerald-900 data-[state=warn]:bg-amber-100 data-[state=warn]:text-amber-900"></span>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Affichage</span>
     </div>
   </div>
 
-  <div class="relative flex min-h-0 flex-1">
+  <div data-ref="main-row" class="relative flex min-h-0 flex-1">
     {# ---- Model tree (left panel on large screens, bottom sheet on phones/tablets) ---- #}
     <aside data-ref="panel-tree" data-open="false" aria-label="Navigateur : corps et esquisses"
            class="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-white lg:flex dark:border-gray-800 dark:bg-gray-900
-                  max-lg:fixed max-lg:inset-x-0 max-lg:bottom-16 max-lg:z-30 max-lg:max-h-[55dvh] max-lg:w-auto max-lg:rounded-t-xl max-lg:border-t max-lg:shadow-2xl
-                  data-[open=true]:flex">
-      <div class="flex items-center justify-between px-4 pt-3 pb-1">
-        <h2 class="panel-title">Navigateur</h2>
-        <button type="button" class="tool-btn lg:hidden" data-action="close-panels" aria-label="Fermer">✕</button>
+ max-lg:fixed max-lg:inset-x-0 max-lg:bottom-16 max-lg:z-30 max-lg:max-h-[55dvh] max-lg:w-auto max-lg:border-t max-lg:shadow-2xl
+ data-[open=true]:flex">
+      {# The title in a card too, lined up with the cards below it (same margins). #}
+      <div class="px-2 pt-3">
+        <div class="cad-card mx-1.5 mb-1 flex min-h-10 items-center justify-between border border-gray-200 bg-white px-3 py-1.5 shadow-[0_6px_18px_rgba(15,23,42,0.30)] dark:border-gray-700 dark:bg-gray-800 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]">
+          <h2 class="panel-title">Navigateur</h2>
+          <button type="button" class="tool-btn lg:hidden" data-action="close-panels" aria-label="Fermer">✕</button>
+        </div>
       </div>
-      <div data-ref="tree" class="flex-1 overflow-y-auto px-2 pb-3"></div>
+      {# The list scrolls without a scrollbar: small arrows show there is more (ui/scroll-arrows.ts). #}
+      <div class="relative flex min-h-0 flex-1 flex-col">
+        <div data-ref="tree" class="cad-no-scrollbar flex-1 overflow-y-auto px-2 pb-3"></div>
+      </div>
     </aside>
 
     {# ---- 3D viewport with the operations timeline below it ---- #}
@@ -274,18 +304,42 @@
         </div>
         <div data-ref="toasts" class="pointer-events-none absolute top-3 left-1/2 z-40 flex w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 flex-col items-center gap-2" aria-live="polite"></div>
       </main>
-      <div data-ref="timeline" class="shrink-0 border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"></div>
+      <div data-ref="timeline" class="shrink-0 group-data-[render=on]/editor:hidden border-t border-white/10 bg-[#101d26] [color-scheme:dark]"></div>
     </div>
+
+    {# ---- Selection and view, in a column beside the viewport ---- #}
+    <nav data-side-tools class="flex w-12 shrink-0 group-data-[render=on]/editor:hidden flex-col items-center gap-0.5 overflow-y-auto border-l border-gray-200 bg-white py-2 group-data-[mode=sketch]/editor:hidden dark:border-gray-800 dark:bg-gray-900" aria-label="Sélection et vue">
+      <div class="flex flex-col items-center gap-1" role="group" aria-label="Sélection">
+        <button type="button" class="tool-btn icon-btn" data-action="deselect" title="Sélection (Échap)" aria-label="Sélection"><svg class="tool-icon" aria-hidden="true"><use href="#i-select"/></svg></button>
+        <div class="flex flex-col items-center border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="Filtre de sélection">
+          <button type="button" class="tool-btn min-h-9 min-w-9 px-1" data-select-filter="auto" aria-pressed="true" title="Auto : arête en priorité, sinon face" aria-label="Auto"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-filter-auto"/></svg></button>
+          <button type="button" class="tool-btn min-h-9 min-w-9 px-1" data-select-filter="face" aria-pressed="false" title="Faces : sélectionner des faces de corps ou des zones d&#x27;esquisse" aria-label="Faces"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-filter-face"/></svg></button>
+          <button type="button" class="tool-btn min-h-9 min-w-9 px-1" data-select-filter="edge" aria-pressed="false" title="Arêtes : sélectionner des arêtes de corps ou des traits d&#x27;esquisse" aria-label="Arêtes"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-filter-edge"/></svg></button>
+          <button type="button" class="tool-btn min-h-9 min-w-9 px-1" data-select-filter="vertex" aria-pressed="false" title="Points : sélectionner des sommets de corps ou des points d&#x27;esquisse" aria-label="Points"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-filter-vertex"/></svg></button>
+          <button type="button" class="tool-btn min-h-9 min-w-9 px-1" data-select-filter="body" aria-pressed="false" title="Corps : sélectionner des corps et des esquisses entiers (plusieurs à la fois)" aria-label="Corps"><svg class="size-6 shrink-0" aria-hidden="true"><use href="#i-filter-body"/></svg></button>
+        </div>
+        <button type="button" class="tool-btn icon-btn" data-select-plus aria-pressed="true" title="Sélection++ (comme Curic Select++) : au survol, les niveaux (ensemble › pièce › face) ; Ctrl descend d'un niveau, clic sélectionne, Maj + clic ajoute" aria-label="Sélection++"><svg class="tool-icon" aria-hidden="true"><use href="#i-select-plus"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-select-window aria-pressed="false" title="Sélection par fenêtre (ou Maj + glisser) : de gauche à droite, ce qui est entièrement dedans ; de droite à gauche, ce qui est touché" aria-label="Sélection par fenêtre"><svg class="tool-icon" aria-hidden="true"><use href="#i-window"/></svg></button>
+      </div>
+      <span class="my-1 h-px w-8 shrink-0 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+      <div class="flex flex-col items-center gap-1" role="group" aria-label="Vue">
+        <button type="button" class="tool-btn icon-btn" data-action="fit" title="Ajuster à la fenêtre (F)" aria-label="Ajuster"><svg class="tool-icon" aria-hidden="true"><use href="#i-fit"/></svg></button>
+      </div>
+    </nav>
 
     {# ---- Properties ---- #}
     <aside data-ref="panel-properties" data-open="false" aria-label="Propriétés"
            class="hidden w-80 shrink-0 flex-col border-l border-gray-200 bg-white lg:flex dark:border-gray-800 dark:bg-gray-900
-                  max-lg:fixed max-lg:inset-x-0 max-lg:bottom-16 max-lg:z-30 max-lg:max-h-[60dvh] max-lg:w-auto max-lg:rounded-t-xl max-lg:border-t max-lg:shadow-2xl
-                  data-[open=true]:flex">
+ max-lg:fixed max-lg:inset-x-0 max-lg:bottom-16 max-lg:z-30 max-lg:max-h-[60dvh] max-lg:w-auto max-lg:border-t max-lg:shadow-2xl
+ data-[open=true]:flex">
       <div class="flex items-center justify-end px-2 pt-2 lg:hidden">
         <button type="button" class="tool-btn" data-action="close-panels" aria-label="Fermer">✕</button>
       </div>
-      <div data-ref="properties" class="flex-1 overflow-y-auto"></div>
+      <div class="flex-1 overflow-y-auto">
+        <div data-ref="properties" class="group-data-[render=on]/editor:hidden"></div>
+        {# Tool windows open here, newest first (frontend/src/ui/dock.ts). #}
+        <div data-ref="dock" class="space-y-2 border-t border-gray-200 p-2 empty:hidden dark:border-gray-800"></div>
+      </div>
     </aside>
   </div>
 

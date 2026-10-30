@@ -6,8 +6,9 @@
  * curves or the inside of its areas) selects it.
  */
 import type { CadDocument, SketchFeature } from "../document/types";
-import { sketchFrame } from "../sketcher/frame";
+import { frameOf } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
+import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
 
 export interface SketchDisplayHost {
@@ -20,11 +21,17 @@ export interface SketchDisplayHost {
 export class SketchDisplay {
   private shown: SketchFeature[] = [];
   private highlighted: string | null = null;
+  private editing: string | null = null;
 
   constructor(
     private readonly viewport: Viewport,
     private readonly host: SketchDisplayHost,
   ) {
+    // The letters of the texts are drawn once their font is loaded.
+    onTextFont(() => {
+      this.shown = [];
+      this.sync(this.editing);
+    });
     // Clicking empty space only clears the selection when it is a sketch: other features stay selected.
     viewport.onSketchPick = (id) => {
       const current = this.host.selected();
@@ -34,6 +41,7 @@ export class SketchDisplay {
 
   /** Redraws only when the set of visible sketches, or the highlighted one, changed. */
   sync(editingId: string | null): void {
+    this.editing = editingId;
     const doc = this.host.doc();
     const visible = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !f.suppressed && !f.hidden && f.id !== editingId);
     const selected = visible.find((f) => f.id === this.host.selected())?.id ?? null;
@@ -43,8 +51,8 @@ export class SketchDisplay {
     this.viewport.setSketchLines(
       visible.map((f) => ({
         id: f.id,
-        frame: sketchFrame(f.plane, f.offset, f.shift),
-        curves: sketchCurves(f),
+        frame: frameOf(f),
+        curves: [...sketchCurves(f), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
         points: sketchPoints(f),
         regions: sketchRegions(f),
         selected: f.id === selected,

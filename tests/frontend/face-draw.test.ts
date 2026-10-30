@@ -1,6 +1,6 @@
 /** Drawing directly on a face (as Curic DIO): the distances to the nearest edges and the snapping. */
 import { describe, expect, it } from "vitest";
-import { coordinateAt, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
+import { coordinateAt, faceCenter, markedPoints, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
 import { parseNumber } from "../../frontend/src/measurements/units";
 
 /** A face 400 × 300. */
@@ -39,6 +39,25 @@ describe("accrochage sur la face", () => {
   it("un coin proche attire le point, puis le milieu d'une arête", () => {
     expect(snapOnFace(FACE, [3, 4], 10, 8)).toEqual({ point: [0, 0], kind: "corner" });
     expect(snapOnFace(FACE, [203, 5], 10, 8)).toEqual({ point: [200, 0], kind: "middle" });
+  });
+
+  it("le centre de la face attire aussi le point", () => {
+    expect(snapOnFace(FACE, [203, 148], 10, 8)).toEqual({ point: [200, 150], kind: "center" });
+    expect(snapOnFace(FACE, [260, 150], 10, 8).kind).toBe("free");
+  });
+
+  it("les croix marquent le milieu de chaque arête et le centre de la face", () => {
+    const marked = markedPoints(FACE);
+    expect(marked.filter((m) => m.kind === "middle").map((m) => m.point)).toEqual([[200, 0], [400, 150], [200, 300], [0, 150]]);
+    expect(marked.filter((m) => m.kind === "center").map((m) => m.point)).toEqual([[200, 150]]);
+  });
+
+  it("le centre est celui de l'aire, dans les deux sens de parcours et pour une forme en L", () => {
+    expect(faceCenter([...FACE].reverse())).toEqual([200, 150]);
+    // An L: 200 × 100 with a 100 × 100 block on top of its left half: centroid of the area, not of the corners.
+    const [x, y] = faceCenter([[0, 0], [200, 0], [200, 100], [100, 100], [100, 200], [0, 200]]);
+    expect(x).toBeCloseTo(83.333, 3);
+    expect(y).toBeCloseTo(83.333, 3);
   });
 
   it("sinon les distances aux bords sont arrondies au pas", () => {

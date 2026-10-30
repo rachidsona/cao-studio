@@ -9,6 +9,7 @@ import { formatLength } from "../measurements/units";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import { AXIS_OPTIONS } from "./curic-common";
+import { placePanel } from "../ui/dock";
 
 /** Lowest and highest coordinate of the displayed bodies along an axis (mm). */
 function extent(viewport: Viewport, axis: Axis): [number, number] {
@@ -48,7 +49,7 @@ export function bindSection(root: HTMLElement, viewport: Viewport, host: { unit(
       value.textContent = formatLength(state.position, host.unit());
       apply();
     });
-    const axis = el("select", { class: "h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Axe de la coupe" }, ...AXIS_OPTIONS.map(([v, t]) => el("option", { value: v, selected: Number(v) === state.axis }, t)));
+    const axis = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Axe de la coupe" }, ...AXIS_OPTIONS.map(([v, t]) => el("option", { value: v, selected: Number(v) === state.axis }, t)));
     axis.addEventListener("change", () => {
       state.axis = Number(axis.value) as Axis;
       const [a, b] = extent(viewport, state.axis);
@@ -61,7 +62,7 @@ export function bindSection(root: HTMLElement, viewport: Viewport, host: { unit(
       state.flip = flip.checked;
       apply();
     });
-    const shut = el("button", { type: "button", class: "h-8 w-full rounded-md border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Fermer la coupe");
+    const shut = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Fermer la coupe");
     shut.addEventListener("click", close);
     panel.replaceChildren(
       el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Coupe"),
@@ -77,12 +78,12 @@ export function bindSection(root: HTMLElement, viewport: Viewport, host: { unit(
     const [lo, hi] = extent(viewport, state.axis);
     state.position = (lo + hi) / 2;
     panel = el("div", {
-      class: "absolute top-2 left-2 z-30 w-56 space-y-2 rounded-lg border border-orange-300 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-orange-700 dark:bg-gray-900/95",
+      class: "absolute top-2 left-2 z-30 w-56 space-y-2 border border-orange-300 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-orange-700 dark:bg-gray-900/95",
       role: "dialog",
       "aria-label": "Coupe",
     });
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    container.append(panel);
+    placePanel(container, panel);
     button?.setAttribute("aria-pressed", "true");
     render();
     apply();

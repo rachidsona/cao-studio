@@ -2,7 +2,7 @@
  * Geometry worker: owns the OpenCascade kernel and the parametric history so
  * that B-rep computations never block the user interface.
  */
-import { measureArea, type Shape3D } from "replicad";
+import { measureArea, type Edge, type Shape3D } from "replicad";
 import init from "replicad-opencascadejs";
 import wasmUrl from "replicad-opencascadejs/wasm?url";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -10,10 +10,13 @@ import { initSolver } from "../constraints/solver";
 import { Recomputer } from "../history/recompute";
 import { exportBodies } from "../io/exporters";
 import { readWithProgress } from "./download";
+import { fontBytes } from "./font";
+import { loadTextFont, textFontReady } from "../features/text";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
 import { offsetPaths } from "./offset";
+import { seamEdges } from "./seams";
 import { describeEdge, describeFace } from "./references";
-import type { BodyMesh, DescribeResponse, EdgeInfo, FaceInfo, FaceOutline, OutlineEdge, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, FaceInfo, FaceOutline, OutlineEdge, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -56,6 +59,7 @@ function meshBody(bodyId: string): BodyMesh {
     faceGroups: mesh.faceGroups,
     edges: Float32Array.from(edges.lines),
     edgeGroups: edges.edgeGroups.map(({ start, count }) => ({ start, count })),
+    seams: seamEdges(shape),
     metrics: bodyMetrics(shape),
   };
 }
@@ -99,6 +103,31 @@ function circumcentre(a: number[], b: number[], c: number[]): [number, number, n
   return [0, 1, 2].map((i) => a[i]! + (t1[i]! + t2[i]!) / (2 * n2)) as [number, number, number];
 }
 
+/** One B-rep edge as a line, a circle or an arc (other curves: points along it). */
+function outlineEdges(edge: Edge): OutlineEdge[] {
+  const p = (v: { x: number; y: number; z: number }): [number, number, number] => [v.x, v.y, v.z];
+  if (edge.geomType === "LINE") return [{ kind: "line", a: p(edge.startPoint), b: p(edge.endPoint) }];
+  if (edge.geomType === "CIRCLE") {
+    const q = (t: number) => p(edge.pointAt(t));
+    const centre = circumcentre(q(0), q(1 / 3), q(2 / 3));
+    const radius = Math.hypot(...q(0).map((v, i) => v - centre[i]!));
+    return [edge.isClosed ? { kind: "circle", center: centre, radius } : { kind: "arc", center: centre, radius, a: p(edge.startPoint), b: p(edge.endPoint), mid: q(0.5) }];
+  }
+  const steps = 12;
+  return Array.from({ length: steps }, (_, i): OutlineEdge => ({ kind: "line", a: p(edge.pointAt(i / steps)), b: p(edge.pointAt((i + 1) / steps)) }));
+}
+
+/** One edge of a body, exactly, with points along it (to project it into a sketch). */
+function edgeOutline(bodyId: string, edgeIndex: number): EdgeOutline {
+  const edge = solid(bodyId).edges[edgeIndex];
+  if (!edge) throw new GeometryError(`Arête ${edgeIndex} introuvable.`);
+  const samples = Array.from({ length: 9 }, (_, i) => {
+    const v = edge.pointAt(i / 8);
+    return [v.x, v.y, v.z] as [number, number, number];
+  });
+  return { edges: outlineEdges(edge), samples };
+}
+
 function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
   const face = solid(bodyId).faces[faceIndex];
   if (!face) throw new GeometryError(`Face ${faceIndex} introuvable.`);
@@ -111,21 +140,8 @@ function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
   const edges: OutlineEdge[] = [];
   // face.wires gives every loop (outer and holes); outerWire() then innerWires() fails in replicad 1.1.
   for (const wire of face.wires) {
-    for (const edge of wire.edges) {
-      if (edge.geomType === "LINE") {
-        edges.push({ kind: "line", a: p(edge.startPoint), b: p(edge.endPoint) });
-      } else if (edge.geomType === "CIRCLE") {
-        const q = (t: number) => p(edge.pointAt(t));
-        const centre = circumcentre(q(0), q(1 / 3), q(2 / 3));
-        const radius = Math.hypot(...q(0).map((v, i) => v - centre[i]!));
-        if (edge.isClosed) edges.push({ kind: "circle", center: centre, radius });
-        else edges.push({ kind: "arc", center: centre, radius, a: p(edge.startPoint), b: p(edge.endPoint), mid: q(0.5) });
-      } else {
-        // Other curves: polyline approximation (reference only).
-        const steps = 12;
-        for (let i = 0; i < steps; i++) edges.push({ kind: "line", a: p(edge.pointAt(i / steps)), b: p(edge.pointAt((i + 1) / steps)) });
-      }
-    }
+    // Other curves than lines and circles: a polyline approximation (reference only).
+    for (const edge of wire.edges) edges.push(...outlineEdges(edge));
   }
   return { surface: face.geomType, center: centre, normal: [n.x / length, n.y / length, n.z / length], edges };
 }
@@ -142,6 +158,8 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
     case "init":
       return { result: true, transfer: [] };
     case "recompute": {
+      // Texts need the font in the kernel: loaded the first time a document has some.
+      if (!textFontReady() && request.doc.features.some((f) => f.type === "sketch" && f.texts?.length)) await loadTextFont(await fontBytes());
       const started = performance.now();
       const { statuses, bodies } = recomputer.recompute(request.doc);
       visibleBodies = bodies;
@@ -160,6 +178,8 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       return { result: edgeInfo(request.bodyId, request.edgeIndex), transfer: [] };
     case "faceOutline":
       return { result: faceOutline(request.bodyId, request.faceIndex), transfer: [] };
+    case "edgeOutline":
+      return { result: edgeOutline(request.bodyId, request.edgeIndex), transfer: [] };
     case "describe": {
       const shape = solid(request.bodyId);
       const all = shape.edges;

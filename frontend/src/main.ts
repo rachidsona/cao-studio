@@ -5,12 +5,16 @@ import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
 import { bindDrawing } from "./app/drawing-view";
 import { bindHelp } from "./app/help";
+import { bindLayers } from "./app/layers-panel";
+import { bindLinkedCopy } from "./app/linked-copy";
 import { bindMeasure } from "./app/measure";
 import { bindMotion } from "./app/motion";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/scenes";
 import { bindWorkshop } from "./app/workshop";
 import { bindWorkshopDocuments } from "./app/workshop-documents";
+import { bindSharing } from "./app/sharing";
+import { bindAssistant } from "./app/assistant-panel";
 import { askConfirm } from "./ui/confirm-dialog";
 import { DocumentSession } from "./app/session";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -22,7 +26,14 @@ import { describeError, installErrorReporting, sendReport } from "./persistence/
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
 import { LoadingScreen } from "./ui/loading";
+import { fontBytes } from "./geometry/font";
+import { setTextFont } from "./sketcher/text-outline";
+import { bindAppearance } from "./app/appearance-tool";
+import { bindRenderWorkspace } from "./app/render-workspace";
+import { bindPanelResize } from "./ui/panel-resize";
 import { bindRibbonLayout } from "./ui/ribbon-layout";
+import { bindDigitKeys } from "./ui/digit-keys";
+import { bindScrollArrows } from "./ui/scroll-arrows";
 import { Viewport } from "./viewport/viewport";
 
 function readConfig(): EditorConfig {
@@ -41,6 +52,9 @@ async function start(): Promise<void> {
   const root = document.getElementById("editor");
   if (!root) return;
   installErrorReporting();
+  bindDigitKeys();
+  // The font of sketch texts, for their outline on screen.
+  void fontBytes().then(setTextFont).catch(() => undefined);
   const config = readConfig();
   const viewport = new Viewport(ref(root, "viewport"));
   const geometry = new GeometryClient();
@@ -75,11 +89,15 @@ async function start(): Promise<void> {
   }
 
   bindRibbonLayout(root);
+  bindScrollArrows(ref(root, "tree"));
+  bindPanelResize(root);
   bindSelectionFilter(root, viewport);
   const editor = new Editor(root, config, session, geometry, viewport);
   bindSelectPlus(root, viewport, { doc: () => editor.doc, unit: () => editor.unit });
   bindSection(root, viewport, { unit: () => editor.unit });
   bindWorkshop(root, viewport, editor);
+  bindRenderWorkspace(root, viewport, editor);
+  bindAppearance(root, viewport, editor);
   bindWorkshopDocuments(root, viewport, editor, geometry);
   bindParameters(root, viewport, editor);
   bindScenes(root, viewport, editor);
@@ -87,6 +105,10 @@ async function start(): Promise<void> {
   bindMotion(root, viewport, editor);
   bindDrawing(root, viewport, editor);
   bindHelp(root);
+  bindLayers(root, viewport, editor);
+  bindLinkedCopy(root, viewport, editor);
+  bindSharing(root, viewport, editor, config.apiUrl, config.projectName);
+  bindAssistant(root, viewport, editor, config.apiUrl);
   editor.render();
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);

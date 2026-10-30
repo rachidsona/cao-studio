@@ -37,3 +37,13 @@ describe("devis", () => {
     expect(csv).toContain('"Total TTC"');
   });
 });
+
+describe("devis et quincaillerie", () => {
+  it("compte la quincaillerie à son prix unitaire", () => {
+    const q = makeQuote([], DEFAULT_RATES, [{ name: "Charnière à boîtier Ø35", quantity: 4 }, { name: "Inconnu", quantity: 1 }]);
+    expect(q.lines.map((l) => [l.label, l.quantity, l.total])).toEqual([
+      ["Charnière à boîtier Ø35", 4, 14],
+      ["Inconnu", 1, 0],
+    ]);
+  });
+});

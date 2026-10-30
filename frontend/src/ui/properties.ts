@@ -1,13 +1,12 @@
 /**
  * Properties panel: numeric editing of the selected feature (values typed in
- * the display unit, stored in mm) plus measurements of bodies and faces.
+ * the display unit, stored in mm) plus the faces and edges picked in the view.
  */
 import type { CabinetFeature, ChamferFeature, CombineFeature, MoveFeature, PanelsFeature, SplitFeature, DisplayUnit, ExtrudeFeature, Feature, FilletFeature, HoleFeature, RevolveFeature } from "../document/types";
-import type { BodyMetrics } from "../geometry/kernel";
 import type { SelectionSummary } from "../app/model-selection";
 import { selectionSection, type SelectionActions } from "./selection-panel";
 import type { FeatureStatus } from "../history/recompute";
-import { formatArea, formatLength, formatVolume } from "../measurements/units";
+import { formatLength } from "../measurements/units";
 import { el } from "./dom";
 import { OPERATION_LABELS, operationChoices } from "./feature-meta";
 import { numberField, row, section, selectField, textInputClass } from "./fields";
@@ -21,7 +20,6 @@ export interface PropertiesContext {
   unit: DisplayUnit;
   /** Display name of a body ("Corps 1", "Corps 1 — pièce 2"). */
   bodyName(id: string): string;
-  body: { name: string; metrics: BodyMetrics } | null;
   /** Faces and edges picked in the 3D view, with their measurements and actions. */
   selection: SelectionSummary;
   selectionActions: SelectionActions;
@@ -205,7 +203,7 @@ function holeSection(feature: HoleFeature, ctx: PropertiesContext): HTMLElement 
     feature.depth === "through"
       ? null
       : numberField({ label: "Profondeur", value: feature.depth, unit: ctx.unit, onCommit: (v) => patch({ depth: v }) }),
-    el("label", { class: "flex min-h-11 items-center gap-3 text-sm" }, through, "Perçage traversant"),
+    el("label", { class: "flex min-h-8 items-center gap-3 text-sm" }, through, "Perçage traversant"),
   );
 }
 
@@ -226,25 +224,7 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
 
   if (ctx.status?.state === "error" || ctx.status?.state === "blocked") {
     sections.unshift(
-      el("p", { class: "m-4 rounded-md bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, ctx.status.message ?? "Erreur"),
-    );
-  }
-  if (ctx.body && !ctx.sketch.editing) {
-    const { metrics } = ctx.body;
-    const [min, max] = metrics.bbox;
-    const dims = [0, 1, 2].map((i) => formatLength((max[i] ?? 0) - (min[i] ?? 0), ctx.unit)).join(" × ");
-    sections.push(
-      section(
-        `Mesures — ${ctx.body.name}`,
-        el(
-          "dl",
-          { class: "space-y-1.5" },
-          row("Volume", formatVolume(metrics.volume, ctx.unit)),
-          row("Surface", formatArea(metrics.area, ctx.unit)),
-          row("Encombrement", dims),
-          row("Faces / arêtes", `${metrics.faceCount} / ${metrics.edgeCount}`),
-        ),
-      ),
+      el("p", { class: "m-4 bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, ctx.status.message ?? "Erreur"),
     );
   }
   if (!ctx.sketch.editing) {

@@ -16,7 +16,7 @@ import type { PanelsFeature } from "../document/types";
 import type { SketchGeometry } from "../document/sketch";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { pointPos, type Vec2 } from "../sketcher/edit";
-import { MIN_LENGTH, planeOrigin, requirePositive, requireProfile, type OutputLookup } from "./common";
+import { MIN_LENGTH, requirePositive, requireProfile, onProfilePlane, type OutputLookup } from "./common";
 import type { SolidsOutput } from "./outputs";
 
 /** One board, in sketch coordinates. */
@@ -110,7 +110,7 @@ export function buildPanels(feature: PanelsFeature, lookup: OutputLookup): Solid
     for (const board of boards) {
       let section = polygonDrawing(board.polygon);
       for (const j of board.cutBy) section = section.cut(polygonDrawing((boards[j] as BoardOutline).polygon));
-      const solid = section.sketchOnPlane(profile.plane, planeOrigin(profile)).extrude(feature.depth) as Shape3D;
+      const solid = onProfilePlane(section, profile).extrude(feature.depth) as Shape3D;
       if (!isShapeValid(solid)) {
         solid.delete();
         throw new GeometryError(`${feature.name} : le panneau de la ligne « ${board.lineId} » est invalide.`);

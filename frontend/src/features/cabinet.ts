@@ -16,12 +16,17 @@
  * sides go down to the floor.
  */
 import { makeBox, type Shape3D } from "replicad";
-import type { CabinetFeature } from "../document/types";
+import type { CabinetFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { cabinetParts, cabinetProblem } from "./cabinet-parts";
 import type { SolidsOutput } from "./outputs";
 
 export { cabinetPartNames, cabinetParts, cabinetProblem, type CabinetPart } from "./cabinet-parts";
+
+/** The shape turned with its cabinet about the vertical through the cabinet's origin (the shape is consumed). */
+export function turnedWith(shape: Shape3D, cabinet: { origin: Vec3; rotation?: number }): Shape3D {
+  return cabinet.rotation ? (shape.rotate(cabinet.rotation, cabinet.origin, [0, 0, 1]) as Shape3D) : shape;
+}
 
 export function buildCabinet(feature: CabinetFeature): SolidsOutput {
   const problem = cabinetProblem(feature);
@@ -35,7 +40,7 @@ export function buildCabinet(feature: CabinetFeature): SolidsOutput {
         solid.delete();
         throw new GeometryError(`${feature.name} : la pièce « ${part.name} » est invalide.`);
       }
-      shapes.push(solid);
+      shapes.push(turnedWith(solid, feature));
     }
   } catch (error) {
     for (const s of shapes) s.delete();

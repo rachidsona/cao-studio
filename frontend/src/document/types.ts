@@ -7,13 +7,21 @@
  * `units` is only the display preference of the project.
  */
 
-import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint } from "./sketch";
+import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText } from "./sketch";
+export type { SketchText } from "./sketch";
 
 export const DOCUMENT_FORMAT = "cao-studio";
 export const SCHEMA_VERSION = 2;
 
 export type DisplayUnit = "mm" | "cm" | "m" | "in";
 export type PlaneName = "XY" | "XZ" | "YZ";
+
+/** A plane anywhere: its origin, the direction of its x axis (in the plane) and its normal (mm, model frame). */
+export interface PlaneFrame {
+  origin: [number, number, number];
+  xDir: [number, number, number];
+  normal: [number, number, number];
+}
 
 interface FeatureBase {
   id: string;
@@ -32,6 +40,13 @@ export interface SketchFeature extends FeatureBase {
   offset: number;
   /** Move of the sketch inside its plane: where its origin is, along the plane's u and v axes (mm). */
   shift?: [number, number];
+  /**
+   * Construction plane of any position (offset, angled, through 3 points, on a slanted face): when present it
+   * replaces `plane` and `offset`, and `plane` only names the nearest main plane.
+   */
+  frame?: PlaneFrame;
+  /** Texts written in the sketch (engraving, labels): extruded with its profile. */
+  texts?: SketchText[];
   points: SketchPoint[];
   curves: SketchCurve[];
   constraints: SketchConstraint[];
@@ -86,6 +101,11 @@ export interface ExtrudeFeature extends FeatureBase {
   regions?: [number, number][];
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
+  /**
+   * Start of the extrusion (as Fusion's "Start: Offset"): this far from the sketch plane along its normal (mm,
+   * negative: the other side). Absent or 0: from the sketch plane. Sketch profiles only.
+   */
+  startOffset?: number;
   operation: BooleanOperation;
   /** Body consumed by "join" / "cut" operations. */
   target?: string;
@@ -222,6 +242,11 @@ export interface CabinetFeature extends FeatureBase {
   plinth: number;
   /** Sides run full height, or top and bottom run full width. */
   construction: "sides-through" | "top-bottom-through";
+  /**
+   * Turn about the vertical through the origin (degrees, counterclockwise seen from above): 0 faces −Y, 90 faces +X,
+   * 180 faces +Y, 270 faces −X. Its fronts turn with it.
+   */
+  rotation?: 0 | 90 | 180 | 270;
 }
 
 /** Principal axis: 0 = X, 1 = Y, 2 = Z. */
@@ -335,6 +360,11 @@ export interface MachiningFeature extends FeatureBase {
    * how far that corner has moved since (a cabinet made wider carries its right side, and its holes, along).
    */
   anchor?: Vec3;
+  /**
+   * High corner of the box then: with it, each operation follows the nearer end of the board along each axis (the
+   * holes at the right end of a bottom made longer follow that end).
+   */
+  anchorHigh?: Vec3;
 }
 
 /**
@@ -351,7 +381,78 @@ export interface SweepFeature extends FeatureBase {
   frenet?: boolean;
 }
 
+/** Shell (as in Fusion): the body hollowed to walls of `thickness` mm, the chosen faces left open. */
+export interface ShellFeature extends FeatureBase {
+  type: "shell";
+  target: string;
+  /** Faces removed (the openings); none: a closed hollow body. */
+  faces: FaceRef[];
+  thickness: number;
+}
+
+/** Loft (lissage): a solid through the closed profiles of several sketches, in order (straight between them when `ruled`). */
+export interface LoftFeature extends FeatureBase {
+  type: "loft";
+  profiles: string[];
+  ruled?: boolean;
+  operation: BooleanOperation;
+  target?: string;
+}
+
+/**
+ * Modifier of a board (as 3ds Max's): the board — a box — rebuilt bent along its length into an arc of `amount` mm
+ * radius ("bend"), tapered to `amount` % at its far end ("taper"), or twisted by `amount` degrees ("twist").
+ */
+export interface ModifierFeature extends FeatureBase {
+  type: "modifier";
+  target: string;
+  kind: "bend" | "taper" | "twist";
+  amount: number;
+}
+
+/**
+ * Fronts of a cabinet: one door, two doors or n drawers (with their boxes), overlaid on the carcass or inset in its
+ * opening, a `gap` mm apart; hinge cups and handle holes machined when asked. Each part is a body ("<id>#n").
+ */
+export interface FrontsFeature extends FeatureBase {
+  type: "fronts";
+  cabinet: string;
+  layout: "door" | "doors" | "drawers";
+  drawers: number;
+  mount: "overlay" | "inset";
+  gap: number;
+  thickness: number;
+  hinges: boolean;
+  handles: boolean;
+}
+
+/**
+ * Equipment of a niche of a « Répartition »: a hanging rail (rod and its two end supports) or drawers inset in the
+ * opening (fronts and their boxes on slides). It follows its niche: the sketch holding the partition, the partition
+ * step, and the niche's path (as the Étagères steps name it). Each part is a body ("<id>#n").
+ */
+export interface NicheFeature extends FeatureBase {
+  type: "niche";
+  sketch: string;
+  partition: string;
+  niche: number[];
+  fill: "rod" | "drawers";
+  /** Rod: its diameter, and the distance from the top of the niche to its axis (mm). */
+  diameter: number;
+  drop: number;
+  /** Drawers: how many (they share the niche's height), the gap around the fronts, their thickness, handle holes. */
+  drawers: number;
+  gap: number;
+  thickness: number;
+  handles: boolean;
+}
+
 export type Feature =
+  | NicheFeature
+  | FrontsFeature
+  | ModifierFeature
+  | ShellFeature
+  | LoftFeature
   | SweepFeature
   | MachiningFeature
   | ArrayFeature
@@ -390,12 +491,35 @@ export interface CadDocument {
   bodyNames?: Record<string, string>;
   /** Pieces of a split hidden in the 3D view ("sp1#2"); other bodies hide through their feature. */
   hiddenBodies?: string[];
+  /**
+   * Pieces of multi-body operations deleted on their own (the top of a cabinet, a piece of a split): left out of the
+   * model with whatever was made of them, the operation and its other pieces staying.
+   */
+  removedBodies?: string[];
   /** Material, grain and edge bands of bodies, keyed like `bodyNames`. */
   bodyInfo?: Record<string, BodyInfo>;
   /** Saved views (scenes): where the camera was. */
   views?: SavedView[];
   /** Guide lines laid with the tape measure (SketchUp-style), to snap to. */
   guides?: Guide[];
+  /** Layers (SketchUp's tags): bodies go on one by `bodyInfo.layer`; a hidden layer hides its bodies. */
+  layers?: Layer[];
+  /** Variants of the model: named sets of parameter values. */
+  configurations?: Configuration[];
+}
+
+/** A variant of the model: the values of its plain parameters. */
+export interface Configuration {
+  id: string;
+  name: string;
+  values: Record<string, number>;
+}
+
+/** A layer of bodies (carcass, fronts, hardware…). */
+export interface Layer {
+  id: string;
+  name: string;
+  visible: boolean;
 }
 
 /** A guide line between two points (mm). */
@@ -414,6 +538,14 @@ export interface BodyInfo {
   edges?: { length1: boolean; length2: boolean; width1: boolean; width2: boolean };
   /** Edge band thickness (mm). */
   band?: number;
+  /** Layer the body is on (id of `CadDocument.layers`). */
+  layer?: string;
+  /** Part of the room (walls), not of the furniture: left out of the cut list, the quote and the CNC file. */
+  room?: boolean;
+  /** Appearance from the library (appearance/library.ts), over the material's own; the view and the render only. */
+  appearance?: string;
+  /** Colour chosen for a paintable appearance (sRGB hex "#rrggbb"). */
+  color?: string;
 }
 
 export interface SavedView {
@@ -457,7 +589,16 @@ export function featureInputs(feature: Feature): string[] {
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];
     case "sweep":
       return feature.target && feature.operation !== "new" ? [feature.profile, feature.path, feature.target] : [feature.profile, feature.path];
+    case "loft":
+      return feature.target && feature.operation !== "new" ? [...feature.profiles, feature.target] : [...feature.profiles];
+    case "shell":
+    case "modifier":
+      return [feature.target];
     case "panels":
+      return [feature.sketch];
+    case "fronts":
+      return [feature.cabinet];
+    case "niche":
       return [feature.sketch];
     case "cabinet":
       return [];
@@ -502,16 +643,21 @@ export function consumedBodies(feature: Feature): string[] {
     case "stretch":
     case "rotate":
     case "machining":
+    case "shell":
+    case "modifier":
       return [feature.target];
     case "extrude":
     case "revolve":
     case "sweep":
+    case "loft":
       return feature.operation !== "new" && feature.target ? [feature.target] : [];
     case "combine":
       return feature.keepTools ? [feature.target] : [feature.target, ...feature.tools];
     case "sketch":
     case "panels":
     case "cabinet":
+    case "fronts":
+    case "niche":
     case "mirror":
     case "array":
       return [];
@@ -519,7 +665,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

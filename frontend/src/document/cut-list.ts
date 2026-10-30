@@ -8,6 +8,8 @@
 import { bodyLabel } from "./operations";
 import { bodyInfo, materialById } from "./materials";
 import type { BodyInfo, CadDocument } from "./types";
+import { toDisplay, UNIT_LABELS } from "../measurements/units";
+import type { DisplayUnit } from "./types";
 
 export interface PartInput {
   id: string;
@@ -84,11 +86,13 @@ export function edgeText(edges: CutRow["edges"]): string {
   return [edges.length1 && "L1", edges.length2 && "L2", edges.width1 && "l1", edges.width2 && "l2"].filter(Boolean).join(" ") || "—";
 }
 
-/** The cut list as CSV (semicolon separated, for a spreadsheet in French). */
-export function cutListCsv(rows: CutRow[]): string {
-  const head = ["Pièce", "Qté", "Longueur", "Largeur", "Épaisseur", "Matière", "Fil", "Chants", "Chant (mm)", "Longueur de coupe", "Largeur de coupe"];
+/** The cut list as CSV (semicolon separated, for a spreadsheet in French), lengths in `unit`. */
+export function cutListCsv(rows: CutRow[], unit: DisplayUnit = "mm"): string {
+  const u = UNIT_LABELS[unit];
+  const head = ["Pièce", "Qté", `Longueur (${u})`, `Largeur (${u})`, `Épaisseur (${u})`, "Matière", "Fil", "Chants", "Chant (mm)", `Longueur de coupe (${u})`, `Largeur de coupe (${u})`];
   const cell = (v: string | number) => (typeof v === "number" ? String(v).replace(".", ",") : `"${v.replace(/"/g, '""')}"`);
-  const lines = rows.map((r) => [r.names.join(", ") + (r.approximate ? " (≈)" : ""), r.quantity, r.length, r.width, r.thickness, r.material, GRAIN[r.grain], edgeText(r.edges), r.band, r.cutLength, r.cutWidth].map(cell).join(";"));
+  const len = (mm: number) => Number(toDisplay(mm, unit).toFixed(4));
+  const lines = rows.map((r) => [r.names.join(", ") + (r.approximate ? " (≈)" : ""), r.quantity, len(r.length), len(r.width), len(r.thickness), r.material, GRAIN[r.grain], edgeText(r.edges), r.band, len(r.cutLength), len(r.cutWidth)].map(cell).join(";"));
   return [head.map(cell).join(";"), ...lines].join("\r\n");
 }
 

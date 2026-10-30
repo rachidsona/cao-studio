@@ -9,14 +9,14 @@ import { isDimension, type SketchGeometry } from "../document/sketch";
 import type { Axis, SketchFeature, Vec3 } from "../document/types";
 import type { Box } from "../features/curic";
 import { measure, pointPos, type Vec2 } from "./edit";
-import { sketchFrame, toSketch, toWorld } from "./frame";
+import { frameOf, toSketch, toWorld } from "./frame";
 import { sketchCurves } from "./polylines";
 
 const EPS = 1e-6;
 
 /** Box of the sketch's drawn curves (and points) in model coordinates, or null when it draws nothing. */
 export function sketchBox(sketch: SketchFeature): Box | null {
-  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const frame = frameOf(sketch);
   const points: Vec2[] = [...sketchCurves(sketch).flatMap((c) => c.points)];
   if (points.length === 0) points.push(...sketch.points.map((p): Vec2 => [p.x, p.y]));
   if (points.length === 0) return null;
@@ -29,11 +29,22 @@ export function sketchBox(sketch: SketchFeature): Box | null {
 
 /** How an axis lies in the sketch: along its normal, along u (x), along v (y), or slanted (not handled). */
 function axisInSketch(sketch: SketchFeature, axis: Axis): { kind: "normal" | "u" | "v"; sign: number } | null {
-  const { u, v, normal } = sketchFrame(sketch.plane, 0);
+  const { u, v, normal } = frameOf(sketch);
   for (const [kind, dir] of [["normal", normal], ["u", u], ["v", v]] as const) {
     if (Math.abs(Math.abs(dir[axis] as number) - 1) < EPS) return { kind, sign: dir[axis] as number };
   }
   return null;
+}
+
+/** Where the sketch's plane crosses `axis`, its normal (model coordinate, mm). */
+const planeCoord = (sketch: SketchFeature, axis: Axis) => frameOf(sketch).origin[axis] as number;
+
+/** The sketch with its plane moved to the coordinate `w` along `axis`, its normal (`sign`: the normal's direction). */
+function atCoord(sketch: SketchFeature, axis: Axis, sign: number, w: number): SketchFeature {
+  if (!sketch.frame) return { ...sketch, offset: Number((w * sign).toFixed(6)) };
+  const origin = [...sketch.frame.origin] as Vec3;
+  origin[axis] = Number(w.toFixed(6));
+  return { ...sketch, frame: { ...sketch.frame, origin } };
 }
 
 /** Dimensions measured again (the geometry changed on purpose): driving ones stay satisfied. */
@@ -62,11 +73,8 @@ export function mirrorSketch(sketch: SketchFeature, axis: Axis, position: number
   const where = axisInSketch(sketch, axis);
   if (!where) return null;
   const { support: _support, offsets: _offsets, ...rest } = sketch;
-  if (where.kind === "normal") {
-    const w = sketch.offset * where.sign;
-    return { ...rest, id, name, offset: Number(((2 * position - w) * where.sign).toFixed(6)) };
-  }
-  const origin = sketchFrame(sketch.plane, sketch.offset, sketch.shift).origin[axis] as number;
+  if (where.kind === "normal") return { ...atCoord(rest as SketchFeature, axis, where.sign, 2 * position - planeCoord(sketch, axis)), id, name };
+  const origin = frameOf(sketch).origin[axis] as number;
   const k = where.kind === "u" ? 0 : 1;
   // x' such that origin + x'·s = 2p − (origin + x·s)
   const flip = (value: number) => Number(((2 * position - 2 * origin) * where.sign - value).toFixed(6));
@@ -85,10 +93,10 @@ export function stretchSketch(sketch: SketchFeature, axis: Axis, position: numbe
   const where = axisInSketch(sketch, axis);
   if (!where || Math.abs(distance) < EPS) return null;
   if (where.kind === "normal") {
-    const w = sketch.offset * where.sign;
-    return w > position + EPS ? { ...sketch, offset: Number(((w + distance) * where.sign).toFixed(6)) } : null;
+    const w = planeCoord(sketch, axis);
+    return w > position + EPS ? atCoord(sketch, axis, where.sign, w + distance) : null;
   }
-  const origin = sketchFrame(sketch.plane, sketch.offset, sketch.shift).origin[axis] as number;
+  const origin = frameOf(sketch).origin[axis] as number;
   const k = where.kind === "u" ? 0 : 1;
   const beyond = (value: number) => origin + value * where.sign > position + EPS;
   const step = distance * where.sign;
@@ -116,7 +124,7 @@ export function stretchSketch(sketch: SketchFeature, axis: Axis, position: numbe
 export function rotateSketch(sketch: SketchFeature, axis: Axis, angle: number, center: Vec3): SketchFeature | null {
   const where = axisInSketch(sketch, axis);
   if (!where || where.kind !== "normal") return null;
-  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const frame = frameOf(sketch);
   const [cx, cy] = toSketch(frame, center);
   const theta = ((angle * Math.PI) / 180) * where.sign;
   const [cos, sin] = [Math.cos(theta), Math.sin(theta)];

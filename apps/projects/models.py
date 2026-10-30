@@ -52,3 +52,58 @@ class ProjectVersion(models.Model):
 
     def __str__(self) -> str:
         return f"{self.project} v{self.number}"
+
+
+def _share_token() -> str:
+    import secrets
+
+    return secrets.token_urlsafe(18)
+
+
+class ShareLink(models.Model):
+    """A read-only link for a client: a 3D snapshot (GLB) of the model, its summary, and comments."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="share_links", verbose_name="projet"
+    )
+    token = models.CharField("jeton", max_length=40, unique=True, default=_share_token, editable=False)
+    title = models.CharField("titre", max_length=120)
+    summary = models.JSONField("résumé", default=dict, blank=True)
+    model = models.BinaryField("modèle GLB")
+    model_size = models.PositiveIntegerField("taille du modèle (octets)")
+    allow_comments = models.BooleanField("commentaires permis", default=True)
+    created_at = models.DateTimeField("créé le", auto_now_add=True)
+    revoked_at = models.DateTimeField("révoqué le", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "lien client"
+        verbose_name_plural = "liens client"
+
+    def __str__(self) -> str:
+        return f"{self.project} — {self.title}"
+
+
+class Comment(models.Model):
+    """A comment on a project, from a client on a share link or from the owner, optionally at a point of the model."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="comments", verbose_name="projet"
+    )
+    link = models.ForeignKey(
+        ShareLink, on_delete=models.SET_NULL, null=True, blank=True, related_name="comments", verbose_name="lien"
+    )
+    author = models.CharField("auteur", max_length=80)
+    body = models.TextField("message", max_length=2000)
+    position = models.JSONField("point du modèle (mm)", null=True, blank=True)
+    from_owner = models.BooleanField("du propriétaire", default=False)
+    resolved = models.BooleanField("traité", default=False)
+    created_at = models.DateTimeField("écrit le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "commentaire"
+        verbose_name_plural = "commentaires"
+
+    def __str__(self) -> str:
+        return f"{self.author} : {self.body[:40]}"

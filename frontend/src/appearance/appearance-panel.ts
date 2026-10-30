@@ -1,0 +1,143 @@
+/**
+ * Panneau « Apparence » (comme la bibliothèque d'apparences de Fusion) : les apparences de ce modèle, puis la
+ * bibliothèque par catégorie avec recherche, en vignettes sphériques. Un clic donne l'apparence aux corps
+ * sélectionnés ; on peut aussi glisser une vignette sur un corps de la vue. Une couleur au choix s'applique aux laques,
+ * peintures, plastiques et tissus. « Retirer » rend aux corps l'apparence de leur matière.
+ */
+import { el } from "../ui/dom";
+import { placePanel } from "../ui/dock";
+import { APPEARANCES, CATEGORIES, appearanceById, searchAppearances, type Appearance, type CategoryId } from "./library";
+import { swatch } from "./swatches";
+
+/** Type of the data carried by a swatch being dragged onto the view. */
+export const DRAG_TYPE = "application/x-cao-appearance";
+
+const INPUT = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const BUTTON = "h-8 border border-gray-300 px-2 text-xs font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
+
+export interface AppearancePanelHost {
+  /** Bodies the panel acts on (selected whole, or through a face). */
+  targets(): string[];
+  /** Appearances on the displayed bodies, with how many bodies have each, and the colour of the first target. */
+  used(): { appearance: Appearance; color?: string; count: number }[];
+  targetColor(): string | undefined;
+  apply(bodyIds: string[], appearanceId: string | null, color?: string): void;
+  notify(message: string): void;
+  close(): void;
+}
+
+export class AppearancePanel {
+  readonly element: HTMLElement;
+  private body = el("div", { class: "space-y-2" });
+  private grid = el("div", { class: "grid grid-cols-3 gap-1.5 @2xs:grid-cols-4", "data-appearance-grid": "" });
+  private query = "";
+  private category: CategoryId | null = "wood";
+  private colour = "#d9d4ca";
+  private paint = "lacquer-satin";
+
+  constructor(container: HTMLElement, private readonly host: AppearancePanelHost) {
+    const shut = el("button", { type: "button", class: "size-7 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": "Fermer Apparence" }, "✕");
+    shut.addEventListener("click", () => host.close());
+    this.element = el(
+      "div",
+      { class: "@container w-80 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Apparence", "data-appearance-panel": "" },
+      el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Apparence"), shut),
+      this.body,
+    );
+    this.element.addEventListener("pointerdown", (event) => event.stopPropagation());
+    placePanel(container, this.element);
+    this.draw();
+  }
+
+  /** One swatch: sphere image, name; click applies it to the selection, drag drops it on a body of the view. */
+  private tile(appearance: Appearance, color?: string, note?: string): HTMLElement {
+    const image = el("img", { alt: "", class: "aspect-square w-full rounded-full bg-gray-100 dark:bg-gray-800", draggable: "false" });
+    image.style.background = color ?? appearance.color;
+    void swatch(appearance, color).then((url) => url && (image.src = url));
+    const button = el(
+      "button",
+      { type: "button", class: "group flex min-w-0 flex-col items-center gap-0.5 p-1 text-center hover:bg-sky-50 dark:hover:bg-sky-950", title: `${appearance.name}${note ? ` — ${note}` : ""}\nClic : donner aux corps sélectionnés ; ou glisser sur un corps de la vue`, draggable: "true", "data-appearance": appearance.id },
+      image,
+      el("span", { class: "line-clamp-2 w-full text-[10px] leading-tight text-gray-700 dark:text-gray-200" }, appearance.name),
+      note ? el("span", { class: "text-[10px] text-gray-500" }, note) : null,
+    );
+    button.addEventListener("click", () => this.applyToSelection(appearance.id, color));
+    button.addEventListener("dragstart", (event) => {
+      event.dataTransfer?.setData(DRAG_TYPE, JSON.stringify({ id: appearance.id, color }));
+      event.dataTransfer?.setData("text/plain", appearance.name);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
+    });
+    return button;
+  }
+
+  private applyToSelection(id: string | null, color?: string): void {
+    const targets = this.host.targets();
+    if (!targets.length) return this.host.notify("Sélectionnez un ou plusieurs corps (ou une face), ou glissez l'apparence sur un corps de la vue.");
+    this.host.apply(targets, id, color);
+  }
+
+  private fillGrid(): void {
+    const found = searchAppearances(this.query, this.query ? null : this.category);
+    this.grid.replaceChildren(...(found.length ? found.map((a) => this.tile(a)) : [el("p", { class: "col-span-full text-gray-500" }, "Aucune apparence ne correspond.")]));
+  }
+
+  /** Redraws what depends on the model and the selection (the library grid keeps its search). */
+  draw(): void {
+    const targets = this.host.targets();
+    const used = this.host.used();
+    const search = el("input", { type: "search", class: INPUT, placeholder: "Rechercher : chêne, marbre, verre…", value: this.query, "aria-label": "Rechercher une apparence" });
+    search.addEventListener("input", () => {
+      this.query = search.value;
+      this.fillGrid();
+    });
+    const category = el(
+      "select",
+      { class: INPUT, "aria-label": "Catégorie" },
+      el("option", { value: "", selected: this.category === null }, "Toutes les catégories"),
+      ...CATEGORIES.map((c) => el("option", { value: c.id, selected: c.id === this.category }, `${c.name} (${APPEARANCES.filter((a) => a.category === c.id).length})`)),
+    );
+    category.addEventListener("change", () => {
+      this.category = (category.value || null) as CategoryId | null;
+      this.fillGrid();
+    });
+    const remove = el("button", { type: "button", class: BUTTON, disabled: !targets.length, title: "Rendre aux corps sélectionnés l'apparence de leur matière" }, "Retirer l'apparence");
+    remove.addEventListener("click", () => this.applyToSelection(null));
+
+    // A colour of one's own, on a paintable appearance (lacquer, paint, plastic, fabric…).
+    const paintables = APPEARANCES.filter((a) => a.paintable && !a.id.startsWith("ral-"));
+    const colour = el("input", { type: "color", value: this.host.targetColor() ?? this.colour, class: "h-8 w-12 shrink-0 cursor-pointer border border-gray-300 bg-white dark:border-gray-600", "aria-label": "Couleur au choix" });
+    colour.addEventListener("input", () => (this.colour = colour.value));
+    const kind = el("select", { class: INPUT, "aria-label": "Type de surface" }, ...paintables.map((a) => el("option", { value: a.id, selected: a.id === this.paint }, a.name.replace(" (couleur au choix)", ""))));
+    kind.addEventListener("change", () => (this.paint = kind.value));
+    const paint = el("button", { type: "button", class: BUTTON }, "Appliquer");
+    paint.addEventListener("click", () => this.applyToSelection(this.paint, colour.value));
+
+    const parts: (HTMLElement | null)[] = [
+      el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""} (clic sur une vignette).` : "Sélectionnez des corps puis cliquez une vignette, ou glissez une vignette sur un corps de la vue."),
+      used.length
+        ? el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Dans ce modèle"), el("div", { class: "grid grid-cols-3 gap-1.5 @2xs:grid-cols-4" }, ...used.map((u) => this.tile(u.appearance, u.color, `${u.count} corps`))))
+        : null,
+      el("div", { class: "flex gap-1" }, remove),
+      el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Couleur au choix"), el("div", { class: "flex gap-1" }, colour, kind), paint),
+      el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Bibliothèque"), search, category),
+      this.grid,
+    ];
+    this.body.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
+    this.fillGrid();
+  }
+
+  dispose(): void {
+    this.element.remove();
+  }
+}
+
+/** The appearance carried by a drag onto the view, if any. */
+export function droppedAppearance(event: DragEvent): { id: string; color?: string } | null {
+  try {
+    const data = JSON.parse(event.dataTransfer?.getData(DRAG_TYPE) || "null") as { id?: unknown; color?: unknown } | null;
+    if (!data || typeof data.id !== "string" || !appearanceById(data.id)) return null;
+    return { id: data.id, color: typeof data.color === "string" ? data.color : undefined };
+  } catch {
+    return null;
+  }
+}

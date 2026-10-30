@@ -1,13 +1,17 @@
 /**
  * Selection of faces, edges and corners of the displayed bodies (3D model
  * mode): click toggles an element, selected faces are tinted, selected edges
- * are drawn on top in orange with their dimension label, selected corners
- * are marked with a rose dot.
+ * are drawn on top in green with their dimension label (two parallel ones also
+ * with the distance between them), selected corners are marked with a rose dot.
  */
 import * as THREE from "three";
+import type { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import type { BodyMesh } from "../geometry/protocol";
 import { bodyVertices, samePoint, type Point3 } from "./body-points";
+import { SELECTED_LINE } from "./colors";
+import { disposeFat, fatSegments, polylineSegments } from "./fat-lines";
+import { disposeArrows, edgeArrows, fitArrows } from "./edge-arrows";
 import { edgeMidpoint, edgePoints } from "./edge-geometry";
 
 export interface FacePick {
@@ -64,6 +68,12 @@ interface BodyView {
 
 const key = (e: EdgePick) => `${e.bodyId}#${e.edgeIndex}`;
 
+/** Width of a selected edge or line (pixels): thin enough to see the corners, wide enough to read. */
+const SELECTED_WIDTH = 2.5;
+
+/** The line of the distance between two parallel edges (amber, apart from the green of the edges). */
+const GAP_LINE = 0xf59e0b;
+
 export class SelectionLayer {
   faces: FacePick[] = [];
   edges: EdgePick[] = [];
@@ -73,6 +83,8 @@ export class SelectionLayer {
   sketches: string[] = [];
   private group = new THREE.Group();
   private labels = new Map<string, string>();
+  /** The distance between two selected parallel edges: a line square to them, with its text. */
+  private gap: { from: THREE.Vector3; to: THREE.Vector3; text: string } | null = null;
   /** Small dots on every corner, shown while corners are what a click selects. */
   private hints: THREE.Points | null = null;
 
@@ -172,6 +184,16 @@ export class SelectionLayer {
     this.labels.set(key(pick), text);
   }
 
+  /** The arrows at the ends of the selected edges keep their size on the screen (called every frame). */
+  fitArrows(camera: THREE.PerspectiveCamera, viewHeight: number): void {
+    fitArrows(this.group.children.filter((c) => c.userData.arrows), camera, viewHeight);
+  }
+
+  /** The distance shown between two selected parallel edges (null: none). */
+  setGap(gap: { from: THREE.Vector3; to: THREE.Vector3; text: string } | null): void {
+    this.gap = gap;
+  }
+
   /** Drops picks that no longer exist after the bodies were regenerated. */
   prune(bodies: Map<string, BodyView>): void {
     this.faces = this.faces.filter((f) => !!bodies.get(f.bodyId)?.data.faceGroups[f.faceIndex]);
@@ -194,7 +216,9 @@ export class SelectionLayer {
     for (const child of [...this.group.children]) {
       this.group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
-      if (child instanceof THREE.Mesh) (child.material as THREE.Material).dispose(); // its geometry belongs to the pick
+      if (child.userData.fat) disposeFat(child as LineSegments2);
+      else if (child.userData.arrows) disposeArrows(child);
+      else if (child instanceof THREE.Mesh) (child.material as THREE.Material).dispose(); // its geometry belongs to the pick
       else if (child instanceof THREE.Line || child instanceof THREE.Points) {
         child.geometry.dispose();
         (child.material as THREE.Material).dispose();
@@ -208,7 +232,7 @@ export class SelectionLayer {
         tint.renderOrder = 39;
         this.group.add(tint);
       } else if (pick.kind === "curve") {
-        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pick.points.map((p) => new THREE.Vector3(...p))), new THREE.LineBasicMaterial({ color: 0xf59e0b, depthTest: false }));
+        const line = fatSegments(polylineSegments(pick.points.map((p) => new THREE.Vector3(...p))), SELECTED_LINE, SELECTED_WIDTH);
         line.renderOrder = 40;
         this.group.add(line);
       }
@@ -223,11 +247,15 @@ export class SelectionLayer {
     for (const edge of this.edges) {
       const body = bodies.get(edge.bodyId);
       if (!body) continue;
-      const geometry = new THREE.BufferGeometry().setFromPoints(edgePoints(body.data, edge.edgeIndex));
-      const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0xf59e0b, depthTest: false }));
+      const points = edgePoints(body.data, edge.edgeIndex);
+      const lines = fatSegments(points, SELECTED_LINE, SELECTED_WIDTH);
       lines.renderOrder = 40;
       this.group.add(lines);
-      const text = this.labels.get(key(edge));
+      // A straight edge gets an arrow at each end: where it starts and where it stops.
+      const arrows = edgeArrows(points, SELECTED_LINE);
+      if (arrows) this.group.add(arrows);
+      // Two parallel edges show the distance between them instead of their lengths (still in the panel).
+      const text = this.gap && this.edges.length === 2 ? undefined : this.labels.get(key(edge));
       if (text) {
         const label = document.createElement("span");
         label.className = "cad-measure";
@@ -236,6 +264,17 @@ export class SelectionLayer {
         object.position.copy(edgeMidpoint(body.data, edge.edgeIndex));
         this.group.add(object);
       }
+    }
+    if (this.gap && this.edges.length === 2) {
+      const line = fatSegments([this.gap.from, this.gap.to], GAP_LINE, 2.5);
+      line.renderOrder = 41;
+      this.group.add(line);
+      const label = document.createElement("span");
+      label.className = "cad-measure cad-measure-gap";
+      label.textContent = this.gap.text;
+      const object = new CSS2DObject(label);
+      object.position.copy(this.gap.from).lerp(this.gap.to, 0.5);
+      this.group.add(object);
     }
   }
 }

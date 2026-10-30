@@ -5,6 +5,9 @@
  * dot). One rotation per body and each sketch turned in place (in its plane:
  * a sketch only turns around its normal), in one undo step. A click elsewhere
  * on a body or a sketch adds it, or removes it.
+ *
+ * The pivot carries the three curved arrows of the Move manipulator (Shapr3D style): dragging one turns around its
+ * axis, by steps of 5° (hold Maj for free angles).
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import type { Axis, Feature, RotateFeature, SketchFeature, Vec3 } from "../document/types";
@@ -12,6 +15,7 @@ import type { Box } from "../features/curic";
 import { rotateSketch, sketchBox } from "../sketcher/sketch-transform";
 import { el } from "../ui/dom";
 import { AXIS_OPTIONS, boxOfBodies, freshFeatureIds, PointMarker, unionBox } from "./curic-common";
+import { MoveGizmo } from "../viewport/move-gizmo";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** Last settings, kept for the next rotation of the session. */
@@ -28,8 +32,11 @@ export class RotateTool extends PanelTool {
   /** Boxes of the visible bodies when the tool opened (the preview replaces the bodies it turns). */
   private readonly bodyBoxes = new Map<string, Box>();
   private readonly marker: PointMarker;
+  private readonly gizmo: MoveGizmo;
+  /** The angle (degrees) when a curved arrow was taken. */
+  private angleFrom = 0;
 
-  constructor(ctx: ToolContext, editing: RotateFeature | null, selected: string[], sketches: string[] = []) {
+  constructor(ctx: ToolContext, editing: RotateFeature | null, selected: string[], sketches: string[] = [], axis?: Axis) {
     super(ctx, "Tourner", editing);
     for (const b of ctx.bodies()) {
       const box = boxOfBodies(ctx.viewport, [b.id]);
@@ -38,11 +45,13 @@ export class RotateTool extends PanelTool {
     const lastBody = ctx.bodies().at(-1)?.id;
     this.targets = editing ? [editing.target] : selected.length || sketches.length ? [...selected] : lastBody ? [lastBody] : [];
     this.sketches = editing ? [] : [...sketches];
-    this.axis = editing?.axis ?? last.axis;
-    this.angle = editing?.angle ?? last.angle;
+    this.axis = editing?.axis ?? axis ?? last.axis;
+    // Taken by a curved arrow of the Move manipulator (axis given): the angle starts from nothing and follows the pointer.
+    this.angle = editing?.angle ?? (axis !== undefined ? 0 : last.angle);
     this.pivot = editing?.center ?? null;
     if (editing) this.slots = [{ id: editing.id, name: editing.name }];
     this.marker = new PointMarker(ctx.viewport);
+    this.gizmo = new MoveGizmo(ctx.viewport, { translate: false, rotate: true });
   }
 
   private sketch(id: string): SketchFeature | null {
@@ -91,6 +100,36 @@ export class RotateTool extends PanelTool {
   protected override render(): void {
     super.render();
     this.marker.show(this.center());
+    this.gizmo.place(this.center(), { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] });
+  }
+
+  override down(event: PointerEvent): boolean {
+    if (!this.gizmo.dragStart(event)) return false;
+    const handle = this.gizmo.dragging;
+    if (handle?.kind === "rotate") {
+      // Taking the arrow of the axis in use goes on from the angle given; another axis starts from nothing.
+      this.angleFrom = handle.axis === this.axis ? this.angle : 0;
+      this.axis = handle.axis;
+    }
+    return true;
+  }
+
+  override move(event: PointerEvent): void {
+    const turned = this.gizmo.dragAngle(event);
+    if (turned !== null) {
+      // Steps of 5° unless Maj is held; one more turn each time the arrow goes past a half turn.
+      const degrees = this.angleFrom + (turned * 180) / Math.PI;
+      this.angle = Number((event.shiftKey ? degrees : Math.round(degrees / 5) * 5).toFixed(2));
+      this.render();
+      this.schedulePreview();
+      return;
+    }
+    this.ctx.viewport.renderer.domElement.style.cursor = this.gizmo.hovered(event) ? "grab" : "";
+  }
+
+  override up(event: PointerEvent, isClick: boolean): boolean {
+    if (this.gizmo.dragEnd()) return true;
+    return super.up(event, isClick);
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -102,7 +141,7 @@ export class RotateTool extends PanelTool {
     const names = [...this.targets.map((id) => bodyLabel(doc, id)), ...this.sketches.map((id) => this.sketch(id)?.name ?? id)];
     const skipped = this.sketches.filter((id) => this.sketch(id) && !rotateSketch(this.sketch(id) as SketchFeature, this.axis, 0.0001, [0, 0, 0])).length;
     const turn = (label: string, angle: number) => {
-      const button = el("button", { type: "button", class: "h-7 flex-1 rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
+      const button = el("button", { type: "button", class: "h-7 flex-1 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
       button.addEventListener("click", () => {
         this.angle = angle;
         changed();
@@ -161,5 +200,6 @@ export class RotateTool extends PanelTool {
 
   protected override dispose(): void {
     this.marker.hide();
+    this.gizmo.dispose();
   }
 }

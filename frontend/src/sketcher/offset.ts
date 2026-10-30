@@ -157,7 +157,9 @@ export function renameOffsetIn(sketch: SketchFeature, id: string, name: string):
 export function removeOffsetFrom(sketch: SketchFeature, id: string): SketchFeature {
   const record = sketch.offsets?.find((o) => o.id === id);
   if (!record) return sketch;
-  const geometry = removeEntities(sketch, record.curves);
+  // A « Répartition » takes the divisions of its niches by shelves with it.
+  const gone = (sketch.offsets ?? []).filter((o) => o.id === id || (o.step?.kind === "shelves" && o.step.of === id));
+  const geometry = removeEntities(sketch, gone.flatMap((o) => o.curves));
   return { ...sketch, ...geometry, offsets: geometry.offsets };
 }
 

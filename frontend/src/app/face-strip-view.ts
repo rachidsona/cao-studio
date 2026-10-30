@@ -16,7 +16,7 @@ import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline } from "../geometry/protocol";
 import type { Vec2 } from "../sketcher/edit";
 import { facePolygon } from "../sketcher/face-strip";
-import { sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
+import { frameOf, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
 import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
 import { planeForFace } from "../sketcher/projection";
@@ -62,7 +62,7 @@ export function regionUnder(viewport: Viewport, doc: CadDocument, event: Pointer
   if (!pick || sketch?.type !== "sketch") return null;
   const region = sketchRegions(sketch)[Number(pick.id)];
   if (!region) return null;
-  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const frame = frameOf(sketch);
   const probe = interiorPoint({ ...region, loop: -1 }) as Vec2;
   const center = toWorld(frame, probe[0], probe[1]);
   const face: LoadedFace = {

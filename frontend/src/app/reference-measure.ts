@@ -7,14 +7,15 @@
 import type { Vec3 } from "../sketcher/frame";
 import { axisParameter } from "../viewport/axis-drag";
 import type { BodyMesh } from "../geometry/protocol";
+import type { FacePick } from "../viewport/selection-layer";
 import type { Viewport } from "../viewport/viewport";
 import { captureTargets, type LevelTargets } from "./face-strip-view";
 
 export type Reference =
   | { kind: "point"; point: Vec3 }
   | { kind: "edge"; a: Vec3; b: Vec3; point: Vec3 }
-  /** `plane` is the face's own plane when it is flat. */
-  | { kind: "face"; point: Vec3; plane: { normal: Vec3; point: Vec3 } | null };
+  /** `plane` is the face's own plane when it is flat; `pick` is the face in the view (to light it up). */
+  | { kind: "face"; point: Vec3; plane: { normal: Vec3; point: Vec3 } | null; pick?: FacePick };
 
 /** What an edge gives: the level of the point clicked on it, or its length. */
 export type EdgeTake = "level" | "length";
@@ -62,6 +63,9 @@ export function planeOfFace(mesh: Pick<BodyMesh, "vertices" | "normals" | "indic
   return normal ? { normal, point: [mesh.vertices[first * 3] as number, mesh.vertices[first * 3 + 1] as number, mesh.vertices[first * 3 + 2] as number] } : null;
 }
 
+/** How far from the pointer (pixels) a corner, an edge is still taken: generous, a corner being hard to hit exactly. */
+const REACH = { corner: 16, edge: 11 };
+
 /** Picks references in the view among the corners, edges and faces of the bodies displayed when `capture` was called. */
 export class ReferencePicker {
   private targets: LevelTargets = { corners: [], segments: [] };
@@ -74,7 +78,12 @@ export class ReferencePicker {
   }
 
   /** The corner within `px` of the pointer, else the edge within `edgePx`, else the face under it (bodies refused by `ignore` are not faces). */
-  find(event: PointerEvent, ignore: (bodyId: string) => boolean = () => false, px = 12, edgePx = 8): Reference | null {
+  find(event: PointerEvent, ignore: (bodyId: string) => boolean = () => false, px = REACH.corner, edgePx = REACH.edge): Reference | null {
+    return this.near(event, px, edgePx) ?? this.faceUnder(event, ignore);
+  }
+
+  /** The corner within `px` of the pointer, else the edge within `edgePx` (no face). */
+  near(event: PointerEvent, px = REACH.corner, edgePx = REACH.edge): Reference | null {
     let corner: { point: Vec3; d: number } | null = null;
     for (const v of this.targets.corners) {
       const d = this.viewport.screenDistance(event, v);
@@ -90,10 +99,13 @@ export class ReferencePicker {
       const d = this.viewport.screenDistance(event, point);
       if (d <= edgePx && (!edge || d < edge.d)) edge = { a, b, point, d };
     }
-    if (edge) return { kind: "edge", a: edge.a, b: edge.b, point: edge.point };
+    return edge ? { kind: "edge", a: edge.a, b: edge.b, point: edge.point } : null;
+  }
+
+  private faceUnder(event: PointerEvent, ignore: (bodyId: string) => boolean): Reference | null {
     const face = this.viewport.pickFace(event);
     if (!face || ignore(face.bodyId)) return null;
     const mesh = this.viewport.bodyMesh(face.bodyId);
-    return { kind: "face", point: [face.point.x, face.point.y, face.point.z], plane: mesh ? planeOfFace(mesh, face.faceIndex) : null };
+    return { kind: "face", point: [face.point.x, face.point.y, face.point.z], plane: mesh ? planeOfFace(mesh, face.faceIndex) : null, pick: face };
   }
 }

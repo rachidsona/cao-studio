@@ -62,7 +62,7 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
   const container = canvas.parentElement as HTMLElement;
   const card = el("div", {
     class:
-      "pointer-events-none absolute z-20 hidden max-w-72 space-y-0.5 rounded-md border border-emerald-400 bg-white/95 px-2 py-1.5 text-[11px] leading-snug text-gray-800 shadow-lg " +
+      "pointer-events-none absolute z-20 hidden max-w-72 space-y-0.5 border border-emerald-400 bg-white/95 px-2 py-1.5 text-[11px] leading-snug text-gray-800 shadow-lg " +
       "dark:border-emerald-600 dark:bg-gray-900/95 dark:text-gray-100",
     role: "status",
   });
@@ -97,7 +97,7 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
       ...levels.map((level, i) =>
         el(
           "div",
-          { class: `truncate rounded px-1 ${level === chosen ? "bg-emerald-500 font-semibold text-white" : ""}`, style: `margin-left: ${i * 0.6}rem` },
+          { class: `truncate px-1 ${level === chosen ? "bg-emerald-500 font-semibold text-white" : ""}`, style: `margin-left: ${i * 0.6}rem` },
           `${i === 0 ? "" : "└ "}${level.label}`,
         ),
       ),
@@ -120,6 +120,8 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
 
   const update = (event: PointerEvent) => {
     frame = 0;
+    // Its levels replace the pre-selection of the view while it is on.
+    viewport.preselectSuspended = active();
     lastEvent = event;
     levels = levelsAt(event);
     if (levels.length === 0) return hide();

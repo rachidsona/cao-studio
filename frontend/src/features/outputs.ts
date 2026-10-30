@@ -4,7 +4,7 @@
  */
 import type { Drawing, Shape3D } from "replicad";
 import type { SketchGeometry } from "../document/sketch";
-import type { PlaneName } from "../document/types";
+import type { PlaneFrame, PlaneName } from "../document/types";
 
 export interface ProfileOutput {
   kind: "profile";
@@ -12,6 +12,8 @@ export interface ProfileOutput {
   offset: number;
   /** Move of the sketch origin inside its plane (mm), if the sketch was moved. */
   shift?: [number, number];
+  /** Construction plane of any position, replacing `plane` and `offset`. */
+  frame?: PlaneFrame;
   /** Region bounded by the closed loops, or null when the sketch has none. */
   drawing: Drawing | null;
   /** Why no region could be built (open or branched profile). */

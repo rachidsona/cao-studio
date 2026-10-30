@@ -2,7 +2,7 @@
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
-import type { BodyMesh, DescribeResponse, EdgeInfo, ExportResponse, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, ExportResponse, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
 
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
@@ -65,6 +65,10 @@ export class GeometryClient {
 
   faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline> {
     return this.call({ type: "faceOutline", bodyId, faceIndex });
+  }
+
+  edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline> {
+    return this.call({ type: "edgeOutline", bodyId, edgeIndex });
   }
 
   describe(bodyId: string, edges: number[], face?: number): Promise<DescribeResponse> {

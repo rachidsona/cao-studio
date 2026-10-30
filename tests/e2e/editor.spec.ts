@@ -53,7 +53,7 @@ test("une ligne tracée dans l'esquisse est enregistrée et retrouvée après re
   await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
   await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.8);
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /Terminer/ }).click();
+  await page.getByRole("button", { name: "Terminer l'esquisse" }).click();
   await expect(page.locator("#editor")).toHaveAttribute("data-mode", "model");
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 15_000 });
   await expect.poll(() => sketchCurves(page, api, "sk1")).toBe(before + 1);
@@ -71,11 +71,64 @@ test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page })
   await expect(page.locator('[data-select^="body:"]')).toHaveCount(6);
   await page.locator('[data-workshop="quote"]').click();
   const quote = page.getByRole("dialog", { name: "Devis" });
-  await expect(quote).toContainText("Mélaminé chêne 18 mm");
+  await expect(quote).toContainText("Mélaminé chêne 1,8 cm"); // centimetres by default
   await expect(quote).toContainText("Total TTC");
   await page.keyboard.press("Escape");
   await page.keyboard.press("?");
   await expect(page.getByRole("dialog", { name: "Aide et raccourcis clavier" })).toBeVisible();
+});
+
+test("les panneaux latéraux s'élargissent à la poignée et gardent leur largeur", async ({ page }) => {
+  await newProject(page, "Panneaux e2e");
+  const panel = page.locator('[data-ref="panel-properties"]');
+  const before = (await panel.boundingBox())!.width;
+  const handle = (await page.locator('[data-panel-resize="left"]').boundingBox())!;
+  const x = handle.x + handle.width / 2;
+  await page.mouse.move(x, handle.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(x - 120, handle.y + 100, { steps: 5 });
+  await page.mouse.up();
+  const width = async () => Math.round((await panel.boundingBox())!.width);
+  await expect.poll(width).toBeGreaterThan(before + 110);
+  const dragged = await width();
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  expect(await width()).toBe(dragged);
+});
+
+test("une apparence de la bibliothèque se donne à un corps, s'enregistre et s'annule", async ({ page }) => {
+  const api = await newProject(page, "Apparence e2e");
+  const appearanceOf = async () => {
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return Object.values((project.document.bodyInfo ?? {}) as Record<string, { appearance?: string }>).map((i) => i.appearance).filter(Boolean);
+  };
+  await page.locator('[data-select^="body:"]').first().click();
+  await page.getByRole("button", { name: "Apparence", exact: true }).click();
+  const panel = page.getByRole("dialog", { name: "Apparence" });
+  await panel.getByRole("searchbox", { name: "Rechercher une apparence" }).fill("carrare");
+  await panel.locator('[data-appearance-grid] [data-appearance="marble-carrara"]').click();
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 15_000 });
+  await expect.poll(appearanceOf).toEqual(["marble-carrara"]);
+  await expect(panel).toContainText("Dans ce modèle");
+  await page.locator('[data-ref="undo"]').click();
+  await expect.poll(appearanceOf, { timeout: 15_000 }).toEqual([]);
+});
+
+// The headless browser draws WebGL in software: the path tracer starts but does not get far, so only opening and
+// closing are checked here (the refining is checked by hand in a real browser).
+test("le mode Rendu s'ouvre et rend la main à l'édition", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Rendu e2e");
+  await page.getByRole("button", { name: "Rendu", exact: true }).click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-render", "on");
+  await expect(page.locator("[data-render-panel]")).toBeVisible();
+  await expect(page.locator("[data-render-status]")).toContainText("échantillons");
+  await expect(page.locator('[data-ribbon="model"]')).toBeHidden();
+  await page.getByRole("button", { name: "Quitter le rendu" }).first().click();
+  await expect(page.locator("#editor")).not.toHaveAttribute("data-render", "on");
+  await expect(page.locator('[data-ribbon="model"]')).toBeVisible();
+  expect(errors).toEqual([]);
 });
 
 test("la liste de débit s'ouvre avec les pièces du modèle", async ({ page }) => {

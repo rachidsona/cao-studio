@@ -228,6 +228,40 @@ class _SketchChecker:
             self.error(f"« plane » doit être l'une des valeurs : {allowed}.")
         if not is_finite_number(sketch.get("offset")):
             self.error("« offset » doit être un nombre fini.")
+        if "frame" in sketch:
+            frame = sketch["frame"]
+
+            def vec3(value: Any) -> bool:
+                return isinstance(value, list) and len(value) == 3 and all(is_finite_number(v) for v in value)
+
+            if not (
+                isinstance(frame, dict)
+                and vec3(frame.get("origin"))
+                and vec3(frame.get("xDir"))
+                and vec3(frame.get("normal"))
+                and any(abs(v) > 1e-9 for v in frame["xDir"])
+                and any(abs(v) > 1e-9 for v in frame["normal"])
+            ):
+                self.error("« frame » doit donner origin, xDir et normal (trois nombres, directions non nulles).")
+        if "texts" in sketch:
+            texts = sketch["texts"]
+            if not (
+                isinstance(texts, list)
+                and len(texts) <= 200
+                and all(
+                    isinstance(t, dict)
+                    and isinstance(t.get("id"), str)
+                    and isinstance(t.get("text"), str)
+                    and len(t["text"]) <= 500
+                    and is_finite_number(t.get("x"))
+                    and is_finite_number(t.get("y"))
+                    and is_finite_number(t.get("height"))
+                    and t["height"] > 0
+                    and ("angle" not in t or is_finite_number(t["angle"]))
+                    for t in texts
+                )
+            ):
+                self.error("« texts » doit être une liste de textes (id, text, x, y, height > 0, angle facultatif).")
         if "entities" in sketch:
             self.error(
                 "« entities » n'est pas accepté en schéma 2 "

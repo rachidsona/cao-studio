@@ -33,6 +33,15 @@ export function edgeMidpoint(mesh: BodyMesh, edgeIndex: number): THREE.Vector3 {
   return pts[0]?.clone() ?? new THREE.Vector3();
 }
 
+/** Distance (pixels) from a point of the screen to a segment of the screen, all in pixels. */
+export function pixelDistanceToSegment(p: readonly [number, number], a: readonly [number, number], b: readonly [number, number]): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length2 = dx * dx + dy * dy;
+  const t = length2 > 0 ? Math.min(1, Math.max(0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length2)) : 0;
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
 /** B-rep edge containing segment vertex `vertexIndex` of the body's edge buffer. */
 export function edgeAtVertex(mesh: BodyMesh, vertexIndex: number): number {
   return mesh.edgeGroups.findIndex((g) => vertexIndex >= g.start && vertexIndex < g.start + g.count);

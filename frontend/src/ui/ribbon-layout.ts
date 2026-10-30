@@ -1,211 +1,319 @@
 /**
- * The two bars of the editor: the lower one has every tool, in its groups (wrapping onto several lines rather
- * than running off the page); the upper one ("Mes outils") is empty until the user moves tools up into it.
- * "Personnaliser" turns the icons into things to move — drag one to the other bar or to another group, or, without
- * dragging (touch screens), tap an icon then tap where it should go (another icon: before it; a group or the upper
- * bar: at its end). The layout is remembered per toolbar in the browser; "Réinitialiser" puts everything back.
+ * The toolbars, as in Fusion: each group shows the tools one uses most, and its name ("CRÉER ▾") opens a menu of
+ * all its tools — a click runs one, the pin shows it in the bar or puts it away (it stays in the menu). By default
+ * the less common tools are put away; the choice is remembered per toolbar (model, sketch) in the browser, and
+ * "Par défaut" in a menu brings its group back to the default.
+ *
+ * The bar stays on one line: when the window is too narrow, icons fold away one by one (still in their group's
+ * menu), the groups of FOLD_ORDER first — Menuiserie first of all — each from its last icon.
+ *
+ * The star ★ of a menu puts the tool in "Mes outils", the favourites bar at the left of the view (favorites.ts).
+ * Groups change places by dragging their name; the order is remembered per toolbar.
  */
-const STORAGE = "cao.ribbon-layout.";
-/** Attributes that identify a tool button, in order of preference. */
-const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section"];
+import { bindFavorites } from "./favorites";
 
-/** A stable name for a tool button ("data-action:array"), or null for a button that is not movable. */
+const HIDDEN = "cao.ribbon-hidden.";
+const ORDER = "cao.ribbon-order.";
+/** Attributes that identify a tool button, in order of preference. */
+const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy"];
+
+/** Tools put away (in their group's menu only) until the user pins them. */
+const DEFAULT_HIDDEN: Record<string, string[]> = {
+  model: [
+    "data-action:revolve", "data-action:rect-array",
+    "data-action:shell", "data-action:loft", "data-action:modifier", "data-action:combine",
+    "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
+    "data-action:sweep", "data-action:assembly", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion", "data-workshop:drawing",
+    "data-workshop:nesting", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
+  ],
+  sketch: [
+    "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
+    "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:break", "data-sketch-tool:array",
+    "data-sketch-command:symmetric", "data-sketch-command:concentric", "data-sketch-command:fix", "data-sketch-command:pointOnCurve", "data-sketch-command:midpoint",
+  ],
+};
+
+/** The groups whose icons fold away first when the bar is too narrow, in that order (then the others, from the right). */
+const FOLD_ORDER: Record<string, string[]> = {
+  model: ["Menuiserie", "Atelier", "Curic", "Modifier", "Créer"],
+  sketch: ["Affichage", "Contraintes", "Cotes", "Modifier", "Créer"],
+};
+
+/** A stable name for a tool button ("data-action:array", "data-action:view:front"), or null for any other button. */
 export function keyOf(button: HTMLElement): string | null {
-  for (const attribute of KEY_ATTRIBUTES) if (button.hasAttribute(attribute)) return `${attribute}:${button.getAttribute(attribute) ?? ""}`;
+  for (const attribute of KEY_ATTRIBUTES) {
+    if (!button.hasAttribute(attribute)) continue;
+    const view = button.getAttribute("data-view");
+    return `${attribute}:${button.getAttribute(attribute) ?? ""}${view ? `:${view}` : ""}`;
+  }
   return null;
 }
 
-type Layout = Record<string, string[]>;
-
-function readLayout(name: string): Layout | null {
+function readHidden(name: string): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE + name);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === "object" && Object.values(parsed).every((v) => Array.isArray(v) && v.every((k) => typeof k === "string")) ? (parsed as Layout) : null;
+    const raw = localStorage.getItem(HIDDEN + name);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed.filter((k): k is string => typeof k === "string"));
   } catch {
-    return null;
+    // Unreadable: the default.
   }
+  return new Set(DEFAULT_HIDDEN[name] ?? []);
 }
 
-function writeLayout(name: string, layout: Layout | null): void {
+function writeHidden(name: string, hidden: Set<string>): void {
   try {
-    if (layout) localStorage.setItem(STORAGE + name, JSON.stringify(layout));
-    else localStorage.removeItem(STORAGE + name);
+    localStorage.setItem(HIDDEN + name, JSON.stringify([...hidden]));
   } catch {
     // Not remembered: only this session.
   }
 }
 
+function readOrder(name: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(ORDER + name) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOrder(name: string, order: string[]): void {
+  try {
+    localStorage.setItem(ORDER + name, JSON.stringify(order));
+  } catch {
+    // Not remembered: only this visit.
+  }
+}
+
 export function bindRibbonLayout(root: HTMLElement): void {
-  root.dataset.ribbonEditing = "false";
-  const bars = [...root.querySelectorAll<HTMLElement>("[data-ribbon-bar]")].flatMap((bar) => {
-    const toolbar = bar.nextElementSibling;
-    const quick = bar.querySelector<HTMLElement>("[data-quickbar]");
-    const customize = bar.querySelector<HTMLButtonElement>("[data-ribbon-customize]");
-    return toolbar instanceof HTMLElement && quick && customize ? [{ name: bar.dataset.ribbonBar as string, bar, toolbar, quick, customize }] : [];
-  });
-  let editing = false;
-  let picked: HTMLElement | null = null;
-  let dragging: HTMLElement | null = null;
+  // The former "Mes outils" bar and its layouts are gone.
+  try {
+    for (const key of Object.keys(localStorage)) if (key.startsWith("cao.ribbon-layout.")) localStorage.removeItem(key);
+  } catch {
+    // Nothing to clean.
+  }
+  for (const toolbar of root.querySelectorAll<HTMLElement>("[data-ribbon]")) bindToolbar(toolbar, toolbar.dataset.ribbon as string);
+}
 
-  for (const b of bars) {
-    const zones = new Map<string, HTMLElement>([["quick", b.quick]]);
-    for (const group of b.toolbar.querySelectorAll<HTMLElement>(".ribbon-group")) {
-      const row = group.querySelector<HTMLElement>(".ribbon-row");
-      if (row) {
-        row.dataset.ribbonZone = group.getAttribute("aria-label") ?? "";
-        zones.set(row.dataset.ribbonZone, row);
-      }
-    }
-    const buttons = new Map<string, HTMLElement>();
-    for (const button of b.toolbar.querySelectorAll<HTMLElement>(".ribbon-row > button")) {
+function bindToolbar(toolbar: HTMLElement, name: string): void {
+  const hidden = readHidden(name);
+  const groups = [...toolbar.querySelectorAll<HTMLElement>(".ribbon-group")].map((group) => {
+    const tools = [...group.querySelectorAll<HTMLElement>(".ribbon-row > button")].flatMap((button) => {
       const key = keyOf(button);
-      if (key) {
-        button.dataset.ribbonKey = key;
-        buttons.set(key, button);
-      }
-    }
-    const capture = (): Layout => Object.fromEntries([...zones].map(([zone, el]) => [zone, [...el.children].flatMap((c) => ((c as HTMLElement).dataset.ribbonKey ? [(c as HTMLElement).dataset.ribbonKey as string] : []))]));
-    const apply = (layout: Layout) => {
-      for (const [zone, keys] of Object.entries(layout)) {
-        const el = zones.get(zone);
-        if (!el) continue;
-        for (const key of keys) {
-          const button = buttons.get(key);
-          if (button) el.append(button);
-        }
-      }
-      tidy();
-    };
-    /** A group left without icons is out of the ribbon (shown again while customising, to receive icons). */
-    const tidy = () => {
-      for (const group of b.toolbar.querySelectorAll<HTMLElement>(".ribbon-group")) {
-        const row = group.querySelector<HTMLElement>(".ribbon-row");
-        group.dataset.empty = String(!!row && row.children.length === 0);
-      }
-    };
-    const defaults = capture();
-    const stored = readLayout(b.name);
-    if (stored) apply(stored);
-    tidy();
-    const save = () => {
-      tidy();
-      writeLayout(b.name, capture());
-    };
-    Object.assign(b, { zones, buttons, apply, save, defaults });
-  }
-  type Bar = (typeof bars)[number] & { zones: Map<string, HTMLElement>; buttons: Map<string, HTMLElement>; apply(l: Layout): void; save(): void; defaults: Layout };
-  const all = bars as Bar[];
-  const barOf = (el: Element) => all.find((b) => b.bar.contains(el) || b.toolbar.contains(el));
-
-  const zoneAt = (target: EventTarget | null): HTMLElement | null => {
-    if (!(target instanceof Element)) return null;
-    return target.closest<HTMLElement>("[data-ribbon-zone]") ?? target.closest(".ribbon-group")?.querySelector<HTMLElement>(".ribbon-row") ?? null;
-  };
-
-  const unpick = () => {
-    picked?.removeAttribute("data-picked");
-    picked = null;
-  };
-
-  // ---- editing on and off ----------------------------------------------------------------
-  const setEditing = (on: boolean) => {
-    editing = on;
-    root.dataset.ribbonEditing = String(on);
-    unpick();
-    for (const b of all) {
-      b.customize.setAttribute("aria-pressed", String(on));
-      b.customize.textContent = on ? "Terminé" : "Personnaliser";
-      for (const button of b.buttons.values()) {
-        if (on) button.setAttribute("draggable", "true");
-        else button.removeAttribute("draggable");
-      }
-      b.bar.querySelector<HTMLElement>("[data-ribbon-edit-tools]")?.toggleAttribute("hidden", !on);
-    }
-  };
-  for (const b of all) {
-    const tools = document.createElement("div");
-    tools.dataset.ribbonEditTools = "";
-    tools.hidden = true;
-    tools.className = "flex shrink-0 items-center gap-2 self-center text-xs text-gray-500 dark:text-gray-400";
-    const hint = document.createElement("span");
-    hint.className = "hidden lg:inline";
-    hint.textContent = "Montez des outils dans « Mes outils » : glissez-les (ou touchez l'outil, puis l'endroit voulu).";
-    const reset = document.createElement("button");
-    reset.type = "button";
-    reset.className = "ribbon-tab";
-    reset.textContent = "Réinitialiser";
-    reset.addEventListener("click", () => {
-      b.apply(b.defaults);
-      writeLayout(b.name, null);
+      return key ? [{ key, button }] : [];
     });
-    tools.append(hint, reset);
-    b.customize.before(tools);
-    b.customize.addEventListener("click", () => setEditing(!editing));
-  }
+    return { group, name: group.getAttribute("aria-label") ?? "", tools };
+  });
 
-  // While customising, an icon is something to move, not a command: clicks never reach the tools.
-  root.addEventListener(
-    "click",
-    (event) => {
-      if (!editing || !(event.target instanceof Element)) return;
-      const button = event.target.closest<HTMLElement>("[data-ribbon-key]");
-      if (button) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!picked) {
-          picked = button;
-          button.dataset.picked = "true";
-        } else if (picked === button) unpick();
-        else if (picked.parentElement) {
-          const moved = picked;
-          unpick();
-          button.parentElement?.insertBefore(moved, button);
-          barOf(button)?.save();
+  /** Tools folded away for lack of room (not remembered: the window's width decides). */
+  const folded = new Set<string>();
+  /** Put-away and folded tools leave the row; a group whose icons are all gone keeps only its menu. */
+  const tidyGroup = (g: (typeof groups)[number]) => {
+    for (const t of g.tools) t.button.hidden = hidden.has(t.key) || folded.has(t.key);
+    const row = g.group.querySelector<HTMLElement>(".ribbon-row");
+    g.group.dataset.empty = String(!!row && ![...row.children].some((c) => !(c as HTMLElement).hidden));
+  };
+  const tidy = () => groups.forEach(tidyGroup);
+
+  /** Folds icons away, one at a time in FOLD_ORDER, until the bar fits on its line. */
+  const fit = () => {
+    folded.clear();
+    tidy();
+    const overflows = () => toolbar.clientWidth > 0 && toolbar.scrollWidth > toolbar.clientWidth + 1;
+    if (!overflows()) return;
+    const listed = FOLD_ORDER[name] ?? [];
+    const ordered = [...listed.flatMap((n) => groups.filter((g) => g.name === n)), ...groups.filter((g) => !listed.includes(g.name)).reverse()];
+    for (const g of ordered) {
+      for (const t of [...g.tools].reverse()) {
+        if (hidden.has(t.key)) continue;
+        folded.add(t.key);
+        tidyGroup(g);
+        if (!overflows()) return;
+      }
+    }
+  };
+  const save = () => {
+    tidy();
+    writeHidden(name, hidden);
+    fit();
+  };
+  tidy();
+
+  const host = document.querySelector<HTMLElement>("#main");
+  const favorites = host
+    ? bindFavorites(host, name, new Map(groups.flatMap((g) => g.tools.map((t): [string, HTMLElement] => [t.key, t.button]))), name === "sketch" ? "hidden group-data-[mode=sketch]/editor:flex" : "flex group-data-[mode=sketch]/editor:hidden")
+    : null;
+
+  let open: { caption: HTMLElement; close: () => void } | null = null;
+  const label = (button: HTMLElement) => button.getAttribute("aria-label") ?? button.title ?? "";
+
+  const show = (g: (typeof groups)[number], caption: HTMLElement): void => {
+    open?.close();
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", `Outils : ${g.name}`);
+    menu.className = "ribbon-menu";
+    const render = () => {
+      const rows = g.tools.map(({ key, button }) => {
+        const pinned = !hidden.has(key);
+        const row = document.createElement("div");
+        row.className = "ribbon-menu-item";
+        const run = document.createElement("button");
+        run.type = "button";
+        run.setAttribute("role", "menuitem");
+        run.className = "ribbon-menu-run";
+        run.disabled = (button as HTMLButtonElement).disabled;
+        const icon = button.querySelector("svg")?.cloneNode(true);
+        const text = document.createElement("span");
+        text.textContent = label(button);
+        run.append(...(icon ? [icon] : []), text);
+        run.addEventListener("click", () => {
+          open?.close();
+          button.click();
+        });
+        const pin = document.createElement("button");
+        pin.type = "button";
+        pin.className = "ribbon-menu-toggle";
+        pin.setAttribute("aria-pressed", String(pinned));
+        pin.title = pinned ? "Ranger dans ce menu (retirer de la barre)" : "Afficher dans la barre";
+        pin.setAttribute("aria-label", `${pinned ? "Retirer de la barre" : "Afficher dans la barre"} : ${label(button)}`);
+        pin.textContent = "📌";
+        pin.addEventListener("click", () => {
+          if (pinned) hidden.add(key);
+          else hidden.delete(key);
+          save();
+          render();
+        });
+        const star = document.createElement("button");
+        star.type = "button";
+        star.className = "ribbon-menu-toggle";
+        const favorite = favorites?.has(key) ?? false;
+        star.setAttribute("aria-pressed", String(favorite));
+        star.title = favorite ? "Retirer de Mes outils (barre à gauche de la vue)" : "Ajouter à Mes outils (barre à gauche de la vue)";
+        star.setAttribute("aria-label", `${favorite ? "Retirer de Mes outils" : "Ajouter à Mes outils"} : ${label(button)}`);
+        star.textContent = "⭐";
+        star.addEventListener("click", () => {
+          favorites?.toggle(key);
+          render();
+        });
+        row.append(run, star, pin);
+        return row;
+      });
+      const reset = document.createElement("button");
+      reset.type = "button";
+      reset.className = "ribbon-menu-reset";
+      reset.textContent = "Par défaut";
+      reset.title = "Remettre ce groupe comme à l'origine";
+      reset.addEventListener("click", () => {
+        const defaults = new Set(DEFAULT_HIDDEN[name] ?? []);
+        for (const { key } of g.tools) {
+          if (defaults.has(key)) hidden.add(key);
+          else hidden.delete(key);
         }
-        return;
-      }
-      const zone = picked && !event.target.closest("button, summary, select, input") ? zoneAt(event.target) : null;
-      if (zone && picked) {
-        event.preventDefault();
-        event.stopPropagation();
-        const moved = picked;
-        unpick();
-        zone.append(moved);
-        barOf(zone)?.save();
-      }
-    },
-    true,
-  );
+        save();
+        render();
+      });
+      const hint = document.createElement("p");
+      hint.className = "ribbon-menu-hint";
+      hint.textContent = "⭐ : dans Mes outils (à gauche de la vue). 📌 : dans la barre du haut.";
+      const footer = document.createElement("div");
+      footer.className = "ribbon-menu-footer";
+      footer.append(hint, reset);
+      menu.replaceChildren(...rows, footer);
+    };
+    render();
+    document.body.append(menu);
+    const r = caption.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${r.bottom + 4}px`;
+    caption.setAttribute("aria-expanded", "true");
+    const outside = (event: PointerEvent) => {
+      if (!menu.contains(event.target as Node) && !caption.contains(event.target as Node)) close();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const close = () => {
+      menu.remove();
+      caption.setAttribute("aria-expanded", "false");
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", escape, true);
+      open = null;
+    };
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", escape, true);
+    open = { caption, close };
+    menu.querySelector<HTMLElement>(".ribbon-menu-run:not(:disabled)")?.focus();
+  };
 
-  // ---- dragging ----------------------------------------------------------------------------
-  root.addEventListener("dragstart", (event) => {
-    const button = editing && event.target instanceof Element ? event.target.closest<HTMLElement>("[data-ribbon-key]") : null;
-    if (!button) return;
-    dragging = button;
-    unpick();
-    event.dataTransfer?.setData("text/plain", button.dataset.ribbonKey as string);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-    requestAnimationFrame(() => button.setAttribute("data-dragging", "true"));
-  });
-  root.addEventListener("dragover", (event) => {
-    if (!dragging) return;
-    const zone = zoneAt(event.target);
-    for (const z of root.querySelectorAll("[data-over]")) z.removeAttribute("data-over");
-    if (!zone) return;
+  for (const g of groups) {
+    const old = g.group.querySelector<HTMLElement>(".ribbon-caption");
+    // A group of one tool needs no menu.
+    if (!old || g.tools.length < 2) continue;
+    const caption = document.createElement("button");
+    caption.type = "button";
+    caption.className = "ribbon-caption ribbon-caption-menu";
+    caption.textContent = `${old.textContent ?? g.name} ▾`;
+    caption.setAttribute("aria-label", `Outils du groupe ${g.name}`);
+    caption.setAttribute("aria-haspopup", "menu");
+    caption.setAttribute("aria-expanded", "false");
+    caption.title = `Tous les outils « ${g.name} » ; l'épingle choisit ceux de la barre`;
+    caption.addEventListener("click", () => (open?.caption === caption ? open.close() : show(g, caption)));
+    old.replaceWith(caption);
+  }
+  // ---- groups in the order the user chose (drag a group's name) ---------------------------
+  /** One separator between two groups, wherever they are now. */
+  const separate = () => {
+    for (const sep of [...toolbar.querySelectorAll(":scope > .ribbon-sep")]) sep.remove();
+    const placed = [...toolbar.querySelectorAll<HTMLElement>(":scope > .ribbon-group")];
+    placed.slice(1).forEach((g) => g.before(Object.assign(document.createElement("span"), { className: "ribbon-sep", ariaHidden: "true" })));
+  };
+  const saveOrder = () => writeOrder(name, [...toolbar.querySelectorAll<HTMLElement>(":scope > .ribbon-group")].map((g) => g.getAttribute("aria-label") ?? ""));
+  const stored = readOrder(name);
+  if (stored.length) {
+    const rank = (g: (typeof groups)[number]) => (stored.includes(g.name) ? stored.indexOf(g.name) : stored.length + groups.indexOf(g));
+    for (const g of [...groups].sort((a, b) => rank(a) - rank(b))) toolbar.append(g.group);
+    separate();
+  }
+  let dragged: HTMLElement | null = null;
+  for (const g of groups) {
+    const caption = g.group.querySelector<HTMLElement>(".ribbon-caption-menu");
+    if (!caption) continue;
+    caption.draggable = true;
+    caption.title += " — glissez le nom pour déplacer le groupe";
+    caption.addEventListener("dragstart", (event) => {
+      dragged = g.group;
+      open?.close();
+      event.dataTransfer?.setData("text/plain", g.name);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+      requestAnimationFrame(() => g.group.classList.add("opacity-40"));
+    });
+    caption.addEventListener("dragend", () => {
+      g.group.classList.remove("opacity-40");
+      dragged = null;
+      separate();
+      saveOrder();
+      fit();
+    });
+  }
+  toolbar.addEventListener("dragover", (event) => {
+    if (!dragged) return;
     event.preventDefault();
-    zone.dataset.over = "true";
-    const next = [...zone.children].find((c) => c !== dragging && (c as HTMLElement).dataset.ribbonKey && event.clientX < (c as HTMLElement).getBoundingClientRect().left + (c as HTMLElement).getBoundingClientRect().width / 2);
-    if (next) zone.insertBefore(dragging, next);
-    else if (dragging.parentElement !== zone || zone.lastElementChild !== dragging) zone.append(dragging);
+    const over = (event.target as HTMLElement).closest<HTMLElement>(".ribbon-group");
+    if (!over || over === dragged || over.parentElement !== toolbar) return;
+    const box = over.getBoundingClientRect();
+    if (event.clientX < box.left + box.width / 2) over.before(dragged);
+    else over.after(dragged);
   });
-  root.addEventListener("drop", (event) => {
-    if (dragging) event.preventDefault();
+  toolbar.addEventListener("drop", (event) => {
+    if (dragged) event.preventDefault();
   });
-  root.addEventListener("dragend", () => {
-    for (const z of root.querySelectorAll("[data-over]")) z.removeAttribute("data-over");
-    dragging?.removeAttribute("data-dragging");
-    if (dragging) barOf(dragging)?.save();
-    dragging = null;
-  });
+
+  let width = -1;
+  new ResizeObserver(() => {
+    if (toolbar.clientWidth === width) return;
+    width = toolbar.clientWidth;
+    fit();
+  }).observe(toolbar);
+  fit();
 }

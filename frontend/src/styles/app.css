@@ -9,18 +9,61 @@
 /* Theme follows the "dark" class set on <html> by templates/base.html. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* The themes of gestion menuiserie: palettes, light theme (palettes.css). */
+@import "./palettes.css";
+
+/*
+ * Tailwind's greys and blues, used by every panel, border, text and button of the app, follow the theme: the
+ * palette chosen in dark, Tailwind's own colours in light (palettes.css).
+ */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Square corners everywhere (cards, buttons, fields, menus): the radii are nought; only the circles (rounded-full) stay round. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  --color-gray-50: var(--g50);
+  --color-gray-100: var(--g100);
+  --color-gray-200: var(--g200);
+  --color-gray-300: var(--g300);
+  --color-gray-400: var(--g400);
+  --color-gray-500: var(--g500);
+  --color-gray-600: var(--g600);
+  --color-gray-700: var(--g700);
+  --color-gray-800: var(--g800);
+  --color-gray-900: var(--g900);
+  --color-gray-950: var(--g950);
+
+  --color-sky-50: var(--s50);
+  --color-sky-100: var(--s100);
+  --color-sky-200: var(--s200);
+  --color-sky-300: var(--s300);
+  --color-sky-400: var(--s400);
+  --color-sky-500: var(--s500);
+  --color-sky-600: var(--s600);
+  --color-sky-700: var(--s700);
+  --color-sky-800: var(--s800);
+  --color-sky-900: var(--s900);
+  --color-sky-950: var(--s950);
 }
 
 @layer base {
   :root {
-    --viewport-bg: #e8ebef;
-    --viewport-grid: #9aa3ae;
-    --sketch-dim: #15803d;
-    --sketch-ref: #6b7280;
-    --sketch-preview: #0284c7;
+    /* The 3D view: a deep blue gradient in both themes (the colour is its middle, for label halos). */
+    --viewport-gradient: linear-gradient(180deg, #1f2f40 0%, #101d26 100%);
+    --viewport-bg: #18262f;
+    --viewport-grid: #4d6a82;
+    --sketch-dim: #8fd14f;
+    --sketch-ref: #9ca3af;
+    --sketch-preview: #38bdf8;
     /* Toolbar icons: accents (points, arrows), constraints, dimensions. */
     --ic-accent: #0284c7;
     --ic-accent-fill: rgb(2 132 199 / 0.18);
@@ -28,13 +71,8 @@
     --ic-dim: #15803d;
   }
   .dark {
-    --viewport-bg: #2b313b;
-    --viewport-grid: #4b5563;
-    --sketch-dim: #8fd14f;
-    --sketch-ref: #9ca3af;
-    --sketch-preview: #38bdf8;
-    --ic-accent: #38bdf8;
-    --ic-accent-fill: rgb(56 189 248 / 0.2);
+    --ic-accent: rgb(var(--brand));
+    --ic-accent-fill: rgb(var(--brand) / 0.2);
     --ic-constraint: #f87171;
     --ic-dim: #8fd14f;
   }
@@ -42,19 +80,40 @@
   body {
     -webkit-tap-highlight-color: transparent;
   }
+  /* Thin scrollbars in the accent's solid tone, as in gestion menuiserie. */
+  .dark * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--brand-plein)) rgb(var(--night-light));
+  }
 }
 
 @layer components {
   .tool-btn {
-    @apply inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium
+ @apply inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 px-3 text-sm font-medium
       text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-sky-500
       disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800;
   }
   .tool-btn[aria-pressed="true"] {
     @apply bg-sky-100 text-sky-900 ring-1 ring-sky-400 dark:bg-sky-900/60 dark:text-sky-50;
   }
-  .tool-btn-primary {
-    @apply bg-sky-600 text-white hover:bg-sky-700 dark:text-white dark:hover:bg-sky-500;
+  /* The primary buttons (Enregistrer, Créer, the OK of the panels…): the palette's gradient, white lettering, they rise
+     a little under the pointer (as the buttons of gestion menuiserie). */
+  .tool-btn-primary,
+  .btn-accent {
+    @apply font-medium text-white dark:text-white;
+    background-image: linear-gradient(to top, var(--bouton-1), var(--bouton-2), var(--bouton-3));
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .tool-btn-primary:hover,
+  .btn-accent:hover:not(:disabled) {
+    background-image: linear-gradient(to top, var(--bouton-survol-1), var(--bouton-survol-2), var(--bouton-survol-3));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgb(0 0 0 / 0.3);
+  }
+  .tool-btn-primary:active,
+  .btn-accent:active:not(:disabled) {
+    transform: scale(0.97);
   }
   /* Ribbon toolbars: icon buttons in captioned groups (the name of each tool is its tooltip). */
   .icon-btn {
@@ -78,53 +137,208 @@
     @apply text-[10px] leading-3 font-semibold tracking-wider text-gray-500 uppercase select-none dark:text-gray-400;
   }
   .ribbon-sep {
-    @apply mx-0.5 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-700;
+    @apply mx-0.5 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-800;
   }
-  .ribbon-tab {
-    @apply h-8 rounded-t-md border-b-2 border-transparent px-3 text-xs font-semibold text-gray-500 hover:bg-gray-100 aria-selected:border-sky-600 aria-selected:text-sky-700
-      dark:text-gray-400 dark:hover:bg-gray-800 dark:aria-selected:border-sky-400 dark:aria-selected:text-sky-300;
+  /* Large screens: the toolbar, the side panels, the selection column and the view are square cards with a shadow,
+     set apart on a grey background (on phones the panels are sheets rising from the bottom). */
+  @media (min-width: 1024px) {
+    #editor {
+      background: var(--color-gray-100);
+    }
+    #editor [data-ribbon],
+    #editor [data-render-bar] {
+      margin: 0.5rem 0.5rem 0;
+    }
+    #editor [data-ref="main-row"] {
+      gap: 0.5rem;
+      padding: 0.5rem;
+    }
+    #editor [data-ribbon],
+    #editor [data-render-bar],
+    #editor [data-ref="panel-tree"],
+    #editor [data-ref="panel-properties"],
+    #editor [data-side-tools],
+    #editor [data-ref="workspace"] {
+      border: 1px solid var(--color-gray-200);
+      border-radius: 0;
+      background-color: var(--color-white);
+      box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 6px 18px -4px rgb(15 23 42 / 0.16);
+    }
+    #editor [data-ref="panel-tree"],
+    #editor [data-ref="panel-properties"],
+    #editor [data-ref="workspace"] {
+      overflow: hidden;
+    }
+    /* The view's card is all gradient: the history bar takes its lower colour. */
+    #editor [data-ref="workspace"],
+    .dark #editor [data-ref="workspace"] {
+      background: #101d26;
+      border-color: #1f2f40;
+    }
+
+    /* Dark: the page in the palette's night, the toolbar a card in the palette's gradient with an accent frame and
+       glow (the cards of gestion menuiserie), the side columns quieter so their own cards stand out. */
+    .dark #editor {
+      background: rgb(var(--night));
+    }
+    .dark #editor [data-ribbon],
+    .dark #editor [data-render-bar] {
+      border-color: rgb(var(--brand) / 0.35);
+      background: linear-gradient(to top, var(--degrade-bas), var(--degrade-milieu), var(--degrade-haut));
+      box-shadow:
+        0 10px 30px -8px rgb(0 0 0 / 0.65),
+        0 0 20px -4px rgb(var(--brand) / 0.45);
+    }
+    .dark #editor [data-ref="panel-tree"],
+    .dark #editor [data-ref="panel-properties"],
+    .dark #editor [data-side-tools] {
+      border-color: rgb(var(--brand) / 0.18);
+      background-color: rgb(var(--night-light));
+      box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.65);
+    }
+    .dark #editor [data-ref="workspace"] {
+      border-color: rgb(var(--brand) / 0.25);
+      box-shadow:
+        0 10px 30px -8px rgb(0 0 0 / 0.65),
+        0 0 18px -6px rgb(var(--brand) / 0.35);
+    }
   }
-  /* Customising the toolbars: icons become things to move. */
-  [data-ribbon-editing="true"] [data-ribbon-key] {
-    cursor: grab;
-    outline: 1px dashed rgb(148 163 184);
-    outline-offset: -2px;
+  /* The cards of the panels (navigator, properties, tool windows): in dark, the palette's gradient, an accent frame and
+     its glow. */
+  .dark .cad-card {
+    border-color: rgb(var(--brand) / 0.35) !important;
+    background: linear-gradient(to top, var(--degrade-bas), var(--degrade-milieu), var(--degrade-haut)) !important;
+    box-shadow:
+      0 10px 30px -8px rgb(0 0 0 / 0.65),
+      0 0 20px -4px rgb(var(--brand) / 0.45) !important;
   }
-  [data-ribbon-editing="true"] [data-ribbon-key][data-picked="true"] {
-    outline: 2px solid rgb(14 165 233);
-    background: rgb(14 165 233 / 0.15);
+  /* "Mes outils", the favourites bar at the left of the view: compact icons. */
+  [data-favorites] {
+    scrollbar-width: none;
   }
-  [data-ribbon-editing="true"] [data-ribbon-key][data-dragging="true"] {
-    opacity: 0.35;
+  [data-favorites] .icon-btn {
+    @apply min-h-9 min-w-9 px-1;
   }
-  [data-ribbon-editing="true"] [data-ribbon-zone] {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-    outline: 1px dashed rgb(14 165 233 / 0.45);
-    outline-offset: 1px;
+  [data-favorites] .tool-icon {
+    @apply size-6;
   }
-  [data-ribbon-zone][data-over="true"] {
-    background: rgb(14 165 233 / 0.14);
+  /* The column of selection and view tools beside the viewport: compact, scrolling only on very short screens. */
+  [data-side-tools] {
+    scrollbar-width: none;
   }
-  /* The upper bar says what it is for while it is empty. */
-  [data-quickbar]:empty::before {
-    content: attr(data-empty-text);
-    @apply px-1 text-xs text-gray-400 dark:text-gray-500;
+  [data-side-tools] .icon-btn {
+    @apply min-h-9 min-w-9 px-1;
   }
-  /* A group without icons is out of the ribbon, except while customising. */
-  [data-ribbon-editing="false"] .ribbon-group[data-empty="true"] {
+  [data-side-tools] .tool-icon {
+    @apply size-6;
+  }
+  [data-side-tools] [data-select-filter] {
+    @apply min-h-8 min-w-8;
+  }
+  /* A group whose icons are all put away keeps only its menu. */
+  .ribbon-group[data-empty="true"] .ribbon-row {
     display: none;
   }
+  .ribbon-group[data-empty="true"] {
+    justify-content: center;
+  }
+  /* Group menus (Fusion-like): the caption opens every tool of the group. */
+  .ribbon-caption-menu {
+ @apply px-1 hover:bg-gray-100 hover:text-gray-700 aria-expanded:bg-sky-100 aria-expanded:text-sky-800 dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:aria-expanded:bg-sky-950 dark:aria-expanded:text-sky-200;
+  }
+  .ribbon-menu {
+ @apply fixed z-50 max-h-[70vh] min-w-64 overflow-auto border border-gray-200 bg-white p-1 text-xs text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100;
+  }
+  .ribbon-menu-item {
+ @apply flex items-center gap-0.5 hover:bg-gray-50 dark:hover:bg-gray-800;
+  }
+  .ribbon-menu-run {
+    @apply flex min-h-9 min-w-0 flex-1 items-center gap-2 px-1.5 text-left disabled:opacity-40;
+  }
+  .ribbon-menu-run .tool-icon {
+    @apply size-6;
+  }
+  .ribbon-menu-footer {
+    @apply mt-1 flex items-center justify-between gap-2 border-t border-gray-200 px-1.5 pt-1 dark:border-gray-700;
+  }
+  .ribbon-menu-hint {
+    @apply text-[10px] text-gray-500 dark:text-gray-400;
+  }
+  .ribbon-menu-reset {
+ @apply h-7 shrink-0 px-2 text-[11px] font-medium text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950;
+  }
+  .ribbon-menu-toggle {
+ @apply size-8 shrink-0 text-sm opacity-30 grayscale hover:bg-gray-100 aria-pressed:opacity-100 aria-pressed:grayscale-0 disabled:cursor-default dark:hover:bg-gray-700;
+  }
+  /* The palette swatches of the « ⋯ » menu: each shows its gradient and, in a corner, its accent; the chosen one wears
+     the accent's frame and glow (as the « habillages » of gestion menuiserie). */
+  .palette-swatch {
+ @apply flex flex-col gap-1 border border-gray-200 p-1.5 text-left hover:border-sky-400 dark:border-gray-700;
+  }
+  .palette-swatch[aria-pressed="true"] {
+    border-color: rgb(var(--brand) / 0.9);
+    box-shadow: 0 0 0 1px rgb(var(--brand) / 0.5), 0 0 14px -4px rgb(var(--brand) / 0.6);
+  }
+  .palette-swatch-gradient {
+ @apply relative block h-8 w-full border border-black/10;
+  }
+  .palette-swatch-accent {
+ @apply absolute right-1 bottom-1 block size-2.5 rounded-full border border-white/40;
+  }
+  .palette-swatch-name {
+    @apply text-[11px] leading-tight text-gray-600 dark:text-gray-300;
+  }
+  .palette-swatch[aria-pressed="true"] .palette-swatch-name {
+    @apply font-semibold text-sky-700 dark:text-sky-300;
+  }
+  /* The 3D view's own cursor: a cross of very thin lines (ui/cursor.ts); a tool's inline cursor wins over it. */
+  canvas.cad-view {
+    cursor: var(--cad-cursor, crosshair);
+  }
+  /* A list that scrolls without a scrollbar (its arrows say there is more: ui/scroll-arrows.ts). */
+  .cad-no-scrollbar {
+    scrollbar-width: none;
+  }
+  .cad-no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Headings written as the headers of gestion menuiserie's tables: small capitals, spaced, in the accent. */
   .panel-title {
-    @apply text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400;
+    @apply text-xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400;
+  }
+  /* The navigator written as the rows of gestion menuiserie's tables: bold, silver grey, vivid green under the
+     pointer (the selected row keeps its colours). Light theme and Mocha Mist: the ink, a dark green. */
+  [data-ref="tree"] [data-select] {
+    @apply font-bold;
+    transition: color 150ms;
+  }
+  .dark [data-ref="tree"] [data-select]:not([aria-pressed="true"]),
+  .dark [data-ref="tree"] [data-group] > div {
+    color: #c0c0c0;
+  }
+  [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
+  [data-ref="tree"] [data-group] > div:hover {
+    color: #15803d !important;
+  }
+  .dark [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
+  .dark [data-ref="tree"] [data-group] > div:hover {
+    color: #00ff00 !important;
+  }
+  html.dark.palette-mocha [data-ref="tree"] [data-select]:not([aria-pressed="true"]),
+  html.dark.palette-mocha [data-ref="tree"] [data-group] > div {
+    color: rgb(var(--ink));
+  }
+  html.dark.palette-mocha [data-ref="tree"] :hover > [data-select]:not([aria-pressed="true"]),
+  html.dark.palette-mocha [data-ref="tree"] [data-group] > div:hover {
+    color: rgb(4 62 25) !important;
   }
 }
 
 /* Sketch labels rendered by the CSS2D layer above the viewport. */
 @layer components {
   .cad-dimension {
-    @apply cursor-pointer rounded border border-sky-500 bg-white/95 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-sky-900
-      shadow-sm hover:bg-sky-50 dark:bg-gray-900/95 dark:text-sky-100;
+ @apply cursor-pointer border border-sky-500 bg-white/95 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-sky-900
+      shadow-sm hover:bg-sky-50 dark:bg-gray-900/95 dark:text-sky-100 dark:hover:bg-gray-700;
   }
   /* Dimension text, drawing style (no box). */
   .cad-dim {
@@ -146,11 +360,15 @@
     @apply text-red-500;
   }
   .cad-measure {
-    @apply cursor-pointer rounded bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm
+ @apply cursor-pointer bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm
       hover:bg-gray-700 dark:bg-gray-100/90 dark:text-gray-900;
   }
+  /* The distance between two parallel edges: amber like its line, and a little larger. */
+  .cad-measure.cad-measure-gap {
+    @apply bg-amber-500 px-2 text-sm font-semibold text-gray-950 hover:bg-amber-400 dark:bg-amber-400 dark:text-gray-950;
+  }
   .cad-glyph {
-    @apply cursor-pointer rounded bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
+ @apply cursor-pointer bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
   }
   .cad-glyph.cad-selected {
     @apply bg-rose-600 text-white dark:bg-rose-500 dark:text-white;
@@ -161,4 +379,14 @@
   .cad-reference {
     @apply border-dashed text-gray-500;
   }
+}
+
+/* Render mode: the favourites bar goes with the modelling tools (outside the layers, so it wins over its utilities). */
+#editor[data-render="on"] [data-favorites] {
+  display: none;
+}
+
+/* The right panel shows one tab at a time: the properties or one tool window (ui/dock.ts). */
+[data-dock-hidden] {
+  display: none !important;
 }

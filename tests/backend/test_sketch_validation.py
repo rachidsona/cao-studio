@@ -368,3 +368,21 @@ def test_feature_position_is_one_based_and_other_types_untouched():
     sketch = doc["features"][1]
     sketch["curves"][0]["p2"] = "p9"
     assert validate_document(doc) == ["Opération 2 (sk1) : point « p9 » introuvable."]
+
+
+def test_construction_plane_frame_accepted_and_checked():
+    doc = copy.deepcopy(REFERENCE_V2)
+    doc["features"][0]["frame"] = {"origin": [0, 0, 100], "xDir": [0, 1, 0], "normal": [0, 0.5, 0.866]}
+    assert validate_document(doc) == []
+    doc["features"][0]["frame"] = {"origin": [0, 0, 100], "xDir": [1, 0, 0], "normal": [0, 0, 0]}
+    assert any("frame" in e for e in validate_document(doc))
+    doc["features"][0]["frame"] = {"origin": [0, 0], "xDir": [1, 0, 0], "normal": [0, 0, 1]}
+    assert any("frame" in e for e in validate_document(doc))
+
+
+def test_sketch_texts_accepted_and_checked():
+    doc = copy.deepcopy(REFERENCE_V2)
+    doc["features"][0]["texts"] = [{"id": "t1", "text": "CAO", "x": 0, "y": 0, "height": 10, "angle": 15}]
+    assert validate_document(doc) == []
+    doc["features"][0]["texts"] = [{"id": "t1", "text": "CAO", "x": 0, "y": 0, "height": 0}]
+    assert any("texts" in e for e in validate_document(doc))

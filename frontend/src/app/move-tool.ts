@@ -8,16 +8,19 @@
  * computed live by the kernel and shown as the real part, never as a display
  * shift; the document only changes on OK, as one undo step.
  */
+import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
 import type { Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
 import { featureOfBody } from "../document/types";
 import { MIN_LENGTH } from "../features/common";
 import { GLOBAL_FRAME, faceFrame, toGlobal, toLocal, type MoveFrame } from "../features/move";
-import { sketchFrame, toWorld } from "../sketcher/frame";
+import { frameOf, toWorld } from "../sketcher/frame";
 import { moveSketchPlane, sketchSnapPoints } from "../sketcher/move";
 import { dragStep, roundTo } from "../viewport/axis-drag";
+import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
+import { SnapSquares } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
 import { pointText } from "./model-selection";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -38,6 +41,9 @@ export interface MoveToolOptions {
   /** Switches to the push/pull of the picked face (moving the face, not the body). */
   moveFace?: () => void;
 }
+
+/** A body with more corners than this (a rounded one) shows only the corners of the face pointed at. */
+const MAX_BODY_CORNERS = 40;
 
 export class MoveTool extends PanelTool {
   private readonly id: string;
@@ -60,7 +66,8 @@ export class MoveTool extends PanelTool {
   private reachFace = false;
   private reachNormal: Vec3 | null = null;
   private pickStep: "source" | "reach" = "source";
-  private markers: THREE.Points | null = null;
+  /** The pivot (rose) and the target (green), as hollow squares. */
+  private readonly markers = new SnapSquares(this.ctx.viewport.scene);
   /** Snap points of the face under the pointer, and the one under the pointer (Fusion's point picking). */
   private hover: {
     points: Vec3[];
@@ -71,7 +78,8 @@ export class MoveTool extends PanelTool {
     /** The body face under the pointer, if it can be a target (its plane). */
     face: FaceSnaps | null;
   } | null = null;
-  private snapLayer: THREE.Points | null = null;
+  /** The points a click can pick: hollow squares, the one under the pointer filled and orange. */
+  private readonly squares = new SnapSquares(this.ctx.viewport.scene);
   /** Copies made instead of moving (as Curic Gizmo's copy): the original stays, copy k is moved k times. */
   private copies = 0;
   private readonly copy: { id: string; name: string };
@@ -92,10 +100,10 @@ export class MoveTool extends PanelTool {
     }
     this.copy = { id: uniqueId(doc, "ar"), name: uniqueName(doc, "Copie") };
     if (this.sketch) {
-      const f = sketchFrame(this.sketch.plane, this.sketch.offset, this.sketch.shift);
+      const f = frameOf(this.sketch);
       this.localFrame = { x: f.u, y: f.v, z: f.normal };
     } else this.localFrame = options.faceNormal ? faceFrame(options.faceNormal) : null;
-    this.gizmo = new MoveGizmo(ctx.viewport);
+    this.gizmo = new MoveGizmo(ctx.viewport, { rotate: true });
     this.measure();
     // A new body move starts like Fusion's: hover a face to see its points, click one to put the manipulator there.
     if (!editing || this.sketch) this.inputMode = "points";
@@ -119,7 +127,7 @@ export class MoveTool extends PanelTool {
   /** Centre of the moved thing, while it is still displayed in its own place (the preview replaces it). */
   private measure(): void {
     if (this.sketch) {
-      const frame = sketchFrame(this.sketch.plane, this.sketch.offset, this.sketch.shift);
+      const frame = frameOf(this.sketch);
       const xs = this.sketch.points.map((p) => p.x);
       const ys = this.sketch.points.map((p) => p.y);
       const c: [number, number] = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
@@ -141,12 +149,7 @@ export class MoveTool extends PanelTool {
 
   /** Marks the point moved from (rose, where it is now) and the point to reach (green). */
   private placeMarkers(): void {
-    if (this.markers) {
-      this.ctx.viewport.scene.remove(this.markers);
-      this.markers.geometry.dispose();
-      (this.markers.material as THREE.Material).dispose();
-      this.markers = null;
-    }
+    this.markers.clear();
     if (this.inputMode !== "points") return;
     const points: Vec3[] = [];
     const colors: number[] = [];
@@ -158,12 +161,7 @@ export class MoveTool extends PanelTool {
       points.push(this.reach);
       colors.push(0.09, 0.64, 0.29);
     }
-    if (!points.length) return;
-    const geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(...p)));
-    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    this.markers = new THREE.Points(geometry, new THREE.PointsMaterial({ size: 14, sizeAttenuation: false, vertexColors: true, depthTest: false }));
-    this.markers.renderOrder = 45;
-    this.ctx.viewport.scene.add(this.markers);
+    this.markers.show(points, -1, colors);
   }
 
   /** The manipulator sits on the pivot (or the centre), moved with the body; while a pivot is being chosen it follows the point under the pointer. */
@@ -173,24 +171,14 @@ export class MoveTool extends PanelTool {
     const base = hovered ?? this.source ?? this.center;
     const shift = hovered ? [0, 0, 0] : this.translate;
     this.gizmo.place([0, 1, 2].map((i) => (base[i] as number) + (shift[i] as number)) as Vec3, this.frame());
+    // The curved arrows turn around the axes of the global frame (the Rotation tool's axes).
+    this.gizmo.showRotation(this.frameMode === "global");
   }
 
-  /** Dots on the points of the face under the pointer, the one that will be picked larger and orange. */
+  /** Hollow squares on the points that can be picked (as in the sketch), the one that will be picked filled and orange. */
   private placeSnaps(): void {
-    if (this.snapLayer) {
-      this.ctx.viewport.scene.remove(this.snapLayer);
-      this.snapLayer.geometry.dispose();
-      (this.snapLayer.material as THREE.Material).dispose();
-      this.snapLayer = null;
-    }
-    if (!this.hover) return;
-    const { points, index } = this.hover;
-    const geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(...p)));
-    const colors = points.flatMap((_, i) => (i === index ? [0.98, 0.45, 0.09] : [1, 1, 1]));
-    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    this.snapLayer = new THREE.Points(geometry, new THREE.PointsMaterial({ size: 11, sizeAttenuation: false, vertexColors: true, depthTest: false }));
-    this.snapLayer.renderOrder = 44;
-    this.ctx.viewport.scene.add(this.snapLayer);
+    if (!this.hover) return this.squares.clear();
+    this.squares.show(this.hover.points, this.hover.index);
   }
 
   /** Redraws the panel and the manipulator, and asks for a new preview. */
@@ -331,8 +319,8 @@ export class MoveTool extends PanelTool {
       ...fields,
       this.info(
         this.sketch
-          ? "Le long de la normale : le plan de l'esquisse change de décalage. Dans le plan : son origine se déplace, avec toute la géométrie et ses contraintes."
-          : "Flèche : déplacement le long d'un axe. Carré : déplacement dans un plan. Le solide réel est déplacé.",
+          ? "Flèche : le long d'un axe (le long de la normale, le plan de l'esquisse change de décalage ; dans le plan, son origine se déplace avec toute la géométrie et ses contraintes). Tuile : dans un plan. Point central : libre."
+          : "Flèche : le long d'un axe. Tuile : dans un plan. Point central : libre, dans le plan de l'écran. Flèche courbe : tourner (outil Tourner). Le solide réel est déplacé.",
       ),
     ];
   }
@@ -351,6 +339,8 @@ export class MoveTool extends PanelTool {
     this.placeMarkers();
     this.hover = null;
     this.placeSnaps();
+    this.markers.clear();
+    this.squares.clear();
     this.gizmo.dispose();
   }
 
@@ -362,6 +352,14 @@ export class MoveTool extends PanelTool {
   }
 
   override down(event: PointerEvent): boolean {
+    if (!this.onSnap()) {
+      // A curved arrow: the Rotation tool takes over, around that axis, on what is being moved.
+      const handle = this.gizmo.handleAt(event);
+      if (handle?.kind === "rotate" && this.ctx.turn) {
+        this.ctx.turn(handle.axis, this.subject, event);
+        return true;
+      }
+    }
     if (this.onSnap() || !this.gizmo.dragStart(event)) return false;
     this.dragFrom = [...this.translate];
     return true;
@@ -376,7 +374,7 @@ export class MoveTool extends PanelTool {
     }
     if (this.inputMode === "points") this.hoverSnaps(event);
     const onGizmo = !this.onSnap() && this.gizmo.hovered(event) !== null;
-    this.ctx.viewport.renderer.domElement.style.cursor = this.onSnap() ? "crosshair" : onGizmo ? "grab" : "";
+    this.ctx.viewport.renderer.domElement.style.cursor = this.onSnap() ? THIN_CROSSHAIR : onGizmo ? "grab" : "";
   }
 
   /** Translation after a drag by `delta`, rounded to the zoom on the axes the handle really moves along. */
@@ -385,7 +383,8 @@ export class MoveTool extends PanelTool {
     const step = dragStep(this.ctx.viewport.worldPerPixel());
     const start = toLocal(frame, this.dragFrom);
     const moved = toLocal(frame, [0, 1, 2].map((i) => (this.dragFrom[i] as number) + (delta[i] as number)) as Vec3);
-    const along = handle.kind === "axis" ? [handle.axis] : [0, 1, 2].filter((i) => i !== handle.normal);
+    // The ball (free move in the screen's plane) changes all three coordinates.
+    const along = handle.kind === "axis" ? [handle.axis] : handle.kind === "plane" ? [0, 1, 2].filter((i) => i !== handle.normal) : handle.kind === "free" ? [0, 1, 2] : [];
     const result = start.map((s, i) => (along.includes(i) ? roundTo(moved[i] as number, step) : s)) as Vec3;
     return toGlobal(frame, result);
   }
@@ -425,7 +424,10 @@ export class MoveTool extends PanelTool {
       const mesh = usable ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
       const snaps = mesh ? faceSnaps(mesh, pick.faceIndex) : null;
       if (snaps) {
-        for (const p of [...snaps.corners, snaps.center]) {
+        // The corners of the whole element (a thin board shows all of its corners, not only those of the face pointed at),
+        // else those of the face; and the middle of the face.
+        const corners = mesh && bodyVertices(mesh).length <= MAX_BODY_CORNERS ? bodyVertices(mesh) : snaps.corners;
+        for (const p of [...corners, snaps.center]) {
           points.push(p);
           owners.push(pick.bodyId);
         }

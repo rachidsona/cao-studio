@@ -3,10 +3,12 @@
  * as it moves), the curve tools Prolonger / Ajuster / Couper with their preview, and the click that selects
  * (lines on top of each other cycle; inside a closed shape, its sides) or feeds a waiting constraint.
  */
+import { THIN_CROSSHAIR } from "../ui/cursor";
 import { classify, COMMANDS } from "../constraints/catalog";
 import { solveSketch } from "../constraints/solver";
-import { ORIGIN, type SketchGeometry } from "../document/sketch";
-import { closeCalculator } from "../ui/calculator";
+import { ORIGIN, type SketchGeometry, type SketchText } from "../document/sketch";
+import { closeCalculator, openCalculator } from "../ui/calculator";
+import { chamferCorner, cornerAt, filletCorner, suggestedCornerValue } from "./corner";
 import { applyBreak, findBreak } from "./break";
 import { findCurve, type Vec2 } from "./edit";
 import { applyExtension, findExtension } from "./extend";
@@ -17,6 +19,10 @@ import { boundaryCurves, regionAt } from "./region-pick";
 import type { Region } from "./loops";
 import type { Preview } from "./tools";
 import { applyTrim, findTrim } from "./trim";
+import { projectEdge } from "./projection";
+import { projectEdgeOnce, projectFace } from "./offset-edge";
+import { openTextDialog } from "./text-dialog";
+import { textBox } from "./text-outline";
 
 /** Hover preview and click result of Prolonger, Ajuster and Couper on the curve under the pointer. */
 function curveEdit(mode: SketchMode, kind: "extend" | "trim" | "break", p: Vec2) {
@@ -70,11 +76,12 @@ export class SketchPointer {
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
   down(event: PointerEvent): boolean {
     const { mode } = this;
-    if (mode.tool || mode.kind === "extend" || mode.kind === "trim" || mode.kind === "break") return false;
+    if (mode.tool || (mode.kind !== "select" && mode.kind !== "dimension")) return false;
     // "Décalage": the arrow takes the pointer to be dragged; elsewhere clicks pick curves.
     if (mode.offset) return mode.offset.dragStart(event);
+    if (mode.edgeOffset) return mode.edgeOffset.dragStart(event);
     if (mode.moveTool) return mode.moveTool.down(event);
-    if (mode.arrayTool) return false;
+    if (mode.arrayTool || mode.shelves || mode.partition) return false;
     const p = mode.toSketch(event);
     if (!p) return false;
     const [hit] = hitTest(mode.geometry, p, mode.tolerance());
@@ -89,6 +96,7 @@ export class SketchPointer {
   move(event: PointerEvent): void {
     const { mode } = this;
     if (mode.offset?.dragMove(event)) return;
+    if (mode.edgeOffset?.dragMove(event)) return;
     if (mode.moveTool?.move(event)) return mode.render();
     const p = mode.toSketch(event);
     if (!p) return;
@@ -109,13 +117,23 @@ export class SketchPointer {
       mode.preview = mode.tool.move(mode.geometry, s);
       // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
       this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : mode.gridSnap ? { pos: s.pos, kind: "grid" } : null;
-      this.canvas.style.cursor = this.snapMark ? "none" : "crosshair";
-    } else if (mode.offset) {
+      this.canvas.style.cursor = this.snapMark ? "none" : THIN_CROSSHAIR;
+    } else if (mode.offset || mode.edgeOffset) {
       this.hover = hitTest(mode.geometry, p, mode.tolerance()).find((h) => findCurve(mode.geometry, h.id))?.id ?? null;
-      this.canvas.style.cursor = mode.offset.overArrow(event) ? "grab" : "";
+      this.canvas.style.cursor = (mode.offset ?? mode.edgeOffset)!.overArrow(event) ? "grab" : "";
     } else {
       this.hover = hitTest(mode.geometry, p, mode.tolerance())[0]?.id ?? null;
       this.hoverRegion = this.hover || mode.pendingCommand || mode.kind === "dimension" ? null : regionAt(mode.faces, p);
+      if (mode.kind === "text") {
+        const text = this.textUnder(p);
+        this.hover = text ? `text:${text.id}` : null;
+        this.hoverRegion = null;
+      }
+      if (mode.kind === "fillet" || mode.kind === "chamfer") {
+        // Only a corner (two lines meeting) can be rounded or cut.
+        this.hover = this.cornerUnder(p);
+        this.hoverRegion = null;
+      }
       if (mode.kind === "extend" || mode.kind === "trim" || mode.kind === "break") {
         // What the click would do (extension, part removed, pieces and cut points) is shown before it.
         const edit = curveEdit(mode, mode.kind, p);
@@ -130,6 +148,7 @@ export class SketchPointer {
   up(event: PointerEvent, isClick: boolean): boolean {
     const { mode } = this;
     if (mode.offset?.dragEnd()) return true;
+    if (mode.edgeOffset?.dragEnd()) return true;
     if (mode.moveTool?.up()) return true;
     const drag = this.drag;
     this.drag = null;
@@ -167,12 +186,39 @@ export class SketchPointer {
       if (curve) mode.offset.toggle(curve.id);
       return true;
     }
+    if (mode.edgeOffset) {
+      // « Décaler l'arête »: a sketch curve is copied at once, else the body edge or face clicked.
+      const curve = hitTest(mode.geometry, p, mode.tolerance()).find((h) => findCurve(mode.geometry, h.id));
+      if (curve) mode.edgeOffset.pickCurve(curve.id);
+      else void this.offsetBodyClick(event);
+      return true;
+    }
     if (mode.moveTool) {
       mode.moveTool.click(p);
       return true;
     }
     if (mode.arrayTool) {
       mode.arrayTool.click(p);
+      return true;
+    }
+    if (mode.shelves) {
+      mode.shelves.click(p);
+      return true;
+    }
+    if (mode.partition) {
+      mode.partition.click(p);
+      return true;
+    }
+    if (mode.kind === "fillet" || mode.kind === "chamfer") {
+      this.cornerClick(mode.kind, p, { x: event.clientX, y: event.clientY });
+      return true;
+    }
+    if (mode.kind === "project") {
+      void this.projectClick(event);
+      return true;
+    }
+    if (mode.kind === "text") {
+      this.textClick(p, { x: event.clientX, y: event.clientY });
       return true;
     }
     if (mode.kind === "extend" || mode.kind === "trim" || mode.kind === "break") {
@@ -186,6 +232,98 @@ export class SketchPointer {
     }
     this.select(event, p);
     return true;
+  }
+
+  /** The corner point under the pointer (two lines meeting there), or null. */
+  private cornerUnder(p: Vec2): string | null {
+    const hit = hitTest(this.mode.geometry, p, this.mode.tolerance()).find((h) => h.kind === "point" && cornerAt(this.mode.geometry, h.id));
+    return hit?.id ?? null;
+  }
+
+  /** Congé or chanfrein on the corner clicked: the keypad asks for the radius or the distance. */
+  private cornerClick(kind: "fillet" | "chamfer", p: Vec2, anchor: { x: number; y: number }): void {
+    const { mode } = this;
+    const corner = this.cornerUnder(p);
+    if (!corner) return mode.host.notify("Cliquez un coin où deux lignes se rejoignent.", "info");
+    openCalculator({
+      container: mode.host.calculatorContainer(),
+      anchor,
+      value: suggestedCornerValue(mode.geometry, corner),
+      unit: mode.host.unit(),
+      title: kind === "fillet" ? "Rayon du congé" : "Distance du chanfrein",
+      locked: true,
+      allowNegative: false,
+      onSubmit: (value) => {
+        const result = kind === "fillet" ? filletCorner(mode.geometry, corner, value) : chamferCorner(mode.geometry, corner, value);
+        if (typeof result === "string") {
+          mode.host.notify(result, "error");
+          return false;
+        }
+        return mode.apply(result, kind === "fillet" ? "Congé ajouté." : "Chanfrein ajouté.");
+      },
+    });
+  }
+
+  /** The text whose letters' box holds the point, if any. */
+  private textUnder(p: Vec2): SketchText | undefined {
+    const margin = this.mode.tolerance();
+    return (this.mode.geometry.texts ?? []).find((t) => {
+      const [lo, hi] = textBox(t);
+      return p[0] >= lo[0] - margin && p[0] <= hi[0] + margin && p[1] >= lo[1] - margin && p[1] <= hi[1] + margin;
+    });
+  }
+
+  /** Text tool: a click on a text edits it, elsewhere a new text starts there. */
+  private textClick(p: Vec2, anchor: { x: number; y: number }): void {
+    const { mode } = this;
+    const found = this.textUnder(p);
+    const texts = mode.geometry.texts ?? [];
+    let n = 1;
+    while (texts.some((t) => t.id === `t${n}`)) n++;
+    const text: SketchText = found ?? { id: `t${n}`, text: "Texte", x: Number(p[0].toFixed(6)), y: Number(p[1].toFixed(6)), height: 10 };
+    const save = (next: SketchText[], message: string) => mode.apply({ ...mode.geometry, texts: next }, message);
+    openTextDialog({
+      container: mode.host.calculatorContainer(),
+      anchor,
+      unit: mode.host.unit(),
+      text,
+      existing: !!found,
+      onSubmit: (t) => save(found ? texts.map((x) => (x.id === t.id ? t : x)) : [...texts, t], found ? "Texte modifié." : "Texte ajouté."),
+      onDelete: () => save(texts.filter((x) => x.id !== text.id), "Texte supprimé."),
+    });
+  }
+
+  /** "Projeter": the body edge clicked is added to the sketch as fixed reference geometry. */
+  private async projectClick(event: PointerEvent): Promise<void> {
+    const { mode } = this;
+    const edge = mode.viewport.pickEdge(event);
+    if (!edge) return mode.host.notify("Cliquez une arête d'un corps.", "info");
+    try {
+      const projected = projectEdge(mode.geometry, await mode.host.edgeOutline(edge.bodyId, edge.edgeIndex), mode.frame);
+      if (typeof projected === "string") mode.host.notify(projected, "info");
+      else mode.apply(projected, "Arête projetée.");
+    } catch (error) {
+      mode.host.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  /** « Décaler l'arête »: the body edge clicked, or every edge of the face clicked, projected and offset. */
+  private async offsetBodyClick(event: PointerEvent): Promise<void> {
+    const { mode } = this;
+    const edge = mode.viewport.pickEdge(event);
+    const face = edge ? null : mode.viewport.pickFace(event);
+    if (!edge && !face) return mode.host.notify("Cliquez une arête ou une face d'un corps, ou un trait de l'esquisse.", "info");
+    try {
+      const picked = edge
+        ? projectEdgeOnce(mode.geometry, await mode.host.edgeOutline(edge.bodyId, edge.edgeIndex), mode.frame)
+        : projectFace(mode.geometry, await mode.host.faceOutline(face!.bodyId, face!.faceIndex), mode.frame);
+      if (typeof picked === "string") return mode.host.notify(picked, "info");
+      // The edges stay in the sketch as fixed references (violet), like « Projeter ».
+      if (picked.geometry !== mode.geometry && !mode.apply(picked.geometry)) return;
+      mode.edgeOffset?.pickProjected(picked.ids, picked.rings);
+    } catch (error) {
+      mode.host.notify(error instanceof Error ? error.message : String(error), "error");
+    }
   }
 
   /** A click with the selection tool, the "Cote" tool, or a constraint waiting for its elements. */
@@ -228,13 +366,17 @@ export class SketchPointer {
         const sides = face ? boundaryCurves(mode.geometry, face) : [];
         const chosen = sides.length > 0 && sides.every((id) => mode.selection.has(id));
         mode.selection.clear();
+        mode.clickedAt.clear(); // sides of a shape go whole
         if (!chosen) for (const id of sides) mode.selection.add(id);
       }
-    } else if (mode.selection.has(hit.id)) mode.selection.delete(hit.id);
-    else {
+    } else if (mode.selection.has(hit.id)) {
+      mode.selection.delete(hit.id);
+      mode.clickedAt.delete(hit.id);
+    } else {
       // The dimension tool measures one or two elements: a third click starts a new measurement.
       if (dimensionTool && mode.selection.size >= 2) mode.selection.clear();
       mode.selection.add(hit.id);
+      mode.clickedAt.set(hit.id, p);
     }
     if (waiting && waiting.applies(classify(mode.geometry, [...mode.selection]))) {
       // Everything it needs is picked: applied at once; the command keeps waiting for the next ones.

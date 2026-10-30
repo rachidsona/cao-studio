@@ -4,7 +4,7 @@ import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measu
 import { el } from "./dom";
 
 export const inputClass =
-  "min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-right font-mono text-sm tabular-nums " +
+  "h-8 w-full border border-gray-300 bg-white px-2 text-right font-mono text-sm tabular-nums " +
   "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 " +
   "dark:border-gray-600 dark:bg-gray-900";
 
@@ -71,13 +71,52 @@ export function numberField(options: NumberFieldOptions): HTMLElement {
   );
 }
 
+const FOLDED = "cao.sections.folded";
+
+/** Name of a section without what changes in it ("Contraintes (4)" → "Contraintes"), to remember it folded. */
+export const sectionKey = (title: string): string => title.replace(/\s*\(.*\)\s*$/, "").replace(/\s+—.*$/, "").trim();
+
+function folded(): Set<string> {
+  try {
+    const list: unknown = JSON.parse(localStorage.getItem(FOLDED) ?? "[]");
+    return new Set(Array.isArray(list) ? list.filter((k): k is string => typeof k === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function remember(key: string, open: boolean): void {
+  const keys = folded();
+  if (open) keys.delete(key);
+  else keys.add(key);
+  try {
+    localStorage.setItem(FOLDED, JSON.stringify([...keys]));
+  } catch {
+    // Not remembered: only this visit.
+  }
+}
+
+/** Cards of the right panel, like those of the navigator: straight corners, with a strong shadow. */
+export const PANEL_CARD =
+  "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
+  "dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]";
+
+/** A card of the side panel that folds and unfolds by its title (▸); folded cards stay folded (remembered). */
 export function section(title: string, ...children: (Node | null)[]): HTMLElement {
-  return el(
-    "section",
-    { class: "space-y-3 border-b border-gray-200 p-4 last:border-0 dark:border-gray-700" },
-    el("h3", { class: "panel-title" }, title),
-    ...children,
+  const key = sectionKey(title);
+  const card = el(
+    "details",
+    { class: `group/card mx-2 my-3 ${PANEL_CARD}`, "data-section": key, ...(folded().has(key) ? {} : { open: "" }) },
+    el(
+      "summary",
+      { class: "flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-2 select-none hover:bg-gray-50 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden" },
+      el("span", { class: "inline-block w-3 text-[10px] text-gray-400 transition-transform group-open/card:rotate-90", "aria-hidden": "true" }, "▶"),
+      el("h3", { class: "panel-title" }, title),
+    ),
+    el("div", { class: "space-y-3 px-3 pt-1 pb-3" }, ...children),
   );
+  card.addEventListener("toggle", () => remember(key, card.open));
+  return card;
 }
 
 export function row(label: string, value: string, valueClass = ""): HTMLElement {
@@ -107,7 +146,7 @@ export function selectField(label: string, value: string, options: [string, stri
 export function iconButton(label: string, glyph: string, onClick: () => void, extra = ""): HTMLButtonElement {
   const button = el(
     "button",
-    { type: "button", class: `size-9 shrink-0 rounded text-gray-500 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 ${extra}`, title: label, "aria-label": label },
+    { type: "button", class: `size-9 shrink-0 text-gray-500 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950 ${extra}`, title: label, "aria-label": label },
     glyph,
   );
   button.addEventListener("click", (event) => {

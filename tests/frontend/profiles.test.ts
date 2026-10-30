@@ -51,10 +51,29 @@ describe("profils fermés", () => {
     expect(volume).toBeCloseTo(40000 - Math.PI * 25 * 10, 6);
   });
 
-  it("garde un îlot à l'intérieur d'un trou et signale les corps disjoints", () => {
-    // The island is material again, hence a second, disconnected solid: one body per extrusion is required.
-    const { message } = extrudedVolume(merge(centeredRectangle(80, 50), circle("k1", 0, 0, 20), circle("k2", 0, 0, 5)));
-    expect(message).toMatch(/2 solides/);
+  it("garde un îlot à l'intérieur d'un trou, en corps séparé", () => {
+    // The island is material again, hence a second, disconnected solid: it becomes its own body.
+    const recomputer = new Recomputer();
+    try {
+      const geometry = merge(centeredRectangle(80, 50), circle("k1", 0, 0, 20), circle("k2", 0, 0, 5));
+      const result = recomputer.recompute({
+        format: "cao-studio",
+        schemaVersion: 2,
+        units: "mm",
+        parameters: {},
+        features: [
+          { id: "sk", type: "sketch", name: "Esquisse", plane: "XY", offset: 0, ...geometry },
+          { id: "ex", type: "extrude", name: "Extrusion", sketch: "sk", distance: 10, operation: "new" },
+        ],
+      });
+      expect(result.bodies).toHaveLength(2);
+      const output = recomputer.output("ex");
+      if (output?.kind !== "solids") throw new Error("solids expected");
+      const total = output.shapes.reduce((sum, s) => sum + bodyMetrics(s).volume, 0);
+      expect(total).toBeCloseTo((4000 - Math.PI * 400 + Math.PI * 25) * 10, 6);
+    } finally {
+      recomputer.dispose();
+    }
   });
 
   it("garde un îlot relié au reste par la règle pair-impair (anneau)", () => {

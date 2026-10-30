@@ -69,15 +69,15 @@ const FLIP = "M8 20V5M8 5L4.5 8.5M8 5l3.5 3.5M16 4v15M16 19l-3.5-3.5M16 19l3.5-3
 const ONE_SIDE = "M4 6h16M4 12h16M4 18h16";
 const TWO_SIDES = "M4 5h16M4 12h16M4 19h16";
 
-export const BOX = "rounded-md border border-gray-300 bg-gray-100 text-xs text-gray-900 shadow-xl dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100";
-export const TITLE = "flex h-7 items-center gap-1.5 rounded-t-md bg-gray-200 px-2 text-[11px] font-semibold tracking-wide uppercase dark:bg-neutral-700";
+export const BOX = " border border-gray-300 bg-gray-100 text-xs text-gray-900 shadow-xl dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100";
+export const TITLE = "flex h-7 items-center gap-1.5 bg-gray-200 px-2 text-[11px] font-semibold tracking-wide uppercase dark:bg-neutral-700";
 export const BODY = "space-y-2 px-3 py-3";
 export const ROW = "grid min-h-8 grid-cols-[6.5rem_1fr] items-center gap-2";
 export const FIELD =
-  "h-8 w-full min-w-0 rounded border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 " +
+  "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 " +
   "aria-invalid:border-red-500 dark:border-neutral-500 dark:bg-neutral-900";
 export const BUTTON =
-  "flex h-8 items-center justify-center gap-1.5 rounded border px-3 text-xs font-medium border-gray-300 bg-white hover:bg-gray-50 " +
+  "flex h-8 items-center justify-center gap-1.5 border px-3 text-xs font-medium border-gray-300 bg-white hover:bg-gray-50 " +
   "dark:border-neutral-500 dark:bg-neutral-700 dark:hover:bg-neutral-600";
 
 const SIDE_LABELS: Record<OffsetPanelState["sides"], [string, string]> = {
@@ -151,11 +151,11 @@ function selectControl(label: string, value: string, options: [string, string][]
 export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, actions: OffsetPanelActions): void {
   const collapse = el(
     "button",
-    { type: "button", class: "flex size-5 items-center justify-center rounded text-base leading-none hover:bg-gray-300 dark:hover:bg-neutral-600", title: state.collapsed ? "Déplier" : "Replier", "aria-expanded": String(!state.collapsed), "aria-label": "Replier ou déplier le panneau" },
+    { type: "button", class: "flex size-5 items-center justify-center text-base leading-none hover:bg-gray-300 dark:hover:bg-neutral-600", title: state.collapsed ? "Déplier" : "Replier", "aria-expanded": String(!state.collapsed), "aria-label": "Replier ou déplier le panneau" },
     state.collapsed ? "+" : "−",
   );
   collapse.addEventListener("click", actions.toggleCollapsed);
-  const title = el("div", { class: `${TITLE} ${state.collapsed ? "rounded-b-md" : ""}` }, collapse, el("h2", {}, "Décalage"));
+  const title = el("div", { class: `${TITLE} ${state.collapsed ? "" : ""}` }, collapse, el("h2", {}, "Décalage"));
   if (state.collapsed) {
     panel.replaceChildren(el("div", { class: BOX, role: "group" }, title));
     return;
@@ -197,7 +197,7 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     "i",
   );
   info.addEventListener("click", actions.toggleHelp);
-  const ok = el("button", { type: "button", class: "h-8 min-w-20 rounded bg-sky-600 px-3 text-xs font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-neutral-600 dark:disabled:text-neutral-400", disabled: state.result === null || state.busy }, "OK");
+  const ok = el("button", { type: "button", class: "h-8 min-w-20 btn-accent px-3 text-xs font-medium disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-neutral-600 dark:disabled:text-neutral-400", disabled: state.result === null || state.busy }, "OK");
   ok.addEventListener("click", actions.confirm);
   const cancel = el("button", { type: "button", class: `${BUTTON} min-w-20` }, "Annuler");
   cancel.addEventListener("click", actions.cancel);
@@ -215,9 +215,9 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     row("Distance", distanceControl(state, actions)),
     row("Coins", selectControl("Coins", state.join, [["round", "Arrondis"], ["sharp", "Vifs"]], (v) => actions.setJoin(v as OffsetJoin))),
     el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, status),
-    state.problem ? el("p", { class: "rounded border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
-    ...state.warnings.map((w) => el("p", { class: "rounded border border-amber-300 bg-amber-50 px-2 py-1.5 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" }, w)),
-    state.showHelp ? el("p", { class: "rounded bg-gray-200 px-2 py-1.5 text-gray-700 dark:bg-neutral-700 dark:text-neutral-200" }, HELP) : null,
+    state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
+    ...state.warnings.map((w) => el("p", { class: " border border-amber-300 bg-amber-50 px-2 py-1.5 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" }, w)),
+    state.showHelp ? el("p", { class: " bg-gray-200 px-2 py-1.5 text-gray-700 dark:bg-neutral-700 dark:text-neutral-200" }, HELP) : null,
   ];
   const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, info, el("span", { class: "flex-1" }), ok, cancel);
   panel.replaceChildren(el("div", { class: BOX, role: "group" }, title, el("div", { class: BODY }, ...body.filter((n): n is HTMLElement => n !== null)), footer));

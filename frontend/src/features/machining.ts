@@ -35,8 +35,17 @@ function toolOf(op: MachiningOp, name: string): Shape3D {
   return (makeBaseBox(size[0] as number, size[1] as number, size[2] as number) as Shape3D).translate(corner) as Shape3D;
 }
 
-/** The operations moved with the board: by how far its low corner is from the anchor the machining was made at. */
-function followed(op: MachiningOp, delta: Vec3): MachiningOp {
+/**
+ * The operation moved with the board: on each axis, by how far the end of the board it was nearer to (when the
+ * machining was made) has moved; by the low corner only when the high one was not kept.
+ */
+export function followed(op: MachiningOp, anchor: [Vec3, Vec3 | undefined], now: [Vec3, Vec3]): MachiningOp {
+  const [low, high] = anchor;
+  const where = op.kind === "hole" ? op.at : (op.from.map((v, i) => (v + (op.to[i] as number)) / 2) as Vec3);
+  const delta = [0, 1, 2].map((i) => {
+    const nearHigh = high && Math.abs((where[i] as number) - (high[i] as number)) < Math.abs((where[i] as number) - (low[i] as number));
+    return nearHigh ? (now[1][i] as number) - (high[i] as number) : (now[0][i] as number) - (low[i] as number);
+  }) as Vec3;
   const shift = (v: Vec3): Vec3 => [v[0] + delta[0], v[1] + delta[1], v[2] + delta[2]];
   return op.kind === "hole" ? { ...op, at: shift(op.at) } : { ...op, from: shift(op.from), to: shift(op.to) };
 }
@@ -44,15 +53,16 @@ function followed(op: MachiningOp, delta: Vec3): MachiningOp {
 export function buildMachining(feature: MachiningFeature, lookup: OutputLookup): SolidOutput {
   if (feature.ops.length === 0) throw new GeometryError(`${feature.name} : aucun usinage.`);
   const source = requireSolid(lookup, feature.target).shape;
-  let delta: Vec3 = [0, 0, 0];
+  let ops = feature.ops;
   if (feature.anchor) {
     const box = source.boundingBox;
-    const [min] = box.bounds;
+    const [min, max] = box.bounds;
     box.delete();
-    delta = [min[0] - feature.anchor[0], min[1] - feature.anchor[1], min[2] - feature.anchor[2]];
+    const anchor: [Vec3, Vec3 | undefined] = [feature.anchor, feature.anchorHigh];
+    ops = ops.map((o) => followed(o, anchor, [[...min], [...max]]));
   }
   let current = source.clone() as Shape3D;
-  for (const op of feature.ops.map((o) => followed(o, delta))) {
+  for (const op of ops) {
     const tool = toolOf(op, feature.name);
     const before = measureVolume(current);
     let next: Shape3D | null = null;

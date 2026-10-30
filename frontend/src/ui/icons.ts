@@ -15,6 +15,17 @@ function icon(shapes: { tag: "path" | "circle"; attrs: Record<string, string> }[
   return svg;
 }
 
+/** A toolbar icon from the editor's sprite (templates/editor/_icons.html), e.g. "i-extrude". */
+export function toolIcon(id: string, className = "tool-icon"): SVGElement {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("class", className);
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS(SVG, "use");
+  use.setAttribute("href", `#${id}`);
+  svg.append(use);
+  return svg;
+}
+
 /** Open eye (visible) or crossed-out eye (hidden). */
 export function eyeIcon(visible: boolean): SVGElement {
   const shapes: Parameters<typeof icon>[0] = [
@@ -31,5 +42,12 @@ export function dotsIcon(): SVGElement {
     { tag: "circle", attrs: { cx: "5", cy: "12", r: "1.2", fill: "currentColor" } },
     { tag: "circle", attrs: { cx: "12", cy: "12", r: "1.2", fill: "currentColor" } },
     { tag: "circle", attrs: { cx: "19", cy: "12", r: "1.2", fill: "currentColor" } },
+  ]);
+}
+
+/** A bin, to delete. */
+export function trashIcon(): SVGElement {
+  return icon([
+    { tag: "path", attrs: { d: "M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" } },
   ]);
 }

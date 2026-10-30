@@ -9,9 +9,9 @@ import { draw, genericSweep, type Shape3D, type Wire } from "replicad";
 import type { SketchGeometry } from "../document/sketch";
 import type { SweepFeature } from "../document/types";
 import { GeometryError } from "../geometry/kernel";
-import { applyOperation, planeOrigin, profileDrawing, requireProfile, type OutputLookup } from "./common";
-import { sketchFrame, toWorld } from "../sketcher/frame";
-import type { SolidOutput } from "./outputs";
+import { applyOperation, onProfilePlane, profileDrawing, requireProfile, type OutputLookup } from "./common";
+import { frameOf, toWorld } from "../sketcher/frame";
+import type { SolidOutput, SolidsOutput } from "./outputs";
 
 type Vec = [number, number];
 export type PathStep = { kind: "line"; to: Vec } | { kind: "arc"; to: Vec; mid: Vec };
@@ -90,7 +90,7 @@ export function reverseChain(chain: PathChain): PathChain {
 const wireOf = (sketch: unknown): Wire | null => (typeof sketch === "object" && sketch !== null && "wire" in sketch ? (sketch as { wire: Wire }).wire : null);
 const release = (sketch: unknown) => (sketch as { delete?: () => void }).delete?.();
 
-export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOutput {
+export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   const profile = requireProfile(lookup, feature.profile);
   const path = requireProfile(lookup, feature.path);
   if (feature.profile === feature.path) throw new GeometryError(`${feature.name} : le profil et le chemin doivent être deux esquisses différentes.`);
@@ -99,8 +99,8 @@ export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOu
   // The profile sits at one end of the path: the sweep starts there.
   if (!chain.closed) {
     const box = region.boundingBox;
-    const at = toWorld(sketchFrame(profile.plane, profile.offset, profile.shift), (box.bounds[0][0] + box.bounds[1][0]) / 2, (box.bounds[0][1] + box.bounds[1][1]) / 2);
-    const pathFrame = sketchFrame(path.plane, path.offset, path.shift);
+    const at = toWorld(frameOf(profile), (box.bounds[0][0] + box.bounds[1][0]) / 2, (box.bounds[0][1] + box.bounds[1][1]) / 2);
+    const pathFrame = frameOf(path);
     const [first, last] = [toWorld(pathFrame, chain.start[0], chain.start[1]), toWorld(pathFrame, (chain.steps.at(-1) as PathStep).to[0], (chain.steps.at(-1) as PathStep).to[1])];
     const gap = (p: number[]) => Math.hypot(p[0]! - at[0], p[1]! - at[1], p[2]! - at[2]);
     if (gap(last) < gap(first)) chain = reverseChain(chain);
@@ -110,8 +110,8 @@ export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOu
     if (step.kind === "line") pen.lineTo(step.to);
     else pen.threePointsArcTo(step.to, step.mid);
   }
-  const spineSketch = (chain.closed ? pen.close() : pen.done()).sketchOnPlane(path.plane, planeOrigin(path));
-  const profileSketch = region.sketchOnPlane(profile.plane, planeOrigin(profile));
+  const spineSketch = onProfilePlane(chain.closed ? pen.close() : pen.done(), path);
+  const profileSketch = onProfilePlane(region, profile);
   try {
     const profileWire = wireOf(profileSketch);
     const spineWire = wireOf(spineSketch);

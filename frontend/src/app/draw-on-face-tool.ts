@@ -14,7 +14,7 @@ import { uniqueId, uniqueName } from "../document/operations";
 import type { Feature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, trim, UNIT_LABELS } from "../measurements/units";
 import { addCircle, addLine, addRectangle, type Vec2, type VertexInput } from "../sketcher/edit";
-import { offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../sketcher/face-draw";
+import { markedPoints, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances, type SnapKind } from "../sketcher/face-draw";
 import { bandSketch } from "../sketcher/face-strip";
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { projectOutline } from "../sketcher/projection";
@@ -34,12 +34,17 @@ const SHAPES: [Shape, string][] = [
   ["offset", "Décalage du contour"],
 ];
 
+/** What a snap is called in the value box. */
+const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle: "Milieu du trait", center: "Centre de la face", free: "" };
+
 /** Kept for the session: what was drawn last, and whether a closed shape goes on with the push/pull. */
 const last = { shape: "line" as Shape, thenPull: true };
 
 const RED = 0xdc2626;
 const BLUE = 0x2563eb;
 const ORANGE = 0xf97316;
+/** Crosses marking the centre of the face and the middles of its edges. */
+const SKY = 0x0284c7;
 
 type Typed = { x: number | null; y: number | null; length: number | null; angle: number | null };
 const NOTHING: Typed = { x: null, y: null, length: null, angle: null };
@@ -56,6 +61,8 @@ export class DrawOnFaceTool extends PanelTool {
   /** Where the pointer lands (snapped, typed values applied). */
   private cursor: Vec2 | null = null;
   private hoverFace: LoadedFace | null = null;
+  /** What the pointer is snapped to: a corner, the middle of an edge, the centre of the face, or nothing. */
+  private snapped: SnapKind = "free";
   private lastEvent: PointerEvent | null = null;
   /** Values typed and applied: distances to the edges for the first point; then length and angle, width and height, radius, or offset. */
   private typed: Typed = { ...NOTHING };
@@ -117,6 +124,23 @@ export class DrawOnFaceTool extends PanelTool {
     return inside;
   }
 
+  /**
+   * Where the pointer lands: on a cross (centre of the face, middle of an edge) within 18 pixels, or a corner within 10 —
+   * measured on the screen, whatever the depth of the face — else its distances to the edges rounded.
+   */
+  private snapAt(face: LoadedFace, raw: Vec2, event: PointerEvent): { point: Vec2; kind: SnapKind } {
+    const viewport = this.ctx.viewport;
+    let best: { point: Vec2; kind: SnapKind; d: number } | null = null;
+    const consider = (point: Vec2, kind: SnapKind, reach: number) => {
+      const d = viewport.screenDistance(event, this.world(face, point));
+      if (d <= reach && (!best || d < best.d)) best = { point, kind, d };
+    };
+    for (const a of face.polygon) consider(a, "corner", 10);
+    for (const m of markedPoints(face.polygon)) consider(m.point, m.kind, 18);
+    const found = best as { point: Vec2; kind: SnapKind } | null;
+    return found ?? snapOnFace(face.polygon, raw, this.step(), 0);
+  }
+
   /** The point under the pointer on `face`: snapped, then with the typed values applied. */
   private pointOn(face: LoadedFace, event: PointerEvent): Vec2 | null {
     const { origin, direction } = this.ctx.viewport.rayFromEvent(event);
@@ -128,8 +152,9 @@ export class DrawOnFaceTool extends PanelTool {
       this.offsetOutline = offsetPolygon(face.polygon, this.offsetDistance);
       return raw;
     }
-    const tolerance = 10 * this.ctx.viewport.worldPerPixel();
-    let p = this.points.length === 0 && !this.inside(face, raw) ? raw : snapOnFace(face.polygon, raw, this.step(), tolerance).point;
+    const snap = this.points.length === 0 && !this.inside(face, raw) ? { point: raw, kind: "free" as SnapKind } : this.snapAt(face, raw, event);
+    this.snapped = snap.kind;
+    let p = snap.point;
     const first = this.points.at(-1);
     if (!first) return withTypedDistances(face.polygon, p, this.typed);
     const { length, angle } = this.typed;
@@ -155,6 +180,7 @@ export class DrawOnFaceTool extends PanelTool {
       this.hoverFace = face;
       viewport.setHoverHighlight(pick ? { face: pick } : null);
     }
+    this.snapped = "free";
     this.cursor = face ? this.pointOn(face, event) : null;
     this.draw();
   }
@@ -174,6 +200,11 @@ export class DrawOnFaceTool extends PanelTool {
         // Where the distances to the nearest edges are measured: red along X, blue along Y (their values are in the box).
         if (this.points.length === 0 && this.inside(face, p)) {
           for (const dim of snapDims(face.polygon, p)) if (dim.distance > 1e-6) this.marks.line(at(dim.from), at(dim.to), dim.axis === 0 ? RED : BLUE, true);
+        }
+        // The centre of the face and the middles of its edges, marked with a cross: the pointer snaps to them.
+        for (const m of markedPoints(face.polygon)) {
+          const here = Math.hypot(m.point[0] - p[0], m.point[1] - p[1]) < 1e-6;
+          this.marks.cross(at(m.point), here ? ORANGE : SKY, here ? 20 : 14);
         }
         this.marks.dot(at(p), ORANGE);
         const chain = [...this.points, p];
@@ -208,7 +239,8 @@ export class DrawOnFaceTool extends PanelTool {
       const dims = this.inside(face, p) ? snapDims(face.polygon, p) : [];
       const dx = dims.find((d) => d.axis === 0);
       const dy = dims.find((d) => d.axis === 1);
-      this.box.show("Bords ↔ ; ↕", dx && dy ? `${fmt(dx.distance)} ; ${fmt(dy.distance)}` : "—", "Tapez deux distances aux bords (120;45) puis Entrée, ou cliquez.");
+      const where = SNAP_NAMES[this.snapped];
+      this.box.show("Bords ↔ ; ↕", dx && dy ? `${fmt(dx.distance)} ; ${fmt(dy.distance)}` : "—", `${where ? `${where} — ` : ""}Tapez deux distances aux bords (120;45) puis Entrée, ou cliquez.`);
     } else {
       const a = this.points.at(-1) as Vec2;
       const length = Math.hypot(p[0] - a[0], p[1] - a[1]);

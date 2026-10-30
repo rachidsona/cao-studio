@@ -1,7 +1,8 @@
 /**
  * What Suppr deletes, whatever is picked in the 3D view: whole bodies and
  * sketches; a body through a face, an edge or a corner of it (the whole body:
- * the question says so); lines and points of a sketch, taken out of it (with
+ * the question says so); a piece of a cabinet, of panels or of a split on its
+ * own (the operation and its other pieces stay); lines and points of a sketch, taken out of it (with
  * their constraints). An area of a sketch is not deleted (its lines are, or
  * the whole sketch). Everything goes in one undo step.
  */
@@ -12,10 +13,10 @@ import { askConfirm } from "../ui/confirm-dialog";
 import type { ModelSelection } from "../viewport/viewport";
 
 export interface Deletion {
-  /** Features deleted: what made each body (a piece takes its whole operation), and whole sketches. */
+  /** Features deleted: what made each whole body, and whole sketches. */
   features: string[];
-  /** Multi-body operations taken whole because one of their pieces is picked. */
-  wholes: string[];
+  /** Pieces of multi-body operations removed on their own. */
+  pieces: string[];
   /** Bodies deleted whole although only a face, an edge or a corner of them is picked. */
   implied: string[];
   /** Sketches whose picked lines and points are taken out. */
@@ -34,7 +35,7 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>)
     }
   }
   const whole = selection.sketches ?? [];
-  const { ids, wholes } = featuresOfPick(doc, bodies, whole);
+  const { ids, pieces } = featuresOfPick(doc, bodies, whole);
   const items = (selection.sketch ?? []).filter((p) => !whole.includes(p.sketchId));
   const edits = [...new Set(items.filter((p) => p.kind !== "region").map((p) => p.sketchId))].flatMap((sketchId) => {
     const sketch = findFeature(doc, sketchId);
@@ -42,14 +43,13 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>)
     const gone = items.filter((p) => p.sketchId === sketchId && p.kind !== "region").map((p) => p.id);
     return [{ ...sketch, ...removeEntities(sketch, gone) }];
   });
-  return { features: ids, wholes, implied, edits, skipped: items.filter((p) => p.kind === "region").length };
+  return { features: ids, pieces, implied, edits, skipped: items.filter((p) => p.kind === "region").length };
 }
 
 /** The question to ask before deleting more than what is picked, or null when nothing needs asking. */
 export function deletionQuestion(doc: CadDocument, deletion: Deletion): string | null {
   const parts: string[] = [];
   if (deletion.implied.length) parts.push(`le${deletion.implied.length > 1 ? "s corps entiers" : " corps entier"} « ${deletion.implied.map((id) => bodyLabel(doc, id)).join(", ")} » (une face, une arête ou un coin est sélectionné)`);
-  if (deletion.wholes.length) parts.push(`toute l'opération « ${deletion.wholes.map((id) => findFeature(doc, id)?.name ?? id).join(", ")} » et toutes ses pièces`);
   return parts.length ? `Supprimer ${parts.join(", et ")} ?` : null;
 }
 

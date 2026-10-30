@@ -18,7 +18,7 @@ import { describeConstraints } from "../constraints/catalog";
 import { curvePoints, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { SketchFeature, Vec3 } from "../document/types";
 import { cloneGeometry, pointPos, type Vec2 } from "./edit";
-import { sketchFrame, toWorld } from "./frame";
+import { frameOf, toWorld } from "./frame";
 import { connectedChain } from "./offset";
 import type { Preview } from "./tools";
 
@@ -147,7 +147,7 @@ export function movePreview(before: SketchGeometry, after: SketchGeometry): Prev
 
 /** Points of a sketch a move can snap to, in model coordinates: its points and the middles of its lines. */
 export function sketchSnapPoints(sketch: SketchFeature): Vec3[] {
-  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const frame = frameOf(sketch);
   const out: Vec3[] = [];
   const add = (x: number, y: number) => {
     const p = toWorld(frame, x, y);
@@ -170,10 +170,15 @@ export function sketchSnapPoints(sketch: SketchFeature): Vec3[] {
  * origin moves as one piece.
  */
 export function moveSketchPlane(sketch: SketchFeature, delta: Vec3): SketchFeature {
-  const frame = sketchFrame(sketch.plane, sketch.offset, sketch.shift);
+  const frame = frameOf(sketch);
   const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const round = (x: number) => Number(x.toFixed(6));
   const shift: [number, number] = [round((sketch.shift?.[0] ?? 0) + dot(delta, frame.u)), round((sketch.shift?.[1] ?? 0) + dot(delta, frame.v))];
   const { shift: _old, ...rest } = sketch;
-  return { ...rest, offset: round(sketch.offset + dot(delta, frame.normal)), ...(shift[0] !== 0 || shift[1] !== 0 ? { shift } : {}) };
+  const along = dot(delta, frame.normal);
+  // Along the normal: the offset of a main plane, or the origin of a construction plane.
+  const placed = sketch.frame
+    ? { frame: { ...sketch.frame, origin: sketch.frame.origin.map((c, i) => round(c + frame.normal[i]! * along)) as Vec3 } }
+    : { offset: round(sketch.offset + along) };
+  return { ...rest, ...placed, ...(shift[0] !== 0 || shift[1] !== 0 ? { shift } : {}) };
 }

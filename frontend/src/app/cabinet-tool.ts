@@ -127,10 +127,21 @@ export class CabinetTool extends PanelTool {
         ],
         (v) => this.set({ construction: v as Settings["construction"] }),
       ),
+      this.selectRow(
+        "Orientation",
+        String(s.rotation ?? 0),
+        [
+          ["0", "Face vers l'avant (−Y)"],
+          ["90", "Face vers la droite (+X)"],
+          ["180", "Face vers le fond (+Y)"],
+          ["270", "Face vers la gauche (−X)"],
+        ],
+        (v) => this.set({ rotation: Number(v) as NonNullable<Settings["rotation"]> }),
+      ),
       this.numberRow("Position X", this.origin[0], unit, (v) => moveTo(0, v), true),
       this.numberRow("Position Y", this.origin[1], unit, (v) => moveTo(1, v), true),
       this.numberRow("Position Z", this.origin[2], unit, (v) => moveTo(2, v), true),
-      this.info("Chaque pièce (côtés, dessus, dessous, fond, étagères) est un corps. La position est le coin avant gauche en bas."),
+      this.info("Chaque pièce (côtés, dessus, dessous, fond, étagères) est un corps. La position est le coin avant gauche en bas ; le caisson tourne autour de ce coin."),
     ];
   }
 }

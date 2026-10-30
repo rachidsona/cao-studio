@@ -6,7 +6,7 @@
  * features are reused, so only the new operation is computed); the document
  * itself only changes when the user confirms.
  */
-import type { CadDocument, DisplayUnit, Feature } from "../document/types";
+import type { Axis, CadDocument, DisplayUnit, Feature } from "../document/types";
 import { updateFeature } from "../document/operations";
 import type { GeometryClient } from "../geometry/client";
 import type { FeatureStatus } from "../history/recompute";
@@ -14,6 +14,7 @@ import { toDisplay, trim, UNIT_LABELS, fromDisplay, parseNumber } from "../measu
 import { closeCalculator, openCalculator } from "../ui/calculator";
 import { el } from "../ui/dom";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
+import { placePanel } from "../ui/dock";
 
 export interface ToolContext {
   viewport: Viewport;
@@ -31,12 +32,14 @@ export interface ToolContext {
   commit(doc: CadDocument, selectId: string, after?: () => void): void;
   /** Opens the extrusion tool on the selected sketch or faces (a tool that draws a closed shape goes on with it). */
   extrude?(): void;
+  /** Opens the rotation tool on a body or a sketch, around this axis (a curved arrow of the Move manipulator was taken). */
+  turn?(axis: Axis, subject: { kind: "body" | "sketch"; id: string }, event: PointerEvent): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
   closed(): void;
 }
 
 export const COMPACT_INPUT =
-  "h-8 w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none " +
+  "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none " +
   "focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 
 export abstract class PanelTool implements PointerHandler {
@@ -54,13 +57,13 @@ export abstract class PanelTool implements PointerHandler {
   ) {
     this.panel = el("div", {
       class:
-        "absolute top-2 right-2 z-30 w-60 space-y-2 rounded-lg border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
+        "absolute top-2 right-2 z-30 w-60 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
         "max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto dark:border-gray-700 dark:bg-gray-900/95",
       role: "dialog",
       "aria-label": title,
     });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    ctx.container.append(this.panel);
+    placePanel(ctx.container, this.panel);
   }
 
   /** The provisional feature, or a message explaining what is still missing. */
@@ -88,13 +91,13 @@ export abstract class PanelTool implements PointerHandler {
     const hint = typeof built === "string" ? built : null;
     const cancel = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" },
+      { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" },
       "Annuler",
     );
     cancel.addEventListener("click", () => this.cancel());
     const ok = el(
       "button",
-      { type: "button", class: "h-8 flex-1 rounded-md bg-sky-600 font-medium text-white hover:bg-sky-700 disabled:opacity-40", disabled: hint !== null || this.blocker() !== null },
+      { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: hint !== null || this.blocker() !== null },
       "OK",
     );
     ok.addEventListener("click", () => this.confirm());
@@ -103,8 +106,8 @@ export abstract class PanelTool implements PointerHandler {
     const rows: (HTMLElement | null)[] = [
       el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.heading()),
       ...this.rows(),
-      hint ? el("p", { class: "rounded-md bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, hint) : null,
-      problem ? el("p", { class: "rounded-md bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,
+      hint ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, hint) : null,
+      problem ? el("p", { class: " bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
@@ -121,9 +124,14 @@ export abstract class PanelTool implements PointerHandler {
    */
   private provisional(feature: Feature): CadDocument {
     const doc = this.ctx.doc();
-    if (this.editing) return updateFeature(doc, this.editing.id, () => feature);
+    if (this.editing) return this.decorate(updateFeature(doc, this.editing.id, () => feature));
     const put = (d: CadDocument, f: Feature): CadDocument => (d.features.some((x) => x.id === f.id) ? updateFeature(d, f.id, () => f) : { ...d, features: [...d.features, f] });
-    return [feature, ...this.companions()].reduce(put, doc);
+    return this.decorate([feature, ...this.companions()].reduce(put, doc));
+  }
+
+  /** What else the new feature sets in the document (the materials of its bodies…). */
+  protected decorate(doc: CadDocument): CadDocument {
+    return doc;
   }
 
   /**
@@ -213,7 +221,10 @@ export abstract class PanelTool implements PointerHandler {
   // ---- form helpers ---------------------------------------------------------------
 
   /** Numeric field in the display unit (or degrees) with a keypad button. */
-  protected numberRow(label: string, value: number, unit: DisplayUnit | "deg", onChange: (v: number) => void, signed = false): HTMLElement {
+  /** A number field: a length in the display unit, an angle ("deg"), or a plain number ("plain": a count, a %). */
+  protected numberRow(label: string, value: number, given: DisplayUnit | "deg" | "plain", onChange: (v: number) => void, signed = false): HTMLElement {
+    const plain = given === "plain";
+    const unit = plain ? "deg" : given;
     const isAngle = unit === "deg";
     const shown = isAngle ? value : toDisplay(value, unit);
     const input = el("input", { type: "text", inputmode: "decimal", class: `${COMPACT_INPUT} text-right font-mono`, value: trim(shown, 4), "aria-label": label });
@@ -233,7 +244,7 @@ export abstract class PanelTool implements PointerHandler {
     });
     const keypad = el(
       "button",
-      { type: "button", class: "size-8 shrink-0 rounded-md border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Calculatrice", "aria-label": `Saisir ${label}` },
+      { type: "button", class: "size-8 shrink-0 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Calculatrice", "aria-label": `Saisir ${label}` },
       "⌨",
     );
     keypad.addEventListener("click", () => {
@@ -255,7 +266,7 @@ export abstract class PanelTool implements PointerHandler {
     return el(
       "label",
       { class: "grid grid-cols-[5rem_1fr_auto] items-center gap-1.5" },
-      `${label}${isAngle ? " (°)" : ` (${UNIT_LABELS[unit]})`}`,
+      `${label}${plain ? "" : isAngle ? " (°)" : ` (${UNIT_LABELS[unit]})`}`,
       input,
       keypad,
     );

@@ -15,8 +15,8 @@ import type { Editor } from "./editor";
 import { AXIS_OPTIONS } from "./curic-common";
 import { floatingPanel } from "./workshop-ui";
 
-const SELECT = "h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
-const BUTTON = "h-8 shrink-0 rounded-md border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const BUTTON = "h-8 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
 export function bindMotion(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const button = root.querySelector<HTMLButtonElement>('[data-workshop="motion"]');
@@ -139,7 +139,7 @@ export function bindMotion(root: HTMLElement, viewport: Viewport, editor: Editor
     const result = el("p", { role: "status" });
     const showCollisions = (ids: string[]) => {
       const names = ids.map((id) => bodyLabel(editor.doc, id));
-      result.className = names.length ? "rounded-md bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200" : "rounded-md bg-emerald-50 px-2 py-1.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200";
+      result.className = names.length ? " bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200" : " bg-emerald-50 px-2 py-1.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200";
       result.textContent = names.length ? `Collision avec : ${names.join(", ")}` : "Aucune collision.";
     };
     showCollisions(hit);

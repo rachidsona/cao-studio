@@ -80,7 +80,7 @@ def example_document() -> dict[str, Any]:
     return {
         "format": "cao-studio",
         "schemaVersion": 2,
-        "units": "mm",
+        "units": "cm",
         "parameters": {},
         "features": [
             {

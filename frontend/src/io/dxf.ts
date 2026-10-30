@@ -11,7 +11,8 @@ type P2 = [number, number];
 
 export type FlatEdge =
   | { kind: "line"; a: P2; b: P2 }
-  | { kind: "circle"; center: P2; radius: number }
+  /** A hole (or a round part's outline); `depth` from the face when known (the thickness: through). */
+  | { kind: "circle"; center: P2; radius: number; depth?: number }
   /** Counter-clockwise from `start` to `end` (radians). */
   | { kind: "arc"; center: P2; radius: number; start: number; end: number };
 
@@ -32,13 +33,9 @@ const unit = (a: P3): P3 => {
   return [a[0] / l, a[1] / l, a[2] / l];
 };
 
-/**
- * The largest flat face of a body (the face of a board), from its mesh: the face groups whose triangles all
- * share one normal, the one with the largest area. -1 when the body has no flat face.
- */
-export function largestFlatFace(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): number {
-  let best = -1;
-  let bestArea = 0;
+/** The flat faces of a body, from its mesh (face groups whose triangles all share one normal), largest first. */
+export function flatFaces(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): { face: number; area: number; normal: P3 }[] {
+  const out: { face: number; area: number; normal: P3 }[] = [];
   const v = (i: number): P3 => [mesh.vertices[3 * i]!, mesh.vertices[3 * i + 1]!, mesh.vertices[3 * i + 2]!];
   mesh.faceGroups.forEach((group, face) => {
     let area = 0;
@@ -54,19 +51,33 @@ export function largestFlatFace(mesh: Pick<BodyMesh, "vertices" | "indices" | "f
       if (!normal) normal = u;
       else if (Math.abs(dot(normal, u)) < 0.9999) flat = false;
     }
-    if (flat && area > bestArea) {
-      best = face;
-      bestArea = area;
-    }
+    if (flat && normal && area > 0) out.push({ face, area, normal });
   });
-  return best;
+  return out.sort((a, b) => b.area - a.area);
+}
+
+/** The largest flat face of a body (the face of a board); -1 when the body has no flat face. */
+export function largestFlatFace(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): number {
+  return flatFaces(mesh)[0]?.face ?? -1;
+}
+
+/**
+ * The two faces of a board: the largest flat face and the one opposite it (as large within 10 %: holes and cups
+ * take a little of its area). Either may be the one to machine.
+ */
+export function boardFaces(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): number[] {
+  const faces = flatFaces(mesh);
+  const [first] = faces;
+  if (!first) return [];
+  const opposite = faces.find((f) => f !== first && dot(f.normal, first.normal) < -0.9999 && f.area >= 0.9 * first.area);
+  return opposite ? [first.face, opposite.face] : [first.face];
 }
 
 /**
  * The outline of a flat face in its own plane, seen from outside: the x axis along its longest straight edge
  * (a board lies along its length), the lowest corner at (0, 0).
  */
-export function flattenOutline(outline: FaceOutline, name: string, thickness: number): FlatPart {
+export function flattenOutline(outline: FaceOutline, name: string, thickness: number, depthOf?: (center: P3, radius: number) => number): FlatPart {
   const n = unit(outline.normal);
   const lines = outline.edges.filter((e): e is Extract<OutlineEdge, { kind: "line" }> => e.kind === "line");
   const longest = lines.reduce<Extract<OutlineEdge, { kind: "line" }> | null>((best, e) => (!best || Math.hypot(...sub(e.b, e.a)) > Math.hypot(...sub(best.b, best.a)) ? e : best), null);
@@ -79,7 +90,7 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
   const edges: FlatEdge[] = outline.edges.map((e): FlatEdge => {
     if (e.kind === "line") return { kind: "line", a: flat(e.a), b: flat(e.b) };
     const center = flat(e.center);
-    if (e.kind === "circle") return { kind: "circle", center, radius: e.radius };
+    if (e.kind === "circle") return { kind: "circle", center, radius: e.radius, ...(depthOf ? { depth: depthOf(e.center, e.radius) } : {}) };
     const [a, b, m] = [angle(center, flat(e.a)), angle(center, flat(e.b)), angle(center, flat(e.mid))];
     const ccw = (from: number, to: number) => (((to - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     // DXF arcs turn counter-clockwise: start at the end that reaches the middle point that way.
@@ -95,6 +106,23 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
   const shift = (p: P2): P2 => [p[0] - x0, p[1] - y0];
   const moved = edges.map((e): FlatEdge => (e.kind === "line" ? { ...e, a: shift(e.a), b: shift(e.b) } : { ...e, center: shift(e.center) }));
   return { name, thickness, edges: moved, width: Math.max(...xs) - x0, height: Math.max(...ys) - y0 };
+}
+
+/**
+ * How deep a round hole goes into a board, from the mesh: the farthest of the points on its wall (at its radius from
+ * its axis) below the face. The thickness when it goes through.
+ */
+export function holeDepth(vertices: ArrayLike<number>, center: P3, normal: P3, radius: number, thickness: number): number {
+  const n = unit(normal);
+  let deepest = 0;
+  for (let i = 0; i + 2 < vertices.length; i += 3) {
+    const d = sub([vertices[i]!, vertices[i + 1]!, vertices[i + 2]!], center);
+    const t = -dot(d, n);
+    if (t < -0.01 || t > thickness + 0.01) continue;
+    const across = Math.hypot(...sub(d, n.map((c) => c * dot(d, n)) as P3));
+    if (Math.abs(across - radius) < 0.05) deepest = Math.max(deepest, t);
+  }
+  return deepest >= thickness - 0.01 ? thickness : Number(deepest.toFixed(3));
 }
 
 const num = (v: number) => (Math.abs(v) < 1e-9 ? "0" : Number(v.toFixed(4)).toString());

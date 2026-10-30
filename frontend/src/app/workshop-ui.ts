@@ -5,19 +5,20 @@
  * through a hidden frame: embedded browsers often block new windows.
  */
 import { el } from "../ui/dom";
+import { placePanel } from "../ui/dock";
 
-/** A small panel docked at the top left of the view; `close` removes it. */
+/** A small tool window, in the right panel (over the view on narrow screens); `close` removes it. */
 export function floatingPanel(container: HTMLElement, title: string, onClose: () => void, wide = false): { body: HTMLElement; close: () => void } {
   const body = el("div", { class: "space-y-2" });
-  const shut = el("button", { type: "button", class: "size-7 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": `Fermer ${title}` }, "✕");
+  const shut = el("button", { type: "button", class: "size-7 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": `Fermer ${title}` }, "✕");
   const panel = el(
     "div",
-    { class: `absolute top-2 left-2 z-30 max-h-[85%] ${wide ? "w-80" : "w-64"} space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95`, role: "dialog", "aria-label": title },
+    { class: `absolute top-2 left-2 z-30 max-h-[85%] ${wide ? "w-80" : "w-64"} space-y-2 overflow-y-auto border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95`, role: "dialog", "aria-label": title },
     el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, title), shut),
     body,
   );
   panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-  container.append(panel);
+  placePanel(container, panel);
   const close = () => {
     panel.remove();
     onClose();
@@ -28,15 +29,15 @@ export function floatingPanel(container: HTMLElement, title: string, onClose: ()
 
 /** A large window over the page, with buttons at the bottom; Échap or ✕ closes it. */
 export function openModal(title: string, content: HTMLElement, buttons: { label: string; run: () => void }[] = []): () => void {
-  const shut = el("button", { type: "button", class: "size-8 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": "Fermer" }, "✕");
+  const shut = el("button", { type: "button", class: "size-8 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800", "aria-label": "Fermer" }, "✕");
   const actions = buttons.map(({ label, run }) => {
-    const b = el("button", { type: "button", class: "h-9 rounded-md border border-gray-300 px-3 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
+    const b = el("button", { type: "button", class: "h-9 border border-gray-300 px-3 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, label);
     b.addEventListener("click", run);
     return b;
   });
   const box = el(
     "div",
-    { class: "flex max-h-full w-full max-w-5xl flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 text-gray-900 shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100", role: "dialog", "aria-modal": "true", "aria-label": title },
+    { class: "flex max-h-full w-full max-w-5xl flex-col gap-3 border border-gray-200 bg-white p-4 text-gray-900 shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100", role: "dialog", "aria-modal": "true", "aria-label": title },
     el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-base font-semibold" }, title), shut),
     el("div", { class: "min-h-0 flex-1 overflow-auto" }, content),
     actions.length ? el("div", { class: "flex flex-wrap justify-end gap-2" }, ...actions) : null,

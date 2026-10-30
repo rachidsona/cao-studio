@@ -1,7 +1,8 @@
 /**
  * Drawing directly on a face of a body (as Curic DIO's Line and Rectangle): the maths of the "SnapDims" and of the
  * snapping. While the pointer moves over the face, the distances from the point to the nearest edges of the face,
- * along the face's two axes, are shown; the point snaps to the corners and the middles of the edges, else its
+ * along the face's two axes, are shown; the point snaps to the corners, the middles of the edges and the centre of
+ * the face (the last two are marked with a cross), else its
  * distances to those edges are rounded (so the numbers read round); typed distances place it exactly. Pure,
  * in the face's sketch coordinates.
  */
@@ -42,24 +43,47 @@ export function coordinateAt(dim: SnapDim, distance: number): number {
   return dim.to[dim.axis] - dim.side * distance;
 }
 
-export type SnapKind = "corner" | "middle" | "free";
+export type SnapKind = "corner" | "middle" | "center" | "free";
+
+/** The centre of the face: the centroid of its outline (its mean point for a degenerate one). */
+export function faceCenter(poly: Vec2[]): Vec2 {
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  poly.forEach((a, i) => {
+    const b = poly[(i + 1) % poly.length] as Vec2;
+    const w = a[0] * b[1] - b[0] * a[1];
+    area += w;
+    cx += (a[0] + b[0]) * w;
+    cy += (a[1] + b[1]) * w;
+  });
+  if (Math.abs(area) < 1e-9) return [poly.reduce((s, p) => s + p[0], 0) / poly.length, poly.reduce((s, p) => s + p[1], 0) / poly.length];
+  return [cx / (3 * area), cy / (3 * area)];
+}
+
+/** What is marked with a cross on a face, and snapped to: the middle of each edge, and the centre of the face. */
+export function markedPoints(poly: Vec2[]): { point: Vec2; kind: "middle" | "center" }[] {
+  return [
+    ...polygonEdges(poly).map(({ a, b }) => ({ point: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] as Vec2, kind: "middle" as const })),
+    { point: faceCenter(poly), kind: "center" as const },
+  ];
+}
 
 const roundTo = (value: number, step: number) => Number((Math.round(value / step) * step).toFixed(6));
 
 /**
- * Where a pointer position lands on the face: on a corner, or the middle of an edge, within `tolerance`; else the
- * position with its distances to the nearest edges rounded to `step`.
+ * Where a pointer position lands on the face: on a corner, the middle of an edge or the centre of the face, within
+ * `tolerance` (the marked ones, middle and centre, within `markedTolerance` when it is larger: a cross is easy to
+ * aim at); else the position with its distances to the nearest edges rounded to `step`.
  */
-export function snapOnFace(poly: Vec2[], p: Vec2, step: number, tolerance: number): { point: Vec2; kind: SnapKind } {
+export function snapOnFace(poly: Vec2[], p: Vec2, step: number, tolerance: number, markedTolerance = tolerance): { point: Vec2; kind: SnapKind } {
   let best: { point: Vec2; d: number; kind: SnapKind } | null = null;
-  const consider = (point: Vec2, kind: SnapKind) => {
+  const consider = (point: Vec2, kind: SnapKind, reach: number) => {
     const d = Math.hypot(point[0] - p[0], point[1] - p[1]);
-    if (d <= tolerance && (!best || d < best.d)) best = { point, d, kind };
+    if (d <= reach && (!best || d < best.d)) best = { point, d, kind };
   };
-  for (const { a, b } of polygonEdges(poly)) {
-    consider(a, "corner");
-    consider([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], "middle");
-  }
+  for (const { a } of polygonEdges(poly)) consider(a, "corner", tolerance);
+  for (const m of markedPoints(poly)) consider(m.point, m.kind, markedTolerance);
   if (best) return { point: (best as { point: Vec2 }).point, kind: (best as { kind: SnapKind }).kind };
   const point: Vec2 = [...p];
   for (const dim of snapDims(poly, p)) point[dim.axis] = coordinateAt(dim, roundTo(dim.distance, step));

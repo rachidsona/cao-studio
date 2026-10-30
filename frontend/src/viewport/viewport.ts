@@ -9,16 +9,20 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
-import { BodyLayer, type BodyAppearance } from "./body-layer";
+import { BodyLayer, drawnEdgeAt, type BodyAppearance, type DrawnEdges } from "./body-layer";
 import type { Point3 } from "./body-points";
 import * as rig from "./camera-rig";
 import { clickCandidates } from "./click-candidates";
-import { edgeAtVertex } from "./edge-geometry";
+import { edgeAtVertex, pixelDistanceToSegment } from "./edge-geometry";
 import { AdaptiveGrid } from "./grid";
 import { HoverHighlight } from "./hover-highlight";
+import { Preselection } from "./preselection";
+import { THIN_CROSSHAIR } from "../ui/cursor";
+import { setFatLineResolution } from "./fat-lines";
 import { ModelSelector } from "./model-selector";
 import { bindPointerInput, type PointerHandler } from "./pointer-input";
 import type { EdgePick, FacePick, ModelSelection, SelectionFilter, SketchPick, VertexPick } from "./selection-layer";
@@ -47,12 +51,17 @@ export class Viewport {
   private sketches: SketchLayer;
   private layer: BodyLayer;
   private hover: HoverHighlight;
+  /** What a click would select, lit under the pointer (preselection.ts). */
+  private preselection: Preselection;
+  /** Sélection++ shows its own levels under the pointer: the pre-selection then gives way. */
+  preselectSuspended = false;
   private selection: ModelSelector;
   private pointer: { windowDragging(): boolean };
   private raycaster = new THREE.Raycaster();
   private timer = new THREE.Timer();
   private resizeObserver: ResizeObserver;
   private frame = 0;
+  private drawOverride: (() => void) | null = null;
   private filter: SelectionFilter = "auto";
   private windowOverlay: WindowOverlay;
   /** A sketch was clicked in the view (its id), or empty space was (null). */
@@ -73,8 +82,9 @@ export class Viewport {
     this.refreshHints();
   }
 
+  /** The corners are no longer all dotted with the filter « Points »: the one under the pointer is marked (pre-selection). */
   private refreshHints(): void {
-    this.selection.setCornerHints(this.bodyVertices(), this.filter === "vertex");
+    this.selection.setCornerHints([], false);
   }
 
   private get bodies() {
@@ -86,8 +96,13 @@ export class Viewport {
   }
 
   constructor(private readonly container: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Transparent: the view's background is a CSS gradient behind the canvas (applyTheme).
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Soft shadows of a fixed sun: a board throws its shadow on its neighbours (the inside of a niche is dark, the
+    // underside of a shelf too), which gives the depth the plain shading alone does not.
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.autoClear = false;
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.classList.add("block", "h-full", "w-full", "touch-none");
@@ -110,12 +125,24 @@ export class Viewport {
     this.viewHelper.center = this.controls.target;
 
     this.sketches = new SketchLayer(this.scene);
-    this.layer = new BodyLayer(this.scene);
+    // A studio to reflect for the appearances (metals, lacquers, glass), computed once.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const studio = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.layer = new BodyLayer(this.scene, studio);
+    pmrem.dispose();
     this.hover = new HoverHighlight(this.scene);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.6));
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
-    key.position.set(1, -2, 3);
-    this.camera.add(key);
+    this.preselection = new Preselection(this.scene);
+    // Bodies are lit by the studio too, with a clear key light and a softer fill from the other side: the faces of a
+    // board, its edge and its neighbour differ in brightness, so the shapes (a niche, a shelf) read at once.
+    this.scene.environment = studio;
+    this.scene.environmentIntensity = 0.35;
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x70788a, 0.3));
+    const key = new THREE.DirectionalLight(0xffffff, 1.5);
+    key.position.set(1.2, -2, 3);
+    const fill = new THREE.DirectionalLight(0xdbe7ff, 0.3);
+    fill.position.set(-2, 1.5, 1);
+    this.camera.add(key, fill);
+    this.scene.add(this.sun, this.sun.target);
     this.scene.add(this.camera);
     this.scene.add(this.grid.object);
     const axes = new THREE.AxesHelper(25);
@@ -142,6 +169,26 @@ export class Viewport {
       select: (event) => this.selectAt(event),
       finishWindow: (start, end) => this.finishWindow(start, end),
     });
+    // The cursor of the view: a cross of very thin lines (a tool's own cursor still wins over it).
+    this.renderer.domElement.classList.add("cad-view");
+    this.renderer.domElement.style.setProperty("--cad-cursor", THIN_CROSSHAIR);
+    // The arrows at the ends of the selected edges keep their size on the screen.
+    this.onEachFrame(() => this.selection.fitArrows(this.camera, this.renderer.domElement.clientHeight));
+    // OrbitControls writes « cursor: auto » on the canvas when it starts: the stylesheet's cursor must show through.
+    this.renderer.domElement.style.cursor = "";
+    let frame = 0;
+    this.renderer.domElement.addEventListener("pointermove", (event) => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        this.preselect(event);
+      });
+    });
+    this.renderer.domElement.addEventListener("pointerleave", () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      this.preselection.show(null, this.bodies);
+    });
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
@@ -153,14 +200,14 @@ export class Viewport {
     const styles = getComputedStyle(this.container);
     const background = styles.getPropertyValue("--viewport-bg").trim() || "#e5e7eb";
     const gridColor = styles.getPropertyValue("--viewport-grid").trim() || "#9ca3af";
-    this.renderer.setClearColor(new THREE.Color(background));
+    const gradient = styles.getPropertyValue("--viewport-gradient").trim();
+    this.renderer.setClearColor(new THREE.Color(background), gradient ? 0 : 1);
+    this.container.style.background = gradient;
     this.grid.setColor(new THREE.Color(gridColor));
   }
 
   /** Spacing of the grid lines now shown (mm): what drawing snaps to. */
-  get gridStep(): number {
-    return this.grid.currentStep;
-  }
+  get gridStep(): number { return this.grid.currentStep; }
 
   // ---- sketches drawn in the view and bodies ------------------------------------------
 
@@ -176,6 +223,8 @@ export class Viewport {
   setBodies(meshes: BodyMesh[]): void {
     this.setHoverHighlight(null);
     this.layer.replace(meshes);
+    this.preselection.reset();
+    this.aimSun();
     this.selection.bodiesChanged();
     this.refreshHints();
   }
@@ -184,9 +233,7 @@ export class Viewport {
    * Shows a body moved (a door open, a drawer out) without changing the model: a rotation (row-major 3×3) and a
    * translation applied to its mesh and edges; null puts it back. Lost at the next regeneration.
    */
-  setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void {
-    this.layer.setPose(bodyId, pose);
-  }
+  setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); }
 
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
   setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
@@ -194,52 +241,64 @@ export class Viewport {
   }
 
   /** Corners of the displayed bodies (model coordinates, mm), merged by position. */
-  bodyVertices(): Point3[] {
-    return this.layer.vertices();
-  }
+  bodyVertices(): Point3[] { return this.layer.vertices(); }
 
   /** Thickness of a body under a point of its surface: how far a ray going in (along `inward`) travels inside it. */
-  depthAt(bodyId: string, point: Vec3, inward: Vec3): number | null {
-    return this.layer.depthAt(bodyId, point, inward);
-  }
+  depthAt(bodyId: string, point: Vec3, inward: Vec3): number | null { return this.layer.depthAt(bodyId, point, inward); }
 
-  bodyMesh(bodyId: string): BodyMesh | undefined {
-    return this.bodies.get(bodyId)?.data;
-  }
+  bodyMesh(bodyId: string): BodyMesh | undefined { return this.bodies.get(bodyId)?.data; }
 
-  get displayedBodies(): string[] {
-    return [...this.bodies.keys()];
-  }
+  get displayedBodies(): string[] { return [...this.bodies.keys()]; }
 
   // ---- camera -----------------------------------------------------------------------
 
-  setView(view: rig.StandardView, fixedDistance?: number): void {
-    rig.setView(this.rig, this.layer.bounds(), view, fixedDistance);
-  }
+  setView(view: rig.StandardView, fixedDistance?: number): void { rig.setView(this.rig, this.layer.bounds(), view, fixedDistance); }
 
-  fit(): void {
-    this.fitBox(this.layer.bounds());
+  fit(): void { this.fitBox(this.layer.bounds()); }
+
+  /** The sun that casts the shadows: fixed in the scene, its shadow map covering the bodies. */
+  private readonly sun = (() => {
+    const light = new THREE.DirectionalLight(0xffffff, 0.9);
+    light.castShadow = true;
+    light.shadow.mapSize.set(4096, 4096);
+    light.shadow.radius = 3;
+    return light;
+  })();
+
+  /** Half the diagonal of the bodies' box (mm), kept by `aimSun`. */
+  private sceneRadius = 100;
+
+  private aimSun(): void {
+    const box = this.layer.bounds();
+    const centre = box.getCenter(new THREE.Vector3());
+    const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
+    this.sceneRadius = radius;
+    this.sun.position.copy(centre).addScaledVector(new THREE.Vector3(-0.6, -1, 1.6).normalize(), radius * 3);
+    this.sun.target.position.copy(centre);
+    const camera = this.sun.shadow.camera;
+    camera.left = camera.bottom = -radius * 1.2;
+    camera.right = camera.top = radius * 1.2;
+    camera.near = radius * 0.5;
+    camera.far = radius * 6;
+    camera.updateProjectionMatrix();
+    // The offsets keep a board from shadowing itself (the units are millimetres).
+    this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.normalBias = Math.max(radius * 0.0015, 0.2);
+    this.sun.updateMatrixWorld();
+    this.sun.target.updateMatrixWorld();
   }
 
   /** Where the camera is (for saved views, scenes). */
-  cameraState(): rig.CameraState {
-    return rig.cameraState(this.rig);
-  }
+  cameraState(): rig.CameraState { return rig.cameraState(this.rig); }
 
   /** Puts the camera back where `cameraState` read it. */
-  setCameraState(state: rig.CameraState): void {
-    rig.setCameraState(this.rig, state);
-  }
+  setCameraState(state: rig.CameraState): void { rig.setCameraState(this.rig, state); }
 
   /** Frames `box` keeping the current viewing direction; `margin` leaves room for labels. */
-  fitBox(box: THREE.Box3, margin = 1): void {
-    rig.fitBox(this.rig, box, margin);
-  }
+  fitBox(box: THREE.Box3, margin = 1): void { rig.fitBox(this.rig, box, margin); }
 
   /** True when every corner of `box` is on screen (inside `inset` of the normalised view). */
-  boxVisible(box: THREE.Box3, inset = 0.9): boolean {
-    return rig.boxVisible(this.camera, box, inset);
-  }
+  boxVisible(box: THREE.Box3, inset = 0.9): boolean { return rig.boxVisible(this.camera, box, inset); }
 
   /**
    * Enters sketch mode: camera normal to the sketch plane, rotation disabled
@@ -269,9 +328,7 @@ export class Viewport {
     this.controls.update();
   }
 
-  get inSketch(): boolean {
-    return this.pointerHandler !== null;
-  }
+  get inSketch(): boolean { return this.pointerHandler !== null; }
 
   // ---- pointer and picking -------------------------------------------------------------
 
@@ -310,14 +367,45 @@ export class Viewport {
     return faceIndex < 0 ? null : { bodyId, faceIndex, point: hit.point.clone() };
   }
 
-  /** Edge of a displayed body under the pointer (within a few pixels). */
+  /**
+   * Edge of a displayed body under the pointer (within a few pixels): the line nearest the pointer on the screen —
+   * not the one nearest the eye, which is often a neighbour where lines are close (the faces of a double side) —
+   * among those not hidden behind a face.
+   */
   pickEdge(event: PointerEvent): EdgePick | null {
     const lines = [...this.bodies.values()].map((b) => b.edges);
-    const hit = this.intersect(event, lines, 6)[0];
+    const hits = this.intersect(event, lines, 16);
+    if (hits.length === 0) return null;
+    // The first face under the pointer: an edge farther than it (beyond a margin of a few pixels) is hidden.
+    const face = this.raycaster.intersectObjects(this.layer.meshes(), false)[0];
+    const pixelAt = (depth: number) => (2 * depth * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)) / (this.renderer.domElement.clientHeight || 1);
+    const hidden = face ? face.distance + 24 * pixelAt(face.distance) : Infinity;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const pointer: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+    const onScreen = (v: THREE.Vector3): [number, number] => {
+      const p = v.clone().project(this.camera);
+      return [((p.x + 1) / 2) * rect.width, ((1 - p.y) / 2) * rect.height];
+    };
+    let hit: THREE.Intersection | undefined;
+    let nearest = 7;
+    for (const candidate of hits) {
+      if (candidate.index === undefined || candidate.distance > hidden) continue;
+      const position = (candidate.object as THREE.LineSegments).geometry.getAttribute("position");
+      const a = new THREE.Vector3().fromBufferAttribute(position, candidate.index).applyMatrix4(candidate.object.matrixWorld);
+      const b = new THREE.Vector3().fromBufferAttribute(position, candidate.index + 1).applyMatrix4(candidate.object.matrixWorld);
+      const px = pixelDistanceToSegment(pointer, onScreen(a), onScreen(b));
+      // Nearer on the screen wins; at the same place (within half a pixel), the one in front.
+      if (px < nearest - 0.5 || (hit && Math.abs(px - nearest) <= 0.5 && candidate.distance < hit.distance)) {
+        hit = candidate;
+        nearest = Math.min(nearest, px);
+      }
+    }
     if (!hit || hit.index === undefined) return null;
     const bodyId = hit.object.userData.bodyId as string;
+    // The lines drawn leave the seams out: their own table says which edge a vertex is.
+    const groups = hit.object.userData.drawnGroups as DrawnEdges["groups"] | undefined;
     const data = this.bodies.get(bodyId)?.data;
-    const edgeIndex = data ? edgeAtVertex(data, hit.index) : -1;
+    const edgeIndex = groups ? drawnEdgeAt(groups, hit.index) : data ? edgeAtVertex(data, hit.index) : -1;
     return edgeIndex < 0 ? null : { bodyId, edgeIndex };
   }
 
@@ -381,6 +469,28 @@ export class Viewport {
   // ---- selection --------------------------------------------------------------------
 
   /** Click in model mode: what lies under the pointer goes to the selection (see click-candidates, model-selector). */
+  /**
+   * Lights what a click here would select (the same choice as the click, with the filter of the selection); nothing
+   * while a tool, a drag, a selection window or Sélection++ has the pointer, nor for a finger (no hover).
+   */
+  private preselect(event: PointerEvent): void {
+    if (this.pointerHandler || this.pointer.windowDragging() || event.buttons !== 0 || event.pointerType === "touch" || this.preselectSuspended) {
+      this.preselection.show(null, this.bodies);
+      return;
+    }
+    const rays = this.rays(event);
+    const list = clickCandidates(this.filter, {
+      vertex: () => this.pickVertex(event),
+      edge: () => this.pickEdge(event),
+      face: () => this.pickFace(event),
+      item: (kind, nearerThan = null) => this.sketches.pickItem(rays, kind, nearerThan),
+      sketch: (what, nearerThan = null) => this.sketches.pick(rays, what, nearerThan),
+      screenDistance: (p) => this.screenDistance(event, p),
+      eyeDistance: (point) => point.distanceTo(this.camera.position),
+    });
+    this.preselection.show(list[0] ?? null, this.bodies, this.filter === "body");
+  }
+
   private selectAt(event: PointerEvent): void {
     const rays = this.rays(event);
     const list = clickCandidates(this.filter, {
@@ -414,9 +524,7 @@ export class Viewport {
   }
 
   /** Adds or removes a whole body or sketch (Ctrl/Maj + clic in the browser). */
-  toggleInSelection(kind: "body" | "sketch", id: string): void {
-    this.selection.toggle(kind, id);
-  }
+  toggleInSelection(kind: "body" | "sketch", id: string): void { this.selection.toggle(kind, id); }
 
   /** Sélection++: selects what a level holds (see ModelSelector.level). */
   selectLevel(target: { bodies: string[] } | { face: FacePick } | { sketches: string[] } | { item: SketchPick }, adding: boolean): void {
@@ -424,26 +532,21 @@ export class Viewport {
   }
 
   /** Selects one whole body (from the browser), replacing the current selection. */
-  selectBody(bodyId: string): void {
-    this.selection.selectBody(bodyId);
-  }
+  selectBody(bodyId: string): void { this.selection.selectBody(bodyId); }
 
-  clearSelection(): void {
-    this.selection.clear();
-  }
+  clearSelection(): void { this.selection.clear(); }
 
   /** Dimension text displayed next to a selected edge. */
-  setEdgeLabel(pick: EdgePick, text: string): void {
-    this.selection.setEdgeLabel(pick, text);
-  }
+  setEdgeLabel(pick: EdgePick, text: string): void { this.selection.setEdgeLabel(pick, text); }
+
+  /** The distance shown between two selected parallel edges (null: none). */
+  setEdgeGap(gap: { from: THREE.Vector3; to: THREE.Vector3; text: string } | null): void { this.selection.setEdgeGap(gap); }
 
   /**
    * Shows in green what a click would select: whole bodies (edges over everything, faces tinted), or one face of
    * a body; null removes it.
    */
-  setHoverHighlight(target: { bodies: string[] } | { face: FacePick } | null): void {
-    this.hover.set(target, this.bodies);
-  }
+  setHoverHighlight(target: { bodies: string[] } | { face: FacePick } | null): void { this.hover.set(target, this.bodies); }
 
   /**
    * Section of the view (as Curic Section): what lies beyond the plane perpendicular to `axis` at `position` is
@@ -466,8 +569,23 @@ export class Viewport {
     const { clientWidth, clientHeight } = this.container;
     if (clientWidth === 0 || clientHeight === 0) return;
     this.renderer.setSize(clientWidth, clientHeight, false);
+    setFatLineResolution(clientWidth, clientHeight);
     this.labels.setSize(clientWidth, clientHeight);
     this.camera.aspect = clientWidth / clientHeight;
+    this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * The depth range of the camera follows its distance: a fixed one (0.1 mm to 100 m) leaves about 2 mm of depth
+   * precision at 2 m, so the faces of two boards that meet, and the edges over them, fight and show as dotted lines.
+   * The near plane at 1/200 of the distance keeps it under a hundredth of a millimetre and still lets one look close.
+   */
+  private fitClipping(distance: number): void {
+    const near = Math.max(distance / 200, 0.05);
+    const far = Math.max(distance * 60, this.sceneRadius * 40, 1000);
+    if (Math.abs(this.camera.near - near) < near * 0.05 && Math.abs(this.camera.far - far) < far * 0.05) return;
+    this.camera.near = near;
+    this.camera.far = far;
     this.camera.updateProjectionMatrix();
   }
 
@@ -477,13 +595,27 @@ export class Viewport {
     const delta = this.timer.getDelta();
     if (this.viewHelper.animating) this.viewHelper.update(delta);
     this.controls.update();
-    this.grid.update(this.camera.position.distanceTo(this.controls.target));
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    this.fitClipping(distance);
+    this.grid.update(distance);
     for (const listener of this.frameListeners) listener();
     this.renderer.clear();
-    this.renderer.render(this.scene, this.camera);
-    this.labels.render(this.scene, this.camera);
+    if (this.drawOverride) this.drawOverride();
+    else {
+      this.renderer.render(this.scene, this.camera);
+      this.labels.render(this.scene, this.camera);
+    }
     if (!this.pointerHandler) this.viewHelper.render(this.renderer);
   };
+
+  /** Render mode (render/render-mode.ts) draws each frame instead of the editing scene; its labels are hidden meanwhile. */
+  setDrawOverride(draw: (() => void) | null): void {
+    this.drawOverride = draw;
+    this.labels.domElement.style.display = draw ? "none" : "";
+  }
+
+  /** The meshes of the displayed bodies (with their pose), for the render. */
+  bodyMeshes(): THREE.Mesh[] { return this.layer.meshes(); }
 
   dispose(): void {
     cancelAnimationFrame(this.frame);

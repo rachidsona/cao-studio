@@ -5,50 +5,58 @@
  * the selected bodies, the others open a large window with CSV / print.
  */
 import { cutList, cutListCsv, edgeText, grainText, type CutRow, type PartInput } from "../document/cut-list";
-import { EDGE_BANDS, MATERIALS, bodyInfo, materialById, setBodyInfo } from "../document/materials";
+import { bodyAppearance } from "../appearance/assign";
+import { EDGE_BANDS, MATERIALS, bodyInfo, setBodyInfo } from "../document/materials";
 import { layoutSheets, type Sheet } from "../document/nesting";
-import type { BodyInfo } from "../document/types";
+import { isHardwareBody } from "../document/hardware";
+import type { BodyInfo, CadDocument, DisplayUnit } from "../document/types";
+import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
 import type { BodyAppearance, Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { downloadText, escapeHtml, floatingPanel, openModal, printHtml } from "./workshop-ui";
 
 type Edges = NonNullable<BodyInfo["edges"]>;
-const SELECT = "h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
+const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 const EDGE_NAMES: [keyof Edges, string][] = [["length1", "L1"], ["length2", "L2"], ["width1", "l1"], ["width2", "l2"]];
 
 /** Every displayed body as a part of the cut list. */
-export function partsOf(viewport: Viewport): PartInput[] {
+/** The displayed bodies that are parts of the furniture (not walls of the room). */
+export function partsOf(viewport: Viewport, doc: CadDocument): PartInput[] {
   const parts: PartInput[] = [];
   for (const id of viewport.displayedBodies) {
+    if (bodyInfo(doc, id).room || isHardwareBody(doc, id)) continue;
     const metrics = viewport.bodyMesh(id)?.metrics;
     if (metrics) parts.push({ id, bbox: metrics.bbox, volume: metrics.volume });
   }
   return parts;
 }
 
-const tableHtml = (rows: CutRow[], unit: string) =>
+/** A length in the user's unit, without the unit (the table's header carries it). */
+const num = (mm: number, unit: DisplayUnit) => trim(toDisplay(mm, unit), unit === "mm" ? 1 : 2);
+
+const tableHtml = (rows: CutRow[], unit: DisplayUnit) =>
   `<table><thead><tr>${["Pièce", "Qté", "L", "l", "Ép.", "Matière", "Fil", "Chants", "Coupe L", "Coupe l"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
     .map(
       (r) =>
-        `<tr><td>${escapeHtml(r.names.join(", "))}${r.approximate ? " (≈)" : ""}</td><td>${r.quantity}</td><td>${r.length}</td><td>${r.width}</td><td>${r.thickness}</td><td>${escapeHtml(r.material)}</td><td>${grainText(r.grain)}</td><td>${edgeText(r.edges)}${r.band ? ` (${r.band})` : ""}</td><td>${r.cutLength}</td><td>${r.cutWidth}</td></tr>`,
+        `<tr><td>${escapeHtml(r.names.join(", "))}${r.approximate ? " (≈)" : ""}</td><td>${r.quantity}</td><td>${num(r.length, unit)}</td><td>${num(r.width, unit)}</td><td>${num(r.thickness, unit)}</td><td>${escapeHtml(r.material)}</td><td>${grainText(r.grain)}</td><td>${edgeText(r.edges)}${r.band ? ` (${r.band} mm)` : ""}</td><td>${num(r.cutLength, unit)}</td><td>${num(r.cutWidth, unit)}</td></tr>`,
     )
-    .join("")}</tbody></table><p>Dimensions en mm${unit ? ` (affichage : ${unit})` : ""}. L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits.</p>`;
+    .join("")}</tbody></table><p>Dimensions en ${UNIT_LABELS[unit]}. L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits.</p>`;
 
-function totalsHtml(totals: ReturnType<typeof cutList>["totals"]): string {
-  return `<ul>${totals.map((t) => `<li>${escapeHtml(t.material)} ${t.thickness} mm : ${t.parts} pièces, ${t.area.toFixed(2)} m², chant ${t.bandLength.toFixed(1)} m</li>`).join("")}</ul>`;
+function totalsHtml(totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): string {
+  return `<ul>${totals.map((t) => `<li>${escapeHtml(t.material)} ${formatLength(t.thickness, unit)} : ${t.parts} pièces, ${t.area.toFixed(2)} m², chant ${t.bandLength.toFixed(1)} m</li>`).join("")}</ul>`;
 }
 
-function sheetSvg(sheet: Sheet, index: number): string {
+function sheetSvg(sheet: Sheet, index: number, unit: DisplayUnit): string {
   const [W, H] = sheet.size;
   const rects = sheet.placements
     .map((p) => {
-      const label = `${Math.round(p.w)}×${Math.round(p.h)}`;
+      const label = `${num(p.w, unit)}×${num(p.h, unit)}`;
       const size = Math.max(14, Math.min(p.w, p.h) / 6);
       return `<g><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111">${label}</text></g>`;
     })
     .join("");
-  return `<div class="sheet"><h3>Panneau ${index + 1} — ${escapeHtml(sheet.material)} ${sheet.thickness} mm (${W}×${H}), chutes ${Math.round((1 - sheet.usage) * 100)} %</h3><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${rects}</svg></div>`;
+  return `<div class="sheet"><h3>Panneau ${index + 1} — ${escapeHtml(sheet.material)} ${formatLength(sheet.thickness, unit)} (${num(W, unit)}×${num(H, unit)} ${UNIT_LABELS[unit]}), chutes ${Math.round((1 - sheet.usage) * 100)} %</h3><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${rects}</svg></div>`;
 }
 
 const RENDER_KEY = "cao.render-materials";
@@ -62,17 +70,8 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
     // No storage (private window): the view shows the materials.
   }
 
-  /** The look of a body: its material's colour, with a wood grain along the length (or the width) of the board. */
-  const appearance = (id: string): BodyAppearance | null => {
-    const info = bodyInfo(editor.doc, id);
-    const material = materialById(info.material);
-    if (!material) return null;
-    const box = viewport.bodyMesh(id)?.metrics.bbox;
-    const grain = info.grain ?? "length";
-    if (material.look !== "wood" || grain === "none" || !box) return { color: material.color };
-    const order = [0, 1, 2].sort((a, b) => (box[1][b] as number) - (box[0][b] as number) - ((box[1][a] as number) - (box[0][a] as number)));
-    return { color: material.color, wood: true, grainAxis: order[grain === "length" ? 0 : 1] as 0 | 1 | 2 };
-  };
+  /** The look of a body: its appearance (library) or its material's, the grain along the board's length or width. */
+  const appearance = (id: string): BodyAppearance | null => bodyAppearance(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
   const showMaterials = () => {
     viewport.setAppearance(rendering ? appearance : null);
     root.querySelector('[data-workshop="render"]')?.setAttribute("aria-pressed", String(rendering));
@@ -139,26 +138,26 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
   };
 
   const showCutList = () => {
-    const { rows, totals } = cutList(editor.doc, partsOf(viewport));
+    const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
     if (!rows.length) return editor.notify("Aucun corps à lister.", "info");
     const holder = el("div", { class: "text-xs" });
-    holder.innerHTML = tableHtml(rows, editor.unit) + totalsHtml(totals);
+    holder.innerHTML = tableHtml(rows, editor.unit) + totalsHtml(totals, editor.unit);
     const close = openModal("Liste de débit", holder, [
-      { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(rows)}`, "text/csv") },
-      { label: "Imprimer / PDF", run: () => printHtml("Liste de débit", `<h1>Liste de débit</h1>${tableHtml(rows, editor.unit)}${totalsHtml(totals)}`) },
+      { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(rows, editor.unit)}`, "text/csv") },
+      { label: "Imprimer / PDF", run: () => printHtml("Liste de débit", `<h1>Liste de débit</h1>${tableHtml(rows, editor.unit)}${totalsHtml(totals, editor.unit)}`) },
       { label: "Fermer", run: () => close() },
     ]);
   };
 
   const showNesting = () => {
-    const { rows } = cutList(editor.doc, partsOf(viewport));
+    const { rows } = cutList(editor.doc, partsOf(viewport, editor.doc));
     if (!rows.length) return editor.notify("Aucun corps à découper.", "info");
     const { sheets, tooBig } = layoutSheets(rows);
-    const html = sheets.map(sheetSvg).join("") + (tooBig.length ? `<p>Trop grandes pour leur panneau : ${escapeHtml(tooBig.join(", "))}.</p>` : "");
+    const html = sheets.map((sheet, i) => sheetSvg(sheet, i, editor.unit)).join("") + (tooBig.length ? `<p>Trop grandes pour leur panneau : ${escapeHtml(tooBig.join(", "))}.</p>` : "");
     const holder = el("div", { class: "text-xs" });
     holder.innerHTML = html || "<p>Rien à placer.</p>";
     const close = openModal(`Optimisation de découpe — ${sheets.length} panneau${sheets.length > 1 ? "x" : ""}`, holder, [
-      { label: "Exporter en SVG", run: () => downloadText("decoupe.svg", sheets.length ? sheetSvg(sheets[0]!, 0).replace(/^.*?(<svg)/s, "$1").replace(/<\/div>$/, "") : "", "image/svg+xml") },
+      { label: "Exporter en SVG", run: () => downloadText("decoupe.svg", sheets.length ? sheetSvg(sheets[0]!, 0, editor.unit).replace(/^.*?(<svg)/s, "$1").replace(/<\/div>$/, "") : "", "image/svg+xml") },
       { label: "Imprimer / PDF", run: () => printHtml("Optimisation de découpe", `<h1>Optimisation de découpe</h1>${html}`) },
       { label: "Fermer", run: () => close() },
     ]);

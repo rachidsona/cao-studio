@@ -13,6 +13,8 @@ export type WorkerRequest =
   | { type: "edgeInfo"; bodyId: string; edgeIndex: number }
   /** Boundary of a face (outer and inner loops), to project it into a sketch. */
   | { type: "faceOutline"; bodyId: string; faceIndex: number }
+  /** One edge of a body, exactly (line, circle, arc), to project it into a sketch. */
+  | { type: "edgeOutline"; bodyId: string; edgeIndex: number }
   /** Persistent references for edges / a face picked on a body (topological naming). */
   | { type: "describe"; bodyId: string; edges: number[]; face?: number }
   /** Mesh of any body of the last recompute, including intermediate (consumed) ones. */
@@ -32,6 +34,8 @@ export interface BodyMesh {
   edges: Float32Array;
   /** Vertex ranges (in vertex units of `edges`) per B-rep edge, in edge order. */
   edgeGroups: { start: number; count: number }[];
+  /** Edges between two coplanar faces (a board's face made of pieces): kept for picking, not drawn. */
+  seams?: number[];
   metrics: BodyMetrics;
 }
 
@@ -71,6 +75,12 @@ export interface FaceOutline {
   /** Outward unit normal. */
   normal: P3;
   edges: OutlineEdge[];
+}
+
+export interface EdgeOutline {
+  edges: OutlineEdge[];
+  /** Points along the edge, from its start to its end. */
+  samples: P3[];
 }
 
 export interface DescribeResponse {

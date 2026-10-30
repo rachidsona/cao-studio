@@ -7,44 +7,77 @@
  * The pointer lives in sketch-pointer, the dimension values in sketch-values, the panel tools' hosts in
  * tool-hosts and the remembered choices in sketch-prefs; their shared state is public here.
  */
+import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { classify, COMMANDS, describeConstraints } from "../constraints/catalog";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
 import { ORIGIN, type OffsetRecord, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, SketchFeature } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
+import type { EdgeOutline, FaceOutline } from "../geometry/protocol";
 import { closeCalculator } from "../ui/calculator";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { dimensionAnnotations, measureAnnotations, pairAnnotation, previewAnnotations, type Annotation } from "./annotations";
 import { SketchArrayTool } from "./array-tool";
+import { ShelvesTool } from "./shelves-tool";
+import { SketchPartitionTool } from "./partition-tool";
 import { pruneBodyPoints, withBodyPoints } from "./body-points";
 import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
-import { rayToSketch, sketchFrame, toWorld, type SketchFrame } from "./frame";
+import { frameOf, rayToSketch, toWorld, type SketchFrame } from "./frame";
 import { extractLoops, regions as regionsOf, sketchFaces, type Region } from "./loops";
 import { SketchMoveTool } from "./move-tool";
 import { OffsetTool } from "./offset-tool";
+import { EdgeOffsetTool } from "./edge-offset-tool";
+import { clickedPiece, deleteWithPieces } from "./segment-delete";
 import { SketchOverlay } from "./overlay";
 import { sketchPrefs } from "./sketch-prefs";
 import { SketchPointer } from "./sketch-pointer";
 import { SketchValues } from "./sketch-values";
-import { arrayHost, moveHost, offsetHost } from "./tool-hosts";
+import { closeTextDialog } from "./text-dialog";
+import { onTextFont, textOutlines } from "./text-outline";
+import { arrayHost, edgeOffsetHost, moveHost, offsetHost, partitionHost, shelvesHost } from "./tool-hosts";
 import { DrawingTool, type Preview, type ToolName } from "./tools";
 
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
 
-export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "array";
+export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "text" | "array" | "offsetEdge" | "shelves" | "cloisons" | "partition";
 
 /**
  * What a click does when no drawing or panel tool is open: select ("select"), measure ("dimension" — the
  * selection shows its measurements, clickable to become dimensions), "extend" (Prolonger), "trim" (Ajuster:
  * the part between two crossings goes) or "break" (Couper: the curve is cut at the crossings, nothing goes).
  */
-export type ClickKind = "select" | "dimension" | "extend" | "trim" | "break";
+export type ClickKind = "select" | "dimension" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "text";
+
+/** One element to extrude: the area it is (a point inside it), and what it is called. */
+export interface ExtrudedElement {
+  probe: [number, number];
+  /** « Côté », « Dessous », « Étagère »… */
+  name: string;
+  /** Numbered after the ones of the same name already in the document (« Côté 3 »). */
+  numbered?: boolean;
+}
+
+/**
+ * Extrusions made in the same step as the sketch: each element is extruded on its own — a body of its own, named
+ * after what it is — this far (mm). A group belongs to a step of the history (`record`), which remembers its bodies;
+ * the bodies it made before (`remove`) are deleted first, when the step is made again.
+ */
+export interface ExtrusionGroup {
+  record?: string;
+  distance: number;
+  elements: ExtrudedElement[];
+  remove?: string[];
+}
+
+export interface SketchExtrusion {
+  groups: ExtrusionGroup[];
+}
 
 export interface SketchModeHost {
-  /** Stores a solved geometry in the document (one undo step). */
-  commit(featureId: string, geometry: SketchGeometry): void;
+  /** Stores a solved geometry in the document (one undo step), with an extrusion of some of its areas when asked. */
+  commit(featureId: string, geometry: SketchGeometry, extrusion?: SketchExtrusion): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** Called whenever selection, tool or solve state changes. */
   changed(): void;
@@ -56,6 +89,10 @@ export interface SketchModeHost {
   offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
   /** An id for a new offset record, unique in the document. */
   offsetId(): string;
+  /** One body edge, exactly, to project it into the sketch. */
+  edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline>;
+  /** The edges of a body face (« Décaler l'arête » on a clicked face). */
+  faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline>;
 }
 
 const HINTS: Record<Exclude<ClickKind, "select">, string> = {
@@ -63,6 +100,10 @@ const HINTS: Record<Exclude<ClickKind, "select">, string> = {
   extend: "Prolonger : survolez le bout d'une ligne ou d'un arc, cliquez pour le prolonger jusqu'à la courbe suivante — Échap revient à la sélection",
   trim: "Ajuster : survolez la partie d'une ligne, d'un arc ou d'un cercle entre deux croisements (elle s'affiche), cliquez pour la supprimer — Échap revient à la sélection",
   break: "Couper : survolez une ligne, un arc ou un cercle (les croix rouges montrent où il sera coupé), cliquez pour le couper en morceaux — Échap revient à la sélection",
+  fillet: "Congé : cliquez un coin où deux lignes se rejoignent, puis tapez le rayon — Échap revient à la sélection",
+  chamfer: "Chanfrein : cliquez un coin où deux lignes se rejoignent, puis tapez la distance — Échap revient à la sélection",
+  text: "Texte : cliquez où commence la ligne de base du texte (ou un texte pour le modifier) — pour graver, extrudez en « Couper » — Échap revient à la sélection",
+  project: "Projeter : cliquez des arêtes des corps ; elles s'ajoutent en violet comme repères fixes où s'accrocher — Échap revient à la sélection",
 };
 
 export class SketchMode implements PointerHandler {
@@ -70,6 +111,8 @@ export class SketchMode implements PointerHandler {
   readonly featureId: string;
   geometry: SketchGeometry;
   selection = new Set<string>();
+  /** Where each line was clicked when selected: Suppr removes only that piece of a crossed line. */
+  readonly clickedAt = new Map<string, Vec2>();
   tool: DrawingTool | null = null;
   construction = false;
   lastSolve: SolveResult;
@@ -83,8 +126,14 @@ export class SketchMode implements PointerHandler {
   pendingCommand: string | null = null;
   /** Panel tools, while they are open. */
   offset: OffsetTool | null = null;
+  /** « Décaler l'arête »: no dialog, an arrow on the copy; it stays until Échap. */
+  edgeOffset: EdgeOffsetTool | null = null;
   moveTool: SketchMoveTool | null = null;
   arrayTool: SketchArrayTool | null = null;
+  /** « Étagères »: divides the niche clicked; stays until Échap. */
+  shelves: ShelvesTool | null = null;
+  /** « Répartition »: draws a rectangle divided into cases; ends at OK. */
+  partition: SketchPartitionTool | null = null;
   readonly values: SketchValues;
   private readonly pointer: SketchPointer;
   private overlay: SketchOverlay;
@@ -96,7 +145,7 @@ export class SketchMode implements PointerHandler {
     readonly host: SketchModeHost,
   ) {
     this.featureId = feature.id;
-    this.frame = sketchFrame(feature.plane, feature.offset, feature.shift);
+    this.frame = frameOf(feature);
     this.geometry = this.withBodies(feature);
     this.lastSolve = solveSketch(this.geometry);
     this.values = new SketchValues(this);
@@ -105,6 +154,7 @@ export class SketchMode implements PointerHandler {
     this.overlay.onAnnotationPointerDown = (annotation, event) => this.values.pointerDown(annotation, event);
     this.overlay.onGlyphClick = (id) => this.toggleSelected(id);
     viewport.enterSketch(this.frame, this);
+    onTextFont(() => this.render());
     this.render();
     // An existing sketch may be larger than the part: show all of it.
     if (feature.points.length || feature.curves.length) this.ensureVisible(true);
@@ -112,7 +162,7 @@ export class SketchMode implements PointerHandler {
 
   /** The stored geometry plus the corners of the displayed bodies, offered as fixed points to snap on. */
   private withBodies(feature: SketchFeature): SketchGeometry {
-    const stored = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}) };
+    const stored = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}), ...(feature.texts ? { texts: feature.texts } : {}) };
     return withBodyPoints(stored, this.frame, this.viewport.bodyVertices());
   }
 
@@ -151,24 +201,31 @@ export class SketchMode implements PointerHandler {
     this.selection = new Set([...this.selection].filter((id) => known.has(id)));
     this.lastSolve = solveSketch(this.geometry);
     this.offset?.sync();
+    this.edgeOffset?.sync();
     this.moveTool?.sync();
     this.arrayTool?.sync();
+    this.shelves?.sync();
+    this.partition?.sync();
     this.render();
     this.ensureVisible();
   }
 
   exit(): void {
     closeCalculator();
+    closeTextDialog();
     this.offset?.dispose();
+    this.edgeOffset?.dispose();
     this.moveTool?.dispose();
     this.arrayTool?.dispose();
+    this.shelves?.dispose();
+    this.partition?.dispose();
     this.overlay.dispose();
     this.viewport.exitSketch();
   }
 
   /** A tool with its own dialog (Décalage, Déplacer) is open: Enter confirms it, Échap cancels it. */
   get panelToolActive(): boolean {
-    return this.offset !== null || this.moveTool !== null || this.arrayTool !== null;
+    return this.offset !== null || this.edgeOffset !== null || this.moveTool !== null || this.arrayTool !== null || this.shelves !== null || this.partition !== null;
   }
 
   /** A tool other than the selection is active (Échap returns to the selection before leaving the sketch). */
@@ -184,18 +241,25 @@ export class SketchMode implements PointerHandler {
   get toolName(): SketchToolName {
     if (this.kind !== "select" && this.kind !== "dimension") return this.kind;
     if (this.offset) return "offset";
+    if (this.edgeOffset) return "offsetEdge";
     if (this.moveTool) return "move";
     if (this.arrayTool) return "array";
+    if (this.shelves) return this.shelves.kind;
+    if (this.partition) return "partition";
     if (this.kind === "dimension") return "dimension";
     return this.tool?.name ?? "select";
   }
 
   get hint(): string {
+    if (this.edgeOffset) return "Décaler l'arête : cliquez un trait, une arête ou une face d'un corps, puis tirez la flèche (ou tapez la distance) ; cliquez-en un autre pour continuer — Échap termine";
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
     if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
     if (this.kind !== "select" && this.kind !== "dimension") return HINTS[this.kind];
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
+    if (this.partition) return "Répartition : réglez la hauteur, la longueur et les cases ; cliquez dans la vue pour poser le coin bas-gauche, puis OK (Entrée) — Échap annule";
+    if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche, réglez les cloisons, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Échap termine";
+    if (this.shelves) return "Étagères : cliquez une niche, réglez les étagères, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Échap termine";
     if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions, puis OK (Entrée) — Échap annule";
     if (this.kind === "dimension") return HINTS.dimension;
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
@@ -217,6 +281,17 @@ export class SketchMode implements PointerHandler {
     return sketchPrefs.glyphs;
   }
 
+  /** The free points are drawn only on request; the choice is remembered. */
+  get showPoints(): boolean {
+    return sketchPrefs.points;
+  }
+
+  togglePoints(): void {
+    sketchPrefs.points = !sketchPrefs.points;
+    this.render();
+    this.host.changed();
+  }
+
   toggleGlyphs(): void {
     sketchPrefs.glyphs = !sketchPrefs.glyphs;
     this.render();
@@ -227,6 +302,11 @@ export class SketchMode implements PointerHandler {
   editOffset(id: string): void {
     const record = this.geometry.offsets?.find((o) => o.id === id);
     if (!record) return;
+    // A « Répartition » or a division by shelves: its own tool, opened on its values.
+    if (record.step) {
+      this.selection.clear();
+      return this.setTool(record.step.kind, record);
+    }
     const known = new Set(this.geometry.curves.map((c) => c.id));
     this.selection = new Set(record.source.filter((s) => known.has(s)));
     this.setTool("offset", record);
@@ -244,15 +324,25 @@ export class SketchMode implements PointerHandler {
     closeCalculator();
     this.offset?.dispose();
     this.offset = null;
+    this.edgeOffset?.dispose();
+    this.edgeOffset = null;
     this.moveTool?.dispose();
     this.moveTool = null;
     this.arrayTool?.dispose();
     this.arrayTool = null;
+    this.shelves?.dispose();
+    this.shelves = null;
+    this.partition?.dispose();
+    this.partition = null;
     this.pointer.reset();
     this.viewport.renderer.domElement.style.cursor = "";
-    this.kind = name === "dimension" || name === "extend" || name === "trim" || name === "break" ? name : "select";
+    this.kind = name === "dimension" || name === "extend" || name === "trim" || name === "break" || name === "fillet" || name === "chamfer" || name === "project" || name === "text" ? name : "select";
     this.pendingCommand = null;
     if (this.kind === "dimension") this.selection.clear();
+    if (name === "offsetEdge") {
+      this.selection.clear();
+      this.edgeOffset = new EdgeOffsetTool(edgeOffsetHost(this));
+    }
     if (name === "offset") {
       // Curves already selected are offset right away; anything else is dropped from the selection.
       this.selection = new Set([...this.selection].filter((id) => findCurve(this.geometry, id)));
@@ -267,10 +357,20 @@ export class SketchMode implements PointerHandler {
       this.arrayTool = new SketchArrayTool(arrayHost(this));
       this.arrayTool.start();
     }
-    const drawing = name !== "select" && name !== "offset" && name !== "move" && name !== "array" && this.kind === "select";
+    if (name === "shelves" || name === "cloisons") {
+      this.selection.clear();
+      this.shelves = new ShelvesTool(shelvesHost(this), editing?.step?.kind === "shelves" ? editing : null, name === "cloisons");
+      this.shelves.start();
+    }
+    if (name === "partition") {
+      this.selection.clear();
+      this.partition = new SketchPartitionTool(partitionHost(this), editing?.step?.kind === "partition" ? editing : null);
+      this.partition.start();
+    }
+    const drawing = name !== "select" && name !== "offset" && name !== "offsetEdge" && name !== "move" && name !== "array" && name !== "shelves" && name !== "cloisons" && name !== "partition" && this.kind === "select";
     this.tool = drawing ? new DrawingTool(name as Exclude<ToolName, "select">, this.construction) : null;
     // A drawing tool (line, rectangle, circle, arc) has the cross cursor.
-    if (this.tool) this.viewport.renderer.domElement.style.cursor = "crosshair";
+    if (this.tool) this.viewport.renderer.domElement.style.cursor = THIN_CROSSHAIR;
     this.preview = null;
     this.render();
     this.host.changed();
@@ -291,18 +391,22 @@ export class SketchMode implements PointerHandler {
   /** Confirms the offset or the move being previewed (Enter). */
   confirmPanelTool(): void {
     void this.offset?.confirm();
+    this.edgeOffset?.cancel(); // its copies are already made: Entrée ends it as Échap does
     this.moveTool?.confirm();
     this.arrayTool?.confirm();
+    this.shelves?.confirm();
+    this.partition?.confirm();
   }
 
   cancel(): void {
-    const panel = this.offset ?? this.moveTool ?? this.arrayTool;
+    const panel = this.offset ?? this.edgeOffset ?? this.moveTool ?? this.arrayTool ?? this.shelves ?? this.partition;
     if (panel) return panel.cancel();
     // The elements picked so far for a waiting constraint are dropped with it.
     if (this.pendingCommand) this.selection.clear();
     // Échap ends a tool (an open polyline stays as drawn) and goes back to the selection; the "Cote" tool first drops its measurement.
     if (this.pendingCommand || this.tool || (this.kind !== "select" && !(this.kind === "dimension" && this.selection.size > 0))) return this.setTool("select");
     this.selection.clear();
+    this.clickedAt.clear();
     this.render();
     this.host.changed();
   }
@@ -310,7 +414,7 @@ export class SketchMode implements PointerHandler {
   // ---- commit pipeline ------------------------------------------------------
 
   /** Solves `geometry`; commits it if solvable, otherwise explains and keeps the previous state. */
-  apply(geometry: SketchGeometry, success?: string): boolean {
+  apply(geometry: SketchGeometry, success?: string, extrusion?: SketchExtrusion): boolean {
     let result: SolveResult;
     try {
       result = solveSketch(geometry);
@@ -325,7 +429,7 @@ export class SketchMode implements PointerHandler {
     }
     this.geometry = result.geometry;
     this.lastSolve = result;
-    this.host.commit(this.featureId, pruneBodyPoints(result.geometry));
+    this.host.commit(this.featureId, pruneBodyPoints(result.geometry), extrusion);
     this.ensureVisible();
     if (result.state === "redundant") this.host.notify(`Contrainte redondante, déjà impliquée par les autres : ${describeConstraints(geometry, result.redundant)}.`, "info");
     else if (success) this.host.notify(success, "success");
@@ -383,7 +487,9 @@ export class SketchMode implements PointerHandler {
     closeCalculator();
     const ids = [...this.selection].filter((id) => id !== ORIGIN);
     this.selection.clear();
-    this.apply(removeEntities(this.geometry, ids));
+    const { geometry, pieces } = deleteWithPieces(this.geometry, ids, this.clickedAt);
+    this.clickedAt.clear();
+    this.apply(geometry, pieces ? `${pieces} morceau(x) supprimé(s), entre les croisements.` : undefined);
   }
 
   removeConstraint(id: string): void {
@@ -439,7 +545,8 @@ export class SketchMode implements PointerHandler {
       geometry: this.geometry,
       selection: this.selection,
       hover: this.pointer.hover,
-      preview: this.preview,
+      // A single line clicked where others cross it: the piece Suppr removes is shown.
+      preview: this.preview ?? (this.kind === "select" && !this.tool && !this.panelToolActive ? (clickedPiece(this.geometry, this.selection, this.clickedAt)?.preview ?? null) : null),
       unit,
       flagged,
       annotations: [
@@ -448,11 +555,13 @@ export class SketchMode implements PointerHandler {
         ...(this.arrayTool?.annotations ?? []),
       ],
       showGlyphs: this.showGlyphs,
+      showPoints: this.showPoints,
       regions,
       snapMark: this.tool ? this.pointer.snapMark : null,
       cutMarks: this.kind === "break" ? this.pointer.cutMarks : [],
       resolution: [this.viewport.renderer.domElement.clientWidth, this.viewport.renderer.domElement.clientHeight],
       hoverRegion: this.pointer.hoverRegion,
+      texts: (this.geometry.texts ?? []).map((t) => ({ outlines: textOutlines(t), hovered: this.pointer.hover === `text:${t.id}` })),
     });
   }
 }

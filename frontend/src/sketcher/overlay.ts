@@ -18,14 +18,14 @@ import type { Region } from "./loops";
 import type { Preview } from "./tools";
 
 /** Widths (screen pixels) of what is drawn: the drawing's own lines are thick, the helpers thin. */
-const WIDTH = { curve: 2.2, active: 3.2, preview: 1.8, helper: 1.5, axis: 1.2 };
+const WIDTH = { curve: 1.6, active: 2.4, preview: 1.4, helper: 1.2, axis: 1 };
 
 const COLORS = {
   line: 0x1d4ed8,
   construction: 0xf59e0b,
   projected: 0xa855f7,
   /** The chosen lines and points. */
-  selected: 0x5dd62c,
+  selected: 0x63df0f,
   /** The line under the pointer (the one a click would choose). */
   hover: 0xffd60a,
   /** The closed areas of the sketch. */
@@ -49,6 +49,8 @@ export interface OverlayState {
   annotations: Annotation[];
   /** Show the geometric constraint symbols (H, V, ∥…); flagged ones are always shown. */
   showGlyphs: boolean;
+  /** Show the free points (black squares at the ends of the lines); else only those pointed at or chosen. */
+  showPoints?: boolean;
   /** Closed regions of the sketch, lightly tinted like a profile. */
   regions: Region[];
   /** Where the drawing tool's pointer is snapped: the cross cursor becomes a square there (as in Fusion). */
@@ -59,6 +61,8 @@ export interface OverlayState {
   hoverRegion?: Region | null;
   /** Where "Couper" will cut the curve under the pointer: red crosses, as in Fusion. */
   cutMarks?: Vec2[];
+  /** Outlines of the sketch's texts (the one under the pointer stronger). */
+  texts?: { outlines: Vec2[][]; hovered: boolean }[];
 }
 
 /** What the pointer is snapped to: a grid point, an existing point or a curve. */
@@ -210,6 +214,7 @@ export class SketchOverlay {
       for (const a of state.preview.arcs) this.polyline(arcPolyline(a.center, a.radius, a.start, a.end), COLORS.preview, true, WIDTH.preview);
     }
 
+    for (const text of state.texts ?? []) for (const outline of text.outlines) this.polyline(outline, text.hovered ? COLORS.hover : COLORS.line, false, text.hovered ? WIDTH.active : WIDTH.helper);
     if (state.snapMark) this.snapMarker(state.snapMark);
     for (const [x, y] of state.cutMarks ?? []) {
       const h = 6 * this.worldPerPixel();
@@ -217,7 +222,10 @@ export class SketchOverlay {
       this.polyline([[x - h, y + h], [x + h, y - h]], COLORS.cut, false, WIDTH.active);
     }
 
-    const points = [{ id: ORIGIN, x: 0, y: 0 }, ...g.points];
+    // The free points are not drawn unless asked: they stay pickable, and show when pointed at or chosen. The origin,
+    // the points of the body edges (violet, fixed) and the ones pointed at or chosen always show.
+    const shown = (p: { id: string; fixed?: boolean }) => state.showPoints || p.id === ORIGIN || p.fixed || state.selection.has(p.id) || state.hover === p.id;
+    const points = [{ id: ORIGIN, x: 0, y: 0 }, ...g.points].filter(shown);
     const positions = points.flatMap((p) => [p.x, p.y, 0]);
     const colors = points.flatMap((p) => {
       const c = new THREE.Color(state.selection.has(p.id) ? COLORS.selected : state.hover === p.id ? COLORS.hover : p.fixed ? COLORS.projected : COLORS.point);
