@@ -1048,6 +1048,9 @@ opération existante.
       l'apparence ou mat, satiné, brillant, laqué. Le verre laisse passer la lumière (transmission, réfraction).
     - **Qualité** (échantillons, rebonds) et **Image** : HD, 4K, carré, A4 paysage 300 dpi ou la vue actuelle,
       rendue avec le nombre d'échantillons choisi puis rangée dans la **galerie** du panneau (téléchargement PNG).
+    - **Télécharger le rendu final** (bouton en haut du panneau, toujours visible) : rend l'image au format et au
+      nombre d'échantillons de la section Image, puis l'enregistre aussitôt en PNG (`rendu_<largeur>x<hauteur>_<date>.png`).
+      Elle va aussi dans la galerie ; le bouton dit « Rendu en cours… » jusqu'à la fin.
     Les réglages sont gardés dans le navigateur. La scène du rendu est une copie : elle suit les régénérations, les
     portes ouvertes et les matières, sans toucher au modèle. Le moteur n'est chargé qu'à la première ouverture.
   - *Mouvements* : un corps glisse (tiroir) ou tourne autour d'une charnière (porte) avec un curseur ou en animation,

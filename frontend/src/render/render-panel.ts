@@ -1,7 +1,8 @@
 /**
  * Panneau du mode Rendu, dans la colonne de droite : environnement (préréglages, luminosité, rotation, heure du
  * soleil), fond, sol, caméra (focale, exposition, tonalité, profondeur de champ), finitions des matières, qualité,
- * et la galerie des images rendues (comme la « Galerie de rendus » de Fusion).
+ * et la galerie des images rendues (comme la « Galerie de rendus » de Fusion). En haut, toujours visible,
+ * « Télécharger le rendu final » rend l'image au format et à la qualité choisis puis l'enregistre aussitôt (PNG).
  */
 import { download, el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
@@ -35,6 +36,7 @@ export class RenderPanel {
   private bar = el("div", { class: "h-full w-0 bg-sky-500 transition-[width]" });
   private gallery: Shot[] = [];
   private lastStatus = "";
+  private final = el("button", { type: "button", class: `${PRIMARY} w-full`, "data-render-download": "", title: "Rend l'image au format et au nombre d'échantillons de la section Image, puis la télécharge (PNG)" }, "⬇ Télécharger le rendu final");
   /** Sections the user opened or closed, kept across redraws. */
   private open = new Set(["environment", "camera", "image"]);
 
@@ -47,8 +49,10 @@ export class RenderPanel {
       el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Rendu"), shut),
       this.status,
       el("div", { class: "h-1 overflow-hidden bg-gray-200 dark:bg-gray-700" }, this.bar),
+      this.final,
       this.body,
     );
+    this.final.addEventListener("click", () => void this.renderImage(true));
     this.element.addEventListener("pointerdown", (event) => event.stopPropagation());
     placePanel(container, this.element);
     mode.onFocusPicked = () => this.draw();
@@ -214,21 +218,31 @@ export class RenderPanel {
     );
   }
 
-  /** Renders an image in the chosen format and adds it to the gallery. */
-  async renderImage(): Promise<void> {
+  /** Renders an image in the chosen format and adds it to the gallery; with `save`, downloads it at once. */
+  async renderImage(save = false): Promise<void> {
+    if (this.final.disabled) return this.host.notify("Une image est déjà en cours de rendu.", "info");
     const s = this.s;
     const format = IMAGE_FORMATS.find((f) => f.id === s.imageFormat)?.size;
     const canvas = document.querySelector<HTMLCanvasElement>('[data-ref="viewport"] canvas');
     const [width, height] = format ?? [canvas?.width ?? 1280, canvas?.height ?? 720];
     try {
+      this.final.disabled = true;
+      this.final.textContent = "Rendu en cours…";
       const url = await this.mode.capture(width, height, s.imageSamples);
       const stamp = new Date().toLocaleString("fr-FR").replace(/[/:]/g, "-").replace(/\s+/g, "_");
-      this.gallery.unshift({ url, name: `rendu_${width}x${height}_${stamp}.png` });
+      const name = `rendu_${width}x${height}_${stamp}.png`;
+      this.gallery.unshift({ url, name });
       this.open.add("image");
       this.draw();
-      this.host.notify("Image rendue : elle est dans la galerie du panneau Rendu.", "info");
+      if (save) {
+        download(await (await fetch(url)).blob(), name);
+        this.host.notify(`Rendu final téléchargé : ${name}`, "info");
+      } else this.host.notify("Image rendue : elle est dans la galerie du panneau Rendu.", "info");
     } catch (error) {
       this.host.notify(error instanceof Error ? error.message : String(error), "info");
+    } finally {
+      this.final.disabled = false;
+      this.final.textContent = "⬇ Télécharger le rendu final";
     }
   }
 
