@@ -311,7 +311,7 @@ export class Editor {
     const feature = findFeature(this.doc, id);
     if (feature?.type === "sketch") this.sketches.open(id);
     else if (feature?.type === "extrude") this.extrudeCommand(id);
-    else if (feature?.type === "niche") this.sketches.startEquip(feature.fill, feature.sketch, feature);
+    else if (feature?.type === "niche") void (feature.fill === "doors" || feature.fill === "back" ? this.sketches.editOffset(feature.sketch, feature.partition) : this.sketches.startEquip(feature.fill, feature.sketch, feature));
     else if (feature) this.tools.edit(id);
   }
 
@@ -446,7 +446,7 @@ export class Editor {
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
       tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), kitchen: () => this.openTool("kitchen"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), coincide: () => this.openTool("coincide"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), kitchen: () => this.openTool("kitchen"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

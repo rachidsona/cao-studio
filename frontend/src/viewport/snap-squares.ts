@@ -70,3 +70,48 @@ export class SnapSquares {
     this.objects = [];
   }
 }
+
+/** A small round dot (a dark edge round a white disc, tinted by the point's colour). */
+function dotTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 64;
+  const g = canvas.getContext("2d") as CanvasRenderingContext2D;
+  g.beginPath();
+  g.arc(32, 32, 24, 0, Math.PI * 2);
+  g.fillStyle = "#fff";
+  g.fill();
+  g.lineWidth = 8;
+  g.strokeStyle = "#111827";
+  g.stroke();
+  return new THREE.CanvasTexture(canvas);
+}
+
+let dot: THREE.CanvasTexture | null = null;
+
+/** Points shown as small coloured dots of a constant size on the screen (the point under the pointer, a picked one). */
+export class SnapDots {
+  private object: THREE.Points | null = null;
+
+  constructor(
+    private readonly scene: THREE.Scene,
+    private readonly sizePx = 11,
+  ) {}
+
+  /** Draws these points, each in its colour (hex). */
+  show(points: Vec3[], colors: number[]): void {
+    this.clear();
+    if (points.length === 0) return;
+    dot ??= dotTexture();
+    const tints = colors.flatMap((hex) => new THREE.Color(hex).toArray());
+    this.object = layer(points, tints, this.sizePx, dot, 47);
+    this.scene.add(this.object);
+  }
+
+  clear(): void {
+    if (!this.object) return;
+    this.scene.remove(this.object);
+    this.object.geometry.dispose();
+    (this.object.material as THREE.Material).dispose();
+    this.object = null;
+  }
+}

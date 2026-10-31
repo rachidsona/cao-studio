@@ -29,8 +29,8 @@ export interface NavigatorHost {
   selectedBodyId(): string | null;
   /** Something is picked in the 3D view (it writes its own status line). */
   modelPicked(): boolean;
-  /** Whole bodies and sketches of the multiple selection (highlighted in the browser). */
-  pickedIds(): { bodies: string[]; sketches: string[] };
+  /** The multiple selection: whole bodies and sketches, and the faces, edges and corners picked (of bodies). */
+  pickedIds(): { bodies: string[]; sketches: string[]; faces?: { bodyId: string }[]; edges?: { bodyId: string }[]; vertices?: { bodyId: string }[] };
   /** Ctrl/Maj + clic in the browser: adds or removes a body or a sketch. */
   toggleInSelection(kind: "body" | "sketch", id: string): void;
   selectFeature(id: string): void;
@@ -155,12 +155,18 @@ export class Navigator {
     return [...folders, ...build(ids.filter((id) => !inFolder(id)))];
   }
 
+  /** Every body the selection reaches (whole, or through a face, an edge, a corner) is lit in the browser. */
+  private picked(): { bodies: string[]; sketches: string[] } {
+    const { bodies, sketches, faces = [], edges = [], vertices = [] } = this.host.pickedIds();
+    return { bodies: [...new Set([...bodies, ...[...faces, ...edges, ...vertices].map((p) => p.bodyId)])], sketches };
+  }
+
   render(): void {
     const { sketches, operations, bodies } = this.items();
     const selectedId = this.host.selectedId();
     renderBrowser(
       ref(this.root, "tree"),
-      { bodies: this.tree(bodies), sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.host.pickedIds() },
+      { bodies: this.tree(bodies), sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.picked() },
       {
         onSelectBody: (bodyId, adding) => (adding ? this.host.toggleInSelection("body", bodyId) : this.host.selectBody(bodyId)),
         onSelectSketch: (id, adding) => (adding ? this.host.toggleInSelection("sketch", id) : this.host.selectFeature(id)),

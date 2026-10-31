@@ -1,22 +1,47 @@
 /**
- * Drawers opened by a click in the 3D view, and closed by another click (on the drawer, open where it now is). All
- * the bodies of the drawer — its front and its box — slide out together, the way its front faces. View only, as
+ * Drawers and doors opened by a click in the 3D view, and closed by another click (on it, open where it now is). All
+ * the bodies of a drawer — its front and its box — slide out together, the way its front faces; a door of a
+ * Répartition turns outwards about its hinges (the side chosen for it), by 100°. View only, as
  * « Mouvements »: nothing changes in the model, and a regeneration of the model closes them. Not while a tool or a
  * sketch takes the clicks of the view, nor with Ctrl, Cmd or Maj (they add to the selection).
  */
 import { bodyLabel, findFeature } from "../document/operations";
-import { featureOfBody, type CadDocument, type Vec3 } from "../document/types";
+import { featureOfBody, type Axis, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
 import { drawerNumber, drawerSlide, type Box } from "../features/drawer-open";
+import { poseOf, rotationMatrix } from "../features/motion";
+import { nicheGeometry, nicheParts, nicheWorld } from "../features/niche-parts";
 import type { Viewport } from "../viewport/viewport";
 
-/** The drawers that are open: their bodies, their slide, and the meshes they were opened on. */
+/** What is open: its bodies, where they are when open by `s` (0 closed … 1 open), and the meshes they were opened on. */
 interface Open {
   bodies: string[];
-  slide: Vec3;
+  pose: (s: number) => { rotation: number[]; translation: Vec3 };
   meshes: unknown[];
 }
 
 const DURATION = 250;
+const DOOR_ANGLE = 100;
+
+/** How a door of a Répartition turns: about the vertical line of its hinge edge, at its front, outwards. */
+export function doorSwing(doc: CadDocument, bodyId: string): { axis: Axis; pivot: Vec3; angle: number } | null {
+  const feature = findFeature(doc, featureOfBody(bodyId));
+  if (feature?.type !== "niche" || feature.fill !== "doors") return null;
+  const n = nicheGeometry(feature as NicheFeature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
+  if (typeof n === "string") return null;
+  const part = nicheParts(feature, n)[Number(bodyId.slice(bodyId.indexOf("#") + 1))];
+  if (!part?.handle) return null;
+  const [hingeU, freeU] = part.handle === "right" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
+  const [v, w] = [(part.from[1] + part.to[1]) / 2, part.to[2]];
+  const pivot = nicheWorld(n, [hingeU, v, w]);
+  const free = nicheWorld(n, [freeU, v, w]);
+  const axis = n.frame.v.findIndex((c) => Math.abs(c) > 0.5) as Axis;
+  // The sense that brings the free edge out, in front of the panels.
+  const r = rotationMatrix(axis, DOOR_ANGLE);
+  const d = [0, 1, 2].map((i) => free[i]! - pivot[i]!);
+  const moved = [0, 1, 2].map((i) => r[i * 3]! * d[0]! + r[i * 3 + 1]! * d[1]! + r[i * 3 + 2]! * d[2]! - d[i]!);
+  const out = moved[0]! * n.frame.normal[0] + moved[1]! * n.frame.normal[1] + moved[2]! * n.frame.normal[2];
+  return { axis, pivot, angle: out >= 0 ? DOOR_ANGLE : -DOOR_ANGLE };
+}
 
 /** The bodies of the drawer this body is a piece of (null: not a drawer). */
 export function drawerBodies(doc: CadDocument, bodies: string[], bodyId: string): { key: string; bodies: string[] } | null {
@@ -39,37 +64,47 @@ export function bindDrawers(viewport: Viewport, editor: { readonly doc: CadDocum
     return b ? [[...b[0]] as Vec3, [...b[1]] as Vec3] : null;
   };
 
-  /** Slides the bodies from `from` to `to` (0 closed, 1 open) in a quarter of a second. */
-  const animate = (bodies: string[], slide: Vec3, from: number, to: number) => {
+  /** Moves the bodies from `from` to `to` (0 closed, 1 open) in a quarter of a second. */
+  const animate = (bodies: string[], pose: Open["pose"], from: number, to: number) => {
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / DURATION);
       const s = from + (to - from) * (1 - (1 - t) ** 3);
-      for (const id of bodies) viewport.setBodyPose(id, s === 0 ? null : { rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1], translation: [slide[0] * s, slide[1] * s, slide[2] * s] });
+      for (const id of bodies) viewport.setBodyPose(id, s === 0 ? null : pose(s));
       if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   };
 
+  /** Opens it, or closes it when it is open (opened on meshes since made again: closed already). */
+  const flip = (key: string, bodies: string[], pose: () => Open["pose"] | null) => {
+    const meshes = bodies.map((id) => viewport.bodyMesh(id));
+    const was = open.get(key);
+    if (was && was.meshes.every((m, i) => m === meshes[i])) {
+      open.delete(key);
+      return animate(was.bodies, was.pose, 1, 0);
+    }
+    const made = pose();
+    if (!made) return;
+    open.set(key, { bodies, pose: made, meshes });
+    animate(bodies, made, 0, 1);
+  };
+
   const toggle = (bodyId: string) => {
     const doc = editor.doc;
+    const swing = doorSwing(doc, bodyId);
+    if (swing) return flip(bodyId, [bodyId], () => (s) => poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s }));
     const drawer = drawerBodies(doc, viewport.displayedBodies, bodyId);
     if (!drawer) return;
-    const meshes = drawer.bodies.map((id) => viewport.bodyMesh(id));
-    const was = open.get(drawer.key);
-    // Opened on meshes since made again: closed already.
-    if (was && was.meshes.every((m, i) => m === meshes[i])) {
-      open.delete(drawer.key);
-      return animate(was.bodies, was.slide, 1, 0);
-    }
-    const label = (id: string) => bodyLabel(doc, id);
-    const front = drawer.bodies.find((id) => /façade/i.test(label(id)));
-    const back = drawer.bodies.find((id) => /arrière/i.test(label(id)));
-    const [f, b] = [front && boxOf(front), back && boxOf(back)];
-    if (!f || !b) return;
-    const slide = drawerSlide(f, b);
-    open.set(drawer.key, { bodies: drawer.bodies, slide, meshes });
-    animate(drawer.bodies, slide, 0, 1);
+    flip(drawer.key, drawer.bodies, () => {
+      const label = (id: string) => bodyLabel(doc, id);
+      const front = drawer.bodies.find((id) => /façade/i.test(label(id)));
+      const back = drawer.bodies.find((id) => /arrière/i.test(label(id)));
+      const [f, b] = [front && boxOf(front), back && boxOf(back)];
+      if (!f || !b) return null;
+      const slide = drawerSlide(f, b);
+      return (s) => ({ rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1], translation: [slide[0] * s, slide[1] * s, slide[2] * s] });
+    });
   };
 
   canvas.addEventListener("pointerdown", (event) => {

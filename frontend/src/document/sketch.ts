@@ -176,8 +176,36 @@ export interface ShelfParams {
  * The parametric history of a « Répartition »: the partition itself, then the divisions of its niches by shelves
  * (each its own step, after it). The curves are made again from these steps whenever one of them is changed.
  */
+/** The doors of a partition: the gap round each one (mm), their thickness, handle holes. */
+export interface DoorSettings {
+  gap: number;
+  thickness: number;
+  handles: boolean;
+  /** The side each door opens from (its hinges), from the left; missing: left, right, left… in turn. */
+  hinges?: ("left" | "right")[];
+}
+
+/**
+ * The back of a partition, applied behind it (over the rear edges of the top, the bottom and the sides): one panel for
+ * the whole cabinet, or one per case (cut at the middle of a simple divider, like the doors), `thickness` mm.
+ */
+export interface BackSettings {
+  thickness: number;
+  split: "whole" | "cases";
+}
+
 export type PartitionStep =
-  | { kind: "partition"; input: PartitionParams; origin: [number, number]; /** Depth of the bodies made from the panels (mm), when extruded. */ depth?: number }
+  | {
+      kind: "partition";
+      input: PartitionParams;
+      origin: [number, number];
+      /** Depth of the bodies made from the panels (mm), when extruded. */
+      depth?: number;
+      /** A door in front of every case (made by a « Portes » equipment of the partition: document/partition-doors.ts). */
+      doors?: DoorSettings;
+      /** A back behind the panels (made by a « Fond » equipment of the partition, like the doors). */
+      back?: BackSettings;
+    }
   | {
       kind: "shelves";
       /** The partition whose niche this divides. */

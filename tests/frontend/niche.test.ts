@@ -66,6 +66,21 @@ describe("équipement d'une niche", () => {
     expect([a[1], b[1]]).toEqual([-400, -382]);
   });
 
+  it("tiroirs : un jeu dessus/dessous entre les façades, un autre jeu sur leurs côtés", () => {
+    const n = nicheGeometry(drawers(), sketch());
+    if (typeof n === "string") throw new Error(n);
+    const fronts = nicheParts(drawers({ gap: 4, sideGap: 2 }), n).filter((p) => p.role === "front");
+    // The second niche: 509…982 across, 18…1982 high.
+    expect([fronts[0]!.from[0], fronts[0]!.to[0]]).toEqual([511, 980]);
+    expect(fronts[0]!.to[1]).toBeCloseTo(1982 - 4);
+    expect(fronts[0]!.from[1] - fronts[1]!.to[1]).toBeCloseTo(4);
+    // Older drawers, one gap all round.
+    const old = nicheParts(drawers({ gap: 3 }), n).find((p) => p.role === "front")!;
+    expect([old.from[0], old.to[0]]).toEqual([512, 979]);
+    expect(nicheProblem(drawers({ sideGap: -1 }), n)).toMatch(/négatif/);
+    expect(nicheProblem(drawers({ sideGap: 300 }), n)).toMatch(/jeu de côté/);
+  });
+
   it("dit pourquoi une niche ne peut pas être équipée", () => {
     const n = nicheGeometry(rod(), sketch());
     if (typeof n === "string") throw new Error(n);

@@ -198,8 +198,11 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
       if (!Array.isArray(feature.niche) || !feature.niche.every((n) => Number.isInteger(n) && (n as number) >= 0)) errors.push(`${where} : niche invalide.`);
-      if (!["rod", "drawers"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      if (!["rod", "drawers", "doors", "back"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
+      if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
+      if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
+      if (feature.sideGap !== undefined && !isFiniteNumber(feature.sideGap)) errors.push(`${where} : « sideGap » doit être un nombre fini.`);
       if (typeof feature.handles !== "boolean") errors.push(`${where} : réglage des poignées invalide.`);
       break;
     case "modifier":

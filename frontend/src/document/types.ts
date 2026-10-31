@@ -436,13 +436,22 @@ export interface NicheFeature extends FeatureBase {
   sketch: string;
   partition: string;
   niche: number[];
-  fill: "rod" | "drawers";
+  /** « doors »: a door in front of every case of the partition; « back »: its back panel (their `niche` is empty). */
+  fill: "rod" | "drawers" | "doors" | "back";
   /** Rod: its diameter, and the distance from the top of the niche to its axis (mm). */
   diameter: number;
   drop: number;
-  /** Drawers: how many (they share the niche's height), the gap around the fronts, their thickness, handle holes. */
+  /**
+   * Drawers: how many (they share the niche's height), the gap above and below each front (between two fronts too),
+   * the gap on their sides (`gap` when missing: older drawers), their thickness, handle holes.
+   */
   drawers: number;
   gap: number;
+  sideGap?: number;
+  /** Doors: the side of the hinges of each one, from the left (missing: in turn, left first). */
+  hinges?: ("left" | "right")[];
+  /** Back: one panel for the whole cabinet, or one per case. */
+  split?: "whole" | "cases";
   thickness: number;
   handles: boolean;
 }

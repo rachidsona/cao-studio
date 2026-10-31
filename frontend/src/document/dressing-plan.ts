@@ -130,7 +130,7 @@ function moduleSteps(kind: ModuleKind, i: number, innerHeight: number, thickness
 }
 
 const ROD = { diameter: 25, drop: 60 };
-const DRAWERS = { drawers: 3, gap: 3, thickness: 18, handles: true };
+const DRAWERS = { drawers: 3, gap: 3, sideGap: 3, thickness: 18, handles: true };
 
 export interface DressingResult {
   doc: CadDocument;

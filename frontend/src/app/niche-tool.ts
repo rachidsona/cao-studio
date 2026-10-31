@@ -16,7 +16,7 @@ import type { NicheBox } from "../sketcher/shelves";
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
 
-export type NicheFill = NicheFeature["fill"];
+export type NicheFill = Exclude<NicheFeature["fill"], "doors" | "back">;
 type Chosen = { partition: string; path: number[]; box: NicheBox };
 type Settings = Omit<NicheFeature, "id" | "type" | "name" | "sketch" | "partition" | "niche" | "fill">;
 
@@ -34,7 +34,7 @@ export interface NicheToolHost {
 }
 
 /** Kept for the session: the last values (mm). */
-const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, thickness: 18, handles: true };
+const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, sideGap: 3, thickness: 18, handles: true };
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
@@ -61,9 +61,10 @@ export class NicheTool {
     fill: NicheFill,
     private readonly editing: NicheFeature | null = null,
   ) {
-    this.fill = editing?.fill ?? fill;
+    this.fill = editing && editing.fill !== "doors" && editing.fill !== "back" ? editing.fill : fill;
     const { id: _id, type: _type, name: _name, sketch: _sketch, partition: _partition, niche: _niche, fill: _fill, ...rest } = editing ?? ({} as NicheFeature);
-    this.settings = editing ? rest : { ...LAST };
+    // Older drawers had one gap all round.
+    this.settings = editing ? { ...rest, sideGap: rest.sideGap ?? rest.gap } : { ...LAST };
     this.panel = el("div", {
       class:
         "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
@@ -228,7 +229,8 @@ export class NicheTool {
         ? [number("Diamètre", this.settings.diameter, (v) => ((this.settings.diameter = v), this.recompute())), number("Axe sous le haut", this.settings.drop, (v) => ((this.settings.drop = v), this.recompute()))]
         : [
             el("label", { class: ROW }, "Tiroirs", count),
-            number("Jeu", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
+            number("Jeu dessus / dessous", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
+            number("Jeu de côté", this.settings.sideGap ?? this.settings.gap, (v) => ((this.settings.sideGap = v), this.recompute()), true),
             number("Épaisseur façades", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
             el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
           ]),

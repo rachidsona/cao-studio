@@ -6,9 +6,11 @@
  * under it, and where the sides meet the top and the bottom it is chosen which runs through (the doubles cut the
  * boards by default). The partition is shown dashed in the sketch as the values change; a click in the view puts its
  * lower-left corner there, and OK draws it: every panel and case is then a closed area, ready to extrude, and the
- * niches can be divided by shelves. The maths are in partition.ts.
+ * niches can be divided by shelves. Doors can be asked for (extruded panels): one in front of each case, as wide as
+ * its sides and dividers allow, and a back applied behind the panels (document/partition-doors.ts). The maths are in
+ * partition.ts.
  */
-import type { OffsetRecord, SketchGeometry } from "../document/sketch";
+import type { BackSettings, DoorSettings, OffsetRecord, SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
@@ -56,6 +58,10 @@ const last: PartitionInput = {
   double: "side",
 };
 
+/** Kept for the session: the last doors asked for (mm). */
+const lastDoors: DoorSettings = { gap: 3, thickness: 18, handles: true };
+const lastBack: BackSettings = { thickness: 8, split: "whole" };
+
 /** The plinth height offered when the option is ticked (mm): 4 cm. */
 let plinthHeight = 40;
 
@@ -79,6 +85,10 @@ export class SketchPartitionTool {
   private input: PartitionInput = { ...last, dividers: [...last.dividers] };
   /** Where the lower-left corner goes (mm). */
   private origin: Vec2 = [0, 0];
+  /** The doors in front of the cases, null: none. */
+  private doors: DoorSettings | null = null;
+  /** The back behind the panels, null: none. */
+  private back: BackSettings | null = null;
   private done = false;
   private readonly panel: HTMLElement;
 
@@ -92,6 +102,8 @@ export class SketchPartitionTool {
       this.origin = [...editing.step.origin];
       extrusionOption.on = editing.step.depth !== undefined;
       if (editing.step.depth !== undefined) extrusionOption.depth = editing.step.depth;
+      this.doors = editing.step.doors ? { ...editing.step.doors } : null;
+      this.back = editing.step.back ? { ...editing.step.back } : null;
     }
     this.panel = el("div", {
       class:
@@ -291,6 +303,35 @@ export class SketchPartitionTool {
       check("Extruder les panneaux", extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw())),
       extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw())) : null,
       extrusionOption.on ? info("Chaque panneau devient un corps, nommé Dessous, Dessus ou Côté ; les niches restent vides.") : null,
+      heading("Portes"),
+      extrusionOption.on
+        ? check("Une porte par case", this.doors !== null, (v) => ((this.doors = v ? { ...lastDoors } : null), this.draw()))
+        : info("Cochez « Extruder les panneaux » pour poser des portes."),
+      extrusionOption.on && this.doors ? number("Jeu", this.doors.gap, (v) => this.setDoors({ gap: v }), true) : null,
+      extrusionOption.on && this.doors ? number("Épaisseur portes", this.doors.thickness, (v) => this.setDoors({ thickness: v })) : null,
+      extrusionOption.on && this.doors ? check("Trous de poignée (entraxe 128)", this.doors.handles, (v) => this.setDoors({ handles: v })) : null,
+      // The side each door opens from.
+      ...(extrusionOption.on && this.doors && typeof layout !== "string"
+        ? layout.caseSpans.map((_, i) =>
+            select(`Porte ${i + 1}`, this.hinge(i), [["left", "S'ouvre à gauche (charnières à gauche)"], ["right", "S'ouvre à droite (charnières à droite)"]], (v) =>
+              this.setDoors({ hinges: layout.caseSpans.map((__, k) => (k === i ? (v as "left" | "right") : this.hinge(k))) }),
+            ),
+          )
+        : []),
+      extrusionOption.on && this.doors
+        ? info("En applique devant les panneaux : chaque porte couvre le dessus, le dessous, le côté extérieur ou son côté double en entier, et la moitié d'un côté simple ; des cases sans côté entre elles ont une seule porte.")
+        : null,
+      heading("Fond"),
+      extrusionOption.on
+        ? check("Panneau de fond", this.back !== null, (v) => ((this.back = v ? { ...lastBack } : null), this.draw()))
+        : info("Cochez « Extruder les panneaux » pour poser un fond."),
+      extrusionOption.on && this.back ? number("Épaisseur fond", this.back.thickness, (v) => this.setBack({ thickness: v })) : null,
+      extrusionOption.on && this.back
+        ? select("Découpe", this.back.split, [["whole", "Un seul fond (tout le placard)"], ["cases", "Un fond par case (suit les côtés)"]], (v) => this.setBack({ split: v as BackSettings["split"] }))
+        : null,
+      extrusionOption.on && this.back
+        ? info("En applique derrière les panneaux : le fond couvre le dessus, le dessous et les côtés jusqu'à leurs bords. Par case, il est coupé au milieu d'un côté simple, entier sur un côté double.")
+        : null,
       heading("Position"),
       number("Coin X", this.origin[0], (v) => ((this.origin = [v, this.origin[1]]), this.recompute()), true),
       number("Coin Y", this.origin[1], (v) => ((this.origin = [this.origin[0], v]), this.recompute()), true),
@@ -330,11 +371,13 @@ export class SketchPartitionTool {
     const g = this.host.geometry();
     const depth = extrusionOption.on ? extrusionOption.depth : undefined;
     const id = this.editing?.id ?? this.host.offsetId();
-    const step = { kind: "partition" as const, input: structuredClone(this.input), origin: [...this.origin] as [number, number], ...(depth !== undefined ? { depth } : {}) };
+    const doors = depth !== undefined && this.doors ? { doors: { ...this.doors } } : {};
+    const back = depth !== undefined && this.back ? { back: { ...this.back } } : {};
+    const step = { kind: "partition" as const, input: structuredClone(this.input), origin: [...this.origin] as [number, number], ...(depth !== undefined ? { depth } : {}), ...doors, ...back };
     const offsets = this.editing
       ? // An automatic name follows the number of cases ("Répartition 2 cases" → "Répartition 3 cases"); one the user chose stays.
         (g.offsets ?? []).map((r) => (r.id === id ? { ...r, step, name: /^Répartition \d+ cases( \(\d+\))?$/.test(r.name) ? r.name.replace(/\d+ cases/, `${this.input.cases} cases`) : r.name } : r))
-      : [...(g.offsets ?? []), { ...partitionRecord(id, stepName(g, `Répartition ${this.input.cases} cases`), this.input, this.origin, depth) }];
+      : [...(g.offsets ?? []), { ...partitionRecord(id, stepName(g, `Répartition ${this.input.cases} cases`), this.input, this.origin, depth), step }];
     const rebuilt = rebuildChain({ ...g, offsets }, id);
     if (typeof rebuilt === "string") {
       this.host.notify(rebuilt, "error");
@@ -344,9 +387,29 @@ export class SketchPartitionTool {
     const groups = extrusionGroups(g.offsets ?? [], rebuilt);
     const extruded: SketchExtrusion | undefined = groups.length ? { groups } : undefined;
     const unit = this.host.unit();
-    const made = `${this.editing ? "Répartition modifiée" : "Répartition"} en ${casesText(layout, unit)}${depth !== undefined ? `, panneaux extrudés de ${formatLength(depth, unit)}` : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`;
+    const made = `${this.editing ? "Répartition modifiée" : "Répartition"} en ${casesText(layout, unit)}${depth !== undefined ? `, panneaux extrudés de ${formatLength(depth, unit)}` : ""}${"doors" in doors ? `, ${layout.caseSpans.length} porte${layout.caseSpans.length > 1 ? "s" : ""}` : ""}${"back" in back ? ", avec son fond" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`;
     if (!this.host.apply(rebuilt.geometry, made, extruded)) return;
     this.cancel();
+  }
+
+  /** The side door i opens from: the one chosen, else left, right, left… in turn. */
+  private hinge(i: number): "left" | "right" {
+    return this.doors?.hinges?.[i] ?? (i % 2 === 0 ? "left" : "right");
+  }
+
+  private setDoors(change: Partial<DoorSettings>): void {
+    if (!this.doors) return;
+    this.doors = { ...this.doors, ...change };
+    const { hinges: _own, ...kept } = this.doors;
+    Object.assign(lastDoors, kept);
+    this.draw();
+  }
+
+  private setBack(change: Partial<BackSettings>): void {
+    if (!this.back) return;
+    this.back = { ...this.back, ...change };
+    Object.assign(lastBack, this.back);
+    this.draw();
   }
 
   cancel(): void {

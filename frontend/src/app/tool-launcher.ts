@@ -10,6 +10,7 @@ import { CabinetTool } from "./cabinet-tool";
 import { FaceStripTool } from "./face-strip-tool";
 import { MirrorTool } from "./mirror-tool";
 import { AlignTool } from "./align-tool";
+import { CoincideTool } from "./coincide-tool";
 import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
@@ -26,7 +27,7 @@ import { AssemblyTool } from "./assembly-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -141,6 +142,9 @@ export class ToolLauncher {
       }
       case "mirror":
         this.active = new MirrorTool(ctx, editing?.type === "mirror" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        break;
+      case "coincide":
+        this.active = new CoincideTool(ctx);
         break;
       case "align":
         this.active = new AlignTool(ctx, editing?.type === "align" ? editing : null, options.bodies ?? [], options.sketches ?? []);

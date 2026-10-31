@@ -393,6 +393,15 @@ opération existante.
     OK reste désactivé tant qu'il échoue. Un déplacement se modifie, se supprime (les perçages, extrusions et
     déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres
     opérations.
+- **Coïncidence** (bouton du groupe **Modifier**, à côté de « Déplacer ») : colle une esquisse ou un corps par un
+  de ses points. On clique d'abord un point de ce qu'il faut déplacer : un coin d'un corps ou un point d'une
+  esquisse (les points s'affichent au survol). On clique ensuite où le coller : un point d'un autre corps ou
+  d'une autre esquisse, ou un **trait** (une arête de corps, une ligne d'esquisse). Sur un trait, le point vient
+  **au plus près**, ou **à l'endroit cliqué** (au choix dans le panneau). Seul le point sous le curseur
+  apparaît, en petit point vert (#63df0f). Le point de départ est marqué d'un petit point rose, l'arrivée d'un
+  point vert, et le résultat se voit avant OK. Un corps est déplacé par une opération « Coïncidence » (un
+  déplacement), une esquisse avec son plan et tout ce qui en est extrudé. Une seule annulation
+  (`app/coincide-tool.ts`, `features/coincide.ts`).
 - **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
@@ -484,6 +493,26 @@ opération existante.
   de 1. Changer une étape (Répartition, Étagères, Cloisons) depuis l'**Historique** rouvre son outil dans la vue 3D,
   sa niche choisie. Le calcul est celui des étagères (`sketcher/shelves.ts`, champ `vertical`) ; la vue 3D de ces
   outils est dans `app/joinery-3d.ts` et `viewport/joinery-view.ts`.
+- **Portes de la Répartition** (rubrique « Portes » de son panneau, quand les panneaux sont extrudés) : « Une porte
+  par case » pose une porte en applique devant chaque case. Elle couvre le dessus, le dessous (au-dessus du socle) et
+  le **côté extérieur** en entier. Sur un **côté simple**, deux portes voisines s'en partagent l'épaisseur (la moitié
+  chacune). Sur un **côté double**, chaque porte couvre en entier le panneau de sa case. Des cases **sans côté**
+  entre elles n'ont qu'une porte. Réglages : le jeu entre les portes (3 mm, la moitié aux bords extérieurs),
+  l'épaisseur (18 mm) et les trous de poignée (entraxe 128 mm, le long du bord opposé aux charnières). Le **sens
+  d'ouverture** se choisit porte par porte (« S'ouvre à gauche » ou « à droite », charnières de ce côté) ; par défaut
+  il alterne, gauche puis droite. Dans la vue 3D, un clic sur une porte l'**ouvre** (elle tourne de 100° vers l'avant
+  autour de ses charnières) et un second clic la referme, comme les tiroirs. Les portes sont fabriquées par une opération « Portes » qui suit la répartition quand on la
+  modifie ; décocher, ou ne plus extruder, les retire. Les charnières (2 à 4 par porte selon la hauteur) et les
+  poignées vont au devis (`document/partition-doors.ts`, `features/niche-parts.ts`).
+- **Fond de la Répartition** (rubrique « Fond », quand les panneaux sont extrudés) : « Panneau de fond » pose un fond
+  en applique **derrière** les panneaux. Il couvre jusqu'à leurs bords le dessus, le dessous et les côtés, sur toute
+  la hauteur et toute la longueur du placard. Réglages :
+  - l'épaisseur (8 mm par défaut) : jusqu'à 10 mm le fond est en HDF, au-delà il est de la matière des panneaux ;
+  - la découpe : **un seul fond** pour tout le placard, ou **un fond par case**. Par case, le fond suit les côtés comme
+    les portes : coupé au milieu d'un côté simple, entier sur un côté double, un seul pour des cases sans côté.
+
+  Une opération « Fond » le fabrique. Elle suit la répartition quand on la modifie ; décocher la rubrique, ou ne plus
+  extruder les panneaux, retire le fond.
 - **Penderie** et **Tiroirs** (groupe **Menuiserie**, pour les dressings) : on **équipe une niche** d'une répartition,
   dans la vue 3D comme avec Étagères — on clique une ou plusieurs niches (une niche choisie se reclique pour la
   retirer), on règle, les pièces sont montrées en **orange**, puis OK (une seule annulation). La liste « Équipement »
@@ -495,7 +524,8 @@ opération existante.
     ni à l'export CNC**. Pour une double penderie, on divise d'abord la niche par une étagère, puis une tringle dans
     chaque niche.
   - **Tiroirs** : **1 à 8 tiroirs encastrés** qui se partagent la hauteur de la niche : façades au nu des panneaux,
-    avec le **jeu** voulu tout autour et entre elles (3 mm), à l'**épaisseur** voulue (18 mm), chacune avec son
+    avec un **jeu dessus / dessous** (au-dessus, au-dessous et entre deux façades, 3 mm) et un **jeu de côté**
+    (à gauche et à droite, 3 mm), réglés à part, à l'**épaisseur** voulue (18 mm), chacune avec son
     **caisson** (côtés, avant, arrière en contreplaqué bouleau, fond en HDF) sur **coulisses** de 12,5 mm, de la
     longueur du commerce qui tient dans la profondeur (350 mm pour 40 cm de profondeur), et ses **trous de poignée**
     (entraxe 128 mm) si on le demande. Coulisses et poignées vont au devis, les pièces au débit. Pour des tiroirs sous
@@ -703,7 +733,8 @@ opération existante.
 
   Le titre **« Esquisses »** a lui aussi son œil (masquer ou afficher toutes les esquisses) et sa corbeille. La corbeille supprime toutes les esquisses en une seule annulation : elle demande d'abord, puis nomme les corps qui partent avec elles.
 
-  L'élément **sélectionné** (dans le navigateur ou dans la vue 3D) est éclairé en **#F8F8F8**, écrit en encre foncée, avec un liseré bleu à gauche. S'il est dans un dossier fermé, ce dossier s'ouvre. S'il est plus bas dans la liste, elle défile jusqu'à lui.
+  Tous les corps que touche la sélection (entiers, ou par une face, une arête ou un coin) sont éclairés dans le
+  navigateur. L'élément **sélectionné** (dans le navigateur ou dans la vue 3D) est éclairé en **#F8F8F8**, écrit en encre foncée, avec un liseré bleu à gauche. S'il est dans un dossier fermé, ce dossier s'ouvre. S'il est plus bas dans la liste, elle défile jusqu'à lui.
   Sur Mac, Ctrl + clic ajoute toujours à la sélection. L'écriture du navigateur est plus petite (12 px), et les yeux, les ⋯ et les icônes sont plus petits, en trait fin. Les autres corps et les dossiers d'un caisson restent comme avant (`ui/body-kinds.ts`). La liste du navigateur défile **sans barre de défilement** : une petite flèche ▼ en bas (▲ en haut) montre qu'il y a une suite et y fait défiler d'un clic ; la molette, le pavé tactile et le doigt défilent comme d'habitude (`ui/scroll-arrows.ts`).
 - **Fenêtres des outils à droite, en onglets** : les fenêtres des outils (mètre, calques, paramètres, scènes, coupe,
   extrusion, caisson, façades, usinage, réseau, décalage, apparence, rendu…) s'ouvrent dans le panneau de droite,
