@@ -22,11 +22,14 @@ import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
 import { SnapSquares } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
+import { alignBox, type Box, type Guide } from "../features/smart-align";
+import { SnapGuides } from "../viewport/snap-guides";
+import { bodySnap, facePoint, otherBoxes } from "./body-snap";
 import { pointText } from "./model-selection";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** What is moved: a body of the model, or a sketch. */
-const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), `${i + 1} copie${i ? "s" : ""} (l'original reste)`])];
+export const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), `${i + 1} copie${i ? "s" : ""} (l'original reste)`])];
 
 export type MoveSubject = { kind: "body"; id: string } | { kind: "sketch"; id: string };
 
@@ -80,6 +83,9 @@ export class MoveTool extends PanelTool {
   } | null = null;
   /** The points a click can pick: hollow squares, the one under the pointer filled and orange. */
   private readonly squares = new SnapSquares(this.ctx.viewport.scene);
+  /** The smart snapping: the box of the body before the move, and the pink guides of its alignments. */
+  private box: Box | null = null;
+  private readonly guides = new SnapGuides(this.ctx.viewport.scene);
   /** Copies made instead of moving (as Curic Gizmo's copy): the original stays, copy k is moved k times. */
   private copies = 0;
   private readonly copy: { id: string; name: string };
@@ -140,6 +146,7 @@ export class MoveTool extends PanelTool {
     const bbox = mesh?.metrics.bbox;
     if (!bbox) return;
     const shift = own ? this.translate : [0, 0, 0];
+    this.box = bbox.map((corner) => corner.map((v, i) => v - shift[i]!)) as Box;
     this.center = [0, 1, 2].map((i) => ((bbox[0][i] as number) + (bbox[1][i] as number)) / 2 - (shift[i] as number)) as Vec3;
   }
 
@@ -341,6 +348,7 @@ export class MoveTool extends PanelTool {
     this.placeSnaps();
     this.markers.clear();
     this.squares.clear();
+    this.guides.clear();
     this.gizmo.dispose();
   }
 
@@ -385,12 +393,17 @@ export class MoveTool extends PanelTool {
     const moved = toLocal(frame, [0, 1, 2].map((i) => (this.dragFrom[i] as number) + (delta[i] as number)) as Vec3);
     // The ball (free move in the screen's plane) changes all three coordinates.
     const along = handle.kind === "axis" ? [handle.axis] : handle.kind === "plane" ? [0, 1, 2].filter((i) => i !== handle.normal) : handle.kind === "free" ? [0, 1, 2] : [];
-    const result = start.map((s, i) => (along.includes(i) ? roundTo(moved[i] as number, step) : s)) as Vec3;
-    return toGlobal(frame, result);
+    const result = toGlobal(frame, start.map((s, i) => (along.includes(i) ? roundTo(moved[i] as number, step) : s)) as Vec3);
+    // Smart snapping (global axes): a face or the middle of the body stops at the level of another body's.
+    if (!bodySnap.smart || !this.box || frame !== GLOBAL_FRAME) return (this.guides.clear(), result);
+    const own = (id: string) => (id === this.subject.id && this.copies === 0) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
+    const aligned = alignBox(this.box, otherBoxes(this.ctx.viewport, own), result, along, bodySnap.tolerance(this.ctx.viewport));
+    this.guides.show(aligned.guides, this.ctx.viewport);
+    return aligned.translate;
   }
 
   override up(event: PointerEvent, isClick: boolean): boolean {
-    if (this.gizmo.dragEnd()) return true;
+    if (this.gizmo.dragEnd()) return (this.guides.clear(), true);
     if (isClick) this.click(event);
     return isClick;
   }
@@ -417,11 +430,15 @@ export class MoveTool extends PanelTool {
     const points: Vec3[] = [];
     const owners: string[] = [];
     let face: FaceSnaps | null = null;
+    let guides: Guide[] = [];
     const pick = event ? this.ctx.viewport.pickFace(event) : null;
-    if (pick) {
-      const own = pick.bodyId === this.subject.id || pick.bodyId === this.id || pick.bodyId.startsWith(`${this.copy.id}#`);
-      const usable = this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
-      const mesh = usable ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
+    const usable = (bodyId: string) => {
+      const own = bodyId === this.subject.id || bodyId === this.id || bodyId.startsWith(`${this.copy.id}#`);
+      return this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
+    };
+    // The corners and points are caught only with the geometry snapping.
+    if (pick && bodySnap.geometry) {
+      const mesh = usable(pick.bodyId) ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
       const snaps = mesh ? faceSnaps(mesh, pick.faceIndex) : null;
       if (snaps) {
         // The corners of the whole element (a thin board shows all of its corners, not only those of the face pointed at),
@@ -434,7 +451,7 @@ export class MoveTool extends PanelTool {
         face = snaps;
       }
     }
-    if (event) {
+    if (event && bodySnap.geometry) {
       const all = this.sketch !== null && this.pickStep === "source";
       for (const c of this.sketchCandidates()) {
         if (!all && this.ctx.viewport.screenDistance(event, c.point) > 40) continue;
@@ -442,6 +459,16 @@ export class MoveTool extends PanelTool {
         owners.push(c.owner);
       }
     }
+    // No point caught: the point of the face, in line with a corner (smart snapping) — or anywhere, the geometry snapping off.
+    if (event && !points.some((p) => this.ctx.viewport.screenDistance(event, p) < 16)) {
+      const free = facePoint(this.ctx.viewport, event, { alignedOnly: bodySnap.geometry, anchors: this.source ? [this.source] : [], skip: (id) => !usable(id) });
+      if (free) {
+        points.push(free.point);
+        owners.push(free.bodyId);
+        guides = free.guides;
+      }
+    }
+    this.guides.show(guides, this.ctx.viewport);
     if (!event || points.length === 0) {
       if (this.hover) {
         this.hover = null;

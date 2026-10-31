@@ -1,8 +1,9 @@
 /**
- * Manipulator of the Move and Rotate tools, in the spirit of Shapr3D's: all white and sober, a slim arrow on each
- * axis (the axis colour is only a thin line along it), small translucent tiles to move in a plane, three curved arrows
- * to turn around an axis, and a pivot dot at the centre (with a ring) to move freely in the plane of the screen.
- * A handle takes the colour of its axis when the pointer is over it. Of constant size on screen. Its axes are those
+ * Manipulator of the Move and Rotate tools, small and drawn like the axis indicator of the view: a slim arrow of the
+ * axis colour on each axis (X red, Y green, Z blue, a fine shaft and a cone head), small translucent tiles of the
+ * same colours to move in a plane, three curved arrows to turn around an axis, and a pivot dot at the centre (with a
+ * ring) to move freely in the plane of the screen. A handle under the pointer brightens and thickens. Of constant
+ * size on screen (about 50 px). Its axes are those
  * of the frame in use, global or local; in a sketch (`planar`) only the two arrows of the plane and the dot remain.
  * It only computes what the pointer does (a displacement, an angle); the tool turns it into the real model.
  */
@@ -12,7 +13,7 @@ import type { Vec3 } from "../sketcher/frame";
 import { axisParameter, rayPlanePoint } from "./axis-drag";
 import type { Viewport } from "./viewport";
 
-const SIZE_PX = 85;
+const SIZE_PX = 50;
 /** X red, Y green, Z blue. */
 export const AXIS_COLORS = [0xef4444, 0x22c55e, 0x3b82f6] as const;
 export const AXIS_NAMES = ["X", "Y", "Z"] as const;
@@ -38,20 +39,17 @@ const same = (a: GizmoHandle | null, b: GizmoHandle | null): boolean => {
   return true;
 };
 
-/** Profile of an arrow along +Y (radius, height): a rounded foot, a fine shaft, a small collar and a slender cone head. */
+/** Profile of an arrow along +Y (radius, height): a fine shaft from next to the dot, then a cone head. */
 const ARROW_PROFILE: [number, number][] = [
-  [0, 0.17],
-  [0.022, 0.172],
-  [0.03, 0.188],
-  [0.03, 0.62],
-  [0.036, 0.63],
-  [0.088, 0.64],
-  [0.092, 0.656],
-  [0.08, 0.68],
-  [0.042, 0.79],
-  [0.016, 0.88],
-  [0, 0.9],
+  [0, 0.12],
+  [0.032, 0.12],
+  [0.032, 0.74],
+  [0.09, 0.74],
+  [0, 1],
 ];
+
+/** The colour of a handle under the pointer: its own, brighter. */
+const lighter = (hex: number) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.45).getHex();
 
 /** A square of side `size` with rounded corners, in the XY plane. */
 function roundedSquare(size: number, radius: number): THREE.ShapeGeometry {
@@ -83,8 +81,9 @@ interface Part {
   handle: GizmoHandle;
   /** What grows when the handle is lit (an arrow gets fatter, a tile and the dot get bigger). */
   body: THREE.Object3D | null;
-  /** The surfaces whose colour and opacity follow the state: white at rest, the axis colour when lit. */
+  /** The surfaces whose colour and opacity follow the state: the axis colour at rest, brighter when lit. */
   paint: { material: THREE.MeshStandardMaterial; rest: number; lit: number }[];
+  restColor: number;
   litColor: number;
 }
 
@@ -124,25 +123,14 @@ export class MoveGizmo {
    * A surface drawn over everything (the manipulator is never hidden by the model). All the surfaces are in the
    * "transparent" list, even the opaque ones: only there does `renderOrder` decide which is drawn on top.
    */
-  private surface(opacity: number): THREE.MeshStandardMaterial {
+  private surface(opacity: number, color: number = WHITE): THREE.MeshStandardMaterial {
     const material = new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0, transparent: true, opacity, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
-    paint(material, new THREE.Color(WHITE));
+    paint(material, new THREE.Color(color));
     return material;
   }
 
   private invisible(): THREE.MeshBasicMaterial {
     return new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
-  }
-
-  /** A thin line of the axis colour along the axis, from the dot to the arrow: it says which axis is which. */
-  private axisLine(axis: 0 | 1 | 2, length: number): THREE.Mesh {
-    const line = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.006, 0.006, length, 6),
-      new THREE.MeshBasicMaterial({ color: AXIS_COLORS[axis], transparent: true, opacity: 0.85, depthTest: false, depthWrite: false }),
-    );
-    line.position.y = length / 2;
-    line.renderOrder = 27;
-    return line;
   }
 
   /** Turns a group built along +Y onto +axis. */
@@ -151,29 +139,29 @@ export class MoveGizmo {
     else if (axis === 2) group.rotation.x = Math.PI / 2;
   }
 
-  /** Arrow along +axis: a slim white arrow with the axis line behind it. */
+  /** Arrow along +axis, of the axis colour. */
   private addArrow(axis: 0 | 1 | 2): void {
     const handle: GizmoHandle = { kind: "axis", axis };
-    const fill = new THREE.Mesh(new THREE.LatheGeometry(ARROW_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 28), this.surface(0.96));
+    const fill = new THREE.Mesh(new THREE.LatheGeometry(ARROW_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 20), this.surface(1, AXIS_COLORS[axis]));
     fill.renderOrder = 32;
-    // A wide invisible grip makes the arrow easy to catch.
-    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.95, 8), this.invisible());
-    grip.position.y = 0.52;
+    // A wide invisible grip makes the small arrow easy to catch.
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.95, 8), this.invisible());
+    grip.position.y = 0.58;
     grip.renderOrder = 30;
     const body = new THREE.Group();
     body.add(fill, grip);
     const group = new THREE.Group();
-    group.add(this.axisLine(axis, 0.19), body);
+    group.add(body);
     this.onto(group, axis);
     for (const mesh of [fill, grip]) mesh.userData.handle = handle;
     this.object.add(group);
-    this.parts.push({ handle, body, paint: [{ material: fill.material, rest: 0.96, lit: 1 }], litColor: AXIS_COLORS[axis] });
+    this.parts.push({ handle, body, paint: [{ material: fill.material, rest: 1, lit: 1 }], restColor: AXIS_COLORS[axis], litColor: lighter(AXIS_COLORS[axis]) });
   }
 
   /** Small rounded tile in the plane of the two axes other than `normal`. */
   private addTile(normal: 0 | 1 | 2): void {
     const handle: GizmoHandle = { kind: "plane", normal };
-    const fill = new THREE.Mesh(roundedSquare(0.2, 0.05), this.surface(0.4));
+    const fill = new THREE.Mesh(roundedSquare(0.18, 0.04), this.surface(0.35, AXIS_COLORS[normal]));
     fill.renderOrder = 29;
     const body = new THREE.Group();
     body.add(fill);
@@ -182,14 +170,14 @@ export class MoveGizmo {
     // The shape faces +Z: XY already; turn it for XZ (normal Y) and YZ (normal X).
     if (normal === 0) {
       group.rotation.y = Math.PI / 2;
-      group.position.set(0, 0.34, 0.34);
+      group.position.set(0, 0.36, 0.36);
     } else if (normal === 1) {
       group.rotation.x = Math.PI / 2;
-      group.position.set(0.34, 0, 0.34);
-    } else group.position.set(0.34, 0.34, 0);
+      group.position.set(0.36, 0, 0.36);
+    } else group.position.set(0.36, 0.36, 0);
     fill.userData.handle = handle;
     this.object.add(group);
-    this.parts.push({ handle, body, paint: [{ material: fill.material, rest: 0.4, lit: 0.95 }], litColor: AXIS_COLORS[normal] });
+    this.parts.push({ handle, body, paint: [{ material: fill.material, rest: 0.35, lit: 0.9 }], restColor: AXIS_COLORS[normal], litColor: lighter(AXIS_COLORS[normal]) });
   }
 
   /** Curved arrow to turn around `axis`: an arc in the quadrant of the two other axes, with a head at each end. */
@@ -201,8 +189,8 @@ export class MoveGizmo {
     const [from, to] = [(22 * Math.PI) / 180, (68 * Math.PI) / 180];
     const at = (t: number) => a.clone().multiplyScalar(Math.cos(t) * radius).add(b.clone().multiplyScalar(Math.sin(t) * radius));
     const curve = new THREE.CatmullRomCurve3(Array.from({ length: 16 }, (_, i) => at(from + ((to - from) * i) / 15)));
-    const material = this.surface(0.96);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 28, 0.015, 8), material);
+    const material = this.surface(0.96, AXIS_COLORS[axis]);
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 28, 0.022, 8), material);
     tube.renderOrder = 31;
     const grip = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.085, 6), this.invisible());
     grip.renderOrder = 30;
@@ -220,27 +208,27 @@ export class MoveGizmo {
     }
     for (const mesh of [tube, grip]) mesh.userData.handle = handle;
     this.arcs.add(group);
-    this.parts.push({ handle, body: null, paint: [{ material, rest: 0.96, lit: 1 }], litColor: AXIS_COLORS[axis] });
+    this.parts.push({ handle, body: null, paint: [{ material, rest: 0.96, lit: 1 }], restColor: AXIS_COLORS[axis], litColor: lighter(AXIS_COLORS[axis]) });
   }
 
   /** The pivot dot with its ring: the manipulator's centre, to move freely in the plane of the screen. */
   private addPivot(): void {
     const handle: GizmoHandle = { kind: "free" };
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 24, 16), this.surface(1));
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), this.surface(1));
     dot.renderOrder = 35;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.01, 8, 40), this.surface(0.9));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.014, 8, 40), this.surface(0.9));
     ring.renderOrder = 34;
     const facing = new THREE.Group();
     facing.add(ring);
     this.facing = facing;
     // The ring is also a catch: the dot alone would be small.
-    const catcher = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), this.invisible());
+    const catcher = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), this.invisible());
     catcher.renderOrder = 33;
     const body = new THREE.Group();
     body.add(dot, facing, catcher);
     for (const mesh of [dot, catcher]) mesh.userData.handle = handle;
     this.object.add(body);
-    this.parts.push({ handle, body, paint: [{ material: dot.material, rest: 1, lit: 1 }, { material: ring.material, rest: 0.9, lit: 1 }], litColor: FREE_LIT });
+    this.parts.push({ handle, body, paint: [{ material: dot.material, rest: 1, lit: 1 }, { material: ring.material, rest: 0.9, lit: 1 }], restColor: WHITE, litColor: FREE_LIT });
   }
 
   /** Puts the manipulator at `origin`, its axes along `frame`. */
@@ -276,14 +264,14 @@ export class MoveGizmo {
     }
     for (const part of this.parts) {
       const lit = same(part.handle, this.hover) || same(part.handle, this.drag?.handle ?? null);
-      const grow = lit ? 1.2 : 1;
+      const grow = lit ? 1.35 : 1;
       if (part.body) {
         if (part.handle.kind === "axis") part.body.scale.set(grow, 1, grow);
         else part.body.scale.setScalar(grow);
       }
       for (const { material, rest, lit: litOpacity } of part.paint) {
         material.opacity = lit ? litOpacity : rest;
-        paint(material, new THREE.Color(lit ? part.litColor : WHITE));
+        paint(material, new THREE.Color(lit ? part.litColor : part.restColor));
       }
     }
   }

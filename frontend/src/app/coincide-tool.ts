@@ -3,11 +3,16 @@
  * esquisse — puis un point (d'un autre corps, d'une autre esquisse) ou un trait (une arête de corps, une ligne
  * d'esquisse), et le premier point vient s'y coller. Sur un trait, au plus près ou à l'endroit cliqué. Un corps est
  * déplacé par une opération « Déplacement », une esquisse avec son plan ; le résultat se voit avant OK, une seule
- * annulation. Le calcul est dans features/coincide.ts.
+ * annulation. Comme dans Déplacer, « Copier » laisse le corps en place et colle des copies (la k-ième déplacée k fois).
+ * Le calcul est dans features/coincide.ts. Les boutons d'accrochage de l'esquisse valent ici aussi : sans
+ * l'accrochage à la géométrie, ni coins ni traits, le point pris est celui de la face ; avec l'accrochage intelligent,
+ * un point de la face en ligne avec un coin (même X, Y ou Z) se prend aussi, montré par un guide rose en tirets. Où
+ * coller, une face plane d'un autre corps (éclairée au survol) se prend aussi : ce qu'on déplace vient dans son plan,
+ * au plus près, ou le point vient à l'endroit cliqué.
  */
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import type { Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
+import type { ArrayFeature, Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
 import { MIN_LENGTH } from "../features/common";
 import { coincideMove, segmentNearRay } from "../features/coincide";
 import { pointPos } from "../sketcher/edit";
@@ -15,11 +20,15 @@ import { frameOf, toWorld } from "../sketcher/frame";
 import { moveSketchPlane, sketchSnapPoints } from "../sketcher/move";
 import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps } from "../viewport/face-snaps";
+import { SnapGuides } from "../viewport/snap-guides";
 import { SnapDots } from "../viewport/snap-squares";
+import type { Viewport } from "../viewport/viewport";
+import { bodySnap, facePoint } from "./body-snap";
+import { COPIES } from "./move-tool";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 type Subject = { kind: "body" | "sketch"; id: string; name: string };
-type Target = { point: Vec3; name: string } | { trait: Vec3[]; pairs: boolean; clicked: Vec3; name: string };
+type Target = { point: Vec3; name: string } | { trait: Vec3[]; pairs: boolean; clicked: Vec3; name: string } | { plane: Vec3; normal: Vec3; clicked: Vec3; name: string };
 
 /** A body with more corners than this (a rounded one) shows only the corners of the face pointed at. */
 const MAX_BODY_CORNERS = 40;
@@ -37,10 +46,15 @@ export class CoincideTool extends PanelTool {
   private placement: "nearest" | "clicked" = "nearest";
   private readonly moveId: string;
   private readonly moveName: string;
+  /** Copies made instead of moving the body (the original stays); the operation that makes them. */
+  private copies = 0;
+  private readonly copy: { id: string; name: string };
   /** Only the point under the pointer, a small green dot; the source (rose) and the target (green) once picked. */
   private readonly squares = new SnapDots(this.ctx.viewport.scene);
   private readonly markers = new SnapDots(this.ctx.viewport.scene, 9);
-  private hover: { points: Vec3[]; owners: string[]; index: number; trait: Target | null } | null = null;
+  private readonly guides = new SnapGuides(this.ctx.viewport.scene);
+  /** What a click would take: a point (`index`), else a trait or a flat face (`target`). */
+  private hover: { points: Vec3[]; owners: string[]; index: number; target: Target | null } | null = null;
   /**
    * The corners of the last bodies pointed at: a corner sits on the outline, where the pointer often just misses its
    * body or meets the next one.
@@ -52,6 +66,7 @@ export class CoincideTool extends PanelTool {
     const doc = ctx.doc();
     this.moveId = uniqueId(doc, "mv");
     this.moveName = uniqueName(doc, "Coïncidence");
+    this.copy = { id: uniqueId(doc, "ar"), name: uniqueName(doc, "Copie") };
   }
 
   private sketch(): SketchFeature | null {
@@ -62,23 +77,26 @@ export class CoincideTool extends PanelTool {
   private delta(): Vec3 | null {
     if (!this.source || !this.target) return null;
     const t = this.target;
-    return coincideMove(this.source, "point" in t ? t : { trait: t.trait, pairs: t.pairs, ...(this.placement === "clicked" ? { clicked: t.clicked } : {}) });
+    if ("point" in t) return coincideMove(this.source, t);
+    const clicked = this.placement === "clicked" ? { clicked: t.clicked } : {};
+    return coincideMove(this.source, "trait" in t ? { trait: t.trait, pairs: t.pairs, ...clicked } : { plane: t.plane, normal: t.normal, ...clicked });
   }
 
   protected feature(): Feature | string {
     if (!this.subject || !this.source) return "Cliquez un point de l'esquisse ou du corps à déplacer.";
     const move = this.delta();
-    if (!move) return "Cliquez le point ou le trait où le coller.";
+    if (!move) return "Cliquez le point, le trait ou la face où le coller.";
     if (Math.hypot(...move) < MIN_LENGTH) return "Ce point y est déjà.";
     const sketch = this.sketch();
     if (sketch) return moveSketchPlane(sketch, move);
     const translate = move.map((x) => Number(x.toFixed(6))) as Vec3;
+    if (this.copies > 0) return { ...this.copy, type: "array", targets: [this.subject.id], step: translate, count: this.copies } satisfies ArrayFeature;
     return { id: this.moveId, type: "move", name: this.moveName, target: this.subject.id, translate } satisfies MoveFeature;
   }
 
   protected override blocker(): string | null {
     if (this.subject?.kind !== "body") return null;
-    const status = this.ctx.status(this.moveId);
+    const status = this.ctx.status(this.copies > 0 ? this.copy.id : this.moveId);
     return status && status.state !== "ok" ? (status.message ?? "Ce déplacement est impossible.") : null;
   }
 
@@ -86,8 +104,8 @@ export class CoincideTool extends PanelTool {
     const step = !this.source
       ? "1. Cliquez un point de ce qu'il faut déplacer : un coin d'un corps, un point d'une esquisse."
       : !this.target
-        ? `2. Cliquez où coller le point de « ${this.subject?.name} » : un point, une arête de corps ou une ligne d'esquisse.`
-        : `« ${this.subject?.name} » vient sur « ${this.target.name} ». OK pour valider, ou cliquez un autre point ou trait.`;
+        ? `2. Cliquez où coller le point de « ${this.subject?.name} » : un point, une arête de corps, une ligne d'esquisse ou une face plane.`
+        : `« ${this.subject?.name} » vient sur « ${this.target.name} ». OK pour valider, ou cliquez un autre point, trait ou face.`;
     const again = document.createElement("button");
     again.type = "button";
     again.className = "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -95,12 +113,14 @@ export class CoincideTool extends PanelTool {
     again.addEventListener("click", () => this.restart());
     return [
       this.info(step),
-      this.target && "trait" in this.target
-        ? this.selectRow("Sur le trait", this.placement, [["nearest", "Au plus près"], ["clicked", "À l'endroit cliqué"]], (v) => {
+      this.target && !("point" in this.target)
+        ? this.selectRow("trait" in this.target ? "Sur le trait" : "Sur la face", this.placement, [["nearest", "trait" in this.target ? "Au plus près" : "Au plus près (droit sur son plan)"], ["clicked", "À l'endroit cliqué"]], (v) => {
             this.placement = v as "nearest" | "clicked";
             this.update();
           })
         : null,
+      // A body can be copied instead of moved (as in Déplacer); a sketch is only moved.
+      this.subject?.kind === "body" ? this.selectRow("Copier", String(this.copies), COPIES, (v) => ((this.copies = Number(v)), this.update())) : null,
       this.source ? again : null,
     ];
   }
@@ -127,7 +147,7 @@ export class CoincideTool extends PanelTool {
 
   /** Is this body or sketch what is moved (its preview too)? */
   private own(owner: string): boolean {
-    return !!this.subject && (owner === this.subject.id || owner === `sketch:${this.subject.id}` || owner === this.moveId);
+    return !!this.subject && (owner === this.subject.id || owner === `sketch:${this.subject.id}` || owner === this.moveId || owner.startsWith(`${this.copy.id}#`));
   }
 
   private visibleSketches(): SketchFeature[] {
@@ -140,7 +160,7 @@ export class CoincideTool extends PanelTool {
     const points: Vec3[] = [];
     const owners: string[] = [];
     const pick = viewport.pickFace(event);
-    if (pick && !(picking === "target" && this.own(pick.bodyId))) {
+    if (pick && bodySnap.geometry && !(picking === "target" && this.own(pick.bodyId))) {
       const mesh = viewport.bodyMesh(pick.bodyId);
       const snaps = mesh ? faceSnaps(mesh, pick.faceIndex) : null;
       if (mesh && snaps) {
@@ -148,12 +168,12 @@ export class CoincideTool extends PanelTool {
         this.recent = [{ owner: pick.bodyId, points: [...corners, snaps.center] }, ...this.recent.filter((r) => r.owner !== pick.bodyId)].slice(0, 3);
       }
     }
-    for (const body of this.recent) {
+    for (const body of bodySnap.geometry ? this.recent : []) {
       if (picking === "target" && this.own(body.owner)) continue;
       if (body.owner !== pick?.bodyId && !body.points.some((p) => viewport.screenDistance(event, p) < POINT_PX * 2)) continue;
       for (const p of body.points) points.push(p), owners.push(body.owner);
     }
-    for (const sketch of this.visibleSketches()) {
+    for (const sketch of bodySnap.geometry ? this.visibleSketches() : []) {
       if (picking === "target" && this.own(`sketch:${sketch.id}`)) continue;
       for (const p of sketchSnapPoints(sketch)) if (viewport.screenDistance(event, p) < 40) points.push(p), owners.push(`sketch:${sketch.id}`);
     }
@@ -163,11 +183,32 @@ export class CoincideTool extends PanelTool {
       const d = viewport.screenDistance(event, p);
       if (d < best) [best, index] = [d, i];
     });
-    this.hover = { points, owners, index, trait: picking === "target" && index < 0 ? this.traitAt(event) : null };
+    const trait = picking === "target" && index < 0 && bodySnap.geometry ? this.traitAt(event) : null;
+    // Nothing caught: the point of the face, in line with a corner (smart snapping) — or anywhere for the point to move,
+    // the geometry snapping off; for where it goes, a flat face is taken whole.
+    const free = index < 0 && !trait ? facePoint(viewport, event, { alignedOnly: bodySnap.geometry || picking === "target", anchors: this.source ? [this.source] : [], skip: (id) => picking === "target" && this.own(id) }) : null;
+    if (free) {
+      index = points.length;
+      points.push(free.point);
+      owners.push(free.bodyId);
+    }
+    const face = picking === "target" && index < 0 && !trait && pick && !this.own(pick.bodyId) ? this.faceTarget(pick) : null;
+    viewport.setHoverHighlight(face && pick ? { face: pick } : null);
+    this.guides.show(free?.guides ?? [], viewport);
+    this.hover = { points, owners, index, target: trait ?? face };
     // Nothing but the point the click would take.
-    const under = this.hover.trait && "trait" in this.hover.trait ? this.hover.trait.clicked : index >= 0 ? points[index] : undefined;
+    const under = this.hover.target && !("point" in this.hover.target) ? this.hover.target.clicked : index >= 0 ? points[index] : undefined;
     this.squares.show(under ? [under] : [], [HOVER_COLOR]);
-    viewport.renderer.domElement.style.cursor = index >= 0 || this.hover.trait ? THIN_CROSSHAIR : "";
+    viewport.renderer.domElement.style.cursor = index >= 0 || this.hover.target ? THIN_CROSSHAIR : "";
+  }
+
+  /** A flat face of another body, as where to go: its plane, and the point pointed at. */
+  private faceTarget(pick: NonNullable<ReturnType<Viewport["pickFace"]>>): Target | null {
+    const mesh = this.ctx.viewport.bodyMesh(pick.bodyId);
+    const normal = mesh ? faceSnaps(mesh, pick.faceIndex)?.normal : null;
+    if (!normal) return null;
+    const clicked: Vec3 = [pick.point.x, pick.point.y, pick.point.z];
+    return { plane: clicked, normal, clicked, name: `une face de ${bodyLabel(this.ctx.doc(), pick.bodyId)}` };
   }
 
   /** The trait under the pointer: an edge of another body, or a line of another sketch. */
@@ -229,11 +270,14 @@ export class CoincideTool extends PanelTool {
     } else if (point && owner) {
       const doc = this.ctx.doc();
       this.target = { point, name: owner.startsWith("sketch:") ? `un point de ${findFeature(doc, owner.slice(7))?.name}` : `un point de ${bodyLabel(doc, owner)}` };
-    } else if (hover?.trait && "trait" in hover.trait) {
-      // The point goes to the nearest point of the trait, or where it was clicked (« Sur le trait »).
-      this.target = hover.trait;
-    } else return this.ctx.notify("Cliquez un point, une arête de corps ou une ligne d'esquisse.", "info");
+    } else if (hover?.target) {
+      // The point goes to the nearest point of the trait or of the face's plane, or where it was clicked (« Sur le trait »,
+      // « Sur la face »).
+      this.target = hover.target;
+    } else return this.ctx.notify("Cliquez un point, une arête de corps, une ligne d'esquisse ou une face plane.", "info");
+    this.ctx.viewport.setHoverHighlight(null);
     this.squares.clear();
+    this.guides.clear();
     this.recent = [];
     this.update();
   }
@@ -241,6 +285,8 @@ export class CoincideTool extends PanelTool {
   protected override dispose(): void {
     this.squares.clear();
     this.markers.clear();
+    this.guides.clear();
+    this.ctx.viewport.setHoverHighlight(null);
     this.ctx.viewport.renderer.domElement.style.cursor = "";
   }
 }

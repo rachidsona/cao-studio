@@ -1,7 +1,8 @@
 /**
  * « Coïncidence » dans le modèle : un point de ce qu'on déplace (une esquisse ou un corps) vient sur un point, ou sur
  * un trait (une ligne d'esquisse, une arête de corps). Sur un trait, au plus près (le point ne fait que le chemin le
- * plus court, comme la contrainte d'une esquisse), ou à l'endroit cliqué. Pur.
+ * plus court, comme la contrainte d'une esquisse), ou à l'endroit cliqué. Ou sur une face plane : au plus près (le long
+ * de sa perpendiculaire, ce qu'on déplace vient dans son plan), ou à l'endroit cliqué. Pur.
  */
 import type { Vec3 } from "../document/types";
 
@@ -41,7 +42,14 @@ export function segmentNearRay(origin: Vec3, direction: Vec3, a: Vec3, b: Vec3):
 }
 
 /** The move that brings `source` onto a point, or onto a trait (nearest, or the point clicked on it). */
-export function coincideMove(source: Vec3, target: { point: Vec3 } | { trait: Vec3[]; pairs?: boolean; clicked?: Vec3 }): Vec3 {
+export function coincideMove(source: Vec3, target: { point: Vec3 } | { trait: Vec3[]; pairs?: boolean; clicked?: Vec3 } | { plane: Vec3; normal: Vec3; clicked?: Vec3 }): Vec3 {
+  if ("plane" in target) {
+    if (target.clicked) return sub(target.clicked, source);
+    const n = target.normal;
+    const d = dot(sub(target.plane, source), n) / (dot(n, n) || 1);
+    // `+ 0` turns −0 into 0.
+    return [n[0] * d + 0, n[1] * d + 0, n[2] * d + 0];
+  }
   const onto = "point" in target ? target.point : (target.clicked ?? closestOnPolyline(source, target.trait, target.pairs) ?? source);
   return sub(onto, source);
 }

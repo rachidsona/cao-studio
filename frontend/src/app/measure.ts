@@ -5,7 +5,8 @@
  * their closest points, with the angle of two flat faces or straight edges
  * (measure-shapes.ts, measurements/closest.ts). In guide mode the second click
  * lays a dashed guide line in the document instead. Points snap to the corners
- * and edges of the bodies and to the ends of the guides. Measures stay in the
+ * and edges of the bodies and to the ends of the guides (with the geometry snapping of the sketch buttons), and to
+ * the alignments with the corners and the first point (smart snapping: pink dashed guides). Measures stay in the
  * view until cleared (nothing saved); guides are saved with the document and
  * drawn all the time.
  */
@@ -18,6 +19,8 @@ import { bodyLabel } from "../document/operations";
 import { el } from "../ui/dom";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
+import { SnapGuides } from "../viewport/snap-guides";
+import { bodySnap, facePoint } from "./body-snap";
 import { aimAt, captureTargets, type LevelTargets } from "./face-strip-view";
 import { bodyPicked, edgePicked, facePicked, type Picked } from "./measure-shapes";
 import { floatingPanel } from "./workshop-ui";
@@ -143,6 +146,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   const guideMarks = new Marks(viewport.scene);
   const liveMarks = new Marks(viewport.scene);
+  const smartGuides = new SnapGuides(viewport.scene);
   const measures: [Vec3, Vec3][] = [];
   /** Protractor: angles measured (apex, first arm, second arm). */
   const angles: [Vec3, Vec3, Vec3][] = [];
@@ -198,13 +202,16 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
     }
   };
 
-  /** The point under the pointer: a corner, an edge or a guide within a few pixels, else the surface. */
+  /**
+   * The point under the pointer: a corner, an edge or a guide within a few pixels (geometry snapping), else the
+   * surface — in line with a corner or the first point when the smart snapping finds one.
+   */
   const pointAt = (event: PointerEvent): Vec3 | null => {
     targets ??= snapTargets(viewport, guides());
-    const snapped = aimAt(viewport, event, SNAP_PIXELS, targets);
-    if (snapped) return snapped;
-    const face = viewport.pickFace(event);
-    return face ? [face.point.x, face.point.y, face.point.z] : null;
+    const snapped = bodySnap.geometry ? aimAt(viewport, event, SNAP_PIXELS, targets) : null;
+    const face = snapped ? null : facePoint(viewport, event, { anchors: first ? [first] : [] });
+    smartGuides.show(face?.guides ?? [], viewport);
+    return snapped ?? face?.point ?? null;
   };
 
   /** The edge, face or body under the pointer, for the measure between elements. */
@@ -298,7 +305,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
       last ? el("p", { class: "font-mono" }, last) : null,
       ...list,
       measures.length || angles.length ? clear : null,
-      el("p", { class: "text-[11px] text-gray-500" }, "Les points s'accrochent aux coins, arêtes et guides. Les guides sont enregistrés ; les mesures disparaissent quand on quitte."),
+      el("p", { class: "text-[11px] text-gray-500" }, "Les points s'accrochent aux coins, arêtes et guides, et s'alignent sur les coins (boutons d'accrochage de l'esquisse). Les guides sont enregistrés ; les mesures disparaissent quand on quitte."),
     ];
     panel.body.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   };
@@ -311,6 +318,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
     window.removeEventListener("keydown", onKey, true);
     resetPick();
     liveMarks.clear();
+    smartGuides.clear();
     measures.length = 0;
     angles.length = 0;
     second = null;
@@ -341,7 +349,9 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
         drawLive(null);
         return;
       }
-      if (first) drawLive(pointAt(event));
+      // The point (and its guides) is followed before the first click too.
+      const p = pointAt(event);
+      if (first) drawLive(p);
     },
     up: (event, isClick) => {
       if (!isClick) return false;

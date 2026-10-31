@@ -30,7 +30,7 @@ import { OffsetTool } from "./offset-tool";
 import { EdgeOffsetTool } from "./edge-offset-tool";
 import { clickedPiece, deleteWithPieces } from "./segment-delete";
 import { SketchOverlay } from "./overlay";
-import { sketchPrefs } from "./sketch-prefs";
+import { sketchPrefs, toggleSnap } from "./sketch-prefs";
 import { SketchPointer } from "./sketch-pointer";
 import { SketchValues } from "./sketch-values";
 import { closeTextDialog } from "./text-dialog";
@@ -274,6 +274,21 @@ export class SketchMode implements PointerHandler {
     sketchPrefs.gridSnap = !sketchPrefs.gridSnap;
     this.host.changed();
     this.host.notify(this.gridSnap ? "Accrochage à la grille activé." : "Accrochage à la grille désactivé.", "info");
+  }
+
+  /** Snapping on the points and lines of the sketch, and in line with its points (as in Aspire); both remembered. */
+  get geometrySnap(): boolean {
+    return sketchPrefs.geometrySnap;
+  }
+
+  get smartSnap(): boolean {
+    return sketchPrefs.smartSnap;
+  }
+
+  toggleSnap(which: "geometrySnap" | "smartSnap"): void {
+    const message = toggleSnap(which);
+    this.host.changed();
+    this.host.notify(message, "info");
   }
 
   /** Constraint symbols (H, V, ∥…) are shown on demand; the choice is remembered. */
@@ -558,6 +573,7 @@ export class SketchMode implements PointerHandler {
       showPoints: this.showPoints,
       regions,
       snapMark: this.tool ? this.pointer.snapMark : null,
+      guides: this.tool ? this.pointer.guides : [],
       cutMarks: this.kind === "break" ? this.pointer.cutMarks : [],
       resolution: [this.viewport.renderer.domElement.clientWidth, this.viewport.renderer.domElement.clientHeight],
       hoverRegion: this.pointer.hoverRegion,

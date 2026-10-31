@@ -23,7 +23,7 @@ function fakeViewport(eye: [number, number, number] = [600, -800, 500]) {
     scene,
     camera,
     onEachFrame: () => () => {},
-    worldPerPixel: () => 1, // the gizmo is 85 mm
+    worldPerPixel: () => 1, // the gizmo is 50 mm
     intersect: (_event: unknown, objects: THREE.Object3D[]) => raycaster.intersectObjects(objects, true),
     rayFromEvent: () => ({ origin: [camera.position.x, camera.position.y, camera.position.z] as [number, number, number], direction: raycaster.ray.direction.toArray() as [number, number, number] }),
   } as unknown as Viewport;
@@ -51,23 +51,23 @@ describe("manipulateur de déplacement", () => {
   });
 
   it("donne chaque flèche à un rayon qui passe par sa tête, au-delà des tuiles", () => {
-    // 85 mm of gizmo: an arrow’s head is at 0.8 of that along its axis, past the tiles (which end at 0.44).
+    // 50 mm of gizmo: an arrow’s head is at 0.86 of that along its axis, past the tiles (which end at 0.45).
     const x = setup([0, -1000, 300]);
-    expect(pick(x.gizmo, x.through, [68, 0, 0])).toEqual({ kind: "axis", axis: 0 });
+    expect(pick(x.gizmo, x.through, [43, 0, 0])).toEqual({ kind: "axis", axis: 0 });
     const y = setup([-1000, 0, 300]);
-    expect(pick(y.gizmo, y.through, [0, 68, 0])).toEqual({ kind: "axis", axis: 1 });
+    expect(pick(y.gizmo, y.through, [0, 43, 0])).toEqual({ kind: "axis", axis: 1 });
     const z = setup([0, -1000, 300]);
-    expect(pick(z.gizmo, z.through, [0, 0, 68])).toEqual({ kind: "axis", axis: 2 });
+    expect(pick(z.gizmo, z.through, [0, 0, 43])).toEqual({ kind: "axis", axis: 2 });
   });
 
   it("donne chaque tuile de plan à un rayon qui passe par son centre, vu de face", () => {
-    // The tiles sit at 0.34 of the gizmo on the two axes of their plane; seen straight on, nothing overlaps them.
+    // The tiles sit at 0.36 of the gizmo on the two axes of their plane; seen straight on, nothing overlaps them.
     const top = setup([0, 0, 1000]);
-    expect(pick(top.gizmo, top.through, [29, 29, 0])).toEqual({ kind: "plane", normal: 2 });
+    expect(pick(top.gizmo, top.through, [18, 18, 0])).toEqual({ kind: "plane", normal: 2 });
     const front = setup([0, -1000, 0]);
-    expect(pick(front.gizmo, front.through, [29, 0, 29])).toEqual({ kind: "plane", normal: 1 });
+    expect(pick(front.gizmo, front.through, [18, 0, 18])).toEqual({ kind: "plane", normal: 1 });
     const side = setup([1000, 0, 0]);
-    expect(pick(side.gizmo, side.through, [0, 29, 29])).toEqual({ kind: "plane", normal: 0 });
+    expect(pick(side.gizmo, side.through, [0, 18, 18])).toEqual({ kind: "plane", normal: 0 });
   });
 
   it("ne touche rien loin du manipulateur", () => {
@@ -111,11 +111,11 @@ describe("manipulateur dans une esquisse (plan)", () => {
 
   it("n'a que les deux flèches du plan et la boule, sans tuiles ni flèche de la normale", () => {
     const { gizmo, through } = setup();
-    expect(pick(gizmo, through, [68, 0, 0])).toEqual({ kind: "axis", axis: 0 });
-    expect(pick(gizmo, through, [0, 68, 0])).toEqual({ kind: "axis", axis: 1 });
+    expect(pick(gizmo, through, [43, 0, 0])).toEqual({ kind: "axis", axis: 0 });
+    expect(pick(gizmo, through, [0, 43, 0])).toEqual({ kind: "axis", axis: 1 });
     expect(pick(gizmo, through, [0, 0, 0])).toEqual({ kind: "free" });
-    // Where a tile would be in 3D (0.34 of the gizmo on both axes): nothing here.
-    expect(pick(gizmo, through, [29, 29, 0])).toBeNull();
+    // Where a tile would be in 3D (0.36 of the gizmo on both axes): nothing here.
+    expect(pick(gizmo, through, [18, 18, 0])).toBeNull();
   });
 
   it("déplace la boule dans le plan de l'esquisse, jamais le long de sa normale", () => {
@@ -141,7 +141,7 @@ describe("manipulateur : flèches de rotation", () => {
   it("donne l'arc de chaque axe à un rayon qui passe par son milieu (vu de face)", () => {
     // The arc of the Z axis lies in the XY plane at 0.66 of the gizmo, half way between X and Y (45°): top view.
     const top = setup([0, 0, 1000]);
-    const r = 0.66 * 85;
+    const r = 0.66 * 50;
     expect(pick(top.gizmo, top.through, [r * Math.SQRT1_2, r * Math.SQRT1_2, 0])).toEqual({ kind: "rotate", axis: 2 });
     // The arc of the X axis lies in the YZ plane: seen from the side (along X).
     const side = setup([1000, 0, 0]);
@@ -150,7 +150,7 @@ describe("manipulateur : flèches de rotation", () => {
 
   it("mesure l'angle tourné autour de l'axe, dans le sens direct, en continu au-delà d'un demi-tour", () => {
     const { gizmo, through } = setup([0, 0, 1000]);
-    const r = 0.66 * 85;
+    const r = 0.66 * 50;
     through({ x: r * Math.SQRT1_2, y: r * Math.SQRT1_2, z: 0 });
     expect(gizmo.dragStart(event)).toBe(true);
     expect(gizmo.dragging).toEqual({ kind: "rotate", axis: 2 });
@@ -174,7 +174,7 @@ describe("manipulateur : flèches de rotation", () => {
   it("ne donne pas les arcs quand ils sont cachés (repère local) ni dans un outil qui ne fait que déplacer", () => {
     const { gizmo, through } = setup([0, 0, 1000]);
     gizmo.showRotation(false);
-    const r = 0.66 * 85;
+    const r = 0.66 * 50;
     expect(pick(gizmo, through, [r * Math.SQRT1_2, r * Math.SQRT1_2, 0])).toBeNull();
     const { viewport, through: t2 } = fakeViewport([0, 0, 1000]);
     const mover = new MoveGizmo(viewport);

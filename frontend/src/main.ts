@@ -8,6 +8,7 @@ import { bindHelp } from "./app/help";
 import { bindLayers } from "./app/layers-panel";
 import { bindLinkedCopy } from "./app/linked-copy";
 import { bindMeasure } from "./app/measure";
+import { bindSnapButtons } from "./app/body-snap";
 import { bindMotion } from "./app/motion";
 import { bindDrawers } from "./app/drawer-toggle";
 import { bindParameters } from "./app/parameters";
@@ -103,6 +104,7 @@ async function start(): Promise<void> {
   bindParameters(root, viewport, editor);
   bindScenes(root, viewport, editor);
   bindMeasure(root, viewport, editor);
+  bindSnapButtons(root, (message) => editor.notify(message, "info"));
   bindMotion(root, viewport, editor);
   bindDrawers(viewport, editor);
   bindDrawing(root, viewport, editor);

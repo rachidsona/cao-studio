@@ -352,6 +352,7 @@ export class SketchController {
     if (id === "glyphs") return mode.toggleGlyphs();
     if (id === "points") return mode.togglePoints();
     if (id === "gridsnap") return mode.toggleGridSnap();
+    if (id === "geomsnap" || id === "smartsnap") return mode.toggleSnap(id === "geomsnap" ? "geometrySnap" : "smartSnap");
     if (id === "construction") return mode.toggleConstruction();
     if (id === "delete") return mode.deleteSelection();
     const created = mode.runCommand(id);
@@ -376,8 +377,8 @@ export class SketchController {
     const applicable = new Set(mode?.applicableCommands() ?? []);
     for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-sketch-command]")) {
       const id = button.dataset.sketchCommand as string;
-      if (id === "gridsnap") {
-        button.setAttribute("aria-pressed", String(!!mode?.gridSnap));
+      if (id === "gridsnap" || id === "geomsnap" || id === "smartsnap") {
+        button.setAttribute("aria-pressed", String(!!mode?.[id === "gridsnap" ? "gridSnap" : id === "geomsnap" ? "geometrySnap" : "smartSnap"]));
       } else if (id === "glyphs") {
         button.setAttribute("aria-pressed", String(!!mode?.showGlyphs));
       } else if (id === "points") {

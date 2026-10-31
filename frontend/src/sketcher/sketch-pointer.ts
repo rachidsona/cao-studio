@@ -12,7 +12,8 @@ import { chamferCorner, cornerAt, filletCorner, suggestedCornerValue } from "./c
 import { applyBreak, findBreak } from "./break";
 import { findCurve, type Vec2 } from "./edit";
 import { applyExtension, findExtension } from "./extend";
-import { gridPoint, hitTest, snap, snapToGrid, toggleTarget } from "./hit";
+import { gridPoint, hitTest, toggleTarget } from "./hit";
+import { pointerSnap, type PointerSnap } from "./smart-snap";
 import type { SketchMode } from "./mode";
 import type { SnapMark } from "./overlay";
 import { boundaryCurves, regionAt } from "./region-pick";
@@ -49,6 +50,9 @@ export class SketchPointer {
   hoverRegion: Region | null = null;
   /** Where the drawing tool's pointer snaps (the cursor becomes a square there), or null. */
   snapMark: SnapMark | null = null;
+  /** Dashed guides of the smart snapping, and the points the tool has just clicked (aligned with too). */
+  guides: [Vec2, Vec2][] = [];
+  private anchors: Vec2[] = [];
   /** Where "Couper" would cut the curve under the pointer (red crosses). */
   cutMarks: Vec2[] = [];
   /** The last click that chose a line, to pick the next one when the same spot is clicked again (lines on top of each other). */
@@ -60,6 +64,8 @@ export class SketchPointer {
   /** A tool was chosen: the marks of the previous one go. */
   reset(): void {
     this.snapMark = null;
+    this.guides = [];
+    this.anchors = [];
     this.cutMarks = [];
   }
 
@@ -67,10 +73,10 @@ export class SketchPointer {
     return this.mode.viewport.renderer.domElement;
   }
 
-  /** Where a pointer position lands: on an existing point or curve, else on the nearest grid point. */
-  private snapAt(p: Vec2) {
-    const s = snap(this.mode.geometry, p, this.mode.tolerance());
-    return this.mode.gridSnap ? snapToGrid(s, this.mode.viewport.gridStep) : s;
+  /** Where a pointer position lands: on a point or a curve, in line with a point, or on the grid (each one if on). */
+  private snapAt(p: Vec2): PointerSnap {
+    const { mode } = this;
+    return pointerSnap(mode.geometry, p, { tolerance: mode.tolerance(), geometry: mode.geometrySnap, smart: mode.smartSnap, grid: mode.gridSnap ? mode.viewport.gridStep : null, anchors: this.anchors });
   }
 
   /** Takes the pointer exclusively only to drag a point; clicks are handled in `up`. */
@@ -116,7 +122,8 @@ export class SketchPointer {
       this.hover = s.pointId ?? s.curveId ?? null;
       mode.preview = mode.tool.move(mode.geometry, s);
       // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
-      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : mode.gridSnap ? { pos: s.pos, kind: "grid" } : null;
+      this.guides = s.guides;
+      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : s.guides.length ? { pos: s.pos, kind: "smart" } : mode.gridSnap ? { pos: s.pos, kind: "grid" } : null;
       this.canvas.style.cursor = this.snapMark ? "none" : THIN_CROSSHAIR;
     } else if (mode.offset || mode.edgeOffset) {
       this.hover = hitTest(mode.geometry, p, mode.tolerance()).find((h) => findCurve(mode.geometry, h.id))?.id ?? null;
@@ -164,7 +171,10 @@ export class SketchPointer {
     if (!p) return true;
     if (mode.tool) {
       try {
-        const result = mode.tool.click(mode.geometry, this.snapAt(p));
+        const at = this.snapAt(p);
+        const result = mode.tool.click(mode.geometry, at);
+        // A point clicked but not drawn yet (the start of a line…) is aligned with too, until the shape is drawn.
+        this.anchors = result.kind === "commit" ? [] : [...this.anchors, at.pos];
         if (result.kind === "commit") {
           // A finished shape (rectangle, circle, arc, closed polyline) hands back to the selection tool.
           if (mode.apply(result.geometry)) {
@@ -175,6 +185,7 @@ export class SketchPointer {
       } catch (error) {
         mode.host.notify(error instanceof Error ? error.message : String(error), "error");
         mode.tool.reset();
+        this.anchors = [];
       }
       mode.render();
       mode.host.changed();

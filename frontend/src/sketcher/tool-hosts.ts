@@ -8,7 +8,7 @@ import type { ShelvesTool } from "./shelves-tool";
 import type { SketchPartitionTool } from "./partition-tool";
 import * as THREE from "three";
 import { toWorld } from "./frame";
-import { snap, snapToGrid } from "./hit";
+import { pointerSnap } from "./smart-snap";
 import type { SketchMode } from "./mode";
 import type { SketchMoveTool } from "./move-tool";
 import type { OffsetTool } from "./offset-tool";
@@ -53,9 +53,9 @@ export function moveHost(mode: SketchMode): ConstructorParameters<typeof SketchM
     frame: () => mode.frame,
     world: ([x, y]) => toWorld(mode.frame, x, y),
     toSketch: (event) => mode.toSketch(event),
+    // On the points and lines (if on) or the grid; no alignment guides while moving.
     snap: (p, exclude) => {
-      const s = snap(mode.geometry, p, mode.tolerance(), exclude);
-      return (mode.gridSnap ? snapToGrid(s, mode.viewport.gridStep) : s).pos;
+      return pointerSnap(mode.geometry, p, { tolerance: mode.tolerance(), geometry: mode.geometrySnap, smart: false, grid: mode.gridSnap ? mode.viewport.gridStep : null, exclude }).pos;
     },
     tolerance: () => mode.tolerance(),
     apply: (geometry, success) => mode.apply(geometry, success),

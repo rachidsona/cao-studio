@@ -55,6 +55,8 @@ export interface OverlayState {
   regions: Region[];
   /** Where the drawing tool's pointer is snapped: the cross cursor becomes a square there (as in Fusion). */
   snapMark?: SnapMark | null;
+  /** Dashed guides of the smart snapping (from the point aligned with to the pointer). */
+  guides?: [Vec2, Vec2][];
   /** Size of the view in pixels: the lines are drawn with a width in pixels. */
   resolution?: [number, number];
   /** The closed area under the pointer when no line is, drawn stronger so it can be picked. */
@@ -66,9 +68,12 @@ export interface OverlayState {
 }
 
 /** What the pointer is snapped to: a grid point, an existing point or a curve. */
+/** The smart snapping: its guides and its mark. */
+const SMART_COLOR = 0xd946ef;
+
 export interface SnapMark {
   pos: Vec2;
-  kind: "grid" | "point" | "curve";
+  kind: "grid" | "point" | "curve" | "smart";
 }
 
 /** Colours of the dimension roles, from the theme (CSS variables). */
@@ -115,10 +120,10 @@ export class SketchOverlay {
   /** Size of the view (pixels), for the width of the lines. */
   private resolution: [number, number] = [800, 600];
 
-  private polyline(points: Vec2[], color: number | THREE.Color, dashed = false, width = WIDTH.helper): void {
+  private polyline(points: Vec2[], color: number | THREE.Color, dashed = false, width = WIDTH.helper, dash = 2): void {
     const geometry = new LineGeometry();
     geometry.setPositions(points.flatMap(([x, y]) => [x, y, 0]));
-    const material = new LineMaterial({ color, linewidth: width, dashed, dashSize: 2, gapSize: 1.5, depthTest: false });
+    const material = new LineMaterial({ color, linewidth: width, dashed, dashSize: dash, gapSize: dash * 0.75, depthTest: false });
     material.resolution.set(this.resolution[0], this.resolution[1]);
     const line = new Line2(geometry, material);
     if (dashed) line.computeLineDistances();
@@ -130,7 +135,7 @@ export class SketchOverlay {
   private snapMarker({ pos, kind }: SnapMark): void {
     const px = this.worldPerPixel();
     const [x, y] = pos;
-    const color = kind === "curve" ? 0x16a34a : 0xf97316;
+    const color = kind === "curve" ? 0x16a34a : kind === "smart" ? SMART_COLOR : 0xf97316;
     const diamond = kind === "curve";
     // Lines are one pixel wide: two nested outlines make a firmer mark.
     for (const half of [6 * px, 7 * px]) {
@@ -215,6 +220,8 @@ export class SketchOverlay {
     }
 
     for (const text of state.texts ?? []) for (const outline of text.outlines) this.polyline(outline, text.hovered ? COLORS.hover : COLORS.line, false, text.hovered ? WIDTH.active : WIDTH.helper);
+    // The guides of the smart snapping: dashes of a few pixels, whatever the zoom.
+    for (const guide of state.guides ?? []) this.polyline(guide, SMART_COLOR, true, WIDTH.helper, 5 * this.worldPerPixel());
     if (state.snapMark) this.snapMarker(state.snapMark);
     for (const [x, y] of state.cutMarks ?? []) {
       const h = 6 * this.worldPerPixel();

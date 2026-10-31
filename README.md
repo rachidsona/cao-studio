@@ -233,6 +233,26 @@ serveur accepte les deux versions.
   l'activer ou la couper, choix mémorisé) ; le pas suit le zoom (1, 10, 100 mm…) et les lignes passent
   par l'origine de l'esquisse. Un point ou une courbe existants gardent la priorité sur la grille.
   Le déplacement d'un point à la souris s'accroche aussi.
+- **Accrochage à la géométrie** et **accrochage intelligent** (deux boutons à côté de « Grille », comme les
+  « Toggle Geometry Snapping » et « Toggle Smart Snapping » de Vectric Aspire ; actifs au départ, choix mémorisés) :
+  - à la géométrie : le pointeur se colle aux points et aux traits de l'esquisse ; coupé, il reste libre (ou sur la
+    grille) même tout près d'eux ;
+  - intelligent : le pointeur prend le même X ou le même Y qu'un point de l'esquisse, que le milieu d'une ligne ou
+    que le point qu'on vient de cliquer (une ligne part droite à l'horizontale ou à la verticale). Des **guides en
+    tirets** roses vont de ce point au pointeur, et la croix devient un carré rose. Aligné sur les deux à la fois, il
+    tombe au croisement.
+  - L'ordre est le suivant : un point, puis un trait, puis un alignement, puis la grille.
+  Le calcul est dans `sketcher/smart-snap.ts`.
+- **Les mêmes accrochages pour les corps en 3D** : deux boutons dans le groupe Modifier, après Déplacer et
+  Coïncidence. Ce sont les mêmes choix que dans l'esquisse : couper l'un coupe l'autre.
+  - À la géométrie : Déplacer (pivot et cible), Coïncidence et Mesurer se collent aux coins, aux milieux de faces, aux
+    arêtes et aux points d'esquisse. Coupé, le point pris est celui de la face sous le pointeur, où qu'il soit.
+  - Intelligent, un point : un point d'une face qui tombe en ligne avec un coin d'un corps (même X, Y ou Z, sur les
+    axes de la face) ou avec le point déjà cliqué se prend aussi, montré par un guide rose en tirets.
+  - Intelligent, un glissé : un corps tiré par une flèche ou une tuile de Déplacer (repère global) s'arrête quand une
+    de ses faces, ou son milieu, arrive au niveau d'une face ou du milieu d'un autre corps. On le pose face contre
+    face, au ras ou centré, sans taper de cote. Un guide rose montre le plan où ils se rejoignent.
+  Le calcul est dans `features/smart-align.ts`, le branchement dans `app/body-snap.ts`.
 - **Curseur de dessin** (comme Fusion) : avec la ligne, le rectangle, le cercle ou l'arc, le curseur est une **croix** ;
   dès que le pointeur s'accroche — à un point de la grille ou à un point existant (carré orange), à une courbe (losange
   vert) — la croix devient ce **carré** posé exactement sur le point d'accrochage, avec quatre petits bras.
@@ -362,11 +382,14 @@ opération existante.
   - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
     en modifiant le corps ; « Corps entier » déplace le corps, et la normale de la face sert de repère local ;
   - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
-  - Le **manipulateur**, dans l'esprit de Shapr3D : tout blanc et sobre, de taille constante à l'écran. Une
-    **flèche fine** par axe (un filet rouge, vert ou bleu au départ dit l'axe : X rouge, Y vert, Z bleu) déplace
-    le long de l'axe ; une **petite tuile** déplace dans un plan (XY, XZ ou YZ) ; le **point central** avec son
-    anneau déplace librement dans le plan de l'écran ; trois **flèches courbes** font tourner autour de X, Y ou
-    Z. La poignée survolée grossit et prend la couleur de son axe. Une flèche courbe ouvre l'outil **Tourner** sur
+  - Le **manipulateur** est petit (environ 50 px, de taille constante à l'écran), dessiné comme le repère d'axes
+    du coin de la vue :
+    - une **flèche fine** par axe, à la couleur de l'axe (X rouge, Y vert, Z bleu), avec une pointe en cône,
+      déplace le long de l'axe ;
+    - une **petite tuile** translucide de la même couleur déplace dans un plan (XY, XZ ou YZ) ;
+    - le **point central** blanc, avec son anneau, déplace librement dans le plan de l'écran ;
+    - trois **flèches courbes** colorées font tourner autour de X, Y ou Z.
+    La poignée survolée s'éclaircit et grossit. Une flèche courbe ouvre l'outil **Tourner** sur
     le même corps (ou la même esquisse), autour de cet axe, et le geste continue : l'angle suit le curseur par pas
     de 5° (Maj : angle libre) avec l'aperçu en direct, et se règle aussi dans le panneau ; le pivot est le centre
     de la sélection ou un coin cliqué. Les flèches courbes tournent autour des axes globaux : elles sont masquées
@@ -397,10 +420,15 @@ opération existante.
   de ses points. On clique d'abord un point de ce qu'il faut déplacer : un coin d'un corps ou un point d'une
   esquisse (les points s'affichent au survol). On clique ensuite où le coller : un point d'un autre corps ou
   d'une autre esquisse, ou un **trait** (une arête de corps, une ligne d'esquisse). Sur un trait, le point vient
-  **au plus près**, ou **à l'endroit cliqué** (au choix dans le panneau). Seul le point sous le curseur
+  **au plus près**, ou **à l'endroit cliqué** (au choix dans le panneau). On peut aussi cliquer une **face plane**
+  d'un autre corps, éclairée au survol quand aucun point ni trait n'est sous le pointeur. Au plus près, ce qu'on
+  déplace vient droit dans le plan de la face (le chemin le plus court, perpendiculaire à elle) : un panneau se pose
+  contre un autre ou au ras de lui. À l'endroit cliqué, le point vient exactement où l'on a cliqué la face. Seul le point sous le curseur
   apparaît, en petit point vert (#63df0f). Le point de départ est marqué d'un petit point rose, l'arrivée d'un
   point vert, et le résultat se voit avant OK. Un corps est déplacé par une opération « Coïncidence » (un
-  déplacement), une esquisse avec son plan et tout ce qui en est extrudé. Une seule annulation
+  déplacement), une esquisse avec son plan et tout ce qui en est extrudé. Pour un corps, **« Copier »** fonctionne
+  comme dans Déplacer : de 1 à 10 copies, l'original reste en place. La première copie vient sur le point visé, la
+  suivante deux fois plus loin, et ainsi de suite. Une opération « Copie » les fait. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`).
 - **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
