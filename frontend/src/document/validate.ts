@@ -291,11 +291,21 @@ export function validateDocument(input: unknown): string[] {
   if (input.bodyNames !== undefined && (!isObject(input.bodyNames) || !Object.values(input.bodyNames).every((v) => typeof v === "string"))) {
     errors.push("« bodyNames » doit associer un nom à chaque corps.");
   }
+  if (input.drawings !== undefined) {
+    const sheets = input.drawings;
+    const sheetOk = (d: unknown) =>
+      isObject(d) && typeof d.id === "string" && typeof d.name === "string" && Array.isArray(d.views) && Array.isArray(d.annotations) && isObject(d.sketch) && Array.isArray(d.sketch.items) && isObject(d.title) &&
+      d.views.every((v) => isObject(v) && typeof v.id === "string" && isFiniteNumber(v.scale) && (v.scale as number) > 0 && Array.isArray(v.at) && isObject(v.spec)) &&
+      d.annotations.every((a) => isObject(a) && typeof a.id === "string" && typeof a.kind === "string");
+    if (!Array.isArray(sheets) || sheets.length > 50 || !sheets.every(sheetOk)) errors.push("« drawings » : feuilles de mise en plan invalides.");
+  }
   if (input.bodyInfo !== undefined && (!isObject(input.bodyInfo) || !Object.values(input.bodyInfo).every(isObject))) errors.push("« bodyInfo » doit décrire chaque corps.");
   else if (input.bodyInfo !== undefined) {
     for (const info of Object.values(input.bodyInfo as Record<string, Record<string, unknown>>)) {
       if (info.appearance !== undefined && typeof info.appearance !== "string") errors.push("« bodyInfo » : l'apparence d'un corps doit être un identifiant.");
       if (info.color !== undefined && !(typeof info.color === "string" && /^#[0-9a-f]{6}$/i.test(info.color))) errors.push("« bodyInfo » : la couleur d'un corps doit être de la forme #rrggbb.");
+      if (info.faces !== undefined && (!Array.isArray(info.faces) || info.faces.length > 500 || !info.faces.every((f) => isObject(f) && isVec3(f.normal) && isVec3(f.rel) && typeof f.appearance === "string" && (f.color === undefined || (typeof f.color === "string" && /^#[0-9a-f]{6}$/i.test(f.color))))))
+        errors.push("« bodyInfo » : les motifs des faces d'un corps sont invalides.");
     }
   }
   if (input.layers !== undefined && (!Array.isArray(input.layers) || !input.layers.every((l) => isObject(l) && typeof l.id === "string" && typeof l.name === "string" && typeof l.visible === "boolean"))) errors.push("« layers » doit être une liste de calques (id, name, visible).");

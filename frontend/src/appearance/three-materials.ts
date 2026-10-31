@@ -64,6 +64,33 @@ export function applyUvs(geometry: THREE.BufferGeometry, look: BodyAppearance): 
   geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance), whole), 2));
 }
 
+/** The key of the texture coordinates a look needs: the same key, the same coordinates. */
+export const uvKeyOf = (look: BodyAppearance) => `${look.grainAxis}|${look.appearance.whole ? "whole" : tileOf(look.appearance).join("x")}`;
+
+/**
+ * Sets the texture coordinates of one face of a body's geometry (its triangles `start`…`start + count` of the index)
+ * for a look of its own; the other faces keep theirs. A photo covers the whole board, as on the body.
+ */
+export function applyFaceUvs(geometry: THREE.BufferGeometry, look: BodyAppearance, start: number, count: number): void {
+  const position = geometry.getAttribute("position");
+  const normal = geometry.getAttribute("normal");
+  const index = geometry.getIndex();
+  if (!position || !normal || !index) return;
+  if (!geometry.getAttribute("uv")) geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(position.count * 2), 2));
+  const uv = geometry.getAttribute("uv") as THREE.BufferAttribute;
+  let whole: { min: number[]; size: number[] } | undefined;
+  if (look.appearance.whole) {
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox!;
+    whole = { min: box.min.toArray(), size: box.max.clone().sub(box.min).toArray() };
+  }
+  const vertices = [...new Set(Array.from({ length: count }, (_, k) => index.getX(start + k)))];
+  const pick = (attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) => vertices.flatMap((v) => [attribute.getX(v), attribute.getY(v), attribute.getZ(v)]);
+  const uvs = boardUvs(pick(position), pick(normal), look.grainAxis, tileOf(look.appearance), whole);
+  vertices.forEach((v, k) => uv.setXY(v, uvs[k * 2]!, uvs[k * 2 + 1]!));
+  uv.needsUpdate = true;
+}
+
 const textures = new Map<string, { map: THREE.Texture; normal: THREE.Texture | null }>();
 /** The photos being loaded (or loaded), by URL. */
 const photos = new Map<string, { map: THREE.Texture; normal: THREE.DataTexture; ready: Promise<void> }>();

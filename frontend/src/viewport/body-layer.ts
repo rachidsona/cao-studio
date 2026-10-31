@@ -4,14 +4,15 @@
  * look of the sketch mode, and a pose that shows a door open without changing the model.
  */
 import * as THREE from "three";
-import type { BodyAppearance } from "../appearance/assign";
+import type { BodyAppearance, FaceAppearance } from "../appearance/assign";
+import { faceMarks, matchFace, type FaceMark } from "../appearance/face-looks";
 import { appearanceKey } from "../appearance/library";
-import { appearanceMaterial, applyUvs, tileOf } from "../appearance/three-materials";
+import { appearanceMaterial, applyFaceUvs, applyUvs, uvKeyOf } from "../appearance/three-materials";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Vec3 } from "../sketcher/frame";
 import { addDistinct, bodyVertices, type Point3 } from "./body-points";
 
-export type { BodyAppearance };
+export type { BodyAppearance, FaceAppearance };
 
 export interface BodyObject {
   mesh: THREE.Mesh;
@@ -67,6 +68,9 @@ export class BodyLayer {
   /** The colour of a body without appearance: #F8F8F8 for all (their dark edges tell the pieces apart). */
   private tints: THREE.MeshStandardMaterial[] = [];
   private appearance: ((bodyId: string) => BodyAppearance | null) | null = null;
+  private faceAppearance: ((bodyId: string) => FaceAppearance[]) | null = null;
+  /** The marks of the faces of each mesh (to find the faces with a motif of their own). */
+  private readonly marks = new WeakMap<BodyMesh, FaceMark[]>();
   private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
   private opacity = 1;
 
@@ -143,22 +147,52 @@ export class BodyLayer {
     if (body) body.mesh.visible = body.edges.visible = visible;
   }
 
-  /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
-  setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
+  /**
+   * Colours the bodies by their material, and the faces with a motif of their own; null puts the plain tints back.
+   * Applied again to every regeneration.
+   */
+  setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null, faces: ((bodyId: string) => FaceAppearance[]) | null = null): void {
     this.appearance = appearance;
+    this.faceAppearance = appearance ? faces : null;
     this.applyAppearance();
   }
 
   private applyAppearance(): void {
     for (const [id, body] of this.bodies) {
       const look = this.appearance?.(id);
-      (body.mesh.material as THREE.Material[])[0] = look ? this.appearanceMaterial(look) : body.tint;
-      if (!look || look.appearance.pattern === "plain") continue;
+      // Materials: the body's, the selection's, then one per motif of its faces (mesh.userData.faceMaterials).
+      const materials: THREE.Material[] = [look ? this.appearanceMaterial(look) : body.tint, this.highlightMaterial];
+      const perFace = body.data.faceGroups.map(() => 0);
+      const ownFaces: { face: number; look: BodyAppearance }[] = [];
+      const faces = this.faceAppearance?.(id) ?? [];
+      if (faces.length) {
+        let marks = this.marks.get(body.data);
+        if (!marks) this.marks.set(body.data, (marks = faceMarks(body.data)));
+        for (const f of faces) {
+          const face = matchFace(marks, f.mark);
+          if (face < 0) continue;
+          const material = this.appearanceMaterial(f.look);
+          const k = materials.indexOf(material);
+          perFace[face] = k >= 0 ? k : materials.push(material) - 1;
+          ownFaces.push({ face, look: f.look });
+        }
+      }
+      body.mesh.material = materials;
+      body.mesh.userData.faceMaterials = perFace;
+      body.mesh.geometry.groups.forEach((group, i) => {
+        if (group.materialIndex !== 1) group.materialIndex = perFace[i] ?? 0;
+      });
       // Texture coordinates along the board's grain, redone only when the axis or the motif's tile changes (or a photo
-      // goes over the whole board).
-      const key = `${look.grainAxis}|${look.appearance.whole ? "whole" : tileOf(look.appearance).join("x")}`;
+      // goes over the whole board), each face with a motif of its own after its own.
+      const base = look && look.appearance.pattern !== "plain" ? look : (ownFaces[0]?.look ?? null);
+      if (!base) continue;
+      const key = [uvKeyOf(base), ...ownFaces.map((f) => `${f.face}:${uvKeyOf(f.look)}`)].join(";");
       if (body.mesh.geometry.userData.uvKey === key) continue;
-      applyUvs(body.mesh.geometry, look);
+      applyUvs(body.mesh.geometry, base);
+      for (const f of ownFaces) {
+        const group = body.data.faceGroups[f.face]!;
+        applyFaceUvs(body.mesh.geometry, f.look, group.start, group.count);
+      }
       body.mesh.geometry.userData.uvKey = key;
     }
   }

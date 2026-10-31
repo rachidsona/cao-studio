@@ -7,6 +7,7 @@
  * `units` is only the display preference of the project.
  */
 
+import type { DrawingSheet } from "../drawing/model";
 import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText, type SketchUnderlay } from "./sketch";
 import type { FinishOptions } from "../features/finish-parts";
 import type { RoomInput } from "../features/room-plan";
@@ -577,6 +578,8 @@ export interface CadDocument {
   folders?: Folder[];
   /** Appearances made from images imported by hand (« Mes motifs »): appearance/custom.ts. */
   appearances?: CustomAppearance[];
+  /** Drawing sheets (« Mise en plan », as Fusion's Drawing): drawing/model.ts. */
+  drawings?: DrawingSheet[];
   /** Hardware models chosen in the catalogue (ids of document/hardware-catalog.ts); missing: generic ones. */
   hardware?: { hinge?: string; slide?: string; handle?: string };
 }
@@ -634,6 +637,16 @@ export interface BodyInfo {
   /** Appearance from the library (appearance/library.ts), over the material's own; the view and the render only. */
   appearance?: string;
   /** Colour chosen for a paintable appearance (sRGB hex "#rrggbb"). */
+  color?: string;
+  /** Faces with an appearance of their own, over the body's (appearance/face-looks.ts). */
+  faces?: FaceLook[];
+}
+
+/** The appearance of one face of a body: the face known by its outward normal and its centre in the body's box (0…1). */
+export interface FaceLook {
+  normal: Vec3;
+  rel: Vec3;
+  appearance: string;
   color?: string;
 }
 

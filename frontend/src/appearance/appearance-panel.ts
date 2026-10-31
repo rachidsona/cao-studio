@@ -21,8 +21,10 @@ export interface AppearancePanelHost {
   /** Bodies the panel acts on (selected whole, or through a face). */
   targets(): string[];
   /** Appearances on the displayed bodies, with how many bodies have each, and the colour of the first target. */
-  used(): { appearance: Appearance; color?: string; count: number }[];
+  used(): { appearance: Appearance; color?: string; count: number; faces?: number }[];
   targetColor(): string | undefined;
+  /** Faces picked in the view: whether the motif goes on them only, or on their whole bodies. */
+  faces(): { count: number; only: boolean; set(only: boolean): void };
   apply(bodyIds: string[], appearanceId: string | null, color?: string): void;
   /** An image of one's own as a new appearance, given to `bodyIds` (if any); `tile`: how many mm the image covers. */
   importImage(name: string, image: string, tile: [number, number], bodyIds: string[]): void;
@@ -56,6 +58,19 @@ export class AppearancePanel {
   }
 
   /** One swatch: sphere image, name; click applies it to the selection, drag drops it on a body of the view. */
+  /** Faces picked in the view: the motif on the whole pieces, or only on those faces. */
+  private facesChoice(faces: { count: number; only: boolean; set(only: boolean): void }): HTMLElement {
+    const option = (only: boolean, label: string) => {
+      const input = el("input", { type: "radio", name: "appearance-scope", class: "accent-sky-600", checked: faces.only === only });
+      input.addEventListener("change", () => (faces.set(only), this.draw()));
+      return el("label", { class: "flex items-center gap-2" }, input, label);
+    };
+    return el("div", { class: "space-y-1 border border-gray-200 p-2 dark:border-gray-700", role: "radiogroup", "aria-label": "Où poser le motif" },
+      option(false, "La pièce entière"),
+      option(true, `Seulement ${faces.count > 1 ? `les ${faces.count} faces choisies` : "la face choisie"}`),
+    );
+  }
+
   private tile(appearance: Appearance, color?: string, note?: string): HTMLElement {
     const image = el("img", { alt: "", class: "aspect-square w-full rounded-full bg-gray-100 dark:bg-gray-800", draggable: "false" });
     image.style.background = color ?? appearance.color;
@@ -98,6 +113,7 @@ export class AppearancePanel {
   /** Redraws what depends on the model and the selection (the library grid keeps its search). */
   draw(): void {
     const targets = this.host.targets();
+    const faces = this.host.faces();
     const used = this.host.used();
     const search = el("input", { type: "search", class: INPUT, placeholder: "Rechercher : chêne, marbre, verre…", value: this.query, "aria-label": "Rechercher une apparence" });
     search.addEventListener("input", () => {
@@ -146,9 +162,10 @@ export class AppearancePanel {
     });
 
     const parts: (HTMLElement | null)[] = [
-      el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""} (clic sur une vignette).` : "Sélectionnez des corps puis cliquez une vignette, ou glissez une vignette sur un corps de la vue."),
+      el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${faces.only ? `${faces.count} face${faces.count > 1 ? "s" : ""} choisie${faces.count > 1 ? "s" : ""}` : `${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""}`} (clic sur une vignette).` : "Sélectionnez des corps (dans le navigateur ou la vue, Ctrl pour plusieurs ; un groupe d'un clic sur son titre) puis cliquez une vignette, ou glissez une vignette sur un corps de la vue."),
+      faces.count ? this.facesChoice(faces) : null,
       used.length
-        ? el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Dans ce modèle"), el("div", { class: "grid grid-cols-3 gap-1.5 @2xs:grid-cols-4" }, ...used.map((u) => this.tile(u.appearance, u.color, `${u.count} corps`))))
+        ? el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Dans ce modèle"), el("div", { class: "grid grid-cols-3 gap-1.5 @2xs:grid-cols-4" }, ...used.map((u) => this.tile(u.appearance, u.color, [u.count ? `${u.count} corps` : "", u.faces ? `${u.faces} face${u.faces > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ")))))
         : null,
       el("div", { class: "flex gap-1" }, remove),
       el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Couleur au choix"), el("div", { class: "flex gap-1" }, colour, kind), paint),

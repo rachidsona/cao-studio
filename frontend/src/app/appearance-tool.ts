@@ -1,11 +1,14 @@
 /**
  * Bouton « Apparence » (Atelier) : ouvre la bibliothèque d'apparences à droite. Un clic sur une vignette la donne aux
- * corps sélectionnés ; une vignette glissée sur la vue la donne au corps lâché dessous (surligné pendant le glisser).
+ * corps sélectionnés (dans le navigateur ou la vue, un groupe d'un clic sur son titre) — ou, au choix, aux seules faces
+ * choisies dans la vue ; une vignette glissée sur la vue la donne au corps lâché dessous (surligné pendant le glisser),
+ * à la seule face dessous avec Alt.
  * Chaque changement est une modification du document (Annuler la reprend) ; la vue passe aux apparences.
  */
 import { AppearancePanel, DRAG_TYPE, droppedAppearance } from "../appearance/appearance-panel";
-import { bodyAppearance, setBodyAppearance } from "../appearance/assign";
+import { bodyAppearance, faceAppearances, setBodyAppearance } from "../appearance/assign";
 import { addCustomAppearance, removeCustomAppearance } from "../appearance/custom";
+import { faceMarks, setFaceAppearance, type FaceMark } from "../appearance/face-looks";
 import type { Appearance } from "../appearance/library";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -25,8 +28,23 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     const toggle = root.querySelector<HTMLButtonElement>('[data-workshop="render"]');
     if (toggle?.getAttribute("aria-pressed") === "false") toggle.click();
   };
+  /** Faces picked in the view take the motif alone (else their whole bodies). */
+  let onlyFaces = false;
+  const markOf = (bodyId: string, faceIndex: number): FaceMark | undefined => {
+    const mesh = viewport.bodyMesh(bodyId);
+    return mesh ? faceMarks(mesh)[faceIndex] : undefined;
+  };
   const apply = (bodyIds: string[], appearanceId: string | null, color?: string) => {
-    void editor.change(setBodyAppearance(editor.doc, bodyIds, appearanceId, color));
+    const { bodies, faces } = editor.picked.selection;
+    if (onlyFaces && faces.length) {
+      // Bodies picked whole take it whole; the faces picked alone, only them.
+      const picks = faces.flatMap((f) => {
+        const mark = markOf(f.bodyId, f.faceIndex);
+        return mark ? [{ bodyId: f.bodyId, mark }] : [];
+      });
+      const whole = bodies.length ? setBodyAppearance(editor.doc, bodies, appearanceId, color) : editor.doc;
+      void editor.change(setFaceAppearance(whole, picks, appearanceId, color));
+    } else void editor.change(setBodyAppearance(editor.doc, bodyIds, appearanceId, color));
     showAppearances();
   };
   /** An imported image: added to the project and given to the selected bodies, in one step. */
@@ -47,7 +65,7 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     panel = new AppearancePanel(container, {
       targets,
       used: () => {
-        const counts = new Map<string, { appearance: Appearance; color?: string; count: number }>();
+        const counts = new Map<string, { appearance: Appearance; color?: string; count: number; faces?: number }>();
         for (const id of viewport.displayedBodies) {
           const found = look(id);
           if (!found) continue;
@@ -56,8 +74,18 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
           entry.count++;
           counts.set(key, entry);
         }
+        // The faces with a motif of their own count too.
+        for (const id of viewport.displayedBodies) {
+          for (const { look: face } of faceAppearances(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox)) {
+            const key = `${face.appearance.id}|${face.color ?? ""}`;
+            const entry = counts.get(key) ?? { appearance: face.appearance, color: face.color, count: 0, faces: 0 };
+            entry.faces = (entry.faces ?? 0) + 1;
+            counts.set(key, entry);
+          }
+        }
         return [...counts.values()];
       },
+      faces: () => ({ count: editor.picked.selection.faces.length, only: onlyFaces, set: (only) => (onlyFaces = only) }),
       targetColor: () => {
         const first = targets()[0];
         return first ? look(first)?.color : undefined;
@@ -87,9 +115,18 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     if (!dropped) return;
     event.preventDefault();
     viewport.setHoverHighlight(null);
+    // With Alt, only the face under the pointer takes it.
+    const face = event.altKey ? viewport.pickFace(event as unknown as PointerEvent) : null;
+    const mark = face ? markOf(face.bodyId, face.faceIndex) : undefined;
+    if (face && mark) {
+      void editor.change(setFaceAppearance(editor.doc, [{ bodyId: face.bodyId, mark }], dropped.id, dropped.color));
+      return showAppearances();
+    }
     const body = bodyUnder(event);
-    if (body) apply([body], dropped.id, dropped.color);
-    else editor.notify("Lâchez l'apparence sur un corps.", "info");
+    if (body) {
+      void editor.change(setBodyAppearance(editor.doc, [body], dropped.id, dropped.color));
+      showAppearances();
+    } else editor.notify("Lâchez l'apparence sur un corps.", "info");
   });
 
   const previous = editor.onRender;

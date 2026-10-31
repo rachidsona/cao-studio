@@ -5,7 +5,7 @@
  * Seule la bibliothèque de lancer de rayons est chargée à la première ouverture : un module de l'application chargé à
  * part importerait editor.js sous une autre adresse (sans « ?v= ») et l'exécuterait une seconde fois.
  */
-import { bodyAppearance } from "../appearance/assign";
+import { bodyAppearance, faceAppearances } from "../appearance/assign";
 import { FINISHED_CATEGORIES } from "../appearance/three-materials";
 import { formatLength } from "../measurements/units";
 import { RenderMode, type RenderProgress } from "../render/render-mode";
@@ -18,6 +18,7 @@ import type { Editor } from "./editor";
 export function bindRenderWorkspace(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   const look = (id: string): BodyLook => bodyAppearance(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  const faces = (id: string) => faceAppearances(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
   const status = root.querySelector<HTMLElement>("[data-render-status]");
   const pause = root.querySelector<HTMLButtonElement>('[data-render="pause"]');
   let mode: RenderMode | null = null;
@@ -47,7 +48,7 @@ export function bindRenderWorkspace(root: HTMLElement, viewport: Viewport, edito
     loading = true;
     try {
       const library = await import("three-gpu-pathtracer");
-      const active = (mode ??= new RenderMode(library, viewport, look, loadSettings()));
+      const active = (mode ??= new RenderMode(library, viewport, look, loadSettings(), faces));
       active.onProgress = showProgress;
       try {
         active.enter();

@@ -4,9 +4,10 @@
  */
 import * as THREE from "three";
 import { ENV_ROTATION_X, environmentNorm, environmentPixels } from "./environments";
-import type { BodyAppearance } from "../appearance/assign";
+import type { BodyAppearance, FaceAppearance } from "../appearance/assign";
+import { faceMarks, matchFace } from "../appearance/face-looks";
 import { DEFAULT_APPEARANCE, appearanceById, appearanceKey } from "../appearance/library";
-import { appearanceMaterial, applyUvs, motifTextures, tileOf } from "../appearance/three-materials";
+import { appearanceMaterial, applyFaceUvs, applyUvs, motifTextures, tileOf } from "../appearance/three-materials";
 import type { RenderSettings } from "./settings";
 
 /** How one body looks in the render: its appearance, or null for the default one. */
@@ -57,8 +58,8 @@ export class RenderScene {
     return this.ground;
   }
 
-  /** Replaces the bodies by copies of these editing meshes, each with its look. */
-  setBodies(meshes: THREE.Mesh[], look: (bodyId: string) => BodyLook, settings: RenderSettings): void {
+  /** Replaces the bodies by copies of these editing meshes, each with its look (and its faces with a motif of their own). */
+  setBodies(meshes: THREE.Mesh[], look: (bodyId: string) => BodyLook, settings: RenderSettings, faces: (bodyId: string) => FaceAppearance[] = () => []): void {
     for (const child of this.bodies.children) (child as THREE.Mesh).geometry.dispose();
     this.bodies.clear();
     this.box.makeEmpty();
@@ -76,11 +77,17 @@ export class RenderScene {
       if (src.index) geometry.setIndex(src.index.clone());
       const mesh = new THREE.Mesh(geometry, this.material(appearance, settings));
       mesh.userData.look = appearance;
+      // Each face with a motif of its own is a mesh of its own, on the same vertices (one material per mesh: the tracer
+      // mixes up the materials of a mesh that has several).
+      const own = src.index ? this.ownFaces(geometry, source, faces(id)) : [];
+      const pieces = [mesh, ...this.splitFaces(geometry, own, settings)];
       source.updateMatrixWorld();
-      mesh.matrixAutoUpdate = false;
-      mesh.matrix.copy(source.matrixWorld);
-      mesh.userData.bodyId = id;
-      this.bodies.add(mesh);
+      for (const piece of pieces) {
+        piece.matrixAutoUpdate = false;
+        piece.matrix.copy(source.matrixWorld);
+        piece.userData.bodyId = id;
+        this.bodies.add(piece);
+      }
       geometry.computeBoundingBox();
       this.box.union(geometry.boundingBox!.clone().applyMatrix4(mesh.matrix));
     }
@@ -107,6 +114,48 @@ export class RenderScene {
       const mesh = child as THREE.Mesh;
       mesh.material = this.material(mesh.userData.look as BodyAppearance, settings);
     }
+  }
+
+  /** The faces of a copied body that have a motif of their own (their triangles and look), their UVs set for it. */
+  private ownFaces(geometry: THREE.BufferGeometry, source: THREE.Mesh, faces: FaceAppearance[]): { start: number; count: number; look: BodyAppearance }[] {
+    if (!faces.length) return [];
+    const groups = source.geometry.groups;
+    const marks = faceMarks({
+      vertices: source.geometry.getAttribute("position").array,
+      normals: source.geometry.getAttribute("normal").array,
+      indices: source.geometry.index!.array,
+      faceGroups: groups,
+    });
+    return faces.flatMap((f) => {
+      const group = groups[matchFace(marks, f.mark)];
+      if (!group) return [];
+      applyFaceUvs(geometry, f.look, group.start, group.count);
+      return [{ start: group.start, count: group.count, look: f.look }];
+    });
+  }
+
+  /**
+   * The faces with a motif of their own taken out of the body's mesh (its index loses their triangles), each made a
+   * mesh of its own sharing the body's vertices, with its look.
+   */
+  private splitFaces(geometry: THREE.BufferGeometry, own: { start: number; count: number; look: BodyAppearance }[], settings: RenderSettings): THREE.Mesh[] {
+    if (!own.length) return [];
+    const index = geometry.index!.array;
+    const taken = new Uint8Array(index.length);
+    const pieces = own.map((f) => {
+      taken.fill(1, f.start, f.start + f.count);
+      const part = new THREE.BufferGeometry();
+      for (const name of ["position", "normal", "uv"]) {
+        const attribute = geometry.getAttribute(name);
+        if (attribute) part.setAttribute(name, attribute);
+      }
+      part.setIndex(Array.from(index.slice(f.start, f.start + f.count)));
+      const mesh = new THREE.Mesh(part, this.material(f.look, settings));
+      mesh.userData.look = f.look;
+      return mesh;
+    });
+    geometry.setIndex(Array.from(index).filter((_, i) => !taken[i]));
+    return pieces;
   }
 
   /** The ground under the bodies: shadow catcher, studio floor or parquet, wide enough to reach the horizon. */

@@ -5,13 +5,14 @@
  * the selected bodies, the others open a large window with CSV / print.
  */
 import { cutList, cutListCsv, edgeText, grainText, type CutRow, type PartInput } from "../document/cut-list";
-import { bodyAppearance } from "../appearance/assign";
+import { bodyAppearance, faceAppearances } from "../appearance/assign";
 import { EDGE_BANDS, MATERIALS, bodyInfo, setBodyInfo } from "../document/materials";
 import { layoutSheets, type Sheet } from "../document/nesting";
 import { isHardwareBody } from "../document/hardware";
 import type { BodyInfo, CadDocument, DisplayUnit } from "../document/types";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
+import type { FaceAppearance } from "../viewport/body-layer";
 import type { BodyAppearance, Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { downloadText, escapeHtml, floatingPanel, openModal, printHtml } from "./workshop-ui";
@@ -72,8 +73,10 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
 
   /** The look of a body: its appearance (library) or its material's, the grain along the board's length or width. */
   const appearance = (id: string): BodyAppearance | null => bodyAppearance(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  /** The faces of a body with a motif of their own. */
+  const faces = (id: string): FaceAppearance[] => faceAppearances(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
   const showMaterials = () => {
-    viewport.setAppearance(rendering ? appearance : null);
+    viewport.setAppearance(rendering ? appearance : null, faces);
     root.querySelector('[data-workshop="render"]')?.setAttribute("aria-pressed", String(rendering));
   };
   root.querySelector('[data-workshop="render"]')?.addEventListener("click", () => {
@@ -171,6 +174,6 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
   editor.onRender = () => {
     previous();
     renderMaterial();
-    if (rendering) viewport.setAppearance(appearance);
+    if (rendering) viewport.setAppearance(appearance, faces);
   };
 }

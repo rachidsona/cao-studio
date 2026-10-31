@@ -13,7 +13,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import type { SketchFrame, Vec3 } from "../sketcher/frame";
 import type { BodyMesh } from "../geometry/protocol";
-import { BodyLayer, drawnEdgeAt, type BodyAppearance, type DrawnEdges } from "./body-layer";
+import { BodyLayer, drawnEdgeAt, type BodyAppearance, type DrawnEdges, type FaceAppearance } from "./body-layer";
 import type { Point3 } from "./body-points";
 import * as rig from "./camera-rig";
 import { clickCandidates } from "./click-candidates";
@@ -237,8 +237,8 @@ export class Viewport {
   setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); }
 
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
-  setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
-    this.layer.setAppearance(appearance);
+  setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null, faces: ((bodyId: string) => FaceAppearance[]) | null = null): void {
+    this.layer.setAppearance(appearance, faces);
   }
 
   /** Corners of the displayed bodies (model coordinates, mm), merged by position. */

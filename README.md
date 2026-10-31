@@ -233,8 +233,10 @@ serveur accepte les deux versions.
 - **Symétrie, Rotation, Échelle** (menu « Modifier ▾ » de l'esquisse), sur les traits sélectionnés. Une petite
   fenêtre demande les réglages ; chaque geste est une seule annulation.
   - **Symétrie** : une copie en miroir, autour de la dernière ligne sélectionnée ou de l'axe X ou Y. La copie reste
-    liée à l'original par des contraintes de symétrie, comme dans Fusion : elle suit quand on change l'original.
-    Décoché « Garder l'original », le miroir se fait sur place.
+    liée à l'original par des contraintes de symétrie (et un rayon égal pour ses cercles et ses arcs), comme dans
+    Fusion : elle suit quand on change l'original, sans contrainte redondante. Une forme posée sur l'axe garde ses
+    points de l'axe en commun avec sa copie, et son côté sur l'axe n'est pas doublé. Décoché « Garder l'original »,
+    le miroir se fait sur place.
   - **Rotation** : d'un angle (sens direct), autour du milieu de la sélection, de l'origine ou du point sélectionné.
   - **Échelle** : d'un facteur, autour des mêmes centres ; les rayons et les cotes de longueur suivent.
   Rotation et échelle se font sur place ou en copie. Les contraintes entre traits transformés suivent quand elles
@@ -1026,6 +1028,17 @@ opération existante.
     (photo de bois, de pierre, de tissu… en PNG, JPEG ou WebP). L'image est réduite à 1024 px et gardée avec le
     projet ; la taille en millimètres dit combien elle couvre. Elle est appliquée aux corps sélectionnés et rangée
     dans la catégorie « Mes motifs (images importées) », où ✕ la retire (`appearance/custom.ts`).
+    **À qui donner le motif** : un clic sur une vignette le donne à ce qui est sélectionné.
+    - Dans le navigateur, une ligne de corps ; Ctrl ou Maj pour en ajouter. Un clic sur le titre d'un groupe
+      (« Portes 1 », « Étagères », un dossier) sélectionne toutes ses pièces.
+    - Dans la vue, une pièce ou une face. Quand des faces sont choisies, le panneau demande « La pièce entière »
+      (par défaut) ou « Seulement la face choisie » : le dessus d'un plan en marbre, le côté visible d'un caisson
+      en noyer, le reste de la pièce gardant le sien.
+    - Une vignette glissée sur la vue donne le motif à la pièce lâchée dessous, ou seulement à la face dessous avec
+      Alt.
+    Une face est retrouvée par son orientation et la place de son centre dans la pièce, donc aussi quand la pièce
+    change de taille. Donner un motif à la pièce entière efface ceux de ses faces. Les motifs des faces se voient
+    dans la vue et dans le Rendu, et sont comptés dans « Dans ce modèle » (`appearance/face-looks.ts`).
     Un clic sur une vignette la donne aux corps
     sélectionnés ; on peut aussi **glisser une vignette sur un corps** de la vue (surligné pendant le glisser).
     « Couleur au choix » applique une couleur à une laque, une peinture, un plastique ou un tissu ; « Dans ce
@@ -1060,9 +1073,36 @@ opération existante.
     de niche ou de façades de caisson) l'**ouvre** : toutes ses pièces glissent ensemble du côté de sa façade. Un
     second clic le **referme**. La vue seulement, comme Mouvements : une régénération du modèle les referme ; rien
     pendant un outil ni avec Ctrl, Cmd ou Maj (`app/drawer-toggle.ts`, `features/drawer-open.ts`).
-  - *Mise en plan* : trois vues (face, droite, dessus, projection européenne) avec lignes cachées en pointillés, cotes
-    générales, cartouche et échelle normalisée choisie pour que tout tienne (A3 ou A4 paysage) ; impression / PDF ou
-    export SVG.
+  - *Mise en plan* (bouton 📐 de la barre du haut, comme l'espace Dessin de Fusion) : un écran à part avec son ruban,
+    la feuille au centre (molette : zoom ; glisser le fond : se déplacer ; F : toute la feuille), les onglets des
+    feuilles en bas et les réglages à droite. Les feuilles sont gardées avec le projet, et Ctrl+Z annule comme partout.
+    - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, dessiné par, société, date, matière ;
+      échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
+      ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
+      normalisée qui tient sur la feuille.
+    - **Vues** : *vue de base* (face, arrière, gauche, droite, dessus, dessous, isométriques), posée d'un clic à
+      l'échelle choisie ou ajustée. *Vue projetée* : tirée d'une vue, à côté, dessus ou dessous (la vue de gauche à
+      droite en projection européenne), ou en biais pour une isométrique ; elle reste alignée sur sa vue mère, qui
+      l'emmène quand on la glisse. Chaque vue a son nom, son échelle et ses lignes cachées en pointillés. Toutes
+      suivent le modèle : une cote d'esquisse changée, la vue est redessinée.
+    - **Coupe** : un trait sur une vue (Maj : d'équerre), puis la place de la coupe. Elle montre ce qui reste derrière
+      le plan, les faces coupées hachurées (une pièce sur deux dans l'autre sens). Le trait de coupe porte ses flèches
+      et ses lettres (A-A, B-B…), et le sens s'inverse dans les réglages.
+    - **Détail** : un cercle sur une vue, puis la place du détail, agrandi deux fois et demie.
+    - **Cotes** : *Cote* (deux points accrochés aux coins et aux centres, puis tirer : horizontale au-dessus ou
+      dessous, verticale à côté, alignée avec Maj), *Diamètre* et *Rayon* (un cercle vu de face), *Angle* (deux
+      traits). La valeur est mesurée sur le modèle et le suit (un caisson élargi, sa cote change) ; on peut imposer
+      un texte. Une cote glissée change de place.
+    - **Annoter** : *Texte*, *Note* avec ligne de rappel, *Repère* (bulle numérotée d'une pièce, au numéro de la
+      nomenclature) et *Nomenclature* (repère, désignation, quantité, matière, dimensions, tirée de la liste de
+      débit).
+    - **Dessin 2D libre** : *Ligne*, *Rectangle*, *Cercle* en millimètres réels à l'échelle du dessin de la feuille
+      (1:10 par défaut). Ils s'accrochent aux bouts des traits, Maj les garde d'équerre, et la longueur (ou la largeur,
+      le rayon) se tape au clavier puis Entrée. Le style du trait se choisit : continu fort ou fin, interrompu, mixte
+      (axe). Une feuille sans vue fait ainsi un plan 2D.
+    - **Exporter** : *PDF* (impression de toutes les feuilles), *DXF* de la feuille par calques (CADRE, CONTOUR,
+      CACHE, COUPE, COTES, DESSIN), *SVG*.
+    Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
 - **Lissage** (groupe Modifier, comme Fusion) : un solide passant par les profils fermés de plusieurs esquisses, dans

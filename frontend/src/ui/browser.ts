@@ -366,9 +366,15 @@ export function renderBrowser(
     if (folder) renameFolder(root, folder, handlers);
   });
   root.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-hide-group],[data-menu],[data-toggle]");
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-select],[data-hide],[data-hide-group],[data-menu],[data-toggle],[data-head]");
     if (!target) return;
     const adding = event.shiftKey || event.ctrlKey || event.metaKey;
+    // The heading of a group (a Répartition's doors, its shelves, a folder): all its bodies are selected.
+    if (target.dataset.head?.startsWith("group:")) {
+      const ids = [...new Set((ctx.groups.get(target.dataset.head.slice(6))?.bodies ?? []).map((r) => r.item.id))];
+      ids.forEach((id, i) => handlers.onSelectBody(id, adding || i > 0));
+      return;
+    }
     if (target.dataset.hideGroup) {
       const rows = ctx.groups.get(target.dataset.hideGroup)?.bodies ?? [];
       handlers.onSetHidden([...new Set(rows.map((r) => r.item.body?.originId ?? r.item.id))], target.dataset.hideMode === "hide");

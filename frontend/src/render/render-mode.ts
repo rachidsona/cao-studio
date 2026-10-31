@@ -6,6 +6,7 @@
  */
 import * as THREE from "three";
 import type { PhysicalCamera, WebGLPathTracer } from "three-gpu-pathtracer";
+import type { FaceAppearance } from "../appearance/assign";
 import type { Viewport } from "../viewport/viewport";
 import { RenderScene, type BodyLook } from "./render-scene";
 import { installShadowCatcher, setCatcherNorm } from "./shadow-catcher";
@@ -59,6 +60,8 @@ export class RenderMode {
     private readonly viewport: Viewport,
     private readonly look: (bodyId: string) => BodyLook,
     public settings: RenderSettings,
+    /** The faces of a body with a motif of their own. */
+    private readonly faces: (bodyId: string) => FaceAppearance[] = () => [],
   ) {
     this.camera = new library.PhysicalCamera(40, 1, 1, 200000);
   }
@@ -172,7 +175,7 @@ export class RenderMode {
   private rebuild(): void {
     const { tracer, world } = this;
     if (!tracer || !world) return;
-    world.setBodies(this.viewport.bodyMeshes(), this.look, this.settings);
+    world.setBodies(this.viewport.bodyMeshes(), this.look, this.settings, this.faces);
     this.applyEnvironment();
     tracer.bounces = this.settings.bounces;
     this.applyCamera(false);

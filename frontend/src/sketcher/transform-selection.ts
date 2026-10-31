@@ -4,9 +4,10 @@
  * les rayons et les cotes de longueur suivent l'échelle ; les contraintes entre éléments choisis suivent quand elles
  * ont encore un sens (horizontale et verticale gardées, échangées à un quart de tour, retirées sinon ; cotes en X ou
  * en Y retirées hors d'un geste d'équerre). Une copie par symétrie autour d'une ligne de l'esquisse lui reste liée par
- * des contraintes de symétrie, comme dans Fusion. Pur.
+ * des contraintes de symétrie (et un rayon égal pour un arc), qui la tiennent seules, comme dans Fusion. En copie, un point que la transformation laisse en place (sur l'axe
+ * d'une symétrie, au centre d'une rotation) est partagé, et un trait qui retombe sur lui-même n'est pas doublé. Pur.
  */
-import { DIMENSION_KINDS, RESERVED_IDS, constraintRefs, type SketchConstraint, type SketchCurve, type SketchGeometry } from "../document/sketch";
+import { DIMENSION_KINDS, RESERVED_IDS, constraintRefs, curvePoints, type SketchConstraint, type SketchCurve, type SketchGeometry } from "../document/sketch";
 import { cloneGeometry, nextId, pointPos, type Vec2 } from "./edit";
 import { copiedElements } from "./sketch-array";
 
@@ -87,10 +88,12 @@ export function transformSelection(g: SketchGeometry, selection: ReadonlySet<str
   const work = cloneGeometry(g);
   const ids = new Map<string, string>();
   const angle = (center: Vec2, p: Vec2) => Math.atan2(p[1] - center[1], p[0] - center[0]);
-  // Points: new ones for a copy, the same ones moved otherwise.
+  // Points: new ones for a copy, the same ones moved otherwise. A point left in place is shared by the copy.
   for (const id of points) {
     const [x, y] = apply(f, pointPos(g, id));
-    if (copy) {
+    const [px, py] = pointPos(g, id);
+    if (copy && Math.hypot(x - px, y - py) < 1e-6) ids.set(id, id);
+    else if (copy) {
       const fresh = nextId(work, "p");
       work.points.push({ id: fresh, x: round(x), y: round(y) });
       ids.set(id, fresh);
@@ -109,8 +112,13 @@ export function transformSelection(g: SketchGeometry, selection: ReadonlySet<str
     const cp = pointPos(work, center);
     return { ...c, id, center, start, end, radius: round(c.radius * k), startAngle: angle(cp, pointPos(work, start)), endAngle: angle(cp, pointPos(work, end)), projected: undefined };
   };
+  const shared = (pid: string) => ids.get(pid) === pid;
+  /** A curve the transform lays back on itself (a line on the mirror axis): its copy would be a double. */
+  const onItself = (c: SketchCurve) =>
+    c.kind === "line" ? shared(c.p1) && shared(c.p2) : c.kind === "circle" ? shared(c.center) && Math.abs(k - 1) < 1e-9 : !flips && shared(c.center) && shared(c.start) && shared(c.end);
   for (const c of curves) {
-    if (copy) {
+    if (copy && onItself(c)) ids.set(c.id, c.id);
+    else if (copy) {
       const fresh = nextId(work, c.kind === "line" ? "l" : c.kind === "circle" ? "k" : "a");
       ids.set(c.id, fresh);
       work.curves.push(JSON.parse(JSON.stringify(remake(c, fresh))) as SketchCurve);
@@ -123,12 +131,26 @@ export function transformSelection(g: SketchGeometry, selection: ReadonlySet<str
   const inside = new Set([...points, ...curves.map((c) => c.id)]);
   const within = g.constraints.filter((c) => !RESERVED_IDS.has(c.id) && constraintRefs(c).every((r) => inside.has(r)));
   if (copy) {
-    for (const c of within) {
+    // A mirror copy tied by symmetry is held by it: the original's own constraints would be redundant there.
+    const tied = Boolean(link && flips);
+    for (const c of tied ? [] : within) {
+      // Between elements left in place: the constraint is already there.
+      if (constraintRefs(c).every((r) => ids.get(r) === r)) continue;
       const carried = carry(c, f, ids);
       if (carried) work.constraints.push({ ...carried, id: nextId(work, "c") });
     }
     // The copy of a mirror across a line of the sketch stays its mirror image.
-    if (link && flips) for (const id of points) work.constraints.push({ id: nextId(work, "c"), kind: "symmetric", a: id, b: ids.get(id)!, axis: link });
+    if (tied) {
+      // An arc has five degrees of freedom: its two ends symmetric and an equal radius tie it, its centre then follows
+      // (also symmetric, it would be redundant). A centre other curves use stays tied itself.
+      const arcs = curves.filter((c): c is Extract<SketchCurve, { kind: "arc" }> => c.kind === "arc" && !onItself(c) && !shared(c.center));
+      const alone = (c: Extract<SketchCurve, { kind: "arc" }>) => g.curves.filter((x) => x.id !== c.id && curvePoints(x).includes(c.center)).length === 0;
+      const freed = new Set(arcs.filter(alone).map((c) => c.center));
+      for (const id of points.filter((q) => !shared(q) && !freed.has(q))) work.constraints.push({ id: nextId(work, "c"), kind: "symmetric", a: id, b: ids.get(id)!, axis: link as string });
+      // A circle: its centre symmetric and its radius equal.
+      const circles = curves.filter((c) => c.kind === "circle" && !onItself(c));
+      for (const c of [...arcs.filter(alone), ...circles]) work.constraints.push({ id: nextId(work, "c"), kind: "equal", a: c.id, b: ids.get(c.id)! });
+    }
   } else {
     work.constraints = work.constraints.flatMap((c) => {
       if (!within.some((w) => w.id === c.id)) return c.kind === "fix" && points.includes(c.point) ? [] : [c];

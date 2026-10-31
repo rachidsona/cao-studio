@@ -210,7 +210,8 @@ export class SelectionLayer {
       body.mesh.geometry.groups.forEach((group, index) => {
         const selected =
           this.bodies.includes(body.data.bodyId) || this.faces.some((f) => f.bodyId === body.data.bodyId && f.faceIndex === index);
-        group.materialIndex = selected ? 1 : 0;
+        // Not selected: back to its own material (a face with a motif of its own has one).
+        group.materialIndex = selected ? 1 : ((body.mesh.userData.faceMaterials as number[] | undefined)?.[index] ?? 0);
       });
     }
     for (const child of [...this.group.children]) {

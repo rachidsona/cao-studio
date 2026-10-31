@@ -136,3 +136,22 @@ test("la liste de débit s'ouvre avec les pièces du modèle", async ({ page }) 
   await page.locator('[data-workshop="cutlist"]').click();
   await expect(page.getByRole("dialog", { name: /Liste de débit/ })).toBeVisible();
 });
+
+test("la mise en plan s'ouvre de la barre du haut : une feuille avec les vues standard, gardée avec le projet", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const api = await newProject(page, "Mise en plan e2e");
+  await page.locator('header [data-workshop="drawing"]').click();
+  const workspace = page.getByRole("dialog", { name: "Mise en plan" });
+  await expect(workspace).toBeVisible();
+  // Front, top, left and isometric views, the title block.
+  await expect(workspace.locator('[data-drawing-stage] g[data-id^="view"]')).toHaveCount(4);
+  await expect(workspace.locator('[data-drawing-stage] [data-id="title-block"]')).toContainText("Mise en plan e2e");
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 15_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  expect(project.document.drawings[0].views).toHaveLength(4);
+  await page.locator("[data-drawing-close]").click();
+  await expect(workspace).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -3,7 +3,7 @@ import { Editor, type EditorConfig } from "./app/editor";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
-import { bindDrawing } from "./app/drawing-view";
+import { bindDrawingWorkspace } from "./app/drawing/workspace";
 import { bindHelp } from "./app/help";
 import { bindLayers } from "./app/layers-panel";
 import { bindLinkedCopy } from "./app/linked-copy";
@@ -119,7 +119,7 @@ async function start(): Promise<void> {
   bindWeight(root, viewport, editor);
   bindMotion(root, viewport, editor);
   bindDrawers(viewport, editor);
-  bindDrawing(root, viewport, editor);
+  bindDrawingWorkspace(root, viewport, editor);
   bindHelp(root);
   bindLayers(root, viewport, editor);
   bindLinkedCopy(root, viewport, editor);

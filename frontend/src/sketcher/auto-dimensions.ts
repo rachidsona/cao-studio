@@ -40,7 +40,7 @@ export function autoDimensions(g: SketchGeometry, selection: ReadonlySet<string>
       const sorted = [...levels.entries()].sort((a, b) => a[0] - b[0]).map(([, q]) => q);
       if (sorted.length < 2) continue;
       const kind = axis === 0 ? "distanceX" : "distanceY";
-      const span = (a: (typeof pos)[number], b: (typeof pos)[number]) => Number((b.p[axis] - a.p[axis]).toFixed(6));
+      const span = (a: (typeof pos)[number], b: (typeof pos)[number]) => Number((b.p[axis] - a.p[axis]).toFixed(3));
       if (sorted.length > 2 && sorted.length <= MAX_CHAIN) {
         for (let i = 0; i + 1 < sorted.length; i++) add({ kind, a: sorted[i]!.id, b: sorted[i + 1]!.id, value: span(sorted[i]!, sorted[i + 1]!), driving: false, label: AUTO_LABEL, offset: size * 0.16 } as Omit<SketchConstraint, "id">);
       }
@@ -49,8 +49,8 @@ export function autoDimensions(g: SketchGeometry, selection: ReadonlySet<string>
     }
   }
   for (const c of chosen) {
-    if (c.kind === "circle") add({ kind: "diameter", curve: c.id, value: Number((c.radius * 2).toFixed(6)), driving: false, label: AUTO_LABEL } as Omit<SketchConstraint, "id">);
-    else if (c.kind === "arc") add({ kind: "radius", curve: c.id, value: Number(c.radius.toFixed(6)), driving: false, label: AUTO_LABEL } as Omit<SketchConstraint, "id">);
+    if (c.kind === "circle") add({ kind: "diameter", curve: c.id, value: Number((c.radius * 2).toFixed(3)), driving: false, label: AUTO_LABEL } as Omit<SketchConstraint, "id">);
+    else if (c.kind === "arc") add({ kind: "radius", curve: c.id, value: Number(c.radius.toFixed(3)), driving: false, label: AUTO_LABEL } as Omit<SketchConstraint, "id">);
   }
   return { geometry: { ...work, constraints: [...work.constraints, ...added] }, count: added.length };
 }
