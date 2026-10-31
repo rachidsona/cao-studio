@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ piece|default:"Atelier" }} · {{ project.name }} · Atelier{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-md space-y-6">
+  <div>
+    <p class="text-sm text-gray-500 dark:text-gray-400">Suivi d'atelier · {{ project.name }}</p>
+    {% if piece %}
+      <h1 class="mt-1 text-2xl font-semibold tracking-tight">{{ piece }}</h1>
+      <p class="mt-1 text-sm">
+        {% if current %}Étape : <strong>{% for key, label in steps %}{% if key == current %}{{ label }}{% endif %}{% endfor %}</strong>{% else %}Pas encore commencée.{% endif %}
+      </p>
+    {% else %}
+      <h1 class="mt-1 text-2xl font-semibold tracking-tight">Avancement du projet</h1>
+    {% endif %}
+  </div>
+
+  {% if piece %}
+    <form method="post" class="grid grid-cols-2 gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="piece" value="{{ piece }}">
+      {% for key, label in steps %}
+        <button type="submit" name="step" value="{{ key }}"
+          class="min-h-16 border px-3 text-lg font-semibold {% if key == current %}border-emerald-600 bg-emerald-600 text-white{% else %}border-gray-300 bg-white hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}">
+          {{ forloop.counter }}. {{ label }}
+        </button>
+      {% endfor %}
+      {% if current %}
+        <button type="submit" name="step" value="" class="col-span-2 min-h-11 text-sm text-gray-500 underline">Remettre à zéro</button>
+      {% endif %}
+    </form>
+  {% endif %}
+
+  <section aria-labelledby="all-title" class="space-y-2">
+    <h2 id="all-title" class="text-sm font-semibold text-gray-500 uppercase dark:text-gray-400">Pièces suivies ({{ pieces|length }})</h2>
+    <p class="text-sm">{% for label, count in counts %}{{ label }} : {{ count }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+    <ul class="divide-y divide-gray-200 border border-gray-200 bg-white text-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+      {% for p in pieces %}
+        <li><a href="?piece={{ p.part|urlencode }}" class="flex min-h-11 items-center justify-between gap-3 px-3 py-2 {% if p.part == piece %}bg-sky-50 dark:bg-sky-950{% endif %}"><span class="truncate">{{ p.part }}</span><span class="shrink-0 text-gray-500 dark:text-gray-400">{{ p.get_step_display }}</span></a></li>
+      {% empty %}
+        <li class="px-3 py-3 text-gray-500">Aucune pièce suivie pour l'instant : scannez le QR code d'une étiquette.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  <p><a href="{% url 'projects:editor' project_id=project.id %}" class="text-sm text-sky-700 underline dark:text-sky-300">Ouvrir le projet</a></p>
+</div>
+{% endblock %}

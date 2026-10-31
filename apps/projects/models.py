@@ -107,3 +107,61 @@ class Comment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.author} : {self.body[:40]}"
+
+
+class LibraryModule(models.Model):
+    """A piece of furniture of one's own (a cabinet, a drawer, a column…), kept to be put again in any project.
+
+    ``document`` is a whole valid document holding only the module's features (and the parameters, names and
+    materials they use); ``thumbnail`` a small JPEG data URL taken in the view.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="cad_library",
+        verbose_name="propriétaire",
+    )
+    name = models.CharField("nom", max_length=120)
+    document = models.JSONField("document")
+    thumbnail = models.TextField("vignette", blank=True)
+    created_at = models.DateTimeField("créé le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "-created_at"]
+        verbose_name = "module de bibliothèque"
+        verbose_name_plural = "modules de bibliothèque"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class PartProgress(models.Model):
+    """Where a piece of a project stands in the workshop (cut, edge-banded, drilled, assembled), set by scanning
+    its label's QR code or in the editor; the piece is known by its name."""
+
+    STEPS = [("cut", "Débitée"), ("banded", "Chantée"), ("drilled", "Percée"), ("assembled", "Montée")]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="progress", verbose_name="projet"
+    )
+    part = models.CharField("pièce", max_length=200)
+    step = models.CharField("étape", max_length=12, choices=STEPS)
+    updated_at = models.DateTimeField("mis à jour le", auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="par",
+    )
+
+    class Meta:
+        ordering = ["part"]
+        unique_together = [("project", "part")]
+        verbose_name = "avancement d'une pièce"
+        verbose_name_plural = "avancement des pièces"
+
+    def __str__(self) -> str:
+        return f"{self.part} : {self.get_step_display()}"

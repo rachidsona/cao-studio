@@ -1,10 +1,12 @@
 from django.urls import path, re_path
 
-from . import api, assistant, monitoring, sharing
+from . import api, assistant, library, monitoring, sharing, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
     path("projects/", api.project_collection, name="api-projects"),
+    path("library/", library.library_collection, name="api-library"),
+    path("library/<int:module_id>/", library.library_detail, name="api-library-module"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),
     path(
@@ -17,6 +19,7 @@ urlpatterns = [
     path("projects/<uuid:project_id>/comments/", sharing.comment_collection, name="api-project-comments"),
     path("projects/<uuid:project_id>/comments/<int:comment_id>/", sharing.comment_detail, name="api-project-comment"),
     path("projects/<uuid:project_id>/assistant/", assistant.assistant, name="api-project-assistant"),
+    path("projects/<uuid:project_id>/workshop/", workshop.progress_api, name="api-project-workshop"),
     # Any other /api/ URL answers with a JSON 404 instead of an HTML page.
     re_path(r"^.*$", api.not_found),
 ]

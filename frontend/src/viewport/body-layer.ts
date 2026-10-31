@@ -134,6 +134,12 @@ export class BodyLayer {
     }
   }
 
+  /** Shows or hides a body's mesh and edges (view only: a step of the assembly instructions). */
+  setVisible(bodyId: string, visible: boolean): void {
+    const body = this.bodies.get(bodyId);
+    if (body) body.mesh.visible = body.edges.visible = visible;
+  }
+
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
   setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {
     this.appearance = appearance;

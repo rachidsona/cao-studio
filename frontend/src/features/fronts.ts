@@ -21,20 +21,25 @@ function drillings(part: FrontPart, f: FrontsFeature): { at: Vec3; radius: numbe
   const inside = y1; // the face towards the cabinet (+Y)
   const out: { at: Vec3; radius: number; depth: number }[] = [];
   if (role.kind === "door" && f.hinges) {
-    const x = role.hinge === "left" ? x0 + 22.5 : x1 - 22.5;
+    const cup = { edge: f.hw?.cupEdge ?? 22.5, radius: (f.hw?.cupDiameter ?? 35) / 2, depth: f.hw?.cupDepth ?? 13 };
+    const x = role.hinge === "left" ? x0 + cup.edge : x1 - cup.edge;
     const n = hingeCount(z1 - z0);
-    for (let k = 0; k < n; k++) out.push({ at: [x, inside, z0 + 100 + ((z1 - z0 - 200) * k) / (n - 1)], radius: 17.5, depth: 13 });
+    for (let k = 0; k < n; k++) out.push({ at: [x, inside, z0 + 100 + ((z1 - z0 - 200) * k) / (n - 1)], radius: cup.radius, depth: cup.depth });
   }
   if (f.handles) {
+    // The chosen handle's spacing (one hole for a knob) and hole.
+    const spacing = f.hw?.handleSpacing ?? 128;
+    const pair = spacing > 0 ? [-spacing / 2, spacing / 2] : [0];
+    const radius = (f.hw?.handleHole ?? 5) / 2;
     if (role.kind === "door") {
       // Vertical pair near the opening edge, in the upper part of the door.
       const x = role.hinge === "left" ? x1 - 40 : x0 + 40;
       const zc = Math.max(z0 + 100, z1 - 150);
-      for (const dz of [-64, 64]) out.push({ at: [x, inside, zc + dz], radius: 2.5, depth: y1 - y0 });
+      for (const dz of pair) out.push({ at: [x, inside, zc + dz], radius, depth: y1 - y0 });
     } else {
       // Horizontal pair in the middle of the drawer front.
       const [xc, zc] = [(x0 + x1) / 2, (z0 + z1) / 2];
-      for (const dx of [-64, 64]) out.push({ at: [xc + dx, inside, zc], radius: 2.5, depth: y1 - y0 });
+      for (const dx of pair) out.push({ at: [xc + dx, inside, zc], radius, depth: y1 - y0 });
     }
   }
   return out;

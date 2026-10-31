@@ -11,6 +11,8 @@ import { FaceStripTool } from "./face-strip-tool";
 import { MirrorTool } from "./mirror-tool";
 import { AlignTool } from "./align-tool";
 import { CoincideTool } from "./coincide-tool";
+import { FinishTool } from "./finish-tool";
+import { RoomTool } from "./room-tool";
 import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
@@ -27,7 +29,7 @@ import { AssemblyTool } from "./assembly-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide" | "trim" | "room";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -38,7 +40,7 @@ export function extrudeTargets(doc: CadDocument, featureId: string | null): { id
     .map((f) => ({ id: f.id, name: f.name }));
 }
 
-export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "sweep", "shell", "loft", "modifier", "fronts"]);
+export const EDITABLE_WITH_TOOL: ReadonlySet<Feature["type"]> = new Set(["revolve", "fillet", "chamfer", "combine", "hole", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "sweep", "shell", "loft", "modifier", "fronts", "trim", "room"]);
 
 export interface ToolOptions {
   featureId?: string;
@@ -61,7 +63,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
@@ -146,6 +148,18 @@ export class ToolLauncher {
       case "coincide":
         this.active = new CoincideTool(ctx);
         break;
+      case "room": {
+        const tool = new RoomTool(ctx, editing?.type === "room" ? editing : null);
+        this.active = tool;
+        tool.open();
+        return;
+      }
+      case "trim": {
+        const tool = new FinishTool(ctx, editing?.type === "trim" ? editing : null, options.bodies ?? []);
+        this.active = tool;
+        tool.open();
+        return;
+      }
       case "align":
         this.active = new AlignTool(ctx, editing?.type === "align" ? editing : null, options.bodies ?? [], options.sketches ?? []);
         break;

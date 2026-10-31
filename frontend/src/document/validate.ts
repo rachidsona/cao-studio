@@ -195,6 +195,17 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
       break;
+    case "room": {
+      const num = (v: unknown) => isFiniteNumber(v);
+      if (!Array.isArray(feature.walls) || !feature.walls.length || !feature.walls.every((w) => isObject(w) && num(w.length) && (w.length as number) > 0 && num(w.angle) && (w.angle as number) > 0 && (w.angle as number) < 360)) errors.push(`${where} : murs invalides (longueur positive, angle entre 0 et 360°).`);
+      if (!num(feature.height) || (feature.height as number) <= 0 || !num(feature.thickness) || (feature.thickness as number) <= 0) errors.push(`${where} : hauteur et épaisseur des murs positives.`);
+      const kinds = ["window", "door", "socket", "beam", "slope"];
+      if (!Array.isArray(feature.obstacles) || !feature.obstacles.every((o) => isObject(o) && kinds.includes(o.kind as string) && Number.isInteger(o.wall) && Object.entries(o).every(([k, v]) => k === "kind" || num(v)))) errors.push(`${where} : obstacles invalides.`);
+      break;
+    }
+    case "trim":
+      if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))))) errors.push(`${where} : planches de finition invalides.`);
+      break;
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
       if (!Array.isArray(feature.niche) || !feature.niche.every((n) => Number.isInteger(n) && (n as number) >= 0)) errors.push(`${where} : niche invalide.`);
@@ -275,6 +286,9 @@ export function validateDocument(input: unknown): string[] {
     }
   }
   if (input.layers !== undefined && (!Array.isArray(input.layers) || !input.layers.every((l) => isObject(l) && typeof l.id === "string" && typeof l.name === "string" && typeof l.visible === "boolean"))) errors.push("« layers » doit être une liste de calques (id, name, visible).");
+  if (input.hardware !== undefined && !(isObject(input.hardware) && Object.entries(input.hardware).every(([k, v]) => ["hinge", "slide", "handle"].includes(k) && typeof v === "string"))) {
+    errors.push("« hardware » doit donner les modèles choisis (hinge, slide, handle) par leur identifiant.");
+  }
   if (input.folders !== undefined && (!Array.isArray(input.folders) || !input.folders.every((f) => isObject(f) && typeof f.id === "string" && typeof f.name === "string" && Array.isArray(f.bodies) && f.bodies.every((b) => typeof b === "string")))) {
     errors.push("« folders » doit être une liste de dossiers (id, name, bodies).");
   }

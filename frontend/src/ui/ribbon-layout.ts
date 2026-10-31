@@ -15,7 +15,7 @@ import { bindFavorites } from "./favorites";
 const HIDDEN = "cao.ribbon-hidden.";
 const ORDER = "cao.ribbon-order.";
 /** Attributes that identify a tool button, in order of preference. */
-const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy"];
+const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy", "data-library", "data-snap"];
 
 /** Tools put away (in their group's menu only) until the user pins them. */
 const DEFAULT_HIDDEN: Record<string, string[]> = {
@@ -25,6 +25,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:assembly", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion", "data-workshop:drawing",
     "data-workshop:nesting", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
+    "data-action:room", "data-action:trim", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check",
   ],
   sketch: [
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",

@@ -1,7 +1,7 @@
 /**
  * Équipement d'une niche dans le noyau : chaque pièce de niche-parts.ts devient un corps — boîtes pour les tiroirs,
  * cylindres pour la tringle et ses supports ; les façades de tiroir et les portes reçoivent leurs trous de poignée
- * (Ø5 traversants, entraxe 128 mm) quand on le demande : en travers au milieu d'une façade, le long du bord d'une porte
+ * (traversants, à l'entraxe et au diamètre de la poignée choisie, Ø5 × 128 mm par défaut) quand on le demande : en travers au milieu d'une façade, le long du bord d'une porte
  * opposé aux charnières.
  */
 import { makeBox, makeCylinder, type Shape3D } from "replicad";
@@ -22,15 +22,17 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   const [a, b] = worldBox(n, part);
   let solid = makeBox(a, b) as unknown as Shape3D;
   if (part.role === "front" && f.handles) {
-    // Two holes through the front, 128 mm apart across its middle, drilled from the front face backwards.
+    // Two holes through the front, the handle's spacing apart across its middle (one for a knob), drilled from the
+    // front face backwards.
     const [u0, v0, w0] = part.from;
     const [u1, v1, w1] = part.to;
     // A door: along its edge, 40 mm in, at mid-height.
     const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + 40 : u1 - 40, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, (v0 + v1) / 2]);
-    for (const du of [-64, 64]) {
+    const spacing = f.hw?.handleSpacing ?? 128;
+    for (const du of spacing > 0 ? [-spacing / 2, spacing / 2] : [0]) {
       const start = nicheWorld(n, [...at(du), w1 + 0.005]);
       const back = sub(nicheWorld(n, [0, 0, -1]), nicheWorld(n, [0, 0, 0]));
-      const tool = makeCylinder(2.5, w1 - w0 + 0.01, start, back) as unknown as Shape3D;
+      const tool = makeCylinder((f.hw?.handleHole ?? 5) / 2, w1 - w0 + 0.01, start, back) as unknown as Shape3D;
       const cut = solid.cut(tool) as Shape3D;
       solid.delete();
       tool.delete();

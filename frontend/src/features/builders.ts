@@ -4,6 +4,8 @@
  * throw GeometryError with an explicit message instead of producing bad
  * geometry.
  */
+import { buildTrim } from "./trim";
+import { buildRoom } from "./room";
 import { makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
@@ -206,5 +208,9 @@ export function buildFeature(feature: Feature, lookup: OutputLookup, featureOf: 
       const sketch = featureOf(feature.sketch);
       return buildNiche(feature, sketch?.type === "sketch" ? sketch : undefined);
     }
+    case "trim":
+      return buildTrim(feature);
+    case "room":
+      return buildRoom(feature);
   }
 }

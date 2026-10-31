@@ -683,7 +683,8 @@ opération existante.
 - **Barre d'outils** (comme Fusion) : les outils sont rangés en groupes ; chaque groupe montre ceux dont on se sert le
   plus et son nom (« CRÉER ▾ », « ATELIER ▾ »…) ouvre la liste de **tous** ses outils. Un clic lance l'outil ;
   l'**épingle** 📌 l'affiche dans la barre ou le range dans le menu. Au départ, les outils moins courants sont rangés
-  (révolution, coque, lissage, étirer, mise en plan, G-code, lien client…, et en esquisse polygone, ovale, texte,
+  (révolution, coque, lissage, étirer, mise en plan, G-code, lien client, Pièce, Finitions, Ma bibliothèque,
+  Quincaillerie, Contrôle, Notice de montage, Fiches, Suivi d'atelier…, et en esquisse polygone, ovale, texte,
   projeter…). Le choix est mémorisé par barre (modèle, esquisse) dans le navigateur ; « Par défaut » dans un menu remet
   son groupe comme à l'origine. Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
   l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
@@ -803,8 +804,64 @@ opération existante.
     angles rentrants coupés à l'intersection ; une partie plus étroite que la fraise est signalée), en opposition.
     Réglages retenus par le navigateur : diamètre de fraise, passe, avances, broche, hauteur de sécurité, martyr,
     foret maximal, écarts. Les perçages borgnes de l'autre face sont signalés (pièce à retourner).
-  - *Étiquettes* : une par pièce, avec un **QR code** (projet, pièce, cotes, matière, chants), les cotes, la matière,
-    les chants et le fil ; planche A4 de 3 × 8 étiquettes 70 × 37 mm à imprimer et coller à la sortie de la machine.
+  - *Étiquettes* : une par pièce, avec un **QR code**, les cotes, la matière, les chants et le fil ; planche A4 de 3 × 8
+    étiquettes 70 × 37 mm à imprimer et coller à la sortie de la machine. Le QR code ouvre la page de la pièce du
+    Suivi d'atelier.
+  - *Suivi d'atelier* : où en est chaque pièce. Les étapes sont « Débitée », « Chantée », « Percée » et « Montée ».
+    - Sur un téléphone connecté au compte, le QR code d'une étiquette ou d'une fiche ouvre la page de la pièce
+      (`/atelier/<projet>/?piece=…`). Un gros bouton par étape la fait avancer, et la page liste les autres pièces
+      suivies avec leur étape.
+    - Dans l'éditeur, le panneau montre une barre d'avancement par étape (pièces arrivées au moins à cette étape sur
+      toutes celles de la liste de débit), et chaque pièce se règle aussi à la main.
+    L'avancement est gardé par le serveur, par projet et par nom de pièce : renommer une pièce la fait repartir de
+    zéro (API `/api/projects/<id>/workshop/`, `apps/projects/workshop.py`, `app/workshop-progress.ts`).
+  - *Quincaillerie* : on choisit pour le projet la charnière, la coulisse et la poignée dans un catalogue réel :
+    - charnières Blum CLIP top (BLUMOTION 110°, réf. 71B3550, ou 155°), Hettich Sensys, Grass Tiomos, Häfele Metalla,
+      petit boîtier Ø26 ;
+    - coulisses Blum TANDEM et MOVENTO, Hettich Actro 5D et Quadro V6, Grass Dynapro, à billes ;
+    - poignées d'entraxe 96 à 320 mm, ou bouton à un trou.
+    Chaque modèle montre ses cotes (cuvette, profondeur, distance au bord, entraxe, charge, sortie) et un prix
+    indicatif. Le choix est gardé dans le document, en une annulation, et tout le suit :
+    - les perçages des façades, des portes et des tiroirs (entraxe et trou des poignées, cuvettes des charnières) ;
+    - un nouvel usinage « Charnières » (un usinage déjà fait garde ses cotes) ;
+    - le devis et la notice, avec le nom, la référence et le prix du modèle. Un tarif mis à la main dans le devis
+      l'emporte.
+    Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
+    à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
+  - *Contrôle avant fabrication* : un bouton liste ce qui gâcherait du panneau ou bloquerait le montage, rangé par
+    sorte. Chaque ligne a un bouton « Voir » qui sélectionne les pièces en cause.
+    - Pièces qui se chevauchent : erreur pour deux panneaux droits, « peut-être » pour une pièce façonnée. Deux
+      pièces qui se touchent ne comptent pas.
+    - Pièce plus grande que le panneau brut de sa matière, le sens du fil respecté.
+    - Pièce sans matière.
+    - Perçage qui déborde du bord, qui laisse moins de 1 mm jusqu'au bord, ou qui en mord un autre (deux cercles
+      de même centre sont un lamage, pas une erreur).
+    - Porte ou tiroir qui heurte un autre corps en s'ouvrant (murs compris), testé à 30 %, 60 % et en entier.
+    - Meuble qui entre dans un mur, une retombée ou sous un rampant de la Pièce relevée, ou qui cache une prise.
+    Quand tout va bien, le contrôle le dit (`document/fabrication-check.ts`, `app/fabrication-check.ts`).
+  - *Notice de montage* : un panneau range les pièces en étapes, dans l'ordre où l'on monte un meuble. Les étapes
+    sont le bâti (dessous, côtés, dessus, cloisons, avec les vis confirmat et tourillons des usinages), le fond, les
+    étagères, les penderies, les tiroirs, les portes, puis le reste. Chaque étape a sa quincaillerie (coulisses,
+    charnières, poignées, tringles).
+    - Un clic sur une étape la montre dans la vue : les étapes passées restent en place, les pièces de l'étape
+      s'écartent du meuble, les suivantes sont cachées. Les boutons « Étape précédente » et « Étape suivante » font
+      défiler les étapes.
+    - Le curseur « Vue éclatée » écarte toutes les pièces. Chacune part le long de l'axe où elle dépasse le plus, et
+      une pièce du milieu vient vers l'œil.
+    - « Imprimer la notice » donne une page de garde (le meuble monté et éclaté, toute la quincaillerie), puis une
+      page par étape avec son image prise dans la vue, ses pièces et sa quincaillerie.
+    Tout est en vue seulement : le document ne change pas, et tout revient en place à la fermeture
+    (`document/assembly-steps.ts`, `app/assembly-guide.ts`).
+  - *Fiches de fabrication* : une page A4 à l'italienne par pièce, pour usiner sans ouvrir la 3D. Les pièces
+    identiques de la liste de débit partagent une fiche, avec leur quantité. Chaque fiche porte :
+    - la pièce à plat à l'échelle, vue de sa face percée, avec son contour exact et ses perçages ;
+    - les cotes hors tout ;
+    - chaque perçage coté depuis le bord gauche (en haut) et depuis le bas (à droite) ;
+    - les chants en trait orangé (L1 en bas, L2 en haut, l1 à gauche, l2 à droite) et le fil en flèche ;
+    - les cotes finies et de coupe, la matière, le tableau des perçages (« 4 × Ø5 prof. 12 ») et un QR code (la
+      page de la pièce dans le Suivi d'atelier) ;
+    - un avertissement quand la pièce doit être retournée (perçages borgnes sur l'autre face).
+    Impression ou PDF (`document/part-sheet.ts`, `app/workshop-sheets.ts`).
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur) ; impression / PDF et CSV.
@@ -937,6 +994,47 @@ opération existante.
   l'historique en une annulation et reste modifiable pièce par pièce ; les matières sont posées (caissons mélaminé
   blanc, fonds HDF, façades et plan de travail au choix), les murs vont sur le calque « Pièce », hors du débit, du
   devis et du fichier DXF.
+- **Pièce** (groupe « Menuiserie ») : le relevé de la pièce, tel qu'on le mesure.
+  - Les murs : chacun par sa longueur et l'angle de chaque coin (90° d'équerre, sinon l'angle relevé : une pièce pas
+    d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine
+    vers +X, la pièce à sa droite (vers −Y, là où se posent les meubles) ; les suivants tournent à droite. Les murs se
+    rejoignent d'onglet à l'extérieur ; un relevé qui ne se ferme pas le dit, avec l'écart en mm.
+  - Ce qui gêne : fenêtres et portes (percées dans le mur, depuis le début du mur, avec leur allège), prises,
+    retombées de plafond (une poutre ou un soffite le long d'un mur : avancée et retombée) et rampants (une sous-pente
+    qui descend vers un mur : hauteur au mur et distance jusqu'au plafond).
+  Une opération « Pièce » dont chaque mur et chaque obstacle est un corps de la pièce (« Mur A », « Rampant 1
+  (mur C) »…), hors liste de débit, devis et fichiers machine, avec l'aperçu en direct ; elle se rouvre pour être
+  retouchée. Les Finitions s'ajustent à ses murs (fileurs) et à son plafond (bandeau). Le Contrôle avant fabrication
+  signale le meuble qui entre dans un mur, une retombée ou sous un rampant, et celui qui cache une prise. Les
+  assistants Cuisine et Dressing ne lisent pas encore ce relevé : on y reporte ses cotes (`features/room-plan.ts`,
+  `features/room.ts`, `app/room-tool.ts`).
+- **Finitions** (groupe « Menuiserie ») : habiller un meuble (les corps sélectionnés, sinon tout le meuble affiché)
+  de planches ajustées à sa taille et à la pièce.
+  - Joues de finition, contre ses côtés, sur toute la profondeur (portes comprises), du sol au-dessus, avec un
+    dépassement en haut si l'on veut.
+  - Fileurs en façade, qui comblent le jour jusqu'au mur voisin, de chaque côté, jusqu'à un écart maximal
+    (150 mm par défaut). Un mur plus loin est signalé.
+  - Bandeau haut en façade : jusqu'au plafond quand il y en a un, sinon de la hauteur choisie.
+  - Plinthe en retrait sous la façade, seulement là où le bas du meuble est libre (sous le socle d'une
+    Répartition), de la hauteur libre. Elle s'arrête contre les côtés qui descendent au sol ; un meuble posé au sol
+    sur toute sa façade n'en a pas, et l'outil le dit.
+  On choisit la face avant (−Y par défaut, comme une Répartition dessinée de face) ; « gauche » et « droite » sont
+  vus de devant. Les murs et le plafond sont ceux de la Pièce relevée, de l'Implantation de cuisine ou de l'Assistant Dressing. Une
+  opération « Finitions » dont chaque planche est un corps nommé (« Joue gauche », « Fileur droit »…), de la matière
+  du meuble, avec l'aperçu en direct ; elle se rouvre pour être retouchée (`features/finish-parts.ts`,
+  `app/finish-tool.ts`).
+- **Ma bibliothèque** (groupe « Menuiserie ») : des modules de son compte, à remettre dans n'importe quel projet.
+  - Enregistrer : on sélectionne les corps d'un caisson, d'un tiroir ou d'une colonne réglés (ou une de leurs faces),
+    on lui donne un nom. Le module garde ces pièces et tout ce dont elles dépendent : un panneau d'une Répartition
+    emporte la Répartition entière, une porte sa répartition. Il garde aussi leurs noms, matières, apparences
+    importées, les paramètres de leurs formules, et une vignette prise dans la vue.
+  - Insérer : un clic recopie le module dans le projet ouvert, sous des identifiants neufs (toutes les références
+    suivent), à l'endroit où il était, en une seule annulation. La vue se recadre sur tout le modèle et les pièces
+    insérées sont sélectionnées, prêtes pour Déplacer. Un nom déjà pris prend le numéro suivant ; un paramètre que
+    le projet a déjà garde sa valeur.
+  - Supprimer un module ne change pas les projets où il a été inséré.
+  Les modules sont gardés par le serveur, par compte (500 au plus) : API `/api/library/`, `document/library.ts`,
+  `app/library-panel.ts`.
 - **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de

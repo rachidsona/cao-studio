@@ -33,6 +33,8 @@ export const TYPE_LABELS: Record<NavType, string> = {
   modifier: "Modificateur",
   fronts: "Façades",
   niche: "Équipement de niche",
+  trim: "Finitions",
+  room: "Pièce",
 };
 
 export const TYPE_ICONS: Record<NavType, string> = {
@@ -63,6 +65,8 @@ export const TYPE_ICONS: Record<NavType, string> = {
   modifier: "≈",
   fronts: "▯",
   niche: "⌒",
+  trim: "▭",
+  room: "⌂",
 };
 
 /** The toolbar icon (sprite id, templates/editor/_icons.html) of each type: the history shows these instead of names. */
@@ -94,6 +98,8 @@ export const TYPE_SPRITES: Record<NavType, string> = {
   modifier: "i-modifier",
   fronts: "i-fronts",
   niche: "i-rod",
+  trim: "i-finishing",
+  room: "i-room",
 };
 
 /** Names of the boolean operations, the same everywhere in the interface (Fusion's words). */

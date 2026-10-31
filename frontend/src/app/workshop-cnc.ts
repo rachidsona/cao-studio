@@ -16,6 +16,7 @@ import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
+import { pieceUrl } from "./workshop-progress";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 import { formatLength, UNIT_LABELS } from "../measurements/units";
 
@@ -26,7 +27,7 @@ const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs 
  * Every displayed board of the furniture laid flat, with its material, on the face with the more holes (a door
  * shows its hinge cups); the bodies without a flat face apart, and the boards with blind holes on the other face.
  */
-async function flatParts(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<{ parts: (FlatPart & { material: string })[]; skipped: string[]; flip: string[] }> {
+export async function flatParts(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<{ parts: (FlatPart & { material: string })[]; skipped: string[]; flip: string[] }> {
   const parts: (FlatPart & { material: string })[] = [];
   const skipped: string[] = [];
   const flip: string[] = [];
@@ -141,8 +142,8 @@ function printLabels(viewport: Viewport, editor: Editor): void {
   const labels = rows.flatMap((r) =>
     r.names.map((name) => {
       const size = [r.length, r.width, r.thickness].map((mm) => formatLength(mm, editor.unit).replace(/ \S+$/, "")).join(" × ") + ` ${UNIT_LABELS[editor.unit]}`;
-      const data = [project, name, `${r.length}x${r.width}x${r.thickness}`, r.material, `chants ${edgeText(r.edges)}`].join(" | ");
-      return `<div class="label"><div class="qr">${qrSvg(data)}</div><div class="text"><b>${escapeHtml(name)}</b><span>${escapeHtml(size)}</span><span>${escapeHtml(r.material)}</span><span>Chants : ${escapeHtml(edgeText(r.edges))} · Fil : ${escapeHtml(grainText(r.grain))}</span><small>${escapeHtml(project)}</small></div></div>`;
+      // The QR code opens the piece's page in the workshop tracking (its step, to move on with a tap).
+      return `<div class="label"><div class="qr">${qrSvg(pieceUrl(name))}</div><div class="text"><b>${escapeHtml(name)}</b><span>${escapeHtml(size)}</span><span>${escapeHtml(r.material)}</span><span>Chants : ${escapeHtml(edgeText(r.edges))} · Fil : ${escapeHtml(grainText(r.grain))}</span><small>${escapeHtml(project)}</small></div></div>`;
     }),
   );
   printHtml(

@@ -234,6 +234,7 @@ export class Viewport {
    * translation applied to its mesh and edges; null puts it back. Lost at the next regeneration.
    */
   setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); }
+  setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); }
 
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
   setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null): void {

@@ -5,6 +5,7 @@
  * grown in both boards at once. Exact cuts of the solids, one undo step.
  * The numbers of each preset are in features/joinery.ts.
  */
+import { chosenHardware } from "../document/hardware-catalog";
 import { bodyLabel } from "../document/operations";
 import type { Axis, Feature, MachiningFeature, MachiningOp } from "../document/types";
 import {
@@ -51,7 +52,11 @@ export class MachiningTool extends PanelTool {
   private picked: string[];
   private face: BoxFace | null = null;
   private drill = { ...DRILLING_32 };
-  private cups = { ...HINGES };
+  /** The cups of the hinge chosen for the project (catalogue), else the usual Ø35 × 13 at 22.5 mm. */
+  private cups = (() => {
+    const { hinge } = chosenHardware(this.ctx.doc());
+    return { ...HINGES, diameter: hinge.cup.diameter, depth: hinge.cup.depth, edgeDistance: hinge.cup.edge };
+  })();
   private slot = { ...GROOVE };
   private pins = { ...DOWELS };
   private screws = { ...CONFIRMAT };

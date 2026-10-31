@@ -70,7 +70,7 @@ export interface Quote {
 
 const cents = (v: number) => Math.round(v * 100) / 100;
 
-export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string }[] = [], unit: DisplayUnit = "mm"): Quote {
+export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm"): Quote {
   const lines: QuoteLine[] = [];
   for (const t of totals) {
     const area = cents(t.area * (1 + rates.waste / 100));
@@ -87,7 +87,8 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
   }
   for (const h of hardware) {
     if (h.quantity <= 0) continue;
-    const price = rates.hardware?.[h.name] ?? 0;
+    // A rate set by hand wins; else the catalogue's price of the model chosen.
+    const price = rates.hardware?.[h.name] ?? h.price ?? 0;
     lines.push({ label: h.name, quantity: h.quantity, unit: h.unit ?? "pièce", unitPrice: price, total: cents(h.quantity * price) });
   }
   const cost = cents(lines.reduce((s, l) => s + l.total, 0));

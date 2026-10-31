@@ -8,6 +8,8 @@
  */
 
 import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText } from "./sketch";
+import type { FinishOptions } from "../features/finish-parts";
+import type { RoomInput } from "../features/room-plan";
 export type { SketchText } from "./sketch";
 
 export const DOCUMENT_FORMAT = "cao-studio";
@@ -424,6 +426,17 @@ export interface FrontsFeature extends FeatureBase {
   thickness: number;
   hinges: boolean;
   handles: boolean;
+  /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
+  hw?: HardwareSizes;
+}
+
+/** Drilling sizes of the hardware chosen for the project: handle holes and hinge cups (mm). */
+export interface HardwareSizes {
+  handleSpacing: number;
+  handleHole: number;
+  cupDiameter: number;
+  cupDepth: number;
+  cupEdge: number;
 }
 
 /**
@@ -454,9 +467,30 @@ export interface NicheFeature extends FeatureBase {
   split?: "whole" | "cases";
   thickness: number;
   handles: boolean;
+  /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
+  hw?: HardwareSizes;
+}
+
+/**
+ * Finishing boards of a piece of furniture (end panels, fillers to the walls, plinth, cornice), each a plain box in
+ * the model's frame and a body ("<id>#n"), placed by the Finitions tool (features/finish-parts.ts).
+ */
+export interface TrimFeature extends FeatureBase {
+  type: "trim";
+  parts: { name: string; from: Vec3; to: Vec3 }[];
+  /** What the tool was given, to reopen it: the bodies of the furniture and its settings. */
+  source?: string[];
+  settings?: FinishOptions;
+}
+
+/** The room as surveyed (features/room-plan.ts): walls, their openings and what is in the way. Its bodies are "room". */
+export interface RoomFeature extends FeatureBase, RoomInput {
+  type: "room";
 }
 
 export type Feature =
+  | RoomFeature
+  | TrimFeature
   | NicheFeature
   | FrontsFeature
   | ModifierFeature
@@ -519,6 +553,8 @@ export interface CadDocument {
   folders?: Folder[];
   /** Appearances made from images imported by hand (« Mes motifs »): appearance/custom.ts. */
   appearances?: CustomAppearance[];
+  /** Hardware models chosen in the catalogue (ids of document/hardware-catalog.ts); missing: generic ones. */
+  hardware?: { hinge?: string; slide?: string; handle?: string };
 }
 
 /** An image of one's own as an appearance: the image (a data URL, kept with the project) and the size of one tile. */
@@ -630,6 +666,8 @@ export function featureInputs(feature: Feature): string[] {
     case "niche":
       return [feature.sketch];
     case "cabinet":
+    case "trim":
+    case "room":
       return [];
     case "mirror":
     case "array":
@@ -689,12 +727,14 @@ export function consumedBodies(feature: Feature): string[] {
     case "niche":
     case "mirror":
     case "array":
+    case "trim":
+    case "room":
       return [];
   }
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["room", "trim", "extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

@@ -1,4 +1,5 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
+import { stampHardware } from "../document/hardware-catalog";
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
@@ -47,7 +48,8 @@ export class GeometryClient {
   }
 
   recompute(doc: CadDocument): Promise<RecomputeResponse> {
-    return this.call({ type: "recompute", doc });
+    // The chosen hardware's sizes go into the fronts and doors it drills.
+    return this.call({ type: "recompute", doc: stampHardware(doc) });
   }
 
   async export(format: ExportFormat, names: Record<string, string>): Promise<Blob> {

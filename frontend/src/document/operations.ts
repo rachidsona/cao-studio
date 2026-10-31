@@ -2,6 +2,7 @@
  * Pure edits of the parametric history. Each function returns a new document
  * and never mutates its input, so every edit can be undone.
  */
+import { roomPieces } from "../features/room-plan";
 import { cabinetPartNames } from "../features/cabinet-parts";
 import { frontsPartNames } from "../features/fronts-parts";
 import { nichePartNames } from "../features/niche-parts";
@@ -221,6 +222,8 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
       return `${split.name} — ${frontsPartNames(split, cabinet?.type === "cabinet" ? cabinet : undefined)[n - 1] ?? `pièce ${n}`}`;
     }
     if (split?.type === "niche") return `${split.name} — ${nichePartNames(doc.features, split)[n - 1] ?? `pièce ${n}`}`;
+    if (split?.type === "trim") return `${split.name} — ${split.parts[n - 1]?.name ?? `pièce ${n}`}`;
+    if (split?.type === "room") return `${split.name} — ${roomPieces(split).pieces[n - 1]?.name ?? `pièce ${n}`}`;
     // A split names its pieces after the body cut; an extrusion that fell apart, after itself.
     return `${split?.type === "split" ? bodyLabel(doc, split.target) : (split?.name ?? featureOfBody(origin))} — pièce ${n}`;
   }

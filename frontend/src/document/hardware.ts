@@ -5,6 +5,7 @@
  */
 import { frontsHardware } from "../features/fronts-parts";
 import { nicheHardware, nichePartsIn } from "../features/niche-parts";
+import { catalogItems } from "./hardware-catalog";
 import type { CadDocument } from "./types";
 
 export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
@@ -34,7 +35,7 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   }
   add(CONFIRMAT_SCREW, Math.floor(screwHoles / 2));
   add(DOWEL, Math.floor(dowelHoles / 2));
-  return [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}) }));
+  return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}) })));
 }
 
 /** Bodies that are bought, not cut (the rods of the penderies and their supports): out of the cut list. */

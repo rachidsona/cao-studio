@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comment, Project, ProjectVersion, ShareLink
+from .models import Comment, LibraryModule, PartProgress, Project, ProjectVersion, ShareLink
 
 
 class ProjectVersionInline(admin.TabularInline):
@@ -52,3 +52,17 @@ class CommentAdmin(admin.ModelAdmin):
     list_filter = ("resolved", "from_owner")
     list_select_related = ("project",)
     search_fields = ("author", "body")
+
+
+@admin.register(LibraryModule)
+class LibraryModuleAdmin(admin.ModelAdmin):
+    list_display = ("name", "owner", "created_at")
+    search_fields = ("name",)
+    exclude = ("document", "thumbnail")
+
+
+@admin.register(PartProgress)
+class PartProgressAdmin(admin.ModelAdmin):
+    list_display = ("part", "project", "step", "updated_at", "updated_by")
+    list_filter = ("step",)
+    list_select_related = ("project",)

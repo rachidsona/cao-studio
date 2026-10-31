@@ -43,7 +43,7 @@ const INPUT = "h-8 min-w-0 flex-1 border border-gray-300 bg-white px-2 text-xs d
 const csrf = () => decodeURIComponent(document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)?.[1] ?? "");
 const when = (iso: string) => new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 
-async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
+export async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
   const json = typeof init.body === "string";
   const response = await fetch(url, { ...init, credentials: "same-origin", headers: { Accept: "application/json", "X-CSRFToken": csrf(), ...(json ? { "Content-Type": "application/json" } : {}) } });
   const payload = (await response.json().catch(() => ({}))) as T & { error?: string };

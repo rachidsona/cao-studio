@@ -12,6 +12,8 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
 import { bindCnc } from "./workshop-cnc";
+import { printPartSheets } from "./workshop-sheets";
+import { showCheck } from "./fabrication-check";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 
 const RATES_KEY = "cao.quote-rates";
@@ -107,5 +109,7 @@ export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
 
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {
   bindCnc(root, viewport, editor, geometry);
+  root.querySelector('[data-workshop="check"]')?.addEventListener("click", () => void showCheck(viewport, editor, geometry));
+  root.querySelector('[data-workshop="sheets"]')?.addEventListener("click", () => void printPartSheets(viewport, editor, geometry));
   root.querySelector('[data-workshop="quote"]')?.addEventListener("click", () => showQuote(viewport, editor));
 }
