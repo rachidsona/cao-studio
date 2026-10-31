@@ -52,7 +52,11 @@ describe("équipement d'une niche", () => {
     const n = nicheGeometry(drawers(), sketch());
     if (typeof n === "string") throw new Error(n);
     const parts = nicheParts(drawers(), n);
-    expect(parts).toHaveLength(3 * 6);
+    // Six parts a drawer, then the three handles (in 3D, out of the cut list), each on the middle of its front.
+    expect(parts).toHaveLength(3 * 6 + 3);
+    const handles = parts.filter((p) => p.kind === "handle");
+    expect(handles.map((p) => [p.name, p.role, p.of])).toEqual([["Poignée tiroir 1", "hardware", 0], ["Poignée tiroir 2", "hardware", 6], ["Poignée tiroir 3", "hardware", 12]]);
+    expect(handles[0]!.to[0] - handles[0]!.from[0]).toBe(128);
     const fronts = parts.filter((p) => p.role === "front");
     expect(fronts.map((p) => p.name)).toEqual(["Façade tiroir 1", "Façade tiroir 2", "Façade tiroir 3"]);
     const h = (1964 - 4 * 3) / 3;

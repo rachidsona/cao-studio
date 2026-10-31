@@ -2,12 +2,14 @@
  * Fillet / chamfer tool: the user clicks edges (click again to deselect),
  * sets the radius or distance, and sees the kernel result live. Edges are
  * picked on a snapshot of the body *before* the operation, so the preview
- * never changes what can be selected.
+ * never changes what can be selected. A fillet can have a variable radius
+ * (start → end of each edge), a chamfer two distances (the face, the edge).
  */
 import * as THREE from "three";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { ChamferFeature, EdgeRef, FilletFeature } from "../document/types";
 import type { BodyMesh } from "../geometry/protocol";
+import { el } from "../ui/dom";
 import { edgeMidpoint } from "../viewport/edge-geometry";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
@@ -24,6 +26,9 @@ export class EdgeTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
   private value: number;
+  /** The radius at the end of the edges (variable fillet), or the distance on the other face (chamfer); null: constant. */
+  private second: number | null;
+  private swap: boolean;
   private target: string | null = null;
   private selected: number[] = [];
   private refs: EdgeRef[] = [];
@@ -42,6 +47,8 @@ export class EdgeTool extends PanelTool {
     this.id = editing?.id ?? uniqueId(doc, kind === "fillet" ? "f" : "c");
     this.name = editing?.name ?? uniqueName(doc, kind === "fillet" ? "Congé" : "Chanfrein");
     this.value = editing ? (editing.type === "fillet" ? editing.radius : editing.distance) : kind === "fillet" ? 3 : 1;
+    this.second = (editing?.type === "fillet" ? editing.radiusEnd : editing?.type === "chamfer" ? editing.distance2 : undefined) ?? null;
+    this.swap = editing?.type === "chamfer" && editing.swap === true;
     ctx.viewport.scene.add(this.group);
   }
 
@@ -90,17 +97,47 @@ export class EdgeTool extends PanelTool {
       return `Cliquez les arêtes ${this.kind === "fillet" ? "à arrondir" : "à chanfreiner"} (cliquez à nouveau pour retirer).`;
     }
     const base = { id: this.id, name: this.name, target: this.target, edges: this.refs };
-    return this.kind === "fillet" ? { ...base, type: "fillet", radius: this.value } : { ...base, type: "chamfer", distance: this.value };
+    const second = this.second ?? undefined;
+    return this.kind === "fillet"
+      ? { ...base, type: "fillet", radius: this.value, ...(second !== undefined ? { radiusEnd: second } : {}) }
+      : { ...base, type: "chamfer", distance: this.value, ...(second !== undefined ? { distance2: second, ...(this.swap ? { swap: true } : {}) } : {}) };
   }
 
   protected rows(): (HTMLElement | null)[] {
-    const label = this.kind === "fillet" ? "Rayon" : "Distance";
+    const fillet = this.kind === "fillet";
+    const twoValues = this.second !== null;
+    const [onFace, onEdge] = this.swap ? ["Sur le chant", "Sur la face"] : ["Sur la face", "Sur le chant"];
+    const label = fillet ? (twoValues ? "Rayon début" : "Rayon") : twoValues ? onFace : "Distance";
+    const changed = () => {
+      this.render();
+      this.schedulePreview();
+    };
+    const swap = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, fillet ? "⇄ Inverser début et fin" : "⇄ Inverser les faces");
+    swap.addEventListener("click", () => {
+      if (fillet && this.second !== null) [this.value, this.second] = [this.second, this.value];
+      else this.swap = !this.swap;
+      changed();
+    });
     return [
       this.info(this.target ? `${this.selected.length} arête(s) sélectionnée(s)` : "Aucune arête sélectionnée"),
       this.numberRow(label, this.value, this.ctx.unit(), (v) => {
         this.value = v;
         this.schedulePreview();
       }),
+      this.checkRow(fillet ? "Rayon variable" : "Deux distances", twoValues, (on) => {
+        this.second = on ? this.value * 2 : null;
+        changed();
+      }),
+      twoValues
+        ? this.numberRow(fillet ? "Rayon fin" : onEdge, this.second as number, this.ctx.unit(), (v) => {
+            this.second = v;
+            this.schedulePreview();
+          })
+        : null,
+      twoValues ? swap : null,
+      twoValues
+        ? this.info(fillet ? "Le rayon passe de l'un à l'autre le long de chaque arête, de son début à sa fin." : `La première distance se prend sur ${this.swap ? "la plus petite" : "la plus grande"} des deux faces de chaque arête (${this.swap ? "le chant" : "la face"} d'une planche), la seconde sur l'autre.`)
+        : null,
     ];
   }
 

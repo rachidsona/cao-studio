@@ -58,7 +58,7 @@ export class FinishTool extends PanelTool {
     const material = this.source.map((id) => bodyInfo(doc, id).material).find(Boolean);
     const f = doc.features.find((x) => x.id === this.id);
     if (!material || f?.type !== "trim") return doc;
-    const bare = f.parts.map((_, i) => `${this.id}#${i}`).filter((id) => !bodyInfo(doc, id).material);
+    const bare = f.parts.flatMap((p, i) => (p.hardware ? [] : [`${this.id}#${i}`])).filter((id) => !bodyInfo(doc, id).material);
     return bare.length ? setBodyInfo(doc, bare, { material }) : doc;
   }
 
@@ -90,6 +90,7 @@ export class FinishTool extends PanelTool {
       this.checkRow("Plinthe (sous un socle)", o.plinth.on, (v) => this.set((x) => (x.plinth.on = v))),
       o.plinth.on ? this.numberRow("Hauteur de plinthe", o.plinth.height, unit, (v) => v > 0 && this.set((x) => (x.plinth.height = v))) : null,
       o.plinth.on ? this.numberRow("Retrait de la plinthe", o.plinth.recess, unit, (v) => v >= 0 && this.set((x) => (x.plinth.recess = v))) : null,
+      this.checkRow("Pieds réglables (sous le socle)", !!o.feet?.on, (v) => this.set((x) => (x.feet = { on: v }))),
       ...this.notes.map((n) => this.info(n)),
       this.info("Les murs et le plafond sont ceux de la Pièce relevée, de l'Implantation de cuisine ou de l'Assistant Dressing. Gauche et droite sont vus de devant."),
     ];

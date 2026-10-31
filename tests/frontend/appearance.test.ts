@@ -114,6 +114,14 @@ describe("coordonnées et matières three.js", () => {
     expect(uv[3]).toBeCloseTo(30 / 300);
   });
 
+  it("posent une photo de bois d'un seul morceau sur tout le panneau, même de 20 m", () => {
+    // A board 20 000 long along y, 600 wide along x: its corners go to the corners of the image, nothing repeats.
+    const whole = { min: [0, 0, 0], size: [600, 20_000, 19] };
+    const uv = boardUvs([0, 0, 19, 600, 20_000, 19, 300, 10_000, 19], [0, 0, 1, 0, 0, 1, 0, 0, 1], 1, [1000, 1000], whole);
+    expect([...uv].map((x) => Number(x.toFixed(6)))).toEqual([0, 0, 1, 1, 0.5, 0.5]);
+    expect(appearanceById("photo-walnut-crown")?.whole).toBe(true);
+  });
+
   it("laissent passer la lumière par le verre au rendu, et le montrent transparent dans la vue", () => {
     const glass = appearanceById("glass-clear")!;
     expect(appearanceMaterial(glass, undefined, "render").transmission).toBe(1);

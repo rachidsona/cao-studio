@@ -3,7 +3,7 @@
  * chamfer and combination of bodies. Edges are found again through
  * persistent references (geometry/references.ts).
  */
-import { basicFaceExtrusion, Vector, type Edge, type Shape3D } from "replicad";
+import { basicFaceExtrusion, measureArea, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
@@ -52,8 +52,13 @@ export function buildRevolve(feature: RevolveFeature, lookup: OutputLookup): Sol
   return applyOperation(feature.name, tool, feature.operation, feature.target, lookup);
 }
 
-function edgePredicate(edges: Edge[], value: number) {
-  return (edge: Edge) => (edges.some((e) => e.isSame(edge)) ? value : null);
+function edgePredicate<T>(edges: Edge[], value: T | ((edge: Edge) => T)) {
+  return (edge: Edge) => (edges.some((e) => e.isSame(edge)) ? (typeof value === "function" ? (value as (edge: Edge) => T)(edge) : value) : null);
+}
+
+/** The faces along an edge, the larger first (the face of a board, then its edge). */
+function facesAlong(shape: Shape3D, edge: Edge): Face[] {
+  return shape.faces.filter((f) => f.edges.some((e) => e.isSame(edge))).map((f) => ({ f, area: measureArea(f) })).sort((a, b) => b.area - a.area).map((x) => x.f);
 }
 
 export function buildFillet(feature: FilletFeature, lookup: OutputLookup): SolidOutput {
@@ -63,7 +68,9 @@ export function buildFillet(feature: FilletFeature, lookup: OutputLookup): Solid
   const edges = resolveEdges(target, feature.edges);
   let result: Shape3D;
   try {
-    result = target.fillet(edgePredicate(edges, feature.radius));
+    // Variable: from the start radius to the end one along each edge.
+    const end = feature.radiusEnd;
+    result = target.fillet(edgePredicate<number | [number, number]>(edges, end !== undefined && end !== feature.radius ? [feature.radius, end] : feature.radius));
   } catch {
     throw new GeometryError(`${feature.name} : congé impossible avec ce rayon (trop grand pour les faces voisines ?).`);
   }
@@ -72,12 +79,21 @@ export function buildFillet(feature: FilletFeature, lookup: OutputLookup): Solid
 
 export function buildChamfer(feature: ChamferFeature, lookup: OutputLookup): SolidOutput {
   requirePositive(feature.distance, "La distance du chanfrein");
+  if (feature.distance2 !== undefined) requirePositive(feature.distance2, "La seconde distance du chanfrein");
   if (feature.edges.length === 0) throw new GeometryError(`${feature.name} : sélectionnez au moins une arête.`);
   const target = requireSolid(lookup, feature.target).shape;
   const edges = resolveEdges(target, feature.edges);
   let result: Shape3D;
   try {
-    result = target.chamfer(edgePredicate(edges, feature.distance));
+    const second = feature.distance2;
+    // Two distances: the first on the larger face along each edge (the smaller one when swapped).
+    const radius = (edge: Edge): ChamferRadius => {
+      if (second === undefined || second === feature.distance) return feature.distance;
+      const faces = facesAlong(target, edge);
+      const face = faces[feature.swap ? faces.length - 1 : 0];
+      return face ? { distances: [feature.distance, second], selectedFace: (f) => f.inList([face]) } : feature.distance;
+    };
+    result = target.chamfer(edgePredicate(edges, radius));
   } catch {
     throw new GeometryError(`${feature.name} : chanfrein impossible avec cette distance (trop grande ?).`);
   }

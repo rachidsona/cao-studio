@@ -12,9 +12,12 @@ const IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==";
 describe("motifs en photo", () => {
   it("chaque bois en photo a son image dans static/textures/bois", () => {
     const photos = APPEARANCES.filter((a) => a.image);
-    expect(photos.length).toBe(8);
+    expect(photos.length).toBe(10);
     for (const a of photos) expect(existsSync(`.${a.image}`)).toBe(true);
-    expect(searchAppearances("photo noyer", "wood").map((a) => a.id)).toEqual(["photo-walnut"]);
+    expect(searchAppearances("photo noyer", "wood").map((a) => a.id)).toEqual(["photo-walnut", "photo-walnut-straight", "photo-walnut-crown"]);
+    // The walnut veneers: straight grain on a 1 m tile, the crown figure on a leaf of 600 × 450 mm.
+    expect(searchAppearances("noyer ramage", "wood").map((a) => [a.id, a.tile])).toEqual([["photo-walnut-crown", [600, 450]]]);
+    expect(searchAppearances("noyer fil", "wood").map((a) => a.id)).toEqual(["photo-walnut-straight"]);
   });
 
   it("une image importée devient une apparence du projet, appliquée aux corps et gardée avec le document", () => {

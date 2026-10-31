@@ -33,6 +33,7 @@ export class AlignTool extends PanelTool {
   private sketches: string[];
   private reference: string | undefined;
   private modes: [AlignMode, AlignMode, AlignMode];
+  private gaps: [number, number, number] = [0, 0, 0];
   /** Ids and names of the operations made for the bodies (fixed while the tool is open). */
   private slots: { id: string; name: string }[] = [];
   /** Boxes of the visible bodies when the tool opened (the preview replaces the bodies it moves). */
@@ -49,6 +50,7 @@ export class AlignTool extends PanelTool {
       this.sketches = [];
       this.reference = editing.reference;
       this.modes = [...editing.modes];
+      this.gaps = [...(editing.gaps ?? [0, 0, 0])];
       this.slots = [{ id: editing.id, name: editing.name }];
     } else {
       // Several things picked: the last one is the reference, the others line up with it.
@@ -79,15 +81,15 @@ export class AlignTool extends PanelTool {
     if (!this.editing && this.slots.length < this.targets.length) this.slots = freshFeatureIds(this.ctx.doc(), onSketch ? "mv" : "al", onSketch ? "Déplacement" : "Alignement", this.targets.length);
     const bodies: Feature[] = this.targets.flatMap((target, i): Feature[] => {
       const slot = this.slots[i] as { id: string; name: string };
-      if (!onSketch) return [{ ...slot, type: "align", target, reference: this.reference as string, modes: [...this.modes] } satisfies AlignFeature];
+      if (!onSketch) return [{ ...slot, type: "align", target, reference: this.reference as string, modes: [...this.modes], ...(this.gaps.some((v) => v !== 0) ? { gaps: [...this.gaps] } : {}) } satisfies AlignFeature];
       const box = this.bodyBoxes.get(target);
-      const translate = box ? alignDelta(box, ref, this.modes) : null;
+      const translate = box ? alignDelta(box, ref, this.modes, this.gaps) : null;
       return translate && Math.hypot(...translate) > 1e-6 ? [{ ...slot, type: "move", target, translate } satisfies MoveFeature] : [];
     });
     const sketches = this.sketches.flatMap((id) => {
       const sketch = this.sketch(id);
       const box = sketch ? sketchBox(sketch) : null;
-      const delta = box ? alignDelta(box, ref, this.modes) : null;
+      const delta = box ? alignDelta(box, ref, this.modes, this.gaps) : null;
       return sketch && delta && Math.hypot(...delta) > 1e-6 ? [moveSketchPlane(sketch, delta)] : [];
     });
     return [...bodies, ...sketches];
@@ -126,11 +128,14 @@ export class AlignTool extends PanelTool {
     const names = [...this.targets.map((id) => bodyLabel(doc, id)), ...this.sketches.map((id) => this.sketch(id)?.name ?? id)];
     const bodies = this.ctx.bodies().filter((b) => !this.targets.includes(b.id) || b.id === this.reference);
     const sketches = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !f.hidden && !f.suppressed && !this.sketches.includes(f.id));
-    const axisRow = (i: 0 | 1 | 2, label: string) =>
+    // Each axis: how it lines up, and the gap kept (between the faces placed against each other, or set back).
+    const axisRow = (i: 0 | 1 | 2, label: string) => [
       this.selectRow(label, this.modes[i], MODES, (v) => {
         this.modes[i] = v as AlignMode;
         changed();
-      });
+      }),
+      this.modes[i] === "none" ? null : this.numberRow("  écart", this.gaps[i], this.ctx.unit(), (v) => ((this.gaps[i] = v), changed()), true),
+    ];
     return [
       this.info(names.length ? `Alignés (${names.length}) : ${names.join(", ")}` : "Rien à aligner."),
       this.selectRow(
@@ -145,9 +150,9 @@ export class AlignTool extends PanelTool {
           changed();
         },
       ),
-      axisRow(0, "X largeur"),
-      axisRow(1, "Y profond."),
-      axisRow(2, "Z hauteur"),
+      ...axisRow(0, "X largeur"),
+      ...axisRow(1, "Y profond."),
+      ...axisRow(2, "Z hauteur"),
       this.info("Cliquez un corps ou une esquisse dans la vue pour l'ajouter à ce qui s'aligne, ou le retirer."),
     ];
   }

@@ -183,6 +183,10 @@ export interface DoorSettings {
   handles: boolean;
   /** The side each door opens from (its hinges), from the left; missing: left, right, left… in turn. */
   hinges?: ("left" | "right")[];
+  /** A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`. */
+  style?: "flat" | "frame";
+  frameWidth?: number;
+  frameDepth?: number;
 }
 
 /**
@@ -250,6 +254,19 @@ export interface SketchText {
   angle?: number;
 }
 
+/**
+ * An image laid under the sketch to trace over (a photo of a piece of furniture, a hand drawing): a data URL, its
+ * lower-left corner and its size in the sketch (mm), and how see-through it is (0…1). Never seen by the solver.
+ */
+export interface SketchUnderlay {
+  image: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  opacity: number;
+}
+
 export interface SketchGeometry {
   points: SketchPoint[];
   curves: SketchCurve[];
@@ -257,6 +274,8 @@ export interface SketchGeometry {
   offsets?: OffsetRecord[];
   /** Texts written in the sketch (not seen by the solver). */
   texts?: SketchText[];
+  /** Reference image under the sketch. */
+  underlay?: SketchUnderlay;
 }
 
 /** Ids of the points a curve is built on. */

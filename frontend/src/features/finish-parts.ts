@@ -12,6 +12,8 @@ import type { Vec3 } from "../document/types";
 export type Box = [Vec3, Vec3];
 
 export interface FinishOptions {
+  /** Adjustable feet under the bottom board (when it is raised above the floor). */
+  feet?: { on: boolean };
   front: { axis: 0 | 1; sign: -1 | 1 };
   /** Thickness of the boards (mm). */
   thickness: number;
@@ -25,7 +27,12 @@ export interface FinishPart {
   name: string;
   from: Vec3;
   to: Vec3;
+  radius?: number;
+  hardware?: boolean;
 }
+
+/** Feet: Ø30, 50 mm in from the edges of the bottom board, at most 800 mm apart. */
+const FOOT = { radius: 15, inset: 50, spacing: 800 };
 
 export const FINISH_DEFAULTS: FinishOptions = {
   front: { axis: 1, sign: -1 },
@@ -131,6 +138,24 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
       .filter((p) => p.height >= 20);
     if (!pieces.length) notes.push("Le meuble descend jusqu'au sol sur toute sa façade : pas de place pour une plinthe (faites un socle dans la Répartition).");
     pieces.forEach((p, i) => add(pieces.length > 1 ? `Plinthe ${i + 1}` : "Plinthe", box(p.interval, zone, [z0, z0 + p.height])));
+  }
+  // Adjustable feet under the lowest board above the floor (the bottom of a socle), as high as the room under it.
+  if (o.feet?.on) {
+    const flat = furniture.filter((b) => b[1][2]! - b[0][2]! < Math.min(b[1][0]! - b[0][0]!, b[1][1]! - b[0][1]!) && b[0][2]! > z0 + 0.5);
+    const zb = Math.min(...flat.map((b) => b[0][2]!));
+    const bottoms = flat.filter((b) => b[0][2]! <= zb + 1);
+    if (!bottoms.length || zb - z0 < 20) notes.push("Pas de place sous le meuble pour des pieds : faites un socle (dessous relevé) dans la Répartition.");
+    let n = 0;
+    for (const b of bottoms) {
+      const [x0, x1] = [b[0][0]! + FOOT.inset, b[1][0]! - FOOT.inset];
+      const [y0, y1] = [b[0][1]! + FOOT.inset, b[1][1]! - FOOT.inset];
+      if (x1 <= x0 || y1 <= y0 || zb - z0 < 20) continue;
+      const along = (a: number, c: number) => {
+        const count = Math.max(1, Math.ceil((c - a) / FOOT.spacing));
+        return Array.from({ length: count + 1 }, (_, k) => a + ((c - a) * k) / count);
+      };
+      for (const x of along(x0, x1)) for (const y of along(y0, y1)) parts.push({ name: `Pied ${++n}`, from: [x, y, z0], to: [x, y, zb], radius: FOOT.radius, hardware: true });
+    }
   }
   if (!parts.length && !notes.length) notes.push("Rien à ajouter avec ces réglages.");
   return { parts, notes };

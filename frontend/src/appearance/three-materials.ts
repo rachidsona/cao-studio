@@ -24,9 +24,10 @@ const DEFAULT_TILE: [number, number] = [500, 500];
 
 /**
  * Texture coordinates of a board, projected on the plane of each face (by the main axis of its normal), u along the
- * grain axis wherever the face contains it; in tiles of `tile` (mm).
+ * grain axis wherever the face contains it; in tiles of `tile` (mm) — or, given the board's box (`whole`), from 0 to 1
+ * across the whole board, so that one image covers it in one piece.
  */
-export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number>, grainAxis: 0 | 1 | 2, tile: [number, number]): Float32Array {
+export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number>, grainAxis: 0 | 1 | 2, tile: [number, number], whole?: { min: number[]; size: number[] }): Float32Array {
   const count = positions.length / 3;
   const uvs = new Float32Array(count * 2);
   for (let i = 0; i < count; i++) {
@@ -35,8 +36,13 @@ export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number
     const inPlane = [0, 1, 2].filter((a) => a !== facing);
     const u = inPlane.includes(grainAxis) ? grainAxis : inPlane[0]!;
     const v = inPlane.find((a) => a !== u)!;
-    uvs[i * 2] = positions[i * 3 + u]! / tile[0];
-    uvs[i * 2 + 1] = positions[i * 3 + v]! / tile[1];
+    if (whole) {
+      uvs[i * 2] = (positions[i * 3 + u]! - whole.min[u]!) / (whole.size[u]! || 1);
+      uvs[i * 2 + 1] = (positions[i * 3 + v]! - whole.min[v]!) / (whole.size[v]! || 1);
+    } else {
+      uvs[i * 2] = positions[i * 3 + u]! / tile[0];
+      uvs[i * 2 + 1] = positions[i * 3 + v]! / tile[1];
+    }
   }
   return uvs;
 }
@@ -49,7 +55,13 @@ export function applyUvs(geometry: THREE.BufferGeometry, look: BodyAppearance): 
   const position = geometry.getAttribute("position");
   const normal = geometry.getAttribute("normal");
   if (!position || !normal) return;
-  geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance)), 2));
+  let whole: { min: number[]; size: number[] } | undefined;
+  if (look.appearance.whole) {
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox!;
+    whole = { min: box.min.toArray(), size: box.max.clone().sub(box.min).toArray() };
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance), whole), 2));
 }
 
 const textures = new Map<string, { map: THREE.Texture; normal: THREE.Texture | null }>();

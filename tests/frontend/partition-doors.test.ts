@@ -1,6 +1,6 @@
 /** Les portes d'une répartition : une par case, à la mesure de ses côtés et séparations, tenues à jour avec l'étape. */
 import { describe, expect, it } from "vitest";
-import { doorSwing } from "../../frontend/src/app/drawer-toggle";
+import { doorSwing, doorWithHandle } from "../../frontend/src/app/drawer-toggle";
 import { syncPartitionDoors } from "../../frontend/src/document/partition-doors";
 import { poseOf } from "../../frontend/src/features/motion";
 import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
@@ -47,9 +47,12 @@ describe("portes d'une répartition", () => {
     const n = nicheGeometry(doors!, d.features[0] as SketchFeature);
     if (typeof n === "string") throw new Error(n);
     const parts = nicheParts(doors!, n);
-    expect(parts.map((p) => p.name)).toEqual(["Porte 1", "Porte 2", "Porte 3"]);
+    expect(parts.map((p) => p.name)).toEqual(["Porte 1", "Porte 2", "Porte 3", "Poignée porte 1", "Poignée porte 2", "Poignée porte 3"]);
     expect([parts[0]!.from[2], parts[0]!.to[2]]).toEqual([400, 419]);
-    expect(parts.map((p) => p.handle)).toEqual(["right", "left", "right"]);
+    expect(parts.slice(0, 3).map((p) => p.handle)).toEqual(["right", "left", "right"]);
+    // A handle stands on its door's front face, 40 mm in from the edge opposite the hinges, 128 mm long.
+    expect(parts[3]).toMatchObject({ kind: "handle", role: "hardware", of: 0 });
+    expect([parts[3]!.from[0], parts[3]!.from[2], parts[3]!.to[1] - parts[3]!.from[1]]).toEqual([parts[0]!.to[0] - 40, 419, 128]);
     // 1996 mm high: 4 hinges each.
     expect(nicheHardware(d.features, doors!)).toEqual([{ name: "Charnière à boîtier Ø35", quantity: 12 }, { name: "Poignée entraxe 128 mm", quantity: 3 }]);
     expect(() => parseDocument(JSON.parse(JSON.stringify(d)))).not.toThrow();
@@ -70,7 +73,10 @@ describe("portes d'une répartition", () => {
     const n = nicheGeometry(doors!, d.features[0] as SketchFeature);
     if (typeof n === "string") throw new Error(n);
     // Doors 1 and 2 chosen hinged on the right (their handle on the left), door 3 in turn: on the left.
-    expect(nicheParts(doors!, n).map((p) => p.handle)).toEqual(["left", "left", "right"]);
+    expect(nicheParts(doors!, n).slice(0, 3).map((p) => p.handle)).toEqual(["left", "left", "right"]);
+    // A click on the handle swings its door, the door and its handle together.
+    expect(doorSwing(d, `${doors!.id}#3`)).toEqual(doorSwing(d, `${doors!.id}#0`));
+    expect(doorWithHandle(d, `${doors!.id}#3`)).toEqual([`${doors!.id}#0`, `${doors!.id}#3`]);
     const swing = doorSwing(d, `${doors!.id}#0`)!;
     const part = nicheParts(doors!, n)[0]!;
     // The front plane: the sketch's x is x, its y is z, the depth goes along −Y; hinges on the right edge, at the front.

@@ -77,21 +77,22 @@ export function buildRotate(feature: RotateFeature, lookup: OutputLookup): Solid
 // ---- align ------------------------------------------------------------------------------
 
 /** Translation that lines the box `target` up with `reference`, axis by axis. */
-export function alignDelta(target: Box, reference: Box, modes: readonly AlignMode[]): Vec3 {
+export function alignDelta(target: Box, reference: Box, modes: readonly AlignMode[], gaps?: readonly number[]): Vec3 {
   return [0, 1, 2].map((i) => {
     const [t0, t1] = [target[0][i] as number, target[1][i] as number];
     const [r0, r1] = [reference[0][i] as number, reference[1][i] as number];
+    const gap = gaps?.[i] ?? 0;
     switch (modes[i]) {
       case "min":
-        return r0 - t0;
+        return r0 + gap - t0;
       case "center":
-        return (r0 + r1) / 2 - (t0 + t1) / 2;
+        return (r0 + r1) / 2 + gap - (t0 + t1) / 2;
       case "max":
-        return r1 - t1;
+        return r1 - gap - t1;
       case "after":
-        return r1 - t0;
+        return r1 + gap - t0;
       case "before":
-        return r0 - t1;
+        return r0 - gap - t1;
       default:
         return 0;
     }
@@ -103,7 +104,7 @@ export function buildAlign(feature: AlignFeature, lookup: OutputLookup): SolidOu
   if (feature.modes.every((m) => m === "none")) throw new GeometryError(`${feature.name} : choisissez au moins un alignement (X, Y ou Z).`);
   const target = requireSolid(lookup, feature.target).shape;
   const reference = requireSolid(lookup, feature.reference).shape;
-  const delta = alignDelta(boxOf(target), boxOf(reference), feature.modes);
+  const delta = alignDelta(boxOf(target), boxOf(reference), feature.modes, feature.gaps);
   return { kind: "solid", shape: (target.clone() as Shape3D).translate(delta) as Shape3D };
 }
 

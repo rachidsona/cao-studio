@@ -34,7 +34,8 @@ export interface NicheGeometry {
 /** A part, in the niche's frame: a box, or the rod (a cylinder along u). */
 export interface NichePart {
   name: string;
-  kind: "box" | "rod" | "disc";
+  /** « handle »: the handle of a front, in 3D, from its first hole (`from`) to its second (`to`, the same for a knob). */
+  kind: "box" | "rod" | "disc" | "handle";
   /** [u0, v0, w0] and [u1, v1, w1]; a rod or a disc: from one end of its axis to the other, `radius` around it. */
   from: Vec3;
   to: Vec3;
@@ -43,6 +44,8 @@ export interface NichePart {
   role?: "front" | "hardware";
   /** A door: the edge its handle goes along (the other one has the hinges). */
   handle?: "left" | "right";
+  /** A handle: the index of the front it is on (it swings or slides with it). */
+  of?: number;
 }
 
 export const SUPPORT = 3;
@@ -120,6 +123,11 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
     const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap) : "La répartition manque.";
     if (typeof doors === "string") return doors;
     if (doors.some(([x0, , x1]) => x1 - x0 < 50)) return "Le jeu est trop grand pour ces portes.";
+    if (f.style === "frame") {
+      const [w, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
+      if (doors.some(([x0, y0, x1, y1]) => Math.min(x1 - x0, y1 - y0) - 2 * w < 40)) return "Le cadre est trop large pour ces portes.";
+      if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
+    }
     return null;
   }
   if (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > MAX_DRAWERS) return `De 1 à ${MAX_DRAWERS} tiroirs.`;
@@ -148,10 +156,17 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     if (typeof doors === "string") return [];
     // In front of the panels; hinged on the side chosen, else on the left, then on the right, in turn (a pair opens from
     // the middle). The handle goes along the other edge.
-    return doors.map(([a, b, c, d], i): NichePart => {
+    const parts = doors.map(([a, b, c, d], i): NichePart => {
       const hinge = f.hinges?.[i] ?? (i % 2 === 0 ? "left" : "right");
       return { name: `Porte ${i + 1}`, kind: "box", from: [a, b, D], to: [c, d, D + f.thickness], role: "front", handle: hinge === "left" ? "right" : "left" };
     });
+    // The handles, after the doors (their numbers stay): along the edge opposite the hinges, 40 mm in, at mid-height.
+    if (f.handles) parts.forEach((door, i) => {
+      const u = door.handle === "left" ? door.from[0] + 40 : door.to[0] - 40;
+      const v = (door.from[1] + door.to[1]) / 2;
+      parts.push({ name: `Poignée porte ${i + 1}`, kind: "handle", from: [u, v - half(f), door.to[2]], to: [u, v + half(f), door.to[2]], role: "hardware", of: i });
+    });
+    return parts;
   }
   if (f.fill === "rod") {
     const r = f.diameter / 2;
@@ -190,8 +205,19 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wb], [bx1 - DRAWER_SIDE, vb + height, wb + DRAWER_SIDE]);
     box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, vb, wb + DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE]);
   }
+  // The handles of the drawers, after every other part: across the middle of each front.
+  if (f.handles) {
+    parts.forEach((front, i) => {
+      if (front.role !== "front") return;
+      const [u, v] = [(front.from[0] + front.to[0]) / 2, (front.from[1] + front.to[1]) / 2];
+      parts.push({ name: `Poignée ${front.name.replace(/^Façade /, "")}`, kind: "handle", from: [u - half(f), v, front.to[2]], to: [u + half(f), v, front.to[2]], role: "hardware", of: i });
+    });
+  }
   return parts;
 }
+
+/** Half the spacing of the handle's holes (128 mm unless another handle was chosen; 0 for a knob). */
+const half = (f: Pick<NicheFeature, "hw">) => (f.hw?.handleSpacing ?? 128) / 2;
 
 /** A point of the niche's frame in the world. */
 export function nicheWorld(n: Pick<NicheGeometry, "frame">, [u, v, w]: Vec3): Vec3 {
@@ -244,7 +270,7 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
   }
   const fronts = parts.filter((p) => p.role === "front").length;
   if (f.fill === "doors") {
-    const hinges = parts.reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
+    const hinges = parts.filter((p) => p.role === "front").reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
     return [{ name: "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
   }
   return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];

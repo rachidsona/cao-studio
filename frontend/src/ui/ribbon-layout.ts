@@ -23,13 +23,13 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:revolve", "data-action:rect-array",
     "data-action:shell", "data-action:loft", "data-action:modifier", "data-action:combine",
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
-    "data-action:sweep", "data-action:assembly", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion", "data-workshop:drawing",
+    "data-action:sweep", "data-action:assembly", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion", "data-workshop:drawing",
     "data-workshop:nesting", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
-    "data-action:room", "data-action:trim", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check",
+    "data-action:room", "data-action:trim", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
   ],
   sketch: [
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
-    "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:break", "data-sketch-tool:array",
+    "data-sketch-command:importdxf", "data-sketch-command:underlay", "data-sketch-command:skmirror", "data-sketch-command:skrotate", "data-sketch-command:skscale", "data-sketch-command:skpolar", "data-sketch-command:autodim", "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:break", "data-sketch-tool:array",
     "data-sketch-command:symmetric", "data-sketch-command:concentric", "data-sketch-command:fix", "data-sketch-command:pointOnCurve", "data-sketch-command:midpoint",
   ],
 };

@@ -27,6 +27,8 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
         add(h.name, h.quantity);
         if (h.unit) units.set(h.name, h.unit);
       }
+    } else if (f.type === "trim") {
+      add("Pied réglable", f.parts.filter((p) => p.hardware).length);
     } else if (f.type === "machining") {
       const holes = f.ops.filter((op) => op.kind === "hole").length;
       if (f.kind === "confirmat") screwHoles += holes;
@@ -42,6 +44,8 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
 export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   const [featureId, index] = bodyId.split("#");
   const f = doc.features.find((x) => x.id === featureId);
-  if (f?.type !== "niche" || index === undefined) return false;
+  if (index === undefined) return false;
+  if (f?.type === "trim") return !!f.parts[Number(index)]?.hardware;
+  if (f?.type !== "niche") return false;
   return nichePartsIn(doc.features, f)[Number(index)]?.role === "hardware";
 }

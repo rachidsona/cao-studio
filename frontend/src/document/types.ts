@@ -7,7 +7,7 @@
  * `units` is only the display preference of the project.
  */
 
-import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText } from "./sketch";
+import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText, type SketchUnderlay } from "./sketch";
 import type { FinishOptions } from "../features/finish-parts";
 import type { RoomInput } from "../features/room-plan";
 export type { SketchText } from "./sketch";
@@ -49,6 +49,8 @@ export interface SketchFeature extends FeatureBase {
   frame?: PlaneFrame;
   /** Texts written in the sketch (engraving, labels): extruded with its profile. */
   texts?: SketchText[];
+  /** Reference image under the sketch, to trace over (never built). */
+  underlay?: SketchUnderlay;
   points: SketchPoint[];
   curves: SketchCurve[];
   constraints: SketchConstraint[];
@@ -147,6 +149,8 @@ export interface FilletFeature extends FeatureBase {
   target: string;
   edges: EdgeRef[];
   radius: number;
+  /** Variable fillet: the radius at the end of each edge, `radius` being the one at its start (linear between). */
+  radiusEnd?: number;
 }
 
 export interface ChamferFeature extends FeatureBase {
@@ -154,6 +158,12 @@ export interface ChamferFeature extends FeatureBase {
   target: string;
   edges: EdgeRef[];
   distance: number;
+  /**
+   * Chamfer with two distances: `distance` on the larger face next to each edge (the face of a board), this one on
+   * the other (its edge); `swap` takes `distance` on the smaller face instead.
+   */
+  distance2?: number;
+  swap?: boolean;
 }
 
 /** Boolean between existing bodies: target (op) tools. */
@@ -282,6 +292,11 @@ export interface AlignFeature extends FeatureBase {
   target: string;
   reference: string;
   modes: [AlignMode, AlignMode, AlignMode];
+  /**
+   * Gap along each axis (mm): between the faces placed against each other (after, before), the face set back inside
+   * the reference's (min, max), or the centre shifted towards + (center). An assembly of faces keeps it.
+   */
+  gaps?: Vec3;
 }
 
 /**
@@ -355,8 +370,12 @@ export interface MachiningFeature extends FeatureBase {
   type: "machining";
   target: string;
   /** What the machining is, for the name and the tool when edited. */
-  kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "halflap" | "tenon" | "custom";
+  kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "halflap" | "tenon" | "cutout" | "custom";
   ops: MachiningOp[];
+  /** The cut-outs of a worktop (kind "cutout"), kept to reopen them in their tool. */
+  cutouts?: { appliance: string; along: number; front: number | null }[];
+  /** The side the worktop faces (kind "cutout"): its low (−1) or high (+1) side across its length. */
+  frontSign?: -1 | 1;
   /**
    * Low corner of the target's box when the machining was made. The operations follow the board: they are moved by
    * how far that corner has moved since (a cabinet made wider carries its right side, and its holes, along).
@@ -463,6 +482,10 @@ export interface NicheFeature extends FeatureBase {
   sideGap?: number;
   /** Doors: the side of the hinges of each one, from the left (missing: in turn, left first). */
   hinges?: ("left" | "right")[];
+  /** Doors: flat, or a frame round a panel set back (routed in one piece), its width and the panel's set-back (mm). */
+  style?: "flat" | "frame";
+  frameWidth?: number;
+  frameDepth?: number;
   /** Back: one panel for the whole cabinet, or one per case. */
   split?: "whole" | "cases";
   thickness: number;
@@ -477,7 +500,8 @@ export interface NicheFeature extends FeatureBase {
  */
 export interface TrimFeature extends FeatureBase {
   type: "trim";
-  parts: { name: string; from: Vec3; to: Vec3 }[];
+  /** A board (a box between two corners), or a foot (`radius`: a cylinder from `from` up to `to`, bought: hardware). */
+  parts: { name: string; from: Vec3; to: Vec3; radius?: number; hardware?: boolean }[];
   /** What the tool was given, to reopen it: the bodies of the furniture and its settings. */
   source?: string[];
   settings?: FinishOptions;

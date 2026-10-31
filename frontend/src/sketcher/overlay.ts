@@ -9,7 +9,7 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { CONSTRAINT_GLYPHS, CONSTRAINT_LABELS } from "../constraints/catalog";
-import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { constraintRefs, isDimension, ORIGIN, type SketchConstraint, type SketchGeometry, type SketchUnderlay } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { findCurve, pointPos, type Vec2 } from "./edit";
 import type { SketchFrame } from "./frame";
@@ -95,6 +95,8 @@ function arcPolyline(center: Vec2, radius: number, start: number, end: number, s
 
 export class SketchOverlay {
   private group = new THREE.Group();
+  /** The reference image under the sketch, kept from one drawing to the next (made again when it changes). */
+  private underlay: { key: string; mesh: THREE.Mesh } | null = null;
   /** Pointer pressed on a dimension text: the sketch mode decides between a click (keypad) and a drag (move it). */
   onAnnotationPointerDown: (annotation: Annotation, event: PointerEvent) => void = () => {};
   /** Click on the symbol of a constraint: the sketch mode selects it (Suppr then deletes the constraint only). */
@@ -181,10 +183,39 @@ export class SketchOverlay {
     }
   }
 
+  /** The image laid under the sketch, see-through, behind every line. */
+  private drawUnderlay(u: SketchUnderlay | undefined): void {
+    if (!u) return this.dropUnderlay();
+    const key = `${u.image.length}|${u.image.slice(-40)}|${u.x}|${u.y}|${u.width}|${u.height}|${u.opacity}`;
+    if (this.underlay?.key !== key) {
+      this.dropUnderlay();
+      const map = new THREE.TextureLoader().load(u.image);
+      map.colorSpace = THREE.SRGBColorSpace;
+      const material = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: u.opacity, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(u.width, u.height), material);
+      mesh.position.set(u.x + u.width / 2, u.y + u.height / 2, -0.05);
+      mesh.renderOrder = 1;
+      this.underlay = { key, mesh };
+    }
+    this.group.add(this.underlay!.mesh);
+  }
+
+  private dropUnderlay(): void {
+    if (!this.underlay) return;
+    const { mesh } = this.underlay;
+    this.group.remove(mesh);
+    mesh.geometry.dispose();
+    const material = mesh.material as THREE.MeshBasicMaterial;
+    material.map?.dispose();
+    material.dispose();
+    this.underlay = null;
+  }
+
   render(state: OverlayState): void {
     if (state.resolution) this.resolution = state.resolution;
     this.clear();
     const g = state.geometry;
+    this.drawUnderlay(g.underlay);
     const extent = 1e4;
     this.polyline([[-extent, 0], [extent, 0]], COLORS.axis, true, WIDTH.axis);
     this.polyline([[0, -extent], [0, extent]], COLORS.axis, true, WIDTH.axis);
@@ -380,6 +411,7 @@ export class SketchOverlay {
 
   dispose(): void {
     this.clear();
+    this.dropUnderlay();
     this.scene.remove(this.group);
   }
 }

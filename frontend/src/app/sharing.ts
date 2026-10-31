@@ -67,7 +67,7 @@ export async function modelGlb(viewport: Viewport, editor: Editor): Promise<{ gl
     geometry.setAttribute("position", new THREE.BufferAttribute(mesh.vertices, 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(mesh.normals, 3));
     geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
-    const color = materialById(info.material)?.color ?? "#d8c3a0";
+    const color = materialById(info.material)?.color ?? "#f8f8f8";
     if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0 }));
     inner.add(new THREE.Mesh(geometry, materials.get(color)));
     mesh.metrics.bbox.forEach((corner, k) => corner.forEach((v, i) => (k ? (hi[i] = Math.max(hi[i]!, v)) : (lo[i] = Math.min(lo[i]!, v)))));

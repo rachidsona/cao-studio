@@ -12,7 +12,7 @@ import { validateSketch } from "./validate-sketch";
 const UNITS = new Set(["mm", "cm", "m", "in"]);
 const PLANES = new Set(["XY", "XZ", "YZ"]);
 const OPERATIONS = new Set(["new", "join", "cut", "intersect"]);
-const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "halflap", "tenon", "custom"]);
+const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "halflap", "tenon", "cutout", "custom"]);
 const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect"]);
 
 type Json = Record<string, unknown>;
@@ -71,6 +71,11 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
           );
         if (!ok) errors.push(`${where} : textes de l'esquisse invalides.`);
       }
+      if (feature.underlay !== undefined) {
+        const u = feature.underlay as Json;
+        const ok = isObject(u) && typeof u.image === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(u.image) && [u.x, u.y, u.width, u.height, u.opacity].every(isFiniteNumber) && (u.width as number) > 0 && (u.height as number) > 0 && (u.opacity as number) >= 0 && (u.opacity as number) <= 1;
+        if (!ok) errors.push(`${where} : image de référence invalide (image en data URL, position, taille positive, opacité de 0 à 1).`);
+      }
       if (feature.frame !== undefined) {
         const f = feature.frame as Json;
         const length = (v: unknown) => (isVec3(v) ? Math.hypot(...(v as number[])) : 0);
@@ -115,6 +120,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "chamfer":
       if (typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
       checkNumbers(feature, [feature.type === "fillet" ? "radius" : "distance"], where, errors);
+      for (const key of ["radiusEnd", "distance2"])
+        if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : ${key === "radiusEnd" ? "rayon de fin" : "seconde distance"} invalide.`);
+      if (feature.swap !== undefined && typeof feature.swap !== "boolean") errors.push(`${where} : inversion invalide.`);
       checkRefs(feature.edges, "edge", where, errors);
       break;
     case "split": {
@@ -172,6 +180,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "align":
       if (typeof feature.target !== "string" || typeof feature.reference !== "string") errors.push(`${where} : corps à aligner ou référence manquant.`);
       if (!Array.isArray(feature.modes) || feature.modes.length !== 3 || !feature.modes.every((m) => ALIGN_MODES.has(m as string))) errors.push(`${where} : alignements invalides.`);
+      if (feature.gaps !== undefined && !isVec3(feature.gaps)) errors.push(`${where} : écarts invalides.`);
       break;
     case "stretch":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à étirer manquant.`);
@@ -204,7 +213,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       break;
     }
     case "trim":
-      if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))))) errors.push(`${where} : planches de finition invalides.`);
+      if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))) && (p.radius === undefined || (isFiniteNumber(p.radius) && (p.radius as number) > 0)) && (p.hardware === undefined || typeof p.hardware === "boolean"))) errors.push(`${where} : planches de finition invalides.`);
       break;
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
@@ -212,6 +221,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["rod", "drawers", "doors", "back"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
+      if (feature.style !== undefined && feature.style !== "flat" && feature.style !== "frame") errors.push(`${where} : style de porte inconnu.`);
+      for (const key of ["frameWidth", "frameDepth"]) if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : « ${key} » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
       if (feature.sideGap !== undefined && !isFiniteNumber(feature.sideGap)) errors.push(`${where} : « sideGap » doit être un nombre fini.`);
       if (typeof feature.handles !== "boolean") errors.push(`${where} : réglage des poignées invalide.`);
@@ -230,6 +241,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à usiner manquant.`);
       if (!MACHINING_KINDS.has(feature.kind as string)) errors.push(`${where} : type d'usinage inconnu.`);
       if ((feature.anchor !== undefined && !isVec3(feature.anchor)) || (feature.anchorHigh !== undefined && !isVec3(feature.anchorHigh))) errors.push(`${where} : point d'ancrage invalide.`);
+      if (feature.cutouts !== undefined && (!Array.isArray(feature.cutouts) || feature.cutouts.length > 50 || !feature.cutouts.every((c) => isObject(c) && typeof c.appliance === "string" && isFiniteNumber(c.along) && (c.front === null || isFiniteNumber(c.front)))))
+        errors.push(`${where} : découpes invalides.`);
       const ops = feature.ops;
       if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) errors.push(`${where} : usinages invalides (1 à 500).`);
       else

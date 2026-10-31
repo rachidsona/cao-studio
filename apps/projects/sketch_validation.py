@@ -262,6 +262,19 @@ class _SketchChecker:
                 )
             ):
                 self.error("« texts » doit être une liste de textes (id, text, x, y, height > 0, angle facultatif).")
+        if "underlay" in sketch:
+            u = sketch["underlay"]
+            if not (
+                isinstance(u, dict)
+                and isinstance(u.get("image"), str)
+                and u["image"].startswith(("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/webp;base64,"))
+                and len(u["image"]) <= 3_000_000
+                and all(is_finite_number(u.get(k)) for k in ("x", "y", "width", "height", "opacity"))
+                and u["width"] > 0
+                and u["height"] > 0
+                and 0 <= u["opacity"] <= 1
+            ):
+                self.error("« underlay » doit être une image en data URL (3 Mo au plus) avec sa position, sa taille et son opacité.")
         if "entities" in sketch:
             self.error(
                 "« entities » n'est pas accepté en schéma 2 "

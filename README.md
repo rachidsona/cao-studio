@@ -145,6 +145,23 @@ serveur accepte les deux versions.
   recliquez un texte pour le modifier ou le supprimer. Les lettres sont extrudées avec le profil de l'esquisse : pour
   **graver**, écrivez le texte dans une esquisse sur la face et extrudez-la en « Couper ». Un texte de plusieurs
   lettres ne peut pas faire seul un « Nouveau corps » (chaque lettre serait un solide à part).
+- **Importer un plan DXF** (menu « Créer ▾ » de l'esquisse) : le plan d'un architecte, d'un client ou d'un autre
+  logiciel entre dans l'esquisse ouverte. Sont lus : lignes, cercles, arcs, polylignes avec leurs arrondis, ellipses
+  et splines (approchées par des segments), dans l'unité du fichier ramenée en mm. Textes, cotes, blocs et hachures
+  sont comptés et laissés de côté. Deux façons de le poser :
+  - **comme référence** : des traits de construction fixes, pour s'y accrocher et dessiner le meuble par-dessus ;
+  - **comme dessin** : des traits ordinaires, à extruder.
+  On le garde à ses coordonnées ou on pose son coin bas-gauche sur l'origine. Les bouts de traits qui se touchent
+  deviennent un seul point, pour que les contours se ferment ; une seule annulation (`io/dxf-import.ts`,
+  `sketcher/import-shapes.ts`).
+- **Image de référence** (menu « Créer ▾ » de l'esquisse) : une photo ou un croquis posé sous l'esquisse, pour
+  décalquer un meuble à refaire ou un mur photographié.
+  - On l'importe depuis son ordinateur ; elle est réduite à 1600 px et gardée avec le projet.
+  - On règle sa largeur (la hauteur suit), son coin et son opacité.
+  - **« Caler avec deux points »** : on clique deux points de l'image dont on connaît la distance (deux angles d'un
+    meuble, une cote du croquis), on donne cette distance, et l'image se met à l'échelle autour du premier point.
+  Elle est dessinée sous les traits, n'est jamais construite, et « Ajuster la vue » la prend en compte. Chaque réglage
+  est une annulation (`app/sketch-underlay.ts`).
 - **Projeter** : cliquez des arêtes des corps ; elles s'ajoutent en violet comme repères fixes (exactes quand elles
   sont parallèles au plan de l'esquisse, sinon en points reliés).
 - **Congé et chanfrein de coin** : cliquez un coin où deux lignes se rejoignent, tapez le rayon (arc tangent aux
@@ -213,6 +230,22 @@ serveur accepte les deux versions.
   elle se détache et l'autre courbe garde le coin. Une extrémité fixe (projetée) ou qui ne rencontre rien
   n'est pas prolongée (un message l'explique). Une ligne garde sa direction, un arc son cercle. Prolongée à nouveau, une
   extrémité traverse la courbe qu'elle avait atteinte jusqu'à la suivante : la courbe traversée reste en place, entière.
+- **Symétrie, Rotation, Échelle** (menu « Modifier ▾ » de l'esquisse), sur les traits sélectionnés. Une petite
+  fenêtre demande les réglages ; chaque geste est une seule annulation.
+  - **Symétrie** : une copie en miroir, autour de la dernière ligne sélectionnée ou de l'axe X ou Y. La copie reste
+    liée à l'original par des contraintes de symétrie, comme dans Fusion : elle suit quand on change l'original.
+    Décoché « Garder l'original », le miroir se fait sur place.
+  - **Rotation** : d'un angle (sens direct), autour du milieu de la sélection, de l'origine ou du point sélectionné.
+  - **Échelle** : d'un facteur, autour des mêmes centres ; les rayons et les cotes de longueur suivent.
+  Rotation et échelle se font sur place ou en copie. Les contraintes entre traits transformés suivent quand elles
+  ont encore un sens : horizontale et verticale sont gardées, échangées à un quart de tour, retirées à un autre
+  angle. Un arc retourné par une symétrie échange ses bouts. Un repère fixe (projeté, importé) ne se transforme
+  qu'en copie (`sketcher/transform-selection.ts`).
+- **Réseau circulaire** (menu « Modifier ▾ » de l'esquisse) : les traits sélectionnés répétés autour d'un centre
+  (l'origine, le milieu de la sélection ou un point), pour des trous en couronne, une rosace ou les pieds d'une
+  table ronde. On donne le nombre d'éléments en tout, original compris, et l'angle total : sur un tour complet,
+  les copies sont réparties régulièrement ; sur un angle plus petit, de l'original à la dernière. Les copies
+  gardent les contraintes qui lient leurs traits entre eux ; une seule annulation.
 - **Déplacer** (touche M, bouton « Déplacer ») : déplace des points, segments, cercles, arcs, un
   rectangle ou un contour entier, ou plusieurs éléments à la fois.
   - On clique les éléments (« Étendre aux contours » ajoute tout le contour d'une courbe choisie), puis on
@@ -298,6 +331,14 @@ serveur accepte les deux versions.
   - les cotes posées restent toujours affichées ; un clic sur la valeur ouvre la calculatrice, un
     glisser déplace la cote (sa position est enregistrée) ;
   - pendant le tracé, les dimensions de la forme s'affichent en direct.
+- **Cotation automatique** (menu « Cotes ▾ » de l'esquisse) : d'un coup, les cotes des traits sélectionnés, sinon de
+  tout le dessin hors construction :
+  - les cotes de chaîne, d'un niveau de points au suivant, en X sous le dessin et en Y à sa gauche ;
+  - les cotes hors tout, au-delà des chaînes ;
+  - les diamètres des cercles et les rayons des arcs.
+  Ce sont des **cotes de référence** (entre parenthèses) : mesurées, jamais imposées, elles suivent le dessin sans le
+  figer ni le contredire. Relancée, elle remplace celles qu'elle avait posées ; au-delà de 40 niveaux sur un axe,
+  seule la cote hors tout est posée (`sketcher/auto-dimensions.ts`).
 - **Outil « Cote »** (touche D) : cliquez une ligne, un cercle, ou deux éléments (deux lignes, deux
   points, point et ligne, deux cercles). Leur mesure apparaît (distance, distance entre lignes
   parallèles, angle, entraxe) ; un clic dessus la transforme en cote. Hors de cet outil, cliquer une
@@ -361,6 +402,12 @@ opération existante.
   de préférence en construction), un angle de 0 à 360°, puis l'opération.
 - **Congé et chanfrein** : cliquez les arêtes, cliquez à nouveau pour en retirer une. Le rayon ou
   la distance se règle au clavier ou à la calculatrice.
+  - **Rayon variable** (case du Congé) : un rayon de début et un rayon de fin. Le rayon passe de l'un à l'autre le
+    long de chaque arête ; « Inverser début et fin » échange les deux.
+  - **Deux distances** (case du Chanfrein) : la première se prend sur la plus grande des deux faces de chaque arête
+    (la face d'une planche), la seconde sur l'autre (son chant). « Inverser les faces » échange les deux côtés.
+  Ces réglages se gardent dans l'opération et se rouvrent avec elle (`features/solids.ts`,
+  test `tests/frontend/edge-variants.test.ts`).
 - **Combiner** : union, soustraction ou intersection d'un corps cible avec un ou plusieurs corps
   outils. Les corps outils peuvent être conservés.
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
@@ -521,6 +568,15 @@ opération existante.
   de 1. Changer une étape (Répartition, Étagères, Cloisons) depuis l'**Historique** rouvre son outil dans la vue 3D,
   sa niche choisie. Le calcul est celui des étagères (`sketcher/shelves.ts`, champ `vertical`) ; la vue 3D de ces
   outils est dans `app/joinery-3d.ts` et `viewport/joinery-view.ts`.
+- **Portes à cadre** (rubrique « Portes » de la Répartition, « Style des portes ») : une porte plate, ou **à cadre**,
+  dite « shaker » : un cadre (70 mm par défaut) autour d'un panneau en retrait (6 mm), usinée dans la masse comme
+  en MDF. La porte reste une seule pièce dans la liste de débit ; charnières, poignées, ouverture d'un clic et sens
+  d'ouverture ne changent pas. Un cadre trop large pour la porte, ou un panneau de moins de 3 mm, sont refusés.
+- **Poignées en 3D** : les portes de la Répartition et les tiroirs des niches qui ont leurs trous de poignée
+  reçoivent aussi la poignée elle-même, devant ses trous, à l'entraxe de la poignée choisie dans la Quincaillerie :
+  deux pieds et une barre qui dépasse de 15 mm, ou un bouton. C'est de la quincaillerie (hors liste de débit, comptée
+  au devis). Une poignée de porte tourne avec sa porte quand on l'ouvre d'un clic (un clic sur la poignée ouvre
+  aussi la porte), une poignée de tiroir sort avec son tiroir.
 - **Portes de la Répartition** (rubrique « Portes » de son panneau, quand les panneaux sont extrudés) : « Une porte
   par case » pose une porte en applique devant chaque case. Elle couvre le dessus, le dessous (au-dessus du socle) et
   le **côté extérieur** en entier. Sur un **côté simple**, deux portes voisines s'en partagent l'épaisseur (la moitié
@@ -634,6 +690,17 @@ opération existante.
   bouger. Par défaut : accolé après en X, même face avant (Y), même sol (Z) — des caissons côte à côte. Avec plusieurs
   éléments sélectionnés, le dernier est la référence. Un corps aligné sur un corps suit sa référence si l'historique
   change ; sur une esquisse, il est déplacé ; une esquisse est déplacée (son plan et son origine). Une seule annulation.
+  Chaque axe aligné a un **écart** : le jeu entre deux faces accolées, le retrait d'une face alignée à l'intérieur de
+  celle de la référence, ou le décalage du centre vers +.
+- **Assemblage** (groupe « Curic », masqué par défaut) : relier deux pièces face contre face, pour que l'une suive
+  l'autre. On clique une face de la pièce qui bouge, puis une face de la pièce fixe :
+  - des faces opposées se mettent **en contact**, avec un jeu (0 par défaut) ;
+  - des faces de même sens **affleurent**, avec un retrait ;
+  - deux faces non parallèles sont refusées ; le type se change ensuite dans la liste (contact, affleurant, centré).
+  Une liaison par axe, X, Y et Z, jusqu'à trois. Les faces sont celles qui bordent la pièce (la face d'une planche),
+  et seuls les corps prennent le clic (pas l'esquisse sous une planche). Le résultat est un alignement calculé sur
+  les pièces elles-mêmes : quand la pièce fixe change (un caisson élargi, une cote d'esquisse), l'autre suit. Il se
+  rouvre dans Aligner (`app/mate-tool.ts`, test `tests/frontend/mate.test.ts`).
 - **Étirer** (groupe « Curic », comme Curic Stretch) : un plan à travers le meuble (orange), perpendiculaire à X, Y ou Z,
   et une distance. Les corps traversés par le plan s'allongent (la section au plan est prolongée, le résultat reste une
   seule planche), ceux au-delà se déplacent, ceux avant restent : un caisson de 600 passe à 800 en une fois. Les
@@ -717,6 +784,9 @@ opération existante.
 - **Fond de la vue 3D** : un dégradé bleu nuit, de #1f2f40 en haut à #101d26 en bas (barre d'historique comprise),
   dans les deux thèmes ; la grille et les couleurs d'esquisse sont choisies pour ce fond sombre (variables
   `--viewport-gradient`, `--viewport-grid`, `--sketch-*` de `app.css`).
+- **Couleur des corps par défaut** : #F8F8F8 pour tous, dans la vue, le rendu réaliste et le lien client, tant
+  qu'ils n'ont ni apparence ni matière affichée. Leurs arêtes sombres distinguent les pièces
+  (`BODY_COLOR` de `viewport/body-layer.ts`).
 - **Qualité du rendu des corps** : éclairage de studio (lumière d'ambiance et reflets doux), lumière principale et
   lumière d'appoint qui suivent la caméra, et **ombres douces** portées par une lumière fixe : les étagères ombrent
   leur niche, les faces se distinguent nettement. Les matières unies sont mates (non métalliques). Les **arêtes et
@@ -828,6 +898,38 @@ opération existante.
       l'emporte.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
     à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
+  - *Flèche des étagères* : pour chaque planche horizontale chargée (étagères, dessus, dessous ; pas les fonds de
+    tiroir ni les panneaux de fond), la flèche à long terme sous la charge choisie : livres 25 kg/m, vaisselle
+    15 kg/m, linge 10 kg/m, objets légers 5 kg/m.
+    - Le calcul est celui d'une planche posée sur ses deux bouts, charge répartie : 5·q·L⁴ / (384·E·I). Le fluage
+      des panneaux s'y ajoute (×3,25 pour l'aggloméré et le MDF, ×1,8 pour le contreplaqué, ×1,6 pour le chêne
+      massif).
+    - La flèche est comparée à une limite : portée / 150, / 200 (par défaut) ou / 300.
+    - Une planche qui fléchit trop reçoit l'épaisseur du commerce qui suffit et la portée la plus longue à son
+      épaisseur actuelle (un montant, un taquet au milieu). « Voir » la sélectionne.
+    Le Contrôle avant fabrication signale aussi les planches qui fléchissent sous 15 kg/m (`features/shelf-sag.ts`,
+    `app/sag-panel.ts`).
+  - *Poids et stabilité* : le poids du meuble (volume × masse volumique de chaque matière : aggloméré mélaminé
+    650 kg/m³, MDF 750, contreplaqué 680, chêne 700, HDF 900 ; une pièce sans matière est comptée en aggloméré),
+    ses cinq pièces les plus lourdes et la hauteur de son centre de gravité.
+    - **Essai de basculement** : tous les tiroirs sortis comme un clic les ouvre, chargés de 0 à 35 kg chacun ; le
+      centre de gravité doit rester derrière l'arête avant du pied (la face avant se choisit).
+    - Un meuble haut d'au moins 1 m et plus de 2,5 fois plus haut que profond est signalé à fixer au mur.
+    Le Contrôle avant fabrication reprend l'essai à 15 kg par tiroir (`features/stability.ts`,
+    `app/weight-panel.ts`).
+  - *Découpes du plan de travail* (bouton de l'Atelier, masqué par défaut) : sur le plan de travail cliqué ou
+    sélectionné, des découpes choisies dans un catalogue aux cotes courantes du commerce : évier 1 cuve (780 × 480),
+    1 cuve ½ (960 × 480), 2 cuves (1140 × 480), évier sous plan (500 × 400), plaque de cuisson 60, 80 ou 90 cm
+    (560, 750 ou 880 × 490), robinet (Ø35) et passe-câble (Ø60).
+    - Chaque découpe se place par son milieu le long du plan et par sa distance au bord avant (centrée dans la
+      profondeur par défaut) ; le bord avant se choisit (−Y pour un plan le long de X, +X pour un plan le long de
+      Y, comme les fait la Cuisine).
+    - Une nouvelle découpe se met au milieu du plan, le robinet derrière l'évier, sinon à la première place libre.
+    - Sont refusées une découpe qui sort du plan, qui laisse moins de 50 mm de matière au bord, ou qui en chevauche
+      une autre.
+    - C'est un usinage du plan (une boîte retirée de part en part, un trou), qui suit la planche. Il se rouvre avec
+      « Modifier » (`features/worktop-cutouts.ts`, `app/cutout-tool.ts`). Les cotes sont à vérifier sur la notice
+      de l'appareil.
   - *Contrôle avant fabrication* : un bouton liste ce qui gâcherait du panneau ou bloquerait le montage, rangé par
     sorte. Chaque ligne a un bouton « Voir » qui sélectionne les pièces en cause.
     - Pièces qui se chevauchent : erreur pour deux panneaux droits, « peut-être » pour une pièce façonnée. Deux
@@ -912,9 +1014,14 @@ opération existante.
     sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, cernes et fibres du bois,
     mouchetures du granit, armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans
     couture ; le motif du bois suit le fil de chaque planche.
-    **Bois en photo** : 8 vrais bois photographiés (chêne clair, chêne, noyer, wengé, hêtre, bouleau, merisier, pin
-    noueux), tirés d'ambientCG sous licence CC0 (`static/textures/bois/`, avec `LICENCE.txt`). Leur relief est
-    calculé d'après leurs nuances, et leur fil suit celui de chaque planche.
+    **Bois en photo** : 10 vrais bois photographiés. Huit viennent d'ambientCG sous licence CC0 : chêne clair, chêne,
+    noyer, wengé, hêtre, bouleau, merisier et pin noueux. S'y ajoutent deux placages de noyer à partir de photos
+    fournies : **noyer fil** (tranché sur quartier, fil droit, une photo pour 1 m) et **noyer ramage** (tranché à plat,
+    avec ses dessins en cathédrale, une feuille de 600 × 450 mm). Tout est dans `static/textures/bois/`, avec
+    `LICENCE.txt`. Leur relief est calculé d'après leurs nuances, et leur fil suit celui de chaque planche. Chaque
+    panneau reçoit **une seule photo, d'un seul morceau**, étirée sur toute sa longueur dans le sens du fil et sur
+    toute sa largeur, comme une feuille de placage, même pour un panneau de 20 m : jamais de raccord répété. Les
+    images de « Mes motifs » gardent la taille qu'on leur a donnée.
     **Mes motifs** : « Importer une image… » fait une apparence d'une image prise ailleurs, depuis son ordinateur
     (photo de bois, de pierre, de tissu… en PNG, JPEG ou WebP). L'image est réduite à 1024 px et gardée avec le
     projet ; la taille en millimètres dit combien elle couvre. Elle est appliquée aux corps sélectionnés et rangée
@@ -1015,6 +1122,9 @@ opération existante.
   - Fileurs en façade, qui comblent le jour jusqu'au mur voisin, de chaque côté, jusqu'à un écart maximal
     (150 mm par défaut). Un mur plus loin est signalé.
   - Bandeau haut en façade : jusqu'au plafond quand il y en a un, sinon de la hauteur choisie.
+  - Pieds réglables (Ø30) sous le dessous relevé d'un socle, de la hauteur du socle : près de chaque angle, à
+    50 mm des bords, et tous les 800 mm au plus. Ce sont de la quincaillerie (hors liste de débit, comptés au
+    devis et dans la notice) ; un meuble posé au sol sur toute sa surface n'en a pas, et l'outil le dit.
   - Plinthe en retrait sous la façade, seulement là où le bas du meuble est libre (sous le socle d'une
     Répartition), de la hauteur libre. Elle s'arrête contre les côtés qui descendent au sol ; un meuble posé au sol
     sur toute sa façade n'en a pas, et l'outil le dit.
@@ -1199,8 +1309,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 
 ## Limites connues (incrément 1)
 
-- **Déplacer** : translations seulement (la rotation est l'outil « Tourner »), un corps à la fois (pas d'assemblage, donc
-  pas de contraintes entre composants). Les opérations suivantes qui désignent une position absolue (un
+- **Déplacer** : translations seulement (la rotation est l'outil « Tourner »), un corps à la fois ; pour qu'une pièce
+  suive une autre, l'Assemblage (faces parallèles aux axes, translations seulement). Les opérations suivantes qui désignent une position absolue (un
   perçage en x, y) la gardent : après un déplacement, elles se placent sur le corps déplacé. En 2D, le
   message d'un déplacement refusé liste l'ensemble des contraintes en conflit détectées par le solveur,
   pas seulement celle qui en est la cause.
@@ -1223,14 +1333,15 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
 - **Références topologiques** : la correspondance est heuristique (type, direction, position
   relative). Une modification qui change fortement la forme (par exemple ajouter des arêtes au
   même endroit relatif) peut demander de resélectionner les arêtes.
-- **Congés et chanfreins** : rayon ou distance constants ; pas de congé à rayon variable ni de
-  chanfrein à deux distances dans l'interface.
+- **Congés et chanfreins** : le rayon variable change de façon linéaire d'un bout de l'arête à l'autre (pas de loi
+  libre ni de rayons intermédiaires). Le sens d'une arête est celui du noyau : on l'inverse au besoin.
 - **Chargement** : le noyau WASM pèse 23 Mo (5 Mo servi en brotli). Le premier chargement prend quelques secondes,
   les suivants viennent du cache du navigateur.
 - **PostgreSQL** : testé par la CI ; ajouter `psycopg[binary]` si `POSTGRES_DB` est défini.
 - **Export DXF** : une vue à plat par panneau (sa grande face) ; les usinages qui ne débouchent pas sur cette face
   (rainures sur la tranche, perçages de chant) n'y figurent pas.
-- **Non encore implémenté** : assemblages avec contraintes entre composants.
+- **Assemblage** : des liaisons de faces parallèles aux axes, en translation ; pas de liaison qui fasse tourner une
+  pièce (charnière, axe) ni de face inclinée.
 
 ## Dépendances et licences
 

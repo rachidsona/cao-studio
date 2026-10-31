@@ -9,7 +9,7 @@ import { bodyLabel, findFeature } from "../document/operations";
 import { featureOfBody, type Axis, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
 import { drawerNumber, drawerSlide, type Box } from "../features/drawer-open";
 import { poseOf, rotationMatrix } from "../features/motion";
-import { nicheGeometry, nicheParts, nicheWorld } from "../features/niche-parts";
+import { nicheGeometry, nicheParts, nichePartsIn, nicheWorld } from "../features/niche-parts";
 import type { Viewport } from "../viewport/viewport";
 
 /** What is open: its bodies, where they are when open by `s` (0 closed … 1 open), and the meshes they were opened on. */
@@ -28,7 +28,10 @@ export function doorSwing(doc: CadDocument, bodyId: string): { axis: Axis; pivot
   if (feature?.type !== "niche" || feature.fill !== "doors") return null;
   const n = nicheGeometry(feature as NicheFeature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
   if (typeof n === "string") return null;
-  const part = nicheParts(feature, n)[Number(bodyId.slice(bodyId.indexOf("#") + 1))];
+  const parts = nicheParts(feature, n);
+  const own = parts[Number(bodyId.slice(bodyId.indexOf("#") + 1))];
+  // A handle swings with its door.
+  const part = own?.kind === "handle" && own.of !== undefined ? parts[own.of] : own;
   if (!part?.handle) return null;
   const [hingeU, freeU] = part.handle === "right" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
   const [v, w] = [(part.from[1] + part.to[1]) / 2, part.to[2]];
@@ -41,6 +44,16 @@ export function doorSwing(doc: CadDocument, bodyId: string): { axis: Axis; pivot
   const moved = [0, 1, 2].map((i) => r[i * 3]! * d[0]! + r[i * 3 + 1]! * d[1]! + r[i * 3 + 2]! * d[2]! - d[i]!);
   const out = moved[0]! * n.frame.normal[0] + moved[1]! * n.frame.normal[1] + moved[2]! * n.frame.normal[2];
   return { axis, pivot, angle: out >= 0 ? DOOR_ANGLE : -DOOR_ANGLE };
+}
+
+/** A door of a Répartition and its handle, by body id (the door first), from either of them. */
+export function doorWithHandle(doc: CadDocument, bodyId: string): string[] {
+  const feature = findFeature(doc, featureOfBody(bodyId));
+  if (feature?.type !== "niche") return [bodyId];
+  const parts = nichePartsIn(doc.features, feature);
+  const index = Number(bodyId.slice(bodyId.indexOf("#") + 1));
+  const door = parts[index]?.kind === "handle" ? (parts[index]!.of ?? index) : index;
+  return [door, ...parts.flatMap((p, i) => (p.kind === "handle" && p.of === door ? [i] : []))].map((i) => `${feature.id}#${i}`);
 }
 
 /** The bodies of the drawer this body is a piece of (null: not a drawer). */
@@ -93,7 +106,10 @@ export function bindDrawers(viewport: Viewport, editor: { readonly doc: CadDocum
   const toggle = (bodyId: string) => {
     const doc = editor.doc;
     const swing = doorSwing(doc, bodyId);
-    if (swing) return flip(bodyId, [bodyId], () => (s) => poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s }));
+    if (swing) {
+      const door = doorWithHandle(doc, bodyId);
+      return flip(door[0]!, door, () => (s) => poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s }));
+    }
     const drawer = drawerBodies(doc, viewport.displayedBodies, bodyId);
     if (!drawer) return;
     flip(drawer.key, drawer.bodies, () => {

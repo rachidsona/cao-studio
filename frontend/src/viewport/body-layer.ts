@@ -56,12 +56,15 @@ export function drawnEdgeAt(groups: DrawnEdges["groups"], vertexIndex: number): 
   return groups.find((g) => vertexIndex >= g.start && vertexIndex < g.start + g.count)?.edge ?? -1;
 }
 
+/** Colour of the bodies by default (no appearance, no material shown). */
+export const BODY_COLOR = 0xf8f8f8;
+
 export class BodyLayer {
   readonly bodies = new Map<string, BodyObject>();
   /** Second material of every mesh: the selected faces. */
   readonly highlightMaterial: THREE.MeshStandardMaterial;
   readonly edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1f2937 });
-  /** One subtle tint per body, so separate pieces (e.g. boards of a split frame) stand out. */
+  /** The colour of a body without appearance: #F8F8F8 for all (their dark edges tell the pieces apart). */
   private tints: THREE.MeshStandardMaterial[] = [];
   private appearance: ((bodyId: string) => BodyAppearance | null) | null = null;
   private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
@@ -72,10 +75,10 @@ export class BodyLayer {
     private readonly scene: THREE.Scene,
     private readonly environment: THREE.Texture | null = null,
   ) {
-    const base = new THREE.MeshStandardMaterial({ color: 0xb8c4d1, metalness: 0, roughness: 0.62, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    const base = new THREE.MeshStandardMaterial({ color: BODY_COLOR, metalness: 0, roughness: 0.62, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     this.highlightMaterial = base.clone();
     this.highlightMaterial.color.set(0x0ea5e9);
-    for (const color of [0xb8c4d1, 0xc8bba4, 0xaec4b6, 0xbfb6cc, 0xb4c0d8, 0xcfc3a9]) {
+    for (const color of [BODY_COLOR]) {
       const material = base.clone();
       material.color.set(color);
       this.tints.push(material);
@@ -151,8 +154,9 @@ export class BodyLayer {
       const look = this.appearance?.(id);
       (body.mesh.material as THREE.Material[])[0] = look ? this.appearanceMaterial(look) : body.tint;
       if (!look || look.appearance.pattern === "plain") continue;
-      // Texture coordinates along the board's grain, redone only when the axis or the motif's tile changes.
-      const key = `${look.grainAxis}|${tileOf(look.appearance).join("x")}`;
+      // Texture coordinates along the board's grain, redone only when the axis or the motif's tile changes (or a photo
+      // goes over the whole board).
+      const key = `${look.grainAxis}|${look.appearance.whole ? "whole" : tileOf(look.appearance).join("x")}`;
       if (body.mesh.geometry.userData.uvKey === key) continue;
       applyUvs(body.mesh.geometry, look);
       body.mesh.geometry.userData.uvKey = key;

@@ -3,6 +3,10 @@
  * toolbar, keyboard shortcuts, and synchronisation with the document
  * (undo/redo, properties panel).
  */
+import { importDxf } from "./sketch-import";
+import { openUnderlay } from "./sketch-underlay";
+import { autoDimensions } from "../sketcher/auto-dimensions";
+import { openSketchTransform } from "./sketch-transform-dialog";
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
 import { withSketchExtrusion } from "../document/sketch-extrusion";
@@ -349,6 +353,15 @@ export class SketchController {
     if (id === "finish") return this.finish();
     if (id === "extrude") return this.host.extrude();
     if (id === "fit") return mode.ensureVisible(true);
+    if (id === "importdxf") return importDxf(mode, (m, k) => this.host.notify(m, k));
+    if (id === "underlay") return openUnderlay(mode, (m, k) => this.host.notify(m, k));
+    if (id === "autodim") {
+      const { geometry, count } = autoDimensions(mode.geometry, mode.selection);
+      if (!count) return this.host.notify("Rien à coter : sélectionnez des traits, ou dessinez d'abord.", "info");
+      mode.apply(geometry, `Cotation automatique : ${count} cote${count > 1 ? "s" : ""} de référence.`);
+      return;
+    }
+    if (id === "skmirror" || id === "skrotate" || id === "skscale" || id === "skpolar") return openSketchTransform(id === "skmirror" ? "mirror" : id === "skrotate" ? "rotate" : id === "skscale" ? "scale" : "polar", mode, (m, k) => this.host.notify(m, k));
     if (id === "glyphs") return mode.toggleGlyphs();
     if (id === "points") return mode.togglePoints();
     if (id === "gridsnap") return mode.toggleGridSnap();

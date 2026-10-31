@@ -59,3 +59,19 @@ describe("finitions d'un meuble", () => {
     expect(r.parts[1]).toMatchObject({ name: "Joue droite", from: [0, 1000, 0], to: [600, 1019, 2000] });
   });
 });
+
+describe("pieds réglables", () => {
+  it("pose des pieds sous le dessous relevé, à 50 mm des bords, tous les 800 mm au plus, de la hauteur du socle", () => {
+    const r = finishParts(WARDROBE, [], options((o) => {
+      o.ends.left = o.ends.right = false;
+      o.feet = { on: true };
+    }));
+    // Bottom 18…982 × −600…0, raised 100 mm: x 68 → 932 (864 mm: 3 rows), y −550 → −50 (2 rows).
+    expect(r.parts).toHaveLength(6);
+    expect(r.parts.every((p) => p.radius === 15 && p.hardware && p.from[2] === 0 && p.to[2] === 100)).toBe(true);
+    expect(r.parts.map((p) => p.from[0])).toEqual([68, 68, 500, 500, 932, 932]);
+    // On the floor all along: no room for feet.
+    const flat = finishParts([[[0, -600, 0], [1000, 0, 18]], [[0, -600, 18], [18, 0, 800]]], [], options((o) => (o.feet = { on: true })));
+    expect(flat.notes.some((n) => n.includes("socle"))).toBe(true);
+  });
+});

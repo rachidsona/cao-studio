@@ -68,6 +68,8 @@ export function assemblySteps(doc: CadDocument, bodies: readonly string[]): Asse
     } else if (f.type === "fronts") {
       const cabinet = doc.features.find((c) => c.id === f.cabinet);
       for (const h of frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined)) add(/coulisse/i.test(h.name) || f.layout === "drawers" ? "drawers" : "doors", h);
+    } else if (f.type === "trim") {
+      add("carcass", { name: "Pied réglable", quantity: f.parts.filter((p) => p.hardware).length });
     } else if (f.type === "machining") {
       const holes = f.ops.filter((op) => op.kind === "hole").length;
       if (f.kind === "confirmat") screws += holes;

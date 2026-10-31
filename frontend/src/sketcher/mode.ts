@@ -162,7 +162,7 @@ export class SketchMode implements PointerHandler {
 
   /** The stored geometry plus the corners of the displayed bodies, offered as fixed points to snap on. */
   private withBodies(feature: SketchFeature): SketchGeometry {
-    const stored = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}), ...(feature.texts ? { texts: feature.texts } : {}) };
+    const stored = { points: feature.points, curves: feature.curves, constraints: feature.constraints, ...(feature.offsets ? { offsets: feature.offsets } : {}), ...(feature.texts ? { texts: feature.texts } : {}), ...(feature.underlay ? { underlay: feature.underlay } : {}) };
     return withBodyPoints(stored, this.frame, this.viewport.bodyVertices());
   }
 
@@ -170,8 +170,10 @@ export class SketchMode implements PointerHandler {
   private bounds(): THREE.Box3 {
     const box = new THREE.Box3().expandByPoint(new THREE.Vector3(...toWorld(this.frame, 0, 0)));
     const add = (x: number, y: number) => box.expandByPoint(new THREE.Vector3(...toWorld(this.frame, x, y)));
-    // The body corners offered but unused do not widen the view.
+    // The body corners offered but unused do not widen the view; the reference image does.
     for (const p of pruneBodyPoints(this.geometry).points) add(p.x, p.y);
+    const u = this.geometry.underlay;
+    if (u) add(u.x, u.y), add(u.x + u.width, u.y + u.height);
     for (const c of this.geometry.curves) {
       if (c.kind === "line") continue;
       const center = c.center === ORIGIN ? { x: 0, y: 0 } : this.geometry.points.find((p) => p.id === c.center);

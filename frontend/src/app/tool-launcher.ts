@@ -17,6 +17,8 @@ import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
 import { MachiningTool } from "./machining-tool";
+import { CutoutTool } from "./cutout-tool";
+import { MateTool } from "./mate-tool";
 import { SweepTool } from "./sweep-tool";
 import { DrawOnFaceTool } from "./draw-on-face-tool";
 import { SplitTool } from "./split-tool";
@@ -29,7 +31,7 @@ import { AssemblyTool } from "./assembly-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide" | "trim" | "room";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -63,7 +65,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
@@ -148,6 +150,9 @@ export class ToolLauncher {
       case "coincide":
         this.active = new CoincideTool(ctx);
         break;
+      case "mate":
+        this.active = new MateTool(ctx, options.bodies ?? []);
+        break;
       case "room": {
         const tool = new RoomTool(ctx, editing?.type === "room" ? editing : null);
         this.active = tool;
@@ -181,6 +186,16 @@ export class ToolLauncher {
       case "machining":
         this.active = new MachiningTool(ctx, options.bodies ?? []);
         break;
+      case "cutout": {
+        // The cut-outs already made in the worktop picked (its machined body) are reopened.
+        const own = (id: string | undefined) => {
+          const f = id ? findFeature(ctx.doc(), id) : undefined;
+          return f?.type === "machining" && f.kind === "cutout" ? f : null;
+        };
+        const edited = own(options.featureId) ?? own(options.bodies?.[0]);
+        this.active = new CutoutTool(ctx, edited, edited ? [] : (options.bodies ?? []));
+        break;
+      }
       case "kitchen":
         this.active = new KitchenTool(ctx);
         break;
@@ -266,6 +281,7 @@ export class ToolLauncher {
   /** Reopens the tool matching an existing feature. */
   edit(featureId: string): void {
     const feature = findFeature(this.context.doc(), featureId);
-    if (feature && EDITABLE_WITH_TOOL.has(feature.type)) this.open(feature.type as PanelToolKind, { featureId });
+    if (feature?.type === "machining" && feature.kind === "cutout") this.open("cutout", { featureId });
+    else if (feature && EDITABLE_WITH_TOOL.has(feature.type)) this.open(feature.type as PanelToolKind, { featureId });
   }
 }

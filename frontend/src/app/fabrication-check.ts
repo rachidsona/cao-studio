@@ -20,6 +20,8 @@ import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
 import { flatParts } from "./workshop-cnc";
 import { openModal } from "./workshop-ui";
+import { shelves } from "./sag-panel";
+import { weigh } from "./weight-panel";
 
 const STEPS = [0.3, 0.6, 1];
 
@@ -67,6 +69,17 @@ export function openingProblems(viewport: Viewport, doc: CadDocument): Problem[]
   return problems;
 }
 
+/** The furniture tipping over with its drawers out and loaded, or to fix to the wall. */
+function stabilityProblems(viewport: Viewport, doc: CadDocument): Problem[] {
+  const report = weigh(viewport, doc, 15)?.report;
+  if (!report) return [];
+  const all = partsOf(viewport, doc).map((p) => p.id);
+  const out: Problem[] = [];
+  if (report.tips) out.push({ kind: "stability", severity: "error", message: `Le meuble bascule vers l'avant, tiroirs sortis : son centre de gravité passe ${Math.round(-report.margin)} mm devant le pied. À fixer au mur.`, bodies: all });
+  else if (report.fixToWall) out.push({ kind: "stability", severity: "warning", message: "Le meuble est haut et peu profond : à fixer au mur (équerre ou sangle anti-basculement).", bodies: all });
+  return out;
+}
+
 /** Every problem of the model, in the order of the list. */
 export async function checkModel(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<Problem[]> {
   const doc = editor.doc;
@@ -85,7 +98,10 @@ export async function checkModel(viewport: Viewport, editor: Editor, geometry: G
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...flats.flatMap((p) => holeProblems(p, idByName.get(p.name) ?? "")),
+    // A middle load (dishes, jars): the boards that would sag under it, in the long run.
+    ...shelves(viewport, doc, 15, 200).filter((s) => !s.check.ok).map((s): Problem => ({ kind: "sag", severity: "warning", message: `${s.name} fléchit de ${s.check.sag.toFixed(1)} mm à long terme (limite ${s.check.limit.toFixed(1)} mm) : ${s.check.thicknessNeeded ? `${s.check.thicknessNeeded} mm d'épaisseur` : "un montant au milieu"} ou une portée de ${Math.floor(s.check.maxSpan / 10) * 10} mm au plus.`, bodies: [s.id] })),
     ...openingProblems(viewport, doc),
+    ...stabilityProblems(viewport, doc),
   ];
 }
 

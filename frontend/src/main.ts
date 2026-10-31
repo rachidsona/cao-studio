@@ -13,6 +13,8 @@ import { bindAssembly } from "./app/assembly-guide";
 import { bindLibrary } from "./app/library-panel";
 import { bindHardwarePanel } from "./app/hardware-panel";
 import { bindProgress } from "./app/workshop-progress";
+import { bindSag } from "./app/sag-panel";
+import { bindWeight } from "./app/weight-panel";
 import { bindMotion } from "./app/motion";
 import { bindDrawers } from "./app/drawer-toggle";
 import { bindParameters } from "./app/parameters";
@@ -113,6 +115,8 @@ async function start(): Promise<void> {
   bindLibrary(root, viewport, editor);
   bindHardwarePanel(root, viewport, editor);
   bindProgress(root, viewport, editor, config.apiUrl);
+  bindSag(root, viewport, editor);
+  bindWeight(root, viewport, editor);
   bindMotion(root, viewport, editor);
   bindDrawers(viewport, editor);
   bindDrawing(root, viewport, editor);

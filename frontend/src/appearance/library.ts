@@ -36,6 +36,11 @@ export interface Appearance {
   paintable?: boolean;
   /** A photo of the surface (its URL): drawn instead of the computed motif, its relief taken from its shades. */
   image?: string;
+  /**
+   * One photo over the whole board, never repeated (the library's woods: a panel in one piece, as a veneer leaf):
+   * stretched to its length along the grain and to its width, however long it is. `tile` then only sizes the swatch.
+   */
+  whole?: boolean;
 }
 
 export const CATEGORIES: { id: CategoryId; name: string }[] = [
@@ -67,11 +72,15 @@ const wood = (id: string, name: string, color: string, color2: string, finish: "
   relief: finish === "raw" ? 0.35 : 0.15,
 });
 
-/** A wood in photo (static/textures/bois, from ambientCG, CC0): `color` is its mean shade, for its swatch while it loads. */
-const photo = (id: string, name: string, file: string, color: string, finish: "oiled" | "varnished" = "oiled"): Appearance => ({
+/**
+ * A wood in photo (static/textures/bois, grain along the image's width): `color` is its mean shade, for its swatch
+ * while it loads; `tile`, the size of the photo on the board (mm, along the grain then across).
+ */
+const photo = (id: string, name: string, file: string, color: string, finish: "oiled" | "varnished" = "oiled", tile: [number, number] = [1000, 1000]): Appearance => ({
   ...wood(id, name, color, color, finish),
   image: `/static/textures/bois/${file}.jpg`,
-  tile: [1000, 1000],
+  tile,
+  whole: true,
   relief: 0.2,
 });
 
@@ -108,6 +117,9 @@ export const APPEARANCES: Appearance[] = [
   photo("photo-oak-light", "Chêne clair (photo)", "chene-clair", "#b09066"),
   photo("photo-oak", "Chêne (photo)", "chene", "#7b634e"),
   photo("photo-walnut", "Noyer (photo)", "noyer", "#41342e", "varnished"),
+  // Walnut veneers: quarter cut (fil, straight grain), and flat cut (ramage, the cathedral figure of a leaf).
+  photo("photo-walnut-straight", "Noyer fil (photo)", "noyer-fil", "#967f6e", "varnished"),
+  photo("photo-walnut-crown", "Noyer ramage (photo)", "noyer-ramage", "#a68579", "varnished", [600, 450]),
   photo("photo-wenge", "Wengé (photo)", "wenge", "#2f2017"),
   photo("photo-beech", "Hêtre (photo)", "hetre", "#ac8a6c"),
   photo("photo-birch", "Bouleau (photo)", "bouleau", "#ad8c62"),
@@ -212,7 +224,7 @@ export const APPEARANCES: Appearance[] = [
 ];
 
 /** A body without appearance nor material: a neutral satin grey, like Fusion's default. */
-export const DEFAULT_APPEARANCE: Appearance = { id: "default", name: "Par défaut", category: "plastic", color: "#c3c8cf", pattern: "plain", roughness: 0.38 };
+export const DEFAULT_APPEARANCE: Appearance = { id: "default", name: "Par défaut", category: "plastic", color: "#f8f8f8", pattern: "plain", roughness: 0.38 };
 /** Walls of the room (kitchen layout): matte white paint. */
 export const WALL_APPEARANCE: Appearance = { id: "wall", name: "Mur peint", category: "paint", color: "#ebe7e0", pattern: "plain", roughness: 0.92 };
 
