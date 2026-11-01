@@ -484,7 +484,10 @@ opération existante.
   un corps calé entre deux voisins (une étagère entre ses côtés, à 2 mm près) se recale entre ceux de l'endroit où il
   arrive, avec les mêmes jeux : élargi dans une niche plus large, raccourci dans une plus étroite. Le panneau montre la
   longueur avant → après ; « Non » garde ses mesures. Des opérations « Ajustement » (étirements, et pour une copie un
-  petit déplacement) le font. Une seule annulation
+  petit déplacement) le font. **Ctrl** (ou ⌘) **garde la hauteur** : appuyée seule après le point de départ (ou
+  maintenue pendant le clic d'arrivée), elle passe « Hauteur » à « Gardée » — le point ne bouge qu'à l'horizontale,
+  la pièce reste au même niveau, le point d'arrivée s'affiche à sa hauteur avec un guide rose vers le point visé. Une
+  nouvelle pression la rend libre. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`).
 - **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
