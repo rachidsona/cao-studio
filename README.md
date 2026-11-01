@@ -456,6 +456,12 @@ opération existante.
     - ou bien on tire les flèches depuis le pivot, ou on saisit ΔX, ΔY, ΔZ.
     Les **points d'esquisse** (extrémités, centres, milieux des lignes) des esquisses visibles servent
     aussi de cible quand on s'en approche.
+  - **Direction gardée** (Déplacer et Coïncidence) : **Ctrl** garde le déplacement **horizontal** (la hauteur ne
+    change pas : une étagère reste au même niveau), **⌘** (Commande, sur Mac) le garde **vertical** (seulement
+    monter ou descendre). Appuyée seule puis relâchée, la touche allume ou éteint cette direction (une nouvelle
+    pression la rend libre) ; maintenue pendant le clic de la cible, elle vaut pour lui. Elle vaut aussi pour la
+    tuile et le point central du manipulateur, pas pour les flèches (qui ont déjà leur axe). Le panneau la montre et
+    la règle aussi : « Direction : Libre, Horizontale (Ctrl), Verticale (⌘) ».
     Rose = pivot, vert = cible ; « Changer le pivot » et « Changer la cible » recommencent un choix. Un
     pivot pris sur un autre corps fait de ce corps celui à déplacer. Raccourci : avec le filtre
     « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
@@ -484,11 +490,10 @@ opération existante.
   un corps calé entre deux voisins (une étagère entre ses côtés, à 2 mm près) se recale entre ceux de l'endroit où il
   arrive, avec les mêmes jeux : élargi dans une niche plus large, raccourci dans une plus étroite. Le panneau montre la
   longueur avant → après ; « Non » garde ses mesures. Des opérations « Ajustement » (étirements, et pour une copie un
-  petit déplacement) le font. **Ctrl** (ou ⌘) **garde la hauteur** : appuyée seule après le point de départ (ou
-  maintenue pendant le clic d'arrivée), elle passe « Hauteur » à « Gardée » — le point ne bouge qu'à l'horizontale,
-  la pièce reste au même niveau, le point d'arrivée s'affiche à sa hauteur avec un guide rose vers le point visé. Une
-  nouvelle pression la rend libre. Une seule annulation
-  (`app/coincide-tool.ts`, `features/coincide.ts`).
+  petit déplacement) le font. **Direction gardée**, comme dans Déplacer : **Ctrl** horizontale (la pièce reste au
+  même niveau), **⌘** verticale ; le point d'arrivée s'affiche alors à la hauteur du point de départ (ou à sa
+  verticale) avec un guide rose vers le point visé. Une seule annulation
+  (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
 - **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,

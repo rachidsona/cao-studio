@@ -11,7 +11,7 @@
  * coller, une face plane d'un autre corps (éclairée au survol) se prend aussi : ce qu'on déplace vient dans son plan,
  * au plus près, ou le point vient à l'endroit cliqué. Un corps calé entre deux voisins (une étagère entre ses côtés)
  * s'ajuste à la niche où il arrive : élargi ou raccourci par un étirement, avec les mêmes jeux (au choix). La touche
- * Ctrl (ou ⌘) garde la hauteur : le point ne bouge qu'à l'horizontale, la pièce reste au même niveau.
+ * Ctrl garde la direction horizontale (la pièce reste au même niveau), ⌘ verticale (axis-lock.ts).
  */
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
@@ -27,6 +27,7 @@ import { faceSnaps } from "../viewport/face-snaps";
 import { SnapGuides } from "../viewport/snap-guides";
 import { SnapDots } from "../viewport/snap-squares";
 import type { Viewport } from "../viewport/viewport";
+import { AXIS_LOCK_OPTIONS, AxisLock, lockMove, lockPoint, type AxisLockMode } from "./axis-lock";
 import { bodySnap, facePoint } from "./body-snap";
 import { freshFeatureIds } from "./curic-common";
 import { COPIES } from "./move-tool";
@@ -68,23 +69,8 @@ export class CoincideTool extends PanelTool {
   private recent: { owner: string; points: Vec3[] }[] = [];
   /** Fitted to the niche where it arrives; the bodies' boxes when the piece was chosen, and the axes it is held on. */
   private fit = true;
-  /** The height kept (Ctrl): the point moves only across, the piece stays level. */
-  private level = false;
-  /** Ctrl pressed alone (not for Ctrl+Z…) and released turns it on or off; held during a click, it keeps the height. */
-  private alone = false;
-  private readonly onKey = (event: KeyboardEvent) => {
-    if (!event.repeat) this.alone = event.key === "Control" || event.key === "Meta";
-  };
-  private readonly onKeyUp = (event: KeyboardEvent) => {
-    if ((event.key !== "Control" && event.key !== "Meta") || !this.alone || !this.subject) return;
-    this.alone = false;
-    this.level = !this.level;
-    this.update();
-  };
-  /** A Ctrl-click (a right click on a Mac) opens no menu here. */
-  private readonly noMenu = (event: MouseEvent) => {
-    if (event.ctrlKey) event.preventDefault();
-  };
+  /** The direction kept: horizontal (Ctrl), vertical (⌘). */
+  private readonly lock = new AxisLock(this.ctx.viewport.renderer.domElement, () => this.subject && this.update());
   private readonly boxes = new Map<string, Box>();
   private snug: ReturnType<typeof snugAxes> = [];
 
@@ -101,9 +87,6 @@ export class CoincideTool extends PanelTool {
     else if (sketch) this.subject = { kind: "sketch", id: sketch, name: findFeature(doc, sketch)?.name ?? sketch };
     if (this.subject?.kind === "body") ctx.viewport.setHoverHighlight({ bodies: [this.subject.id] });
     this.measure();
-    window.addEventListener("keydown", this.onKey, true);
-    window.addEventListener("keyup", this.onKeyUp, true);
-    ctx.viewport.renderer.domElement.addEventListener("contextmenu", this.noMenu);
   }
 
   /** The bodies' boxes before anything moves, and the axes along which the piece is held between two neighbours. */
@@ -149,8 +132,7 @@ export class CoincideTool extends PanelTool {
     const t = this.target;
     const clicked = this.placement === "clicked" && !("point" in t) ? { clicked: t.clicked } : {};
     const move = "point" in t ? coincideMove(this.source, t) : coincideMove(this.source, "trait" in t ? { trait: t.trait, pairs: t.pairs, ...clicked } : { plane: t.plane, normal: t.normal, ...clicked });
-    // The height kept: nothing along Z (up).
-    return this.level ? [move[0], move[1], 0] : move;
+    return lockMove(move, this.lock.mode);
   }
 
   protected feature(): Feature | string {
@@ -227,7 +209,7 @@ export class CoincideTool extends PanelTool {
             this.update();
           })
         : null,
-      this.subject ? this.selectRow("Hauteur", this.level ? "kept" : "free", [["free", "Libre"], ["kept", "Gardée (Ctrl)"]], (v) => ((this.level = v === "kept"), this.update())) : null,
+      this.subject ? this.selectRow("Direction", this.lock.mode, AXIS_LOCK_OPTIONS, (v) => ((this.lock.mode = v as AxisLockMode), this.update())) : null,
       this.fitRow(),
       // A body can be copied instead of moved (as in Déplacer); a sketch is only moved.
       this.subject?.kind === "body" ? this.selectRow("Copier", String(this.copies), COPIES, (v) => ((this.copies = Number(v)), this.update())) : null,
@@ -348,10 +330,11 @@ export class CoincideTool extends PanelTool {
     this.hover = { points, owners, index, target: trait ?? face };
     // Nothing but the point the click would take.
     const under = this.hover.target && !("point" in this.hover.target) ? this.hover.target.clicked : index >= 0 ? points[index] : undefined;
-    // The height kept, the point reached is the one at the level of the point moved, a guide up or down to it.
-    const level = (this.level || event.ctrlKey || event.metaKey) && picking === "target" && under && this.source ? ([under[0], under[1], this.source[2]] as Vec3) : null;
-    if (level && under) this.guides.show([...(free?.guides ?? []), [under, level]], viewport);
-    this.squares.show(level ? [level] : under ? [under] : [], [HOVER_COLOR]);
+    // The direction kept, the point reached is the one level with the point moved (or straight above it), a guide to it.
+    const mode = this.lock.of(event);
+    const kept = mode !== "free" && picking === "target" && under && this.source ? lockPoint(this.source, under, mode) : null;
+    if (kept && under) this.guides.show([...(free?.guides ?? []), [under, kept]], viewport);
+    this.squares.show(kept ? [kept] : under ? [under] : [], [HOVER_COLOR]);
     viewport.renderer.domElement.style.cursor = index >= 0 || this.hover.target ? THIN_CROSSHAIR : "";
   }
 
@@ -428,8 +411,8 @@ export class CoincideTool extends PanelTool {
       if (!point || !owner) return this.ctx.notify(`Cliquez un point de « ${this.subject.name} » (survolez-le : son point sous le curseur apparaît).`, "info");
       this.source = point;
     } else {
-      // Clicked with Ctrl held: the height is kept (the key's release does not turn it off again).
-      if (event.ctrlKey || event.metaKey) [this.level, this.alone] = [true, false];
+      // Clicked with Ctrl or ⌘ held: that direction is kept.
+      this.lock.take(event);
       const doc = this.ctx.doc();
       if (point && owner) this.target = { point, name: owner.startsWith("sketch:") ? `un point de ${findFeature(doc, owner.slice(7))?.name}` : `un point de ${bodyLabel(doc, owner)}` };
       // The point goes to the nearest point of the trait or of the face's plane, or where it was clicked (« Sur le trait »,
@@ -445,9 +428,7 @@ export class CoincideTool extends PanelTool {
   }
 
   protected override dispose(): void {
-    window.removeEventListener("keydown", this.onKey, true);
-    window.removeEventListener("keyup", this.onKeyUp, true);
-    this.ctx.viewport.renderer.domElement.removeEventListener("contextmenu", this.noMenu);
+    this.lock.dispose();
     this.squares.clear();
     this.markers.clear();
     this.guides.clear();

@@ -6,7 +6,8 @@
  * or as the absolute position of the centre. The frame is the global one or a
  * local one (the planar face picked, or the sketch's own axes). The result is
  * computed live by the kernel and shown as the real part, never as a display
- * shift; the document only changes on OK, as one undo step.
+ * shift; the document only changes on OK, as one undo step. Ctrl keeps the
+ * move horizontal, ⌘ vertical (pivot and target, the tile and the ball).
  */
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
@@ -24,6 +25,7 @@ import { SnapDots } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
 import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
+import { AXIS_LOCK_OPTIONS, AxisLock, lockMove, type AxisLockMode } from "./axis-lock";
 import { bodySnap, facePoint, otherBoxes } from "./body-snap";
 import { pointText } from "./model-selection";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -93,6 +95,8 @@ export class MoveTool extends PanelTool {
   private readonly guides = new SnapGuides(this.ctx.viewport.scene);
   /** Copies made instead of moving (as Curic Gizmo's copy): the original stays, copy k is moved k times. */
   private copies = 0;
+  /** The direction kept: horizontal (Ctrl), vertical (⌘). */
+  private readonly lock = new AxisLock(this.ctx.viewport.renderer.domElement, () => this.relock());
   private readonly copy: { id: string; name: string };
 
   constructor(ctx: ToolContext, editing: Feature | null, subject: MoveSubject, private readonly options: MoveToolOptions = {}) {
@@ -309,6 +313,7 @@ export class MoveTool extends PanelTool {
             this.sync();
           })
         : null,
+      this.selectRow("Direction", this.lock.mode, AXIS_LOCK_OPTIONS, (v) => ((this.lock.mode = v as AxisLockMode), this.relock())),
       this.selectRow("Repère", this.frameMode, frameOptions, (v) => {
         this.frameMode = v as FrameMode;
         this.sync();
@@ -356,6 +361,21 @@ export class MoveTool extends PanelTool {
     this.squares.clear();
     this.guides.clear();
     this.gizmo.dispose();
+    this.lock.dispose();
+  }
+
+  /** The move from the pivot to the target (onto the plane of a face), in the direction kept. */
+  private reachMove(): Vec3 | null {
+    if (!this.source || !this.reach) return null;
+    const d = this.reachFace && this.reachNormal ? ontoPlane(this.source, this.reach, this.reachNormal) : ([0, 1, 2].map((k) => this.reach![k]! - this.source![k]!) as Vec3);
+    return lockMove(d, this.lock.mode);
+  }
+
+  /** The direction changed: the target is reached again along it. */
+  private relock(): void {
+    const d = this.reachMove();
+    if (d) this.setTranslate(d);
+    else this.render();
   }
 
   // ---- pointer -----------------------------------------------------------------------
@@ -383,7 +403,8 @@ export class MoveTool extends PanelTool {
     const delta = this.gizmo.dragMove(event);
     const handle = this.gizmo.dragging;
     if (delta && handle) {
-      this.setTranslate(this.dragged(handle, delta));
+      // The tile and the ball keep the direction (Ctrl, ⌘); an arrow has its own.
+      this.setTranslate(this.dragged(handle, handle.kind === "axis" ? delta : lockMove(delta, this.lock.of(event))));
       return;
     }
     if (this.inputMode === "points") this.hoverSnaps(event);
@@ -521,9 +542,11 @@ export class MoveTool extends PanelTool {
       this.source = owner === this.id && !this.sketch ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
       this.pickStep = "reach";
     } else if (point) {
+      this.lock.take(event);
       this.reach = point;
       this.reachFace = false;
     } else if (hover.face?.normal) {
+      this.lock.take(event);
       this.reach = hover.face.center;
       this.reachNormal = hover.face.normal;
       this.reachFace = true;
@@ -533,10 +556,9 @@ export class MoveTool extends PanelTool {
     }
     this.hover = null;
     this.placeSnaps();
-    if (this.source && this.reach) {
-      const d = this.reachFace && this.reachNormal ? ontoPlane(this.source, this.reach, this.reachNormal) : ([0, 1, 2].map((k) => this.reach![k]! - this.source![k]!) as Vec3);
-      this.setTranslate(d);
-    } else this.sync();
+    const d = this.reachMove();
+    if (d) this.setTranslate(d);
+    else this.sync();
   }
 
   /** A click on another body takes it as the body to move. */
