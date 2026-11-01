@@ -2,13 +2,18 @@
  * "Caisson" (furniture): a kitchen unit, wardrobe or cupboard from its outer
  * dimensions, with a preset to start from (kitchen base or wall unit, tall
  * unit, wardrobe, cupboard). Every part is a board of its own, computed live
- * by the kernel; a new cabinet is placed next to the existing ones. OK adds
- * the operation (one undo step); it is edited again from the timeline.
+ * by the kernel; a new cabinet is placed next to the existing ones. It follows
+ * the project's construction standard (document/standards.ts), another one, or
+ * none (set by hand). OK adds the operation (one undo step); it is edited
+ * again from the timeline.
  */
 import { uniqueId, uniqueName } from "../document/operations";
+import { cabinetStandard, cabinetTo, findStandard } from "../document/standards";
 import type { CabinetFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "../features/cabinet-parts";
+import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { allStandards, workshopStandards } from "./standards-panel";
 
 type Settings = Omit<CabinetFeature, "id" | "type" | "name" | "origin" | "hidden" | "suppressed">;
 
@@ -28,6 +33,8 @@ export class CabinetTool extends PanelTool {
   private readonly name: string;
   private settings: Settings;
   private origin: Vec3;
+  /** « Remplir une largeur » (Mozaik's AutoFill): `total` mm made of equal cabinets at most `max` wide. */
+  private fill = { on: false, total: 2400, max: 600 };
 
   constructor(ctx: ToolContext, editing: CabinetFeature | null) {
     super(ctx, "Caisson", editing);
@@ -39,8 +46,19 @@ export class CabinetTool extends PanelTool {
       this.settings = settings;
       this.origin = [...origin];
     } else {
-      this.settings = { ...last };
+      const { standard: _own, ...rest } = last;
+      this.settings = rest;
       this.origin = this.nextToOthers();
+      this.follow();
+    }
+  }
+
+  /** The settings made to the standard the cabinet follows (the project's when it has none of its own). */
+  private follow(): void {
+    const s = cabinetStandard(this.ctx.doc(), { id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...this.settings }, workshopStandards());
+    if (s) {
+      const { id: _i, type: _t, name: _n, origin: _o, ...made } = cabinetTo({ id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...this.settings }, s);
+      this.settings = made;
     }
   }
 
@@ -55,10 +73,29 @@ export class CabinetTool extends PanelTool {
     return [round(Math.max(...boxes.map((b) => b[1][0]))), round(Math.min(...boxes.map((b) => b[0][1]))), round(Math.min(...boxes.map((b) => b[0][2])))];
   }
 
+  /** How many cabinets fill the width, and the width of each. */
+  private filling(): { count: number; width: number } | null {
+    if (!this.fill.on || this.editing || !(this.fill.total > 0) || !(this.fill.max > 0)) return null;
+    const count = Math.max(1, Math.ceil(this.fill.total / this.fill.max - 1e-9));
+    return { count, width: Number((this.fill.total / count).toFixed(3)) };
+  }
+
   protected feature(): CabinetFeature | string {
-    const problem = cabinetProblem(this.settings);
+    const fill = this.filling();
+    const settings = fill ? { ...this.settings, width: fill.width } : this.settings;
+    const problem = cabinetProblem(settings);
     if (problem) return problem;
-    return { id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...this.settings };
+    return { id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...settings };
+  }
+
+  /** The other cabinets of the filled width, side by side along the width (turned with the cabinet). */
+  protected override companions(): CabinetFeature[] {
+    const fill = this.filling();
+    const first = this.feature();
+    if (!fill || fill.count < 2 || typeof first === "string") return [];
+    const step: Vec3 = ({ 0: [1, 0, 0], 90: [0, 1, 0], 180: [-1, 0, 0], 270: [0, -1, 0] } as const)[first.rotation ?? 0] as Vec3;
+    const slots = freshFeatureIds(this.ctx.doc(), "cb", "Caisson", fill.count).slice(1);
+    return slots.map((slot, i) => ({ ...first, id: slot.id, name: slot.name, origin: first.origin.map((v, k) => Number((v + step[k]! * fill.width * (i + 1)).toFixed(3))) as Vec3 }));
   }
 
   protected override blocker(): string | null {
@@ -92,14 +129,31 @@ export class CabinetTool extends PanelTool {
       this.render();
       this.schedulePreview();
     };
+    const doc = this.ctx.doc();
+    const project = findStandard(doc, doc.standard, workshopStandards());
     return [
+      this.selectRow(
+        "Standard",
+        s.standard ?? "",
+        [["", project ? `Celui du projet (${project.name})` : "Celui du projet (aucun)"], ["none", "Aucun : réglé à la main"], ...allStandards(doc.standards).map((x): [string, string] => [x.id, x.name])],
+        (v) => {
+          const { standard: _old, ...rest } = this.settings;
+          this.settings = v ? { ...rest, standard: v } : rest;
+          this.follow();
+          this.render();
+          this.schedulePreview();
+        },
+      ),
       this.editing
         ? null
         : this.selectRow("Modèle", "", [["", "Choisir un modèle…"], ...PRESETS.map((p): [string, string] => [p.id, p.label])], (v) => {
             const preset = PRESETS.find((p) => p.id === v);
             if (preset) this.set({ ...preset.settings });
           }),
-      length("Largeur", "width"),
+      this.editing ? null : this.checkRow("Remplir une largeur (caissons égaux)", this.fill.on, (v) => ((this.fill.on = v), this.render(), this.schedulePreview())),
+      this.fill.on && !this.editing ? this.numberRow("Largeur à remplir", this.fill.total, unit, (v) => ((this.fill.total = Math.max(1, v)), this.render(), this.schedulePreview())) : null,
+      this.fill.on && !this.editing ? this.numberRow("Largeur max", this.fill.max, unit, (v) => ((this.fill.max = Math.max(1, v)), this.render(), this.schedulePreview())) : null,
+      this.fill.on && !this.editing ? this.info(`${this.filling()?.count ?? 1} caisson(s) de ${this.filling()?.width ?? s.width} mm.`) : length("Largeur", "width"),
       length("Hauteur", "height"),
       length("Profondeur", "depth"),
       length("Épaisseur", "thickness"),

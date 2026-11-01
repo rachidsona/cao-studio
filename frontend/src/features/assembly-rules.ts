@@ -6,10 +6,10 @@
  * laissés de côté.
  */
 import type { Axis, MachiningOp } from "../document/types";
-import { CONFIRMAT, DOWELS, confirmats, contactOf, dowels, type Box, type Contact } from "./joinery";
+import { CONFIRMAT, DOWELS, MINIFIX, confirmats, contactOf, dowels, minifix, type Box, type Contact } from "./joinery";
 
 export interface AssemblyRule {
-  joint: "confirmat" | "dowel";
+  joint: "confirmat" | "dowel" | "minifix";
   spacing: number;
   margin: number;
   /** Boards thinner than this (backs) are left out (mm). */
@@ -68,9 +68,12 @@ export function applyRule(boards: Board[], rule: AssemblyRule): { ops: Map<strin
   for (const j of found) {
     const [face, edge] = [box.get(j.face)!, box.get(j.edge)!];
     // A confirmat screw goes through the board whose face is in the joint, into the edge of the other.
+    // A Minifix: the bolt in the face board, the bore and the cam in the edge board.
     const joint = rule.joint === "confirmat"
       ? confirmats(face, edge, j.contact, { ...CONFIRMAT, spacing: rule.spacing, margin: rule.margin, through: "a" })
-      : dowels(face, edge, j.contact, { ...DOWELS, spacing: rule.spacing, margin: rule.margin });
+      : rule.joint === "minifix"
+        ? minifix(face, edge, j.contact, { ...MINIFIX, spacing: rule.spacing, margin: rule.margin })
+        : dowels(face, edge, j.contact, { ...DOWELS, spacing: rule.spacing, margin: rule.margin });
     add(j.face, joint.a);
     add(j.edge, joint.b);
     fasteners += joint.a.length;

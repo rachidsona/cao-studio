@@ -13,7 +13,7 @@ import type { FlatEdge, FlatPart } from "../io/dxf";
 import type { CutRow } from "./cut-list";
 import type { Vec3 } from "./types";
 
-export type ProblemKind = "overlap" | "room" | "sheet" | "material" | "hole" | "sag" | "opening" | "stability";
+export type ProblemKind = "overlap" | "room" | "sheet" | "material" | "hole" | "joint" | "hardware" | "sag" | "opening" | "stability";
 
 export interface Problem {
   kind: ProblemKind;
@@ -129,6 +129,8 @@ export const PROBLEM_TITLES: Record<ProblemKind, string> = {
   sheet: "Pièces plus grandes que le panneau brut",
   material: "Pièces sans matière",
   hole: "Perçages",
+  joint: "Jonctions sans assemblage",
+  hardware: "Charnières (poids des portes, étagères)",
   sag: "Étagères qui fléchissent (15 kg par mètre, portée / 200)",
   opening: "Portes et tiroirs qui heurtent en s'ouvrant",
   stability: "Stabilité (tiroirs sortis, 15 kg chacun)",

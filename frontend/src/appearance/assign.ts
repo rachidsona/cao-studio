@@ -15,6 +15,18 @@ export interface BodyAppearance {
   color?: string;
   /** Axis the motif's u (the wood grain) runs along: the board's length or width. */
   grainAxis: 0 | 1 | 2;
+  /**
+   * Where the motif starts on this board (a share of a tile along u and v): each board its own, as boards cut from
+   * different places of a sheet or of a tree; the same board keeps it across regenerations.
+   */
+  shift?: [number, number];
+}
+
+/** A stable start of the motif for a body, from its id: two shares of a tile in 0…1. */
+export function motifShift(bodyId: string): [number, number] {
+  let h = 2166136261;
+  for (let i = 0; i < bodyId.length; i++) h = Math.imul(h ^ bodyId.charCodeAt(i), 16777619);
+  return [((h >>> 0) % 997) / 997, ((Math.imul(h, 2654435761) >>> 0) % 991) / 991];
 }
 
 export const isColor = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
@@ -25,7 +37,7 @@ export function bodyAppearance(doc: CadDocument, bodyId: string, box: [number[],
   const info = bodyInfo(doc, bodyId);
   const appearance = appearanceById(info.appearance) ?? appearanceById(MATERIAL_APPEARANCE[info.material ?? ""]) ?? (info.room ? WALL_APPEARANCE : undefined);
   if (!appearance) return null;
-  return { appearance, color: appearance.paintable && isColor(info.color) ? info.color : undefined, grainAxis: grainAxis(info, box) };
+  return { appearance, color: appearance.paintable && isColor(info.color) ? info.color : undefined, grainAxis: grainAxis(info, box), shift: motifShift(bodyId) };
 }
 
 /** The grain runs along the board's length (its longest side), or its width when chosen so. */

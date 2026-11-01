@@ -23,8 +23,8 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:revolve", "data-action:rect-array",
     "data-action:shell", "data-action:loft", "data-action:modifier", "data-action:combine",
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
-    "data-action:sweep", "data-action:assembly", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
-    "data-workshop:nesting", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
+    "data-action:sweep", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
+    "data-workshop:nesting", "data-workshop:offcuts", "data-workshop:batch", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
     "data-action:room", "data-action:trim", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
   ],
   sketch: [

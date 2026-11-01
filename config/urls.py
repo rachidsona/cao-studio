@@ -17,5 +17,6 @@ urlpatterns = [
     path("s/<str:token>/", sharing.share_page, name="share-page"),
     path("atelier/<uuid:project_id>/", workshop.piece_page, name="workshop-piece"),
     path("s/<str:token>/model.glb", sharing.share_model, name="share-model"),
+    path("s/<str:token>/variants/<int:position>.glb", sharing.share_variant, name="share-variant"),
     path("s/<str:token>/comments/", sharing.share_comments, name="share-comments"),
 ]

@@ -1,7 +1,8 @@
 /**
  * Matières three.js des apparences, communes à la vue d'édition, au rendu et aux vignettes : couleur, texture
  * calculée ou photo (son relief tiré de ses nuances), carte de relief, rugosité, métal, vernis, velours, et pour le verre la transmission (rendu) ou une simple
- * transparence (vue d'édition). Coordonnées de texture des planches posées dans le sens du fil.
+ * transparence (vue d'édition). Coordonnées de texture des planches posées dans le sens du fil, le motif décalé
+ * d'une planche à l'autre (deux planches voisines ne montrent pas le même veinage).
  */
 import * as THREE from "three";
 import type { BodyAppearance } from "./assign";
@@ -27,7 +28,7 @@ const DEFAULT_TILE: [number, number] = [500, 500];
  * grain axis wherever the face contains it; in tiles of `tile` (mm) — or, given the board's box (`whole`), from 0 to 1
  * across the whole board, so that one image covers it in one piece.
  */
-export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number>, grainAxis: 0 | 1 | 2, tile: [number, number], whole?: { min: number[]; size: number[] }): Float32Array {
+export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number>, grainAxis: 0 | 1 | 2, tile: [number, number], whole?: { min: number[]; size: number[] }, shift: [number, number] = [0, 0]): Float32Array {
   const count = positions.length / 3;
   const uvs = new Float32Array(count * 2);
   for (let i = 0; i < count; i++) {
@@ -40,8 +41,8 @@ export function boardUvs(positions: ArrayLike<number>, normals: ArrayLike<number
       uvs[i * 2] = (positions[i * 3 + u]! - whole.min[u]!) / (whole.size[u]! || 1);
       uvs[i * 2 + 1] = (positions[i * 3 + v]! - whole.min[v]!) / (whole.size[v]! || 1);
     } else {
-      uvs[i * 2] = positions[i * 3 + u]! / tile[0];
-      uvs[i * 2 + 1] = positions[i * 3 + v]! / tile[1];
+      uvs[i * 2] = positions[i * 3 + u]! / tile[0] + shift[0];
+      uvs[i * 2 + 1] = positions[i * 3 + v]! / tile[1] + shift[1];
     }
   }
   return uvs;
@@ -61,11 +62,11 @@ export function applyUvs(geometry: THREE.BufferGeometry, look: BodyAppearance): 
     const box = geometry.boundingBox!;
     whole = { min: box.min.toArray(), size: box.max.clone().sub(box.min).toArray() };
   }
-  geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance), whole), 2));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(boardUvs(position.array, normal.array, look.grainAxis, tileOf(look.appearance), whole, look.shift), 2));
 }
 
 /** The key of the texture coordinates a look needs: the same key, the same coordinates. */
-export const uvKeyOf = (look: BodyAppearance) => `${look.grainAxis}|${look.appearance.whole ? "whole" : tileOf(look.appearance).join("x")}`;
+export const uvKeyOf = (look: BodyAppearance) => `${look.grainAxis}|${look.appearance.whole ? "whole" : tileOf(look.appearance).join("x")}|${look.shift?.join(",") ?? ""}`;
 
 /**
  * Sets the texture coordinates of one face of a body's geometry (its triangles `start`…`start + count` of the index)

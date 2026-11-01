@@ -7,6 +7,8 @@
 import { cutList } from "../document/cut-list";
 import { holeProblems, overlapProblems, PROBLEM_TITLES, roomProblems, rowProblems, type Problem, type ProblemKind } from "../document/fabrication-check";
 import { isHardwareBody } from "../document/hardware";
+import { doorProblems, jointProblems } from "../document/hardware-rules";
+import { carcassBoards } from "./assembly-tool";
 import { MATERIALS } from "../document/materials";
 import { bodyLabel } from "../document/operations";
 import type { CadDocument, RoomFeature } from "../document/types";
@@ -98,6 +100,8 @@ export async function checkModel(viewport: Viewport, editor: Editor, geometry: G
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...flats.flatMap((p) => holeProblems(p, idByName.get(p.name) ?? "")),
+    ...jointProblems(doc, carcassBoards(viewport, doc, viewport.displayedBodies)),
+    ...doorProblems(doc),
     // A middle load (dishes, jars): the boards that would sag under it, in the long run.
     ...shelves(viewport, doc, 15, 200).filter((s) => !s.check.ok).map((s): Problem => ({ kind: "sag", severity: "warning", message: `${s.name} fléchit de ${s.check.sag.toFixed(1)} mm à long terme (limite ${s.check.limit.toFixed(1)} mm) : ${s.check.thicknessNeeded ? `${s.check.thicknessNeeded} mm d'épaisseur` : "un montant au milieu"} ou une portée de ${Math.floor(s.check.maxSpan / 10) * 10} mm au plus.`, bodies: [s.id] })),
     ...openingProblems(viewport, doc),

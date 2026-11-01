@@ -1,7 +1,9 @@
 /**
  * Page du lien client : le meuble en 3D (le modèle GLB figé au partage, en mètres, Y vers le haut), qu'on tourne au
  * doigt ; la réalité augmentée pour le voir chez soi (Scene Viewer sur Android, Quick Look sur iPhone avec un USDZ
- * fait sur place) ; et les commentaires, attachés au besoin à un point du meuble (une pastille numérotée).
+ * fait sur place) ; les variantes que l'atelier propose (chacune son modèle et son prix : le client compare, puis dit
+ * laquelle il choisit dans un message) ; et les commentaires, attachés au besoin à un point du meuble (une pastille
+ * numérotée).
  * Les points sont échangés en millimètres dans le repère du modèle : `summary.offset` dit comment passer de l'un
  * à l'autre.
  */
@@ -30,6 +32,7 @@ interface ShareData {
   pageUrl: string;
   allowComments: boolean;
   comments: ShareComment[];
+  variants?: { name: string; price: number | null; size?: Vec3 | null; modelUrl: string }[];
 }
 
 const data = JSON.parse(document.getElementById("share-data")?.textContent ?? "{}") as ShareData;
@@ -124,32 +127,78 @@ function setMarker(key: string, position: Vec3 | null, label: string, pending = 
   markers.set(key, { at: toScene(position), node });
 }
 
-new GLTFLoader().load(
-  data.modelUrl,
-  (gltf) => {
-    model = gltf.scene;
-    scene.add(model);
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
-    controls.target.copy(center);
-    camera.position.copy(center).add(new THREE.Vector3(0.7, 0.5, 0.9).normalize().multiplyScalar(size * 1.3));
-    camera.near = size / 100;
-    camera.far = size * 20;
-    camera.updateProjectionMatrix();
-    status.remove();
-    void setupAr(gltf.scene);
-  },
-  undefined,
-  () => (status.textContent = "Le modèle n'a pas pu être chargé."),
-);
+/** Shows the model at `url` (the link's, or a variant's) in place of the one shown. */
+function load(url: string): void {
+  new GLTFLoader().load(
+    url,
+    (gltf) => {
+      if (model) scene.remove(model);
+      const first = !model;
+      model = gltf.scene;
+      scene.add(model);
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      if (first) {
+        controls.target.copy(center);
+        camera.position.copy(center).add(new THREE.Vector3(0.7, 0.5, 0.9).normalize().multiplyScalar(size * 1.3));
+        camera.near = size / 100;
+        camera.far = size * 20;
+        camera.updateProjectionMatrix();
+      }
+      status.remove();
+      void setupAr(gltf.scene, url);
+    },
+    undefined,
+    () => (status.textContent = "Le modèle n'a pas pu être chargé."),
+  );
+}
+
+/** The variants offered: a button each (its price), and « Je choisis » that writes the choice in a message. */
+function setupVariants(): void {
+  const variants = data.variants ?? [];
+  const bar = $<HTMLDivElement>("[data-share-variants]");
+  if (!bar || variants.length < 2) return;
+  bar.hidden = false;
+  const euros = (v: number | null) => (typeof v === "number" ? ` · ${v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}` : "");
+  let chosen = 0;
+  const buttons = variants.map((v, i) => {
+    const b = el("button", `${v.name}${euros(v.price)}`) as HTMLButtonElement;
+    b.type = "button";
+    b.addEventListener("click", () => pick(i));
+    return b;
+  });
+  const choose = el("button", "Je choisis cette variante") as HTMLButtonElement;
+  choose.type = "button";
+  choose.className = "inline-flex min-h-11 items-center btn-accent px-4 text-sm font-medium";
+  choose.hidden = !data.allowComments;
+  choose.addEventListener("click", () => {
+    const body = document.querySelector<HTMLTextAreaElement>('[data-share-form] textarea[name="body"]');
+    if (!body) return;
+    const v = variants[chosen]!;
+    body.value = `Je choisis la variante « ${v.name} »${typeof v.price === "number" ? ` (${v.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} TTC)` : ""}.`;
+    body.focus();
+  });
+  const pick = (i: number) => {
+    chosen = i;
+    buttons.forEach((b, k) => (b.className = `inline-flex min-h-11 items-center border px-3 text-sm ${k === i ? "border-sky-600 bg-sky-50 font-semibold dark:bg-sky-950" : "border-gray-300 dark:border-gray-600"}`));
+    const v = variants[i]!;
+    data.summary.price = v.price ?? undefined;
+    if (v.size) data.summary.size = v.size;
+    summary();
+    load(v.modelUrl);
+  };
+  bar.replaceChildren(el("span", "Variantes :"), ...buttons, choose);
+  pick(0);
+}
 
 // ---- augmented reality --------------------------------------------------------------------------
 
-async function setupAr(object: THREE.Object3D): Promise<void> {
+async function setupAr(object: THREE.Object3D, url: string): Promise<void> {
   const button = $<HTMLAnchorElement>("[data-share-ar]")!;
   const hint = $<HTMLParagraphElement>("[data-share-ar-hint]")!;
-  const modelUrl = new URL(data.modelUrl, location.href).href;
+  const modelUrl = new URL(url, location.href).href;
+  button.querySelector("img")?.remove();
   if (/android/i.test(navigator.userAgent)) {
     const fallback = encodeURIComponent(location.href);
     button.href = `intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(modelUrl)}&mode=ar_preferred&title=${encodeURIComponent(data.title)}#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
@@ -250,3 +299,5 @@ function setupForm(): void {
 summary();
 renderComments();
 setupForm();
+if ((data.variants?.length ?? 0) >= 2) setupVariants();
+else load(data.modelUrl);

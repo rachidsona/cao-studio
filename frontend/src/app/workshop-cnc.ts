@@ -9,7 +9,8 @@ import { bodyInfo, MATERIALS, materialById } from "../document/materials";
 import { bodyLabel } from "../document/operations";
 import { isHardwareBody } from "../document/hardware";
 import type { GeometryClient } from "../geometry/client";
-import { boardFaces, flattenOutline, holeDepth, partsDxf, type FlatPart } from "../io/dxf";
+import { LAYER_PROFILES, boardFaces, flattenOutline, holeDepth, layerName, partsDxf, type FlatPart, type LayerProfile } from "../io/dxf";
+import { edgeHoles } from "../document/face-ops";
 import { GCODE, partsGcode, type GcodeOptions } from "../io/gcode";
 import { qrSvg } from "../io/qr";
 import { el } from "../ui/dom";
@@ -27,10 +28,12 @@ const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs 
  * Every displayed board of the furniture laid flat, with its material, on the face with the more holes (a door
  * shows its hinge cups); the bodies without a flat face apart, and the boards with blind holes on the other face.
  */
-export async function flatParts(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<{ parts: (FlatPart & { material: string })[]; skipped: string[]; flip: string[] }> {
+export async function flatParts(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<{ parts: (FlatPart & { material: string })[]; skipped: string[]; flip: string[]; edges: string[] }> {
   const parts: (FlatPart & { material: string })[] = [];
   const skipped: string[] = [];
   const flip: string[] = [];
+  /** Boards with holes in their edges: horizontal drilling, not in the flat file. */
+  const edges: string[] = [];
   for (const id of viewport.displayedBodies) {
     const info = bodyInfo(editor.doc, id);
     if (info.room || isHardwareBody(editor.doc, id)) continue;
@@ -42,6 +45,7 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
       continue;
     }
     const box = mesh.metrics.bbox;
+    if (edgeHoles(editor.doc, id, [[...box[0]], [...box[1]]]).length) edges.push(name);
     const thickness = Math.min(...[0, 1, 2].map((i) => box[1][i]! - box[0][i]!));
     try {
       const flats = await Promise.all(
@@ -58,14 +62,70 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
       skipped.push(name);
     }
   }
-  return { parts, skipped, flip };
+  return { parts, skipped, flip, edges };
+}
+
+const LAYERS_KEY = "cao.dxf-layers";
+
+/** The layer naming of the machine, kept by the browser (as the G-code settings). */
+function loadLayers(): LayerProfile {
+  try {
+    return { ...LAYER_PROFILES[0]!.profile, ...(JSON.parse(localStorage.getItem(LAYERS_KEY) ?? "null") as Partial<LayerProfile> | null) };
+  } catch {
+    return { ...LAYER_PROFILES[0]!.profile };
+  }
 }
 
 async function exportDxf(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
-  const { parts, skipped } = await flatParts(viewport, editor, geometry);
+  const { parts, skipped, edges } = await flatParts(viewport, editor, geometry);
   if (!parts.length) return editor.notify("Aucune pièce à plat à exporter.", "info");
-  downloadText("pieces-cnc.dxf", partsDxf(parts), "application/dxf");
-  editor.notify(`DXF exporté : ${parts.length} pièce${parts.length > 1 ? "s" : ""}${skipped.length ? ` (sans face plane : ${skipped.join(", ")})` : ""}.`, "success");
+  const profile = loadLayers();
+  const preset = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Noms des calques" },
+    ...LAYER_PROFILES.map((p) => el("option", { value: p.id, selected: p.profile.contour === profile.contour && p.profile.drill === profile.drill }, p.label)),
+    el("option", { value: "custom", selected: !LAYER_PROFILES.some((p) => p.profile.contour === profile.contour && p.profile.drill === profile.drill) }, "Personnalisé"));
+  const text = (label: string, key: keyof LayerProfile) => {
+    const input = el("input", { type: "text", class: "h-8 w-full border border-gray-300 bg-white px-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-900", value: profile[key], "aria-label": label });
+    input.addEventListener("keydown", (e) => e.stopPropagation());
+    input.addEventListener("input", () => {
+      profile[key] = input.value.trim() || LAYER_PROFILES[0]!.profile[key];
+      preset.value = "custom";
+      example();
+    });
+    return input;
+  };
+  const contour = text("Calque des contours", "contour");
+  const drill = text("Calque des perçages", "drill");
+  const sample = el("p", { class: "text-xs text-gray-600 dark:text-gray-300" });
+  const example = () => (sample.textContent = `Exemple : contour d'un panneau de 19 mm → ${layerName(profile.contour, { t: 19 })} ; perçage Ø8 de 12 mm → ${layerName(profile.drill, { d: 8, z: 12, t: 19 })}.`);
+  preset.addEventListener("change", () => {
+    const chosen = LAYER_PROFILES.find((p) => p.id === preset.value);
+    if (!chosen) return;
+    Object.assign(profile, chosen.profile);
+    contour.value = profile.contour;
+    drill.value = profile.drill;
+    example();
+  });
+  example();
+  const content = el("div", { class: "space-y-2 text-xs" },
+    el("p", { class: "text-gray-600 dark:text-gray-300" }, "Beaucoup de logiciels de commande numérique usinent d'après le nom du calque : réglez-le comme votre machine l'attend. {d} : diamètre, {z} : profondeur, {t} : épaisseur du panneau (en mm)."),
+    preset, el("label", { class: "grid gap-0.5" }, "Contours", contour), el("label", { class: "grid gap-0.5" }, "Perçages", drill), sample,
+    edges.length ? el("p", { class: "text-amber-700 dark:text-amber-400" }, `Perçages sur chant à faire à part (perceuse horizontale), cotés sur les fiches : ${edges.join(", ")}.`) : null);
+  const close = openModal("DXF pour la commande numérique", content, [
+    {
+      label: "Exporter",
+      run: () => {
+        try {
+          localStorage.setItem(LAYERS_KEY, JSON.stringify(profile));
+        } catch {
+          // Not remembered: only this time.
+        }
+        downloadText("pieces-cnc.dxf", partsDxf(parts, 20, profile), "application/dxf");
+        editor.notify(`DXF exporté : ${parts.length} pièce${parts.length > 1 ? "s" : ""}${skipped.length ? ` (sans face plane : ${skipped.join(", ")})` : ""}.`, "success");
+        close();
+      },
+    },
+    { label: "Annuler", run: () => close() },
+  ]);
 }
 
 function loadOptions(): GcodeOptions {
@@ -77,7 +137,7 @@ function loadOptions(): GcodeOptions {
 }
 
 async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
-  const { parts, skipped, flip } = await flatParts(viewport, editor, geometry);
+  const { parts, skipped, flip, edges } = await flatParts(viewport, editor, geometry);
   if (!parts.length) return editor.notify("Aucune pièce à usiner.", "info");
   const o = loadOptions();
   const groups = () => {
@@ -94,7 +154,7 @@ async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryC
   const refresh = () => {
     const { sheets, skipped: left } = partsGcode(groups(), o);
     const out = [...skipped.map((n) => `${n} (sans face plane)`), ...left];
-    summary.textContent = `${parts.length} pièce(s) sur ${sheets} panneau(x) brut(s).${out.length ? ` Non usinées : ${out.join(" ; ")}.` : ""}${flip.length ? ` Perçages borgnes sur l'autre face, à faire en retournant la pièce : ${flip.join(", ")}.` : ""}`;
+    summary.textContent = `${parts.length} pièce(s) sur ${sheets} panneau(x) brut(s).${out.length ? ` Non usinées : ${out.join(" ; ")}.` : ""}${flip.length ? ` Perçages borgnes sur l'autre face, à faire en retournant la pièce : ${flip.join(", ")}.` : ""}${edges.length ? ` Perçages sur chant, à faire à part (cotés sur les fiches) : ${edges.join(", ")}.` : ""}`;
   };
   const field = (label: string, key: keyof GcodeOptions, unit: string) => {
     const input = el("input", { type: "number", step: "any", min: "0", class: INPUT, value: String(o[key]), "aria-label": label });

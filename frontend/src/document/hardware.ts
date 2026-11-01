@@ -1,6 +1,6 @@
 /**
  * Quincaillerie du modèle, pour le devis : charnières, coulisses et poignées des façades, tringles et supports des
- * penderies, coulisses et poignées des tiroirs de niche, vis confirmat et tourillons
+ * penderies, coulisses et poignées des tiroirs de niche, vis confirmat, tourillons et excentriques
  * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble).
  */
 import { frontsHardware } from "../features/fronts-parts";
@@ -10,6 +10,7 @@ import type { CadDocument } from "./types";
 
 export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
 export const DOWEL = "Tourillon Ø8 × 30";
+export const MINIFIX_SET = "Excentrique Minifix 15 + tige";
 
 export function modelHardware(doc: CadDocument): { name: string; quantity: number; unit?: string }[] {
   const counts = new Map<string, number>();
@@ -17,6 +18,7 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   const add = (name: string, quantity: number) => quantity > 0 && counts.set(name, Math.round(((counts.get(name) ?? 0) + quantity) * 100) / 100);
   let screwHoles = 0;
   let dowelHoles = 0;
+  let cams = 0;
   for (const f of doc.features) {
     if (f.suppressed) continue;
     if (f.type === "fronts") {
@@ -37,10 +39,13 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
       const holes = f.ops.filter((op) => op.kind === "hole").length;
       if (f.kind === "confirmat") screwHoles += holes;
       if (f.kind === "dowel") dowelHoles += holes;
+      // One cam housing (Ø15) per connector.
+      if (f.kind === "minifix") cams += f.ops.filter((op) => op.kind === "hole" && op.diameter >= 14).length;
     }
   }
   add(CONFIRMAT_SCREW, Math.floor(screwHoles / 2));
   add(DOWEL, Math.floor(dowelHoles / 2));
+  add(MINIFIX_SET, cams);
   return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}) })));
 }
 

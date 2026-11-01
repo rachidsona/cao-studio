@@ -11,6 +11,8 @@ import type { DrawingSheet } from "../drawing/model";
 import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText, type SketchUnderlay } from "./sketch";
 import type { FinishOptions } from "../features/finish-parts";
 import type { RoomInput } from "../features/room-plan";
+import type { ConstructionStandard } from "./standards";
+import type { SavedQuote } from "./quote";
 export type { SketchText } from "./sketch";
 
 export const DOCUMENT_FORMAT = "cao-studio";
@@ -260,6 +262,8 @@ export interface CabinetFeature extends FeatureBase {
    * 180 faces +Y, 270 faces −X. Its fronts turn with it.
    */
   rotation?: 0 | 90 | 180 | 270;
+  /** Construction standard it follows (document/standards.ts): missing, the project's; « none », set by hand. */
+  standard?: string;
 }
 
 /** Principal axis: 0 = X, 1 = Y, 2 = Z. */
@@ -371,7 +375,7 @@ export interface MachiningFeature extends FeatureBase {
   type: "machining";
   target: string;
   /** What the machining is, for the name and the tool when edited. */
-  kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "halflap" | "tenon" | "cutout" | "custom";
+  kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "minifix" | "halflap" | "tenon" | "cutout" | "custom";
   ops: MachiningOp[];
   /** The cut-outs of a worktop (kind "cutout"), kept to reopen them in their tool. */
   cutouts?: { appliance: string; along: number; front: number | null }[];
@@ -585,6 +589,11 @@ export interface CadDocument {
   drawings?: DrawingSheet[];
   /** Hardware models chosen in the catalogue (ids of document/hardware-catalog.ts); missing: generic ones. */
   hardware?: { hinge?: string; slide?: string; handle?: string };
+  /** Construction standard of the project (an id of `standards` or of document/standards.ts), and its own standards. */
+  standard?: string;
+  standards?: ConstructionStandard[];
+  /** Versions of the quote kept in the project: the quote, then its amendments (document/quote.ts). */
+  quotes?: SavedQuote[];
 }
 
 /** An image of one's own as an appearance: the image (a data URL, kept with the project) and the size of one tile. */

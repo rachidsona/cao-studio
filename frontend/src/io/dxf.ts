@@ -2,7 +2,9 @@
  * Export DXF des pièces pour la commande numérique : chaque panneau est mis à plat sur sa grande face (le
  * contour exact du noyau : lignes, arcs, et les perçages en cercles), posé à côté des autres avec un écart,
  * avec son nom et son épaisseur en texte. DXF R12 ASCII (lu par les logiciels de FAO), en millimètres ;
- * calques CONTOUR (découpe), PERCAGE (cercles) et TEXTE.
+ * calques CONTOUR (découpe), PERCAGE (cercles) et TEXTE — ou, selon le profil de la machine, des noms de calques qui
+ * portent la profondeur et le diamètre (« PERCAGE_D8_Z12 », « Z12-D8 »…), comme les lisent beaucoup de logiciels
+ * de commande numérique qui usinent d'après le nom du calque.
  */
 import type { BodyMesh, FaceOutline, OutlineEdge } from "../geometry/protocol";
 
@@ -128,19 +130,47 @@ export function holeDepth(vertices: ArrayLike<number>, center: P3, normal: P3, r
 const num = (v: number) => (Math.abs(v) < 1e-9 ? "0" : Number(v.toFixed(4)).toString());
 const deg = (r: number) => num((((r * 180) / Math.PI) % 360 + 360) % 360);
 
-/** A DXF R12 file with the parts side by side along x, `gap` mm apart. */
-export function partsDxf(parts: FlatPart[], gap = 20): string {
-  const out: string[] = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "TABLES", "0", "TABLE", "2", "LAYER", "70", "3"];
-  for (const [name, color] of [["CONTOUR", 7], ["PERCAGE", 1], ["TEXTE", 3]] as const) out.push("0", "LAYER", "2", name, "70", "0", "62", String(color), "6", "CONTINUOUS");
+/**
+ * How the layers are named for a machine: templates where {d} is the hole's diameter, {z} its depth and {t} the
+ * board's thickness (the contour is cut through it), in mm.
+ */
+export interface LayerProfile {
+  contour: string;
+  drill: string;
+}
+
+export const LAYER_PROFILES: { id: string; label: string; profile: LayerProfile }[] = [
+  { id: "generic", label: "Générique : CONTOUR et PERCAGE", profile: { contour: "CONTOUR", drill: "PERCAGE" } },
+  { id: "named", label: "Diamètre et profondeur : PERCAGE_D8_Z12, CONTOUR_Z19", profile: { contour: "CONTOUR_Z{t}", drill: "PERCAGE_D{d}_Z{z}" } },
+  { id: "short", label: "Court : Z12-D8, Z19", profile: { contour: "Z{t}", drill: "Z{z}-D{d}" } },
+];
+
+/** A layer name from a template: DXF names keep letters, digits and - _ . only. */
+export function layerName(template: string, values: { d?: number; z?: number; t: number }): string {
+  const name = template.replace(/\{([dzt])\}/g, (_, k: "d" | "z" | "t") => num(values[k] ?? 0)).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9_.-]/g, "_");
+  return name || "0";
+}
+
+/** A DXF R12 file with the parts side by side along x, `gap` mm apart, its layers named by `profile`. */
+export function partsDxf(parts: FlatPart[], gap = 20, profile: LayerProfile = LAYER_PROFILES[0]!.profile): string {
+  // A circle alone is the outline of a round part; among other edges, a hole.
+  const layerOf = (part: FlatPart, e: FlatEdge) =>
+    e.kind === "circle" && part.edges.length > 1
+      ? layerName(profile.drill, { d: e.radius * 2, z: e.depth ?? part.thickness, t: part.thickness })
+      : layerName(profile.contour, { t: part.thickness });
+  const layers = new Map<string, number>([["TEXTE", 3]]);
+  for (const part of parts) for (const e of part.edges) if (!layers.has(layerOf(part, e))) layers.set(layerOf(part, e), e.kind === "circle" && part.edges.length > 1 ? 1 : 7);
+  const out: string[] = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", "0", "SECTION", "2", "TABLES", "0", "TABLE", "2", "LAYER", "70", String(layers.size)];
+  for (const [name, color] of layers) out.push("0", "LAYER", "2", name, "70", "0", "62", String(color), "6", "CONTINUOUS");
   out.push("0", "ENDTAB", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES");
   let x = 0;
   for (const part of parts) {
     const at = (p: P2): string[] => ["10", num(p[0] + x), "20", num(p[1]), "30", "0"];
     for (const e of part.edges) {
-      if (e.kind === "line") out.push("0", "LINE", "8", "CONTOUR", ...at(e.a), "11", num(e.b[0] + x), "21", num(e.b[1]), "31", "0");
-      // A circle alone is the outline of a round part; among other edges, a hole.
-      else if (e.kind === "circle") out.push("0", "CIRCLE", "8", part.edges.length === 1 ? "CONTOUR" : "PERCAGE", ...at(e.center), "40", num(e.radius));
-      else out.push("0", "ARC", "8", "CONTOUR", ...at(e.center), "40", num(e.radius), "50", deg(e.start), "51", deg(e.end));
+      const layer = layerOf(part, e);
+      if (e.kind === "line") out.push("0", "LINE", "8", layer, ...at(e.a), "11", num(e.b[0] + x), "21", num(e.b[1]), "31", "0");
+      else if (e.kind === "circle") out.push("0", "CIRCLE", "8", layer, ...at(e.center), "40", num(e.radius));
+      else out.push("0", "ARC", "8", layer, ...at(e.center), "40", num(e.radius), "50", deg(e.start), "51", deg(e.end));
     }
     // R12 text is plain ASCII: accents dropped, other signs replaced.
     const label = `${part.name} - ep. ${num(part.thickness)} mm`.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7E]/g, "-");

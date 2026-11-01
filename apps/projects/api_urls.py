@@ -1,12 +1,16 @@
 from django.urls import path, re_path
 
-from . import api, assistant, library, monitoring, sharing, workshop
+from . import api, assistant, library, monitoring, production, sharing, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
     path("projects/", api.project_collection, name="api-projects"),
     path("library/", library.library_collection, name="api-library"),
     path("library/<int:module_id>/", library.library_detail, name="api-library-module"),
+    path("offcuts/", production.offcut_collection, name="api-offcuts"),
+    path("offcuts/<int:offcut_id>/", production.offcut_detail, name="api-offcut"),
+    path("batch/", production.batch_collection, name="api-batch"),
+    path("batch/<int:item_id>/", production.batch_detail, name="api-batch-item"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),
     path(

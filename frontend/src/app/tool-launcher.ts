@@ -28,10 +28,12 @@ import { LoftTool, ShellTool } from "./shell-loft-tools";
 import { ModifierTool } from "./modifier-tool";
 import { FrontsTool } from "./fronts-tool";
 import { AssemblyTool } from "./assembly-tool";
+import { OverlapTool } from "./overlap-tool";
+import { LayoutCopyTool } from "./layout-copy-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -65,7 +67,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" || kind === "coincide" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
@@ -204,6 +206,12 @@ export class ToolLauncher {
         break;
       case "assembly":
         this.active = new AssemblyTool(ctx, options.bodies ?? []);
+        break;
+      case "overlap":
+        this.active = new OverlapTool(ctx, options.bodies ?? []);
+        break;
+      case "layoutCopy":
+        this.active = new LayoutCopyTool(ctx, options.bodies ?? []);
         break;
       case "stretch":
         this.active = new StretchTool(ctx, editing?.type === "stretch" ? editing : null, options.bodies ?? [], options.sketches ?? []);

@@ -7,7 +7,7 @@
  */
 import { frontsHardware } from "../features/fronts-parts";
 import { nicheHardware } from "../features/niche-parts";
-import { CONFIRMAT_SCREW, DOWEL } from "./hardware";
+import { CONFIRMAT_SCREW, DOWEL, MINIFIX_SET } from "./hardware";
 import { catalogItems } from "./hardware-catalog";
 import { bodyLabel } from "./operations";
 import { featureOfBody, type CadDocument, type Vec3 } from "./types";
@@ -60,6 +60,7 @@ export function assemblySteps(doc: CadDocument, bodies: readonly string[]): Asse
   };
   let screws = 0;
   let dowels = 0;
+  let cams = 0;
   for (const f of doc.features) {
     if (f.suppressed) continue;
     if (f.type === "niche") {
@@ -74,11 +75,13 @@ export function assemblySteps(doc: CadDocument, bodies: readonly string[]): Asse
       const holes = f.ops.filter((op) => op.kind === "hole").length;
       if (f.kind === "confirmat") screws += holes;
       if (f.kind === "dowel") dowels += holes;
+      if (f.kind === "minifix") cams += f.ops.filter((op) => op.kind === "hole" && op.diameter >= 14).length;
     }
   }
   // Each screw or dowel makes a hole in each of the two boards it joins.
   add("carcass", { name: CONFIRMAT_SCREW, quantity: Math.floor(screws / 2) });
   add("carcass", { name: DOWEL, quantity: Math.floor(dowels / 2) });
+  add("carcass", { name: MINIFIX_SET, quantity: cams });
   return [...steps.values()].filter((s) => s.bodies.length > 0).map((s) => ({ ...s, hardware: catalogItems(doc, s.hardware) }));
 }
 

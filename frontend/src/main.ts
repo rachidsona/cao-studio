@@ -12,6 +12,10 @@ import { bindSnapButtons } from "./app/body-snap";
 import { bindAssembly } from "./app/assembly-guide";
 import { bindLibrary } from "./app/library-panel";
 import { bindHardwarePanel } from "./app/hardware-panel";
+import { bindStandardsPanel } from "./app/standards-panel";
+import { bindProduction } from "./app/production";
+import { bindReplace } from "./app/replace-panel";
+import { bindDrivers } from "./app/drivers-3d";
 import { bindProgress } from "./app/workshop-progress";
 import { bindSag } from "./app/sag-panel";
 import { bindWeight } from "./app/weight-panel";
@@ -114,6 +118,9 @@ async function start(): Promise<void> {
   bindAssembly(root, viewport, editor);
   bindLibrary(root, viewport, editor);
   bindHardwarePanel(root, viewport, editor);
+  bindStandardsPanel(root, viewport, editor);
+  bindReplace(root, editor);
+  bindDrivers(root, viewport, editor);
   bindProgress(root, viewport, editor, config.apiUrl);
   bindSag(root, viewport, editor);
   bindWeight(root, viewport, editor);
@@ -124,6 +131,7 @@ async function start(): Promise<void> {
   bindLayers(root, viewport, editor);
   bindLinkedCopy(root, viewport, editor);
   bindSharing(root, viewport, editor, config.apiUrl, config.projectName);
+  bindProduction(root, viewport, editor, config.apiUrl, config.projectName);
   bindAssistant(root, viewport, editor, config.apiUrl);
   editor.render();
   loading.show("Calcul des corps…", 0.95);

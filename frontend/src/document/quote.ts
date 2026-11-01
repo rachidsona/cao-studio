@@ -1,7 +1,9 @@
 /**
  * Devis d'un meuble à partir de sa liste de débit : les panneaux au m² par matière (chutes comprises), les chants
- * au mètre, la découpe par pièce et la main-d'œuvre de montage, puis la marge et la TVA. Les tarifs sont
- * indicatifs et se règlent (ils sont retenus par le navigateur).
+ * au mètre, la découpe par pièce, les perçages (le « Tooling Price » de Polyboard) et la main-d'œuvre de montage, puis
+ * la marge, une remise par paliers de montant et la TVA. Les tarifs sont indicatifs et se règlent (ils sont retenus
+ * par le navigateur). Un scénario remplace une matière par une autre pour comparer les prix ; les versions
+ * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
  */
 import { formatLength } from "../measurements/units";
 import type { CutTotals } from "./cut-list";
@@ -24,6 +26,10 @@ export interface QuoteRates {
   /** Margin on the cost (%) and VAT (%). */
   margin: number;
   vat: number;
+  /** Price of one hole drilled (€ HT); 0: included in the cutting. */
+  perHole?: number;
+  /** Discounts by amount: from this total HT (€), this discount (%) — the highest reached applies. */
+  tiers?: [number, number][];
 }
 
 export const DEFAULT_RATES: QuoteRates = {
@@ -40,7 +46,7 @@ export const DEFAULT_RATES: QuoteRates = {
     "Panneau de fond (HDF)": 6,
   },
   waste: 15,
-  hardware: { "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 },
+  hardware: { "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 },
   band: 1.5,
   cutPerPart: 4,
   hoursPerPart: 0.25,
@@ -62,6 +68,9 @@ export interface Quote {
   /** Cost of the lines (HT). */
   cost: number;
   margin: number;
+  /** Discount of the tier reached (HT, positive), and its rate (%). */
+  discount?: number;
+  discountRate?: number;
   /** Total HT, VAT, TTC. */
   net: number;
   vat: number;
@@ -70,7 +79,7 @@ export interface Quote {
 
 const cents = (v: number) => Math.round(v * 100) / 100;
 
-export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm"): Quote {
+export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm", holes = 0): Quote {
   const lines: QuoteLine[] = [];
   for (const t of totals) {
     const area = cents(t.area * (1 + rates.waste / 100));
@@ -82,6 +91,7 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
   const parts = totals.reduce((s, t) => s + t.parts, 0);
   if (parts > 0) {
     lines.push({ label: "Découpe et perçage", quantity: parts, unit: "pièce", unitPrice: rates.cutPerPart, total: cents(parts * rates.cutPerPart) });
+    if ((rates.perHole ?? 0) > 0 && holes > 0) lines.push({ label: "Perçages (usinage)", quantity: holes, unit: "perçage", unitPrice: rates.perHole!, total: cents(holes * rates.perHole!) });
     const hours = cents(parts * rates.hoursPerPart);
     lines.push({ label: "Montage", quantity: hours, unit: "h", unitPrice: rates.hourly, total: cents(hours * rates.hourly) });
   }
@@ -93,9 +103,12 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
   }
   const cost = cents(lines.reduce((s, l) => s + l.total, 0));
   const margin = cents((cost * rates.margin) / 100);
-  const net = cents(cost + margin);
+  const before = cents(cost + margin);
+  const discountRate = [...(rates.tiers ?? [])].sort((a, b) => b[0] - a[0]).find(([from]) => before >= from)?.[1] ?? 0;
+  const discount = cents((before * discountRate) / 100);
+  const net = cents(before - discount);
   const vat = cents((net * rates.vat) / 100);
-  return { lines, cost, margin, net, vat, gross: cents(net + vat) };
+  return { lines, cost, margin, ...(discount ? { discount, discountRate } : {}), net, vat, gross: cents(net + vat) };
 }
 
 /** "1 234,50 €". */
@@ -111,9 +124,40 @@ export function quoteCsv(quote: Quote): string {
     ...quote.lines.map((l) => [l.label, n(l.quantity), l.unit, n(l.unitPrice), n(l.total)]),
     ["Coût", "", "", "", n(quote.cost)],
     ["Marge", "", "", "", n(quote.margin)],
+    ...(quote.discount ? [[`Remise ${quote.discountRate} %`, "", "", "", n(-quote.discount)]] : []),
     ["Total HT", "", "", "", n(quote.net)],
     ["TVA", "", "", "", n(quote.vat)],
     ["Total TTC", "", "", "", n(quote.gross)],
   ];
   return rows.map((r) => r.map((c) => (/^[\d,]*$/.test(c) ? c : `"${c.replace(/"/g, '""')}"`)).join(";")).join("\r\n");
+}
+
+/** The totals with one material replaced by another (a scenario): the same areas, priced at the other's rate. */
+export function scenarioTotals(totals: readonly CutTotals[], from: string, to: string): CutTotals[] {
+  return totals.map((t) => (t.material === from ? { ...t, material: to } : t));
+}
+
+/** A version of the quote kept in the project: the first is the quote, the next ones the amendments (avenants). */
+export interface SavedQuote {
+  id: string;
+  label: string;
+  date: string;
+  lines: QuoteLine[];
+  net: number;
+  gross: number;
+}
+
+/** The project's quotes with this one added, named « Devis initial » or « Avenant n ». */
+export function withSavedQuote(saved: readonly SavedQuote[], quote: Quote, date = new Date().toISOString()): SavedQuote[] {
+  const label = saved.length ? `Avenant ${saved.length}` : "Devis initial";
+  return [...saved, { id: `q${Date.now().toString(36)}${saved.length}`, label, date, lines: quote.lines, net: quote.net, gross: quote.gross }];
+}
+
+/** What changed from one version to the next: lines added, removed or with another total (HT). */
+export function quoteChanges(before: SavedQuote, after: Pick<SavedQuote, "lines" | "gross">): { label: string; was: number; now: number }[] {
+  const was = new Map(before.lines.map((l) => [l.label, l.total]));
+  const now = new Map(after.lines.map((l) => [l.label, l.total]));
+  return [...new Set([...was.keys(), ...now.keys()])]
+    .map((label) => ({ label, was: was.get(label) ?? 0, now: now.get(label) ?? 0 }))
+    .filter((c) => Math.abs(c.now - c.was) >= 0.005);
 }

@@ -249,6 +249,48 @@ export function confirmats(a: Box, b: Box, c: Contact, o: ConfirmatOptions = CON
   return throughA ? { a: head, b: pilot } : { a: pilot, b: head };
 }
 
+export interface MinifixOptions extends FastenerOptions {
+  /** From the joint to the centre of the cam (24 or 34 mm with the common bolts). */
+  distance: number;
+  camDiameter: number;
+  /** Ø8 bore from the edge of the board into the cam, and its depth. */
+  boreDiameter: number;
+  boreDepth: number;
+  /** Hole of the screw-in bolt in the other board. */
+  boltDiameter: number;
+  boltDepth: number;
+}
+
+/** Common values of the Minifix 15 (Häfele): to check on the maker's sheet before a series. */
+export const MINIFIX: MinifixOptions = { count: null, spacing: 256, margin: 50, distance: 24, camDiameter: 15, boreDiameter: 8, boreDepth: 34, boltDiameter: 5, boltDepth: 11 };
+
+/** Cam housing depth for a board this thick (mm): 12.5 up to 16 mm boards, 13.5 above. */
+export const camDepth = (thickness: number) => (thickness >= 18 ? 13.5 : 12.5);
+
+/**
+ * Minifix cam connectors: board `b` stands with its edge against the face of board `a`. In `a`, the bolt's hole; in
+ * `b`, the Ø8 bore from its edge and the Ø15 cam housing from its face — the face toward the middle of `a` (inside
+ * the cabinet: under a top, over a bottom), at `distance` from the joint.
+ */
+export function minifix(a: Box, b: Box, c: Contact, o: MinifixOptions = MINIFIX): Joint {
+  const positions = contactRow(c, o.count, o.spacing, o.margin);
+  const { across } = contactAxes(c);
+  const into = c.aFirst ? 1 : -1;
+  // The cam goes in from b's face that looks toward the middle of a (along b's thickness).
+  const inside = (lowOf(a, across) + highOf(a, across)) / 2 >= (lowOf(b, across) + highOf(b, across)) / 2;
+  const face = inside ? highOf(b, across) : lowOf(b, across);
+  const depth = Math.min(camDepth(size(b, across)), size(b, across) - 2);
+  const bolt: MachiningOp[] = positions.map((at) => ({ kind: "hole", at, dir: unitAlong(c.axis, -into), diameter: o.boltDiameter, depth: depthIn(a, c.axis, o.boltDepth) }));
+  const bores: MachiningOp[] = positions.map((at) => ({ kind: "hole", at, dir: unitAlong(c.axis, into), diameter: o.boreDiameter, depth: depthIn(b, c.axis, o.boreDepth) }));
+  const cams: MachiningOp[] = positions.map((at) => {
+    const point = [...at] as Vec3;
+    point[c.axis] = round(c.plane + into * o.distance);
+    point[across] = face;
+    return { kind: "hole", at: point, dir: unitAlong(across, inside ? -1 : 1), diameter: o.camDiameter, depth };
+  });
+  return { a: bolt, b: [...bores, ...cams] };
+}
+
 /** The box shared by two boards crossing each other, or null. */
 export function overlapBox(a: Box, b: Box): Box | null {
   const lo = [0, 1, 2].map((i) => Math.max(lowOf(a, i), lowOf(b, i))) as Vec3;

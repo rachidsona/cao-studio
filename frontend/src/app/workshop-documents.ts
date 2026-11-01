@@ -1,10 +1,13 @@
 /**
  * Documents de fabrication de l'Atelier : le devis chiffré à partir de la liste de débit, avec des tarifs réglables
- * (retenus par le navigateur), imprimable et exportable en CSV ; la commande numérique et les étiquettes sont dans
- * workshop-cnc.ts.
+ * (retenus par le navigateur), imprimable et exportable en CSV ; ses scénarios (une matière par une autre, pour
+ * comparer) et ses versions gardées dans le projet (le devis initial, puis les avenants : quote-versions.ts) ; la
+ * commande numérique et les étiquettes sont dans workshop-cnc.ts.
  */
 import { cutList } from "../document/cut-list";
 import { DEFAULT_RATES, euros, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../document/quote";
+import type { CadDocument } from "../document/types";
+import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../geometry/client";
 import { modelHardware } from "../document/hardware";
 import { el } from "../ui/dom";
@@ -42,12 +45,18 @@ const quoteHtml = (quote: Quote) =>
     .join("")}</tbody></table><table><tbody>${[
     ["Coût", quote.cost],
     ["Marge", quote.margin],
+    ...(quote.discount ? [[`Remise ${quote.discountRate} %`, -quote.discount]] : []),
     ["Total HT", quote.net],
     ["TVA", quote.vat],
     ["Total TTC", quote.gross],
   ]
     .map(([label, value]) => `<tr><th>${label}</th><td>${euros(value as number)}</td></tr>`)
     .join("")}</tbody></table>`;
+
+/** Holes drilled in the model (its machining), priced one by one when the rates say so. */
+export function holesOf(doc: CadDocument): number {
+  return doc.features.reduce((n, f) => n + (f.type === "machining" && !f.suppressed ? f.ops.filter((op) => op.kind === "hole").length : 0), 0);
+}
 
 function showQuote(viewport: Viewport, editor: Editor): void {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
@@ -77,15 +86,30 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     field("Chutes", rates.waste, "%", (v) => (rates.waste = v)),
     field("Chant collé", rates.band, "€/m", (v) => (rates.band = v)),
     field("Découpe par pièce", rates.cutPerPart, "€", (v) => (rates.cutPerPart = v)),
+    field("Perçage (usinage)", rates.perHole ?? 0, "€", (v) => (rates.perHole = v)),
     field("Montage par pièce", rates.hoursPerPart, "h", (v) => (rates.hoursPerPart = v)),
     field("Taux horaire", rates.hourly, "€/h", (v) => (rates.hourly = v)),
     field("Marge", rates.margin, "%", (v) => (rates.margin = v)),
     field("TVA", rates.vat, "%", (v) => (rates.vat = v)),
+    tiersField(),
   );
-  let quote = makeQuote(totals, rates, hardware, editor.unit);
+  function tiersField() {
+    const input = el("input", { type: "text", class: `${INPUT} w-40 text-left`, value: (rates.tiers ?? []).map(([a, b]) => `${a}:${b}`).join(", "), placeholder: "3000:5, 6000:8", "aria-label": "Remises par paliers" });
+    input.addEventListener("keydown", (e) => e.stopPropagation());
+    input.addEventListener("change", () => {
+      rates.tiers = input.value.split(",").map((t) => t.split(":").map(Number) as [number, number]).filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0 && b < 100);
+      saveRates(rates);
+      refresh();
+    });
+    return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, "Remises (dès € HT : %)"), input);
+  }
+  const holes = holesOf(editor.doc);
+  let quote = makeQuote(totals, rates, hardware, editor.unit, holes);
+  const extras = el("div", { class: "space-y-3" });
   const refresh = () => {
-    quote = makeQuote(totals, rates, hardware, editor.unit);
+    quote = makeQuote(totals, rates, hardware, editor.unit, holes);
     table.innerHTML = quoteHtml(quote);
+    quoteExtras(extras, viewport, editor, totals, rates, hardware, holes, quote, quoteHtml);
   };
   refresh();
   const content = el(
@@ -93,6 +117,7 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     { class: "space-y-4" },
     el("details", { class: " border border-gray-200 p-3 dark:border-gray-700" }, el("summary", { class: "cursor-pointer text-sm font-medium" }, "Tarifs (indicatifs, modifiables)"), el("div", { class: "pt-3" }, settings)),
     table,
+    extras,
   );
   const close = openModal("Devis", content, [
     { label: "Exporter en CSV", run: () => downloadText("devis.csv", `﻿${quoteCsv(quote)}`, "text/csv") },
@@ -104,13 +129,13 @@ function showQuote(viewport: Viewport, editor: Editor): void {
 /** The quote of the displayed parts at the saved rates, as a printable table, or null when there is nothing to price. */
 export function savedQuoteHtml(viewport: Viewport, editor: Editor): string | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit)) : null;
+  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit, holesOf(editor.doc))) : null;
 }
 
 /** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
 export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit).gross : null;
+  return totals.length ? makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit, holesOf(editor.doc)).gross : null;
 }
 
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {

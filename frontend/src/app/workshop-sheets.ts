@@ -6,6 +6,8 @@
  */
 import { cutList, edgeText, grainText, type CutRow } from "../document/cut-list";
 import { holeGroups, holeText, partSheetSvg } from "../document/part-sheet";
+import { edgeHoles, edgeHolesText } from "../document/face-ops";
+import { bodyLabel } from "../document/operations";
 import type { GeometryClient } from "../geometry/client";
 import { qrSvg } from "../io/qr";
 import { toDisplay, UNIT_LABELS } from "../measurements/units";
@@ -17,7 +19,9 @@ import { flatParts } from "./workshop-cnc";
 import { escapeHtml, printHtml } from "./workshop-ui";
 
 export async function printPartSheets(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
-  const { rows } = cutList(editor.doc, partsOf(viewport, editor.doc));
+  const inputs = partsOf(viewport, editor.doc);
+  const { rows } = cutList(editor.doc, inputs);
+  const input = new Map(inputs.map((p) => [bodyLabel(editor.doc, p.id), p]));
   const { parts, flip } = await flatParts(viewport, editor, geometry);
   if (!rows.length || !parts.length) return editor.notify("Aucune pièce pour les fiches.", "info");
   const unit = editor.unit;
@@ -39,6 +43,12 @@ export async function printPartSheets(viewport: Viewport, editor: Editor, geomet
       ["Chants", edgeText(row.edges)],
       ["Fil", grainText(row.grain)],
       ["Perçages", holes.length ? holes.map((g) => holeText(g, num)).join(" · ") : "aucun"],
+      ...((): [string, string][] => {
+        // The holes of the edges (horizontal drilling): not on the drawing of the face.
+        const p = input.get(row.names[0] ?? "");
+        const lines = p ? edgeHolesText(edgeHoles(editor.doc, p.id, p.bbox), num) : [];
+        return lines.length ? [["Sur chant", lines.join(" ; ")]] : [];
+      })(),
       ...(row.names.some((n) => flip.includes(n)) ? [["Attention", "perçages borgnes aussi sur l'autre face : retourner la pièce"] as [string, string]] : []),
       ...(row.approximate ? [["Forme", "pas un simple panneau : cotes de son encombrement"] as [string, string]] : []),
     ];

@@ -278,7 +278,8 @@ export class Editor {
 
   /** Called after every render: the workshop panels and the body colours follow the document. */
   onRender: () => void = () => {};
-
+  /** Shows `doc` regenerated without recording it (a variant to capture), or the document again (null). */
+  showUnrecorded = async (doc: CadDocument | null): Promise<void> => { this.previewDoc = doc; await this.recompute(); while (this.recomputing) await new Promise((r) => setTimeout(r, 30)); };
   private updateHistoryButtons(): void {
     ref<HTMLButtonElement>(this.root, "undo").disabled = !this.session.undo.canUndo;
     ref<HTMLButtonElement>(this.root, "redo").disabled = !this.session.undo.canRedo;
@@ -446,7 +447,7 @@ export class Editor {
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
       tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), kitchen: () => this.openTool("kitchen"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

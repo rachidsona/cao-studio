@@ -768,7 +768,8 @@ opération existante.
   plus et son nom (« CRÉER ▾ », « ATELIER ▾ »…) ouvre la liste de **tous** ses outils. Un clic lance l'outil ;
   l'**épingle** 📌 l'affiche dans la barre ou le range dans le menu. Au départ, les outils moins courants sont rangés
   (révolution, coque, lissage, étirer, mise en plan, G-code, lien client, Pièce, Finitions, Ma bibliothèque,
-  Quincaillerie, Contrôle, Notice de montage, Fiches, Suivi d'atelier…, et en esquisse polygone, ovale, texte,
+  Quincaillerie, Contrôle, Notice de montage, Fiches, Suivi d'atelier, Standard de construction, Remplacer partout,
+  Recouvrement, Copier l'aménagement, Stock de chutes, Fabrication groupée…, et en esquisse polygone, ovale, texte,
   projeter…). Le choix est mémorisé par barre (modèle, esquisse) dans le navigateur ; « Par défaut » dans un menu remet
   son groupe comme à l'origine. Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
   l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
@@ -870,19 +871,60 @@ opération existante.
   en mode modèle (l'esquisse a ses propres outils). Les vues isométrique, de face, de dessus et de droite sont dans le
   menu ⋯ (rubrique « Vue ») et sur le cube de navigation.
 - **Atelier** (groupe « Atelier », ébénisterie) :
+  - *Standard de construction* (comme les méthodes de fabrication de Polyboard ou les principes de construction
+    d'imos) : une façon de construire nommée, que les caissons suivent au lieu de la porter chacun.
+    - Un standard dit l'épaisseur du caisson et du fond, le fond vissé, rainuré ou absent, les côtés toute hauteur
+      ou dessus et dessous toute largeur, le socle, les façades (en applique ou rentrées, jeu, épaisseur), les
+      matières du caisson, des façades et des fonds, le chant des chants visibles, à partir de quelle épaisseur un
+      chant est déduit de la cote de coupe, et l'assemblage (confirmat, tourillons ou excentriques Minifix, entraxe).
+    - Trois niveaux : les modèles fournis (mélaminé 19 mm système 32, 16 mm économique, démontable 18 mm à
+      excentriques, contreplaqué bouleau, haut de gamme 22 mm laqué) et ceux qu'on « enregistre dans l'atelier » (ce
+      navigateur) ; le standard du projet ; celui d'un caisson, qui l'emporte (outil Caisson, ligne « Standard » :
+      celui du projet, un autre, ou « réglé à la main »).
+    - Régler un champ fait du standard une copie propre au projet (gardée dans le document). « Appliquer » dit ce qui
+      va changer (caissons, façades, pièces) puis reconstruit tout d'un coup, en une annulation : cotes du caisson,
+      façades, matières, chants (le chant avant des pièces du caisson, les quatre chants des façades).
+    - Le panneau dit quels caissons « ne suivent plus » leur standard (retouchés à la main), pour les remettre
+      d'accord. Un nouveau caisson, de nouvelles façades et les Règles d'assemblage partent du standard
+      (`document/standards.ts`, `app/standards-panel.ts`).
+  - *Remplacer partout* (le « Modify Style » de Polyboard) : une matière par une autre, ou une épaisseur de chant par
+    une autre, dans tout le projet d'un coup, standards du projet compris, en une annulation (`document/replace.ts`).
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
     MDF, contreplaqué, massif, fond HDF), le sens du fil, les chants (L1/L2 : grands côtés, l1/l2 : petits) et leur
-    épaisseur. Enregistré dans le document (`bodyInfo`), avec la pièce qui l'a créée.
+    épaisseur. Enregistré dans le document (`bodyInfo`), avec la pièce qui l'a créée. Les matières sont typées comme
+    dans OpenCutList : panneau, massif, panneau de fond. Le massif est **débité avec une surcote** (20 mm en longueur,
+    10 en largeur pour le chêne) puis raboté : la liste de débit montre son « débit brut » et le calepinage le place
+    à cette taille.
   - *Liste de débit* : toutes les pièces, groupées quand elles sont identiques (quantité), cotes finies (L ≥ l ≥
     épaisseur) et **cotes de coupe** (moins les chants), matière, fil, chants ; totaux par matière (m², mètres de chant).
     Export CSV (séparateur « ; », ouvert directement dans un tableur) ou impression / PDF.
   - *Optimisation de découpe* : les pièces placées sur les panneaux standard de leur matière (2800×2070 pour les
     mélaminés), en bandes comme une scie à format, trait de scie 4 mm, marge 10 mm, fil respecté (une pièce sans fil
     peut tourner). Un schéma SVG par panneau avec le taux de chutes ; impression / PDF.
+    - **Stock de chutes** : les chutes de l'atelier (même matière, même épaisseur) sont remplies **avant** les
+      panneaux neufs, les plus grandes d'abord. Ce qui reste d'un panneau et mesure au moins 300 × 150 mm est
+      dessiné en vert : « Garder les chutes » le range dans le stock, « Sortir les chutes utilisées » retire celles
+      que le calepinage a prises. Le stock se gère aussi à la main (bouton *Stock de chutes*). Il est gardé par le
+      serveur, par compte (`/api/offcuts/`).
+    - **Liste d'achat** sous le calepinage : les panneaux neufs par matière et épaisseur (et leur taux
+      d'utilisation), les chutes du stock à sortir, le chant au mètre par épaisseur avec 50 mm de surlongueur par
+      chant, la quincaillerie arrondie au conditionnement (vis confirmat et tourillons par boîtes de 100,
+      excentriques par 50, pieds par 4) (`document/purchase.ts`, `app/production.ts`).
+  - *Fabrication groupée* (comme le mode catalogue de Polyboard) : plusieurs projets débités ensemble, chacun en
+    quantité. « Ajouter ce projet au lot » y met sa liste de débit et sa quincaillerie du moment (l'ajouter de
+    nouveau la remplace). Le lot donne un seul calepinage, avec le stock de chutes, et une seule liste d'achat ; ses
+    pièces sont préfixées du nom de leur projet. Gardé par le serveur (`/api/batch/`, `apps/projects/production.py`).
   - *Export DXF commande numérique* : chaque panneau mis à plat sur celle de ses deux grandes faces qui porte le plus
     de perçages (une porte montre ses cuvettes), avec le **contour exact** du noyau (lignes, arcs) et les **perçages
     en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm, calques CONTOUR, PERCAGE et
     TEXTE, lu par les logiciels de FAO.
+    - **Noms des calques pour la machine** : beaucoup de logiciels de commande numérique usinent d'après le nom du
+      calque. À l'export, on choisit « Générique », « Diamètre et profondeur » (`PERCAGE_D8_Z12`, `CONTOUR_Z19`),
+      « Court » (`Z12-D8`, `Z19`) ou un modèle à soi, où `{d}` est le diamètre, `{z}` la profondeur et `{t}`
+      l'épaisseur du panneau. Le choix est retenu par le navigateur.
+    - Les **perçages sur chant** (tourillons, excentriques : perçage horizontal) ne sont pas sur la pièce à plat :
+      l'export les signale, et les fiches de fabrication les cotent, chant par chant (« chant court côté X− :
+      2 × Ø8 prof. 34 à 50, 306 », `document/face-ops.ts`).
   - *G-code* : le programme de la défonceuse, prêt à lancer. Les pièces d'une même matière et épaisseur sont rangées
     en bandes sur les panneaux bruts (une pause M0 entre deux panneaux) ; pour chacun, les perçages au foret de leur
     diamètre (T2, T3…) et à leur **vraie profondeur** (lue sur le maillage : borgne ou traversant), les grands trous
@@ -957,6 +999,12 @@ opération existante.
       de même centre sont un lamage, pas une erreur).
     - Porte ou tiroir qui heurte un autre corps en s'ouvrant (murs compris), testé à 30 %, 60 % et en entier.
     - Meuble qui entre dans un mur, une retombée ou sous un rampant de la Pièce relevée, ou qui cache une prise.
+    - **Jonctions sans assemblage** : deux planches qui se touchent (le chant de l'une contre la face de l'autre)
+      sans vis, tourillon, excentrique, tenon ni mi-bois ; quand rien n'est encore assemblé, une seule ligne le dit.
+    - **Charnières** : une porte plus lourde que ses charnières ne portent (≈ 4,5 kg par charnière, repère courant :
+      le nombre qu'il faudrait), une charnière qui tombe sur une étagère. Les perçages des façades décalent déjà une
+      charnière de 32 mm (le pas du système 32) quand son embase tomberait sur une étagère ; reste ce qu'on ne peut
+      pas décaler (`document/hardware-rules.ts`).
     Quand tout va bien, le contrôle le dit (`document/fabrication-check.ts`, `app/fabrication-check.ts`).
   - *Notice de montage* : un panneau range les pièces en étapes, dans l'ordre où l'on monte un meuble. Les étapes
     sont le bâti (dessous, côtés, dessus, cloisons, avec les vis confirmat et tourillons des usinages), le fond, les
@@ -984,6 +1032,12 @@ opération existante.
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur) ; impression / PDF et CSV.
+    - **Perçages** au prix de l'unité si on le veut (le « Tooling Price » de Polyboard) et **remises par paliers**
+      (« 3000:5, 6000:8 » : 5 % dès 3000 € HT, 8 % dès 6000 €).
+    - Le prix **au mètre linéaire** du meuble, pour comparer avec les prix du marché.
+    - **Scénario** (le « What if » de Mozaik) : une matière remplacée par une autre, le prix des deux et l'écart.
+    - **Versions** : « Enregistrer comme devis initial » garde le devis dans le projet ; chaque version suivante est
+      un **avenant**, avec ce qui a changé ligne par ligne et l'écart TTC, imprimable (`app/quote-versions.ts`).
   - *Usinage* : un outil, sept préréglages, tous des coupes exactes du noyau (une opération « Usinage » par planche,
     qui remplace la planche et la **suit** quand elle se déplace) —
     sur une **face** cliquée : *perçages 32* (rangée de trous Ø5 × 12 tous les 32 mm, à 37 mm du bord, 1 ou 2 files),
@@ -992,12 +1046,17 @@ opération existante.
     *mi-bois* (chaque planche perd la moitié de la hauteur commune), *tenon et mortaise* (tiers de l'épaisseur,
     épaulements de 10 mm). Un usinage qui ne touche pas le corps est une erreur, jamais un silence. Chaque trou suit
     le bout de la planche dont il était le plus près : un dessous allongé emporte ses avant-trous de droite.
-  - *Règles d'assemblage* : une règle (confirmat Ø7 tous les 128 mm, ou tourillons Ø8 tous les 96 mm, avec la marge
-    aux bouts) appliquée d'un coup à toutes les jonctions des planches choisies — la sélection, sinon tout ce qui est
+  - *Règles d'assemblage* : une règle (confirmat Ø7 tous les 128 mm, tourillons Ø8 tous les 96 mm, ou excentriques
+    Minifix 15 tous les 256 mm, avec la marge aux bouts ; celle du standard de construction pour commencer)
+    appliquée d'un coup à toutes les jonctions des planches choisies — la sélection, sinon tout ce qui est
     visible ; un clic ajoute ou retire une planche. Une jonction est le chant d'une planche contre la face d'une autre ;
     les panneaux plus minces qu'un seuil (fonds) ou plus épais que 30 mm (plans de travail), les murs et les
     façades sont ignorés. Une opération « Usinage » par planche, et la visserie
-    (vis confirmat, tourillons) est comptée dans le devis.
+    (vis confirmat, tourillons, excentriques) est comptée dans le devis.
+    - **Minifix** (aussi dans l'outil Usinage) : la tige Ø5 × 11 dans la face de la planche contre laquelle l'autre
+      vient, le perçage Ø8 depuis le chant de l'autre et le boîtier Ø15 par sa face intérieure (sous un dessus, sur
+      un dessous), à 24 mm (ou 34) du chant, 12,5 mm de profondeur jusqu'à 16 mm d'épaisseur, 13,5 au-delà. Cotes
+      courantes, à vérifier sur la fiche du fabricant.
   - *Paramètres* : des valeurs nommées (`largeur`, `ep`…), qui peuvent être des formules d'autres paramètres, et des
     **liens** entre une cote d'une fonction (largeur du caisson, déplacement, distance…) et une formule
     (`largeur - 2 * ep`). Changer un paramètre réécrit toutes les cotes liées, en une seule annulation. Formules :
@@ -1018,7 +1077,9 @@ opération existante.
     proches (0 quand ils se touchent), avec, pour deux faces planes ou deux traits droits, « parallèles »,
     « perpendiculaires » ou leur angle. Le premier élément choisi est souligné en orange.
   - *Rendu des matières* : chaque corps prend la couleur de sa matière, avec le veinage du bois dans le sens du fil
-    (bouton à bascule, mémorisé).
+    (bouton à bascule, mémorisé). Le motif est **décalé d'une planche à l'autre** (d'après l'identifiant du corps,
+    toujours le même pour une planche) : deux planches voisines ne montrent pas le même veinage, dans la vue, le rendu
+    réaliste et le lien client (`appearance/assign.ts`).
   - *Apparence* (comme la bibliothèque d'apparences de Fusion) : plus de 100 apparences réelles, en vignettes
     sphériques, par catégorie et avec recherche (accents ignorés) : **bois** (chêne naturel, blanchi, fumé, verni,
     brut, noyer, noyer américain, hêtre, frêne, érable, merisier, pin, teck, wengé, acajou, bouleau, bambou, zebrano),
@@ -1193,6 +1254,12 @@ opération existante.
   « Voir » marque le point dans la vue, on répond (le client lit la réponse sur sa page) et on coche « Traité ».
   Côté serveur : modèles `ShareLink` et `Comment` (migration `0002_sharing`), modèle GLB de 20 Mo au plus, messages
   limités (2000 caractères, 10 par adresse et par lien toutes les 10 minutes, 300 par lien), pages non indexées.
+  - **Variantes pour le client** (un configurateur borné) : quand le projet a au moins deux configurations
+    (Paramètres › Configurations, par exemple « Petit 600 » et « Grand 900 »), le lien peut les proposer toutes
+    (huit au plus). Chacune est montrée à son tour, sans toucher au document ni à l'annulation, et figée avec son
+    modèle 3D et le prix TTC de son devis. Le client passe de l'une à l'autre (modèle, dimensions, prix, réalité
+    augmentée) et « Je choisis cette variante » écrit son choix dans un message. Serveur : modèle `ShareVariant`
+    (migration `0005_production`), adresse `/s/<jeton>/variants/<n>.glb`.
 - **Implantation de cuisine** (groupe « Menuiserie ») : une cuisine entière le long d'un mur (I), de deux murs en
   angle (L) ou de trois (U), avec un îlot si on veut. Chaque mur est découpé en modules du commerce (600 d'abord, puis le plus grand de 300 à 900 qui tient, le
   reste en fileur) ; meubles bas (hauteur, profondeur, socle réglables) avec leurs façades (tiroirs et portes en
@@ -1295,6 +1362,22 @@ opération existante.
     devis) ; des étagères au-dessus de 2 m demandent un marchepied, le panneau le dit (`document/dressing-extras.ts`).
 - **Orientation des caissons** : un caisson tourne de 90, 180 ou 270° autour de son coin avant gauche (face vers
   +X, vers le fond, vers −X) ; ses façades tournent avec lui.
+- **Recouvrement** (groupe « Menuiserie », comme les liens de Polyboard) : on clique les deux planches d'un angle (un
+  côté et un dessus, un fond et une joue) ; celle qui passait devant le chant de l'autre est raccourcie de
+  l'épaisseur de l'autre, l'autre rallongée d'autant. Un dessus posé entre les côtés devient un dessus qui les
+  couvre. Ce sont des Étirer (et un Déplacer pour un bout bas) dans l'historique, en une annulation ; les usinages
+  suivent les planches (`features/overlap-swap.ts`, `app/overlap-tool.ts`).
+- **Copier l'aménagement** (groupe « Menuiserie », le copier-coller d'intérieur de Polyboard) : un clic sur un caisson
+  modèle, puis sur les caissons à aménager pareil. Ils prennent son nombre d'étagères et ses façades (une porte,
+  deux portes ou des tiroirs, pose, jeu, épaisseur, charnières, poignées, matière), qui s'adaptent à leurs cotes ;
+  chacun garde ses dimensions et sa place (`app/layout-copy-tool.ts`).
+- **Remplir une largeur** (outil Caisson, nouveau caisson) : la largeur à remplir et la largeur maximale d'un
+  caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
+  caisson), en une annulation (l'AutoFill de Mozaik).
+- **Cotes dans la vue** (les étiquettes de modification de TopSolid) : quand les pièces d'un seul caisson sont
+  sélectionnées, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent sur lui. Un clic en fait
+  un champ, Entrée reconstruit le caisson. Une cote liée à un paramètre (« largeur ») change le paramètre, et tout ce
+  qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`).
 - **Façades** (groupe « Menuiserie », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
   tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
   voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du

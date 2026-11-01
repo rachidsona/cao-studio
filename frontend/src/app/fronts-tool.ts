@@ -5,9 +5,11 @@
  */
 import { bodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
+import { cabinetStandard, frontsTo } from "../document/standards";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "../document/types";
 import { frontsHardware, frontsMaterials } from "../features/fronts-parts";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { workshopStandards } from "./standards-panel";
 
 export class FrontsTool extends PanelTool {
   private readonly id: string;
@@ -21,6 +23,13 @@ export class FrontsTool extends PanelTool {
     this.name = editing?.name ?? uniqueName(doc, "Façades");
     const { id: _id, type: _type, name: _name, ...rest } = editing ?? ({} as FrontsFeature);
     this.settings = editing ? rest : { cabinet: this.cabinets().at(-1)?.id ?? "", layout: "door", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
+    // New fronts take the mount, gap and thickness of their cabinet's standard.
+    const cabinet = this.cabinets().find((c) => c.id === this.settings.cabinet);
+    const standard = !editing && cabinet ? cabinetStandard(doc, cabinet, workshopStandards()) : undefined;
+    if (standard) {
+      const { id: _i, type: _t, name: _n, ...made } = frontsTo({ id: this.id, type: "fronts", name: this.name, ...this.settings }, standard);
+      this.settings = made;
+    }
   }
 
   private cabinets(): CabinetFeature[] {

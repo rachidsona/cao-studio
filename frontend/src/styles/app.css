@@ -370,6 +370,10 @@
  @apply cursor-pointer bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm
       hover:bg-gray-700 dark:bg-gray-100/90 dark:text-gray-900;
   }
+  /* A dimension of the selected cabinet that a click turns into a field (app/drivers-3d.ts). */
+  .cad-measure.cad-driver {
+    @apply border border-sky-400 bg-sky-700/90 hover:bg-sky-600 dark:bg-sky-300/90 dark:text-gray-950;
+  }
   /* The distance between two parallel edges: amber like its line, and a little larger. */
   .cad-measure.cad-measure-gap {
     @apply bg-amber-500 px-2 text-sm font-semibold text-gray-950 hover:bg-amber-400 dark:bg-amber-400 dark:text-gray-950;

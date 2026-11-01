@@ -4,6 +4,8 @@
  * mortise and tenon), all exact booleans on the target solid. A hole or a cut
  * that removes nothing is an error, never a silent no-op.
  */
+import { followed } from "./machining-follow";
+export { followed };
 import { makeBaseBox, makeCylinder, measureVolume, type Shape3D } from "replicad";
 import type { MachiningFeature, MachiningOp, Vec3 } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
@@ -33,21 +35,6 @@ function toolOf(op: MachiningOp, name: string): Shape3D {
   // replicad's base box is centred on X and Y and rests on Z = 0.
   const corner: Vec3 = [lo[0] + (size[0] as number) / 2, lo[1] + (size[1] as number) / 2, lo[2]];
   return (makeBaseBox(size[0] as number, size[1] as number, size[2] as number) as Shape3D).translate(corner) as Shape3D;
-}
-
-/**
- * The operation moved with the board: on each axis, by how far the end of the board it was nearer to (when the
- * machining was made) has moved; by the low corner only when the high one was not kept.
- */
-export function followed(op: MachiningOp, anchor: [Vec3, Vec3 | undefined], now: [Vec3, Vec3]): MachiningOp {
-  const [low, high] = anchor;
-  const where = op.kind === "hole" ? op.at : (op.from.map((v, i) => (v + (op.to[i] as number)) / 2) as Vec3);
-  const delta = [0, 1, 2].map((i) => {
-    const nearHigh = high && Math.abs((where[i] as number) - (high[i] as number)) < Math.abs((where[i] as number) - (low[i] as number));
-    return nearHigh ? (now[1][i] as number) - (high[i] as number) : (now[0][i] as number) - (low[i] as number);
-  }) as Vec3;
-  const shift = (v: Vec3): Vec3 => [v[0] + delta[0], v[1] + delta[1], v[2] + delta[2]];
-  return op.kind === "hole" ? { ...op, at: shift(op.at) } : { ...op, from: shift(op.from), to: shift(op.to) };
 }
 
 export function buildMachining(feature: MachiningFeature, lookup: OutputLookup): SolidOutput {

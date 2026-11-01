@@ -12,7 +12,17 @@ import { validateSketch } from "./validate-sketch";
 const UNITS = new Set(["mm", "cm", "m", "in"]);
 const PLANES = new Set(["XY", "XZ", "YZ"]);
 const OPERATIONS = new Set(["new", "join", "cut", "intersect"]);
-const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "halflap", "tenon", "cutout", "custom"]);
+/** A construction standard (document/standards.ts) as stored. */
+function standardOk(s: unknown): boolean {
+  if (!isObject(s) || typeof s.id !== "string" || typeof s.name !== "string") return false;
+  if (!["thickness", "backThickness", "frontGap", "frontThickness", "band", "bandTrim", "jointSpacing"].every((k) => isFiniteNumber(s[k]))) return false;
+  if (s.plinth !== undefined && !isFiniteNumber(s.plinth)) return false;
+  if (!["none", "applied", "inset"].includes(s.back as string) || !["sides-through", "top-bottom-through"].includes(s.construction as string)) return false;
+  if (!["overlay", "inset"].includes(s.frontMount as string) || !["confirmat", "dowel", "minifix"].includes(s.joint as string)) return false;
+  return ["carcass", "fronts", "backs"].every((k) => s[k] === undefined || typeof s[k] === "string");
+}
+
+const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "minifix", "halflap", "tenon", "cutout", "custom"]);
 const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect"]);
 
 type Json = Record<string, unknown>;
@@ -145,6 +155,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
       if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation du caisson invalide (0, 90, 180 ou 270°).`);
+      if (feature.standard !== undefined && typeof feature.standard !== "string") errors.push(`${where} : standard de construction invalide.`);
       break;
     case "panels":
       if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse squelette manquante.`);
@@ -311,6 +322,11 @@ export function validateDocument(input: unknown): string[] {
   if (input.layers !== undefined && (!Array.isArray(input.layers) || !input.layers.every((l) => isObject(l) && typeof l.id === "string" && typeof l.name === "string" && typeof l.visible === "boolean"))) errors.push("« layers » doit être une liste de calques (id, name, visible).");
   if (input.hardware !== undefined && !(isObject(input.hardware) && Object.entries(input.hardware).every(([k, v]) => ["hinge", "slide", "handle"].includes(k) && typeof v === "string"))) {
     errors.push("« hardware » doit donner les modèles choisis (hinge, slide, handle) par leur identifiant.");
+  }
+  if (input.standard !== undefined && typeof input.standard !== "string") errors.push("« standard » doit être l'identifiant d'un standard de construction.");
+  if (input.standards !== undefined && (!Array.isArray(input.standards) || input.standards.length > 50 || !input.standards.every(standardOk))) errors.push("« standards » doit être une liste de standards de construction valides.");
+  if (input.quotes !== undefined && (!Array.isArray(input.quotes) || input.quotes.length > 100 || !input.quotes.every((q) => isObject(q) && typeof q.id === "string" && typeof q.label === "string" && typeof q.date === "string" && isFiniteNumber(q.net) && isFiniteNumber(q.gross) && Array.isArray(q.lines) && q.lines.length <= 500 && q.lines.every((l) => isObject(l) && typeof l.label === "string" && isFiniteNumber(l.quantity) && typeof l.unit === "string" && isFiniteNumber(l.unitPrice) && isFiniteNumber(l.total))))) {
+    errors.push("« quotes » doit être une liste de versions du devis (id, label, date, lignes, totaux).");
   }
   if (input.folders !== undefined && (!Array.isArray(input.folders) || !input.folders.every((f) => isObject(f) && typeof f.id === "string" && typeof f.name === "string" && Array.isArray(f.bodies) && f.bodies.every((b) => typeof b === "string")))) {
     errors.push("« folders » doit être une liste de dossiers (id, name, bodies).");

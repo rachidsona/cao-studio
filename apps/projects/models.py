@@ -165,3 +165,78 @@ class PartProgress(models.Model):
 
     def __str__(self) -> str:
         return f"{self.part} : {self.get_step_display()}"
+
+
+class Offcut(models.Model):
+    """A reusable offcut of the workshop's stock: placed first by the sheet layout, before new sheets."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="cad_offcuts",
+        verbose_name="propriétaire",
+    )
+    material = models.CharField("matière", max_length=80)
+    thickness = models.FloatField("épaisseur (mm)")
+    length = models.FloatField("longueur (mm)")
+    width = models.FloatField("largeur (mm)")
+    quantity = models.PositiveIntegerField("quantité", default=1)
+    note = models.CharField("note", max_length=120, blank=True)
+    created_at = models.DateTimeField("rangée le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["material", "-thickness", "-length"]
+        verbose_name = "chute"
+        verbose_name_plural = "chutes"
+
+    def __str__(self) -> str:
+        return f"{self.material} {self.thickness:g} — {self.length:g} × {self.width:g}"
+
+
+class BatchItem(models.Model):
+    """A project put in the grouped production (as Polyboard's catalogue mode): its cut list and hardware as they were
+    when it was added, made ``quantity`` times with the others."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="cad_batch",
+        verbose_name="propriétaire",
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True, blank=True, related_name="+", verbose_name="projet"
+    )
+    name = models.CharField("nom", max_length=120)
+    quantity = models.PositiveIntegerField("quantité", default=1)
+    rows = models.JSONField("liste de débit")
+    hardware = models.JSONField("quincaillerie", default=list, blank=True)
+    updated_at = models.DateTimeField("mis à jour le", auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "projet en fabrication groupée"
+        verbose_name_plural = "fabrication groupée"
+
+    def __str__(self) -> str:
+        return f"{self.name} × {self.quantity}"
+
+
+class ShareVariant(models.Model):
+    """A variant a client may choose on a share link (a configuration of the model): its own 3D model and price."""
+
+    link = models.ForeignKey(ShareLink, on_delete=models.CASCADE, related_name="variants", verbose_name="lien")
+    position = models.PositiveIntegerField("rang")
+    name = models.CharField("nom", max_length=120)
+    price = models.FloatField("prix TTC", null=True, blank=True)
+    summary = models.JSONField("résumé", default=dict, blank=True)
+    model = models.BinaryField("modèle GLB")
+    model_size = models.PositiveIntegerField("taille du modèle (octets)")
+
+    class Meta:
+        ordering = ["position"]
+        unique_together = [("link", "position")]
+        verbose_name = "variante proposée"
+        verbose_name_plural = "variantes proposées"
+
+    def __str__(self) -> str:
+        return f"{self.link} — {self.name}"

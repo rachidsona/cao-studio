@@ -6,6 +6,8 @@
  */
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import { applyConfiguration, configurationsOf } from "../document/configurations";
+import { applyExpressions } from "../document/expressions";
 import { bodyInfo, materialById } from "../document/materials";
 import { qrSvg } from "../io/qr";
 import { el } from "../ui/dom";
@@ -86,6 +88,27 @@ export async function modelGlb(viewport: Viewport, editor: Editor): Promise<{ gl
   return { glb, size: [hi[0]! - lo[0]!, hi[1]! - lo[1]!, hi[2]! - lo[2]!], offset, parts };
 }
 
+/**
+ * Each configuration of the model shown in turn (not recorded), captured as a GLB with its quote, added to `form` as
+ * `variant_<i>`; the document is shown again at the end. The variants' names, prices and sizes are returned.
+ */
+async function captureVariants(viewport: Viewport, editor: Editor, priced: boolean, form: FormData): Promise<{ name: string; price?: number; size: Vec3 }[]> {
+  const out: { name: string; price?: number; size: Vec3 }[] = [];
+  try {
+    for (const [i, c] of configurationsOf(editor.doc).slice(0, 8).entries()) {
+      // The configuration's values, and the numbers that follow them.
+      await editor.showUnrecorded(applyExpressions(applyConfiguration(editor.doc, c.id)).doc);
+      const { glb, size } = await modelGlb(viewport, editor);
+      form.append(`variant_${i}`, new Blob([glb], { type: "model/gltf-binary" }), `variante-${i}.glb`);
+      const total = priced ? quoteTotal(viewport, editor) : null;
+      out.push({ name: c.name, size, ...(total !== null ? { price: total } : {}) });
+    }
+  } finally {
+    await editor.showUnrecorded(null);
+  }
+  return out;
+}
+
 export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Editor, apiUrl: string, projectName: string): void {
   const sharesUrl = `${apiUrl}shares/`;
   const commentsUrl = `${apiUrl}comments/`;
@@ -99,6 +122,8 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
     title.addEventListener("keydown", (e) => e.stopPropagation());
     const price = el("input", { type: "checkbox" });
     const allow = el("input", { type: "checkbox", checked: true });
+    const configurations = configurationsOf(editor.doc);
+    const offer = el("input", { type: "checkbox", checked: configurations.length >= 2, disabled: configurations.length < 2 });
     const refresh = async () => {
       const { shares } = await call<{ shares: Share[] }>(sharesUrl);
       list.replaceChildren(
@@ -135,7 +160,8 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
         form.append("model", new Blob([glb], { type: "model/gltf-binary" }), "meuble.glb");
         form.append("title", title.value.trim() || projectName);
         const total = price.checked ? quoteTotal(viewport, editor) : null;
-        form.append("summary", JSON.stringify({ size, offset, parts, unit: editor.unit, date: new Date().toISOString(), ...(total !== null ? { price: total } : {}) }));
+        const variants = offer.checked ? await captureVariants(viewport, editor, price.checked, form) : [];
+        form.append("summary", JSON.stringify({ size, offset, parts, unit: editor.unit, date: new Date().toISOString(), ...(total !== null ? { price: total } : {}), ...(variants.length ? { variants } : {}) }));
         form.append("allow_comments", allow.checked ? "1" : "0");
         const made = await call<Share>(sharesUrl, { method: "POST", body: form });
         await navigator.clipboard?.writeText(made.url).catch(() => undefined);
@@ -153,7 +179,8 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
       el("p", { class: "text-xs text-gray-600 dark:text-gray-300" }, "Le client voit le meuble en 3D, le pose chez lui en réalité augmentée depuis son téléphone et laisse des commentaires, sans compte. Le lien montre le modèle tel qu'il est maintenant : créez-en un nouveau après des changements."),
       el("div", { class: "space-y-2 border border-gray-200 p-3 dark:border-gray-700" }, title,
         el("label", { class: "flex items-center gap-2 text-xs" }, price, "Afficher le prix TTC du devis"),
-        el("label", { class: "flex items-center gap-2 text-xs" }, allow, "Permettre les commentaires"), create),
+        el("label", { class: "flex items-center gap-2 text-xs" }, allow, "Permettre les commentaires"),
+        el("label", { class: "flex items-center gap-2 text-xs" }, offer, configurations.length >= 2 ? `Proposer les ${configurations.length} variantes au client (Paramètres › Configurations), chacune avec son prix` : "Proposer des variantes : il faut au moins deux configurations (Atelier › Paramètres)"), create),
       el("h3", { class: "text-xs font-semibold tracking-wide text-gray-500 uppercase" }, "Liens"),
       list,
     );

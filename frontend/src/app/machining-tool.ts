@@ -9,8 +9,8 @@ import { chosenHardware } from "../document/hardware-catalog";
 import { bodyLabel } from "../document/operations";
 import type { Axis, Feature, MachiningFeature, MachiningOp } from "../document/types";
 import {
-  CONFIRMAT, DOWELS, DRILLING_32, GROOVE, HINGES, TENON,
-  confirmats, contactOf, dowels, drilling32, groove, halfLap, hinges, holesIn, tenon,
+  CONFIRMAT, DOWELS, DRILLING_32, GROOVE, HINGES, MINIFIX, TENON,
+  confirmats, contactOf, dowels, drilling32, groove, halfLap, hinges, holesIn, minifix, tenon,
   type Box, type BoxFace, type Joint,
 } from "../features/joinery";
 import { formatLength } from "../measurements/units";
@@ -25,10 +25,11 @@ const KINDS: [Kind, string][] = [
   ["groove", "Rainure de fond"],
   ["dowel", "Tourillons (2 planches)"],
   ["confirmat", "Confirmat (2 planches)"],
+  ["minifix", "Excentrique Minifix (A : la face, B : le chant)"],
   ["halflap", "Mi-bois (planches croisées)"],
   ["tenon", "Tenon et mortaise (2 planches)"],
 ];
-const NAMES: Partial<Record<Kind, string>> = { drilling32: "Perçages 32", hinge: "Charnières", groove: "Rainure", dowel: "Tourillons", confirmat: "Confirmat", halflap: "Mi-bois", tenon: "Tenon-mortaise" };
+const NAMES: Partial<Record<Kind, string>> = { drilling32: "Perçages 32", hinge: "Charnières", groove: "Rainure", dowel: "Tourillons", confirmat: "Confirmat", minifix: "Minifix", halflap: "Mi-bois", tenon: "Tenon-mortaise" };
 const SIDES: [string, string][] = [["low", "Du bord bas (le plus petit)"], ["high", "Du bord haut"]];
 const AXIS_LETTER = ["X", "Y", "Z"];
 
@@ -60,6 +61,7 @@ export class MachiningTool extends PanelTool {
   private slot = { ...GROOVE };
   private pins = { ...DOWELS };
   private screws = { ...CONFIRMAT };
+  private cams = { ...MINIFIX };
   private tongue = { ...TENON };
   private aOnTop = true;
   /** Boxes of the boards, taken when they were picked: the preview replaces the bodies in the view. */
@@ -89,6 +91,7 @@ export class MachiningTool extends PanelTool {
     if (!contact) return "Ces deux planches ne se touchent pas face à face.";
     if (this.kind === "dowel") return dowels(a, b, contact, this.pins);
     if (this.kind === "confirmat") return confirmats(a, b, contact, this.screws);
+    if (this.kind === "minifix") return minifix(a, b, contact, this.cams);
     return tenon(a, b, contact, this.tongue);
   }
 
@@ -215,6 +218,12 @@ export class MachiningTool extends PanelTool {
           num("Entraxe", this.screws.spacing, (v) => (this.screws.spacing = v)),
           num("Marge bouts", this.screws.margin, (v) => (this.screws.margin = v)),
           num("Pilote", this.screws.pilotDepth, (v) => (this.screws.pilotDepth = v)),
+        ];
+      case "minifix":
+        return [
+          this.selectRow("Tige", String(this.cams.distance), [["24", "Excentrique à 24 mm du chant"], ["34", "Excentrique à 34 mm du chant"]], (v) => ((this.cams.distance = Number(v)), (this.cams.boreDepth = Number(v) + 10), this.changed())),
+          num("Entraxe", this.cams.spacing, (v) => (this.cams.spacing = v)),
+          num("Marge bouts", this.cams.margin, (v) => (this.cams.margin = v)),
         ];
       case "halflap":
         return [this.checkRow("A au-dessus (B en dessous)", this.aOnTop, (v) => ((this.aOnTop = v), this.changed()))];
