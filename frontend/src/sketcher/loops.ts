@@ -210,3 +210,16 @@ export function centroid(polygon: Vec[]): Vec {
   if (Math.abs(a) < 1e-12) return polygon[0] ?? [0, 0];
   return [cx / (3 * a), cy / (3 * a)];
 }
+
+/**
+ * A sketch drawn with lines only, without any closed area (a wall drawn as one stroke): Extruder has nothing to push,
+ * its lines become boards instead (Panneaux).
+ */
+export function strokesOnly(geometry: SketchGeometry & { texts?: unknown[] }): boolean {
+  if (geometry.texts?.length || !geometry.curves.some((c) => c.kind !== "circle" && !c.construction)) return false;
+  try {
+    return sketchFaces(extractLoops(geometry)).length === 0;
+  } catch {
+    return true;
+  }
+}

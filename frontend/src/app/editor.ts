@@ -14,6 +14,7 @@ import { ref, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
 import { removeOffsetFrom, renameOffsetIn } from "../sketcher/offset";
 import { withPlaneOffset } from "../sketcher/frame";
+import { strokesOnly } from "../sketcher/loops";
 import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
@@ -348,8 +349,8 @@ export class Editor {
   }
 
   /**
-   * Opens the interactive extrusion: on the sketch being edited or selected,
-   * otherwise waiting for a profile click in the view.
+   * Opens the interactive extrusion: on the sketch being edited or selected, otherwise waiting for a profile click in
+   * the view. A sketch of lines only (no closed area) goes to Panneaux: each line becomes a board.
    */
   private extrudeCommand(featureId?: string): void {
     // Faces picked in the model, or an extrusion made from faces: push/pull tool.
@@ -364,17 +365,20 @@ export class Editor {
     }
     const selected = this.selectedFeature ? findFeature(this.doc, this.selectedFeature) : undefined;
     const sketchId = this.sketches.mode?.featureId ?? (selected?.type === "sketch" ? selected.id : undefined);
+    const strokes = sketchId ? findFeature(this.doc, sketchId) : undefined;
+    if (!featureId && strokes?.type === "sketch" && strokesOnly(strokes)) {
+      this.selectedFeature = strokes.id;
+      this.openTool("panels");
+      return this.notify(`« ${strokes.name} » n'a que des lignes : chacune devient un panneau. Réglez l'épaisseur, et la profondeur (sa hauteur depuis l'esquisse).`, "info");
+    }
     if (this.sketches.active) this.sketches.finish();
     this.extrudeTool?.cancel();
     this.tools.active?.cancel();
     const main = this.root.querySelector("main");
     if (!main) return;
     this.extrudeTool = new ExtrudeTool(this.viewport, {
-      doc: () => this.doc,
-      change: (next) => void this.change(next),
-      notify: (message, kind) => this.notify(message, kind),
-      bodies: () => this.visibleBodies(),
-      unit: () => this.unit,
+      doc: () => this.doc, change: (next) => void this.change(next), notify: (message, kind) => this.notify(message, kind),
+      bodies: () => this.visibleBodies(), unit: () => this.unit,
       closed: (id) => {
         this.extrudeTool = null;
         this.root.dataset.tool = "";
@@ -435,13 +439,7 @@ export class Editor {
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
       "add-plate": () => this.addPlateCommand(),
-      "add-hole": () => this.openTool("hole"),
-      revolve: () => this.openTool("revolve"),
-      fillet: () => this.openTool("fillet"),
-      chamfer: () => this.openTool("chamfer"),
-      combine: () => this.openTool("combine"),
-      split: () => this.openTool("split"),
-      move: () => this.openTool("move"),
+      "add-hole": () => this.openTool("hole"), revolve: () => this.openTool("revolve"), fillet: () => this.openTool("fillet"), chamfer: () => this.openTool("chamfer"), combine: () => this.openTool("combine"), split: () => this.openTool("split"), move: () => this.openTool("move"),
       partition: () => this.sketches.startJoinery("partition", this.selectedFeature),
       shelves: () => this.sketches.startJoinery("shelves", this.selectedFeature),
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),

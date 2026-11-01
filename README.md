@@ -646,6 +646,9 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
+  - **Extruder une esquisse de lignes seules** (un trait tracé sur un corps, deux traits en L…) ouvre Panneaux sur
+    elle : chaque ligne devient une planche debout, sa profondeur étant sa hauteur depuis l'esquisse. C'est le moyen
+    de monter les parois d'une niche ou d'une cabane à partir de leur tracé au sol.
 - **Dessiner sur le corps** (groupe « Curic », comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
