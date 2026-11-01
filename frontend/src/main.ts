@@ -16,6 +16,8 @@ import { bindStandardsPanel } from "./app/standards-panel";
 import { bindProduction } from "./app/production";
 import { bindReplace } from "./app/replace-panel";
 import { bindDrivers } from "./app/drivers-3d";
+import { bindCabinetDrag } from "./app/cabinet-drag";
+import { bindKitchenUnits } from "./app/kitchen-units";
 import { bindProgress } from "./app/workshop-progress";
 import { bindSag } from "./app/sag-panel";
 import { bindWeight } from "./app/weight-panel";
@@ -121,6 +123,8 @@ async function start(): Promise<void> {
   bindStandardsPanel(root, viewport, editor);
   bindReplace(root, editor);
   bindDrivers(root, viewport, editor);
+  bindCabinetDrag(root, viewport, editor);
+  bindKitchenUnits(root, viewport, editor);
   bindProgress(root, viewport, editor, config.apiUrl);
   bindSag(root, viewport, editor);
   bindWeight(root, viewport, editor);

@@ -19,7 +19,7 @@ type Key = "width" | "height" | "depth" | "shelves";
 const LABELS: Record<Key, string> = { width: "L", height: "H", depth: "P", shelves: "Étagères" };
 
 /** The cabinet whose parts (or fronts) are all the bodies selected, or null. */
-function selectedCabinet(editor: Editor): CabinetFeature | null {
+export function selectedCabinet(editor: Pick<Editor, "doc" | "picked">): CabinetFeature | null {
   const doc = editor.doc;
   const ids = editor.picked.selection.bodies;
   if (!ids.length) return null;

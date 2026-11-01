@@ -1296,6 +1296,21 @@ opération existante.
     1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
     `features/room-runs.ts`, `document/kitchen-plan.ts`).
+- **Meubles de cuisine** (groupe « Menuiserie ») : la liste des meubles du commerce, chacun à ses largeurs.
+  - **Bas** : 1 porte, 2 portes, 3 tiroirs, casseroliers, évier, four.
+  - **Hauts** : 1 porte, 2 portes, sur hotte.
+  - **Colonnes** : rangement, four, réfrigérateur.
+  - Un clic ajoute le meuble avec ses façades, à droite du caisson sélectionné (sinon du dernier), à la première place
+    libre le long du même mur, son fond sur le même plan.
+  - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
+    et leurs matières.
+  - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
+- **Déplacer un caisson d'un geste** : un caisson sélectionné montre deux poignées sur son dessus.
+  - **✥ Déplacer** se tire : le caisson glisse le long de son mur avec ses façades (Maj : librement sur le sol).
+  - Il s'aimante au ras des autres corps : contre le côté d'un voisin, dans l'alignement d'un fond ou d'une façade,
+    au bout du plan de travail, contre un mur (Alt : sans aimant ; Échap : annuler).
+  - **↻** le tourne d'un quart de tour sur place.
+  - Le document ne change qu'au lâcher, une annulation (`app/cabinet-drag.ts`).
 - **Pièce** (groupe « Menuiserie ») : le relevé de la pièce, tel qu'on le mesure.
   - Les murs : chacun par sa longueur et l'angle de chaque coin (90° d'équerre, sinon l'angle relevé : une pièce pas
     d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine

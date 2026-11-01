@@ -374,6 +374,13 @@
   .cad-measure.cad-driver {
     @apply border border-sky-400 bg-sky-700/90 hover:bg-sky-600 dark:bg-sky-300/90 dark:text-gray-950;
   }
+  /* The grips of the selected cabinet: slide it on the floor, turn it (app/cabinet-drag.ts). */
+  .cad-measure.cad-grip {
+    @apply cursor-grab touch-none border border-orange-300 bg-orange-600/90 font-sans hover:bg-orange-500 dark:bg-orange-400/90 dark:text-gray-950;
+  }
+  .cad-dragging .cad-driver {
+    @apply hidden;
+  }
   /* The distance between two parallel edges: amber like its line, and a little larger. */
   .cad-measure.cad-measure-gap {
     @apply bg-amber-500 px-2 text-sm font-semibold text-gray-950 hover:bg-amber-400 dark:bg-amber-400 dark:text-gray-950;
