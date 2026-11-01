@@ -1207,11 +1207,15 @@ opération existante.
         courte près d'elle, celles qui ne se chevauchent pas (une chaîne) sur le même rang, sans croisement, textes
         recentrés (`drawing/arrange.ts`).
     - **Cotes auto** : la cotation automatique des vues sélectionnées, sinon de toutes les vues visibles (hors
-      isométriques et détails). Elle pose les cotes hors tout (largeur sous la vue et son nom, hauteur à sa gauche ;
-      au-dessus ou à droite quand une autre vue est tout près de ce côté),
-      les chaînes de cotes entre les niveaux des coins, et un diamètre par taille de cercle assez grand pour être lu.
-      Les niveaux à moins de 7 mm l'un de l'autre sur le papier sont fondus : l'épaisseur d'une planche ne fait pas
-      une cote illisible. Relancée, elle remplace les siennes.
+      isométriques et détails). Elle pose les cotes hors tout (largeur sous la vue, hauteur à sa gauche ; au-dessus
+      ou à droite quand une autre vue est tout près de ce côté), les chaînes de cotes entre les niveaux des coins, et
+      un diamètre par taille de cercle assez grand pour être lu. Les niveaux à moins de 7 mm l'un de l'autre sur le
+      papier sont fondus : l'épaisseur d'une planche ne fait pas une cote illisible. Toutes restent lisibles : les
+      chiffres d'une cote se mettent entre ses flèches, sinon au-dessus de sa ligne s'ils tiennent entre ses lignes
+      d'attache. Sinon, ils passent au-delà d'un de ses bouts, la ligne prolongée jusqu'à eux, sur le premier rang
+      où ils ne touchent ni une autre cote ni une ligne d'attache. Plusieurs petites cotes qui se suivent (un fileur,
+      une colonne étroite) font ainsi un escalier. La cote hors tout vient au rang d'après, et le nom de la vue passe
+      sous ses cotes, jamais traversé par leurs lignes d'attache. Relancée, elle remplace les siennes.
     - **Navigateur** (à gauche, comme dans Fusion) : les feuilles, et pour la feuille ouverte ses vues, ses pièces,
       ses cotes et annotations, son dessin 2D. Un œil cache ou montre une vue entière, une pièce dans une seule vue
       (en dépliant la vue), une pièce dans toutes les vues de la feuille, une cote ou un trait. Une vue sans ses

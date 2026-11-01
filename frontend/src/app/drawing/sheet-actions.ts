@@ -14,12 +14,15 @@ import type { SheetLayout } from "../../drawing/layout";
 import { FORMATS, FRAME_ID, FRAME_MARGIN, TITLE_ID, freshId, sheetIds, shown, titleBox, type DrawingSheet, type Vec2 } from "../../drawing/model";
 import { bomSvg, type BomRow } from "../../drawing/svg";
 
-/** The sheet with the automatic dimensions of these views (all shown views but details when none), replacing earlier ones. */
-export function withAutoDimensions(sheet: DrawingSheet, layout: SheetLayout, ids: string[]): DrawingSheet {
+/**
+ * The sheet with the automatic dimensions of these views (all shown views but details when none), replacing earlier
+ * ones; `format` writes their figures (to know how long they are).
+ */
+export function withAutoDimensions(sheet: DrawingSheet, layout: SheetLayout, ids: string[], format?: (mm: number) => string): DrawingSheet {
   const chosen = sheet.views.filter((v) => (ids.length ? ids.includes(v.id) : shown(sheet, v.id) && v.kind !== "detail" && !v.orientation?.startsWith("iso")));
   let out: DrawingSheet = { ...sheet, annotations: sheet.annotations.filter((a) => !chosen.some((v) => isAutoOf(a, v.id))) };
   for (const view of chosen) {
-    for (const made of autoDimensions(out, layout, view)) {
+    for (const made of autoDimensions(out, layout, view, format)) {
       const id = freshId(sheetIds(out), "note");
       out = { ...out, annotations: [...out.annotations, { ...made, id } as DrawingSheet["annotations"][number]] };
     }

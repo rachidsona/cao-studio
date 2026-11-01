@@ -185,7 +185,7 @@ export class DrawingWorkspace {
   /** Cotation automatique: the selected views, else every view shown. */
   private autoDimensions(): void {
     const views = this.selection.filter((id) => this.sheet().views.some((v) => v.id === id));
-    this.update((s) => withAutoDimensions(s, this.layout, views));
+    this.update((s) => withAutoDimensions(s, this.layout, views, (mm) => formatLength(mm, this.editor.unit)));
   }
 
   private drawPanel(): void {

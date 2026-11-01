@@ -178,9 +178,8 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
       const c = p(view.detail.center);
       parts.push(`<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(view.detail.radius / view.scale)}" fill="none" ${STYLES.thin}/>`);
     }
-    const [, b] = layout.box(sheet, view);
     const label = view.kind === "section" && view.cut ? `COUPE ${view.cut.letter}-${view.cut.letter}` : view.kind === "detail" && view.detail ? `DÉTAIL ${view.detail.letter}` : view.label;
-    parts.push(text([view.at[0], b[1] + 7], `${label} (${scaleText(view.scale)})`, `fill="${picked(view.id) ? PICKED : INK}" text-anchor="middle" font-weight="bold"`, 3.5));
+    parts.push(text(layout.labelAt(sheet, view), `${label} (${scaleText(view.scale)})`, `fill="${picked(view.id) ? PICKED : INK}" text-anchor="middle" font-weight="bold"`, 3.5));
     out.push(`<g data-id="${view.id}">${parts.join("")}</g>`);
   }
 

@@ -8,6 +8,7 @@ import { featureOfBody } from "../../document/types";
 import type { SheetLayout } from "../../drawing/layout";
 import { FORMATS, type DrawingSheet, type Format } from "../../drawing/model";
 import { poseSheets, type PoseBody } from "../../drawing/pose";
+import { formatLength } from "../../measurements/units";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { savedQuoteHtml } from "../workshop-documents";
@@ -27,7 +28,7 @@ function poseBodies(viewport: Viewport, editor: Editor): PoseBody[] {
 
 /** The pose sheets added after the others, dimensioned; `done` gets every sheet and the first new one. */
 export function addPoseSheets(viewport: Viewport, editor: Editor, layout: SheetLayout, sheets: DrawingSheet[], done: (all: DrawingSheet[], first: string) => void): void {
-  const made = poseSheets(sheets, document.title.split(" · ")[0] || "Projet", poseBodies(viewport, editor)).map((s) => withAutoDimensions(s, layout, []));
+  const made = poseSheets(sheets, document.title.split(" · ")[0] || "Projet", poseBodies(viewport, editor)).map((s) => withAutoDimensions(s, layout, [], (mm) => formatLength(mm, editor.unit)));
   if (!made.length) return editor.notify("Aucun mur avec des meubles contre lui : il faut les murs de la pièce (Pièce relevée, ou « Dessiner les murs » de l'Implantation ou du Dressing).", "info");
   done([...sheets, ...made], made[0]!.id);
   editor.notify(`${made.length} feuille(s) de pose ajoutée(s), une par mur.`, "success");

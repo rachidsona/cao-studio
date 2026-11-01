@@ -90,10 +90,28 @@ export class SheetLayout {
     return [...sheet.views].reverse().filter((v) => !sheet.hiddenItems?.includes(v.id)).find((v) => {
       const [a, b] = this.box(sheet, v);
       if (p[0] >= a[0] - margin && p[0] <= b[0] + margin && p[1] >= a[1] - margin && p[1] <= b[1] + margin) return true;
-      // The name, centred 7 mm under the box in 3.5 mm letters (with its scale, « (1:10) »).
+      // The name, centred on its baseline in 3.5 mm letters (with its scale, « (1:10) »).
+      const [x, y] = this.labelAt(sheet, v);
       const half = Math.max(10, (v.label.length + 7) * 1.1);
-      return Math.abs(p[0] - v.at[0]) <= half && p[1] >= b[1] + 3 && p[1] <= b[1] + 9;
+      return Math.abs(p[0] - x) <= half && p[1] >= y - 4 && p[1] <= y + 2;
     });
+  }
+
+  /**
+   * Where a view's name is written (its baseline, centred): 7 mm under the view, or under the lowest of its horizontal
+   * dimensions below it — never crossed by their extension lines.
+   */
+  labelAt(sheet: DrawingSheet, view: DrawingView): Vec2 {
+    const [, b] = this.box(sheet, view);
+    let y = b[1] + 7;
+    for (const a of sheet.annotations) {
+      if (a.kind !== "dimension" || a.mode !== "horizontal" || a.a.view !== view.id || a.b.view !== view.id || sheet.hiddenItems?.includes(a.id)) continue;
+      const [pa, pb] = [this.resolve(sheet, a.a), this.resolve(sheet, a.b)];
+      if (!pa || !pb) continue;
+      const line = (this.toPaper(sheet, view, pa)[1] + this.toPaper(sheet, view, pb)[1]) / 2 + a.offset;
+      if (line > b[1] && line - b[1] < 80) y = Math.max(y, line + 7);
+    }
+    return [view.at[0], y];
   }
 
   /** An anchor for a point of a view's frame: relative to the view's box. */

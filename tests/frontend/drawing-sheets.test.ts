@@ -157,6 +157,35 @@ describe("navigateur, cotation automatique, cote d'un trait", () => {
     expect(hitTest(bare, layout, [10.5, 200], [], String)).toBeNull();
   });
 
+  it("une chaîne de petites cotes porte leurs chiffres au bout, en escalier, sans qu'une ligne d'attache les traverse", async () => {
+    const { chainRows } = await import("../../frontend/src/drawing/auto-dims");
+    // The wall of a pose plan at 1:20: 66, 62.75, 59.15 cm, then 22, 16, 15.2 cm (too short for their figures), 78.9 cm.
+    const widths = [33, 31.4, 29.6, 11, 8, 7.6, 39.5];
+    const segments = widths.map((w, i) => {
+      const start = widths.slice(0, i).reduce((a, b) => a + b, 0);
+      return { line: [start, start + w] as [number, number], along: 10 };
+    });
+    const rows = chainRows(segments);
+    // The long ones on the first row, their figures in the middle.
+    for (const i of [0, 1, 2, 6]) expect(rows[i]).toEqual({ row: 0, shift: 0 });
+    // The short ones each past an end, apart: no two figures of one row overlap, no extension line crosses figures.
+    const texts = rows.map((r, i): [number, number] => {
+      const mid = (segments[i]!.line[0] + segments[i]!.line[1]) / 2 + r.shift;
+      return [mid - 5.8, mid + 5.8];
+    });
+    for (const i of [3, 4, 5]) expect(rows[i]!.shift).not.toBe(0);
+    rows.forEach((r, i) => rows.forEach((q, k) => {
+      if (k === i) return;
+      const [p, t] = [segments[k]!.line, texts[i]!];
+      if (q.row === r.row) {
+        const a: [number, number] = [Math.min(segments[i]!.line[0], t[0]), Math.max(segments[i]!.line[1], t[1])];
+        const b: [number, number] = [Math.min(p[0], texts[k]![0]), Math.max(p[1], texts[k]![1])];
+        expect(a[0] < b[1] - 0.3 && b[0] < a[1] - 0.3).toBe(false);
+      }
+      if (q.row > r.row) for (const x of p) expect(x > t[0] + 0.3 && x < t[1] - 0.3).toBe(false);
+    }));
+  });
+
   it("une vue vide (rien à dessiner) se prend par son nom, pour la retirer", () => {
     const layout = new SheetLayout(() => []);
     const sheet = sheetWith([view("v1")]);
@@ -186,7 +215,9 @@ describe("réorganiser et glisser les cotes comme Fusion", () => {
     expect(line("left")).toBeCloseTo(line("right"), 6);
     expect(line("all") - line("left")).toBeCloseTo(7, 6);
     const [, bottom] = layout.box(out, out.views[0]!);
-    expect(line("left") - bottom[1]).toBeCloseTo(13, 6);
+    // The first row 8 mm under the view, its name under the last row.
+    expect(line("left") - bottom[1]).toBeCloseTo(8, 6);
+    expect(layout.labelAt(out, out.views[0]!)[1]).toBeCloseTo(line("all") + 7, 6);
   });
 
   it("une cote glissée près d'une autre s'aligne sur elle, avec un guide ; son texte revient au milieu", async () => {

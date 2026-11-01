@@ -23,6 +23,8 @@ export interface Drawn {
 const EXTEND = 1.5;
 const GAP = 1;
 export const TEXT_SIZE = 3.5;
+/** How long a dimension's figures are on the paper (mm), written level. */
+export const labelWidth = (label: string) => label.length * TEXT_SIZE * 0.56;
 
 const sub = (a: Vec2, b: Vec2): Vec2 => [a[0] - b[0], a[1] - b[1]];
 const add = (a: Vec2, b: Vec2): Vec2 => [a[0] + b[0], a[1] + b[1]];
@@ -81,7 +83,7 @@ function shapeOf(sheet: DrawingSheet, layout: SheetLayout, a: Annotation, format
       // vertical one). Slid along the line (`textShift`) past an extension line, the line runs on to it. Too short to
       // hold it between its arrows, the text goes out of the line: above it, or beside it on the outer side.
       const length = len(sub(sb, sa));
-      const [w, h] = [label.length * TEXT_SIZE * 0.56, TEXT_SIZE];
+      const [w, h] = [labelWidth(label), TEXT_SIZE];
       const covered = Math.abs(d[0]) * w + Math.abs(d[1]) * h;
       const shift = (a.textShift ?? 0) * (dir[0] * d[0] + dir[1] * d[1] >= 0 ? 1 : -1);
       const center = length / 2 + shift;

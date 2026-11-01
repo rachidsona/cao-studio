@@ -67,8 +67,8 @@ export function sheetDxf(sheet: DrawingSheet, layout: SheetLayout, format: (mm: 
     const p = (q: Vec2) => layout.toPaper(sheet, view, q);
     for (const l of g.lines) line(p(l.a), p(l.b), l.hidden ? "CACHE" : "CONTOUR");
     for (const loop of g.hatches.flat()) loop.forEach((q, i) => line(p(q), p(loop[(i + 1) % loop.length]!), "COUPE"));
-    const [, b] = layout.box(sheet, view);
-    text([view.at[0] - 20, b[1] + 7], view.label, 3.5, 0, "COTES");
+    const at = layout.labelAt(sheet, view);
+    text([at[0] - 20, at[1]], view.label, 3.5, 0, "COTES");
   }
   const itemOf = (id: string) => bom.find((r) => r.bodies.includes(id))?.item ?? null;
   for (const a of sheet.annotations.filter((x) => !off.has(x.id))) {

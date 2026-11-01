@@ -10,9 +10,9 @@ import type { Annotation, DrawingSheet, Vec2 } from "./model";
 
 type Dimension = Annotation & { kind: "dimension" };
 
-/** Room between the view and the first row (under the view: below its name), then between rows (paper mm). */
+/** Room between the view and the first row (its name goes under its dimensions), then between rows (paper mm). */
 const FIRST = 8;
-const BELOW = 13;
+const BELOW = 8;
 const STEP = 7;
 /** Beside a view (vertical dimensions, their figures written level): rows a number's width apart, half of it first. */
 export const FIRST_SIDE = 11;
