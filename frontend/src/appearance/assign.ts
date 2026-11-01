@@ -20,6 +20,8 @@ export interface BodyAppearance {
    * different places of a sheet or of a tree; the same board keeps it across regenerations.
    */
   shift?: [number, number];
+  /** A light (document/lighting.ts): the side it lights in the render. */
+  emit?: "down" | "up";
 }
 
 /** A stable start of the motif for a body, from its id: two shares of a tile in 0…1. */
@@ -37,7 +39,7 @@ export function bodyAppearance(doc: CadDocument, bodyId: string, box: [number[],
   const info = bodyInfo(doc, bodyId);
   const appearance = appearanceById(info.appearance) ?? appearanceById(MATERIAL_APPEARANCE[info.material ?? ""]) ?? (info.room ? WALL_APPEARANCE : undefined);
   if (!appearance) return null;
-  return { appearance, color: appearance.paintable && isColor(info.color) ? info.color : undefined, grainAxis: grainAxis(info, box), shift: motifShift(bodyId) };
+  return { appearance, color: appearance.paintable && isColor(info.color) ? info.color : undefined, grainAxis: grainAxis(info, box), shift: motifShift(bodyId), ...(info.light ? { emit: info.light.up ? "up" : "down" } : {}) };
 }
 
 /** The grain runs along the board's length (its longest side), or its width when chosen so. */

@@ -1305,6 +1305,20 @@ opération existante.
   - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
     et leurs matières.
   - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
+- **Éclairage** (groupe « Menuiserie ») : des lumières dans la cuisine et le dressing, au choix.
+  - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
+    basse).
+  - **Dehors** : sous les meubles hauts, un ruban ou des spots (un tous les 60 cm) ; une **corniche** sur les meubles
+    qui montent à 1,80 m et plus ; une **plinthe lumineuse** sous les meubles posés sur un socle.
+  - **Lumière** : blanc chaud (2700 K), neutre (4000 K) ou froid (6000 K).
+  - Pour la sélection (des caissons, un mur du dressing), sinon tous les meubles de la vue. Le panneau dit le
+    nombre de rubans, leur longueur en mètres et le nombre de spots.
+  - Chaque lumière est un petit corps du calque « Éclairage », qui brille dans la vue. Elle reste hors débit, devis
+    et usinage.
+  - Dans le **rendu**, chaque ruban est une vraie lumière rectangulaire et chaque spot un projecteur. Elles se voient
+    le mieux en « Studio sombre » ou « Intérieur », portes ouvertes pour l'éclairage intérieur.
+  - Relancer l'outil **remplace** l'éclairage déjà posé, par exemple après avoir déplacé des meubles
+    (`document/lighting.ts`, `app/lighting-tool.ts`).
 - **Déplacer un caisson d'un geste** : un caisson sélectionné montre deux poignées dans la barre en bas de la vue, à côté
   de ses cotes.
   - **✥ Déplacer** se tire : le caisson glisse le long de son mur avec ses façades (Maj : librement sur le sol). Il

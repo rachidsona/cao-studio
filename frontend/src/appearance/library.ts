@@ -7,7 +7,7 @@
  */
 
 export type Pattern = "plain" | "wood" | "marble" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
-export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "metal" | "paint" | "plastic" | "textile" | "concrete" | "custom";
+export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "metal" | "paint" | "plastic" | "light" | "textile" | "concrete" | "custom";
 
 export interface Appearance {
   id: string;
@@ -26,6 +26,8 @@ export interface Appearance {
   /** Glass and clear plastics: light goes through (0…1), with this refractive index. */
   transmission?: number;
   ior?: number;
+  /** Light given off (LED strips and spots), in the render: its strength; the view only shows it lit. */
+  emissive?: number;
   /** Velvet-like sheen of fabrics (0…1). */
   sheen?: number;
   /** Size of one tile of the motif (mm): along the grain (or u), across it. */
@@ -51,6 +53,7 @@ export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "stone", name: "Marbres et pierres" },
   { id: "metal", name: "Métaux" },
   { id: "plastic", name: "Plastiques" },
+  { id: "light", name: "Éclairage (LED)" },
   { id: "textile", name: "Tissus et cuirs" },
   { id: "concrete", name: "Bétons et sols" },
   { id: "custom", name: "Mes motifs (images importées)" },
@@ -206,6 +209,11 @@ export const APPEARANCES: Appearance[] = [
   { id: "acrylic-clear", name: "Plexiglas transparent", category: "plastic", color: "#f4f7f8", pattern: "plain", roughness: 0.02, transmission: 1, ior: 1.49 },
   { id: "acrylic-opal", name: "Plexiglas opale", category: "plastic", color: "#f5f5f3", pattern: "plain", roughness: 0.3, transmission: 0.55, ior: 1.49 },
   { id: "rubber-black", name: "Caoutchouc noir", category: "plastic", color: "#1e1e1f", pattern: "plain", roughness: 0.9 },
+
+  // ---- Éclairage : rubans et spots LED (document/lighting.ts) ----
+  { id: "led-warm", name: "LED blanc chaud 2700 K", category: "light", color: "#ffd29a", pattern: "plain", roughness: 0.4, emissive: 14 },
+  { id: "led-neutral", name: "LED blanc neutre 4000 K", category: "light", color: "#fff0d8", pattern: "plain", roughness: 0.4, emissive: 14 },
+  { id: "led-cool", name: "LED blanc froid 6000 K", category: "light", color: "#e9f1ff", pattern: "plain", roughness: 0.4, emissive: 14 },
 
   // ---- Tissus et cuirs ----
   { id: "fabric-linen", name: "Lin naturel", category: "textile", color: "#cfc3ad", color2: "#b4a68c", pattern: "fabric", roughness: 0.9, sheen: 0.4, tile: [12, 12], relief: 0.6, paintable: true },

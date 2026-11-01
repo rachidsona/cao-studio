@@ -1,6 +1,9 @@
 /**
  * La scène du rendu, à part de celle de l'édition : copies des corps affichés (avec leur pose, porte ouverte
  * comprise) en matières physiques, un sol (ombres seules, studio ou parquet) et l'environnement d'éclairage HDR.
+ * Les lumières de l'outil Éclairage y sont aussi de vraies sources : une lumière rectangulaire le long de chaque ruban
+ * LED, un projecteur sous chaque spot (le moteur les échantillonne, une petite surface lumineuse seule éclairerait à
+ * peine).
  */
 import * as THREE from "three";
 import { ENV_ROTATION_X, environmentNorm, environmentPixels } from "./environments";
@@ -17,12 +20,16 @@ export type BodyLook = BodyAppearance | null;
 type GroundMaterial = THREE.MeshPhysicalMaterial & { matte?: boolean };
 
 const ENV_WIDTH = 1024;
+/** Luminance of a LED strip and intensity of a spot, against an environment of brightness 1 (scene in mm). */
+const STRIP_LUMINANCE = 1500;
+const SPOT_INTENSITY = 3e6;
 /** The parquet of the "Parquet" ground. */
 const FLOOR = appearanceById("wood-oak")!;
 
 export class RenderScene {
   readonly scene = new THREE.Scene();
   private bodies = new THREE.Group();
+  private lights = new THREE.Group();
   private ground: THREE.Mesh<THREE.PlaneGeometry, GroundMaterial>;
   private materials = new Map<string, THREE.MeshPhysicalMaterial>();
   private environment: THREE.DataTexture | null = null;
@@ -34,7 +41,7 @@ export class RenderScene {
 
   constructor() {
     this.ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshPhysicalMaterial({ color: 0xffffff }) as GroundMaterial);
-    this.scene.add(this.bodies, this.ground);
+    this.scene.add(this.bodies, this.lights, this.ground);
     this.scene.environmentRotation.set(ENV_ROTATION_X, 0, 0);
     this.scene.backgroundRotation.set(ENV_ROTATION_X, 0, 0);
   }
@@ -62,6 +69,7 @@ export class RenderScene {
   setBodies(meshes: THREE.Mesh[], look: (bodyId: string) => BodyLook, settings: RenderSettings, faces: (bodyId: string) => FaceAppearance[] = () => []): void {
     for (const child of this.bodies.children) (child as THREE.Mesh).geometry.dispose();
     this.bodies.clear();
+    this.lights.clear();
     this.box.makeEmpty();
     for (const source of meshes) {
       const id = source.userData.bodyId as string;
@@ -89,11 +97,38 @@ export class RenderScene {
         this.bodies.add(piece);
       }
       geometry.computeBoundingBox();
-      this.box.union(geometry.boundingBox!.clone().applyMatrix4(mesh.matrix));
+      const box = geometry.boundingBox!.clone().applyMatrix4(mesh.matrix);
+      this.box.union(box);
+      if (appearance.emit) this.addLight(box, appearance);
     }
     if (this.box.isEmpty()) this.box.set(new THREE.Vector3(-500, -500, 0), new THREE.Vector3(500, 500, 500));
     this.scene.updateMatrixWorld(true);
     this.applyGround(settings);
+  }
+
+  /** The source of a light body: along a strip, a rectangle facing the side it lights; under a spot, a cone. */
+  private addLight(box: THREE.Box3, look: BodyAppearance): void {
+    const color = new THREE.Color(look.appearance.color);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const sign = look.emit === "up" ? 1 : -1;
+    center.z = sign > 0 ? box.max.z + 0.5 : box.min.z - 0.5;
+    const along = size.x >= size.y ? 0 : 1;
+    const long = Math.max(size.x, size.y);
+    const short = Math.min(size.x, size.y);
+    if (long > short * 2) {
+      const light = new THREE.RectAreaLight(color, STRIP_LUMINANCE, long, short);
+      light.position.copy(center);
+      // Its width (local X) along the strip.
+      light.up.set(along === 0 ? 0 : 1, along === 0 ? 1 : 0, 0);
+      light.lookAt(center.x, center.y, center.z + sign * 1000);
+      this.lights.add(light);
+      return;
+    }
+    const spot = new THREE.SpotLight(color, SPOT_INTENSITY, 0, 0.7, 0.6, 2);
+    spot.position.copy(center);
+    spot.target.position.set(center.x, center.y, center.z + sign * 1000);
+    this.lights.add(spot, spot.target);
   }
 
   /** One physical material per appearance, colour and finish (library: textures, relief, glass, metals…). */

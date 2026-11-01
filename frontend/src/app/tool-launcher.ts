@@ -12,6 +12,7 @@ import { MirrorTool } from "./mirror-tool";
 import { AlignTool } from "./align-tool";
 import { CoincideTool } from "./coincide-tool";
 import { FinishTool } from "./finish-tool";
+import { LightingTool } from "./lighting-tool";
 import { RoomTool } from "./room-tool";
 import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
@@ -33,7 +34,7 @@ import { LayoutCopyTool } from "./layout-copy-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -67,7 +68,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" || kind === "coincide" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
@@ -200,6 +201,9 @@ export class ToolLauncher {
       }
       case "kitchen":
         this.active = new KitchenTool(ctx);
+        break;
+      case "lighting":
+        this.active = new LightingTool(ctx, options.bodies ?? []);
         break;
       case "dressing":
         this.active = new DressingTool(ctx);

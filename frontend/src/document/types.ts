@@ -646,6 +646,8 @@ export interface BodyInfo {
   layer?: string;
   /** Part of the room (walls), not of the furniture: left out of the cut list, the quote and the CNC file. */
   room?: boolean;
+  /** A light (LED strip, spot) of the « Éclairage » tool: it lights the render (document/lighting.ts). */
+  light?: { kind: "strip" | "spot"; color: "warm" | "neutral" | "cool"; up?: boolean };
   /** Appearance from the library (appearance/library.ts), over the material's own; the view and the render only. */
   appearance?: string;
   /** Colour chosen for a paintable appearance (sRGB hex "#rrggbb"). */

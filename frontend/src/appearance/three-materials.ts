@@ -203,6 +203,11 @@ export function appearanceMaterial(appearance: Appearance, color: string | undef
     material.opacity = 1 - 0.7 * transmission;
     material.depthWrite = false;
   }
+  if (appearance.emissive) {
+    // A light: it glows in the view, it lights the scene in the render.
+    material.emissive.set(base);
+    material.emissiveIntensity = mode === "render" ? appearance.emissive : 1;
+  }
   material.userData.appearance = appearance.id;
   return material;
 }

@@ -45,7 +45,7 @@ export class FinishTool extends PanelTool {
     const doc = this.ctx.doc();
     const boxes = (ids: string[]) => ids.map((id) => this.boxOf(id)).filter((b): b is Box => b !== null);
     const furniture = boxes(this.source);
-    const walls = boxes(this.ctx.viewport.displayedBodies.filter((id) => bodyInfo(doc, id).room));
+    const walls = boxes(this.ctx.viewport.displayedBodies.filter((id) => bodyInfo(doc, id).room && !bodyInfo(doc, id).light));
     if (!furniture.length) return "Aucun meuble affiché à habiller : sélectionnez ses corps.";
     const { parts, notes } = finishParts(furniture, walls, this.o);
     this.notes = notes;
