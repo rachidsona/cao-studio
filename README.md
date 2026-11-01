@@ -1305,12 +1305,19 @@ opération existante.
   - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
     et leurs matières.
   - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
-- **Déplacer un caisson d'un geste** : un caisson sélectionné montre deux poignées sur son dessus.
-  - **✥ Déplacer** se tire : le caisson glisse le long de son mur avec ses façades (Maj : librement sur le sol).
+- **Déplacer un caisson d'un geste** : un caisson sélectionné montre deux poignées dans la barre en bas de la vue, à côté
+  de ses cotes.
+  - **✥ Déplacer** se tire : le caisson glisse le long de son mur avec ses façades (Maj : librement sur le sol). Il
+    suit la souris comme si on l'avait pris par son dessus, et la poignée dit la distance parcourue.
   - Il s'aimante au ras des autres corps : contre le côté d'un voisin, dans l'alignement d'un fond ou d'une façade,
     au bout du plan de travail, contre un mur (Alt : sans aimant ; Échap : annuler).
+  - **Coller** : un clic sur ✥ sans tirer, puis un clic sur une face debout ou un coin d'un autre meuble (ou d'un
+    mur). Au survol, un fantôme orange montre où il ira.
+    - Sur le côté d'un voisin : son côté contre lui, les fonds alignés.
+    - Sur un mur ou une façade : son fond contre elle, centré sur le point, aimanté aux voisins.
+    - Sur un coin : son coin le plus proche dessus. Échap annule ; la vue tourne toujours en glissant.
   - **↻** le tourne d'un quart de tour sur place.
-  - Le document ne change qu'au lâcher, une annulation (`app/cabinet-drag.ts`).
+  - Le document ne change qu'au lâcher ou au clic, une annulation (`app/cabinet-drag.ts`, `app/cabinet-stick.ts`).
 - **Pièce** (groupe « Menuiserie ») : le relevé de la pièce, tel qu'on le mesure.
   - Les murs : chacun par sa longueur et l'angle de chaque coin (90° d'équerre, sinon l'angle relevé : une pièce pas
     d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine
@@ -1397,8 +1404,16 @@ opération existante.
 - **Remplir une largeur** (outil Caisson, nouveau caisson) : la largeur à remplir et la largeur maximale d'un
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
+- **Cotes des pièces** (bouton de la colonne Vue, sous « Ajuster ») : la largeur et la hauteur de chaque pièce vue de
+  face, en rouge sur sa face tournée vers l'œil, comme un plan de Polyboard.
+  - L'élément sélectionné (un caisson avec ses façades, une répartition…) n'a que les siennes, gardées pendant qu'un
+    outil travaille dessus ; sans sélection, toutes les pièces en vue.
+  - Seules les cotes visibles s'écrivent (une porte cache le caisson derrière, une pièce vue par la tranche n'en a
+    pas) ; elles suivent la vue quand elle tourne et le modèle quand il change.
+  - Le bouton les cache ; l'état est gardé dans ce navigateur (`features/piece-dims.ts`, `app/piece-dims.ts`).
 - **Cotes dans la vue** (les étiquettes de modification de TopSolid) : quand les pièces d'un seul caisson sont
-  sélectionnées, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent sur lui. Un clic en fait
+  sélectionnées, son nom, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent dans une barre en
+  bas de la vue, juste au-dessus de l'historique, avec ses poignées ✥ et ↻ (`app/cabinet-bar.ts`). Un clic en fait
   un champ, Entrée reconstruit le caisson. Une cote liée à un paramètre (« largeur ») change le paramètre, et tout ce
   qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`).
 - **Façades** (groupe « Menuiserie », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8

@@ -1,13 +1,13 @@
 /**
  * Déplacer un caisson d'un geste : quand les pièces d'un seul caisson sont sélectionnées, deux poignées s'affichent
- * sur son dessus. « ✥ » se tire : le caisson glisse le long de son mur (Maj : librement sur le sol), avec ses façades,
+ * dans la barre du bas de la vue, avec ses cotes (app/cabinet-bar.ts). « ✥ » se tire : le caisson glisse le long de son mur (Maj : librement sur le sol), avec ses façades,
  * et s'arrête au ras des autres corps — contre le côté d'un voisin, dans l'alignement de son fond ou de sa façade,
- * au bout du plan de travail, contre un mur (Alt : sans aimant). « ↻ » le tourne d'un quart de tour sur place.
+ * au bout du plan de travail, contre un mur (Alt : sans aimant). Un clic sur « ✥ » sans tirer le colle à une face ou
+ * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place.
  * Le document ne change qu'au lâcher, une annulation ; Échap rend le caisson à sa place. Rien ne s'affiche pendant un
  * outil.
  */
 import * as THREE from "three";
-import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { cabinetAxes, slideCabinet, turnCabinet } from "../document/kitchen-catalog";
 import { bodyOrigin, findFeature, updateFeature } from "../document/operations";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
@@ -15,6 +15,8 @@ import { alignBox, type Box } from "../features/smart-align";
 import { formatLength } from "../measurements/units";
 import { SnapGuides } from "../viewport/snap-guides";
 import type { Viewport } from "../viewport/viewport";
+import { cabinetBar } from "./cabinet-bar";
+import { around, bodyBox, stickCabinet } from "./cabinet-stick";
 import { selectedCabinet } from "./drivers-3d";
 import type { Editor } from "./editor";
 
@@ -29,14 +31,6 @@ export function cabinetBodies(doc: CadDocument, bodies: readonly string[], cabin
   });
 }
 
-/** The box around boxes. */
-function around(boxes: readonly Box[]): Box | null {
-  if (!boxes.length) return null;
-  const lo = [0, 1, 2].map((i) => Math.min(...boxes.map((b) => b[0][i]!))) as Vec3;
-  const hi = [0, 1, 2].map((i) => Math.max(...boxes.map((b) => b[1][i]!))) as Vec3;
-  return [lo, hi];
-}
-
 interface Drag {
   cabinet: CabinetFeature;
   bodies: string[];
@@ -46,34 +40,41 @@ interface Drag {
   z: number;
   from: Vec3;
   delta: Vec3;
+  /** Where the pointer went down on the grip (a click there, not a drag, sticks the cabinet to a face or corner). */
+  screen: [number, number];
+  /** From the pointer to the middle of the cabinet's top, on the screen. */
+  offset: [number, number];
 }
 
 export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: Editor): void {
-  const group = new THREE.Group();
-  viewport.scene.add(group);
+  const bar = cabinetBar(viewport);
   const guides = new SnapGuides(viewport.scene);
   let shown = "";
   let drag: Drag | null = null;
-  /** The grips, and where they stand before a drag. */
-  let handles: { object: CSS2DObject; at: Vec3 } | null = null;
+  /** The grip that slides (it says how far while dragged). */
+  let slider: HTMLElement | null = null;
 
   const clear = () => {
-    for (const child of [...group.children]) {
-      group.remove(child);
-      if (child instanceof CSS2DObject) child.element.remove();
-    }
+    bar.grips.replaceChildren();
+    bar.refresh();
     shown = "";
-    handles = null;
+    slider = null;
   };
 
-  const boxOf = (id: string): Box | null => {
-    const b = viewport.bodyMesh(id)?.metrics.bbox;
-    return b ? [[...b[0]] as Vec3, [...b[1]] as Vec3] : null;
+  const boxOf = (id: string) => bodyBox(viewport, id);
+  /** The bodies a target body stands with: all its cabinet's, or itself alone. */
+  const groupOf = (bodyId: string) => {
+    const f = findFeature(editor.doc, featureOfBody(bodyOrigin(editor.doc, bodyId)));
+    const cabinet = f?.type === "cabinet" ? f.id : f?.type === "fronts" ? f.cabinet : null;
+    return cabinet ? cabinetBodies(editor.doc, viewport.displayedBodies, cabinet) : [bodyId];
   };
 
-  /** The pointer on the horizontal plane at this height (null when the view looks along it). */
-  const onPlane = (event: PointerEvent, z: number): Vec3 | null => {
-    const { origin, direction } = viewport.rayFromEvent(event);
+  /**
+   * The pointer on the horizontal plane at this height (null when the view looks along it), shifted by `offset` px:
+   * the grip is in the bar under the view, the cabinet follows the pointer as if it had been taken on its top.
+   */
+  const onPlane = (event: PointerEvent, z: number, offset: [number, number] = drag?.offset ?? [0, 0]): Vec3 | null => {
+    const { origin, direction } = viewport.rayFromEvent({ clientX: event.clientX + offset[0], clientY: event.clientY + offset[1] } as PointerEvent);
     if (Math.abs(direction[2]) < 1e-6) return null;
     const t = (z - origin[2]) / direction[2];
     return t > 0 ? [origin[0] + direction[0] * t, origin[1] + direction[1] * t, z] : null;
@@ -100,13 +101,12 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     delta = delta.map(Math.round) as Vec3;
     drag.delta = delta;
     pose(drag, delta);
-    if (handles) handles.object.position.set(handles.at[0] + delta[0], handles.at[1] + delta[1], handles.at[2]);
     guides.show(lines, viewport);
     const moved = Math.hypot(delta[0], delta[1]);
-    viewport.renderer.domElement.title = moved ? `Déplacé de ${formatLength(moved, editor.unit)}` : "";
+    if (slider) slider.textContent = `✥ ${formatLength(moved, editor.unit)}`;
   };
 
-  const finish = async (apply: boolean) => {
+  const finish = async (apply: boolean, click = false) => {
     const d = drag;
     if (!d) return;
     drag = null;
@@ -114,16 +114,15 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     window.removeEventListener("pointerup", up);
     window.removeEventListener("keydown", key, true);
     guides.clear();
-    document.body.classList.remove("cad-dragging");
-    viewport.renderer.domElement.title = "";
     if (apply && Math.hypot(d.delta[0], d.delta[1]) >= 1) {
       await editor.change(updateFeature(editor.doc, d.cabinet.id, (f) => (f.type === "cabinet" ? slideCabinet(f, d.delta) : f)));
       editor.notify(`${d.cabinet.name} déplacé de ${formatLength(Math.hypot(d.delta[0], d.delta[1]), editor.unit)}.`, "success");
     }
     pose(d, null);
     show(true);
+    if (click) stickCabinet(viewport, editor, d.cabinet, d.bodies, groupOf, () => show(true));
   };
-  const up = () => void finish(true);
+  const up = (event: PointerEvent) => void finish(true, !!drag && Math.hypot(event.clientX - drag.screen[0], event.clientY - drag.screen[1]) <= 4);
   const key = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.stopPropagation();
@@ -137,11 +136,12 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     const own = new Set(bodies);
     const others = viewport.displayedBodies.filter((id) => !own.has(id)).map(boxOf).filter((b): b is Box => !!b);
     const z = box[1][2];
-    const from = onPlane(event, z);
+    const top = new THREE.Vector3((box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2, z).project(viewport.camera);
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const offset: [number, number] = [rect.left + ((top.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - top.y) / 2) * rect.height - event.clientY];
+    const from = onPlane(event, z, offset);
     if (!from) return;
-    drag = { cabinet, bodies, box, others, z, from, delta: [0, 0, 0] };
-    // The dimensions of the cabinet stay where it was: hidden while it slides.
-    document.body.classList.add("cad-dragging");
+    drag = { cabinet, bodies, box, others, z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("keydown", key, true);
@@ -165,11 +165,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (stamp === shown && !force) return;
     clear();
     shown = stamp;
-    const box = around(cabinetBodies(editor.doc, viewport.displayedBodies, cabinet.id).map(boxOf).filter((b): b is Box => !!b));
-    if (!box) return;
-    const row = document.createElement("span");
-    row.className = "flex gap-1";
-    const slide = grip("✥ Déplacer", "Tirez pour faire glisser le caisson le long de son mur (Maj : librement sur le sol, Alt : sans aimant, Échap : annuler)", "Déplacer le caisson");
+    const slide = grip("✥ Déplacer", "Tirez pour faire glisser le caisson le long de son mur (Maj : librement sur le sol, Alt : sans aimant, Échap : annuler) ; cliquez, puis cliquez une face ou un coin d'un autre meuble pour l'y coller", "Déplacer le caisson");
     slide.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       event.stopPropagation();
@@ -183,13 +179,9 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
       event.stopPropagation();
       void editor.change(updateFeature(editor.doc, cabinet.id, (f) => (f.type === "cabinet" ? turnCabinet(f) : f)));
     });
-    row.append(slide, turn);
-    const object = new CSS2DObject(row);
-    const at: Vec3 = [(box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2, box[1][2]];
-    object.position.set(...at);
-    object.center.set(0.5, 1.6);
-    group.add(object);
-    handles = { object, at };
+    bar.grips.replaceChildren(slide, turn);
+    bar.refresh();
+    slider = slide;
   };
 
   const previous = editor.onRender;

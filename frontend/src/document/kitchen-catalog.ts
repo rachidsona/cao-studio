@@ -162,3 +162,36 @@ function uniqueKitchenName(doc: CadDocument, entry: CatalogEntry): string {
 export function slideCabinet(c: CabinetFeature, delta: Vec3): CabinetFeature {
   return { ...c, origin: [Math.round(c.origin[0] + delta[0]), Math.round(c.origin[1] + delta[1]), c.origin[2]] };
 }
+
+type Box = [Vec3, Vec3];
+
+/** What a cabinet is stuck to: a face of another body (its point, its normal, that body's box), or a corner. */
+export type StickTarget = { kind: "face"; point: Vec3; normal: Vec3; other: Box } | { kind: "point"; point: Vec3 };
+
+/**
+ * The slide on the floor that sticks a cabinet (its box, fronts included) to a target, null when it cannot:
+ * - a side face: the cabinet's opposite side on it, its back in line with the other's back;
+ * - a wall or a front: the cabinet's back (or front) on it, centred on the point clicked;
+ * - a corner: the cabinet's corner nearest to it (seen from above) on it.
+ * A face lying flat (a top, an underside) gives nothing: the cabinet keeps its height.
+ */
+export function stickDelta(box: Box, rotation: number, target: StickTarget): Vec3 | null {
+  if (target.kind === "point") {
+    const corners = [box[0][0], box[1][0]].flatMap((x) => [box[0][1], box[1][1]].map((y): [number, number] => [x, y]));
+    const [cx, cy] = corners.reduce((a, b) => (Math.hypot(b[0] - target.point[0], b[1] - target.point[1]) < Math.hypot(a[0] - target.point[0], a[1] - target.point[1]) ? b : a));
+    return [target.point[0] - cx, target.point[1] - cy, 0];
+  }
+  const n = target.normal;
+  if (Math.abs(n[2]) > 0.7) return null;
+  const i = Math.abs(n[0]) >= Math.abs(n[1]) ? 0 : 1;
+  const j = 1 - i;
+  const delta: Vec3 = [0, 0, 0];
+  // The face looks towards +i: the cabinet's low side goes on it; towards −i, its high side.
+  delta[i] = target.point[i]! - (n[i]! > 0 ? box[0][i]! : box[1][i]!);
+  const { back } = cabinetAxes(rotation);
+  if (Math.abs(back[j]!) > 0.5) {
+    // Side by side: the backs in line.
+    delta[j] = back[j]! > 0 ? target.other[1][j]! - box[1][j]! : target.other[0][j]! - box[0][j]!;
+  } else delta[j] = target.point[j]! - (box[0][j]! + box[1][j]!) / 2;
+  return delta;
+}

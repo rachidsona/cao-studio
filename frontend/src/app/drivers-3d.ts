@@ -1,18 +1,18 @@
 /**
  * Pilotes dans la vue (les « étiquettes de modification » de TopSolid) : quand les pièces d'un seul caisson sont
- * sélectionnées, ses cotes — largeur, hauteur, profondeur, étagères — s'affichent sur lui en étiquettes ; un clic en
+ * sélectionnées, ses cotes — largeur, hauteur, profondeur, étagères — s'affichent en étiquettes dans la barre du bas de
+ * la vue, au-dessus de l'historique (app/cabinet-bar.ts), avec son nom ; un clic en
  * fait un champ, Entrée reconstruit le caisson (une annulation). Une cote qui suit un paramètre (« largeur ») change
  * le paramètre, et tout ce qui le suit ; une cote faite d'une formule plus longue est laissée à sa formule. Rien ne
  * s'affiche pendant un outil.
  */
-import * as THREE from "three";
-import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { applyExpressions } from "../document/expressions";
 import { bodyOrigin, updateFeature } from "../document/operations";
-import { featureOfBody, type CabinetFeature, type Vec3 } from "../document/types";
+import { featureOfBody, type CabinetFeature } from "../document/types";
 import { cabinetProblem } from "../features/cabinet-parts";
 import { formatLength, fromDisplay, toDisplay } from "../measurements/units";
 import type { Viewport } from "../viewport/viewport";
+import { cabinetBar } from "./cabinet-bar";
 import type { Editor } from "./editor";
 
 type Key = "width" | "height" | "depth" | "shelves";
@@ -35,14 +35,12 @@ export function selectedCabinet(editor: Pick<Editor, "doc" | "picked">): Cabinet
 }
 
 export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Editor): void {
-  const group = new THREE.Group();
-  viewport.scene.add(group);
+  const bar = cabinetBar(viewport);
   let shown = "";
   const clear = () => {
-    for (const child of [...group.children]) {
-      group.remove(child);
-      if (child instanceof CSS2DObject) child.element.remove();
-    }
+    bar.dims.replaceChildren();
+    bar.name.textContent = "";
+    bar.refresh();
     shown = "";
   };
 
@@ -60,7 +58,7 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
     editor.notify(`Paramètre « ${formula} » : ${key === "shelves" ? value : formatLength(value, editor.unit)}.`, "success");
   };
 
-  const label = (cabinet: CabinetFeature, key: Key, at: Vec3) => {
+  const label = (cabinet: CabinetFeature, key: Key) => {
     const span = document.createElement("span");
     span.className = "cad-measure cad-driver";
     span.style.pointerEvents = "auto";
@@ -93,9 +91,7 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
       });
       input.addEventListener("blur", () => finish(true));
     });
-    const object = new CSS2DObject(span);
-    object.position.set(...at);
-    group.add(object);
+    bar.dims.append(span);
   };
 
   const show = (force = false) => {
@@ -105,34 +101,9 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
     if (key === shown && !force) return;
     clear();
     shown = key;
-    // The box of its bodies as displayed (turned with it).
-    const lo: Vec3 = [Infinity, Infinity, Infinity];
-    const hi: Vec3 = [-Infinity, -Infinity, -Infinity];
-    for (const id of viewport.displayedBodies) {
-      if (featureOfBody(bodyOrigin(editor.doc, id)) !== cabinet.id) continue;
-      const b = viewport.bodyMesh(id)?.metrics.bbox;
-      if (!b) continue;
-      for (let i = 0; i < 3; i++) {
-        lo[i] = Math.min(lo[i]!, b[0][i]!);
-        hi[i] = Math.max(hi[i]!, b[1][i]!);
-      }
-    }
-    if (!Number.isFinite(lo[0])) return;
-    const mid = (i: number) => (lo[i]! + hi[i]!) / 2;
-    // The front face: −Y at 0°, +X at 90°, +Y at 180°, −X at 270°.
-    const rot = cabinet.rotation ?? 0;
-    const across = rot === 90 || rot === 270 ? 1 : 0;
-    const front: Vec3 = [mid(0), mid(1), mid(2)];
-    if (rot === 0) front[1] = lo[1];
-    if (rot === 180) front[1] = hi[1];
-    if (rot === 90) front[0] = hi[0];
-    if (rot === 270) front[0] = lo[0];
-    const side = [...front] as Vec3;
-    side[across] = lo[across]!;
-    label(cabinet, "width", [front[0], front[1], lo[2]]);
-    label(cabinet, "height", [side[0], side[1], mid(2)]);
-    label(cabinet, "depth", [rot === 90 || rot === 270 ? mid(0) : side[0], rot === 90 || rot === 270 ? side[1] : mid(1), hi[2]]);
-    label(cabinet, "shelves", [front[0], front[1], mid(2)]);
+    bar.name.textContent = cabinet.name;
+    for (const key of ["width", "height", "depth", "shelves"] as const) label(cabinet, key);
+    bar.refresh();
   };
 
   const previous = editor.onRender;

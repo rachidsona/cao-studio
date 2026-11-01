@@ -1,6 +1,6 @@
 /** Meubles de cuisine pris dans la liste : posés à côté du caisson choisi, construits comme lui ; glissés, tournés. */
 import { describe, expect, it } from "vitest";
-import { CATALOG, addKitchenUnit, cabinetBox, slideCabinet, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
+import { CATALOG, addKitchenUnit, cabinetBox, slideCabinet, stickDelta, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 
 const entry = (id: string) => CATALOG.find((e) => e.id === id)!;
@@ -67,5 +67,21 @@ describe("meubles de cuisine", () => {
     expect(middle(cabinetBox(turned))).toEqual(middle(cabinetBox(c)));
     // Four quarters: back where it was.
     expect(turnCabinet(turnCabinet(turnCabinet(turned)))).toMatchObject({ origin: c.origin, rotation: 0 });
+  });
+
+  it("se colle à une face debout ou à un coin : côté contre côté fonds alignés, fond contre le mur, coin sur coin", () => {
+    // A base unit 600 wide (fronts included: 579 deep), away from the run; rotation 0, its back towards +Y.
+    const box: [[number, number, number], [number, number, number]] = [[-2000, -900, 0], [-1400, -321, 870]];
+    const neighbour: [[number, number, number], [number, number, number]] = [[0, -579, 0], [600, 0, 870]];
+    // The neighbour's left side (looking −X): the cabinet's right side on it, the backs in line.
+    expect(stickDelta(box, 0, { kind: "face", point: [0, -300, 400], normal: [-1, 0, 0], other: neighbour })).toEqual([1400, 321, 0]);
+    // Its right side (looking +X): the cabinet's left side on it.
+    expect(stickDelta(box, 0, { kind: "face", point: [600, -100, 400], normal: [1, 0, 0], other: neighbour })).toEqual([2600, 321, 0]);
+    // A wall looking −Y: the back on it, centred on the point clicked.
+    expect(stickDelta(box, 0, { kind: "face", point: [1000, 0, 1200], normal: [0, -1, 0], other: [[0, 0, 0], [3000, 100, 2500]] })).toEqual([2700, 321, 0]);
+    // A top: nothing (the cabinet keeps its height).
+    expect(stickDelta(box, 0, { kind: "face", point: [300, -300, 870], normal: [0, 0, 1], other: neighbour })).toBeNull();
+    // A corner: the nearest corner of the cabinet goes on it.
+    expect(stickDelta(box, 0, { kind: "point", point: [0, 0, 870] })).toEqual([1400, 321, 0]);
   });
 });
