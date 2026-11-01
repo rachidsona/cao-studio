@@ -9,7 +9,7 @@ import { bodyLabel } from "../../document/operations";
 import { sheetDxf } from "../../drawing/dxf";
 import { SheetLayout } from "../../drawing/layout";
 import {
-  FORMATS, FRAME_MARGIN, ORIENTATIONS, TITLE_SIZE, freshId, newSheet, placedSide, removeView, sheetIds, sideSpec, updateSheet, withoutDimensions,
+  FIXED_ITEMS, FORMATS, FRAME_MARGIN, ORIENTATIONS, TITLE_SIZE, freshId, newSheet, placedSide, removeView, sheetIds, sideSpec, toggled, updateSheet, withoutDimensions,
   type DrawingSheet, type DrawingView, type LineStyle, type Orientation, type Vec2,
 } from "../../drawing/model";
 import type { MeshInput } from "../../drawing/projection";
@@ -405,7 +405,7 @@ export class DrawingWorkspace {
       const p = this.paper(event);
       const id = event.button === 0 && !this.tool ? this.hit(p) : null;
       if (id && !this.selection.includes(id)) this.selection = event.shiftKey ? [...this.selection, id] : [id];
-      drag = { id: this.tool && event.button === 0 ? null : id, start: p, last: p, screen: [event.clientX, event.clientY], view: { x: this.view.x, y: this.view.y }, moved: false };
+      drag = { id: (this.tool && event.button === 0) || (id && FIXED_ITEMS.includes(id)) ? null : id, start: p, last: p, screen: [event.clientX, event.clientY], view: { x: this.view.x, y: this.view.y }, moved: false };
       this.stage.setPointerCapture(event.pointerId);
     });
     this.stage.addEventListener("pointermove", (event) => {
@@ -466,7 +466,8 @@ export class DrawingWorkspace {
       const gone = new Set(this.selection);
       this.selection = [];
       this.update((s) => {
-        let out = s;
+        // The frame and the title block are taken off (put back from the navigator); dragging them pans the sheet.
+        let out: DrawingSheet = { ...s, hiddenItems: FIXED_ITEMS.filter((f) => gone.has(f)).reduce((list, f) => toggled(list, f, true), s.hiddenItems) };
         for (const id of gone) if (out.views.some((v) => v.id === id)) out = removeView(out, id);
         return { ...out, annotations: out.annotations.filter((a) => !gone.has(a.id)), sketch: { ...out.sketch, items: out.sketch.items.filter((i) => !gone.has(i.id)) } };
       });

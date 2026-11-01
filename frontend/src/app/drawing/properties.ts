@@ -3,7 +3,7 @@
  * ses lignes cachées, le sens d'une coupe ; une cote : son type, son texte ; un texte ; un trait du dessin 2D : son
  * style), sinon la feuille (format, projection, cartouche, échelle du dessin 2D) — et les réglages de l'outil en cours.
  */
-import { DIMENSION_KINDS, FORMATS, ORIENTATIONS, SCALES, removeView, scaleText, type DimStyle, type DrawingSheet, type Format, type LineStyle, type Orientation } from "../../drawing/model";
+import { DIMENSION_KINDS, FORMATS, FRAME_ID, ORIENTATIONS, SCALES, TITLE_ID, removeView, scaleText, shown, toggled, type DimStyle, type DrawingSheet, type Format, type LineStyle, type Orientation } from "../../drawing/model";
 import { el } from "../../ui/dom";
 
 export interface PanelHost {
@@ -125,12 +125,21 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
     const title = (key: keyof DrawingSheet["title"], label: string) => row(label, input(sheet.title[key], (v) => host.update((s) => ({ ...s, title: { ...s.title, [key]: v } })), label));
     const standard = el("button", { type: "button", class: BUTTON }, "Poser les vues standard (face, dessus, gauche, iso)");
     standard.addEventListener("click", () => host.standardViews());
+    // The frame and the title block, taken off with Suppr as in Fusion, put back here (or in the navigator).
+    const showing = (itemId: string, label: string) => {
+      const box = el("input", { type: "checkbox", checked: shown(sheet, itemId), "aria-label": label });
+      box.addEventListener("change", () => host.update((s) => ({ ...s, hiddenItems: toggled(s.hiddenItems, itemId, !box.checked) })));
+      return el("label", { class: "flex items-center gap-2" }, box, el("span", {}, label));
+    };
+    const picked = id === FRAME_ID ? "Cadre sélectionné" : id === TITLE_ID ? "Cartouche sélectionné" : "";
+    if (picked) parts.push(el("p", { class: "border border-orange-300 bg-orange-50 p-2 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200" }, `${picked} : Suppr le retire de la feuille ; on le remet en cochant sa case ci-dessous.`));
     const removeSheet = el("button", { type: "button", class: `${BUTTON} text-red-700` }, "Supprimer cette feuille");
     removeSheet.addEventListener("click", () => host.removeSheet());
     parts.push(heading("Feuille"),
       row("Nom", input(sheet.name, (v) => set({ name: v }), "Nom de la feuille")),
       row("Format", select(sheet.format, (Object.keys(FORMATS) as Format[]).map((k) => [k, `${k} paysage (${FORMATS[k][0]} × ${FORMATS[k][1]})`]), (v) => set({ format: v as Format }), "Format")),
       row("Projection", select(sheet.projection, [["first", "Européenne"], ["third", "Américaine"]], (v) => set({ projection: v as "first" | "third" }), "Projection")),
+      el("div", { class: "flex gap-4" }, showing(FRAME_ID, "Cadre"), showing(TITLE_ID, "Cartouche")),
       heading("Cartouche"), title("title", "Titre"), title("number", "N° de plan"), title("author", "Dessiné par"), title("company", "Société"), title("date", "Date"), title("material", "Matière"),
       heading("Traits des cotes"),
       ...dimStyleRows(sheet.dimStyle ?? { weight: "thin", dashed: false }, (dimStyle) => set({ dimStyle }), true),

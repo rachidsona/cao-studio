@@ -11,7 +11,7 @@ import { onSide, sideOf } from "../../drawing/arrange";
 import { autoDimensions, isAutoOf } from "../../drawing/auto-dims";
 import { drawAnnotation, measure } from "../../drawing/annotations";
 import type { SheetLayout } from "../../drawing/layout";
-import { freshId, sheetIds, shown, type DrawingSheet, type Vec2 } from "../../drawing/model";
+import { FORMATS, FRAME_ID, FRAME_MARGIN, TITLE_ID, freshId, sheetIds, shown, titleBox, type DrawingSheet, type Vec2 } from "../../drawing/model";
 import { bomSvg, type BomRow } from "../../drawing/svg";
 
 /** The sheet with the automatic dimensions of these views (all shown views but details when none), replacing earlier ones. */
@@ -96,7 +96,16 @@ export function hitTest(sheet: DrawingSheet, layout: SheetLayout, p: Vec2, bom: 
     }
     if (i.kind === "circle" && Math.abs(Math.hypot(sp(i.center)[0] - p[0], sp(i.center)[1] - p[1]) - i.radius / scale) < 1.5) return i.id;
   }
-  return layout.viewAt(sheet, p, 1)?.id ?? null;
+  const view = layout.viewAt(sheet, p, 1)?.id;
+  if (view) return view;
+  // The title block anywhere inside it, the frame on its line.
+  const [lo, hi] = titleBox(sheet);
+  if (!off.has(TITLE_ID) && p[0] >= lo[0] && p[0] <= hi[0] && p[1] >= lo[1] && p[1] <= hi[1]) return TITLE_ID;
+  const [w, h] = FORMATS[sheet.format];
+  const [m, r, b] = [FRAME_MARGIN, w - FRAME_MARGIN, h - FRAME_MARGIN];
+  const frame: Vec2[] = [[m, m], [r, m], [r, b], [m, b]];
+  if (!off.has(FRAME_ID) && frame.some((q, k) => near(q, frame[(k + 1) % 4]!) < 2)) return FRAME_ID;
+  return null;
 }
 
 export type Side = "top" | "bottom" | "left" | "right";

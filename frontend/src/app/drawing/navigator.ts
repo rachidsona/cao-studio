@@ -1,10 +1,10 @@
 /**
- * Le navigateur de la mise en plan (à gauche, comme dans Fusion) : les feuilles, et pour la feuille ouverte ses vues
- * (chacune dépliable sur ses pièces), ses pièces, ses cotes et annotations, son dessin 2D. Un œil cache ou montre :
- * une vue entière, une pièce dans une vue, une pièce dans toutes les vues de la feuille, une cote, un trait. Un clic
- * sur une ligne la sélectionne sur la feuille.
+ * Le navigateur de la mise en plan (à gauche, comme dans Fusion) : les feuilles, et pour la feuille ouverte son cadre
+ * et son cartouche, ses vues (chacune dépliable sur ses pièces), ses pièces, ses cotes et annotations, son dessin 2D.
+ * Un œil cache ou montre : le cadre, le cartouche, une vue entière, une pièce dans une vue, une pièce dans toutes les
+ * vues de la feuille, une cote, un trait. Un clic sur une ligne la sélectionne sur la feuille.
  */
-import { shown, toggled, type DrawingSheet } from "../../drawing/model";
+import { FRAME_ID, TITLE_ID, shown, toggled, type DrawingSheet } from "../../drawing/model";
 import { el } from "../../ui/dom";
 
 export interface NavigatorHost {
@@ -70,6 +70,9 @@ export class DrawingNavigator {
       out.push(el("div", { class: "flex min-h-7 items-center gap-1" }, name));
       if (!current) continue;
 
+      // The frame and the title block: an eye puts back what Suppr took off.
+      out.push(this.row(FRAME_ID, "Cadre", 1, shown(sheet, FRAME_ID), () => hideItem(FRAME_ID, shown(sheet, FRAME_ID)), picked.has(FRAME_ID)));
+      out.push(this.row(TITLE_ID, "Cartouche", 1, shown(sheet, TITLE_ID), () => hideItem(TITLE_ID, shown(sheet, TITLE_ID)), picked.has(TITLE_ID)));
       // Views, each with its pieces.
       out.push(this.fold("views", "Vues", sheet.views.length, 1));
       if (this.open.has("views")) {

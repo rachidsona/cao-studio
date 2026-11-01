@@ -135,6 +135,36 @@ describe("navigateur, cotation automatique, cote d'un trait", () => {
     expect(renderSheet(off, layout, { format: String, bom: [], page: [1, 1] })).not.toContain('data-id="v1"');
     expect(layout.viewAt(off, [100, 100])).toBeUndefined();
   });
+
+  it("le cadre et le cartouche se prennent au clic et se retirent de la feuille, comme dans Fusion", async () => {
+    const { hitTest } = await import("../../frontend/src/app/drawing/sheet-actions");
+    const layout = new SheetLayout(() => CABINET);
+    const sheet = sheetWith([view("v1")]);
+    // A3 (420 × 297): the title block in the bottom right corner, the frame 10 mm inside the edge.
+    expect(hitTest(sheet, layout, [400, 280], [], String)).toBe("title-block");
+    expect(hitTest(sheet, layout, [10.5, 200], [], String)).toBe("frame");
+    expect(hitTest(sheet, layout, [60, 250], [], String)).toBeNull();
+    const svg = renderSheet(sheet, layout, { format: String, bom: [], page: [1, 1] });
+    expect(svg).toContain('data-id="frame"');
+    expect(svg).toContain('data-id="title-block"');
+    // Taken off: neither drawn, nor exported, nor found under the pointer.
+    const bare = { ...sheet, hiddenItems: ["frame", "title-block"] };
+    const off = renderSheet(bare, layout, { format: String, bom: [], page: [1, 1] });
+    expect(off).not.toContain('data-id="frame"');
+    expect(off).not.toContain('data-id="title-block"');
+    expect(sheetDxf(bare, layout, String, [])).not.toContain("Caisson");
+    expect(hitTest(bare, layout, [400, 280], [], String)).toBeNull();
+    expect(hitTest(bare, layout, [10.5, 200], [], String)).toBeNull();
+  });
+
+  it("une vue vide (rien à dessiner) se prend par son nom, pour la retirer", () => {
+    const layout = new SheetLayout(() => []);
+    const sheet = sheetWith([view("v1")]);
+    // Its box is a point at its place; its name 7 mm below.
+    expect(layout.viewAt(sheet, [100, 107], 1)?.id).toBe("v1");
+    expect(layout.viewAt(sheet, [108, 106], 1)?.id).toBe("v1");
+    expect(layout.viewAt(sheet, [100, 130], 1)).toBeUndefined();
+  });
 });
 
 describe("réorganiser et glisser les cotes comme Fusion", () => {

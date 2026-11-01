@@ -5,7 +5,7 @@
  */
 import { drawAnnotation, type Drawn } from "./annotations";
 import type { SheetLayout } from "./layout";
-import { FORMATS, FRAME_MARGIN, TITLE_SIZE, type DrawingSheet, type Vec2 } from "./model";
+import { FORMATS, FRAME_ID, FRAME_MARGIN, TITLE_ID, titleBox, type DrawingSheet, type Vec2 } from "./model";
 import type { BomRow } from "./svg";
 
 const LAYERS: [string, number, string][] = [
@@ -54,12 +54,14 @@ export function sheetDxf(sheet: DrawingSheet, layout: SheetLayout, format: (mm: 
   };
 
   const [w] = FORMATS[sheet.format];
-  rect([FRAME_MARGIN, FRAME_MARGIN], [w - FRAME_MARGIN, h - FRAME_MARGIN], "CADRE");
-  const [bw, bh] = TITLE_SIZE;
-  rect([w - FRAME_MARGIN - bw, h - FRAME_MARGIN - bh], [w - FRAME_MARGIN, h - FRAME_MARGIN], "CADRE");
-  text([w - FRAME_MARGIN - bw + 2, h - FRAME_MARGIN - bh + 9], sheet.title.title, 5, 0, "CADRE");
-
   const off = new Set(sheet.hiddenItems ?? []);
+  if (!off.has(FRAME_ID)) rect([FRAME_MARGIN, FRAME_MARGIN], [w - FRAME_MARGIN, h - FRAME_MARGIN], "CADRE");
+  if (!off.has(TITLE_ID)) {
+    const [a, b] = titleBox(sheet);
+    rect(a, b, "CADRE");
+    text([a[0] + 2, a[1] + 9], sheet.title.title, 5, 0, "CADRE");
+  }
+
   for (const view of sheet.views.filter((v) => !off.has(v.id))) {
     const g = layout.geometry(sheet, view);
     const p = (q: Vec2) => layout.toPaper(sheet, view, q);

@@ -1157,7 +1157,11 @@ opération existante.
     - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, dessiné par, société, date, matière ;
       échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
       ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
-      normalisée qui tient sur la feuille.
+      normalisée qui tient sur la feuille. Comme dans Fusion, le **cadre** et le **cartouche** se sélectionnent d'un clic
+      (le cartouche n'importe où dedans, le cadre sur son trait) et **Suppr** les retire de la feuille, du SVG, du PDF
+      et du DXF ; on les remet par leur œil dans le navigateur ou leurs cases « Cadre » / « Cartouche » du panneau.
+      Une vue se prend aussi par son nom (« Vue de face (1:10) ») : même vide, quand il n'y a rien à dessiner, elle
+      se sélectionne et se retire avec Suppr.
     - **Plan de pose** (groupe *Vues*) : une feuille par mur (« Pose — Mur A »…), l'élévation vue de la pièce de ce
       qui est posé contre lui (les meubles à moins de 80 cm de sa face, rangés avec le mur le plus proche ; le mur
       avec ses fenêtres et portes), le reste caché, à une échelle qui tient sur l'A3, cotée tout de suite (Cotes

@@ -5,7 +5,7 @@
  */
 import { drawAnnotation, TEXT_SIZE, type Drawn } from "./annotations";
 import type { SheetLayout } from "./layout";
-import { FORMATS, FRAME_MARGIN, TITLE_SIZE, scaleText, type DrawingSheet, type LineStyle, type Sketch2D, type Vec2 } from "./model";
+import { FORMATS, FRAME_ID, FRAME_MARGIN, TITLE_ID, scaleText, titleBox, type DrawingSheet, type LineStyle, type Sketch2D, type Vec2 } from "./model";
 
 /** A row of the parts list. */
 export interface BomRow {
@@ -102,18 +102,17 @@ export function bomSvg(at: Vec2, rows: BomRow[]): { svg: string; size: Vec2 } {
 }
 
 function titleBlock(sheet: DrawingSheet, options: RenderOptions): string {
-  const [w, h] = FORMATS[sheet.format];
-  const [bw, bh] = TITLE_SIZE;
-  const x = w - FRAME_MARGIN - bw;
-  const y = h - FRAME_MARGIN - bh;
+  const [[x, y], [right]] = titleBox(sheet);
+  const bw = right - x;
   const t = sheet.title;
+  const ink = options.selected?.has(TITLE_ID) ? PICKED : INK;
   const scale = sheet.views[0] ? scaleText(sheet.views[0].scale) : sheet.sketch.items.length ? scaleText(sheet.sketch.scale) : "—";
   const cell = (cx: number, cy: number, cw: number, ch: number, label: string, value: string, big = false) =>
-    `<rect x="${f(cx)}" y="${f(cy)}" width="${f(cw)}" height="${f(ch)}" fill="none" stroke="${INK}" stroke-width="0.35"/>` +
+    `<rect x="${f(cx)}" y="${f(cy)}" width="${f(cw)}" height="${f(ch)}" fill="none" stroke="${ink}" stroke-width="0.35"/>` +
     text([cx + 1.2, cy + 2.6], label, 'fill="#6b7280"', 2) +
     text([cx + 1.2, cy + ch - 1.6], value, `fill="${INK}"${big ? ' font-weight="bold"' : ""}`, big ? 5 : 3.2);
   return [
-    `<g data-id="title-block">`,
+    `<g data-id="${TITLE_ID}">`,
     cell(x, y, bw, 12, "Titre", t.title, true),
     cell(x, y + 12, 60, 10, "Société", t.company),
     cell(x + 60, y + 12, 60, 10, "Dessiné par", t.author),
@@ -134,10 +133,10 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
   const out: string[] = [];
   const picked = (id: string) => options.selected?.has(id) ?? false;
   const hatch: string[] = [];
-  out.push(`<rect x="${FRAME_MARGIN}" y="${FRAME_MARGIN}" width="${w - 2 * FRAME_MARGIN}" height="${h - 2 * FRAME_MARGIN}" fill="none" stroke="${INK}" stroke-width="0.6"/>`);
-  out.push(titleBlock(sheet, options));
-
   const off = new Set(sheet.hiddenItems ?? []);
+  if (!off.has(FRAME_ID)) out.push(`<g data-id="${FRAME_ID}"><rect x="${FRAME_MARGIN}" y="${FRAME_MARGIN}" width="${w - 2 * FRAME_MARGIN}" height="${h - 2 * FRAME_MARGIN}" fill="none" stroke="${picked(FRAME_ID) ? PICKED : INK}" stroke-width="0.6"/></g>`);
+  if (!off.has(TITLE_ID)) out.push(titleBlock(sheet, options));
+
   for (const view of sheet.views) {
     if (off.has(view.id)) continue;
     const g = layout.geometry(sheet, view);

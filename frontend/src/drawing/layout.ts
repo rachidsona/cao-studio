@@ -85,11 +85,14 @@ export class SheetLayout {
     return [a, b];
   }
 
-  /** The view under a point of the paper (the last drawn first), within a margin. */
+  /** The view under a point of the paper (the last drawn first), within a margin, or under its name (an empty view too). */
   viewAt(sheet: DrawingSheet, p: Vec2, margin = 3): DrawingView | undefined {
     return [...sheet.views].reverse().filter((v) => !sheet.hiddenItems?.includes(v.id)).find((v) => {
       const [a, b] = this.box(sheet, v);
-      return p[0] >= a[0] - margin && p[0] <= b[0] + margin && p[1] >= a[1] - margin && p[1] <= b[1] + margin;
+      if (p[0] >= a[0] - margin && p[0] <= b[0] + margin && p[1] >= a[1] - margin && p[1] <= b[1] + margin) return true;
+      // The name, centred 7 mm under the box in 3.5 mm letters (with its scale, « (1:10) »).
+      const half = Math.max(10, (v.label.length + 7) * 1.1);
+      return Math.abs(p[0] - v.at[0]) <= half && p[1] >= b[1] + 3 && p[1] <= b[1] + 9;
     });
   }
 

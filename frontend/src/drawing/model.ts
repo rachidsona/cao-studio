@@ -154,6 +154,17 @@ export interface DrawingSheet {
 
 export const FRAME_MARGIN = 10;
 export const TITLE_SIZE: Vec2 = [180, 32];
+/** The frame and the title block: on the sheet as the other items, they can be taken off (hiddenItems) and put back. */
+export const FRAME_ID = "frame";
+export const TITLE_ID = "title-block";
+export const FIXED_ITEMS = [FRAME_ID, TITLE_ID];
+
+/** The title block's corners on the paper (bottom right, inside the frame). */
+export function titleBox(sheet: DrawingSheet): [Vec2, Vec2] {
+  const [w, h] = FORMATS[sheet.format];
+  const [bw, bh] = TITLE_SIZE;
+  return [[w - FRAME_MARGIN - bw, h - FRAME_MARGIN - bh], [w - FRAME_MARGIN, h - FRAME_MARGIN]];
+}
 
 export function newSheet(sheets: readonly DrawingSheet[], title: string, format: Format = "A3"): DrawingSheet {
   const h = FORMATS[format][1];
