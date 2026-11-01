@@ -21,6 +21,8 @@ export interface RibbonActions {
   zoomWindow(): void;
   fit(): void;
   exportPdf(): void;
+  pose(): void;
+  clientFile(): void;
   exportDxf(): void;
   exportSvg(): void;
   close(): void;
@@ -40,6 +42,7 @@ export function drawingRibbon(api: RibbonActions): HTMLElement {
     group("Sélection", button("Choisir", "↖", () => api.select(), "select")),
     group("Vues",
       button("Vue de base", "▣", use((h) => new BaseViewTool(h)), "base"),
+      button("Plan de pose", "▥", () => api.pose(), undefined, "Plan de pose : une feuille par mur, l'élévation cotée de ce qui est posé contre lui"),
       button("Projetée", "⊞", use((h) => new ProjectedViewTool(h, api.selected())), "projected", "Vue projetée : tirée d'une vue, à côté, dessus, dessous ou en biais"),
       button("Coupe", "⊟", use((h) => new SectionTool(h)), "section", "Coupe : un trait sur une vue, puis la place de la coupe"),
       button("Détail", "◎", use((h) => new DetailTool(h)), "detail", "Vue de détail : un cercle sur une vue, agrandi")),
@@ -65,6 +68,7 @@ export function drawingRibbon(api: RibbonActions): HTMLElement {
       button("Ajuster", "⤢", () => api.fit(), undefined, "Ajuster : toute la feuille à l'écran (F)")),
     group("Exporter",
       button("PDF", "⎙", () => api.exportPdf(), undefined, "Imprimer ou enregistrer en PDF (toutes les feuilles)"),
+      button("Dossier client", "▤", () => api.clientFile(), undefined, "Dossier client en un PDF : la vue 3D du projet, toutes les feuilles et le devis"),
       button("DXF", "⬇", () => api.exportDxf(), undefined, "Feuille en DXF, par calques"),
       button("SVG", "⬇", () => api.exportSvg())),
     el("div", { class: "flex-1" }),

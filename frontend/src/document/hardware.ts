@@ -28,7 +28,11 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
         if (h.unit) units.set(h.name, h.unit);
       }
     } else if (f.type === "trim") {
-      add("Pied réglable", f.parts.filter((p) => p.hardware).length);
+      for (const p of f.parts.filter((x) => x.hardware)) {
+        const name = p.item ?? "Pied réglable";
+        add(name, p.per === "m" ? Math.max(...[0, 1, 2].map((i) => Math.abs(p.to[i]! - p.from[i]!))) / 1000 : 1);
+        if (p.per === "m") units.set(name, "m");
+      }
     } else if (f.type === "machining") {
       const holes = f.ops.filter((op) => op.kind === "hole").length;
       if (f.kind === "confirmat") screwHoles += holes;

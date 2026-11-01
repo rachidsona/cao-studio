@@ -1097,6 +1097,13 @@ opération existante.
       échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
       ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
       normalisée qui tient sur la feuille.
+    - **Plan de pose** (groupe *Vues*) : une feuille par mur (« Pose — Mur A »…), l'élévation vue de la pièce de ce
+      qui est posé contre lui (les meubles à moins de 80 cm de sa face, rangés avec le mur le plus proche ; le mur
+      avec ses fenêtres et portes), le reste caché, à une échelle qui tient sur l'A3, cotée tout de suite (Cotes
+      auto). Les murs sont les corps « Mur … » de la Pièce relevée ou dessinés par l'Implantation et le Dressing
+      (`drawing/pose.ts`).
+    - **Dossier client** (groupe *Exporter*) : un seul PDF — la vue 3D du projet en couverture, toutes les feuilles,
+      puis le devis aux tarifs enregistrés dans Atelier › Devis (`app/drawing/client-file.ts`).
     - **Vues** : *vue de base* (face, arrière, gauche, droite, dessus, dessous, isométriques), posée d'un clic à
       l'échelle choisie ou ajustée. *Vue projetée* : tirée d'une vue, à côté, dessus ou dessous (la vue de gauche à
       droite en projection européenne), ou en biais pour une isométrique ; elle reste alignée sur sa vue mère, qui
@@ -1186,8 +1193,8 @@ opération existante.
   « Voir » marque le point dans la vue, on répond (le client lit la réponse sur sa page) et on coche « Traité ».
   Côté serveur : modèles `ShareLink` et `Comment` (migration `0002_sharing`), modèle GLB de 20 Mo au plus, messages
   limités (2000 caractères, 10 par adresse et par lien toutes les 10 minutes, 300 par lien), pages non indexées.
-- **Implantation de cuisine** (groupe « Menuiserie ») : une cuisine entière le long d'un mur (I) ou de deux murs en
-  angle (L). Chaque mur est découpé en modules du commerce (600 d'abord, puis le plus grand de 300 à 900 qui tient, le
+- **Implantation de cuisine** (groupe « Menuiserie ») : une cuisine entière le long d'un mur (I), de deux murs en
+  angle (L) ou de trois (U), avec un îlot si on veut. Chaque mur est découpé en modules du commerce (600 d'abord, puis le plus grand de 300 à 900 qui tient, le
   reste en fileur) ; meubles bas (hauteur, profondeur, socle réglables) avec leurs façades (tiroirs et portes en
   alternance, tiroirs ou portes partout ; deux portes au-delà de 600), plan de travail débordant de 20 mm, meubles
   hauts au-dessus si on veut, et les murs. En L, l'angle est un angle mort fermé par deux fileurs, pour que portes et
@@ -1195,6 +1202,25 @@ opération existante.
   l'historique en une annulation et reste modifiable pièce par pièce ; les matières sont posées (caissons mélaminé
   blanc, fonds HDF, façades et plan de travail au choix), les murs vont sur le calque « Pièce », hors du débit, du
   devis et du fichier DXF.
+  - **Sur la Pièce relevée** (« Murs : Pièce : mur X en mur A », proposé dès qu'il y a une Pièce) : longueurs et
+    plafond viennent du relevé ; le mur B est celui d'avant le mur A (la pièce tourne à droite), le mur C celui
+    d'après ; la cuisine est tournée et posée contre eux (les angles utilisés doivent être droits). Les meubles bas
+    s'arrêtent à 5 cm d'une porte (deux plans de travail de part et d'autre), les meubles hauts aussi devant une
+    fenêtre, et un plafond bas près du mur (retombée, rampant) les ôte ; le panneau dit ce qui a été évité.
+  - **Angle** (L, U) : mort et fermé par deux fileurs, ou **meuble d'angle** (un caisson qui file dans l'angle, une
+    porte de 45 cm et un panneau fixe dans l'angle).
+  - **Électroménager** : l'**évier** sous la fenêtre du mur A (sinon vers son premier tiers), le **lave-vaisselle**
+    juste à côté (sa façade, sans caisson), la **plaque** à deux modules au moins de l'évier, pas sous une fenêtre
+    ni au bout du plan, avec le **four** sous elle (ou en **colonne**), la **hotte** et son conduit à la place du
+    meuble haut au-dessus, la **colonne réfrigérateur** au bout libre (du mur A, du mur B en U). Le plan de travail
+    est **découpé** pour l'évier et la plaque (usinages « Découpes », comme l'outil Découpes) ; les appareils vont
+    sur le calque « Électroménager », hors débit et devis.
+  - **Crédence** (jusqu'aux meubles hauts, ou 60 cm ; sous une fenêtre, jusqu'à son allège) et **plinthes**.
+  - **Îlot** : face au mur A, centré, au **passage** voulu (110 cm proposés), ses meubles tournés vers le mur.
+  - **Ergonomie**, dans le panneau : le **triangle** évier – plaque – réfrigérateur (4 à 7 m, chaque côté de
+    1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
+    une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
+    `features/room-runs.ts`, `document/kitchen-plan.ts`).
 - **Pièce** (groupe « Menuiserie ») : le relevé de la pièce, tel qu'on le mesure.
   - Les murs : chacun par sa longueur et l'angle de chaque coin (90° d'équerre, sinon l'angle relevé : une pièce pas
     d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine
@@ -1207,7 +1233,7 @@ opération existante.
   (mur C) »…), hors liste de débit, devis et fichiers machine, avec l'aperçu en direct ; elle se rouvre pour être
   retouchée. Les Finitions s'ajustent à ses murs (fileurs) et à son plafond (bandeau). Le Contrôle avant fabrication
   signale le meuble qui entre dans un mur, une retombée ou sous un rampant, et celui qui cache une prise. Les
-  assistants Cuisine et Dressing ne lisent pas encore ce relevé : on y reporte ses cotes (`features/room-plan.ts`,
+  assistants Cuisine et Dressing posent leurs meubles sur ce relevé (« Murs » dans leur panneau) (`features/room-plan.ts`,
   `features/room.ts`, `app/room-tool.ts`).
 - **Finitions** (groupe « Menuiserie ») : habiller un meuble (les corps sélectionnés, sinon tout le meuble affiché)
   de planches ajustées à sa taille et à la pièce.
@@ -1256,6 +1282,17 @@ opération existante.
   murs B (à gauche) et C (à droite) commencent derrière sa profondeur, leurs façades tournées vers la pièce. Les murs
   sont dessinés (option) sur le calque « Pièce », hors débit et devis. Le calcul est dans `document/dressing-plan.ts`,
   le panneau dans `app/dressing-tool.ts`.
+  - **Sur la Pièce relevée** (« Murs ») : longueurs et hauteur viennent du relevé, le dressing est tourné et posé
+    contre ses murs. En I, il prend le plus long passage libre du mur entre portes et fenêtres ; en L et en U, les
+    murs B et C s'arrêtent 5 cm avant la première porte ou fenêtre (le mur A doit être libre) ; sous une retombée ou
+    un rampant, la hauteur du mur concerné descend sous le plafond le plus bas près du mur, et le panneau le dit.
+  - **Portes** : aucune, **battantes** (celles de la Répartition, une par case, avec leur équipement « Portes »), ou
+    **coulissantes** (environ une par mètre, sur deux voies qui se recouvrent de 3 cm, du socle au rail haut ; les
+    deux rails comptent au devis au mètre).
+  - **Modules** en plus : **Chaussures** (étagères tous les 20 cm) et **Porte-pantalons coulissant** (étagère
+    chapeau, l'accessoire posé à 90 cm), compté au devis.
+  - **Hauteurs** : une tringle à plus de 1,90 m est signalée, ou reçoit une **penderie escamotable** (option, au
+    devis) ; des étagères au-dessus de 2 m demandent un marchepied, le panneau le dit (`document/dressing-extras.ts`).
 - **Orientation des caissons** : un caisson tourne de 90, 180 ou 270° autour de son coin avant gauche (face vers
   +X, vers le fond, vers −X) ; ses façades tournent avec lui.
 - **Façades** (groupe « Menuiserie », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8

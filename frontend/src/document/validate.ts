@@ -213,7 +213,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       break;
     }
     case "trim":
-      if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))) && (p.radius === undefined || (isFiniteNumber(p.radius) && (p.radius as number) > 0)) && (p.hardware === undefined || typeof p.hardware === "boolean"))) errors.push(`${where} : planches de finition invalides.`);
+      if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))) && (p.radius === undefined || (isFiniteNumber(p.radius) && (p.radius as number) > 0)) && (p.hardware === undefined || typeof p.hardware === "boolean") && (p.item === undefined || typeof p.item === "string") && (p.per === undefined || p.per === "m"))) errors.push(`${where} : planches de finition invalides.`);
       break;
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);

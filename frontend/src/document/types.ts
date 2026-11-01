@@ -501,8 +501,11 @@ export interface NicheFeature extends FeatureBase {
  */
 export interface TrimFeature extends FeatureBase {
   type: "trim";
-  /** A board (a box between two corners), or a foot (`radius`: a cylinder from `from` up to `to`, bought: hardware). */
-  parts: { name: string; from: Vec3; to: Vec3; radius?: number; hardware?: boolean }[];
+  /**
+   * A board (a box between two corners), or a foot (`radius`: a cylinder from `from` up to `to`, bought: hardware).
+   * Bought parts are quoted as `item` (an adjustable foot when missing), by the piece or by the metre (`per`).
+   */
+  parts: { name: string; from: Vec3; to: Vec3; radius?: number; hardware?: boolean; item?: string; per?: "m" }[];
   /** What the tool was given, to reopen it: the bodies of the furniture and its settings. */
   source?: string[];
   settings?: FinishOptions;

@@ -101,6 +101,12 @@ function showQuote(viewport: Viewport, editor: Editor): void {
   ]);
 }
 
+/** The quote of the displayed parts at the saved rates, as a printable table, or null when there is nothing to price. */
+export function savedQuoteHtml(viewport: Viewport, editor: Editor): string | null {
+  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
+  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit)) : null;
+}
+
 /** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
 export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));

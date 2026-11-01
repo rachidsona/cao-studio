@@ -7,7 +7,9 @@
  *
  * Repère (comme l'implantation de cuisine) : le mur A a sa face intérieure dans le plan Y = 0 et va vers +X ; le
  * dressing est devant lui (Y < 0). Le mur B a sa face dans le plan X = 0, le mur C dans le plan X = longueur de A ;
- * tous deux vont vers −Y. Pure.
+ * tous deux vont vers −Y. Posé dans une Pièce relevée, tout est tourné et placé contre son mur A (features/room-runs.ts),
+ * chaque mur borné par ses portes et fenêtres et abaissé sous une retombée ou un rampant. Portes battantes (celles de
+ * la Répartition) ou coulissantes, accessoires et hauteurs à vérifier : document/dressing-extras.ts. Pure.
  */
 import type { PartitionParams, ShelfParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
@@ -16,12 +18,15 @@ import { addLayer, layersOf } from "./layers";
 import { uniqueId, uniqueName, uniqueOffsetId } from "./operations";
 import { rectangleAt } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
-import type { CadDocument, NicheFeature, PlaneFrame, PlaneName, SketchFeature } from "./types";
+import type { CadDocument, NicheFeature, PlaneFrame, PlaneName, SketchFeature, TrimFeature } from "./types";
+import { accessory, REACH_ROD, REACH_SHELF, slidingDoors } from "./dressing-extras";
+import { placeBox, placeFrame, type Placement } from "../features/room-runs";
+import { sketchFrame, nearestPlane } from "../sketcher/frame";
 import { nicheGeometry, nicheProblem } from "../features/niche-parts";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, idsFrom, partitionRecord, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
 
-export type ModuleKind = "long" | "double" | "shelves" | "drawers" | "rod-drawers";
+export type ModuleKind = "long" | "double" | "shelves" | "drawers" | "rod-drawers" | "shoes" | "trousers";
 export type WallName = "A" | "B" | "C";
 
 export interface DressingSettings {
@@ -39,6 +44,16 @@ export interface DressingSettings {
   walls: boolean;
   /** The modules of each wall, from left to right as seen from the room. */
   programs: Record<WallName, ModuleKind[]>;
+  /**
+   * What of each wall it may take (a surveyed room's doors and windows): wall A from and to (from its start), walls B
+   * and C up to (from the corner); and a lower height on a wall (under a drop or a slope).
+   */
+  free?: Partial<Record<WallName, [number, number]>>;
+  heights?: Partial<Record<WallName, number>>;
+  /** No doors, the Répartitions' own hinged doors, or sliding doors on two tracks in front. */
+  doors?: "none" | "hinged" | "sliding";
+  /** A pull-down rod where a rod is out of reach. */
+  pullDown?: boolean;
 }
 
 /** The modules: their name, and their share of the wall (a hanging module is wider than a column of shelves). */
@@ -48,6 +63,8 @@ export const MODULES: Record<ModuleKind, { label: string; share: number }> = {
   shelves: { label: "Étagères", share: 600 },
   drawers: { label: "Tiroirs et étagères", share: 700 },
   "rod-drawers": { label: "Penderie et tiroirs", share: 900 },
+  shoes: { label: "Chaussures (étagères tous les 20 cm)", share: 600 },
+  trousers: { label: "Porte-pantalons coulissant", share: 800 },
 };
 
 /** Height of the top niche over a rod (the « chapeau » shelf), of the drawers' niche, and the spacing of shelves (mm). */
@@ -73,12 +90,24 @@ export const wallsOf = (s: Pick<DressingSettings, "layout">): WallName[] => (s.l
 
 /** Where the Répartition of a wall goes: its sketch plane, and where it starts and how long it is along it. */
 export function wallRun(s: DressingSettings, wall: WallName): { plane: PlaneName; offset: number; frame?: PlaneFrame; start: number; length: number } {
-  if (wall === "A") return { plane: "XZ", offset: 0, start: 0, length: s.lengthA };
+  if (wall === "A") {
+    const [from, to] = s.free?.A ?? [0, s.lengthA];
+    return { plane: "XZ", offset: 0, start: from, length: to - from };
+  }
   // Wall B: the plane X = 0, u along +Y, the panels towards +X; it runs from its far end to behind wall A's depth.
-  if (wall === "B") return { plane: "YZ", offset: 0, start: -s.lengthB, length: s.lengthB - s.depth };
+  const end = s.free?.[wall]?.[1] ?? (wall === "B" ? s.lengthB : s.lengthC);
+  if (wall === "B") return { plane: "YZ", offset: 0, start: -end, length: end - s.depth };
   // Wall C faces −X: a plane at X = lengthA whose normal is −X (the panels come off the wall), u along −Y.
-  return { plane: "YZ", offset: s.lengthA, frame: { origin: [s.lengthA, 0, 0], xDir: [0, -1, 0], normal: [-1, 0, 0] }, start: s.depth, length: s.lengthC - s.depth };
+  return { plane: "YZ", offset: s.lengthA, frame: { origin: [s.lengthA, 0, 0], xDir: [0, -1, 0], normal: [-1, 0, 0] }, start: s.depth, length: end - s.depth };
 }
+
+/** Where a run of a wall lies, from and to along it as features/room-runs measures (B and C: from the corner). */
+export function runSpan(s: DressingSettings, wall: WallName): [number, number] {
+  const run = wallRun(s, wall);
+  return wall === "B" ? [-(run.start + run.length), -run.start] : [run.start, run.start + run.length];
+}
+
+const heightOf = (s: DressingSettings, wall: WallName) => Math.min(s.height, s.heights?.[wall] ?? s.height);
 
 export function partitionInput(s: DressingSettings, wall: WallName): PartitionParams {
   const program = s.programs[wall];
@@ -86,7 +115,7 @@ export function partitionInput(s: DressingSettings, wall: WallName): PartitionPa
   const one = program.length === 1;
   const cases = Math.max(2, program.length);
   return {
-    length: wallRun(s, wall).length, height: s.height, thickness: s.thickness, cases,
+    length: wallRun(s, wall).length, height: heightOf(s, wall), thickness: s.thickness, cases,
     dividers: Array.from({ length: cases - 1 }, () => (one ? ("none" as const) : ("single" as const))),
     widths: one ? [1, 1] : program.map((k) => MODULES[k].share), boards: true, plinth: s.plinth, outer: "board", single: "board", double: "side",
   };
@@ -122,6 +151,10 @@ function moduleSteps(kind: ModuleKind, i: number, innerHeight: number, thickness
       };
     case "shelves":
       return { divisions: [{ niche: [i], input: shelves(columns(innerHeight)) }], equip: [] };
+    case "shoes":
+      return { divisions: [{ niche: [i], input: shelves(Math.max(1, Math.round(innerHeight / 200) - 1)) }], equip: [] };
+    case "trousers":
+      return { divisions: [{ niche: [i], input: shelves(1, "top", HAT) }], equip: [] };
     case "drawers":
       return { divisions: [{ niche: [i], input: shelves(1, "bottom", DRAWER_ZONE) }, { niche: [i, 1], input: shelves(columns(upper)) }], equip: [{ niche: [i, 0], fill: "drawers" }] };
     case "rod-drawers":
@@ -132,17 +165,26 @@ function moduleSteps(kind: ModuleKind, i: number, innerHeight: number, thickness
 const ROD = { diameter: 25, drop: 60 };
 const DRAWERS = { drawers: 3, gap: 3, sideGap: 3, thickness: 18, handles: true };
 
+const DOORS = { gap: 3, thickness: 18, handles: true };
+
 export interface DressingResult {
   doc: CadDocument;
   /** The features added, in history order. */
   added: string[];
   /** Equipments left out (a niche too small for them), said to the user. */
   problems: string[];
+  /** Heights out of reach, accessories added. */
+  notes: string[];
 }
 
-/** The document with the dressing in it: one sketch and its Répartition per wall, the modules, the walls. */
-export function dressingDocument(base: CadDocument, s: DressingSettings): DressingResult {
+/**
+ * The document with the dressing in it: one sketch and its Répartition per wall, the modules, the doors and the
+ * accessories; the walls, unless it stands in a surveyed room (`place`: where its wall A is in it).
+ */
+export function dressingDocument(base: CadDocument, s: DressingSettings, place?: Placement): DressingResult {
   const problems: string[] = [];
+  const notes: string[] = [];
+  const extras: TrimFeature["parts"] = [];
   let doc = base;
   for (const wall of wallsOf(s)) {
     const run = wallRun(s, wall);
@@ -153,12 +195,32 @@ export function dressingDocument(base: CadDocument, s: DressingSettings): Dressi
       continue;
     }
     const innerHeight = layout.inner[1] - layout.inner[0];
+    if (heightOf(s, wall) < s.height) notes.push(`Mur ${wall} : hauteur ramenée à ${Math.round(heightOf(s, wall) / 10)} cm sous le plafond bas (retombée ou rampant).`);
+    // Accessories and the reach: the rods under a hat shelf, the top shelves.
+    const [p0, p1] = runSpan(s, wall);
+    const along = (x: number) => (wall === "B" ? p1 - x : p0 + x);
+    const rodHeight = layout.inner[1] - HAT - s.thickness - ROD.drop;
+    let high = false;
+    s.programs[wall].forEach((kind, i) => {
+      const [x0, x1] = (s.programs[wall].length === 1 ? [layout.caseSpans[0]![0], layout.caseSpans.at(-1)![1]] : layout.caseSpans[i]) ?? [0, 0];
+      const [a, b] = [along(x0), along(x1)].sort((m, n) => m - n) as [number, number];
+      if ((kind === "long" || kind === "double" || kind === "rod-drawers") && rodHeight > REACH_ROD) {
+        if (s.pullDown) extras.push(accessory(wall, s.lengthA, a, b, s.depth, rodHeight, "Penderie escamotable"));
+        else notes.push(`Mur ${wall}, case ${i + 1} : tringle à ${Math.round(rodHeight / 10)} cm, hors de portée (plus de ${REACH_ROD / 10} cm) — cochez « Penderie escamotable ».`);
+      }
+      if (kind === "trousers") extras.push(accessory(wall, s.lengthA, a, b, s.depth, layout.inner[0] + 900, "Porte-pantalons coulissant"));
+      if ((kind === "shelves" || kind === "drawers" || kind === "shoes") && layout.inner[1] > REACH_SHELF + 300) high = true;
+    });
+    if (high) notes.push(`Mur ${wall} : les étagères au-dessus de ${REACH_SHELF / 10} cm ne s'atteignent qu'avec un marchepied.`);
+    if (s.doors === "sliding") extras.push(...slidingDoors(wall, s.lengthA, p0, p1, s.depth, heightOf(s, wall), s.plinth, s.thickness));
     const steps = s.programs[wall].map((kind, i) => moduleSteps(kind, i, innerHeight, s.thickness));
     const divisions = steps.flatMap((m) => m.divisions);
     const ids = idsFrom(uniqueOffsetId(doc), 1 + divisions.length);
     const partitionId = ids[0] as string;
+    const record = partitionRecord(partitionId, `Dressing — mur ${wall}`, input, [run.start, 0], s.depth);
+    if (s.doors === "hinged" && record.step?.kind === "partition") record.step.doors = { ...DOORS };
     const records = [
-      partitionRecord(partitionId, `Dressing — mur ${wall}`, input, [run.start, 0], s.depth),
+      record,
       ...divisions.map((d, k) => shelvesRecord(ids[k + 1] as string, `Étagères ${k + 1}`, partitionId, d.niche, d.input, s.depth)),
     ];
     const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: records }, partitionId);
@@ -168,8 +230,11 @@ export function dressingDocument(base: CadDocument, s: DressingSettings): Dressi
     }
     problems.push(...rebuilt.problems.map((p) => `Mur ${wall} — ${p}`));
     const sketchId = uniqueId(doc, "sk");
+    // In a surveyed room, the wall's plane as a construction plane, turned and moved onto the room's wall.
+    const own = sketchFrame(run.plane, run.offset);
+    const frame = place ? placeFrame(place, run.frame ?? { origin: own.origin, xDir: own.u, normal: own.normal }) : run.frame;
     const sketch: SketchFeature = {
-      id: sketchId, type: "sketch", name: `Dressing — mur ${wall}`, plane: run.plane, offset: run.offset, ...(run.frame ? { frame: run.frame } : {}),
+      id: sketchId, type: "sketch", name: `Dressing — mur ${wall}`, plane: frame ? nearestPlane(frame.normal) : run.plane, offset: run.offset, ...(frame ? { frame } : {}),
       ...emptySketchGeometry(),
     };
     doc = { ...doc, features: [...doc.features, sketch] };
@@ -178,6 +243,7 @@ export function dressingDocument(base: CadDocument, s: DressingSettings): Dressi
     const placed = doc.features.find((f) => f.id === sketchId) as SketchFeature;
     const equipment: NicheFeature[] = [];
     let probe = doc;
+    // (The hinged doors are the Répartition's own: its « Portes » equipment comes with its extrusion.)
     for (const e of steps.flatMap((m) => m.equip)) {
       if (!rebuilt.niches.has(pathKey(e.niche))) continue;
       const title = e.fill === "rod" ? "Penderie" : "Tiroirs";
@@ -196,9 +262,18 @@ export function dressingDocument(base: CadDocument, s: DressingSettings): Dressi
     }
     doc = withEquipment(doc, equipment);
   }
-  if (s.walls) doc = withWalls(doc, s);
+  if (extras.length) {
+    const parts = extras.map((part) => {
+      const [from, to] = place ? placeBox(place, part.from, part.to) : [part.from, part.to];
+      return { ...part, from, to };
+    });
+    doc = { ...doc, features: [...doc.features, { id: uniqueId(doc, "fi"), type: "trim", name: uniqueName(doc, s.doors === "sliding" ? "Portes coulissantes" : "Accessoires"), parts }] };
+    const added = parts.filter((p) => p.hardware && p.item !== "Rail de porte coulissante").map((p) => p.item);
+    if (added.length) notes.push(`Accessoires ajoutés au devis : ${[...new Set(added)].map((n) => `${added.filter((x) => x === n).length} × ${n}`).join(", ")}.`);
+  }
+  if (s.walls && !place) doc = withWalls(doc, s);
   const known = new Set(base.features.map((f) => f.id));
-  return { doc, added: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id), problems };
+  return { doc, added: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id), problems, notes };
 }
 
 /** The walls behind the dressing, as boxes on the « Pièce » layer (out of the cut list and the quote). */

@@ -26,6 +26,7 @@ import { DrawingNavigator } from "./navigator";
 import { drawingRibbon } from "./ribbon";
 import { arrangeDimensions, dimensionFrame, snapDimension } from "../../drawing/arrange";
 import { bomRows, describeAnnotation, hitTest, sideName, traitAt, withAutoDimensions, withDimensionsOnSide } from "./sheet-actions";
+import { addPoseSheets, printClientFile } from "./client-file";
 import { ZoomWindowTool, fitScale, type DrawingTool, type ToolHost } from "./tools";
 
 const PX_PER_MM = 3.78;
@@ -89,7 +90,6 @@ export class DrawingWorkspace {
   }
 
   // ---- the document --------------------------------------------------------------------------------------
-
   private get sheets(): DrawingSheet[] {
     return this.editor.doc.drawings ?? [];
   }
@@ -272,6 +272,8 @@ export class DrawingWorkspace {
       zoomWindow: () => this.setTool(new ZoomWindowTool(this.toolHost())),
       fit: () => this.fitPage(),
       exportPdf: () => this.exportPdf(),
+      pose: () => addPoseSheets(this.viewport, this.editor, this.layout, this.sheets, (all, id) => (this.commit(all), (this.sheetId = id), (this.selection = []), this.render())),
+      clientFile: () => printClientFile(this.viewport, this.editor, this.sheets.map((s) => this.sheetSvg(s)), this.title(), this.sheet().format),
       exportDxf: () => downloadText(`${this.fileName()}.dxf`, sheetDxf(this.sheet(), this.layout, (mm) => formatLength(mm, this.editor.unit), this.bom()), "application/dxf"),
       exportSvg: () => downloadText(`${this.fileName()}.svg`, this.sheetSvg(this.sheet()), "image/svg+xml"),
       close: () => this.close(),
