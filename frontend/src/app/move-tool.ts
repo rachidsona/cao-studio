@@ -20,7 +20,7 @@ import { moveSketchPlane, sketchSnapPoints } from "../sketcher/move";
 import { dragStep, roundTo } from "../viewport/axis-drag";
 import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
-import { SnapSquares } from "../viewport/snap-squares";
+import { SnapDots } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
 import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
@@ -29,6 +29,11 @@ import { pointText } from "./model-selection";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** What is moved: a body of the model, or a sketch. */
+
+/** The point under the pointer, the pivot and the target (the dots of Déplacer). */
+const HOVER_COLOR = 0xf8500a;
+const PIVOT_COLOR = 0xe11d48;
+const TARGET_COLOR = 0x16a34a;
 export const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), `${i + 1} copie${i ? "s" : ""} (l'original reste)`])];
 
 export type MoveSubject = { kind: "body"; id: string } | { kind: "sketch"; id: string };
@@ -69,8 +74,8 @@ export class MoveTool extends PanelTool {
   private reachFace = false;
   private reachNormal: Vec3 | null = null;
   private pickStep: "source" | "reach" = "source";
-  /** The pivot (rose) and the target (green), as hollow squares. */
-  private readonly markers = new SnapSquares(this.ctx.viewport.scene);
+  /** The pivot (rose) and the target (green), as small dots. */
+  private readonly markers = new SnapDots(this.ctx.viewport.scene, 9);
   /** Snap points of the face under the pointer, and the one under the pointer (Fusion's point picking). */
   private hover: {
     points: Vec3[];
@@ -81,8 +86,8 @@ export class MoveTool extends PanelTool {
     /** The body face under the pointer, if it can be a target (its plane). */
     face: FaceSnaps | null;
   } | null = null;
-  /** The points a click can pick: hollow squares, the one under the pointer filled and orange. */
-  private readonly squares = new SnapSquares(this.ctx.viewport.scene);
+  /** The point a click would pick, under the pointer: a small orange dot (the others are not shown). */
+  private readonly squares = new SnapDots(this.ctx.viewport.scene);
   /** The smart snapping: the box of the body before the move, and the pink guides of its alignments. */
   private box: Box | null = null;
   private readonly guides = new SnapGuides(this.ctx.viewport.scene);
@@ -162,13 +167,13 @@ export class MoveTool extends PanelTool {
     const colors: number[] = [];
     if (this.source) {
       points.push([0, 1, 2].map((i) => (this.source as Vec3)[i]! + this.translate[i]!) as Vec3);
-      colors.push(0.88, 0.11, 0.28);
+      colors.push(PIVOT_COLOR);
     }
     if (this.reach) {
       points.push(this.reach);
-      colors.push(0.09, 0.64, 0.29);
+      colors.push(TARGET_COLOR);
     }
-    this.markers.show(points, -1, colors);
+    this.markers.show(points, colors);
   }
 
   /** The manipulator sits on the pivot (or the centre), moved with the body; while a pivot is being chosen it follows the point under the pointer. */
@@ -182,10 +187,11 @@ export class MoveTool extends PanelTool {
     this.gizmo.showRotation(this.frameMode === "global");
   }
 
-  /** Hollow squares on the points that can be picked (as in the sketch), the one that will be picked filled and orange. */
+  /** Only the point that will be picked, under the pointer: a small orange dot. */
   private placeSnaps(): void {
-    if (!this.hover) return this.squares.clear();
-    this.squares.show(this.hover.points, this.hover.index);
+    const point = this.hover && this.hover.index >= 0 ? this.hover.points[this.hover.index] : undefined;
+    if (!point) return this.squares.clear();
+    this.squares.show([point], [HOVER_COLOR]);
   }
 
   /** Redraws the panel and the manipulator, and asks for a new preview. */

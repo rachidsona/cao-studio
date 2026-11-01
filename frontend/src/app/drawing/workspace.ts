@@ -5,17 +5,15 @@
  * d'un clic, on le déplace en le glissant (une vue projetée reste alignée sur sa vue mère, qui l'emmène), Suppr le
  * retire ; Ctrl+Z annule comme partout. Les feuilles sont gardées avec le projet.
  */
-import { cutList } from "../../document/cut-list";
 import { bodyLabel } from "../../document/operations";
-import { drawAnnotation } from "../../drawing/annotations";
 import { sheetDxf } from "../../drawing/dxf";
 import { SheetLayout } from "../../drawing/layout";
 import {
-  FORMATS, FRAME_MARGIN, ORIENTATIONS, TITLE_SIZE, freshId, newSheet, placedSide, removeView, sheetIds, sideSpec, updateSheet,
+  FORMATS, FRAME_MARGIN, ORIENTATIONS, TITLE_SIZE, freshId, newSheet, placedSide, removeView, sheetIds, sideSpec, updateSheet, withoutDimensions,
   type DrawingSheet, type DrawingView, type LineStyle, type Orientation, type Vec2,
 } from "../../drawing/model";
 import type { MeshInput } from "../../drawing/projection";
-import { bomSvg, renderSheet, type BomRow } from "../../drawing/svg";
+import { renderSheet, type BomRow } from "../../drawing/svg";
 import { formatLength } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
@@ -23,20 +21,28 @@ import type { Editor } from "../editor";
 import { partsOf } from "../workshop";
 import { downloadText, openModal, printHtml } from "../workshop-ui";
 import { drawProperties } from "./properties";
-import { SketchTool } from "./sketch-tool";
-import {
-  AngleTool, BaseViewTool, CircleDimensionTool, DetailTool, DimensionTool, LabelTool, ProjectedViewTool, SectionTool, fitScale,
-  type DrawingTool, type ToolHost,
-} from "./tools";
+import { lineDimension } from "../../drawing/auto-dims";
+import { DrawingNavigator } from "./navigator";
+import { drawingRibbon } from "./ribbon";
+import { arrangeDimensions, dimensionFrame, snapDimension } from "../../drawing/arrange";
+import { bomRows, describeAnnotation, hitTest, sideName, traitAt, withAutoDimensions, withDimensionsOnSide } from "./sheet-actions";
+import { ZoomWindowTool, fitScale, type DrawingTool, type ToolHost } from "./tools";
 
-const BTN = "flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] leading-tight hover:bg-gray-100 aria-pressed:bg-sky-100 aria-pressed:text-sky-800 dark:hover:bg-gray-800 dark:aria-pressed:bg-sky-950";
 const PX_PER_MM = 3.78;
+/** Room between the standard views (paper mm), for their dimensions. */
+const GAP_VIEWS = 30;
 
 export class DrawingWorkspace {
   private readonly root: HTMLElement;
   private readonly stage: HTMLElement;
   private readonly host: HTMLElement;
   private readonly panel: HTMLElement;
+  private readonly navigator: DrawingNavigator;
+  /** The trait last clicked in a view (its length is shown, its dimension one click away). */
+  private trait: ReturnType<typeof traitAt> = null;
+  /** A dimension being dragged: where the pointer would put it before snapping, and the guides of its snap. */
+  private raw: { offset: number; textShift: number } | null = null;
+  private guides: [Vec2, Vec2][] = [];
   private readonly tabs: HTMLElement;
   private readonly status: HTMLElement;
   private readonly layout: SheetLayout;
@@ -55,14 +61,24 @@ export class DrawingWorkspace {
   ) {
     this.layout = new SheetLayout(() => this.meshes());
     this.layout.setModel(this.modelKey());
-    this.stage = el("div", { class: "relative min-h-0 flex-1 overflow-hidden bg-gray-300 dark:bg-gray-700", "data-drawing-stage": "" });
+    this.stage = el("div", { class: "relative min-h-0 flex-1 overflow-hidden bg-gray-300 select-none dark:bg-gray-700", "data-drawing-stage": "" });
     this.host = el("div", { class: "absolute top-0 left-0 origin-top-left shadow-xl" });
     this.stage.append(this.host);
     this.panel = el("div", { class: "w-72 shrink-0 space-y-2 overflow-y-auto border-l border-gray-200 bg-white p-3 text-xs dark:border-gray-700 dark:bg-gray-900", "aria-label": "Réglages de la mise en plan" });
     this.tabs = el("div", { class: "flex shrink-0 items-center gap-1 border-t border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900" });
     this.status = el("div", { class: "truncate px-3 py-1 text-xs text-gray-600 dark:text-gray-300", "aria-live": "polite" });
+    this.navigator = new DrawingNavigator(el("nav", { class: "w-64 shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900", "aria-label": "Navigateur de la mise en plan" }), {
+      sheets: () => this.sheets,
+      sheet: () => this.sheet(),
+      selection: () => this.selection,
+      select: (id) => ((this.selection = [id]), this.render()),
+      openSheet: (id) => ((this.sheetId = id), (this.selection = []), this.render(), this.fitPage()),
+      update: (change) => this.update(change),
+      bodies: () => this.viewport.displayedBodies.map((id) => ({ id, name: bodyLabel(this.editor.doc, id) })),
+      describe: (id) => describeAnnotation(this.sheet(), this.layout, id, (mm) => formatLength(mm, this.editor.unit)),
+    });
     this.root = el("div", { class: "fixed inset-0 z-40 flex flex-col bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-100", role: "dialog", "aria-label": "Mise en plan", "data-drawing-workspace": "" },
-      this.ribbon(), el("div", { class: "flex min-h-0 flex-1" }, el("div", { class: "flex min-w-0 flex-1 flex-col" }, this.stage, this.status, this.tabs), this.panel));
+      this.ribbon(), el("div", { class: "flex min-h-0 flex-1" }, this.navigator.element, el("div", { class: "flex min-w-0 flex-1 flex-col" }, this.stage, this.status, this.tabs), this.panel));
     document.body.append(this.root);
     if (!this.sheets.length) this.commit([this.withStandardViews(newSheet([], this.title()))]);
     this.sheetId = this.sheets[0]!.id;
@@ -91,9 +107,7 @@ export class DrawingWorkspace {
     this.commit(updateSheet(this.sheets, this.sheet().id, change));
   }
 
-  private title(): string {
-    return document.title.split(" · ")[0] || "Mise en plan";
-  }
+  private title = () => document.title.split(" · ")[0] || "Mise en plan";
 
   private meshes(): MeshInput[] {
     return this.viewport.displayedBodies.flatMap((id) => {
@@ -111,17 +125,7 @@ export class DrawingWorkspace {
 
   /** The parts list: the cut list of the displayed pieces, a number per row. */
   private bom(): BomRow[] {
-    const doc = this.editor.doc;
-    const parts = partsOf(this.viewport, doc);
-    const fmt = (mm: number) => formatLength(mm, this.editor.unit);
-    return cutList(doc, parts).rows.map((r, i) => ({
-      item: i + 1,
-      name: r.names[0] + (r.names.length > 1 ? ` (+${r.names.length - 1})` : ""),
-      quantity: r.quantity,
-      material: r.material,
-      size: `${fmt(r.length)} × ${fmt(r.width)} × ${fmt(r.thickness)}`,
-      bodies: parts.filter((p) => r.names.includes(bodyLabel(doc, p.id))).map((p) => p.id),
-    }));
+    return bomRows(this.editor.doc, partsOf(this.viewport, this.editor.doc), (mm) => formatLength(mm, this.editor.unit));
   }
 
   /** Front, top, left and an isometric view, at a scale that fits the sheet. */
@@ -132,13 +136,13 @@ export class DrawingWorkspace {
     const front = probe(ORIENTATIONS.front.spec);
     const top = probe(sideSpec(ORIENTATIONS.front.spec, "top"));
     const [W, H, D] = [front.max[0] - front.min[0], front.max[1] - front.min[1], top.max[1] - top.min[1]];
-    const room: Vec2 = [(w - 2 * FRAME_MARGIN - 60) / 2, h - 2 * FRAME_MARGIN - TITLE_SIZE[1] - 50];
+    const room: Vec2 = [(w - 2 * FRAME_MARGIN - 110) / 2, h - 2 * FRAME_MARGIN - TITLE_SIZE[1] - 70];
     const scale = fitScale([W + D, H + D], room);
     const [fw, fh, d] = [W / scale, H / scale, D / scale];
-    const x = FRAME_MARGIN + 25 + fw / 2;
-    const y = FRAME_MARGIN + 20 + fh / 2;
-    const below = sheet.projection === "first" ? y + fh / 2 + 22 + d / 2 : y;
-    const frontY = sheet.projection === "first" ? y : y + d + 22;
+    const x = FRAME_MARGIN + 45 + fw / 2;
+    const y = FRAME_MARGIN + 28 + fh / 2;
+    const below = sheet.projection === "first" ? y + fh / 2 + GAP_VIEWS + d / 2 : y;
+    const frontY = sheet.projection === "first" ? y : y + d + GAP_VIEWS;
     const ids = sheetIds(sheet);
     const id = () => {
       const next = freshId(ids, "view");
@@ -149,7 +153,7 @@ export class DrawingWorkspace {
     const views: DrawingView[] = [
       { id: base, kind: "base", spec: ORIENTATIONS.front.spec, orientation: "front", scale, at: [x, frontY], label: "Vue de face", hidden: true },
       { id: id(), kind: "projected", spec: sideSpec(ORIENTATIONS.front.spec, placedSide("down", sheet.projection)), orientation: sheet.projection === "first" ? "top" : "bottom", scale, at: [x, sheet.projection === "first" ? below : y], parent: base, label: sheet.projection === "first" ? "Vue de dessus" : "Vue de dessous", hidden: true },
-      { id: id(), kind: "projected", spec: sideSpec(ORIENTATIONS.front.spec, placedSide("right", sheet.projection)), orientation: sheet.projection === "first" ? "left" : "right", scale, at: [x + fw / 2 + 22 + d / 2, frontY], parent: base, label: sheet.projection === "first" ? "Vue de gauche" : "Vue de droite", hidden: true },
+      { id: id(), kind: "projected", spec: sideSpec(ORIENTATIONS.front.spec, placedSide("right", sheet.projection)), orientation: sheet.projection === "first" ? "left" : "right", scale, at: [x + fw / 2 + GAP_VIEWS + d / 2, frontY], parent: base, label: sheet.projection === "first" ? "Vue de gauche" : "Vue de droite", hidden: true },
       { id: id(), kind: "projected", spec: ORIENTATIONS.iso.spec, orientation: "iso", scale, at: [w - FRAME_MARGIN - 20 - (fw + d) / 2, FRAME_MARGIN + 25 + (fh + d) / 2], parent: base, label: "Vue isométrique", hidden: false },
     ];
     return { ...sheet, views: [...sheet.views, ...views] };
@@ -164,7 +168,8 @@ export class DrawingWorkspace {
     const sheet = this.sheet();
     const index = this.sheets.findIndex((s) => s.id === sheet.id);
     const svg = renderSheet(sheet, this.layout, { format: (mm) => formatLength(mm, this.editor.unit), bom: this.bom(), page: [index + 1, this.sheets.length], selected: new Set(this.selection) });
-    this.host.innerHTML = svg.replace("</svg>", `<g data-preview="">${this.tool?.preview() ?? ""}</g></svg>`);
+    const guides = this.guides.map(([a, b]) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#ec4899" stroke-width="0.3" stroke-dasharray="1.5 1"/>`).join("");
+    this.host.innerHTML = svg.replace("</svg>", `<g data-preview="">${this.tool?.preview() ?? ""}${guides}</g></svg>`);
     const drawn = this.host.querySelector("svg")!;
     const [w, h] = FORMATS[sheet.format];
     drawn.setAttribute("width", String(w * PX_PER_MM));
@@ -173,7 +178,14 @@ export class DrawingWorkspace {
     this.status.textContent = this.tool?.hint() ?? "Cliquez pour sélectionner, glissez pour déplacer ; Suppr retire. Molette : zoom ; glisser le fond : se déplacer.";
     for (const b of this.root.querySelectorAll<HTMLElement>("[data-drawing-tool]")) b.setAttribute("aria-pressed", String(b.dataset.drawingTool === (this.tool?.name ?? "select")));
     this.drawTabs();
+    this.navigator.draw();
     if (!this.root.querySelector("[aria-label='Réglages de la mise en plan'] :focus")) this.drawPanel();
+  }
+
+  /** Cotation automatique: the selected views, else every view shown. */
+  private autoDimensions(): void {
+    const views = this.selection.filter((id) => this.sheet().views.some((v) => v.id === id));
+    this.update((s) => withAutoDimensions(s, this.layout, views));
   }
 
   private drawPanel(): void {
@@ -183,7 +195,21 @@ export class DrawingWorkspace {
       update: (change) => this.update(change),
       options: this.options,
       tool: () => this.tool?.name ?? "select",
+      trait: () => {
+        const t = this.trait;
+        const view = t && this.sheet().views.find((v) => v.id === t.view);
+        if (!t || !view || !this.selection.includes(view.id)) return null;
+        return {
+          text: formatLength(t.length, this.editor.unit),
+          add: () => {
+            const made = lineDimension(this.sheet(), this.layout, view, t.a, t.b);
+            if (made) this.update((s) => ({ ...s, annotations: [...s.annotations, { ...made, id: freshId(sheetIds(s), "note") } as DrawingSheet["annotations"][number]] }));
+          },
+        };
+      },
       standardViews: () => this.update((s) => this.withStandardViews(s)),
+      dimensionSide: (id) => sideName(this.sheet(), this.layout, id),
+      setDimensionSide: (side) => this.update((s) => withDimensionsOnSide(s, this.layout, this.selection, side)),
       removeSheet: () => {
         if (this.sheets.length === 1) return this.editor.notify("Il reste une seule feuille : elle est gardée.", "info");
         this.commit(this.sheets.filter((s) => s.id !== this.sheet().id));
@@ -207,6 +233,16 @@ export class DrawingWorkspace {
     this.tabs.replaceChildren(...tabs, add);
   }
 
+  /** Shows a rectangle of the sheet (paper mm) as large as the stage allows, centred. */
+  private zoomTo(a: Vec2, b: Vec2): void {
+    const r = this.stage.getBoundingClientRect();
+    const [w, h] = [Math.max(1, Math.abs(b[0] - a[0])), Math.max(1, Math.abs(b[1] - a[1]))];
+    const zoom = Math.max(0.1, Math.min(20, Math.min((r.width - 20) / (w * PX_PER_MM), (r.height - 20) / (h * PX_PER_MM))));
+    const [cx, cy] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    this.view = { zoom, x: r.width / 2 - cx * PX_PER_MM * zoom, y: r.height / 2 - cy * PX_PER_MM * zoom };
+    this.render();
+  }
+
   private fitPage(): void {
     const [w, h] = FORMATS[this.sheet().format];
     const r = this.stage.getBoundingClientRect();
@@ -218,52 +254,31 @@ export class DrawingWorkspace {
   // ---- the ribbon -----------------------------------------------------------------------------------------
 
   private ribbon(): HTMLElement {
-    const button = (label: string, glyph: string, run: () => void, toolName?: string, title = label) => {
-      const b = el("button", { type: "button", class: BTN, title, ...(toolName ? { "data-drawing-tool": toolName, "aria-pressed": "false" } : {}) }, el("span", { class: "text-lg leading-none", "aria-hidden": "true" }, glyph), label);
-      b.addEventListener("click", run);
-      return b;
-    };
-    const group = (caption: string, ...buttons: HTMLElement[]) =>
-      el("div", { class: "flex flex-col border-r border-gray-200 px-1 dark:border-gray-700", role: "group", "aria-label": caption }, el("div", { class: "flex" }, ...buttons), el("span", { class: "text-center text-[10px] font-semibold tracking-wide text-gray-500 uppercase" }, caption));
-    const use = (make: (host: ToolHost) => DrawingTool) => () => this.setTool(make(this.toolHost()));
-    return el("div", { class: "flex shrink-0 items-stretch overflow-x-auto border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900" },
-      el("div", { class: "flex items-center px-3 text-sm font-bold tracking-wide text-sky-800 uppercase dark:text-sky-300" }, "Mise en plan"),
-      group("Sélection", button("Choisir", "↖", () => this.setTool(null), "select")),
-      group("Vues",
-        button("Vue de base", "▣", use((h) => new BaseViewTool(h)), "base"),
-        button("Projetée", "⊞", use((h) => new ProjectedViewTool(h, this.selection[0] ?? null)), "projected", "Vue projetée : tirée d'une vue, à côté, dessus, dessous ou en biais"),
-        button("Coupe", "⊟", use((h) => new SectionTool(h)), "section", "Coupe : un trait sur une vue, puis la place de la coupe"),
-        button("Détail", "◎", use((h) => new DetailTool(h)), "detail", "Vue de détail : un cercle sur une vue, agrandi")),
-      group("Cotes",
-        button("Cote", "↔", use((h) => new DimensionTool(h)), "dimension", "Cote : deux points, puis tirer (horizontale, verticale ; Maj : alignée)"),
-        button("Diamètre", "⌀", use((h) => new CircleDimensionTool(h, "diameter")), "circle-dimension-d"),
-        button("Rayon", "R", use((h) => new CircleDimensionTool(h, "radius")), "circle-dimension-r"),
-        button("Angle", "∠", use((h) => new AngleTool(h)), "angle")),
-      group("Annoter",
-        button("Texte", "T", use((h) => new LabelTool(h, "text")), "text"),
-        button("Note", "↘", use((h) => new LabelTool(h, "note")), "note", "Note avec ligne de rappel"),
-        button("Repère", "①", use((h) => new LabelTool(h, "balloon")), "balloon", "Repère numéroté d'une pièce (le numéro de la nomenclature)"),
-        button("Nomenclature", "☰", use((h) => new LabelTool(h, "bom")), "bom")),
-      group("Dessin 2D",
-        button("Ligne", "╱", use((h) => new SketchTool(h, "line")), "sketch-line"),
-        button("Rectangle", "▭", use((h) => new SketchTool(h, "rect")), "sketch-rect"),
-        button("Cercle", "○", use((h) => new SketchTool(h, "circle")), "sketch-circle")),
-      group("Exporter",
-        button("PDF", "⎙", () => this.exportPdf(), undefined, "Imprimer ou enregistrer en PDF (toutes les feuilles)"),
-        button("DXF", "⬇", () => downloadText(`${this.fileName()}.dxf`, sheetDxf(this.sheet(), this.layout, (mm) => formatLength(mm, this.editor.unit), this.bom()), "application/dxf"), undefined, "Feuille en DXF, par calques"),
-        button("SVG", "⬇", () => downloadText(`${this.fileName()}.svg`, this.sheetSvg(this.sheet()), "image/svg+xml"))),
-      el("div", { class: "flex-1" }),
-      el("div", { class: "flex items-center px-2" }, (() => {
-        const close = el("button", { type: "button", class: "h-9 btn-accent px-4 text-sm font-medium", "data-drawing-close": "" }, "Fermer la mise en plan");
-        close.addEventListener("click", () => this.close());
-        return close;
-      })()),
-    );
+    return drawingRibbon({
+      use: (make) => this.setTool(make(this.toolHost())),
+      select: () => this.setTool(null),
+      selected: () => this.selection[0] ?? null,
+      autoDimensions: () => this.autoDimensions(),
+      arrange: () => this.update((s) => arrangeDimensions(s, this.layout, this.selection.filter((id) => s.views.some((v) => v.id === id)))),
+      clearDimensions: () => {
+        const views = this.selection.filter((id) => this.sheet().views.some((v) => v.id === id));
+        const before = this.sheet().annotations.length;
+        const after = withoutDimensions(this.sheet(), views);
+        if (before === after.annotations.length) return this.editor.notify("Aucune cote à effacer.", "info");
+        this.selection = [];
+        this.update(() => after);
+        this.editor.notify(`${before - after.annotations.length} cote(s) effacée(s) ${views.length ? "des vues choisies" : "de la feuille"} — Ctrl+Z pour les rendre.`, "info");
+      },
+      zoomWindow: () => this.setTool(new ZoomWindowTool(this.toolHost())),
+      fit: () => this.fitPage(),
+      exportPdf: () => this.exportPdf(),
+      exportDxf: () => downloadText(`${this.fileName()}.dxf`, sheetDxf(this.sheet(), this.layout, (mm) => formatLength(mm, this.editor.unit), this.bom()), "application/dxf"),
+      exportSvg: () => downloadText(`${this.fileName()}.svg`, this.sheetSvg(this.sheet()), "image/svg+xml"),
+      close: () => this.close(),
+    });
   }
 
-  private fileName(): string {
-    return `${this.title()} - ${this.sheet().name}`.replace(/[\\/:*?"<>|]/g, "-");
-  }
+  private fileName = () => `${this.title()} - ${this.sheet().name}`.replace(/[\\/:*?"<>|]/g, "-");
 
   private sheetSvg(sheet: DrawingSheet): string {
     const index = this.sheets.findIndex((s) => s.id === sheet.id);
@@ -288,6 +303,7 @@ export class DrawingWorkspace {
       options: this.options,
       done: () => this.setTool(null),
       redraw: () => this.render(),
+      zoomTo: (a, b) => this.zoomTo(a, b),
     };
   }
 
@@ -325,34 +341,7 @@ export class DrawingWorkspace {
 
   /** What is under a paper point: an annotation, a 2D element, then a view. */
   private hit(p: Vec2): string | null {
-    const sheet = this.sheet();
-    const near = (a: Vec2, b: Vec2) => {
-      const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
-      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
-      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
-    };
-    const bom = this.bom();
-    for (const a of [...sheet.annotations].reverse()) {
-      if (a.kind === "bom") {
-        const { size } = bomSvg(a.at, bom);
-        if (p[0] >= a.at[0] && p[0] <= a.at[0] + size[0] && p[1] >= a.at[1] && p[1] <= a.at[1] + size[1]) return a.id;
-        continue;
-      }
-      const d = drawAnnotation(sheet, this.layout, a, (mm) => formatLength(mm, this.editor.unit), () => 1);
-      if (d.lines.some(([x, y]) => near(x, y) < 1.5) || d.texts.some((t) => Math.hypot(t.at[0] - p[0], t.at[1] - 1.5 - p[1]) < Math.max(3, t.text.length * t.size * 0.3)) || d.circles.some((c) => Math.hypot(c.center[0] - p[0], c.center[1] - p[1]) < c.radius + 1)) return a.id;
-    }
-    const { scale, origin } = sheet.sketch;
-    const sp = (v: Vec2): Vec2 => [origin[0] + v[0] / scale, origin[1] - v[1] / scale];
-    for (const i of [...sheet.sketch.items].reverse()) {
-      if (i.kind === "line" && near(sp(i.a), sp(i.b)) < 1.5) return i.id;
-      if (i.kind === "rect") {
-        const [a, b] = [sp(i.a), sp(i.b)];
-        const c: Vec2[] = [a, [b[0], a[1]], b, [a[0], b[1]]];
-        if (c.some((q, k) => near(q, c[(k + 1) % 4]!) < 1.5)) return i.id;
-      }
-      if (i.kind === "circle" && Math.abs(Math.hypot(sp(i.center)[0] - p[0], sp(i.center)[1] - p[1]) - i.radius / scale) < 1.5) return i.id;
-    }
-    return this.layout.viewAt(sheet, p, 1)?.id ?? null;
+    return hitTest(this.sheet(), this.layout, p, this.bom(), (mm) => formatLength(mm, this.editor.unit));
   }
 
   /** Moves what is dragged by `d` (paper mm) on a copy of the sheet. */
@@ -373,11 +362,15 @@ export class DrawingWorkspace {
     if (a) {
       if ("at" in a) return { ...sheet, annotations: sheet.annotations.map((x) => (x.id === id ? { ...a, at: [a.at[0] + d[0], a.at[1] + d[1]] } : x)) };
       if (a.kind === "dimension") {
-        const drawn = drawAnnotation(sheet, this.layout, a, () => "", () => null);
-        const [s, e] = drawn.lines.at(-1) ?? [[0, 0], [1, 0]];
-        const dir: Vec2 = [(e[0] - s[0]) / (Math.hypot(e[0] - s[0], e[1] - s[1]) || 1), (e[1] - s[1]) / (Math.hypot(e[0] - s[0], e[1] - s[1]) || 1)];
-        const shift = (p[0] - (s[0] + e[0]) / 2) * -dir[1] + (p[1] - (s[1] + e[1]) / 2) * dir[0];
-        return { ...sheet, annotations: sheet.annotations.map((x) => (x.id === id ? { ...a, offset: a.offset + shift } : x)) };
+        // Across its line: the line moves; along it: the text slides. Then snapped (aligned, rows), with guides.
+        const frame = dimensionFrame(sheet, this.layout, a);
+        if (!frame) return sheet;
+        const raw = (this.raw ??= { offset: a.offset, textShift: a.textShift ?? 0 });
+        raw.offset += d[0] * frame.normal[0] + d[1] * frame.normal[1];
+        raw.textShift += d[0] * frame.dir[0] + d[1] * frame.dir[1];
+        const snapped = snapDimension(sheet, this.layout, { ...a, ...raw });
+        this.guides = snapped.guides;
+        return { ...sheet, annotations: sheet.annotations.map((x) => (x.id === id ? { ...a, offset: snapped.offset, textShift: snapped.textShift || undefined } : x)) };
       }
       if (a.kind === "diameter" || a.kind === "radius") {
         const view = sheet.views.find((v) => v.id === a.view);
@@ -422,6 +415,8 @@ export class DrawingWorkspace {
         if (drag.id) {
           this.draft = this.moved(this.draft ?? this.sheet(), drag.id, [p[0] - drag.last[0], p[1] - drag.last[1]], p);
           drag.last = p;
+        } else if (this.tool?.drag && event.buttons === 1) {
+          this.tool.drag(drag.start, p);
         } else if (!this.tool || event.buttons === 4) {
           this.view = { ...this.view, x: drag.view.x + event.clientX - drag.screen[0], y: drag.view.y + event.clientY - drag.screen[1] };
         }
@@ -432,7 +427,9 @@ export class DrawingWorkspace {
     this.stage.addEventListener("pointerup", (event) => {
       const wasDrag = drag;
       drag = null;
+      [this.raw, this.guides] = [null, []];
       if (wasDrag?.moved) {
+        if (!wasDrag.id && this.tool?.dragEnd && event.button === 0) return this.tool.dragEnd(wasDrag.start, this.paper(event));
         if (this.draft) {
           const done = this.draft;
           this.draft = null;
@@ -445,6 +442,8 @@ export class DrawingWorkspace {
       else if (!this.tool && event.button === 0) {
         const id = this.hit(p);
         this.selection = id ? (event.shiftKey ? [...new Set([...this.selection, id])] : [id]) : [];
+        // A trait clicked in a view: its length straight away, in the panel.
+        this.trait = id && this.sheet().views.some((v) => v.id === id) ? traitAt(this.sheet(), this.layout, p) : null;
         this.render();
       }
     });

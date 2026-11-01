@@ -445,11 +445,11 @@ opération existante.
     dans un repère local. Le même manipulateur, avec les seules flèches du plan et le point, sert à déplacer une
     esquisse. On peut aussi saisir le déplacement relatif (Δ), la distance sur un axe, ou la position absolue du
     centre.
-  - **Pivot et cible** (mode par défaut, comme le déplacement de Fusion) : en survolant un élément, **tous
-    ses coins** (ceux d'un panneau mince en entier, pas seulement ceux de la face visée) et le **milieu** de la face
-    apparaissent en **carrés vides** bien lisibles, comme dans l'esquisse (bord sombre autour d'un trait blanc ; celui
-    sous le curseur devient un carré orange plein, un peu plus grand ; le pivot est un carré rose, la cible un carré
-    vert) et le manipulateur suit ce point ; un clic y place le **pivot** (les flèches). Ensuite :
+  - **Pivot et cible** (mode par défaut, comme le déplacement de Fusion) : en survolant un élément, ses coins (ceux
+    d'un panneau mince en entier, pas seulement ceux de la face visée) et le **milieu** de la face peuvent être pris.
+    Seul le point sous le curseur apparaît, en **petit point rond orange (#f8500a)**, et le manipulateur suit ce
+    point ; le pivot choisi est un petit point rose, la cible un petit point vert. Un clic y place le **pivot** (les
+    flèches). Ensuite :
     - un clic sur un coin ou le milieu d'une face d'**un autre corps** amène le pivot sur ce point ;
     - un clic à l'intérieur d'une **face plane** d'un autre corps amène le corps sur le plan de cette face
       (déplacement le long de sa normale seulement) ;
@@ -466,18 +466,25 @@ opération existante.
     déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres
     opérations.
 - **Coïncidence** (bouton du groupe **Modifier**, à côté de « Déplacer ») : colle une esquisse ou un corps par un
-  de ses points. On clique d'abord un point de ce qu'il faut déplacer : un coin d'un corps ou un point d'une
-  esquisse (les points s'affichent au survol). On clique ensuite où le coller : un point d'un autre corps ou
+  de ses points, en trois clics. On clique d'abord **ce qu'il faut déplacer** : un corps (une de ses faces, il
+  s'éclaire au survol) ou une esquisse ; ce qui était sélectionné en ouvrant l'outil compte comme ce premier clic.
+  On clique ensuite **un de ses points** : seuls les coins de la pièce choisie (ou les points de l'esquisse) se
+  prennent, si bien qu'un coin partagé avec une pièce voisine (l'étagère contre son côté) reste à la pièce choisie.
+  « Choisir un autre point de la pièce » garde la pièce, « Recommencer » repart du premier clic. On clique enfin où le coller : un point d'un autre corps ou
   d'une autre esquisse, ou un **trait** (une arête de corps, une ligne d'esquisse). Sur un trait, le point vient
   **au plus près**, ou **à l'endroit cliqué** (au choix dans le panneau). On peut aussi cliquer une **face plane**
   d'un autre corps, éclairée au survol quand aucun point ni trait n'est sous le pointeur. Au plus près, ce qu'on
   déplace vient droit dans le plan de la face (le chemin le plus court, perpendiculaire à elle) : un panneau se pose
   contre un autre ou au ras de lui. À l'endroit cliqué, le point vient exactement où l'on a cliqué la face. Seul le point sous le curseur
-  apparaît, en petit point vert (#63df0f). Le point de départ est marqué d'un petit point rose, l'arrivée d'un
+  apparaît, en petit point orange (#f8500a), comme dans Déplacer. Le point de départ est marqué d'un petit point rose, l'arrivée d'un
   point vert, et le résultat se voit avant OK. Un corps est déplacé par une opération « Coïncidence » (un
   déplacement), une esquisse avec son plan et tout ce qui en est extrudé. Pour un corps, **« Copier »** fonctionne
   comme dans Déplacer : de 1 à 10 copies, l'original reste en place. La première copie vient sur le point visé, la
-  suivante deux fois plus loin, et ainsi de suite. Une opération « Copie » les fait. Une seule annulation
+  suivante deux fois plus loin, et ainsi de suite. Une opération « Copie » les fait. **« Ajuster à la niche »** :
+  un corps calé entre deux voisins (une étagère entre ses côtés, à 2 mm près) se recale entre ceux de l'endroit où il
+  arrive, avec les mêmes jeux : élargi dans une niche plus large, raccourci dans une plus étroite. Le panneau montre la
+  longueur avant → après ; « Non » garde ses mesures. Des opérations « Ajustement » (étirements, et pour une copie un
+  petit déplacement) le font. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`).
 - **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
@@ -1076,6 +1083,8 @@ opération existante.
   - *Mise en plan* (bouton 📐 de la barre du haut, comme l'espace Dessin de Fusion) : un écran à part avec son ruban,
     la feuille au centre (molette : zoom ; glisser le fond : se déplacer ; F : toute la feuille), les onglets des
     feuilles en bas et les réglages à droite. Les feuilles sont gardées avec le projet, et Ctrl+Z annule comme partout.
+    Groupe *Affichage* du ruban : *Zoom fenêtre* (tracer la zone à agrandir, en glissant ou par deux coins : elle
+    remplit l'écran) et *Ajuster* (toute la feuille à l'écran, comme F).
     - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, dessiné par, société, date, matière ;
       échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
       ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
@@ -1089,10 +1098,44 @@ opération existante.
       le plan, les faces coupées hachurées (une pièce sur deux dans l'autre sens). Le trait de coupe porte ses flèches
       et ses lettres (A-A, B-B…), et le sens s'inverse dans les réglages.
     - **Détail** : un cercle sur une vue, puis la place du détail, agrandi deux fois et demie.
-    - **Cotes** : *Cote* (deux points accrochés aux coins et aux centres, puis tirer : horizontale au-dessus ou
+    - **Cotes** : *Cote* (un trait, ou deux points accrochés aux coins et aux centres, puis tirer : horizontale au-dessus ou
       dessous, verticale à côté, alignée avec Maj), *Diamètre* et *Rayon* (un cercle vu de face), *Angle* (deux
       traits). La valeur est mesurée sur le modèle et le suit (un caisson élargi, sa cote change) ; on peut imposer
       un texte. Une cote glissée change de place.
+    - **Cote d'un trait** : avec l'outil *Cote*, un clic sur un trait (loin de ses coins) pose aussitôt sa cote,
+      horizontale, verticale ou alignée selon le trait, hors de la vue du côté le plus proche, sur le premier rang
+      libre (jamais sur une cote déjà posée). Les chiffres s'écrivent toujours à l'horizontale, dans la ligne de cote
+      coupée autour d'eux (« ←— 123 cm —→ »), cotes verticales comprises. Si la cote est trop courte pour les tenir
+      entre ses flèches, ils passent au-dessus, ou à côté vers l'extérieur.
+    - **Traits des cotes** (comme les styles de cote de Fusion) : fin ou épais ; lignes d'attache continues ou en
+      petits traits, la ligne de cote (flèches et chiffres) restant toujours continue. Le choix se fait pour toute la
+      feuille (panneau de la feuille, « Traits des cotes ») ou pour une cote (« Comme la feuille » sinon), et passe
+      aussi au PDF et au DXF.
+    - **Côté d'une cote** : dans son panneau, « Côté » met une cote verticale à gauche ou à droite de sa vue, une
+      horizontale au-dessus ou au-dessous, sur le premier rang libre. Toutes les cotes sélectionnées (Maj + clic) de
+      ce sens changent de côté ensemble.
+    - **Effacer** (groupe Cotes) retire les cotes des vues sélectionnées, sinon toutes celles de la feuille ; Ctrl+Z
+      les rend. En mode *Choisir*, un
+      trait cliqué dans une vue donne sa longueur dans le panneau (« Trait cliqué : 50 cm »), avec « Coter ce trait ».
+    - **Déplacer et ranger les cotes** (comme Fusion) : une cote glissée suit la souris. En travers de sa ligne, la
+      cote s'éloigne ou se rapproche de la vue ; le long de sa ligne, son texte glisse, et hors des lignes d'attache
+      la ligne de cote le rejoint.
+      - Près d'une autre cote parallèle, elle s'aligne sur elle. Elle s'accroche aussi aux rangs réguliers autour de
+        sa vue (tous les 7 mm), avec un guide rose en tirets.
+      - Le texte revient au milieu quand on le ramène près du centre.
+      - *Réorganiser* range les cotes des vues sélectionnées (sinon de toutes) de chaque côté de la vue : la plus
+        courte près d'elle, celles qui ne se chevauchent pas (une chaîne) sur le même rang, sans croisement, textes
+        recentrés (`drawing/arrange.ts`).
+    - **Cotes auto** : la cotation automatique des vues sélectionnées, sinon de toutes les vues visibles (hors
+      isométriques et détails). Elle pose les cotes hors tout (largeur sous la vue et son nom, hauteur à sa gauche ;
+      au-dessus ou à droite quand une autre vue est tout près de ce côté),
+      les chaînes de cotes entre les niveaux des coins, et un diamètre par taille de cercle assez grand pour être lu.
+      Les niveaux à moins de 7 mm l'un de l'autre sur le papier sont fondus : l'épaisseur d'une planche ne fait pas
+      une cote illisible. Relancée, elle remplace les siennes.
+    - **Navigateur** (à gauche, comme dans Fusion) : les feuilles, et pour la feuille ouverte ses vues, ses pièces,
+      ses cotes et annotations, son dessin 2D. Un œil cache ou montre une vue entière, une pièce dans une seule vue
+      (en dépliant la vue), une pièce dans toutes les vues de la feuille, une cote ou un trait. Une vue sans ses
+      portes montre l'intérieur du meuble. Un clic sur une ligne la sélectionne.
     - **Annoter** : *Texte*, *Note* avec ligne de rappel, *Repère* (bulle numérotée d'une pièce, au numéro de la
       nomenclature) et *Nomenclature* (repère, désignation, quantité, matière, dimensions, tirée de la liste de
       débit).
@@ -1220,11 +1263,13 @@ opération existante.
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :
-  - *corps* : celui à scinder — dans la liste, ou à la souris : « Choisir le corps dans la vue », le corps survolé
-    s'éclaire et le clic le choisit (même en mode « Face plane », où les autres clics choisissent la face de coupe ;
-    Échap annule) ;
+  - *corps* : un ou plusieurs, cliqués dans la vue (le corps survolé s'éclaire ; un clic l'ajoute, un second le
+    retire ; un morceau de l'aperçu vaut le corps dont il vient). Les corps sélectionnés avant d'ouvrir l'outil sont
+    pris d'emblée. En mode « Face plane », le premier clic choisit la face de coupe, les suivants les corps.
+    Chaque corps est coupé par sa propre scission, avec le même outil. Un corps que le plan ne traverse pas est
+    laissé entier (le panneau le dit) ;
   - *outil de coupe* : un **plan de construction** (XY, XZ ou YZ, décalé le long de sa normale : on
-    tire la flèche dans la vue ou on tape la valeur ; il passe d'abord par le centre du corps) ou
+    tire la flèche dans la vue ou on tape la valeur ; il passe d'abord par le centre des corps) ou
     le plan d'une **face plane** cliquée dans la vue (de ce corps ou d'un autre) ;
   - *conserver* : les deux parties, ou seulement le côté positif (+) ou négatif (−) ; la normale du
     plan indique le côté +. Un plan oblique est possible avec une face inclinée ;

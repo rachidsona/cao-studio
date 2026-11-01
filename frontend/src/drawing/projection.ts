@@ -265,7 +265,9 @@ export function projectSpec(meshes: readonly MeshInput[], spec: ViewSpec, showHi
   });
   const xs = lines.flatMap((l) => [l.a[0], l.b[0]]);
   const ys = lines.flatMap((l) => [l.a[1], l.b[1]]);
-  return { lines, circles, points, hatches, min: [Math.min(...xs, 0), Math.min(...ys, 0)], max: [Math.max(...xs, 0), Math.max(...ys, 0)] };
+  // The box of the drawing itself (the origin only when there is nothing to draw).
+  const box = (v: number[], f: (...n: number[]) => number) => (v.length ? f(...v) : 0);
+  return { lines, circles, points, hatches, min: [box(xs, Math.min), box(ys, Math.min)], max: [box(xs, Math.max), box(ys, Math.max)] };
 }
 
 /** A detail: the drawing of a view inside a circle (lines clipped to it, circles kept when inside). */

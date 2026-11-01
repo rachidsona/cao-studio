@@ -74,6 +74,8 @@ export interface DrawingView {
   at: Vec2;
   label: string;
   hidden: boolean;
+  /** Pieces left out of this view (body ids), from the navigator. */
+  hiddenBodies?: string[];
   /** The view it comes from (projected, section, detail): projected views stay aligned with it. */
   parent?: string;
   /** Section: the cutting line on the parent view (model mm in the parent's 2D frame) and its letter. */
@@ -92,13 +94,38 @@ export interface ViewAnchor {
 }
 
 export type Annotation =
-  | { id: string; kind: "dimension"; mode: "horizontal" | "vertical" | "aligned"; a: ViewAnchor; b: ViewAnchor; offset: number; text?: string }
-  | { id: string; kind: "diameter" | "radius"; view: string; center: Vec2; radius: number; angle: number; text?: string }
-  | { id: string; kind: "angle"; view: string; vertex: Vec2; a: Vec2; b: Vec2; radius: number; text?: string }
+  | { id: string; kind: "dimension"; mode: "horizontal" | "vertical" | "aligned"; a: ViewAnchor; b: ViewAnchor; offset: number; text?: string; auto?: boolean; textShift?: number; style?: DimStyle }
+  | { id: string; kind: "diameter" | "radius"; view: string; center: Vec2; radius: number; angle: number; text?: string; auto?: boolean; style?: DimStyle }
+  | { id: string; kind: "angle"; view: string; vertex: Vec2; a: Vec2; b: Vec2; radius: number; text?: string; style?: DimStyle }
   | { id: string; kind: "text"; at: Vec2; text: string; size: number }
   | { id: string; kind: "note"; at: Vec2; target: ViewAnchor; text: string }
   | { id: string; kind: "balloon"; at: Vec2; target: ViewAnchor; body: string }
   | { id: string; kind: "bom"; at: Vec2 };
+
+/** The lines of a dimension: thin or thick, solid or dashed (as Fusion's dimension styles); unset: the sheet's. */
+export interface DimStyle {
+  weight?: "thin" | "thick";
+  dashed?: boolean;
+}
+
+/** The kinds of annotation that are dimensions (measured, styled, removed together). */
+export const DIMENSION_KINDS: ReadonlySet<string> = new Set(["dimension", "diameter", "radius", "angle"]);
+
+/** The style a dimension is drawn with: its own, else the sheet's, else thin and solid. */
+export function dimStyleOf(sheet: DrawingSheet, a: Annotation): Required<DimStyle> {
+  const own = "style" in a ? a.style : undefined;
+  return { weight: own?.weight ?? sheet.dimStyle?.weight ?? "thin", dashed: own?.dashed ?? sheet.dimStyle?.dashed ?? false };
+}
+
+/** The sheet without the dimensions of these views (all of them when none). */
+export function withoutDimensions(sheet: DrawingSheet, viewIds: string[] = []): DrawingSheet {
+  const onView = (a: Annotation) => {
+    if (!viewIds.length) return true;
+    if (a.kind === "dimension") return viewIds.includes(a.a.view) || viewIds.includes(a.b.view);
+    return "view" in a && viewIds.includes(a.view);
+  };
+  return { ...sheet, annotations: sheet.annotations.filter((a) => !(DIMENSION_KINDS.has(a.kind) && onView(a))) };
+}
 
 /** Free drawing on the sheet, in real millimetres at the sheet's drawing scale (a 2D plan with no model). */
 export type Sketch2D =
@@ -116,6 +143,11 @@ export interface DrawingSheet {
   title: TitleBlock;
   views: DrawingView[];
   annotations: Annotation[];
+  /** Pieces left out of every view of the sheet, and views, annotations or 2D elements not shown (ids). */
+  hiddenBodies?: string[];
+  hiddenItems?: string[];
+  /** How the dimensions of the sheet are drawn, unless one has its own style. */
+  dimStyle?: DimStyle;
   /** Free 2D drawing: its scale (1:n) and origin on the sheet (paper mm), and its elements (real mm, y up). */
   sketch: { scale: number; origin: Vec2; items: Sketch2D[] };
 }
@@ -175,6 +207,16 @@ export function orientationOf(spec: ViewSpec): Orientation | undefined {
   const same = (a: V3, b: V3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 1e-6;
   return (Object.keys(ORIENTATIONS) as Orientation[]).find((o) => same(ORIENTATIONS[o].spec.toViewer, spec.toViewer) && same(ORIENTATIONS[o].spec.up, spec.up));
 }
+
+/** Shows or hides an id in a list of hidden ids. */
+export function toggled(list: readonly string[] | undefined, id: string, hide: boolean): string[] | undefined {
+  const next = (list ?? []).filter((x) => x !== id);
+  if (hide) next.push(id);
+  return next.length ? next : undefined;
+}
+
+/** Whether a view, an annotation or a 2D element is shown on its sheet. */
+export const shown = (sheet: DrawingSheet, id: string) => !sheet.hiddenItems?.includes(id);
 
 /** Replaces one sheet of the list. */
 export function updateSheet(sheets: readonly DrawingSheet[], id: string, change: (s: DrawingSheet) => DrawingSheet): DrawingSheet[] {

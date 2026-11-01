@@ -4,16 +4,20 @@
  * notes et repères avec leur ligne de rappel. Pur : le rendu SVG et l'export DXF les tracent tels quels.
  */
 import type { SheetLayout } from "./layout";
-import type { Annotation, DrawingSheet, Vec2 } from "./model";
+import { DIMENSION_KINDS, dimStyleOf, type Annotation, type DrawingSheet, type Vec2 } from "./model";
 
 export interface Drawn {
   lines: [Vec2, Vec2][];
+  /** The extension lines of a dimension (from the drawing to its line): dashed when its style says so. */
+  extensions?: [Vec2, Vec2][];
   /** Arrow heads: the tip and the direction it points to. */
   arrows: { tip: Vec2; dir: Vec2 }[];
   texts: { at: Vec2; text: string; angle: number; anchor: "start" | "middle" | "end"; size: number }[];
   circles: { center: Vec2; radius: number }[];
   /** Arcs (angle dimensions): centre, radius, from and to angles (radians, paper frame, y down). */
   arcs: { center: Vec2; radius: number; from: number; to: number }[];
+  /** Lines of a dimension: their width (paper mm), and dashes on its extension lines (its own line stays solid). */
+  style?: { width: number; dashed: boolean };
 }
 
 const EXTEND = 1.5;
@@ -26,13 +30,6 @@ const mul = (a: Vec2, k: number): Vec2 => [a[0] * k, a[1] * k];
 const len = (a: Vec2) => Math.hypot(a[0], a[1]);
 const unit = (a: Vec2): Vec2 => mul(a, 1 / (len(a) || 1));
 const empty = (): Drawn => ({ lines: [], arrows: [], texts: [], circles: [], arcs: [] });
-/** The angle of a text along a direction, kept readable (never upside down). */
-const readable = (d: Vec2) => {
-  let deg = (Math.atan2(d[1], d[0]) * 180) / Math.PI;
-  if (deg > 90) deg -= 180;
-  if (deg <= -90) deg += 180;
-  return deg;
-};
 
 /** The measured value of a linear dimension (model mm), or null when a point is gone. */
 export function measure(sheet: DrawingSheet, layout: SheetLayout, a: Annotation & { kind: "dimension" }): number | null {
@@ -46,6 +43,13 @@ export function measure(sheet: DrawingSheet, layout: SheetLayout, a: Annotation 
 
 /** What an annotation draws on the paper (`format`: a length as text; `item`: a body's number in the parts list). */
 export function drawAnnotation(sheet: DrawingSheet, layout: SheetLayout, a: Annotation, format: (mm: number) => string, item: (body: string) => number | null): Drawn {
+  const drawn = shapeOf(sheet, layout, a, format, item);
+  if (!DIMENSION_KINDS.has(a.kind)) return drawn;
+  const style = dimStyleOf(sheet, a);
+  return { ...drawn, style: { width: style.weight === "thick" ? 0.35 : 0.18, dashed: style.dashed } };
+}
+
+function shapeOf(sheet: DrawingSheet, layout: SheetLayout, a: Annotation, format: (mm: number) => string, item: (body: string) => number | null): Drawn {
   const out = empty();
   const viewOf = (id: string) => sheet.views.find((v) => v.id === id);
   const paperOf = (anchor: { view: string; rel: Vec2 }) => {
@@ -67,12 +71,37 @@ export function drawAnnotation(sheet: DrawingSheet, layout: SheetLayout, a: Anno
       const [sa, sb] = [add(base, mul(dir, along(pa))), add(base, mul(dir, along(pb)))];
       for (const [p, s] of [[pa, sa], [pb, sb]] as [Vec2, Vec2][]) {
         const out1 = unit(sub(s, p));
-        if (len(sub(s, p)) > GAP) out.lines.push([add(p, mul(out1, GAP)), add(s, mul(out1, EXTEND))]);
+        if (len(sub(s, p)) > GAP) (out.extensions ??= []).push([add(p, mul(out1, GAP)), add(s, mul(out1, EXTEND))]);
       }
-      out.lines.push([sa, sb]);
       const d = unit(sub(sb, sa));
+      const label = a.text ?? format(value);
       out.arrows.push({ tip: sa, dir: mul(d, -1) }, { tip: sb, dir: d });
-      out.texts.push({ at: add(mul(add(sa, sb), 0.5), mul([-d[1], d[0]], -1.2)), text: a.text ?? format(value), angle: readable(d), anchor: "middle", size: TEXT_SIZE });
+      // The figures always written level, in the line as on a drawing (« ←— 123 cm —→ »): the line stops on both
+      // sides of them, over what the text covers along it (its width across a horizontal line, its height across a
+      // vertical one). Slid along the line (`textShift`) past an extension line, the line runs on to it. Too short to
+      // hold it between its arrows, the text goes out of the line: above it, or beside it on the outer side.
+      const length = len(sub(sb, sa));
+      const [w, h] = [label.length * TEXT_SIZE * 0.56, TEXT_SIZE];
+      const covered = Math.abs(d[0]) * w + Math.abs(d[1]) * h;
+      const shift = (a.textShift ?? 0) * (dir[0] * d[0] + dir[1] * d[1] >= 0 ? 1 : -1);
+      const center = length / 2 + shift;
+      const point = (t: number) => add(sa, mul(d, t));
+      const [from, to] = [center - covered / 2 - 0.8, center + covered / 2 + 0.8];
+      const inline = (from >= 3 && to <= length - 3) || from >= length || to <= 0;
+      // The baseline, a third of a letter under the middle of the text.
+      const middle = (p: Vec2): Vec2 => [p[0], p[1] + TEXT_SIZE * 0.35];
+      if (inline) {
+        // Inside: two pieces of line; outside (slid away): the whole line and a piece on to the text.
+        if (from > 0 && to < length) out.lines.push([point(0), point(from)], [point(to), point(length)]);
+        else if (from >= length) out.lines.push([point(0), point(length)], [point(length), point(from)]);
+        else out.lines.push([point(to), point(0)], [point(0), point(length)]);
+        out.texts.push({ at: middle(point(center)), text: label, angle: 0, anchor: "middle", size: TEXT_SIZE });
+      } else {
+        out.lines.push([sa, sb]);
+        const outer = mul(normal, Math.sign(a.offset) || 1);
+        const beside: Vec2 = Math.abs(d[0]) >= Math.abs(d[1]) ? [0, -1.2] : add(mul([Math.sign(outer[0]) || -1, 0], w / 2 + 1.5), [0, TEXT_SIZE * 0.35]);
+        out.texts.push({ at: add(point(center), beside), text: label, angle: 0, anchor: "middle", size: TEXT_SIZE });
+      }
       return out;
     }
     case "diameter":

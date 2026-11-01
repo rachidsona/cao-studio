@@ -5,6 +5,7 @@
  * aux bouts d'arêtes, puis la place : horizontale, verticale ou alignée selon où on la tire), diamètre ou rayon, angle
  * (deux traits), texte, note, repère, nomenclature. Le dessin 2D libre est dans sketch-tool.ts.
  */
+import { lineDimension } from "../../drawing/auto-dims";
 import { SheetLayout, aligned, directionFrom, sectionOf } from "../../drawing/layout";
 import {
   ORIENTATIONS, SCALES, freshId, nextLetter, orientationOf, placedSide, sheetIds, sideSpec,
@@ -27,6 +28,8 @@ export interface ToolHost {
   done(): void;
   /** The preview changed. */
   redraw(): void;
+  /** Shows this rectangle of the sheet (paper mm) as large as the screen allows. */
+  zoomTo(a: Vec2, b: Vec2): void;
 }
 
 export interface DrawingTool {
@@ -38,6 +41,9 @@ export interface DrawingTool {
   key?(event: KeyboardEvent): boolean;
   /** SVG drawn over the sheet (paper mm). */
   preview(): string;
+  /** A drag with the tool on (from where the button went down); `dragEnd` when it is let go. */
+  drag?(from: Vec2, to: Vec2): void;
+  dragEnd?(from: Vec2, to: Vec2): void;
 }
 
 const f = (n: number) => n.toFixed(2);
@@ -238,7 +244,8 @@ export class DimensionTool implements DrawingTool {
   private hover: Vec2 | null = null;
   constructor(private readonly host: ToolHost) {}
   hint() {
-    return this.points.length < 2 ? `Cliquez le ${this.points.length ? "second" : "premier"} point (bouts d'arêtes, centres).` : "Tirez la cote : au-dessus ou dessous, horizontale ; à côté, verticale ; Maj, alignée. Cliquez pour la poser.";
+    if (!this.points.length) return "Cliquez un trait : sa cote est posée aussitôt. Ou cliquez un premier point (coin, centre), puis un second.";
+    return this.points.length < 2 ? "Cliquez le second point (bouts d'arêtes, centres)." : "Tirez la cote : au-dessus ou dessous, horizontale ; à côté, verticale ; Maj, alignée. Cliquez pour la poser.";
   }
   private pick(p: Vec2) {
     const sheet = this.host.sheet();
@@ -262,7 +269,15 @@ export class DimensionTool implements DrawingTool {
   click(p: Vec2, event: MouseEvent) {
     if (this.points.length < 2) {
       const picked = this.pick(p);
-      if (!picked) return this.host.notify("Cliquez près d'un coin ou d'un bout d'arête d'une vue.");
+      // Away from the corners, on a trait: its dimension at once.
+      const view = !picked && !this.points.length ? viewUnder(this.host, p) : undefined;
+      const line = view ? lineNear(this.host, view, p) : null;
+      if (view && line) {
+        const made = lineDimension(this.host.sheet(), this.host.layout, view, line.a, line.b);
+        if (made) addAnnotation(this.host, made);
+        return this.host.redraw();
+      }
+      if (!picked) return this.host.notify("Cliquez un trait, ou près d'un coin ou d'un bout d'arête d'une vue.");
       this.points.push(picked);
       return this.host.redraw();
     }
@@ -429,5 +444,45 @@ export class LabelTool implements DrawingTool {
   preview() {
     if (!this.target || !this.at) return "";
     return ghostLine(this.host.layout.toPaper(this.host.sheet(), this.target.view, this.target.q), this.at);
+  }
+}
+
+/** « Zoom fenêtre »: a rectangle drawn on the sheet (dragged, or two corners clicked) fills the screen. */
+export class ZoomWindowTool implements DrawingTool {
+  readonly name = "zoom-window";
+  private from: Vec2 | null = null;
+  private to: Vec2 | null = null;
+  constructor(private readonly host: ToolHost) {}
+  hint() {
+    return this.from ? "Cliquez le coin opposé de la zone à agrandir." : "Tracez la zone à agrandir : glissez, ou cliquez deux coins. Échap : fini.";
+  }
+  move(p: Vec2) {
+    if (!this.from) return;
+    this.to = p;
+    this.host.redraw();
+  }
+  click(p: Vec2) {
+    if (!this.from) {
+      this.from = p;
+      return this.host.redraw();
+    }
+    this.zoom(this.from, p);
+  }
+  drag(from: Vec2, to: Vec2) {
+    [this.from, this.to] = [from, to];
+    this.host.redraw();
+  }
+  dragEnd(from: Vec2, to: Vec2) {
+    this.zoom(from, to);
+  }
+  private zoom(a: Vec2, b: Vec2) {
+    [this.from, this.to] = [null, null];
+    // Too small (a slip of the hand): nothing.
+    if (Math.abs(b[0] - a[0]) < 2 && Math.abs(b[1] - a[1]) < 2) return this.host.redraw();
+    this.host.zoomTo(a, b);
+    this.host.done();
+  }
+  preview() {
+    return this.from && this.to ? ghostRect(this.from, this.to) : "";
   }
 }

@@ -44,13 +44,17 @@ export class SheetLayout {
   /** The drawing of a view, in its own 2D frame (model mm). */
   geometry(sheet: DrawingSheet, view: DrawingView): ViewGeometry {
     const parent = view.parent ? sheet.views.find((v) => v.id === view.parent) : undefined;
-    const key = JSON.stringify([view.kind, view.spec, view.hidden, view.cut, view.detail, parent?.spec, parent?.hidden]);
+    // The pieces hidden on the sheet or in this view (a detail shows what its parent shows).
+    const hiddenOf = (v: DrawingView) => [...(sheet.hiddenBodies ?? []), ...(v.hiddenBodies ?? [])].sort();
+    const hidden = hiddenOf(view.kind === "detail" && parent ? parent : view);
+    const key = JSON.stringify([view.kind, view.spec, view.hidden, view.cut, view.detail, parent?.spec, parent?.hidden, hidden]);
     const known = this.cache.get(key);
     if (known) return known;
     let made: ViewGeometry;
+    const meshes = () => this.meshes().filter((m) => !hidden.includes(m.id));
     if (view.kind === "detail" && parent && view.detail) made = cropCircle(this.geometry(sheet, parent), view.detail.center, view.detail.radius);
-    else if (view.kind === "section" && parent && view.cut) made = projectSpec(this.meshes(), view.spec, false, sectionOf(parent.spec, view.cut.a, view.cut.b, view.cut.flip).cut);
-    else made = projectSpec(this.meshes(), view.spec, view.hidden);
+    else if (view.kind === "section" && parent && view.cut) made = projectSpec(meshes(), view.spec, false, sectionOf(parent.spec, view.cut.a, view.cut.b, view.cut.flip).cut);
+    else made = projectSpec(meshes(), view.spec, view.hidden);
     this.cache.set(key, made);
     return made;
   }
@@ -83,7 +87,7 @@ export class SheetLayout {
 
   /** The view under a point of the paper (the last drawn first), within a margin. */
   viewAt(sheet: DrawingSheet, p: Vec2, margin = 3): DrawingView | undefined {
-    return [...sheet.views].reverse().find((v) => {
+    return [...sheet.views].reverse().filter((v) => !sheet.hiddenItems?.includes(v.id)).find((v) => {
       const [a, b] = this.box(sheet, v);
       return p[0] >= a[0] - margin && p[0] <= b[0] + margin && p[1] >= a[1] - margin && p[1] <= b[1] + margin;
     });

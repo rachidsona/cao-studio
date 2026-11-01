@@ -65,8 +65,8 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate") && bodies.length ? { bodies } : {}),
-    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" ? curicSketches(selected, picked.selection.sketches) : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide") && bodies.length ? { bodies } : {}),
+    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" || kind === "coincide" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
@@ -130,7 +130,7 @@ export class ToolLauncher {
         return;
       }
       case "split": {
-        const tool = new SplitTool(ctx, editing?.type === "split" ? editing : null, options.bodies?.[0]);
+        const tool = new SplitTool(ctx, editing?.type === "split" ? editing : null, options.bodies ?? []);
         this.active = tool;
         void tool.open(options.faces ?? []);
         return;
@@ -148,7 +148,7 @@ export class ToolLauncher {
         this.active = new MirrorTool(ctx, editing?.type === "mirror" ? editing : null, options.bodies ?? [], options.sketches ?? []);
         break;
       case "coincide":
-        this.active = new CoincideTool(ctx);
+        this.active = new CoincideTool(ctx, options.bodies ?? [], options.sketches ?? []);
         break;
       case "mate":
         this.active = new MateTool(ctx, options.bodies ?? []);

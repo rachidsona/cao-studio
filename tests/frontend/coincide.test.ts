@@ -1,6 +1,6 @@
 /** Coïncidence dans le modèle : un point vient sur un point, ou sur un trait, au plus près ou là où on a cliqué. */
 import { describe, expect, it } from "vitest";
-import { closestOnPolyline, closestOnSegment, coincideMove, segmentNearRay } from "../../frontend/src/features/coincide";
+import { closestOnPolyline, closestOnSegment, coincideMove, fitInNiche, segmentNearRay, snugAxes, wallsAround } from "../../frontend/src/features/coincide";
 
 describe("coïncidence d'un point sur un point ou un trait", () => {
   it("sur un point : le déplacement de l'un à l'autre", () => {
@@ -31,5 +31,27 @@ describe("coïncidence d'un point sur un point ou un trait", () => {
   it("le pointeur rencontre un trait : le point du trait le plus proche du rayon", () => {
     // A ray looking down −Z at x = 3, a trait along X at z = 0.
     expect(segmentNearRay([3, 0, 100], [0, 0, -1], [0, 0, 0], [10, 0, 0])).toEqual([3, 0, 0]);
+  });
+
+  it("une étagère calée entre ses côtés s'ajuste à une niche plus large, avec les mêmes jeux", () => {
+    type B = [[number, number, number], [number, number, number]];
+    // Sides 18 mm thick; a 400-wide niche (18–418) and a 600-wide one (436–1036); a back panel behind; a shelf 1 mm
+    // short of each side in the small niche.
+    const sides: B[] = [[[0, 0, 0], [18, 500, 2000]], [[418, 0, 0], [436, 500, 2000]], [[1036, 0, 0], [1054, 500, 2000]]];
+    const back: B = [[0, 500, 0], [1054, 510, 2000]];
+    const shelf: B = [[19, 20, 800], [417, 500, 818]];
+    const others = [...sides, back];
+    expect(wallsAround(shelf, others, 0)).toEqual([18, 418]);
+    // Held along X (1 mm each side), not along Y (open at the front) nor Z.
+    const snug = snugAxes(shelf, others);
+    expect(snug).toEqual([{ axis: 0, gaps: [1, 1] }]);
+    // Moved into the wide niche, 30 mm higher: from 437 to 1035.
+    const moved: B = [[437, 20, 830], [835, 500, 848]];
+    expect(fitInNiche(moved, others, snug)).toEqual([{ axis: 0, from: [437, 835], to: [437, 1035] }]);
+    // Into a narrower one: shorter.
+    const narrow: B[] = [[[0, 0, 0], [18, 500, 2000]], [[318, 0, 0], [336, 500, 2000]]];
+    expect(fitInNiche([[10, 20, 800], [408, 500, 818]], narrow, snug)).toEqual([{ axis: 0, from: [10, 408], to: [19, 317] }]);
+    // Where it already fits, nothing changes.
+    expect(fitInNiche(shelf, others, snug)).toEqual([]);
   });
 });

@@ -1,6 +1,8 @@
 /**
- * "Scinder le corps": choose the body, the cutting tool (a construction plane,
- * or the plane of a planar face clicked in the view) and the parts to keep.
+ * "Scinder le corps": choose the bodies to cut (clicked in the view, one or
+ * several: each click adds or removes one), the cutting tool (a construction
+ * plane, or the plane of a planar face clicked in the view) and the parts to
+ * keep. Each body cut is a split of its own, all with the same tool.
  * The result is computed live by the kernel (the real cut, shown as separate
  * tinted bodies) and cannot be validated while it fails, e.g. when the tool
  * does not cross the body. A plane indicator and an arrow in the view show
@@ -14,6 +16,8 @@ import { closeCalculator, openCalculator } from "../ui/calculator";
 import { sketchFrame } from "../sketcher/frame";
 import { ArrowHandle } from "../viewport/arrow-handle";
 import type { FacePick } from "../viewport/viewport";
+import type { Feature } from "../document/types";
+import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 const PLANES: [PlaneName, string][] = [
@@ -39,13 +43,16 @@ function directionText(n: Vec3): string {
 export class SplitTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
-  private target: string | undefined;
+  /** The bodies to cut: the first is this split, the others its companions (one split each, same tool). */
+  private targets: string[];
+  /** Boxes of the bodies to cut, taken while they are displayed (the preview replaces them). */
+  private readonly boxes = new Map<string, [Vec3, Vec3]>();
   private mode: "plane" | "face" = "plane";
   private plane: PlaneName = "XY";
   private offset = 0;
   private face: { body: string; ref: FaceRef; label: string } | null = null;
   private keep: SplitKeep = "both";
-  /** "Choisir le corps dans la vue": the next click picks the body to split (not the cutting face). */
+  /** In "Face plane", clicks choose the cutting face until there is one, then the bodies to cut. */
   private pickingBody = false;
   /** Centre and size of the target (for the plane indicator and the arrow). */
   private center: Vec3 = [0, 0, 0];
@@ -53,12 +60,13 @@ export class SplitTool extends PanelTool {
   private readonly arrow: ArrowHandle;
   private indicator: THREE.Group | null = null;
 
-  constructor(ctx: ToolContext, editing: SplitFeature | null, target?: string) {
+  constructor(ctx: ToolContext, editing: SplitFeature | null, selected: string[] = []) {
     super(ctx, "Scinder le corps", editing);
     const doc = ctx.doc();
     this.id = editing?.id ?? uniqueId(doc, "sp");
     this.name = editing?.name ?? uniqueName(doc, "Scission");
-    this.target = editing?.target ?? target ?? ctx.bodies().at(-1)?.id;
+    const last = ctx.bodies().at(-1)?.id;
+    this.targets = editing ? [editing.target] : selected.length ? [...selected] : last ? [last] : [];
     if (editing) {
       this.keep = editing.keep;
       if (editing.tool.kind === "plane") {
@@ -92,11 +100,14 @@ export class SplitTool extends PanelTool {
     this.measureTarget();
     const face = faces[0];
     if (!this.editing && face) {
-      // The cut is made in another body when there is one: a body cut by its own face is only touched.
+      // The cut is made in other bodies when there are some: a body cut by its own face is only touched.
       const other = this.ctx.bodies().find((b) => b.id !== face.bodyId);
-      if (!this.target || this.target === face.bodyId) this.target = other?.id ?? face.bodyId;
+      this.targets = this.targets.filter((t) => t !== face.bodyId);
+      if (!this.targets.length) this.targets = [other?.id ?? face.bodyId];
       this.mode = "face";
       await this.setFace(face);
+      // The face given, clicks choose the bodies to cut.
+      this.pickingBody = this.face !== null;
     } else if (!this.editing) this.offset = this.centreOffset();
     this.measureTarget();
     this.start();
@@ -105,11 +116,16 @@ export class SplitTool extends PanelTool {
 
   // ---- geometry of the tool ---------------------------------------------------------
 
-  /** Centre and size of the target while it is still displayed (the preview replaces it). */
+  /** Centre and size of the bodies to cut while they are still displayed (the preview replaces them). */
   private measureTarget(): void {
-    const bbox = this.target ? this.ctx.viewport.bodyMesh(this.target)?.metrics.bbox : undefined;
-    if (!bbox) return;
-    const [min, max] = bbox;
+    for (const t of this.targets) {
+      const b = this.ctx.viewport.bodyMesh(t)?.metrics.bbox;
+      if (b && !this.boxes.has(t)) this.boxes.set(t, [[...b[0]] as Vec3, [...b[1]] as Vec3]);
+    }
+    const boxes = this.targets.map((t) => this.boxes.get(t)).filter((b) => b !== undefined);
+    if (!boxes.length) return;
+    const min = [0, 1, 2].map((i) => Math.min(...boxes.map((b) => b[0][i] as number))) as Vec3;
+    const max = [0, 1, 2].map((i) => Math.max(...boxes.map((b) => b[1][i] as number))) as Vec3;
     this.center = [0, 1, 2].map((i) => ((min[i] as number) + (max[i] as number)) / 2) as Vec3;
     this.extent = 1.4 * Math.max(Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]), 10);
   }
@@ -149,17 +165,43 @@ export class SplitTool extends PanelTool {
 
   // ---- feature ---------------------------------------------------------------------
 
-  protected feature(): SplitFeature | string {
-    if (!this.target) return "Choisissez le corps à scinder.";
-    if (this.mode === "face" && !this.face) return "Cliquez une face plane dans la vue : son plan coupe le corps.";
-    const tool: CutTool = this.mode === "plane" || !this.face ? { kind: "plane", plane: this.plane, offset: this.offset } : { kind: "face", body: this.face.body, face: this.face.ref };
-    return { id: this.id, type: "split", name: this.name, target: this.target, tool, keep: this.keep };
+  /** Whether the cutting plane goes through a body's box (a body it misses is left whole). */
+  private crosses(id: string): boolean {
+    const box = this.boxes.get(id);
+    const plane = this.planeNow();
+    if (!box || !plane || this.editing) return true;
+    const levels = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => dot([box[k & 1 ? 1 : 0][0], box[k & 2 ? 1 : 0][1], box[k & 4 ? 1 : 0][2]], plane.normal));
+    const at = dot(plane.origin, plane.normal);
+    return Math.min(...levels) < at - 1e-6 && Math.max(...levels) > at + 1e-6;
   }
 
-  /** The result cannot be validated while the kernel refuses the cut. */
+  /** The split of each body to cut that the plane crosses (the first one this tool's own), all with the same tool. */
+  private splits(): SplitFeature[] {
+    if (this.mode === "face" && !this.face) return [];
+    const crossed = this.targets.filter((t) => this.crosses(t));
+    const tool: CutTool = this.mode === "plane" || !this.face ? { kind: "plane", plane: this.plane, offset: this.offset } : { kind: "face", body: this.face.body, face: this.face.ref };
+    // Fresh ids after this one's for the others (the first fresh one is this tool's own).
+    const more = this.editing ? [] : freshFeatureIds(this.ctx.doc(), "sp", "Scission", crossed.length).slice(1);
+    return crossed.map((target, i) => ({ ...(i === 0 ? { id: this.id, name: this.name } : more[i - 1]!), type: "split", target, tool, keep: this.keep }));
+  }
+
+  protected feature(): SplitFeature | string {
+    if (!this.targets.length) return "Cliquez dans la vue le ou les corps à couper.";
+    if (this.mode === "face" && !this.face) return "Cliquez une face plane dans la vue : son plan coupe les corps.";
+    return this.splits()[0] ?? "Le plan de coupe ne traverse aucun des corps choisis : déplacez-le ou choisissez-en d'autres.";
+  }
+
+  protected override companions(): Feature[] {
+    return this.splits().slice(1);
+  }
+
+  /** The result cannot be validated while the kernel refuses one of the cuts. */
   protected override blocker(): string | null {
-    const status = this.ctx.status(this.id);
-    return status && status.state !== "ok" ? (status.message ?? "La coupe est invalide.") : null;
+    for (const f of this.splits()) {
+      const status = this.ctx.status(f.id);
+      if (status && status.state !== "ok") return `${bodyLabel(this.ctx.doc(), f.target)} : ${status.message ?? "la coupe est invalide."}`;
+    }
+    return null;
   }
 
   override confirm(): void {
@@ -174,8 +216,6 @@ export class SplitTool extends PanelTool {
   // ---- panel -----------------------------------------------------------------------
 
   protected rows(): (HTMLElement | null)[] {
-    const bodies = this.ctx.bodies().filter((b) => featureOfBody(b.id) !== this.id);
-    if (this.target && !bodies.some((b) => b.id === this.target)) bodies.push({ id: this.target, name: bodyLabel(this.ctx.doc(), this.target) });
     const sides = this.planeNow();
     const cutRows =
       this.mode === "plane"
@@ -189,16 +229,25 @@ export class SplitTool extends PanelTool {
           ]
         : [
             this.info(this.face ? this.face.label : "Cliquez une face plane dans la vue."),
-            this.face ? this.linkButton("Choisir une autre face", () => ((this.face = null), this.sync())) : null,
+            this.face ? this.linkButton("Choisir une autre face", () => ((this.face = null), (this.pickingBody = false), this.sync())) : null,
           ];
+    const doc = this.ctx.doc();
+    const names = this.targets.map((t) => bodyLabel(doc, t));
+    const choosing = this.mode === "plane" || this.pickingBody;
     return [
-      this.selectRow("Corps", this.target ?? "", bodies.map((b): [string, string] => [b.id, b.name]), (v) => this.setTarget(v)),
-      this.pickingBody
-        ? this.info("Cliquez dans la vue le corps à scinder (Échap : annuler).")
-        : this.linkButton("Choisir le corps dans la vue (souris)", () => {
+      this.info(names.length ? `Corps à couper (${names.length}) : ${names.join(", ")}` : "Aucun corps à couper."),
+      ...(() => {
+        // Those the plane misses are left whole.
+        const missed = this.targets.filter((t) => !this.crosses(t)).map((t) => bodyLabel(doc, t));
+        return missed.length ? [this.info(`Pas traversé${missed.length > 1 ? "s" : ""} par le plan, laissé${missed.length > 1 ? "s" : ""} entier${missed.length > 1 ? "s" : ""} : ${missed.join(", ")}`)] : [];
+      })(),
+      choosing
+        ? this.info(this.editing ? "Cliquez un autre corps pour le couper à la place." : "Cliquez dans la vue les corps à couper : un clic ajoute, un second retire.")
+        : this.linkButton("Choisir les corps à couper (clic dans la vue)", () => {
             this.pickingBody = true;
             this.render();
           }),
+      names.length > 1 ? this.linkButton("Ne garder que le premier", () => this.setTargets(this.targets.slice(0, 1))) : null,
       this.selectRow("Outil", this.mode, [["plane", "Plan de construction"], ["face", "Face plane (clic dans la vue)"]], (v) => {
         this.mode = v as "plane" | "face";
         this.face = null; // pick again: the target is shown whole until a face is chosen
@@ -214,11 +263,27 @@ export class SplitTool extends PanelTool {
     ];
   }
 
-  private setTarget(id: string): void {
-    this.target = id;
+  private setTargets(ids: string[]): void {
+    this.targets = ids;
     this.measureTarget();
     if (this.mode === "plane") this.offset = this.centreOffset();
     this.sync();
+  }
+
+  /** A body clicked: added to the bodies to cut, or taken out (one only when editing a split). */
+  private toggleTarget(id: string): void {
+    if (this.editing) return this.setTargets([id]);
+    if (this.targets.includes(id)) {
+      if (this.targets.length === 1) return this.ctx.notify("Il faut au moins un corps à couper.", "info");
+      return this.setTargets(this.targets.filter((t) => t !== id));
+    }
+    this.setTargets([...this.targets, id]);
+  }
+
+  /** The body a click is on: a piece of the preview stands for the body it was cut from. */
+  private bodyOf(bodyId: string): string {
+    const split = this.splits().find((f) => f.id === featureOfBody(bodyId));
+    return split ? split.target : bodyId;
   }
 
   override handleKey(event: KeyboardEvent): boolean {
@@ -289,7 +354,7 @@ export class SplitTool extends PanelTool {
   }
 
   private placeArrow(): void {
-    if (this.mode !== "plane" || !this.target) {
+    if (this.mode !== "plane" || !this.targets.length) {
       this.arrow.object.visible = false;
       return;
     }
@@ -313,13 +378,14 @@ export class SplitTool extends PanelTool {
   }
 
   override move(event: PointerEvent): void {
-    if (this.pickingBody) {
-      // The body under the pointer lights up; the preview's pieces stand for the body already chosen.
+    if (this.pickingBody || this.mode === "plane") {
+      // The body under the pointer lights up (a click adds or removes it).
       const pick = this.ctx.viewport.pickFace(event);
-      const id = pick && featureOfBody(pick.bodyId) !== this.id ? pick.bodyId : null;
-      this.ctx.viewport.setHoverHighlight(id ? { bodies: [id] } : null);
-      this.ctx.viewport.renderer.domElement.style.cursor = id ? "pointer" : "";
-      return;
+      this.ctx.viewport.setHoverHighlight(pick ? { bodies: [pick.bodyId] } : null);
+      if (this.pickingBody) {
+        this.ctx.viewport.renderer.domElement.style.cursor = pick ? "pointer" : "";
+        return;
+      }
     }
     const dragged = this.arrow.dragMove(event);
     if (dragged !== null) {
@@ -338,26 +404,17 @@ export class SplitTool extends PanelTool {
   protected override click(event: PointerEvent): void {
     const pick = this.ctx.viewport.pickFace(event);
     if (!pick) return;
-    if (this.pickingBody) {
-      const id = featureOfBody(pick.bodyId) === this.id ? this.target : pick.bodyId;
-      this.stopPickingBody();
-      if (id && id !== this.target) this.setTarget(id);
-      return;
-    }
-    // The pieces of the preview are this feature's own result: they can be neither the body nor the tool.
-    if (featureOfBody(pick.bodyId) === this.id) {
+    // Choosing the bodies to cut: each click adds one or takes it out.
+    if (this.mode === "plane" || this.pickingBody) return this.toggleTarget(this.bodyOf(pick.bodyId));
+    // The pieces of the preview are this tool's own result: they cannot be the cutting face.
+    if (this.splits().some((f) => f.id === featureOfBody(pick.bodyId))) {
       this.ctx.notify("Choisissez une face d'un autre corps, ou passez à « Plan de construction ».", "info");
       return;
     }
-    if (this.mode === "face") {
-      void this.setFace(pick).then(() => this.sync());
-      return;
-    }
-    if (pick.bodyId !== this.target) {
-      this.target = pick.bodyId;
-      this.measureTarget();
-      this.offset = this.centreOffset();
+    // The face chosen, the next clicks choose the bodies to cut.
+    void this.setFace(pick).then(() => {
+      if (this.face) this.pickingBody = true;
       this.sync();
-    }
+    });
   }
 }

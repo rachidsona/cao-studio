@@ -45,7 +45,12 @@ const text = (at: Vec2, t: string, extra = "", size = TEXT_SIZE) => `<text x="${
 export function drawnSvg(d: Drawn, color: string): string {
   const out: string[] = [];
   const style = `stroke="${color}" stroke-width="0.18" fill="none"`;
-  for (const [a, b] of d.lines) out.push(line(a, b, style));
+  // A dimension's own lines: thin or thick, solid or dashed.
+  // A dimension's lines thin or thick; its extension lines solid or in short dashes, its own line always solid.
+  const lines = d.style ? `stroke="${color}" stroke-width="${d.style.width}" fill="none"` : style;
+  const extensions = d.style?.dashed ? `${lines} stroke-dasharray="2 1"` : lines;
+  for (const [a, b] of d.lines) out.push(line(a, b, lines));
+  for (const [a, b] of d.extensions ?? []) out.push(line(a, b, extensions));
   for (const { tip, dir } of d.arrows) {
     const [l, w] = [2.5, 0.8];
     const back: Vec2 = [tip[0] - dir[0] * l, tip[1] - dir[1] * l];
@@ -55,7 +60,7 @@ export function drawnSvg(d: Drawn, color: string): string {
   for (const c of d.circles) out.push(`<circle cx="${f(c.center[0])}" cy="${f(c.center[1])}" r="${f(c.radius)}" ${c.radius < 1 ? `fill="${color}"` : style}/>`);
   for (const a of d.arcs) {
     const [p, q] = [a.from, a.to].map((t) => [a.center[0] + a.radius * Math.cos(t), a.center[1] + a.radius * Math.sin(t)]) as [Vec2, Vec2];
-    out.push(`<path d="M${f(p[0])} ${f(p[1])}A${f(a.radius)} ${f(a.radius)} 0 ${a.to - a.from > Math.PI ? 1 : 0} 1 ${f(q[0])} ${f(q[1])}" ${style}/>`);
+    out.push(`<path d="M${f(p[0])} ${f(p[1])}A${f(a.radius)} ${f(a.radius)} 0 ${a.to - a.from > Math.PI ? 1 : 0} 1 ${f(q[0])} ${f(q[1])}" ${lines}/>`);
   }
   for (const t of d.texts) out.push(text(t.at, t.text, `fill="${color}" text-anchor="${t.anchor}" transform="rotate(${t.angle.toFixed(2)} ${f(t.at[0])} ${f(t.at[1])})"`, t.size));
   return out.join("");
@@ -132,7 +137,9 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
   out.push(`<rect x="${FRAME_MARGIN}" y="${FRAME_MARGIN}" width="${w - 2 * FRAME_MARGIN}" height="${h - 2 * FRAME_MARGIN}" fill="none" stroke="${INK}" stroke-width="0.6"/>`);
   out.push(titleBlock(sheet, options));
 
+  const off = new Set(sheet.hiddenItems ?? []);
   for (const view of sheet.views) {
+    if (off.has(view.id)) continue;
     const g = layout.geometry(sheet, view);
     const p = (q: Vec2) => layout.toPaper(sheet, view, q);
     const parts: string[] = [];
@@ -145,7 +152,7 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
     });
     for (const l of g.lines) parts.push(line(p(l.a), p(l.b), picked(view.id) ? `stroke="${PICKED}" stroke-width="0.35"` : STYLES[l.hidden ? "hidden" : "solid"]));
     // Marks of the sections and details taken from this view.
-    for (const child of sheet.views.filter((v) => v.parent === view.id)) {
+    for (const child of sheet.views.filter((v) => v.parent === view.id && !off.has(v.id))) {
       if (child.cut) {
         const [a, b] = [p(child.cut.a), p(child.cut.b)];
         const d: Vec2 = [(b[0] - a[0]) / (Math.hypot(b[0] - a[0], b[1] - a[1]) || 1), (b[1] - a[1]) / (Math.hypot(b[0] - a[0], b[1] - a[1]) || 1)];
@@ -180,12 +187,13 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
 
   const itemOf = (body: string) => options.bom.find((r) => r.bodies.includes(body))?.item ?? null;
   for (const a of sheet.annotations) {
+    if (off.has(a.id)) continue;
     if (a.kind === "bom") {
       out.push(`<g data-id="${a.id}">${bomSvg(a.at, options.bom).svg}</g>`);
       continue;
     }
     out.push(`<g data-id="${a.id}">${drawnSvg(drawAnnotation(sheet, layout, a, options.format, itemOf), picked(a.id) ? PICKED : a.kind === "text" || a.kind === "note" || a.kind === "balloon" ? INK : DIM)}</g>`);
   }
-  for (const item of sheet.sketch.items) out.push(`<g data-id="${item.id}">${sketchSvg(sheet, item, picked(item.id) ? `stroke="${PICKED}" stroke-width="0.4"` : undefined)}</g>`);
+  for (const item of sheet.sketch.items.filter((i) => !off.has(i.id))) out.push(`<g data-id="${item.id}">${sketchSvg(sheet, item, picked(item.id) ? `stroke="${PICKED}" stroke-width="0.4"` : undefined)}</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}"><defs>${hatch.join("")}</defs><rect width="${w}" height="${h}" fill="#fff"/>${out.join("")}</svg>`;
 }
