@@ -11,12 +11,12 @@ import type { Vec3 } from "../document/types";
 import { axisParameter } from "../viewport/axis-drag";
 import type { FacePick, Viewport } from "../viewport/viewport";
 import { findFeature } from "../document/operations";
-import type { CadDocument, SketchFeature } from "../document/types";
+import type { CadDocument, PlaneFrame, SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline } from "../geometry/protocol";
 import type { Vec2 } from "../sketcher/edit";
 import { facePolygon } from "../sketcher/face-strip";
-import { frameOf, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
+import { frameOf, nearestPlane, planeFrame, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
 import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
 import { planeForFace } from "../sketcher/projection";
@@ -30,17 +30,28 @@ export interface LoadedFace {
   plane: SketchFeature["plane"];
   offset: number;
   polygon: Vec2[];
+  /** A slanted face (a roof's slope): its own plane, which the sketch drawn on it keeps. */
+  slanted?: PlaneFrame;
 }
 
-/** The face of a pick, with its outline as a polygon in its own plane; null when it is not planar or not straight-edged. */
+/** The face of a pick, with its outline as a polygon in its own plane (a slanted face in a plane of its own); null when it is curved. */
 export async function loadFace(geometry: GeometryClient, key: string, pick: FacePick): Promise<LoadedFace | null> {
   try {
     const outline = await geometry.faceOutline(pick.bodyId, pick.faceIndex);
-    const placement = outline.surface === "PLANE" ? planeForFace(outline.normal, outline.center) : null;
-    if (!placement) return null;
-    const frame = sketchFrame(placement.plane, placement.offset);
+    if (outline.surface !== "PLANE") return null;
+    const placement = planeForFace(outline.normal, outline.center);
+    if (placement) {
+      const frame = sketchFrame(placement.plane, placement.offset);
+      const polygon = facePolygon(outline, frame);
+      return polygon ? { key, pick, outline, frame, plane: placement.plane, offset: placement.offset, polygon } : null;
+    }
+    // Slanted: a plane of its own through its centre, its x along its longest straight edge (the eaves of a roof).
+    const edges = outline.edges.flatMap((e) => (e.kind === "line" ? [[0, 1, 2].map((i) => e.b[i]! - e.a[i]!) as Vec3] : []));
+    const longest = edges.sort((a, b) => Math.hypot(...b) - Math.hypot(...a))[0];
+    const slanted = planeFrame(outline.center, outline.normal, longest);
+    const frame = frameOf({ plane: nearestPlane(slanted.normal), offset: 0, frame: slanted });
     const polygon = facePolygon(outline, frame);
-    return polygon ? { key, pick, outline, frame, plane: placement.plane, offset: placement.offset, polygon } : null;
+    return polygon ? { key, pick, outline, frame, plane: nearestPlane(slanted.normal), offset: 0, polygon, slanted } : null;
   } catch {
     return null;
   }

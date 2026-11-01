@@ -39,7 +39,8 @@ const SHAPES: [Shape, string][] = [
 const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle: "Milieu du trait", center: "Centre de la face", free: "" };
 
 /** Kept for the session: what was drawn last, and whether a closed shape goes on with the push/pull. */
-const last = { shape: "line" as Shape, thenPull: true };
+/** Kept for the session: the last shape, pulling after, and offsetting the whole roof (both slopes) or one face. */
+const last = { shape: "line" as Shape, thenPull: true, roof: false };
 
 const RED = 0xdc2626;
 const BLUE = 0x2563eb;
@@ -186,11 +187,11 @@ export class DrawOnFaceTool extends PanelTool {
       // Loaded, but not flat: nothing is drawn on it (a curved roof, a round edge); an offset follows it though.
       this.curved = !!pick && !face && this.loaded.has(`${pick.bodyId}#${pick.faceIndex}`);
       viewport.setHoverHighlight(pick ? { face: pick } : null);
-      if (this.shape === "offset" && (this.curvedOffset.locked || this.curved) && this.curvedOffset.move(pick, this.step(), () => this.lastEvent && this.move(this.lastEvent))) {
+      if (this.shape === "offset" && (this.curvedOffset.locked || this.curved || (last.roof && face?.slanted)) && this.curvedOffset.move(pick, this.step(), () => this.lastEvent && this.move(this.lastEvent), last.roof)) {
         this.marks.clear();
         this.curvedOffset.draw(this.marks);
         const v = formatLength(this.curvedOffset.distance, this.ctx.unit());
-        return this.box.show("Décalage sur la face courbe", `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau, puis OK." : "Cliquez pour le poser, puis réglez la profondeur.");
+        return this.box.show(this.curvedOffset.label, `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau, puis OK." : "Cliquez pour le poser, puis réglez la profondeur.");
       }
     }
     this.snapped = "free";
@@ -414,7 +415,7 @@ export class DrawOnFaceTool extends PanelTool {
     if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : this.shape === "circle" ? "Cliquez un point du cercle." : "Ce décalage est trop grand pour la face.";
     const g = this.geometry(this.face);
     if (!g) return "Ce dessin est impossible (longueur ou rayon nul).";
-    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...g, support: this.face.pick.bodyId };
+    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...(this.face.slanted ? { frame: this.face.slanted } : {}), ...g, support: this.face.pick.bodyId };
     return sketch;
   }
 
@@ -447,7 +448,7 @@ export class DrawOnFaceTool extends PanelTool {
       return [
         this.numberRow("Décalage", c.distance, this.ctx.unit(), (v) => set("distance", v)),
         this.numberRow("Profondeur", c.depth, this.ctx.unit(), (v) => set("depth", v), true),
-        this.info("Un panneau courbe creusé dans la face (un trou s'il traverse la paroi) ; profondeur négative : en relief."),
+        this.info("Un panneau creusé dans la face courbe ou sous les deux pans du toit (un trou s'il traverse) ; profondeur négative : en relief."),
       ];
     }
     const step =
@@ -471,6 +472,7 @@ export class DrawOnFaceTool extends PanelTool {
         if (this.lastEvent) this.move(this.lastEvent);
         else this.draw();
       }),
+      this.shape === "offset" ? this.selectRow("Décalage sur", last.roof ? "roof" : "face", [["face", "La face survolée"], ["roof", "Tout le toit (les deux pans)"]], (v) => ((last.roof = v === "roof"), this.lastEvent && this.move(this.lastEvent))) : null,
       this.info(step),
       this.closedShape
         ? this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {

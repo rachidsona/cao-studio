@@ -682,8 +682,11 @@ opération existante.
   le pointeur du bord le plus proche (ou de la distance tapée ; négative : vers l'extérieur), angles vifs conservés, même
   pour une face en L. Un clic le pose en esquisse sur la face et enchaîne avec tirer / pousser (cadre, feuillure,
   panneau en creux) ; un décalage trop grand pour la face est refusé.
-  - Une face plane bordée d'un arc (le pignon d'un toit arrondi) se suit en petits segments : son décalage longe
-    l'arc, et les bouts d'arc qu'un grand décalage fait disparaître près des coins sont retirés.
+  - Une face plane bordée d'un arc (le pignon d'un toit arrondi) : son décalage longe l'arc, et l'esquisse reprend
+    un vrai arc (concentrique), pour une paroi creusée lisse, sans facettes.
+  - Une **face plane inclinée** (le pan d'un toit à deux pans) : le tracé se pose dans le plan de la face, son axe x
+    le long de son plus grand bord (l'égout). Ligne, rectangle, cercle et décalage y marchent comme sur les autres
+    faces, et tirer / pousser suit la pente.
   - **Sur une face courbe** (le dessus d'une voûte, un morceau de cylindre d'axe X, Y ou Z) : le Décalage suit la
     face.
     - Le contour reste sur elle, à la distance du bord mesurée sur la face, le long de l'axe comme de l'arc.
@@ -693,6 +696,13 @@ opération existante.
       (`features/curved-offset.ts`, `app/curved-offset.ts`).
     - Les autres tracés (ligne, rectangle, cercle) restent sur les faces planes ; pour évider tout le volume,
       **Coque** (groupe Modifier).
+  - **Décalage sur tout le toit** (choix « Décalage sur : Tout le toit (les deux pans) ») : en survolant un pan d'un
+    toit à deux pans, le contour passe par-dessus le faîtage, à la même distance des deux égouts (le long des pans)
+    et des deux pignons.
+    - Un clic le fixe ; la profondeur creuse un panneau en V d'épaisseur constante sous les deux pans, ou le met en
+      relief.
+    - C'est une coupe dessinée sur le pignon et extrudée le long du faîtage (`features/roof-offset.ts`). L'autre
+      égout est pris au bord du corps, à la hauteur du premier, comme les toits de l'outil Toit.
 - **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face

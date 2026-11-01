@@ -231,6 +231,64 @@ export function bandSketch(outline: FaceOutline, frame: SketchFrame, band: Vec2[
     g.points.push({ id, x: p[0], y: p[1] });
     return id;
   });
-  ids.forEach((id, i) => g.curves.push({ id: `b${i + 1}`, kind: "line", p1: id, p2: ids[(i + 1) % ids.length] as string }));
+  // Where the band follows an arc of the face (offset from it), a true arc: the extrusion is then smooth, not faceted.
+  const arcs = outline.edges.flatMap((e) => (e.kind === "arc" ? [toSketch(frame, e.center)] : []));
+  const runs = arcRuns(band, arcs);
+  const inRun = new Set(runs.flatMap((r) => r.edges));
+  ids.forEach((id, i) => {
+    if (!inRun.has(i)) g.curves.push({ id: `b${i + 1}`, kind: "line", p1: id, p2: ids[(i + 1) % ids.length] as string });
+  });
+  runs.forEach((r, k) => {
+    // Its vertices exactly on the arc.
+    r.edges.concat(r.to).forEach((i, m) => Object.assign(g.points.find((p) => p.id === ids[i])!, { x: r.points[m]![0], y: r.points[m]![1] }));
+    const centre = `tc${k + 1}`;
+    g.points.push({ id: centre, x: r.center[0], y: r.center[1] });
+    const [start, end] = r.ccw ? [r.from, r.to] : [r.to, r.from];
+    const at = (i: number) => g.points.find((p) => p.id === ids[i])!;
+    const angle = (i: number) => Math.atan2(at(i).y - r.center[1], at(i).x - r.center[0]);
+    let endAngle = angle(end);
+    const startAngle = angle(start);
+    while (endAngle <= startAngle) endAngle += 2 * Math.PI;
+    g.curves.push({ id: `ba${k + 1}`, kind: "arc", center: centre, start: ids[start]!, end: ids[end]!, radius: r.radius, startAngle, endAngle });
+  });
   return g;
+}
+
+/**
+ * Runs of the band's vertices (at least four: the pieces of an offset arc) at one distance from the centre of an arc
+ * of the face, within 1 % (the corners where the arc meets a straight side included). Each becomes one arc of that
+ * radius, its vertices put exactly on it; `edges` are the band's edges it replaces.
+ */
+export function arcRuns(band: Vec2[], centres: Vec2[]): { center: Vec2; radius: number; from: number; to: number; ccw: boolean; edges: number[]; points: Vec2[] }[] {
+  const n = band.length;
+  const out: { center: Vec2; radius: number; from: number; to: number; ccw: boolean; edges: number[]; points: Vec2[] }[] = [];
+  const used = new Set<number>();
+  for (const c of centres) {
+    const dist = band.map((p) => Math.hypot(p[0] - c[0], p[1] - c[1]));
+    // The distance most vertices share: the offset arc's radius.
+    let radius = 0;
+    let most = 0;
+    for (const d of dist) {
+      const count = dist.filter((e) => Math.abs(e - d) <= 0.01 * d).length;
+      if (count > most) [radius, most] = [d, count];
+    }
+    if (most < 4) continue;
+    const on = (k: number) => !used.has(((k % n) + n) % n) && Math.abs(dist[((k % n) + n) % n]! - radius) <= 0.01 * radius;
+    for (let i = 0; i < n; i++) {
+      if (!on(i) || (on(i - 1) && most < n)) continue;
+      let j = i;
+      while (j - i < n - 1 && on(j + 1)) j++;
+      if (j - i < 3) continue;
+      const idx = Array.from({ length: j - i + 1 }, (_, k) => (i + k) % n);
+      idx.forEach((k) => used.add(k));
+      const points = idx.map((k): Vec2 => {
+        const a = Math.atan2(band[k]![1] - c[1], band[k]![0] - c[0]);
+        return [c[0] + radius * Math.cos(a), c[1] + radius * Math.sin(a)];
+      });
+      // Seen from the centre, the run turns counter-clockwise when its angle grows.
+      const [a0, a1] = [0, 1].map((k) => Math.atan2(points[k]![1] - c[1], points[k]![0] - c[0])) as [number, number];
+      out.push({ center: c, radius, from: idx[0]!, to: idx.at(-1)!, ccw: Math.sin(a1 - a0) > 0, edges: idx.slice(0, -1), points });
+    }
+  }
+  return out;
 }

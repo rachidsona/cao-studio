@@ -170,7 +170,7 @@ export class FaceStripTool extends PanelTool {
   // ---- features ---------------------------------------------------------------------
 
   private sketch(face: LoadedFace, band: Vec2[]): SketchFeature {
-    return { id: this.sketchId, type: "sketch", name: this.sketchName, plane: face.plane, offset: Number(face.offset.toFixed(6)), ...bandSketch(face.outline, face.frame, band), support: face.pick.bodyId };
+    return { id: this.sketchId, type: "sketch", name: this.sketchName, plane: face.plane, offset: Number(face.offset.toFixed(6)), ...(face.slanted ? { frame: face.slanted } : {}), ...bandSketch(face.outline, face.frame, band), support: face.pick.bodyId };
   }
 
   /** Pulling adds, pushing digs; Tab swaps them. */

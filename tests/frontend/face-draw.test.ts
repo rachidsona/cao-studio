@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { coordinateAt, faceCenter, markedPoints, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
 import { parseNumber } from "../../frontend/src/measurements/units";
-import { facePolygon } from "../../frontend/src/sketcher/face-strip";
+import { bandSketch, facePolygon } from "../../frontend/src/sketcher/face-strip";
 import { sketchFrame } from "../../frontend/src/sketcher/frame";
 
 /** A face 400 × 300. */
@@ -142,7 +142,8 @@ describe("décalage d'une face au sommet arrondi (le pignon d'une voûte)", () =
     { kind: "arc", center: [-500, 0, 870 - r], radius: r, a: [-500, 400, 600], b: [-500, -400, 600], mid: [-500, 0, 870] },
     { kind: "line", a: [-500, -400, 600], b: [-500, -400, 0] },
   ];
-  const poly = facePolygon({ surface: "PLANE", center: [-500, 0, 400], normal: [-1, 0, 0], edges } as never, sketchFrame("YZ", -500))!;
+  const outline = { surface: "PLANE", center: [-500, 0, 400], normal: [-1, 0, 0], edges } as never;
+  const poly = facePolygon(outline, sketchFrame("YZ", -500))!;
 
   it("le contour suit l'arc en petits segments", () => {
     expect(poly.length).toBeGreaterThan(20);
@@ -157,5 +158,16 @@ describe("décalage d'une face au sommet arrondi (le pignon d'une voûte)", () =
     expect(Math.min(...inner.map((p) => p[1]))).toBeCloseTo(170);
     expect(Math.max(...inner.map((p) => Math.abs(p[0])))).toBeCloseTo(230);
     expect(Math.max(...inner.map((p) => p[1]))).toBeCloseTo(700, 0);
+  });
+
+  it("l'esquisse du décalage reprend un vrai arc (une paroi lisse, pas des facettes)", () => {
+    const g = bandSketch(outline, sketchFrame("YZ", -500), offsetPolygon(poly, 170)!);
+    const own = g.curves.filter((c) => /^b/.test(c.id));
+    expect(own.filter((c) => c.kind === "arc")).toHaveLength(1);
+    // The bottom and the two sides.
+    expect(own.filter((c) => c.kind === "line")).toHaveLength(3);
+    const arc = own.find((c) => c.kind === "arc")!;
+    if (arc.kind !== "arc") throw new Error("pas d'arc");
+    expect(arc.radius).toBeCloseTo(r - 170, 0);
   });
 });
