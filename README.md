@@ -646,9 +646,19 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
-  - **Extruder une esquisse de lignes seules** (un trait tracé sur un corps, deux traits en L…) ouvre Panneaux sur
-    elle : chaque ligne devient une planche debout, sa profondeur étant sa hauteur depuis l'esquisse. C'est le moyen
-    de monter les parois d'une niche ou d'une cabane à partir de leur tracé au sol.
+  - **Extruder une esquisse de lignes seules** (deux traits en L au sol…) ouvre Panneaux sur elle : chaque ligne
+    devient une planche debout, sa profondeur étant sa hauteur depuis l'esquisse. C'est le moyen de monter des
+    parois à partir de leur tracé au sol.
+- **Toit à deux pans ou arrondi** (bouton « Toit » du groupe Créer, à côté d'Extrusion ; comme dans SketchUp) : on trace une
+  seule ligne sur le dessus d'un bloc, parallèle à un de ses bords, puis **Toit** (ou Extruder sur cette ligne). Sans
+  sélection, l'outil prend la dernière ligne tracée sur un dessus.
+  - Une flèche plantée sur la ligne se tire vers le haut, ou on tape la hauteur du faîtage.
+  - Le dessus se plie en toit à deux pans, soudé au bloc : une niche à chien, une cabane, un abri.
+  - **Forme** : deux pans, ou **arrondi** (une voûte : l'arc passe par les deux bords du dessus et par la ligne
+    levée ; levée de la moitié de la largeur, c'est un demi-cercle, plus basse une voûte surbaissée).
+  - La coupe (triangle ou arc) est une esquisse sur le pignon, extrudée sur toute la longueur du dessus. Une ligne
+    hors du milieu donne deux pans inégaux.
+  - Une annulation ; la ligne tracée est cachée (`features/gable.ts`, `app/gable-tool.ts`).
 - **Dessiner sur le corps** (groupe « Curic », comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
@@ -672,6 +682,17 @@ opération existante.
   le pointeur du bord le plus proche (ou de la distance tapée ; négative : vers l'extérieur), angles vifs conservés, même
   pour une face en L. Un clic le pose en esquisse sur la face et enchaîne avec tirer / pousser (cadre, feuillure,
   panneau en creux) ; un décalage trop grand pour la face est refusé.
+  - Une face plane bordée d'un arc (le pignon d'un toit arrondi) se suit en petits segments : son décalage longe
+    l'arc, et les bouts d'arc qu'un grand décalage fait disparaître près des coins sont retirés.
+  - **Sur une face courbe** (le dessus d'une voûte, un morceau de cylindre d'axe X, Y ou Z) : le Décalage suit la
+    face.
+    - Le contour reste sur elle, à la distance du bord mesurée sur la face, le long de l'axe comme de l'arc.
+    - Un clic le fixe ; le panneau règle le décalage et la **profondeur** : un panneau courbe creusé (un trou s'il
+      traverse la paroi), ou en relief si elle est négative.
+    - C'est une couronne dessinée sur le pignon et extrudée le long de la face, en une annulation
+      (`features/curved-offset.ts`, `app/curved-offset.ts`).
+    - Les autres tracés (ligne, rectangle, cercle) restent sur les faces planes ; pour évider tout le volume,
+      **Coque** (groupe Modifier).
 - **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face
@@ -1308,6 +1329,12 @@ opération existante.
   - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
     et leurs matières.
   - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
+  - **Mes meubles**, en tête du panneau : ses propres caissons, ajoutés à la liste.
+    - On en décrit un (nom, sorte bas / haut / colonne, largeur, hauteur, profondeur, socle, façades : une porte,
+      deux, des tiroirs ou aucune, étagères).
+    - Ou on reprend le caisson sélectionné (« Ajouter « … » à ma liste »), avec ses cotes et ses façades.
+    - Un clic le pose dans la cuisine comme les autres, sous son nom ; ✕ le retire de la liste.
+    - La liste est gardée dans ce navigateur, pour tous les projets (`app/my-units.ts`).
 - **Éclairage** (groupe « Menuiserie ») : des lumières dans la cuisine et le dressing, au choix.
   - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
     basse).
@@ -1422,11 +1449,15 @@ opération existante.
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
 - **Cotes des pièces** (bouton de la colonne Vue, sous « Ajuster ») : la largeur et la hauteur de chaque pièce vue de
-  face, en rouge sur sa face tournée vers l'œil, comme un plan de Polyboard.
-  - L'élément sélectionné (un caisson avec ses façades, une répartition…) n'a que les siennes, gardées pendant qu'un
-    outil travaille dessus ; sans sélection, toutes les pièces en vue.
-  - Seules les cotes visibles s'écrivent (une porte cache le caisson derrière, une pièce vue par la tranche n'en a
-    pas) ; elles suivent la vue quand elle tourne et le modèle quand il change.
+  face, traits rouges et chiffres verts (#63df0f) sur sa face tournée vers l'œil, comme un plan de Polyboard.
+  - Une planche vue par la tranche (un côté, un dessus, une étagère d'une Répartition vus de face) montre sa
+    longueur le long de sa tranche : la hauteur d'un côté, la largeur d'une case.
+  - L'élément sélectionné (un caisson avec ses façades, une Répartition entière dès qu'une de ses planches est
+    choisie) n'a que les siennes, gardées pendant qu'un outil travaille dessus ; sans sélection, toutes les pièces
+    en vue.
+  - Seules les cotes visibles s'écrivent (une porte cache le caisson derrière), et deux valeurs qui tomberaient
+    l'une sur l'autre (un double côté) n'en font qu'une ; elles suivent la vue quand elle tourne et le modèle quand
+    il change.
   - Le bouton les cache ; l'état est gardé dans ce navigateur (`features/piece-dims.ts`, `app/piece-dims.ts`).
 - **Cotes dans la vue** (les étiquettes de modification de TopSolid) : quand les pièces d'un seul caisson sont
   sélectionnées, son nom, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent dans une barre en

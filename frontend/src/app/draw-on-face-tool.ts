@@ -20,6 +20,7 @@ import { rayToSketch, toWorld } from "../sketcher/frame";
 import { projectOutline } from "../sketcher/projection";
 import { ValueBox } from "../ui/value-box";
 import { dragStep, roundTo } from "../viewport/axis-drag";
+import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
 import { loadFace, type LoadedFace } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -74,6 +75,9 @@ export class DrawOnFaceTool extends PanelTool {
   private readonly marks: Marks;
   private readonly box: ValueBox;
   private readonly loaded = new Map<string, LoadedFace | null>();
+  /** The face under the pointer is curved: one draws on flat faces only, but offsets on a curved face too. */
+  private curved = false;
+  private readonly curvedOffset: CurvedOffset;
   private readonly loading = new Set<string>();
   private readonly sketchId: string;
   private readonly sketchName: string;
@@ -84,6 +88,7 @@ export class DrawOnFaceTool extends PanelTool {
     this.sketchId = uniqueId(doc, "sk");
     this.sketchName = uniqueName(doc, "Tracé");
     this.marks = new Marks(ctx.viewport.scene);
+    this.curvedOffset = new CurvedOffset(ctx);
     this.box = new ValueBox(ctx.container);
     window.addEventListener("keydown", this.onKey, true);
     this.showValues();
@@ -178,7 +183,15 @@ export class DrawOnFaceTool extends PanelTool {
       const pick = viewport.pickFace(event);
       face = pick ? this.faceOf(pick) : null;
       this.hoverFace = face;
+      // Loaded, but not flat: nothing is drawn on it (a curved roof, a round edge); an offset follows it though.
+      this.curved = !!pick && !face && this.loaded.has(`${pick.bodyId}#${pick.faceIndex}`);
       viewport.setHoverHighlight(pick ? { face: pick } : null);
+      if (this.shape === "offset" && (this.curvedOffset.locked || this.curved) && this.curvedOffset.move(pick, this.step(), () => this.lastEvent && this.move(this.lastEvent))) {
+        this.marks.clear();
+        this.curvedOffset.draw(this.marks);
+        const v = formatLength(this.curvedOffset.distance, this.ctx.unit());
+        return this.box.show("Décalage sur la face courbe", `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau, puis OK." : "Cliquez pour le poser, puis réglez la profondeur.");
+      }
     }
     this.snapped = "free";
     this.cursor = face ? this.pointOn(face, event) : null;
@@ -231,7 +244,9 @@ export class DrawOnFaceTool extends PanelTool {
     const fmt = (mm: number) => formatLength(mm, unit);
     const face = this.face ?? this.hoverFace;
     const p = this.cursor;
-    if (!face || !p) {
+    if (!face && this.curved) {
+      this.box.show("Face courbe", "—", "On trace sur une face plane ; le Décalage, lui, suit aussi une face courbe. Pour évider tout le volume, outil Coque (Modifier).");
+    } else if (!face || !p) {
       this.box.show("Mesures", "—", "Survolez une face du corps.");
     } else if (this.shape === "offset") {
       this.box.show("Décalage", this.offsetOutline ? fmt(this.offsetDistance) : `${fmt(this.offsetDistance)} — trop grand`, "Tapez la distance puis Entrée (− : vers l'extérieur), ou cliquez.");
@@ -321,6 +336,10 @@ export class DrawOnFaceTool extends PanelTool {
 
   /** Places the point under the pointer (the first one locks the face); the last one ends a rectangle or a circle; an offset is placed at once. */
   private place(): void {
+    if (this.shape === "offset" && this.curvedOffset.place()) {
+      this.render();
+      return this.schedulePreview();
+    }
     const face = this.face ?? this.hoverFace;
     const p = this.cursor;
     if (!face || !p) return;
@@ -389,6 +408,8 @@ export class DrawOnFaceTool extends PanelTool {
   }
 
   protected feature(): Feature | string {
+    const curved = this.curvedOffset.locked ? this.curvedOffset.features(this.sketchId, this.sketchName) : null;
+    if (curved) return typeof curved === "string" ? curved : curved[0]!;
     if (!this.face) return this.shape === "offset" ? "Survolez une face : le contour décalé suit le pointeur ; cliquez pour le poser." : "Cliquez sur une face du corps pour poser le premier point.";
     if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : this.shape === "circle" ? "Cliquez un point du cercle." : "Ce décalage est trop grand pour la face.";
     const g = this.geometry(this.face);
@@ -397,7 +418,13 @@ export class DrawOnFaceTool extends PanelTool {
     return sketch;
   }
 
+  protected override companions(): Feature[] {
+    const curved = this.curvedOffset.locked ? this.curvedOffset.features(this.sketchId, this.sketchName) : null;
+    return curved && typeof curved !== "string" ? curved.slice(1) : [];
+  }
+
   override confirm(): void {
+    if (this.curvedOffset.locked) return super.confirm();
     const built = this.feature();
     if (typeof built === "string") {
       this.ctx.notify(built, "info");
@@ -414,6 +441,15 @@ export class DrawOnFaceTool extends PanelTool {
 
   protected rows(): (HTMLElement | null)[] {
     const unit = UNIT_LABELS[this.ctx.unit()];
+    const c = this.curvedOffset;
+    if (c.locked) {
+      const set = (key: "distance" | "depth", v: number) => ((c[key] = v), this.render(), this.schedulePreview());
+      return [
+        this.numberRow("Décalage", c.distance, this.ctx.unit(), (v) => set("distance", v)),
+        this.numberRow("Profondeur", c.depth, this.ctx.unit(), (v) => set("depth", v), true),
+        this.info("Un panneau courbe creusé dans la face (un trou s'il traverse la paroi) ; profondeur négative : en relief."),
+      ];
+    }
     const step =
       this.shape === "offset"
         ? "Survolez une face : le contour décalé suit le pointeur (sa distance au bord) ; cliquez pour le poser."

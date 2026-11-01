@@ -25,10 +25,30 @@ const dot = (a: Vec2, b: Vec2) => a[0] * b[0] + a[1] * b[1];
 const sub = (a: Vec2, b: Vec2): Vec2 => [a[0] - b[0], a[1] - b[1]];
 const MERGE = 1e-6;
 
-/** The outer boundary of the face as a polygon (its straight edges chained end to end), in sketch coordinates. */
+/** Segments that follow an arc of the face (the round top of a vaulted gable), from its start through its middle. */
+const ARC_STEP = Math.PI / 32;
+function arcSegments(frame: SketchFrame, e: { center: [number, number, number]; a: [number, number, number]; b: [number, number, number]; mid: [number, number, number]; radius: number }): [Vec2, Vec2][] {
+  const [c, a, b, m] = [e.center, e.a, e.b, e.mid].map((p) => toSketch(frame, p)) as [Vec2, Vec2, Vec2, Vec2];
+  const angle = (p: Vec2) => Math.atan2(p[1] - c[1], p[0] - c[0]);
+  const turn = (x: number) => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  // Counter-clockwise from a to b, unless the middle is the other way.
+  let sweep = turn(angle(b) - angle(a));
+  if (turn(angle(m) - angle(a)) > sweep) sweep -= 2 * Math.PI;
+  const steps = Math.max(2, Math.ceil(Math.abs(sweep) / ARC_STEP));
+  const at = (k: number): Vec2 => (k === 0 ? a : k === steps ? b : [c[0] + e.radius * Math.cos(angle(a) + (sweep * k) / steps), c[1] + e.radius * Math.sin(angle(a) + (sweep * k) / steps)]);
+  return Array.from({ length: steps }, (_, k) => [at(k), at(k + 1)]);
+}
+
+/**
+ * The outer boundary of the face as a polygon (its edges chained end to end, an arc as short segments), in sketch
+ * coordinates.
+ */
 export function facePolygon(outline: FaceOutline, frame: SketchFrame): Vec2[] | null {
   const segments: [Vec2, Vec2][] = [];
-  for (const e of outline.edges) if (e.kind === "line") segments.push([toSketch(frame, e.a), toSketch(frame, e.b)]);
+  for (const e of outline.edges) {
+    if (e.kind === "line") segments.push([toSketch(frame, e.a), toSketch(frame, e.b)]);
+    else if (e.kind === "arc") segments.push(...arcSegments(frame, e));
+  }
   if (segments.length < 3) return null;
   const same = (p: Vec2, q: Vec2) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-4;
   // Chains of segments; the largest closed one is the outer boundary (inner loops are holes).

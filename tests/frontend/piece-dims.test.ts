@@ -17,9 +17,11 @@ describe("cotes des pièces", () => {
     expect(pieceDims([[0, -19, 2528], [3064, 0, 2928]], viewAxes([0, -1, 0], [0, 0, 1]))[0]!.from[2]).toBe(2828);
   });
 
-  it("une étagère ou un côté vus par la tranche n'ont pas de cotes", () => {
+  it("une étagère ou un côté vus par la tranche n'ont que leur longueur, le long de leur tranche", () => {
     const axes = viewAxes([0, -1, 0], [0, 0, 1]);
-    expect(pieceDims([[0, -560, 800], [564, 0, 818]], axes)).toEqual([]);
-    expect(pieceDims([[0, -560, 0], [18, 0, 2528]], axes)).toEqual([]);
+    expect(pieceDims([[0, -560, 800], [564, 0, 818]], axes)).toEqual([{ from: [0, -560.5, 809], to: [564, -560.5, 809], length: 564, at: [282, -560.5, 809] }]);
+    expect(pieceDims([[0, -560, 0], [18, 0, 2528]], axes)).toEqual([{ from: [9, -560.5, 0], to: [9, -560.5, 2528], length: 2528, at: [9, -560.5, 1264] }]);
+    // A rod or a hinge (small both ways): nothing.
+    expect(pieceDims([[0, -300, 1800], [25, -275, 1825]], axes)).toEqual([]);
   });
 });

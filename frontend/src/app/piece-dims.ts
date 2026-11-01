@@ -1,9 +1,10 @@
 /**
- * « Cotes des pièces » (colonne Vue, à droite de la vue) : un interrupteur qui écrit sur chaque pièce vue de face sa
- * largeur et sa hauteur, en rouge (features/piece-dims.ts). L'élément sélectionné — un caisson avec ses façades, une
- * répartition… — n'a que les siennes, et les garde pendant qu'un outil travaille dessus ; sans sélection, toutes les
- * pièces en vue. Seules les cotes qu'on voit s'écrivent (une porte cache le caisson derrière) ; elles suivent la vue
- * quand elle tourne et le modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur.
+ * « Cotes des pièces » (colonne Vue, à droite de la vue) : un interrupteur qui cote chaque pièce vue de face (traits
+ * rouges, chiffres verts) : sa largeur et sa hauteur, et sur une planche vue par la tranche sa longueur
+ * (features/piece-dims.ts). L'élément sélectionné — un caisson avec ses façades, une répartition entière… — n'a que
+ * les siennes, et les garde pendant qu'un outil travaille dessus ; sans sélection, toutes les pièces en vue. Seules
+ * les cotes qu'on voit s'écrivent (une porte cache le caisson derrière) ; elles suivent la vue quand elle tourne et le
+ * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur.
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
@@ -55,7 +56,12 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
       ids.add(f.type === "fronts" ? f.cabinet : f.id);
     }
     if (!ids.size) return null;
-    for (const f of doc.features) if (f.type === "fronts" && ids.has(f.cabinet)) ids.add(f.id);
+    // A cabinet with its fronts; a board of a Répartition with all the boards of its sketch.
+    const sketches = new Set(doc.features.flatMap((f) => (f.type === "extrude" && f.sketch && ids.has(f.id) ? [f.sketch] : [])));
+    for (const f of doc.features) {
+      if (f.type === "fronts" && ids.has(f.cabinet)) ids.add(f.id);
+      if (f.type === "extrude" && f.sketch && sketches.has(f.sketch)) ids.add(f.id);
+    }
     return ids;
   };
 
@@ -95,11 +101,21 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
       .sort((a, b) => eye.distanceTo(center(a.box)) - eye.distanceTo(center(b.box)))
       .slice(0, MAX_PIECES);
     const points: number[] = [];
+    // Where the values already written are on the screen: one landing on another (a double side) is left out.
+    const rect = viewport.renderer.domElement.getBoundingClientRect();
+    const written: [number, number][] = [];
+    const onScreen = (p: Vec3): [number, number] => {
+      const v = new THREE.Vector3(...p).project(viewport.camera);
+      return [((v.x + 1) / 2) * rect.width, ((1 - v.y) / 2) * rect.height];
+    };
     for (const { id, box } of nearest) {
       for (const d of pieceDims(box, axes)) {
         // Seen along most of its line (not only through the gap between two doors).
         const looks = [0.25, 0.5, 0.75].map((t) => d.from.map((v, i) => v + (d.to[i]! - v) * t) as Vec3);
         if (looks.filter((p) => seen(id, p, meshes)).length < 2) continue;
+        const [x, y] = onScreen(d.at);
+        if (written.some(([wx, wy]) => Math.abs(wx - x) < 34 && Math.abs(wy - y) < 14)) continue;
+        written.push([x, y]);
         // The line and a short tick across each end.
         const tick = Math.min(d.length / 8, 25);
         const along = d.from.findIndex((v, i) => Math.abs(v - d.to[i]!) > 1e-6);

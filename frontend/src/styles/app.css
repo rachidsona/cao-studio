@@ -380,7 +380,7 @@
   }
   /* The width and height written on each piece seen from the front (app/piece-dims.ts). */
   .cad-piece-dim {
-    @apply pointer-events-none bg-white/80 px-0.5 font-mono text-[11px] leading-none text-red-600 dark:bg-gray-950/70 dark:text-red-400;
+    @apply pointer-events-none bg-gray-950/80 px-1 py-px font-mono text-xs leading-none font-semibold text-[#63df0f];
   }
   /* The distance between two parallel edges: amber like its line, and a little larger. */
   .cad-measure.cad-measure-gap {

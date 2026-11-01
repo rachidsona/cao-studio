@@ -3,9 +3,10 @@
  * et leur glissé dans la vue, en pur. Un meuble ajouté est un caisson ordinaire avec ses façades, construit comme son
  * voisin (épaisseurs, fond, standard, façades et leur matière) : à droite du caisson choisi quand il est de la même
  * sorte, au-dessus ou à côté de lui sinon, à la première place libre le long du même mur, son fond sur le même plan.
- * Sans caisson dans le projet, il part de l'origine, devant le mur Y = 0 (comme l'Implantation).
+ * Sans caisson dans le projet, il part de l'origine, devant le mur Y = 0 (comme l'Implantation). On y ajoute ses
+ * propres meubles : décrits (nom, sorte, cotes, façades, étagères) ou repris d'un caisson du projet.
  */
-import { cabinetPartNames } from "../features/cabinet-parts";
+import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
 import { frontsMaterials } from "../features/fronts-parts";
 import { WALL_UNIT } from "../features/kitchen-layout";
 import { uniqueId } from "./operations";
@@ -23,6 +24,10 @@ export interface CatalogEntry {
   shelves: number;
   /** Height when not the kind's own (a short unit over the hood). */
   height?: number;
+  /** One's own units: their depth and plinth, and their name kept as it is (no width after it). */
+  depth?: number;
+  plinth?: number;
+  custom?: boolean;
 }
 
 /** Height, depth, plinth and floor-to-bottom of each kind (those of the Implantation). */
@@ -99,6 +104,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const anchor = cabinets.find((c) => c.id === anchorId) ?? cabinets.at(-1);
   const k = KINDS[entry.kind];
   const height = entry.height ?? k.height;
+  const depth = entry.depth ?? k.depth;
   const rotation = anchor?.rotation ?? 0;
   const { along, back } = cabinetAxes(rotation);
   // Beside the last of its kind along the anchor's wall; over (or beside) the anchor when of another kind.
@@ -109,10 +115,10 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const at = (s: number): Vec3 => {
     const base = anchor ? anchor.origin : ([0, 0, 0] as Vec3);
     // The origin is the front-left corner: the back plane, less the depth, then along the wall.
-    const across = anchor ? [0, 1].map((i) => base[i]! + back[i]! * (anchor.depth - k.depth)) : [0, -k.depth];
+    const across = anchor ? [0, 1].map((i) => base[i]! + back[i]! * (anchor.depth - depth)) : [0, -depth];
     return [Math.round(across[0]! + along[0] * s), Math.round(across[1]! + along[1] * s), z];
   };
-  const box = (s: number) => cabinetBox({ origin: at(s), width: entry.width, depth: k.depth, height, rotation });
+  const box = (s: number) => cabinetBox({ origin: at(s), width: entry.width, depth, height, rotation });
   // The first free place along the wall: past each cabinet in the way.
   for (let guard = 0; guard < cabinets.length + 1; guard++) {
     const hit = sameWall.find((c) => overlaps(box(start), cabinetBox(c)));
@@ -123,9 +129,9 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   }
   const like = anchor ?? null;
   const cabinet: CabinetFeature = {
-    id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth: k.depth,
+    id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth,
     thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves,
-    plinth: k.plinth, construction: like?.construction ?? "sides-through",
+    plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through",
     ...(rotation ? { rotation } : {}), ...(like?.standard ? { standard: like.standard } : {}),
   };
   let next: CadDocument = { ...doc, features: [...doc.features, cabinet] };
@@ -150,7 +156,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
 
 /** « Bas 1 porte 600 », numbered when the project has one already. */
 function uniqueKitchenName(doc: CadDocument, entry: CatalogEntry): string {
-  const base = `${entry.name} ${entry.width}`;
+  const base = entry.custom ? entry.name : `${entry.name} ${entry.width}`;
   const used = new Set(doc.features.map((f) => f.name));
   if (!used.has(base)) return base;
   let n = 2;
@@ -194,4 +200,25 @@ export function stickDelta(box: Box, rotation: number, target: StickTarget): Vec
     delta[j] = back[j]! > 0 ? target.other[1][j]! - box[1][j]! : target.other[0][j]! - box[0][j]!;
   } else delta[j] = target.point[j]! - (box[0][j]! + box[1][j]!) / 2;
   return delta;
+}
+
+/** One's own unit from what is typed, or why it cannot be built. */
+export function customEntry(e: Omit<CatalogEntry, "id" | "custom">): CatalogEntry | string {
+  const name = e.name.trim();
+  if (!name) return "Donnez un nom au meuble.";
+  const height = e.height ?? KINDS[e.kind].height;
+  const problem = cabinetProblem({ width: e.width, height, depth: e.depth ?? KINDS[e.kind].depth, thickness: 18, backThickness: 3, back: "applied", plinth: e.plinth ?? KINDS[e.kind].plinth, shelves: e.shelves });
+  if (problem) return problem;
+  if (e.layout === "drawers" && !(Number.isInteger(e.drawers) && e.drawers! >= 1 && e.drawers! <= 8)) return "De 1 à 8 tiroirs.";
+  return { ...e, name, height, id: `own-${slug(name)}-${Date.now().toString(36)}`, custom: true };
+}
+
+/** One's own unit made from a cabinet of the project: its sort, its sizes, its fronts and shelves. */
+export function entryFromCabinet(doc: CadDocument, c: CabinetFeature): CatalogEntry {
+  const fronts = doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === c.id && !f.suppressed);
+  const name = c.name.replace(/\s*\(\d+\)$/, "");
+  return {
+    id: `own-${slug(name)}-${Date.now().toString(36)}`, kind: kindOf(c), name, width: c.width, height: c.height, depth: c.depth, plinth: c.plinth,
+    shelves: c.shelves, layout: fronts?.layout ?? "none", ...(fronts?.layout === "drawers" ? { drawers: fronts.drawers } : {}), custom: true,
+  };
 }

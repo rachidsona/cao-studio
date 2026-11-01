@@ -2,6 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { coordinateAt, faceCenter, markedPoints, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances } from "../../frontend/src/sketcher/face-draw";
 import { parseNumber } from "../../frontend/src/measurements/units";
+import { facePolygon } from "../../frontend/src/sketcher/face-strip";
+import { sketchFrame } from "../../frontend/src/sketcher/frame";
 
 /** A face 400 × 300. */
 const FACE: [number, number][] = [[0, 0], [400, 0], [400, 300], [0, 300]];
@@ -128,5 +130,32 @@ describe("décalage du contour", () => {
     expect(pointerOffset(FACE, [100, 30])).toBe(30);
     expect(pointerOffset(FACE, [395, 150])).toBe(5);
     expect(pointerOffset(FACE, [100, -12])).toBe(-12);
+  });
+});
+
+describe("décalage d'une face au sommet arrondi (le pignon d'une voûte)", () => {
+  // 800 wide, its sides 600 high, then an arc rising 270 more, read from the kernel as an arc edge.
+  const r = (400 ** 2 + 270 ** 2) / (2 * 270);
+  const edges = [
+    { kind: "line", a: [-500, -400, 0], b: [-500, 400, 0] },
+    { kind: "line", a: [-500, 400, 0], b: [-500, 400, 600] },
+    { kind: "arc", center: [-500, 0, 870 - r], radius: r, a: [-500, 400, 600], b: [-500, -400, 600], mid: [-500, 0, 870] },
+    { kind: "line", a: [-500, -400, 600], b: [-500, -400, 0] },
+  ];
+  const poly = facePolygon({ surface: "PLANE", center: [-500, 0, 400], normal: [-1, 0, 0], edges } as never, sketchFrame("YZ", -500))!;
+
+  it("le contour suit l'arc en petits segments", () => {
+    expect(poly.length).toBeGreaterThan(20);
+    expect(Math.max(...poly.map((p) => p[1]))).toBeCloseTo(870, 0);
+  });
+
+  it("un décalage plus grand que ces segments les fait disparaître près des coins au lieu d'échouer", () => {
+    const inner = offsetPolygon(poly, 170)!;
+    expect(inner).not.toBeNull();
+    expect(inner.length).toBeLessThan(poly.length);
+    // 170 inside every side: the bottom at 170, the walls at ±230, the top under 870 − 170.
+    expect(Math.min(...inner.map((p) => p[1]))).toBeCloseTo(170);
+    expect(Math.max(...inner.map((p) => Math.abs(p[0])))).toBeCloseTo(230);
+    expect(Math.max(...inner.map((p) => p[1]))).toBeCloseTo(700, 0);
   });
 });

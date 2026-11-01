@@ -2,7 +2,8 @@
  * « Meubles de cuisine » (groupe Menuiserie) : la liste des meubles du commerce — bas à portes, à tiroirs, évier,
  * four, hauts, colonnes — chacun à ses largeurs. Un clic en ajoute un, avec ses façades, à côté du caisson sélectionné
  * (sinon du dernier), construit comme lui (document/kitchen-catalog.ts) ; il arrive sélectionné, prêt à être glissé
- * par sa poignée « ✥ » (app/cabinet-drag.ts). Une annulation par meuble.
+ * par sa poignée « ✥ » (app/cabinet-drag.ts). Une annulation par meuble. En tête, « Mes meubles » : ses propres
+ * caissons, décrits ou repris du projet, ajoutés à la liste (app/my-units.ts).
  */
 import * as THREE from "three";
 import { CATALOG, KINDS, addKitchenUnit, type CatalogEntry, type UnitKind } from "../document/kitchen-catalog";
@@ -12,6 +13,7 @@ import type { Viewport } from "../viewport/viewport";
 import { cabinetBodies } from "./cabinet-drag";
 import { selectedCabinet } from "./drivers-3d";
 import type { Editor } from "./editor";
+import { myUnitsSection } from "./my-units";
 import { floatingPanel } from "./workshop-ui";
 
 const WIDTH = "h-7 min-w-11 border border-gray-300 px-1.5 text-xs hover:border-orange-400 hover:bg-orange-50 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -55,6 +57,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     };
     panel.body.replaceChildren(
       el("p", { class: "text-gray-600 dark:text-gray-300" }, anchor ? `Le meuble choisi se pose à côté de « ${anchor.name} », construit comme lui.` : "Sélectionnez un caisson pour poser le meuble à côté de lui ; sinon il suit le dernier."),
+      myUnitsSection({ doc: () => editor.doc, unit: () => editor.unit, selected: () => selectedCabinet(editor), add: (e) => void add(e), notify: (m, k) => editor.notify(m, k), refresh: render }),
       ...(["base", "wall", "tall"] as const).map((kind) => el("section", { class: "space-y-1.5" }, el("h3", { class: "font-semibold text-gray-500 uppercase" }, KINDS[kind].label), ...names(kind).map(row))),
       el("p", { class: "text-[11px] text-gray-500" }, `Largeurs en ${editor.unit}. Pour déplacer un caisson : sélectionnez-le et tirez sa poignée ✥ (le long du mur ; Maj : librement), ↻ le tourne.`),
     );
@@ -72,6 +75,8 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
   const previous = editor.onRender;
   editor.onRender = () => {
     previous();
-    render();
+    // Not while a field of the panel is being typed in.
+    const typing = document.activeElement?.matches("input, select, textarea");
+    if (!(typing && panel?.body.contains(document.activeElement))) render();
   };
 }

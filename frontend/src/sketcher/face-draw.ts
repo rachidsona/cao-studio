@@ -158,24 +158,35 @@ export function offsetPolygon(poly: Vec2[], distance: number): Vec2[] | null {
     return { point: [a[0] + inward[0] * distance, a[1] + inward[1] * distance] as Vec2, dir };
   });
   if (lines.some((l) => l === null)) return null;
-  const out: Vec2[] = [];
-  for (let i = 0; i < n; i++) {
-    const prev = lines[(i + n - 1) % n]!;
-    const next = lines[i]!;
-    const den = cross2(prev.dir, next.dir);
-    if (Math.abs(den) < 1e-9) {
+  let live = lines as { point: Vec2; dir: Vec2 }[];
+  /** Each vertex where the shifted lines of its two edges meet. */
+  const corners = (ls: { point: Vec2; dir: Vec2 }[]) =>
+    ls.map((next, i) => {
+      const prev = ls[(i + ls.length - 1) % ls.length]!;
+      const den = cross2(prev.dir, next.dir);
       // Collinear neighbours: the vertex slides along the shifted line.
-      out.push([...next.point] as Vec2);
-      continue;
-    }
-    const w: Vec2 = [next.point[0] - prev.point[0], next.point[1] - prev.point[1]];
-    const t = cross2(w, next.dir) / den;
-    out.push([prev.point[0] + prev.dir[0] * t, prev.point[1] + prev.dir[1] * t]);
+      if (Math.abs(den) < 1e-9) return [...next.point] as Vec2;
+      const w: Vec2 = [next.point[0] - prev.point[0], next.point[1] - prev.point[1]];
+      const t = cross2(w, next.dir) / den;
+      return [prev.point[0] + prev.dir[0] * t, prev.point[1] + prev.dir[1] * t] as Vec2;
+    });
+  let out = corners(live);
+  // A short edge (a piece of an arc near a corner) the shift turns back on itself is swallowed: dropped, its
+  // neighbours meet again.
+  for (let guard = 0; guard < n; guard++) {
+    const back = live.findIndex((l, i) => {
+      const [a, b] = [out[i]!, out[(i + 1) % out.length]!];
+      return (b[0] - a[0]) * l.dir[0] + (b[1] - a[1]) * l.dir[1] < -1e-9;
+    });
+    if (back < 0 || live.length <= 3) break;
+    live = live.filter((_, i) => i !== back);
+    out = corners(live);
   }
   // A proper result keeps its orientation, has an area, and does not cross itself.
   const area = signedArea(out);
   if (Math.abs(area) < 1e-6 || area > 0 !== ccw) return null;
-  for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) if (!(i === 0 && j === n - 1) && crosses(out[i] as Vec2, out[(i + 1) % n] as Vec2, out[j] as Vec2, out[(j + 1) % n] as Vec2)) return null;
+  const m = out.length;
+  for (let i = 0; i < m; i++) for (let j = i + 2; j < m; j++) if (!(i === 0 && j === m - 1) && crosses(out[i] as Vec2, out[(i + 1) % m] as Vec2, out[j] as Vec2, out[(j + 1) % m] as Vec2)) return null;
   return out.map((p) => [Number(p[0].toFixed(6)), Number(p[1].toFixed(6))] as Vec2);
 }
 

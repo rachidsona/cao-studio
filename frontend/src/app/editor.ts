@@ -15,6 +15,7 @@ import { renderProperties, type FeaturePatch } from "../ui/properties";
 import { removeOffsetFrom, renameOffsetIn } from "../sketcher/offset";
 import { withPlaneOffset } from "../sketcher/frame";
 import { strokesOnly } from "../sketcher/loops";
+import { strokesTool } from "./gable-tool";
 import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
@@ -350,7 +351,7 @@ export class Editor {
 
   /**
    * Opens the interactive extrusion: on the sketch being edited or selected, otherwise waiting for a profile click in
-   * the view. A sketch of lines only (no closed area) goes to Panneaux: each line becomes a board.
+   * the view. A sketch of lines only (no closed area) goes to Toit (one line on the top of a body) or Panneaux.
    */
   private extrudeCommand(featureId?: string): void {
     // Faces picked in the model, or an extrusion made from faces: push/pull tool.
@@ -367,9 +368,10 @@ export class Editor {
     const sketchId = this.sketches.mode?.featureId ?? (selected?.type === "sketch" ? selected.id : undefined);
     const strokes = sketchId ? findFeature(this.doc, sketchId) : undefined;
     if (!featureId && strokes?.type === "sketch" && strokesOnly(strokes)) {
+      const { kind, message } = strokesTool(strokes, this.viewport);
       this.selectedFeature = strokes.id;
-      this.openTool("panels");
-      return this.notify(`« ${strokes.name} » n'a que des lignes : chacune devient un panneau. Réglez l'épaisseur, et la profondeur (sa hauteur depuis l'esquisse).`, "info");
+      this.openTool(kind);
+      return this.notify(message, "info");
     }
     if (this.sketches.active) this.sketches.finish();
     this.extrudeTool?.cancel();
@@ -445,7 +447,7 @@ export class Editor {
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
       tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

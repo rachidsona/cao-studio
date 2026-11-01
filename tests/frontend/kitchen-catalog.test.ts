@@ -1,6 +1,6 @@
 /** Meubles de cuisine pris dans la liste : posés à côté du caisson choisi, construits comme lui ; glissés, tournés. */
 import { describe, expect, it } from "vitest";
-import { CATALOG, addKitchenUnit, cabinetBox, slideCabinet, stickDelta, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
+import { CATALOG, addKitchenUnit, cabinetBox, customEntry, entryFromCabinet, slideCabinet, stickDelta, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 
 const entry = (id: string) => CATALOG.find((e) => e.id === id)!;
@@ -83,5 +83,25 @@ describe("meubles de cuisine", () => {
     expect(stickDelta(box, 0, { kind: "face", point: [300, -300, 870], normal: [0, 0, 1], other: neighbour })).toBeNull();
     // A corner: the nearest corner of the cabinet goes on it.
     expect(stickDelta(box, 0, { kind: "point", point: [0, 0, 870] })).toEqual([1400, 321, 0]);
+  });
+
+  it("mes meubles : décrits, vérifiés, posés à leurs cotes et sous leur nom", () => {
+    expect(customEntry({ name: " ", kind: "base", width: 450, layout: "door", shelves: 1 })).toMatch(/nom/);
+    expect(customEntry({ name: "Trop étroit", kind: "base", width: 30, layout: "door", shelves: 1 })).toMatch(/largeur/i);
+    expect(customEntry({ name: "Tiroirs", kind: "base", width: 600, layout: "drawers", drawers: 12, shelves: 0 })).toMatch(/1 à 8/);
+    const own = customEntry({ name: "Bas poubelle", kind: "base", width: 450, height: 900, depth: 600, plinth: 100, layout: "door", shelves: 0 });
+    if (typeof own === "string") throw new Error(own);
+    expect(own).toMatchObject({ custom: true, height: 900 });
+    const { doc, cabinet, fronts } = addKitchenUnit(createReferencePlate(), own);
+    expect(cabinet).toMatchObject({ name: "Bas poubelle", width: 450, height: 900, depth: 600, plinth: 100, origin: [0, -600, 0] });
+    expect(fronts?.layout).toBe("door");
+    // The same again: numbered.
+    expect(addKitchenUnit(doc, own).cabinet.name).toBe("Bas poubelle (2)");
+  });
+
+  it("mes meubles : repris d'un caisson du projet avec ses façades", () => {
+    const placed = addKitchenUnit(createReferencePlate(), entry("wall-haut-2-portes-900"));
+    const e = entryFromCabinet(placed.doc, placed.cabinet);
+    expect(e).toMatchObject({ kind: "wall", name: "Haut 2 portes 900", width: 900, height: 700, depth: 350, layout: "doors", custom: true });
   });
 });

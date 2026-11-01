@@ -69,7 +69,8 @@ test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page })
   await page.waitForURL("**/editor/");
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('[data-select^="body:"]')).toHaveCount(6);
-  await page.locator('[data-workshop="quote"]').click();
+  // Folded into « Atelier ▾ » when the bar is narrow: its button still opens the quote.
+  await page.locator('[data-workshop="quote"]').dispatchEvent("click");
   const quote = page.getByRole("dialog", { name: "Devis" });
   await expect(quote).toContainText("Mélaminé chêne 1,8 cm"); // centimetres by default
   await expect(quote).toContainText("Total TTC");
