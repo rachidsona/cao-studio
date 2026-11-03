@@ -1,0 +1,85 @@
+/*
+ * The look of the editor for the workshop « Caissons et pièces » (/poly/, the former poly_3D): the same themes and
+ * palettes (palettes.css: the light theme, the dark one in the palette chosen in the editor's « ⋯ » menu), the same
+ * Inter lettering, square corners and gradient primary buttons. Compiled to static/css/poly-theme.css
+ * (npm run build:css) and loaded before the workshop's own sheet (apps/furniture/static/poly/css/app.css), whose
+ * colours are all these variables.
+ */
+@import "./palettes.css";
+
+:root {
+  --bg: var(--g50);
+  --panel: #ffffff;
+  --panel-soft: var(--g50);
+  --hover: var(--g100);
+  --text: var(--g900);
+  --text-2: var(--g700);
+  --muted: var(--g500);
+  --line: var(--g200);
+  --line-strong: var(--g300);
+  --accent: var(--s700);
+  --accent-hover: var(--s800);
+  --accent-ink: #ffffff;
+  --accent-bg: var(--s50);
+  --accent-line: var(--s200);
+  --sel-bg: var(--s100);
+  --sel-ink: var(--s800);
+  --sel-line: var(--s300);
+  --sel-accent: var(--s600);
+  --amber: #d97706;
+  --amber-soft: #fef3c7;
+  --warn-bg: #fffbeb;
+  --warn-line: #fde68a;
+  --warn-ink: #92400e;
+  --danger: #b42318;
+  --danger-soft: #fee4e2;
+  --danger-line: #f2b8b5;
+  --ok: #087443;
+  --ok-bg: #ecfdf3;
+  /* The 2D plan of a room stays a light drawing sheet in both themes (its lines are drawn for it). */
+  --sheet: #f9fafb;
+  /* The 3D views: the editor's deep blue gradient. */
+  --viewport-gradient: linear-gradient(180deg, #1f2f40 0%, #101d26 100%);
+  --radius: 0;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: var(--g950);
+  --panel: var(--g900);
+  --panel-soft: color-mix(in srgb, var(--g900) 70%, var(--g950));
+  --hover: var(--g800);
+  --text: var(--g100);
+  --text-2: var(--g200);
+  --muted: var(--g400);
+  --line: var(--g800);
+  --line-strong: var(--g700);
+  --accent: var(--s400);
+  --accent-hover: var(--s300);
+  --accent-bg: color-mix(in srgb, var(--s400) 14%, var(--g900));
+  --accent-line: color-mix(in srgb, var(--s400) 45%, var(--g900));
+  --sel-bg: color-mix(in srgb, var(--s400) 22%, var(--g900));
+  --sel-ink: var(--s100);
+  --sel-line: color-mix(in srgb, var(--s400) 55%, var(--g900));
+  --sel-accent: var(--s400);
+  --amber-soft: color-mix(in srgb, #d97706 22%, var(--g900));
+  --warn-bg: color-mix(in srgb, #d97706 14%, var(--g900));
+  --warn-line: color-mix(in srgb, #d97706 45%, var(--g900));
+  --warn-ink: #fcd34d;
+  --danger: #f87171;
+  --danger-soft: color-mix(in srgb, #dc2626 20%, var(--g900));
+  --danger-line: color-mix(in srgb, #dc2626 50%, var(--g900));
+  --ok: #4ade80;
+  --ok-bg: color-mix(in srgb, #16a34a 16%, var(--g900));
+  --shadow: none;
+  color-scheme: dark;
+}
+
+/* Thin scrollbars in the accent's solid tone, as in the editor. */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--brand-plein)) rgb(var(--night-light));
+}

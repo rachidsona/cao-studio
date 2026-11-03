@@ -1,0 +1,194 @@
+{% extends "poly/base.html" %}
+{% load static l10n %}
+
+{% block title %}{{ project.name }} — poly_3D{% endblock %}
+
+{% block header %}
+<header class="app-header">
+  <a class="brand" href="{% url 'poly:home' %}">
+    <span class="brand-mark">P</span>
+    <span>poly_3D<br><small>Affaire</small></span>
+  </a>
+  <button type="button" class="theme-toggle" data-theme-toggle aria-label="Basculer le thème clair/sombre" title="Thème clair/sombre"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+  <a class="header-link" href="{% url 'projects:list' %}" title="Retour aux projets de l'éditeur poly_3D">← Mes projets</a>
+  <span class="header-spacer"></span>
+  <div class="header-actions">
+    <a class="header-link" href="{% url 'poly:home' %}">Tableau de bord</a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Affaire</p>
+      <h1>{{ project.name }}</h1>
+      <p class="muted small">Client : {{ project.client_name }} · {{ stats.cabinet_count }} caisson(s)
+        {% if project.placement_mode == 'room' %}
+          · Pièce {% widthratio stats.room_width 10 1 %} × {% widthratio stats.room_depth 10 1 %} × {% widthratio stats.room_height 10 1 %} cm
+          · {{ stats.area_m2|floatformat:2 }} m²
+          · {{ stats.wall_count }} mur(s) · {{ stats.opening_count }} ouverture(s)
+        {% else %}
+          · L {{ stats.total_width|floatformat:0 }} mm · H {{ stats.max_height|floatformat:0 }} mm
+        {% endif %}
+      </p>
+    </div>
+    <div class="header-buttons">
+      {% if project.placement_mode == 'room' %}
+        <a class="btn btn-sm btn-primary" href="{% url 'poly:project_room' project.pk %}">Éditeur de pièce 2D/3D</a>
+        <a class="btn btn-sm" href="{% url 'poly:project_room' project.pk %}?presentation=1">Mode présentation</a>
+      {% endif %}
+      <a class="btn btn-sm" href="{% url 'poly:home' %}">← Tableau de bord</a>
+    </div>
+  </header>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="{% if message.tags == 'error' %}form-error{% else %}form-ok{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head">
+        <h2>Caissons de l'affaire</h2>
+        <span class="chip">{{ stats.cabinet_count }} caisson(s)</span>
+      </div>
+
+      {% if entries %}
+        <table class="data">
+          <thead>
+            <tr><th>#</th><th>Caisson</th><th class="num">L × H × P (cm)</th><th class="num">{% if project.placement_mode == 'room' %}Pos. X / Y (cm){% else %}Pos. (cm){% endif %}</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+              <tr>
+                <td class="mono">{{ entry.slot|add:1 }}</td>
+                <td><a href="{% url 'poly:editor' entry.cabinet.pk %}"><strong>{{ entry.cabinet.name }}</strong></a></td>
+                <td class="num mono">
+                  {% widthratio entry.cabinet.width 10 1 %} × {% widthratio entry.cabinet.height 10 1 %} × {% widthratio entry.cabinet.depth 10 1 %}
+                </td>
+                <td class="num mono">
+                  {% if project.placement_mode == 'room' %}
+                    {% widthratio entry.item.pos_x 10 1 %} / {% widthratio entry.item.pos_y 10 1 %}
+                  {% else %}
+                    {% widthratio entry.offset_x 10 1 %}
+                  {% endif %}
+                </td>
+                <td class="right nowrap">
+                  {% if project.placement_mode != 'room' %}
+                    <form method="post" action="{% url 'poly:project_detail' project.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="move">
+                      <input type="hidden" name="item_id" value="{{ entry.item.pk }}">
+                      <input type="hidden" name="direction" value="up">
+                      <button class="btn btn-sm btn-ghost" type="submit" title="Monter">↑</button>
+                    </form>
+                    <form method="post" action="{% url 'poly:project_detail' project.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="move">
+                      <input type="hidden" name="item_id" value="{{ entry.item.pk }}">
+                      <input type="hidden" name="direction" value="down">
+                      <button class="btn btn-sm btn-ghost" type="submit" title="Descendre">↓</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{% url 'poly:project_detail' project.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove">
+                    <input type="hidden" name="item_id" value="{{ entry.item.pk }}">
+                    <button class="btn btn-sm btn-ghost" type="submit" title="Retirer de l'affaire">✕</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="hint" style="margin-top:8px;">
+          {% if project.placement_mode == 'room' %}
+            Les caissons sont positionnés librement dans la pièce.
+            <a href="{% url 'poly:project_room' project.pk %}">Ouvrir l'éditeur de pièce</a> pour modifier les murs, ouvertures et placements.
+          {% else %}
+            Les caissons sont posés côte à côte dans l'ordre, avec un jeu de {{ project.gap|floatformat:1 }} mm.
+          {% endif %}
+        </p>
+      {% else %}
+        <p class="empty-mini">Aucun caisson. Ajoutez-en un ci-dessous.</p>
+      {% endif %}
+
+      <form method="post" action="{% url 'poly:project_detail' project.pk %}" class="field-row" style="margin-top:10px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <div>
+          <label for="add-cabinet">Ajouter un caisson</label>
+          <select id="add-cabinet" name="cabinet_id">
+            {% for cabinet in available_cabinets %}
+              <option value="{{ cabinet.pk }}">{{ cabinet.name }} ({{ cabinet.width|floatformat:0 }} mm)</option>
+            {% empty %}
+              <option value="" disabled>Aucun caisson disponible</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit" style="align-self:flex-end;" {% if not available_cabinets %}disabled{% endif %}>Ajouter</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Réglages de l'affaire</h2></div>
+      <form method="post" action="{% url 'poly:project_detail' project.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+        <div class="field">
+          <label for="prj-name">Nom de l'affaire</label>
+          <input id="prj-name" type="text" name="name" value="{{ project.name }}" maxlength="150">
+        </div>
+        <div class="field">
+          <label for="prj-client">Client</label>
+          <input id="prj-client" type="text" name="client_name" value="{{ project.client_name }}" maxlength="150">
+        </div>
+        <div class="field-row">
+          <div>
+            <label for="prj-gap">Jeu entre caissons</label>
+            <div class="input-with-unit"><input id="prj-gap" type="number" name="gap" value="{{ project.gap|unlocalize }}" min="0" step="0.5"><span>mm</span></div>
+          </div>
+          <div>
+            <label for="prj-margin">Marge</label>
+            <div class="input-with-unit"><input id="prj-margin" type="number" name="margin_percent" value="{{ project.margin_percent|unlocalize }}" min="0" step="0.5"><span>%</span></div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label for="prj-tax">TVA</label>
+            <div class="input-with-unit"><input id="prj-tax" type="number" name="tax_rate" value="{{ project.tax_rate|unlocalize }}" min="0" step="0.1"><span>%</span></div>
+          </div>
+          <div>
+            <label for="prj-notes">Notes</label>
+            <input id="prj-notes" type="text" name="notes" value="{{ project.notes }}" placeholder="Informations complémentaires">
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit">Enregistrer</button>
+      </form>
+      <form method="post" action="{% url 'poly:project_detail' project.pk %}" style="margin-top:12px;" data-confirm="Supprimer définitivement cette affaire (les caissons restent intacts) ?">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <button class="btn btn-sm btn-ghost" type="submit">Supprimer l'affaire</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:14px;">
+    <div class="card-head"><h2>Documents de fabrication &amp; devis</h2></div>
+    <div class="header-buttons" style="justify-content:flex-start;">
+      <a class="btn btn-sm" href="{% url 'poly:project_croquis_pdf' project.pk %}">
+        {% if project.placement_mode == 'room' %}Plan de pièce PDF{% else %}Croquis PDF{% endif %}
+      </a>
+      <a class="btn btn-sm" href="{% url 'poly:project_cutlist_pdf' project.pk %}">Liste de débit PDF</a>
+      <a class="btn btn-sm" href="{% url 'poly:project_nesting_pdf' project.pk %}">Optimisation de découpe PDF</a>
+      <a class="btn btn-sm btn-primary" href="{% url 'poly:project_quote_pdf' project.pk %}">Devis PDF</a>
+    </div>
+    <p class="hint" style="margin-top:8px;">
+      Tous les documents regroupent l'ensemble des caissons de l'affaire, mesures en cm.
+    </p>
+  </section>
+</div>
+{% endblock %}

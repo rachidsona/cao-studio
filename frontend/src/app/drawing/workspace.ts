@@ -9,7 +9,7 @@ import { bodyLabel } from "../../document/operations";
 import { sheetDxf } from "../../drawing/dxf";
 import { SheetLayout } from "../../drawing/layout";
 import {
-  FIXED_ITEMS, FORMATS, FRAME_MARGIN, ORIENTATIONS, TITLE_SIZE, freshId, newSheet, placedSide, removeView, sheetIds, sideSpec, toggled, updateSheet, withoutDimensions,
+  FIXED_ITEMS, FORMATS, freshId, newSheet, removeView, sheetIds, toggled, updateSheet, withoutDimensions,
   type DrawingSheet, type DrawingView, type LineStyle, type Orientation, type Vec2,
 } from "../../drawing/model";
 import type { MeshInput } from "../../drawing/projection";
@@ -27,11 +27,10 @@ import { drawingRibbon } from "./ribbon";
 import { arrangeDimensions, dimensionFrame, snapDimension } from "../../drawing/arrange";
 import { bomRows, describeAnnotation, hitTest, sideName, traitAt, withAutoDimensions, withDimensionsOnSide } from "./sheet-actions";
 import { addPoseSheets, printClientFile } from "./client-file";
-import { ZoomWindowTool, fitScale, type DrawingTool, type ToolHost } from "./tools";
+import { ZoomWindowTool, type DrawingTool, type ToolHost } from "./tools";
+import { cabinetSheet, standardViews, type CabinetFocus } from "./standard-views";
 
 const PX_PER_MM = 3.78;
-/** Room between the standard views (paper mm), for their dimensions. */
-const GAP_VIEWS = 30;
 
 export class DrawingWorkspace {
   private readonly root: HTMLElement;
@@ -59,6 +58,7 @@ export class DrawingWorkspace {
     private readonly editor: Editor,
     private readonly viewport: Viewport,
     private readonly onClose: () => void,
+    focus: CabinetFocus | null = null,
   ) {
     this.layout = new SheetLayout(() => this.meshes());
     this.layout.setModel(this.modelKey());
@@ -81,8 +81,10 @@ export class DrawingWorkspace {
     this.root = el("div", { class: "fixed inset-0 z-40 flex flex-col bg-gray-100 text-gray-900 dark:bg-gray-950 dark:text-gray-100", role: "dialog", "aria-label": "Mise en plan", "data-drawing-workspace": "" },
       this.ribbon(), el("div", { class: "flex min-h-0 flex-1" }, this.navigator.element, el("div", { class: "flex min-w-0 flex-1 flex-col" }, this.stage, this.status, this.tabs), this.panel));
     document.body.append(this.root);
-    if (!this.sheets.length) this.commit([this.withStandardViews(newSheet([], this.title()))]);
-    this.sheetId = this.sheets[0]!.id;
+    if (!this.sheets.length && !focus) this.commit([standardViews(newSheet([], this.title()), this.layout, this.viewport.displayedBodies.length)]);
+    // Opened on a cabinet: its sheet (made, or found and brought up to date), shown first.
+    if (focus) this.commit(cabinetSheet(this.sheets, focus, this.viewport.displayedBodies, this.layout, this.title()));
+    this.sheetId = (focus ? this.sheets.find((x) => x.name === focus.sheetName) : undefined)?.id ?? this.sheets[0]!.id;
     this.bindPointer();
     window.addEventListener("keydown", this.keys, true);
     requestAnimationFrame(() => this.fitPage());
@@ -129,36 +131,6 @@ export class DrawingWorkspace {
   }
 
   /** Front, top, left and an isometric view, at a scale that fits the sheet. */
-  private withStandardViews(sheet: DrawingSheet): DrawingSheet {
-    if (!this.viewport.displayedBodies.length) return sheet;
-    const [w, h] = FORMATS[sheet.format];
-    const probe = (spec: DrawingView["spec"]) => this.layout.geometry(sheet, { id: "probe", kind: "base", spec, scale: 1, at: [0, 0], label: "", hidden: true });
-    const front = probe(ORIENTATIONS.front.spec);
-    const top = probe(sideSpec(ORIENTATIONS.front.spec, "top"));
-    const [W, H, D] = [front.max[0] - front.min[0], front.max[1] - front.min[1], top.max[1] - top.min[1]];
-    const room: Vec2 = [(w - 2 * FRAME_MARGIN - 110) / 2, h - 2 * FRAME_MARGIN - TITLE_SIZE[1] - 70];
-    const scale = fitScale([W + D, H + D], room);
-    const [fw, fh, d] = [W / scale, H / scale, D / scale];
-    const x = FRAME_MARGIN + 45 + fw / 2;
-    const y = FRAME_MARGIN + 28 + fh / 2;
-    const below = sheet.projection === "first" ? y + fh / 2 + GAP_VIEWS + d / 2 : y;
-    const frontY = sheet.projection === "first" ? y : y + d + GAP_VIEWS;
-    const ids = sheetIds(sheet);
-    const id = () => {
-      const next = freshId(ids, "view");
-      ids.push(next);
-      return next;
-    };
-    const base = id();
-    const views: DrawingView[] = [
-      { id: base, kind: "base", spec: ORIENTATIONS.front.spec, orientation: "front", scale, at: [x, frontY], label: "Vue de face", hidden: true },
-      { id: id(), kind: "projected", spec: sideSpec(ORIENTATIONS.front.spec, placedSide("down", sheet.projection)), orientation: sheet.projection === "first" ? "top" : "bottom", scale, at: [x, sheet.projection === "first" ? below : y], parent: base, label: sheet.projection === "first" ? "Vue de dessus" : "Vue de dessous", hidden: true },
-      { id: id(), kind: "projected", spec: sideSpec(ORIENTATIONS.front.spec, placedSide("right", sheet.projection)), orientation: sheet.projection === "first" ? "left" : "right", scale, at: [x + fw / 2 + GAP_VIEWS + d / 2, frontY], parent: base, label: sheet.projection === "first" ? "Vue de gauche" : "Vue de droite", hidden: true },
-      { id: id(), kind: "projected", spec: ORIENTATIONS.iso.spec, orientation: "iso", scale, at: [w - FRAME_MARGIN - 20 - (fw + d) / 2, FRAME_MARGIN + 25 + (fh + d) / 2], parent: base, label: "Vue isométrique", hidden: false },
-    ];
-    return { ...sheet, views: [...sheet.views, ...views] };
-  }
-
   // ---- drawing --------------------------------------------------------------------------------------------
 
   render(): void {
@@ -207,7 +179,7 @@ export class DrawingWorkspace {
           },
         };
       },
-      standardViews: () => this.update((s) => this.withStandardViews(s)),
+      standardViews: () => this.update((s) => standardViews(s, this.layout, this.viewport.displayedBodies.length)),
       dimensionSide: (id) => sideName(this.sheet(), this.layout, id),
       setDimensionSide: (side) => this.update((s) => withDimensionsOnSide(s, this.layout, this.selection, side)),
       removeSheet: () => {
@@ -482,8 +454,11 @@ export class DrawingWorkspace {
   }
 }
 
-/** The « Mise en plan » button opens the workspace; it follows every change of the model while open. */
-export function bindDrawingWorkspace(root: HTMLElement, viewport: Viewport, editor: Editor): void {
+/**
+ * The « Mise en plan » button opens the workspace; it follows every change of the model while open. Returns the way
+ * to open it on one cabinet (the menu of the project's name).
+ */
+export function bindDrawingWorkspace(root: HTMLElement, viewport: Viewport, editor: Editor): (focus: CabinetFocus) => void {
   let open: DrawingWorkspace | null = null;
   // The button of the top bar (a workspace of its own, as in Fusion) and the one of the Atelier group.
   for (const button of root.querySelectorAll('[data-workshop="drawing"]')) {
@@ -496,5 +471,9 @@ export function bindDrawingWorkspace(root: HTMLElement, viewport: Viewport, edit
   editor.onRender = () => {
     previous();
     open?.render();
+  };
+  return (focus) => {
+    open?.close();
+    open = new DrawingWorkspace(editor, viewport, () => (open = null), focus);
   };
 }

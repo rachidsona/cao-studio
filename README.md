@@ -36,7 +36,7 @@ poly_3D était une seconde application (Django 5.2, JavaScript, reportlab), clon
 reconstruits par le serveur, séparations, étagères, cloisons, liste de débit, devis, éditeur de pièce, PDF. Les deux
 ne font plus qu'une, sur la base de CAO Studio, renommée **poly_3D** (titre des pages, en-tête, connexion ; le format
 de document « cao-studio », l'extension `.cao.json` et les réglages gardés par le navigateur ne changent pas : les
-projets existants s'ouvrent tels quels). Ce qui a été porté, dans la structure existante :
+projets existants s'ouvrent tels quels). Ce qui a été porté dans l'éditeur 3D :
 
 - **Catalogue de l'atelier** (`apps/catalog`, administration Django, `GET /api/catalog/`) : les **matières** (nom,
   épaisseur, famille — mélaminé, bois, verre, marbre, pierre, métal, stratifié, uni —, format de plaque, prix au m²),
@@ -62,13 +62,95 @@ projets existants s'ouvrent tels quels). Ce qui a été porté, dans la structur
   45 cm au-dessus de la plaque, tringle de penderie hors de 170 à 190 cm (`document/layout-check.ts`,
   `app/layout-check.ts`).
 
-Non porté, parce que l'éditeur le fait déjà, souvent plus complètement : séparations, grille de compartiments,
-séries d'étagères, cloisons et côtés doubles (Répartition, Étagères, Cloisons), plinthe et pieds (Finitions), tiroirs,
-tringle et façades, mesure face / arête / point, Scene Graph (Navigateur), nesting, liste de débit et CSV, devis,
-annuler / rétablir et historique (versions), éditeur de pièce 2D / 3D (Pièce, Implantation de cuisine, Assistant
-Dressing), presets de caissons et d'appareils, rendu photo (Rendu), calculatrice des champs, PDF (impression du
-navigateur plutôt que reportlab). Les caissons dessinés dans l'ancienne base poly_3D ne sont pas repris (modèle
-relationnel contre document paramétrique) ; seul le catalogue l'est.
+### Atelier « Caissons et pièces » (`/poly/`)
+
+L'atelier de l'ancien poly_3D est monté tel quel dans le même serveur, sous `/poly/` : lien « Caissons et pièces »
+dans l'en-tête du site et carte « Ouvrir l'atelier » sur la page Mes projets ; chacune de ses pages a un lien
+« ← Mes projets ». Il demande un compte poly_3D (les pages renvoient à la connexion, son API répond 401 en JSON,
+`apps/furniture/middleware.py`). On y retrouve :
+
+- le **tableau de bord** : nouveau caisson (cotes, carcasse, fond, jeu arrière, plinthe, façades), caissons récents,
+  modèles de caissons, affaires (multi-caissons) ;
+- l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
+  cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du
+  haut pleine largeur), **Étagère** (une ou une série de 1 à 20, colonne entre côté et cloison), **Séparation**
+  (cloison entre deux étagères ou une étagère et le dessus ou le dessous), **Côté** (côtés doubles, un ou une série),
+  **Déplacer / copier** des étagères vers une autre niche, **Plinthe** (avec Séparer, Côté et Étagère, un **simple
+  clic** dans la vue choisit la niche, un clic sur une étagère ou une séparation sélectionne ce panneau ; avec les
+  autres outils, le double-clic choisit la niche), **Caisson** (cotes, matières, fond, façades,
+  tringle, tiroirs), **Mesurer** (face, arête, point), Scene Graph avec un œil par élément, Rayons X, menu
+  d'affichage, vues, annuler / rétablir et historique avec retour arrière, liste de débit, optimisation de découpe,
+  devis, croquis 2D, contrôles, rendu photo, « Enregistrer comme modèle » ;
+- l'**éditeur de pièce** (cuisine, dressing ou autre) : plan 2D vu de dessus et vue 3D, murs aux sommets déplaçables,
+  portes et fenêtres, bibliothèque de meubles de cuisine et de dressing et d'électroménager (évier, plaque, hotte,
+  four, réfrigérateur, lave-vaisselle, micro-ondes, lave-linge), glisser et aimanter, tourner, plans de travail
+  calculés ou posés à la main, contrôles de faisabilité (hotte, évier et plaque, dégagements, tringles…), devis en
+  temps réel, versions de l'affaire, duplication, mode présentation ;
+- les **PDF** de l'atelier (reportlab) : croquis coté d'un caisson ou d'une affaire, plan de pièce avec appareils et
+  contrôles, liste de débit, optimisation de découpe, devis d'affaire, avec l'en-tête et le logo du profil de
+  l'atelier ; liste de débit en CSV, devis d'un caisson en page HTML.
+
+**Organisation des fenêtres de l'atelier** (pensée pour travailler vite, sans chercher les réglages) :
+
+- **Éditeur de pièce** :
+  - des **modes** au-dessus du plan — *Sélection* (poser, déplacer, régler), *Murs* (sommets à glisser, cotes, réglages
+    de la pièce dépliés), *Ouvertures* (liste et formulaire des fenêtres, portes, passages), *Mesurer* (deux clics,
+    accrochés aux angles des murs, des caissons et des appareils ; Maj : point libre ; la distance et ΔX, ΔY) — chacun
+    avec son panneau à gauche ;
+  - à gauche, la **bibliothèque en onglets** (Cuisine, Dressing, Appareils, Plans de travail) et les **réglages de la
+    pièce repliés** en bas ;
+  - à droite, **un seul panneau « Sélection »** : les réglages de ce qui est cliqué (caisson, appareil, plan de
+    travail, mur, ouverture), avec « Éditer le caisson › » et « Retirer » ; les listes (caissons, appareils, plans de
+    travail posés) repliées dessous ;
+  - sous la vue, une **barre de pastilles** — *Contrôles* (vert, ou le nombre d'alertes), *Devis* (le total TTC),
+    *Versions* — dont un clic ouvre le détail (et la fiche de l'affaire) ;
+  - **Plan 2D, Vue 3D ou Côte à côte** (les deux en même temps) ;
+  - **Annuler / Rétablir** (Ctrl+Z, Ctrl+Maj+Z ou Ctrl+Y ; boutons au-dessus du plan) : chaque changement de la pièce
+    (poser, déplacer, tourner, retirer un meuble ou un appareil, les murs, les ouvertures, les plans de travail, une
+    version restaurée) est gardé par le serveur, 40 étapes par affaire (`apps/furniture/room_history.py`) ; les
+    versions gardent maintenant aussi les plans de travail posés à la main ;
+  - **clavier** : Suppr retire, R tourne de 90° (Maj + R dans l'autre sens), Échap désélectionne ;
+  - **appareils encastrés** : un four, un micro-ondes ou un réfrigérateur posé dans un caisson (un four dans une
+    colonne, par exemple) y est encastré : les contrôles de faisabilité ne le signalent plus comme un chevauchement,
+    tant qu'il reste dans le caisson (à 3 cm près) ; un lave-vaisselle ou un appareil qui dépasse reste signalé ;
+  - **rendu 3D des fours et micro-ondes** : une vraie face — cadre inox, bandeau noir avec boutons et afficheur, porte
+    vitrée avec sa fenêtre, poignée en barre (micro-ondes : fenêtre à gauche, touches à droite). Encastré, l'appareil
+    montre seulement sa face, au ras du caisson, et les portes du caisson s'ouvrent autour de lui (une dessous, une
+    dessus) ; posé seul, il garde son corps inox (`apps/furniture/static/poly/js/appliance3d.js`) ;
+  - ce qui est replié, la vue et la pastille ouverte sont **retenus par le navigateur**
+    (`apps/furniture/static/poly/js/room_layout.js`).
+- **Éditeur de caisson** : **trois onglets** au lieu de sept — *Sélection et outil* (la sélection et les réglages de
+  l'outil choisi dans la barre, ensemble), *Fabrication* (liste de débit, optimisation, contrôles), *Devis et
+  croquis* — l'onglet ouvert retenu par le navigateur ; un simple clic dans une niche la choisit avec Séparer, Côté et
+  Étagère.
+- **Menu du nom** (▾), dans l'éditeur de caisson et dans l'éditeur de pièce comme dans l'éditeur 3D : les documents
+  (devis, liste de débit, optimisation, croquis ou plan en PDF, CSV) et les autres endroits (la pièce ou l'affaire du
+  caisson, le tableau de bord de l'atelier, Mes projets). Le retour à la pièce reste visible dans la barre de
+  l'éditeur de caisson (« ← Pièce « … » »), et « Éditer le caisson › » est en tête du panneau Sélection de la pièce.
+- Les messages du serveur (en haut à droite) disparaissent seuls après quelques secondes, ou d'un clic.
+
+Il a **le style de l'éditeur** : les mêmes thèmes clair et sombre et la même palette (choisie dans le menu « ⋯ » de
+l'éditeur, retenue par le navigateur ; un bouton lune / soleil dans l'en-tête de chaque page de l'atelier), la police
+Inter, les coins carrés, l'en-tête blanc (ou du panneau de la palette en sombre) avec la marque « P », les boutons
+principaux au dégradé de la palette et le fond bleu nuit des vues 3D. Le plan 2D d'une pièce reste une feuille claire
+dans les deux thèmes. Les couleurs de l'atelier sont des variables (`frontend/src/styles/poly-theme.css`, compilé en
+`static/css/poly-theme.css` par `npm run build:css`) reprises par sa feuille `apps/furniture/static/poly/css/app.css`.
+
+Les confirmations de l'atelier (retirer un meuble, un appareil, un plan de travail, supprimer une ouverture, un
+caisson, un modèle ou une affaire, restaurer une version, revenir dans l'historique) et la question du bouton « Modèle »
+s'affichent **dans la page** (`apps/furniture/static/poly/js/dialogs.js`) : certains navigateurs intégrés, comme celui
+de l'application de bureau, refusent sans rien montrer les boîtes du navigateur, et rien ne se supprimait.
+
+Il utilise le **même catalogue** que l'éditeur (matières, règles de quincaillerie, profil de l'atelier :
+`apps/catalog`). Ses caissons et ses affaires sont des tables à lui (`apps/furniture`, `apps/quotes`,
+`apps/workshop`), **communes à tous les comptes** du serveur comme dans l'ancienne application, et ne sont pas des
+projets de l'éditeur : un caisson de l'atelier ne s'ouvre pas dans l'éditeur 3D, et inversement. Les caissons de
+l'ancienne base poly_3D ne sont pas repris. Le code est celui de poly_3D, adapté à Django 6.1 et au montage sous
+`/poly/` (URL nommées `poly:…`, gabarits `apps/furniture/templates/poly/`, fichiers statiques
+`apps/furniture/static/poly/`) ; plusieurs de ses fichiers dépassent les 500 lignes (`static/poly/js/editor.js`,
+`room_editor.js`, `services.py`, `room.py`, `pdf_export.py`, `views.py`, `models.py`) et ont été gardés tels quels.
+Ses 154 tests sont dans `tests/backend/test_poly_workshop.py`, son parcours dans `tests/e2e/poly-workshop.spec.ts`.
+Données de démonstration : `python manage.py seed_demo`.
 
 Développement (recompilation continue, dans deux terminaux) :
 
@@ -768,7 +850,7 @@ opération existante.
     une face : un nouveau corps, ou, pour une esquisse dessinée sur un corps, un ajout (tirer) ou un creusement (pousser).
   - Le résultat : une esquisse « Tracé n » sur la face et une « Extrusion n » de sa bande sur le corps, en une seule
     annulation ; la bande suit la forme de la face (face en L, face trouée).
-- **Sélection++** (comme Curic Select++, toujours active ; plus de bouton dans la colonne) : en survolant un corps à la souris, ses niveaux
+- **Sélection++** (comme Curic Select++ ; bouton en bas de la colonne Vue, sous « Affichage », pour l'allumer ou l'éteindre, retenu par le navigateur) : en survolant un corps à la souris, ses niveaux
   s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), la pièce,
   la face — et le niveau courant est en vert dans la vue. **Ctrl** descend d'un niveau (puis revient en haut) ; le
   niveau choisi est gardé en passant d'une pièce à l'autre. Un clic sélectionne le niveau courant, Maj + clic l'ajoute.
@@ -1295,6 +1377,13 @@ opération existante.
     feuilles en bas et les réglages à droite. Les feuilles sont gardées avec le projet, et Ctrl+Z annule comme partout.
     Groupe *Affichage* du ruban : *Zoom fenêtre* (tracer la zone à agrandir, en glissant ou par deux coins : elle
     remplit l'écran) et *Ajuster* (toute la feuille à l'écran, comme F).
+    - **Mise en plan du caisson sélectionné** (menu du nom du projet, en haut à gauche) : une feuille pour un seul
+      caisson — celui dont une pièce est cliquée dans la vue (un côté, une porte, une étagère ; ou le seul caisson du
+      modèle) —, nommée « Caisson — … », avec ses vues de face, de dessus, de côté et isométrique à une échelle qui
+      tient sur la feuille ; les autres corps n'y sont pas. Un caisson, c'est sa carcasse, ses façades et ses
+      finitions, ou une Répartition avec ses étagères, ses cloisons et l'équipement de ses niches, comme dans le
+      navigateur. Rouverte, la même feuille est mise à jour et garde ses cotes et ses textes (`document/cabinet-of.ts`,
+      `app/drawing/standard-views.ts`, `app/project-menu.ts`).
     - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, dessiné par, société, date, matière ;
       échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
       ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
@@ -1746,6 +1835,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   (les esquisses restent), puis les réaffiche tous ; la **corbeille** supprime tous les corps après
   confirmation (« Supprimer les 40 corps ? »). Chacun ne fait qu'une modification : un seul Ctrl+Z la défait
   (`setHidden` dans `document/operations.ts`).
+- **Menu du nom du projet** (en haut à gauche, ▾) : retour à Mes projets, Mise en plan du caisson sélectionné, Mise en
+  plan du projet, et l'atelier poly_3D (« Caissons et pièces »).
 - **Navigateur** (à gauche) : les **corps** et les **esquisses** du document. Chaque ligne a un œil pour
   l'afficher ou la masquer (un corps masqué reste dans le document, il n'est pas dessiné ; le choix est
   enregistré et s'annule). Un clic sélectionne ; le bouton « ⋯ » ouvre la fenêtre de l'élément.

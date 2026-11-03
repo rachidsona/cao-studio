@@ -142,7 +142,7 @@ test("la mise en plan s'ouvre de la barre du haut : une feuille avec les vues st
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const api = await newProject(page, "Mise en plan e2e");
-  await page.locator('header [data-workshop="drawing"]').click();
+  await page.locator('header > [data-workshop="drawing"]').click();
   const workspace = page.getByRole("dialog", { name: "Mise en plan" });
   await expect(workspace).toBeVisible();
   // Front, top, left and isometric views, the title block.
@@ -178,5 +178,41 @@ test("poly_3D : le catalogue de l'atelier arrive, Rayons X et Affichage marchent
   await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "true");
   await page.locator("[data-display-all]").click();
   await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "false");
+  // Sélection++ is back in the column (under Affichage): on by default, it turns off and on again.
+  const selectPlus = page.locator("[data-select-plus]");
+  await expect(selectPlus).toBeVisible();
+  await expect(selectPlus).toHaveAttribute("aria-pressed", "true");
+  await selectPlus.click();
+  await expect(selectPlus).toHaveAttribute("aria-pressed", "false");
+  await selectPlus.click();
+  await expect(selectPlus).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
+
+test("le menu du nom du projet : projets, atelier poly_3D, mise en plan du caisson seul", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Menu e2e");
+  // A plate only: no cabinet to draw, the menu says what to do.
+  await page.locator("[data-project-menu] summary").click();
+  const menu = page.locator('[data-project-menu] [role="menu"]');
+  await expect(menu.getByRole("menuitem", { name: "← Mes projets" })).toHaveAttribute("href", "/projects/");
+  await expect(menu.getByRole("menuitem", { name: "Caissons et pièces (tableau de bord)" })).toHaveAttribute("href", "/poly/");
+  await menu.getByRole("menuitem", { name: "Mise en plan du caisson sélectionné" }).click();
+  await expect(page.getByText("Cliquez d'abord une pièce du caisson")).toBeVisible();
+  await expect(menu).toBeHidden();
+  // The example project: one cabinet, its own sheet with its four views.
+  await page.goto("/projects/");
+  await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
+  await page.waitForURL("**/editor/");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await page.locator("[data-project-menu] summary").click();
+  await menu.getByRole("menuitem", { name: "Mise en plan du caisson sélectionné" }).click();
+  const workspace = page.getByRole("dialog", { name: "Mise en plan" });
+  await expect(workspace).toBeVisible();
+  // Its sheet is the tab open (the tabs are at the bottom; the navigator lists the sheet too).
+  await expect(workspace.locator("button.h-7", { hasText: "Caisson — Caisson bas" })).toHaveClass(/font-semibold/);
+  await expect(workspace.locator('[data-drawing-stage] g[data-id^="view"]')).toHaveCount(4);
+  await expect(workspace.locator('[data-drawing-stage] [data-id="title-block"]')).toContainText("Caisson bas");
   expect(errors).toEqual([]);
 });

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:css": "tailwindcss -i frontend/src/styles/app.css -o static/css/app.css --minify",
+    "build:css": "tailwindcss -i frontend/src/styles/app.css -o static/css/app.css --minify && tailwindcss -i frontend/src/styles/poly-theme.css -o static/css/poly-theme.css --minify",
     "watch:css": "tailwindcss -i frontend/src/styles/app.css -o static/css/app.css --watch",
     "build:js": "vite build",
     "watch:js": "vite build --watch --mode development",

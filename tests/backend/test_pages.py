@@ -138,3 +138,10 @@ def test_admin_registered(admin_client, project):
     assert admin_client.get("/admin/projects/project/").status_code == 200
     assert admin_client.get(f"/admin/projects/project/{project.id}/change/").status_code == 200
     assert admin_client.get("/admin/projects/projectversion/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_projects_page_links_to_the_poly_workshop(client_logged):
+    content = client_logged.get("/projects/").content.decode()
+    assert 'href="/poly/"' in content
+    assert "Caissons et pièces" in content

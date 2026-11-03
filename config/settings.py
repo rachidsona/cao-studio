@@ -60,6 +60,10 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.projects",
     "apps.catalog",
+    # The workshop of the former poly_3D (cabinets, rooms, quotes, cut lists), under /poly/.
+    "apps.furniture",
+    "apps.quotes",
+    "apps.workshop",
 ]
 
 MIDDLEWARE = [
@@ -70,6 +74,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.furniture.middleware.PolyLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

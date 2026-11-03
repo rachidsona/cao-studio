@@ -1,0 +1,54 @@
+{% load static assets %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}poly_3D{% endblock %}</title>
+  <meta name="description" content="poly_3D — conception paramétrique de meubles, décomposition volumétrique, liste de débit et devis.">
+  <link rel="icon" href="{% static 'poly/favicon.svg' %}" type="image/svg+xml">
+  <script>
+    /* The editor's theme before first paint: localStorage ("light"/"dark") or the system's, and its palette. */
+    (function () {
+      var dark = false;
+      try {
+        var stored = localStorage.getItem("theme");
+        dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      } catch (e) {}
+      document.documentElement.classList.toggle("dark", dark);
+      try {
+        var palette = localStorage.getItem("palette");
+        if (palette && /^palette-[a-z]+$/.test(palette)) document.documentElement.classList.add(palette);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% versioned_static 'css/poly-theme.css' %}">
+  <link rel="stylesheet" href="{% versioned_static 'poly/css/app.css' %}">
+  <script src="{% versioned_static 'poly/js/dialogs.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block header %}{% endblock %}
+  {% if messages %}
+    <div class="flash-stack">
+      {% for message in messages %}
+        <div class="flash flash-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+  {% block scripts %}{% endblock %}
+  <script>
+    document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var dark = document.documentElement.classList.toggle("dark");
+        try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+      });
+    });
+  </script>
+</body>
+</html>
