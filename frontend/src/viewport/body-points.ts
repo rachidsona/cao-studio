@@ -26,3 +26,61 @@ export function bodyVertices(mesh: BodyMesh): Point3[] {
   }
   return points;
 }
+
+/**
+ * The faces (their indices) along an edge: those whose mesh has both its ends among its corners — two, as a rule —,
+ * the smaller first (the end of a board before its side).
+ */
+export function edgeFaces(mesh: BodyMesh, edgeIndex: number): number[] {
+  const group = mesh.edgeGroups[edgeIndex];
+  if (!group || group.count < 1) return [];
+  const at = (index: number): Point3 => [mesh.edges[index * 3] as number, mesh.edges[index * 3 + 1] as number, mesh.edges[index * 3 + 2] as number];
+  const ends = [at(group.start), at(group.start + group.count - 1)];
+  const vertex = (i: number): Point3 => [mesh.vertices[i * 3] as number, mesh.vertices[i * 3 + 1] as number, mesh.vertices[i * 3 + 2] as number];
+  const area = (face: { start: number; count: number }) => {
+    let sum = 0;
+    for (let k = face.start; k + 2 < face.start + face.count; k += 3) {
+      const [a, b, c] = [0, 1, 2].map((t) => vertex(mesh.indices[k + t] as number)) as [Point3, Point3, Point3];
+      const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      sum += Math.hypot(u[1]! * v[2]! - u[2]! * v[1]!, u[2]! * v[0]! - u[0]! * v[2]!, u[0]! * v[1]! - u[1]! * v[0]!) / 2;
+    }
+    return sum;
+  };
+  return mesh.faceGroups
+    .flatMap((face, f) => {
+      const found = ends.map(() => false);
+      for (let k = face.start; k < face.start + face.count; k++) {
+        const p = vertex(mesh.indices[k] as number);
+        ends.forEach((end, e) => (found[e] ||= samePoint(p, end)));
+      }
+      return found.every(Boolean) ? [{ f, area: area(face) }] : [];
+    })
+    .sort((a, b) => a.area - b.area)
+    .map(({ f }) => f);
+}
+
+/** The middle of an edge (the point halfway along its polyline). */
+export function edgeMiddle(mesh: BodyMesh, edgeIndex: number): Point3 | null {
+  const group = mesh.edgeGroups[edgeIndex];
+  if (!group || group.count < 1) return null;
+  const i = group.start + Math.floor((group.count - 1) / 2);
+  const j = group.start + Math.ceil((group.count - 1) / 2);
+  return [0, 1, 2].map((c) => ((mesh.edges[i * 3 + c] as number) + (mesh.edges[j * 3 + c] as number)) / 2) as Point3;
+}
+
+/** The box of one face of the body (from its triangles), or null. */
+export function faceBox(mesh: BodyMesh, faceIndex: number): [Point3, Point3] | null {
+  const group = mesh.faceGroups[faceIndex];
+  if (!group || group.count < 1) return null;
+  const min: Point3 = [Infinity, Infinity, Infinity];
+  const max: Point3 = [-Infinity, -Infinity, -Infinity];
+  for (let k = group.start; k < group.start + group.count; k++) {
+    const v = mesh.indices[k] as number;
+    for (const c of [0, 1, 2]) {
+      min[c] = Math.min(min[c]!, mesh.vertices[v * 3 + c] as number);
+      max[c] = Math.max(max[c]!, mesh.vertices[v * 3 + c] as number);
+    }
+  }
+  return [min, max];
+}

@@ -8,6 +8,7 @@
  *   moment.
  * Le stock et le lot sont gardés par le serveur (/api/offcuts/, /api/batch/ : apps/projects/production.py).
  */
+import { layoutBars, type Bar } from "../document/bars";
 import { cutList, type CutRow } from "../document/cut-list";
 import { modelHardware } from "../document/hardware";
 import { MATERIALS } from "../document/materials";
@@ -40,9 +41,9 @@ function sheetSvg(sheet: Sheet, index: number, unit: DisplayUnit): string {
   const [W, H] = sheet.size;
   const rects = sheet.placements
     .map((p) => {
-      const label = `${num(p.w, unit)}×${num(p.h, unit)}`;
-      const size = Math.max(14, Math.min(p.w, p.h) / 6);
-      return `<g><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111">${label}</text></g>`;
+      const label = `${p.tag ? `${p.tag} · ` : ""}${num(p.w, unit)}×${num(p.h, unit)}`;
+      const size = Math.max(14, Math.min(p.w / (label.length * 0.62), p.h / 2.2, Math.min(p.w, p.h) / 4));
+      return `<g><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111"><title>${escapeHtml(p.name)}</title>${label}</text></g>`;
     })
     .join("");
   // What is worth keeping, dashed in green.
@@ -51,8 +52,22 @@ function sheetSvg(sheet: Sheet, index: number, unit: DisplayUnit): string {
   return `<div class="sheet"><h3>${what} — ${escapeHtml(sheet.material)} ${num(sheet.thickness, unit)} ${UNIT_LABELS[unit]} (${num(W, unit)}×${num(H, unit)} ${UNIT_LABELS[unit]}), chutes ${Math.round((1 - sheet.usage) * 100)} %${sheet.leftovers.length ? `, ${sheet.leftovers.length} à garder (en vert)` : ""}</h3><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${kept}${rects}</svg></div>`;
 }
 
-const purchaseHtml = (sheets: Sheet[], rows: CutRow[], hardware: { name: string; quantity: number; unit?: string }[]) =>
-  `<table><thead><tr><th>Article</th><th>Quantité</th><th>Détail</th></tr></thead><tbody>${purchaseList(sheets, rows, hardware)
+/** A bar of battens: its parts end to end (with their mark and length), what is left hatched. */
+function barSvg(bar: Bar, index: number, unit: DisplayUnit): string {
+  const H = Math.max(60, bar.section[0]) * 1.6;
+  const cuts = bar.cuts
+    .map((c) => {
+      const label = `${c.tag ? `${c.tag} · ` : ""}${num(c.length, unit)}`;
+      const size = Math.min(H * 0.45, c.length / (label.length * 0.62));
+      return `<g><rect x="${c.x}" y="0" width="${c.length}" height="${H}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${c.x + c.length / 2}" y="${H / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111"><title>${escapeHtml(c.name)}</title>${label}</text></g>`;
+    })
+    .join("");
+  const rest = bar.rest > 0 ? `<rect x="${bar.length - bar.rest}" y="0" width="${bar.rest}" height="${H}" fill="url(#hatch)" stroke="#9ca3af" stroke-width="2"/>` : "";
+  return `<div class="sheet"><h3>Barre ${index + 1} — ${escapeHtml(bar.material)} ${num(bar.section[0], unit)} × ${num(bar.section[1], unit)} ${UNIT_LABELS[unit]} (${num(bar.length, unit)} ${UNIT_LABELS[unit]}), chute ${num(bar.rest, unit)} ${UNIT_LABELS[unit]}</h3><svg viewBox="0 0 ${bar.length} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="hatch" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="24" height="24" fill="#f3f4f6"/><path d="M0 0v24" stroke="#d1d5db" stroke-width="8"/></pattern></defs><rect width="${bar.length}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${rest}${cuts}</svg></div>`;
+}
+
+const purchaseHtml = (sheets: Sheet[], rows: CutRow[], hardware: { name: string; quantity: number; unit?: string }[], bars: Bar[] = []) =>
+  `<table><thead><tr><th>Article</th><th>Quantité</th><th>Détail</th></tr></thead><tbody>${purchaseList(sheets, rows, hardware, bars)
     .map((l) => `<tr><td>${escapeHtml(l.label)}</td><td>${l.quantity.toLocaleString("fr-FR")} ${escapeHtml(l.unit)}</td><td>${escapeHtml(l.detail ?? "")}</td></tr>`)
     .join("")}</tbody></table>`;
 
@@ -73,19 +88,26 @@ async function showLayout(editor: Editor, title: string, rows: CutRow[], hardwar
   const holder = el("div", { class: "space-y-3 text-xs [&_table]:w-full [&_td]:border-b [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1 [&_th]:px-2 [&_th]:text-left dark:[&_td]:border-gray-700" });
   const toggle = el("input", { type: "checkbox", checked: useStock && pieces.length > 0, disabled: !pieces.length });
   let result = layoutSheets(rows, undefined, toggle.checked ? pieces : []);
+  // Battens are cut from bars, whatever the stock of offcuts.
+  const cut = layoutBars(rows);
   const draw = () => {
     result = layoutSheets(rows, undefined, toggle.checked ? pieces : []);
     const { sheets, tooBig } = result;
     const used = sheets.filter((s) => s.offcut !== undefined).length;
     const fresh = sheets.length - used;
-    const html = sheets.map((sheet, i) => sheetSvg(sheet, i, unit)).join("") + (tooBig.length ? `<p>Trop grandes pour leur panneau : ${escapeHtml(tooBig.join(", "))}.</p>` : "");
+    const { bars, tooLong } = cut;
+    const html =
+      sheets.map((sheet, i) => sheetSvg(sheet, i, unit)).join("") +
+      bars.map((bar, i) => barSvg(bar, i, unit)).join("") +
+      (tooBig.length ? `<p>Trop grandes pour leur panneau : ${escapeHtml(tooBig.join(", "))}.</p>` : "") +
+      (tooLong.length ? `<p>Plus longues que leur barre : ${escapeHtml(tooLong.join(", "))}.</p>` : "");
     const board = el("div");
     board.innerHTML = html || "<p>Rien à placer.</p>";
     const buy = el("div");
-    buy.innerHTML = purchaseHtml(sheets, rows, hardware);
+    buy.innerHTML = purchaseHtml(sheets, rows, hardware, bars);
     holder.replaceChildren(
       el("label", { class: "flex items-center gap-2" }, toggle, pieces.length ? `Utiliser d'abord les chutes du stock (${pieces.reduce((n, p) => n + p.quantity, 0)})` : "Aucune chute en stock"),
-      el("p", { class: "font-medium" }, `${fresh} panneau(x) neuf(s)${used ? ` et ${used} chute(s) du stock` : ""}.`),
+      el("p", { class: "font-medium" }, `${fresh} panneau(x) neuf(s)${used ? ` et ${used} chute(s) du stock` : ""}${bars.length ? `, ${bars.length} barre${bars.length > 1 ? "s" : ""} de tasseau` : ""}.`),
       board,
       el("h3", { class: "text-sm font-semibold" }, "Liste d'achat"),
       buy,
@@ -119,11 +141,11 @@ async function showLayout(editor: Editor, title: string, rows: CutRow[], hardwar
       editor.notify(e instanceof Error ? e.message : String(e), "error");
     }
   };
-  const close = openModal(`${title} — ${result.sheets.length} panneau${result.sheets.length > 1 ? "x" : ""}`, holder, [
+  const close = openModal(`${title} — ${result.sheets.length} panneau${result.sheets.length > 1 ? "x" : ""}${cut.bars.length ? `, ${cut.bars.length} barre${cut.bars.length > 1 ? "s" : ""}` : ""}`, holder, [
     { label: "Garder les chutes", run: () => void keep() },
     { label: "Sortir les chutes utilisées", run: () => void takeOut() },
     { label: "Exporter en SVG", run: () => downloadText("decoupe.svg", result.sheets.length ? sheetSvg(result.sheets[0]!, 0, unit).replace(/^.*?(<svg)/s, "$1").replace(/<\/div>$/, "") : "", "image/svg+xml") },
-    { label: "Imprimer / PDF", run: () => printHtml(title, `<h1>${escapeHtml(title)}</h1>${result.sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}<h2>Liste d'achat</h2>${purchaseHtml(result.sheets, rows, hardware)}`) },
+    { label: "Imprimer / PDF", run: () => printHtml(title, `<h1>${escapeHtml(title)}</h1>${result.sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}${cut.bars.map((b, i) => barSvg(b, i, unit)).join("")}<h2>Liste d'achat</h2>${purchaseHtml(result.sheets, rows, hardware, cut.bars)}`) },
     { label: "Fermer", run: () => close() },
   ]);
 }

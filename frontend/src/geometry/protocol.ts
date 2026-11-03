@@ -15,6 +15,10 @@ export type WorkerRequest =
   | { type: "faceOutline"; bodyId: string; faceIndex: number }
   /** One edge of a body, exactly (line, circle, arc), to project it into a sketch. */
   | { type: "edgeOutline"; bodyId: string; edgeIndex: number }
+  /** Every edge of a body (« Projeter » the whole body). */
+  | { type: "bodyOutline"; bodyId: string }
+  /** Where the plane (origin, u, v) cuts a body (« Intersection »). */
+  | { type: "sectionOutline"; bodyId: string; origin: P3; u: P3; v: P3 }
   /** Persistent references for edges / a face picked on a body (topological naming). */
   | { type: "describe"; bodyId: string; edges: number[]; face?: number }
   /** Mesh of any body of the last recompute, including intermediate (consumed) ones. */
@@ -62,7 +66,7 @@ export interface EdgeInfo {
   radius?: number;
 }
 
-type P3 = [number, number, number];
+export type P3 = [number, number, number];
 
 export type OutlineEdge =
   | { kind: "line"; a: P3; b: P3 }

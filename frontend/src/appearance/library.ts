@@ -246,6 +246,8 @@ export const MATERIAL_APPEARANCE: Record<string, string> = {
   "lacquer-white": "lacquer-white-gloss",
   "birch-plywood": "plywood-birch",
   "solid-oak": "wood-oak-varnished",
+  "pine-batten": "wood-pine",
+  "oak-batten": "wood-oak-raw",
   hdf: "hdf",
 };
 

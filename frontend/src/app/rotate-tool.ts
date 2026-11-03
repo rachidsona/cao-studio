@@ -69,7 +69,7 @@ export class RotateTool extends PanelTool {
   private features(): Feature[] {
     const center = this.center();
     if (!this.editing && this.slots.length < this.targets.length) this.slots = freshFeatureIds(this.ctx.doc(), "ro", "Rotation", this.targets.length);
-    const bodies = this.targets.map((target, i): RotateFeature => ({ ...(this.slots[i] as { id: string; name: string }), type: "rotate", target, axis: this.axis, angle: this.angle, center }));
+    const bodies = this.targets.map((target, i): RotateFeature => ({ ...(this.slots[i] as { id: string; name: string }), type: "rotate", target, axis: this.axis, angle: this.angle, center, ...(this.editing?.type === "rotate" && this.editing.dir ? { dir: this.editing.dir } : {}) }));
     const sketches = this.sketches.flatMap((id) => rotateSketch(this.sketch(id) as SketchFeature, this.axis, this.angle, center) ?? []);
     return [...bodies, ...sketches];
   }

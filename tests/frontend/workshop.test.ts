@@ -32,7 +32,7 @@ describe("liste de débit", () => {
     expect([shelves.cutLength, shelves.cutWidth]).toEqual([564, 557]);
     expect(totals.find((t) => t.material === "Mélaminé blanc")?.parts).toBe(2);
     const csv = cutListCsv(rows);
-    expect(csv.split("\r\n")[0]).toContain('"Pièce";"Qté";"Longueur (mm)"');
+    expect(csv.split("\r\n")[0]).toContain('"Repère";"Pièce";"Qté";"Longueur (mm)"');
     expect(csv).toContain('"Caisson 1 — Côté gauche, Caisson 1 — Côté droit";2;720;557;18');
     // In centimetres, as chosen in the settings.
     const cm = cutListCsv(rows, "cm");

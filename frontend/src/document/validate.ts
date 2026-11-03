@@ -100,6 +100,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
+      if (feature.strip !== undefined && (!isObject(feature.strip) || !isVec3(feature.strip.from) || !isVec3(feature.strip.to))) errors.push(`${where} : bande de face invalide.`);
       if (
         feature.regions !== undefined &&
         (!Array.isArray(feature.regions) || feature.regions.length === 0 || !feature.regions.every((p) => Array.isArray(p) && p.length === 2 && p.every(isFiniteNumber)))
@@ -186,6 +187,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à tourner manquant.`);
       if (![0, 1, 2].includes(feature.axis as number)) errors.push(`${where} : axe de rotation invalide.`);
       if (!isVec3(feature.center)) errors.push(`${where} : centre de rotation invalide.`);
+      if (feature.dir !== undefined && (!isVec3(feature.dir) || Math.hypot(...(feature.dir as number[])) < 1e-9)) errors.push(`${where} : direction de l'axe de rotation invalide.`);
       checkNumbers(feature, ["angle"], where, errors);
       break;
     case "align":
@@ -202,6 +204,14 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.profile !== "string" || typeof feature.path !== "string") errors.push(`${where} : profil ou chemin manquant.`);
       if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
       if (feature.operation !== "new" && typeof feature.target !== "string") errors.push(`${where} : corps cible manquant.`);
+      if (feature.place !== undefined) {
+        const place = feature.place;
+        if (!isObject(place) || !["origin", "center", "bottom-left", "bottom-right"].includes(place.anchor as string) || !isFiniteNumber(place.spin) || typeof place.flip !== "boolean") errors.push(`${where} : placement du profil invalide.`);
+      }
+      if (feature.section !== undefined) {
+        const s = feature.section;
+        if (!isObject(s) || !isFiniteNumber(s.width) || !isFiniteNumber(s.height) || (s.width as number) <= 0 || (s.height as number) <= 0 || !["center", "left", "right"].includes(s.align as string) || (s.fromEnd !== undefined && typeof s.fromEnd !== "boolean")) errors.push(`${where} : section rectangulaire invalide.`);
+      }
       break;
     case "shell":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à creuser manquant.`);
@@ -240,7 +250,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       break;
     case "modifier":
       if (typeof feature.target !== "string") errors.push(`${where} : planche à modifier manquante.`);
-      if (!["bend", "taper", "twist"].includes(feature.kind as string)) errors.push(`${where} : modificateur inconnu.`);
+      if (!["bend", "taper", "twist", "ffd", "points"].includes(feature.kind as string)) errors.push(`${where} : modificateur inconnu.`);
+      if (feature.moves !== undefined && (!Array.isArray(feature.moves) || !feature.moves.every((p) => isObject(p) && isVec3(p.from) && isVec3(p.to)))) errors.push(`${where} : points à déplacer invalides.`);
+      if (feature.lattice !== undefined && (!Array.isArray(feature.lattice) || feature.lattice.length !== 81 || !feature.lattice.every((v) => isFiniteNumber(v)))) errors.push(`${where} : grille de déformation invalide (27 points).`);
       checkNumbers(feature, ["amount"], where, errors);
       break;
     case "loft":

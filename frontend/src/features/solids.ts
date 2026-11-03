@@ -3,7 +3,7 @@
  * chamfer and combination of bodies. Edges are found again through
  * persistent references (geometry/references.ts).
  */
-import { basicFaceExtrusion, measureArea, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
+import { basicFaceExtrusion, drawRectangle, measureArea, Plane, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
@@ -126,9 +126,24 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
   return { kind: "solid", shape: requireSingleValidSolid(current, feature.name) };
 }
 
+/** The slab between the planes square to the edge `from`–`to` through its two ends (wide enough for any body). */
+function stripSlab(strip: NonNullable<ExtrudeFeature["strip"]>, name: string): Shape3D {
+  const d = [0, 1, 2].map((i) => strip.to[i]! - strip.from[i]!);
+  const length = Math.hypot(...d);
+  if (length < 1e-6) throw new GeometryError(`${name} : l'arête est trop courte.`);
+  const n = d.map((c) => c / length) as [number, number, number];
+  // Any direction square to the edge for the slab's x.
+  const seed = Math.abs(n[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  const x = [n[1] * seed[2]! - n[2] * seed[1]!, n[2] * seed[0]! - n[0] * seed[2]!, n[0] * seed[1]! - n[1] * seed[0]!];
+  const k = Math.hypot(...x);
+  const plane = new Plane(strip.from, x.map((c) => c / k) as [number, number, number], n);
+  return drawRectangle(1e6, 1e6).sketchOnPlane(plane).extrude(length) as Shape3D;
+}
+
 /**
  * Push/pull of planar faces: each face is swept along its outward normal by
- * `distance` (negative: into the body), then combined with the target.
+ * `distance` (negative: into the body), then combined with the target. With a `strip`, only the part of the sweep
+ * between the planes square to the edge through its ends is kept: the face is pulled along the edge only.
  */
 export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   const faces = feature.faces ?? [];
@@ -144,8 +159,15 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
       const length = Math.hypot(n.x, n.y, n.z) || 1;
       const k = feature.distance / length;
       const vector = new Vector([n.x * k, n.y * k, n.z * k]);
-      const prism = basicFaceExtrusion(face, vector) as Shape3D;
+      let prism = basicFaceExtrusion(face, vector) as Shape3D;
       vector.delete();
+      if (feature.strip) {
+        const cut = stripSlab(feature.strip, feature.name);
+        const kept: Shape3D = prism.intersect(cut);
+        prism.delete();
+        cut.delete();
+        prism = kept;
+      }
       if (!tool) tool = prism;
       else {
         const fused: Shape3D = tool.fuse(prism);

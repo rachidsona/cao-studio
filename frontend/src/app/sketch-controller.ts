@@ -59,6 +59,8 @@ export interface SketchControllerHost {
   selectedFace(): FacePick | undefined;
   faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline>;
   edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline>;
+  bodyOutline(bodyId: string): Promise<EdgeOutline[]>;
+  sectionOutline(bodyId: string, origin: Vec3, u: Vec3, v: Vec3): Promise<EdgeOutline[]>;
   offset(paths: OffsetPath[], distance: number, join: OffsetJoin): Promise<OffsetOutcome>;
 }
 
@@ -185,6 +187,8 @@ export class SketchController {
       offsetId: () => uniqueOffsetId(this.host.doc()),
       edgeOutline: (bodyId, edgeIndex) => this.host.edgeOutline(bodyId, edgeIndex),
       faceOutline: (bodyId, faceIndex) => this.host.faceOutline(bodyId, faceIndex),
+      bodyOutline: (bodyId) => this.host.bodyOutline(bodyId),
+      sectionOutline: (bodyId, origin, u, v) => this.host.sectionOutline(bodyId, origin, u, v),
     });
     this.host.select(featureId);
     this.root.dataset.mode = "sketch";

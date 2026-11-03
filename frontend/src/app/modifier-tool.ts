@@ -11,7 +11,7 @@ const KINDS: [ModifierFeature["kind"], string][] = [
   ["taper", "Effiler"],
   ["twist", "Vriller"],
 ];
-const DEFAULTS: Record<ModifierFeature["kind"], number> = { bend: 500, taper: 50, twist: 45 };
+const DEFAULTS: Record<ModifierFeature["kind"], number> = { bend: 500, taper: 50, twist: 45, ffd: 0, points: 0 };
 
 export class ModifierTool extends PanelTool {
   private readonly id: string;

@@ -162,8 +162,11 @@ serveur accepte les deux versions.
     meuble, une cote du croquis), on donne cette distance, et l'image se met à l'échelle autour du premier point.
   Elle est dessinée sous les traits, n'est jamais construite, et « Ajuster la vue » la prend en compte. Chaque réglage
   est une annulation (`app/sketch-underlay.ts`).
-- **Projeter** : cliquez des arêtes des corps ; elles s'ajoutent en violet comme repères fixes (exactes quand elles
-  sont parallèles au plan de l'esquisse, sinon en points reliés).
+- **Projeter** (comme Projeter / Inclure de Fusion) : cliquez une arête, une **face** (tout son contour) ou, **Maj +
+  clic**, un **corps entier** (toutes ses arêtes, en une annulation). Elles s'ajoutent en violet comme repères fixes
+  (exactes quand elles sont parallèles au plan de l'esquisse, sinon en points reliés).
+- **Intersection** (comme Fusion, à côté de Projeter) : cliquez un corps ; là où le plan de l'esquisse le coupe
+  s'ajoute en violet, repère fixe (la coupe est calculée par le noyau : la part du plan dans le corps).
 - **Congé et chanfrein de coin** : cliquez un coin où deux lignes se rejoignent, tapez le rayon (arc tangent aux
   deux lignes) ou la distance (ligne de coupe). Le coin d'origine reste comme *coin virtuel* sur les deux lignes
   prolongées : les cotes qui le visaient continuent de valoir et l'esquisse garde la même liberté.
@@ -743,6 +746,18 @@ opération existante.
   change ; sur une esquisse, il est déplacé ; une esquisse est déplacée (son plan et son origine). Une seule annulation.
   Chaque axe aligné a un **écart** : le jeu entre deux faces accolées, le retrait d'une face alignée à l'intérieur de
   celle de la référence, ou le décalage du centre vers +.
+  - **Face sur face** (méthode d'Aligner, gardée pour la session ; une face sélectionnée avant d'ouvrir l'outil la
+    choisit) : on clique une face plane du corps à déplacer, puis la face où la coller, sur un autre corps — **droite
+    ou inclinée**, comme le pan d'un toit. Le corps tourne du plus petit angle pour que sa face se plaque contre
+    l'autre, et le centre de sa face se pose au point cliqué (ou au centre de l'autre face). On règle un **jeu** et un
+    quart de tour sur la face (0°, 90°, 180°, 270°) ; « Recommencer » reprend les deux clics. Le résultat est une
+    rotation autour d'un axe quelconque, puis un déplacement, en une annulation (`features/face-mate.ts`,
+    `app/align-faces.ts`).
+  - **Point sur point** (méthode d'Aligner) : on clique un point du corps à déplacer — un **coin s'accroche** à
+    quelques pixels (croix orange), sinon le point de la face —, puis le point où l'amener sur un autre corps : l'élément
+    entier glisse pour que les deux points se touchent (un caisson avec ses façades, par sa position ; deux points d'un
+    même caisson ne bougent que la pièce). « Bouger » garde certains sens : les trois, à plat (X et Y, même hauteur),
+    ou un seul axe. Point rose : il part ; point vert : il arrive (`app/align-points.ts`).
 - **Assemblage** (groupe « Curic », masqué par défaut) : relier deux pièces face contre face, pour que l'une suive
   l'autre. On clique une face de la pièce qui bouge, puis une face de la pièce fixe :
   - des faces opposées se mettent **en contact**, avec un jeu (0 par défaut) ;
@@ -798,6 +813,21 @@ opération existante.
 - **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
+- **Arêtes cachées** (menu du groupe « Curic », comme Curic Hidden) : un interrupteur qui efface les lignes de joint
+  entre les pièces qui se rejoignent **à fleur** — deux planches côte à côte, une planche posée sur une autre de même
+  largeur, un côté sous le dessus qui le recouvre — pour voir le meuble comme une seule surface lisse ; les pièces
+  restent séparées (débit, devis, mise en plan inchangés). Un vrai angle reste dessiné : une marche plus basse, une
+  planche plus étroite posée sur une autre, deux corps qui ne se touchent que par une arête. Une arête plus longue que
+  le joint n'est effacée que le long du voisin. Seuls les corps en boîte (planches, blocs) comptent comme voisins. La
+  vue seulement ; l'état est gardé dans ce navigateur (`viewport/joint-edges.ts`, `app/hidden-joints.ts`).
+- **Lignes tout autour** (menu du groupe « Curic », comme l'outil Intersect de Curic OI) : on clique une face plane
+  d'un corps, puis on tire la flèche plantée dedans ou on tape la distance : une ligne fait le tour du corps,
+  parallèle à la face, à cette distance. C'est la coupe du corps par ce plan, posée en esquisse (« Intersection 1 »,
+  un profil fermé qui se tire ensuite avec Extruder ou la Truelle) ; le corps reste entier. « Nombre de lignes » les
+  répète au même pas (le « *n » de Curic), « Répartir dans l'épaisseur » partage l'épaisseur du corps en parts égales
+  (son « /n »), « Tous les corps traversés » trace aussi la ligne sur les autres corps que le plan coupe (son « Ctrl :
+  prendre un objet »). Les deux autres outils de Curic OI sont déjà là : le *ChalkLine* est la **Truelle** (trait
+  simple ou double depuis une arête), son *Offset* le décalage de **Dessiner sur le corps** (`app/intersect-tool.ts`).
 - **Barre d'outils** (comme Fusion) : les outils sont rangés en groupes ; chaque groupe montre ceux dont on se sert le
   plus et son nom (« CRÉER ▾ », « ATELIER ▾ »…) ouvre la liste de **tous** ses outils. Un clic lance l'outil ;
   l'**épingle** 📌 l'affiche dans la barre ou le range dans le menu. Au départ, les outils moins courants sont rangés
@@ -926,12 +956,24 @@ opération existante.
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
     MDF, contreplaqué, massif, fond HDF), le sens du fil, les chants (L1/L2 : grands côtés, l1/l2 : petits) et leur
     épaisseur. Enregistré dans le document (`bodyInfo`), avec la pièce qui l'a créée. Les matières sont typées comme
-    dans OpenCutList : panneau, massif, panneau de fond. Le massif est **débité avec une surcote** (20 mm en longueur,
-    10 en largeur pour le chêne) puis raboté : la liste de débit montre son « débit brut » et le calepinage le place
-    à cette taille.
-  - *Liste de débit* : toutes les pièces, groupées quand elles sont identiques (quantité), cotes finies (L ≥ l ≥
-    épaisseur) et **cotes de coupe** (moins les chants), matière, fil, chants ; totaux par matière (m², mètres de chant).
-    Export CSV (séparateur « ; », ouvert directement dans un tableur) ou impression / PDF.
+    dans OpenCutList : panneau, massif, panneau de fond, et **tasseau** (sapin raboté en barres de 2,40 m, chêne en
+    barres de 2 m). Le massif est **débité avec une surcote** (20 mm en longueur, 10 en largeur pour le chêne) puis
+    raboté : la liste de débit montre son « débit brut » et le calepinage le place à cette taille.
+  - *Liste de débit* (comme celle d'OpenCutList) : toutes les pièces, groupées quand elles sont identiques (quantité),
+    un tableau par matière et épaisseur avec ses totaux (m², mètres de chant ; mètres bout à bout pour les tasseaux).
+    Chaque pièce a son **repère** (A, B, C… puis AA) : il est écrit sur le calepinage et, avec le bouton **Repères des
+    pièces** de la colonne Vue, au milieu de chaque pièce vue dans la 3D (les pièces identiques ont le même ; une
+    pièce cachée derrière une porte n'a pas le sien). Un **clic sur une ligne** ferme la liste et sélectionne ses
+    pièces dans le modèle, ramenées dans la vue si elles n'y sont pas (`app/part-tags.ts`). Cotes finies (L ≥ l ≥
+    épaisseur) et **cotes de coupe** (moins les chants), fil, chants. Export CSV (séparateur « ; », repère en
+    première colonne, ouvert directement dans un tableur) ou impression / PDF.
+  - *Importer une liste de pièces* (l'« Importateur » d'OpenCutList, menu Atelier) : un CSV de tableur, une ligne
+    par pièce — nom, quantité, longueur, largeur, épaisseur, matière — devient autant de planches posées à plat
+    côte à côte à droite du modèle (rangées de 3 m), nommées « Côté (1) », « Côté (2) »… et dans leur matière, en
+    une annulation. Séparateur « ; », « , » ou tabulation, virgule décimale acceptée. L'en-tête dit quelle colonne
+    est quoi et l'unité (« Longueur (cm) ») ; sans en-tête, l'ordre ci-dessus ; épaisseur absente : 19 mm. Les lignes
+    fausses sont ignorées et signalées. La liste de débit exportée se réimporte telle quelle
+    (`document/parts-import.ts`).
   - *Optimisation de découpe* : les pièces placées sur les panneaux standard de leur matière (2800×2070 pour les
     mélaminés), en bandes comme une scie à format, trait de scie 4 mm, marge 10 mm, fil respecté (une pièce sans fil
     peut tourner). Un schéma SVG par panneau avec le taux de chutes ; impression / PDF.
@@ -943,7 +985,14 @@ opération existante.
     - **Liste d'achat** sous le calepinage : les panneaux neufs par matière et épaisseur (et leur taux
       d'utilisation), les chutes du stock à sortir, le chant au mètre par épaisseur avec 50 mm de surlongueur par
       chant, la quincaillerie arrondie au conditionnement (vis confirmat et tourillons par boîtes de 100,
-      excentriques par 50, pieds par 4) (`document/purchase.ts`, `app/production.ts`).
+      excentriques par 50, pieds par 4), et les tasseaux en barres par section (`document/purchase.ts`,
+      `app/production.ts`).
+    - **Débit en barres** (le débit 1D d'OpenCutList) : les tasseaux ne vont pas sur des panneaux. Ils sont coupés
+      dans des barres du commerce de leur section, mis bout à bout, les plus longs d'abord, chacun dans la première
+      barre où il tient (trait de scie 4 mm, 10 mm d'équerrage au début de la barre). Un schéma par barre avec les
+      repères et longueurs des pièces, la chute hachurée au bout ; une pièce plus longue qu'une barre est signalée.
+      Au devis, les tasseaux se comptent **au mètre** (sapin 3 € HT/m, chêne 12 € HT/m, réglables)
+      (`document/bars.ts`).
   - *Fabrication groupée* (comme le mode catalogue de Polyboard) : plusieurs projets débités ensemble, chacun en
     quantité. « Ajouter ce projet au lot » y met sa liste de débit et sa quincaillerie du moment (l'ajouter de
     nouveau la remplace). Le lot donne un seul calepinage, avec le stock de chutes, et une seule liste d'achat ; ses
@@ -1109,7 +1158,8 @@ opération existante.
     choisit ce que les deux clics désignent : **points**, **traits** (arêtes), **faces** ou **corps** — la plus courte
     distance entre les deux éléments, calculée exactement sur leur maillage et tracée entre leurs points les plus
     proches (0 quand ils se touchent), avec, pour deux faces planes ou deux traits droits, « parallèles »,
-    « perpendiculaires » ou leur angle. Le premier élément choisi est souligné en orange.
+    « perpendiculaires » ou leur angle. Le premier élément choisi est souligné en orange. Après une mesure entre deux
+    corps ou deux faces, « Changer cet espace… » ouvre **Espacement** sur ces deux éléments.
   - *Rendu des matières* : chaque corps prend la couleur de sa matière, avec le veinage du bois dans le sens du fil
     (bouton à bascule, mémorisé). Le motif est **décalé d'une planche à l'autre** (d'après l'identifiant du corps,
     toujours le même pour une planche) : deux planches voisines ne montrent pas le même veinage, dans la vue, le rendu
@@ -1273,6 +1323,32 @@ opération existante.
   (une boîte droite) est reconstruite exactement depuis sa section — *cintrée* sur sa longueur (rayon au milieu de
   l'épaisseur, la longueur est gardée), *effilée* (section réduite à un pourcentage au bout) ou *vrillée* (section
   tournée jusqu'à un angle au bout).
+- **Déformer — FFD 3×3×3** (menu du groupe Modifier, comme la FFD de C. Phillips dans JHS PowerBar), dans
+  l'historique : une grille orange de 3 × 3 × 3 points se tend sur la boîte du corps choisi (sélectionné ou cliqué).
+  Un clic sur un point le choisit, Maj + clic en ajoute, Maj + glisser prend tous ceux d'un rectangle (comme la
+  fenêtre de sélection de SketchUp), « Choisir » en prend une rangée (les 9 du dessus, du dessous, du milieu, le
+  milieu du dessus pour un dôme, les 27). Les trois flèches X, Y, Z tirent les points choisis, ou leurs champs donnent
+  le déplacement au millimètre ; « Échelle » rapproche les points choisis de leur centre ou les en écarte (le dessus
+  à 50 % fait d'un cylindre un obus, comme dans la démonstration de JHS) ; le corps suit en douceur (polynômes de
+  Bernstein). Il marche
+  sur n'importe quel corps : le corps est maillé, ses triangles recoupés finement, déformés, puis recousus en un
+  vrai solide (environ 1,5 s de calcul) ; comme dans SketchUp, les arêtes entre facettes sont adoucies (moins de
+  25°). La déformation se rouvre pour reprendre la grille (`features/ffd.ts`, `app/ffd-tool.ts`).
+- **Échanger** (menu du groupe Modifier, comme le Composwapper de JHS PowerBar) : Alt + clic choisit l'élément
+  source (un corps, ou toutes les pièces d'un caisson avec ses façades ; l'élément sélectionné en ouvrant l'outil
+  l'est d'office) ; chaque clic ensuite remplace l'élément cliqué, et Ctrl (⌘) + clic remplace d'un coup **tous les
+  éléments pareils** — tous les caissons du même modèle, toutes les pièces de même taille, tournées ou non. Maj + clic
+  rend un élément ; l'élément sous le pointeur s'éclaire. Chacun devient une **copie liée** de la source (elle
+  suit l'original), posée à sa place : centrée sur le même sol, centre sur centre, ou coin sur coin. Les remplacés
+  sont retirés (ou gardés, si on le coche) ; une seule annulation (`document/swap.ts`, `app/swap-tool.ts`).
+- **Espacement** (menu du groupe Modifier) : un clic sur un élément, un clic sur un autre — deux corps, deux
+  caissons avec leurs façades, ou une esquisse — et l'espace entre eux s'affiche en cote rouge ; on tape le nouvel espace et le second
+  élément s'écarte ou se rapproche (ou le premier, ou les deux de moitié chacun), le long de la plus courte distance
+  ou d'un axe X, Y, Z. Un caisson glisse par sa position (ses façades suivent) ; un autre corps, par un déplacement
+  dans l'historique ; une **esquisse** aussi se clique (ou se sélectionne dans le navigateur) : elle glisse par son
+  plan, et ce qui en est extrudé la suit. Deux pièces d'un même caisson (deux étagères) bougent seules. L'outil s'ouvre aussi sur deux
+  éléments déjà sélectionnés, ou depuis le Mètre ; une seule annulation (`document/spacing.ts`,
+  `app/spacing-tool.ts`).
 - **Copie liée** (groupe Modifier, comme les composants de SketchUp) : une copie des corps sélectionnés, posée à côté,
   qui suit toute modification de l'original ; on la place avec Déplacer ou Tourner, elle reste liée (c'est un réseau
   d'une copie dans l'historique).
@@ -1458,6 +1534,8 @@ opération existante.
 - **Remplir une largeur** (outil Caisson, nouveau caisson) : la largeur à remplir et la largeur maximale d'un
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
+- **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
+  le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
 - **Cotes des pièces** (bouton de la colonne Vue, sous « Ajuster ») : la largeur et la hauteur de chaque pièce vue de
   face, traits rouges et chiffres verts (#63df0f) sur sa face tournée vers l'œil, comme un plan de Polyboard.
   - Une planche vue par la tranche (un côté, un dessus, une étagère d'une Répartition vus de face) montre sa
@@ -1484,6 +1562,16 @@ opération existante.
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.
+- **Extruder le long d'un chemin** (menu du groupe « Atelier », comme Extrude Along Path de JHS PowerBar) : le même
+  balayage, mais le profil fermé se dessine **n'importe où** (à plat sur le sol, par exemple) : il est posé debout au
+  début du chemin, perpendiculaire à lui, son haut vers le haut, par son point choisi (coin bas gauche, coin bas
+  droit, centre ou origine de l'esquisse). « Tourner le profil » le couche d'un quart de tour, « Retourner » le passe
+  de l'autre côté du chemin (à l'extérieur d'un tour de meuble, par exemple). Un chemin fermé (le tour d'un dessus)
+  donne une moulure ou une corniche continue, coins d'onglet ; c'est aussi une case du panneau de Suivre-moi
+  (`features/sweep.ts`). Comme dans JHS, il marche aussi **sans profil dessiné** (« Profil : Rectangle », le choix
+  d'office) : un rectangle largeur × hauteur debout sur le chemin, centré sur lui, à sa gauche ou à sa droite, balayé
+  tout du long — un mur, une plinthe, un rebord autour d'un dessus ; « Commencer » part d'un bout ou de l'autre (un
+  point rouge le montre dans la vue, la gauche se lit depuis lui).
 - **Scinder le corps** (bouton « Scinder le corps », ou dans le panneau Sélection) : coupe un corps
   solide par un plan, avec la fonction de découpe d'OpenCascade (une vraie opération booléenne, jamais
   un effet visuel) :
@@ -1543,7 +1631,24 @@ opération existante.
     arêtes, extrusion ou perçage sur les faces.
 - **Extrusion de faces** (pousser-tirer) :
   - sélectionnez une ou plusieurs faces planes, puis Extrusion ;
-  - tirez la flèche (ajout de matière) ou poussez-la (creusement), ou cliquez sa valeur pour la saisir.
+  - tirez la flèche (ajout de matière) ou poussez-la (creusement), ou cliquez sa valeur pour la saisir ;
+  - **depuis une arête** : une seule arête sélectionnée, le bouton « Tirer une face depuis cette arête » (panneau
+    Sélection, toujours écrit en entier) ouvre l'extrusion sur
+    une des deux faces le long de l'arête — la plus petite d'abord (le bout d'une planche), l'autre au choix dans
+    « Face tirée » ; « Tirer : le long de l'arête seulement » (le choix d'office) ne tire que la **bande de la face
+    le long de l'arête**, entre les plans perpendiculaires à l'arête par ses deux bouts — comme si un trait coupait la
+    face —, « Toute la face » la tire en entier. Si un autre corps est **devant la face** (le côté d'un caisson, un
+    mur), « Jusqu'au corps voisin » la tire jusqu'à le toucher ; un clic sur un mur ou un autre corps arrête la face à
+    son niveau (`viewport/body-points.ts`, `features/solids.ts`, `features/touch.ts`).
+- **Déplacer ce trait** (comme déplacer une arête dans SketchUp) : une seule arête sélectionnée, le bouton « Déplacer
+  ce trait (les faces suivent) » du panneau Sélection la déplace et **les faces du corps qui la bordent s'étirent**
+  pour la suivre — le bout d'une planche amené en biais contre le côté d'un caisson, un dessus incliné. Les flèches X,
+  Y, Z la tirent, les champs donnent le déplacement, « Bouger » garde certains sens, **un clic sur un coin** (ou un
+  trait) d'un corps y amène le bout du trait le plus proche, et **un clic sur une face plane** y colle le trait
+  (chaque bout va droit sur elle : le bout d'une planche contre le côté du caisson). Un coin ou un trait caché
+  derrière la face cliquée n'est pas pris. Le corps est refait exactement (ses coins déplacés, ses
+  faces restées planes fusionnées) ; c'est un « Trait déplacé » de l'historique, qui se rouvre
+  (`app/edge-move-tool.ts`, `features/modifiers.ts`).
 
 **Références topologiques.** Une arête ou une face choisie est enregistrée par :
 - son type (droite, cercle, plan…) ;

@@ -5,10 +5,13 @@
  * other opens a large window with CSV / print. The sheet layout is in
  * production.ts.
  */
+import * as THREE from "three";
+import { barLength } from "../document/bars";
 import { cutList, cutListCsv, edgeText, grainText, type CutRow, type PartInput } from "../document/cut-list";
 import { bodyAppearance, faceAppearances } from "../appearance/assign";
 import { EDGE_BANDS, MATERIALS, bodyInfo, setBodyInfo } from "../document/materials";
 import { isHardwareBody } from "../document/hardware";
+import { importParts as placeParts, parsePartsCsv } from "../document/parts-import";
 import type { BodyInfo, CadDocument, DisplayUnit } from "../document/types";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
@@ -36,16 +39,19 @@ export function partsOf(viewport: Viewport, doc: CadDocument): PartInput[] {
 /** A length in the user's unit, without the unit (the table's header carries it). */
 const num = (mm: number, unit: DisplayUnit) => trim(toDisplay(mm, unit), unit === "mm" ? 1 : 2);
 
-const tableHtml = (rows: CutRow[], unit: DisplayUnit) =>
-  `<table><thead><tr>${["Pièce", "Qté", "L", "l", "Ép.", "Matière", "Fil", "Chants", "Coupe L", "Coupe l", "Débit brut"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
-    .map(
-      (r) =>
-        `<tr><td>${escapeHtml(r.names.join(", "))}${r.approximate ? " (≈)" : ""}</td><td>${r.quantity}</td><td>${num(r.length, unit)}</td><td>${num(r.width, unit)}</td><td>${num(r.thickness, unit)}</td><td>${escapeHtml(r.material)}</td><td>${grainText(r.grain)}</td><td>${edgeText(r.edges)}${r.band ? ` (${r.band} mm)` : ""}</td><td>${num(r.cutLength, unit)}</td><td>${num(r.cutWidth, unit)}</td><td>${r.roughLength !== undefined && r.roughWidth !== undefined && (r.roughLength !== r.cutLength || r.roughWidth !== r.cutWidth) ? `${num(r.roughLength, unit)} × ${num(r.roughWidth, unit)}` : "—"}</td></tr>`,
-    )
-    .join("")}</tbody></table><p>Dimensions en ${UNIT_LABELS[unit]}. L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits. Débit brut : le massif est scié avec sa surcote, puis raboté à la cote de coupe.</p>`;
+const fr = (v: number, digits: number) => v.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const HEAD = ["Repère", "Pièce", "Qté", "L", "l", "Ép.", "Fil", "Chants", "Coupe L", "Coupe l", "Débit brut"];
 
-function totalsHtml(totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): string {
-  return `<ul>${totals.map((t) => `<li>${escapeHtml(t.material)} ${formatLength(t.thickness, unit)} : ${t.parts} pièces, ${t.area.toFixed(2)} m², chant ${t.bandLength.toFixed(1)} m</li>`).join("")}</ul>`;
+const rowHtml = (r: CutRow, i: number, unit: DisplayUnit) =>
+  `<tr data-row="${i}" title="Voir ces pièces dans le modèle"><td><b>${r.tag ?? ""}</b></td><td>${escapeHtml(r.names.join(", "))}${r.approximate ? " (≈)" : ""}</td><td>${r.quantity}</td><td>${num(r.length, unit)}</td><td>${num(r.width, unit)}</td><td>${num(r.thickness, unit)}</td><td>${grainText(r.grain)}</td><td>${edgeText(r.edges)}${r.band ? ` (${r.band} mm)` : ""}</td><td>${num(r.cutLength, unit)}</td><td>${num(r.cutWidth, unit)}</td><td>${r.roughLength !== undefined && r.roughWidth !== undefined && (r.roughLength !== r.cutLength || r.roughWidth !== r.cutWidth) ? `${num(r.roughLength, unit)} × ${num(r.roughWidth, unit)}` : "—"}</td></tr>`;
+
+/** The cut list grouped as OpenCutList's: one table per material and thickness, with its totals. */
+function tableHtml(rows: CutRow[], totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): string {
+  const groups = totals.map((t) => {
+    const own = rows.map((r, i) => [r, i] as const).filter(([r]) => r.material === t.material && r.thickness === t.thickness);
+    return `<h3>${escapeHtml(t.material)} ${formatLength(t.thickness, unit)} — ${t.parts} pièce${t.parts > 1 ? "s" : ""}, ${barLength(t.material) !== null ? `${fr(t.metres ?? 0, 2)} m bout à bout` : `${fr(t.area, 2)} m²`}${t.bandLength ? `, chant ${fr(t.bandLength, 1)} m` : ""}</h3><table><thead><tr>${HEAD.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${own.map(([r, i]) => rowHtml(r, i, unit)).join("")}</tbody></table>`;
+  });
+  return `${groups.join("")}<p>Dimensions en ${UNIT_LABELS[unit]}. Repère : la lettre de la pièce sur le calepinage et dans la vue (bouton « Repères des pièces »). L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits. Débit brut : le massif est scié avec sa surcote, puis raboté à la cote de coupe.</p>`;
 }
 
 const RENDER_KEY = "cao.render-materials";
@@ -131,17 +137,54 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
   const showCutList = () => {
     const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
     if (!rows.length) return editor.notify("Aucun corps à lister.", "info");
-    const holder = el("div", { class: "text-xs" });
-    holder.innerHTML = tableHtml(rows, editor.unit) + totalsHtml(totals, editor.unit);
+    const holder = el("div", { class: "text-xs [&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:font-semibold [&_tbody_tr]:cursor-pointer [&_tbody_tr:hover]:bg-amber-50 dark:[&_tbody_tr:hover]:bg-gray-800" });
+    holder.innerHTML = tableHtml(rows, totals, editor.unit);
+    // A row: its parts selected in the model (as OpenCutList's highlight), brought into view when out of it.
+    holder.addEventListener("click", (event) => {
+      const row = rows[Number((event.target as HTMLElement).closest<HTMLElement>("tr[data-row]")?.dataset.row ?? NaN)];
+      if (!row?.ids?.length) return;
+      close();
+      viewport.selectLevel({ bodies: row.ids }, false);
+      const box = new THREE.Box3();
+      for (const id of row.ids) {
+        const b = viewport.bodyMesh(id)?.metrics.bbox;
+        if (b) box.expandByPoint(new THREE.Vector3(...b[0])).expandByPoint(new THREE.Vector3(...b[1]));
+      }
+      if (!box.isEmpty() && !viewport.boxVisible(box, 0.8)) viewport.fitBox(box, 1.6);
+      editor.notify(`Pièce ${row.tag} : ${row.quantity} sélectionnée${row.quantity > 1 ? "s" : ""}.`, "info");
+    });
     const close = openModal("Liste de débit", holder, [
       { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(rows, editor.unit)}`, "text/csv") },
-      { label: "Imprimer / PDF", run: () => printHtml("Liste de débit", `<h1>Liste de débit</h1>${tableHtml(rows, editor.unit)}${totalsHtml(totals, editor.unit)}`) },
+      { label: "Imprimer / PDF", run: () => printHtml("Liste de débit", `<h1>Liste de débit</h1>${tableHtml(rows, totals, editor.unit)}`) },
       { label: "Fermer", run: () => close() },
     ]);
   };
 
+  /** A CSV of parts (OpenCutList's importer) as boards laid flat to the right of the model, in one step. */
+  const importParts = () => {
+    const input = el("input", { type: "file", accept: ".csv,.txt,text/csv,text/plain", class: "hidden" });
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) return;
+      void file.text().then(async (text) => {
+        const { parts, problems } = parsePartsCsv(text);
+        if (!parts.length) return editor.notify(problems[0] ?? "Aucune pièce dans ce fichier.", "error");
+        const boxes = viewport.displayedBodies.map((id) => viewport.bodyMesh(id)?.metrics.bbox).filter((b) => !!b);
+        const from: [number, number] = boxes.length ? [Math.max(...boxes.map((b) => b[1][0])) + 500, Math.min(...boxes.map((b) => b[0][1]))] : [0, 0];
+        const { doc, boards } = placeParts(editor.doc, parts, from);
+        await editor.change(doc);
+        viewport.fit();
+        editor.notify(`${boards} planche${boards > 1 ? "s" : ""} importée${boards > 1 ? "s" : ""} (${parts.length} pièce${parts.length > 1 ? "s" : ""} de la liste)${problems.length ? ` ; ${problems.length} ligne${problems.length > 1 ? "s" : ""} ignorée${problems.length > 1 ? "s" : ""} : ${problems.join(" ")}` : "."}`, problems.length ? "info" : "success");
+      });
+    });
+    document.body.append(input);
+    input.click();
+  };
+
   button("material")?.addEventListener("click", toggleMaterial);
   button("cutlist")?.addEventListener("click", showCutList);
+  button("import-parts")?.addEventListener("click", importParts);
 
   const previous = editor.onRender;
   editor.onRender = () => {

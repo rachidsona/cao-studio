@@ -8,7 +8,8 @@
  * and edges of the bodies and to the ends of the guides (with the geometry snapping of the sketch buttons), and to
  * the alignments with the corners and the first point (smart snapping: pink dashed guides). Measures stay in the
  * view until cleared (nothing saved); guides are saved with the document and
- * drawn all the time.
+ * drawn all the time. A measure between two bodies or two faces opens « Espacement » on them (app/spacing-tool.ts):
+ * the space typed moves one of them.
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
@@ -159,7 +160,9 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
   let last = "";
   let target: Target = "point";
   /** The edge, face or body picked first, and the one under the pointer (edges are drawn while hovered). */
-  let firstPick: (Picked & { name: string }) | null = null;
+  let firstPick: (Picked & { name: string; bodyId: string }) | null = null;
+  /** The two bodies of the last measure between bodies or faces: « Changer cet espace » opens Espacement on them. */
+  let lastPair: [string, string] | null = null;
   let hovered: Picked | null = null;
 
   const guides = () => editor.doc.guides ?? [];
@@ -215,24 +218,25 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
   };
 
   /** The edge, face or body under the pointer, for the measure between elements. */
-  const pickAt = (event: PointerEvent): (Picked & { name: string }) | null => {
+  const pickAt = (event: PointerEvent): (Picked & { name: string; bodyId: string }) | null => {
     if (target === "edge") {
       const edge = viewport.pickEdge(event);
       const mesh = edge && viewport.bodyMesh(edge.bodyId);
       const picked = mesh && edge ? edgePicked(mesh, edge.edgeIndex) : null;
-      return picked && edge ? { ...picked, name: `arête de ${bodyLabel(editor.doc, edge.bodyId)}` } : null;
+      return picked && edge ? { ...picked, name: `arête de ${bodyLabel(editor.doc, edge.bodyId)}`, bodyId: edge.bodyId } : null;
     }
     const face = viewport.pickFace(event);
     const mesh = face && viewport.bodyMesh(face.bodyId);
     if (!face || !mesh) return null;
-    if (target === "body") return { ...bodyPicked(mesh), name: bodyLabel(editor.doc, face.bodyId) };
+    if (target === "body") return { ...bodyPicked(mesh), name: bodyLabel(editor.doc, face.bodyId), bodyId: face.bodyId };
     const picked = facePicked(mesh, face.faceIndex);
-    return picked ? { ...picked, name: `face de ${bodyLabel(editor.doc, face.bodyId)}` } : null;
+    return picked ? { ...picked, name: `face de ${bodyLabel(editor.doc, face.bodyId)}`, bodyId: face.bodyId } : null;
   };
 
   /** The shortest distance between the two elements, and how they stand to each other. */
-  const measureBetween = (a: Picked & { name: string }, b: Picked & { name: string }): void => {
+  const measureBetween = (a: Picked & { name: string; bodyId: string }, b: Picked & { name: string; bodyId: string }): void => {
     const near = closestBetween(a.shape, b.shape);
+    lastPair = target !== "edge" && a.bodyId !== b.bodyId ? [a.bodyId, b.bodyId] : null;
     measures.push([near.from, near.to]);
     const parts = [near.distance === 0 ? "0 (en contact)" : measureText(near.from, near.to, editor.unit)];
     if (a.direction && b.direction) {
@@ -282,8 +286,17 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
       angles.length = 0;
       first = null;
       last = "";
+      lastPair = null;
       drawLive(null);
       render();
+    });
+    const spacing = el("button", { type: "button", class: `${BUTTON} btn-accent` }, "Changer cet espace…");
+    spacing.addEventListener("click", () => {
+      const pair = lastPair;
+      if (!pair) return;
+      stop();
+      viewport.selectLevel({ bodies: pair }, false);
+      root.querySelector<HTMLButtonElement>('[data-action="spacing"]')?.click();
     });
     const list = guides().map((g, i) => {
       const remove = el("button", { type: "button", class: `${BUTTON} w-8`, "aria-label": `Supprimer le guide ${i + 1}` }, "✕");
@@ -303,6 +316,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
             : first ? "Cliquez le second point (Échap : annuler)." : mode === "guide" ? "Cliquez deux points : une ligne de guide est posée." : "Cliquez deux points pour mesurer.",
       ),
       last ? el("p", { class: "font-mono" }, last) : null,
+      lastPair && mode === "measure" ? spacing : null,
       ...list,
       measures.length || angles.length ? clear : null,
       el("p", { class: "text-[11px] text-gray-500" }, "Les points s'accrochent aux coins, arêtes et guides, et s'alignent sur les coins (boutons d'accrochage de l'esquisse). Les guides sont enregistrés ; les mesures disparaissent quand on quitte."),
@@ -322,6 +336,8 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
     measures.length = 0;
     angles.length = 0;
     second = null;
+    lastPair = null;
+    last = "";
     panel?.close();
   };
 

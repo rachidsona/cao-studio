@@ -3,15 +3,16 @@
  * path of another sketch — a skirting board along a wall outline, a moulding,
  * a cornice. The path is the chain of the sketch's lines and arcs; the
  * profile must be drawn in a plane through the start of the path (the plane
- * perpendicular to it is the usual choice). Exact B-rep sweep of the kernel.
+ * perpendicular to it is the usual choice). Exact B-rep sweep of the kernel. Extrude Along Path (JHS PowerBar) sets a
+ * profile drawn anywhere at the start of the path, or sweeps a plain rectangle (width × height) with no profile drawn.
  */
-import { draw, genericSweep, type Shape3D, type Wire } from "replicad";
+import { draw, genericSweep, Plane, type Drawing, type Shape3D, type Wire } from "replicad";
 import type { SketchGeometry } from "../document/sketch";
 import type { SweepFeature } from "../document/types";
 import { GeometryError } from "../geometry/kernel";
 import { applyOperation, onProfilePlane, profileDrawing, requireProfile, type OutputLookup } from "./common";
-import { frameOf, toWorld } from "../sketcher/frame";
-import type { SolidOutput, SolidsOutput } from "./outputs";
+import { frameOf, toWorld, type SketchFrame } from "../sketcher/frame";
+import type { ProfileOutput, SolidOutput, SolidsOutput } from "./outputs";
 
 type Vec = [number, number];
 export type PathStep = { kind: "line"; to: Vec } | { kind: "arc"; to: Vec; mid: Vec };
@@ -87,17 +88,73 @@ export function reverseChain(chain: PathChain): PathChain {
   return { start: points.at(-1) as Vec, steps, closed: chain.closed };
 }
 
+type V3 = [number, number, number];
+const unit3 = (a: V3): V3 => {
+  const l = Math.hypot(...a) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/** Where the chain starts, in the model, and its direction there (along an arc: square to its radius). */
+export function chainStart(chain: PathChain, frame: SketchFrame): { origin: V3; tangent: V3 } {
+  const step = chain.steps[0] as PathStep;
+  const [sx, sy] = chain.start;
+  let dir: Vec = [step.to[0] - sx, step.to[1] - sy];
+  if (step.kind === "arc") {
+    // The centre of the circle through the start, the middle and the end; the tangent turns towards the middle.
+    const [[ax, ay], [bx, by], [cx, cy]] = [chain.start, step.mid, step.to];
+    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+    const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+    dir = [-(sy - uy), sx - ux];
+    if (dir[0] * (bx - sx) + dir[1] * (by - sy) < 0) dir = [-dir[0], -dir[1]];
+  }
+  const origin = toWorld(frame, sx, sy) as V3;
+  const ahead = toWorld(frame, sx + dir[0], sy + dir[1]) as V3;
+  return { origin, tangent: unit3([ahead[0] - origin[0], ahead[1] - origin[1], ahead[2] - origin[2]]) };
+}
+
+/** The axes of a profile set square to `tangent`: y up (the vertical made square to it), x across. */
+export function profileAxes(tangent: V3): { u: V3; v: V3 } {
+  const seed: V3 = Math.abs(tangent[2]) > 0.99 ? [0, 1, 0] : [0, 0, 1];
+  const along = seed[0] * tangent[0] + seed[1] * tangent[1] + seed[2] * tangent[2];
+  const v = unit3([seed[0] - tangent[0] * along, seed[1] - tangent[1] * along, seed[2] - tangent[2] * along]);
+  return { u: cross3(v, tangent), v };
+}
+
+/** The profile's drawing set at the start of the path (Extrude Along Path). */
+function placedProfile(region: Drawing, place: NonNullable<SweepFeature["place"]>, start: { origin: V3; tangent: V3 }) {
+  const [[x0, y0], [x1, y1]] = region.boundingBox.bounds;
+  const anchor: Vec = place.anchor === "center" ? [(x0 + x1) / 2, (y0 + y1) / 2] : place.anchor === "bottom-left" ? [x0, y0] : place.anchor === "bottom-right" ? [x1, y0] : [0, 0];
+  let drawing = region.translate(-anchor[0], -anchor[1]);
+  if (place.spin) drawing = drawing.rotate(place.spin, [0, 0]);
+  const { u } = profileAxes(start.tangent);
+  // Mirrored: x the other way, and the plane turned over so that y stays up.
+  const plane = place.flip ? new Plane(start.origin, u.map((c) => -c) as V3, start.tangent.map((c) => -c) as V3) : new Plane(start.origin, u, start.tangent);
+  return drawing.sketchOnPlane(plane);
+}
+
+/** The rectangle of Extrude Along Path, standing at the start of the path: centred on it, or on its left or right. */
+function sectionProfile(section: NonNullable<SweepFeature["section"]>, start: { origin: V3; tangent: V3 }) {
+  const { width: w, height: h, align } = section;
+  // x runs to the left of the path (u = up × tangent), y up.
+  const [x0, x1] = align === "left" ? [0, w] : align === "right" ? [-w, 0] : [-w / 2, w / 2];
+  const { u } = profileAxes(start.tangent);
+  return draw([x0, 0]).lineTo([x1, 0]).lineTo([x1, h]).lineTo([x0, h]).close().sketchOnPlane(new Plane(start.origin, u, start.tangent));
+}
+
 const wireOf = (sketch: unknown): Wire | null => (typeof sketch === "object" && sketch !== null && "wire" in sketch ? (sketch as { wire: Wire }).wire : null);
 const release = (sketch: unknown) => (sketch as { delete?: () => void }).delete?.();
 
 export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
-  const profile = requireProfile(lookup, feature.profile);
   const path = requireProfile(lookup, feature.path);
-  if (feature.profile === feature.path) throw new GeometryError(`${feature.name} : le profil et le chemin doivent être deux esquisses différentes.`);
   let chain = pathChain(path.geometry, `${feature.name} : le chemin`);
+  if (feature.section) return sweepSection(feature, feature.section.fromEnd ? reverseChain(chain) : chain, path, lookup);
+  const profile = requireProfile(lookup, feature.profile);
+  if (feature.profile === feature.path) throw new GeometryError(`${feature.name} : le profil et le chemin doivent être deux esquisses différentes.`);
   const region = profileDrawing(feature.name, profile).clone();
-  // The profile sits at one end of the path: the sweep starts there.
-  if (!chain.closed) {
+  // The profile sits at one end of the path: the sweep starts there (placed there, it starts at the path's start).
+  if (!chain.closed && !feature.place) {
     const box = region.boundingBox;
     const at = toWorld(frameOf(profile), (box.bounds[0][0] + box.bounds[1][0]) / 2, (box.bounds[0][1] + box.bounds[1][1]) / 2);
     const pathFrame = frameOf(path);
@@ -105,13 +162,22 @@ export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOu
     const gap = (p: number[]) => Math.hypot(p[0]! - at[0], p[1]! - at[1], p[2]! - at[2]);
     if (gap(last) < gap(first)) chain = reverseChain(chain);
   }
+  const profileSketch = feature.place ? placedProfile(region, feature.place, chainStart(chain, frameOf(path))) : onProfilePlane(region, profile);
+  return sweepAlong(feature, chain, path, profileSketch, lookup);
+}
+
+/** The rectangle swept along the path. */
+function sweepSection(feature: SweepFeature, chain: PathChain, path: ProfileOutput, lookup: OutputLookup): SolidOutput | SolidsOutput {
+  return sweepAlong(feature, chain, path, sectionProfile(feature.section!, chainStart(chain, frameOf(path))), lookup);
+}
+
+function sweepAlong(feature: SweepFeature, chain: PathChain, path: ProfileOutput, profileSketch: unknown, lookup: OutputLookup): SolidOutput | SolidsOutput {
   const pen = draw(chain.start);
   for (const step of chain.steps) {
     if (step.kind === "line") pen.lineTo(step.to);
     else pen.threePointsArcTo(step.to, step.mid);
   }
   const spineSketch = onProfilePlane(chain.closed ? pen.close() : pen.done(), path);
-  const profileSketch = onProfilePlane(region, profile);
   try {
     const profileWire = wireOf(profileSketch);
     const spineWire = wireOf(spineSketch);
@@ -120,7 +186,7 @@ export function buildSweep(feature: SweepFeature, lookup: OutputLookup): SolidOu
     try {
       swept = genericSweep(profileWire, spineWire, { frenet: feature.frenet ?? false, transitionMode: "right" });
     } catch {
-      throw new GeometryError(`${feature.name} : le balayage est impossible ; placez le profil dans un plan qui passe par le début du chemin.`);
+      throw new GeometryError(feature.place || feature.section ? `${feature.name} : le balayage est impossible ; un profil plus petit que les courbes du chemin, ou un autre point d'accroche.` : `${feature.name} : le balayage est impossible ; placez le profil dans un plan qui passe par le début du chemin.`);
     }
     return applyOperation(feature.name, swept, feature.operation, feature.target, lookup);
   } finally {

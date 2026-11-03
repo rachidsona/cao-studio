@@ -11,6 +11,7 @@ import { appearanceMaterial, applyFaceUvs, applyUvs, uvKeyOf } from "../appearan
 import type { BodyMesh } from "../geometry/protocol";
 import type { Vec3 } from "../sketcher/frame";
 import { addDistinct, bodyVertices, type Point3 } from "./body-points";
+import { hideJoints, isBoxBody } from "./joint-edges";
 
 export type { BodyAppearance, FaceAppearance };
 
@@ -73,6 +74,8 @@ export class BodyLayer {
   private readonly marks = new WeakMap<BodyMesh, FaceMark[]>();
   private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
   private opacity = 1;
+  /** Joint lines between flush pieces left out (Curic Hidden). */
+  private jointsHidden = false;
 
   /** `environment`: what the appearances reflect (a studio), so metals and lacquers look like them. */
   constructor(
@@ -111,17 +114,33 @@ export class BodyLayer {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
 
-      const edgeGeometry = new THREE.BufferGeometry();
-      const drawn = drawnEdges(data);
-      edgeGeometry.setAttribute("position", new THREE.BufferAttribute(drawn.positions, 3));
-      const edges = new THREE.LineSegments(edgeGeometry, this.edgeMaterial);
+      const edges = new THREE.LineSegments(new THREE.BufferGeometry(), this.edgeMaterial);
       edges.userData.bodyId = data.bodyId;
-      // Which edge each drawn line is (the seams left out shift them).
-      edges.userData.drawnGroups = drawn.groups;
       this.scene.add(mesh, edges);
       this.bodies.set(data.bodyId, { mesh, edges, data, tint });
     }
+    this.drawEdges();
     this.applyAppearance();
+  }
+
+  /** Hides (or shows again) the joint lines between pieces that meet flush (as Curic Hidden): the view only. */
+  setJointsHidden(hidden: boolean): void {
+    this.jointsHidden = hidden;
+    this.drawEdges();
+  }
+
+  /** The edge lines of every body: its seams left out, and its joints when they are hidden. */
+  private drawEdges(): void {
+    const boxes = this.jointsHidden ? [...this.bodies.values()].filter((b) => isBoxBody(b.data.metrics.bbox, b.data.metrics.volume)).map((b) => [b.data.bodyId, b.data.metrics.bbox] as const) : [];
+    for (const body of this.bodies.values()) {
+      let drawn = drawnEdges(body.data);
+      if (this.jointsHidden) drawn = hideJoints(drawn, body.data.metrics.bbox, boxes.filter(([id]) => id !== body.data.bodyId).map(([, box]) => box));
+      body.edges.geometry.dispose();
+      body.edges.geometry = new THREE.BufferGeometry();
+      body.edges.geometry.setAttribute("position", new THREE.BufferAttribute(drawn.positions, 3));
+      // Which edge each drawn line is (the seams and joints left out shift them).
+      body.edges.userData.drawnGroups = drawn.groups;
+    }
   }
 
   meshes(): THREE.Mesh[] {

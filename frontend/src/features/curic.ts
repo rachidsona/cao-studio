@@ -71,7 +71,7 @@ export function buildArray(feature: ArrayFeature, lookup: OutputLookup): SolidsO
 export function buildRotate(feature: RotateFeature, lookup: OutputLookup): SolidOutput {
   if (!Number.isFinite(feature.angle) || Math.abs(feature.angle) < 1e-9) throw new GeometryError(`${feature.name} : l'angle de rotation est nul.`);
   const target = requireSolid(lookup, feature.target).shape;
-  return { kind: "solid", shape: (target.clone() as Shape3D).rotate(feature.angle, feature.center, unitAxis(feature.axis)) as Shape3D };
+  return { kind: "solid", shape: (target.clone() as Shape3D).rotate(feature.angle, feature.center, feature.dir ?? unitAxis(feature.axis)) as Shape3D };
 }
 
 // ---- align ------------------------------------------------------------------------------

@@ -9,10 +9,13 @@
  * any new sheet; what is left of each sheet big enough to keep is given back.
  */
 import type { CutRow } from "./cut-list";
+import { barLength } from "./bars";
 import { MATERIALS } from "./materials";
 
 export interface Placement {
   name: string;
+  /** Mark of the part in the cut list (A, B…). */
+  tag?: string;
   x: number;
   y: number;
   /** Size on the sheet (after turning). */
@@ -54,6 +57,7 @@ export interface LayoutOptions {
 
 interface Piece {
   name: string;
+  tag?: string;
   w: number;
   h: number;
   canTurn: boolean;
@@ -63,6 +67,8 @@ interface Piece {
 export function layoutSheets(rows: CutRow[], options: LayoutOptions = { kerf: 4, margin: 10 }, stock: readonly StockPiece[] = []): { sheets: Sheet[]; tooBig: string[] } {
   const groups = new Map<string, { material: string; thickness: number; pieces: Piece[] }>();
   for (const r of rows) {
+    // Battens are cut from bars (document/bars.ts), not from sheets.
+    if (barLength(r.material) !== null) continue;
     const key = `${r.material}|${r.thickness}`;
     const group = groups.get(key) ?? { material: r.material, thickness: r.thickness, pieces: [] };
     for (let i = 0; i < r.quantity; i++) {
@@ -70,7 +76,7 @@ export function layoutSheets(rows: CutRow[], options: LayoutOptions = { kerf: 4,
       const [l, wd] = [r.roughLength ?? r.cutLength, r.roughWidth ?? r.cutWidth];
       // The sheet's length runs along X: a grain in the part's length keeps its length along X.
       const [w, h] = r.grain === "width" ? [wd, l] : [l, wd];
-      group.pieces.push({ name: r.names[i] ?? r.names[0] ?? "", w, h, canTurn: r.grain === "none" });
+      group.pieces.push({ name: r.names[i] ?? r.names[0] ?? "", ...(r.tag ? { tag: r.tag } : {}), w, h, canTurn: r.grain === "none" });
     }
     groups.set(key, group);
   }
@@ -105,7 +111,7 @@ export function layoutSheets(rows: CutRow[], options: LayoutOptions = { kerf: 4,
           }
         }
         if (best) {
-          sheet.placements.push({ name: p.name, x: margin(sheet) + best.strip.x, y: margin(sheet) + best.strip.y, w: best.w, h: best.h, rotated: best.turned });
+          sheet.placements.push({ name: p.name, ...(p.tag ? { tag: p.tag } : {}), x: margin(sheet) + best.strip.x, y: margin(sheet) + best.strip.y, w: best.w, h: best.h, rotated: best.turned });
           best.strip.x += best.w + options.kerf;
           sheet.used += best.w * best.h;
           placed = true;
@@ -116,7 +122,7 @@ export function layoutSheets(rows: CutRow[], options: LayoutOptions = { kerf: 4,
         if (fit) {
           const [w, h, turned] = fit;
           sheet.strips.push({ y: top, h, x: w + options.kerf });
-          sheet.placements.push({ name: p.name, x: margin(sheet), y: margin(sheet) + top, w, h, rotated: turned });
+          sheet.placements.push({ name: p.name, ...(p.tag ? { tag: p.tag } : {}), x: margin(sheet), y: margin(sheet) + top, w, h, rotated: turned });
           sheet.used += w * h;
           placed = true;
           break;
@@ -132,7 +138,7 @@ export function layoutSheets(rows: CutRow[], options: LayoutOptions = { kerf: 4,
         const board = fresh();
         const [w, h, turned] = first;
         board.strips.push({ y: 0, h, x: w + options.kerf });
-        board.placements.push({ name: p.name, x: options.margin, y: options.margin, w, h, rotated: turned });
+        board.placements.push({ name: p.name, ...(p.tag ? { tag: p.tag } : {}), x: options.margin, y: options.margin, w, h, rotated: turned });
         board.used = w * h;
         own.push(board);
       }

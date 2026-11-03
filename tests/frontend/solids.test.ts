@@ -231,4 +231,13 @@ describe("extrusion de faces (pousser / tirer)", () => {
     const d = doc(...base.features, { id: "ef", type: "extrude", name: "Pousser", faces: [side], target: "h1", distance: -10, operation: "cut" });
     expect(volume(d, "ef").volume).toBeCloseTo(40000 - 50 * 10 * 10 - HOLE, 6);
   });
+
+  it("tirée depuis une arête : seulement la bande de la face le long de l'arête (20 mm sur 50)", () => {
+    const base = createReferencePlate();
+    const side = faceRef(base, "h1", (f) => f.geomType === "PLANE" && f.normalAt(f.center).x > 0.99);
+    const d = doc(...base.features, { id: "ef", type: "extrude", name: "Tirer", faces: [side], strip: { from: [40, -25, 10], to: [40, -5, 10] }, target: "h1", distance: 10, operation: "join" });
+    expect(parseDocument(JSON.parse(JSON.stringify(d))).features.at(-1)).toMatchObject({ strip: { from: [40, -25, 10] } });
+    const m = volume(d, "ef");
+    expect(m.volume).toBeCloseTo(40000 - HOLE + 10 * 20 * 10, 6);
+  });
 });

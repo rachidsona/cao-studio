@@ -21,6 +21,7 @@ import type { Region } from "./loops";
 import type { Preview } from "./tools";
 import { applyTrim, findTrim } from "./trim";
 import { projectEdge } from "./projection";
+import type { EdgeOutline } from "../geometry/protocol";
 import { projectEdgeOnce, projectFace } from "./offset-edge";
 import { openTextDialog } from "./text-dialog";
 import { textBox } from "./text-outline";
@@ -228,6 +229,10 @@ export class SketchPointer {
       void this.projectClick(event);
       return true;
     }
+    if (mode.kind === "intersect") {
+      void this.intersectClick(event);
+      return true;
+    }
     if (mode.kind === "text") {
       this.textClick(p, { x: event.clientX, y: event.clientY });
       return true;
@@ -304,18 +309,57 @@ export class SketchPointer {
     });
   }
 
-  /** "Projeter": the body edge clicked is added to the sketch as fixed reference geometry. */
+  /**
+   * "Projeter" (as Fusion's Project): the body edge clicked, else the whole outline of the face clicked, else (Maj)
+   * every edge of the body, is added to the sketch as fixed reference geometry.
+   */
   private async projectClick(event: PointerEvent): Promise<void> {
     const { mode } = this;
-    const edge = mode.viewport.pickEdge(event);
-    if (!edge) return mode.host.notify("Cliquez une arête d'un corps.", "info");
+    const edge = event.shiftKey ? null : mode.viewport.pickEdge(event);
+    const face = edge ? null : mode.viewport.pickFace(event);
+    if (!edge && !face) return mode.host.notify("Cliquez une arête, une face, ou Maj + clic sur un corps.", "info");
     try {
-      const projected = projectEdge(mode.geometry, await mode.host.edgeOutline(edge.bodyId, edge.edgeIndex), mode.frame);
-      if (typeof projected === "string") mode.host.notify(projected, "info");
-      else mode.apply(projected, "Arête projetée.");
+      if (edge) {
+        const projected = projectEdge(mode.geometry, await mode.host.edgeOutline(edge.bodyId, edge.edgeIndex), mode.frame);
+        if (typeof projected === "string") mode.host.notify(projected, "info");
+        else mode.apply(projected, "Arête projetée.");
+        return;
+      }
+      if (event.shiftKey) return this.projectAll(await mode.host.bodyOutline(face!.bodyId), "Corps projeté", "Ce corps ne se projette pas sur le plan de l'esquisse.");
+      const picked = projectFace(mode.geometry, await mode.host.faceOutline(face!.bodyId, face!.faceIndex), mode.frame);
+      if (typeof picked === "string") mode.host.notify(picked, "info");
+      else mode.apply(picked.geometry, "Face projetée : tout son contour.");
     } catch (error) {
       mode.host.notify(error instanceof Error ? error.message : String(error), "error");
     }
+  }
+
+  /** "Intersection" (as Fusion's Intersect): where the sketch plane cuts the body clicked, as fixed reference geometry. */
+  private async intersectClick(event: PointerEvent): Promise<void> {
+    const { mode } = this;
+    const face = mode.viewport.pickFace(event);
+    if (!face) return mode.host.notify("Cliquez un corps que le plan de l'esquisse traverse.", "info");
+    try {
+      const { origin, u, v } = mode.frame;
+      await this.projectAll(await mode.host.sectionOutline(face.bodyId, origin, u, v), "Intersection ajoutée", "Le plan de l'esquisse ne traverse pas ce corps.");
+    } catch (error) {
+      mode.host.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  /** These edges projected into the sketch together (one undo step); those seen end-on add nothing. */
+  private async projectAll(outlines: EdgeOutline[], done: string, none: string): Promise<void> {
+    const { mode } = this;
+    let geometry = mode.geometry;
+    let count = 0;
+    for (const outline of outlines) {
+      const next = projectEdge(geometry, outline, mode.frame);
+      if (typeof next === "string") continue;
+      geometry = next;
+      count++;
+    }
+    if (!count) return mode.host.notify(none, "info");
+    mode.apply(geometry, `${done} : ${count} arête(s).`);
   }
 
   /** « Décaler l'arête »: the body edge clicked, or every edge of the face clicked, projected and offset. */

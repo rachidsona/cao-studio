@@ -102,6 +102,11 @@ export interface ExtrudeFeature extends FeatureBase {
    */
   faces?: FaceRef[];
   /**
+   * « Tirer une face » from an edge: only the strip of the face along the edge is pulled — between the planes square
+   * to the edge through its two ends (as when a line drawn on the face splits it, in SketchUp).
+   */
+  strip?: { from: Vec3; to: Vec3 };
+  /**
    * Areas of the sketch to extrude, each given by a point inside it (sketch plane, mm).
    * Absent: every material area by the even–odd rule.
    */
@@ -357,6 +362,8 @@ export interface RotateFeature extends FeatureBase {
   axis: Axis;
   angle: number;
   center: Vec3;
+  /** Any direction of the axis (a face laid on a slanted face, in Aligner): replaces `axis`, the nearest main one. */
+  dir?: Vec3;
 }
 
 /** One machining operation, in model coordinates (mm). */
@@ -405,6 +412,17 @@ export interface SweepFeature extends FeatureBase {
   target?: string;
   /** Keep the profile turning with the path's curvature (Frenet frame) instead of its plane. */
   frenet?: boolean;
+  /**
+   * Extrude Along Path (JHS PowerBar): the profile, drawn anywhere, is set at the start of the path, square to it — its
+   * point `anchor` on the path, its y up, turned `spin` degrees, mirrored when `flip`.
+   */
+  place?: { anchor: "origin" | "center" | "bottom-left" | "bottom-right"; spin: number; flip: boolean };
+  /**
+   * Extrude Along Path without a drawn profile (as in JHS PowerBar): a rectangle `width` × `height` standing on the
+   * path, centred on it or along its left or right side (seen walking from the start), the path walked from its end
+   * when `fromEnd`. `profile` is then not used.
+   */
+  section?: { width: number; height: number; align: "center" | "left" | "right"; fromEnd?: boolean };
 }
 
 /** Shell (as in Fusion): the body hollowed to walls of `thickness` mm, the chosen faces left open. */
@@ -432,8 +450,18 @@ export interface LoftFeature extends FeatureBase {
 export interface ModifierFeature extends FeatureBase {
   type: "modifier";
   target: string;
-  kind: "bend" | "taper" | "twist";
+  /** "ffd": free-form deformation of any body by a 3 × 3 × 3 lattice (as JHS PowerBar's FFD), see features/ffd.ts. */
+  kind: "bend" | "taper" | "twist" | "ffd" | "points";
   amount: number;
+  /**
+   * "points" (« Déplacer ce trait », as moving an edge in SketchUp): the corners of the body at `from` go to `to`, and
+   * its faces stretch to follow them (features/modifiers.ts).
+   */
+  moves?: { from: Vec3; to: Vec3 }[];
+  /** FFD: the offsets of the 27 control points (x, y, z each, mm), point (i, j, k) at 3 × (i + 3j + 9k). */
+  lattice?: number[];
+  /** FFD: the box the lattice was set on (to show it again when editing); the build uses the body's own box. */
+  frame?: [Vec3, Vec3];
 }
 
 /**
@@ -704,7 +732,7 @@ export function featureInputs(feature: Feature): string[] {
     case "revolve":
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];
     case "sweep":
-      return feature.target && feature.operation !== "new" ? [feature.profile, feature.path, feature.target] : [feature.profile, feature.path];
+      return [...(feature.section ? [] : [feature.profile]), feature.path, ...(feature.target && feature.operation !== "new" ? [feature.target] : [])];
     case "loft":
       return feature.target && feature.operation !== "new" ? [...feature.profiles, feature.target] : [...feature.profiles];
     case "shell":

@@ -206,6 +206,10 @@ export class Viewport {
     this.grid.setColor(new THREE.Color(gridColor));
   }
 
+  /** The grid shown in the view, or hidden (the drawing still snaps to its spacing). */
+  get gridVisible(): boolean { return this.grid.object.visible; }
+  set gridVisible(on: boolean) { this.grid.object.visible = on; }
+
   /** Spacing of the grid lines now shown (mm): what drawing snaps to. */
   get gridStep(): number { return this.grid.currentStep; }
 
@@ -219,6 +223,9 @@ export class Viewport {
     this.sketches.set(items);
     this.selection.sketchesDrawn(new Set(items.map((i) => i.id)));
   }
+
+  /** Hides (or shows again) the joint lines between pieces that meet flush (Curic Hidden): the view only. */
+  setJointsHidden(hidden: boolean): void { this.layer.setJointsHidden(hidden); }
 
   setBodies(meshes: BodyMesh[]): void {
     this.setHoverHighlight(null);

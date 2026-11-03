@@ -91,7 +91,7 @@ export class Editor {
       unit: () => this.unit,
       extrude: () => this.extrudeCommand(),
       selectedFace: () => this.picked.lastFace,
-      faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex), edgeOutline: (bodyId, edgeIndex) => this.geometry.edgeOutline(bodyId, edgeIndex),
+      faceOutline: (bodyId, faceIndex) => this.geometry.faceOutline(bodyId, faceIndex), edgeOutline: (bodyId, edgeIndex) => this.geometry.edgeOutline(bodyId, edgeIndex), bodyOutline: (bodyId) => this.geometry.bodyOutline(bodyId), sectionOutline: (bodyId, o, u, v) => this.geometry.sectionOutline(bodyId, o, u, v),
       offset: (paths, distance, join) => this.geometry.offset(paths, distance, join),
     });
     this.files = new FileCommands({
@@ -255,7 +255,7 @@ export class Editor {
         extrude: () => this.extrudeCommand(),
         combine: () => this.openTool("combine"),
         split: () => this.openTool("split"),
-        move: () => this.openTool("move"),
+        move: () => this.openTool("move"), pullFace: () => this.openTool("pullFace"), moveEdge: () => this.openTool("moveEdge"),
         sketch: () => {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
@@ -447,7 +447,7 @@ export class Editor {
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
       tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature),
-      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), "oi-intersect": () => this.openTool("intersect"), ffd: () => this.openTool("ffd"), swap: () => this.openTool("swap"), spacing: () => this.openTool("spacing"), "extrude-path": () => this.openTool("extrudePath"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

@@ -3,7 +3,7 @@ import { stampHardware } from "../document/hardware-catalog";
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
-import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, ExportResponse, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, ExportResponse, P3, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
 
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
@@ -71,6 +71,14 @@ export class GeometryClient {
 
   edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline> {
     return this.call({ type: "edgeOutline", bodyId, edgeIndex });
+  }
+
+  bodyOutline(bodyId: string): Promise<EdgeOutline[]> {
+    return this.call({ type: "bodyOutline", bodyId });
+  }
+
+  sectionOutline(bodyId: string, origin: P3, u: P3, v: P3): Promise<EdgeOutline[]> {
+    return this.call({ type: "sectionOutline", bodyId, origin, u, v });
   }
 
   describe(bodyId: string, edges: number[], face?: number): Promise<DescribeResponse> {

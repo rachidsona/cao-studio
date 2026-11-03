@@ -382,6 +382,10 @@
   .cad-piece-dim {
     @apply pointer-events-none bg-gray-950/80 px-1 py-px font-mono text-xs leading-none font-semibold text-[#63df0f];
   }
+  /* The mark of a part of the cut list (A, B…), in the middle of the part. */
+  .cad-part-tag {
+    @apply pointer-events-none border border-amber-700 bg-amber-200 px-1.5 py-0.5 font-mono text-xs leading-none font-bold text-gray-950;
+  }
   /* The distance between two parallel edges: amber like its line, and a little larger. */
   .cad-measure.cad-measure-gap {
     @apply bg-amber-500 px-2 text-sm font-semibold text-gray-950 hover:bg-amber-400 dark:bg-amber-400 dark:text-gray-950;

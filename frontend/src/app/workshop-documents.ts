@@ -5,6 +5,7 @@
  * commande numérique et les étiquettes sont dans workshop-cnc.ts.
  */
 import { cutList } from "../document/cut-list";
+import { barLength } from "../document/bars";
 import { DEFAULT_RATES, euros, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../document/quote";
 import type { CadDocument } from "../document/types";
 import { quoteExtras } from "./quote-versions";
@@ -77,7 +78,7 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     });
     return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, label), el("span", { class: "flex items-center gap-1" }, input, el("span", { class: "w-10 text-gray-500" }, unit)));
   };
-  const boards = totals.map((t) => field(`${t.material}`, rates.boards[t.material] ?? rates.boards.default ?? 0, "€/m²", (v) => (rates.boards[t.material] = v)));
+  const boards = totals.map((t) => field(`${t.material}`, rates.boards[t.material] ?? rates.boards.default ?? 0, barLength(t.material) !== null ? "€/m" : "€/m²", (v) => (rates.boards[t.material] = v)));
   const settings = el(
     "div",
     { class: "grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" },

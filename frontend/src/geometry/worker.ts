@@ -2,7 +2,7 @@
  * Geometry worker: owns the OpenCascade kernel and the parametric history so
  * that B-rep computations never block the user interface.
  */
-import { measureArea, type Edge, type Shape3D } from "replicad";
+import { makePolygon, measureArea, type Edge, type Shape3D } from "replicad";
 import init from "replicad-opencascadejs";
 import wasmUrl from "replicad-opencascadejs/wasm?url";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -16,7 +16,7 @@ import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel"
 import { offsetPaths } from "./offset";
 import { seamEdges } from "./seams";
 import { describeEdge, describeFace } from "./references";
-import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, FaceInfo, FaceOutline, OutlineEdge, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
+import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, FaceInfo, FaceOutline, OutlineEdge, P3, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -128,6 +128,25 @@ function edgeOutline(bodyId: string, edgeIndex: number): EdgeOutline {
   return { edges: outlineEdges(edge), samples };
 }
 
+/** Every edge of a body (« Projeter » with Maj: the whole body). */
+function bodyOutline(bodyId: string): EdgeOutline[] {
+  return solid(bodyId).edges.map((_, i) => edgeOutline(bodyId, i));
+}
+
+/** Where a plane cuts a body (« Intersection »): the edges of the part of a large square of the plane inside it. */
+function sectionOutline(bodyId: string, origin: P3, u: P3, v: P3): EdgeOutline[] {
+  const s = 1e5;
+  const corner = (a: number, b: number): P3 => [0, 1, 2].map((i) => origin[i]! + u[i]! * a + v[i]! * b) as P3;
+  const cut = solid(bodyId).intersect(makePolygon([corner(-s, -s), corner(s, -s), corner(s, s), corner(-s, s)]));
+  return cut.edges.map((edge) => ({
+    edges: outlineEdges(edge),
+    samples: Array.from({ length: 9 }, (_, i) => {
+      const p = edge.pointAt(i / 8);
+      return [p.x, p.y, p.z] as P3;
+    }),
+  }));
+}
+
 function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
   const face = solid(bodyId).faces[faceIndex];
   if (!face) throw new GeometryError(`Face ${faceIndex} introuvable.`);
@@ -180,6 +199,10 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       return { result: faceOutline(request.bodyId, request.faceIndex), transfer: [] };
     case "edgeOutline":
       return { result: edgeOutline(request.bodyId, request.edgeIndex), transfer: [] };
+    case "bodyOutline":
+      return { result: bodyOutline(request.bodyId), transfer: [] };
+    case "sectionOutline":
+      return { result: sectionOutline(request.bodyId, request.origin, request.u, request.v), transfer: [] };
     case "describe": {
       const shape = solid(request.bodyId);
       const all = shape.edges;

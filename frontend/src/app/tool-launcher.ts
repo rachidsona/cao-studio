@@ -1,7 +1,10 @@
 /** Opens the panel tools (revolution, fillet, chamfer, combination, hole) on new or existing features. */
+import * as THREE from "three";
 import { findFeature } from "../document/operations";
-import type { Axis, CadDocument, Feature } from "../document/types";
+import type { Axis, CadDocument, Feature, Vec3 } from "../document/types";
 import type { EdgePick, FacePick, ModelSelection, VertexPick } from "../viewport/viewport";
+import { edgeFaces, edgeMiddle, faceBox } from "../viewport/body-points";
+import { EdgeMoveTool } from "./edge-move-tool";
 import { EdgeTool } from "./edge-tool";
 import { FaceExtrudeTool } from "./face-extrude-tool";
 import { MoveTool, type MoveSubject, type MoveToolOptions } from "./move-tool";
@@ -13,7 +16,11 @@ import { AlignTool } from "./align-tool";
 import { CoincideTool } from "./coincide-tool";
 import { FinishTool } from "./finish-tool";
 import { LightingTool } from "./lighting-tool";
+import { FfdTool } from "./ffd-tool";
+import { SpacingTool } from "./spacing-tool";
+import { SwapTool } from "./swap-tool";
 import { GableTool } from "./gable-tool";
+import { IntersectTool } from "./intersect-tool";
 import { RoomTool } from "./room-tool";
 import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
@@ -35,7 +42,7 @@ import { LayoutCopyTool } from "./layout-copy-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable";
+export type PanelToolKind = "revolve" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -68,10 +75,10 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
   return {
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels" || kind === "gable")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
-    ...((kind === "fillet" || kind === "chamfer") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting") && bodies.length ? { bodies } : {}),
-    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "rectArray" || kind === "coincide" ? curicSketches(selected, picked.selection.sketches) : {}),
-    ...((kind === "split" || kind === "move" || kind === "shell") && faces.length ? { faces } : {}),
+    ...((kind === "fillet" || kind === "chamfer" || kind === "pullFace" || kind === "moveEdge") && edges.length ? { edges } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting") && bodies.length ? { bodies } : {}),
+    ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "extrudePath" || kind === "rectArray" || kind === "coincide" || kind === "spacing" ? curicSketches(selected, picked.selection.sketches) : {}),
+    ...((kind === "split" || kind === "move" || kind === "shell" || kind === "intersect" || kind === "align") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
@@ -112,6 +119,28 @@ export class ToolLauncher {
         void tool.open(options.edges ?? []);
         return;
       }
+      case "moveEdge": {
+        // « Déplacer ce trait »: the two ends of the edge selected.
+        const edge = options.edges?.[0];
+        const mesh = edge ? this.context.viewport.bodyMesh(edge.bodyId) : undefined;
+        const group = edge && mesh ? mesh.edgeGroups[edge.edgeIndex] : undefined;
+        const at = (i: number): Vec3 => [mesh!.edges[i * 3]!, mesh!.edges[i * 3 + 1]!, mesh!.edges[i * 3 + 2]!];
+        this.active = new EdgeMoveTool(ctx, null, edge && group && group.count > 0 ? { bodyId: edge.bodyId, ends: [at(group.start), at(group.start + group.count - 1)] } : null);
+        break;
+      }
+      case "pullFace": {
+        // « Tirer une face » from an edge: the faces along it, the push/pull on one of them.
+        const edge = options.edges?.[0];
+        const mesh = edge ? this.context.viewport.bodyMesh(edge.bodyId) : undefined;
+        const middle = edge && mesh ? edgeMiddle(mesh, edge.edgeIndex) : null;
+        const picks = edge && mesh && middle ? edgeFaces(mesh, edge.edgeIndex).map((faceIndex) => ({ bodyId: edge.bodyId, faceIndex, point: new THREE.Vector3(...middle) })) : [];
+        const tool = new FaceExtrudeTool(ctx, null);
+        this.active = tool;
+        const group = edge && mesh ? mesh.edgeGroups[edge.edgeIndex] : undefined;
+        const at = (i: number): Vec3 => [mesh!.edges[i * 3]!, mesh!.edges[i * 3 + 1]!, mesh!.edges[i * 3 + 2]!];
+        void tool.openFromEdge(picks, group && group.count > 0 ? [at(group.start), at(group.start + group.count - 1)] : null, picks.map((p) => faceBox(mesh!, p.faceIndex)));
+        return;
+      }
       case "shell": {
         const tool = new ShellTool(ctx, editing?.type === "shell" ? editing : null);
         this.active = tool;
@@ -122,7 +151,19 @@ export class ToolLauncher {
         this.active = new FrontsTool(ctx, editing?.type === "fronts" ? editing : null);
         break;
       case "modifier":
-        this.active = new ModifierTool(ctx, editing?.type === "modifier" ? editing : null, options.bodies ?? []);
+        this.active =
+          editing?.type === "modifier" && editing.kind === "ffd" ? new FfdTool(ctx, editing, [])
+          : editing?.type === "modifier" && editing.kind === "points" ? new EdgeMoveTool(ctx, editing, null)
+          : new ModifierTool(ctx, editing?.type === "modifier" ? editing : null, options.bodies ?? []);
+        break;
+      case "ffd":
+        this.active = new FfdTool(ctx, null, options.bodies ?? []);
+        break;
+      case "swap":
+        this.active = new SwapTool(ctx, options.bodies ?? []);
+        break;
+      case "spacing":
+        this.active = new SpacingTool(ctx, options.bodies ?? [], options.sketches ?? []);
         break;
       case "loft":
         this.active = new LoftTool(ctx, editing?.type === "loft" ? editing : null, options.sketches ?? []);
@@ -170,7 +211,7 @@ export class ToolLauncher {
         return;
       }
       case "align":
-        this.active = new AlignTool(ctx, editing?.type === "align" ? editing : null, options.bodies ?? [], options.sketches ?? []);
+        this.active = new AlignTool(ctx, editing?.type === "align" ? editing : null, options.bodies ?? [], options.sketches ?? [], options.faces ?? []);
         break;
       case "array":
         this.active = new ArrayTool(ctx, editing?.type === "array" ? editing : null, options.bodies ?? [], options.sketches ?? []);
@@ -187,6 +228,9 @@ export class ToolLauncher {
       case "sweep":
         this.active = new SweepTool(ctx, editing?.type === "sweep" ? editing : null, options.sketches ?? []);
         break;
+      case "extrudePath":
+        this.active = new SweepTool(ctx, null, options.sketches ?? [], true);
+        break;
       case "machining":
         this.active = new MachiningTool(ctx, options.bodies ?? []);
         break;
@@ -202,6 +246,9 @@ export class ToolLauncher {
       }
       case "kitchen":
         this.active = new KitchenTool(ctx);
+        break;
+      case "intersect":
+        this.active = new IntersectTool(ctx, options.faces ?? []);
         break;
       case "gable":
         this.active = new GableTool(ctx, options.sketchId);

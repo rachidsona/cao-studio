@@ -34,7 +34,7 @@ RATE_WINDOW = 3600
 # Ids of the material catalogue (frontend/src/document/materials.ts).
 MATERIALS = [
     "melamine-white", "melamine-oak", "melamine-walnut", "melamine-anthracite", "mdf",
-    "lacquer-white", "birch-plywood", "solid-oak", "hdf",
+    "lacquer-white", "birch-plywood", "solid-oak", "pine-batten", "oak-batten", "hdf",
 ]
 
 SYSTEM = """Tu es l'assistant de modélisation de CAO Studio, un logiciel de conception de meubles (ébénisterie, \

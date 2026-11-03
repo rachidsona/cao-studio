@@ -13,6 +13,10 @@ export interface SelectionActions {
   combine(): void;
   split(): void;
   move(): void;
+  /** Push/pull of a face along the one edge selected. */
+  pullFace(): void;
+  /** The one edge selected moved, the faces along it stretched. */
+  moveEdge(): void;
   sketch(): void;
   clear(): void;
   /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, sketch lines and points. */
@@ -23,17 +27,18 @@ export interface SelectionActions {
  * An action button with the same icon as the tool in the ribbon: the icon alone while the panel is narrow (the name is
  * the tooltip), the name too once it is wide.
  */
-function action(icon: string, label: string, run: () => void): HTMLElement {
+function action(icon: string, label: string, run: () => void, wide = false): HTMLElement {
   const button = el(
     "button",
     {
       type: "button",
-      class: "tool-btn min-h-10 min-w-10 flex-auto gap-1.5 border border-gray-300 px-1.5 whitespace-nowrap dark:border-gray-600",
+      class: `tool-btn min-h-10 min-w-10 gap-1.5 border border-gray-300 px-1.5 whitespace-nowrap dark:border-gray-600 ${wide ? "basis-full justify-start" : "flex-auto"}`,
       title: label,
       "aria-label": label,
     },
     toolIcon(icon, "tool-icon size-7"),
-    el("span", { class: "hidden @xs:inline", "aria-hidden": "true" }, label),
+    // A wide action (« Tirer une face ») always says what it does.
+    el("span", { class: wide ? "" : "hidden @xs:inline", "aria-hidden": "true" }, label),
   );
   button.addEventListener("click", run);
   return button;
@@ -95,6 +100,8 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   const planarFaces = faces.length > 0 && faces.every((f) => f.info?.surface === "PLANE");
   const buttons: HTMLElement[] = [];
   if (edges.length) buttons.push(action("i-fillet", "Congé", actions.fillet), action("i-chamfer", "Chanfrein", actions.chamfer));
+  // One edge: pull one of the two faces along it (the end of a board up to a wall).
+  if (edges.length === 1 && faces.length === 0) buttons.push(action("i-pull-face", "Tirer une face depuis cette arête", actions.pullFace, true), action("i-move-edge", "Déplacer ce trait (les faces suivent)", actions.moveEdge, true));
   if (planarFaces && edges.length === 0) buttons.push(action("i-extrude", "Extruder", actions.extrude));
   if (planarFaces && faces.length === 1 && edges.length === 0) buttons.push(action("i-sketch", "Esquisse sur la face", actions.sketch));
   if (bodies.length >= 2) buttons.push(action("i-combine", "Combiner", actions.combine));

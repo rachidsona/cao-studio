@@ -6,11 +6,12 @@
  * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
  */
 import { formatLength } from "../measurements/units";
+import { barLength } from "./bars";
 import type { CutTotals } from "./cut-list";
 import type { DisplayUnit } from "./types";
 
 export interface QuoteRates {
-  /** Price of the boards (€ HT per m²), by material name; `default` for the others. */
+  /** Price of the boards (€ HT per m², per metre for battens), by material name; `default` for the others. */
   boards: Record<string, number>;
   /** Share of the sheets lost in offcuts (%). */
   waste: number;
@@ -44,6 +45,8 @@ export const DEFAULT_RATES: QuoteRates = {
     "Contreplaqué bouleau": 45,
     "Chêne massif": 120,
     "Panneau de fond (HDF)": 6,
+    "Tasseau sapin raboté": 3,
+    "Tasseau chêne": 12,
   },
   waste: 15,
   hardware: { "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 },
@@ -82,6 +85,13 @@ const cents = (v: number) => Math.round(v * 100) / 100;
 export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm", holes = 0): Quote {
   const lines: QuoteLine[] = [];
   for (const t of totals) {
+    // Battens by the metre, the boards by the square metre.
+    if (barLength(t.material) !== null) {
+      const metres = cents((t.metres ?? 0) * (1 + rates.waste / 100));
+      const price = rates.boards[t.material] ?? DEFAULT_RATES.boards[t.material] ?? 3;
+      lines.push({ label: `${t.material} ${formatLength(t.thickness, unit)} (chutes ${rates.waste} % comprises)`, quantity: metres, unit: "m", unitPrice: price, total: cents(metres * price) });
+      continue;
+    }
     const area = cents(t.area * (1 + rates.waste / 100));
     const price = rates.boards[t.material] ?? rates.boards.default ?? 0;
     lines.push({ label: `${t.material} ${formatLength(t.thickness, unit)} (chutes ${rates.waste} % comprises)`, quantity: area, unit: "m²", unitPrice: price, total: cents(area * price) });

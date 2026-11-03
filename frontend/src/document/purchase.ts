@@ -5,6 +5,7 @@
  * tourillons). Pur.
  */
 import type { CutRow } from "./cut-list";
+import type { Bar } from "./bars";
 import type { Sheet } from "./nesting";
 
 /** How the hardware is sold: pieces per box. */
@@ -27,7 +28,7 @@ export interface PurchaseLine {
 
 const fmt = (v: number) => v.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 
-export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], hardware: readonly { name: string; quantity: number; unit?: string }[] = []): PurchaseLine[] {
+export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], hardware: readonly { name: string; quantity: number; unit?: string }[] = [], bars: readonly Bar[] = []): PurchaseLine[] {
   const lines: PurchaseLine[] = [];
   const boards = new Map<string, { material: string; thickness: number; size: [number, number]; count: number; used: number }>();
   let offcuts = 0;
@@ -44,6 +45,18 @@ export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], 
   }
   for (const b of boards.values()) {
     lines.push({ label: `${b.material} ${fmt(b.thickness)} mm`, quantity: b.count, unit: b.count > 1 ? "panneaux" : "panneau", detail: `${b.size[0]} × ${b.size[1]} mm, utilisés à ${Math.round((b.used / b.count) * 100)} %` });
+  }
+  // Battens: the bars of each section.
+  const sections = new Map<string, { bar: Bar; count: number; used: number }>();
+  for (const b of bars) {
+    const key = `${b.material}|${b.section.join("x")}|${b.length}`;
+    const s = sections.get(key) ?? { bar: b, count: 0, used: 0 };
+    s.count++;
+    s.used += b.usage;
+    sections.set(key, s);
+  }
+  for (const { bar, count, used } of sections.values()) {
+    lines.push({ label: `${bar.material} ${fmt(bar.section[0])} × ${fmt(bar.section[1])} mm`, quantity: count, unit: count > 1 ? "barres" : "barre", detail: `de ${bar.length} mm, utilisées à ${Math.round((used / count) * 100)} %` });
   }
   if (offcuts) lines.push({ label: "Chutes du stock utilisées", quantity: offcuts, unit: offcuts > 1 ? "chutes" : "chute", detail: "à sortir du stock" });
   const bands = new Map<number, number>();
@@ -71,7 +84,8 @@ export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], 
 /** Cut lists of several projects made `quantity` times each, as one (part names prefixed by their project). */
 export function combineRows(items: readonly { name: string; quantity: number; rows: readonly CutRow[] }[]): CutRow[] {
   return items.flatMap((item) =>
-    item.rows.map((r) => ({ ...r, quantity: r.quantity * item.quantity, names: Array.from({ length: item.quantity }, () => r.names.map((n) => `${item.name} — ${n}`)).flat() })),
+    // The marks and bodies are those of each project: not kept.
+    item.rows.map(({ tag, ids, ...r }) => ({ ...r, quantity: r.quantity * item.quantity, names: Array.from({ length: item.quantity }, () => r.names.map((n) => `${item.name} — ${n}`)).flat() })),
   );
 }
 

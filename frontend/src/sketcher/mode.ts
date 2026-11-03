@@ -23,7 +23,7 @@ import { ShelvesTool } from "./shelves-tool";
 import { SketchPartitionTool } from "./partition-tool";
 import { pruneBodyPoints, withBodyPoints } from "./body-points";
 import { addConstraint, findCurve, removeEntities, setDimensionValue, toggleConstruction, type Vec2 } from "./edit";
-import { frameOf, rayToSketch, toWorld, type SketchFrame } from "./frame";
+import { frameOf, rayToSketch, toWorld, type SketchFrame, type Vec3 } from "./frame";
 import { extractLoops, regions as regionsOf, sketchFaces, type Region } from "./loops";
 import { SketchMoveTool } from "./move-tool";
 import { OffsetTool } from "./offset-tool";
@@ -41,14 +41,14 @@ import { DrawingTool, type Preview, type ToolName } from "./tools";
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
 
-export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "text" | "array" | "offsetEdge" | "shelves" | "cloisons" | "partition";
+export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "intersect" | "text" | "array" | "offsetEdge" | "shelves" | "cloisons" | "partition";
 
 /**
  * What a click does when no drawing or panel tool is open: select ("select"), measure ("dimension" — the
  * selection shows its measurements, clickable to become dimensions), "extend" (Prolonger), "trim" (Ajuster:
  * the part between two crossings goes) or "break" (Couper: the curve is cut at the crossings, nothing goes).
  */
-export type ClickKind = "select" | "dimension" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "text";
+export type ClickKind = "select" | "dimension" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "intersect" | "text";
 
 /** One element to extrude: the area it is (a point inside it), and what it is called. */
 export interface ExtrudedElement {
@@ -93,6 +93,10 @@ export interface SketchModeHost {
   edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline>;
   /** The edges of a body face (« Décaler l'arête » on a clicked face). */
   faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline>;
+  /** Every edge of a body (« Projeter » with Maj). */
+  bodyOutline(bodyId: string): Promise<EdgeOutline[]>;
+  /** Where the sketch plane cuts a body (« Intersection »). */
+  sectionOutline(bodyId: string, origin: Vec3, u: Vec3, v: Vec3): Promise<EdgeOutline[]>;
 }
 
 const HINTS: Record<Exclude<ClickKind, "select">, string> = {
@@ -103,7 +107,8 @@ const HINTS: Record<Exclude<ClickKind, "select">, string> = {
   fillet: "Congé : cliquez un coin où deux lignes se rejoignent, puis tapez le rayon — Échap revient à la sélection",
   chamfer: "Chanfrein : cliquez un coin où deux lignes se rejoignent, puis tapez la distance — Échap revient à la sélection",
   text: "Texte : cliquez où commence la ligne de base du texte (ou un texte pour le modifier) — pour graver, extrudez en « Couper » — Échap revient à la sélection",
-  project: "Projeter : cliquez des arêtes des corps ; elles s'ajoutent en violet comme repères fixes où s'accrocher — Échap revient à la sélection",
+  project: "Projeter (comme Fusion) : cliquez une arête, ou une face pour tout son contour, ou Maj + clic pour tout le corps ; en violet, repères fixes où s'accrocher — Échap revient à la sélection",
+  intersect: "Intersection (comme Fusion) : cliquez un corps ; là où le plan de l'esquisse le coupe s'ajoute en violet, repère fixe — Échap revient à la sélection",
 };
 
 export class SketchMode implements PointerHandler {
@@ -353,7 +358,7 @@ export class SketchMode implements PointerHandler {
     this.partition = null;
     this.pointer.reset();
     this.viewport.renderer.domElement.style.cursor = "";
-    this.kind = name === "dimension" || name === "extend" || name === "trim" || name === "break" || name === "fillet" || name === "chamfer" || name === "project" || name === "text" ? name : "select";
+    this.kind = name === "dimension" || name === "extend" || name === "trim" || name === "break" || name === "fillet" || name === "chamfer" || name === "project" || name === "intersect" || name === "text" ? name : "select";
     this.pendingCommand = null;
     if (this.kind === "dimension") this.selection.clear();
     if (name === "offsetEdge") {

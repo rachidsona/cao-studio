@@ -19,9 +19,12 @@ export interface Material {
   sheet: [number, number];
   /**
    * What it is (as OpenCutList's material types): a manufactured panel (sawn to size), solid wood (sawn oversize then
-   * planed: `oversize` is added to the length and the width of each part), or a thin backing panel.
+   * planed: `oversize` is added to the length and the width of each part), a thin backing panel, or wood sold in
+   * bars (battens: its parts are cut from bars of their section, document/bars.ts).
    */
-  kind: "panel" | "solid" | "backing";
+  kind: "panel" | "solid" | "backing" | "bar";
+  /** Length of the bars it is sold in (mm), for `bar`. */
+  bar?: number;
   /** Allowance added to the length and width of a solid wood part before planing (mm). */
   oversize?: [number, number];
 }
@@ -35,6 +38,8 @@ export const MATERIALS: Material[] = [
   { id: "lacquer-white", name: "MDF laqué blanc", color: "#fafafa", look: "plain", sheet: [2440, 1220], kind: "panel" },
   { id: "birch-plywood", name: "Contreplaqué bouleau", color: "#e2c99b", look: "wood", sheet: [2500, 1250], kind: "panel" },
   { id: "solid-oak", name: "Chêne massif", color: "#b98a52", look: "wood", sheet: [2500, 1250], kind: "solid", oversize: [20, 10] },
+  { id: "pine-batten", name: "Tasseau sapin raboté", color: "#e8d09c", look: "wood", sheet: [2400, 200], kind: "bar", bar: 2400 },
+  { id: "oak-batten", name: "Tasseau chêne", color: "#b98a52", look: "wood", sheet: [2000, 200], kind: "bar", bar: 2000 },
   { id: "hdf", name: "Panneau de fond (HDF)", color: "#d9c3a0", look: "plain", sheet: [2800, 2070], kind: "backing" },
 ];
 
