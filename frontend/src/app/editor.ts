@@ -33,6 +33,7 @@ export interface EditorConfig {
   projectName: string;
   apiUrl: string;
   projectsUrl: string;
+  catalogUrl?: string; // the workshop's catalogue (materials, hardware rules, letterhead); missing on an older server
 }
 
 const SAVE_LABELS: Record<SaveState, string> = {

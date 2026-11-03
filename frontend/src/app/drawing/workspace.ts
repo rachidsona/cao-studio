@@ -289,7 +289,7 @@ export class DrawingWorkspace {
 
   private exportPdf(): void {
     const pages = this.sheets.map((s) => `<div class="page">${this.sheetSvg(s)}</div>`).join("");
-    printHtml(this.title(), pages, `@page{size:${this.sheet().format} landscape;margin:0} body{margin:0} .page{page-break-after:always;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center} .page svg{width:100%;height:100%}`);
+    printHtml(this.title(), pages, `@page{size:${this.sheet().format} landscape;margin:0} body{margin:0} .page{page-break-after:always;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center} .page svg{width:100%;height:100%}`, false);
   }
 
   // ---- tools, selection, dragging -------------------------------------------------------------------------

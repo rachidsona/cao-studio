@@ -74,6 +74,8 @@ export class BodyLayer {
   private readonly marks = new WeakMap<BodyMesh, FaceMark[]>();
   private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
   private opacity = 1;
+  /** « Rayons X » (poly_3D): the bodies see-through, to look inside without hiding anything. */
+  private xray = false;
   /** Joint lines between flush pieces left out (Curic Hidden). */
   private jointsHidden = false;
 
@@ -236,7 +238,7 @@ export class BodyLayer {
 
   /** The sketch mode's see-through look over a material's own opacity (glass stays more transparent). */
   private fade(material: THREE.Material): void {
-    const opacity = this.opacity * ((material.userData.baseOpacity as number | undefined) ?? 1);
+    const opacity = this.opacity * (this.xray ? 0.68 : 1) * ((material.userData.baseOpacity as number | undefined) ?? 1);
     material.transparent = opacity < 1;
     material.opacity = opacity;
     material.depthWrite = opacity === 1;
@@ -246,6 +248,12 @@ export class BodyLayer {
   /** See-through bodies (sketch mode) or solid ones. */
   setOpacity(opacity: number): void {
     this.opacity = opacity;
+    for (const material of this.materials()) this.fade(material);
+  }
+
+  /** X-ray (translucent bodies, as poly_3D's « Rayons X ») on or off; combined with the sketch mode's look. */
+  setXray(on: boolean): void {
+    this.xray = on;
     for (const material of this.materials()) this.fade(material);
   }
 

@@ -6,14 +6,15 @@
  * - une pièce sans matière ;
  * - un perçage qui déborde du bord ou en mord un autre ;
  * - une porte ou un tiroir qui heurte quelque chose en s'ouvrant (calculé dans l'application, app/fabrication-check.ts) ;
- * - un meuble qui entre dans un mur, une retombée ou un rampant de la pièce relevée, ou qui cache une prise.
+ * - un meuble qui entre dans un mur, une retombée ou un rampant de la pièce relevée, ou qui cache une prise ;
+ * - l'implantation d'une cuisine ou d'un dressing (document/layout-check.ts, porté de poly_3D).
  */
 import { roomClashes, type RoomInput } from "../features/room-plan";
 import type { FlatEdge, FlatPart } from "../io/dxf";
 import type { CutRow } from "./cut-list";
 import type { Vec3 } from "./types";
 
-export type ProblemKind = "overlap" | "room" | "sheet" | "material" | "hole" | "joint" | "hardware" | "sag" | "opening" | "stability";
+export type ProblemKind = "overlap" | "room" | "layout" | "sheet" | "material" | "hole" | "joint" | "hardware" | "sag" | "opening" | "stability";
 
 export interface Problem {
   kind: ProblemKind;
@@ -126,6 +127,7 @@ export function roomProblems(rooms: readonly RoomInput[], parts: readonly Checke
 export const PROBLEM_TITLES: Record<ProblemKind, string> = {
   overlap: "Pièces qui se chevauchent",
   room: "Meuble et pièce (murs, retombées, rampants, prises)",
+  layout: "Implantation (cuisine, dressing : hotte, évier et plaque, dégagements, tringles)",
   sheet: "Pièces plus grandes que le panneau brut",
   material: "Pièces sans matière",
   hole: "Perçages",

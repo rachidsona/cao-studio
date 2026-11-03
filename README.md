@@ -1,8 +1,8 @@
-# CAO Studio
+# poly_3D
 
-Application web de conception mécanique paramétrique : Django (comptes, projets, versions)
-+ éditeur 3D TypeScript (Three.js) + noyau B-rep exact OpenCascade (WASM, via replicad)
-exécuté dans un Web Worker.
+Application web de conception paramétrique de meubles (anciennement CAO Studio, fusionnée avec poly_3D) : Django
+(comptes, projets, versions, catalogue de l'atelier) + éditeur 3D TypeScript (Three.js) + noyau B-rep exact
+OpenCascade (WASM, via replicad) exécuté dans un Web Worker.
 
 **État : phase 5 (opérations solides).** Noyau B-rep, historique paramétrique,
 enregistrement, éditeur 3D, esquisses 2D contraintes (solveur planegcs), extrusion, révolution,
@@ -26,6 +26,49 @@ Ouvrir http://127.0.0.1:8765/ → « Mes projets » → créer un projet. Chaque
 contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé chêne, fond HDF)
 pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
 touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
+
+Le **catalogue de l'atelier** (matières, règles de quincaillerie, profil de l'atelier) se gère dans l'administration
+Django, http://127.0.0.1:8765/admin/ (compte créé par `createsuperuser`) ; il est garni au premier `migrate`.
+
+## Fusion avec poly_3D (novembre 2026)
+
+poly_3D était une seconde application (Django 5.2, JavaScript, reportlab), clone de PolyBoard : caissons relationnels
+reconstruits par le serveur, séparations, étagères, cloisons, liste de débit, devis, éditeur de pièce, PDF. Les deux
+ne font plus qu'une, sur la base de CAO Studio, renommée **poly_3D** (titre des pages, en-tête, connexion ; le format
+de document « cao-studio », l'extension `.cao.json` et les réglages gardés par le navigateur ne changent pas : les
+projets existants s'ouvrent tels quels). Ce qui a été porté, dans la structure existante :
+
+- **Catalogue de l'atelier** (`apps/catalog`, administration Django, `GET /api/catalog/`) : les **matières** (nom,
+  épaisseur, famille — mélaminé, bois, verre, marbre, pierre, métal, stratifié, uni —, format de plaque, prix au m²),
+  23 au départ (aggloméré, MDF laqué, chênes, noyer, hêtre, marbres, quartz, granit, inox, aluminium, verres, béton
+  ciré, terrazzo, laqués) ; les **règles de quincaillerie** à quantité automatique (par caisson, par porte, charnières
+  selon la hauteur des portes, par étagère, par niche, par côté ou cloison), 9 au départ ; le **profil de l'atelier**
+  (nom, slogan, adresse, téléphone, e-mail, site, logo). L'éditeur les charge à l'ouverture : les matières du
+  catalogue s'ajoutent aux matières intégrées partout où on en choisit une (Matière et chants, Remplacer partout,
+  Implantation…) avec leur prix dans les tarifs du devis ; les règles ajoutent au devis les articles comptés d'après
+  le meuble ; le profil fait l'**en-tête** de tous les documents imprimés (liste de débit, calepinage, devis, fiches,
+  notice, étiquettes ; pas la mise en plan ni le dossier client, qui ont leur mise en page). Sans serveur à jour, les
+  matières intégrées seules (`document/catalog.ts`, `persistence/catalog.ts`).
+- **Rayons X** (colonne Vue, sous « Grille ») : les corps translucides pour voir l'intérieur d'un meuble sans rien
+  cacher (`app/display-toggles.ts`).
+- **Affichage par famille** (colonne Vue, à côté) : une case par famille de corps — façades, carcasse, fonds,
+  étagères, plinthes et socles, pièce (murs), électroménager, autres —, **Vue de travail** (façades, murs et
+  électroménager cachés d'un clic) et **Tout afficher**. La vue seulement : le document, le débit et le devis ne
+  changent pas ; retenu par le navigateur (`document/display-families.ts`).
+- **Contrôle d'implantation** (dans le Contrôle avant fabrication, et dans le panneau Implantation de cuisine avant
+  l'OK) : meuble ou appareil qui sort de la pièce relevée, plaque sans plan de travail, hotte au-dessus d'aucune
+  plaque, trop basse (moins de 60 cm) ou trop haute (plus de 80 cm ; 65 à 75 conseillés), plaque à moins de 60 cm de
+  l'évier, moins de 80 cm devant un four, un réfrigérateur, un lave-vaisselle ou un lave-linge, meuble haut à moins de
+  45 cm au-dessus de la plaque, tringle de penderie hors de 170 à 190 cm (`document/layout-check.ts`,
+  `app/layout-check.ts`).
+
+Non porté, parce que l'éditeur le fait déjà, souvent plus complètement : séparations, grille de compartiments,
+séries d'étagères, cloisons et côtés doubles (Répartition, Étagères, Cloisons), plinthe et pieds (Finitions), tiroirs,
+tringle et façades, mesure face / arête / point, Scene Graph (Navigateur), nesting, liste de débit et CSV, devis,
+annuler / rétablir et historique (versions), éditeur de pièce 2D / 3D (Pièce, Implantation de cuisine, Assistant
+Dressing), presets de caissons et d'appareils, rendu photo (Rendu), calculatrice des champs, PDF (impression du
+navigateur plutôt que reportlab). Les caissons dessinés dans l'ancienne base poly_3D ne sont pas repris (modèle
+relationnel contre document paramétrique) ; seul le catalogue l'est.
 
 Développement (recompilation continue, dans deux terminaux) :
 
@@ -725,12 +768,12 @@ opération existante.
     une face : un nouveau corps, ou, pour une esquisse dessinée sur un corps, un ajout (tirer) ou un creusement (pousser).
   - Le résultat : une esquisse « Tracé n » sur la face et une « Extrusion n » de sa bande sur le corps, en une seule
     annulation ; la bande suit la forme de la face (face en L, face trouée).
-- **Sélection++** (bouton du groupe Sélection, comme Curic Select++) : en survolant un corps à la souris, ses niveaux
+- **Sélection++** (comme Curic Select++, toujours active ; plus de bouton dans la colonne) : en survolant un corps à la souris, ses niveaux
   s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), la pièce,
   la face — et le niveau courant est en vert dans la vue. **Ctrl** descend d'un niveau (puis revient en haut) ; le
   niveau choisi est gardé en passant d'une pièce à l'autre. Un clic sélectionne le niveau courant, Maj + clic l'ajoute.
   Actif avec les filtres « Auto » et « Corps » (en « Auto », une arête sous le pointeur garde son clic habituel) ;
-  rien au doigt. Le bouton l'active ou le coupe (mémorisé dans le navigateur). Sur une esquisse, les niveaux sont
+  rien au doigt. Sur une esquisse, les niveaux sont
   l'esquisse puis le trait ou la zone sous le pointeur (avec sa longueur ou son aire).
 - **Les outils Curic marchent aussi sur les esquisses** (sélection multiple, esquisse choisie dans l'arbre, ou clic
   sur une esquisse dans la vue pendant l'outil) :
@@ -835,7 +878,11 @@ opération existante.
   Quincaillerie, Contrôle, Notice de montage, Fiches, Suivi d'atelier, Standard de construction, Remplacer partout,
   Recouvrement, Copier l'aménagement, Stock de chutes, Fabrication groupée…, et en esquisse polygone, ovale, texte,
   projeter…). Le choix est mémorisé par barre (modèle, esquisse) dans le navigateur ; « Par défaut » dans un menu remet
-  son groupe comme à l'origine. Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
+  son groupe comme à l'origine. Les **icônes sont au trait seul**, vides dedans (aucun aplat ni dégradé : seulement les traits, les
+  points et les lettres) ; les outils 3D (Extruder, Panneau, Perçage, Congé, Chanfrein, Coque, Combiner, Scinder,
+  Réseau, Miroir, Coupe, Usinage…) sont de petits cubes en perspective comme dans Fusion, les autres une vue à plat **en trois couleurs** : le trait en couleur du texte (blanc en thème sombre), la géométrie
+  en bleu (points, traits dessinés, contours des faces), et ce qui agit en orange (flèches, crayons, outils, plans de coupe) ; le
+  bleu et l'orange ne changent pas avec la palette (`templates/editor/_icons.html`, `--ic-accent` et `--ic-action`). Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
   l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
   seule ligne** : quand la fenêtre est trop étroite, les icônes se replient une à une dans le menu de leur groupe —
   celles de **Menuiserie d'abord**, puis Atelier, Curic, Modifier et Créer (en esquisse : Affichage, Contraintes, Cotes,
@@ -930,8 +977,8 @@ opération existante.
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
   poignée la remet en haut à gauche. Sa place et son sens sont retenus.
-- **Colonne de sélection et de vue**, à droite de la vue 3D (contre le panneau Mesures) : l'outil Sélection, les cinq
-  filtres (Auto, Faces, Arêtes, Points, Corps), Sélection++ et la sélection par fenêtre, puis « Ajuster ». Elle reste
+- **Colonne de sélection et de vue**, à droite de la vue 3D (contre le panneau Mesures) : les cinq filtres
+  (Auto, Faces, Arêtes, Points, Corps) et la sélection par fenêtre, puis « Ajuster » (Échap désélectionne). Elle reste
   en mode modèle (l'esquisse a ses propres outils). Les vues isométrique, de face, de dessus et de droite sont dans le
   menu ⋯ (rubrique « Vue ») et sur le cube de navigation.
 - **Atelier** (groupe « Atelier », ébénisterie) :
@@ -1040,6 +1087,11 @@ opération existante.
       l'emporte.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
     à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
+    - **Règles de quincaillerie de l'atelier** (porté de poly_3D) : les articles du catalogue de l'atelier
+      (administration Django) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
+      portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent
+      au devis, à leur prix (modifiable dans les tarifs) ; un article « manuel » donne seulement son prix
+      (`document/catalog.ts`).
   - *Flèche des étagères* : pour chaque planche horizontale chargée (étagères, dessus, dessous ; pas les fonds de
     tiroir ni les panneaux de fond), la flèche à long terme sous la charge choisie : livres 25 kg/m, vaisselle
     15 kg/m, linge 10 kg/m, objets légers 5 kg/m.
@@ -1082,6 +1134,10 @@ opération existante.
       de même centre sont un lamage, pas une erreur).
     - Porte ou tiroir qui heurte un autre corps en s'ouvrant (murs compris), testé à 30 %, 60 % et en entier.
     - Meuble qui entre dans un mur, une retombée ou sous un rampant de la Pièce relevée, ou qui cache une prise.
+    - **Implantation** (porté de poly_3D) : meuble ou appareil qui sort de la pièce, plaque sans plan de travail, hotte
+      sans plaque, trop basse ou trop haute, plaque trop près de l'évier, moins de 80 cm devant un four, un
+      réfrigérateur, un lave-vaisselle ou un lave-linge, meuble haut trop près de la plaque, tringle hors de 170 à
+      190 cm (`document/layout-check.ts`). Le panneau Implantation de cuisine le dit aussi avant l'OK.
     - **Jonctions sans assemblage** : deux planches qui se touchent (le chant de l'une contre la face de l'autre)
       sans vis, tourillon, excentrique, tenon ni mi-bois ; quand rien n'est encore assemblé, une seule ligne le dit.
     - **Charnières** : une porte plus lourde que ses charnières ne portent (≈ 4,5 kg par charnière, repère courant :
@@ -1114,7 +1170,8 @@ opération existante.
     Impression ou PDF (`document/part-sheet.ts`, `app/workshop-sheets.ts`).
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
-    navigateur) ; impression / PDF et CSV.
+    navigateur ; au départ, le prix au m² des matières du catalogue de l'atelier) ; impression / PDF et CSV, avec
+    l'en-tête de l'atelier (profil du catalogue).
     - **Perçages** au prix de l'unité si on le veut (le « Tooling Price » de Polyboard) et **remises par paliers**
       (« 3000:5, 6000:8 » : 5 % dès 3000 € HT, 8 % dès 6000 €).
     - Le prix **au mètre linéaire** du meuble, pour comparer avec les prix du marché.
@@ -1536,6 +1593,22 @@ opération existante.
   caisson), en une annulation (l'AutoFill de Mozaik).
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
+- **Rayons X** et **Affichage** (colonne Vue, sous « Grille », portés de poly_3D) : les corps translucides d'un clic ;
+  un menu qui cache ou montre chaque famille de corps (façades, carcasse, fonds, étagères, plinthes et socles, murs,
+  électroménager, autres), avec « Vue de travail » (façades, murs et électroménager cachés) et « Tout afficher ». La
+  vue seulement, retenu par le navigateur (`app/display-toggles.ts`, `document/display-families.ts`).
+- **Orbite** (bouton de la colonne Vue, sous « Ajuster » ; l'outil Orbite de Fusion) : tant qu'il est allumé, glisser
+  tourne la vue autour du **centre d'orbite**, le point vert ; un clic sur le modèle y met le centre, « Centre au
+  milieu » le remet au milieu de la vue. Sous le bouton, dans la colonne, trois petits boutons apparaissent tant
+  qu'il est allumé (rien ne couvre la vue) : « Centre au milieu » et le choix de l'orbite :
+  - *Orbite contrainte* : le haut du modèle reste en haut, la caméra s'arrête juste avant d'être au-dessus ou
+    en dessous (et un modèle penché par l'orbite libre se redresse) ;
+  - *Orbite libre* : un anneau au milieu de la vue. Dedans, le modèle tourne dans tous les sens et passe par-dessus ;
+    les poignées de gauche et de droite le tournent seulement autour de la verticale de l'écran, celles du haut et du
+    bas autour de l'horizontale ; dehors l'anneau, la vue roule autour de l'axe de vue.
+  La molette zoome et le clic droit déplace comme d'habitude ; Échap finit l'orbite seule (l'outil ouvert et la
+  sélection restent). **Maj + clic milieu** tourne aussi, outil éteint, autour du point du modèle sous la souris.
+  Le choix libre / contrainte est retenu (`app/orbit-tool.ts`, calculs dans `viewport/orbit-math.ts`).
 - **Cotes des pièces** (bouton de la colonne Vue, sous « Ajuster ») : la largeur et la hauteur de chaque pièce vue de
   face, traits rouges et chiffres verts (#63df0f) sur sa face tournée vers l'œil, comme un plan de Polyboard.
   - Une planche vue par la tranche (un côté, un dessus, une étagère d'une Répartition vus de face) montre sa
@@ -1622,7 +1695,7 @@ opération existante.
   - **éléments superposés** : un nouveau clic au même endroit sélectionne l'élément suivant sous le curseur
     (arête, puis ligne d'esquisse, puis face, puis zone d'esquisse) ; une esquisse posée sur une face ou liée
     aux coins d'un corps par des coïncidences reste ainsi sélectionnable dans la vue ;
-  - le filtre (cinq icônes de cube, leur nom en infobulle) choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
+  - le filtre (cinq icônes carrées : un A, une face, une arête, un coin, le corps plein ; leur nom en infobulle) choisit ce qu'un clic sélectionne : « Auto » (arête en priorité,
     sinon face), « Faces », « Arêtes », « Points » (un sommet d'un corps : des points bleus marquent
     ceux qu'on peut cliquer, ses coordonnées s'affichent dans le panneau et la barre d'état) ou « Corps »
     (le corps entier, avec « Combiner » pour plusieurs corps). Le choix est mémorisé ;
@@ -1645,8 +1718,9 @@ opération existante.
   pour la suivre — le bout d'une planche amené en biais contre le côté d'un caisson, un dessus incliné. Les flèches X,
   Y, Z la tirent, les champs donnent le déplacement, « Bouger » garde certains sens, **un clic sur un coin** (ou un
   trait) d'un corps y amène le bout du trait le plus proche, et **un clic sur une face plane** y colle le trait
-  (chaque bout va droit sur elle : le bout d'une planche contre le côté du caisson). Un coin ou un trait caché
-  derrière la face cliquée n'est pas pris. Le corps est refait exactement (ses coins déplacés, ses
+  (chaque bout va droit sur elle : le bout d'une planche contre le côté du caisson). Sous la souris, le coin (anneau
+  orange), le trait ou la face (teintée) qu'un clic prendrait s'éclaire ; un coin ou un trait caché derrière la face
+  n'est pas pris. Le corps est refait exactement (ses coins déplacés, ses
   faces restées planes fusionnées) ; c'est un « Trait déplacé » de l'historique, qui se rouvre
   (`app/edge-move-tool.ts`, `features/modifiers.ts`).
 
@@ -1692,8 +1766,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   esquisse et outil Décalage), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
   les perçages suivants au corps précédent. Cette fenêtre s'ouvre dans le panneau de l'élément cliqué : sous la ligne
   dans le Navigateur (à la largeur du panneau), au-dessus de l'opération dans l'Historique. Ses actions sont des
-  boutons-icônes colorés, dans le style de la barre d'outils (cube et crayon : modifier ; cube gris et pastille
-  « pause » : désactiver, cube bleu et pastille verte : réactiver ; corbeille rouge : supprimer), le nom en info-bulle.
+  boutons-icônes, dans le style de la barre d'outils (pièce et crayon : modifier ; pièce et pastille
+  « pause » : désactiver, pièce et pastille verte : réactiver ; corbeille rouge : supprimer), le nom en info-bulle.
 - **Décalages** : chaque décalage validé est enregistré avec son esquisse (nom, courbes créées,
   courbes décalées, distance, côtés, coins). Dans l'historique, « Modifier » rouvre l'esquisse avec la
   sélection et les réglages restaurés ; valider remplace les courbes du décalage. « Supprimer » retire

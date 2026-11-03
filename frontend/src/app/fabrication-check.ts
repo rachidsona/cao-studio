@@ -8,6 +8,8 @@ import { cutList } from "../document/cut-list";
 import { holeProblems, overlapProblems, PROBLEM_TITLES, roomProblems, rowProblems, type Problem, type ProblemKind } from "../document/fabrication-check";
 import { isHardwareBody } from "../document/hardware";
 import { doorProblems, jointProblems } from "../document/hardware-rules";
+import { layoutProblems } from "../document/layout-check";
+import { layoutOf } from "./layout-check";
 import { carcassBoards } from "./assembly-tool";
 import { MATERIALS } from "../document/materials";
 import { bodyLabel } from "../document/operations";
@@ -98,6 +100,7 @@ export async function checkModel(viewport: Viewport, editor: Editor, geometry: G
   return [
     ...overlapProblems(checked),
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
+    ...layoutProblems(layoutOf(viewport, doc)),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...flats.flatMap((p) => holeProblems(p, idByName.get(p.name) ?? "")),
     ...jointProblems(doc, carcassBoards(viewport, doc, viewport.displayedBodies)),

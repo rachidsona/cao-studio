@@ -1,9 +1,12 @@
 from django.urls import path, re_path
 
+from apps.catalog import api as catalog_api
+
 from . import api, assistant, library, monitoring, production, sharing, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
+    path("catalog/", catalog_api.catalog, name="api-catalog"),
     path("projects/", api.project_collection, name="api-projects"),
     path("library/", library.library_collection, name="api-library"),
     path("library/<int:module_id>/", library.library_detail, name="api-library-module"),

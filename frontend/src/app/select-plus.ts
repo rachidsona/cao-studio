@@ -156,6 +156,8 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
   };
 
   const button = root.querySelector<HTMLButtonElement>("[data-select-plus]");
+  // Without its button (no longer in the column) it is always on: an earlier « off » cannot be undone otherwise.
+  if (!button) enabled = true;
   const show = () => button?.setAttribute("aria-pressed", String(enabled));
   button?.addEventListener("click", () => {
     enabled = !enabled;

@@ -14,7 +14,8 @@ import { ArrowHandle } from "../viewport/arrow-handle";
 import { POINT_AXES, type PointAxes } from "./align-points";
 import { Marks } from "./measure";
 import { PanelTool, type ToolContext } from "./panel-tool";
-import { ReferencePicker } from "./reference-measure";
+import { ReferencePicker, type Reference } from "./reference-measure";
+import { ReferenceMarker } from "./reference-marker";
 
 const AXES: Vec3[] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 const add = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -33,6 +34,8 @@ export class EdgeMoveTool extends PanelTool {
   private readonly marks = new Marks(this.ctx.viewport.scene);
   /** Corners and edges of the bodies as they were when the tool opened: a click takes one. */
   private readonly reference: ReferencePicker;
+  /** Lights up the corner, edge or face a click would take. */
+  private readonly marker: ReferenceMarker;
 
   constructor(ctx: ToolContext, editing: ModifierFeature | null, edge: { bodyId: string; ends: [Vec3, Vec3] } | null) {
     super(ctx, "Déplacer ce trait", editing);
@@ -45,6 +48,7 @@ export class EdgeMoveTool extends PanelTool {
     this.shift = moves[0] ? ([0, 1, 2].map((i) => moves[0]!.to[i]! - moves[0]!.from[i]!) as Vec3) : [0, 0, 0];
     this.reference = new ReferencePicker(ctx.viewport);
     this.reference.capture();
+    this.marker = new ReferenceMarker(ctx.viewport);
     this.arrows = AXES.map(() => new ArrowHandle(ctx.viewport, () => this.panel.querySelector<HTMLInputElement>("input")?.focus()));
   }
 
@@ -106,8 +110,25 @@ export class EdgeMoveTool extends PanelTool {
     return true;
   }
 
+  /** What a click here takes: a corner or an edge (not one hidden behind the face under the pointer), else a face. */
+  private referenceAt(event: PointerEvent): Reference | null {
+    const ignore = (id: string) => id === this.id || id === this.target;
+    const face = this.ctx.viewport.pickFace(event);
+    const eye = this.ctx.viewport.camera.position;
+    const far = (p: Vec3) => eye.distanceTo(new THREE.Vector3(...p));
+    const near = this.reference.near(event);
+    const hidden = near && face && !ignore(face.bodyId) && far(near.point) > eye.distanceTo(face.point) + 1;
+    return near && !hidden ? near : this.reference.find(event, ignore, 0, 0);
+  }
+
   override move(event: PointerEvent): void {
-    if (!this.drag) return;
+    // Not dragging: the corner, the edge or the face a click would take lights up (nothing over an arrow).
+    if (!this.drag) {
+      const overArrow = this.arrows.some((a) => a.hovered(event));
+      this.marker.show(overArrow || !this.ends ? null : this.referenceAt(event));
+      this.ctx.viewport.renderer.domElement.style.cursor = overArrow ? "grab" : "";
+      return;
+    }
     const value = this.arrows[this.drag.axis]!.dragMove(event);
     if (value === null) return;
     this.shift[this.drag.axis] = this.drag.from + value;
@@ -127,14 +148,7 @@ export class EdgeMoveTool extends PanelTool {
   /** A click on a corner (or an edge) of a body: the nearer end of the edge goes there; on a flat face: onto it. */
   protected override click(event: PointerEvent): void {
     if (!this.ends) return;
-    const ignore = (id: string) => id === this.id || id === this.target;
-    // A corner or an edge hidden behind the face under the pointer is not taken: the face is.
-    const face = this.ctx.viewport.pickFace(event);
-    const eye = this.ctx.viewport.camera.position;
-    const far = (p: Vec3) => eye.distanceTo(new THREE.Vector3(...p));
-    const near = this.reference.near(event);
-    const hidden = near && face && !ignore(face.bodyId) && far(near.point) > eye.distanceTo(face.point) + 1;
-    const ref = near && !hidden ? near : this.reference.find(event, ignore, 0, 0);
+    const ref = this.referenceAt(event);
     if (!ref) return;
     if (ref.kind === "face") {
       if (!ref.plane) return this.ctx.notify("Cliquez une face plane, un coin ou un trait.", "info");
@@ -153,6 +167,8 @@ export class EdgeMoveTool extends PanelTool {
   }
 
   protected override dispose(): void {
+    this.marker.dispose();
+    this.ctx.viewport.renderer.domElement.style.cursor = "";
     this.marks.clear();
     for (const a of this.arrows) a.dispose();
   }

@@ -1,4 +1,4 @@
-"""ASGI config for CAO Studio."""
+"""ASGI config for poly_3D."""
 import os
 
 from django.core.asgi import get_asgi_application

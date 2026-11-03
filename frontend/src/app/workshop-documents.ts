@@ -11,6 +11,7 @@ import type { CadDocument } from "../document/types";
 import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../geometry/client";
 import { modelHardware } from "../document/hardware";
+import { autoHardware } from "../document/catalog";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -61,7 +62,8 @@ export function holesOf(doc: CadDocument): number {
 
 function showQuote(viewport: Viewport, editor: Editor): void {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  const hardware = modelHardware(editor.doc);
+  // The hardware of the model, then what the workshop's rules add (counted from the furniture).
+  const hardware = [...modelHardware(editor.doc), ...autoHardware(editor.doc)];
   if (!totals.length) return editor.notify("Aucune pièce à chiffrer.", "info");
   const rates = loadRates();
   const table = el("div", {
@@ -130,13 +132,13 @@ function showQuote(viewport: Viewport, editor: Editor): void {
 /** The quote of the displayed parts at the saved rates, as a printable table, or null when there is nothing to price. */
 export function savedQuoteHtml(viewport: Viewport, editor: Editor): string | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit, holesOf(editor.doc))) : null;
+  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc))) : null;
 }
 
 /** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
 export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? makeQuote(totals, loadRates(), modelHardware(editor.doc), editor.unit, holesOf(editor.doc)).gross : null;
+  return totals.length ? makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc)).gross : null;
 }
 
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {

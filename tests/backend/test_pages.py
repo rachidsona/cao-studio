@@ -88,6 +88,7 @@ def test_editor_renders_config(client_logged, project):
         "projectName": "Plaque",
         "apiUrl": f"/api/projects/{project.id}/",
         "projectsUrl": "/projects/",
+        "catalogUrl": "/api/catalog/",
     }
     assert "csrftoken" in response.cookies
 

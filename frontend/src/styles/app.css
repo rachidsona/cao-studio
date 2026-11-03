@@ -64,17 +64,15 @@
     --sketch-dim: #8fd14f;
     --sketch-ref: #9ca3af;
     --sketch-preview: #38bdf8;
-    /* Toolbar icons: accents (points, arrows), constraints, dimensions. */
+    /* Toolbar icons in three colours: the line (the text colour), blue (the geometry: points, lines drawn, faces) and
+       orange (what acts: arrows, pencils, tools, cutting planes); lines only, nothing filled. Blue and orange stay the
+       same whatever the palette. */
     --ic-accent: #0284c7;
-    --ic-accent-fill: rgb(2 132 199 / 0.18);
-    --ic-constraint: #dc2626;
-    --ic-dim: #15803d;
+    --ic-action: #ea580c;
   }
   .dark {
-    --ic-accent: rgb(var(--brand));
-    --ic-accent-fill: rgb(var(--brand) / 0.2);
-    --ic-constraint: #f87171;
-    --ic-dim: #8fd14f;
+    --ic-accent: #38bdf8;
+    --ic-action: #fb923c;
   }
   html,
   body {

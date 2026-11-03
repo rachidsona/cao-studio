@@ -1,4 +1,4 @@
-"""Django settings for CAO Studio.
+"""Django settings for poly_3D.
 
 Configuration is read from environment variables:
 - DJANGO_DEBUG ("1"/"true"/"yes" → debug; default true for local dev)
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.accounts",
     "apps.projects",
+    "apps.catalog",
 ]
 
 MIDDLEWARE = [

@@ -37,7 +37,7 @@ MATERIALS = [
     "lacquer-white", "birch-plywood", "solid-oak", "pine-batten", "oak-batten", "hdf",
 ]
 
-SYSTEM = """Tu es l'assistant de modélisation de CAO Studio, un logiciel de conception de meubles (ébénisterie, \
+SYSTEM = """Tu es l'assistant de modélisation de poly_3D, un logiciel de conception de meubles (ébénisterie, \
 agencement, cuisines). L'utilisateur, un menuisier ou un agenceur, te demande en français de créer ou modifier son \
 modèle. Tu réponds en français, brièvement, et tu proposes des actions que l'éditeur lui montrera avant de les \
 appliquer.

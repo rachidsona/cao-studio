@@ -7,6 +7,7 @@
  * dans l'historique en une seule annulation et reste modifiable pièce par pièce.
  */
 import { decorateKitchen, kitchenPlan, type KitchenRoom } from "../document/kitchen-plan";
+import { fromKitchenLayout, layoutProblems } from "../document/layout-check";
 import { MATERIALS } from "../document/materials";
 import type { CadDocument, Feature, RoomFeature } from "../document/types";
 import { KITCHEN, kitchenProblem, type KitchenSettings } from "../features/kitchen-layout";
@@ -131,7 +132,7 @@ export class KitchenTool extends PanelTool {
       s.island ? len("Passage devant l'îlot", "passage") : null,
       this.info(problem ?? `${base} meuble(s) bas et colonnes${s.wallUnits ? `, ${units.length - base} haut(s)` : ""}. Modules de 600 d'abord, puis le plus grand qui tient.${fromRoom ? "" : " Le mur A part de l'origine vers +X ; les meubles sont devant (Y < 0)."}`),
       plan ? this.list("Ergonomie", plan.layout.ergonomics.ok, "ok") : null,
-      plan ? this.list("À revoir", [...plan.layout.ergonomics.warn, ...plan.problems], "warn") : null,
+      plan ? this.list("À revoir", [...plan.layout.ergonomics.warn, ...plan.problems, ...layoutProblems(fromKitchenLayout(plan.layout)).map((p) => p.message)], "warn") : null,
       plan ? this.list("La pièce", plan.layout.notes, "info") : null,
     ];
   }

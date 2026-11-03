@@ -41,6 +41,7 @@ def editor(request, project_id):
         "projectName": project.name,
         "apiUrl": reverse("api-project", kwargs={"project_id": project.id}),
         "projectsUrl": reverse("projects:list"),
+        "catalogUrl": reverse("api-catalog"),
     }
     return render(
         request, "editor/editor.html", {"project": project, "editor_config": editor_config}

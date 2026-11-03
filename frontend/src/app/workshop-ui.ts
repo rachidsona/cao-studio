@@ -58,8 +58,15 @@ export function openModal(title: string, content: HTMLElement, buttons: { label:
   return close;
 }
 
-/** Prints a page made of `html` (to paper, or "Enregistrer en PDF" in the print dialog). */
-export function printHtml(title: string, html: string, extraCss = ""): void {
+let letterhead = "";
+
+/** The workshop's letterhead (document/catalog.ts), put at the top of every printed document that has no layout of its own. */
+export function setLetterhead(html: string): void {
+  letterhead = html;
+}
+
+/** Prints a page made of `html` (to paper, or "Enregistrer en PDF" in the print dialog); `header`: the letterhead first. */
+export function printHtml(title: string, html: string, extraCss = "", header = true): void {
   const frame = document.createElement("iframe");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.append(frame);
@@ -69,7 +76,7 @@ export function printHtml(title: string, html: string, extraCss = ""): void {
   page.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>
     body{font:11px system-ui,sans-serif;margin:12mm;color:#111} h1{font-size:16px} table{border-collapse:collapse;width:100%}
     th,td{border:1px solid #999;padding:3px 5px;text-align:left} th{background:#eee} svg{max-width:100%;page-break-inside:avoid}
-    .sheet{page-break-after:always}${extraCss}</style></head><body>${html}</body></html>`);
+    .sheet{page-break-after:always}${extraCss}</style></head><body>${header ? letterhead : ""}${html}</body></html>`);
   page.close();
   setTimeout(() => {
     frame.contentWindow?.focus();

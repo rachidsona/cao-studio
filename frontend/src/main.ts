@@ -20,6 +20,8 @@ import { bindCabinetDrag } from "./app/cabinet-drag";
 import { bindKitchenUnits } from "./app/kitchen-units";
 import { bindPieceDims } from "./app/piece-dims";
 import { bindGridToggle } from "./app/grid-toggle";
+import { bindDisplayToggles } from "./app/display-toggles";
+import { bindOrbit } from "./app/orbit-tool";
 import { bindPartTags } from "./app/part-tags";
 import { bindHiddenJoints } from "./app/hidden-joints";
 import { bindProgress } from "./app/workshop-progress";
@@ -40,6 +42,9 @@ import { initSolver } from "./constraints/solver";
 import { sameDocument } from "./document/canonical";
 import { GeometryClient } from "./geometry/client";
 import { loadProject } from "./persistence/api";
+import { loadCatalog } from "./persistence/catalog";
+import { companyHeaderHtml, registerCatalog } from "./document/catalog";
+import { setLetterhead } from "./app/workshop-ui";
 import { describeError, installErrorReporting, sendReport } from "./persistence/error-report";
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
@@ -81,8 +86,10 @@ async function start(): Promise<void> {
   kernelStatus.textContent = "Chargement du noyau…";
   loading.show("Démarrage du noyau 3D…", 0.05);
   geometry.onProgress = (loaded, total) => loading.download(loaded, total);
-  const [snapshot] = await Promise.all([
+  const [snapshot, catalog] = await Promise.all([
     loadProject(config.apiUrl),
+    // The workshop's catalogue: its materials and hardware join the built-in ones, its profile heads the documents.
+    loadCatalog(config.catalogUrl),
     // The sketcher solves interactively on the main thread (small, fast module).
     initSolver({ locateFile: () => gcsWasmUrl }),
     geometry.init().then(() => {
@@ -92,6 +99,10 @@ async function start(): Promise<void> {
     }),
   ]);
 
+  if (catalog) {
+    registerCatalog(catalog);
+    setLetterhead(companyHeaderHtml(catalog.company));
+  }
   const session = new DocumentSession(config.projectId, config.apiUrl, snapshot.document, snapshot.version);
   const recovery = readRecovery(config.projectId);
   if (recovery && sameDocument(recovery.document, snapshot.document)) {
@@ -131,6 +142,8 @@ async function start(): Promise<void> {
   bindKitchenUnits(root, viewport, editor);
   bindPieceDims(root, viewport, editor);
   bindGridToggle(root, viewport);
+  bindDisplayToggles(root, viewport, editor);
+  bindOrbit(root, viewport, (message) => editor.notify(message, "info"));
   bindPartTags(root, viewport, editor);
   bindHiddenJoints(root, viewport);
   bindProgress(root, viewport, editor, config.apiUrl);

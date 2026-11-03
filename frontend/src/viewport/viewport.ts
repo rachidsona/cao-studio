@@ -91,7 +91,7 @@ export class Viewport {
     return this.layer.bodies;
   }
 
-  private get rig(): rig.CameraRig {
+  get rig(): rig.CameraRig {
     return { camera: this.camera, controls: this.controls };
   }
 
@@ -242,6 +242,7 @@ export class Viewport {
    */
   setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); }
   setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); }
+  setXray(on: boolean): void { this.layer.setXray(on); }
 
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */
   setAppearance(appearance: ((bodyId: string) => BodyAppearance | null) | null, faces: ((bodyId: string) => FaceAppearance[]) | null = null): void {

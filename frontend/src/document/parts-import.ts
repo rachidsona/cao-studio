@@ -4,7 +4,7 @@
  * plat côte à côte à droite du modèle, avec leur nom et leur matière : la liste de débit, le calepinage et le devis
  * les prennent aussitôt. Séparateur « ; », « , » ou tabulation, virgule décimale acceptée. La ligne d'en-tête dit
  * quelle colonne est quoi (et l'unité : « Longueur (cm) ») ; sans en-tête, l'ordre est nom, quantité, longueur,
- * largeur, épaisseur, matière. La liste de débit exportée par CAO Studio se réimporte telle quelle. Pur.
+ * largeur, épaisseur, matière. La liste de débit exportée par poly_3D se réimporte telle quelle. Pur.
  */
 import { MATERIALS } from "./materials";
 import { uniqueId, uniqueName } from "./operations";

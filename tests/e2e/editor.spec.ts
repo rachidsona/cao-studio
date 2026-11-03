@@ -156,3 +156,27 @@ test("la mise en plan s'ouvre de la barre du haut : une feuille avec les vues st
   await expect(workspace).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("poly_3D : le catalogue de l'atelier arrive, Rayons X et Affichage marchent", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Catalogue e2e");
+  await expect(page).toHaveTitle(/poly_3D/);
+  // The catalogue seeded by the migration (apps/catalog): 23 materials, 9 hardware rules, the profile.
+  const catalog = await page.evaluate(async () => (await fetch("/api/catalog/", { headers: { Accept: "application/json" } })).json());
+  expect(catalog.materials).toHaveLength(23);
+  expect(catalog.hardware).toHaveLength(9);
+  expect(catalog.company.name).toBe("Mon atelier");
+  const xray = page.locator("[data-xray]");
+  await xray.click();
+  await expect(xray).toHaveAttribute("aria-pressed", "true");
+  await xray.click();
+  await expect(xray).toHaveAttribute("aria-pressed", "false");
+  await page.locator("[data-display-menu]").click();
+  await expect(page.locator("[data-display-options]")).toBeVisible();
+  await page.locator("[data-display-work]").click();
+  await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("[data-display-all]").click();
+  await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "false");
+  expect(errors).toEqual([]);
+});

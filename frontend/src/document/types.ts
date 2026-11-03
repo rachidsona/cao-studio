@@ -1,5 +1,5 @@
 /**
- * Native CAO Studio document model (format "cao-studio", schema v2).
+ * Native poly_3D document model (format "cao-studio", kept from CAO Studio; schema v2).
  *
  * The document is the single source of truth: it stores the parametric
  * history (sketches, features, parameters), never meshes. Geometry is always
