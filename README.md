@@ -31,8 +31,12 @@ contient la plaque de référence ; « Ouvrir le projet exemple » crée un cais
 pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
 touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
 
-Le **catalogue de l'atelier** (matières, règles de quincaillerie, profil de l'atelier) se gère dans l'administration
-Django, http://127.0.0.1:8765/admin/ (compte créé par `createsuperuser`) ; il est garni au premier `migrate`.
+Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/poly/catalogue/ (liens « Matériaux »,
+« Quincaillerie », « Bibliothèque » et « Profil atelier » de l'atelier, cartes « Catalogues » des réglages de l'éditeur
+de caisson) : un onglet par partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut ; un
+matériau utilisé par des caissons n'est pas supprimé), **quincaillerie** (articles et quantité automatique),
+**bibliothèque** des modèles de caissons (renommer, décrire, supprimer) et **profil de l'atelier** (coordonnées et logo
+des PDF). Il est garni au premier `migrate` ; l'administration Django reste disponible pour un superutilisateur.
 
 ## Fusion avec poly_3D (novembre 2026)
 
@@ -42,7 +46,7 @@ ne font plus qu'une, sur la base de CAO Studio, renommée **poly_3D** (titre des
 de document « cao-studio », l'extension `.cao.json` et les réglages gardés par le navigateur ne changent pas : les
 projets existants s'ouvrent tels quels). Ce qui a été porté dans l'éditeur 3D :
 
-- **Catalogue de l'atelier** (`apps/catalog`, administration Django, `GET /api/catalog/`) : les **matières** (nom,
+- **Catalogue de l'atelier** (`apps/catalog`, pages `/poly/catalogue/`, `GET /api/catalog/`) : les **matières** (nom,
   épaisseur, famille — mélaminé, bois, verre, marbre, pierre, métal, stratifié, uni —, format de plaque, prix au m²),
   23 au départ (aggloméré, MDF laqué, chênes, noyer, hêtre, marbres, quartz, granit, inox, aluminium, verres, béton
   ciré, terrazzo, laqués) ; les **règles de quincaillerie** à quantité automatique (par caisson, par porte, charnières
@@ -73,8 +77,9 @@ dans l'en-tête du site et carte « Conception Cuisine & Dressing » de la page 
 « ← Mes projets ». Il demande un compte poly_3D (les pages renvoient à la connexion, son API répond 401 en JSON,
 `apps/furniture/middleware.py`). On y retrouve :
 
-- le **tableau de bord** : nouveau caisson (cotes, carcasse, fond, jeu arrière, plinthe, façades), caissons récents,
-  modèles de caissons, affaires (multi-caissons) ;
+- le **tableau de bord** : nouveau caisson (cotes, carcasse, fond, jeu arrière, plinthe, façades), matériaux et
+  caissons récents (les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
+  l'onglet Bibliothèque du catalogue, « Créer un caisson ») ;
 - l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
   cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du
   haut pleine largeur ; une séparation divise **seulement la niche** : le dessus et le dessous restent d'une pièce,
@@ -1176,7 +1181,7 @@ opération existante.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
     à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
     - **Règles de quincaillerie de l'atelier** (porté de poly_3D) : les articles du catalogue de l'atelier
-      (administration Django) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
+      (pages `/poly/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
       portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent
       au devis, à leur prix (modifiable dans les tarifs) ; un article « manuel » donne seulement son prix
       (`document/catalog.ts`).

@@ -1865,13 +1865,11 @@ class RoomPhase1Tests(TestCase):
         )
         self.assertEqual(legacy.walls.count(), 0)
 
-        dashboard = self.client.get(reverse("poly:home"))
-        self.assertContains(
-            dashboard, reverse("poly:project_room", args=[self.project.pk])
-        )
-        self.assertNotContains(
-            dashboard, reverse("poly:project_room", args=[legacy.pk])
-        )
+        # The affairs are listed on the home page (Projets Cuisine & Dressing).
+        home = self.client.get(reverse("projects:list"))
+        self.assertContains(home, reverse("poly:project_room", args=[self.project.pk]))
+        self.assertNotContains(home, reverse("poly:project_room", args=[legacy.pk]))
+        self.assertContains(home, reverse("poly:project_detail", args=[legacy.pk]))
         detail = self.client.get(reverse("poly:project_detail", args=[legacy.pk]))
         self.assertNotContains(detail, "Éditeur de pièce 2D/3D")
 

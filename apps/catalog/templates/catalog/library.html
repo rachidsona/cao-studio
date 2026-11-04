@@ -1,0 +1,31 @@
+{% extends "catalog/base.html" %}
+{% block page_title %}Bibliothèque{% endblock %}
+{% block heading %}Bibliothèque de caissons{% endblock %}
+{% block body %}
+<div class="card">
+  <div class="card-head">
+    <h2>{{ templates|length }} modèle{{ templates|length|pluralize }}</h2>
+    <span class="hint">Pour ajouter un modèle : « Enregistrer comme modèle » dans l'éditeur d'un caisson.</span>
+  </div>
+  <div class="card-body tight table-wrap">
+    <table class="data catalog-table">
+      <thead><tr><th>Nom</th><th class="num">Dimensions</th><th></th></tr></thead>
+      <tbody>
+        {% for template in templates %}
+          <tr>
+            <td><a href="{% url 'catalog:template_edit' template.pk %}">{{ template.name }}</a>{% if template.description %}<br><span class="muted">{{ template.description }}</span>{% endif %}</td>
+            <td class="num">{{ template.payload.cabinet.width|floatformat:0 }} × {{ template.payload.cabinet.height|floatformat:0 }} × {{ template.payload.cabinet.depth|floatformat:0 }} mm</td>
+            <td class="catalog-actions">
+              <form method="post" action="{% url 'poly:template_instantiate' template.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">Créer un caisson</button></form>
+              <a class="btn btn-sm" href="{% url 'catalog:template_edit' template.pk %}">Modifier</a>
+              <form method="post" action="{% url 'catalog:template_delete' template.pk %}" data-confirm="Supprimer le modèle « {{ template.name }} » ?">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit">Supprimer</button></form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="empty-mini">Aucun modèle de caisson pour le moment.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

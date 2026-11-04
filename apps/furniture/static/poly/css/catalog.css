@@ -1,0 +1,24 @@
+/* The workshop's catalogue pages (apps/catalog): tabs, tables of rows, edit forms. */
+.catalog-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.catalog-tabs a { padding: 9px 14px; color: var(--muted); font-weight: 650; font-size: 13px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.catalog-tabs a:hover { color: var(--text); text-decoration: none; background: var(--hover); }
+.catalog-tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+.catalog-table { font-size: 13px; }
+.catalog-table td, .catalog-table th { padding: 9px 12px; vertical-align: middle; }
+.catalog-table .swatch { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+.catalog-actions { text-align: right; white-space: nowrap; }
+.catalog-actions form { display: inline; }
+.catalog-form-card { max-width: 760px; }
+.catalog-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.catalog-fields input, .catalog-fields select, .catalog-fields textarea { width: 100%; }
+.catalog-fields input[type="color"] { height: 36px; padding: 2px; }
+.catalog-fields input[type="checkbox"] { width: 16px; }
+.catalog-wide { grid-column: 1 / -1; }
+.catalog-buttons { display: flex; gap: 8px; margin-top: 8px; }
+.catalog-logo { display: block; max-height: 70px; max-width: 220px; margin-top: 4px; background: #fff; padding: 4px; border: 1px solid var(--line); }
+.label-like { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.field-error { color: var(--danger); font-size: 12px; margin: 4px 0 0; }
+@media (max-width: 640px) {
+  .catalog-fields { grid-template-columns: 1fr; }
+  .catalog-table th:nth-child(n+2):not(:last-child), .catalog-table td:nth-child(n+2):not(:last-child) { display: none; }
+}

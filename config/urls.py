@@ -13,6 +13,8 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("projects/", include("apps.projects.urls")),
     path("api/", include("apps.projects.api_urls")),
+    # The workshop's catalogue (materials, hardware, library, profile), edited in the application.
+    path("poly/catalogue/", include("apps.catalog.urls")),
     # The workshop of the former poly_3D: cabinets edited by volumes, kitchen and dressing rooms in 2D/3D.
     path("poly/", include("apps.furniture.urls")),
     # Client links: public, by token.

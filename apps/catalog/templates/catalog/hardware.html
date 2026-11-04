@@ -1,0 +1,31 @@
+{% extends "catalog/base.html" %}
+{% block page_title %}Quincaillerie{% endblock %}
+{% block heading %}Quincaillerie{% endblock %}
+{% block body %}
+<div class="card">
+  <div class="card-head">
+    <h2>{{ rules|length }} article{{ rules|length|pluralize }}</h2>
+    <a class="btn btn-sm btn-primary" href="{% url 'catalog:hardware_add' %}">Ajouter un article</a>
+  </div>
+  <div class="card-body tight table-wrap">
+    <table class="data catalog-table">
+      <thead><tr><th>Nom</th><th>Quantité automatique</th><th class="num">Prix</th><th></th></tr></thead>
+      <tbody>
+        {% for rule in rules %}
+          <tr>
+            <td><a href="{% url 'catalog:hardware_edit' rule.pk %}">{{ rule.name }}</a>{% if rule.description %}<br><span class="muted">{{ rule.description }}</span>{% endif %}</td>
+            <td>{{ rule.get_auto_mode_display }}{% if rule.auto_mode %} · {{ rule.auto_per_unit|floatformat:"-1" }}{% else %} · {{ rule.default_quantity|floatformat:"-1" }} {{ rule.unit }}{% endif %}</td>
+            <td class="num">{{ rule.unit_price|floatformat:2 }} €/{{ rule.unit }}</td>
+            <td class="catalog-actions">
+              <a class="btn btn-sm" href="{% url 'catalog:hardware_edit' rule.pk %}">Modifier</a>
+              <form method="post" action="{% url 'catalog:hardware_delete' rule.pk %}" data-confirm="Supprimer « {{ rule.name }} » ?">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit">Supprimer</button></form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="empty-mini">Aucun article de quincaillerie pour le moment.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

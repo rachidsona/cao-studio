@@ -18,14 +18,18 @@ async function signUp(page: Page): Promise<void> {
 
 const csrf = (page: Page) => page.evaluate(() => document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? "");
 
-test("l'atelier demande un compte, puis s'ouvre depuis Mes projets", async ({ page }) => {
+test("l'atelier demande un compte, puis s'ouvre depuis l'accueil, avec son catalogue", async ({ page }) => {
   await page.goto("/poly/");
   await page.waitForURL("**/accounts/login/?next=/poly/");
   await signUp(page);
   await page.getByRole("link", { name: "Ouvrir l'atelier" }).click();
   await page.waitForURL("**/poly/");
-  await expect(page.getByRole("heading", { name: "Vos caissons paramétriques" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "← Mes projets" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nouveau caisson" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "← Accueil" })).toBeVisible();
+  // The catalogue opens in the application, not in the administration.
+  await page.getByRole("link", { name: "Quincaillerie", exact: true }).click();
+  await page.waitForURL("**/poly/catalogue/quincaillerie/");
+  await expect(page.getByRole("link", { name: "Charnière à clip 35 mm" })).toBeVisible();
 });
 
 test("éditeur de caisson : il s'ouvre et une séparation s'ajoute", async ({ page }) => {
@@ -53,8 +57,8 @@ test("éditeur de caisson : il s'ouvre et une séparation s'ajoute", async ({ pa
   const ask = page.getByRole("alertdialog", { name: "Enregistrer comme modèle" });
   await ask.getByLabel("Nom du modèle").fill("Bibliothèque type");
   await ask.getByRole("button", { name: "Enregistrer" }).click();
-  await page.goto("/poly/");
-  await expect(page.getByText("Bibliothèque type")).toBeVisible();
+  await page.goto("/poly/catalogue/bibliotheque/");
+  await expect(page.getByRole("link", { name: "Bibliothèque type" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -129,9 +133,9 @@ test("éditeur de pièce : une affaire de cuisine s'ouvre en plan et reçoit un 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await signUp(page);
-  await page.goto("/poly/");
-  await page.fill("#prj-new-name", "Cuisine e2e");
-  await page.getByRole("button", { name: "Créer l'affaire" }).click();
+  await page.goto("/projects/");
+  await page.fill("#affair-name", "Cuisine e2e");
+  await page.getByRole("button", { name: "Créer et dessiner la pièce" }).click();
   await page.waitForURL(/\/poly\/projet\/\d+\/piece\/$/);
   const config = await page.evaluate(() => JSON.parse(document.getElementById("room-config")?.textContent ?? "{}"));
   expect(config.urls.items).toMatch(/^\/poly\/api\/projects\/\d+\/room\/items\/$/);
@@ -194,9 +198,9 @@ test("éditeur de pièce : un meuble et une fenêtre se suppriment après une co
   // The browser's own confirm() is refused here, as in some embedded browsers: the page must ask by itself.
   page.on("dialog", (dialog) => void dialog.dismiss());
   await signUp(page);
-  await page.goto("/poly/");
-  await page.fill("#prj-new-name", "Suppression e2e");
-  await page.getByRole("button", { name: "Créer l'affaire" }).click();
+  await page.goto("/projects/");
+  await page.fill("#affair-name", "Suppression e2e");
+  await page.getByRole("button", { name: "Créer et dessiner la pièce" }).click();
   await page.waitForURL(/\/poly\/projet\/\d+\/piece\/$/);
   const config = await page.evaluate(() => JSON.parse(document.getElementById("room-config")?.textContent ?? "{}"));
   const payload = await page.evaluate(() => JSON.parse(document.getElementById("room-payload")?.textContent ?? "{}"));
@@ -241,9 +245,9 @@ test("éditeur de pièce : un clic sélectionne, le panneau Sélection le montre
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("dialog", (dialog) => void dialog.dismiss());
   await signUp(page);
-  await page.goto("/poly/");
-  await page.fill("#prj-new-name", "Disposition e2e");
-  await page.getByRole("button", { name: "Créer l'affaire" }).click();
+  await page.goto("/projects/");
+  await page.fill("#affair-name", "Disposition e2e");
+  await page.getByRole("button", { name: "Créer et dessiner la pièce" }).click();
   await page.waitForURL(/\/poly\/projet\/\d+\/piece\/$/);
   await expect(page.locator("[data-selection-empty]")).toBeVisible();
   // The library: « Plans » shows the worktop button instead of the models.

@@ -592,7 +592,7 @@
               </span>
             </label>
           {% empty %}
-            <p class="empty-mini">Aucune règle de quincaillerie — <a href="{% url 'admin:catalog_hardwarerule_changelist' %}" target="_blank" rel="noopener">en créer une</a>.</p>
+            <p class="empty-mini">Aucune règle de quincaillerie — <a href="{% url 'catalog:hardware_add' %}" target="_blank" rel="noopener">en créer une</a>.</p>
           {% endfor %}
         </div>
         <p class="hint" style="margin-top:6px;">Les quantités automatiques suivent la géométrie : charnières selon la hauteur des façades, tiges par étagère, excentriques par côté…</p>
@@ -731,16 +731,16 @@
     <section class="settings-section">
       <h3>Catalogues</h3>
       <div class="settings-catalogs">
-        <a class="settings-catalog" href="{% url 'admin:catalog_material_changelist' %}" target="_blank" rel="noopener">
+        <a class="settings-catalog" href="{% url 'catalog:materials' %}" target="_blank" rel="noopener">
           <strong>Matériaux</strong><span>Épaisseurs, prix, couleurs, feuilles de découpe</span>
         </a>
-        <a class="settings-catalog" href="{% url 'admin:catalog_hardwarerule_changelist' %}" target="_blank" rel="noopener">
+        <a class="settings-catalog" href="{% url 'catalog:hardware' %}" target="_blank" rel="noopener">
           <strong>Quincaillerie</strong><span>Charnières, tiges, poignées, quantités auto</span>
         </a>
-        <a class="settings-catalog" href="{% url 'poly:home' %}">
+        <a class="settings-catalog" href="{% url 'catalog:library' %}" target="_blank" rel="noopener">
           <strong>Modèles de caissons</strong><span>Bibliothèque paramétrique</span>
         </a>
-        <a class="settings-catalog" href="{% url 'admin:catalog_companyprofile_changelist' %}" target="_blank" rel="noopener">
+        <a class="settings-catalog" href="{% url 'catalog:company' %}" target="_blank" rel="noopener">
           <strong>Profil atelier</strong><span>Logo et coordonnées des documents PDF</span>
         </a>
       </div>

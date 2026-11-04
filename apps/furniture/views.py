@@ -26,11 +26,8 @@ from .history import (
 from .models import (
     Cabinet,
     CabinetTemplate,
-    Component,
     HardwareRule,
-    InternalVolume,
     Material,
-    Panel,
     Project,
     ProjectItem,
     ProjectVersion,
@@ -113,24 +110,10 @@ def index(request):
     )
     materials = Material.objects.all()
     default_back = materials.filter(thickness__lte=6).order_by("thickness").first()
-    stats = {
-        "cabinet_count": Cabinet.objects.count(),
-        "panel_count": Panel.objects.count(),
-        "shelf_count": Component.objects.filter(component_type="shelf").count(),
-        "volume_count": InternalVolume.objects.count(),
-        "project_count": Project.objects.count(),
-    }
     return render(
         request,
         "poly/dashboard.html",
-        {
-            "cabinets": cabinets,
-            "materials": materials,
-            "default_back": default_back,
-            "stats": stats,
-            "projects": Project.objects.all().prefetch_related("items")[:8],
-            "templates": CabinetTemplate.objects.order_by("name")[:12],
-        },
+        {"cabinets": cabinets, "materials": materials, "default_back": default_back},
     )
 
 
