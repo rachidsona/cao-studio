@@ -58,6 +58,73 @@ test("éditeur de caisson : il s'ouvre et une séparation s'ajoute", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("éditeur de caisson : une étagère se pose dans une niche basse, dans les limites du serveur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await signUp(page);
+  await page.goto("/poly/");
+  await page.fill("#name", "Niche basse e2e");
+  await page.fill("#height", "360");
+  await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
+  await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
+  const canvas = page.locator(".editor-shell canvas").first();
+  await expect(canvas).toBeVisible();
+  await page.locator('.editor-toolbar [data-toolbar-tool="shelf"]').click();
+  // Un clic dans la niche la choisit (outil Étagère).
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("pas de vue 3D");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.locator("#shelf-mode").selectOption("ratio");
+  // Niche de 32,2 cm : 5 cm au moins sous et sur l'étagère, soit 16 % à 78 % environ.
+  await expect(page.locator("#shelf-hint")).toContainText("5,0 cm au moins du dessous et du dessus");
+  expect(Number(await page.locator("#shelf-position").getAttribute("min"))).toBeGreaterThan(15);
+  await page.locator("#shelf-position").fill("7");
+  await page.locator("#shelf-position").press("Tab");
+  expect(Number(await page.locator("#shelf-position").inputValue())).toBeGreaterThan(15);
+  await page.locator("#btn-shelf").click();
+  await expect(page.locator("#toast-host")).not.toContainText("hors limites");
+  await expect(page.locator('.tree-row[data-kind="shelf"]')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test("éditeur de caisson : les cartes d'options sont fermées, en ouvrir une ferme l'autre ; le Navigateur se replie", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/poly/");
+  await page.fill("#name", "Cartes e2e");
+  await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
+  await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
+  const selection = page.getByRole("button", { name: "Sélection", exact: true });
+  const tools = page.getByRole("button", { name: "Outils", exact: true });
+  // Closed at first.
+  await expect(selection).toHaveAttribute("aria-expanded", "false");
+  await expect(tools).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#selection-panel")).toBeHidden();
+  await expect(page.locator(".tool-tabs")).toBeHidden();
+  // One open at a time.
+  await selection.click();
+  await expect(page.locator("#selection-panel")).toBeVisible();
+  await tools.click();
+  await expect(page.locator(".tool-tabs")).toBeVisible();
+  await expect(page.locator("#selection-panel")).toBeHidden();
+  await expect(selection).toHaveAttribute("aria-expanded", "false");
+  // A tool of the top bar opens « Outils ».
+  await selection.click();
+  await expect(page.locator(".tool-tabs")).toBeHidden();
+  await page.locator('.editor-toolbar [data-toolbar-tool="shelf"]').click();
+  await expect(page.locator("#btn-shelf")).toBeVisible();
+  await expect(page.locator("#selection-panel")).toBeHidden();
+  // The navigator stays open by default; folded from the keyboard, it stays folded after a reload.
+  const navigator = page.getByRole("button", { name: /^Navigateur/ });
+  await expect(page.locator("#scene-tree")).toBeVisible();
+  await navigator.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#scene-tree")).toBeHidden();
+  await page.reload();
+  await expect(page.locator("#scene-tree")).toBeHidden();
+  await expect(page.locator("#selection-panel")).toBeHidden();
+  await expect(page.locator(".tool-tabs")).toBeHidden();
+});
+
 test("éditeur de pièce : une affaire de cuisine s'ouvre en plan et reçoit un meuble", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -229,6 +296,12 @@ test("éditeur de caisson : trois onglets, l'outil choisi montre ses réglages, 
   await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
   const tabs = page.locator(".editor-right .tabs button");
   await expect(tabs).toHaveText(["Sélection et outil", "Fabrication", "Devis et croquis"]);
+  // The « Séparation » tool is gone from the bar and the tools (Séparer divides a niche); its shortcut does nothing.
+  await expect(page.locator('.editor-toolbar [data-toolbar-tool]:not([hidden])')).toHaveText(["Séparer", "Déplacer", "Côté", "Étagère", "Mesurer", "Plinthe", "Caisson"]);
+  await expect(page.locator('.tool-tabs [data-tool="partition"]')).toHaveCount(0);
+  await page.locator("#btn-settings").click();
+  await expect(page.locator("#settings-tools")).not.toContainText("Séparation");
+  await page.locator("#settings-close").click();
   // A tool of the bar: the selection and that tool's settings, together.
   await page.locator('.editor-toolbar [data-toolbar-tool="shelf"]').click();
   await expect(page.locator('.tab-panel[data-panel="selection"]')).toBeVisible();

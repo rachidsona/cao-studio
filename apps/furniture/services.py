@@ -33,6 +33,11 @@ from apps.quotes.models import Quote, QuoteLine
 from apps.workshop.models import CutList, CutListItem
 
 
+def _cm(millimetres: float) -> str:
+    """Une longueur en mm écrite en cm à la française (« 2,3 »)."""
+    return f"{millimetres / 10:.1f}".replace(".", ",")
+
+
 class CabinetDesignError(Exception):
     """Erreur métier remontée à l'interface (message en français)."""
 
@@ -974,10 +979,17 @@ class CabinetDesignService:
             raise CabinetDesignError("Position d'étagère invalide.")
         bounds = self.divider.bounds_for(volume.height)
         if offset < bounds["min"] - 0.01 or offset > bounds["max"] + 0.01:
+            low = bounds["min"] - self.t / 2
+            high = bounds["max"] - self.t / 2
+            if high < low:
+                raise CabinetDesignError(
+                    "Niche trop basse pour une étagère : il faut au moins "
+                    f"{_cm(2 * self.MIN_BAY + self.t)} cm de haut."
+                )
             raise CabinetDesignError(
-                f"Étagère hors limites : {height_from_bottom:.1f} mm "
-                f"(autorisé entre {bounds['min'] - self.t / 2:.1f} et "
-                f"{bounds['max'] - self.t / 2:.1f} mm)."
+                f"Étagère hors limites : {_cm(height_from_bottom)} cm du bas de la niche. "
+                f"Elle doit rester à {_cm(self.MIN_BAY)} cm au moins du dessous et du "
+                f"dessus (entre {_cm(low)} et {_cm(high)} cm)."
             )
 
         self._split_once(volume, "horizontal", offset)
@@ -2123,9 +2135,10 @@ class CabinetDesignService:
         return Panel(cabinet=self.cabinet, **kwargs)
 
     def _full_height_divider_positions(self) -> List[float]:
-        """Centres X absolus des séparations verticales pleine hauteur.
+        """Centres X absolus des côtés doubles (outil Côté) pleine hauteur.
 
-        Ces séparations découpent le dessous et le dessus du caisson.
+        Seuls ces côtés traversent et découpent le dessous et le dessus du caisson ; une séparation faite avec
+        Séparer divise la niche seulement, entre le dessous et le dessus, qui restent d'une pièce.
         """
         root = self.cabinet.root_volume
         if root is None:
@@ -2133,6 +2146,8 @@ class CabinetDesignService:
         positions: List[float] = []
         for component in self.cabinet.components.filter(component_type="divider_v").select_related("volume"):
             volume = component.volume
+            if not volume.split_side:
+                continue
             bottom_ok = abs(volume.pos_y - root.pos_y) < 0.01
             top_ok = abs((volume.pos_y + volume.height) - (root.pos_y + root.height)) < 0.01
             if bottom_ok and top_ok:

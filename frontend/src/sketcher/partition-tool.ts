@@ -317,14 +317,14 @@ export class SketchPartitionTool {
       extrusionOption.on && this.doors?.style === "frame" ? number("Retrait du panneau", this.doors.frameDepth ?? 6, (v) => this.setDoors({ frameDepth: v })) : null,
       // The side each door opens from.
       ...(extrusionOption.on && this.doors && typeof layout !== "string"
-        ? layout.caseSpans.map((_, i) =>
+        ? layout.caseWidths.map((_, i) =>
             select(`Porte ${i + 1}`, this.hinge(i), [["left", "S'ouvre à gauche (charnières à gauche)"], ["right", "S'ouvre à droite (charnières à droite)"]], (v) =>
-              this.setDoors({ hinges: layout.caseSpans.map((__, k) => (k === i ? (v as "left" | "right") : this.hinge(k))) }),
+              this.setDoors({ hinges: layout.caseWidths.map((__, k) => (k === i ? (v as "left" | "right") : this.hinge(k))) }),
             ),
           )
         : []),
       extrusionOption.on && this.doors
-        ? info("En applique devant les panneaux : chaque porte couvre le dessus, le dessous, le côté extérieur ou son côté double en entier, et la moitié d'un côté simple ; des cases sans côté entre elles ont une seule porte.")
+        ? info("En applique devant les panneaux : chaque porte couvre le dessus, le dessous, le côté extérieur ou son côté double en entier, et la moitié d'un côté simple ; deux cases sans côté entre elles ont chacune la leur, jointives au milieu.")
         : null,
       heading("Fond"),
       extrusionOption.on
@@ -392,7 +392,7 @@ export class SketchPartitionTool {
     const groups = extrusionGroups(g.offsets ?? [], rebuilt);
     const extruded: SketchExtrusion | undefined = groups.length ? { groups } : undefined;
     const unit = this.host.unit();
-    const made = `${this.editing ? "Répartition modifiée" : "Répartition"} en ${casesText(layout, unit)}${depth !== undefined ? `, panneaux extrudés de ${formatLength(depth, unit)}` : ""}${"doors" in doors ? `, ${layout.caseSpans.length} porte${layout.caseSpans.length > 1 ? "s" : ""}` : ""}${"back" in back ? ", avec son fond" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`;
+    const made = `${this.editing ? "Répartition modifiée" : "Répartition"} en ${casesText(layout, unit)}${depth !== undefined ? `, panneaux extrudés de ${formatLength(depth, unit)}` : ""}${"doors" in doors ? `, ${layout.caseWidths.length} porte${layout.caseWidths.length > 1 ? "s" : ""}` : ""}${"back" in back ? ", avec son fond" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`;
     if (!this.host.apply(rebuilt.geometry, made, extruded)) return;
     this.cancel();
   }

@@ -116,6 +116,12 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+/**
+ * Jeu minimal laissé sous et sur une étagère, la règle du serveur (CabinetDesignService.MIN_BAY, services.py) :
+ * l'éditeur ne propose que les hauteurs qu'il accepte.
+ */
+const SHELF_MIN_GAP = 50;
+
 function fmt(value, digits = 1) {
   return Number((value || 0) / 10).toLocaleString('fr-FR', {
     minimumFractionDigits: digits,
@@ -1019,7 +1025,7 @@ function treeNodeHtml(node, level = 0, inheritedHidden = false) {
   }
   const eye = visibilityKey
     ? `<button type="button" class="tree-eye${effectiveHidden ? ' is-hidden' : ''}" data-vis-key="${visibilityKey}" aria-pressed="${effectiveHidden}" aria-label="${escapeHtml(eyeTitle)}" title="${escapeHtml(eyeTitle)}"${canToggle ? '' : ' disabled'}>${eyeIconHtml(effectiveHidden)}</button>`
-    : '';
+    : '<span class="tree-eye-spacer" aria-hidden="true"></span>';
   const deleteButton = node.component_id
     ? `<button type="button" class="tree-delete" data-delete-component="${node.component_id}" aria-label="Supprimer ${escapeHtml(label)}" title="Supprimer ${escapeHtml(label)}">${trashIconHtml()}</button>`
     : '';
@@ -2356,35 +2362,70 @@ function updateToolBounds() {
 
   const shelfRange = $('#shelf-range');
   const shelfPosition = $('#shelf-position');
-  const shelfMin = 10;
-  const shelfMax = Math.max(shelfMin, volume.h - cabinet.thickness - 10);
+  const { min: shelfMin, max: shelfMax } = shelfBounds(volume, cabinet);
+  const shelfFits = shelfMax >= shelfMin;
   if (shelfMode === 'ratio') {
-    shelfRange.min = '5';
-    shelfRange.max = '95';
+    // Les bornes en % de la hauteur de la niche, au demi-pour-cent près vers l'intérieur.
+    const minPct = Math.ceil((shelfMin / volume.h) * 200) / 2;
+    const maxPct = Math.max(minPct, Math.floor((shelfMax / volume.h) * 200) / 2);
+    shelfRange.min = String(minPct);
+    shelfRange.max = String(maxPct);
     shelfRange.step = '0.5';
-    shelfPosition.min = 5;
-    shelfPosition.max = 95;
-    shelfHint.textContent = volume.is_leaf
-      ? `Proportion de la hauteur de la niche (${fmt(shelfMin)} à ${fmt(shelfMax)} cm).`
-      : 'Choisissez une niche libre (sans séparation).';
+    shelfPosition.min = minPct;
+    shelfPosition.max = maxPct;
+    shelfHint.textContent = !volume.is_leaf
+      ? 'Choisissez une niche libre (sans séparation).'
+      : shelfFits
+        ? `De ${fmtPct(minPct, 1)} % à ${fmtPct(maxPct, 1)} % de la hauteur de la niche : l'étagère reste à ${fmt(SHELF_MIN_GAP)} cm au moins du dessous et du dessus (${fmt(shelfMin)} à ${fmt(shelfMax)} cm).`
+        : shelfTooLowHint(cabinet);
   } else {
     shelfRange.min = (shelfMin / 10).toFixed(1);
-    shelfRange.max = (shelfMax / 10).toFixed(1);
+    shelfRange.max = (Math.max(shelfMin, shelfMax) / 10).toFixed(1);
     shelfRange.step = '0.5';
     shelfPosition.min = (shelfMin / 10).toFixed(1);
-    shelfPosition.max = (shelfMax / 10).toFixed(1);
-    shelfHint.textContent = volume.is_leaf
-      ? `Hauteur entre ${fmt(shelfMin)} et ${fmt(shelfMax)} cm.`
-      : 'Choisissez une niche libre (sans séparation).';
+    shelfPosition.max = (Math.max(shelfMin, shelfMax) / 10).toFixed(1);
+    shelfHint.textContent = !volume.is_leaf
+      ? 'Choisissez une niche libre (sans séparation).'
+      : shelfFits
+        ? `Dessous de l'étagère entre ${fmt(shelfMin)} et ${fmt(shelfMax)} cm du bas de la niche (${fmt(SHELF_MIN_GAP)} cm au moins de chaque côté).`
+        : shelfTooLowHint(cabinet);
   }
-  shelfRange.disabled = !volume.is_leaf;
-  shelfPosition.disabled = !volume.is_leaf;
+  shelfRange.disabled = !volume.is_leaf || !shelfFits;
+  shelfPosition.disabled = !volume.is_leaf || !shelfFits;
   if (Number(shelfPosition.value) < Number(shelfPosition.min) || Number(shelfPosition.value) > Number(shelfPosition.max)) {
-    shelfPosition.value = shelfMode === 'ratio' ? '50' : String(Math.round((Number(shelfPosition.min) + Number(shelfPosition.max)) / 2));
+    const middle = (Number(shelfPosition.min) + Number(shelfPosition.max)) / 2;
+    shelfPosition.value = shelfMode === 'ratio' ? String(Math.round(middle * 2) / 2) : middle.toFixed(1);
     shelfRange.value = shelfPosition.value;
   }
   syncShelfColumns();
   syncPartitionTool();
+}
+
+/** Bornes (mm, du bas de la niche au dessous de l'étagère) d'une étagère dans la niche `volume`. */
+function shelfBounds(volume, cabinet) {
+  const thickness = Number(cabinet?.thickness) || 18;
+  return { min: SHELF_MIN_GAP, max: volume.h - thickness - SHELF_MIN_GAP };
+}
+
+function shelfTooLowHint(cabinet) {
+  const thickness = Number(cabinet?.thickness) || 18;
+  return `Niche trop basse pour une étagère : il faut au moins ${fmt(2 * SHELF_MIN_GAP + thickness)} cm de haut.`;
+}
+
+/** Ramène la valeur saisie de l'étagère dans ses bornes (champ et curseur). */
+function clampShelfInput() {
+  const input = $('#shelf-position');
+  const range = $('#shelf-range');
+  const value = Number(input.value);
+  const min = Number(input.min);
+  const max = Number(input.max);
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return false;
+  const clamped = Math.min(max, Math.max(min, value));
+  if (clamped === value) return false;
+  input.value = String(clamped);
+  range.value = input.value;
+  syncShelfColumns();
+  return true;
 }
 
 function shelfColumnOptionsFromPartitions(volume, partitions, clearance) {
@@ -2565,10 +2606,10 @@ function shelfSeriesPlan() {
     };
   }
   const gap = available / (count + 1);
-  if (gap < 10 - 0.01) {
+  if (gap < SHELF_MIN_GAP - 0.01) {
     return {
       ...base,
-      error: `Espace entre étagères trop faible : ${fmt(gap, 1)} cm (minimum 1 cm). Réduisez le nombre.`,
+      error: `Espace entre étagères trop faible : ${fmt(gap, 1)} cm (minimum ${fmt(SHELF_MIN_GAP)} cm). Réduisez le nombre.`,
     };
   }
 
@@ -2623,7 +2664,7 @@ function syncMovePanel() {
 
   if (!moveSource) {
     sourceLabel.textContent = 'Aucun élément sélectionné.';
-    hint.textContent = 'Cliquez l’étagère d’origine dans la vue 3D ou le Scene Graph.';
+    hint.textContent = 'Cliquez l’étagère d’origine dans la vue 3D ou le Navigateur.';
     clearButton.disabled = true;
     return;
   }
@@ -3200,7 +3241,7 @@ function activateTool(nextTool) {
   activeTool = nextTool;
   $$('.tool-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tool === nextTool));
   $$('.editor-toolbar [data-toolbar-tool]').forEach((b) => b.classList.toggle('active', b.dataset.toolbarTool === nextTool));
-  $$('.tool-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === nextTool));
+  $$('.tool-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === nextTool && !panel.hidden));
   if (renderer) {
     renderer.domElement.style.cursor = FINE_ARROW_CURSOR;
   }
@@ -3272,6 +3313,7 @@ function bindSliders() {
       range.value = number.value;
       if (isShelfPair) syncShelfColumns();
     });
+    if (isShelfPair) number.addEventListener('change', clampShelfInput);
   });
 }
 
@@ -3527,6 +3569,9 @@ function bindForms() {
     const volume = currentVolume();
     if (!volume) return toast('Sélectionnez une niche.', true);
     if (!volume.is_leaf) return toast('Choisissez une niche libre.', true);
+    const bounds = shelfBounds(volume, currentCabinet());
+    if (bounds.max < bounds.min) return toast(shelfTooLowHint(currentCabinet()), true);
+    if (clampShelfInput()) toast("Hauteur ramenée dans les limites de la niche.");
     const mode = $('#shelf-mode').value;
     const raw = Number($('#shelf-position').value);
     const position = mode === 'ratio' ? raw / 100 : raw * 10;
@@ -4354,7 +4399,8 @@ function bindPhotoModal() {
 /* ------------------------------------------------------------------ */
 
 const SETTINGS_STORAGE_KEY = 'ploy3d-editor-settings-v1';
-const TOOL_KEYS = ['split', 'move', 'side', 'shelf', 'partition', 'measure', 'plinth', 'cabinet'];
+// « partition » (Séparation) is no longer a tool of the bar: a niche is divided vertically with Séparer.
+const TOOL_KEYS = ['split', 'move', 'side', 'shelf', 'measure', 'plinth', 'cabinet'];
 const TOOL_LABELS = {
   split: 'Séparer',
   move: 'Déplacer / copier',

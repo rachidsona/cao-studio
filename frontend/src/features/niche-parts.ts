@@ -7,9 +7,11 @@
  *   (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du commerce qui tient dans la profondeur.
  * - Portes (de toute la répartition) : une porte en applique devant chaque case. Elle couvre le dessus et le dessous ;
  *   un côté extérieur ou un côté double (chaque case a le sien), elle le couvre en entier ; un côté simple, elle en
- *   couvre la moitié, l'autre moitié est à la porte voisine ; sans côté, les cases réunies n'ont qu'une porte.
+ *   couvre la moitié, l'autre moitié est à la porte voisine ; deux cases sans côté entre elles ont chacune leur porte,
+ *   qui se rejoignent au milieu de la place du côté absent.
  * - Fond (de toute la répartition) : en applique derrière les panneaux, sur le dessus, le dessous et les côtés ; un seul
- *   pour tout le placard, ou un par case (coupé au milieu d'un côté simple, comme les portes).
+ *   pour tout le placard, ou un par case (coupé au milieu d'un côté simple, comme les portes ; un seul pour des cases
+ *   sans côté entre elles).
  * Les pièces sont des boîtes dans le repère de la niche : u le long de la largeur (x de l'esquisse), v vers le haut
  * (y de l'esquisse), w dans la profondeur, compté depuis le plan de l'esquisse le long de sa normale ; la face avant
  * des panneaux est à w = profondeur.
@@ -74,31 +76,49 @@ export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { f
 }
 
 /**
- * The doors of a partition, from the left, as rectangles of the sketch [x0, y0, x1, y1]: one per case (cases joined
- * without a divider share one), `gap` mm apart and `gap` / 2 in from the outer edges.
+ * Where each case's front reaches, from the left, as [x0, x1] relative to the partition: over the outer side or its own
+ * panel of a double side whole, to the middle of a simple side, or of the place of a side left out.
+ */
+function caseFronts(input: PartitionParams, caseWidths: readonly number[]): [number, number][] {
+  const e = input.thickness;
+  const reach = (kind: string | undefined) => (kind === "single" || kind === "none" ? e / 2 : e);
+  let x = e;
+  return caseWidths.map((w, i): [number, number] => {
+    const [a, b] = [x, x + w];
+    x = b + (input.dividers[i] === "double" ? 2 * e : e);
+    return [a - reach(input.dividers[i - 1]), b + reach(input.dividers[i])];
+  });
+}
+
+/**
+ * The doors of a partition, from the left, as rectangles of the sketch [x0, y0, x1, y1]: one per case, even for cases
+ * joined without a side (they then meet in the middle of the side's place), `gap` mm apart and `gap` / 2 in from the
+ * outer edges.
  */
 export function partitionDoors(input: PartitionParams, origin: [number, number], gap: number): [number, number, number, number][] | string {
   const layout = partitionLayout(input);
   if (typeof layout === "string") return layout;
-  const e = input.thickness;
-  // What stands between two cases (a divider left out joins them into one).
-  const between = input.dividers.filter((d) => d !== "none");
-  const reach = (kind: string | undefined) => (kind === "single" ? e / 2 : e);
   const [ox, oy] = origin;
   const bottom = input.boards ? input.plinth : 0;
-  return layout.caseSpans.map(([a, b], j): [number, number, number, number] => [
-    ox + a - reach(between[j - 1]) + gap / 2,
-    oy + bottom + gap / 2,
-    ox + b + reach(between[j]) - gap / 2,
-    oy + input.height - gap / 2,
-  ]);
+  return caseFronts(input, layout.caseWidths).map(([a, b]): [number, number, number, number] => [ox + a + gap / 2, oy + bottom + gap / 2, ox + b - gap / 2, oy + input.height - gap / 2]);
 }
 
-/** The back panels of a partition, from the left, as [x0, x1] of the sketch: the whole length, or one per case. */
+/**
+ * The back panels of a partition, from the left, as [x0, x1] of the sketch: the whole length, or one per case (cut in
+ * the middle of a simple side, like the doors; cases joined without a side share one, nothing stands there to hold a
+ * joint).
+ */
 export function partitionBacks(input: PartitionParams, origin: [number, number], split: "whole" | "cases" = "whole"): [number, number][] | string {
   if (split === "whole") return [[origin[0], origin[0] + input.length]];
-  const doors = partitionDoors(input, origin, 0);
-  return typeof doors === "string" ? doors : doors.map(([x0, , x1]): [number, number] => [x0, x1]);
+  const layout = partitionLayout(input);
+  if (typeof layout === "string") return layout;
+  const spans: [number, number][] = [];
+  caseFronts(input, layout.caseWidths).forEach(([a, b], i) => {
+    const last = spans[spans.length - 1];
+    if (last && input.dividers[i - 1] === "none") last[1] = origin[0] + b;
+    else spans.push([origin[0] + a, origin[0] + b]);
+  });
+  return spans;
 }
 
 /** Why these settings cannot equip this niche, or null. */

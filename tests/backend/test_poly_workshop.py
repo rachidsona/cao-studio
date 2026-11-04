@@ -466,6 +466,23 @@ class CabinetServiceTests(TestCase):
         with self.assertRaises(CabinetDesignError):
             self.service.add_shelf(self.root.pk, 185, "absolute")
 
+    def test_shelf_in_small_niche_follows_the_minimum_gap(self):
+        # Une niche de 30 cm : 7 % (2,1 cm du bas) est refusé avec un message en cm, 20 % passe.
+        self.service.add_shelf(self.root.pk, 300, "absolute")
+        lower = self.cabinet.internal_volumes.filter(parent=self.root, slot="a").first()
+        self.assertAlmostEqual(lower.height, 300)
+        with self.assertRaisesMessage(CabinetDesignError, "doit rester à 5,0 cm au moins"):
+            self.service.add_shelf(lower.pk, 0.07, "ratio")
+        self.service.add_shelf(lower.pk, 0.2, "ratio")
+        lower.refresh_from_db()
+        self.assertTrue(lower.split_shelf)
+
+    def test_shelf_in_too_low_niche_says_so(self):
+        self.service.add_shelf(self.root.pk, 100, "absolute")
+        lower = self.cabinet.internal_volumes.filter(parent=self.root, slot="a").first()
+        with self.assertRaisesMessage(CabinetDesignError, "Niche trop basse pour une étagère"):
+            self.service.add_shelf(lower.pk, 0.5, "ratio")
+
     def test_shelf_series_between_bottom_and_top(self):
         result = self.service.add_shelf_series(volume_id=self.root.pk, count=5)
         self.root.refresh_from_db()
@@ -932,14 +949,22 @@ class CabinetServiceTests(TestCase):
             [node for node in walk(scene["tree"]) if node["kind"] == "back"]
         )
 
-    def test_top_bottom_split_at_vertical_divider(self):
+    def test_a_separation_divides_the_niche_only(self):
         self.service.split_volume(self.root.pk, "vertical", 0.5, "ratio")
-        # Le dessous et le dessus sont débités en deux pièces au niveau de la séparation.
+        # Séparer divise la niche : le dessous et le dessus restent d'une pièce, la séparation va de l'un à l'autre.
+        self.assertEqual(self.cabinet.panels.filter(name="Dessous").count(), 1)
+        self.assertEqual(self.cabinet.panels.filter(name="Dessus").count(), 1)
+        separation = self.cabinet.panels.get(name="Séparation")
+        self.assertAlmostEqual(separation.length, self.root.height)
+        scene = self.service.scene([])
+        self.assertEqual(len([b for b in scene["boxes"] if b["side"] == "bottom"]), 1)
+        self.assertEqual(len([b for b in scene["boxes"] if b["side"] == "top"]), 1)
+
+    def test_a_double_side_still_runs_through_the_bottom_and_the_top(self):
+        self.service.split_volume(self.root.pk, "vertical", 0.5, "ratio", side=True)
+        # Côté (côté double, jonction de deux modules) passe du sol au dessus : il coupe le dessous et le dessus.
         self.assertEqual(self.cabinet.panels.filter(name="Dessous").count(), 2)
         self.assertEqual(self.cabinet.panels.filter(name="Dessus").count(), 2)
-        scene = self.service.scene([])
-        self.assertEqual(len([b for b in scene["boxes"] if b["side"] == "bottom"]), 2)
-        self.assertEqual(len([b for b in scene["boxes"] if b["side"] == "top"]), 2)
 
     def test_split_side_creates_full_side_panels(self):
         result = self.service.split_volume(self.root.pk, "vertical", 0.5, "ratio", side=True)
@@ -1240,13 +1265,15 @@ class ViewsTests(TestCase):
 
         editor = self.client.get(reverse("poly:editor", args=[cabinet.pk]))
         self.assertEqual(editor.status_code, 200)
-        self.assertContains(editor, "Scene Graph")
+        self.assertContains(editor, "Navigateur")
         self.assertContains(editor, "initial-scene")
         self.assertContains(editor, 'id="display-popover"')
         self.assertContains(editor, 'id="viewport-hidden-note"')
         self.assertContains(editor, 'id="vis-carcass"')
         self.assertContains(editor, "Vue de travail")
-        self.assertContains(editor, 'data-tool="partition"')
+        # The « Séparation » tool is no longer offered (Séparer divides a niche); its panel stays, hidden.
+        self.assertNotContains(editor, 'data-tool="partition"')
+        self.assertNotContains(editor, 'data-toolbar-tool="partition"')
         self.assertContains(editor, 'id="btn-partition"')
         self.assertContains(editor, 'data-partition-edge="bottom"')
         self.assertContains(editor, 'data-partition-edge="top"')

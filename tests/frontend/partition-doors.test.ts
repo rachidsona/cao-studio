@@ -25,19 +25,22 @@ const doc = (s: SketchFeature): CadDocument => ({ ...createReferencePlate(), fea
 const doorsOf = (d: CadDocument) => d.features.filter((f): f is NicheFeature => f.type === "niche" && f.fill === "doors");
 
 describe("portes d'une répartition", () => {
-  it("une porte par case ; elle couvre le côté extérieur et son côté double en entier, la moitié d'un côté simple ; des cases sans côté n'en ont qu'une", () => {
+  it("une porte par case ; elle couvre le côté extérieur et son côté double en entier, la moitié d'un côté simple ; deux cases sans côté ont chacune la leur", () => {
     const doors = partitionDoors(INPUT, [0, 0], 4);
     if (typeof doors === "string") throw new Error(doors);
     // Free length 1000 − 2×18 − 18 − 2×18 − 18 (the place of the missing side joins its niche) = 892 over 4 cases.
-    expect(doors).toHaveLength(3);
-    const [first, second, third] = doors as [[number, number, number, number], [number, number, number, number], [number, number, number, number]];
-    expect(first[0]).toBe(2); // the outer side covered, 2 mm in
-    expect(first[2] + 4 / 2).toBeCloseTo(18 + 223 + 9); // half the simple side
-    expect(second[0] - 4 / 2).toBeCloseTo(18 + 223 + 9); // the other half
-    expect(second[2] + 2).toBeCloseTo(18 + 223 + 18 + 223 + 18); // its own panel of the double side, whole
-    expect(third[0] - 2).toBeCloseTo(18 + 223 + 18 + 223 + 18); // the other panel, whole
-    expect(third[2]).toBe(998); // over the outer side, 2 mm in
-    expect([first[1], first[3]]).toEqual([2, 1998]); // over the top and the bottom
+    expect(doors).toHaveLength(4);
+    const [first, second, third, fourth] = doors as [number, number, number, number][];
+    expect(first![0]).toBe(2); // the outer side covered, 2 mm in
+    expect(first![2] + 4 / 2).toBeCloseTo(18 + 223 + 9); // half the simple side
+    expect(second![0] - 4 / 2).toBeCloseTo(18 + 223 + 9); // the other half
+    expect(second![2] + 2).toBeCloseTo(18 + 223 + 18 + 223 + 18); // its own panel of the double side, whole
+    expect(third![0] - 2).toBeCloseTo(18 + 223 + 18 + 223 + 18); // the other panel, whole
+    // No side between the last two cases: their doors meet in the middle of its place.
+    expect(third![2] + 2).toBeCloseTo(18 + 223 + 18 + 223 + 36 + 223 + 9);
+    expect(fourth![0] - 2).toBeCloseTo(18 + 223 + 18 + 223 + 36 + 223 + 9);
+    expect(fourth![2]).toBe(998); // over the outer side, 2 mm in
+    expect([first![1], first![3]]).toEqual([2, 1998]); // over the top and the bottom
   });
 
   it("cochées dans l'étape, les portes deviennent un équipement en avant des panneaux, avec leurs charnières", () => {
@@ -47,14 +50,14 @@ describe("portes d'une répartition", () => {
     const n = nicheGeometry(doors!, d.features[0] as SketchFeature);
     if (typeof n === "string") throw new Error(n);
     const parts = nicheParts(doors!, n);
-    expect(parts.map((p) => p.name)).toEqual(["Porte 1", "Porte 2", "Porte 3", "Poignée porte 1", "Poignée porte 2", "Poignée porte 3"]);
+    expect(parts.map((p) => p.name)).toEqual(["Porte 1", "Porte 2", "Porte 3", "Porte 4", "Poignée porte 1", "Poignée porte 2", "Poignée porte 3", "Poignée porte 4"]);
     expect([parts[0]!.from[2], parts[0]!.to[2]]).toEqual([400, 419]);
-    expect(parts.slice(0, 3).map((p) => p.handle)).toEqual(["right", "left", "right"]);
+    expect(parts.slice(0, 4).map((p) => p.handle)).toEqual(["right", "left", "right", "left"]);
     // A handle stands on its door's front face, 40 mm in from the edge opposite the hinges, 128 mm long.
-    expect(parts[3]).toMatchObject({ kind: "handle", role: "hardware", of: 0 });
-    expect([parts[3]!.from[0], parts[3]!.from[2], parts[3]!.to[1] - parts[3]!.from[1]]).toEqual([parts[0]!.to[0] - 40, 419, 128]);
+    expect(parts[4]).toMatchObject({ kind: "handle", role: "hardware", of: 0 });
+    expect([parts[4]!.from[0], parts[4]!.from[2], parts[4]!.to[1] - parts[4]!.from[1]]).toEqual([parts[0]!.to[0] - 40, 419, 128]);
     // 1996 mm high: 4 hinges each.
-    expect(nicheHardware(d.features, doors!)).toEqual([{ name: "Charnière à boîtier Ø35", quantity: 12 }, { name: "Poignée entraxe 128 mm", quantity: 3 }]);
+    expect(nicheHardware(d.features, doors!)).toEqual([{ name: "Charnière à boîtier Ø35", quantity: 16 }, { name: "Poignée entraxe 128 mm", quantity: 4 }]);
     expect(() => parseDocument(JSON.parse(JSON.stringify(d)))).not.toThrow();
   });
 
@@ -72,11 +75,11 @@ describe("portes d'une répartition", () => {
     const [doors] = doorsOf(d);
     const n = nicheGeometry(doors!, d.features[0] as SketchFeature);
     if (typeof n === "string") throw new Error(n);
-    // Doors 1 and 2 chosen hinged on the right (their handle on the left), door 3 in turn: on the left.
-    expect(nicheParts(doors!, n).slice(0, 3).map((p) => p.handle)).toEqual(["left", "left", "right"]);
+    // Doors 1 and 2 chosen hinged on the right (their handle on the left), doors 3 and 4 in turn: left, right.
+    expect(nicheParts(doors!, n).slice(0, 4).map((p) => p.handle)).toEqual(["left", "left", "right", "left"]);
     // A click on the handle swings its door, the door and its handle together.
-    expect(doorSwing(d, `${doors!.id}#3`)).toEqual(doorSwing(d, `${doors!.id}#0`));
-    expect(doorWithHandle(d, `${doors!.id}#3`)).toEqual([`${doors!.id}#0`, `${doors!.id}#3`]);
+    expect(doorSwing(d, `${doors!.id}#4`)).toEqual(doorSwing(d, `${doors!.id}#0`));
+    expect(doorWithHandle(d, `${doors!.id}#4`)).toEqual([`${doors!.id}#0`, `${doors!.id}#4`]);
     const swing = doorSwing(d, `${doors!.id}#0`)!;
     const part = nicheParts(doors!, n)[0]!;
     // The front plane: the sketch's x is x, its y is z, the depth goes along −Y; hinges on the right edge, at the front.
@@ -113,6 +116,9 @@ describe("fond d'une répartition", () => {
     expect(backs[0]).toEqual([0, 18 + 223 + 9]);
     expect(backs[1]![0]).toBeCloseTo(18 + 223 + 9);
     expect(backs.at(-1)![1]).toBe(1000);
+    // The last two cases, without a side between them, share one back.
+    expect(backs).toHaveLength(3);
+    expect(backs[2]![0]).toBeCloseTo(18 + 223 + 18 + 223 + 18);
     const made = syncPartitionDoors(doc(sketch(DOORS, 400, { thickness: 18, split: "cases" })), "sk1");
     expect(backOf(made)).toHaveLength(1);
     expect(doorsOf(made)).toHaveLength(1);

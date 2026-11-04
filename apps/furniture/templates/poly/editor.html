@@ -3,6 +3,7 @@
 
 {% block title %}{{ cabinet.name }} — poly_3D{% endblock %}
 {% block body_class %}editor-page{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% versioned_static 'poly/css/side-panels.css' %}">{% endblock %}
 
 {% block header %}
 <header class="app-header" data-cabinet-id="{{ cabinet.pk }}">
@@ -89,10 +90,6 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
     <span>Étagère</span>
   </button>
-  <button type="button" class="toolbar-btn" data-toolbar-tool="partition" title="Séparation">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="12" y1="7" x2="12" y2="17"/></svg>
-    <span>Séparation</span>
-  </button>
   <button type="button" class="toolbar-btn" data-toolbar-tool="measure" title="Mesurer">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="13" width="18" height="4"/><line x1="7" y1="13" x2="7" y2="16"/><line x1="11" y1="13" x2="11" y2="15"/><line x1="15" y1="13" x2="15" y2="16"/><line x1="19" y1="13" x2="19" y2="15"/></svg>
     <span>Mesurer</span>
@@ -109,7 +106,7 @@
 <div class="editor-shell" data-cabinet-id="{{ cabinet.pk }}" data-api-root="{% url 'poly:api_create_cabinet' %}">
   <aside class="editor-side editor-left">
     <section class="pane-section">
-      <h2 class="pane-title">Scene Graph <span class="count" id="tree-count"></span></h2>
+      <h2 class="pane-title">Navigateur <span class="count" id="tree-count"></span></h2>
       <div class="tree" id="scene-tree">
         <div class="empty-mini">Chargement…</div>
       </div>
@@ -152,7 +149,7 @@
               <label class="display-check"><input type="checkbox" id="vis-volumes"> Zones / volumes</label>
               <label class="display-check"><input type="checkbox" id="vis-edges" checked> Arêtes</label>
             </div>
-            <p class="display-hint">Masquez la carcasse ou les façades pour travailler à l'intérieur. L'œil de chaque ligne du Scene Graph masque l'élément seul. La sélection reste surlignée en bleu.</p>
+            <p class="display-hint">Masquez la carcasse ou les façades pour travailler à l'intérieur. L'œil de chaque ligne du Navigateur masque l'élément seul. La sélection reste surlignée en bleu.</p>
             <div class="display-popover-foot">
               <button type="button" id="display-work">Vue de travail</button>
             </div>
@@ -168,7 +165,7 @@
     <div class="viewport-hidden-note" id="viewport-hidden-note" hidden>
       <div class="viewport-hidden-card">
         <strong>Caisson masqué</strong>
-        <span>Cliquez sur l’œil du caisson dans le Scene Graph pour l’afficher.</span>
+        <span>Cliquez sur l’œil du caisson dans le Navigateur pour l’afficher.</span>
       </div>
     </div>
     {% if scene_error %}
@@ -203,7 +200,6 @@
         <button type="button" data-tool="move">Déplacer</button>
         <button type="button" data-tool="side">Côté</button>
         <button type="button" data-tool="shelf">Étagère</button>
-        <button type="button" data-tool="partition">Séparation</button>
         <button type="button" data-tool="measure">Mesurer</button>
         <button type="button" data-tool="plinth">Plinthe</button>
         <button type="button" data-tool="cabinet">Caisson</button>
@@ -297,7 +293,7 @@
           <p class="hint" id="move-source">Aucun élément sélectionné.</p>
         </div>
         <button class="btn btn-sm btn-block" id="btn-move-clear" type="button" disabled>Effacer la sélection</button>
-        <p class="hint" id="move-hint" style="margin-top:7px;">Cliquez une étagère dans la vue 3D ou le Scene Graph.</p>
+        <p class="hint" id="move-hint" style="margin-top:7px;">Cliquez une étagère dans la vue 3D ou le Navigateur.</p>
       </div>
 
       <div class="tool-panel" data-panel="side">
@@ -380,7 +376,8 @@
         <p class="hint" id="shelf-action-hint" style="margin-top:7px;">La longueur suit la colonne choisie ; la profondeur suit la niche.</p>
       </div>
 
-      <div class="tool-panel" data-panel="partition">
+      {# The « Séparation » tool was taken off (a cloison between two shelves): Séparer divides a niche vertically. Its panel stays, hidden, for the script's bindings. #}
+      <div class="tool-panel" data-panel="partition" hidden>
         <p class="hint" style="margin-top:0;">Sélectionnez une étagère puis Dessous/Dessus, ou deux étagères adjacentes dans la même niche ou colonne, pour créer une séparation verticale. Dans une niche déjà divisée par des séparations, la position est relative à la colonne choisie.</p>
         <div id="partition-picks" class="partition-picks"></div>
         <div class="field">
@@ -507,6 +504,7 @@
 
     <div class="tab-panel" data-panel="cutlist" data-group="fabrication">
       <div class="pane-section">
+        <h2 class="pane-title">Liste de débit</h2>
         <div class="summary-chips" id="cutlist-chips"></div>
         <div class="table-wrap">
           <table class="data" id="cutlist-table">
@@ -522,6 +520,7 @@
 
     <div class="tab-panel" data-panel="nesting" data-group="fabrication">
       <div class="pane-section">
+        <h2 class="pane-title">Optimisation de découpe</h2>
         <div class="summary-chips" id="nesting-chips"></div>
         <div class="field-row" style="align-items:flex-end;">
           <div>
@@ -535,9 +534,11 @@
       </div>
     </div>
 
+    {# The quote in three cards: its settings, its lines and totals, its hardware. #}
     <div class="tab-panel" data-panel="quote" data-group="quote">
-      <div class="pane-section">
-        <div class="quote-form">
+      <section class="pane-section">
+        <h2 class="pane-title">Informations du devis</h2>
+        <div class="quote-form" style="margin-bottom:0;">
           <div class="field">
             <label for="quote-client">Client</label>
             <input id="quote-client" type="text" value="{{ cabinet.quote.client_name|default:'Client' }}">
@@ -563,6 +564,9 @@
           </div>
           <button class="btn btn-primary btn-block" id="btn-quote">Mettre à jour le devis</button>
         </div>
+      </section>
+      <section class="pane-section">
+        <h2 class="pane-title">Devis</h2>
         <div class="table-wrap">
           <table class="data" id="quote-table">
             <thead><tr><th>Désignation</th><th class="num">Total</th></tr></thead>
@@ -570,29 +574,29 @@
           </table>
         </div>
         <div class="totals" id="quote-totals"></div>
-        <div class="pane-section" style="margin-top:12px;">
-          <h2 class="pane-title">Quincaillerie (BOM)</h2>
-          <div class="hardware-list" id="hardware-list">
-            {% for rule in hardware_rules %}
-              <label class="check hardware-rule" data-hardware-rule="{{ rule.pk }}">
-                <input type="checkbox" data-hardware-id="{{ rule.pk }}"
-                       {% if rule.pk in attached_hardware_ids %}checked{% endif %}>
-                <span class="hardware-rule-label">
-                  <strong>{{ rule.name }}</strong>
-                  {% if rule.auto_mode %}
-                    <span class="chip chip-teal hardware-auto" data-auto-mode="{{ rule.auto_mode }}" data-auto-per="{{ rule.auto_per_unit|floatformat:1 }}">auto</span>
-                  {% endif %}
-                  <span class="muted small">{{ rule.unit_price|floatformat:2 }} €/{{ rule.unit }}</span>
-                </span>
-              </label>
-            {% empty %}
-              <p class="empty-mini">Aucune règle de quincaillerie — <a href="{% url 'admin:catalog_hardwarerule_changelist' %}" target="_blank" rel="noopener">en créer une</a>.</p>
-            {% endfor %}
-          </div>
-          <p class="hint" style="margin-top:6px;">Les quantités automatiques suivent la géométrie : charnières selon la hauteur des façades, tiges par étagère, excentriques par côté…</p>
-        </div>
         <a class="btn btn-sm btn-block" style="margin-top:9px;" href="{% url 'poly:quote_page' cabinet.pk %}" target="_blank" rel="noopener">Ouvrir le devis imprimable</a>
-      </div>
+      </section>
+      <section class="pane-section">
+        <h2 class="pane-title">Quincaillerie (BOM)</h2>
+        <div class="hardware-list" id="hardware-list">
+          {% for rule in hardware_rules %}
+            <label class="check hardware-rule" data-hardware-rule="{{ rule.pk }}">
+              <input type="checkbox" data-hardware-id="{{ rule.pk }}"
+                     {% if rule.pk in attached_hardware_ids %}checked{% endif %}>
+              <span class="hardware-rule-label">
+                <strong>{{ rule.name }}</strong>
+                {% if rule.auto_mode %}
+                  <span class="chip chip-teal hardware-auto" data-auto-mode="{{ rule.auto_mode }}" data-auto-per="{{ rule.auto_per_unit|floatformat:1 }}">auto</span>
+                {% endif %}
+                <span class="muted small">{{ rule.unit_price|floatformat:2 }} €/{{ rule.unit }}</span>
+              </span>
+            </label>
+          {% empty %}
+            <p class="empty-mini">Aucune règle de quincaillerie — <a href="{% url 'admin:catalog_hardwarerule_changelist' %}" target="_blank" rel="noopener">en créer une</a>.</p>
+          {% endfor %}
+        </div>
+        <p class="hint" style="margin-top:6px;">Les quantités automatiques suivent la géométrie : charnières selon la hauteur des façades, tiges par étagère, excentriques par côté…</p>
+      </section>
     </div>
 
     <div class="tab-panel" data-panel="checks" data-group="fabrication">
@@ -757,4 +761,5 @@
 }
 </script>
 <script type="module" src="{% versioned_static 'poly/js/editor.js' %}"></script>
+<script type="module" src="{% versioned_static 'poly/js/fold-cards.js' %}"></script>
 {% endblock %}

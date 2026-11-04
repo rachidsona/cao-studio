@@ -52,7 +52,8 @@ def _full_height_divider_positions(cabinet: Cabinet) -> List[tuple]:
     if root is None:
         return []
     positions: List[tuple] = []
-    for volume in cabinet.internal_volumes.filter(split_direction="vertical"):
+    # Only a double side (tool Côté) runs through the bottom and the top; a separation (tool Séparer) stays between them.
+    for volume in cabinet.internal_volumes.filter(split_direction="vertical", split_side=True):
         bottom_ok = abs(volume.pos_y - root.pos_y) < 0.01
         top_ok = abs((volume.pos_y + volume.height) - (root.pos_y + root.height)) < 0.01
         if bottom_ok and top_ok:

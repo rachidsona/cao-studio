@@ -73,12 +73,13 @@ dans l'en-tête du site et carte « Ouvrir l'atelier » sur la page Mes projets 
   modèles de caissons, affaires (multi-caissons) ;
 - l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
   cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du
-  haut pleine largeur), **Étagère** (une ou une série de 1 à 20, colonne entre côté et cloison), **Séparation**
-  (cloison entre deux étagères ou une étagère et le dessus ou le dessous), **Côté** (côtés doubles, un ou une série),
-  **Déplacer / copier** des étagères vers une autre niche, **Plinthe** (avec Séparer, Côté et Étagère, un **simple
+  haut pleine largeur ; une séparation divise **seulement la niche** : le dessus et le dessous restent d'une pièce,
+  seul un côté double fait avec **Côté** les traverse et les coupe), **Étagère** (une ou une série de 1 à 20, colonne entre côté et cloison ; l'étagère reste à 5 cm au moins du dessous et du dessus de sa niche, la règle du serveur : en proportion, le curseur ne va que de cette limite basse à cette limite haute, une valeur tapée hors limites y est ramenée, et une niche trop basse le dit), **Côté** (côtés doubles, un ou une série),
+  **Déplacer / copier** des étagères vers une autre niche, **Plinthe** (l'outil « Séparation », une cloison entre
+  deux étagères, a été retiré de la barre : une niche se divise avec Séparer ; avec Séparer, Côté et Étagère, un **simple
   clic** dans la vue choisit la niche, un clic sur une étagère ou une séparation sélectionne ce panneau ; avec les
   autres outils, le double-clic choisit la niche), **Caisson** (cotes, matières, fond, façades,
-  tringle, tiroirs), **Mesurer** (face, arête, point), Scene Graph avec un œil par élément, Rayons X, menu
+  tringle, tiroirs), **Mesurer** (face, arête, point), **Navigateur** (dessiné comme celui de l'éditeur : cartes en dégradé, l'œil devant chaque nom, ligne choisie éclairée ; à droite, chaque bloc d'options est une carte ombrée à bandeau de titre ; un clic sur le titre, ou Entrée, replie ou déplie la carte (▾ / ▸) ; à droite, en accordéon, les cartes sont fermées à l'ouverture et en ouvrir une ferme les autres (un outil choisi dans la barre du haut ouvre « Outils ») ; l'onglet Devis a trois cartes, « Informations du devis », « Devis » (lignes, totaux, devis imprimable) et « Quincaillerie (BOM) » ; dans Fabrication, « Liste de débit » et « Optimisation de découpe » ont aussi leur titre ; le Navigateur est ouvert par défaut et reste replié au rechargement si on l'a replié ; `poly/css/side-panels.css`, `poly/js/fold-cards.js`) avec un œil par élément, Rayons X, menu
   d'affichage, vues, annuler / rétablir et historique avec retour arrière, liste de débit, optimisation de découpe,
   devis, croquis 2D, contrôles, rendu photo, « Enregistrer comme modèle » ;
 - l'**éditeur de pièce** (cuisine, dressing ou autre) : plan 2D vu de dessus et vue 3D, murs aux sommets déplaçables,
@@ -726,7 +727,8 @@ opération existante.
   par case » pose une porte en applique devant chaque case. Elle couvre le dessus, le dessous (au-dessus du socle) et
   le **côté extérieur** en entier. Sur un **côté simple**, deux portes voisines s'en partagent l'épaisseur (la moitié
   chacune). Sur un **côté double**, chaque porte couvre en entier le panneau de sa case. Des cases **sans côté**
-  entre elles n'ont qu'une porte. Réglages : le jeu entre les portes (3 mm, la moitié aux bords extérieurs),
+  entre elles ont chacune leur porte, jointives au milieu de la place du côté absent (le fond « un par case » reste
+  d'un seul tenant derrière elles). Réglages : le jeu entre les portes (3 mm, la moitié aux bords extérieurs),
   l'épaisseur (18 mm) et les trous de poignée (entraxe 128 mm, le long du bord opposé aux charnières). Le **sens
   d'ouverture** se choisit porte par porte (« S'ouvre à gauche » ou « à droite », charnières de ce côté) ; par défaut
   il alterne, gauche puis droite. Dans la vue 3D, un clic sur une porte l'**ouvre** (elle tourne de 100° vers l'avant
