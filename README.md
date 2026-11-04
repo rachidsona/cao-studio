@@ -22,7 +22,11 @@ npm run build                 # typecheck + Tailwind (static/css) + Vite (static
 .venv/bin/python manage.py runserver 127.0.0.1:8765
 ```
 
-Ouvrir http://127.0.0.1:8765/ → « Mes projets » → créer un projet. Chaque nouveau projet
+Ouvrir http://127.0.0.1:8765/ → la **page d'accueil** (`/projects/`, lien « Accueil » de l'en-tête) a deux
+colonnes, chacune avec son image (rendus de l'application, `static/img/accueil/`) : **Conception 3D** (créer un
+projet, projet exemple, puis la liste « Projets 3D ») et **Conception Cuisine & Dressing** (nommer une cuisine ou un
+dressing ouvre l'atelier sur sa pièce à dessiner, « Ouvrir l'atelier », puis la liste « Projets Cuisine & Dressing »,
+les affaires de l'atelier). Sur téléphone, chaque carte précède sa liste. Chaque nouveau projet
 contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé chêne, fond HDF)
 pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
 touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
@@ -65,7 +69,7 @@ projets existants s'ouvrent tels quels). Ce qui a été porté dans l'éditeur 3
 ### Atelier « Caissons et pièces » (`/poly/`)
 
 L'atelier de l'ancien poly_3D est monté tel quel dans le même serveur, sous `/poly/` : lien « Caissons et pièces »
-dans l'en-tête du site et carte « Ouvrir l'atelier » sur la page Mes projets ; chacune de ses pages a un lien
+dans l'en-tête du site et carte « Conception Cuisine & Dressing » de la page d'accueil ; chacune de ses pages a un lien
 « ← Mes projets ». Il demande un compte poly_3D (les pages renvoient à la connexion, son API répond 401 en JSON,
 `apps/furniture/middleware.py`). On y retrouve :
 

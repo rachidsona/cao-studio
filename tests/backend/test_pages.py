@@ -44,9 +44,23 @@ def test_projects_list_renders(client_logged, project):
     response = client_logged.get("/projects/")
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Mes projets" in content
+    assert "Conception 3D" in content and "Conception Cuisine &amp; Dressing" in content
     assert "Plaque" in content
     assert f"/projects/{project.id}/editor/" in content
+    assert "/static/img/accueil/conception-3d.jpg" in content
+    assert "/static/img/accueil/cuisine-dressing.jpg" in content
+
+
+def test_home_lists_kitchens_and_dressings(client_logged):
+    from apps.furniture.models import Project as Affair
+
+    affair = Affair.objects.create(name="Cuisine Dupont", placement_mode=Affair.PLACEMENT_ROOM)
+    content = client_logged.get("/projects/").content.decode()
+    assert "Projets Cuisine &amp; Dressing" in content
+    assert "Cuisine Dupont" in content and "Cuisine · 0 caissons ·" in content
+    assert f"/poly/projet/{affair.pk}/piece/" in content
+    # Its « new » form creates an affair in the workshop.
+    assert 'action="/poly/projet/creer/"' in content
 
 
 def test_create_project_from_form(client_logged, user):

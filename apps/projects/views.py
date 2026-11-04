@@ -1,9 +1,12 @@
-"""HTML pages: project list/creation and the 3D editor shell."""
+"""HTML pages: the home page (3D projects and the workshop's kitchens and dressings), the 3D editor shell."""
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
+
+from apps.furniture.models import Project as FurnitureProject
 
 from . import services
 from .documents import default_document, example_document
@@ -28,7 +31,13 @@ def project_list(request):
     else:
         form = ProjectCreateForm()
     projects = Project.objects.filter(owner=request.user).order_by("-updated_at")
-    return render(request, "projects/project_list.html", {"projects": projects, "form": form})
+    # The kitchens and dressings of the workshop (apps.furniture: its affairs belong to no one).
+    affairs = FurnitureProject.objects.annotate(item_count=Count("items")).order_by("-updated_at")
+    return render(
+        request,
+        "projects/project_list.html",
+        {"projects": projects, "affairs": affairs, "form": form},
+    )
 
 
 @login_required

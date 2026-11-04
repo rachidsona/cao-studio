@@ -16,7 +16,7 @@ async function newProject(page: Page, name: string): Promise<string> {
   await page.fill('input[name="password2"]', secret);
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await page.waitForURL("**/projects/");
-  await page.fill('input[name="name"]', name);
+  await page.fill("#id_name", name);
   await page.getByRole("button", { name: "Créer et ouvrir" }).click();
   await page.waitForURL("**/editor/");
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
