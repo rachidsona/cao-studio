@@ -23,7 +23,7 @@ npm run build                 # typecheck + Tailwind (static/css) + Vite (static
 ```
 
 Ouvrir http://127.0.0.1:8765/ → la **page d'accueil** (`/projects/`, lien « Accueil » de l'en-tête) a deux
-colonnes, chacune avec son image (rendus de l'application, `static/img/accueil/`) : **Conception 3D** (créer un
+colonnes, chacune avec sa photo (un meuble télé et une cuisine, `static/img/accueil/`) et son titre centré : **Conception 3D** (créer un
 projet, projet exemple, puis la liste « Projets 3D ») et **Conception Cuisine & Dressing** (nommer une cuisine ou un
 dressing ouvre l'atelier sur sa pièce à dessiner, « Ouvrir l'atelier », puis la liste « Projets Cuisine & Dressing »,
 les affaires de l'atelier). Sur téléphone, chaque carte précède sa liste. Chaque nouveau projet

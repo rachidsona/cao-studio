@@ -6,9 +6,9 @@
 {# card comes before its own list; side by side, the two cards then the two lists. #}
 <div class="grid gap-x-8 gap-y-6 lg:grid-cols-2">
   <section class="order-1 overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-3d-title">
-    <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un caisson en bois modélisé dans l'éditeur 3D" width="1034" height="646" class="block aspect-[16/10] w-full object-cover" loading="eager">
+    <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[5/4] w-full object-cover" loading="eager">
     <div class="p-5">
-      <h1 id="design-3d-title" class="text-2xl font-semibold tracking-tight">Conception 3D</h1>
+      <h1 id="design-3d-title" class="text-center text-2xl font-semibold tracking-tight">Conception 3D</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Pièces et meubles modélisés en 3D : esquisses, volumes, assemblages, liste de débit et mise en plan.</p>
       <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
         {% csrf_token %}
@@ -23,9 +23,9 @@
   </section>
 
   <section class="order-3 overflow-hidden border border-gray-200 bg-white shadow-sm lg:order-2 dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-kitchen-title">
-    <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine posée dans sa pièce, dans l'atelier" width="900" height="562" class="block aspect-[16/10] w-full object-cover" loading="eager">
+    <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[5/4] w-full object-cover" loading="eager">
     <div class="p-5">
-      <h2 id="design-kitchen-title" class="text-2xl font-semibold tracking-tight">Conception Cuisine &amp; Dressing</h2>
+      <h2 id="design-kitchen-title" class="text-center text-2xl font-semibold tracking-tight">Conception Cuisine &amp; Dressing</h2>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Caissons découpés en volumes (séparations, étagères, cloisons, plinthe), posés dans une pièce en plan 2D et en 3D, avec débit, devis et PDF.</p>
       <form method="post" action="{% url 'poly:project_create' %}" class="mt-4 space-y-4">
         {% csrf_token %}
