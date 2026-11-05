@@ -2,9 +2,30 @@
 {% block page_title %}Bibliothèque{% endblock %}
 {% block heading %}Bibliothèque de caissons{% endblock %}
 {% block body %}
+{% for group in preset_groups %}
+<div class="card catalog-group">
+  <div class="card-head"><h2>Caissons {{ group.label }}</h2><span class="chip">{{ group.presets|length }} types</span></div>
+  <div class="card-body tight table-wrap">
+    <table class="data catalog-table">
+      <thead><tr><th>Type</th><th class="num">Dimensions</th><th></th></tr></thead>
+      <tbody>
+        {% for preset in group.presets %}
+          <tr>
+            <td>{{ preset.name }}<br><span class="muted">{{ preset.description }}</span></td>
+            <td class="num">{{ preset.width }} × {{ preset.height }} × {{ preset.depth }} mm</td>
+            <td class="catalog-actions">
+              <form method="post" action="{% url 'poly:preset_create' preset.key %}">{% csrf_token %}<button class="btn btn-sm btn-primary" type="submit">Créer un caisson</button></form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
 <div class="card">
   <div class="card-head">
-    <h2>{{ templates|length }} modèle{{ templates|length|pluralize }}</h2>
+    <h2>Mes modèles : {{ templates|length }}</h2>
     <span class="hint">Pour ajouter un modèle : « Enregistrer comme modèle » dans l'éditeur d'un caisson.</span>
   </div>
   <div class="card-body tight table-wrap">

@@ -14,6 +14,7 @@ urlpatterns = [
     path("projet/creer/", views.project_create, name="project_create"),
     path("projet/supprimer/", views.projects_delete, name="projects_delete"),
     path("cabinet/<int:cabinet_id>/modele/creer/", views.template_create, name="template_create"),
+    path("caisson/type/<str:key>/creer/", views.preset_create, name="preset_create"),
     path("caisson/modele/<int:template_id>/instancier/", views.template_instantiate, name="template_instantiate"),
     path("caisson/modele/<int:template_id>/supprimer/", views.template_delete, name="template_delete"),
     path("projet/<int:project_id>/", views.project_detail, name="project_detail"),

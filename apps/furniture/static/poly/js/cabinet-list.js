@@ -28,6 +28,24 @@
   search.addEventListener('input', filter);
   affair.addEventListener('change', filter);
 
+  // A type of cabinet fills the form; everything stays editable, and its inside (shelves, drawers, rail) comes with it.
+  const types = JSON.parse(document.getElementById('cabinet-types').textContent);
+  const type = document.getElementById('preset_key');
+  const hint = document.getElementById('preset-hint');
+  const field = function (id) { return document.getElementById(id); };
+  type.addEventListener('change', function () {
+    const chosen = types.find(function (t) { return t.key === type.value; });
+    hint.hidden = !chosen;
+    if (!chosen) return;
+    hint.textContent = chosen.description;
+    field('name').value = chosen.name;
+    field('width').value = chosen.width;
+    field('height').value = chosen.height;
+    field('depth').value = chosen.depth;
+    field('plinth_height').value = chosen.plinth_height || 0;
+    type.form.elements.has_doors.checked = Boolean(chosen.has_doors);
+  });
+
   const menus = Array.from(document.querySelectorAll('.row-menu'));
   menus.forEach(function (menu) {
     menu.addEventListener('toggle', function () {

@@ -55,6 +55,18 @@
     <form method="post" action="{% url 'poly:home' %}">
       {% csrf_token %}
       <div class="field">
+        <label for="preset_key">Type de caisson</label>
+        <select id="preset_key" name="preset_key">
+          <option value="">Caisson libre</option>
+          {% for group in preset_groups %}
+            <optgroup label="{{ group.label }}">
+              {% for preset in group.presets %}<option value="{{ preset.key }}">{{ preset.name }}</option>{% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+        <p class="hint" id="preset-hint" hidden></p>
+      </div>
+      <div class="field">
         <label for="name">Nom du meuble</label>
         <input id="name" name="name" type="text" value="Meuble bas" required maxlength="150">
       </div>
@@ -113,4 +125,7 @@
 </dialog>
 {% endblock %}
 
-{% block scripts %}<script src="{% versioned_static 'poly/js/cabinet-list.js' %}" defer></script>{% endblock %}
+{% block scripts %}
+{{ presets|json_script:"cabinet-types" }}
+<script src="{% versioned_static 'poly/js/cabinet-list.js' %}" defer></script>
+{% endblock %}

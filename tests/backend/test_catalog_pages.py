@@ -5,7 +5,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from apps.catalog.models import CompanyProfile, HardwareRule, Material
-from apps.furniture.models import CabinetTemplate, Project, ProjectItem
+from apps.furniture.library import PRESETS
+from apps.furniture.models import Cabinet, CabinetTemplate, Project, ProjectItem
 from apps.furniture.services import create_cabinet
 
 BASE = "/poly/catalogue/"
@@ -163,3 +164,50 @@ def test_dashboard_lists_every_cabinet_with_its_affair(client_logged):
     assert f"/poly/cabinet/{placed.pk}/liste-debit.csv" in content and "Liste de débit (CSV)" in content
     assert f"/poly/cabinet/{placed.pk}/devis/" in content
     assert f'action="/poly/cabinet/{placed.pk}/supprimer/"' in content
+
+
+@pytest.mark.django_db
+def test_library_gives_the_types_of_cabinets(client_logged):
+    content = client_logged.get(f"{BASE}bibliotheque/").content.decode()
+    for name in ("Meuble bas 600", "Meuble bas tiroirs 600", "Colonne four 600", "Penderie 1500", "Îlot dressing 1200"):
+        assert name in content
+    assert content.count('action="/poly/caisson/type/') == len(PRESETS) == 14
+
+
+@pytest.mark.django_db
+def test_library_makes_a_cabinet_of_a_type(client_logged):
+    response = client_logged.post("/poly/caisson/type/kitchen-base-800/creer/")
+    cabinet = Cabinet.objects.get(name="Meuble bas 800")
+    assert response.status_code == 302 and response["Location"] == f"/poly/cabinet/{cabinet.pk}/"
+    assert (cabinet.width, cabinet.height, cabinet.depth, cabinet.has_doors) == (800, 720, 560, True)
+    assert cabinet.internal_volumes.filter(split_shelf=True).exists()
+
+
+@pytest.mark.django_db
+def test_unknown_type_goes_back_to_the_library(client_logged):
+    response = client_logged.post("/poly/caisson/type/inconnu/creer/")
+    assert response["Location"] == f"{BASE}bibliotheque/"
+    assert not Cabinet.objects.exists()
+
+
+@pytest.mark.django_db
+def test_new_cabinet_form_offers_the_types_and_keeps_the_sizes_given(client_logged):
+    content = client_logged.get("/poly/").content.decode()
+    assert '<option value="dressing-wardrobe-1000">Penderie 1000</option>' in content
+    material = Material.objects.get(name="Aggloméré blanc 19 mm")
+    response = client_logged.post(
+        "/poly/",
+        {"preset_key": "dressing-wardrobe-1000", "name": "Penderie chambre", "width": "1200", "height": "2300", "depth": "600", "material_id": material.pk, "material_back_id": "", "plinth_height": "80", "bottom_setback": "12"},
+    )
+    cabinet = Cabinet.objects.get(name="Penderie chambre")
+    assert response.status_code == 302
+    assert (cabinet.width, cabinet.height, cabinet.plinth_height, cabinet.material_back) == (1200, 2300, 80, None)
+    assert cabinet.has_hanging_rail and cabinet.bottom_setback == 12
+
+
+@pytest.mark.django_db
+def test_new_cabinet_form_stays_free_without_a_type(client_logged):
+    material = Material.objects.get(name="Aggloméré blanc 19 mm")
+    client_logged.post("/poly/", {"preset_key": "", "name": "Libre", "width": "900", "height": "700", "depth": "300", "material_id": material.pk, "plinth_height": "100"})
+    cabinet = Cabinet.objects.get(name="Libre")
+    assert not cabinet.has_hanging_rail and not cabinet.components.exists()

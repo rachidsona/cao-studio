@@ -409,6 +409,14 @@ def preset_payload() -> List[Dict]:
     return [dict(preset) for preset in PRESETS]
 
 
+def preset_groups() -> List[Dict]:
+    """Les types de caissons par catégorie : Cuisine, puis Dressing."""
+    return [
+        {"label": label, "presets": [p for p in PRESETS if p["category"] == category]}
+        for category, label in CATEGORY_LABELS.items()
+    ]
+
+
 def appliance_preset_payload() -> List[Dict]:
     """Copie sérialisable des appareils pour l'interface."""
     return [dict(preset) for preset in APPLIANCE_PRESETS]
@@ -431,9 +439,13 @@ def _default_materials() -> tuple[Material, Optional[Material]]:
     return material, back
 
 
-def create_cabinet_from_preset(preset: Dict, name: Optional[str] = None) -> Cabinet:
-    """Crée un caisson réel à partir d'un preset de la bibliothèque."""
-    material, back = _default_materials()
+def create_cabinet_from_preset(
+    preset: Dict,
+    name: Optional[str] = None,
+    materials: Optional[tuple[Material, Optional[Material]]] = None,
+) -> Cabinet:
+    """Crée un caisson réel à partir d'un preset de la bibliothèque (matières données, ou celles par défaut)."""
+    material, back = materials or _default_materials()
     cabinet = create_cabinet(
         name=name or preset["name"],
         width=float(preset["width"]),
@@ -448,6 +460,7 @@ def create_cabinet_from_preset(preset: Dict, name: Optional[str] = None) -> Cabi
         drawer_count=int(preset.get("drawer_count") or 2),
         drawer_height=float(preset.get("drawer_height") or 200),
         plinth_height=float(preset.get("plinth_height") or 0),
+        bottom_setback=float(preset.get("bottom_setback") or 0),
     )
     shelf_count = int(preset.get("shelves") or 0)
     if shelf_count > 0:

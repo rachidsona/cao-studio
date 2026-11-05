@@ -120,6 +120,11 @@ test("la liste des caissons : recherche, filtre, menu d'une ligne et fenêtre de
 
   await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await expect(page.getByRole("dialog", { name: "Nouveau caisson" })).toBeVisible();
+  // A type fills the form.
+  await page.selectOption("#preset_key", "kitchen-tall-600");
+  await expect(page.locator("#name")).toHaveValue("Colonne 600");
+  await expect(page.locator("#height")).toHaveValue("2200");
+  await expect(page.locator("#preset-hint")).toBeVisible();
   await page.getByRole("button", { name: "Fermer" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(errors).toEqual([]);

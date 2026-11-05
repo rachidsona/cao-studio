@@ -42,3 +42,4 @@ table.catalog-table td, table.catalog-table th { padding: 9px 12px; vertical-ali
 .row-menu-list button { color: var(--danger); }
 .new-cabinet { width: min(460px, calc(100vw - 32px)); padding: 0; background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .new-cabinet::backdrop { background: rgb(0 0 0 / .5); }
+.catalog-group { margin-bottom: 16px; }

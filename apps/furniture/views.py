@@ -35,6 +35,7 @@ from .models import (
     RoomWall,
     RoomWorktop,
 )
+from .library import create_cabinet_from_preset, get_preset, preset_groups, preset_payload
 from .pdf_export import build_cutlist_pdf, build_sketch_pdf
 from .services import CabinetDesignError, CabinetDesignService, create_cabinet
 
@@ -83,17 +84,31 @@ def index(request):
             material = Material.objects.get(pk=request.POST.get("material_id"))
             back_id = request.POST.get("material_back_id")
             material_back = Material.objects.filter(pk=back_id).first() if back_id else None
-            cabinet = create_cabinet(
-                name=name,
-                width=width,
-                height=height,
-                depth=depth,
-                material=material,
-                material_back=material_back,
-                bottom_setback=float(request.POST.get("bottom_setback") or 0),
-                has_doors=request.POST.get("has_doors") == "on",
-                plinth_height=float(request.POST.get("plinth_height") or 100),
-            )
+            preset = get_preset(request.POST.get("preset_key") or "")
+            if preset:
+                # A type keeps its inside (shelves, drawers, rail); the sizes are those of the form.
+                sized = {
+                    **preset,
+                    "width": width,
+                    "height": height,
+                    "depth": depth,
+                    "has_doors": request.POST.get("has_doors") == "on",
+                    "plinth_height": float(request.POST.get("plinth_height") or 0),
+                    "bottom_setback": float(request.POST.get("bottom_setback") or 0),
+                }
+                cabinet = create_cabinet_from_preset(sized, name=name, materials=(material, material_back))
+            else:
+                cabinet = create_cabinet(
+                    name=name,
+                    width=width,
+                    height=height,
+                    depth=depth,
+                    material=material,
+                    material_back=material_back,
+                    bottom_setback=float(request.POST.get("bottom_setback") or 0),
+                    has_doors=request.POST.get("has_doors") == "on",
+                    plinth_height=float(request.POST.get("plinth_height") or 100),
+                )
             messages.success(request, f"Caisson « {cabinet.name} » créé.")
             return redirect("poly:editor", cabinet_id=cabinet.pk)
         except (CabinetDesignError, GeometryError, ValueError, Material.DoesNotExist) as exc:
@@ -112,6 +127,8 @@ def index(request):
             "section": "cabinets",
             "cabinets": cabinets,
             "affairs": Project.objects.filter(items__isnull=False).distinct().order_by("name"),
+            "preset_groups": preset_groups(),
+            "presets": preset_payload(),
             "materials": materials,
             "default_back": default_back,
         },
@@ -159,6 +176,22 @@ def quote_page(request, cabinet_id: int):
         messages.error(request, f"Le devis n'a pas pu être recalculé : {exc}")
     quote = Quote.objects.filter(cabinet=cabinet).first()
     return render(request, "poly/quote.html", {"cabinet": cabinet, "quote": quote})
+
+
+@require_POST
+def preset_create(request, key: str):
+    """Crée un caisson d'un type de la bibliothèque et l'ouvre."""
+    preset = get_preset(key)
+    if preset is None:
+        messages.error(request, "Ce type de caisson n'existe pas.")
+        return redirect("catalog:library")
+    try:
+        cabinet = create_cabinet_from_preset(preset)
+    except (CabinetDesignError, GeometryError, ValueError) as exc:
+        messages.error(request, f"Impossible de créer le caisson : {exc}")
+        return redirect("catalog:library")
+    messages.success(request, f"Caisson « {cabinet.name} » créé.")
+    return redirect("poly:editor", cabinet_id=cabinet.pk)
 
 
 @require_POST
@@ -420,7 +453,6 @@ def api_project_opening_delete(request, project_id: int, opening_id: int):
 @require_POST
 @record_room_history_view
 def api_project_item_add(request, project_id: int):
-    from .library import create_cabinet_from_preset, get_preset
     from .room import add_cabinet_to_room
 
     project = _project_or_404(project_id)

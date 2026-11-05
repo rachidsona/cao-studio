@@ -84,8 +84,10 @@ dans l'en-tête du site et carte « Conception Cuisine & Dressing » de la page 
 - le **tableau de bord**, premier onglet de l'atelier (Caissons, Matériaux, Quincaillerie, Bibliothèque, Profil
   atelier) : la **liste des caissons** (nom, dimensions, affaire, date), avec recherche par nom et filtre par affaire
   ou « Sans affaire », un clic sur le nom ouvre l'éditeur, le menu « … » de la ligne donne la liste de débit (CSV), le
-  devis et la suppression ; **« Nouveau caisson »** ouvre une fenêtre (cotes, carcasse, fond, jeu arrière, plinthe,
-  façades). Les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
+  devis et la suppression ; **« Nouveau caisson »** ouvre une fenêtre (type, cotes, carcasse, fond, jeu arrière,
+  plinthe, façades) : choisir un des **14 types** (8 de cuisine, 6 de dressing) remplit le formulaire, et le caisson
+  garde ses étagères, tiroirs ou tringle aux cotes données. L'onglet Bibliothèque les liste aussi, avec « Créer un
+  caisson », au-dessus de vos modèles. Les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
   l'onglet Bibliothèque, « Créer un caisson » ;
 - l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
   cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du

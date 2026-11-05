@@ -6,6 +6,7 @@ from django.db.models import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.furniture.library import preset_groups
 from apps.furniture.models import CabinetTemplate
 
 from .forms import CabinetTemplateForm, CompanyProfileForm, HardwareRuleForm, MaterialForm
@@ -53,7 +54,11 @@ def hardware(request):
 
 
 def library(request):
-    return render(request, "catalog/library.html", {"section": "library", "templates": CabinetTemplate.objects.all()})
+    return render(
+        request,
+        "catalog/library.html",
+        {"section": "library", "preset_groups": preset_groups(), "templates": CabinetTemplate.objects.all()},
+    )
 
 
 def edit(request, section: str, pk: int | None = None):
