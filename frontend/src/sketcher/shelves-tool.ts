@@ -141,6 +141,14 @@ export class ShelvesTool {
     });
   }
 
+  /** The niches chosen with what OK would make of each: the dimensions in the view follow the panel. */
+  divided(): { box: NicheBox; into: NicheBox[] }[] {
+    return this.niches.flatMap((n, i) => {
+      const layout = this.layouts[i];
+      return layout && typeof layout === "object" ? [{ box: n.box, into: layout.niches.map((span) => partBox(n.box, span, layout)) }] : [];
+    });
+  }
+
   // ---- computing and drawing --------------------------------------------------------
 
   private recompute(): void {

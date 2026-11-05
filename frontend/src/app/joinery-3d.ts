@@ -21,6 +21,7 @@ import type { NicheBox } from "../sketcher/shelves";
 import { ShelvesTool } from "../sketcher/shelves-tool";
 import { JoineryView } from "../viewport/joinery-view";
 import { NicheTool, type NicheFill } from "./niche-tool";
+import { joineryPlans, plansOf } from "./partition-plan";
 import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
 
@@ -177,8 +178,19 @@ export class Joinery3D implements PointerHandler {
     return extrusionOption.on ? extrusionOption.depth : 0;
   }
 
+  /** What OK would make, for the dimensions in the view. */
+  private publishPlans(): void {
+    const tool = this.tool;
+    const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
+    const plan = tool instanceof SketchPartitionTool ? tool.plan() : null;
+    const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool ? tool.divided() : []);
+    joineryPlans.current = { sketch: sketch?.type === "sketch" ? sketch : null, frame: this.frame, plans };
+    joineryPlans.changed();
+  }
+
   private render(): void {
     if (this.done || !this.tool) return;
+    this.publishPlans();
     if (this.tool instanceof SketchPartitionTool) return this.view.show(this.frame, this.depth() || 1, [], this.tool.pieces());
     const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
     const tool = this.tool;
@@ -253,6 +265,8 @@ export class Joinery3D implements PointerHandler {
     this.tool?.dispose();
     this.tool = null;
     this.view.dispose();
+    joineryPlans.current = null;
+    joineryPlans.changed();
     this.viewport.renderer.domElement.style.cursor = "";
     this.viewport.setPointerHandler(null);
     this.host.closed();

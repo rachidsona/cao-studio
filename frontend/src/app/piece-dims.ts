@@ -5,15 +5,22 @@
  * les siennes, et les garde pendant qu'un outil travaille dessus ; sans sélection, toutes les pièces en vue. Seules
  * les cotes qu'on voit s'écrivent (une porte cache le caisson derrière) ; elles suivent la vue quand elle tourne et le
  * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur.
+ *
+ * Une Répartition a ses cotes de plan, autour du meuble (plan-dims-view.ts) : celles-là remplacent les cotes de ses
+ * pièces, et s'affichent d'elles-mêmes tant qu'on y travaille (Répartition, Étagères, Cloisons, Penderie, Tiroirs),
+ * même éteint ; le bouton les masque jusqu'à la fin de l'outil.
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody, type Vec3 } from "../document/types";
+import { featureOfBody, type CadDocument, type Vec3 } from "../document/types";
 import { pieceDims, viewAxes, type Box } from "../features/piece-dims";
 import { formatLength } from "../measurements/units";
+import { frameOf, toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
+import { documentPlans, joineryPlans } from "./partition-plan";
+import { PlanDimsView } from "./plan-dims-view";
 
 const KEY = "cao.piece-dims";
 const COLOR = 0xdc2626;
@@ -22,6 +29,11 @@ const MAX_PIECES = 300;
 
 export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const button = root.querySelector<HTMLButtonElement>("[data-piece-dims]");
+  const plansView = new PlanDimsView(viewport);
+  /** Hidden by the button while a tool of joinery works. */
+  let dismissed = false;
+  const working = () => joineryPlans.current !== null;
+  const shown = () => (working() ? !dismissed : on);
   const group = new THREE.Group();
   group.renderOrder = 47;
   viewport.scene.add(group);
@@ -82,14 +94,66 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     return !hit || hit.object.userData.bodyId === bodyId || hit.distance >= distance - 2;
   };
 
+  /** The sketch of a body made by a Répartition's sketch or equipping its niches. */
+  const sketchOfBody = (doc: CadDocument, id: string): string | null => {
+    const f = findFeature(doc, featureOfBody(bodyOrigin(doc, id)));
+    return f && (f.type === "extrude" || f.type === "niche") ? (f.sketch ?? null) : null;
+  };
+
+  /** How far the panels of a sketch were moved from it, when they were moved without turning. */
+  const shiftOf = (bodies: string[], expected: THREE.Box3): Vec3 => {
+    const actual = new THREE.Box3();
+    for (const id of bodies) {
+      const box = boxOf(id);
+      if (box) actual.expandByPoint(new THREE.Vector3(...box[0])).expandByPoint(new THREE.Vector3(...box[1]));
+    }
+    if (actual.isEmpty() || actual.getSize(new THREE.Vector3()).distanceTo(expected.getSize(new THREE.Vector3())) > 1) return [0, 0, 0];
+    return actual.min.clone().sub(expected.min).toArray() as Vec3;
+  };
+
+  /** The dimensions of the Répartitions; the sketches they took care of. */
+  const drawPlans = (element: Set<string> | null): Set<string> => {
+    plansView.clear();
+    const doc = editor.doc;
+    const current = joineryPlans.current;
+    if (current) {
+      if (shown()) plansView.show(current.frame, current.plans, editor.unit);
+      return new Set(current.sketch ? [current.sketch.id] : []);
+    }
+    const done = new Set<string>();
+    const panels = viewport.displayedBodies.map((id) => ({ id, sketch: sketchOfBody(doc, id) }));
+    for (const { sketch, plans } of documentPlans(doc)) {
+      const own = panels.filter((p) => p.sketch === sketch.id).map((p) => p.id);
+      const moved = own.filter((id) => findFeature(doc, featureOfBody(bodyOrigin(doc, id)))?.type === "extrude");
+      if (!moved.length || (element && !moved.some((id) => element.has(featureOfBody(bodyOrigin(doc, id)))))) continue;
+      const frame = frameOf(sketch);
+      const expected = new THREE.Box3();
+      for (const plan of plans) {
+        for (const [x, y] of [[plan.outer.x0, plan.outer.y0], [plan.outer.x1, plan.outer.y1]] as const) {
+          const corner = new THREE.Vector3(...toWorld(frame, x, y));
+          expected.expandByPoint(corner).expandByPoint(corner.clone().addScaledVector(new THREE.Vector3(...frame.normal), plan.depth));
+        }
+      }
+      plansView.show(frame, plans, editor.unit, shiftOf(moved, expected));
+      done.add(sketch.id);
+    }
+    return done;
+  };
+
   const draw = () => {
     clear();
-    if (!on) return;
+    if (!shown()) return void plansView.clear();
     const picked = selectedElement();
     if (picked) element = picked;
     else if (!root.dataset.tool) element = null;
     const doc = editor.doc;
-    const bodies = viewport.displayedBodies.filter((id) => !element || element.has(featureOfBody(bodyOrigin(doc, id))));
+    const planned = drawPlans(element);
+    // At work in a Répartition with the button off: its dimensions alone.
+    if (!on) return;
+    const bodies = viewport.displayedBodies.filter((id) => {
+      const sketch = sketchOfBody(doc, id);
+      return (!sketch || !planned.has(sketch)) && (!element || element.has(featureOfBody(bodyOrigin(doc, id))));
+    });
     const eye = viewport.camera.position;
     const toEye = viewport.camera.getWorldDirection(new THREE.Vector3()).negate();
     const up = viewport.camera.up.clone().applyQuaternion(viewport.camera.quaternion);
@@ -150,7 +214,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
   };
   let frames = 0;
   viewport.onEachFrame(() => {
-    if (!on || ++frames % 6) return;
+    if (!shown() || ++frames % 6) return;
     const now = look() + viewport.displayedBodies.map((id) => viewport.bodyMesh(id)?.metrics.bbox.join()).join("|");
     if (now !== stamp) {
       stamp = now;
@@ -162,24 +226,38 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     }
   });
 
+  const pressed = () => button?.setAttribute("aria-pressed", String(shown()));
   const set = (value: boolean) => {
+    if (working()) {
+      dismissed = !value;
+      pressed();
+      stamp = "";
+      draw();
+      return;
+    }
     on = value;
     try {
       localStorage.setItem(KEY, on ? "1" : "0");
     } catch {
       // Kept for this page only.
     }
-    button?.setAttribute("aria-pressed", String(on));
+    pressed();
     stamp = "";
     draw();
   };
-  button?.addEventListener("click", () => set(!on));
-  button?.setAttribute("aria-pressed", String(on));
+  button?.addEventListener("click", () => set(!shown()));
+  pressed();
+  joineryPlans.changed = () => {
+    if (!working()) dismissed = false;
+    pressed();
+    stamp = "";
+    draw();
+  };
 
   const previous = editor.onRender;
   editor.onRender = () => {
     previous();
-    if (on) draw();
+    if (shown()) draw();
   };
 }
 

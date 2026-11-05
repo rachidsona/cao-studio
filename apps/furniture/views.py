@@ -3,7 +3,6 @@ import json
 from typing import Dict, Optional
 
 from django.contrib import messages
-from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 
@@ -74,7 +73,7 @@ def _cabinet_or_404(cabinet_id: int) -> Cabinet:
 # Pages
 # ----------------------------------------------------------------------
 def index(request):
-    """Tableau de bord : liste des caissons + création rapide."""
+    """Tableau de bord : la liste des caissons (recherche et filtre dans la page) + création dans une fenêtre."""
     if request.method == "POST":
         try:
             name = (request.POST.get("name") or "Nouveau meuble").strip()
@@ -100,20 +99,22 @@ def index(request):
         except (CabinetDesignError, GeometryError, ValueError, Material.DoesNotExist) as exc:
             messages.error(request, f"Impossible de créer le caisson : {exc}")
 
-    cabinets = (
-        Cabinet.objects.select_related("material_carcase")
-        .annotate(
-            volume_count=Count("internal_volumes", distinct=True),
-            shelf_count=Count("components", distinct=True),
-        )
-        .order_by("-updated_at")[:24]
-    )
+    cabinets = list(Cabinet.objects.prefetch_related("project_items__project").order_by("-updated_at"))
+    for cabinet in cabinets:
+        # A cabinet placed twice in an affair is listed once.
+        cabinet.affairs = list({item.project_id: item.project for item in cabinet.project_items.all()}.values())
     materials = Material.objects.all()
     default_back = materials.filter(thickness__lte=6).order_by("thickness").first()
     return render(
         request,
         "poly/dashboard.html",
-        {"cabinets": cabinets, "materials": materials, "default_back": default_back},
+        {
+            "section": "cabinets",
+            "cabinets": cabinets,
+            "affairs": Project.objects.filter(items__isnull=False).distinct().order_by("name"),
+            "materials": materials,
+            "default_back": default_back,
+        },
     )
 
 
@@ -158,6 +159,29 @@ def quote_page(request, cabinet_id: int):
         messages.error(request, f"Le devis n'a pas pu être recalculé : {exc}")
     quote = Quote.objects.filter(cabinet=cabinet).first()
     return render(request, "poly/quote.html", {"cabinet": cabinet, "quote": quote})
+
+
+@require_POST
+def project_delete(request, project_id: int):
+    """Supprime une affaire et sa pièce ; ses caissons restent dans l'atelier, « Sans affaire »."""
+    project = _project_or_404(project_id)
+    name = project.name
+    project.delete()
+    messages.success(request, f"Projet « {name} » supprimé. Ses caissons restent dans l'atelier.")
+    return redirect("projects:list")
+
+
+@require_POST
+def projects_delete(request):
+    """Supprime les affaires cochées sur la page d'accueil ; leurs caissons restent dans l'atelier."""
+    ids = [value for value in request.POST.getlist("ids") if value.isdecimal()]
+    projects = Project.objects.filter(pk__in=ids)
+    count = projects.count()
+    projects.delete()
+    if count:
+        plural = "s" if count > 1 else ""
+        messages.success(request, f"{count} projet{plural} supprimé{plural}. Les caissons restent dans l'atelier.")
+    return redirect("projects:list")
 
 
 @require_POST

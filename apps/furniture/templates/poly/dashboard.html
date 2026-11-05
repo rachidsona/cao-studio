@@ -1,154 +1,116 @@
-{% extends "poly/base.html" %}
-{% load static %}
+{% extends "catalog/base.html" %}
+{% load static assets %}
 
-{% block title %}poly_3D — Atelier de conception{% endblock %}
-{% block body_class %}dashboard-page{% endblock %}
+{% block page_title %}Caissons{% endblock %}
+{% block heading %}Caissons{% endblock %}
 
-{% block header %}
-<header class="app-header">
-  <a class="brand" href="{% url 'poly:home' %}">
-    <span class="brand-mark">P</span>
-    <span>poly_3D<br><small>Conception paramétrique</small></span>
-  </a>
-  <button type="button" class="theme-toggle" data-theme-toggle aria-label="Basculer le thème clair/sombre" title="Thème clair/sombre"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-  <a class="header-link" href="{% url 'projects:list' %}" title="Retour à l'accueil de poly_3D">← Accueil</a>
-  <span class="header-spacer"></span>
-  <div class="header-actions">
-    <a class="header-link" href="{% url 'catalog:materials' %}">Matériaux</a>
-    <a class="header-link" href="{% url 'catalog:hardware' %}">Quincaillerie</a>
-    <a class="header-link" href="{% url 'catalog:library' %}">Bibliothèque</a>
-    <a class="header-link" href="{% url 'catalog:company' %}">Profil atelier</a>
+{% block body %}
+<div class="card">
+  <div class="cabinet-toolbar">
+    <input type="search" id="cabinet-search" placeholder="Rechercher un caisson" aria-label="Rechercher un caisson">
+    <select id="cabinet-affair" aria-label="Filtrer par affaire">
+      <option value="">Toutes les affaires</option>
+      <option value="none">Sans affaire</option>
+      {% for affair in affairs %}<option value="{{ affair.pk }}">{{ affair.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="button" data-open-dialog="new-cabinet">Nouveau caisson</button>
   </div>
-</header>
-{% endblock %}
-
-{% block content %}
-<div class="container">
-  <div class="dashboard-grid">
-    <div>
-      <div class="card" style="margin-bottom: 16px;">
-        <div class="card-head"><h2>Nouveau caisson</h2><span class="chip chip-teal">Paramétrique</span></div>
-        <div class="card-body">
-          <form method="post" action="{% url 'poly:home' %}">
-            {% csrf_token %}
-            <div class="field">
-              <label for="name">Nom du meuble</label>
-              <input id="name" name="name" type="text" value="Meuble bas" required maxlength="150">
-            </div>
-            <div class="field-row-3">
-              <div>
-                <label for="width">Largeur</label>
-                <div class="input-with-unit"><input id="width" name="width" type="number" value="1000" min="150" step="1" required><span>mm</span></div>
-              </div>
-              <div>
-                <label for="height">Hauteur</label>
-                <div class="input-with-unit"><input id="height" name="height" type="number" value="720" min="150" step="1" required><span>mm</span></div>
-              </div>
-              <div>
-                <label for="depth">Profondeur</label>
-                <div class="input-with-unit"><input id="depth" name="depth" type="number" value="350" min="120" step="1" required><span>mm</span></div>
-              </div>
-            </div>
-            <div class="field">
-              <label for="material_id">Carcasse</label>
-              <select id="material_id" name="material_id" required>
-                {% for material in materials %}
-                  <option value="{{ material.pk }}" {% if material.is_default %}selected{% endif %}>{{ material.name }} — {{ material.price_per_m2 }} €/m²</option>
-                {% empty %}
-                  <option value="">Ajoutez un matériau dans le catalogue</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="field">
-              <label for="material_back_id">Fond</label>
-              <select id="material_back_id" name="material_back_id">
-                <option value="">Sans fond</option>
-                {% for material in materials %}
-                  {% if material.thickness <= 6 %}
-                    <option value="{{ material.pk }}" {% if default_back and material.pk == default_back.pk %}selected{% endif %}>{{ material.name }} — {{ material.price_per_m2 }} €/m²</option>
-                  {% endif %}
-                {% endfor %}
-              </select>
-            </div>
-            <div class="field-row">
-              <div>
-                <label for="bottom_setback">Jeu arrière</label>
-                <div class="input-with-unit"><input id="bottom_setback" name="bottom_setback" type="number" value="0" min="0" step="1"><span>mm</span></div>
-              </div>
-              <div>
-                <label for="plinth_height">Plinthe</label>
-                <div class="input-with-unit"><input id="plinth_height" name="plinth_height" type="number" value="100" min="0" step="1"><span>mm</span></div>
-              </div>
-            </div>
-            <label class="check"><input type="checkbox" name="has_doors"> Ajouter des façades</label>
-            <button class="btn btn-primary btn-block" type="submit" {% if not materials %}disabled{% endif %}>
-              Créer et ouvrir l'éditeur
-            </button>
-            <p class="hint" style="margin: 8px 0 0;">Le volume intérieur est calculé automatiquement à partir de l'épaisseur de la carcasse et du fond.</p>
-          </form>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Matériaux</h2><a class="btn btn-sm btn-ghost" href="{% url 'catalog:materials' %}">Modifier</a></div>
-        <div class="card-body">
-          <div class="material-list">
-            {% for material in materials %}
-              <div class="material-row">
-                <span class="swatch" style="background: {{ material.color }};"></span>
-                <span style="flex:1;">{{ material.name }}</span>
-                <span class="mono muted">{{ material.thickness|floatformat:"-1" }} mm</span>
-                <span class="mono">{{ material.price_per_m2|floatformat:2 }} €/m²</span>
-              </div>
-            {% empty %}
-              <p class="empty-mini">Aucun matériau. <a href="{% url 'catalog:material_add' %}">En ajouter un</a>.</p>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <h2>Caissons récents</h2>
-        <span class="chip">{{ cabinets|length }} affiché{{ cabinets|length|pluralize }}</span>
-      </div>
-      <div class="card-body">
-        {% if cabinets %}
-          <div class="cabinet-list">
-            {% for cabinet in cabinets %}
-              <article class="cabinet-card">
-                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
-                  <h3><a href="{% url 'poly:editor' cabinet.pk %}">{{ cabinet.name }}</a></h3>
-                  {% if cabinet.has_doors %}<span class="chip chip-amber">Façades</span>{% endif %}
-                </div>
-                <div class="dims">{{ cabinet.width|floatformat:"0" }} × {{ cabinet.height|floatformat:"0" }} × {{ cabinet.depth|floatformat:"0" }} mm</div>
-                <div class="meta">
-                  <span class="chip">{{ cabinet.material_carcase.name }}</span>
-                  <span class="chip">{{ cabinet.volume_count }} volume{{ cabinet.volume_count|pluralize }}</span>
-                  <span class="chip">{{ cabinet.shelf_count }} composant{{ cabinet.shelf_count|pluralize }}</span>
-                </div>
-                <div class="hint">Modifié le {{ cabinet.updated_at|date:"d/m/Y à H:i" }}</div>
-                <div class="actions">
-                  <a class="btn btn-sm btn-primary" href="{% url 'poly:editor' cabinet.pk %}">Ouvrir</a>
-                  <a class="btn btn-sm" href="{% url 'poly:cutlist_csv' cabinet.pk %}">Cut list</a>
-                  <a class="btn btn-sm" href="{% url 'poly:quote_page' cabinet.pk %}">Devis</a>
-                  <form method="post" action="{% url 'poly:cabinet_delete' cabinet.pk %}" data-confirm="Supprimer définitivement « {{ cabinet.name }} » ?" style="margin-left:auto;">
+  <div class="card-body tight">
+    <table class="data catalog-table cabinet-table">
+      <thead><tr><th>Nom</th><th>Dimensions</th><th>Affaire</th><th>Modifié</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        {% for cabinet in cabinets %}
+          <tr data-cabinet data-name="{{ cabinet.name|lower }}" data-affairs="{% for affair in cabinet.affairs %}{{ affair.pk }} {% endfor %}">
+            <td><a href="{% url 'poly:editor' cabinet.pk %}">{{ cabinet.name }}</a></td>
+            <td>{{ cabinet.width|floatformat:"0" }} × {{ cabinet.height|floatformat:"0" }} × {{ cabinet.depth|floatformat:"0" }} mm</td>
+            <td>{% for affair in cabinet.affairs %}{{ affair.name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</td>
+            <td>{{ cabinet.updated_at|date:"d/m/Y" }}</td>
+            <td class="catalog-actions">
+              <details class="row-menu">
+                <summary aria-label="Actions de {{ cabinet.name }}">…</summary>
+                <div class="row-menu-list">
+                  <a href="{% url 'poly:cutlist_csv' cabinet.pk %}">Liste de débit (CSV)</a>
+                  <a href="{% url 'poly:quote_page' cabinet.pk %}">Devis</a>
+                  <form method="post" action="{% url 'poly:cabinet_delete' cabinet.pk %}" data-confirm="Supprimer définitivement « {{ cabinet.name }} » ?">
                     {% csrf_token %}
-                    <button class="btn btn-sm btn-danger" type="submit">Supprimer</button>
+                    <button type="submit">Supprimer</button>
                   </form>
                 </div>
-              </article>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="empty">
-            <p><strong>Aucun caisson pour l'instant.</strong></p>
-            <p>Créez votre premier meuble avec le formulaire à gauche.</p>
-          </div>
-        {% endif %}
-      </div>
-    </div>
+              </details>
+            </td>
+          </tr>
+        {% endfor %}
+        <tr id="cabinet-empty"{% if cabinets %} hidden{% endif %}><td colspan="5" class="empty-mini">{% if cabinets %}Aucun caisson ne correspond.{% else %}Aucun caisson pour le moment.{% endif %}</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
+
+<dialog id="new-cabinet" class="new-cabinet" aria-labelledby="new-cabinet-title">
+  <div class="card-head">
+    <h2 id="new-cabinet-title">Nouveau caisson</h2>
+    <button class="btn btn-sm btn-ghost" type="button" data-close-dialog aria-label="Fermer">×</button>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'poly:home' %}">
+      {% csrf_token %}
+      <div class="field">
+        <label for="name">Nom du meuble</label>
+        <input id="name" name="name" type="text" value="Meuble bas" required maxlength="150">
+      </div>
+      <div class="field-row-3">
+        <div>
+          <label for="width">Largeur</label>
+          <div class="input-with-unit"><input id="width" name="width" type="number" value="1000" min="150" step="1" required><span>mm</span></div>
+        </div>
+        <div>
+          <label for="height">Hauteur</label>
+          <div class="input-with-unit"><input id="height" name="height" type="number" value="720" min="150" step="1" required><span>mm</span></div>
+        </div>
+        <div>
+          <label for="depth">Profondeur</label>
+          <div class="input-with-unit"><input id="depth" name="depth" type="number" value="350" min="120" step="1" required><span>mm</span></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="material_id">Carcasse</label>
+        <select id="material_id" name="material_id" required>
+          {% for material in materials %}
+            <option value="{{ material.pk }}" {% if material.is_default %}selected{% endif %}>{{ material.name }} — {{ material.price_per_m2 }} €/m²</option>
+          {% empty %}
+            <option value="">Ajoutez un matériau dans le catalogue</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="material_back_id">Fond</label>
+        <select id="material_back_id" name="material_back_id">
+          <option value="">Sans fond</option>
+          {% for material in materials %}
+            {% if material.thickness <= 6 %}
+              <option value="{{ material.pk }}" {% if default_back and material.pk == default_back.pk %}selected{% endif %}>{{ material.name }} — {{ material.price_per_m2 }} €/m²</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-row">
+        <div>
+          <label for="bottom_setback">Jeu arrière</label>
+          <div class="input-with-unit"><input id="bottom_setback" name="bottom_setback" type="number" value="0" min="0" step="1"><span>mm</span></div>
+        </div>
+        <div>
+          <label for="plinth_height">Plinthe</label>
+          <div class="input-with-unit"><input id="plinth_height" name="plinth_height" type="number" value="100" min="0" step="1"><span>mm</span></div>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" name="has_doors"> Ajouter des façades</label>
+      <button class="btn btn-primary btn-block" type="submit" {% if not materials %}disabled{% endif %}>
+        Créer et ouvrir l'éditeur
+      </button>
+      <p class="hint" style="margin: 8px 0 0;">Le volume intérieur est calculé automatiquement à partir de l'épaisseur de la carcasse et du fond.</p>
+    </form>
+  </div>
+</dialog>
 {% endblock %}
+
+{% block scripts %}<script src="{% versioned_static 'poly/js/cabinet-list.js' %}" defer></script>{% endblock %}

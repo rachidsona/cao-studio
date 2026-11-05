@@ -16,6 +16,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
+import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
 import { defaultDividers, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
@@ -148,6 +149,19 @@ export class SketchPartitionTool {
       const region = regionAt(faces, e.probe);
       return region ? [region.outer.map(([x, y]): Vec2 => [x + ox, y + oy])] : [];
     });
+  }
+
+  /** The Répartition OK would make, for the dimensions in the view. */
+  plan(): PartitionPlan | null {
+    const layout = partitionLayout(this.input);
+    if (typeof layout === "string") return null;
+    const [ox, oy] = this.origin;
+    return {
+      outer: { x0: ox, y0: oy, x1: ox + this.input.length, y1: oy + this.input.height },
+      niches: layout.caseSpans.map(([x0, x1]) => ({ x0: x0 + ox, x1: x1 + ox, y0: layout.inner[0] + oy, y1: layout.inner[1] + oy })),
+      depth: extrusionOption.on ? extrusionOption.depth : 0,
+      plinth: this.input.plinth,
+    };
   }
 
   /** Changes the size: the view follows. */

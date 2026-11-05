@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from apps.catalog.models import CompanyProfile, HardwareRule, Material
-from apps.furniture.models import CabinetTemplate
+from apps.furniture.models import CabinetTemplate, Project, ProjectItem
 from apps.furniture.services import create_cabinet
 
 BASE = "/poly/catalogue/"
@@ -126,9 +126,11 @@ def test_company_profile_with_a_logo(client_logged):
 def test_workshop_links_to_the_catalog_not_the_admin(client_logged):
     content = client_logged.get("/poly/").content.decode()
     assert "/admin/" not in content
-    # The dashboard keeps the new cabinet, the materials and the recent cabinets only.
-    assert "Nouveau caisson" in content and "Caissons récents" in content
-    assert "Vos caissons paramétriques" not in content and "Affaires (multi-caissons)" not in content and "Modèles de caissons" not in content
+    # The dashboard is the list of cabinets, first tab of the workshop; the form waits in its dialog.
+    assert 'aria-current="page">Caissons</a>' in content
+    assert '<dialog id="new-cabinet"' in content and 'data-open-dialog="new-cabinet"' in content
+    assert "Vos caissons paramétriques" not in content and "Affaires (multi-caissons)" not in content
+    assert "material-list" not in content
     assert f"{BASE}materiaux/" in content and f"{BASE}quincaillerie/" in content and f"{BASE}bibliotheque/" in content
 
 
@@ -138,3 +140,26 @@ def test_cabinet_editor_links_to_the_catalog_not_the_admin(client_logged):
     content = client_logged.get(f"/poly/cabinet/{cabinet.pk}/").content.decode()
     assert "/admin/" not in content
     assert f"{BASE}atelier/" in content and f"{BASE}bibliotheque/" in content
+
+
+@pytest.mark.django_db
+def test_dashboard_lists_every_cabinet_with_its_affair(client_logged):
+    material = Material.objects.get(name="Aggloméré blanc 19 mm")
+    placed = create_cabinet(name="Bas évier", width=800, height=720, depth=560, material=material)
+    for number in range(30):
+        create_cabinet(name=f"Haut {number}", width=600, height=720, depth=350, material=material)
+    affair = Project.objects.create(name="Cuisine Dupont")
+    # Placed twice in the affair: listed once.
+    ProjectItem.objects.create(project=affair, cabinet=placed, slot=0)
+    ProjectItem.objects.create(project=affair, cabinet=placed, slot=1)
+    Project.objects.create(name="Affaire vide")
+
+    content = client_logged.get("/poly/").content.decode()
+    assert content.count("data-cabinet ") == 31
+    assert f'data-affairs="{affair.pk} "' in content
+    assert "800 × 720 × 560 mm" in content
+    assert f'<option value="{affair.pk}">Cuisine Dupont</option>' in content
+    assert "Affaire vide" not in content
+    assert f"/poly/cabinet/{placed.pk}/liste-debit.csv" in content and "Liste de débit (CSV)" in content
+    assert f"/poly/cabinet/{placed.pk}/devis/" in content
+    assert f'action="/poly/cabinet/{placed.pk}/supprimer/"' in content

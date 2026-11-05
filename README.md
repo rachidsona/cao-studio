@@ -31,9 +31,13 @@ contient la plaque de référence ; « Ouvrir le projet exemple » crée un cais
 pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
 touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
 
-Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/poly/catalogue/ (liens « Matériaux »,
-« Quincaillerie », « Bibliothèque » et « Profil atelier » de l'atelier, cartes « Catalogues » des réglages de l'éditeur
-de caisson) : un onglet par partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut ; un
+Chaque projet des deux listes a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner »)
+et les supprimer ensemble avec **« Supprimer la sélection »**, liste par liste. Les deux demandent confirmation : un projet 3D part avec ses versions
+et ses liens partagés (seul son propriétaire peut le supprimer), une cuisine ou un dressing part avec sa pièce, mais
+ses caissons restent dans l'atelier, « Sans affaire ».
+
+Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/poly/catalogue/ (onglets de l'atelier,
+cartes « Catalogues » des réglages de l'éditeur de caisson) : un onglet par partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut ; un
 matériau utilisé par des caissons n'est pas supprimé), **quincaillerie** (articles et quantité automatique),
 **bibliothèque** des modèles de caissons (renommer, décrire, supprimer) et **profil de l'atelier** (coordonnées et logo
 des PDF). Il est garni au premier `migrate` ; l'administration Django reste disponible pour un superutilisateur.
@@ -77,9 +81,12 @@ dans l'en-tête du site et carte « Conception Cuisine & Dressing » de la page 
 « ← Mes projets ». Il demande un compte poly_3D (les pages renvoient à la connexion, son API répond 401 en JSON,
 `apps/furniture/middleware.py`). On y retrouve :
 
-- le **tableau de bord** : nouveau caisson (cotes, carcasse, fond, jeu arrière, plinthe, façades), matériaux et
-  caissons récents (les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
-  l'onglet Bibliothèque du catalogue, « Créer un caisson ») ;
+- le **tableau de bord**, premier onglet de l'atelier (Caissons, Matériaux, Quincaillerie, Bibliothèque, Profil
+  atelier) : la **liste des caissons** (nom, dimensions, affaire, date), avec recherche par nom et filtre par affaire
+  ou « Sans affaire », un clic sur le nom ouvre l'éditeur, le menu « … » de la ligne donne la liste de débit (CSV), le
+  devis et la suppression ; **« Nouveau caisson »** ouvre une fenêtre (cotes, carcasse, fond, jeu arrière, plinthe,
+  façades). Les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
+  l'onglet Bibliothèque, « Créer un caisson » ;
 - l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
   cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du
   haut pleine largeur ; une séparation divise **seulement la niche** : le dessus et le dessous restent d'une pièce,
@@ -1691,6 +1698,14 @@ opération existante.
 - **Remplir une largeur** (outil Caisson, nouveau caisson) : la largeur à remplir et la largeur maximale d'un
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
+- **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/plan-dims-view.ts`) : pendant Répartition,
+  Étagères, Cloisons, Penderie et Tiroirs, le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
+  Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
+  panneaux) en bas et à gauche, en haut et à droite seulement si elles disent autre chose ; le socle ; la profondeur
+  quand on voit le meuble de biais. À l'intérieur, seule une niche dont une mesure n'est dans aucune chaîne garde sa
+  cote, une seule fois. Les cotes suivent le panneau de l'outil avant OK et se placent sur la face tournée vers l'œil.
+  Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
+  place des cotes pièce par pièce de la Répartition.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
 - **Rayons X** et **Affichage** (colonne Vue, sous « Grille », portés de poly_3D) : les corps translucides d'un clic ;

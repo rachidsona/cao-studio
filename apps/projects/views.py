@@ -1,10 +1,13 @@
 """HTML pages: the home page (3D projects and the workshop's kitchens and dressings), the 3D editor shell."""
+import uuid
+
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.furniture.models import Project as FurnitureProject
 
@@ -38,6 +41,38 @@ def project_list(request):
         "projects/project_list.html",
         {"projects": projects, "affairs": affairs, "form": form},
     )
+
+
+@login_required
+@require_POST
+def project_delete(request, project_id):
+    project = get_object_or_404(Project, pk=project_id, owner=request.user)
+    name = project.name
+    project.delete()
+    messages.success(request, f"Projet « {name} » supprimé.")
+    return redirect("projects:list")
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
+
+
+@login_required
+@require_POST
+def projects_delete(request):
+    """Delete the projects ticked on the home page; only the user's own."""
+    ids = [value for value in request.POST.getlist("ids") if _is_uuid(value)]
+    projects = Project.objects.filter(owner=request.user, pk__in=ids)
+    count = projects.count()
+    projects.delete()
+    if count:
+        plural = "s" if count > 1 else ""
+        messages.success(request, f"{count} projet{plural} supprimé{plural}.")
+    return redirect("projects:list")
 
 
 @login_required

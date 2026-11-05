@@ -24,7 +24,7 @@ test("l'atelier demande un compte, puis s'ouvre depuis l'accueil, avec son catal
   await signUp(page);
   await page.getByRole("link", { name: "Ouvrir l'atelier" }).click();
   await page.waitForURL("**/poly/");
-  await expect(page.getByRole("heading", { name: "Nouveau caisson" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nouveau caisson" })).toBeVisible();
   await expect(page.getByRole("link", { name: "← Accueil" })).toBeVisible();
   // The catalogue opens in the application, not in the administration.
   await page.getByRole("link", { name: "Quincaillerie", exact: true }).click();
@@ -32,11 +32,105 @@ test("l'atelier demande un compte, puis s'ouvre depuis l'accueil, avec son catal
   await expect(page.getByRole("link", { name: "Charnière à clip 35 mm" })).toBeVisible();
 });
 
+test("l'accueil supprime un projet après confirmation", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/projects/");
+  await page.fill("#affair-name", "À supprimer e2e");
+  await page.getByRole("button", { name: "Créer et dessiner la pièce" }).click();
+  await page.waitForURL(/\/poly\/projet\/\d+\/piece\/$/);
+  await page.goto("/projects/");
+
+  const remove = page.getByRole("button", { name: "Supprimer À supprimer e2e" });
+  await remove.click();
+  const dialog = page.getByRole("dialog", { name: "Supprimer ce projet ?" });
+  await expect(dialog).toContainText("« À supprimer e2e » et sa pièce seront supprimés définitivement");
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(page.getByRole("link", { name: /À supprimer e2e/ })).toBeVisible();
+
+  await remove.click();
+  await dialog.getByRole("button", { name: "Supprimer définitivement" }).click();
+  await expect(page.getByText("Projet « À supprimer e2e » supprimé.")).toBeVisible();
+  await expect(page.getByRole("link", { name: /À supprimer e2e/ })).toHaveCount(0);
+});
+
+test("l'accueil supprime ensemble les projets cochés", async ({ page }) => {
+  await signUp(page);
+  for (const name of ["Un e2e", "Deux e2e", "Trois e2e"]) {
+    await page.goto("/projects/");
+    await page.fill("#affair-name", name);
+    await page.getByRole("button", { name: "Créer et dessiner la pièce" }).click();
+    await page.waitForURL(/\/poly\/projet\/\d+\/piece\/$/);
+  }
+  await page.goto("/projects/");
+  const list = page.locator("section[aria-labelledby='affairs-title']");
+  const remove = list.locator("[data-delete-selected]");
+  await expect(remove).toBeHidden();
+  await page.getByLabel("Sélectionner Un e2e").check();
+  await page.getByLabel("Sélectionner Deux e2e").check();
+  await expect(remove).toHaveText("Supprimer la sélection (2)");
+  await expect(list.locator("[data-select-all]")).toHaveJSProperty("indeterminate", true);
+
+  await remove.click();
+  const dialog = page.getByRole("dialog", { name: "Supprimer ces projets ?" });
+  await expect(dialog.getByRole("listitem")).toHaveText(["Deux e2e", "Un e2e"]);
+  await expect(dialog).toContainText("Ces 2 projets et leurs pièces seront supprimés définitivement");
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(list.getByRole("link", { name: /Un e2e/ })).toBeVisible();
+
+  await remove.click();
+  await dialog.getByRole("button", { name: "Supprimer définitivement" }).click();
+  await expect(page.getByText("2 projets supprimés.")).toBeVisible();
+  await expect(list.getByRole("link", { name: /Un e2e|Deux e2e/ })).toHaveCount(0);
+  await expect(list.getByRole("link", { name: /Trois e2e/ })).toBeVisible();
+
+  await list.locator("[data-select-all]").check();
+  await expect(remove).toHaveText("Supprimer la sélection (1)");
+});
+
+test("la liste des caissons : recherche, filtre, menu d'une ligne et fenêtre de création", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await signUp(page);
+  for (const name of ["Colonne e2e", "Haut e2e"]) {
+    await page.goto("/poly/");
+    await page.getByRole("button", { name: "Nouveau caisson" }).click();
+    await page.fill("#name", name);
+    await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
+    await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
+  }
+  await page.goto("/poly/");
+  const rows = page.locator("[data-cabinet]:visible");
+  await expect(rows).toHaveCount(2);
+  await page.fill("#cabinet-search", "colonne");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Colonne e2e");
+  await page.fill("#cabinet-search", "introuvable");
+  await expect(rows).toHaveCount(0);
+  await expect(page.getByText("Aucun caisson ne correspond.")).toBeVisible();
+  await page.fill("#cabinet-search", "");
+  await page.selectOption("#cabinet-affair", "none");
+  await expect(rows).toHaveCount(2);
+
+  await page.getByLabel("Actions de Colonne e2e").click();
+  await expect(page.getByRole("link", { name: "Devis" })).toHaveCount(1);
+  await page.getByLabel("Actions de Haut e2e").click();
+  await expect(page.locator(".row-menu[open]")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".row-menu[open]")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
+  await expect(page.getByRole("dialog", { name: "Nouveau caisson" })).toBeVisible();
+  await page.getByRole("button", { name: "Fermer" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("éditeur de caisson : il s'ouvre et une séparation s'ajoute", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await signUp(page);
   await page.goto("/poly/");
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await page.fill("#name", "Bibliothèque e2e");
   await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
   await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
@@ -67,6 +161,7 @@ test("éditeur de caisson : une étagère se pose dans une niche basse, dans les
   page.on("pageerror", (error) => errors.push(error.message));
   await signUp(page);
   await page.goto("/poly/");
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await page.fill("#name", "Niche basse e2e");
   await page.fill("#height", "360");
   await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
@@ -94,6 +189,7 @@ test("éditeur de caisson : une étagère se pose dans une niche basse, dans les
 test("éditeur de caisson : les cartes d'options sont fermées, en ouvrir une ferme l'autre ; le Navigateur se replie", async ({ page }) => {
   await signUp(page);
   await page.goto("/poly/");
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await page.fill("#name", "Cartes e2e");
   await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
   await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);
@@ -157,6 +253,7 @@ test("éditeur de pièce : une affaire de cuisine s'ouvre en plan et reçoit un 
 test("éditeur de caisson : avec Séparer, Côté ou Étagère, un simple clic choisit la niche", async ({ page }) => {
   await signUp(page);
   await page.goto("/poly/");
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await page.fill("#name", "Niches e2e");
   await page.fill("#width", "1000");
   await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
@@ -295,6 +392,7 @@ test("éditeur de caisson : trois onglets, l'outil choisi montre ses réglages, 
   page.on("pageerror", (error) => errors.push(error.message));
   await signUp(page);
   await page.goto("/poly/");
+  await page.getByRole("button", { name: "Nouveau caisson" }).click();
   await page.fill("#name", "Onglets e2e");
   await page.getByRole("button", { name: "Créer et ouvrir l'éditeur" }).click();
   await page.waitForURL(/\/poly\/cabinet\/\d+\/$/);

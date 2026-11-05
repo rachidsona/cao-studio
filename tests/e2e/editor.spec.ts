@@ -216,3 +216,47 @@ test("le menu du nom du projet : projets, atelier poly_3D, mise en plan du caiss
   await expect(workspace.locator('[data-drawing-stage] [data-id="title-block"]')).toContainText("Caisson bas");
   expect(errors).toEqual([]);
 });
+
+test("Répartition : les cotes de plan s'affichent pendant l'outil et suivent ses réglages", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Cotes e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  const toggle = () => page.evaluate(() => document.querySelector<HTMLElement>("[data-piece-dims]")?.click());
+  const dims = page.locator(".cad-plan-dim");
+
+  // A Répartition of 3 cases: the totals, the chain of its niches and the depth, the button off.
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(dims.filter({ hasText: /^180$/ })).toHaveCount(1);
+  await expect(dims.filter({ hasText: /^250$/ })).toHaveCount(1);
+  await expect(dims.filter({ hasText: /^57$/ })).toHaveCount(3);
+  await page.keyboard.press("Enter");
+  await expect(dims).toHaveCount(0);
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+
+  // Étagères: the niche chosen is cut in the dimensions before OK; the button hides them for this tool.
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+  await action("shelves");
+  await expect(dims.filter({ hasText: /^246,4$/ })).toHaveCount(1);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(dims.filter({ hasText: /^122,3$/ })).toHaveCount(2);
+  await toggle();
+  await expect(dims).toHaveCount(0);
+  await toggle();
+  await expect(dims.filter({ hasText: /^122,3$/ })).toHaveCount(2);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(dims).toHaveCount(0);
+
+  // With the button on, a Répartition has its plan's dimensions, not those of its pieces.
+  await toggle();
+  await expect(dims.filter({ hasText: /^122,3$/ })).toHaveCount(2);
+  await expect(page.locator(".cad-piece-dim")).toHaveCount(0);
+  await toggle();
+  expect(errors).toEqual([]);
+});

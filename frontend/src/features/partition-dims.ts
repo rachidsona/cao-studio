@@ -1,0 +1,128 @@
+/**
+ * Les cotes d'une Répartition dans la vue, comme sur un plan : autour du meuble, en dehors du dessin, la largeur et la
+ * hauteur totales et, plus près, les chaînes des niches du bas, du haut, de gauche et de droite (les mesures libres
+ * entre panneaux). À l'intérieur, seule une niche dont une mesure n'est dans aucune chaîne garde cette cote : le
+ * dessin reste lisible et chaque largeur et chaque hauteur se lit quelque part. Géométrie pure : les points sont
+ * [x, y, profondeur] en mm dans le repère de l'esquisse, la profondeur partant de la face tournée vers l'œil.
+ */
+import type { NicheBox } from "../sketcher/shelves";
+
+export type PlanPoint = [number, number, number];
+export type PlanDimLevel = "total" | "chain" | "inner" | "depth";
+
+export interface PartitionPlan {
+  /** The outline of the panels. */
+  outer: NicheBox;
+  /** The niches nothing divides. */
+  niches: NicheBox[];
+  /** The depth of the panels (0: not extruded). */
+  depth: number;
+  /** The height of the plinth under the bottom board (0: none). */
+  plinth: number;
+}
+
+export interface PlanDim {
+  from: PlanPoint;
+  to: PlanPoint;
+  length: number;
+  level: PlanDimLevel;
+  /** The thin lines that bring the measured edges out to a dimension line outside the drawing. */
+  witnesses: [PlanPoint, PlanPoint][];
+}
+
+type Span = [number, number];
+
+const TOLERANCE = 1e-3;
+const near = (a: number, b: number) => Math.abs(a - b) < TOLERANCE;
+const sameSpan = (a: Span, b: Span) => near(a[0], b[0]) && near(a[1], b[1]);
+const hasSpan = (spans: Span[], s: Span) => spans.some((o) => sameSpan(o, s));
+
+/** The different spans, from the lowest. */
+const spansOf = (spans: Span[]): Span[] => {
+  const kept: Span[] = [];
+  for (const s of spans) if (!hasSpan(kept, s)) kept.push(s);
+  return kept.sort((a, b) => a[0] - b[0]);
+};
+const sameSpans = (a: Span[], b: Span[]) => a.length === b.length && a.every((s, i) => sameSpan(s, b[i]!));
+
+const xSpan = (b: NicheBox): Span => [b.x0, b.x1];
+const ySpan = (b: NicheBox): Span => [b.y0, b.y1];
+
+/** How far the dimension lines stand from the drawing, by its size (mm). */
+export const ringGap = (outer: NicheBox): number => Math.min(Math.max(Math.max(outer.x1 - outer.x0, outer.y1 - outer.y0) * 0.05, 40), 160);
+
+export function partitionDims(plan: PartitionPlan, gap = ringGap(plan.outer)): PlanDim[] {
+  const { outer, niches } = plan;
+  const dims: PlanDim[] = [];
+
+  const horizontal = (span: Span, y: number, edge: number, level: PlanDimLevel) =>
+    dims.push({
+      from: [span[0], y, 0],
+      to: [span[1], y, 0],
+      length: span[1] - span[0],
+      level,
+      witnesses: level === "inner" ? [] : span.map((x): [PlanPoint, PlanPoint] => [[x, edge, 0], [x, y, 0]]),
+    });
+  const vertical = (span: Span, x: number, edge: number, level: PlanDimLevel) =>
+    dims.push({
+      from: [x, span[0], 0],
+      to: [x, span[1], 0],
+      length: span[1] - span[0],
+      level,
+      witnesses: level === "inner" ? [] : span.map((y): [PlanPoint, PlanPoint] => [[edge, y, 0], [x, y, 0]]),
+    });
+
+  // The totals, on the outer ring.
+  horizontal([outer.x0, outer.x1], outer.y0 - 2 * gap, outer.y0, "total");
+  vertical([outer.y0, outer.y1], outer.x0 - 2 * gap, outer.x0, "total");
+
+  if (niches.length) {
+    const lowest = Math.min(...niches.map((n) => n.y0));
+    const highest = Math.max(...niches.map((n) => n.y1));
+    const leftmost = Math.min(...niches.map((n) => n.x0));
+    const rightmost = Math.max(...niches.map((n) => n.x1));
+    const bottom = spansOf(niches.filter((n) => near(n.y0, lowest)).map(xSpan));
+    const top = spansOf(niches.filter((n) => near(n.y1, highest)).map(xSpan));
+    const left = spansOf(niches.filter((n) => near(n.x0, leftmost)).map(ySpan));
+    const right = spansOf(niches.filter((n) => near(n.x1, rightmost)).map(ySpan));
+
+    // The chains, each once: the side opposite only when it says something else.
+    for (const s of bottom) horizontal(s, outer.y0 - gap, outer.y0, "chain");
+    for (const s of left) vertical(s, outer.x0 - gap, outer.x0, "chain");
+    if (!sameSpans(top, bottom)) for (const s of top) horizontal(s, outer.y1 + gap, outer.y1, "chain");
+    if (!sameSpans(right, left)) for (const s of right) vertical(s, outer.x1 + gap, outer.x1, "chain");
+    if (plan.plinth > 0) vertical([outer.y0, outer.y0 + plan.plinth], outer.x0 - gap, outer.x0, "chain");
+
+    // Inside, only what no chain gives, once each.
+    const widths = [...bottom, ...top];
+    const heights = [...left, ...right];
+    for (const n of niches) {
+      if (!hasSpan(widths, xSpan(n))) {
+        widths.push(xSpan(n));
+        horizontal(xSpan(n), n.y0 + (n.y1 - n.y0) * 0.3, n.y0, "inner");
+      }
+      if (!hasSpan(heights, ySpan(n))) {
+        heights.push(ySpan(n));
+        vertical(ySpan(n), n.x0 + (n.x1 - n.x0) * 0.3, n.x0, "inner");
+      }
+    }
+  }
+
+  // The depth, along the lower right edge, going away from the viewer.
+  if (plan.depth > 0) {
+    const at: PlanPoint = [outer.x1 + gap, outer.y0 - gap, 0];
+    dims.push({
+      from: at,
+      to: [at[0], at[1], plan.depth],
+      length: plan.depth,
+      level: "depth",
+      witnesses: [[[outer.x1, outer.y0, 0], at], [[outer.x1, outer.y0, plan.depth], [at[0], at[1], plan.depth]]],
+    });
+  }
+  return dims;
+}
+
+/** A number short enough for the view: one decimal (none in mm, three in m), with its comma. */
+export function shortValue(displayed: number, digits: number): string {
+  return Number(displayed.toFixed(digits)).toLocaleString("fr-FR", { maximumFractionDigits: digits, useGrouping: false });
+}

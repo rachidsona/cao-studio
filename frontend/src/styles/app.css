@@ -380,6 +380,16 @@
   .cad-piece-dim {
     @apply pointer-events-none bg-gray-950/80 px-1 py-px font-mono text-xs leading-none font-semibold text-[#63df0f];
   }
+  /* The dimensions of a Répartition: small, so that the drawing stays in sight. */
+  .cad-plan-dim {
+    @apply pointer-events-none bg-gray-950/70 px-1 py-px font-mono text-[11px] leading-none font-medium text-sky-100;
+  }
+  .cad-plan-dim[data-level="total"] {
+    @apply font-semibold text-white;
+  }
+  .cad-plan-dim[data-level="inner"] {
+    @apply bg-gray-950/50;
+  }
   /* The mark of a part of the cut list (A, B…), in the middle of the part. */
   .cad-part-tag {
     @apply pointer-events-none border border-amber-700 bg-amber-200 px-1.5 py-0.5 font-mono text-xs leading-none font-bold text-gray-950;
