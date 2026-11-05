@@ -7,13 +7,14 @@
  * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur.
  *
  * Une Répartition a ses cotes de plan, autour du meuble (plan-dims-view.ts) : celles-là remplacent les cotes de ses
- * pièces, et s'affichent d'elles-mêmes tant qu'on y travaille (Répartition, Étagères, Cloisons, Penderie, Tiroirs),
- * même éteint ; le bouton les masque jusqu'à la fin de l'outil.
+ * pièces, et s'affichent d'elles-mêmes tant qu'on y travaille (Répartition, Étagères, Cloisons, Penderie, Tiroirs,
+ * Dressing), même éteint ; le bouton les masque jusqu'à la fin de l'outil.
  */
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type Vec3 } from "../document/types";
+import type { PartitionPlan } from "../features/partition-dims";
 import { pieceDims, viewAxes, type Box } from "../features/piece-dims";
 import { formatLength } from "../measurements/units";
 import { frameOf, toWorld } from "../sketcher/frame";
@@ -116,9 +117,14 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     plansView.clear();
     const doc = editor.doc;
     const current = joineryPlans.current;
+    // Doors hidden (the display menu, the eye of the navigator) leave the niches behind them in sight.
+    const seenBodies = new Set(viewport.bodyMeshes().filter((m) => m.visible).map((m) => m.userData.bodyId as string));
+    const doorsSeen = (sketch: string | undefined) =>
+      doc.features.some((f) => f.type === "niche" && f.fill === "doors" && f.sketch === sketch && [...seenBodies].some((id) => id.startsWith(`${f.id}#`)));
+    const withDoors = <T extends PartitionPlan>(plans: T[], sketch: string | undefined): T[] => (doorsSeen(sketch) ? plans : plans.map((p) => ({ ...p, doors: [] })));
     if (current) {
-      if (shown()) plansView.show(current.frame, current.plans, editor.unit);
-      return new Set(current.sketch ? [current.sketch.id] : []);
+      if (shown()) for (const w of current) plansView.show(w.frame, w.preview ? w.plans : withDoors(w.plans, w.sketch?.id), editor.unit);
+      return new Set(current.flatMap((w) => (w.sketch ? [w.sketch.id] : [])));
     }
     const done = new Set<string>();
     const panels = viewport.displayedBodies.map((id) => ({ id, sketch: sketchOfBody(doc, id) }));
@@ -134,7 +140,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
           expected.expandByPoint(corner).expandByPoint(corner.clone().addScaledVector(new THREE.Vector3(...frame.normal), plan.depth));
         }
       }
-      plansView.show(frame, plans, editor.unit, shiftOf(moved, expected));
+      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected));
       done.add(sketch.id);
     }
     return done;
@@ -148,8 +154,8 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     else if (!root.dataset.tool) element = null;
     const doc = editor.doc;
     const planned = drawPlans(element);
-    // At work in a Répartition with the button off: its dimensions alone.
-    if (!on) return;
+    // At work in a Répartition with the button off, or on a preview: the plan's dimensions alone.
+    if (!on || joineryPlans.current?.some((w) => w.preview)) return;
     const bodies = viewport.displayedBodies.filter((id) => {
       const sketch = sketchOfBody(doc, id);
       return (!sketch || !planned.has(sketch)) && (!element || element.has(featureOfBody(bodyOrigin(doc, id))));

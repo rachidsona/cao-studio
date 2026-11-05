@@ -773,7 +773,8 @@ opération existante.
     ni à l'export CNC**. Pour une double penderie, on divise d'abord la niche par une étagère, puis une tringle dans
     chaque niche.
   - **Tiroirs** : **1 à 8 tiroirs encastrés** qui se partagent la hauteur de la niche : façades au nu des panneaux,
-    avec un **jeu dessus / dessous** (au-dessus, au-dessous et entre deux façades, 3 mm) et un **jeu de côté**
+    avec un **jeu en haut** (au-dessus de la première façade), un **jeu entre façades** et un **jeu en bas** (au-dessous
+    de la dernière), 3 mm chacun et réglés à part (les anciens tiroirs gardent le même jeu partout), et un **jeu de côté**
     (à gauche et à droite, 3 mm), réglés à part, à l'**épaisseur** voulue (18 mm), chacune avec son
     **caisson** (côtés, avant, arrière en contreplaqué bouleau, fond en HDF) sur **coulisses** de 12,5 mm, de la
     longueur du commerce qui tient dans la profondeur (350 mm pour 40 cm de profondeur), et ses **trous de poignée**
@@ -1359,7 +1360,8 @@ opération existante.
     change de taille. Donner un motif à la pièce entière efface ceux de ses faces. Les motifs des faces se voient
     dans la vue et dans le Rendu, et sont comptés dans « Dans ce modèle » (`appearance/face-looks.ts`).
     Un clic sur une vignette la donne aux corps
-    sélectionnés ; on peut aussi **glisser une vignette sur un corps** de la vue (surligné pendant le glisser).
+    sélectionnés ; on peut aussi **glisser une vignette sur un corps** de la vue (surligné pendant le glisser) ; lâchée sur un corps
+    sélectionné ou à côté des corps, elle va à toute la sélection.
     « Couleur au choix » applique une couleur à une laque, une peinture, un plastique ou un tissu ; « Dans ce
     modèle » montre les apparences utilisées ; « Retirer l'apparence » rend celle de la matière. L'apparence est
     gardée dans le document (annulable), en plus de la matière d'atelier : elle ne change ni la liste de débit ni le
@@ -1701,11 +1703,14 @@ opération existante.
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
 - **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/plan-dims-view.ts`) : pendant Répartition,
-  Étagères, Cloisons, Penderie et Tiroirs, le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
+  Étagères, Cloisons, Penderie, Tiroirs et l'assistant Dressing (chaque mur le sien), le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
   Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
-  panneaux) en bas et à gauche, en haut et à droite seulement si elles disent autre chose ; le socle ; la profondeur
+  panneaux) en bas, à gauche et à droite dès qu'un côté est divisé, en haut seulement si elle dit autre chose que le
+  bas ; le socle ; la profondeur
   quand on voit le meuble de biais. À l'intérieur, seule une niche dont une mesure n'est dans aucune chaîne garde sa
-  cote, une seule fois. Les cotes suivent le panneau de l'outil avant OK et se placent sur la face tournée vers l'œil.
+  cote, une seule fois. Des portes en vue ont leur largeur et leur hauteur, et cachent les cotes intérieures ; portes
+  masquées, ces cotes reviennent. Les cotes suivent le panneau de l'outil avant OK et se placent sur la face tournée
+  vers l'œil.
   Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
   place des cotes pièce par pièce de la Répartition.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,

@@ -66,6 +66,8 @@ export class PlanDimsView {
       const gap = Math.min(Math.max(ringGap(outer), RING / pixels), span * 0.3);
       const tick = Math.min(gap, ringGap(outer)) * 0.12;
       for (const dim of partitionDims(plan, gap)) {
+        // Doors are read from the front.
+        if (dim.level === "door" && !towards) continue;
         const [from, to] = [world(dim.from), world(dim.to)];
         const [a, b] = [screen(from), screen(to)];
         const seen = Math.hypot(a[0] - b[0], a[1] - b[1]);

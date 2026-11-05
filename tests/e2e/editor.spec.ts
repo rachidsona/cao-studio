@@ -260,3 +260,58 @@ test("Répartition : les cotes de plan s'affichent pendant l'outil et suivent se
   await toggle();
   expect(errors).toEqual([]);
 });
+
+
+test("Répartition avec portes : chaque porte a ses cotes, sur le bouton Cotes des pièces", async ({ page }) => {
+  await newProject(page, "Portes e2e");
+  const dims = page.locator(".cad-plan-dim");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="partition"]')?.click());
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.getByLabel("Une porte par case").check();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>("[data-piece-dims]")?.click());
+  await expect(page.locator('.cad-plan-dim[data-level="door"]')).toHaveCount(6);
+  await page.evaluate(() => document.querySelector<HTMLElement>("[data-piece-dims]")?.click());
+  await expect(dims).toHaveCount(0);
+});
+
+test("Dressing : les cotes de plan s'affichent pendant l'assistant et suivent ses réglages", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Dressing e2e");
+  const dims = page.locator(".cad-plan-dim");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="dressing"]')?.click());
+  await page.waitForTimeout(2000);
+  // The whole preview in view: a value out of it is not in the page.
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
+  await expect(dims.filter({ hasText: /^300$/ })).toHaveCount(1);
+  await expect(dims.filter({ hasText: /^250$/ })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(dims).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Apparence : une vignette glissée sur la sélection va à toute la sélection", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Apparence e2e");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="partition"]')?.click());
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="appearance"]')?.click());
+
+  // All the boards of the Répartition, then a swatch dropped beside them in the view.
+  await page.locator('[data-head^="group:"]').first().click();
+  await expect(page.getByText(/Appliquer à : 9 corps/)).toBeVisible();
+  await page.locator("[data-appearance]:visible").nth(3).dragTo(canvas, { targetPosition: { x: 12, y: box.height - 90 } });
+  await expect(page.locator("[data-appearance]").filter({ hasText: "9 corps" })).not.toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -1,8 +1,8 @@
 /**
  * Bouton « Apparence » (Atelier) : ouvre la bibliothèque d'apparences à droite. Un clic sur une vignette la donne aux
  * corps sélectionnés (dans le navigateur ou la vue, un groupe d'un clic sur son titre) — ou, au choix, aux seules faces
- * choisies dans la vue ; une vignette glissée sur la vue la donne au corps lâché dessous (surligné pendant le glisser),
- * à la seule face dessous avec Alt.
+ * choisies dans la vue ; une vignette glissée sur la vue la donne au corps lâché dessous (surligné pendant le glisser) ou,
+ * si ce corps est sélectionné, à toute la sélection ; à la seule face dessous avec Alt.
  * Chaque changement est une modification du document (Annuler la reprend) ; la vue passe aux apparences.
  */
 import { AppearancePanel, DRAG_TYPE, droppedAppearance } from "../appearance/appearance-panel";
@@ -46,6 +46,11 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
       void editor.change(setFaceAppearance(whole, picks, appearanceId, color));
     } else void editor.change(setBodyAppearance(editor.doc, bodyIds, appearanceId, color));
     showAppearances();
+  };
+  /** What a swatch dropped on this body goes to: all the selection when the body is in it, else this body. */
+  const droppedOn = (body: string) => {
+    const picked = targets();
+    return picked.includes(body) ? picked : [body];
   };
   /** An imported image: added to the project and given to the selected bodies, in one step. */
   const importImage = (name: string, image: string, tile: [number, number], bodyIds: string[]) => {
@@ -107,7 +112,7 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
     const body = bodyUnder(event);
-    viewport.setHoverHighlight(body ? { bodies: [body] } : null);
+    viewport.setHoverHighlight(body ? { bodies: droppedOn(body) } : null);
   });
   container.addEventListener("dragleave", () => viewport.setHoverHighlight(null));
   container.addEventListener("drop", (event) => {
@@ -123,8 +128,10 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
       return showAppearances();
     }
     const body = bodyUnder(event);
-    if (body) {
-      void editor.change(setBodyAppearance(editor.doc, [body], dropped.id, dropped.color));
+    // Dropped beside the bodies: the selection takes it, if there is one.
+    const bodies = body ? droppedOn(body) : targets();
+    if (bodies.length) {
+      void editor.change(setBodyAppearance(editor.doc, bodies, dropped.id, dropped.color));
       showAppearances();
     } else editor.notify("Lâchez l'apparence sur un corps.", "info");
   });

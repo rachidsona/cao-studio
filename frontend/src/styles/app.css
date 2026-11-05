@@ -390,6 +390,9 @@
   .cad-plan-dim[data-level="inner"] {
     @apply bg-gray-950/50;
   }
+  .cad-plan-dim[data-level="door"] {
+    @apply bg-gray-950/80 font-semibold;
+  }
   /* The mark of a part of the cut list (A, B…), in the middle of the part. */
   .cad-part-tag {
     @apply pointer-events-none border border-amber-700 bg-amber-200 px-1.5 py-0.5 font-mono text-xs leading-none font-bold text-gray-950;

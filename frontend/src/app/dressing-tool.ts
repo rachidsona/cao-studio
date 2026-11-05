@@ -18,6 +18,7 @@ import { CARD } from "../ui/browser";
 import { el } from "../ui/dom";
 import { toolIcon, trashIcon } from "../ui/icons";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { joineryPlans, previewPlans } from "./partition-plan";
 
 /** Kept for the session: the last dressing set. */
 let last: DressingSettings = structuredClone(DRESSING);
@@ -128,6 +129,20 @@ export class DressingTool extends PanelTool {
     if (this.problem()) return null;
     const bad = this.added().map((f) => this.ctx.status(f.id)).find((st) => st && st.state !== "ok");
     return bad ? (bad.message ?? "Ce dressing est impossible.") : null;
+  }
+
+  /** The dimensions of each wall, as in a Répartition, follow the panel. */
+  protected override schedulePreview(): void {
+    super.schedulePreview();
+    const { doc, added } = this.plan();
+    joineryPlans.current = this.problem() ? [] : previewPlans(doc, added);
+    joineryPlans.changed();
+  }
+
+  protected override close(): void {
+    super.close();
+    joineryPlans.current = null;
+    joineryPlans.changed();
   }
 
   private changed(): void {

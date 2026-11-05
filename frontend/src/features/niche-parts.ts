@@ -3,7 +3,7 @@
  * la quincaillerie et à montrer l'aperçu).
  * - Penderie : une tringle ronde d'un côté à l'autre de la niche, à mi-profondeur, son axe à `drop` mm sous le haut,
  *   tenue par deux supports (disques de 3 mm contre les côtés).
- * - Tiroirs : n façades encastrées dans l'ouverture (même jeu tout autour et entre elles), chacune avec son caisson
+ * - Tiroirs : n façades encastrées dans l'ouverture (un jeu en haut, un en bas, un entre elles, un de côté), chacune avec son caisson
  *   (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du commerce qui tient dans la profondeur.
  * - Portes (de toute la répartition) : une porte en applique devant chaque case. Elle couvre le dessus et le dessous ;
  *   un côté extérieur ou un côté double (chaque case a le sien), elle le couvre en entier ; un côté simple, elle en
@@ -152,10 +152,10 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
   }
   if (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > MAX_DRAWERS) return `De 1 à ${MAX_DRAWERS} tiroirs.`;
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
-  if (!(f.gap >= 0) || !((f.sideGap ?? f.gap) >= 0)) return "Le jeu ne peut pas être négatif.";
+  if ([f.gap, f.bottomGap ?? f.gap, f.sideGap ?? f.gap, f.betweenGap ?? f.gap].some((v) => !(v >= 0))) return "Le jeu ne peut pas être négatif.";
   if (width - 2 * (f.sideGap ?? f.gap) < 60) return "Le jeu de côté est trop grand pour la largeur de la niche.";
   if (width < 2 * (SLIDE_PLAY + DRAWER_SIDE) + 60) return "La niche est trop étroite pour des tiroirs.";
-  if ((height - (f.drawers + 1) * f.gap) / f.drawers < 80) return "La niche est trop basse pour autant de tiroirs (80 mm de façade au moins).";
+  if (frontHeight(height, f) < 80) return "La niche est trop basse pour autant de tiroirs (80 mm de façade au moins).";
   if (n.depth - f.thickness < 150) return "La niche n'est pas assez profonde pour des tiroirs.";
   return null;
 }
@@ -197,12 +197,13 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
       { name: "Support droit", kind: "disc", from: [x1 - SUPPORT, v, w], to: [x1, v, w], radius: r + 8, role: "hardware" },
     ];
   }
-  // Above and below each front, and on its sides.
+  // Above the top front and under the bottom one, between two fronts, and on their sides.
   const g = f.gap;
+  const between = f.betweenGap ?? f.gap;
   const side = f.sideGap ?? f.gap;
   const T = f.thickness;
   const count = f.drawers;
-  const h = (y1 - y0 - (count + 1) * g) / count;
+  const h = frontHeight(y1 - y0, f);
   // The fronts are inset: their outer face flush with the front of the panels (w = D).
   const room = D - T - 10;
   const length = [...SLIDES].reverse().find((l) => l <= room) ?? Math.max(100, Math.floor(room / 10) * 10);
@@ -212,7 +213,7 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
   const box = (name: string, from: Vec3, to: Vec3, role?: NichePart["role"]) => parts.push({ name, kind: "box", from, to, ...(role ? { role } : {}) });
   for (let i = 0; i < count; i++) {
     // Drawers numbered from the top.
-    const top = y1 - g - i * (h + g);
+    const top = y1 - g - i * (h + between);
     const bottom = top - h;
     const k = i + 1;
     box(`Façade tiroir ${k}`, [x0 + side, bottom, D - T], [x1 - side, top, D], "front");
@@ -234,6 +235,11 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     });
   }
   return parts;
+}
+
+/** The height of each drawer front in a niche this high: what the gaps leave, shared. */
+function frontHeight(height: number, f: Pick<NicheFeature, "drawers" | "gap" | "bottomGap" | "betweenGap">): number {
+  return (height - f.gap - (f.bottomGap ?? f.gap) - (f.drawers - 1) * (f.betweenGap ?? f.gap)) / f.drawers;
 }
 
 /** Half the spacing of the handle's holes (128 mm unless another handle was chosen; 0 for a knob). */

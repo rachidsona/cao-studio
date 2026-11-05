@@ -77,7 +77,7 @@ export class AppearancePanel {
     void swatch(appearance, color).then((url) => url && (image.src = url));
     const button = el(
       "button",
-      { type: "button", class: "group flex min-w-0 flex-col items-center gap-0.5 p-1 text-center hover:bg-sky-50 dark:hover:bg-sky-950", title: `${appearance.name}${note ? ` — ${note}` : ""}\nClic : donner aux corps sélectionnés ; ou glisser sur un corps de la vue`, draggable: "true", "data-appearance": appearance.id },
+      { type: "button", class: "group flex min-w-0 flex-col items-center gap-0.5 p-1 text-center hover:bg-sky-50 dark:hover:bg-sky-950", title: `${appearance.name}${note ? ` — ${note}` : ""}\nClic : donner aux corps sélectionnés ; ou glisser sur un corps de la vue (sur la sélection : à toute la sélection)`, draggable: "true", "data-appearance": appearance.id },
       image,
       el("span", { class: "line-clamp-2 w-full text-[10px] leading-tight text-gray-700 dark:text-gray-200" }, appearance.name),
       note ? el("span", { class: "text-[10px] text-gray-500" }, note) : null,
@@ -162,7 +162,7 @@ export class AppearancePanel {
     });
 
     const parts: (HTMLElement | null)[] = [
-      el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${faces.only ? `${faces.count} face${faces.count > 1 ? "s" : ""} choisie${faces.count > 1 ? "s" : ""}` : `${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""}`} (clic sur une vignette).` : "Sélectionnez des corps (dans le navigateur ou la vue, Ctrl pour plusieurs ; un groupe d'un clic sur son titre) puis cliquez une vignette, ou glissez une vignette sur un corps de la vue."),
+      el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${faces.only ? `${faces.count} face${faces.count > 1 ? "s" : ""} choisie${faces.count > 1 ? "s" : ""}` : `${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""}`} (clic sur une vignette, ou glissez-la sur la sélection).` : "Sélectionnez des corps (dans le navigateur ou la vue, Ctrl pour plusieurs ; un groupe d'un clic sur son titre) puis cliquez une vignette, ou glissez-la sur la sélection ; sans sélection, glissez-la sur un corps de la vue."),
       faces.count ? this.facesChoice(faces) : null,
       used.length
         ? el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Dans ce modèle"), el("div", { class: "grid grid-cols-3 gap-1.5 @2xs:grid-cols-4" }, ...used.map((u) => this.tile(u.appearance, u.color, [u.count ? `${u.count} corps` : "", u.faces ? `${u.faces} face${u.faces > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ")))))

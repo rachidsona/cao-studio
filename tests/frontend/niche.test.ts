@@ -70,7 +70,7 @@ describe("équipement d'une niche", () => {
     expect([a[1], b[1]]).toEqual([-400, -382]);
   });
 
-  it("tiroirs : un jeu dessus/dessous entre les façades, un autre jeu sur leurs côtés", () => {
+  it("tiroirs : un jeu dessus/dessous, repris entre les façades sauf réglage, un autre jeu sur leurs côtés", () => {
     const n = nicheGeometry(drawers(), sketch());
     if (typeof n === "string") throw new Error(n);
     const fronts = nicheParts(drawers({ gap: 4, sideGap: 2 }), n).filter((p) => p.role === "front");
@@ -81,8 +81,42 @@ describe("équipement d'une niche", () => {
     // Older drawers, one gap all round.
     const old = nicheParts(drawers({ gap: 3 }), n).find((p) => p.role === "front")!;
     expect([old.from[0], old.to[0]]).toEqual([512, 979]);
+    expect(nicheProblem(drawers({ betweenGap: -1 }), n)).toMatch(/négatif/);
     expect(nicheProblem(drawers({ sideGap: -1 }), n)).toMatch(/négatif/);
     expect(nicheProblem(drawers({ sideGap: 300 }), n)).toMatch(/jeu de côté/);
+  });
+
+  it("tiroirs : le jeu entre façades se règle à part", () => {
+    const n = nicheGeometry(drawers(), sketch());
+    if (typeof n === "string") throw new Error(n);
+    const f = drawers({ drawers: 2, gap: 30, betweenGap: 5 });
+    const [top, low] = nicheParts(f, n).filter((p) => p.role === "front");
+    // 18…1982 high: 30 above, 30 below, 5 between; the two fronts share the rest.
+    const h = (1964 - 60 - 5) / 2;
+    expect(top!.to[1]).toBeCloseTo(1982 - 30);
+    expect(low!.from[1]).toBeCloseTo(18 + 30);
+    expect(top!.from[1] - low!.to[1]).toBeCloseTo(5);
+    expect(top!.to[1] - top!.from[1]).toBeCloseTo(h);
+    // No value: the gap of above and below, as older drawers.
+    const [a, b] = nicheParts(drawers({ drawers: 2, gap: 30 }), n).filter((p) => p.role === "front");
+    expect(a!.from[1] - b!.to[1]).toBeCloseTo(30);
+    expect(nicheProblem(drawers({ drawers: 8, gap: 3, betweenGap: 200 }), n)).toMatch(/trop basse/);
+  });
+
+  it("tiroirs : le jeu du haut et le jeu du bas se règlent séparément", () => {
+    const n = nicheGeometry(drawers(), sketch());
+    if (typeof n === "string") throw new Error(n);
+    const f = drawers({ drawers: 2, gap: 40, bottomGap: 10, betweenGap: 6 });
+    const [top, low] = nicheParts(f, n).filter((p) => p.role === "front");
+    expect(top!.to[1]).toBeCloseTo(1982 - 40);
+    expect(low!.from[1]).toBeCloseTo(18 + 10);
+    expect(top!.from[1] - low!.to[1]).toBeCloseTo(6);
+    expect(top!.to[1] - top!.from[1]).toBeCloseTo((1964 - 40 - 10 - 6) / 2);
+    // No value below: the gap above, as older drawers.
+    const [only] = nicheParts(drawers({ drawers: 1, gap: 25 }), n).filter((p) => p.role === "front");
+    expect(only!.from[1]).toBeCloseTo(18 + 25);
+    expect(nicheProblem(drawers({ bottomGap: -1 }), n)).toMatch(/négatif/);
+    expect(nicheProblem(drawers({ drawers: 1, gap: 3, bottomGap: 1900 }), n)).toMatch(/trop basse/);
   });
 
   it("dit pourquoi une niche ne peut pas être équipée", () => {

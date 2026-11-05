@@ -184,7 +184,7 @@ export class Joinery3D implements PointerHandler {
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     const plan = tool instanceof SketchPartitionTool ? tool.plan() : null;
     const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool ? tool.divided() : []);
-    joineryPlans.current = { sketch: sketch?.type === "sketch" ? sketch : null, frame: this.frame, plans };
+    joineryPlans.current = [{ sketch: sketch?.type === "sketch" ? sketch : null, frame: this.frame, plans }];
     joineryPlans.changed();
   }
 

@@ -40,6 +40,11 @@ describe("the dimensions of a Répartition", () => {
     expect(dims.find((d) => d.level === "chain" && d.from[1] < 0)?.witnesses[0]?.[0]).toEqual([18, 0, 0]);
   });
 
+  it("chains the right side of a divided column too, even with the same heights as the left", () => {
+    const rights = partitionDims(plan).filter((d) => d.level === "chain" && d.from[0] > 1800).map((d) => Math.round(d.length));
+    expect(rights).toEqual([312, 312, 312, 482]);
+  });
+
   it("leaves out the side opposite when it says the same", () => {
     const dims = partitionDims({ outer: { x0: 0, y0: 0, x1: 1000, y1: 720 }, niches: [{ x0: 18, x1: 982, y0: 18, y1: 702 }], depth: 0, plinth: 0 });
     expect(dims.filter((d) => d.level === "chain")).toHaveLength(2);
@@ -64,6 +69,16 @@ describe("the dimensions of a Répartition", () => {
     }).filter((d) => d.level === "inner");
     expect(dims.filter((d) => d.from[1] === d.to[1])).toHaveLength(0);
     expect(dims.filter((d) => d.from[0] === d.to[0]).map((d) => Math.round(d.length))).toEqual([182, 182, 182]);
+  });
+
+  it("gives each door its width and height, and writes nothing behind them", () => {
+    const doors = [{ x0: 2, y0: 2, x1: 598, y1: 2498 }, { x0: 602, y0: 2, x1: 1198, y1: 2498 }];
+    const dims = partitionDims({ ...plan, doors });
+    expect(dims.filter((d) => d.level === "door").map((d) => Math.round(d.length))).toEqual([596, 2496, 596, 2496]);
+    expect(dims.filter((d) => d.level === "door").every((d) => d.witnesses.length === 0)).toBe(true);
+    expect(dims.some((d) => d.level === "inner")).toBe(false);
+    // The chains around stay.
+    expect(dims.some((d) => d.level === "chain")).toBe(true);
   });
 
   it("adds the plinth to the chain of the left side", () => {

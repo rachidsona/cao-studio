@@ -507,11 +507,13 @@ export interface NicheFeature extends FeatureBase {
   diameter: number;
   drop: number;
   /**
-   * Drawers: how many (they share the niche's height), the gap above and below each front (between two fronts too),
-   * the gap on their sides (`gap` when missing: older drawers), their thickness, handle holes.
+   * Drawers: how many (they share the niche's height), the gap above the top front (`gap`), under the bottom one,
+   * between two fronts and on their sides (`gap` when missing: older drawers), their thickness, handle holes.
    */
   drawers: number;
   gap: number;
+  bottomGap?: number;
+  betweenGap?: number;
   sideGap?: number;
   /** Doors: the side of the hinges of each one, from the left (missing: in turn, left first). */
   hinges?: ("left" | "right")[];
