@@ -2,12 +2,13 @@
 import { describe, expect, it } from "vitest";
 import { DRESSING, partitionInput } from "../../frontend/src/document/dressing-plan";
 import { MODULES, moduleLayout, moduleSizes, moduleSteps, moduleWarnings, withModules, type ModuleKind, type ModulePick } from "../../frontend/src/document/dressing-modules";
+import { plansOf } from "../../frontend/src/app/partition-plan";
 import { modelHardware } from "../../frontend/src/document/hardware";
-import { emptySketchGeometry, type SketchGeometry } from "../../frontend/src/document/sketch";
-import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
+import { emptySketchGeometry, type ShelfParams, type SketchGeometry } from "../../frontend/src/document/sketch";
+import { stepOfBody, withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
-import { extrusionGroups, leafNiches, partitionRecord, rebuildChain } from "../../frontend/src/sketcher/partition-history";
+import { extrusionGroups, isShelves, leafNiches, partitionRecord, rebuildChain } from "../../frontend/src/sketcher/partition-history";
 
 const box = { x0: 18, y0: 98, x1: 918, y1: 2482 };
 
@@ -104,4 +105,67 @@ describe("modules de dressing", () => {
     const doc = cabinet();
     for (const kind of Object.keys(MODULES) as ModuleKind[]) expect(() => made(doc, picks(doc, 0), kind)).not.toThrow();
   });
+
+  describe("une fois posés", () => {
+    /** The step of the shelves above the drawers changed as « Modifier » does it. */
+    const changed = (doc: CadDocument, offset: string, input: Partial<ShelfParams>): CadDocument => {
+      const g = sketchOf(doc);
+      const offsets = (g.offsets ?? []).map((r) => (r.id === offset && isShelves(r) ? { ...r, step: { ...r.step, input: { ...r.step.input, ...input } } } : r));
+      const rebuilt = rebuildChain({ ...g, offsets }, "of1");
+      if (typeof rebuilt === "string") throw new Error(rebuilt);
+      return withSketchExtrusion(doc, "sk1", rebuilt.geometry, { groups: extrusionGroups(g.offsets ?? [], rebuilt) });
+    };
+    const shelvesOf = (doc: CadDocument) => doc.features.filter((f) => f.name.startsWith("Étagère "));
+    const heights = (doc: CadDocument) => leafNiches(sketchOf(doc)).filter((n) => n.path[0] === 0 && n.path[1] === 1).map((n) => Number((n.box.y1 - n.box.y0).toFixed(1)));
+
+    it("se changent depuis l'étagère : 40 cm sous le dessus, le reste réparti", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const top = shelvesOf(next).at(-1)!;
+      const step = stepOfBody(next, top.id)!;
+      expect(step).toMatchObject({ sketch: "sk1", kind: "shelves", name: "Étagères 2" });
+      const before = heights(next);
+      expect(new Set(before).size).toBe(1);
+      const after = heights(changed(next, step.offset, { mode: "top", fixed: 400 }));
+      expect(after).toHaveLength(before.length);
+      expect(after.at(-1)).toBe(400);
+      expect(new Set(after.slice(0, -1)).size).toBe(1);
+      expect(after.reduce((a, b) => a + b, 0)).toBeCloseTo(before.reduce((a, b) => a + b, 0), 0);
+    });
+
+    it("ont des cotes qui suivent le réglage, avant l'OK", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const niche = leafNiches(sketchOf(next)).filter((n) => n.path[0] === 0 && n.path[1] === 1).map((n) => n.box);
+      const box = { ...niche[0]!, y1: niche.at(-1)!.y1 };
+      const into = [{ ...box, y1: box.y0 + 1000 }, { ...box, y0: box.y0 + 1018 }];
+      const [plan] = plansOf(sketchOf(next), [{ box, into }]);
+      expect(plan!.niches).toEqual(expect.arrayContaining(into));
+      for (const old of niche) expect(plan!.niches).not.toContainEqual(old);
+      expect(plan!.niches).toHaveLength(plansOf(sketchOf(next))[0]!.niches.length - niche.length + 2);
+    });
+
+    it("gardent matière et apparence de chaque pièce refaite, et les tiroirs suivent", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const [low, high] = [shelvesOf(next)[1]!, shelvesOf(next).at(-1)!];
+      const side = next.features.find((f) => f.name === "Côté 2")!;
+      const dressed: CadDocument = { ...next, bodyInfo: { [low.id]: { appearance: "chene" }, [high.id]: { appearance: "noyer", color: "#112233" }, [side.id]: { material: "m1" } } };
+      const offset = stepOfBody(dressed, high.id)!.offset;
+      const after = changed(dressed, offset, { mode: "top", fixed: 400 });
+      const look = (name: string) => after.bodyInfo?.[after.features.find((f) => f.name === name)!.id];
+      expect(look(low.name)).toEqual({ appearance: "chene" });
+      expect(look(high.name)).toEqual({ appearance: "noyer", color: "#112233" });
+      expect(look("Côté 2")).toEqual({ material: "m1" });
+      expect(niches(after)).toHaveLength(1);
+      // One shelf more than before takes after the last one.
+      const more = changed(dressed, offset, { count: sketchShelves(dressed, offset) + 1 });
+      expect(more.bodyInfo?.[shelvesOf(more).at(-1)!.id]).toEqual({ appearance: "noyer", color: "#112233" });
+    });
+  });
 });
+
+const sketchShelves = (doc: CadDocument, offset: string): number => {
+  const r = sketchOf(doc).offsets?.find((o) => o.id === offset);
+  return r && isShelves(r) ? r.step.input.count : 0;
+};

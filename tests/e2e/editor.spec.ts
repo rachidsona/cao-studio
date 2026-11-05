@@ -351,6 +351,51 @@ test("Module : la liste, l'aperçu et les cotes, une seule annulation, Mes modul
   expect(errors).toEqual([]);
 });
 
+test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm en haut et le reste réparti", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Module change e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).click();
+  await tree.getByText("Étagère 3", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Modifier Étagères 2" }).click();
+
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await expect(shelves).toContainText("Modifier : Étagères 2");
+  await shelves.getByLabel("Niches").selectOption("top");
+  await shelves.getByLabel(/^Hauteur fixe/).fill("40");
+  await shelves.getByLabel(/^Hauteur fixe/).press("Enter");
+  await expect(shelves).toContainText(/40 cm \(du bas vers le haut\)/);
+  // The dimensions in the view already say it, as the orange preview does.
+  await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(shelves).toHaveCount(0);
+  await expect(tree.getByText("Tiroirs 1", { exact: true }).first()).toBeVisible();
+  await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "test-results/module-change.png" });
+  expect(errors).toEqual([]);
+});
+
 test("Apparence : une vignette glissée sur la sélection va à toute la sélection", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

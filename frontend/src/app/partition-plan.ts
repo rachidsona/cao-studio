@@ -18,12 +18,15 @@ export interface SketchPlans {
 /** The plans of every Répartition of this sketch; `divided`: what the tool would do to the niches chosen. */
 export function plansOf(g: SketchGeometry, divided: { box: PartitionPlan["outer"]; into: PartitionPlan["outer"][] }[] = []): PartitionPlan[] {
   const leaves = leafNiches(g);
-  const same = (a: PartitionPlan["outer"], b: PartitionPlan["outer"]) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
+  const inside = (a: PartitionPlan["outer"], b: PartitionPlan["outer"]) => a.x0 > b.x0 - 1e-6 && a.y0 > b.y0 - 1e-6 && a.x1 < b.x1 + 1e-6 && a.y1 < b.y1 + 1e-6;
   return (g.offsets ?? []).filter(isPartition).map((record) => {
     const { input, origin, depth } = record.step;
-    const niches = leaves
-      .filter((leaf) => leaf.partition === record.id)
-      .flatMap((leaf) => divided.find((d) => same(d.box, leaf.box))?.into ?? [leaf.box]);
+    // A niche chosen, or one divided before whose division is being changed: what it holds gives way to the tool's.
+    const own = leaves.filter((leaf) => leaf.partition === record.id).map((leaf) => leaf.box);
+    const niches = [
+      ...own.filter((box) => !divided.some((d) => inside(box, d.box))),
+      ...divided.filter((d) => own.some((box) => inside(box, d.box))).flatMap((d) => d.into),
+    ];
     const doors = record.step.doors ? partitionDoors(input, origin, record.step.doors.gap) : [];
     return {
       outer: { x0: origin[0], y0: origin[1], x1: origin[0] + input.length, y1: origin[1] + input.height },

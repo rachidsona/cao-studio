@@ -261,7 +261,7 @@ export class Editor {
           const face = this.picked.lastFace;
           if (face) void this.sketches.createOnFace(face);
         },
-        clear: () => this.viewport.clearSelection(), remove: () => this.removePicked(this.picked.selection),
+        clear: () => this.viewport.clearSelection(), remove: () => this.removePicked(this.picked.selection), step: (body) => this.sketches.stepOf(body),
       },
       targets: extrudeTargets(this.doc, feature?.id ?? null),
       sketch: {

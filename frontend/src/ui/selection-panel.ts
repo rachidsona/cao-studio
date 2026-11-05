@@ -21,6 +21,8 @@ export interface SelectionActions {
   clear(): void;
   /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, sketch lines and points. */
   remove(): void;
+  /** The step of a Répartition that made this body, to change it from the piece (a shelf: the heights of its niches). */
+  step(body: string): { name: string; kind: "partition" | "shelves"; run(): void } | null;
 }
 
 /**
@@ -99,6 +101,9 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   ];
   const planarFaces = faces.length > 0 && faces.every((f) => f.info?.surface === "PLANE");
   const buttons: HTMLElement[] = [];
+  const picked = new Set([...bodies.map((b) => b.id), ...faces.map((f) => f.pick.bodyId), ...edges.map((e) => e.pick.bodyId), ...vertices.map((v) => v.bodyId)]);
+  const step = picked.size === 1 ? actions.step([...picked][0] as string) : null;
+  if (step) buttons.push(action(step.kind === "partition" ? "i-partition" : "i-shelves", `Modifier ${step.name}`, step.run, true));
   if (edges.length) buttons.push(action("i-fillet", "Congé", actions.fillet), action("i-chamfer", "Chanfrein", actions.chamfer));
   // One edge: pull one of the two faces along it (the end of a board up to a wall).
   if (edges.length === 1 && faces.length === 0) buttons.push(action("i-pull-face", "Tirer une face depuis cette arête", actions.pullFace, true), action("i-move-edge", "Déplacer ce trait (les faces suivent)", actions.moveEdge, true));

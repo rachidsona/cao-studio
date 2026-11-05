@@ -703,7 +703,10 @@ opération existante.
   rouvre l'outil avec ses valeurs, et à l'OK **tout est refait dans l'ordre** : on change le nombre de cases, les côtés,
   l'épaisseur, le socle, ou le nombre d'étagères d'une niche, et les étagères suivent leur niche (une niche désignée
   par sa case, puis par les divisions faites dedans). Une division dont la niche n'existe plus (moins de cases) est
-  retirée, en le disant. Les corps extrudés sont refaits aussi (les anciens sont remplacés). Supprimer la répartition
+  retirée, en le disant. Les corps extrudés sont refaits aussi (les anciens sont remplacés, et chacun garde sa matière,
+  ses chants, son calque et son apparence). Une **pièce sélectionnée** mène à son étape : le panneau Sélection d'une
+  étagère propose « **Modifier Étagères 2** », où « Celle du haut fixe » met par exemple 40 cm sous le dessus et répartit
+  le reste, les cotes de la vue suivant le réglage avant l'OK. Supprimer la répartition
   supprime aussi les divisions de ses niches. Seules les répartitions faites avec cette version ont leur historique ;
   les anciennes restent des lignes ordinaires. Le moteur est dans `sketcher/partition-history.ts`.
 - **Étagères** (bouton du ruban **3D**, groupe **Menuiserie**, comme la division d'un compartiment de Polyboard) :

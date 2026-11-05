@@ -9,7 +9,7 @@ import { autoDimensions } from "../sketcher/auto-dimensions";
 import { openSketchTransform } from "./sketch-transform-dialog";
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
-import { withSketchExtrusion } from "../document/sketch-extrusion";
+import { stepOfBody, withSketchExtrusion } from "../document/sketch-extrusion";
 import { solveSketch } from "../constraints/solver";
 import { findCurve, setDimensionValue } from "../sketcher/edit";
 import { findFeature, uniqueId, uniqueOffsetId } from "../document/operations";
@@ -298,6 +298,12 @@ export class SketchController {
     }
     this.open(sketchId);
     this.mode?.editOffset(offsetId);
+  }
+
+  /** The step that made this body, and how to change it from the piece. */
+  stepOf(body: string): { name: string; kind: "partition" | "shelves"; run(): void } | null {
+    const step = stepOfBody(this.host.doc(), body);
+    return step && { name: step.name, kind: step.kind, run: () => this.editOffset(step.sketch, step.offset) };
   }
 
   finish(): void {
