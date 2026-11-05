@@ -396,6 +396,167 @@ test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm e
   expect(errors).toEqual([]);
 });
 
+test("Niche : un clic, sa hauteur, le reste se partage, et une autre niche ensuite", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Niche e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.click(middle.x, middle.y);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(middle.x, middle.y);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+
+  await action("niche");
+  const tool = page.getByRole("dialog", { name: "Niche" });
+  await expect(tool).toContainText("Cliquez la niche");
+  const dims = page.locator(".cad-plan-dim");
+  // The niche in the middle of the column of shelves, and the one under the top.
+  const view = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".cad-plan-dim")].filter((d) => d.textContent === "33,1").map((d) => d.getBoundingClientRect().y).sort((a, b) => a - b));
+  const [highest, centre] = [view[0]!, view[2]!];
+  await page.mouse.click(middle.x, centre + 6);
+  await tool.getByLabel(/^Hauteur/).fill("20");
+  await tool.getByLabel(/^Hauteur/).press("Enter");
+  await expect(tool).toContainText("36,35 cm · 36,35 cm · 20 cm · 36,35 cm · 36,35 cm");
+  await expect(dims.filter({ hasText: /^20$/ }).first()).toBeVisible();
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Étagères 2 : niche de 20 cm.")).toBeVisible();
+
+  // Still in the tool: the top niche too (once the message no longer covers it); the first keeps its height.
+  await expect(page.getByText("Étagères 2 : niche de 20 cm.")).toBeHidden({ timeout: 20000 });
+  await page.mouse.click(middle.x, highest + 6);
+  await tool.getByLabel(/^Hauteur/).fill("40");
+  await tool.getByLabel(/^Hauteur/).press("Enter");
+  await expect(tool).toContainText("35,1333 cm · 20 cm · 35,1333 cm · 40 cm");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Étagères 2 : niche de 40 cm.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tool).toHaveCount(0);
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: "test-results/niche-tool.png" });
+  expect(errors).toEqual([]);
+});
+
+test("Étagères supprimées : leurs traits et leurs niches partent avec elles", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Suppression e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+
+  // One of the five: four left, and the niche it divided counts for one in the dimensions of the Niche tool.
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  const dims = page.locator(".cad-plan-dim");
+  await action("niche");
+  await expect(dims.filter({ hasText: /^33,1$/ })).toHaveCount(5);
+  await page.keyboard.press("Escape");
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).click();
+  await tree.getByText("Étagère 3", { exact: true }).first().click();
+  await page.getByRole("button", { name: /^Supprimer( \(\d+\))?$/ }).first().click();
+  await expect(tree.getByText("Étagère 5", { exact: true })).toHaveCount(0);
+  await expect(tree.getByText("Étagère 4", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  await action("niche");
+  await expect(dims.filter({ hasText: /^33,1$/ })).toHaveCount(3);
+  await expect(dims.filter({ hasText: /^68$/ }).first()).toBeVisible();
+
+  // Undone in one go.
+  await page.keyboard.press("Escape");
+  await page.locator('[data-action="undo"]').click();
+  await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-results/shelf-removed.png" });
+  expect(errors).toEqual([]);
+});
+
+test("Onglets : plusieurs projets ouverts, chacun garde son travail, et ils reviennent au rechargement", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Premier e2e");
+  const tabs = page.getByRole("tablist", { name: "Projets ouverts" });
+  await expect(tabs.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "true");
+
+  // A work in the first one, not saved.
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="partition"]')?.click());
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+
+  // The + makes a second project in its own tab, with its own editor.
+  await page.getByLabel("Nouveau projet ou ouvrir un projet").click();
+  await page.getByLabel("Nom du nouveau projet").fill("Second e2e");
+  await page.getByRole("button", { name: "Créer", exact: true }).click();
+  const second = page.frameLocator("iframe[data-project-frame]");
+  await expect(second.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(second.locator('[data-ref="status-kernel"]')).toHaveText("Noyau OpenCascade prêt");
+  await expect(second.getByRole("tab", { name: "Second e2e" })).toHaveAttribute("aria-selected", "true");
+  await expect(second.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "false");
+  await expect(second.getByText("Côtés", { exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(/editor\/$/);
+  const url = page.url();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-results/tabs-second.png" });
+
+  // Back to the first one, at once: the frame stays, the work and its history too.
+  await second.getByRole("tab", { name: "Premier e2e" }).click();
+  await expect(page.locator("iframe[data-project-frame]")).toHaveCSS("visibility", "hidden");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-action="undo"]').first()).toBeEnabled();
+
+  // The second one is there again as it was, then the first is closed from it: the second stays.
+  await tabs.getByRole("tab", { name: "Second e2e" }).click();
+  await expect(page.locator("iframe[data-project-frame]")).toHaveCSS("visibility", "visible");
+  await page.waitForTimeout(2500);
+  await second.getByLabel("Fermer Premier e2e").click();
+  await expect(second.getByRole("tab")).toHaveCount(1);
+
+  // Reloading the page opens the tab that was active, and the + offers the project closed.
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  expect(page.url()).toBe(url);
+  await expect(tabs.getByRole("tab")).toHaveCount(1);
+  await expect(tabs.getByRole("tab", { name: "Second e2e" })).toBeVisible();
+  await page.getByLabel("Nouveau projet ou ouvrir un projet").click();
+  await expect(page.getByRole("group", { name: "Ouvrir un projet" }).getByRole("button", { name: "Premier e2e" })).toBeVisible();
+  await page.getByRole("group", { name: "Ouvrir un projet" }).getByRole("button", { name: "Premier e2e" }).click();
+  await expect(tabs.getByRole("tab")).toHaveCount(2);
+  await expect(second.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  expect(errors).toEqual([]);
+});
+
 test("Apparence : une vignette glissée sur la sélection va à toute la sélection", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

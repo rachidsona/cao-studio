@@ -126,8 +126,8 @@ export type DividerKind = "single" | "double" | "none";
 export type Pass = "board" | "side";
 /** The outer sides can also meet the top and the bottom « d'onglet »: both cut at 45° along the corner's diagonal. */
 export type OuterPass = Pass | "miter";
-/** How the niches share the height: all equal, the bottom one fixed, or the top one fixed. */
-export type ShelfMode = "equal" | "bottom" | "top";
+/** How the niches share the height: all equal, the bottom one fixed, the top one fixed, or each as set (`heights`). */
+export type ShelfMode = "equal" | "bottom" | "top" | "set";
 
 /** What a « Répartition » is made from (see sketcher/partition.ts). */
 export interface PartitionParams {
@@ -165,6 +165,8 @@ export interface ShelfParams {
   mode: ShelfMode;
   /** Height of the fixed niche (mode "bottom" or "top"). */
   fixed: number;
+  /** Mode "set": the height of each niche from the bottom, null for those sharing what is left (« Niche »). */
+  heights?: (number | null)[];
   /**
    * « Cloisons »: upright panels dividing the niche from left to right (the niches share its width; "bottom" is then
    * the left one, "top" the right one). Absent: shelves.

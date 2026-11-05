@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -78,6 +79,7 @@ def projects_delete(request):
 @login_required
 @require_http_methods(["GET"])
 @ensure_csrf_cookie  # the editor reads the csrftoken cookie for X-CSRFToken
+@xframe_options_sameorigin  # each tab of projects is an editor in a frame of this site
 def editor(request, project_id):
     project = get_object_or_404(Project, pk=project_id, owner=request.user)
     editor_config = {

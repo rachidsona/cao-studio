@@ -1,5 +1,6 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
+import { bindProjectTabs } from "./app/project-tabs";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
@@ -159,6 +160,7 @@ async function start(): Promise<void> {
   bindSharing(root, viewport, editor, config.apiUrl, config.projectName);
   bindProduction(root, viewport, editor, config.apiUrl, config.projectName);
   bindAssistant(root, viewport, editor, config.apiUrl);
+  bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
   editor.render();
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);

@@ -96,3 +96,14 @@ export function saveOnExit(apiUrl: string, doc: CadDocument, baseVersion: number
   }).catch(() => undefined);
   return true;
 }
+
+/** The projects of the user, the last changed first. */
+export async function listProjects(url: string): Promise<{ id: string; name: string }[]> {
+  return (await request(url)).projects as { id: string; name: string }[];
+}
+
+/** A new empty project. */
+export async function createProject(url: string, name: string): Promise<{ id: string; name: string }> {
+  const { id, name: kept } = await request(url, { method: "POST", body: JSON.stringify({ name }) });
+  return { id: id as string, name: kept as string };
+}

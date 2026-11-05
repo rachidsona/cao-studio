@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import { DRESSING, partitionInput } from "../../frontend/src/document/dressing-plan";
 import { MODULES, moduleLayout, moduleSizes, moduleSteps, moduleWarnings, withModules, type ModuleKind, type ModulePick } from "../../frontend/src/document/dressing-modules";
 import { plansOf } from "../../frontend/src/app/partition-plan";
+import { removeStep, removeWithShelves } from "../../frontend/src/document/shelf-removal";
+import { deleteFeatures } from "../../frontend/src/document/operations";
+import { nicheGeometry } from "../../frontend/src/features/niche-parts";
 import { modelHardware } from "../../frontend/src/document/hardware";
 import { emptySketchGeometry, type ShelfParams, type SketchGeometry } from "../../frontend/src/document/sketch";
 import { stepOfBody, withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
-import { extrusionGroups, isShelves, leafNiches, partitionRecord, rebuildChain } from "../../frontend/src/sketcher/partition-history";
+import { extrusionGroups, heightStep, isShelves, leafNiches, partitionRecord, rebuildChain, withNicheHeight } from "../../frontend/src/sketcher/partition-history";
 
 const box = { x0: 18, y0: 98, x1: 918, y1: 2482 };
 
@@ -131,6 +134,111 @@ describe("modules de dressing", () => {
       expect(after.at(-1)).toBe(400);
       expect(new Set(after.slice(0, -1)).size).toBe(1);
       expect(after.reduce((a, b) => a + b, 0)).toBeCloseTo(before.reduce((a, b) => a + b, 0), 0);
+    });
+
+    it("se règlent niche par niche avec l'outil Niche, le reste réparti, les tiroirs à leur place", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const leaf = leafNiches(sketchOf(next)).filter((n) => n.path[0] === 0 && n.path[1] === 1);
+      const [third, top] = [leaf[2]!, leaf.at(-1)!];
+      const step = heightStep(sketchOf(next), third.partition, third.path)!;
+      expect(step.record.name).toBe("Étagères 2");
+      expect(step.index).toBe(2);
+      // The drawers' niche is set by the step that made it.
+      const drawers = leafNiches(sketchOf(next)).find((n) => n.path.join() === "0,0")!;
+      expect(heightStep(sketchOf(next), drawers.partition, drawers.path)).toMatchObject({ index: 0 });
+      // A case nothing divides has no height of its own.
+      const free = leafNiches(sketchOf(next)).find((n) => n.path.join() === "1")!;
+      expect(heightStep(sketchOf(next), free.partition, free.path)).toBeNull();
+
+      const input = withNicheHeight(withNicheHeight((step.record.step as { input: ShelfParams }).input, 2, 200), 4, 400);
+      const after = changed(next, step.record.id, input);
+      const h = heights(after);
+      expect(h[2]).toBe(200);
+      expect(h[4]).toBe(400);
+      expect(new Set([h[0], h[1], h[3]]).size).toBe(1);
+      expect(top.box.y1).toBe(leafNiches(sketchOf(after)).filter((n) => n.path[0] === 0 && n.path[1] === 1).at(-1)!.box.y1);
+      expect(niches(after)).toHaveLength(1);
+      expect(() => parseDocument(JSON.parse(JSON.stringify(after)))).not.toThrow();
+      // Released, it shares what is left again; all released, the niches are equal.
+      expect(withNicheHeight(input, 2, null)).toMatchObject({ mode: "set", heights: [null, null, null, null, 400] });
+      expect(withNicheHeight(withNicheHeight(input, 2, null), 4, null).mode).toBe("equal");
+    });
+
+    describe("se suppriment avec leurs traits et leurs niches", () => {
+      const shelfHeights = (doc: CadDocument) => shelvesOf(doc).map((f) => (f.type === "extrude" ? f.regions?.[0]?.[1] : 0)).sort((a, b) => a! - b!);
+      const leaves = (doc: CadDocument) => leafNiches(sketchOf(doc)).map((n) => n.path.join("."));
+
+      it("une étagère du milieu : les autres ne bougent pas, ses niches n'en font plus qu'une", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "drawers");
+        const before = shelfHeights(next);
+        const lines = sketchOf(next).curves.length;
+        const [one, two] = [shelvesOf(next)[2]!, shelvesOf(next)[4]!];
+        const dressed: CadDocument = { ...next, bodyInfo: { [two.id]: { appearance: "noyer" } } };
+        const { next: after, lost } = removeWithShelves(dressed, [one.id]);
+        expect(lost).toEqual([]);
+        expect(shelfHeights(after)).toEqual(before.filter((_, i) => i !== 2));
+        expect(sketchOf(after).curves.length).toBe(lines - 2);
+        expect(leaves(after)).toHaveLength(leaves(next).length - 1);
+        const step = sketchOf(after).offsets!.find((r) => r.name === "Étagères 2")!;
+        expect(isShelves(step) && step.step.input.count).toBe(3);
+        expect(step.bodies).toHaveLength(3);
+        expect(after.bodyInfo?.[shelvesOf(after).at(-1)!.id]).toEqual({ appearance: "noyer" });
+        expect(niches(after)).toHaveLength(1);
+        expect(() => parseDocument(JSON.parse(JSON.stringify(after)))).not.toThrow();
+      });
+
+      it("toutes celles d'une étape : l'étape, ses traits et ses niches s'en vont", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "drawers");
+        const step = sketchOf(next).offsets!.find((r) => r.name === "Étagères 2")!;
+        const { next: after, lost } = removeWithShelves(next, step.bodies!);
+        expect(lost).toEqual([]);
+        expect(sketchOf(after).offsets!.some((r) => r.name === "Étagères 2")).toBe(false);
+        expect(leaves(after).filter((p) => p.startsWith("0"))).toEqual(["0.0", "0.1"]);
+        expect(shelvesOf(after)).toHaveLength(1);
+        expect(sketchOf(after).curves.length).toBe(sketchOf(next).curves.length - 8);
+      });
+
+      it("ce qui suit une niche suit sa nouvelle place, et ce qu'une niche fusionnée contenait part avec elle", () => {
+        const doc = cabinet();
+        const shelves = made(doc, picks(doc, 0), "shelves");
+        const niche = picks(shelves, 0).at(-1)!;
+        const next = withModules(shelves, "sk1", [niche], "long", 18, { ...moduleSizes("long"), hat: 100 }) as CadDocument;
+        const rod = niches(next)[0]!;
+        const last = niche.path.at(-1)!;
+        // A shelf below it: the niche goes down a step, and the division in it with it.
+        const below = removeWithShelves(next, [shelvesOf(next)[0]!.id]);
+        expect(below.lost).toEqual([]);
+        expect(niches(below.next)[0]!.niche).toEqual([0, last - 1, 0]);
+        expect(typeof nicheGeometry(niches(below.next)[0]!, sketchOf(below.next))).not.toBe("string");
+        // The shelf right under it joins it to the niche below: what it held goes.
+        const step = sketchOf(next).offsets!.find((r) => r.name === "Étagères 1")!;
+        const under = removeWithShelves(next, [step.bodies!.at(-1)!]);
+        expect(under.lost).toEqual(expect.arrayContaining([rod.id]));
+        expect(niches(under.next)).toEqual([]);
+        expect(sketchOf(under.next).offsets!.some((r) => r.name === "Étagères 2")).toBe(false);
+      });
+
+      it("depuis l'Historique, l'étape emporte ses étagères", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "shelves");
+        const step = sketchOf(next).offsets!.find((r) => r.name === "Étagères 1")!;
+        const after = removeStep(next, "sk1", step.id);
+        expect(shelvesOf(after)).toEqual([]);
+        expect(leaves(after).filter((p) => p.startsWith("0"))).toEqual(["0"]);
+      });
+
+      it("une étape dont les corps ont déjà disparu se retire aussi", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "shelves");
+        const step = sketchOf(next).offsets!.find((r) => r.name === "Étagères 1")!;
+        const stale = deleteFeatures(next, step.bodies!).next;
+        const after = removeStep(stale, "sk1", step.id);
+        expect(leaves(after).filter((p) => p.startsWith("0"))).toEqual(["0"]);
+        expect(sketchOf(after).curves.length).toBe(sketchOf(doc).curves.length);
+      });
     });
 
     it("ont des cotes qui suivent le réglage, avant l'OK", () => {

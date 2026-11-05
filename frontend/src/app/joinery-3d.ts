@@ -21,6 +21,7 @@ import type { NicheBox } from "../sketcher/shelves";
 import { ShelvesTool } from "../sketcher/shelves-tool";
 import { JoineryView } from "../viewport/joinery-view";
 import { ModuleTool } from "./module-tool";
+import { NicheHeightTool } from "./niche-height-tool";
 import { NicheTool, type NicheFill } from "./niche-tool";
 import { joineryPlans, plansOf } from "./partition-plan";
 import type { PointerHandler } from "../viewport/pointer-input";
@@ -58,7 +59,7 @@ const FRONT = { plane: "XZ" as const, offset: 0 };
 
 export class Joinery3D implements PointerHandler {
   private readonly view: JoineryView;
-  private tool: ShelvesTool | SketchPartitionTool | NicheTool | ModuleTool | null = null;
+  private tool: ShelvesTool | SketchPartitionTool | NicheTool | ModuleTool | NicheHeightTool | null = null;
   /** The sketch worked in (null: a Répartition not yet made). */
   private sketchId: string | null;
   private frame: SketchFrame;
@@ -146,8 +147,18 @@ export class Joinery3D implements PointerHandler {
     return joinery;
   }
 
+  /** « Niche »: the height of a niche of this sketch's partitions. */
+  static height(viewport: Viewport, host: JoineryHost, sketch: SketchFeature): Joinery3D {
+    const joinery = new Joinery3D(viewport, host, sketch);
+    const tool = new NicheHeightTool(joinery.toolHost());
+    joinery.tool = tool;
+    tool.start();
+    joinery.refresh();
+    return joinery;
+  }
+
   /** The tools that work in the niches (a click chooses one), rather than placing a Répartition. */
-  private picking(): ShelvesTool | NicheTool | ModuleTool | null {
+  private picking(): ShelvesTool | NicheTool | ModuleTool | NicheHeightTool | null {
     return this.tool instanceof SketchPartitionTool ? null : this.tool;
   }
 
@@ -214,7 +225,7 @@ export class Joinery3D implements PointerHandler {
     const tool = this.tool;
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     const plan = tool instanceof SketchPartitionTool ? tool.plan() : null;
-    const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool || tool instanceof ModuleTool ? tool.divided() : []);
+    const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool || tool instanceof ModuleTool || tool instanceof NicheHeightTool ? tool.divided() : []);
     joineryPlans.current = [{ sketch: sketch?.type === "sketch" ? sketch : null, frame: this.frame, plans }];
     joineryPlans.changed();
   }
@@ -232,7 +243,7 @@ export class Joinery3D implements PointerHandler {
       this.frame,
       depth || 1,
       this.niches.map((n, i) => ({ box: n.box, state: chosen.some((c) => same(c, n.box)) ? "chosen" : i === this.hover ? "hover" : "free" })),
-      tool instanceof ShelvesTool || tool instanceof ModuleTool ? tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]) : [],
+      tool instanceof ShelvesTool || tool instanceof ModuleTool || tool instanceof NicheHeightTool ? tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]) : [],
       tool instanceof NicheTool || tool instanceof ModuleTool ? tool.solids() : [],
     );
   }

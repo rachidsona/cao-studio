@@ -9,7 +9,7 @@ import type { OffsetRecord, PartitionParams, PartitionStep, ShelfParams, SketchG
 import { removeEntities } from "./edit";
 import type { ExtrudedElement, ExtrusionGroup } from "./mode";
 import { addPartition, partitionElements, partitionGeometry, partitionLayout } from "./partition";
-import { addShelves, partBox, shelfLayout, type NicheBox } from "./shelves";
+import { addShelves, heldHeights, partBox, shelfLayout, type NicheBox } from "./shelves";
 
 export interface NicheNode {
   path: number[];
@@ -117,6 +117,22 @@ export function leafNiches(g: SketchGeometry): { partition: string; path: number
       .filter((n) => !keys.some((k) => k.startsWith(`${pathKey(n.path)}.`)))
       .map((n) => ({ partition: r.id, path: n.path, box: n.box, ...(r.step.depth !== undefined ? { depth: r.step.depth } : {}) }));
   });
+}
+
+/** The shelves that make the height of this niche, the last on its way, and which of their niches it lies in. */
+export function heightStep(g: SketchGeometry, partition: string, path: number[]): { record: OffsetRecord; index: number } | null {
+  for (let k = path.length - 1; k > 0; k--) {
+    const at = pathKey(path.slice(0, k));
+    const record = (g.offsets ?? []).find((r) => isShelves(r) && r.step.of === partition && !r.step.input.vertical && pathKey(r.step.niche) === at);
+    if (record) return { record, index: path[k] as number };
+  }
+  return null;
+}
+
+/** A division with this niche at this height, or sharing what is left (null): the others keep what they have. */
+export function withNicheHeight(input: ShelfParams, index: number, height: number | null): ShelfParams {
+  const heights = heldHeights(input).map((h, i) => (i === index ? height : h));
+  return heights.every((h) => h === null) ? { ...input, mode: "equal", heights: [] } : { ...input, mode: "set", heights };
 }
 
 /** « Répartition 3 cases », then « Répartition 3 cases (2) »: a name no step of the sketch has. */

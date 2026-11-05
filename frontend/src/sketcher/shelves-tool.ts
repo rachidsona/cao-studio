@@ -199,6 +199,7 @@ export class ShelvesTool {
       el("option", { value: "equal", selected: this.input.mode === "equal" }, "Égales"),
       el("option", { value: "bottom", selected: this.input.mode === "bottom" }, this.words.first),
       el("option", { value: "top", selected: this.input.mode === "top" }, this.words.second),
+      this.input.mode === "set" ? el("option", { value: "set", selected: true }, "Réglées avec l'outil Niche") : null,
     );
     mode.addEventListener("change", () => {
       this.input.mode = mode.value as ShelfMode;
@@ -242,7 +243,7 @@ export class ShelvesTool {
       el("label", { class: ROW }, this.words.title, count),
       number("Épaisseur", this.input.thickness, (v) => ((this.input.thickness = v), this.recompute())),
       el("label", { class: ROW }, "Niches", mode),
-      this.input.mode !== "equal" ? number(this.words.fixed, this.input.fixed, (v) => ((this.input.fixed = v), this.recompute())) : null,
+      this.input.mode === "bottom" || this.input.mode === "top" ? number(this.words.fixed, this.input.fixed, (v) => ((this.input.fixed = v), this.recompute())) : null,
       check(`Extruder les ${this.words.many}`, extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw())),
       extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw())) : null,
       result ? el("p", { class: " bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,

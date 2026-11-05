@@ -724,6 +724,21 @@ opération existante.
   niche et chaque étagère est une zone fermée, à extruder. L'option **« Extruder les étagères »** (même
   profondeur que celle de la Répartition) fait de **chaque étagère un corps** nommé **Étagère 1, 2, 3…** (la suite
   d'une niche à l'autre). Le calcul est dans `sketcher/shelves.ts`.
+- **Onglets de projets** (comme Fusion) : une barre au-dessus de la vue, un onglet par projet ouvert, et un **+** pour
+  créer un projet ou en ouvrir un autre, jusqu'à 8. Chaque projet garde son éditeur, donc son historique, sa vue et ce qui
+  n'est pas enregistré, et passer d'un onglet à l'autre est immédiat. Fermer un onglet modifié propose de l'enregistrer.
+  La liste est gardée dans ce navigateur et revient au rechargement, chaque onglet ne se chargeant qu'au premier clic
+  (`app/project-tabs.ts`).
+- **Supprimer une étagère ou une cloison** d'une Répartition la retire de sa division : ses traits s'en vont, les deux
+  niches qu'elle séparait n'en font plus qu'une, les autres pièces restent où elles sont et gardent matière et
+  apparence. Ce que contenait une niche fusionnée (divisions, penderie, tiroirs) part avec elle, après confirmation ; la
+  dernière étagère d'une étape emporte l'étape, et Supprimer une étape « Étagères n » dans l'Historique emporte ses
+  étagères. Le tout est une annulation (`document/shelf-removal.ts`).
+- **Niche** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères » et « Cloisons ») : on clique une niche
+  d'une Répartition et on tape sa **hauteur** ; les étagères qui la bordent se déplacent, ce qu'elle contient suit, les
+  niches déjà réglées gardent la leur et les autres se partagent le reste. L'aperçu et les cotes suivent le champ, OK est
+  une annulation, et l'outil reste pour régler d'autres niches. « Partager avec les autres niches » rend une niche réglée
+  au partage. L'étape « Étagères n » garde ces hauteurs (`app/niche-height-tool.ts`, `heights` de `sketcher/shelves.ts`).
 - **Cloisons** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères ») : la même division que les
   étagères, mais **en travers** : des panneaux **debout**, du bas au haut de la niche, qui la coupent **de gauche à
   droite**. On clique une ou plusieurs niches de la répartition, on règle le **nombre de cloisons** (1 à 20), leur

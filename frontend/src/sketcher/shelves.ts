@@ -2,8 +2,8 @@
  * « Étagères » of the sketch (as Polyboard's division of a compartment): a niche — a closed rectangular area of the
  * sketch, a case of a « Répartition » — is divided by shelves drawn with their thickness (two lines each). The space
  * between the bottom and a shelf, between two shelves, or between a shelf and the top is a niche in its turn, which
- * can be divided again. The niches are equal, or the bottom one (or the top one) has a given height and the others
- * share what is left. « Cloisons » are the same division across: upright panels from the bottom to the top of the
+ * can be divided again. The niches are equal, or some have a given height — the bottom one, the top one, or any one
+ * through the « Niche » tool — and the others share what is left. « Cloisons » are the same division across: upright panels from the bottom to the top of the
  * niche, which divide it from left to right. Pure: lengths in mm, in the sketch's own coordinates.
  */
 import type { SketchGeometry, ShelfMode, ShelfParams } from "../document/sketch";
@@ -56,9 +56,17 @@ export function nicheBox(region: Pick<Region, "outer" | "holes">): NicheBox | nu
   return Math.abs(Math.abs(area) / 2 - boxArea) <= boxArea * 1e-6 ? box : null;
 }
 
+/** The height set for each niche of a division, from the bottom; null: it shares what is left. */
+export function heldHeights({ count, mode, fixed, heights }: ShelfInput): (number | null)[] {
+  return Array.from({ length: count + 1 }, (_, i) => {
+    if (mode === "set") return heights?.[i] ?? null;
+    return (mode === "bottom" && i === 0) || (mode === "top" && i === count) ? fixed : null;
+  });
+}
+
 /** The niches and shelves, or the reason it is impossible. */
 export function shelfLayout(box: NicheBox, input: ShelfInput): ShelfLayout | string {
-  const { count, thickness: t, mode, fixed, vertical } = input;
+  const { count, thickness: t, mode, vertical } = input;
   const word = pieceWord(vertical);
   if (!Number.isInteger(count) || count < 1 || count > MAX_SHELVES) return `Le nombre de ${word}s va de 1 à ${MAX_SHELVES}.`;
   if (!(Number.isFinite(t) && t > 0)) return `Donnez une épaisseur de ${word} positive.`;
@@ -69,10 +77,14 @@ export function shelfLayout(box: NicheBox, input: ShelfInput): ShelfLayout | str
   let heights: number[];
   if (mode === "equal") heights = Array.from({ length: count + 1 }, () => free / (count + 1));
   else {
-    if (!(Number.isFinite(fixed) && fixed > 0)) return "Donnez la hauteur de la niche fixe.";
-    const rest = (free - fixed) / count;
+    const held = heldHeights(input);
+    const set = held.filter((h): h is number => h !== null);
+    if (!set.every((h) => Number.isFinite(h) && h > 0)) return "Donnez la hauteur de la niche fixe.";
+    const sharing = held.length - set.length;
+    if (sharing === 0) return "Toutes les niches sont fixées : laissez-en une prendre le reste.";
+    const rest = (free - set.reduce((a, b) => a + b, 0)) / sharing;
     if (rest <= TOLERANCE) return "La niche fixe ne laisse pas de place aux autres niches.";
-    heights = mode === "bottom" ? [fixed, ...Array.from({ length: count }, () => rest)] : [...Array.from({ length: count }, () => rest), fixed];
+    heights = held.map((h) => h ?? rest);
   }
   const niches: [number, number][] = [];
   const shelves: [number, number][] = [];

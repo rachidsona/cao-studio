@@ -88,6 +88,11 @@ def test_create_project_form_errors(client_logged):
     assert Project.objects.count() == 0
 
 
+def test_editor_opens_in_a_tab_of_this_site_only(client_logged, project):
+    response = client_logged.get(f"/projects/{project.id}/editor/")
+    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
+
+
 def test_editor_renders_config(client_logged, project):
     response = client_logged.get(f"/projects/{project.id}/editor/")
     assert response.status_code == 200

@@ -13,8 +13,9 @@ import { toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 
 const LINE = 0x38bdf8;
-/** A value needs this much of its line, in pixels. */
+/** A value needs this much of its line, in pixels: its width along a line across the screen, its height along one up the screen. */
 const ROOM = 30;
+const ROOM_UP = 16;
 /** Between two dimension lines side by side, in pixels: their values never land on each other. */
 const RING = 46;
 
@@ -82,7 +83,8 @@ export class PlanDimsView {
 
         const at = from.clone().add(to).multiplyScalar(0.5);
         const [x, y] = screen(at);
-        if (seen < ROOM || written.some(([wx, wy]) => Math.abs(wx - x) < 34 && Math.abs(wy - y) < 13)) continue;
+        const room = Math.abs(a[0] - b[0]) > Math.abs(a[1] - b[1]) ? ROOM : ROOM_UP;
+        if (seen < room || written.some(([wx, wy]) => Math.abs(wx - x) < 34 && Math.abs(wy - y) < 13)) continue;
         written.push([x, y]);
         const value = document.createElement("span");
         value.className = "cad-plan-dim";

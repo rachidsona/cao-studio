@@ -7,6 +7,7 @@
  * the whole sketch). Everything goes in one undo step.
  */
 import { bodyLabel, featuresOfPick, findFeature } from "../document/operations";
+export { removeStep, removeWithShelves } from "../document/shelf-removal";
 import type { CadDocument, SketchFeature } from "../document/types";
 import { removeEntities } from "../sketcher/edit";
 import { askConfirm } from "../ui/confirm-dialog";

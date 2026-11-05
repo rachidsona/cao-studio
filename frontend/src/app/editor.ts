@@ -2,9 +2,9 @@
  * Editor controller: wires the Django page, the document session, the
  * geometry worker, the viewport and the panels together.
  */
-import { confirmDeletion, deletionOf } from "./delete-selection";
+import { confirmDeletion, deletionOf, removeStep, removeWithShelves } from "./delete-selection";
 import { askConfirm } from "../ui/confirm-dialog";
-import { addExtrude, addPlate, bodyLabel, deleteFeatures, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
+import { addExtrude, addPlate, bodyLabel, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
@@ -12,7 +12,7 @@ import type { FeatureStatus } from "../history/recompute";
 import { trim } from "../measurements/units";
 import { ref, toast } from "../ui/dom";
 import { renderProperties, type FeaturePatch } from "../ui/properties";
-import { removeOffsetFrom, renameOffsetIn } from "../sketcher/offset";
+import { renameOffsetIn } from "../sketcher/offset";
 import { withPlaneOffset } from "../sketcher/frame";
 import { strokesOnly } from "../sketcher/loops";
 import { strokesTool } from "./gable-tool";
@@ -129,7 +129,7 @@ export class Editor {
       changeDoc: (doc) => void this.change(doc),
       renameOffset: (sketch, id, name) => this.changeSketch(sketch, (f) => renameOffsetIn(f, id, name)),
       editOffset: (sketch, id) => this.sketches.editOffset(sketch, id),
-      removeOffset: (sketch, id) => this.changeSketch(sketch, (f) => removeOffsetFrom(f, id)),
+      removeOffset: (sketch, id) => { void this.change(removeStep(this.doc, sketch, id)); this.sketches.sync(); },
       edit: (id) => this.editFeature(id),
       toggleSuppress: (id) => this.toggleSuppress(id),
       remove: (id) => this.removeFeature(id),
@@ -341,7 +341,7 @@ export class Editor {
     const base = removePieces(edits.reduce((d, sketch) => updateFeature(d, sketch.id, () => sketch), this.doc), pieces);
     const list = (typeof ids === "string" ? [ids] : ids).filter((id) => findFeature(base, id));
     if (list.length === 0 && edits.length === 0 && pieces.length === 0) return;
-    const { next, lost } = deleteFeatures(base, list);
+    const { next, lost } = removeWithShelves(base, list);
     const names = (of: string[]) => of.map((d) => findFeature(this.doc, d)?.name ?? d).join(", ");
     if (lost.length > 0 && !(await askConfirm(`Supprimer « ${names(list)} » supprimera aussi : ${names(lost)}. Continuer ?`, "Supprimer"))) return;
     if (this.selectedFeature && !findFeature(next, this.selectedFeature)) this.selectedFeature = null;
@@ -447,7 +447,7 @@ export class Editor {
       shelves: () => this.sketches.startJoinery("shelves", this.selectedFeature),
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
-      tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature), module: () => this.sketches.startEquip("module", this.selectedFeature),
+      tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature), module: () => this.sketches.startEquip("module", this.selectedFeature), niche: () => this.sketches.startEquip("niche", this.selectedFeature),
       panels: () => this.openTool("panels"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), "oi-intersect": () => this.openTool("intersect"), ffd: () => this.openTool("ffd"), swap: () => this.openTool("swap"), spacing: () => this.openTool("spacing"), "extrude-path": () => this.openTool("extrudePath"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),

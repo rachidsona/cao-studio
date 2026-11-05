@@ -221,18 +221,18 @@ export class SketchController {
   }
 
   /**
-   * « Penderie », « Tiroirs » and « Module » from the 3D toolbar: equip the niches of the sketch that holds a répartition (the one
-   * chosen, else the last one); or change an equipment of the history (`editing`).
+   * « Penderie », « Tiroirs », « Module » and « Niche » from the 3D toolbar: work in the niches of the sketch that holds a répartition
+   * (the one chosen, else the last one); or change an equipment of the history (`editing`).
    */
-  startEquip(fill: NicheFill | "module", selected: string | null, editing: NicheFeature | null = null): void {
+  startEquip(fill: NicheFill | "module" | "niche", selected: string | null, editing: NicheFeature | null = null): void {
     this.finish();
     this.joinery?.cancel();
     const sketch = partitionHolder(this.host.doc(), editing?.sketch ?? selected);
     if (!sketch) {
-      this.host.notify(`${fill === "module" ? "Module" : fill === "rod" ? "Penderie" : "Tiroirs"} équipe les niches d'une répartition : faites d'abord une Répartition.`, "error");
+      this.host.notify(`${fill === "niche" ? "Niche règle" : fill === "module" ? "Module équipe" : fill === "rod" ? "Penderie équipe" : "Tiroirs équipe"} les niches d'une répartition : faites d'abord une Répartition.`, "error");
       return;
     }
-    this.joinery = fill === "module" ? Joinery3D.module(this.viewport, this.joineryHost(), sketch) : Joinery3D.equip(this.viewport, this.joineryHost(), sketch, fill, editing);
+    this.joinery = fill === "niche" ? Joinery3D.height(this.viewport, this.joineryHost(), sketch) : fill === "module" ? Joinery3D.module(this.viewport, this.joineryHost(), sketch) : Joinery3D.equip(this.viewport, this.joineryHost(), sketch, fill, editing);
   }
 
   /** An OK of Penderie or Tiroirs: the features added (or the one changed), as one undo step. */

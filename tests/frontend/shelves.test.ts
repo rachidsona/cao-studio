@@ -33,6 +33,21 @@ describe("répartition de la hauteur d'une niche", () => {
     expect(niches.at(-1)?.[1]).toBe(1000);
   });
 
+  it("des niches réglées une à une : les autres se partagent le reste", () => {
+    const { niches } = layoutOf({ mode: "set", count: 4, heights: [null, 200, null, 100, null] });
+    const heights = niches.map(([a, b]) => b - a);
+    expect(heights[1]).toBeCloseTo(200, 6);
+    expect(heights[3]).toBeCloseTo(100, 6);
+    // 1000 − 4 × 18 − 300 = 628 → 209,33 each.
+    for (const i of [0, 2, 4]) expect(heights[i]).toBeCloseTo(628 / 3, 4);
+    expect(niches.at(-1)?.[1]).toBe(1000);
+  });
+
+  it("garde une niche pour prendre le reste", () => {
+    expect(shelfLayout(BOX, shelves({ mode: "set", count: 1, heights: [400, 400] }))).toBe("Toutes les niches sont fixées : laissez-en une prendre le reste.");
+    expect(shelfLayout(BOX, shelves({ mode: "set", count: 1, heights: [1200, null] }))).toBe("La niche fixe ne laisse pas de place aux autres niches.");
+  });
+
   it("une niche fixée en haut", () => {
     const { niches } = layoutOf({ mode: "top", fixed: 250, count: 3 });
     expect(niches.at(-1)).toEqual([750, 1000]);
