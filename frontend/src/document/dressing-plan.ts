@@ -11,7 +11,7 @@
  * chaque mur borné par ses portes et fenêtres et abaissé sous une retombée ou un rampant. Portes battantes (celles de
  * la Répartition) ou coulissantes, accessoires et hauteurs à vérifier : document/dressing-extras.ts. Pure.
  */
-import type { PartitionParams, ShelfParams, SketchGeometry } from "./sketch";
+import type { PartitionParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
 import { withEquipment } from "./equipment";
 import { addLayer, layersOf } from "./layers";
@@ -20,13 +20,13 @@ import { rectangleAt } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, NicheFeature, PlaneFrame, PlaneName, SketchFeature, TrimFeature } from "./types";
 import { accessory, REACH_ROD, REACH_SHELF, slidingDoors } from "./dressing-extras";
+import { DRAWERS, HAT, MODULES, moduleSteps, ROD, type ModuleKind } from "./dressing-modules";
 import { placeBox, placeFrame, type Placement } from "../features/room-runs";
 import { sketchFrame, nearestPlane } from "../sketcher/frame";
 import { nicheGeometry, nicheProblem } from "../features/niche-parts";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, idsFrom, partitionRecord, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
 
-export type ModuleKind = "long" | "double" | "shelves" | "drawers" | "rod-drawers" | "shoes" | "trousers";
 export type WallName = "A" | "B" | "C";
 
 export interface DressingSettings {
@@ -56,21 +56,6 @@ export interface DressingSettings {
   pullDown?: boolean;
 }
 
-/** The modules: their name, and their share of the wall (a hanging module is wider than a column of shelves). */
-export const MODULES: Record<ModuleKind, { label: string; share: number }> = {
-  long: { label: "Penderie longue", share: 900 },
-  double: { label: "Double penderie", share: 900 },
-  shelves: { label: "Étagères", share: 600 },
-  drawers: { label: "Tiroirs et étagères", share: 700 },
-  "rod-drawers": { label: "Penderie et tiroirs", share: 900 },
-  shoes: { label: "Chaussures (étagères tous les 20 cm)", share: 600 },
-  trousers: { label: "Porte-pantalons coulissant", share: 800 },
-};
-
-/** Height of the top niche over a rod (the « chapeau » shelf), of the drawers' niche, and the spacing of shelves (mm). */
-const HAT = 300;
-const DRAWER_ZONE = 720;
-const SHELF_SPACING = 350;
 const WALL_THICKNESS = 100;
 const ROOM_LAYER = "Pièce";
 
@@ -85,6 +70,9 @@ export const DRESSING: DressingSettings = {
   layout: "I", lengthA: 3000, lengthB: 2000, lengthC: 2000, height: 2500, depth: 600, thickness: 18, plinth: 80, walls: true,
   programs: { A: defaultProgram(3000), B: defaultProgram(2000 - 600), C: defaultProgram(2000 - 600) },
 };
+
+export { MODULES };
+export type { ModuleKind };
 
 export const wallsOf = (s: Pick<DressingSettings, "layout">): WallName[] => (s.layout === "I" ? ["A"] : s.layout === "L" ? ["A", "B"] : ["A", "B", "C"]);
 
@@ -137,34 +125,6 @@ export function dressingProblem(s: DressingSettings): string | null {
 }
 
 /** The steps of a module in its case `i`: the divisions (by path of the niche), then the equipments of niches. */
-function moduleSteps(kind: ModuleKind, i: number, innerHeight: number, thickness: number): { divisions: { niche: number[]; input: ShelfParams }[]; equip: { niche: number[]; fill: NicheFeature["fill"] }[] } {
-  const shelves = (count: number, mode: ShelfParams["mode"] = "equal", fixed = 300): ShelfParams => ({ count, thickness, mode, fixed });
-  const columns = (height: number) => Math.max(1, Math.round(height / SHELF_SPACING) - 1);
-  const upper = innerHeight - DRAWER_ZONE - thickness;
-  switch (kind) {
-    case "long":
-      return { divisions: [{ niche: [i], input: shelves(1, "top", HAT) }], equip: [{ niche: [i, 0], fill: "rod" }] };
-    case "double":
-      return {
-        divisions: [{ niche: [i], input: shelves(1, "top", HAT) }, { niche: [i, 0], input: shelves(1) }],
-        equip: [{ niche: [i, 0, 0], fill: "rod" }, { niche: [i, 0, 1], fill: "rod" }],
-      };
-    case "shelves":
-      return { divisions: [{ niche: [i], input: shelves(columns(innerHeight)) }], equip: [] };
-    case "shoes":
-      return { divisions: [{ niche: [i], input: shelves(Math.max(1, Math.round(innerHeight / 200) - 1)) }], equip: [] };
-    case "trousers":
-      return { divisions: [{ niche: [i], input: shelves(1, "top", HAT) }], equip: [] };
-    case "drawers":
-      return { divisions: [{ niche: [i], input: shelves(1, "bottom", DRAWER_ZONE) }, { niche: [i, 1], input: shelves(columns(upper)) }], equip: [{ niche: [i, 0], fill: "drawers" }] };
-    case "rod-drawers":
-      return { divisions: [{ niche: [i], input: shelves(1, "bottom", DRAWER_ZONE) }, { niche: [i, 1], input: shelves(1, "top", HAT) }], equip: [{ niche: [i, 0], fill: "drawers" }, { niche: [i, 1, 0], fill: "rod" }] };
-  }
-}
-
-const ROD = { diameter: 25, drop: 60 };
-const DRAWERS = { drawers: 3, gap: 3, sideGap: 3, thickness: 18, handles: true };
-
 const DOORS = { gap: 3, thickness: 18, handles: true };
 
 export interface DressingResult {
@@ -213,7 +173,7 @@ export function dressingDocument(base: CadDocument, s: DressingSettings, place?:
     });
     if (high) notes.push(`Mur ${wall} : les étagères au-dessus de ${REACH_SHELF / 10} cm ne s'atteignent qu'avec un marchepied.`);
     if (s.doors === "sliding") extras.push(...slidingDoors(wall, s.lengthA, p0, p1, s.depth, heightOf(s, wall), s.plinth, s.thickness));
-    const steps = s.programs[wall].map((kind, i) => moduleSteps(kind, i, innerHeight, s.thickness));
+    const steps = s.programs[wall].map((kind, i) => moduleSteps(kind, [i], innerHeight, s.thickness));
     const divisions = steps.flatMap((m) => m.divisions);
     const ids = idsFrom(uniqueOffsetId(doc), 1 + divisions.length);
     const partitionId = ids[0] as string;

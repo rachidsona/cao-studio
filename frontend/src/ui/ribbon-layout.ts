@@ -25,7 +25,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:extrude-path", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
     "data-workshop:import-parts", "data-workshop:nesting", "data-workshop:offcuts", "data-workshop:batch", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
-    "data-action:room", "data-action:trim", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
+    "data-action:room", "data-action:module", "data-action:trim", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
   ],
   sketch: [
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",

@@ -15,11 +15,12 @@ import { extrusionOption } from "../sketcher/extrusion-option";
 import { frameOf, rayToSketch, toWorld, type SketchFrame } from "../sketcher/frame";
 import { extractLoops, sketchFaces } from "../sketcher/loops";
 import type { SketchExtrusion } from "../sketcher/mode";
-import { leafNiches } from "../sketcher/partition-history";
+import { isPartition, leafNiches } from "../sketcher/partition-history";
 import { SketchPartitionTool } from "../sketcher/partition-tool";
 import type { NicheBox } from "../sketcher/shelves";
 import { ShelvesTool } from "../sketcher/shelves-tool";
 import { JoineryView } from "../viewport/joinery-view";
+import { ModuleTool } from "./module-tool";
 import { NicheTool, type NicheFill } from "./niche-tool";
 import { joineryPlans, plansOf } from "./partition-plan";
 import type { PointerHandler } from "../viewport/pointer-input";
@@ -40,8 +41,16 @@ export interface JoineryHost {
   /** Adds these equipments of niches (or replaces the one changed) as one undo step; false when it was refused. */
   applyFeatures(features: NicheFeature[], success: string): boolean;
   notify(message: string, kind?: "info" | "success" | "error"): void;
+  /** Stores a document made by a tool, as one undo step. */
+  applyDocument(doc: CadDocument, success: string): void;
   /** The tool ended. */
   closed(): void;
+}
+
+/** The sketch that holds a répartition: the one chosen, else the last one. */
+export function partitionHolder(doc: CadDocument, selected: string | null): SketchFeature | undefined {
+  const holders = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && (f.offsets ?? []).some(isPartition));
+  return holders.find((f) => f.id === selected) ?? holders[holders.length - 1];
 }
 
 /** A new Répartition is drawn in the front plane: the cabinet stands, its niches open to the front. */
@@ -49,7 +58,7 @@ const FRONT = { plane: "XZ" as const, offset: 0 };
 
 export class Joinery3D implements PointerHandler {
   private readonly view: JoineryView;
-  private tool: ShelvesTool | SketchPartitionTool | NicheTool | null = null;
+  private tool: ShelvesTool | SketchPartitionTool | NicheTool | ModuleTool | null = null;
   /** The sketch worked in (null: a Répartition not yet made). */
   private sketchId: string | null;
   private frame: SketchFrame;
@@ -115,9 +124,31 @@ export class Joinery3D implements PointerHandler {
     return joinery;
   }
 
+  /** A module of dressing in the niches of this sketch's partitions. */
+  static module(viewport: Viewport, host: JoineryHost, sketch: SketchFeature): Joinery3D {
+    const joinery = new Joinery3D(viewport, host, sketch);
+    const tool = new ModuleTool({
+      doc: () => host.doc(),
+      sketchId: () => sketch.id,
+      container: () => host.container(),
+      unit: () => host.unit(),
+      apply: (doc, success) => {
+        host.applyDocument(doc, success);
+        joinery.refresh();
+      },
+      changed: () => joinery.render(),
+      closed: () => joinery.close(),
+      notify: (message, kind) => host.notify(message, kind),
+    });
+    joinery.tool = tool;
+    tool.start();
+    joinery.refresh();
+    return joinery;
+  }
+
   /** The tools that work in the niches (a click chooses one), rather than placing a Répartition. */
-  private picking(): ShelvesTool | NicheTool | null {
-    return this.tool instanceof ShelvesTool || this.tool instanceof NicheTool ? this.tool : null;
+  private picking(): ShelvesTool | NicheTool | ModuleTool | null {
+    return this.tool instanceof SketchPartitionTool ? null : this.tool;
   }
 
   /** What both tools see: the sketch's geometry, and the 3D view instead of the sketch. */
@@ -183,7 +214,7 @@ export class Joinery3D implements PointerHandler {
     const tool = this.tool;
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     const plan = tool instanceof SketchPartitionTool ? tool.plan() : null;
-    const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool ? tool.divided() : []);
+    const plans = plan ? [plan] : plansOf(this.geometry(), tool instanceof ShelvesTool || tool instanceof ModuleTool ? tool.divided() : []);
     joineryPlans.current = [{ sketch: sketch?.type === "sketch" ? sketch : null, frame: this.frame, plans }];
     joineryPlans.changed();
   }
@@ -201,8 +232,8 @@ export class Joinery3D implements PointerHandler {
       this.frame,
       depth || 1,
       this.niches.map((n, i) => ({ box: n.box, state: chosen.some((c) => same(c, n.box)) ? "chosen" : i === this.hover ? "hover" : "free" })),
-      tool instanceof ShelvesTool ? tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]) : [],
-      tool instanceof NicheTool ? tool.solids() : [],
+      tool instanceof ShelvesTool || tool instanceof ModuleTool ? tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]) : [],
+      tool instanceof NicheTool || tool instanceof ModuleTool ? tool.solids() : [],
     );
   }
 

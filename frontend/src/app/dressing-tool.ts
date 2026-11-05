@@ -17,6 +17,7 @@ import { partitionLayout } from "../sketcher/partition";
 import { CARD } from "../ui/browser";
 import { el } from "../ui/dom";
 import { toolIcon, trashIcon } from "../ui/icons";
+import { MODULE_ICONS, moduleList } from "./module-list";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { joineryPlans, previewPlans } from "./partition-plan";
 
@@ -24,8 +25,6 @@ import { joineryPlans, previewPlans } from "./partition-plan";
 let last: DressingSettings = structuredClone(DRESSING);
 
 const MODULE_OPTIONS = (Object.keys(MODULES) as ModuleKind[]).map((k): [string, string] => [k, MODULES[k].label]);
-/** The toolbar icon of each module, in the program's tree. */
-const MODULE_ICONS: Record<ModuleKind, string> = { long: "i-rod", double: "i-rod", shelves: "i-shelves", drawers: "i-drawers", "rod-drawers": "i-drawers", shoes: "i-shelves", trousers: "i-rod" };
 const MAX_MODULES = 10;
 const ROW_BUTTON = "flex size-7 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-30 dark:hover:bg-gray-700";
 /** Beyond this, a rod bends: a wider hanging module is said (mm). */
@@ -38,6 +37,9 @@ export class DressingTool extends PanelTool {
   private readonly folded = new Set<WallName>();
   /** The surveyed room and the wall of it that is the dressing's wall A ("": the lengths typed here). */
   private roomWall = "";
+
+  /** The wall whose list of modules is open. */
+  private adding: WallName | null = null;
 
   constructor(ctx: ToolContext) {
     super(ctx, "Dressing", null);
@@ -173,9 +175,22 @@ export class DressingTool extends PanelTool {
     return `Mur ${wall} : ${widths.map((w) => formatLength(Math.round(w), unit)).join(" · ")}${long ? ` — une tringle dépasse ${formatLength(LONGEST_ROD, unit)} : ajoutez un module` : ""}.`;
   }
 
+  /** The modules to choose from, under the heading of a wall: a click adds one and closes the list. */
+  private picker(wall: WallName): HTMLElement {
+    return el(
+      "div",
+      { class: "mx-1 mb-1 space-y-1" },
+      el("p", { class: "px-1 text-xs text-gray-500 dark:text-gray-400" }, `Choisissez le module à ajouter au mur ${wall} :`),
+      moduleList(null, (kind) => {
+        this.adding = null;
+        this.setProgram(wall, [...this.s.programs[wall], kind]);
+      }),
+    );
+  }
+
   /**
    * The program drawn as the navigator: in a card, a folder per wall (its modules counted, « + » to add one), and a
-   * row per module with its icon, its kind to choose and a bin.
+   * row per module with its icon, its kind to choose and a bin; « + » opens the list of the modules.
    */
   private programTree(): HTMLElement {
     const s = this.s;
@@ -192,9 +207,11 @@ export class DressingTool extends PanelTool {
         this.render();
       });
       const add = el("button", { type: "button", class: `${ROW_BUTTON} text-base`, title: "Ajouter un module", "aria-label": `Ajouter un module au mur ${wall}`, disabled: program.length >= MAX_MODULES }, "+");
+      add.setAttribute("aria-expanded", String(this.adding === wall));
+      // The list of the modules, to choose the one to add.
       add.addEventListener("click", () => {
-        const proposed = defaultProgram(wallRun(s, wall).length);
-        this.setProgram(wall, [...program, proposed[program.length % proposed.length] ?? "shelves"]);
+        this.adding = this.adding === wall ? null : wall;
+        this.render();
       });
       const head = el(
         "div",
@@ -227,6 +244,7 @@ export class DressingTool extends PanelTool {
         "li",
         { "data-group": wall },
         head,
+        this.adding === wall ? this.picker(wall) : null,
         el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-600", ...(open ? {} : { hidden: "" }) }, ...rows),
       );
     });

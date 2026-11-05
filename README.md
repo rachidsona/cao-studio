@@ -1703,7 +1703,7 @@ opération existante.
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
 - **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/plan-dims-view.ts`) : pendant Répartition,
-  Étagères, Cloisons, Penderie, Tiroirs et l'assistant Dressing (chaque mur le sien), le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
+  Étagères, Cloisons, Penderie, Tiroirs, Module et l'assistant Dressing (chaque mur le sien), le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
   Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
   panneaux) en bas, à gauche et à droite dès qu'un côté est divisé, en haut seulement si elle dit autre chose que le
   bas ; le socle ; la profondeur
@@ -1713,6 +1713,15 @@ opération existante.
   vers l'œil.
   Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
   place des cotes pièce par pièce de la Répartition.
+- **Module** (groupe Menuiserie, `app/module-tool.ts`, `document/dressing-modules.ts`) : un clic sur une niche d'une
+  Répartition, ou plusieurs, et on y pose un module de dressing complet en une seule annulation : penderie longue, double
+  penderie, étagères, tiroirs et étagères, penderie et tiroirs, chaussures, porte-pantalons (accessoire au devis). Hauteur
+  du chapeau, zone et nombre de tiroirs, espacement et épaisseur des étagères se règlent dans le panneau ; l'aperçu et
+  les cotes suivent. L'outil prévient d'une tringle hors de portée (plus de 190 cm) ou trop longue (plus de 120 cm),
+  d'une étagère au-dessus de 200 cm ou qui fléchit sous du linge, d'une profondeur trop juste pour des cintres. Un
+  réglage se garde sous un nom dans **Mes modules** (dans ce navigateur, d'un projet à l'autre). Ce sont les mêmes
+  modules que l'assistant Dressing, et le résultat se retouche niche par niche. Dans l'assistant, le « + » d'un mur
+  ouvre la même liste de modules pour choisir celui à ajouter.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
 - **Rayons X** et **Affichage** (colonne Vue, sous « Grille », portés de poly_3D) : les corps translucides d'un clic ;

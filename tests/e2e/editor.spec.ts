@@ -295,6 +295,62 @@ test("Dressing : les cotes de plan s'affichent pendant l'assistant et suivent se
   expect(errors).toEqual([]);
 });
 
+test("Dressing : le + d'un mur ouvre la liste des modules à choisir", async ({ page }) => {
+  await newProject(page, "Programme e2e");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="dressing"]')?.click());
+  const rows = page.locator('[data-group="A"] select');
+  await expect(rows).toHaveCount(4);
+  await page.getByRole("button", { name: "Ajouter un module au mur A" }).click();
+  const list = page.getByRole("list", { name: "Modules" });
+  await expect(list.getByRole("button")).toHaveCount(7);
+  await list.getByRole("button", { name: /Chaussures/ }).click();
+  await expect(list).toHaveCount(0);
+  await expect(rows).toHaveCount(5);
+  await expect(rows.last()).toHaveValue("shoes");
+});
+
+test("Module : la liste, l'aperçu et les cotes, une seule annulation, Mes modules", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Module e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const panel = page.getByRole("dialog", { name: "Module" });
+  await panel.getByRole("button", { name: "Double penderie" }).click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(panel).toContainText("Niche choisie");
+  // The two rods are out of reach or not, but the niches of the module are already in the dimensions.
+  const niches = page.locator('.cad-plan-dim');
+  await expect(niches.filter({ hasText: /^30$/ }).first()).toBeVisible();
+  await panel.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : double penderie.")).toBeVisible();
+
+  // Kept under a name, it comes back in the list.
+  await panel.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await panel.getByLabel("Nom du module").fill("Mes tiroirs");
+  await panel.getByRole("button", { name: "Garder" }).click();
+  await expect(panel.getByRole("list", { name: "Mes modules" }).getByRole("button", { name: "Mes tiroirs" })).toBeVisible();
+
+  // One undo takes the whole module away.
+  await page.keyboard.press("Escape");
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await expect(tree.getByText("Étagères", { exact: true })).toBeVisible();
+  await page.locator('[data-action="undo"]').click();
+  await expect(tree.getByText("Étagères", { exact: true })).toHaveCount(0);
+  await expect(tree.getByText("Côtés", { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("Apparence : une vignette glissée sur la sélection va à toute la sélection", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
