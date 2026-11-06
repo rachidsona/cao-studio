@@ -38,6 +38,30 @@ interface FeatureBase {
   hidden?: boolean;
 }
 
+/** The plan of a dressing, seen from above: its model, its sizes (mm), and what was made on each zone. */
+export interface DressingPlan {
+  model: "I" | "L-left" | "L-right" | "U" | "L-left-cut" | "L-right-cut" | "U-cut" | "facing";
+  lengthA: number;
+  lengthB: number;
+  lengthC: number;
+  /** Face to face: the wall across, and the way between the two runs. */
+  lengthD: number;
+  aisle: number;
+  depth: number;
+  /** A cut corner: how far it goes along wall A and along the other wall. */
+  cornerA: number;
+  cornerB: number;
+  thickness: number;
+  height: number;
+  plinth: number;
+  /** A door on each cut corner. */
+  cornerDoor?: boolean;
+  /** By zone: the sketch of its Répartition. */
+  made?: Record<string, string>;
+  /** By corner: the features of what closes it around its Répartition (its far side, its door). */
+  boards?: Record<string, string[]>;
+}
+
 export interface SketchFeature extends FeatureBase {
   type: "sketch";
   plane: PlaneName;
@@ -52,6 +76,10 @@ export interface SketchFeature extends FeatureBase {
   frame?: PlaneFrame;
   /** Texts written in the sketch (engraving, labels): extruded with its profile. */
   texts?: SketchText[];
+  /** The plan of a dressing this sketch draws on the floor (document/plan-layout.ts). */
+  dressingPlan?: DressingPlan;
+  /** What is extruded from this sketch stands over this outline on the floor (ExtrudeFeature.clip). */
+  clip?: [number, number][];
   /** Reference image under the sketch, to trace over (never built). */
   underlay?: SketchUnderlay;
   points: SketchPoint[];
@@ -111,6 +139,8 @@ export interface ExtrudeFeature extends FeatureBase {
    * Absent: every material area by the even–odd rule.
    */
   regions?: [number, number][];
+  /** Only what stands over this outline on the floor (world X, Y): the boards of a corner cut at an angle. */
+  clip?: [number, number][];
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
   /**

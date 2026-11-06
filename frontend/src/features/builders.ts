@@ -6,7 +6,7 @@
  */
 import { buildTrim } from "./trim";
 import { buildRoom } from "./room";
-import { makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
+import { draw, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
 import { frameOf } from "../sketcher/frame";
@@ -68,6 +68,9 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
   }
 }
 
+/** Above and below any piece of furniture (mm). */
+const CLIP_REACH = 20000;
+
 function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   if (!(Math.abs(feature.distance) >= MIN_LENGTH)) throw new GeometryError("La distance d'extrusion ne peut pas être nulle.");
   if (feature.faces) return buildFaceExtrude(feature, lookup);
@@ -89,7 +92,20 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
     const n = frameOf(profile).normal;
     prism = prism.translate([n[0] * feature.startOffset, n[1] * feature.startOffset, n[2] * feature.startOffset]) as Shape3D;
   }
+  if (feature.clip) prism = clipped(prism, feature.clip);
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
+}
+
+/** What of this solid stands over this outline on the floor (a corner cut at an angle); takes ownership of `solid`. */
+function clipped(solid: Shape3D, outline: [number, number][]): Shape3D {
+  const [first, ...rest] = outline as [[number, number], ...[number, number][]];
+  const column = rest.reduce((pen, p) => pen.lineTo(p), draw(first)).close().sketchOnPlane("XY", -CLIP_REACH).extrude(2 * CLIP_REACH) as Shape3D;
+  try {
+    return solid.intersect(column);
+  } finally {
+    solid.delete();
+    column.delete();
+  }
 }
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];

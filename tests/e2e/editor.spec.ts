@@ -557,6 +557,77 @@ test("Onglets : plusieurs projets ouverts, chacun garde son travail, et ils revi
   expect(errors).toEqual([]);
 });
 
+test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, le plan changé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Plan e2e");
+  const open = () => page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click());
+  await open();
+  const tool = page.getByRole("dialog", { name: "Plan de dressing" });
+  await tool.getByRole("button", { name: "En L à droite, pan coupé" }).click();
+  await tool.getByLabel(/^Longueur mur A/).fill("400");
+  await tool.getByLabel(/^Longueur mur A/).press("Enter");
+  await expect(tool.getByRole("img", { name: "Schéma du plan vu de dessus" })).toContainText("300 cm");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+
+  // Each zone: its Répartition opens in its own tool; the corner too.
+  const zones = tool.getByRole("list", { name: "Zones du plan" });
+  const zone = (name: string) => zones.getByRole("listitem").filter({ hasText: name }).getByRole("button");
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await expect(zones.getByRole("listitem")).toHaveCount(3);
+  for (const name of ["Mur A", "Angle droit", "Mur C"]) {
+    await zone(name).click();
+    await expect(partition).toContainText("Modifier");
+    await partition.getByRole("button", { name: "OK", exact: true }).click();
+    await expect(partition).toHaveCount(0);
+    await page.waitForTimeout(1200);
+    await open();
+    await expect(zone(name)).toHaveText("Modifier");
+  }
+
+  // The door on the slanted front.
+  await tool.getByLabel("Porte sur le pan coupé").check();
+  await expect(page.getByText("Angle droit — porte", { exact: true }).first()).toBeVisible();
+
+  // Shelves in the corner, as in any Répartition, then the Niche tool on them.
+  await page.getByRole("button", { name: "Terminer" }).click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: "test-results/plan-top.png" });
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
+
+  // The plan changed: what is on it follows, the depth of wall A with it.
+  await open();
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await tool.getByLabel(/^Longueur mur A/).fill("450");
+  await tool.getByLabel(/^Longueur mur A/).press("Enter");
+  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await expect(page.getByText("Plan modifié : ce qui est fait dessus a suivi.")).toBeVisible();
+  await expect(zones.getByRole("listitem").filter({ hasText: "Mur A · 350 cm" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-ref="status-kernel"]')).toHaveText("Noyau OpenCascade prêt");
+  await expect(page.locator('[data-state="error"]')).toHaveCount(0);
+
+  // Saved and read again.
+  await page.locator('[data-action="save"]').first().click();
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré");
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await open();
+  await expect(zone("Mur C")).toHaveText("Modifier");
+  await expect(tool.getByLabel("Porte sur le pan coupé")).toBeChecked();
+
+  // Another model: what it no longer has goes, once asked.
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await tool.getByRole("button", { name: "Face à face" }).click();
+  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await expect(page.getByText(/Ce plan n'a plus : Angle droit, Mur C/)).toBeVisible();
+  await page.getByRole("button", { name: "Appliquer" }).last().click();
+  await expect(zones.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByText("Angle droit — porte", { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("Apparence : une vignette glissée sur la sélection va à toute la sélection", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

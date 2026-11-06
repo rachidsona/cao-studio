@@ -31,6 +31,8 @@ export interface NicheGeometry {
   depth: number;
   /** The partition's measures and where it stands in the sketch (the doors follow its cases and dividers). */
   step?: { input: PartitionParams; origin: [number, number] };
+  /** Cut at an angle: its front is not a straight line in front of its niches. */
+  cut?: boolean;
 }
 
 /** A part, in the niche's frame: a box, or the rod (a cylinder along u). */
@@ -64,15 +66,16 @@ export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { f
   if (!record || !isPartition(record)) return "Cette répartition n'existe plus.";
   if (!(record.step.depth && record.step.depth > 0)) return "Les panneaux de la répartition ne sont pas extrudés : leur profondeur manque.";
   const step = { input: record.step.input, origin: record.step.origin };
+  const cut = sketch.clip ? { cut: true } : {};
   if (f.fill === "doors" || f.fill === "back") {
     const [x, y] = record.step.origin;
-    return { frame, box: { x0: x, y0: y, x1: x + record.step.input.length, y1: y + record.step.input.height }, depth: record.step.depth, step };
+    return { frame, box: { x0: x, y0: y, x1: x + record.step.input.length, y1: y + record.step.input.height }, depth: record.step.depth, step, ...cut };
   }
   const rebuilt = rebuildChain(sketch, f.partition);
   if (typeof rebuilt === "string") return rebuilt;
   const node = rebuilt.niches.get(pathKey(f.niche));
   if (!node) return "Sa niche n'existe plus.";
-  return { frame, box: node.box, depth: record.step.depth, step };
+  return { frame, box: node.box, depth: record.step.depth, step, ...cut };
 }
 
 /**
@@ -123,6 +126,8 @@ export function partitionBacks(input: PartitionParams, origin: [number, number],
 
 /** Why these settings cannot equip this niche, or null. */
 export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "sketch" | "partition" | "niche">, n: NicheGeometry): string | null {
+  if (n.cut && f.fill === "drawers") return "Pas de tiroirs dans un angle coupé : ils sortiraient par le pan coupé.";
+  if (n.cut && f.fill === "doors") return "Un angle coupé n'a pas ces portes : cochez « Porte sur le pan coupé » dans le Plan de dressing.";
   const width = n.box.x1 - n.box.x0;
   const height = n.box.y1 - n.box.y0;
   if (f.fill === "rod") {

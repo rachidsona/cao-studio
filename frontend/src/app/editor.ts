@@ -51,7 +51,7 @@ export class Editor {
   readonly picked: ModelSelectionController;
   private recomputing = false;
   private recomputeAgain = false;
-  private sketches: SketchController;
+  readonly sketches: SketchController;
   private sketchDisplay: SketchDisplay;
   private navigator: Navigator;
   private files: FileCommands;

@@ -1678,6 +1678,15 @@ opération existante.
   - Supprimer un module ne change pas les projets où il a été inséré.
   Les modules sont gardés par le serveur, par compte (500 au plus) : API `/api/library/`, `document/library.ts`,
   `app/library-panel.ts`.
+- **Plan de dressing** (groupe « Menuiserie ») : un dressing commence par son **schéma vu de dessus**. On choisit un
+  modèle — droit, en L à gauche ou à droite, en U, avec des angles droits ou à **pan coupé**, ou deux linéaires **face à
+  face** —, ses cotes, et « Créer le plan » pose une esquisse au sol, zones séparées par leurs côtés. Chaque zone se clique
+  ensuite : elle reçoit sa **Répartition** contre son mur, ouverte dans son outil pour régler ses cases, et se rouvre de
+  la même façon. Un **angle coupé** est une vraie Répartition, alignée sur le mur A et découpée au pentagone : Étagères,
+  Niche, Module et Penderie y marchent, pas les tiroirs ni les portes de Répartition, qui sortiraient par le pan coupé ;
+  son côté du bout s'ajoute, et « Porte sur le pan coupé » pose une porte de biais avec ses charnières au devis. « Modifier
+  le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
+  confirmation (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
 - **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de
