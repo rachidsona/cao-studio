@@ -61,15 +61,15 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:lighting"],
         name: "Éclairage",
-        what: "Pose des rubans LED dedans et dehors, des spots, une corniche ou une plinthe lumineuse, pour la sélection ou pour tous les meubles.",
+        what: "Pose des rubans LED dedans et dehors, des spots, une corniche ou une plinthe lumineuse, pour la sélection ou pour tous les meubles. Une Répartition ou un mur de dressing reçoit un ruban dans chaque niche.",
         steps: [
-          "Sélectionnez des caissons ou un dressing ; sans sélection, tous les meubles de la vue sont éclairés.",
+          "Sélectionnez des caissons, une Répartition ou un mur de dressing ; sans sélection, tous les meubles de la vue sont éclairés.",
           "Cliquez « Éclairage ».",
           "Cochez « Dedans : sous le dessus et les étagères », la « Corniche… » et la « Plinthe lumineuse… » si vous les voulez.",
           "Choisissez « Sous les meubles hauts » : « Ruban LED », « Spots » ou « Rien », puis la « Lumière ».",
           "Lisez le métrage en bas du panneau, puis cliquez « OK ». Relancer l'outil remplace l'éclairage déjà posé tant que « Remplacer l'éclairage déjà posé » reste coché.",
         ],
-        tip: "Les lumières éclairent le rendu, mais restent hors débit, hors devis et sur le calque « Éclairage ».",
+        tip: "Les niches à tiroirs n'ont pas de ruban. Après avoir changé une Répartition, relancez l'outil. Les lumières éclairent le rendu, mais restent hors débit, hors devis et sur le calque « Éclairage ».",
       },
       {
         keys: ["data-action:trim"],

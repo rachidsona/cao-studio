@@ -3,8 +3,8 @@
  * - Dedans : des rubans LED sous le dessus et sous les étagères.
  * - Dehors : sous les meubles hauts (ruban ou spots), une corniche au-dessus, une plinthe lumineuse.
  *
- * Les meubles éclairés sont ceux de la sélection, sinon tous ceux de la vue. Ce sont les caissons et les murs du
- * dressing (les Répartitions), avec leurs planches et le côté de leur façade.
+ * Les meubles éclairés sont ceux de la sélection, sinon tous ceux de la vue : les caissons, avec leurs planches et le
+ * côté de leur façade, et les Répartitions, seules ou murs d'un Plan de dressing, niche par niche.
  *
  * Les lumières sont des corps du calque « Éclairage » (document/lighting.ts). Elles brillent dans la vue et éclairent
  * le rendu, et restent hors débit, devis et usinage. Relancer l'outil remplace l'éclairage déjà posé. L'aperçu est en
@@ -12,10 +12,12 @@
  */
 import { isHardwareBody } from "../document/hardware";
 import { cabinetAxes } from "../document/kitchen-catalog";
-import { LIGHTING, LIGHT_COLORS, addLights, lightPieces, removeLights, type Box, type LightingSettings, type LitElement } from "../document/lighting";
+import { LIGHTING, LIGHT_COLORS, addLights, lightPieces, pieceLength, removeLights, type Box, type LightPiece, type LightingSettings, type LitElement } from "../document/lighting";
 import { bodyInfo } from "../document/materials";
 import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody, type CadDocument, type Feature, type SketchFeature, type Vec3 } from "../document/types";
+import { partitionLights } from "../document/niche-lights";
+import { featureOfBody, type CadDocument, type Feature, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
+import { isPartition } from "../sketcher/partition-history";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** Kept for the session: the last settings. */
@@ -53,15 +55,18 @@ export class LightingTool extends PanelTool {
     const f = findFeature(doc, featureOfBody(bodyOrigin(doc, id)));
     if (f?.type === "cabinet") return { key: f.id, front: false };
     if (f?.type === "fronts") return { key: f.cabinet, front: true };
+    // A door, a drawer, a rod: it says which Répartition, not where its boards are.
+    if (f?.type === "niche") return { key: f.sketch, front: true };
     if (f?.type === "extrude" && f.sketch) {
       const sketch = findFeature(doc, f.sketch);
-      if (sketch?.type === "sketch" && !sketch.hidden) return { key: sketch.id, front: false };
+      // The sketch of a Répartition may be hidden: its panels are the furniture.
+      if (sketch?.type === "sketch" && (!sketch.hidden || sketch.offsets?.some(isPartition))) return { key: sketch.id, front: false };
     }
     return null;
   }
 
-  /** The pieces of furniture lit: the selection's, else all of those in view, with their flat boards. */
-  private elements(): LitElement[] {
+  /** The lights of the furniture lit (the selection's, else all of it in view), and how many pieces of furniture that is. */
+  private lit(): { pieces: LightPiece[]; furniture: number } {
     const doc = this.ctx.doc();
     const wanted = this.chosen.length ? new Set(this.chosen.map((id) => this.owner(doc, id)?.key).filter(Boolean)) : null;
     const groups = new Map<string, { box: Box | null; boards: LitElement["boards"] }>();
@@ -79,26 +84,35 @@ export class LightingTool extends PanelTool {
       groups.set(owner.key, g);
     }
     const out: LitElement[] = [];
+    const pieces: LightPiece[] = [];
+    let walls = 0;
     for (const [key, g] of groups) {
       const f = findFeature(doc, key);
-      if (!g.box || !f || g.boards.length < 2) continue;
+      if (!g.box || !f) continue;
+      const name = f.name.replace(/^Dressing — /, "Dressing ");
+      const own = f.type === "sketch" ? partitionLights(f, doc.features.filter((n): n is NicheFeature => n.type === "niche" && n.sketch === key), name, this.s) : null;
+      if (own) {
+        pieces.push(...own);
+        walls++;
+        continue;
+      }
+      if (g.boards.length < 2) continue;
       if (f.type === "cabinet") {
         const { back } = cabinetAxes(f.rotation ?? 0);
         const axis = (Math.abs(back[0]) > 0.5 ? 0 : 1) as 0 | 1;
         out.push({ name: f.name, box: g.box, front: { axis, sign: back[axis]! > 0 ? -1 : 1 }, boards: g.boards });
-      } else if (f.type === "sketch") out.push({ name: f.name.replace(/^Dressing — /, "Dressing "), box: g.box, front: sketchFront(f, g.box), boards: g.boards });
+      } else if (f.type === "sketch") out.push({ name, box: g.box, front: sketchFront(f, g.box), boards: g.boards });
     }
-    return out;
+    return { pieces: [...lightPieces(out, this.s), ...pieces], furniture: out.length + walls };
   }
 
   private plan(): { doc: CadDocument; bodies: string[]; strips: number; spots: number; meters: number; furniture: number } {
-    const elements = this.elements();
-    const pieces = lightPieces(elements, this.s);
+    const { pieces, furniture } = this.lit();
     const base = this.ctx.doc();
     const made = addLights(base, pieces, this.s.color);
     const strips = pieces.filter((p) => p.kind === "strip");
-    const meters = strips.reduce((sum, p) => sum + Math.max(p.box[1][0] - p.box[0][0], p.box[1][1] - p.box[0][1]), 0) / 1000;
-    return { ...made, strips: strips.length, spots: pieces.length - strips.length, meters, furniture: elements.length };
+    const meters = strips.reduce((sum, p) => sum + pieceLength(p), 0) / 1000;
+    return { ...made, strips: strips.length, spots: pieces.length - strips.length, meters, furniture };
   }
 
   /** The new features (sketches and extrusions), after those of the document. */

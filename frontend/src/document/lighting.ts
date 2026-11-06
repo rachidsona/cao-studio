@@ -7,6 +7,9 @@
  * - une corniche lumineuse sur les meubles qui montent haut ;
  * - une plinthe lumineuse sous les meubles posés sur un socle.
  *
+ * Une Répartition s'éclaire niche par niche (document/niche-lights.ts) : ses cloisons arrêtent les rubans. Un caisson, lui,
+ * s'éclaire planche par planche.
+ *
  * Chaque lumière est un petit corps à part (esquisse et extrusion, sur le calque « Éclairage ») qui éclaire le rendu,
  * hors débit, devis et usinage. Relancer l'outil remplace l'éclairage déjà posé, par exemple après avoir déplacé des
  * meubles.
@@ -14,7 +17,7 @@
 import { addLayer, layersOf } from "./layers";
 import { uniqueId } from "./operations";
 import { emptySketchGeometry, rectangleAt } from "./sketch";
-import type { CadDocument, Feature, Vec3 } from "./types";
+import type { CadDocument, Feature, SlopedCeiling, Vec3 } from "./types";
 
 export type Box = [Vec3, Vec3];
 export type LightColor = "warm" | "neutral" | "cool";
@@ -58,15 +61,29 @@ export interface LightPiece {
   box: Box;
   /** It lights upwards (a cornice); the others light downwards. */
   up?: boolean;
+  /** Along a wall at an angle: its four corners on the floor plan (`box` then only bounds it). */
+  outline?: [number, number][];
+  /** What a dressing's wall keeps its boards in: the outline of a cut corner, a sloped ceiling. */
+  clip?: [number, number][];
+  ceiling?: SlopedCeiling;
+}
+
+/** The length of a strip (mm). */
+export function pieceLength({ box: [from, to], outline }: LightPiece): number {
+  if (!outline) return Math.max(to[0] - from[0], to[1] - from[1]);
+  const [a, b, c] = outline as [[number, number], [number, number], [number, number]];
+  return Math.max(Math.hypot(b[0] - a[0], b[1] - a[1]), Math.hypot(c[0] - b[0], c[1] - b[1]));
 }
 
 /** A LED profile: wide and thick (mm); kept from the front edge and from the sides. */
-const STRIP = { width: 12, thickness: 8, inset: 30, margin: 20 };
-const SPOT = { diameter: 60, thickness: 6, inset: 80, spacing: 600 };
+export const STRIP = { width: 12, thickness: 8, inset: 30, margin: 20 };
+export const SPOT = { diameter: 60, thickness: 6, inset: 80, spacing: 600 };
 /** Wall units hang this high at least; a cornice crowns what rises this high (mm). */
-const WALL_FROM = 600;
-const CORNICE_FROM = 1800;
-const MIN_LENGTH = 150;
+export const WALL_FROM = 600;
+export const CORNICE_FROM = 1800;
+/** A plinth light wants this much room under the lowest board (mm). */
+export const PLINTH_FROM = 60;
+export const MIN_LENGTH = 150;
 
 /** The lights of these elements. */
 export function lightPieces(elements: readonly LitElement[], s: LightingSettings): LightPiece[] {
@@ -112,7 +129,7 @@ export function lightPieces(elements: readonly LitElement[], s: LightingSettings
     const top = e.box[1][2];
     if (s.cornice && top >= CORNICE_FROM) strip(`Corniche LED ${e.name}`, e.box, top, top + STRIP.thickness, true);
     // A plinth: the lowest board stands off the floor.
-    if (s.plinth && bottom < 50 && lowest && lowest.box[0][2] >= 60) strip(`Plinthe LED ${e.name}`, lowest.box, lowest.box[0][2] - STRIP.thickness, lowest.box[0][2]);
+    if (s.plinth && bottom < 50 && lowest && lowest.box[0][2] >= PLINTH_FROM) strip(`Plinthe LED ${e.name}`, lowest.box, lowest.box[0][2] - STRIP.thickness, lowest.box[0][2]);
   }
   return out;
 }
@@ -132,10 +149,10 @@ export function addLights(doc: CadDocument, pieces: readonly LightPiece[], color
     const [from, to] = p.box;
     const [cx, cy] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
     const sketchId = uniqueId(probe(), "sk");
-    const geometry = p.kind === "spot" ? spotAt(cx, cy, (to[0] - from[0]) / 2) : rectangleAt(cx, cy, to[0] - from[0], to[1] - from[1]);
+    const geometry = p.kind === "spot" ? spotAt(cx, cy, (to[0] - from[0]) / 2) : p.outline ? outlined(p.outline) : rectangleAt(cx, cy, to[0] - from[0], to[1] - from[1]);
     features.push({ id: sketchId, type: "sketch", name: `Esquisse ${p.name}`, plane: "XY", offset: from[2], hidden: true, ...geometry });
     const id = uniqueId(probe(), "ex");
-    features.push({ id, type: "extrude", name: p.name, sketch: sketchId, distance: to[2] - from[2], operation: "new" });
+    features.push({ id, type: "extrude", name: p.name, sketch: sketchId, distance: to[2] - from[2], operation: "new", ...(p.clip ? { clip: p.clip } : {}), ...(p.ceiling ? { ceiling: p.ceiling } : {}) });
     bodyInfo[id] = { room: true, light: { kind: p.kind, color, ...(p.up ? { up: true } : {}) }, appearance, ...(layer ? { layer } : {}) };
     bodyNames[id] = p.name;
     bodies.push(id);
@@ -148,6 +165,16 @@ function spotAt(cx: number, cy: number, r: number) {
   const geometry = emptySketchGeometry();
   geometry.points.push({ id: "pc", x: cx, y: cy });
   geometry.curves.push({ id: "c1", kind: "circle", center: "pc", radius: r });
+  return geometry;
+}
+
+/** A closed shape through these corners. */
+function outlined(corners: readonly [number, number][]) {
+  const geometry = emptySketchGeometry();
+  corners.forEach(([x, y], i) => {
+    geometry.points.push({ id: `p${i}`, x, y });
+    geometry.curves.push({ id: `l${i}`, kind: "line", p1: `p${i}`, p2: `p${(i + 1) % corners.length}` });
+  });
   return geometry;
 }
 

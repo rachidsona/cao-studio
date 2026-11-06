@@ -362,3 +362,29 @@ test("façades communes, chants d'un clic et modèle d'étiquette", async ({ pag
   await expect(page.locator("[data-cut-count]")).toContainText("0");
   expect(errors).toEqual([]);
 });
+
+test("Éclairage d'un mur de dressing : un ruban par niche, même esquisse cachée, et il ne fait pas échouer l'historique", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Lumière e2e");
+  const { at } = await ready(page);
+  const [x, y] = at(0.38, 0.55);
+  await page.mouse.click(x, y, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await shelves.getByRole("combobox").first().selectOption("3");
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await page.waitForTimeout(800);
+  await page.keyboard.press("Escape");
+
+  // The wall's sketch hidden: its panels are still the furniture.
+  await page.getByRole("button", { name: "Masquer Plan — mur a", exact: true }).last().click();
+  await expect(page.getByRole("button", { name: "Afficher Plan — mur a", exact: true })).toBeVisible();
+  await click(page, '[data-action="lighting"]');
+  await expect(page.getByText(/7 ruban\(s\) LED/)).toBeVisible();
+  await page.getByRole("button", { name: "OK", exact: true }).first().click();
+  await expect(tree(page).getByRole("button", { name: /^Masquer Ruban LED/ })).toHaveCount(7);
+  await expect(page.locator('[data-status="error"], [data-state="error"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
