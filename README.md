@@ -733,7 +733,9 @@ opération existante.
   niches qu'elle séparait n'en font plus qu'une, les autres pièces restent où elles sont et gardent matière et
   apparence. Ce que contenait une niche fusionnée (divisions, penderie, tiroirs) part avec elle, après confirmation ; la
   dernière étagère d'une étape emporte l'étape, et Supprimer une étape « Étagères n » dans l'Historique emporte ses
-  étagères. Le tout est une annulation (`document/shelf-removal.ts`).
+  étagères. Une **esquisse dont le dernier corps est supprimé** s'en va avec lui, ses traits et ses équipements compris,
+  et supprimer une Répartition dans l'Historique emporte ses corps. Le tout est une annulation
+  (`document/shelf-removal.ts`).
 - **Niche** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères » et « Cloisons ») : on clique une niche
   d'une Répartition et on tape sa **hauteur** ; les étagères qui la bordent se déplacent, ce qu'elle contient suit, les
   niches déjà réglées gardent la leur et les autres se partagent le reste. L'aperçu et les cotes suivent le champ, OK est
@@ -1748,7 +1750,10 @@ opération existante.
   les cotes suivent. L'outil prévient d'une tringle hors de portée (plus de 190 cm) ou trop longue (plus de 120 cm),
   d'une étagère au-dessus de 200 cm ou qui fléchit sous du linge, d'une profondeur trop juste pour des cintres. Un
   réglage se garde sous un nom dans **Mes modules** (dans ce navigateur, d'un projet à l'autre). Ce sont les mêmes
-  modules que l'assistant Dressing, et le résultat se retouche niche par niche. Dans l'assistant, le « + » d'un mur
+  modules que l'assistant Dressing, et le résultat se retouche niche par niche. Un **clic dans un module déjà posé** le
+  rouvre, relu dans ses étapes : nombre d'étagères et de tiroirs, hauteur de chaque niche, jeux des façades, tringle,
+  chapeau, zone des tiroirs, épaisseur, type de module ; OK le remplace en une annulation, ses pièces gardant matière et
+  apparence, et « Retirer ce module » libère sa niche (`document/module-edit.ts`). Dans l'assistant, le « + » d'un mur
   ouvre la même liste de modules pour choisir celui à ajouter.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).

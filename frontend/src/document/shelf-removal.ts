@@ -2,11 +2,12 @@
  * Supprimer une étagère (ou une cloison) d'une Répartition, c'est la retirer de sa division, pas seulement son volume :
  * ses traits s'en vont, les deux niches qu'elle séparait n'en font plus qu'une, les autres étagères restent où elles
  * sont, et ce qui suit une niche suit la nouvelle numérotation. Ce que contenait une niche fusionnée — ses divisions,
- * sa penderie, ses tiroirs — disparaît avec elle ; la dernière étagère retirée emporte l'étape. Pur.
+ * sa penderie, ses tiroirs — disparaît avec elle ; la dernière étagère retirée emporte l'étape. Et une esquisse dont le
+ * dernier corps est supprimé s'en va avec lui, ses traits et ses équipements compris. Pur.
  */
 import { removeEntities } from "../sketcher/edit";
 import { removeOffsetFrom } from "../sketcher/offset";
-import { extrusionGroups, isShelves, pathKey, rebuildChain } from "../sketcher/partition-history";
+import { extrusionGroups, isPartition, isShelves, pathKey, rebuildChain } from "../sketcher/partition-history";
 import { shelfLayout } from "../sketcher/shelves";
 import { deleteFeatures, findFeature, updateFeature } from "./operations";
 import type { OffsetRecord } from "./sketch";
@@ -111,15 +112,35 @@ function cutIn(doc: CadDocument, sketchId: string, cuts: Cut, extra: string[]): 
   return { next, lost: [...new Set([...bodies, ...made.gone, ...lost])].filter((id) => !extra.includes(id)) };
 }
 
+const extrusionsOf = (doc: CadDocument, sketch: string) => doc.features.filter((f) => f.type === "extrude" && f.sketch === sketch);
+
+/** The sketches that lost their last body between these two documents go too, with what a plan built around them. */
+function withoutEmptySketches(before: CadDocument, after: CadDocument): { next: CadDocument; lost: string[] } {
+  const touched = new Set(before.features.flatMap((f) => (f.type === "extrude" && f.sketch && !after.features.some((g) => g.id === f.id) ? [f.sketch] : [])));
+  const empty = [...touched].filter((id) => {
+    const sketch = findFeature(after, id);
+    return sketch?.type === "sketch" && !sketch.dressingPlan && extrusionsOf(after, id).length === 0;
+  });
+  if (!empty.length) return { next: after, lost: [] };
+  const boards = after.features.flatMap((f) => (f.type === "sketch" && f.dressingPlan ? Object.entries(f.dressingPlan.made ?? {}).flatMap(([zone, made]) => (empty.includes(made) ? (f.dressingPlan?.boards?.[zone] ?? []) : [])) : []));
+  const gone = deleteFeatures(after, [...empty, ...boards]);
+  const more = withoutEmptySketches(after, gone.next);
+  const sketches = (id: string) => findFeature(after, id)?.type === "sketch";
+  return { next: more.next, lost: [...gone.lost, ...boards, ...more.lost].filter((id) => !sketches(id)) };
+}
+
 /**
- * Deletes these features, as deleteFeatures does; the shelves and cloisons among them leave their division too. `lost`:
- * what goes with them that was not asked for.
+ * Deletes these features, as deleteFeatures does; the shelves and cloisons among them leave their division too, and a
+ * sketch left without a body goes with its last one. `lost`: what goes with them that was not asked for.
  */
 export function removeWithShelves(doc: CadDocument, ids: string[]): { next: CadDocument; lost: string[] } {
   const sketches = doc.features.filter((f): f is SketchFeature => f.type === "sketch");
   let result: { next: CadDocument; lost: string[] } = { next: doc, lost: [] };
   const left = new Set(ids);
   for (const sketch of sketches) {
+    // All its bodies go: there is nothing to make again.
+    const own = extrusionsOf(doc, sketch.id);
+    if (own.length && own.every((b) => left.has(b.id))) continue;
     const cuts: Cut = new Map();
     for (const r of sketch.offsets ?? []) {
       if (!isShelves(r) || !r.bodies?.some((b) => left.has(b))) continue;
@@ -129,19 +150,36 @@ export function removeWithShelves(doc: CadDocument, ids: string[]): { next: CadD
     }
     if (!cuts.size) continue;
     const mine = (sketch.offsets ?? []).filter((r) => cuts.has(r.id)).flatMap((r) => r.bodies ?? []).filter((b) => left.has(b));
+    const panels = own.filter((b) => left.has(b.id) && !mine.includes(b.id));
     const cutDone = cutIn(result.next, sketch.id, cuts, mine);
     if (!cutDone) continue;
     result = { next: cutDone.next, lost: [...result.lost, ...cutDone.lost] };
     for (const id of mine) left.delete(id);
+    // The panels asked too were made again with the rest, under the same names.
+    for (const panel of panels) {
+      left.delete(panel.id);
+      const twin = extrusionsOf(result.next, sketch.id).find((f) => f.name === panel.name);
+      if (twin) left.add(twin.id);
+    }
   }
   const rest = deleteFeatures(result.next, [...left]);
-  return { next: rest.next, lost: [...new Set([...result.lost, ...rest.lost])] };
+  const swept = withoutEmptySketches(doc, rest.next);
+  return { next: swept.next, lost: [...new Set([...result.lost, ...rest.lost, ...swept.lost])] };
 }
 
-/** The document without this step of the history: a division takes its bodies and what its niches hold with it. */
+/**
+ * The document without this step of the history: a division takes its bodies and what its niches hold with it; a
+ * Répartition, all of it, and its sketch when nothing else is left in it.
+ */
 export function removeStep(doc: CadDocument, sketchId: string, id: string): CadDocument {
   const sketch = findFeature(doc, sketchId);
   const record = sketch?.type === "sketch" ? sketch.offsets?.find((r) => r.id === id) : undefined;
+  if (sketch?.type === "sketch" && record && isPartition(record)) {
+    const bodies = (sketch.offsets ?? []).filter((r) => r.id === id || (isShelves(r) && r.step.of === id)).flatMap((r) => r.bodies ?? []);
+    const equipment = doc.features.filter((f) => f.type === "niche" && f.sketch === sketchId && f.partition === id).map((f) => f.id);
+    const { next } = deleteFeatures(doc, [...bodies, ...equipment]);
+    return withoutEmptySketches(doc, updateFeature(next, sketchId, (f) => (f.type === "sketch" ? removeOffsetFrom(f, id) : f))).next;
+  }
   const bodies = (record?.bodies ?? []).filter((b) => findFeature(doc, b));
   const cut = record && isShelves(record) ? cutIn(doc, sketchId, new Map([[id, () => true]]), bodies) : null;
   return cut?.next ?? updateFeature(doc, sketchId, (f) => (f.type === "sketch" ? removeOffsetFrom(f, id) : f));

@@ -6,6 +6,7 @@ import { modelHardware } from "../../frontend/src/document/hardware";
 import { createReferencePlate, type CadDocument, type DressingPlan, type ExtrudeFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { hingeCount } from "../../frontend/src/features/fronts-parts";
 import { nicheGeometry, nicheProblem } from "../../frontend/src/features/niche-parts";
+import { removeWithShelves } from "../../frontend/src/document/shelf-removal";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { isPartition, leafNiches } from "../../frontend/src/sketcher/partition-history";
 
@@ -211,6 +212,17 @@ describe("zones du plan", () => {
     const made = withZonePartition(doc, id, zones[0]!);
     if (typeof made === "string") throw new Error(made);
     expect(typeof withPlanChanged(made.doc, id, plan({ model: "L-right-cut", lengthA: 1040 }))).toBe("string");
+  });
+
+  it("les corps d'une zone supprimés : son esquisse, le côté et la porte de l'angle partent, la zone est libre, le plan reste", () => {
+    const { doc, id } = corner();
+    const door = withCornerDoors(doc, id, true);
+    const plate = planOf(door)!.dressingPlan!.made!.right!;
+    const bodies = door.features.filter((f) => f.type === "extrude" && f.sketch === plate).map((f) => f.id);
+    const { next, lost } = removeWithShelves(door, bodies);
+    expect(next.features.map((f) => f.id)).toEqual([id]);
+    expect(zoneDone(next, planOf(next)!.dressingPlan!, "right")).toBe(false);
+    expect(lost.length).toBeGreaterThan(0);
   });
 
   it("une zone dont l'ouvrage est supprimé redevient libre", () => {

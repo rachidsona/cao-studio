@@ -1,0 +1,374 @@
+/**
+ * Parcours du dressing dans un vrai navigateur : modules posés et rouverts, outil Niche, étagères supprimées, plan vu de
+ * dessus, et les onglets de projets. Chaque test crée son propre compte sur le serveur de test.
+ */
+import { expect, test } from "@playwright/test";
+import { newProject } from "./helpers";
+
+test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm en haut et le reste réparti", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Module change e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).click();
+  await tree.getByText("Étagère 3", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Modifier Étagères 2" }).click();
+
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await expect(shelves).toContainText("Modifier : Étagères 2");
+  await shelves.getByLabel("Niches").selectOption("top");
+  await shelves.getByLabel(/^Hauteur fixe/).fill("40");
+  await shelves.getByLabel(/^Hauteur fixe/).press("Enter");
+  await expect(shelves).toContainText(/40 cm \(du bas vers le haut\)/);
+  // The dimensions in the view already say it, as the orange preview does.
+  await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(shelves).toHaveCount(0);
+  await expect(tree.getByText("Tiroirs 1", { exact: true }).first()).toBeVisible();
+  await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "test-results/module-change.png" });
+  expect(errors).toEqual([]);
+});
+
+test("Niche : un clic, sa hauteur, le reste se partage, et une autre niche ensuite", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Niche e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.click(middle.x, middle.y);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(middle.x, middle.y);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+
+  await action("niche");
+  const tool = page.getByRole("dialog", { name: "Niche" });
+  await expect(tool).toContainText("Cliquez la niche");
+  const dims = page.locator(".cad-plan-dim");
+  // The niche in the middle of the column of shelves, and the one under the top.
+  const view = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".cad-plan-dim")].filter((d) => d.textContent === "33,1").map((d) => d.getBoundingClientRect().y).sort((a, b) => a - b));
+  const [highest, centre] = [view[0]!, view[2]!];
+  await page.mouse.click(middle.x, centre + 6);
+  await tool.getByLabel(/^Hauteur/).fill("20");
+  await tool.getByLabel(/^Hauteur/).press("Enter");
+  await expect(tool).toContainText("36,35 cm · 36,35 cm · 20 cm · 36,35 cm · 36,35 cm");
+  await expect(dims.filter({ hasText: /^20$/ }).first()).toBeVisible();
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Étagères 2 : niche de 20 cm.")).toBeVisible();
+
+  // Still in the tool: the top niche too (once the message no longer covers it); the first keeps its height.
+  await expect(page.getByText("Étagères 2 : niche de 20 cm.")).toBeHidden({ timeout: 20000 });
+  await page.mouse.click(middle.x, highest + 6);
+  await tool.getByLabel(/^Hauteur/).fill("40");
+  await tool.getByLabel(/^Hauteur/).press("Enter");
+  await expect(tool).toContainText("35,1333 cm · 20 cm · 35,1333 cm · 40 cm");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Étagères 2 : niche de 40 cm.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tool).toHaveCount(0);
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: "test-results/niche-tool.png" });
+  expect(errors).toEqual([]);
+});
+
+test("Étagères supprimées : leurs traits et leurs niches partent avec elles", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Suppression e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const module = page.getByRole("dialog", { name: "Module" });
+  await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await module.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+
+  // One of the five: four left, and the niche it divided counts for one in the dimensions of the Niche tool.
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  const dims = page.locator(".cad-plan-dim");
+  await action("niche");
+  await expect(dims.filter({ hasText: /^33,1$/ })).toHaveCount(5);
+  await page.keyboard.press("Escape");
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).click();
+  await tree.getByText("Étagère 3", { exact: true }).first().click();
+  await page.getByRole("button", { name: /^Supprimer( \(\d+\))?$/ }).first().click();
+  await expect(tree.getByText("Étagère 5", { exact: true })).toHaveCount(0);
+  await expect(tree.getByText("Étagère 4", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  await action("niche");
+  await expect(dims.filter({ hasText: /^33,1$/ })).toHaveCount(3);
+  await expect(dims.filter({ hasText: /^68$/ }).first()).toBeVisible();
+
+  // Undone in one go.
+  await page.keyboard.press("Escape");
+  await page.locator('[data-action="undo"]').click();
+  await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-results/shelf-removed.png" });
+  expect(errors).toEqual([]);
+});
+
+test("Onglets : plusieurs projets ouverts, chacun garde son travail, et ils reviennent au rechargement", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Premier e2e");
+  const tabs = page.getByRole("tablist", { name: "Projets ouverts" });
+  await expect(tabs.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "true");
+
+  // A work in the first one, not saved.
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="partition"]')?.click());
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+
+  // The + makes a second project in its own tab, with its own editor.
+  await page.getByLabel("Nouveau projet ou ouvrir un projet").click();
+  await page.getByLabel("Nom du nouveau projet").fill("Second e2e");
+  await page.getByRole("button", { name: "Créer", exact: true }).click();
+  const second = page.frameLocator("iframe[data-project-frame]");
+  await expect(second.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(second.locator('[data-ref="status-kernel"]')).toHaveText("Noyau OpenCascade prêt");
+  await expect(second.getByRole("tab", { name: "Second e2e" })).toHaveAttribute("aria-selected", "true");
+  await expect(second.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "false");
+  await expect(second.getByText("Côtés", { exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(/editor\/$/);
+  const url = page.url();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "test-results/tabs-second.png" });
+
+  // Back to the first one, at once: the frame stays, the work and its history too.
+  await second.getByRole("tab", { name: "Premier e2e" }).click();
+  await expect(page.locator("iframe[data-project-frame]")).toHaveCSS("visibility", "hidden");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-action="undo"]').first()).toBeEnabled();
+
+  // The second one is there again as it was, then the first is closed from it: the second stays.
+  await tabs.getByRole("tab", { name: "Second e2e" }).click();
+  await expect(page.locator("iframe[data-project-frame]")).toHaveCSS("visibility", "visible");
+  await page.waitForTimeout(2500);
+  await second.getByLabel("Fermer Premier e2e").click();
+  await expect(second.getByRole("tab")).toHaveCount(1);
+
+  // Reloading the page opens the tab that was active, and the + offers the project closed.
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  expect(page.url()).toBe(url);
+  await expect(tabs.getByRole("tab")).toHaveCount(1);
+  await expect(tabs.getByRole("tab", { name: "Second e2e" })).toBeVisible();
+  await page.getByLabel("Nouveau projet ou ouvrir un projet").click();
+  await expect(page.getByRole("group", { name: "Ouvrir un projet" }).getByRole("button", { name: "Premier e2e" })).toBeVisible();
+  await page.getByRole("group", { name: "Ouvrir un projet" }).getByRole("button", { name: "Premier e2e" }).click();
+  await expect(tabs.getByRole("tab")).toHaveCount(2);
+  await expect(second.getByRole("tab", { name: "Premier e2e" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+  expect(errors).toEqual([]);
+});
+
+test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, le plan changé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Plan e2e");
+  const open = () => page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click());
+  await open();
+  const tool = page.getByRole("dialog", { name: "Plan de dressing" });
+  await tool.getByRole("button", { name: "En L à droite, pan coupé" }).click();
+  await tool.getByLabel(/^Longueur mur A/).fill("400");
+  await tool.getByLabel(/^Longueur mur A/).press("Enter");
+  await expect(tool.getByRole("img", { name: "Schéma du plan vu de dessus" })).toContainText("300 cm");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  const zones = tool.getByRole("list", { name: "Zones du plan" });
+  await expect(zones).toBeVisible();
+
+  // The plan on the floor, clicked in the view, comes back too.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
+  await page.waitForTimeout(800);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  for (let i = 1; i < 12 && !(await tool.count()); i++) {
+    for (let j = 1; j < 8 && !(await tool.count()); j++) {
+      await page.mouse.click(view.x + (view.width * i) / 12, view.y + (view.height * j) / 8);
+      await page.waitForTimeout(60);
+    }
+  }
+  await expect(zones).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
+
+  // Each zone: its Répartition opens in its own tool; the corner too.
+  const zone = (name: string) => zones.getByRole("listitem").filter({ hasText: name }).getByRole("button");
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await expect(zones.getByRole("listitem")).toHaveCount(3);
+  for (const name of ["Mur A", "Angle droit", "Mur C"]) {
+    await zone(name).click();
+    await expect(partition).toContainText("Modifier");
+    await partition.getByRole("button", { name: "OK", exact: true }).click();
+    await expect(partition).toHaveCount(0);
+    await page.waitForTimeout(1200);
+    await open();
+    await expect(zone(name)).toHaveText("Modifier");
+  }
+
+  // The door on the slanted front.
+  await tool.getByLabel("Porte sur le pan coupé").check();
+  await expect(page.getByText("Angle droit — porte", { exact: true }).first()).toBeVisible();
+
+  // Shelves in the corner, as in any Répartition, then the Niche tool on them.
+  await page.getByRole("button", { name: "Terminer" }).click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: "test-results/plan-top.png" });
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
+
+  // The plan changed: what is on it follows, the depth of wall A with it.
+  await open();
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await tool.getByLabel(/^Longueur mur A/).fill("450");
+  await tool.getByLabel(/^Longueur mur A/).press("Enter");
+  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await expect(page.getByText("Plan modifié : ce qui est fait dessus a suivi.")).toBeVisible();
+  await expect(zones.getByRole("listitem").filter({ hasText: "Mur A · 350 cm" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-ref="status-kernel"]')).toHaveText("Noyau OpenCascade prêt");
+  await expect(page.locator('[data-state="error"]')).toHaveCount(0);
+
+  // Saved and read again.
+  await page.locator('[data-action="save"]').first().click();
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré");
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await open();
+  await expect(zone("Mur C")).toHaveText("Modifier");
+  await expect(tool.getByLabel("Porte sur le pan coupé")).toBeChecked();
+
+  // The sketch of the plan, clicked in the browser, shows it again.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect(tool).toHaveCount(0);
+  await page.getByText("Plan du dressing", { exact: true }).first().click();
+  await expect(zones.getByRole("listitem")).toHaveCount(3);
+  await expect(zone("Mur A")).toHaveText("Modifier");
+  await page.getByText("Plan du dressing", { exact: true }).first().click();
+  await expect(tool).toHaveCount(1);
+
+  // Another model: what it no longer has goes, once asked.
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await tool.getByRole("button", { name: "Face à face" }).click();
+  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await expect(page.getByText(/Ce plan n'a plus : Angle droit, Mur C/)).toBeVisible();
+  await page.getByRole("button", { name: "Appliquer" }).last().click();
+  await expect(zones.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByText("Angle droit — porte", { exact: true })).toHaveCount(0);
+
+  // All the bodies of a zone deleted from the browser: its sketch goes with them, and the zone is free again.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.getByText("Plan — mur a", { exact: true }).first()).toBeVisible();
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Plan — mur a" }).first().click();
+  await page.getByRole("button", { name: /^Supprimer( \(\d+\))?$/ }).first().click();
+  await expect(page.getByText("Plan — mur a", { exact: true })).toHaveCount(0);
+  await page.getByText("Plan du dressing", { exact: true }).first().click();
+  await expect(zone("Mur A")).toHaveText("Répartition");
+  expect(errors).toEqual([]);
+});
+
+test("Module posé, rouvert dans son outil : étagères, tiroirs, hauteur d'une niche", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Module rouvert e2e");
+  const action = (name: string) => page.evaluate((a) => document.querySelector<HTMLElement>(`[data-action="${a}"]`)?.click(), name);
+  await action("partition");
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.click(middle.x, middle.y);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.waitForTimeout(600);
+
+  await action("module");
+  const tool = page.getByRole("dialog", { name: "Module" });
+  await tool.getByRole("button", { name: "Tiroirs et étagères" }).click();
+  await page.mouse.click(middle.x, middle.y);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
+  await page.waitForTimeout(1500);
+
+  // A click in the module brings it back, with what it really has.
+  await page.mouse.click(middle.x, middle.y);
+  await expect(tool).toContainText("Modifier : Tiroirs et étagères");
+  await expect(tool.getByLabel("Étagères", { exact: true })).toHaveValue("4");
+  await expect(tool.getByLabel("Tiroirs", { exact: true })).toHaveValue("3");
+  await tool.getByLabel("Tiroirs", { exact: true }).selectOption("4");
+  await tool.getByLabel("Étagères", { exact: true }).selectOption("3");
+  await tool.getByLabel(/^Niche 5/).fill("40");
+  await tool.getByLabel(/^Niche 5/).press("Enter");
+  await expect(tool.getByLabel(/^Niche 5/)).toHaveValue("40");
+  await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Module modifié : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).click();
+  await expect(tree.getByText("Étagère 4", { exact: true }).first()).toBeVisible();
+  await expect(tree.getByText("Étagère 5", { exact: true })).toHaveCount(0);
+  await page.waitForTimeout(1500);
+
+  // Back again: its niche is at 40, then the module goes.
+  await action("module");
+  await page.mouse.click(middle.x, middle.y);
+  await expect(tool.getByLabel(/^Niche 5/)).toHaveValue("40");
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: "test-results/module-edit.png" });
+  await tool.getByRole("button", { name: "Retirer ce module" }).click();
+  await expect(page.getByText("Module retiré : tiroirs et étagères.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tree.getByText("Étagères", { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

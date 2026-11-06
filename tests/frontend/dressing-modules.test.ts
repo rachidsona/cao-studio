@@ -6,6 +6,7 @@ import { plansOf } from "../../frontend/src/app/partition-plan";
 import { removeStep, removeWithShelves } from "../../frontend/src/document/shelf-removal";
 import { deleteFeatures } from "../../frontend/src/document/operations";
 import { nicheGeometry } from "../../frontend/src/features/niche-parts";
+import { moduleOfNiche, withModuleChanged, withoutModule } from "../../frontend/src/document/module-edit";
 import { modelHardware } from "../../frontend/src/document/hardware";
 import { emptySketchGeometry, type ShelfParams, type SketchGeometry } from "../../frontend/src/document/sketch";
 import { stepOfBody, withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
@@ -107,6 +108,79 @@ describe("modules de dressing", () => {
   it("couvrent tous les modules de l'assistant", () => {
     const doc = cabinet();
     for (const kind of Object.keys(MODULES) as ModuleKind[]) expect(() => made(doc, picks(doc, 0), kind)).not.toThrow();
+  });
+
+  describe("relus et changés", () => {
+    const read = (doc: CadDocument, path: number[]) => moduleOfNiche(doc, sketchOf(doc), "of1", path);
+    const leaf = (doc: CadDocument, first: number) => leafNiches(sketchOf(doc)).filter((n) => n.path[0] === first);
+
+    it("se relisent tous dans leurs étapes, depuis n'importe quelle niche", () => {
+      for (const kind of ["long", "double", "drawers", "rod-drawers", "shelves", "trousers"] as ModuleKind[]) {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), kind);
+        for (const n of leaf(next, 0)) expect(read(next, n.path)).toMatchObject({ kind, path: [0], thickness: 18 });
+      }
+    });
+
+    it("une case libre ou divisée à la main n'est pas un module", () => {
+      const doc = cabinet();
+      expect(read(doc, [0])).toBeNull();
+      const next = made(doc, picks(doc, 0), "drawers");
+      expect(read(next, [1])).toBeNull();
+    });
+
+    it("rendent leurs mesures réelles : tiroirs, zone, nombre d'étagères, niches réglées", () => {
+      const doc = cabinet();
+      const sizes = { ...moduleSizes("drawers"), drawers: 5, drawerZone: 800, shelves: 3, heights: { "1.1": 200 } };
+      const next = withModules(doc, "sk1", picks(doc, 0), "drawers", 22, sizes) as CadDocument;
+      const placed = read(next, leaf(next, 0)[1]!.path)!;
+      expect(placed.sizes).toMatchObject({ drawers: 5, drawerZone: 800, shelves: 3, heights: { "1.1": 200 } });
+      expect(placed.thickness).toBe(22);
+    });
+
+    it("se changent en une fois : étagères, tiroirs, hauteur d'une niche, sans doubler ce qui existait", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const placed = read(next, leaf(next, 0)[2]!.path)!;
+      const shelves = next.features.filter((f) => f.name.startsWith("Étagère "));
+      const dressed: CadDocument = { ...next, bodyInfo: { ...next.bodyInfo, [shelves[1]!.id]: { appearance: "chene" } } };
+      const after = withModuleChanged(dressed, "sk1", placed, "drawers", 18, { ...placed.sizes, drawers: 4, shelves: 2, heights: { "1.2": 400 } }) as CadDocument;
+      expect(typeof after).toBe("object");
+      expect(niches(after)).toHaveLength(1);
+      expect(niches(after)[0]!.drawers).toBe(4);
+      const left = leaf(after, 0).map((n) => Number((n.box.y1 - n.box.y0).toFixed(3)));
+      expect(left).toHaveLength(4);
+      expect(left.at(-1)).toBe(400);
+      expect(after.features.filter((f) => f.name.startsWith("Étagère "))).toHaveLength(3);
+      expect(after.bodyInfo?.[after.features.filter((f) => f.name.startsWith("Étagère "))[1]!.id]).toEqual({ appearance: "chene" });
+      expect(() => parseDocument(JSON.parse(JSON.stringify(after)))).not.toThrow();
+    });
+
+    it("changent de type, et le porte-pantalons quitte le devis", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "trousers");
+      const placed = read(next, leaf(next, 0)[0]!.path)!;
+      const after = withModuleChanged(next, "sk1", placed, "long", 18, moduleSizes("long")) as CadDocument;
+      expect(niches(after).map((f) => f.fill)).toEqual(["rod"]);
+      expect(modelHardware(after).some((h) => h.name === "Porte-pantalons coulissant")).toBe(false);
+      const same = withModuleChanged(next, "sk1", placed, "trousers", 18, placed.sizes) as CadDocument;
+      expect(modelHardware(same)).toEqual(expect.arrayContaining([{ name: "Porte-pantalons coulissant", quantity: 1 }]));
+    });
+
+    it("gardent les réglages de leurs façades et de leur tringle", () => {
+      const doc = cabinet();
+      const sizes = { ...moduleSizes("rod-drawers"), rod: { diameter: 30, drop: 80 }, front: { gap: 5, bottomGap: 2, betweenGap: 4, sideGap: 6, thickness: 22, handles: false } };
+      const next = withModules(doc, "sk1", picks(doc, 0), "rod-drawers", 18, sizes) as CadDocument;
+      expect(read(next, leaf(next, 0)[0]!.path)!.sizes).toMatchObject({ rod: sizes.rod, front: sizes.front });
+    });
+
+    it("se retirent : la niche est de nouveau libre", () => {
+      const doc = cabinet();
+      const next = made(doc, picks(doc, 0), "drawers");
+      const after = withoutModule(next, "sk1", read(next, leaf(next, 0)[0]!.path)!);
+      expect(leaf(after, 0).map((n) => n.path.join())).toEqual(["0"]);
+      expect(niches(after)).toEqual([]);
+    });
   });
 
   describe("une fois posés", () => {
@@ -228,6 +302,49 @@ describe("modules de dressing", () => {
         const after = removeStep(next, "sk1", step.id);
         expect(shelvesOf(after)).toEqual([]);
         expect(leaves(after).filter((p) => p.startsWith("0"))).toEqual(["0"]);
+      });
+
+      const extrusions = (doc: CadDocument) => doc.features.filter((f) => f.type === "extrude").map((f) => f.id);
+
+      it("tous les corps de la Répartition : son esquisse s'en va, ce qu'elle portait aussi", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "drawers");
+        const { next: after, lost } = removeWithShelves(next, extrusions(next));
+        expect(after.features).toEqual([]);
+        expect(lost).toEqual(expect.arrayContaining([niches(next)[0]!.id]));
+        expect(lost).not.toContain("sk1");
+      });
+
+      it("une partie seulement : l'esquisse reste", () => {
+        const doc = cabinet();
+        const side = doc.features.find((f) => f.name === "Côté 2")!;
+        const { next, lost } = removeWithShelves(doc, [side.id]);
+        expect(next.features.some((f) => f.id === "sk1")).toBe(true);
+        expect(lost).toEqual([]);
+      });
+
+      it("des panneaux et des étagères ensemble : les panneaux ne reviennent pas", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "shelves");
+        const panel = next.features.find((f) => f.name === "Dessus 1" || f.name === "Dessus")!;
+        const { next: after } = removeWithShelves(next, [panel.id, shelvesOf(next)[0]!.id]);
+        expect(after.features.filter((f) => f.name === panel.name)).toEqual([]);
+        expect(shelvesOf(after)).toHaveLength(shelvesOf(next).length - 1);
+      });
+
+      it("une esquisse à un seul corps part avec lui, une esquisse sans corps reste", () => {
+        const doc = cabinet();
+        const plate = createReferencePlate();
+        const body = plate.features.find((f) => f.type === "extrude")!;
+        const { next } = removeWithShelves(plate, [body.id]);
+        expect(next.features.filter((f) => f.type === "sketch")).toEqual([]);
+        expect(doc.features.some((f) => f.id === "sk1")).toBe(true);
+      });
+
+      it("une Répartition supprimée dans l'Historique emporte ses corps et son esquisse", () => {
+        const doc = cabinet();
+        const next = made(doc, picks(doc, 0), "drawers");
+        expect(removeStep(next, "sk1", "of1").features).toEqual([]);
       });
 
       it("une étape dont les corps ont déjà disparu se retire aussi", () => {

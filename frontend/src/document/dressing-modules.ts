@@ -8,14 +8,14 @@
  */
 import { nicheGeometry, nicheParts, nicheProblem, worldBox, type NicheGeometry, type NichePart } from "../features/niche-parts";
 import { shelfCheck } from "../features/shelf-sag";
-import { extrusionGroups, idsFrom, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
+import { extrusionGroups, idsFrom, pathKey, rebuildChain, shelvesRecord, withNicheHeight } from "../sketcher/partition-history";
 import { partBox, shelfLayout, type NicheBox } from "../sketcher/shelves";
 import { REACH_ROD, REACH_SHELF } from "./dressing-extras";
 import { withEquipment } from "./equipment";
 import { findFeature, uniqueId, uniqueName, uniqueOffsetId } from "./operations";
 import type { ShelfParams } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
-import type { CadDocument, NicheFeature, SketchFeature, TrimFeature } from "./types";
+import type { CadDocument, NicheFeature, SketchFeature, TrimFeature, Vec3 } from "./types";
 
 export type ModuleKind = "long" | "double" | "shelves" | "drawers" | "rod-drawers" | "shoes" | "trousers";
 
@@ -45,6 +45,13 @@ const HANGER_DEPTH = 520;
 /** What a shelf of a dressing carries: folded clothes (kg per metre). */
 const CLOTHES = 10;
 const TROUSERS_HEIGHT = 900;
+export const TROUSERS = "Porte-pantalons coulissant";
+
+/** The accessory of a porte-pantalons in this niche, as a box of the world. */
+export function trousersBox(here: NicheGeometry): [Vec3, Vec3] {
+  const { x0, x1, y0 } = here.box;
+  return worldBox(here, { from: [x0 + 20, y0 + TROUSERS_HEIGHT, 30], to: [x1 - 20, y0 + TROUSERS_HEIGHT + 80, here.depth - 30] });
+}
 
 /** The sizes of a module (mm), and how many drawers. */
 export interface ModuleSizes {
@@ -52,6 +59,12 @@ export interface ModuleSizes {
   drawerZone: number;
   spacing: number;
   drawers: number;
+  /** How many shelves in its column, whatever the spacing says. */
+  shelves?: number;
+  /** Niches of a set height: by their path from the niche of the module (« 1.2 »). */
+  heights?: Record<string, number>;
+  rod?: { diameter: number; drop: number };
+  front?: { gap: number; bottomGap: number; betweenGap: number; sideGap: number; thickness: number; handles: boolean };
 }
 
 export const moduleSizes = (kind: ModuleKind): ModuleSizes => ({ hat: HAT, drawerZone: DRAWER_ZONE, spacing: kind === "shoes" ? SHOE_SPACING : SHELF_SPACING, drawers: DRAWERS.drawers });
@@ -71,9 +84,24 @@ export interface ModuleSteps {
 
 /** The steps of a module in the niche at `root`, `innerHeight` high. */
 export function moduleSteps(kind: ModuleKind, root: number[], innerHeight: number, thickness: number, sizes: ModuleSizes = moduleSizes(kind)): ModuleSteps {
+  const steps = baseSteps(kind, root, innerHeight, thickness, sizes);
+  // A niche of a set height: in the last division on its way.
+  for (const [key, height] of Object.entries(sizes.heights ?? {})) {
+    const path = [...root, ...key.split(".").map(Number)];
+    for (let k = path.length - 1; k >= root.length; k--) {
+      const division = steps.divisions.find((d) => pathKey(d.niche) === pathKey(path.slice(0, k)));
+      if (!division || (path[k] as number) > division.input.count) continue;
+      division.input = withNicheHeight(division.input, path[k] as number, height);
+      break;
+    }
+  }
+  return steps;
+}
+
+function baseSteps(kind: ModuleKind, root: number[], innerHeight: number, thickness: number, sizes: ModuleSizes): ModuleSteps {
   const { hat, drawerZone, spacing } = sizes;
   const shelves = (count: number, mode: ShelfParams["mode"] = "equal", fixed = 300): ShelfParams => ({ count, thickness, mode, fixed });
-  const columns = (height: number) => Math.max(1, Math.round(height / spacing) - 1);
+  const columns = (height: number) => sizes.shelves ?? Math.max(1, Math.round(height / spacing) - 1);
   const upper = innerHeight - drawerZone - thickness;
   switch (kind) {
     case "long":
@@ -89,7 +117,7 @@ export function moduleSteps(kind: ModuleKind, root: number[], innerHeight: numbe
     case "trousers":
       return { divisions: [{ niche: root, input: shelves(1, "top", hat) }], equip: [] };
     case "drawers":
-      return { divisions: [{ niche: root, input: shelves(1, "bottom", drawerZone) }, { niche: [...root, 1], input: shelves(columns(upper)) }], equip: [{ niche: [...root, 0], fill: "drawers" }] };
+      return { divisions: [{ niche: root, input: shelves(1, "bottom", drawerZone) }, ...(columns(upper) > 0 ? [{ niche: [...root, 1], input: shelves(columns(upper)) }] : [])], equip: [{ niche: [...root, 0], fill: "drawers" }] };
     case "rod-drawers":
       return { divisions: [{ niche: root, input: shelves(1, "bottom", drawerZone) }, { niche: [...root, 1], input: shelves(1, "top", hat) }], equip: [{ niche: [...root, 0], fill: "drawers" }, { niche: [...root, 1, 0], fill: "rod" }] };
   }
@@ -101,6 +129,8 @@ export interface ModuleLayout {
   shelves: NicheBox[];
   /** The niches left, nothing dividing them. */
   niches: NicheBox[];
+  /** The same, from the bottom, with their path from the niche of the module and what goes in them. */
+  leaves: { key: string; box: NicheBox; fill?: "rod" | "drawers" }[];
   /** What goes in the niches, with their boxes. */
   equip: { fill: "rod" | "drawers"; box: NicheBox }[];
 }
@@ -121,10 +151,13 @@ export function moduleLayout(box: NicheBox, root: number[], kind: ModuleKind, th
     layout.niches.forEach((span, k) => nodes.set(pathKey([...d.niche, k]), partBox(node, span, layout)));
   }
   const equip = steps.equip.map((e) => ({ fill: e.fill, box: nodes.get(pathKey(e.niche)) as NicheBox }));
-  return { steps, shelves, niches: [...nodes].filter(([key]) => !cut.has(key)).map(([, b]) => b), equip };
+  const left = [...nodes].filter(([key]) => !cut.has(key));
+  const fills = new Map(steps.equip.map((e) => [pathKey(e.niche), e.fill]));
+  const leaves = left.map(([key, b]) => ({ key: key.slice(pathKey(root).length + 1), box: b, ...(fills.has(key) ? { fill: fills.get(key) as "rod" | "drawers" } : {}) })).sort((a, b) => a.box.y0 - b.box.y0);
+  return { steps, shelves, niches: left.map(([, b]) => b), leaves, equip };
 }
 
-const equipment = (fill: "rod" | "drawers", sizes: ModuleSizes) => ({ ...ROD, ...DRAWERS, drawers: sizes.drawers, fill });
+const equipment = (fill: "rod" | "drawers", sizes: ModuleSizes) => ({ ...ROD, ...DRAWERS, ...sizes.rod, ...sizes.front, drawers: sizes.drawers, fill });
 
 /** The parts of what goes in a niche of a module: the preview, and why it is impossible. */
 export function moduleEquipment(geometry: NicheGeometry, layout: ModuleLayout, sizes: ModuleSizes): { parts: { geometry: NicheGeometry; part: NichePart }[]; problem: string | null } {
@@ -224,9 +257,8 @@ export function withModules(base: CadDocument, sketchId: string, picks: ModulePi
     if (kind === "trousers") {
       const here = nicheGeometry({ partition: pick.partition, niche: [...pick.path, 0] }, placed);
       if (typeof here === "string") return here;
-      const { x0, x1, y0 } = here.box;
-      const [from, to] = worldBox(here, { from: [x0 + 20, y0 + TROUSERS_HEIGHT, 30], to: [x1 - 20, y0 + TROUSERS_HEIGHT + 80, here.depth - 30] });
-      extras.push({ name: "Porte-pantalons coulissant", from, to, hardware: true, item: "Porte-pantalons coulissant" });
+      const [from, to] = trousersBox(here);
+      extras.push({ name: TROUSERS, from, to, hardware: true, item: TROUSERS });
     }
   }
   doc = withEquipment(doc, features);
