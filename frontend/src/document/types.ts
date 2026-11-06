@@ -83,6 +83,14 @@ export interface DressingPlan {
   /** The surveyed room it follows: its wall that is wall A, and how the plan turns and moves onto it. */
   room?: { id: string; wall: number };
   place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
+  /** Keeps clear of the doors and windows of its room, and under its low ceilings. */
+  avoid?: boolean;
+  /** What of each wall it may take: from and to along it (B and C: from the corner with A). */
+  spans?: Partial<Record<"A" | "B" | "C", [number, number]>>;
+  /** A lower height on a wall, under a drop or a slope of the room. */
+  low?: Partial<Record<"A" | "B" | "C", number>>;
+  /** The walls drawn behind it, when no surveyed room gives them. */
+  walls?: boolean;
   /** By zone: how many sliding doors in front of it. */
   sliding?: Record<string, number>;
   /** Square corners where the other wall runs through: B or C past wall A, D past B or C at the far end. */

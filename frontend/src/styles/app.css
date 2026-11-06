@@ -381,6 +381,12 @@
     @apply pointer-events-none bg-gray-950/80 px-1 py-px font-mono text-xs leading-none font-semibold text-[#63df0f];
   }
   /* The dimensions of a Répartition: small, so that the drawing stays in sight. */
+  .cad-shelf-handle {
+    @apply min-h-7 min-w-7 cursor-ns-resize border border-sky-500 bg-white px-1 font-mono text-xs font-semibold whitespace-nowrap text-sky-700 shadow;
+  }
+  .cad-shelf-handle[data-axis="x"] {
+    @apply cursor-ew-resize;
+  }
   .cad-plan-dim {
     @apply pointer-events-none bg-gray-950/70 px-1 py-px font-mono text-[11px] leading-none font-medium text-sky-100;
   }

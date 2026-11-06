@@ -6,8 +6,9 @@
  * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
 import { planChecks } from "../document/dressing-check";
-import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withZonePartition, withZoneSliding, zoneDone, zonesLost, zoneStep, type FillChoice } from "../document/plan-layout";
-import { linkedPlan, planObstacles, planRooms, roomOf, unlinkedPlan, type PlanObstacle } from "../document/plan-room";
+import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withPlanWalls, withZonePartition, withZoneSliding, zoneDone, zonesLost, zoneStep, type FillChoice } from "../document/plan-layout";
+import { avoidingPlan, linkedPlan, planObstacles, planRooms, roomOf, unlinkedPlan, type PlanObstacle } from "../document/plan-room";
+import { pullDownState, withPullDowns } from "../document/plan-pulldown";
 import { cornerJoints, PLAN, PLAN_MODELS, planLines, planProblem, planZones, type PlanField, type PlanModel, type PlanZone } from "../document/plan-shapes";
 import { findFeature } from "../document/operations";
 import type { DressingPlan, SketchFeature } from "../document/types";
@@ -20,6 +21,8 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { paintPrice } from "./live-price";
 import { needsPanel } from "./plan-needs-panel";
+import { wallsSection } from "./plan-walls-panel";
+import { showAll, viewZone } from "./zone-view";
 
 const SVG = "http://www.w3.org/2000/svg";
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -69,6 +72,8 @@ export class PlanLayoutTool {
   private editing = false;
   /** The needs of the client are being typed. */
   private needing = false;
+  /** A zone is alone in sight. */
+  private viewing = false;
   /** The free zone being filled, the width asked for its cases (mm), and whether what is left goes at its start. */
   private filling: PlanZone | null = null;
   private fillWidth = 600;
@@ -79,6 +84,8 @@ export class PlanLayoutTool {
     private readonly editor: Editor,
     container: HTMLElement,
     private readonly closed: () => void,
+    /** A zone to see alone, or everything again. */
+    private readonly onView: (plan: DressingPlan, zone: string | null) => void,
     /** The sketch of the plan to show; absent: the one of the project. */
     readonly chosen?: string,
   ) {
@@ -175,6 +182,7 @@ export class PlanLayoutTool {
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : planSchema(plan, (z) => (z.kind === "corner" ? [z.label] : [z.label, formatLength(z.run.length, unit)]), undefined, undefined, this.marks(plan))),
       this.roomChoice(),
+      ...this.roomOptions(),
       ...this.joints(set),
       number("Longueur mur A", "lengthA"),
       ...(Object.entries(model.fields) as [PlanField, string][]).map(([key, label]) => number(label, key)),
@@ -207,6 +215,31 @@ export class PlanLayoutTool {
       this.draw();
     });
     return el("label", { class: ROW }, "Mur A dans la pièce", choice);
+  }
+
+  /** Keeping clear of a surveyed room's openings; or, with no room, walls drawn behind the plan. */
+  private roomOptions(): HTMLElement[] {
+    const plan = this.plan;
+    const room = roomOf(this.editor.doc, plan);
+    const box = (label: string, checked: boolean, change: (on: boolean) => void) => {
+      const input = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked });
+      input.addEventListener("change", () => change(input.checked));
+      return el("label", { class: "flex min-h-8 items-center gap-2" }, input, label);
+    };
+    if (room) {
+      return [box("Éviter portes, fenêtres et plafonds bas", plan.avoid === true, (on) => {
+        const { spans: _spans, low: _low, ...open } = plan;
+        const next = on ? avoidingPlan({ ...open, avoid: true }, room) : { ...open, avoid: false };
+        if (typeof next === "string") this.editor.notify(next, "error");
+        else this.plan = last = next;
+        this.draw();
+      })];
+    }
+    if (plan.model === "back") return [];
+    return [box("Dessiner les murs", plan.walls === true, (on) => {
+      this.plan = last = { ...plan, walls: on };
+      this.draw();
+    })];
   }
 
   /** At each square corner, the wall that runs through; the other stops against it. */
@@ -248,7 +281,8 @@ export class PlanLayoutTool {
   private async create(): Promise<void> {
     const problem = planProblem(this.plan);
     if (problem) return this.editor.notify(problem, "error");
-    await this.editor.change(withPlan(this.editor.doc, this.plan).doc);
+    const made = withPlan(this.editor.doc, this.plan);
+    await this.editor.change(this.plan.walls ? withPlanWalls(made.doc, made.id, true) : made.doc);
     this.editor.notify("Plan du dressing posé : cliquez une zone pour la répartir.", "success");
     this.draw();
   }
@@ -279,8 +313,20 @@ export class PlanLayoutTool {
         this.filling = zone;
         this.draw();
       });
-      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, go);
+      const see = el("button", { type: "button", class: SMALL, title: "Vue de face sur cette zone, le reste caché" }, "Voir");
+      see.addEventListener("click", () => {
+        this.viewing = true;
+        this.onView(plan, zone.id);
+        this.draw();
+      });
+      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go);
     };
+    const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
+    showAllButton.addEventListener("click", () => {
+      this.viewing = false;
+      this.onView(plan, null);
+      this.draw();
+    });
     const needs = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Remplir selon les besoins");
     needs.addEventListener("click", () => {
       this.needing = true;
@@ -302,8 +348,11 @@ export class PlanLayoutTool {
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done, this.marks(plan))),
       el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
       el("ul", { class: "space-y-1", "aria-label": "Zones du plan" }, ...zones.map(row)),
+      this.viewing ? showAllButton : null,
       needs,
       ...this.sliding(planId, plan, zones),
+      ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
+      ...this.pullDowns(planId, plan),
       ...this.checks(plan),
       zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : "Porte sur le pan coupé") : null,
       change,
@@ -321,6 +370,16 @@ export class PlanLayoutTool {
       return el("label", { class: ROW }, zone.label, choice);
     });
     return [el("p", { class: "pt-1 font-medium text-gray-700 dark:text-gray-200", title: plan.roof ? "Un rail de porte coulissante doit être de niveau : pas sous un rampant." : "Deux rails et des vantaux qui se recouvrent de 3 cm" }, "Portes coulissantes"), ...rows];
+  }
+
+  /** The rods out of reach: a pull-down rod for each, added or brought up to date in one click. */
+  private pullDowns(planId: string, plan: DressingPlan): HTMLElement[] {
+    const { wanted, stale } = pullDownState(this.editor.doc, plan);
+    if (!stale) return [];
+    const add = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, wanted.length ? `Penderies escamotables (${wanted.length})` : "Retirer les penderies escamotables");
+    add.title = "Les tringles à plus de 1,90 m ne s'atteignent pas sans marchepied : une penderie escamotable les descend.";
+    add.addEventListener("click", () => void this.editor.change(withPullDowns(this.editor.doc, plan)).then(() => this.draw()));
+    return [add];
   }
 
   /** What the plan leaves to look at, as it stands. */
@@ -404,7 +463,8 @@ export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Ed
   let tool: PlanLayoutTool | null = null;
   const open = (chosen?: string) => {
     tool?.close();
-    tool = new PlanLayoutTool(editor, container, () => (tool = null), chosen);
+    const see = (plan: DressingPlan, zone: string | null) => (zone ? viewZone(viewport, editor.doc, plan, zone) : showAll(viewport));
+    tool = new PlanLayoutTool(editor, container, () => (tool = null), see, chosen);
   };
   /** A sketch chosen: when it is a plan, its tool, unless it is the one open or another tool is at work in a sketch. */
   const show = (id: string | null | undefined) => {

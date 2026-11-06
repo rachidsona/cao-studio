@@ -22,6 +22,7 @@ import { ShelvesTool } from "../sketcher/shelves-tool";
 import { JoineryView } from "../viewport/joinery-view";
 import { ModuleTool } from "./module-tool";
 import { NicheHeightTool } from "./niche-height-tool";
+import { nicheUnderPointer } from "./niche-pick";
 import { NicheTool, type NicheFill } from "./niche-tool";
 import { joineryPlans, plansOf } from "./partition-plan";
 import type { PointerHandler } from "../viewport/pointer-input";
@@ -51,13 +52,19 @@ export interface JoineryHost {
 /** The sketch that holds a répartition: the one chosen, else the last one. */
 export function partitionHolder(doc: CadDocument, selected: string | null): SketchFeature | undefined {
   const holders = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && (f.offsets ?? []).some(isPartition));
-  return holders.find((f) => f.id === selected) ?? holders[holders.length - 1];
+  // A panel or an equipment selected stands for its sketch.
+  const chosen = selected ? findFeature(doc, selected) : undefined;
+  const sketch = chosen?.type === "extrude" || chosen?.type === "niche" ? chosen.sketch : selected;
+  return holders.find((f) => f.id === sketch) ?? holders[holders.length - 1];
 }
 
 /** A new Répartition is drawn in the front plane: the cabinet stands, its niches open to the front. */
 const FRONT = { plane: "XZ" as const, offset: 0 };
 
 export class Joinery3D implements PointerHandler {
+  /** The point of a niche the next tool opens on, already chosen (a tool started from the menu of a niche). */
+  static pick: [number, number] | null = null;
+
   private readonly view: JoineryView;
   private tool: ShelvesTool | SketchPartitionTool | NicheTool | ModuleTool | NicheHeightTool | null = null;
   /** The sketch worked in (null: a Répartition not yet made). */
@@ -66,6 +73,8 @@ export class Joinery3D implements PointerHandler {
   private niches: { box: NicheBox; depth?: number }[] = [];
   private hover = -1;
   private done = false;
+  /** The tool as the menu of a niche names it; none while a step of the history is changed. */
+  private action: string | null = null;
 
   private constructor(
     private readonly viewport: Viewport,
@@ -93,6 +102,7 @@ export class Joinery3D implements PointerHandler {
     const joinery = new Joinery3D(viewport, host, sketch);
     const tool = new ShelvesTool(joinery.toolHost(), editing, vertical);
     joinery.tool = tool;
+    joinery.action = editing ? null : vertical ? "cloisons" : "shelves";
     tool.start();
     joinery.refresh();
     return joinery;
@@ -120,6 +130,7 @@ export class Joinery3D implements PointerHandler {
       editing,
     );
     joinery.tool = tool;
+    joinery.action = editing ? null : fill;
     tool.start();
     joinery.refresh();
     return joinery;
@@ -142,6 +153,7 @@ export class Joinery3D implements PointerHandler {
       notify: (message, kind) => host.notify(message, kind),
     });
     joinery.tool = tool;
+    joinery.action = "module";
     tool.start();
     joinery.refresh();
     return joinery;
@@ -152,6 +164,7 @@ export class Joinery3D implements PointerHandler {
     const joinery = new Joinery3D(viewport, host, sketch);
     const tool = new NicheHeightTool(joinery.toolHost());
     joinery.tool = tool;
+    joinery.action = "niche";
     tool.start();
     joinery.refresh();
     return joinery;
@@ -213,6 +226,9 @@ export class Joinery3D implements PointerHandler {
   private refresh(): void {
     this.niches = this.picking() ? leafNiches(this.geometry()) : [];
     this.hover = -1;
+    const pick = Joinery3D.pick;
+    Joinery3D.pick = null;
+    if (pick) this.picking()?.click(pick);
     this.render();
   }
 
@@ -272,7 +288,10 @@ export class Joinery3D implements PointerHandler {
       const hit = this.viewport.intersect(event, this.view.targets())[0];
       const niche = hit ? this.niches[hit.object.userData.niche as number] : undefined;
       if (!niche) {
-        this.host.notify("Cliquez dans une niche (les volumes bleus entre les panneaux).", "info");
+        const elsewhere = this.action ? nicheUnderPointer(this.viewport, this.host.doc(), event) : null;
+        // A niche of another wall: the same tool opens there.
+        if (elsewhere && elsewhere.sketch !== this.sketchId) document.dispatchEvent(new CustomEvent("cad:niche-elsewhere", { detail: { action: this.action, niche: elsewhere } }));
+        else this.host.notify("Cliquez dans une niche (les volumes bleus entre les panneaux).", "info");
         return true;
       }
       picking.click([(niche.box.x0 + niche.box.x1) / 2, (niche.box.y0 + niche.box.y1) / 2]);

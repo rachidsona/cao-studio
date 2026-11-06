@@ -29,6 +29,8 @@ export const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
       ["F", "Cadrer tout le modèle"],
       ["E", "Extrusion"],
       ["H", "Perçage"],
+      ["R", "Répéter le dernier outil, sur la niche sous le pointeur"],
+      ["Clic droit sur une niche", "Menu : étagères, tiroirs, penderie, module, copier"],
       ["Maj + glisser", "Sélection par fenêtre (gauche → droite : entièrement dedans ; droite → gauche : touché)"],
       ["Ctrl, ⌘ ou Maj + clic", "Ajouter des corps et des esquisses à la sélection"],
       ["Clic au même endroit", "Choisir l'élément suivant sous le pointeur"],

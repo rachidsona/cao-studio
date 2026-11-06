@@ -6,6 +6,7 @@
  * regeneration; the editor does the actual changes.
  */
 import { bodyTree, type BodyLeaf } from "../document/body-tree";
+import { stepOfBody } from "../document/sketch-extrusion";
 import { addFolder, folderIndex, foldersOf, moveToFolder, removeFolder, renameFolder } from "../document/folders";
 import { bodyLabel, bodyOrigin, findFeature, isBodyHidden } from "../document/operations";
 import { PART_SEPARATOR, featureInputs, featureOfBody } from "../document/types";
@@ -161,6 +162,15 @@ export class Navigator {
     return { bodies: [...new Set([...bodies, ...[...faces, ...edges, ...vertices].map((p) => p.bodyId)])], sketches };
   }
 
+  /** The steps of the history that made what is selected: an étagère's division, a side's Répartition, a body's own operation. */
+  private stepsPicked(): Set<string> {
+    const doc = this.host.doc();
+    return new Set(this.picked().bodies.map((body) => {
+      const origin = bodyOrigin(doc, body);
+      return stepOfBody(doc, origin)?.offset ?? featureOfBody(origin);
+    }));
+  }
+
   render(): void {
     const { sketches, operations, bodies } = this.items();
     const selectedId = this.host.selectedId();
@@ -188,7 +198,7 @@ export class Navigator {
         },
       },
     );
-    renderTimeline(ref(this.root, "timeline"), operations, selectedId, (id, anchor) => this.open(id, anchor));
+    renderTimeline(ref(this.root, "timeline"), operations, selectedId, this.stepsPicked(), (id, anchor) => this.open(id, anchor));
     // Nothing picked in the model: say which sketch is selected (it is highlighted in the view).
     const sketch = sketches.find((s) => s.id === selectedId);
     if (!this.host.modelPicked()) ref(this.root, "status-selection").textContent = sketch ? `Esquisse « ${sketch.name} » sélectionnée` : "Aucune sélection";

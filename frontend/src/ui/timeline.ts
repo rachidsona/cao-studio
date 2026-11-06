@@ -12,23 +12,25 @@ export function renderTimeline(
   container: HTMLElement,
   items: NavItem[],
   selectedId: string | null,
+  /** The steps that made what is selected: their frame is lit. */
+  lit: ReadonlySet<string>,
   onOpen: (id: string, anchor: DOMRect) => void,
 ): void {
   const chips = items.map((item) => {
     const badge = STATE_BADGES[item.state];
     const selected = item.id === selectedId;
+    const framed = lit.size ? lit.has(item.id) : selected;
     return el(
       "button",
       {
         type: "button",
         class:
-          "relative flex size-8 shrink-0 items-center justify-center border " +
-          (selected
-            ? "border-sky-500 bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50"
-            : "border-gray-300 bg-white hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"),
+          `relative flex size-8 shrink-0 items-center justify-center ${framed ? "border-2 border-[#63df0f] " : "border border-gray-300 dark:border-gray-600 "}` +
+          (selected ? "bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : "bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"),
         title: item.message ?? `${item.name} (${TYPE_LABELS[item.type]}) — ${badge.label}`,
         "aria-label": item.name,
         "aria-pressed": String(selected),
+        ...(framed ? { "data-lit": "" } : {}),
         "data-op": item.id,
       },
       toolIcon(TYPE_SPRITES[item.type], `tool-icon size-5 ${item.suppressed ? "opacity-40 grayscale" : ""}`),
@@ -47,5 +49,5 @@ export function renderTimeline(
     if (target?.dataset.op) onOpen(target.dataset.op, target.getBoundingClientRect());
   });
   container.replaceChildren(strip);
-  strip.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  strip.querySelector("[data-lit]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }

@@ -2,9 +2,11 @@
 import { describe, expect, it } from "vitest";
 import { planChecks } from "../../frontend/src/document/dressing-check";
 import { NO_NEEDS, proposeNeeds, withNeeds } from "../../frontend/src/document/dressing-needs";
-import { planOf, withPlan, withZonePartition, withZoneSliding } from "../../frontend/src/document/plan-layout";
-import { linkedPlan, planObstacles } from "../../frontend/src/document/plan-room";
-import { PLAN, planCeiling, planZones } from "../../frontend/src/document/plan-shapes";
+import { planOf, withPlan, withPlanChanged, withPlanWalls, withZonePartition, withZoneSliding } from "../../frontend/src/document/plan-layout";
+import { pullDownState, withPullDowns } from "../../frontend/src/document/plan-pulldown";
+import { modelHardware } from "../../frontend/src/document/hardware";
+import { linkedPlan, planObstacles, unlinkedPlan } from "../../frontend/src/document/plan-room";
+import { PLAN, planCeiling, planZones, zoneHeight } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type CadDocument, type DressingPlan, type RoomFeature, type SketchFeature } from "../../frontend/src/document/types";
 
 const empty = (): CadDocument => ({ ...createReferencePlate(), features: [] });
@@ -149,5 +151,78 @@ describe("portes coulissantes d'une zone", () => {
     const made = withZonePartition(asked, placed.id, zone);
     if (typeof made === "string") throw new Error(made);
     expect(made.doc.features.some((f) => f.type === "trim")).toBe(true);
+  });
+});
+
+describe("éviter les ouvertures de la pièce", () => {
+  const r = room([{ kind: "door", wall: 0, at: 2800, width: 900, height: 2100 }, { kind: "window", wall: 3, at: 800, width: 800, height: 1000, sill: 1000 }, { kind: "beam", wall: 0, depth: 700, drop: 300 }]);
+
+  it("prend le plus long tronçon libre du mur A, et s'arrête avant l'ouverture du mur B", () => {
+    const p = linkedPlan(plan({ model: "L-left", depth: 600, avoid: true }), r, 0) as DressingPlan;
+    expect(p.spans).toEqual({ A: [0, 2750], B: [600, 1350] });
+    const zones = planZones(p);
+    expect(zones.find((z) => z.id === "A")!.run).toMatchObject({ start: 0, length: 2750 });
+    expect(zones.find((z) => z.id === "B")!.run).toMatchObject({ start: -1350, length: 750 });
+  });
+
+  it("baisse la hauteur sous la retombée, mur par mur", () => {
+    const p = linkedPlan(plan({ model: "L-left", height: 2500, avoid: true }), r, 0) as DressingPlan;
+    expect(p.low).toEqual({ A: 2290 });
+    expect(zoneHeight(p, planZones(p).find((z) => z.id === "A")!)).toBe(2290);
+    const placed = withPlan(empty(), p);
+    const made = withZonePartition(placed.doc, placed.id, planZones(p)[0]!);
+    if (typeof made === "string") throw new Error(made);
+    expect((made.doc.features.find((f) => f.id === made.sketch) as SketchFeature).offsets![0]!.step).toMatchObject({ input: { height: 2290 } });
+    expect(planChecks({ ...empty(), features: [r] }, p).filter((m) => /Plafond bas|derrière/.test(m))).toEqual([]);
+  });
+
+  it("revient au mur entier une fois délié", () => {
+    const p = linkedPlan(plan({ model: "I", avoid: true }), r, 0) as DressingPlan;
+    expect(unlinkedPlan(p).spans).toBeUndefined();
+  });
+});
+
+describe("murs dessinés", () => {
+  const walls = (doc: CadDocument) => doc.features.filter((f) => f.type === "extrude" && doc.bodyInfo?.[f.id]?.room).map((f) => f.name);
+
+  it("suivent le modèle, et partent quand on les enlève", () => {
+    const placed = withPlan(empty(), plan({ model: "U" }));
+    const on = withPlanWalls(placed.doc, placed.id, true);
+    expect(walls(on)).toEqual(["Mur A", "Mur B", "Mur C"]);
+    const off = withPlanWalls(on, placed.id, false);
+    expect(walls(off)).toEqual([]);
+    expect(off.features.filter((f) => f.type === "sketch" && f.hidden)).toEqual([]);
+  });
+
+  it("suivent le plan quand il change", () => {
+    const placed = withPlan(empty(), plan({ model: "I" }));
+    const on = withPlanWalls(placed.doc, placed.id, true);
+    const changed = withPlanChanged(on, placed.id, { ...planOf(on)!.dressingPlan!, model: "L-right" });
+    if (typeof changed === "string") throw new Error(changed);
+    expect(walls(changed.doc)).toEqual(["Mur A", "Mur C"]);
+  });
+});
+
+describe("penderies escamotables", () => {
+  it("une par tringle trop haute, comptée à part, et le bouton s'efface une fois fait", () => {
+    const placed = withPlan(empty(), plan({ model: "I", height: 2800 }));
+    const p = planOf(placed.doc)!.dressingPlan!;
+    const doc = withNeeds(placed.doc, placed.id, proposeNeeds({ ...NO_NEEDS, longRod: 1.8 }, p, planZones(p)), p.thickness);
+    if (typeof doc === "string") throw new Error(doc);
+    const fresh = planOf(doc)!.dressingPlan!;
+    const state = pullDownState(doc, fresh);
+    expect(state.wanted).toHaveLength(2);
+    expect(state.stale).toBe(true);
+    const next = withPullDowns(doc, fresh);
+    expect(pullDownState(next, fresh).stale).toBe(false);
+    expect(modelHardware(next).find((h) => h.name.includes("Penderie escamotable"))?.quantity).toBe(2);
+  });
+
+  it("ne propose rien sous 1,90 m", () => {
+    const placed = withPlan(empty(), plan({ model: "I", height: 2000 }));
+    const p = planOf(placed.doc)!.dressingPlan!;
+    const doc = withNeeds(placed.doc, placed.id, proposeNeeds({ ...NO_NEEDS, longRod: 0.9 }, p, planZones(p)), p.thickness);
+    if (typeof doc === "string") throw new Error(doc);
+    expect(pullDownState(doc, planOf(doc)!.dressingPlan!)).toEqual({ wanted: [], stale: false });
   });
 });

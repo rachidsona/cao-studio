@@ -160,7 +160,7 @@ export function planZones(p: DressingPlan): PlanZone[] {
   const asks = (field: PlanField) => field in model.fields;
   const closing = p.model === "G-left" || p.model === "G-right";
   const zones: PlanZone[] = [];
-  const [a0, a1] = [from("left"), p.model === "depths" ? l - p.lengthE : l - from("right")];
+  const [a0, a1] = [Math.max(from("left"), p.spans?.A?.[0] ?? 0), Math.min(p.model === "depths" ? l - p.lengthE : l - from("right"), p.spans?.A?.[1] ?? l)];
   const corner = (side: Corner, id: string, label: string, start: number): PlanZone => ({ id, label, kind: "corner", outline: cornerOutline(p, side), run: { plane: "XZ", offset: 0, start, length: p.cornerA, depth: p.cornerB, origin: [0, 0], normal: [0, -1] }, clip: cornerClip(p, side) });
   const facingA = { plane: "XZ" as const, offset: 0, origin: [0, 0] as Point, normal: [0, -1] as Point };
   if (model.cut.includes("left")) zones.push(corner("left", "left", "Angle gauche", 0));
@@ -170,11 +170,11 @@ export function planZones(p: DressingPlan): PlanZone[] {
     zones.push(standing("E", "Cloison gauche", [l / 2, 0], [-1, 0], d, p.lengthB, d));
     zones.push(standing("F", "Cloison droite", [l / 2, 0], [1, 0], -d - p.lengthB, p.lengthB, d));
   } else if (asks("lengthB")) {
-    const [start, end] = [gap("left"), p.lengthB - (p.model === "G-left" && through("far") ? d : 0)];
+    const [start, end] = [Math.max(gap("left"), p.spans?.B?.[0] ?? 0), Math.min(p.lengthB - (p.model === "G-left" && through("far") ? d : 0), p.spans?.B?.[1] ?? p.lengthB)];
     zones.push({ id: "B", label: "Mur B", kind: "run", outline: rect(0, -end, d, -start), run: { plane: "YZ", offset: 0, start: -end, length: end - start, depth: d, origin: [0, 0], normal: [1, 0] } });
   }
   if (asks("lengthC")) {
-    const [start, end] = [gap("right"), p.lengthC - (p.model === "G-right" && through("far") ? d : 0)];
+    const [start, end] = [Math.max(gap("right"), p.spans?.C?.[0] ?? 0), Math.min(p.lengthC - (p.model === "G-right" && through("far") ? d : 0), p.spans?.C?.[1] ?? p.lengthC)];
     const frame: PlaneFrame = { origin: [l, 0, 0], xDir: [0, -1, 0], normal: [-1, 0, 0] };
     zones.push({ id: "C", label: "Mur C", kind: "run", outline: rect(l - d, -end, l, -start), run: { plane: "YZ", offset: l, frame, start, length: end - start, depth: d, origin: [l, 0], normal: [-1, 0] } });
   }
@@ -191,6 +191,12 @@ export function planZones(p: DressingPlan): PlanZone[] {
   if (p.model === "depths") zones.push({ id: "S", label: "2e partie", kind: "run", outline: rect(a1, -p.depthB, l, 0), run: { ...facingA, start: a1, length: p.lengthE, depth: p.depthB } });
   if (p.island && !model.noIsland) zones.push(standing("I", "Îlot", [0, -d - p.aisle], [0, -1], (l - p.islandLength) / 2, p.islandLength, p.islandDepth));
   return zones;
+}
+
+/** The height of a zone: the plan's, or less under a low ceiling of its wall. */
+export function zoneHeight(p: DressingPlan, zone: PlanZone): number {
+  const wall = zone.kind === "corner" ? "A" : zone.id;
+  return Math.min(p.height, p.low?.[wall as "A" | "B" | "C"] ?? p.height);
 }
 
 /** Its smallest and largest X and Y. */

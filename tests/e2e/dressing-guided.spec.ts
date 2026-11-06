@@ -92,3 +92,52 @@ test("accord du client : il accepte sur son lien, l'atelier le voit", async ({ p
   await action(page, '[data-workshop="share"]');
   await expect(page.getByRole("dialog", { name: "Lien client" })).toContainText("Accepté par Mme Martin");
 });
+
+test("le Plan évite les ouvertures de la pièce, dessine ses murs et équipe les tringles trop hautes", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Reprise e2e");
+
+  // No room: the walls drawn behind the plan, and a dressing tall enough for a rod out of reach.
+  await action(page, '[data-workshop="dressing-plan"]');
+  const tool = planTool(page);
+  await tool.getByRole("button", { name: "En L à droite", exact: true }).click();
+  await tool.getByLabel("Dessiner les murs").check();
+  await tool.getByLabel(/^Hauteur/).fill("280");
+  await tool.getByLabel(/^Hauteur/).press("Enter");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await expect(page.getByText("Mur C", { exact: true }).first()).toBeVisible();
+  await tool.getByRole("button", { name: "Remplir selon les besoins" }).click();
+  await tool.getByLabel("Penderie longue (m)").fill("1,8");
+  for (const label of ["Penderie courte (m)", "Chaussures (paires)", "Tiroirs", "Étagères (m)"]) await tool.getByLabel(label, { exact: true }).fill("0");
+  await tool.getByRole("button", { name: "Poser les modules" }).click();
+  await expect(zones(page).getByRole("listitem").first()).toContainText("Modifier");
+  const pullDown = tool.getByRole("button", { name: /^Penderies escamotables/ });
+  await expect(pullDown).toBeVisible();
+  await pullDown.click();
+  await expect(pullDown).toHaveCount(0);
+  await page.locator("[data-live-price]").click();
+  await expect(page.getByRole("dialog", { name: "Devis" })).toContainText("Penderie escamotable");
+  await page.keyboard.press("Escape");
+  expect(errors).toEqual([]);
+});
+
+test("une fenêtre au milieu du mur : le plan se cale sur ce qui reste libre", async ({ page }) => {
+  await newProject(page, "Éviter e2e");
+  await action(page, '[data-action="room"]');
+  const room = page.getByRole("dialog", { name: /Pièce/ });
+  await room.getByRole("button", { name: "+ Fenêtre" }).click();
+  await room.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(room).toHaveCount(0);
+  await page.waitForTimeout(800);
+  await action(page, '[data-workshop="dressing-plan"]');
+  const tool = planTool(page);
+  await tool.getByRole("button", { name: "Droit", exact: true }).click();
+  await tool.getByLabel("Mur A dans la pièce").selectOption({ index: 1 });
+  const free = (await tool.getByRole("img", { name: "Schéma du plan vu de dessus" }).textContent()) ?? "";
+  await tool.getByLabel("Éviter portes, fenêtres et plafonds bas").check();
+  await expect(tool.getByRole("img", { name: "Schéma du plan vu de dessus" })).not.toHaveText(free);
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await expect(zones(page)).toBeVisible();
+  await expect(tool.locator("[data-plan-checks]")).toHaveCount(0);
+});

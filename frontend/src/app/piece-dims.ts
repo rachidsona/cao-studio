@@ -21,6 +21,7 @@ import { frameOf, toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { documentPlans, joineryPlans } from "./partition-plan";
+import { editDim } from "./dim-editor";
 import { PlanDimsView } from "./plan-dims-view";
 
 const KEY = "cao.piece-dims";
@@ -140,7 +141,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
           expected.expandByPoint(corner).expandByPoint(corner.clone().addScaledVector(new THREE.Vector3(...frame.normal), plan.depth));
         }
       }
-      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected));
+      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected), (label, axis, span, value) => editDim(editor, sketch.id, label, axis, span, value));
       done.add(sketch.id);
     }
     return done;

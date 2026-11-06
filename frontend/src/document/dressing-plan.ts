@@ -56,7 +56,7 @@ export interface DressingSettings {
   pullDown?: boolean;
 }
 
-const WALL_THICKNESS = 100;
+export const WALL_THICKNESS = 100;
 const ROOM_LAYER = "Pièce";
 
 /** A program for a wall of this length: about one module per 80 cm, in a usual order. */
@@ -239,9 +239,20 @@ export function dressingDocument(base: CadDocument, s: DressingSettings, place?:
 /** The walls behind the dressing, as boxes on the « Pièce » layer (out of the cut list and the quote). */
 function withWalls(base: CadDocument, s: DressingSettings): CadDocument {
   const t = WALL_THICKNESS;
-  const boxes: { name: string; from: [number, number, number]; to: [number, number, number] }[] = [{ name: "Mur A", from: [s.layout === "I" ? 0 : -t, 0, 0], to: [s.lengthA + (s.layout === "U" ? t : 0), t, s.height] }];
+  const boxes: WallBox[] = [{ name: "Mur A", from: [s.layout === "I" ? 0 : -t, 0, 0], to: [s.lengthA + (s.layout === "U" ? t : 0), t, s.height] }];
   if (s.layout !== "I") boxes.push({ name: "Mur B", from: [-t, -s.lengthB, 0], to: [0, 0, s.height] });
   if (s.layout === "U") boxes.push({ name: "Mur C", from: [s.lengthA, -s.lengthC, 0], to: [s.lengthA + t, 0, s.height] });
+  return withWallBoxes(base, boxes);
+}
+
+export interface WallBox {
+  name: string;
+  from: [number, number, number];
+  to: [number, number, number];
+}
+
+/** These walls, as boxes on the « Pièce » layer. */
+export function withWallBoxes(base: CadDocument, boxes: WallBox[]): CadDocument {
   let doc = base;
   let layer = layersOf(doc).find((l) => l.name === ROOM_LAYER)?.id;
   if (!layer) ({ doc, id: layer } = addLayer(doc, ROOM_LAYER));

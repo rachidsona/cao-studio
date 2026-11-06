@@ -7,8 +7,9 @@
  * zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts. Pur.
  */
 import { slidingDoors } from "./dressing-extras";
+import { WALL_THICKNESS, withWallBoxes, type WallBox } from "./dressing-plan";
 import { addExtrude, deleteFeatures, findFeature, uniqueId, uniqueName, uniqueOffsetId, updateFeature } from "./operations";
-import { arcDoor, circleDoor, cornerOutline, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, type Corner, type PlanZone, type Point } from "./plan-shapes";
+import { arcDoor, circleDoor, cornerOutline, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, zoneHeight, type Corner, type PlanZone, type Point } from "./plan-shapes";
 import type { PartitionParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
@@ -161,7 +162,7 @@ function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): C
   const middle: Point = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   const flat: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
   const frame = plan.place ? placeFrame(plan.place, flat) : flat;
-  const [half, z0, z1] = [length / 2 - GAP, plan.plinth + GAP, plan.height - GAP];
+  const [half, z0, z1] = [length / 2 - GAP, plan.plinth + GAP, zoneHeight(plan, zone) - GAP];
   const ceiling = planCeiling(plan);
   const circle = circleDoor(plan, side, GAP);
   const turned = ((plan.place?.quarter ?? 0) * Math.PI) / 2;
@@ -186,7 +187,8 @@ function withFiller(doc: CadDocument, plan: DressingPlan, zone: PlanZone, rest: 
   const span = layout && typeof layout === "object" ? layout.caseSpans[rest] : undefined;
   if (!step || !span) return doc;
   const [a, b] = [step.origin[0] + span[0], step.origin[0] + span[1]];
-  const { depth: d, thickness: t, plinth, height } = plan;
+  const { depth: d, thickness: t, plinth } = plan;
+  const height = zoneHeight(plan, zone);
   return sheet(doc, `${zone.label} — fileur`, [runPoint(zone, a, d - t), runPoint(zone, b, d - t), runPoint(zone, b, d), runPoint(zone, a, d)].map((p) => onFloor(plan, p)), { offset: plinth }, height - plinth, belowTop(plan));
 }
 
@@ -197,7 +199,7 @@ function withSlidingDoors(doc: CadDocument, plan: DressingPlan, zone: PlanZone, 
     return [[Math.min(ax, bx), Math.min(ay, by), z0], [Math.max(ax, bx), Math.max(ay, by), z1]];
   };
   const { start, length, depth } = zone.run;
-  const parts = slidingDoors(band, zone.id, start, start + length, depth, plan.height, plan.plinth, plan.thickness, count);
+  const parts = slidingDoors(band, zone.id, start, start + length, depth, zoneHeight(plan, zone), plan.plinth, plan.thickness, count);
   return { ...doc, features: [...doc.features, { id: uniqueId(doc, "fi"), type: "trim", name: uniqueName(doc, `${zone.label} — portes coulissantes`), parts }] };
 }
 
@@ -205,7 +207,8 @@ function withSlidingDoors(doc: CadDocument, plan: DressingPlan, zone: PlanZone, 
 function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
   const { next: clean } = deleteFeatures(base, plan.boards?.[zone.id] ?? []);
-  const { cornerB: b, depth: d, thickness: t, height, lengthA: l } = plan;
+  const { cornerB: b, depth: d, thickness: t, lengthA: l } = plan;
+  const height = zoneHeight(plan, zone);
   let doc = clean;
   if (zone.kind === "corner") {
     doc = sheet(doc, `${zone.label} — côté`, (zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b)).map((p) => onFloor(plan, p)), { offset: 0 }, height, belowTop(plan));
@@ -241,7 +244,7 @@ export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZo
   const whole = corner || fill?.cases.length === 1;
   const cases = whole ? 2 : (fill?.cases.length ?? Math.max(2, Math.min(10, Math.round(length / 800))));
   const input: PartitionParams = {
-    length, height: plan.height, thickness: plan.thickness, cases, dividers: Array.from({ length: cases - 1 }, () => (whole ? ("none" as const) : ("single" as const))),
+    length, height: zoneHeight(plan, zone), thickness: plan.thickness, cases, dividers: Array.from({ length: cases - 1 }, () => (whole ? ("none" as const) : ("single" as const))),
     ...(fill && !whole ? { widths: fill.cases } : {}), boards: true, plinth: plan.plinth, outer: "board", single: "board", double: "side", ...(plan.roof ? { openTop: true } : {}),
   };
   const step = uniqueOffsetId(doc);
@@ -271,6 +274,31 @@ export function withZoneSliding(base: CadDocument, planId: string, zone: PlanZon
   return zoneDone(doc, planIn(doc, planId) as DressingPlan, zone.id) ? withZoneBoards(doc, planId, zone) : doc;
 }
 
+/** The boxes of the walls behind this plan. */
+function planWalls(p: DressingPlan): WallBox[] {
+  const t = WALL_THICKNESS;
+  const { fields } = PLAN_MODELS[p.model];
+  const [b, c] = [p.model !== "T" && "lengthB" in fields, "lengthC" in fields];
+  const boxes: WallBox[] = [{ name: "Mur A", from: [b ? -t : 0, 0, 0], to: [p.lengthA + (c ? t : 0), t, p.height] }];
+  if (b) boxes.push({ name: "Mur B", from: [-t, -p.lengthB, 0], to: [0, 0, p.height] });
+  if (c) boxes.push({ name: "Mur C", from: [p.lengthA, -p.lengthC, 0], to: [p.lengthA + t, 0, p.height] });
+  if (p.model === "facing") boxes.push({ name: "Mur D", from: [0, -(2 * p.depth + p.aisle) - t, 0], to: [p.lengthD, -(2 * p.depth + p.aisle), p.height] });
+  if (p.model === "G-left" || p.model === "G-right") {
+    const back = -(p.model === "G-left" ? p.lengthB : p.lengthC);
+    boxes.push({ name: "Mur D", from: [-t, back - t, 0], to: [p.lengthA + t, back, p.height] });
+  }
+  return boxes;
+}
+
+/** The walls behind the plan drawn again, or taken away. */
+export function withPlanWalls(base: CadDocument, planId: string, on: boolean): CadDocument {
+  const plan = planIn(base, planId) as DressingPlan;
+  const { next: clean } = deleteFeatures(base, plan.boards?.walls ?? []);
+  const known = new Set(clean.features.map((f) => f.id));
+  const doc = on && plan.model !== "back" ? withWallBoxes(clean, planWalls(plan)) : clean;
+  return withSettings(doc, planId, { walls: on, boards: { ...plan.boards, walls: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
+}
+
 /** What was made on a zone that the new plan no longer has. */
 function withoutZone(doc: CadDocument, sketch: SketchFeature, boards: string[]): CadDocument {
   const bodies = (sketch.offsets ?? []).flatMap((r) => r.bodies ?? []);
@@ -286,7 +314,7 @@ function withZoneFollowing(doc: CadDocument, sketch: SketchFeature, zone: PlanZo
   const left = fill ? zone.run.length - (fill.cases.length + 1) * plan.thickness - others : 0;
   const cases = fill && left >= THINNEST ? fill.cases.map((w, i) => (i === fill.rest ? left : w)) : null;
   if (fill && cases) fill.cases = cases;
-  const sized = ({ openTop: _top, ...input }: PartitionParams): PartitionParams => ({ ...input, ...(cases ? { widths: cases } : {}), ...(plan.roof ? { openTop: true } : {}), length: zone.run.length, height: plan.height, thickness: plan.thickness, plinth: plan.plinth });
+  const sized = ({ openTop: _top, ...input }: PartitionParams): PartitionParams => ({ ...input, ...(cases ? { widths: cases } : {}), ...(plan.roof ? { openTop: true } : {}), length: zone.run.length, height: zoneHeight(plan, zone), thickness: plan.thickness, plinth: plan.plinth });
   const offsets = (sketch.offsets ?? []).map((r) => (isPartition(r) ? { ...r, step: { ...r.step, origin: [zone.run.start, 0] as [number, number], depth: zone.run.depth, input: sized(r.step.input) } } : r));
   const { frame: _frame, clip: _clip, ceiling: _ceiling, ...rest } = sketch;
   const moved: SketchFeature = { ...rest, ...placed(zone, plan), offsets };
@@ -330,6 +358,7 @@ export function withPlanChanged(base: CadDocument, planId: string, next: Dressin
     problems.push(...follows.problems);
   }
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(next), dressingPlan: { ...next, made, boards, fills } } : f));
+  if (next.walls || boards.walls?.length) doc = withPlanWalls(doc, planId, next.walls === true);
   // A plan no longer under a slope has top boards to take away, the zone made again without them.
   for (const zone of zones) if (made[zone.id] && (hasBoards(next, zone, fills) || boards[zone.id]?.length)) doc = withZoneBoards(doc, planId, zone);
   return { doc, problems };
