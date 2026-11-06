@@ -74,6 +74,11 @@ class ShareLink(models.Model):
     allow_comments = models.BooleanField("commentaires permis", default=True)
     created_at = models.DateTimeField("créé le", auto_now_add=True)
     revoked_at = models.DateTimeField("révoqué le", null=True, blank=True)
+    allow_accept = models.BooleanField("validation en ligne permise", default=False)
+    accepted_at = models.DateTimeField("accepté le", null=True, blank=True)
+    accepted_by = models.CharField("accepté par", max_length=80, blank=True)
+    accepted_variant = models.CharField("variante acceptée", max_length=120, blank=True)
+    accepted_price = models.FloatField("prix accepté", null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

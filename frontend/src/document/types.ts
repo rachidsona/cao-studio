@@ -80,6 +80,11 @@ export interface DressingPlan {
   thickness: number;
   height: number;
   plinth: number;
+  /** The surveyed room it follows: its wall that is wall A, and how the plan turns and moves onto it. */
+  room?: { id: string; wall: number };
+  place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
+  /** By zone: how many sliding doors in front of it. */
+  sliding?: Record<string, number>;
   /** Square corners where the other wall runs through: B or C past wall A, D past B or C at the far end. */
   through?: Partial<Record<CornerJoint, boolean>>;
   /** A door on each cut corner. */

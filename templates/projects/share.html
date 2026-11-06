@@ -29,6 +29,17 @@
       <a data-share-ar hidden class="inline-flex min-h-11 items-center gap-2 btn-accent px-4 text-sm font-medium">Voir chez moi (réalité augmentée)</a>
       <p data-share-ar-hint class="text-sm text-gray-600 dark:text-gray-300"></p>
     </div>
+    <section data-share-accept hidden class="space-y-2 border border-gray-200 bg-white p-3 text-sm dark:border-gray-800 dark:bg-gray-900">
+      <h2 class="text-base font-semibold">Accepter ce projet</h2>
+      <p data-share-accept-text class="text-gray-700 dark:text-gray-300"></p>
+      <form data-share-accept-form class="flex flex-wrap items-end gap-2">
+        <label class="min-w-48 flex-1">Votre nom
+          <input name="name" required maxlength="80" class="mt-1 h-10 w-full border border-gray-300 bg-white px-2 dark:border-gray-600 dark:bg-gray-950">
+        </label>
+        <button type="submit" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 font-medium">J'accepte ce projet</button>
+      </form>
+      <p data-share-accept-error class="text-xs text-red-600" role="alert"></p>
+    </section>
     <dl data-share-summary class="grid grid-cols-2 gap-x-4 gap-y-1 border border-gray-200 bg-white p-3 text-sm sm:grid-cols-4 dark:border-gray-800 dark:bg-gray-900"></dl>
   </section>
 

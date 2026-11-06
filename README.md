@@ -1697,6 +1697,13 @@ opération existante.
   **rampant**, plafond en pente qui descend à gauche, à droite ou contre le mur A : panneaux, portes et fonds s'arrêtent
   dessous, et chaque zone reçoit un dessus en pente.
   À chaque angle droit, on choisit le mur qui passe : l'autre s'arrête contre lui, et ce qui est fait dessus suit.
+- **Conception guidée** : le prix TTC du devis s'affiche en direct dans la barre d'état et dans le Plan de dressing. « Remplir
+  selon les besoins » transforme les mètres de penderie, les paires de chaussures, les tiroirs et les étagères du client en
+  modules répartis sur les zones libres, avec un bilan demandé / obtenu. Chaque zone peut recevoir des portes coulissantes,
+  de 2 à 6 vantaux. « Mur A dans la pièce » pose le plan sur une Pièce relevée et marque ses ouvertures sur le schéma, et le
+  bloc « À vérifier » signale passages étroits, portes et tiroirs bloqués, ouvertures cachées et plafonds bas.
+- **Validation du client** : le Lien client peut proposer « J'accepte ce projet » : le nom, la date, la variante et le prix
+  restent sur le lien, et un commentaire prévient l'atelier.
 - **Remplir** (dans le Plan de dressing, sur une zone libre) : on donne la largeur intérieure voulue des caissons, et
   l'outil propose ce qui tombe juste, côtés comptés : tant de caissons et un **fileur** ou un caisson de la largeur exacte
   du reste, au début ou à la fin du mur, ou des caissons égaux. Le résultat est une Répartition ordinaire ; quand le plan

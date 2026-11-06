@@ -100,3 +100,57 @@ def test_comments_are_validated_closed_and_rate_limited(client_logged, project):
     assert Client().post(f"/s/{closed['token']}/comments/", json.dumps({"author": "A", "body": "x"}), content_type="application/json").status_code == 403
     assert Comment.objects.count() == 10
     assert ShareLink.objects.count() == 2
+
+
+def accept_url(made):
+    return f"/s/{made['token']}/accept/"
+
+
+def post_json(client, url, data):
+    return client.post(url, json.dumps(data), content_type="application/json")
+
+
+@pytest.mark.django_db
+def test_client_accepts_once_and_the_workshop_sees_it(client_logged, project):
+    made = make_link(client_logged, project, allow_accept="1", summary=json.dumps({"price": 3200.0}))
+    public = Client()
+    response = post_json(public, accept_url(made), {"name": "Mme Martin"})
+    assert response.status_code == 200, response.content
+    assert response.json()["accepted"]["by"] == "Mme Martin"
+    assert response.json()["accepted"]["price"] == 3200.0
+    assert post_json(public, accept_url(made), {"name": "Autre"}).status_code == 409
+    listed = client_logged.get(shares_url(project)).json()["shares"][0]
+    assert listed["accepted"]["by"] == "Mme Martin"
+    assert Comment.objects.filter(project=project, author="Mme Martin", body__startswith="Projet accepté").exists()
+    assert b"Mme Martin" in public.get(f"/s/{made['token']}/").content
+
+
+@pytest.mark.django_db
+def test_accepting_needs_the_option_a_name_and_a_live_link(client_logged, project):
+    closed = make_link(client_logged, project)
+    public = Client()
+    assert post_json(public, accept_url(closed), {"name": "A"}).status_code == 403
+    made = make_link(client_logged, project, allow_accept="1")
+    assert post_json(public, accept_url(made), {"name": " "}).status_code == 400
+    client_logged.delete(f"{shares_url(project)}{made['token']}/")
+    assert post_json(public, accept_url(made), {"name": "A"}).status_code == 404
+
+
+@pytest.mark.django_db
+def test_accepting_a_link_with_variants_names_the_variant(client_logged, project):
+    summary = {"variants": [{"name": "Essentiel", "price": 2000}, {"name": "Prestige", "price": 4000}]}
+    made = make_link(
+        client_logged,
+        project,
+        allow_accept="1",
+        summary=json.dumps(summary),
+        variant_0=SimpleUploadedFile("a.glb", GLB, "model/gltf-binary"),
+        variant_1=SimpleUploadedFile("b.glb", GLB, "model/gltf-binary"),
+    )
+    public = Client()
+    assert post_json(public, accept_url(made), {"name": "A"}).status_code == 400
+    assert post_json(public, accept_url(made), {"name": "A", "variant": 9}).status_code == 400
+    accepted = post_json(public, accept_url(made), {"name": "A", "variant": 1}).json()["accepted"]
+    assert accepted["variant"] == "Prestige" and accepted["price"] == 4000
+    link = ShareLink.objects.get(token=made["token"])
+    assert link.accepted_at is not None

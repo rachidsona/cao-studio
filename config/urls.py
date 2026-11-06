@@ -23,4 +23,5 @@ urlpatterns = [
     path("s/<str:token>/model.glb", sharing.share_model, name="share-model"),
     path("s/<str:token>/variants/<int:position>.glb", sharing.share_variant, name="share-variant"),
     path("s/<str:token>/comments/", sharing.share_comments, name="share-comments"),
+    path("s/<str:token>/accept/", sharing.share_accept, name="share-accept"),
 ]

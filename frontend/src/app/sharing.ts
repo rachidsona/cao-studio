@@ -25,6 +25,7 @@ interface Share {
   created_at: string;
   revoked: boolean;
   comments: number;
+  accepted: { by: string; at: string; variant: string; price: number | null } | null;
 }
 
 interface Comment {
@@ -122,6 +123,7 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
     title.addEventListener("keydown", (e) => e.stopPropagation());
     const price = el("input", { type: "checkbox" });
     const allow = el("input", { type: "checkbox", checked: true });
+    const accept = el("input", { type: "checkbox", checked: true });
     const configurations = configurationsOf(editor.doc);
     const offer = el("input", { type: "checkbox", checked: configurations.length >= 2, disabled: configurations.length < 2 });
     const refresh = async () => {
@@ -144,6 +146,7 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
                 "div",
                 { class: `space-y-1 border border-gray-200 p-2 dark:border-gray-700 ${s.revoked ? "opacity-50" : ""}` },
                 el("p", { class: "text-xs" }, el("b", {}, s.title), ` · ${when(s.created_at)} · ${s.comments} commentaire(s)`),
+                s.accepted ? el("p", { class: "text-xs font-medium text-emerald-700 dark:text-emerald-400" }, `Accepté par ${s.accepted.by} le ${when(s.accepted.at)}${s.accepted.variant ? `, ${s.accepted.variant}` : ""}${s.accepted.price !== null ? `, ${s.accepted.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} TTC` : ""}`) : null,
                 el("div", { class: "flex items-center gap-1" }, url, copy, qr, revoke),
                 code,
               );
@@ -163,6 +166,7 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
         const variants = offer.checked ? await captureVariants(viewport, editor, price.checked, form) : [];
         form.append("summary", JSON.stringify({ size, offset, parts, unit: editor.unit, date: new Date().toISOString(), ...(total !== null ? { price: total } : {}), ...(variants.length ? { variants } : {}) }));
         form.append("allow_comments", allow.checked ? "1" : "0");
+        form.append("allow_accept", accept.checked ? "1" : "0");
         const made = await call<Share>(sharesUrl, { method: "POST", body: form });
         await navigator.clipboard?.writeText(made.url).catch(() => undefined);
         editor.notify("Lien client créé (copié dans le presse-papiers).", "success");
@@ -180,6 +184,7 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
       el("div", { class: "space-y-2 border border-gray-200 p-3 dark:border-gray-700" }, title,
         el("label", { class: "flex items-center gap-2 text-xs" }, price, "Afficher le prix TTC du devis"),
         el("label", { class: "flex items-center gap-2 text-xs" }, allow, "Permettre les commentaires"),
+        el("label", { class: "flex items-center gap-2 text-xs" }, accept, "Permettre au client d'accepter ce projet en ligne"),
         el("label", { class: "flex items-center gap-2 text-xs" }, offer, configurations.length >= 2 ? `Proposer les ${configurations.length} variantes au client (Paramètres › Configurations), chacune avec son prix` : "Proposer des variantes : il faut au moins deux configurations (Atelier › Paramètres)"), create),
       el("h3", { class: "text-xs font-semibold tracking-wide text-gray-500 uppercase" }, "Liens"),
       list,

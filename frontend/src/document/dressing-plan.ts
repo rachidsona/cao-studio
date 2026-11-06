@@ -19,7 +19,7 @@ import { uniqueId, uniqueName, uniqueOffsetId } from "./operations";
 import { rectangleAt } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, NicheFeature, PlaneFrame, PlaneName, SketchFeature, TrimFeature } from "./types";
-import { accessory, REACH_ROD, REACH_SHELF, slidingDoors } from "./dressing-extras";
+import { accessory, REACH_ROD, REACH_SHELF, slidingDoors, wallBand } from "./dressing-extras";
 import { DRAWERS, HAT, MODULES, moduleSteps, ROD, type ModuleKind } from "./dressing-modules";
 import { placeBox, placeFrame, type Placement } from "../features/room-runs";
 import { sketchFrame, nearestPlane } from "../sketcher/frame";
@@ -172,7 +172,7 @@ export function dressingDocument(base: CadDocument, s: DressingSettings, place?:
       if ((kind === "shelves" || kind === "drawers" || kind === "shoes") && layout.inner[1] > REACH_SHELF + 300) high = true;
     });
     if (high) notes.push(`Mur ${wall} : les étagères au-dessus de ${REACH_SHELF / 10} cm ne s'atteignent qu'avec un marchepied.`);
-    if (s.doors === "sliding") extras.push(...slidingDoors(wall, s.lengthA, p0, p1, s.depth, heightOf(s, wall), s.plinth, s.thickness));
+    if (s.doors === "sliding") extras.push(...slidingDoors((p, q, a, b, z0, z1) => wallBand(wall, s.lengthA, p, q, a, b, z0, z1), wall, p0, p1, s.depth, heightOf(s, wall), s.plinth, s.thickness));
     const steps = s.programs[wall].map((kind, i) => moduleSteps(kind, [i], innerHeight, s.thickness));
     const divisions = steps.flatMap((m) => m.divisions);
     const ids = idsFrom(uniqueOffsetId(doc), 1 + divisions.length);

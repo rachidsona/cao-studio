@@ -54,7 +54,7 @@ function ceilingOf(room: RoomInput, wall: number): (into: number) => number {
 }
 
 /** The walls of the room an assistant uses, from the room's wall `a` as its wall A, or why it cannot. */
-export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "U"): { place: Placement; walls: Partial<Record<RunWall, RunInfo>> } | string {
+export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "R" | "U"): { place: Placement; walls: Partial<Record<RunWall, RunInfo>> } | string {
   const n = room.walls.length;
   const closed = n >= 3 && closingGap(room) < 1;
   const at = (i: number) => (i >= 0 && i < n ? i : closed ? (i + n) % n : null);
@@ -79,13 +79,13 @@ export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "U"): {
     return { index: i, length: w.length, spans: spans.sort((x, y) => x.from - y.from), ceiling: ceilingOf(room, i) };
   };
   walls.A = info(a, "start");
-  if (layout !== "I") {
+  if (layout === "L" || layout === "U") {
     const b = at(a - 1);
     if (b === null) return `Il n'y a pas de mur avant le ${wallName(a)} pour le mur B : choisissez un autre mur A.`;
     if (Math.abs(room.walls[b]!.angle - 90) > TOLERANCE) return `L'angle entre le ${wallName(b)} et le ${wallName(a)} n'est pas droit (${room.walls[b]!.angle}°).`;
     walls.B = info(b, "corner");
   }
-  if (layout === "U") {
+  if (layout === "R" || layout === "U") {
     const c = at(a + 1);
     if (c === null) return `Il n'y a pas de mur après le ${wallName(a)} pour le mur C : choisissez un autre mur A.`;
     if (Math.abs(room.walls[a]!.angle - 90) > TOLERANCE) return `L'angle entre le ${wallName(a)} et le ${wallName(c)} n'est pas droit (${room.walls[a]!.angle}°).`;

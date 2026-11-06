@@ -341,6 +341,15 @@ export const SCREEN: HelpFamily[] = [
         tip: "Elle propose les outils de la barre en cours (modèle ou esquisse), y compris ceux rangés dans les menus, et met en tête les derniers utilisés.",
       },
       {
+        keys: [], selector: "[data-live-price]", name: "Prix en direct",
+        what: "Affiche dans la barre du bas le prix TTC du devis, recalculé après chaque modification.",
+        steps: [
+          "Modifiez le projet : le prix change en bas à droite, et dans le Plan de dressing.",
+          "Cliquez le prix pour ouvrir le devis.",
+        ],
+        tip: "Le calcul reprend les tarifs enregistrés dans le Devis. Il compte les pièces affichées : ce qui est caché n'est pas chiffré.",
+      },
+      {
         keys: ["data-action:undo", "data-action:redo"], name: "Annuler et Rétablir",
         what: "Défait la dernière modification, ou la remet.",
         steps: [

@@ -26,26 +26,29 @@ const OVERLAP = 30;
 const TRACK = 25;
 const RAIL = 40;
 
+/** A box beside a run, between `p` and `q` along it, `a` to `b` off its back. */
+export type RunBand = (p: number, q: number, a: number, b: number, z0: number, z1: number) => [Vec3, Vec3];
+
 /**
- * Sliding doors in front of a run from `p` to `q` (`depth`: the front of the dressing off the wall), `count` doors
- * (about a metre each) on two tracks that overlap, from the plinth to under the top rail; and the two rails.
+ * Sliding doors in front of a run from `p` to `q` (`depth`: its front off the wall), `count` doors (about a metre each
+ * when not asked) on two tracks that overlap, from the plinth to under the top rail; and the two rails.
  */
-export function slidingDoors(wall: WallSide, lengthA: number, p: number, q: number, depth: number, height: number, plinth: number, thickness: number): Part[] {
+export function slidingDoors(band: RunBand, name: string, p: number, q: number, depth: number, height: number, plinth: number, thickness: number, doors?: number): Part[] {
   const length = q - p;
-  const count = Math.max(2, Math.round(length / 1000));
+  const count = doors ?? Math.max(2, Math.round(length / 1000));
   const width = (length + (count - 1) * OVERLAP) / count;
   const parts: Part[] = [];
   for (let i = 0; i < count; i++) {
     const at = p + i * (width - OVERLAP);
     // Alternate tracks, the first at the back.
     const off = depth + 10 + (i % 2) * TRACK;
-    const [from, to] = wallBand(wall, lengthA, at, at + width, off, off + thickness, Math.max(plinth, 10) + 5, height - RAIL - 5);
-    parts.push({ name: `Porte coulissante ${wall}${i + 1}`, from, to });
+    const [from, to] = band(at, at + width, off, off + thickness, Math.max(plinth, 10) + 5, height - RAIL - 5);
+    parts.push({ name: `Porte coulissante ${name}${i + 1}`, from, to });
   }
   const railDepth = 10 + TRACK + thickness + 10;
-  const [t0, t1] = wallBand(wall, lengthA, p, q, depth, depth + railDepth, height - RAIL, height);
-  const [b0, b1] = wallBand(wall, lengthA, p, q, depth, depth + railDepth, 0, Math.max(plinth, 10));
-  parts.push({ name: `Rail haut ${wall}`, from: t0, to: t1, hardware: true, item: "Rail de porte coulissante", per: "m" }, { name: `Rail bas ${wall}`, from: b0, to: b1, hardware: true, item: "Rail de porte coulissante", per: "m" });
+  const [t0, t1] = band(p, q, depth, depth + railDepth, height - RAIL, height);
+  const [b0, b1] = band(p, q, depth, depth + railDepth, 0, Math.max(plinth, 10));
+  parts.push({ name: `Rail haut ${name}`, from: t0, to: t1, hardware: true, item: "Rail de porte coulissante", per: "m" }, { name: `Rail bas ${name}`, from: b0, to: b1, hardware: true, item: "Rail de porte coulissante", per: "m" });
   return parts;
 }
 

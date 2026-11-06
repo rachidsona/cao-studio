@@ -12,7 +12,9 @@ Owner API (session auth + CSRF, JSON errors like api.py):
 
 Public, by token (no account): the page /s/<token>/, its model /s/<token>/model.glb (a variant's:
 /s/<token>/variants/<i>.glb), and its comments
-/s/<token>/comments/ (GET; POST JSON {author, body, position?}, CSRF, rate-limited).
+/s/<token>/comments/ (GET; POST JSON {author, body, position?}, CSRF, rate-limited). The client accepts the project at
+/s/<token>/accept/ (POST JSON {name, variant?}, CSRF, rate-limited, once): the name, the date, the variant and its
+price are kept on the link, and a comment tells the workshop.
 """
 from __future__ import annotations
 
@@ -58,7 +60,14 @@ def _share_payload(request, link: ShareLink, comments: int = 0) -> dict[str, Any
         "created_at": _iso(link.created_at),
         "revoked": link.revoked_at is not None,
         "comments": comments,
+        "accepted": _accepted(link),
     }
+
+
+def _accepted(link: ShareLink) -> dict[str, Any] | None:
+    if link.accepted_at is None:
+        return None
+    return {"by": link.accepted_by, "at": _iso(link.accepted_at), "variant": link.accepted_variant, "price": link.accepted_price}
 
 
 def _comment_payload(comment: Comment) -> dict[str, Any]:
@@ -125,6 +134,7 @@ def share_collection(request, project_id):
         model=data,
         model_size=len(data),
         allow_comments=request.POST.get("allow_comments", "1") not in ("0", "false", ""),
+        allow_accept=request.POST.get("allow_accept", "0") not in ("0", "false", ""),
     )
     ShareVariant.objects.bulk_create(
         ShareVariant(link=link, position=i, name=v["name"], price=v["price"], summary=v["summary"], model=v["model"], model_size=len(v["model"]))
@@ -248,6 +258,9 @@ def share_page(request, token):
         "commentsUrl": reverse("share-comments", kwargs={"token": token}),
         "pageUrl": _share_url(request, link),
         "allowComments": link.allow_comments,
+        "allowAccept": link.allow_accept,
+        "acceptUrl": reverse("share-accept", kwargs={"token": token}),
+        "accepted": _accepted(link),
         "comments": _public_comments(link),
         "variants": [
             {"name": v.name, "price": v.price, "size": v.summary.get("size"), "modelUrl": reverse("share-variant", kwargs={"token": token, "position": v.position})}
@@ -309,3 +322,40 @@ def share_comments(request, token):
     cache.set(key, count + 1, RATE_WINDOW)
     comment = Comment.objects.create(project=link.project, link=link, author=author, body=body, position=position)
     return JsonResponse(_public(_comment_payload(comment)), status=201)
+
+
+@require_http_methods(["POST"])
+def share_accept(request, token):
+    link = _live_link(token)
+    if not link.allow_accept:
+        return json_error(403, "La validation en ligne n'est pas ouverte sur ce lien.")
+    if link.accepted_at is not None:
+        return json_error(409, "Ce projet est déjà accepté.")
+    key = f"share-accept:{link.token}:{request.META.get('REMOTE_ADDR', '')}"
+    count = cache.get(key, 0)
+    if count >= RATE_LIMIT:
+        return json_error(429, "Trop d'essais d'un coup : réessayez dans quelques minutes.")
+    cache.set(key, count + 1, RATE_WINDOW)
+    try:
+        data = read_json_body(request)
+        if not isinstance(data, dict):
+            raise ApiError(400, "Requête invalide.")
+        name = _clean_text(data.get("name"), "name", AUTHOR_MAX)
+        position = data.get("variant")
+        variant = None
+        if position is not None:
+            variant = link.variants.filter(position=position).first() if type(position) is int else None
+            if variant is None:
+                raise ApiError(400, "Variante inconnue.")
+        elif link.variants.exists():
+            raise ApiError(400, "Choisissez une variante.")
+    except ApiError as exc:
+        return exc.response()
+    link.accepted_at = timezone.now()
+    link.accepted_by = name
+    link.accepted_variant = variant.name if variant else ""
+    link.accepted_price = variant.price if variant else link.summary.get("price")
+    link.save(update_fields=["accepted_at", "accepted_by", "accepted_variant", "accepted_price"])
+    choice = f" : {variant.name}" if variant else ""
+    Comment.objects.create(project=link.project, link=link, author=name, body=f"Projet accepté{choice}.")
+    return JsonResponse({"accepted": _accepted(link)})

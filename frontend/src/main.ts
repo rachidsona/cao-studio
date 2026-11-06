@@ -10,6 +10,7 @@ import { bindSection } from "./app/section-view";
 import { bindDrawingWorkspace } from "./app/drawing/workspace";
 import { bindProjectMenu } from "./app/project-menu";
 import { bindHelp } from "./app/help";
+import { bindLivePrice } from "./app/live-price";
 import { bindLayers } from "./app/layers-panel";
 import { bindLinkedCopy } from "./app/linked-copy";
 import { bindMeasure } from "./app/measure";
@@ -164,6 +165,7 @@ async function start(): Promise<void> {
   bindProduction(root, viewport, editor, config.apiUrl, config.projectName);
   bindAssistant(root, viewport, editor, config.apiUrl);
   bindPlanLayout(root, viewport, editor);
+  bindLivePrice(root, viewport, editor);
   bindCommandPalette(root);
   bindProductionFolder(root, viewport, editor, geometry, notice);
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));

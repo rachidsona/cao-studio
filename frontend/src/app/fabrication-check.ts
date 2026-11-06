@@ -5,6 +5,7 @@
  * ouvre) et testés contre les autres corps, murs compris.
  */
 import { cutList } from "../document/cut-list";
+import { dressingChecks } from "../document/dressing-check";
 import { holeProblems, overlapProblems, PROBLEM_TITLES, roomProblems, rowProblems, type Problem, type ProblemKind } from "../document/fabrication-check";
 import { isHardwareBody } from "../document/hardware";
 import { doorProblems, jointProblems } from "../document/hardware-rules";
@@ -101,6 +102,7 @@ export async function checkModel(viewport: Viewport, editor: Editor, geometry: G
     ...overlapProblems(checked),
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
     ...layoutProblems(layoutOf(viewport, doc)),
+    ...dressingChecks(doc).map((message): Problem => ({ kind: "layout", severity: "warning", message, bodies: [] })),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...flats.flatMap((p) => holeProblems(p, idByName.get(p.name) ?? "")),
     ...jointProblems(doc, carcassBoards(viewport, doc, viewport.displayedBodies)),

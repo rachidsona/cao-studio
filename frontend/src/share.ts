@@ -2,7 +2,7 @@
  * Page du lien client : le meuble en 3D (le modèle GLB figé au partage, en mètres, Y vers le haut), qu'on tourne au
  * doigt ; la réalité augmentée pour le voir chez soi (Scene Viewer sur Android, Quick Look sur iPhone avec un USDZ
  * fait sur place) ; les variantes que l'atelier propose (chacune son modèle et son prix : le client compare, puis dit
- * laquelle il choisit dans un message) ; et les commentaires, attachés au besoin à un point du meuble (une pastille
+ * laquelle il choisit dans un message) ; l'acceptation du projet, avec le nom du client ; et les commentaires, attachés au besoin à un point du meuble (une pastille
  * numérotée).
  * Les points sont échangés en millimètres dans le repère du modèle : `summary.offset` dit comment passer de l'un
  * à l'autre.
@@ -24,6 +24,13 @@ interface ShareComment {
   created_at: string;
 }
 
+interface Accepted {
+  by: string;
+  at: string;
+  variant: string;
+  price: number | null;
+}
+
 interface ShareData {
   title: string;
   summary: { size?: Vec3; parts?: number; price?: number; offset?: Vec3; date?: string; unit?: "mm" | "cm" | "m" | "in" };
@@ -31,6 +38,9 @@ interface ShareData {
   commentsUrl: string;
   pageUrl: string;
   allowComments: boolean;
+  allowAccept: boolean;
+  acceptUrl: string;
+  accepted: Accepted | null;
   comments: ShareComment[];
   variants?: { name: string; price: number | null; size?: Vec3 | null; modelUrl: string }[];
 }
@@ -154,6 +164,9 @@ function load(url: string): void {
   );
 }
 
+/** The variant shown, the one « J'accepte » accepts. */
+let chosen = 0;
+
 /** The variants offered: a button each (its price), and « Je choisis » that writes the choice in a message. */
 function setupVariants(): void {
   const variants = data.variants ?? [];
@@ -161,7 +174,6 @@ function setupVariants(): void {
   if (!bar || variants.length < 2) return;
   bar.hidden = false;
   const euros = (v: number | null) => (typeof v === "number" ? ` · ${v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}` : "");
-  let chosen = 0;
   const buttons = variants.map((v, i) => {
     const b = el("button", `${v.name}${euros(v.price)}`) as HTMLButtonElement;
     b.type = "button";
@@ -296,8 +308,45 @@ function setupForm(): void {
   });
 }
 
+/** « J'accepte ce projet »: once, with a name, for the variant shown; then who accepted it and when. */
+function setupAccept(): void {
+  const box = $<HTMLElement>("[data-share-accept]");
+  const form = $<HTMLFormElement>("[data-share-accept-form]");
+  const text = $<HTMLParagraphElement>("[data-share-accept-text]");
+  const error = $<HTMLParagraphElement>("[data-share-accept-error]");
+  if (!box || !form || !text || !error || !(data.allowAccept || data.accepted)) return;
+  box.hidden = false;
+  const shown = (accepted: Accepted) => {
+    form.hidden = true;
+    const price = typeof accepted.price === "number" ? `, ${accepted.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} TTC` : "";
+    text.textContent = `Projet accepté par ${accepted.by} le ${dateText(accepted.at)}${accepted.variant ? `, ${accepted.variant}` : ""}${price}. L'atelier a été prévenu.`;
+  };
+  if (data.accepted) return shown(data.accepted);
+  text.textContent = "En indiquant votre nom, vous dites à l'atelier que ce projet vous convient, tel qu'il est affiché.";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.textContent = "";
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+    if (!name) return;
+    try {
+      const response = await fetch(data.acceptUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRFToken": csrf() },
+        body: JSON.stringify({ name, ...(data.variants?.length ? { variant: chosen } : {}) }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { accepted?: Accepted; error?: string };
+      if (!response.ok || !payload.accepted) throw new Error(payload.error ?? `Erreur ${response.status}`);
+      shown(payload.accepted);
+    } catch (e) {
+      error.textContent = e instanceof Error ? e.message : String(e);
+    }
+  });
+}
+
 summary();
 renderComments();
 setupForm();
+setupAccept();
 if ((data.variants?.length ?? 0) >= 2) setupVariants();
 else load(data.modelUrl);

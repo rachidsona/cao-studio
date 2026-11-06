@@ -7,7 +7,8 @@
  * Repère de l'assistant Dressing (document/dressing-plan.ts) : le mur A a sa face en Y = 0 et va vers +X, le dressing est
  * devant lui (Y < 0) ; le mur B a sa face en X = 0 à gauche, le mur C en X = longueur de A à droite, tous deux vers −Y.
  */
-import type { CornerJoint, DressingPlan, PlaneFrame, PlaneName, SlopedCeiling } from "./types";
+import type { CornerJoint, DressingPlan, PlaneFrame, PlaneName, SlopedCeiling, Vec3 } from "./types";
+import { placePoint, turn } from "../features/room-runs";
 import { nearestPlane } from "../sketcher/frame";
 
 export type PlanModel = DressingPlan["model"];
@@ -231,12 +232,21 @@ export function planProblem(p: DressingPlan): string | null {
   return null;
 }
 
+/** A slope of the plan as it stands in the room, its quarter turn and its shift taken into account. */
+function placedSlope(slope: Pick<SlopedCeiling, "axis" | "at" | "rise">, place: DressingPlan["place"]): Pick<SlopedCeiling, "axis" | "at" | "rise"> {
+  if (!place) return slope;
+  const unit: Vec3 = slope.axis === "x" ? [1, 0, 0] : [0, 1, 0];
+  const [dx, dy] = turn(place, unit);
+  const point = placePoint(place, [unit[0] * slope.at, unit[1] * slope.at, 0]);
+  return Math.abs(dx) > 0.5 ? { axis: "x", at: point[0], rise: slope.rise * dx } : { axis: "y", at: point[1], rise: slope.rise * dy };
+}
+
 /** The sloped ceiling of this plan, or none: `under`, mm below it (the underside of the top boards, measured upright). */
 export function planCeiling(p: DressingPlan, under = 0): SlopedCeiling | undefined {
   if (!p.roof) return undefined;
   const rise = (p.height - p.roofLow) / (p.roof === "wall" ? p.depth : p.lengthA);
   const slope = p.roof === "left" ? { axis: "x" as const, at: 0, rise } : p.roof === "right" ? { axis: "x" as const, at: p.lengthA, rise: -rise } : { axis: "y" as const, at: 0, rise: -rise };
-  return { ...slope, height: p.roofLow - under, cap: p.height - under };
+  return { ...placedSlope(slope, p.place), height: p.roofLow - under, cap: p.height - under };
 }
 
 /** How thick a top board is, measured upright, under this ceiling. */

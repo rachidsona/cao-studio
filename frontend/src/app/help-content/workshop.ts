@@ -434,11 +434,11 @@ export const WORKSHOP: HelpFamily[] = [
         what: "Crée un lien où le client voit le meuble en 3D, le pose chez lui en réalité augmentée et laisse des commentaires, sans compte.",
         steps: [
           "Cliquez « Lien client » et vérifiez le titre du lien.",
-          "Cochez « Afficher le prix TTC du devis » et « Permettre les commentaires » selon le cas.",
+          "Cochez « Afficher le prix TTC du devis », « Permettre les commentaires » et « Permettre au client d'accepter ce projet en ligne » selon le cas.",
           "Cliquez « Créer un lien client » : le lien est copié ; « Copier » et « QR » le redonnent.",
           "« Révoquer » coupe l'accès à un lien.",
         ],
-        tip: "Le lien montre le meuble tel qu'il est à cet instant : créez-en un nouveau après un changement. Avec au moins deux configurations (Paramètres), vous pouvez proposer chaque variante avec son prix.",
+        tip: "Le lien montre le meuble tel qu'il est à cet instant : créez-en un nouveau après un changement. Avec au moins deux configurations (Paramètres), vous pouvez proposer chaque variante avec son prix. Quand le client accepte, son nom, la date, la variante et le prix s'affichent sous le lien, et un commentaire vous prévient : c'est un accord de principe, pas une signature électronique.",
       },
       {
         keys: ["data-workshop:comments"], name: "Commentaires des clients",

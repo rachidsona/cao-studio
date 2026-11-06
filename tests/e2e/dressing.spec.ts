@@ -395,7 +395,7 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   await tool.getByRole("button", { name: "Créer le plan" }).click();
 
   // A free zone filled to size: three cases and the exact filler.
-  await tool.getByRole("button", { name: "Remplir" }).click();
+  await tool.getByRole("button", { name: "Remplir", exact: true }).click();
   await expect(tool).toContainText("Remplir : Mur A");
   await tool.getByRole("button", { name: "3 caissons de 60 cm et un fileur de 11 cm" }).click();
   await expect(page.getByText(/Mur A remplie/)).toBeVisible();

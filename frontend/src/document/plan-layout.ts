@@ -6,6 +6,7 @@
  * tout s'arrête sous le plafond (`ceiling`) et le dessus de chaque zone est une planche en pente. « Remplir » découpe une
  * zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts. Pur.
  */
+import { slidingDoors } from "./dressing-extras";
 import { addExtrude, deleteFeatures, findFeature, uniqueId, uniqueName, uniqueOffsetId, updateFeature } from "./operations";
 import { arcDoor, circleDoor, cornerOutline, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, type Corner, type PlanZone, type Point } from "./plan-shapes";
 import type { PartitionParams, SketchGeometry } from "./sketch";
@@ -13,7 +14,8 @@ import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, DressingPlan, PlaneFrame, SketchFeature, SlopedCeiling, Vec3 } from "./types";
 import { hingeCount } from "../features/fronts-parts";
-import { nearestPlane } from "../sketcher/frame";
+import { placeBox, placeFrame, placePoint } from "../features/room-runs";
+import { nearestPlane, sketchFrame } from "../sketcher/frame";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../sketcher/partition-history";
 
@@ -38,12 +40,20 @@ function linesGeometry(lines: [Point, Point][]): SketchGeometry {
   return g;
 }
 
+/** A point of the plan where it stands: in its room, or as it is. */
+const onFloor = (plan: DressingPlan, [x, y]: Point): Point => {
+  if (!plan.place) return [x, y];
+  const [wx, wy] = placePoint(plan.place, [x, y, 0]);
+  return [wx, wy];
+};
+const planSketch = (plan: DressingPlan) => linesGeometry(planLines(plan).map(([a, b]): [Point, Point] => [onFloor(plan, a), onFloor(plan, b)]));
+
 const loop = (outline: Point[]): [Point, Point][] => outline.map((a, i) => [a, outline[(i + 1) % outline.length] as Point]);
 
 /** The plan on the floor: a sketch that keeps its settings. */
 export function withPlan(doc: CadDocument, p: DressingPlan): { doc: CadDocument; id: string } {
   const id = uniqueId(doc, "sk");
-  const sketch: SketchFeature = { id, type: "sketch", name: "Plan du dressing", plane: "XY", offset: 0, dressingPlan: p, ...linesGeometry(planLines(p)) };
+  const sketch: SketchFeature = { id, type: "sketch", name: "Plan du dressing", plane: "XY", offset: 0, dressingPlan: p, ...planSketch(p) };
   return { doc: { ...doc, features: [...doc.features, sketch] }, id };
 }
 
@@ -149,18 +159,22 @@ function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): C
   const out = (ey * (a[0] - wall[0]) - ex * (a[1] - wall[1]) > 0 ? 1 : -1) / length;
   const normal: [number, number] = [ey * out, -ex * out];
   const middle: Point = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  const frame: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
+  const flat: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
+  const frame = plan.place ? placeFrame(plan.place, flat) : flat;
   const [half, z0, z1] = [length / 2 - GAP, plan.plinth + GAP, plan.height - GAP];
   const ceiling = planCeiling(plan);
   const circle = circleDoor(plan, side, GAP);
+  const turned = ((plan.place?.quarter ?? 0) * Math.PI) / 2;
   const next = PLAN_MODELS[plan.model].round
-    ? sheet(doc, `${zone.label} — porte cintrée`, circle ? arcBand(circle) : arcDoor(plan, side, GAP), { offset: z0 }, z1 - z0, ceiling)
+    ? sheet(doc, `${zone.label} — porte cintrée`, circle ? arcBand({ ...circle, center: onFloor(plan, circle.center), from: circle.from + turned, to: circle.to + turned }) : arcDoor(plan, side, GAP).map((p) => onFloor(plan, p)), { offset: z0 }, z1 - z0, ceiling)
     : sheet(doc, `${zone.label} — porte`, rect(-half, z0, half, z1), { offset: 0, frame }, plan.thickness, ceiling);
   const hinges = hingeCount(z1 - z0);
   const [hx, hy] = [a[0] + (ex / length) * 40 - normal[0] * 20, a[1] + (ey / length) * 40 - normal[1] * 20];
   const parts = Array.from({ length: hinges }, (_, i) => {
     const z = z0 + 100 + (i * (z1 - z0 - 200)) / Math.max(1, hinges - 1);
-    return { name: `${zone.label} — charnière ${i + 1}`, from: [hx - 10, hy - 10, z - 10] as Vec3, to: [hx + 10, hy + 10, z + 10] as Vec3, hardware: true, item: "Charnière à boîtier Ø35" };
+    const [from, to]: [Vec3, Vec3] = [[hx - 10, hy - 10, z - 10], [hx + 10, hy + 10, z + 10]];
+    const box = plan.place ? placeBox(plan.place, from, to) : [from, to];
+    return { name: `${zone.label} — charnière ${i + 1}`, from: box[0] as Vec3, to: box[1] as Vec3, hardware: true, item: "Charnière à boîtier Ø35" };
   });
   return { ...next, features: [...next.features, { id: uniqueId(next, "fi"), type: "trim", name: uniqueName(next, `${zone.label} — charnières`), parts }] };
 }
@@ -173,34 +187,49 @@ function withFiller(doc: CadDocument, plan: DressingPlan, zone: PlanZone, rest: 
   if (!step || !span) return doc;
   const [a, b] = [step.origin[0] + span[0], step.origin[0] + span[1]];
   const { depth: d, thickness: t, plinth, height } = plan;
-  return sheet(doc, `${zone.label} — fileur`, [runPoint(zone, a, d - t), runPoint(zone, b, d - t), runPoint(zone, b, d), runPoint(zone, a, d)], { offset: plinth }, height - plinth, belowTop(plan));
+  return sheet(doc, `${zone.label} — fileur`, [runPoint(zone, a, d - t), runPoint(zone, b, d - t), runPoint(zone, b, d), runPoint(zone, a, d)].map((p) => onFloor(plan, p)), { offset: plinth }, height - plinth, belowTop(plan));
 }
 
-/** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler, a sloped top. */
+/** The sliding doors of a run and their rails: bought rails for the quote, doors for the cut list. */
+function withSlidingDoors(doc: CadDocument, plan: DressingPlan, zone: PlanZone, count: number): CadDocument {
+  const band = (p: number, q: number, a: number, b: number, z0: number, z1: number): [Vec3, Vec3] => {
+    const [[ax, ay], [bx, by]] = [onFloor(plan, runPoint(zone, p, a)), onFloor(plan, runPoint(zone, q, b))];
+    return [[Math.min(ax, bx), Math.min(ay, by), z0], [Math.max(ax, bx), Math.max(ay, by), z1]];
+  };
+  const { start, length, depth } = zone.run;
+  const parts = slidingDoors(band, zone.id, start, start + length, depth, plan.height, plan.plinth, plan.thickness, count);
+  return { ...doc, features: [...doc.features, { id: uniqueId(doc, "fi"), type: "trim", name: uniqueName(doc, `${zone.label} — portes coulissantes`), parts }] };
+}
+
+/** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler, a sloped top, sliding doors. */
 function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
   const { next: clean } = deleteFeatures(base, plan.boards?.[zone.id] ?? []);
   const { cornerB: b, depth: d, thickness: t, height, lengthA: l } = plan;
   let doc = clean;
   if (zone.kind === "corner") {
-    doc = sheet(doc, `${zone.label} — côté`, zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b), { offset: 0 }, height, belowTop(plan));
+    doc = sheet(doc, `${zone.label} — côté`, (zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b)).map((p) => onFloor(plan, p)), { offset: 0 }, height, belowTop(plan));
     if (plan.cornerDoor) doc = withCornerDoor(doc, plan, zone);
   }
   const fill = plan.fills?.[zone.id];
   if (fill?.filler) doc = withFiller(doc, plan, zone, fill.rest);
   const ceiling = planCeiling(plan);
-  if (ceiling) doc = sheet(doc, `${zone.label} — dessus`, zone.outline, { offset: plan.plinth }, height, { ...ceiling, slab: upright(plan) });
+  if (ceiling) doc = sheet(doc, `${zone.label} — dessus`, zone.outline.map((p) => onFloor(plan, p)), { offset: plan.plinth }, height, { ...ceiling, slab: upright(plan) });
+  const sliding = plan.sliding?.[zone.id];
+  if (sliding && zone.kind === "run" && !plan.roof) doc = withSlidingDoors(doc, plan, zone, sliding);
   const known = new Set(clean.features.map((f) => f.id));
   return withSettings(doc, planId, { boards: { ...plan.boards, [zone.id]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
 }
 
 const placed = ({ run, clip }: PlanZone, plan: DressingPlan) => {
   const ceiling = belowTop(plan);
-  return { plane: run.plane, offset: run.offset, ...(run.frame ? { frame: run.frame } : {}), ...(clip ? { clip } : {}), ...(ceiling ? { ceiling } : {}) };
+  const own = sketchFrame(run.plane, run.offset);
+  const frame = plan.place ? placeFrame(plan.place, run.frame ?? { origin: own.origin, xDir: own.u, normal: own.normal }) : run.frame;
+  return { plane: frame ? nearestPlane(frame.normal) : run.plane, offset: run.offset, ...(frame ? { frame } : {}), ...(clip ? { clip: clip.map((p) => onFloor(plan, p)) } : {}), ...(ceiling ? { ceiling } : {}) };
 };
 
 /** A zone has boards of its own to make again around its Répartition. */
-const hasBoards = (plan: DressingPlan, zone: PlanZone, fills = plan.fills) => zone.kind === "corner" || fills?.[zone.id]?.filler === true || plan.roof !== undefined;
+const hasBoards = (plan: DressingPlan, zone: PlanZone, fills = plan.fills) => zone.kind === "corner" || fills?.[zone.id]?.filler === true || plan.roof !== undefined || (plan.sliding?.[zone.id] ?? 0) > 0;
 
 /** The Répartition of a zone, against its wall: about one case per 80 cm, to set in its tool; one case in a corner; or the cases of `fill`. */
 export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZone, fill?: FillChoice): { doc: CadDocument; sketch: string; step: string } | string {
@@ -233,6 +262,13 @@ export function withCornerDoors(base: CadDocument, planId: string, on: boolean):
   const plan = planIn(doc, planId) as DressingPlan;
   for (const zone of planZones(plan)) if (zone.kind === "corner" && zoneDone(doc, plan, zone.id)) doc = withZoneBoards(doc, planId, zone);
   return doc;
+}
+
+/** Sliding doors in front of a zone, or none: at once if it is made, otherwise with its Répartition. */
+export function withZoneSliding(base: CadDocument, planId: string, zone: PlanZone, count: number): CadDocument {
+  const { [zone.id]: _old, ...others } = planIn(base, planId)?.sliding ?? {};
+  const doc = withSettings(base, planId, { sliding: count ? { ...others, [zone.id]: count } : others });
+  return zoneDone(doc, planIn(doc, planId) as DressingPlan, zone.id) ? withZoneBoards(doc, planId, zone) : doc;
 }
 
 /** What was made on a zone that the new plan no longer has. */
@@ -293,7 +329,7 @@ export function withPlanChanged(base: CadDocument, planId: string, next: Dressin
     doc = follows.doc;
     problems.push(...follows.problems);
   }
-  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...linesGeometry(planLines(next)), dressingPlan: { ...next, made, boards, fills } } : f));
+  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(next), dressingPlan: { ...next, made, boards, fills } } : f));
   // A plan no longer under a slope has top boards to take away, the zone made again without them.
   for (const zone of zones) if (made[zone.id] && (hasBoards(next, zone, fills) || boards[zone.id]?.length)) doc = withZoneBoards(doc, planId, zone);
   return { doc, problems };
