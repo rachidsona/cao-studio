@@ -1131,7 +1131,9 @@ opération existante.
     barres de 2 m). Le massif est **débité avec une surcote** (20 mm en longueur, 10 en largeur pour le chêne) puis
     raboté : la liste de débit montre son « débit brut » et le calepinage le place à cette taille.
   - *Liste de débit* (comme celle d'OpenCutList) : toutes les pièces, groupées quand elles sont identiques (quantité),
-    un tableau par matière et épaisseur avec ses totaux (m², mètres de chant ; mètres bout à bout pour les tasseaux).
+    le total du projet, puis un tableau par matière et épaisseur avec ses totaux (m², mètres de chant ; mètres bout à
+    bout pour les tasseaux). Une colonne sans information disparaît (coupe égale à la cote finie, fil commun, débit
+    brut), les chants sont dessinés sur un petit panneau, et la même présentation sert à l'impression et au téléphone.
     Chaque pièce a son **repère** (A, B, C… puis AA) : il est écrit sur le calepinage et, avec le bouton **Repères des
     pièces** de la colonne Vue, au milieu de chaque pièce vue dans la 3D (les pièces identiques ont le même ; une
     pièce cachée derrière une porte n'a pas le sien). Un **clic sur une ligne** ferme la liste et sélectionne ses
@@ -1187,9 +1189,18 @@ opération existante.
     angles rentrants coupés à l'intersection ; une partie plus étroite que la fraise est signalée), en opposition.
     Réglages retenus par le navigateur : diamètre de fraise, passe, avances, broche, hauteur de sécurité, martyr,
     foret maximal, écarts. Les perçages borgnes de l'autre face sont signalés (pièce à retourner).
-  - *Étiquettes* : une par pièce, avec un **QR code**, les cotes, la matière, les chants et le fil ; planche A4 de 3 × 8
-    étiquettes 70 × 37 mm à imprimer et coller à la sortie de la machine. Le QR code ouvre la page de la pièce du
-    Suivi d'atelier.
+  - *Étiquettes* : une par pièce, avec un **QR code**, à imprimer et coller à la sortie de la machine. Un éditeur règle
+    ce qu'elle dit et dans quel ordre, la place du QR code, le logo et le format de la planche A4 (3 × 8, 3 × 7, 2 × 4),
+    avec son aperçu ; le modèle est gardé par le navigateur et repris par le dossier de production. Le QR code ouvre la
+    page de la pièce du Suivi d'atelier.
+  - *Peindre les chants* : les chants posés se voient en vert sur les pièces, un clic sur un bord pose ou retire son
+    chant, ou les 4 ; une pipette reporte ceux d'une pièce sur d'autres.
+  - *Fil continu* (dans Matière et chants) : des façades sélectionnées se suivent au calepinage, côte à côte, pour que
+    le veinage continue de l'une à l'autre ; une rangée trop grande pour son panneau est signalée.
+  - *Façades communes* : une seule porte sur plusieurs cases voisines d'une Répartition, et le sens d'ouverture de ses
+    portes, par paires en miroir ou d'un seul côté.
+  - *Liste de débit* : un champ filtre les pièces par nom, repère, matière, épaisseur ou chant.
+  - *Saisie rapide* dans Étagères et Cloisons : `*3` (3 pièces), `/4` (4 niches égales), `30;40;50` (ces hauteurs de niches, puis le reste).
   - *Suivi d'atelier* : où en est chaque pièce. Les étapes sont « Débitée », « Chantée », « Percée » et « Montée ».
     - Sur un téléphone connecté au compte, le QR code d'une étiquette ou d'une fiche ouvre la page de la pièce
       (`/atelier/<projet>/?piece=…`). Un gros bouton par étape la fait avancer, et la page liste les autres pièces
@@ -1706,7 +1717,11 @@ opération existante.
   sans Pièce, et le bouton « Penderies escamotables » équipe les tringles trop hautes.
 - **Concevoir dans la vue** : clic droit sur une niche pour ses outils, cotes de niche cliquables, étagères et cloisons tirées
   à la souris au pas de 32 mm, touche R pour répéter, « Copier une niche » (aussi en miroir), « Aligner les étagères »,
-  « Voir ce mur », « Mes murs » et « Style du dressing ».
+  « Voir » pour isoler un mur et y travailler, « Mes murs » et « Style du dressing ».
+- **Niche mère** : dans Cloisons, « Couper toute la niche mère » pose une cloison à travers une colonne déjà aménagée. Ses
+  étagères et tiroirs restent d'un côté, plus étroits, et l'autre côté devient une niche vide.
+  Plusieurs niches choisies l'une au-dessus de l'autre partagent une seule cloison, qui coupe les étagères entre elles, et des
+  niches de largeurs différentes ont leurs cloisons sur une même ligne.
 - **Validation du client** : le Lien client peut proposer « J'accepte ce projet » : le nom, la date, la variante et le prix
   restent sur le lien, et un commentaire prévient l'atelier.
 - **Remplir** (dans le Plan de dressing, sur une zone libre) : on donne la largeur intérieure voulue des caissons, et

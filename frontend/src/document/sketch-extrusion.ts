@@ -38,7 +38,8 @@ export function stepOfBody(doc: CadDocument, body: string): { sketch: string; of
 }
 
 export function withSketchExtrusion(base: CadDocument, featureId: string, geometry: SketchGeometry, extrusion?: SketchExtrusion): CadDocument {
-  const doc = updateFeature(base, featureId, (f) => (f.type === "sketch" ? { ...f, ...geometry } : f));
+  const updated = updateFeature(base, featureId, (f) => (f.type === "sketch" ? { ...f, ...geometry } : f));
+  const doc = (extrusion?.repath ?? []).reduce((d, { partition, path }) => ({ ...d, features: d.features.map((f) => (f.type === "niche" && f.sketch === featureId && f.partition === partition && (f.fill === "rod" || f.fill === "drawers") ? { ...f, niche: path(f.niche) } : f)) }), updated);
   // The doors of its partitions follow (made, changed or taken away with their step).
   if (!extrusion) return syncPartitionDoors(doc, featureId);
   let next = doc;

@@ -73,6 +73,8 @@ export interface ExtrusionGroup {
 
 export interface SketchExtrusion {
   groups: ExtrusionGroup[];
+  /** Niches divided again from above: what equips them follows to its new path. */
+  repath?: { partition: string; path: (path: number[]) => number[] }[];
 }
 
 export interface SketchModeHost {

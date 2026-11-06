@@ -25,6 +25,8 @@ export interface CutRow {
   names: string[];
   /** The bodies of the row (to show them in the model). */
   ids?: string[];
+  /** By part of the row: the run of fronts it belongs to, if any, for the sheet layout. */
+  runs?: (NonNullable<BodyInfo["grainRun"]> | null)[];
   quantity: number;
   length: number;
   width: number;
@@ -81,7 +83,8 @@ export function cutList(doc: CadDocument, parts: PartInput[]): { rows: CutRow[];
       row.quantity++;
       row.names.push(bodyLabel(doc, part.id));
       row.ids?.push(part.id);
-    } else rows.set(key, { names: [bodyLabel(doc, part.id)], ids: [part.id], quantity: 1, length, width, thickness, material, grain, edges, band, cutLength, cutWidth, roughLength: round(cutLength + plusL), roughWidth: round(cutWidth + plusW), approximate });
+      row.runs?.push(info.grainRun ?? null);
+    } else rows.set(key, { names: [bodyLabel(doc, part.id)], ids: [part.id], runs: [info.grainRun ?? null], quantity: 1, length, width, thickness, material, grain, edges, band, cutLength, cutWidth, roughLength: round(cutLength + plusL), roughWidth: round(cutWidth + plusW), approximate });
   }
   const list = [...rows.values()].sort((a, b) => a.material.localeCompare(b.material) || b.thickness - a.thickness || b.length - a.length || b.width - a.width);
   list.forEach((r, i) => (r.tag = partTag(i)));
@@ -96,6 +99,15 @@ export function cutList(doc: CadDocument, parts: PartInput[]): { rows: CutRow[];
     totals.set(key, t);
   }
   return { rows: list, totals: [...totals.values()] };
+}
+
+const STRIP = new RegExp("[\\u0300-\\u036f]", "g");
+const plain = (text: string) => text.normalize("NFD").replace(STRIP, "").toLowerCase();
+
+/** Does this row hold all the words typed: in its names, its mark, its material or its thickness? */
+export function rowMatches(row: CutRow, query: string): boolean {
+  const text = plain(`${row.tag ?? ""} ${row.names.join(" ")} ${row.material} ${row.thickness}`);
+  return plain(query).split(/\s+/).filter(Boolean).every((word) => text.includes(word));
 }
 
 /** The mark of the n-th part: A … Z, then AA, AB … */

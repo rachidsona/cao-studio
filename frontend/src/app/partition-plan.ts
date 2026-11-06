@@ -27,7 +27,7 @@ export function plansOf(g: SketchGeometry, divided: { box: PartitionPlan["outer"
       ...own.filter((box) => !divided.some((d) => inside(box, d.box))),
       ...divided.filter((d) => own.some((box) => inside(box, d.box))).flatMap((d) => d.into),
     ];
-    const doors = record.step.doors ? partitionDoors(input, origin, record.step.doors.gap) : [];
+    const doors = record.step.doors ? partitionDoors(input, origin, record.step.doors.gap, record.step.doors.joined) : [];
     return {
       outer: { x0: origin[0], y0: origin[1], x1: origin[0] + input.length, y1: origin[1] + input.height },
       niches,

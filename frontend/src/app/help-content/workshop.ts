@@ -132,8 +132,21 @@ export const WORKSHOP: HelpFamily[] = [
           "Choisissez la « Matière » dans la liste (« Non défini » par défaut).",
           "Choisissez le sens du fil : « Fil en longueur », « Fil en largeur » ou « Sans fil ».",
           "Cochez les chants à plaquer : L1 et L2 sont les deux grands côtés, l1 et l2 les deux petits. Réglez l'épaisseur dans « Chant … mm ».",
+          "Sélection de plusieurs façades : « Fil continu sur ces pièces » les garde côte à côte au calepinage, pour que le veinage court d'une porte à l'autre.",
         ],
         tip: "La liste de débit, le calepinage et le devis lisent ces réglages. Sans sélection, le panneau reste vide.",
+      },
+      {
+        keys: ["data-workshop:edge-paint"], name: "Peindre les chants",
+        what: "Pose les chants d'un clic sur les pièces : les chants posés se voient en vert, le bord visé en orange.",
+        steps: [
+          "Cliquez « Peindre les chants ».",
+          "Réglez l'épaisseur, puis cliquez le bord d'une pièce : son chant se pose, ou s'enlève s'il y est.",
+          "Choisissez « Les 4 chants » pour tout le tour d'un clic.",
+          "Choisissez « Pipette », cliquez une pièce, puis les pièces qui prennent les mêmes chants.",
+          "Cliquez « Terminer » (ou Échap).",
+        ],
+        tip: "Chaque clic s'annule à part. Les chants sont les mêmes que ceux de « Matière et chants » : la liste de débit et le devis les lisent.",
       },
       {
         keys: ["data-workshop:replace"], name: "Remplacer partout",
@@ -245,7 +258,7 @@ export const WORKSHOP: HelpFamily[] = [
         keys: ["data-workshop:cutlist"], name: "Liste de débit",
         what: "Liste toutes les pièces du meuble avec leurs cotes, leur matière, leurs chants et leur quantité.",
         steps: [
-          "Cliquez « Liste de débit » : un tableau par matière et par épaisseur s'ouvre.",
+          "Cliquez « Liste de débit » : le total du projet, puis un tableau par matière et par épaisseur. La colonne « Coupe » n'apparaît que si une cote à scier diffère de la cote finie.",
           "Cliquez une ligne pour sélectionner ces pièces dans le modèle.",
           "Cliquez « Exporter en CSV » pour le tableur, ou « Imprimer / PDF ».",
         ],
@@ -391,10 +404,11 @@ export const WORKSHOP: HelpFamily[] = [
         keys: ["data-workshop:labels"], name: "Étiquettes à QR code",
         what: "Imprime une étiquette par pièce, à coller sur les panneaux à la sortie de la machine.",
         steps: [
-          "Cliquez « Étiquettes à QR code ».",
-          "Imprimez sur des feuilles A4 : 3 étiquettes en largeur, 8 en hauteur.",
+          "Cliquez « Étiquettes à QR code » : le modèle et son aperçu s'ouvrent.",
+          "Cochez ce qu'elle dit et rangez-le avec ↑ et ↓, choisissez le format de la planche, la place du QR code, et ajoutez votre logo.",
+          "Cliquez « Imprimer ».",
         ],
-        tip: "Chaque étiquette porte le nom, les cotes, la matière, les chants et le fil. Son QR code ouvre la page de la pièce dans le suivi d'atelier.",
+        tip: "Le modèle reste dans ce navigateur, et le dossier de production l'imprime aussi. Le QR code ouvre la page de la pièce dans le suivi d'atelier.",
       },
       {
         keys: ["data-workshop:progress"], name: "Suivi d'atelier",

@@ -48,7 +48,7 @@ export function bindPartTags(root: HTMLElement, viewport: Viewport, editor: Edit
     if (!on) return;
     const parts = partsOf(viewport, editor.doc);
     const tags = new Map(cutList(editor.doc, parts).rows.flatMap((r) => (r.ids ?? []).map((id) => [id, r.tag ?? ""] as const)));
-    const meshes = viewport.bodyMeshes();
+    const meshes = viewport.bodyMeshes().filter((m) => m.visible);
     for (const part of parts) {
       const [lo, hi] = part.bbox;
       const at = new THREE.Vector3((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);

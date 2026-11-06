@@ -13,6 +13,8 @@ import { LAYER_PROFILES, boardFaces, flattenOutline, holeDepth, layerName, parts
 import { edgeHoles } from "../document/face-ops";
 import { GCODE, partsGcode, type GcodeOptions } from "../io/gcode";
 import { qrSvg } from "../io/qr";
+import { labelCss, labelHtml, loadLabelTemplate, type LabelData } from "../document/label-template";
+import { openLabelEditor } from "./label-editor";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -205,36 +207,34 @@ async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryC
 }
 
 /** The sheet of labels, one per part, or null with no part. */
-export function labelsPage(viewport: Viewport, editor: Editor): PrintPage | null {
+/** The labels of the parts shown, one per part, in the layout chosen. */
+export function labelData(viewport: Viewport, editor: Editor): LabelData[] {
   const { rows } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  if (!rows.length) return null;
   const project = document.title.split("·")[0]?.trim() ?? "";
-  const labels = rows.flatMap((r) =>
-    r.names.map((name) => {
-      const size = [r.length, r.width, r.thickness].map((mm) => formatLength(mm, editor.unit).replace(/ \S+$/, "")).join(" × ") + ` ${UNIT_LABELS[editor.unit]}`;
+  return rows.flatMap((r) =>
+    r.names.map((name): LabelData => ({
+      name,
+      tag: r.tag ?? "",
+      size: [r.length, r.width, r.thickness].map((mm) => formatLength(mm, editor.unit).replace(/ \S+$/, "")).join(" × ") + ` ${UNIT_LABELS[editor.unit]}`,
+      material: r.material,
+      edges: `Chants : ${edgeText(r.edges)}`,
+      grain: `Fil : ${grainText(r.grain)}`,
+      project,
       // The QR code opens the piece's page in the workshop tracking (its step, to move on with a tap).
-      return `<div class="label"><div class="qr">${qrSvg(pieceUrl(name))}</div><div class="text"><b>${escapeHtml(name)}</b><span>${escapeHtml(size)}</span><span>${escapeHtml(r.material)}</span><span>Chants : ${escapeHtml(edgeText(r.edges))} · Fil : ${escapeHtml(grainText(r.grain))}</span><small>${escapeHtml(project)}</small></div></div>`;
-    }),
+      qr: qrSvg(pieceUrl(name)),
+    })),
   );
-  return {
-    title: "Étiquettes",
-    html: `<div class="labels">${labels.join("")}</div>`,
-    css: `@page{size:A4;margin:0}body{margin:0}.labels{display:grid;grid-template-columns:repeat(3,70mm);grid-auto-rows:37mm}
-     .label{box-sizing:border-box;display:flex;gap:2mm;padding:3mm;overflow:hidden;page-break-inside:avoid;border:0.2mm dashed #ccc}
-     .qr{width:22mm;height:22mm;flex:none}.qr svg{width:100%;height:100%}.text{display:flex;flex-direction:column;gap:0.6mm;font-size:8pt;min-width:0}
-     .text b{font-size:9pt}.text small{color:#666}`,
-  };
 }
 
-function printLabels(viewport: Viewport, editor: Editor): void {
-  const page = labelsPage(viewport, editor);
-  if (!page) return editor.notify("Aucune pièce à étiqueter.", "info");
-  printHtml(page.title, page.html, page.css);
-  editor.notify(`${page.html.split('class="label"').length - 1} étiquette(s) prête(s) à imprimer (A4, 3 × 8).`, "success");
+export function labelsPage(viewport: Viewport, editor: Editor): PrintPage | null {
+  const labels = labelData(viewport, editor);
+  if (!labels.length) return null;
+  const template = loadLabelTemplate();
+  return { title: "Étiquettes", html: `<div class="labels">${labels.map((l) => labelHtml(template, l, escapeHtml)).join("")}</div>`, css: labelCss(template) };
 }
 
 export function bindCnc(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {
   root.querySelector('[data-workshop="dxf"]')?.addEventListener("click", () => void exportDxf(viewport, editor, geometry));
   root.querySelector('[data-workshop="gcode"]')?.addEventListener("click", () => void showGcode(viewport, editor, geometry));
-  root.querySelector('[data-workshop="labels"]')?.addEventListener("click", () => printLabels(viewport, editor));
+  root.querySelector('[data-workshop="labels"]')?.addEventListener("click", () => openLabelEditor(viewport, editor));
 }

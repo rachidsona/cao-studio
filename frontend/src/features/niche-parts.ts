@@ -98,12 +98,19 @@ function caseFronts(input: PartitionParams, caseWidths: readonly number[]): [num
  * joined without a side (they then meet in the middle of the side's place), `gap` mm apart and `gap` / 2 in from the
  * outer edges.
  */
-export function partitionDoors(input: PartitionParams, origin: [number, number], gap: number): [number, number, number, number][] | string {
+export function partitionDoors(input: PartitionParams, origin: [number, number], gap: number, joined: readonly number[] = []): [number, number, number, number][] | string {
   const layout = partitionLayout(input);
   if (typeof layout === "string") return layout;
   const [ox, oy] = origin;
   const bottom = input.boards ? input.plinth : 0;
-  return caseFronts(input, layout.caseWidths).map(([a, b]): [number, number, number, number] => [ox + a + gap / 2, oy + bottom + gap / 2, ox + b - gap / 2, oy + input.height - gap / 2]);
+  // Cases sharing a door: it goes from the left of the first to the right of the last.
+  const fronts = caseFronts(input, layout.caseWidths).reduce<[number, number][]>((all, [a, b], i) => {
+    const last = all[all.length - 1];
+    if (last && joined.includes(i - 1)) last[1] = b;
+    else all.push([a, b]);
+    return all;
+  }, []);
+  return fronts.map(([a, b]): [number, number, number, number] => [ox + a + gap / 2, oy + bottom + gap / 2, ox + b - gap / 2, oy + input.height - gap / 2]);
 }
 
 /**
@@ -145,7 +152,7 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
   if (f.fill === "doors") {
     if (!(f.thickness > 0)) return "L'épaisseur des portes doit être positive.";
     if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
-    const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap) : "La répartition manque.";
+    const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap, f.joined) : "La répartition manque.";
     if (typeof doors === "string") return doors;
     if (doors.some(([x0, , x1]) => x1 - x0 < 50)) return "Le jeu est trop grand pour ces portes.";
     if (f.style === "frame") {
@@ -177,7 +184,7 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     return backs.map(([a, b], i, all): NichePart => ({ name: all.length > 1 ? `Fond ${i + 1}` : "Fond", kind: "box", from: [a, y0, -f.thickness], to: [b, y1, 0] }));
   }
   if (f.fill === "doors") {
-    const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap) : [];
+    const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap, f.joined) : [];
     if (typeof doors === "string") return [];
     // In front of the panels; hinged on the side chosen, else on the left, then on the right, in turn (a pair opens from
     // the middle). The handle goes along the other edge.

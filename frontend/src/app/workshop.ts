@@ -6,19 +6,19 @@
  * production.ts.
  */
 import * as THREE from "three";
-import { barLength } from "../document/bars";
-import { cutList, cutListCsv, edgeText, grainText, type CutRow, type PartInput } from "../document/cut-list";
+import { withGrainRun, withoutGrainRun } from "../document/grain-run";
+import { cutList, cutListCsv, rowMatches, type CutRow, type CutTotals, type PartInput } from "../document/cut-list";
 import { bodyAppearance, faceAppearances } from "../appearance/assign";
 import { EDGE_BANDS, MATERIALS, bodyInfo, setBodyInfo } from "../document/materials";
 import { isHardwareBody } from "../document/hardware";
 import { importParts as placeParts, parsePartsCsv } from "../document/parts-import";
 import type { BodyInfo, CadDocument, DisplayUnit } from "../document/types";
-import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
 import type { FaceAppearance } from "../viewport/body-layer";
 import type { BodyAppearance, Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { downloadText, escapeHtml, floatingPanel, openModal, printHtml, type PrintPage } from "./workshop-ui";
+import { CUT_SHEET_CSS, cutSheetHtml } from "./cut-list-view";
+import { downloadText, floatingPanel, openModal, printHtml, type PrintPage } from "./workshop-ui";
 
 type Edges = NonNullable<BodyInfo["edges"]>;
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -36,26 +36,8 @@ export function partsOf(viewport: Viewport, doc: CadDocument): PartInput[] {
   return parts;
 }
 
-/** A length in the user's unit, without the unit (the table's header carries it). */
-const num = (mm: number, unit: DisplayUnit) => trim(toDisplay(mm, unit), unit === "mm" ? 1 : 2);
-
-const fr = (v: number, digits: number) => v.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const HEAD = ["Repère", "Pièce", "Qté", "L", "l", "Ép.", "Fil", "Chants", "Coupe L", "Coupe l", "Débit brut"];
-
-const rowHtml = (r: CutRow, i: number, unit: DisplayUnit) =>
-  `<tr data-row="${i}" title="Voir ces pièces dans le modèle"><td><b>${r.tag ?? ""}</b></td><td>${escapeHtml(r.names.join(", "))}${r.approximate ? " (≈)" : ""}</td><td>${r.quantity}</td><td>${num(r.length, unit)}</td><td>${num(r.width, unit)}</td><td>${num(r.thickness, unit)}</td><td>${grainText(r.grain)}</td><td>${edgeText(r.edges)}${r.band ? ` (${r.band} mm)` : ""}</td><td>${num(r.cutLength, unit)}</td><td>${num(r.cutWidth, unit)}</td><td>${r.roughLength !== undefined && r.roughWidth !== undefined && (r.roughLength !== r.cutLength || r.roughWidth !== r.cutWidth) ? `${num(r.roughLength, unit)} × ${num(r.roughWidth, unit)}` : "—"}</td></tr>`;
-
-/** The cut list grouped as OpenCutList's: one table per material and thickness, with its totals. */
-function tableHtml(rows: CutRow[], totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): string {
-  const groups = totals.map((t) => {
-    const own = rows.map((r, i) => [r, i] as const).filter(([r]) => r.material === t.material && r.thickness === t.thickness);
-    return `<h3>${escapeHtml(t.material)} ${formatLength(t.thickness, unit)} — ${t.parts} pièce${t.parts > 1 ? "s" : ""}, ${barLength(t.material) !== null ? `${fr(t.metres ?? 0, 2)} m bout à bout` : `${fr(t.area, 2)} m²`}${t.bandLength ? `, chant ${fr(t.bandLength, 1)} m` : ""}</h3><table><thead><tr>${HEAD.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${own.map(([r, i]) => rowHtml(r, i, unit)).join("")}</tbody></table>`;
-  });
-  return `${groups.join("")}<p>Dimensions en ${UNIT_LABELS[unit]}. Repère : la lettre de la pièce sur le calepinage et dans la vue (bouton « Repères des pièces »). L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits. Débit brut : le massif est scié avec sa surcote, puis raboté à la cote de coupe.</p>`;
-}
-
 /** The cut list as a document. */
-export const cutListPage = (rows: CutRow[], totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): PrintPage => ({ title: "Liste de débit", html: `<h1>Liste de débit</h1>${tableHtml(rows, totals, unit)}` });
+export const cutListPage = (rows: CutRow[], totals: CutTotals[], unit: DisplayUnit): PrintPage => ({ title: "Liste de débit", html: `<h1>Liste de débit</h1>${cutSheetHtml(rows, totals, unit)}`, css: CUT_SHEET_CSS });
 
 const RENDER_KEY = "cao.render-materials";
 
@@ -117,6 +99,12 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
       box.addEventListener("change", () => apply({ edges: { ...edges, [key]: box.checked } }));
       return el("label", { class: "flex items-center gap-1" }, box, name);
     });
+    const inRun = ids.some((id) => bodyInfo(editor.doc, id).grainRun);
+    const run = el("button", { type: "button", class: "h-8 w-full border border-gray-300 text-xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Au calepinage, ces pièces se suivent sur le panneau : le veinage continue de l'une à l'autre." }, inRun ? "Retirer le fil continu" : `Fil continu sur ces ${ids.length} pièces`);
+    run.addEventListener("click", () => {
+      const places = ids.map((id) => ({ id, box: viewport.bodyMesh(id)?.metrics.bbox }));
+      void editor.change(inRun ? withoutGrainRun(editor.doc, ids) : withGrainRun(editor.doc, places.flatMap(({ id, box }) => (box ? [{ id, box }] : [])))).then(renderMaterial);
+    });
     panel.body.append(
       el("p", { class: "text-gray-500" }, ids.length === 1 ? "1 corps" : `${ids.length} corps`),
       material,
@@ -125,6 +113,7 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
       band,
       el("p", { class: "text-[11px] text-gray-500" }, "L1/L2 : les deux grands côtés ; l1/l2 : les deux petits."),
     );
+    if (ids.length > 1 || inRun) panel.body.append(run);
   };
 
   const toggleMaterial = () => {
@@ -140,8 +129,8 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
   const showCutList = () => {
     const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
     if (!rows.length) return editor.notify("Aucun corps à lister.", "info");
-    const holder = el("div", { class: "text-xs [&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:font-semibold [&_tbody_tr]:cursor-pointer [&_tbody_tr:hover]:bg-amber-50 dark:[&_tbody_tr:hover]:bg-gray-800" });
-    holder.innerHTML = tableHtml(rows, totals, editor.unit);
+    const holder = el("div");
+    holder.innerHTML = `<style>${CUT_SHEET_CSS}</style>${cutSheetHtml(rows, totals, editor.unit)}`;
     // A row: its parts selected in the model (as OpenCutList's highlight), brought into view when out of it.
     holder.addEventListener("click", (event) => {
       const row = rows[Number((event.target as HTMLElement).closest<HTMLElement>("tr[data-row]")?.dataset.row ?? NaN)];
@@ -156,9 +145,29 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
       if (!box.isEmpty() && !viewport.boxVisible(box, 0.8)) viewport.fitBox(box, 1.6);
       editor.notify(`Pièce ${row.tag} : ${row.quantity} sélectionnée${row.quantity > 1 ? "s" : ""}.`, "info");
     });
+    const search = el("input", { type: "search", placeholder: "Filtrer : nom, repère, matière, mur…", "aria-label": "Filtrer la liste de débit", class: "h-9 w-full min-w-0 flex-1 border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900" });
+    const shown = el("p", { class: "shrink-0 text-xs text-gray-500", "data-cut-count": "" });
+    search.addEventListener("keydown", (event) => event.stopPropagation());
+    const filter = () => {
+      let parts = 0;
+      for (const tr of holder.querySelectorAll<HTMLElement>("tr[data-row]")) {
+        const row = rows[Number(tr.dataset.row)];
+        const on = !!row && rowMatches(row, search.value);
+        tr.hidden = !on;
+        if (on) parts += row.quantity;
+      }
+      // A card with nothing left goes.
+      for (const group of holder.querySelectorAll<HTMLElement>(".cut-group")) group.hidden = ![...group.querySelectorAll<HTMLElement>("tr[data-row]")].some((tr) => !tr.hidden);
+      shown.textContent = search.value.trim() ? `${parts} pièce${parts > 1 ? "s" : ""} trouvée${parts > 1 ? "s" : ""}.` : "";
+    };
+    search.addEventListener("input", filter);
+    holder.prepend(el("div", { class: "sticky top-0 z-10 flex h-11 items-center gap-3 bg-white pb-2 dark:bg-gray-900" }, search, shown));
     const close = openModal("Liste de débit", holder, [
       { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(rows, editor.unit)}`, "text/csv") },
-      { label: "Imprimer / PDF", run: () => printHtml("Liste de débit", `<h1>Liste de débit</h1>${tableHtml(rows, totals, editor.unit)}`) },
+      { label: "Imprimer / PDF", run: () => {
+        const page = cutListPage(rows, totals, editor.unit);
+        printHtml(page.title, page.html, page.css);
+      } },
       { label: "Fermer", run: () => close() },
     ]);
   };

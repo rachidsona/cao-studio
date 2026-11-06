@@ -23,6 +23,7 @@ import type { Editor } from "./editor";
 import { documentPlans, joineryPlans } from "./partition-plan";
 import { editDim } from "./dim-editor";
 import { PlanDimsView } from "./plan-dims-view";
+import { isolatedSketch } from "./zone-view";
 
 const KEY = "cao.piece-dims";
 const COLOR = 0xdc2626;
@@ -130,6 +131,8 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     const done = new Set<string>();
     const panels = viewport.displayedBodies.map((id) => ({ id, sketch: sketchOfBody(doc, id) }));
     for (const { sketch, plans } of documentPlans(doc)) {
+      const alone = isolatedSketch();
+      if (alone && sketch.id !== alone) continue;
       const own = panels.filter((p) => p.sketch === sketch.id).map((p) => p.id);
       const moved = own.filter((id) => findFeature(doc, featureOfBody(bodyOrigin(doc, id)))?.type === "extrude");
       if (!moved.length || (element && !moved.some((id) => element.has(featureOfBody(bodyOrigin(doc, id)))))) continue;
@@ -157,7 +160,9 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     const planned = drawPlans(element);
     // At work in a Répartition with the button off, or on a preview: the plan's dimensions alone.
     if (!on || joineryPlans.current?.some((w) => w.preview)) return;
+    const hidden = new Set(viewport.bodyMeshes().filter((m) => !m.visible).map((m) => m.userData.bodyId as string));
     const bodies = viewport.displayedBodies.filter((id) => {
+      if (hidden.has(id)) return false;
       const sketch = sketchOfBody(doc, id);
       return (!sketch || !planned.has(sketch)) && (!element || element.has(featureOfBody(bodyOrigin(doc, id))));
     });
@@ -165,7 +170,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     const toEye = viewport.camera.getWorldDirection(new THREE.Vector3()).negate();
     const up = viewport.camera.up.clone().applyQuaternion(viewport.camera.quaternion);
     const axes = viewAxes([toEye.x, toEye.y, toEye.z], [up.x, up.y, up.z]);
-    const meshes = viewport.bodyMeshes();
+    const meshes = viewport.bodyMeshes().filter((m) => m.visible);
     const nearest = bodies
       .map((id) => ({ id, box: boxOf(id) }))
       .filter((b): b is { id: string; box: Box } => !!b.box)

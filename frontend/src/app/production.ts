@@ -46,10 +46,12 @@ function sheetSvg(sheet: Sheet, index: number, unit: DisplayUnit): string {
       return `<g><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111"><title>${escapeHtml(p.name)}</title>${label}</text></g>`;
     })
     .join("");
+  // The fronts whose grain goes on, framed in violet.
+  const runs = (sheet.runs ?? []).map(([x, y, w, h]) => `<rect x="${x - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" fill="none" stroke="#7c3aed" stroke-width="6" stroke-dasharray="30 12"/>`).join("");
   // What is worth keeping, dashed in green.
   const kept = sheet.leftovers.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#dcfce7" stroke="#15803d" stroke-width="3" stroke-dasharray="18 10"/>`).join("");
   const what = sheet.offcut !== undefined ? `Chute du stock n° ${sheet.offcut}` : `Panneau ${index + 1}`;
-  return `<div class="sheet"><h3>${what} — ${escapeHtml(sheet.material)} ${num(sheet.thickness, unit)} ${UNIT_LABELS[unit]} (${num(W, unit)}×${num(H, unit)} ${UNIT_LABELS[unit]}), chutes ${Math.round((1 - sheet.usage) * 100)} %${sheet.leftovers.length ? `, ${sheet.leftovers.length} à garder (en vert)` : ""}</h3><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${kept}${rects}</svg></div>`;
+  return `<div class="sheet"><h3>${what} — ${escapeHtml(sheet.material)} ${num(sheet.thickness, unit)} ${UNIT_LABELS[unit]} (${num(W, unit)}×${num(H, unit)} ${UNIT_LABELS[unit]}), chutes ${Math.round((1 - sheet.usage) * 100)} %${sheet.leftovers.length ? `, ${sheet.leftovers.length} à garder (en vert)` : ""}</h3><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#fff" stroke="#111" stroke-width="4"/>${kept}${rects}${runs}</svg></div>`;
 }
 
 /** A bar of battens: its parts end to end (with their mark and length), what is left hatched. */
@@ -74,13 +76,13 @@ const purchaseHtml = (sheets: Sheet[], rows: CutRow[], hardware: { name: string;
 /** The sheets of a project and what to buy, using the stock of offcuts when it can be read. */
 export async function layoutFiles(rows: CutRow[], hardware: { name: string; quantity: number; unit?: string }[], unit: DisplayUnit): Promise<{ page: PrintPage; purchase: string; sheets: number }> {
   const pieces = await stock().catch((): StockPiece[] => []);
-  const { sheets, tooBig } = layoutSheets(rows, undefined, pieces);
+  const { sheets, tooBig, brokenRuns } = layoutSheets(rows, undefined, pieces);
   const { bars, tooLong } = layoutBars(rows);
   const out = [...tooBig, ...tooLong];
   return {
     page: {
       title: "Calepinage",
-      html: `<h1>Calepinage</h1>${sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}${bars.map((b, i) => barSvg(b, i, unit)).join("")}${out.length ? `<p>À revoir, trop grandes pour leur panneau ou leur barre : ${escapeHtml(out.join(", "))}.</p>` : ""}<h2>Liste d'achat</h2>${purchaseHtml(sheets, rows, hardware, bars)}`,
+      html: `<h1>Calepinage</h1>${sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}${bars.map((b, i) => barSvg(b, i, unit)).join("")}${brokenRuns.length ? `<p>Fil continu impossible, rangée trop grande pour son panneau : ${escapeHtml(brokenRuns.join(" ; "))}.</p>` : ""}${out.length ? `<p>À revoir, trop grandes pour leur panneau ou leur barre : ${escapeHtml(out.join(", "))}.</p>` : ""}<h2>Liste d'achat</h2>${purchaseHtml(sheets, rows, hardware, bars)}`,
     },
     purchase: purchaseCsv(purchaseList(sheets, rows, hardware, bars)),
     sheets: sheets.length,
@@ -108,7 +110,7 @@ async function showLayout(editor: Editor, title: string, rows: CutRow[], hardwar
   const cut = layoutBars(rows);
   const draw = () => {
     result = layoutSheets(rows, undefined, toggle.checked ? pieces : []);
-    const { sheets, tooBig } = result;
+    const { sheets, tooBig, brokenRuns } = result;
     const used = sheets.filter((s) => s.offcut !== undefined).length;
     const fresh = sheets.length - used;
     const { bars, tooLong } = cut;
@@ -116,6 +118,7 @@ async function showLayout(editor: Editor, title: string, rows: CutRow[], hardwar
       sheets.map((sheet, i) => sheetSvg(sheet, i, unit)).join("") +
       bars.map((bar, i) => barSvg(bar, i, unit)).join("") +
       (tooBig.length ? `<p>Trop grandes pour leur panneau : ${escapeHtml(tooBig.join(", "))}.</p>` : "") +
+      (brokenRuns.length ? `<p>Fil continu impossible, rangée trop grande pour son panneau : ${escapeHtml(brokenRuns.join(" ; "))}.</p>` : "") +
       (tooLong.length ? `<p>Plus longues que leur barre : ${escapeHtml(tooLong.join(", "))}.</p>` : "");
     const board = el("div");
     board.innerHTML = html || "<p>Rien à placer.</p>";

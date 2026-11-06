@@ -25,6 +25,7 @@ import { NicheHeightTool } from "./niche-height-tool";
 import { nicheUnderPointer } from "./niche-pick";
 import { NicheTool, type NicheFill } from "./niche-tool";
 import { joineryPlans, plansOf } from "./partition-plan";
+import { isolatedSketch } from "./zone-view";
 import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
 
@@ -52,9 +53,9 @@ export interface JoineryHost {
 /** The sketch that holds a répartition: the one chosen, else the last one. */
 export function partitionHolder(doc: CadDocument, selected: string | null): SketchFeature | undefined {
   const holders = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && (f.offsets ?? []).some(isPartition));
-  // A panel or an equipment selected stands for its sketch.
+  // A wall isolated comes first; a panel or an equipment selected stands for its sketch.
   const chosen = selected ? findFeature(doc, selected) : undefined;
-  const sketch = chosen?.type === "extrude" || chosen?.type === "niche" ? chosen.sketch : selected;
+  const sketch = isolatedSketch() ?? (chosen?.type === "extrude" || chosen?.type === "niche" ? chosen.sketch : selected);
   return holders.find((f) => f.id === sketch) ?? holders[holders.length - 1];
 }
 

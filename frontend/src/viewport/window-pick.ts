@@ -39,6 +39,7 @@ export function windowPick(start: ScreenPoint, end: ScreenPoint, scene: WindowSc
   // A crossing window inside a single face touches no edge: the body under its centre is taken too.
   const center = mode === "crossing" ? scene.bodyAt((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2) : null;
   const bodies = [...scene.bodies.values()].filter(({ data, mesh }) => {
+    if (!mesh.visible) return false;
     if (data.bodyId === center) return true;
     const lines: THREE.Vector3[][] = [];
     for (let i = 0; i + 5 < data.edges.length; i += 6) {

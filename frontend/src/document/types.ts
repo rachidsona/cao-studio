@@ -594,6 +594,8 @@ export interface NicheFeature extends FeatureBase {
   sideGap?: number;
   /** Doors: the side of the hinges of each one, from the left (missing: in turn, left first). */
   hinges?: ("left" | "right")[];
+  /** Doors: the cases sharing one door with the next one. */
+  joined?: number[];
   /** Doors: flat, or a frame round a panel set back (routed in one piece), its width and the panel's set-back (mm). */
   style?: "flat" | "frame";
   frameWidth?: number;
@@ -755,6 +757,8 @@ export interface BodyInfo {
   room?: boolean;
   /** A light (LED strip, spot) of the « Éclairage » tool: it lights the render (document/lighting.ts). */
   light?: { kind: "strip" | "spot"; color: "warm" | "neutral" | "cool"; up?: boolean };
+  /** A run of fronts whose grain goes on from one to the next: which run, and its place along it. */
+  grainRun?: { id: string; at: number };
   /** Appearance from the library (appearance/library.ts), over the material's own; the view and the render only. */
   appearance?: string;
   /** Colour chosen for a paintable appearance (sRGB hex "#rrggbb"). */

@@ -11,7 +11,7 @@ import { removeStep } from "./shelf-removal";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, NicheFeature, SketchFeature } from "./types";
 import { nicheGeometry, nicheProblem } from "../features/niche-parts";
-import { extrusionGroups, idsFrom, isPartition, isShelves, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
+import { columnPath, extrusionGroups, idsFrom, isPartition, isShelves, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
 
 type Equipment = Omit<NicheFeature, "id" | "name" | "sketch" | "partition" | "niche">;
 
@@ -33,17 +33,7 @@ const divisionsIn = (sketch: SketchFeature, { partition, path }: Pick<NichePlace
 const fillsIn = (doc: CadDocument, { sketch, partition, path }: NichePlace) => doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === sketch && f.partition === partition && (f.fill === "rod" || f.fill === "drawers") && inside(f.niche, path));
 
 /** The column a niche is part of: from a niche between two shelves, the whole of what those shelves divide. */
-export function columnOf(doc: CadDocument, place: NichePlace): NichePlace {
-  const sketch = findFeature(doc, place.sketch) as SketchFeature;
-  let path = place.path;
-  while (path.length > 1) {
-    const above = path.slice(0, -1);
-    const division = divisionsIn(sketch, { partition: place.partition, path: above }).find((r) => pathKey(r.step.niche) === pathKey(above));
-    if (division?.step.input.vertical) break;
-    path = above;
-  }
-  return { ...place, path };
-}
+export const columnOf = (doc: CadDocument, place: NichePlace): NichePlace => ({ ...place, path: columnPath(findFeature(doc, place.sketch) as SketchFeature, place.partition, place.path) });
 
 /** What this niche holds; empty when it holds nothing. */
 export function readRecipe(doc: CadDocument, place: NichePlace): NicheRecipe {

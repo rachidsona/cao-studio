@@ -242,6 +242,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["rod", "drawers", "doors", "back"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
+      if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
       if (feature.style !== undefined && feature.style !== "flat" && feature.style !== "frame") errors.push(`${where} : style de porte inconnu.`);
       for (const key of ["frameWidth", "frameDepth"]) if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : « ${key} » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);

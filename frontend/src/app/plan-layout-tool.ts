@@ -22,7 +22,7 @@ import type { Editor } from "./editor";
 import { paintPrice } from "./live-price";
 import { needsPanel } from "./plan-needs-panel";
 import { wallsSection } from "./plan-walls-panel";
-import { showAll, viewZone } from "./zone-view";
+import { isolatedSketch, isolateZone, showAll } from "./zone-view";
 
 const SVG = "http://www.w3.org/2000/svg";
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -72,8 +72,6 @@ export class PlanLayoutTool {
   private editing = false;
   /** The needs of the client are being typed. */
   private needing = false;
-  /** A zone is alone in sight. */
-  private viewing = false;
   /** The free zone being filled, the width asked for its cases (mm), and whether what is left goes at its start. */
   private filling: PlanZone | null = null;
   private fillWidth = 600;
@@ -84,8 +82,6 @@ export class PlanLayoutTool {
     private readonly editor: Editor,
     container: HTMLElement,
     private readonly closed: () => void,
-    /** A zone to see alone, or everything again. */
-    private readonly onView: (plan: DressingPlan, zone: string | null) => void,
     /** The sketch of the plan to show; absent: the one of the project. */
     readonly chosen?: string,
   ) {
@@ -313,18 +309,16 @@ export class PlanLayoutTool {
         this.filling = zone;
         this.draw();
       });
-      const see = el("button", { type: "button", class: SMALL, title: "Vue de face sur cette zone, le reste caché" }, "Voir");
+      const see = el("button", { type: "button", class: SMALL, title: "Isole cette zone, de face, avec ses cotes, pour y travailler" }, "Voir");
       see.addEventListener("click", () => {
-        this.viewing = true;
-        this.onView(plan, zone.id);
+        isolateZone(plan, zone.id, zone.label);
         this.draw();
       });
       return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go);
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
     showAllButton.addEventListener("click", () => {
-      this.viewing = false;
-      this.onView(plan, null);
+      showAll();
       this.draw();
     });
     const needs = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Remplir selon les besoins");
@@ -348,7 +342,7 @@ export class PlanLayoutTool {
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done, this.marks(plan))),
       el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
       el("ul", { class: "space-y-1", "aria-label": "Zones du plan" }, ...zones.map(row)),
-      this.viewing ? showAllButton : null,
+      isolatedSketch() ? showAllButton : null,
       needs,
       ...this.sliding(planId, plan, zones),
       ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
@@ -463,8 +457,7 @@ export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Ed
   let tool: PlanLayoutTool | null = null;
   const open = (chosen?: string) => {
     tool?.close();
-    const see = (plan: DressingPlan, zone: string | null) => (zone ? viewZone(viewport, editor.doc, plan, zone) : showAll(viewport));
-    tool = new PlanLayoutTool(editor, container, () => (tool = null), see, chosen);
+    tool = new PlanLayoutTool(editor, container, () => (tool = null), chosen);
   };
   /** A sketch chosen: when it is a plan, its tool, unless it is the one open or another tool is at work in a sketch. */
   const show = (id: string | null | undefined) => {

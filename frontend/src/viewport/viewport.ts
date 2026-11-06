@@ -367,7 +367,7 @@ export class Viewport {
   /** Face of a displayed body under the pointer. */
   pickFace(event: PointerEvent): FacePick | null {
     this.rayFromEvent(event);
-    const hit = this.raycaster.intersectObjects(this.layer.meshes(), false)[0];
+    const hit = this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0];
     if (!hit || hit.faceIndex === undefined || hit.faceIndex === null) return null;
     const bodyId = hit.object.userData.bodyId as string;
     const groups = this.bodies.get(bodyId)?.data.faceGroups ?? [];
@@ -382,11 +382,10 @@ export class Viewport {
    * among those not hidden behind a face.
    */
   pickEdge(event: PointerEvent): EdgePick | null {
-    const lines = [...this.bodies.values()].map((b) => b.edges);
-    const hits = this.intersect(event, lines, 16);
+    const hits = this.intersect(event, this.layer.shownEdges(), 16);
     if (hits.length === 0) return null;
     // The first face under the pointer: an edge farther than it (beyond a margin of a few pixels) is hidden.
-    const face = this.raycaster.intersectObjects(this.layer.meshes(), false)[0];
+    const face = this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0];
     const pixelAt = (depth: number) => (2 * depth * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)) / (this.renderer.domElement.clientHeight || 1);
     const hidden = face ? face.distance + 24 * pixelAt(face.distance) : Infinity;
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -526,7 +525,7 @@ export class Viewport {
       sketches: this.sketches.polylines(),
       bodyAt: (x, y) => {
         this.raycaster.setFromCamera(new THREE.Vector2((x / canvas.clientWidth) * 2 - 1, 1 - (y / canvas.clientHeight) * 2), this.camera);
-        return (this.raycaster.intersectObjects(this.layer.meshes(), false)[0]?.object.userData.bodyId as string | undefined) ?? null;
+        return (this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0]?.object.userData.bodyId as string | undefined) ?? null;
       },
     });
     this.selection.addWindow(taken.bodies, taken.sketches);

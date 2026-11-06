@@ -149,6 +149,21 @@ export class BodyLayer {
     return [...this.bodies.values()].map((b) => b.mesh);
   }
 
+  /** The bodies in sight: a ray goes through the hidden ones, as the eye does. */
+  private shown(): BodyObject[] {
+    return [...this.bodies.values()].filter((b) => b.mesh.visible);
+  }
+
+  /** The meshes a pick can hit. */
+  shownMeshes(): THREE.Mesh[] {
+    return this.shown().map((b) => b.mesh);
+  }
+
+  /** The edges a pick can hit. */
+  shownEdges(): THREE.Object3D[] {
+    return this.shown().map((b) => b.edges);
+  }
+
   /** A rotation (row-major 3×3) and a translation applied to a body's mesh and edges; null puts it back. */
   setPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void {
     const body = this.bodies.get(bodyId);
@@ -257,10 +272,10 @@ export class BodyLayer {
     for (const material of this.materials()) this.fade(material);
   }
 
-  /** Corners of the displayed bodies (model coordinates, mm), merged by position. */
+  /** Corners of the bodies in sight (model coordinates, mm), merged by position. */
   vertices(): Point3[] {
     const all: Point3[] = [];
-    for (const body of this.bodies.values()) for (const p of bodyVertices(body.data)) addDistinct(all, p);
+    for (const body of this.shown()) for (const p of bodyVertices(body.data)) addDistinct(all, p);
     return all;
   }
 
@@ -271,7 +286,7 @@ export class BodyLayer {
   vertexNear(camera: THREE.Camera, size: { width: number; height: number }, px: number, py: number, reach: number): { bodyId: string; point: Point3 } | null {
     let best: { pick: { bodyId: string; point: Point3 }; screen: number; depth: number } | null = null;
     const v = new THREE.Vector3();
-    for (const body of this.bodies.values()) {
+    for (const body of this.shown()) {
       for (const point of bodyVertices(body.data)) {
         v.set(...point).project(camera);
         if (v.z < -1 || v.z > 1) continue;
@@ -295,10 +310,11 @@ export class BodyLayer {
     return hit ? hit.distance + 1e-3 : null;
   }
 
-  /** Box around the bodies (a default box when there is none). */
+  /** Box around the bodies in sight (a default box when there is none). */
   bounds(): THREE.Box3 {
     const box = new THREE.Box3();
-    for (const body of this.bodies.values()) box.expandByObject(body.mesh);
+    const shown = this.shown();
+    for (const body of shown.length ? shown : this.bodies.values()) box.expandByObject(body.mesh);
     if (box.isEmpty()) box.set(new THREE.Vector3(-50, -50, 0), new THREE.Vector3(50, 50, 10));
     return box;
   }

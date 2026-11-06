@@ -10,7 +10,10 @@ import { readWall, withWall } from "../../frontend/src/document/wall-templates";
 import { createReferencePlate, type CadDocument, type DressingPlan, type ExtrudeFeature, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { partitionHolder } from "../../frontend/src/app/joinery-3d";
 import { partitionLayout } from "../../frontend/src/sketcher/partition";
-import { isPartition, isShelves, leafNiches, pathKey, rebuildChain } from "../../frontend/src/sketcher/partition-history";
+import { alignedInputs, partBox, shelfLayout, type NicheBox, type ShelfInput } from "../../frontend/src/sketcher/shelves";
+import { extrusionGroups, isPartition, isShelves, leafNiches, nicheSpans, pathKey, rebuildChain, rehomedPath, shelvesRecord, withCloisonsThrough, withDivisionUnder } from "../../frontend/src/sketcher/partition-history";
+import { moduleOfNiche } from "../../frontend/src/document/module-edit";
+import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
 
 const plan = (patch: Partial<DressingPlan> = {}): DressingPlan => ({ ...PLAN, model: "I", lengthA: 2700, ...patch });
 const sketchOf = (doc: CadDocument, id: string) => doc.features.find((f) => f.id === id) as SketchFeature;
@@ -103,6 +106,157 @@ describe("le mur d'un outil de niche", () => {
     expect(partitionHolder(both, panel.id)?.id).toBe(sketch);
     expect(partitionHolder(both, sketch)?.id).toBe(sketch);
     expect(partitionHolder(both, null)?.id).toBe(other.sketch);
+  });
+});
+
+describe("cloison dans la niche mère", () => {
+  const cloison = (id: string, of: string, path: number[]) => shelvesRecord(id, "Cloisons 1", of, path, { count: 1, thickness: 18, mode: "equal", fixed: 300, vertical: true }, 600);
+  const moved = (keep: number) => {
+    const { doc, sketch, partition } = wall();
+    const g = sketchOf(doc, sketch);
+    const offsets = withDivisionUnder(g.offsets!, partition, [0], keep, cloison("of-new", partition, [0]));
+    const rebuilt = rebuildChain({ ...g, offsets }, partition);
+    if (typeof rebuilt === "string") throw new Error(rebuilt);
+    const next = withSketchExtrusion(doc, sketch, rebuilt.geometry, { groups: extrusionGroups(g.offsets ?? [], rebuilt), repath: [{ partition, path: (p) => rehomedPath(p, [0], keep) }] });
+    return { next, sketch, partition, rebuilt, offsets };
+  };
+
+  it("garde les étagères et les tiroirs d'un côté, l'autre côté est une niche vide", () => {
+    const { next, sketch, partition, rebuilt, offsets } = moved(0);
+    expect(rebuilt.problems).toEqual([]);
+    expect(offsets.findIndex((r) => r.id === "of-new")).toBeLessThan(offsets.findIndex((r) => isShelves(r) && r.id !== "of-new"));
+    expect(offsets.filter((r) => isShelves(r) && r.id !== "of-new").every((r) => isShelves(r) && r.step.niche.slice(0, 2).join() === "0,0")).toBe(true);
+    expect(emptyRecipe(readRecipe(next, { sketch, partition, path: [0, 1] }))).toBe(true);
+    expect(emptyRecipe(readRecipe(next, { sketch, partition, path: [0, 0] }))).toBe(false);
+    expect(next.features.filter((f): f is NicheFeature => f.type === "niche").every((f) => f.niche.slice(0, 2).join() === "0,0")).toBe(true);
+    const whole = rebuilt.niches.get("0")!.box;
+    const shelf = rebuilt.niches.get("0.0.1.0")!.box;
+    expect(shelf.x1 - shelf.x0).toBeCloseTo((whole.x1 - whole.x0 - 18) / 2, 3);
+  });
+
+  it("peut les garder à droite", () => {
+    const { next, sketch, partition } = moved(1);
+    expect(emptyRecipe(readRecipe(next, { sketch, partition, path: [0, 0] }))).toBe(true);
+    expect(emptyRecipe(readRecipe(next, { sketch, partition, path: [0, 1] }))).toBe(false);
+  });
+
+  it("ne garde pas de corps en trop, et Module relit encore la colonne", () => {
+    const { doc, sketch, partition } = wall();
+    const count = (d: CadDocument) => d.features.filter((f) => f.type === "extrude" && f.sketch === sketch).length;
+    const { next } = moved(0);
+    expect(count(next)).toBe(count(doc) + 1);
+    expect(moduleOfNiche(next, sketchOf(next, sketch), partition, [0, 0, 0])?.kind).toBe("drawers");
+  });
+});
+
+describe("cloison à travers les étagères", () => {
+  /** A case of 5 shelves, its 6 niches, then this run of them. */
+  const stacked = () => {
+    const { doc, sketch, partition } = wall();
+    const added = withRecipe(doc, { sketch, partition, path: [1] }, { steps: [{ at: [], input: { count: 5, thickness: 18, mode: "equal", fixed: 0 } }], equipment: [] });
+    if (typeof added === "string") throw new Error(added);
+    return { doc: added, sketch, partition, g: sketchOf(added, sketch) };
+  };
+  const through = (g: SketchFeature, partition: string, from: number, to: number, keep = 0) => {
+    let n = 0;
+    const made = withCloisonsThrough(
+      g,
+      { partition, parent: [1], from, to },
+      (niche) => shelvesRecord(`new-${n++}`, "Cloisons 9", partition, niche, { count: 1, thickness: 18, mode: "equal", fixed: 300, vertical: true }, 600),
+      (niche, input) => shelvesRecord(`new-${n++}`, "Étagères 9", partition, niche, input, 600),
+      keep,
+    );
+    if (typeof made === "string") throw new Error(made);
+    const rebuilt = rebuildChain({ ...g, offsets: made.offsets }, partition);
+    if (typeof rebuilt === "string") throw new Error(rebuilt);
+    return { ...made, rebuilt };
+  };
+
+  it("trouve les niches voisines l'une au-dessus de l'autre, pas celles qui sont séparées", () => {
+    const { g, partition } = stacked();
+    const made = rebuildChain(g, partition);
+    if (typeof made === "string") throw new Error(made);
+    const box = (k: number) => made.niches.get(`1.${k}`)!.box;
+    const [span] = nicheSpans(g, [box(1), box(2), box(3)]);
+    expect(span).toMatchObject({ parent: [1], from: 1, to: 3 });
+    expect(span!.box).toEqual({ x0: box(1).x0, y0: box(1).y0, x1: box(1).x1, y1: box(3).y1 });
+    expect(nicheSpans(g, [box(1), box(3)])).toEqual([]);
+    expect(nicheSpans(g, [box(1), made.niches.get("0")!.box])).toEqual([]);
+  });
+
+  it("coupe les deux étagères du milieu, garde celles du bord et les hauteurs", () => {
+    const { g, partition } = stacked();
+    const before = rebuildChain(g, partition);
+    if (typeof before === "string") throw new Error(before);
+    const { rebuilt } = through(g, partition, 2, 4);
+    expect(rebuilt.problems).toEqual([]);
+    const shelf = (k: number) => before.niches.get(`1.${k}`)!.box.y1;
+    // The cloison goes from the shelf under the run to the shelf above it.
+    const whole = rebuilt.niches.get("1.2")!.box;
+    expect(whole.y0).toBeCloseTo(before.niches.get("1.2")!.box.y0, 3);
+    expect(whole.y1).toBeCloseTo(before.niches.get("1.4")!.box.y1, 3);
+    // Left and right: the two middle shelves, cut, at the heights they had.
+    for (const side of [0, 1]) {
+      expect(rebuilt.niches.get(`1.2.${side}.0`)!.box.y1).toBeCloseTo(shelf(2), 3);
+      expect(rebuilt.niches.get(`1.2.${side}.1`)!.box.y1).toBeCloseTo(shelf(3), 3);
+      expect(rebuilt.niches.get(`1.2.${side}.2`)!.box.y1).toBeCloseTo(shelf(4), 3);
+    }
+    // Above the run, nothing moved.
+    expect(rebuilt.niches.get("1.3")!.box).toEqual(before.niches.get("1.5")!.box);
+    expect(rebuilt.niches.get("1.1")!.box).toEqual(before.niches.get("1.1")!.box);
+  });
+
+  it("garde dans la bonne niche ce que les niches contenaient", () => {
+    const { g, partition } = stacked();
+    const { repath } = through(g, partition, 2, 4);
+    expect(repath([1, 3, 0])).toEqual([1, 2, 0, 1, 0]);
+    expect(repath([1, 5])).toEqual([1, 3]);
+    expect(repath([1, 0])).toEqual([1, 0]);
+    expect(repath([0, 3])).toEqual([0, 3]);
+    expect(through(g, partition, 2, 4, 1).repath([1, 3])).toEqual([1, 2, 1, 1]);
+  });
+
+  it("toute la colonne : la division disparaît, ses corps partent avec elle", () => {
+    const { g, partition } = stacked();
+    const { rebuilt, removed, offsets } = through(g, partition, 0, 5);
+    expect(rebuilt.problems).toEqual([]);
+    expect(removed.length).toBe(5);
+    expect(rebuilt.niches.get("1.0.4")).toBeDefined();
+    expect(offsets.some((r) => isShelves(r) && !r.id.startsWith("new-") && r.step.niche[0] === 1)).toBe(false);
+  });
+});
+
+describe("cloisons sur une même ligne", () => {
+  const equal: ShelfInput = { count: 1, thickness: 18, mode: "equal", fixed: 300, vertical: true };
+  const places = (box: NicheBox, input: ShelfInput) => {
+    const layout = shelfLayout(box, input);
+    if (typeof layout === "string") throw new Error(layout);
+    return layout.shelves.map((span) => partBox(box, span, layout).x0);
+  };
+
+  it("place la cloison de la grande niche sur celle de la plus étroite, comme sur la capture", () => {
+    const wide: NicheBox = { x0: 0, y0: 0, x1: 2946, y1: 380 };
+    const narrow: NicheBox = { x0: 1482, y0: 400, x1: 2946, y1: 800 };
+    const [a, b] = alignedInputs([wide, narrow], equal);
+    expect(b).toEqual(equal);
+    expect(places(wide, a!)[0]).toBeCloseTo(places(narrow, b!)[0]!, 6);
+  });
+
+  it("aligne plusieurs cloisons, et respecte la place fixe de la plus étroite", () => {
+    const wide: NicheBox = { x0: 0, y0: 0, x1: 3000, y1: 380 };
+    const narrow: NicheBox = { x0: 900, y0: 400, x1: 2100, y1: 800 };
+    for (const input of [{ ...equal, count: 2 }, { ...equal, mode: "bottom" as const }]) {
+      const [a] = alignedInputs([wide, narrow], input);
+      const line = places(narrow, input);
+      places(wide, a!).forEach((x, i) => expect(x).toBeCloseTo(line[i]!, 6));
+    }
+  });
+
+  it("laisse les niches de même largeur et celles que la ligne ne traverse pas", () => {
+    const same: NicheBox[] = [{ x0: 0, y0: 0, x1: 1000, y1: 300 }, { x0: 0, y0: 320, x1: 1000, y1: 600 }];
+    expect(alignedInputs(same, equal)).toEqual([equal, equal]);
+    const apart: NicheBox[] = [{ x0: 0, y0: 0, x1: 500, y1: 300 }, { x0: 2000, y0: 320, x1: 3000, y1: 600 }];
+    expect(alignedInputs(apart, equal)).toEqual([equal, equal]);
   });
 });
 

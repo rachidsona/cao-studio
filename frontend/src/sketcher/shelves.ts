@@ -124,3 +124,36 @@ export function addShelves(base: SketchGeometry, box: NicheBox, layout: ShelfLay
   for (const [from, to] of shelfLines(box, layout)) g = addLine(g, { at: from }, { at: to }, { autoAlign: false }).geometry;
   return g;
 }
+
+/**
+ * Cloisons of niches of different widths on one straight line, as on a plan: the narrowest niche says where they go, by
+ * its own settings; the other niches take the sizes that bring theirs to the same places. A niche the line misses keeps
+ * its own, and so do niches that do not stand one above the other. Each niche with its settings, in the same order.
+ */
+export function alignedInputs(boxes: readonly NicheBox[], input: ShelfInput): ShelfInput[] {
+  const narrowest = boxes.reduce<NicheBox | undefined>((best, b) => (!best || b.x1 - b.x0 < best.x1 - best.x0 ? b : best), undefined);
+  const layout = narrowest ? shelfLayout(narrowest, input) : null;
+  if (!narrowest || !layout || typeof layout === "string") return boxes.map(() => input);
+  const places = layout.shelves.map((span) => partBox(narrowest, span, layout).x0);
+  return boxes.map((box) => {
+    if (box === narrowest || box.x1 - box.x0 === narrowest.x1 - narrowest.x0) return input;
+    const sizes = places.map((x, i) => x - (i ? (places[i - 1] as number) + input.thickness : box.x0));
+    const last = (places.at(-1) as number) + input.thickness;
+    return sizes.every((size) => size > 0) && box.x1 - last > 0 ? { ...input, mode: "set" as const, heights: [...sizes, null] } : input;
+  });
+}
+
+/**
+ * What a quick entry asks for: « *3 » three pieces, « /4 » four equal spaces, « 30;40 » these spaces then what is left
+ * (in the unit shown, turned into mm by `mm`). Null: nothing of the sort.
+ */
+export function quickDivision(text: string, mm: (value: number) => number): Pick<ShelfInput, "count" | "mode" | "heights"> | null {
+  const entry = text.trim().replace(/\s+/g, "");
+  const many = /^\*(\d+)$/.exec(entry);
+  const spaces = /^\/(\d+)$/.exec(entry);
+  const count = many ? Number(many[1]) : spaces ? Number(spaces[1]) - 1 : null;
+  if (count !== null) return count >= 1 && count <= MAX_SHELVES ? { count, mode: "equal", heights: [] } : null;
+  const parts = entry.split(";").filter(Boolean).map((v) => Number(v.replace(",", ".")));
+  if (!parts.length || !entry.includes(";") && !/^[\d.,]+$/.test(entry) || parts.length > MAX_SHELVES || !parts.every((v) => Number.isFinite(v) && v > 0)) return null;
+  return { count: parts.length, mode: "set", heights: [...parts.map(mm), null] };
+}

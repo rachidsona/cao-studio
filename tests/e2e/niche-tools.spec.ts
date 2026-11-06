@@ -114,6 +114,7 @@ test("voir un mur, mes murs, style du dressing", async ({ page }) => {
   await tool.getByRole("button", { name: "Voir" }).click();
   await expect(tool.getByRole("button", { name: "Tout montrer" })).toBeVisible();
   await tool.getByRole("button", { name: "Tout montrer" }).click();
+  await expect(page.locator("[data-zone-isolated]")).toHaveCount(0);
 
   await tool.getByRole("button", { name: "Garder" }).click();
   await expect(page.getByText(/^Mur gardé/)).toBeVisible();
@@ -177,5 +178,187 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   const view = (await page.locator("canvas.cad-view").boundingBox())!;
   await page.mouse.click(view.x + view.width * 0.38, view.y + view.height * 0.55);
   await expect(page.getByRole("dialog", { name: "Module" })).toContainText("Modifier : Étagères");
+  expect(errors).toEqual([]);
+});
+
+test("Voir isole un mur : seul avec ses cotes, et il le reste pendant le travail", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Isoler e2e");
+  await click(page, '[data-workshop="dressing-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de dressing" });
+  await tool.getByRole("button", { name: "En U", exact: true }).click();
+  await tool.getByLabel("Dessiner les murs").check();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.getByRole("button", { name: "Remplir", exact: true }).first().click();
+  await tool.getByRole("button", { name: /caissons? / }).first().click();
+  await expect(tool.getByRole("button", { name: "Voir" }).first()).toBeVisible();
+  await tool.getByRole("button", { name: "Remplir", exact: true }).first().click();
+  await tool.getByRole("button", { name: /caissons? / }).first().click();
+  await tool.getByRole("button", { name: "Voir" }).first().click();
+  const bar = page.locator("[data-zone-isolated]");
+  await expect(bar).toContainText("Mur A isolé");
+  await page.waitForTimeout(800);
+  const shown = await page.evaluate(() => document.querySelectorAll(".cad-piece-dim").length);
+  expect(shown).toBe(0);
+  await expect(page.locator(".cad-plan-dim").first()).toBeVisible();
+
+  // A tool from the ribbon works on that wall, and the wall stays alone after its OK.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  // Through an empty niche, the hidden wall behind it is neither lit nor picked.
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(page.locator('[data-ref="status-selection"]')).toHaveText("Aucune sélection");
+  await click(page, '[data-action="module"]');
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  const mod = page.getByRole("dialog", { name: "Module" });
+  await expect(mod).toContainText("Niche choisie");
+  await mod.getByRole("button", { name: "OK", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+  await expect(bar).toContainText("Mur A isolé");
+  await bar.getByRole("button", { name: "Tout montrer" }).click();
+  await expect(bar).toHaveCount(0);
+  await page.waitForTimeout(500);
+  expect(errors).toEqual([]);
+});
+
+test("Cloisons coupe la niche mère : les étagères restent d'un côté, l'autre devient vide", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Niche mère e2e");
+  const { at } = await ready(page);
+  const [mx, my] = at(0.38, 0.55);
+  await page.mouse.click(mx, my, { button: "right" });
+  await page.getByRole("menuitem", { name: "Étagères" }).click();
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await shelves.getByRole("combobox").first().selectOption("3");
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1000);
+
+  await page.mouse.click(mx, my, { button: "right" });
+  await page.getByRole("menuitem", { name: "Cloisons" }).click();
+  const cloisons = page.getByRole("dialog", { name: "Cloisons" });
+  const niche = await cloisons.innerText();
+  await cloisons.getByLabel("Couper toute la niche mère").check();
+  await expect(cloisons).not.toHaveText(niche);
+  await expect(cloisons.getByLabel("Ce qu'elle contient va")).toHaveValue("left");
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  await expect(tree(page).getByText("Étagères", { exact: true }).first().locator("..")).toContainText("3");
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
+test("une cloison à travers trois niches coupe les deux étagères entre elles", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Cloison à travers e2e");
+  const { at } = await ready(page);
+  await page.mouse.click(...at(0.38, 0.5), { button: "right" });
+  await page.getByRole("menuitem", { name: "Étagères" }).click();
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await shelves.getByRole("combobox").first().selectOption("5");
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1200);
+
+  await click(page, '[data-action="cloisons"]');
+  const cloisons = page.getByRole("dialog", { name: "Cloisons" });
+  for (const y of [0.37, 0.47, 0.57]) {
+    await page.mouse.move(...at(0.38, y));
+    await page.waitForTimeout(250);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+  }
+  await expect(cloisons).toContainText("3 niches choisies");
+  await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
+  // 5 shelves: 3 stay whole, the 2 of the middle are cut in two.
+  await expect(tree(page).getByText("Étagères", { exact: true }).first().locator("..")).toContainText("7");
+
+  // The right half of a row and the whole row under it: their cloisons on one straight line.
+  await click(page, '[data-action="cloisons"]');
+  const line = page.getByRole("dialog", { name: "Cloisons" });
+  for (const [x, y] of [[0.46, 0.37], [0.46, 0.47], [0.38, 0.65]] as const) {
+    await page.mouse.move(...at(x, y));
+    await page.waitForTimeout(250);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+  }
+  await expect(line.getByLabel("Cloisons alignées sur une seule ligne")).toBeChecked();
+  await expect(line).toContainText("Cloisons sur une même ligne");
+  await line.getByRole("button", { name: "OK", exact: true }).click();
+  await line.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
+test("façades communes, chants d'un clic et modèle d'étiquette", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Atelier e2e");
+  const { at } = await ready(page);
+
+  // One door over two cases, from the view.
+  await click(page, '[data-workshop="door-fronts"]');
+  const fronts = page.getByRole("dialog", { name: "Façades communes" });
+  await expect(fronts).toBeVisible();
+  await expect(fronts.locator("[data-fronts-state]")).toContainText("première case");
+  const [x1, y1] = at(0.38, 0.55);
+  await page.mouse.click(x1, y1);
+  await expect(fronts.locator("[data-fronts-state]")).toContainText("dernière case");
+  const [x2, y2] = at(0.55, 0.55);
+  await page.mouse.click(x2, y2);
+  await expect(page.getByText(/Une seule porte sur 2 cases/)).toBeVisible();
+  await page.waitForTimeout(800);
+  await fronts.getByRole("combobox", { name: "Sens d'ouverture" }).selectOption("right");
+  await page.waitForTimeout(800);
+  await fronts.getByRole("button", { name: "Terminer" }).click();
+  await expect(fronts).toHaveCount(0);
+
+  // An edge band laid with a click, then taken off; Échap closes the tool.
+  await click(page, '[data-workshop="edge-paint"]');
+  const paint = page.getByRole("dialog", { name: "Peindre les chants" });
+  await expect(paint).toBeVisible();
+  await paint.getByRole("combobox", { name: "Au clic" }).selectOption("all");
+  await page.mouse.click(x1, y1);
+  await page.waitForTimeout(500);
+  await page.keyboard.press("Escape");
+  await expect(paint).toHaveCount(0);
+
+  // The label template: its preview follows, and it is kept.
+  await click(page, '[data-workshop="labels"]');
+  const labels = page.getByRole("dialog", { name: "Étiquettes" });
+  await expect(labels).toContainText("Aperçu");
+  await labels.getByRole("combobox", { name: "QR code" }).selectOption("none");
+  await labels.getByRole("checkbox", { name: "Projet" }).uncheck();
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("cao.label-template") ?? "{}") as { qr: string; fields: string[] });
+  expect(kept.qr).toBe("none");
+  expect(kept.fields).not.toContain("project");
+  expect(await page.locator("[data-label-preview]").evaluate((n) => n.shadowRoot?.querySelector(".qr"))).toBeFalsy();
+  await labels.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(labels).toHaveCount(0);
+
+  // The cut list filters.
+  await click(page, '[data-workshop="cutlist"]');
+  const filter = page.getByLabel("Filtrer la liste de débit");
+  await filter.fill("xyz-rien");
+  await expect(page.locator("[data-cut-count]")).toContainText("0");
   expect(errors).toEqual([]);
 });

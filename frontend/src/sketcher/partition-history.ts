@@ -129,6 +129,113 @@ export function heightStep(g: SketchGeometry, partition: string, path: number[])
   return null;
 }
 
+/** The column a niche is part of: from a niche between two shelves, the whole of what those shelves divide, up to a cloison. */
+export function columnPath(g: SketchGeometry, partition: string, path: number[]): number[] {
+  let at = path;
+  while (at.length > 1) {
+    const above = at.slice(0, -1);
+    const division = (g.offsets ?? []).find((r) => isShelves(r) && r.step.of === partition && pathKey(r.step.niche) === pathKey(above));
+    if (division && isShelves(division) && division.step.input.vertical) break;
+    at = above;
+  }
+  return at;
+}
+
+const within = (path: number[], root: number[]) => path.length >= root.length && pathKey(path.slice(0, root.length)) === pathKey(root);
+
+/** A path once its niche has been divided, what it held going to its `keep`-th niche. */
+export const rehomedPath = (path: number[], root: number[], keep: number): number[] => (within(path, root) ? [...root, keep, ...path.slice(root.length)] : path);
+
+/**
+ * The steps with a new division of the niche at `path`, inserted under what already divides it: those steps go on in
+ * its `keep`-th niche. Nothing is removed: the shelves of a case stay, narrower, beside a cloison added afterwards.
+ */
+export function withDivisionUnder(offsets: readonly OffsetRecord[], partition: string, path: number[], keep: number, added: OffsetRecord): OffsetRecord[] {
+  const inside = (r: OffsetRecord) => isShelves(r) && r.step.of === partition && within(r.step.niche, path);
+  const moved = offsets.map((r) => (inside(r) && isShelves(r) ? { ...r, step: { ...r.step, niche: rehomedPath(r.step.niche, path, keep) } } : r));
+  const at = offsets.findIndex(inside);
+  return at < 0 ? [...moved, added] : [...moved.slice(0, at), added, ...moved.slice(at)];
+}
+
+/** Niches side by side in the height of one division of shelves: a cloison can run through them all. */
+export interface NicheSpan {
+  partition: string;
+  /** The niche those shelves divide, and the first and last niche of the run. */
+  parent: number[];
+  from: number;
+  to: number;
+  /** All the niches of the run, as one. */
+  box: NicheBox;
+  members: NicheBox[];
+}
+
+/** The runs of neighbouring niches among these, one above the other, in a division of shelves. */
+export function nicheSpans(g: SketchGeometry, boxes: readonly NicheBox[]): NicheSpan[] {
+  const found = new Map<string, { partition: string; parent: number[]; index: number; box: NicheBox }[]>();
+  for (const box of boxes) {
+    const at = nicheAt(g, box);
+    if (!at || at.path.length < 2) continue;
+    const parent = at.path.slice(0, -1);
+    const division = (g.offsets ?? []).find((r) => isShelves(r) && r.step.of === at.partition && pathKey(r.step.niche) === pathKey(parent));
+    if (!division || !isShelves(division) || division.step.input.vertical) continue;
+    const key = `${at.partition}:${pathKey(parent)}`;
+    found.set(key, [...(found.get(key) ?? []), { partition: at.partition, parent, index: at.path.at(-1) as number, box }]);
+  }
+  return [...found.values()].flatMap((list) => {
+    const sorted = [...list].sort((a, b) => a.index - b.index);
+    const runs: (typeof sorted)[] = [];
+    for (const item of sorted) {
+      const run = runs.at(-1);
+      if (run && (run.at(-1) as (typeof sorted)[number]).index === item.index - 1) run.push(item);
+      else runs.push([item]);
+    }
+    return runs.filter((run) => run.length > 1).map((run): NicheSpan => {
+      const members = run.map((r) => r.box);
+      const box = { x0: Math.min(...members.map((m) => m.x0)), y0: Math.min(...members.map((m) => m.y0)), x1: Math.max(...members.map((m) => m.x1)), y1: Math.max(...members.map((m) => m.y1)) };
+      return { partition: run[0]!.partition, parent: run[0]!.parent, from: run[0]!.index, to: run.at(-1)!.index, box, members };
+    });
+  });
+}
+
+/**
+ * The steps with cloisons running through a run of niches, cutting the shelves between them. The shelves of the run
+ * leave their division, which keeps those around it: one niche stands in for the run, the cloisons divide it, and each
+ * of the niches they make gets the same shelves again, at the same heights. What the run held goes to the `keep`-th.
+ */
+export function withCloisonsThrough(g: SketchGeometry, span: Pick<NicheSpan, "partition" | "parent" | "from" | "to">, cloisons: (niche: number[]) => OffsetRecord, rows: (niche: number[], input: ShelfParams) => OffsetRecord, keep: number): { offsets: OffsetRecord[]; repath: (path: number[]) => number[]; removed: string[] } | string {
+  const { partition, parent, from, to } = span;
+  const records = g.offsets ?? [];
+  const division = records.find((r) => isShelves(r) && r.step.of === partition && pathKey(r.step.niche) === pathKey(parent));
+  const built = rebuildChain(g, partition);
+  if (!division || !isShelves(division) || typeof built === "string") return "Ces niches n'existent plus.";
+  const { input } = division.step;
+  const sizes = Array.from({ length: input.count + 1 }, (_, i) => {
+    const box = built.niches.get(pathKey([...parent, i]))?.box;
+    return box ? box.y1 - box.y0 : 0;
+  });
+  const cut = to - from;
+  const left = input.count - cut;
+  const merged = sizes.slice(from, to + 1).reduce((sum, h) => sum + h, 0) + cut * input.thickness;
+  // Every shelf cut: the division goes, and the cloisons divide the niche it divided.
+  const whole = left === 0 ? parent : [...parent, from];
+  const repath = (path: number[]): number[] => {
+    if (!within(path, parent) || path.length === parent.length) return path;
+    const index = path[parent.length] as number;
+    const rest = path.slice(parent.length + 1);
+    if (index < from) return path;
+    if (index > to) return [...parent, index - cut, ...rest];
+    return [...whole, keep, index - from, ...rest];
+  };
+  const heights = [...sizes.slice(0, from), merged, ...sizes.slice(to + 1)];
+  const around = { ...division, step: { ...division.step, input: { ...input, count: left, mode: "set" as const, heights: [...heights.slice(0, -1), null] } } };
+  const row: ShelfParams = { count: cut, thickness: input.thickness, mode: "set", fixed: input.fixed, heights: [...sizes.slice(from, to), null] };
+  const first = cloisons(whole);
+  const count = isShelves(first) ? first.step.input.count : 1;
+  const added = [first, ...Array.from({ length: count + 1 }, (_, k) => rows([...whole, k], row))];
+  const offsets = records.flatMap((r) => (r === division ? [...(left ? [around] : []), ...added] : [isShelves(r) && r.step.of === partition ? { ...r, step: { ...r.step, niche: repath(r.step.niche) } } : r]));
+  return { offsets, repath, removed: left ? [] : (division.bodies ?? []) };
+}
+
 /** A division with this niche at this height, or sharing what is left (null): the others keep what they have. */
 export function withNicheHeight(input: ShelfParams, index: number, height: number | null): ShelfParams {
   const heights = heldHeights(input).map((h, i) => (i === index ? height : h));

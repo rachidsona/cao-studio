@@ -187,6 +187,8 @@ export interface DoorSettings {
   handles: boolean;
   /** The side each door opens from (its hinges), from the left; missing: left, right, left… in turn. */
   hinges?: ("left" | "right")[];
+  /** The cases sharing one door with the next one (the index of the first of each pair). */
+  joined?: number[];
   /** A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`. */
   style?: "flat" | "frame";
   frameWidth?: number;

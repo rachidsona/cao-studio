@@ -14,10 +14,10 @@ import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { Region } from "./loops";
 import { extrusionOption } from "./extrusion-option";
-import { extrusionGroups, idsFrom, isShelves, nicheAt, pathKey, rebuildChain, shelvesRecord } from "./partition-history";
+import { columnPath, extrusionGroups, idsFrom, isShelves, nicheAt, nicheSpans, pathKey, rebuildChain, rehomedPath, shelvesRecord, withCloisonsThrough, withDivisionUnder, type NicheSpan } from "./partition-history";
 import type { ExtrusionGroup, SketchExtrusion } from "./mode";
 import { boundaryCurves, regionAt } from "./region-pick";
-import { addShelves, MAX_SHELVES, nicheBox, partBox, shelfLayout, shelfLines, type NicheBox, type ShelfInput, type ShelfLayout, type ShelfMode } from "./shelves";
+import { addShelves, alignedInputs, MAX_SHELVES, nicheBox, partBox, quickDivision, shelfLayout, shelfLines, type NicheBox, type ShelfInput, type ShelfLayout, type ShelfMode } from "./shelves";
 import type { Preview } from "./tools";
 
 export interface ShelvesHost {
@@ -62,10 +62,20 @@ export class ShelvesTool {
   private input: ShelfInput;
   /** The niches chosen, each with the curves of its sides (to highlight it). */
   private niches: { box: NicheBox; curves: string[] }[] = [];
-  /** The shelves of each niche chosen (or why it is impossible), in the same order. */
+  /** What is divided: each niche chosen, or a whole run of them for cloisons going through their shelves. */
+  private targets: { box: NicheBox; span?: NicheSpan; input: ShelfInput }[] = [];
+  /** The shelves of each target (or why it is impossible), in the same order. */
   private layouts: (ShelfLayout | string)[] = [];
+  /** Niches one above the other share one cloison, which cuts the shelves between them. */
+  private through = true;
+  /** Niches of different widths: their cloisons on one straight line, rather than each in its own middle. */
+  private inLine = true;
   private done = false;
   private readonly panel: HTMLElement;
+  /** Cloisons through the whole column of the niche clicked, what it already holds kept in one of the new niches. */
+  private column = false;
+  /** Where that goes: at the left, or at the right. */
+  private keepRight = false;
 
   /** `editing`: the division of a niche to make again (its niche is chosen, its values come back). `vertical`: cloisons. */
   constructor(
@@ -116,8 +126,9 @@ export class ShelvesTool {
     if (this.editing) return this.host.notify(`On change les ${this.words.many} de leur niche ; terminez pour en choisir d'autres.`, "info");
     const region = regionAt(this.host.regions(), p);
     if (!region) return this.host.notify("Cliquez dans une niche : une zone fermée entre deux côtés.", "info");
-    const box = nicheBox(region);
-    if (!box) return this.host.notify(`Cette zone n'est pas un rectangle : une ${this.words.one} se pose dans une niche rectangulaire.`, "info");
+    const shape = nicheBox(region);
+    if (!shape) return this.host.notify(`Cette zone n'est pas un rectangle : une ${this.words.one} se pose dans une niche rectangulaire.`, "info");
+    const box = this.column ? this.columnBox(shape) : shape;
     const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
     const at = this.niches.findIndex((n) => same(n.box, box));
     if (at >= 0) this.niches.splice(at, 1);
@@ -128,6 +139,15 @@ export class ShelvesTool {
     this.recompute();
   }
 
+  /** The whole column this niche is part of, its shelves left out. */
+  private columnBox(box: NicheBox): NicheBox {
+    const g = this.host.geometry();
+    const at = nicheAt(g, box);
+    const rebuilt = at ? rebuildChain(g, at.partition) : null;
+    if (!at || !rebuilt || typeof rebuilt === "string") return box;
+    return rebuilt.niches.get(pathKey(columnPath(g, at.partition, at.path)))?.box ?? box;
+  }
+
   /** The niches chosen (sketch coordinates). */
   chosen(): NicheBox[] {
     return this.niches.map((n) => n.box);
@@ -135,7 +155,7 @@ export class ShelvesTool {
 
   /** The shelves (or cloisons) OK would make, as boxes of the sketch: the preview in volume of the 3D view. */
   pieces(): NicheBox[] {
-    return this.niches.flatMap((n, i) => {
+    return this.targets.flatMap((n, i) => {
       const layout = this.layouts[i];
       return layout && typeof layout === "object" ? layout.shelves.map((span) => partBox(n.box, span, layout)) : [];
     });
@@ -143,19 +163,40 @@ export class ShelvesTool {
 
   /** The niches chosen with what OK would make of each: the dimensions in the view follow the panel. */
   divided(): { box: NicheBox; into: NicheBox[] }[] {
-    return this.niches.flatMap((n, i) => {
+    return this.targets.flatMap((n, i) => {
       const layout = this.layouts[i];
       return layout && typeof layout === "object" ? [{ box: n.box, into: layout.niches.map((span) => partBox(n.box, span, layout)) }] : [];
     });
+  }
+
+  /** The runs that can share a cloison, when there are some. */
+  private spans(): NicheSpan[] {
+    return this.kind === "cloisons" && !this.column && !this.editing ? nicheSpans(this.host.geometry(), this.niches.map((n) => n.box)) : [];
+  }
+
+  private targetsNow(): { box: NicheBox; span?: NicheSpan; input: ShelfInput }[] {
+    const spans = this.through ? this.spans() : [];
+    const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
+    const alone = this.niches.filter((n) => !spans.some((s) => s.members.some((m) => same(m, n.box))));
+    const targets: { box: NicheBox; span?: NicheSpan }[] = [...alone.map((n) => ({ box: n.box })), ...spans.map((span) => ({ box: span.box, span }))];
+    const inputs = this.lining(targets) && this.inLine ? alignedInputs(targets.map((t) => t.box), this.input) : targets.map(() => this.input);
+    return targets.map((t, i) => ({ ...t, input: inputs[i] as ShelfInput }));
+  }
+
+  /** Cloisons in niches of different widths can be brought onto one line. */
+  private lining(targets: { box: NicheBox }[]): boolean {
+    if (this.kind !== "cloisons" || this.column || this.editing || targets.length < 2) return false;
+    return new Set(targets.map((t) => (t.box.x1 - t.box.x0).toFixed(3))).size > 1;
   }
 
   // ---- computing and drawing --------------------------------------------------------
 
   private recompute(): void {
     if (!this.editing) Object.assign(LAST[this.kind], this.input);
-    this.layouts = this.niches.map((n) => shelfLayout(n.box, this.input));
+    this.targets = this.targetsNow();
+    this.layouts = this.targets.map((n) => shelfLayout(n.box, n.input));
     // Every niche gets the same division, drawn dashed; one that cannot be divided is reported.
-    const lines = this.niches.flatMap((n, i) => {
+    const lines = this.targets.flatMap((n, i) => {
       const layout = this.layouts[i];
       return layout && typeof layout === "object" ? shelfLines(n.box, layout) : [];
     });
@@ -168,7 +209,7 @@ export class ShelvesTool {
     if (this.done) return;
     // A result arriving while a field is being edited must not replace it.
     const active = document.activeElement;
-    if (active instanceof HTMLInputElement && this.panel.contains(active)) return;
+    if (active instanceof HTMLInputElement && active.type !== "checkbox" && this.panel.contains(active)) return;
     const unit = this.host.unit();
     const number = (label: string, mm: number, set: (mm: number) => void): HTMLElement => {
       const input = el("input", { type: "text", inputmode: "decimal", class: `${FIELD} text-right font-mono`, value: trim(toDisplay(mm, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
@@ -215,7 +256,7 @@ export class ShelvesTool {
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: this.niches.length === 0 || this.layouts.some((l) => typeof l === "string") }, "OK");
     ok.addEventListener("click", () => this.confirm());
 
-    const first = this.niches[0]?.box;
+    const first = this.targets[0]?.box;
     const size = first ? `${formatLength(first.x1 - first.x0, unit)} × ${formatLength(first.y1 - first.y0, unit)}` : null;
     const problem = this.layouts.find((l): l is string => typeof l === "string");
     const heightsOf = (layout: ShelfLayout | string | undefined) => (layout && typeof layout === "object" ? layout.niches.map(([a, b]) => formatLength(b - a, unit)).join(" · ") : "");
@@ -223,10 +264,28 @@ export class ShelvesTool {
     const same = this.layouts.every((l) => heightsOf(l) === shown);
     const result =
       shown && !problem
-        ? this.niches.length === 1 || same
-          ? `${this.layouts[0] && typeof this.layouts[0] === "object" ? this.layouts[0].niches.length : 0} niches${new Set(shown.split(" · ")).size === 1 ? ` de ${shown.split(" · ")[0]}` : ` : ${shown}`} (${this.words.way})${this.niches.length > 1 ? `, dans chacune des ${this.niches.length} niches` : ""}.`
-          : `${this.niches.length} niches choisies, de ${this.words.size} différentes : chacune est divisée.`
+        ? this.targets.length === 1 || same
+          ? `${this.layouts[0] && typeof this.layouts[0] === "object" ? this.layouts[0].niches.length : 0} niches${new Set(shown.split(" · ")).size === 1 ? ` de ${shown.split(" · ")[0]}` : ` : ${shown}`} (${this.words.way})${this.targets.length > 1 ? `, dans chacune des ${this.targets.length} niches` : ""}.`
+          : this.lining(this.targets) && this.inLine
+            ? `Cloisons sur une même ligne, dans ${this.targets.length} niches : ${this.targets.map((_, i) => heightsOf(this.layouts[i])).join(", puis ")}.`
+            : `${this.targets.length} niches choisies, de ${this.words.size} différentes : chacune est divisée.`
         : null;
+    const quick = el("input", { type: "text", class: `${FIELD} font-mono`, placeholder: "*3, /4 ou 30;40", title: "*3 : trois pièces. /4 : quatre espaces égaux. 30;40 : ces espaces, puis ce qui reste. Entrée pour appliquer.", "aria-label": "Saisie rapide" });
+    quick.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key !== "Enter") return;
+      const asked = quickDivision(quick.value, (v) => fromDisplay(v, unit));
+      quick.setAttribute("aria-invalid", String(!asked));
+      if (!asked) return;
+      const { heights, ...rest } = asked;
+      this.input = { ...this.input, ...rest, ...(heights?.length ? { heights } : {}) };
+      quick.blur();
+      this.recompute();
+    });
+    const keep = el("select", { class: FIELD, "aria-label": "Ce qu'elle contient va" }, el("option", { value: "left", selected: !this.keepRight }, "À gauche"), el("option", { value: "right", selected: this.keepRight }, "À droite"));
+    keep.addEventListener("change", () => {
+      this.keepRight = keep.value === "right";
+    });
     const rows: (HTMLElement | null)[] = [
       el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? `Modifier : ${this.editing.name}` : this.words.title),
       el(
@@ -240,6 +299,28 @@ export class ShelvesTool {
               ? `Niche choisie : ${size}. Cliquez-en d'autres pour les ajouter, ou la même pour la retirer.`
               : `${this.niches.length} niches choisies. Cliquez-en d'autres pour les ajouter, ou une choisie pour la retirer.`,
       ),
+      this.kind === "cloisons" && !this.editing
+        ? check("Couper toute la niche mère", this.column, (v) => {
+            this.column = v;
+            this.niches = v ? this.niches.map((n) => ({ box: this.columnBox(n.box), curves: [] })) : [];
+            this.host.selection.clear();
+            this.recompute();
+          })
+        : null,
+      this.lining(this.targets)
+        ? check("Cloisons alignées sur une seule ligne", this.inLine, (v) => {
+            this.inLine = v;
+            this.recompute();
+          })
+        : null,
+      this.spans().length
+        ? check("Une seule cloison, qui coupe les étagères", this.through, (v) => {
+            this.through = v;
+            this.recompute();
+          })
+        : null,
+      (this.column || (this.through && this.spans().length)) && !this.editing ? el("label", { class: ROW }, "Ce qu'elle contient va", keep) : null,
+      el("label", { class: ROW }, "Saisie rapide", quick),
       el("label", { class: ROW }, this.words.title, count),
       number("Épaisseur", this.input.thickness, (v) => ((this.input.thickness = v), this.recompute())),
       el("label", { class: ROW }, "Niches", mode),
@@ -271,28 +352,73 @@ export class ShelvesTool {
     const g = this.host.geometry();
     const depth = extrusionOption.on ? extrusionOption.depth : undefined;
     // Left to right, bottom to top: the shelves are numbered in that order.
-    const order = this.niches.map((n, i) => ({ box: n.box, layout: this.layouts[i] as ShelfLayout })).sort((a, b) => a.box.x0 - b.box.x0 || a.box.y0 - b.box.y0);
-    const ids = idsFrom(this.host.offsetId(), order.length);
+    const order = this.targets.map((n, i) => ({ box: n.box, span: n.span, input: n.input, layout: this.layouts[i] as ShelfLayout })).sort((a, b) => a.box.x0 - b.box.x0 || a.box.y0 - b.box.y0);
+    // A run going through its shelves makes the cloisons and the same shelves again on each side.
+    const spare = order.reduce((sum, o) => sum + (o.span ? this.input.count + 2 : 1), 0);
+    const ids = idsFrom(this.host.offsetId(), spare);
+    let next = 0;
+    const nextId = () => ids[next++] as string;
     const offsets = [...(g.offsets ?? [])];
     const added = new Set<string>();
     const partitions = new Set<string>();
     const plain: typeof order = [];
-    order.forEach((o, i) => {
+    const repath: NonNullable<SketchExtrusion["repath"]> = [];
+    const removed: string[] = [];
+    const keep = this.keepRight ? this.input.count : 0;
+    const named = (records: readonly OffsetRecord[], word: string) => `${word} ${Math.max(0, ...records.map((r) => new RegExp(`^${word} (\\d+)$`).exec(r.name)?.[1]).filter((n): n is string => n !== undefined).map(Number)) + 1}`;
+    let records = offsets;
+    for (const o of order) {
+      if (o.span) continue;
       const at = nicheAt(g, o.box);
-      if (!at) return void plain.push(o);
-      const used = offsets.map((r) => new RegExp(`^${this.words.title} (\\d+)$`).exec(r.name)?.[1]).filter((n): n is string => n !== undefined).map(Number);
-      offsets.push(shelvesRecord(ids[i] as string, `${this.words.title} ${Math.max(0, ...used) + 1}`, at.partition, at.path, this.input, depth));
-      added.add(ids[i] as string);
+      if (!at) {
+        plain.push(o);
+        continue;
+      }
+      const id = nextId();
+      const record = shelvesRecord(id, named(records, this.words.title), at.partition, at.path, o.input, depth);
+      if (this.column) {
+        records = withDivisionUnder(records, at.partition, at.path, keep, record);
+        repath.push({ partition: at.partition, path: (p) => rehomedPath(p, at.path, keep) });
+      } else records = [...records, record];
+      added.add(id);
       partitions.add(at.partition);
-    });
-    let geometry: SketchGeometry = { ...g, offsets };
+    }
+    // From the top down: a run taken out leaves the places of those below it as they are.
+    for (const { span, input } of [...order].reverse()) {
+      if (!span) continue;
+      const fresh: OffsetRecord[] = [];
+      const shelfDepth = records.find((r) => isShelves(r) && r.step.of === span.partition && pathKey(r.step.niche) === pathKey(span.parent))?.step;
+      const made = withCloisonsThrough(
+        { ...g, offsets: records },
+        span,
+        (niche) => {
+          const r = shelvesRecord(nextId(), named(records, this.words.title), span.partition, niche, input, depth);
+          fresh.push(r);
+          return r;
+        },
+        (niche, input) => {
+          const r = shelvesRecord(nextId(), named([...records, ...fresh], "Étagères"), span.partition, niche, input, shelfDepth?.kind === "shelves" ? shelfDepth.depth : depth);
+          fresh.push(r);
+          return r;
+        },
+        keep,
+      );
+      if (typeof made === "string") return this.host.notify(made, "error");
+      records = made.offsets;
+      repath.push({ partition: span.partition, path: made.repath });
+      removed.push(...made.removed);
+      partitions.add(span.partition);
+    }
+    let geometry: SketchGeometry = { ...g, offsets: records };
     const groups: ExtrusionGroup[] = [];
     for (const partition of partitions) {
       const rebuilt = rebuildChain(geometry, partition);
       if (typeof rebuilt === "string") return this.host.notify(rebuilt, "error");
       geometry = rebuilt.geometry;
-      groups.push(...extrusionGroups(g.offsets ?? [], rebuilt, added));
+      // The shelves kept change width or are cut: they are made again too.
+      groups.push(...extrusionGroups(g.offsets ?? [], rebuilt, repath.length ? undefined : added));
     }
+    if (removed.length) groups.push({ distance: 1, elements: [], remove: removed });
     // Areas that are not niches of a partition: the lines only (nothing to make again).
     for (const { box, layout } of plain) {
       geometry = addShelves(geometry, box, layout);
@@ -302,8 +428,8 @@ export class ShelvesTool {
       }
     }
     const n = order.reduce((sum, o) => sum + o.layout.shelves.length, 0);
-    const where = order.length > 1 ? ` dans ${order.length} niches` : "";
-    const extruded: SketchExtrusion | undefined = groups.length ? { groups } : undefined;
+    const where = order.length > 1 ? ` dans ${order.length} niches` : order[0]?.span ? ", à travers les étagères" : "";
+    const extruded: SketchExtrusion | undefined = groups.length ? { groups, ...(repath.length ? { repath } : {}) } : undefined;
     if (!this.host.apply(geometry, `${n} ${this.words.one}${n > 1 ? "s" : ""}${where}${depth !== undefined ? `, extrudées de ${formatLength(depth, this.host.unit())}` : ""}.`, extruded)) return;
     this.niches = [];
     this.host.selection.clear();
