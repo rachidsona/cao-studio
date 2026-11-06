@@ -5,7 +5,8 @@
  * rouvert retrouve le plan du projet, pour passer à la zone suivante ou le changer : tout ce qui est fait dessus suit.
  * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
-import { fillChoices, PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type FillChoice, type PlanModel, type PlanZone } from "../document/plan-layout";
+import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type FillChoice } from "../document/plan-layout";
+import { PLAN, PLAN_MODELS, planLines, planProblem, planZones, type PlanField, type PlanModel, type PlanZone } from "../document/plan-shapes";
 import { findFeature } from "../document/operations";
 import type { DressingPlan, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
@@ -95,7 +96,7 @@ export class PlanLayoutTool {
 
   private draw(): void {
     const active = document.activeElement;
-    if (active instanceof HTMLInputElement && this.panel.contains(active)) return;
+    if (active instanceof HTMLInputElement && active.type !== "checkbox" && this.panel.contains(active)) return;
     const placed = this.placed();
     // A plan made before a setting existed takes its usual value.
     const plan = placed?.dressingPlan ? { ...PLAN, ...placed.dressingPlan } : null;
@@ -113,7 +114,7 @@ export class PlanLayoutTool {
       this.plan = last = { ...this.plan, ...patch };
       this.draw();
     };
-    const number = (label: string, key: "lengthA" | "lengthB" | "lengthC" | "lengthD" | "aisle" | "depth" | "cornerA" | "cornerB" | "height" | "plinth" | "thickness", allowZero = false) => {
+    const number = (label: string, key: PlanField | "lengthA" | "depth" | "cornerA" | "cornerB" | "height" | "plinth" | "thickness" | "islandLength" | "islandDepth" | "roofLow", allowZero = false) => {
       const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(plan[key], unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
       const apply = () => {
         const parsed = parseNumber(input.value);
@@ -156,18 +157,42 @@ export class PlanLayoutTool {
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : planSchema(plan, (z) => (z.kind === "corner" ? [z.label] : [z.label, formatLength(z.run.length, unit)]))),
       number("Longueur mur A", "lengthA"),
-      model.walls.includes("B") ? number("Longueur mur B", "lengthB") : null,
-      model.walls.includes("C") ? number("Longueur mur C", "lengthC") : null,
-      model.walls.includes("D") ? number("Longueur mur D", "lengthD") : null,
-      model.walls.includes("D") ? number("Passage", "aisle") : null,
+      ...(Object.entries(model.fields) as [PlanField, string][]).map(([key, label]) => number(label, key)),
       number("Profondeur", "depth"),
-      model.cut ? number("Angle sur le mur A", "cornerA") : null,
-      model.cut ? number("Angle sur l'autre mur", "cornerB") : null,
-      number("Hauteur", "height"),
+      model.cut.length ? number("Angle sur le mur A", "cornerA") : null,
+      model.cut.length ? number("Angle sur l'autre mur", "cornerB") : null,
+      number(plan.roof ? "Hauteur (côté haut)" : "Hauteur", "height"),
       number("Socle", "plinth", true),
       number("Épaisseur panneaux", "thickness"),
+      ...this.options(number, set),
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
+    ];
+    return rows.filter((r): r is HTMLElement => r !== null);
+  }
+
+  /** What most models can have on top: an island in front of wall A, a sloped ceiling over all of it. */
+  private options(number: (label: string, key: "aisle" | "islandLength" | "islandDepth" | "roofLow") => HTMLElement, set: (patch: Partial<DressingPlan>) => void): HTMLElement[] {
+    const plan = this.plan;
+    const island = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: plan.island === true, "aria-label": "Îlot central" });
+    island.addEventListener("change", () => set({ island: island.checked }));
+    const roof = el(
+      "select",
+      { class: "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Rampant" },
+      ...([["", "Aucun"], ["left", "Bas à gauche"], ["right", "Bas à droite"], ["wall", "Bas contre le mur A"]] as const).map(([value, label]) => el("option", { value, selected: (plan.roof ?? "") === value }, label)),
+    );
+    roof.addEventListener("change", () => {
+      const { roof: _old, ...rest } = this.plan;
+      this.plan = last = { ...rest, ...(roof.value ? { roof: roof.value as "left" | "right" | "wall" } : {}) };
+      this.draw();
+    });
+    const rows: (HTMLElement | null)[] = [
+      el("label", { class: ROW }, "Rampant", roof),
+      plan.roof ? number("Bas du rampant", "roofLow") : null,
+      PLAN_MODELS[plan.model].noIsland ? null : el("label", { class: "flex min-h-8 items-center gap-2" }, island, "Îlot central"),
+      plan.island && !PLAN_MODELS[plan.model].noIsland ? number("Passage devant l'îlot", "aisle") : null,
+      plan.island && !PLAN_MODELS[plan.model].noIsland ? number("Longueur îlot", "islandLength") : null,
+      plan.island && !PLAN_MODELS[plan.model].noIsland ? number("Profondeur îlot", "islandDepth") : null,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }
@@ -223,7 +248,7 @@ export class PlanLayoutTool {
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez une zone pour la répartir."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done)),
       el("ul", { class: "space-y-1", "aria-label": "Zones du plan" }, ...zones.map(row)),
-      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, "Porte sur le pan coupé") : null,
+      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : "Porte sur le pan coupé") : null,
       change,
       finish,
     ];

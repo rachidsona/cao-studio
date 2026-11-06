@@ -148,6 +148,8 @@ export interface PartitionParams {
   widths?: number[];
   /** Top and bottom panels. */
   boards: boolean;
+  /** No top panel, the sides going up to the height: a sloped ceiling cuts them, a sloped board closes them. */
+  openTop?: boolean;
   /** The bottom board is raised by this height, which leaves a plinth under it (mm; 0: no plinth). */
   plinth: number;
   /** Which runs through where the outer sides, the simple dividers and the double ones meet the boards. */

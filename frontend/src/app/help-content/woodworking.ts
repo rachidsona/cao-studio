@@ -134,13 +134,13 @@ export const WOODWORKING: HelpFamily[] = [
         name: "Plan de dressing",
         what: "Commence un dressing par son schéma vu de dessus (droit, en L, en U, à pan coupé ou face à face), puis répartit chaque zone.",
         steps: [
-          "Cliquez « Plan de dressing » et choisissez un des huit modèles : droit, en L à gauche ou à droite, en U, les mêmes à pan coupé, ou face à face.",
-          "Tapez les cotes : « Longueur mur A » (et B, C ou D), « Passage » en face à face, « Profondeur », « Hauteur », « Socle », « Épaisseur panneaux », et pour un pan coupé « Angle sur le mur A » et « Angle sur l'autre mur ». Cliquez « Créer le plan ».",
+          "Cliquez « Plan de dressing » et choisissez un des dix-huit modèles : droit, en L, en U, à pans coupés ou arrondis, U presque fermé, face à face, cloison centrale, dos à dos, deux profondeurs.",
+          "Tapez les cotes demandées par le modèle, puis « Profondeur », « Hauteur », « Socle », « Épaisseur panneaux ». Pour un angle, « Angle sur le mur A » et « Angle sur l'autre mur ». Choisissez un « Rampant » si le plafond est en pente et cochez « Îlot central » si vous en voulez un. Cliquez « Créer le plan ».",
           "Cliquez une zone dans le schéma, ou « Répartition » sur sa ligne : sa Répartition s'ouvre pour régler les cases. Validez par « OK ».",
           "Sur un mur encore libre, cliquez plutôt « Remplir » : tapez la « Largeur des caissons » (largeur intérieure), choisissez où va le reste dans « Le reste va », puis cliquez la proposition voulue.",
           "Rouvrez « Plan de dressing » pour la zone suivante : une zone faite montre « Modifier ». « Modifier le plan » change modèle et cotes, et « Appliquer » fait suivre ce qui est fait.",
         ],
-        tip: "« Remplir » compte les côtés : il propose des caissons de la largeur donnée avec un fileur (reste de 3 à 30 cm) ou un caisson (15 cm et plus) pour le reste, ou des caissons égaux. Le résultat est une Répartition ordinaire ; si le plan change, le reste prend la différence. Un angle à pan coupé accepte Étagères, Niche, Module et Penderie, mais ni tiroirs ni portes de Répartition ; « Porte sur le pan coupé » pose la sienne.",
+        tip: "« Remplir » compte les côtés : il propose des caissons de la largeur donnée avec un fileur (reste de 3 à 30 cm) ou un caisson (15 cm et plus) pour le reste, ou des caissons égaux. Rampant : tous les panneaux, portes et fonds s'arrêtent sous la pente, et chaque zone a un dessus en pente ; une pièce entièrement au-dessus de la pente reste une erreur, avec un point rouge dans l'Historique : retirez-la ou descendez-la. La liste de débit donne la cote hors tout des pièces coupées en biais. Un angle coupé ou arrondi accepte Étagères, Niche, Module et Penderie, mais ni tiroirs ni portes de Répartition ; « Porte sur le pan coupé » ou « Porte cintrée sur l'arrondi » pose la sienne.",
       },
       {
         keys: ["data-action:dressing"],

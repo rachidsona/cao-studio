@@ -1,141 +1,24 @@
 /**
- * Le plan d'un dressing, vu de dessus : un modèle — droit, en L à gauche ou à droite, en U, avec des angles droits ou à
- * pan coupé —, ses cotes, et les zones qu'ils font : un linéaire par mur, séparés par leurs côtés (les doubles traits du
- * plan), et un pentagone là où l'angle est coupé. Le plan est une esquisse au sol qui garde ces réglages (`dressingPlan`) ;
- * chaque zone reçoit ensuite, à la demande, sa Répartition contre son mur, et toutes suivent quand le plan change. L'angle
- * coupé est lui aussi une Répartition, alignée sur le mur A et découpée au pentagone (`clip`) : Étagères, Niche, Module et
- * Penderie y marchent ; son dernier côté et sa porte sur le pan coupé, de biais, s'ajoutent autour d'elle. « Remplir »
- * découpe une zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts.
- *
- * Repère de l'assistant Dressing (document/dressing-plan.ts) : le mur A a sa face en Y = 0 et va vers +X, le dressing est
- * devant lui (Y < 0) ; le mur B a sa face en X = 0 à gauche, le mur C en X = longueur de A à droite, tous deux vers −Y.
- * Pur.
+ * Le plan d'un dressing posé dans le projet : une esquisse au sol qui garde ses réglages (`dressingPlan`) ; chaque zone
+ * (plan-shapes.ts) reçoit ensuite, à la demande, sa Répartition contre son mur, et toutes suivent quand le plan change.
+ * Un angle est lui aussi une Répartition, alignée sur le mur A et découpée à son contour (`clip`) : Étagères, Niche, Module
+ * et Penderie y marchent ; son dernier côté et sa porte, de biais ou cintrée, s'ajoutent autour d'elle. Sous un rampant,
+ * tout s'arrête sous le plafond (`ceiling`) et le dessus de chaque zone est une planche en pente. « Remplir » découpe une
+ * zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts. Pur.
  */
 import { addExtrude, deleteFeatures, findFeature, uniqueId, uniqueName, uniqueOffsetId, updateFeature } from "./operations";
+import { arcDoor, circleDoor, cornerOutline, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, type Corner, type PlanZone, type Point } from "./plan-shapes";
 import type { PartitionParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
-import type { CadDocument, DressingPlan, PlaneFrame, PlaneName, SketchFeature, Vec3 } from "./types";
+import type { CadDocument, DressingPlan, PlaneFrame, SketchFeature, SlopedCeiling, Vec3 } from "./types";
 import { hingeCount } from "../features/fronts-parts";
 import { nearestPlane } from "../sketcher/frame";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../sketcher/partition-history";
 
-export type PlanModel = DressingPlan["model"];
-type Corner = "left" | "right";
-type Point = [number, number];
-
 /** Around the door of a cut corner (mm). */
 const GAP = 3;
-
-export const PLAN_MODELS: Record<PlanModel, { label: string; walls: ("A" | "B" | "C" | "D")[]; corners: Corner[]; cut: boolean }> = {
-  I: { label: "Droit", walls: ["A"], corners: [], cut: false },
-  "L-left": { label: "En L à gauche", walls: ["A", "B"], corners: ["left"], cut: false },
-  "L-right": { label: "En L à droite", walls: ["A", "C"], corners: ["right"], cut: false },
-  U: { label: "En U", walls: ["A", "B", "C"], corners: ["left", "right"], cut: false },
-  "L-left-cut": { label: "En L à gauche, pan coupé", walls: ["A", "B"], corners: ["left"], cut: true },
-  "L-right-cut": { label: "En L à droite, pan coupé", walls: ["A", "C"], corners: ["right"], cut: true },
-  "U-cut": { label: "En U, pans coupés", walls: ["A", "B", "C"], corners: ["left", "right"], cut: true },
-  facing: { label: "Face à face", walls: ["A", "D"], corners: [], cut: false },
-};
-
-export const PLAN: DressingPlan = { model: "L-right-cut", lengthA: 3000, lengthB: 2000, lengthC: 2000, lengthD: 3000, aisle: 1000, depth: 600, cornerA: 1000, cornerB: 1000, thickness: 18, height: 2500, plinth: 80 };
-
-/** A zone of the plan: a run along a wall, or the pentagon of a cut corner. Each has its Répartition. */
-export interface PlanZone {
-  id: string;
-  label: string;
-  kind: "run" | "corner";
-  /** Its outline, seen from above. */
-  outline: Point[];
-  /** Where its Répartition goes, and how deep it is. */
-  run: { plane: PlaneName; offset: number; frame?: PlaneFrame; start: number; length: number; depth: number };
-  /** A cut corner: what of its panels stands. */
-  clip?: Point[];
-}
-
-const rect = (x0: number, y0: number, x1: number, y1: number): Point[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-
-/** The pentagon of a corner, the wall corner first; the one on the right is the mirror of the one on the left. */
-function pentagon(p: DressingPlan, corner: Corner, inset = 0): Point[] {
-  const { depth: d, cornerA: a, cornerB: b, lengthA: l } = p;
-  // The front is cut from (a, −d) to (d, −b); inset: its ends where the sides of the corner stop it.
-  const [ea, eb] = [a - inset, b - inset];
-  const shape: Point[] = [[0, 0], [ea, 0], [ea, -d - (inset * (b - d)) / (a - d)], [d + (inset * (a - d)) / (b - d), -eb], [0, -eb]];
-  return corner === "left" ? shape : shape.map(([x, y]): Point => [l - x, y]);
-}
-
-/** The panels of a corner stand over its pentagon, up to its far side (itself a board apart). */
-function cornerClip(p: DressingPlan, corner: Corner): Point[] {
-  const { depth: d, cornerA: a, cornerB: b, thickness: t, lengthA: l } = p;
-  const shape: Point[] = [[0, 0], [a, 0], [a, -d], [d + (t * (a - d)) / (b - d), t - b], [0, t - b]];
-  return corner === "left" ? shape : shape.map(([x, y]): Point => [l - x, y]);
-}
-
-/** The zones of this plan, from left to right along the walls. */
-export function planZones(p: DressingPlan): PlanZone[] {
-  const { walls, corners, cut } = PLAN_MODELS[p.model];
-  const { depth: d, lengthA: l } = p;
-  const from = (corner: Corner) => (corners.includes(corner) && cut ? p.cornerA : 0);
-  const start = cut ? p.cornerB : d;
-  const zones: PlanZone[] = [];
-  const [a0, a1] = [from("left"), l - from("right")];
-  const corner = (side: Corner, id: string, label: string, start: number): PlanZone => ({ id, label, kind: "corner", outline: pentagon(p, side), run: { plane: "XZ", offset: 0, start, length: p.cornerA, depth: p.cornerB }, clip: cornerClip(p, side) });
-  if (corners.includes("left") && cut) zones.push(corner("left", "left", "Angle gauche", 0));
-  zones.push({ id: "A", label: "Mur A", kind: "run", outline: rect(a0, -d, a1, 0), run: { plane: "XZ", offset: 0, start: a0, length: a1 - a0, depth: d } });
-  if (corners.includes("right") && cut) zones.push(corner("right", "right", "Angle droit", l - p.cornerA));
-  if (walls.includes("B")) zones.push({ id: "B", label: "Mur B", kind: "run", outline: rect(0, -p.lengthB, d, -start), run: { plane: "YZ", offset: 0, start: -p.lengthB, length: p.lengthB - start, depth: d } });
-  if (walls.includes("C")) {
-    const frame: PlaneFrame = { origin: [l, 0, 0], xDir: [0, -1, 0], normal: [-1, 0, 0] };
-    zones.push({ id: "C", label: "Mur C", kind: "run", outline: rect(l - d, -p.lengthC, l, -start), run: { plane: "YZ", offset: l, frame, start, length: p.lengthC - start, depth: d } });
-  }
-  if (walls.includes("D")) {
-    // Across the way, its back to the far wall, facing wall A: u goes along −X.
-    const back = -(2 * d + p.aisle);
-    const frame: PlaneFrame = { origin: [0, back, 0], xDir: [-1, 0, 0], normal: [0, 1, 0] };
-    zones.push({ id: "D", label: "Mur D", kind: "run", outline: rect(0, back, p.lengthD, back + d), run: { plane: "XZ", offset: 0, frame, start: -p.lengthD, length: p.lengthD, depth: d } });
-  }
-  return zones;
-}
-
-/** Why this plan cannot be made, or null. */
-export function planProblem(p: DressingPlan): string | null {
-  if (!(p.height >= 1200 && p.height <= 4000)) return "La hauteur va de 120 à 400 cm.";
-  if (!(p.depth >= 300 && p.depth <= 900)) return "La profondeur va de 30 à 90 cm.";
-  if (!(p.thickness >= 10 && p.thickness <= 40)) return "L'épaisseur des panneaux va de 10 à 40 mm.";
-  if (!(p.plinth >= 0 && p.plinth <= 300)) return "Le socle va de 0 à 30 cm.";
-  if (p.model === "facing" && !(p.aisle >= 500)) return "Le passage entre les deux linéaires fait 50 cm au moins.";
-  if (PLAN_MODELS[p.model].cut && (p.cornerA < p.depth + 100 || p.cornerB < p.depth + 100)) return "Un angle coupé dépasse la profondeur d'au moins 10 cm de chaque côté.";
-  const short = planZones(p).find((z) => z.run.length < 400);
-  return short ? `${short.label} est trop court : 40 cm au moins, après l'angle.` : null;
-}
-
-/** The lines of the plan: each outline, and inside it the sides that close it, as on a plan (each line once). */
-export function planLines(p: DressingPlan): [Point, Point][] {
-  const lines = new Map<string, [Point, Point]>();
-  const add = (a: Point, b: Point) => {
-    const key = [a, b].map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).sort().join("|");
-    lines.set(key, [a, b]);
-  };
-  const t = p.thickness;
-  for (const zone of planZones(p)) {
-    zone.outline.forEach((a, i) => add(a, zone.outline[(i + 1) % zone.outline.length] as Point));
-    if (zone.kind === "corner") {
-      const inner = pentagon(p, zone.id === "left" ? "left" : "right", t);
-      add(inner[1] as Point, inner[2] as Point);
-      add(inner[3] as Point, inner[4] as Point);
-    } else if (zone.id === "A" || zone.id === "D") {
-      const [[x0, y0], , [x1, y1]] = zone.outline as [Point, Point, Point, Point];
-      add([x0 + t, y0], [x0 + t, y1]);
-      add([x1 - t, y0], [x1 - t, y1]);
-    } else {
-      const [[x0, y0], , [x1, y1]] = zone.outline as [Point, Point, Point, Point];
-      add([x0, y0 + t], [x1, y0 + t]);
-      add([x0, y1 - t], [x1, y1 - t]);
-    }
-  }
-  return [...lines.values()];
-}
 
 /** A closed or open set of lines as a sketch: points shared, nothing constrained. */
 function linesGeometry(lines: [Point, Point][]): SketchGeometry {
@@ -229,27 +112,38 @@ export function fillChoices(length: number, thickness: number, width: number, fi
   return choices;
 }
 
-/** Where a point of a run is on the floor: `along` its wall as its sketch counts, `off` the wall. */
-function runPoint(plan: DressingPlan, zone: PlanZone, along: number, off: number): Point {
-  if (zone.id === "B") return [off, along];
-  if (zone.id === "C") return [plan.lengthA - off, -along];
-  if (zone.id === "D") return [-along, -(2 * plan.depth + plan.aisle) + off];
-  return [along, -off];
-}
-
 /** A sheet of the plan: a closed shape in a sketch of its own, hidden, made into one body of this thickness. */
-function sheet(doc: CadDocument, name: string, shape: Point[], where: { offset: number; frame?: PlaneFrame }, distance: number): CadDocument {
+function sheet(doc: CadDocument, name: string, shape: Point[] | SketchGeometry, where: { offset: number; frame?: PlaneFrame }, distance: number, ceiling?: SlopedCeiling): CadDocument {
   const id = uniqueId(doc, "sk");
-  const sketch: SketchFeature = { id, type: "sketch", name, plane: where.frame ? nearestPlane(where.frame.normal) : "XY", offset: where.offset, ...(where.frame ? { frame: where.frame } : {}), hidden: true, ...linesGeometry(loop(shape)) };
+  const sketch: SketchFeature = { id, type: "sketch", name, plane: where.frame ? nearestPlane(where.frame.normal) : "XY", offset: where.offset, ...(where.frame ? { frame: where.frame } : {}), hidden: true, ...(Array.isArray(shape) ? linesGeometry(loop(shape)) : shape) };
   const next = addExtrude({ ...doc, features: [...doc.features, sketch] }, id, distance);
   const body = next.features[next.features.length - 1]?.id as string;
-  return { ...updateFeature(next, body, (f) => ({ ...f, name })), bodyNames: { ...next.bodyNames, [body]: name } };
+  return { ...updateFeature(next, body, (f) => (f.type === "extrude" ? { ...f, name, ...(ceiling ? { ceiling } : {}) } : f)), bodyNames: { ...next.bodyNames, [body]: name } };
 }
 
-/** The door of a cut corner, on its slanted front: applied over it, with its hinges (bought parts, for the quote). */
+/** A curved board: two arcs around one centre, closed by the lines between their ends. */
+function arcBand({ center, outer, inner, from, to }: NonNullable<ReturnType<typeof circleDoor>>): SketchGeometry {
+  const g = emptySketchGeometry();
+  const at = (radius: number, angle: number): Point => [center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)];
+  const points = [center, at(outer, from), at(outer, to), at(inner, from), at(inner, to)];
+  points.forEach(([x, y], i) => g.points.push({ id: `p${i}`, x, y }));
+  g.curves.push(
+    { id: "a1", kind: "arc", center: "p0", start: "p1", end: "p2", radius: outer, startAngle: from, endAngle: to },
+    { id: "a2", kind: "arc", center: "p0", start: "p3", end: "p4", radius: inner, startAngle: from, endAngle: to },
+    { id: "l1", kind: "line", p1: "p1", p2: "p3" },
+    { id: "l2", kind: "line", p1: "p2", p2: "p4" },
+  );
+  return g;
+}
+
+/** What stops under the top boards of a plan under a slope. */
+const belowTop = (plan: DressingPlan) => planCeiling(plan, upright(plan));
+
+/** The door of a corner, on its slanted or rounded front: applied over it, with its hinges (bought parts, for the quote). */
 function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): CadDocument {
   const side: Corner = zone.id === "left" ? "left" : "right";
-  const [wall, , a, b] = pentagon(plan, side) as [Point, Point, Point, Point, Point];
+  const shape = cornerOutline(plan, side);
+  const [wall, a, b] = [shape[0] as Point, shape[2] as Point, shape[shape.length - 2] as Point];
   const [ex, ey] = [b[0] - a[0], b[1] - a[1]];
   const length = Math.hypot(ex, ey);
   const out = (ey * (a[0] - wall[0]) - ex * (a[1] - wall[1]) > 0 ? 1 : -1) / length;
@@ -257,7 +151,11 @@ function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): C
   const middle: Point = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   const frame: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
   const [half, z0, z1] = [length / 2 - GAP, plan.plinth + GAP, plan.height - GAP];
-  const next = sheet(doc, `${zone.label} — porte`, rect(-half, z0, half, z1), { offset: 0, frame }, plan.thickness);
+  const ceiling = planCeiling(plan);
+  const circle = circleDoor(plan, side, GAP);
+  const next = PLAN_MODELS[plan.model].round
+    ? sheet(doc, `${zone.label} — porte cintrée`, circle ? arcBand(circle) : arcDoor(plan, side, GAP), { offset: z0 }, z1 - z0, ceiling)
+    : sheet(doc, `${zone.label} — porte`, rect(-half, z0, half, z1), { offset: 0, frame }, plan.thickness, ceiling);
   const hinges = hingeCount(z1 - z0);
   const [hx, hy] = [a[0] + (ex / length) * 40 - normal[0] * 20, a[1] + (ey / length) * 40 - normal[1] * 20];
   const parts = Array.from({ length: hinges }, (_, i) => {
@@ -275,26 +173,34 @@ function withFiller(doc: CadDocument, plan: DressingPlan, zone: PlanZone, rest: 
   if (!step || !span) return doc;
   const [a, b] = [step.origin[0] + span[0], step.origin[0] + span[1]];
   const { depth: d, thickness: t, plinth, height } = plan;
-  return sheet(doc, `${zone.label} — fileur`, [runPoint(plan, zone, a, d - t), runPoint(plan, zone, b, d - t), runPoint(plan, zone, b, d), runPoint(plan, zone, a, d)], { offset: plinth }, height - plinth);
+  return sheet(doc, `${zone.label} — fileur`, [runPoint(zone, a, d - t), runPoint(zone, b, d - t), runPoint(zone, b, d), runPoint(zone, a, d)], { offset: plinth }, height - plinth, belowTop(plan));
 }
 
-/** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler. */
+/** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler, a sloped top. */
 function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
   const { next: clean } = deleteFeatures(base, plan.boards?.[zone.id] ?? []);
   const { cornerB: b, depth: d, thickness: t, height, lengthA: l } = plan;
   let doc = clean;
   if (zone.kind === "corner") {
-    doc = sheet(doc, `${zone.label} — côté`, zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b), { offset: 0 }, height);
+    doc = sheet(doc, `${zone.label} — côté`, zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b), { offset: 0 }, height, belowTop(plan));
     if (plan.cornerDoor) doc = withCornerDoor(doc, plan, zone);
   }
   const fill = plan.fills?.[zone.id];
   if (fill?.filler) doc = withFiller(doc, plan, zone, fill.rest);
+  const ceiling = planCeiling(plan);
+  if (ceiling) doc = sheet(doc, `${zone.label} — dessus`, zone.outline, { offset: plan.plinth }, height, { ...ceiling, slab: upright(plan) });
   const known = new Set(clean.features.map((f) => f.id));
   return withSettings(doc, planId, { boards: { ...plan.boards, [zone.id]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
 }
 
-const placed = ({ run, clip }: PlanZone) => ({ plane: run.plane, offset: run.offset, ...(run.frame ? { frame: run.frame } : {}), ...(clip ? { clip } : {}) });
+const placed = ({ run, clip }: PlanZone, plan: DressingPlan) => {
+  const ceiling = belowTop(plan);
+  return { plane: run.plane, offset: run.offset, ...(run.frame ? { frame: run.frame } : {}), ...(clip ? { clip } : {}), ...(ceiling ? { ceiling } : {}) };
+};
+
+/** A zone has boards of its own to make again around its Répartition. */
+const hasBoards = (plan: DressingPlan, zone: PlanZone, fills = plan.fills) => zone.kind === "corner" || fills?.[zone.id]?.filler === true || plan.roof !== undefined;
 
 /** The Répartition of a zone, against its wall: about one case per 80 cm, to set in its tool; one case in a corner; or the cases of `fill`. */
 export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZone, fill?: FillChoice): { doc: CadDocument; sketch: string; step: string } | string {
@@ -307,18 +213,18 @@ export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZo
   const cases = whole ? 2 : (fill?.cases.length ?? Math.max(2, Math.min(10, Math.round(length / 800))));
   const input: PartitionParams = {
     length, height: plan.height, thickness: plan.thickness, cases, dividers: Array.from({ length: cases - 1 }, () => (whole ? ("none" as const) : ("single" as const))),
-    ...(fill && !whole ? { widths: fill.cases } : {}), boards: true, plinth: plan.plinth, outer: "board", single: "board", double: "side",
+    ...(fill && !whole ? { widths: fill.cases } : {}), boards: true, plinth: plan.plinth, outer: "board", single: "board", double: "side", ...(plan.roof ? { openTop: true } : {}),
   };
   const step = uniqueOffsetId(doc);
   const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: [partitionRecord(step, `Répartition — ${zone.label.toLowerCase()}`, input, [start, 0], depth)] }, step);
   if (typeof rebuilt === "string") return rebuilt;
   const sketch = uniqueId(doc, "sk");
-  const feature: SketchFeature = { id: sketch, type: "sketch", name: `Plan — ${zone.label.toLowerCase()}`, ...placed(zone), ...emptySketchGeometry() };
+  const feature: SketchFeature = { id: sketch, type: "sketch", name: `Plan — ${zone.label.toLowerCase()}`, ...placed(zone, plan), ...emptySketchGeometry() };
   const made = withSketchExtrusion({ ...doc, features: [...doc.features, feature] }, sketch, rebuilt.geometry as SketchGeometry, { groups: extrusionGroups([], rebuilt) });
   const { [zone.id]: _old, ...fills } = plan.fills ?? {};
   const kept = fill && !whole && fill.rest !== null ? { fills: { ...fills, [zone.id]: { cases: fill.cases, rest: fill.rest, filler: fill.filler } } } : { fills };
   const next = withSettings(made, planId, { made: { ...plan.made, [zone.id]: sketch }, ...kept });
-  return { doc: corner || fill?.filler ? withZoneBoards(next, planId, zone) : next, sketch, step };
+  return { doc: hasBoards(planIn(next, planId) as DressingPlan, zone) ? withZoneBoards(next, planId, zone) : next, sketch, step };
 }
 
 /** A door on the cut corners, or none: those already made follow. */
@@ -344,11 +250,10 @@ function withZoneFollowing(doc: CadDocument, sketch: SketchFeature, zone: PlanZo
   const left = fill ? zone.run.length - (fill.cases.length + 1) * plan.thickness - others : 0;
   const cases = fill && left >= THINNEST ? fill.cases.map((w, i) => (i === fill.rest ? left : w)) : null;
   if (fill && cases) fill.cases = cases;
-  const offsets = (sketch.offsets ?? []).map((r) =>
-    isPartition(r) ? { ...r, step: { ...r.step, origin: [zone.run.start, 0] as [number, number], depth: zone.run.depth, input: { ...r.step.input, ...(cases ? { widths: cases } : {}), length: zone.run.length, height: plan.height, thickness: plan.thickness, plinth: plan.plinth } } } : r,
-  );
-  const { frame: _frame, clip: _clip, ...rest } = sketch;
-  const moved: SketchFeature = { ...rest, ...placed(zone), offsets };
+  const sized = ({ openTop: _top, ...input }: PartitionParams): PartitionParams => ({ ...input, ...(cases ? { widths: cases } : {}), ...(plan.roof ? { openTop: true } : {}), length: zone.run.length, height: plan.height, thickness: plan.thickness, plinth: plan.plinth });
+  const offsets = (sketch.offsets ?? []).map((r) => (isPartition(r) ? { ...r, step: { ...r.step, origin: [zone.run.start, 0] as [number, number], depth: zone.run.depth, input: sized(r.step.input) } } : r));
+  const { frame: _frame, clip: _clip, ceiling: _ceiling, ...rest } = sketch;
+  const moved: SketchFeature = { ...rest, ...placed(zone, plan), offsets };
   const partition = offsets.find(isPartition);
   const rebuilt = partition ? rebuildChain(moved, partition.id) : "Cette répartition n'existe plus.";
   if (typeof rebuilt === "string") return `${zone.label} : ${rebuilt}`;
@@ -389,6 +294,7 @@ export function withPlanChanged(base: CadDocument, planId: string, next: Dressin
     problems.push(...follows.problems);
   }
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...linesGeometry(planLines(next)), dressingPlan: { ...next, made, boards, fills } } : f));
-  for (const zone of zones) if (made[zone.id] && (zone.kind === "corner" || fills[zone.id]?.filler)) doc = withZoneBoards(doc, planId, zone);
+  // A plan no longer under a slope has top boards to take away, the zone made again without them.
+  for (const zone of zones) if (made[zone.id] && (hasBoards(next, zone, fills) || boards[zone.id]?.length)) doc = withZoneBoards(doc, planId, zone);
   return { doc, problems };
 }

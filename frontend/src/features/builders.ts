@@ -28,6 +28,7 @@ import { buildLoft, buildShell } from "./shell-loft";
 import { buildModifier } from "./modifiers";
 import { buildFronts } from "./fronts";
 import { buildNiche } from "./niche";
+import { underCeiling } from "./sloped-ceiling";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
 
@@ -93,6 +94,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
     prism = prism.translate([n[0] * feature.startOffset, n[1] * feature.startOffset, n[2] * feature.startOffset]) as Shape3D;
   }
   if (feature.clip) prism = clipped(prism, feature.clip);
+  if (feature.ceiling) prism = underCeiling(prism, feature.ceiling, feature.name);
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }
 

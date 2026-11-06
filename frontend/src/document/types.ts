@@ -38,19 +38,42 @@ interface FeatureBase {
   hidden?: boolean;
 }
 
+/** A sloped ceiling: `height` at `at` along X or Y, rising by `rise` per mm, up to `cap`. */
+export interface SlopedCeiling {
+  axis: "x" | "y";
+  at: number;
+  rise: number;
+  height: number;
+  cap: number;
+  /** Only the slab this thick under it: a sloped top board. */
+  slab?: number;
+}
+
 /** The plan of a dressing, seen from above: its model, its sizes (mm), and what was made on each zone. */
 export interface DressingPlan {
-  model: "I" | "L-left" | "L-right" | "U" | "L-left-cut" | "L-right-cut" | "U-cut" | "facing";
+  model: "I" | "L-left" | "L-right" | "U" | "L-left-cut" | "L-right-cut" | "U-cut" | "facing" | "U-cut-left" | "U-cut-right" | "G-left" | "G-right" | "T" | "back" | "depths" | "L-left-round" | "L-right-round" | "U-round";
   lengthA: number;
   lengthB: number;
   lengthC: number;
-  /** Face to face: the wall across, and the way between the two runs. */
+  /** The run across, face to face. */
   lengthD: number;
+  /** The run nearly closing a U, or the second part of a wall of two depths. */
+  lengthE: number;
+  /** The way between two runs, or in front of the island. */
   aisle: number;
   depth: number;
+  /** The second part of a wall of two depths. */
+  depthB: number;
   /** A cut corner: how far it goes along wall A and along the other wall. */
   cornerA: number;
   cornerB: number;
+  /** An island, facing the same way as wall A. */
+  island?: boolean;
+  islandLength: number;
+  islandDepth: number;
+  /** A sloped ceiling, low at the left of wall A, at its right, or against it; `height` is its high side. */
+  roof?: "left" | "right" | "wall";
+  roofLow: number;
   thickness: number;
   height: number;
   plinth: number;
@@ -82,6 +105,8 @@ export interface SketchFeature extends FeatureBase {
   dressingPlan?: DressingPlan;
   /** What is extruded from this sketch stands over this outline on the floor (ExtrudeFeature.clip). */
   clip?: [number, number][];
+  /** What is extruded from this sketch stops under this ceiling, and what equips its niches too. */
+  ceiling?: SlopedCeiling;
   /** Reference image under the sketch, to trace over (never built). */
   underlay?: SketchUnderlay;
   points: SketchPoint[];
@@ -143,6 +168,8 @@ export interface ExtrudeFeature extends FeatureBase {
   regions?: [number, number][];
   /** Only what stands over this outline on the floor (world X, Y): the boards of a corner cut at an angle. */
   clip?: [number, number][];
+  /** Only what is under this ceiling: the boards of a dressing under a slope. */
+  ceiling?: SlopedCeiling;
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
   /**

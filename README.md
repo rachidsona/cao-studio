@@ -1691,6 +1691,11 @@ opération existante.
   le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
   confirmation. Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
+- **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
+  fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les
+  angles arrondis, avec leur porte cintrée. Deux réglages s'ajoutent : un **îlot** à un passage devant le mur A, et un
+  **rampant**, plafond en pente qui descend à gauche, à droite ou contre le mur A : panneaux, portes et fonds s'arrêtent
+  dessous, et chaque zone reçoit un dessus en pente.
 - **Remplir** (dans le Plan de dressing, sur une zone libre) : on donne la largeur intérieure voulue des caissons, et
   l'outil propose ce qui tombe juste, côtés comptés : tant de caissons et un **fileur** ou un caisson de la largeur exacte
   du reste, au début ou à la fin du mur, ou des caissons égaux. Le résultat est une Répartition ordinaire ; quand le plan

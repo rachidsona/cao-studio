@@ -106,7 +106,7 @@ export function partitionLayout(input: PartitionInput): PartitionLayout | string
   const kinds: PartitionLayout["kinds"] = [];
   const full = (pass: Pass) => !boards || pass === "side";
   for (const s of sides) {
-    panels.push(full(s.pass) ? [s.x0, 0, s.x1, height] : [s.x0, base, s.x1, top]);
+    panels.push(full(s.pass) ? [s.x0, 0, s.x1, height] : [s.x0, base, s.x1, input.openTop ? height : top]);
     kinds.push("side");
   }
   if (boards) {
@@ -115,8 +115,12 @@ export function partitionLayout(input: PartitionInput): PartitionLayout | string
     const cuts = sides.filter((s) => s.pass === "side").sort((a, b) => a.x0 - b.x0);
     for (const cut of [...cuts, { x0: length, x1: length, pass: "side" as Pass }]) {
       if (cut.x0 - start > 1e-6) {
-        panels.push([start, round(plinth), round(cut.x0), round(base)], [start, top, round(cut.x0), height]);
-        kinds.push("bottom", "top");
+        panels.push([start, round(plinth), round(cut.x0), round(base)]);
+        kinds.push("bottom");
+        if (!input.openTop) {
+          panels.push([start, top, round(cut.x0), height]);
+          kinds.push("top");
+        }
       }
       start = cut.x1;
     }

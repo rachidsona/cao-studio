@@ -8,7 +8,7 @@ import type { SketchGeometry } from "./sketch";
 import type { SketchExtrusion } from "../sketcher/mode";
 import { addExtrude, bodyOrigin, deleteFeature, findFeature, updateFeature } from "./operations";
 import { syncPartitionDoors } from "./partition-doors";
-import type { BodyInfo, CadDocument } from "./types";
+import type { BodyInfo, CadDocument, SketchFeature } from "./types";
 
 /** « Côté 3 »: the next number after the bodies of this name already in the document. */
 export function nextNumber(doc: CadDocument, name: string): number {
@@ -42,7 +42,7 @@ export function withSketchExtrusion(base: CadDocument, featureId: string, geomet
   // The doors of its partitions follow (made, changed or taken away with their step).
   if (!extrusion) return syncPartitionDoors(doc, featureId);
   let next = doc;
-  const clip = (findFeature(doc, featureId) as { clip?: [number, number][] } | undefined)?.clip;
+  const { clip, ceiling } = (findFeature(doc, featureId) ?? {}) as Pick<SketchFeature, "clip" | "ceiling">;
   const kept = new Map(extrusion.groups.map((group) => [group, carried(doc, group.remove ?? [])]));
   // Every body made again is removed first, so the new ones are numbered from 1 again (Cloison 1, 2…).
   for (const group of extrusion.groups) for (const old of group.remove ?? []) next = deleteFeature(next, old);
@@ -52,7 +52,7 @@ export function withSketchExtrusion(base: CadDocument, featureId: string, geomet
       next = addExtrude(next, featureId, group.distance);
       const id = next.features[next.features.length - 1]?.id as string;
       const name = element.numbered ? `${element.name} ${nextNumber(next, element.name)}` : element.name;
-      next = updateFeature(next, id, (f) => (f.type === "extrude" ? { ...f, name, regions: [element.probe], ...(clip ? { clip } : {}) } : f));
+      next = updateFeature(next, id, (f) => (f.type === "extrude" ? { ...f, name, regions: [element.probe], ...(clip ? { clip } : {}), ...(ceiling ? { ceiling } : {}) } : f));
       next = { ...next, bodyNames: { ...next.bodyNames, [id]: name } };
       // The k-th of a kind from the k-th; one more than before from the last.
       const before = kept.get(group)?.get(element.name);

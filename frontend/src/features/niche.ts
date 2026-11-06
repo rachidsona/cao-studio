@@ -10,6 +10,7 @@ import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import type { SolidsOutput } from "./outputs";
 import { nicheGeometry, nicheParts, nicheProblem, nicheWorld, worldBox, type NicheGeometry, type NichePart } from "./niche-parts";
+import { underCeiling } from "./sloped-ceiling";
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 
@@ -86,7 +87,8 @@ export function buildNiche(feature: NicheFeature, sketch: SketchFeature | undefi
   const shapes: Shape3D[] = [];
   try {
     for (const part of nicheParts(feature, n)) {
-      const solid = partShape(part, n, feature);
+      const shape = partShape(part, n, feature);
+      const solid = sketch?.ceiling ? underCeiling(shape, sketch.ceiling, part.name) : shape;
       if (!isShapeValid(solid)) {
         solid.delete();
         throw new GeometryError(`${feature.name} : la pièce « ${part.name} » est invalide.`);
