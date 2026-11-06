@@ -1686,7 +1686,8 @@ opération existante.
   Niche, Module et Penderie y marchent, pas les tiroirs ni les portes de Répartition, qui sortiraient par le pan coupé ;
   son côté du bout s'ajoute, et « Porte sur le pan coupé » pose une porte de biais avec ses charnières au devis. « Modifier
   le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
-  confirmation (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
+  confirmation. Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
+  (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
 - **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de

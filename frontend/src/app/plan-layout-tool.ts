@@ -3,9 +3,11 @@
  * (document/plan-layout.ts), et OK pose le plan au sol ; puis chaque zone se clique, dans le schéma ou dans la liste : elle
  * reçoit sa Répartition, ouverte aussitôt dans son outil pour régler ses cases, et se rouvre de la même façon. L'outil
  * rouvert retrouve le plan du projet, pour passer à la zone suivante ou le changer : tout ce qui est fait dessus suit.
+ * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
 import { PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type PlanModel, type PlanZone } from "../document/plan-layout";
-import type { DressingPlan } from "../document/types";
+import { findFeature } from "../document/operations";
+import type { DressingPlan, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { askConfirm } from "../ui/confirm-dialog";
 import { placePanel } from "../ui/dock";
@@ -64,6 +66,8 @@ export class PlanLayoutTool {
     private readonly editor: Editor,
     container: HTMLElement,
     private readonly closed: () => void,
+    /** The sketch of the plan to show; absent: the one of the project. */
+    readonly chosen?: string,
   ) {
     this.panel = el("div", {
       class: "absolute top-2 right-2 z-30 max-h-[calc(100%-1rem)] w-72 space-y-2 overflow-y-auto border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto dark:border-gray-700 dark:bg-gray-900/95",
@@ -80,11 +84,17 @@ export class PlanLayoutTool {
     this.closed();
   }
 
+  private placed(): SketchFeature | undefined {
+    const chosen = this.chosen ? findFeature(this.editor.doc, this.chosen) : undefined;
+    return chosen?.type === "sketch" && chosen.dressingPlan ? chosen : planOf(this.editor.doc);
+  }
+
   private draw(): void {
     const active = document.activeElement;
     if (active instanceof HTMLInputElement && this.panel.contains(active)) return;
-    const placed = planOf(this.editor.doc);
-    this.panel.replaceChildren(...(placed?.dressingPlan && !this.editing ? this.zones(placed.id, placed.dressingPlan) : this.settings(placed?.id)));
+    const placed = this.placed();
+    // A plan made before a setting existed takes its usual value.
+    this.panel.replaceChildren(...(placed?.dressingPlan && !this.editing ? this.zones(placed.id, { ...PLAN, ...placed.dressingPlan }) : this.settings(placed?.id)));
   }
 
   // ---- first: the model and its sizes -------------------------------------------------
@@ -227,8 +237,22 @@ export class PlanLayoutTool {
 export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   let tool: PlanLayoutTool | null = null;
-  root.querySelector('[data-workshop="dressing-plan"]')?.addEventListener("click", () => {
+  const open = (chosen?: string) => {
     tool?.close();
-    tool = new PlanLayoutTool(editor, container, () => (tool = null));
-  });
+    tool = new PlanLayoutTool(editor, container, () => (tool = null), chosen);
+  };
+  /** A sketch chosen: when it is a plan, its tool, unless it is the one open or another tool is at work in a sketch. */
+  const show = (id: string | null | undefined) => {
+    const sketch = id ? findFeature(editor.doc, id) : undefined;
+    if (sketch?.type !== "sketch" || !sketch.dressingPlan || editor.sketches.active) return;
+    if (tool?.chosen !== sketch.id) open(sketch.id);
+  };
+  root.querySelector('[data-workshop="dressing-plan"]')?.addEventListener("click", () => open());
+  root.addEventListener("cad:feature-selected", (event) => show((event as CustomEvent<string | null>).detail));
+  // In the view, a line or an area of the plan is picked rather than its sketch.
+  const selected = viewport.onSelectionChange;
+  viewport.onSelectionChange = (selection) => {
+    selected(selection);
+    show(selection.sketches[0] ?? selection.sketch[0]?.sketchId);
+  };
 }

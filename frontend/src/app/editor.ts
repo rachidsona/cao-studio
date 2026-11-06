@@ -169,9 +169,7 @@ export class Editor {
     new MutationObserver(() => viewport.applyTheme()).observe(document.documentElement, { attributeFilter: ["class"] });
   }
 
-  get doc(): CadDocument {
-    return this.session.doc;
-  }
+  get doc(): CadDocument { return this.session.doc; }
   get unit(): DisplayUnit { return preferredUnit(); }
 
   notify(message: string, kind: "info" | "success" | "error" = "info"): void {
@@ -301,6 +299,7 @@ export class Editor {
     this.selectedFeature = id;
     this.openPanel("properties");
     this.render();
+    this.root.dispatchEvent(new CustomEvent("cad:feature-selected", { detail: id }));
   }
 
   // ---- commands -----------------------------------------------------------

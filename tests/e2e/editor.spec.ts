@@ -569,9 +569,25 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await tool.getByLabel(/^Longueur mur A/).press("Enter");
   await expect(tool.getByRole("img", { name: "Schéma du plan vu de dessus" })).toContainText("300 cm");
   await tool.getByRole("button", { name: "Créer le plan" }).click();
+  const zones = tool.getByRole("list", { name: "Zones du plan" });
+  await expect(zones).toBeVisible();
+
+  // The plan on the floor, clicked in the view, comes back too.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
+  await page.waitForTimeout(800);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  for (let i = 1; i < 12 && !(await tool.count()); i++) {
+    for (let j = 1; j < 8 && !(await tool.count()); j++) {
+      await page.mouse.click(view.x + (view.width * i) / 12, view.y + (view.height * j) / 8);
+      await page.waitForTimeout(60);
+    }
+  }
+  await expect(zones).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
 
   // Each zone: its Répartition opens in its own tool; the corner too.
-  const zones = tool.getByRole("list", { name: "Zones du plan" });
   const zone = (name: string) => zones.getByRole("listitem").filter({ hasText: name }).getByRole("button");
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await expect(zones.getByRole("listitem")).toHaveCount(3);
@@ -616,6 +632,15 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await open();
   await expect(zone("Mur C")).toHaveText("Modifier");
   await expect(tool.getByLabel("Porte sur le pan coupé")).toBeChecked();
+
+  // The sketch of the plan, clicked in the browser, shows it again.
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect(tool).toHaveCount(0);
+  await page.getByText("Plan du dressing", { exact: true }).first().click();
+  await expect(zones.getByRole("listitem")).toHaveCount(3);
+  await expect(zone("Mur A")).toHaveText("Modifier");
+  await page.getByText("Plan du dressing", { exact: true }).first().click();
+  await expect(tool).toHaveCount(1);
 
   // Another model: what it no longer has goes, once asked.
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
