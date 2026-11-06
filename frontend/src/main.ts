@@ -1,6 +1,8 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
+import { bindCommandPalette } from "./app/command-palette";
 import { bindPlanLayout } from "./app/plan-layout-tool";
+import { bindProductionFolder } from "./app/production-folder";
 import { bindProjectTabs } from "./app/project-tabs";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
@@ -135,7 +137,7 @@ async function start(): Promise<void> {
   bindScenes(root, viewport, editor);
   bindMeasure(root, viewport, editor);
   bindSnapButtons(root, (message) => editor.notify(message, "info"));
-  bindAssembly(root, viewport, editor);
+  const notice = bindAssembly(root, viewport, editor);
   bindLibrary(root, viewport, editor);
   bindHardwarePanel(root, viewport, editor);
   bindStandardsPanel(root, viewport, editor);
@@ -162,6 +164,8 @@ async function start(): Promise<void> {
   bindProduction(root, viewport, editor, config.apiUrl, config.projectName);
   bindAssistant(root, viewport, editor, config.apiUrl);
   bindPlanLayout(root, viewport, editor);
+  bindCommandPalette(root);
+  bindProductionFolder(root, viewport, editor, geometry, notice);
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
   editor.render();
   loading.show("Calcul des corps…", 0.95);

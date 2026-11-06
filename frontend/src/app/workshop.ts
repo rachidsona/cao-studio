@@ -18,7 +18,7 @@ import { el } from "../ui/dom";
 import type { FaceAppearance } from "../viewport/body-layer";
 import type { BodyAppearance, Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { downloadText, escapeHtml, floatingPanel, openModal, printHtml } from "./workshop-ui";
+import { downloadText, escapeHtml, floatingPanel, openModal, printHtml, type PrintPage } from "./workshop-ui";
 
 type Edges = NonNullable<BodyInfo["edges"]>;
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -53,6 +53,9 @@ function tableHtml(rows: CutRow[], totals: ReturnType<typeof cutList>["totals"],
   });
   return `${groups.join("")}<p>Dimensions en ${UNIT_LABELS[unit]}. Repère : la lettre de la pièce sur le calepinage et dans la vue (bouton « Repères des pièces »). L = longueur, l = largeur ; chants L1/L2 sur les grands côtés, l1/l2 sur les petits. Débit brut : le massif est scié avec sa surcote, puis raboté à la cote de coupe.</p>`;
 }
+
+/** The cut list as a document. */
+export const cutListPage = (rows: CutRow[], totals: ReturnType<typeof cutList>["totals"], unit: DisplayUnit): PrintPage => ({ title: "Liste de débit", html: `<h1>Liste de débit</h1>${tableHtml(rows, totals, unit)}` });
 
 const RENDER_KEY = "cao.render-materials";
 

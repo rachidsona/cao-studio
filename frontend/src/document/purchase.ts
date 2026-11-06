@@ -81,6 +81,12 @@ export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], 
   return lines;
 }
 
+/** The list to buy for a spreadsheet or a supplier: « ; » between columns, as cutListCsv. */
+export function purchaseCsv(lines: readonly PurchaseLine[]): string {
+  const cell = (text: string) => (/[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
+  return ["Article;Quantité;Unité;Détail", ...lines.map((l) => [l.label, String(l.quantity).replace(".", ","), l.unit, l.detail ?? ""].map(cell).join(";"))].join("\n");
+}
+
 /** Cut lists of several projects made `quantity` times each, as one (part names prefixed by their project). */
 export function combineRows(items: readonly { name: string; quantity: number; rows: readonly CutRow[] }[]): CutRow[] {
   return items.flatMap((item) =>

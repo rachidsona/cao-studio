@@ -58,8 +58,10 @@ export interface DressingPlan {
   cornerDoor?: boolean;
   /** By zone: the sketch of its Répartition. */
   made?: Record<string, string>;
-  /** By corner: the features of what closes it around its Répartition (its far side, its door). */
+  /** By zone: the features of what closes it around its Répartition (a corner's far side and door, a filler). */
   boards?: Record<string, string[]>;
+  /** By zone filled to size: the width of each case, and which one takes what is left, closed by a filler or not. */
+  fills?: Record<string, { cases: number[]; rest: number; filler: boolean }>;
 }
 
 export interface SketchFeature extends FeatureBase {

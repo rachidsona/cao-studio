@@ -12,13 +12,16 @@ import type { Vec3 } from "../document/types";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { escapeHtml, floatingPanel, printHtml } from "./workshop-ui";
+import { escapeHtml, floatingPanel, printHtml, type PrintPage } from "./workshop-ui";
 
 const IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 /** How far the pieces of the step shown move out, in sizes of the furniture. */
 const STEP_OUT = 0.35;
 
-export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Editor): void {
+/** The assembly notice of the furniture as it is, for the production folder. */
+export type AssemblyNotice = () => PrintPage | null;
+
+export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Editor): AssemblyNotice {
   const button = root.querySelector<HTMLButtonElement>('[data-workshop="assembly"]');
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   let panel: { body: HTMLElement; close: () => void } | null = null;
@@ -74,7 +77,7 @@ export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Edit
   };
   const hardwareText = (s: AssemblyStep) => s.hardware.map((h) => `${h.name} : ${h.quantity}${h.unit ? ` ${h.unit}` : ""}`);
 
-  const print = (steps: AssemblyStep[]) => {
+  const notice = (steps: AssemblyStep[]): PrintPage => {
     const capture = () => {
       viewport.renderer.render(viewport.scene, viewport.camera);
       return viewport.renderer.domElement.toDataURL("image/png");
@@ -94,14 +97,18 @@ export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Edit
     const all = steps.flatMap(hardwareText);
     const cover = `<section class="sheet"><h1>Notice de montage — ${escapeHtml(project)}</h1><div class="row"><img src="${assembled}" alt=""><img src="${exploded}" alt=""></div>
       <p>${steps.length} étapes · ${steps.reduce((n, s) => n + s.bodies.length, 0)} pièces</p>${all.length ? `<h3>Toute la quincaillerie</h3><ul>${all.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>` : ""}</section>`;
-    printHtml(
-      "Notice de montage",
-      cover + pages.join(""),
-      `@page{size:A4 landscape;margin:10mm}body{margin:0}.sheet{page-break-after:always}h1{font-size:18px}h2{font-size:16px;display:flex;gap:4mm;align-items:center}
+    return {
+      title: "Notice de montage",
+      html: cover + pages.join(""),
+      css: `@page{size:A4 landscape;margin:10mm}body{margin:0}.sheet{page-break-after:always}h1{font-size:18px}h2{font-size:16px;display:flex;gap:4mm;align-items:center}
        h2 span{display:inline-flex;width:10mm;height:10mm;border-radius:50%;background:#111;color:#fff;align-items:center;justify-content:center}
        .row{display:flex;gap:6mm;align-items:flex-start}.row img{flex:1;min-width:0;max-height:150mm;object-fit:contain;border:0.3mm solid #ddd}
        aside{width:70mm;flex:none}h3{font-size:12px;margin:2mm 0 1mm}ul{margin:0;padding-left:5mm}li{font-size:11px}`,
-    );
+    };
+  };
+  const print = (steps: AssemblyStep[]) => {
+    const page = notice(steps);
+    printHtml(page.title, page.html, page.css);
   };
 
   const render = () => {
@@ -161,5 +168,12 @@ export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Edit
   editor.onRender = () => {
     previous();
     if (panel) render();
+  };
+  return () => {
+    const steps = assemblySteps(editor.doc, bodies());
+    if (!steps.length) return null;
+    const page = notice(steps);
+    if (!panel) restore();
+    return page;
   };
 }

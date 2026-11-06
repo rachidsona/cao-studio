@@ -4,7 +4,8 @@
  * plan), et un pentagone là où l'angle est coupé. Le plan est une esquisse au sol qui garde ces réglages (`dressingPlan`) ;
  * chaque zone reçoit ensuite, à la demande, sa Répartition contre son mur, et toutes suivent quand le plan change. L'angle
  * coupé est lui aussi une Répartition, alignée sur le mur A et découpée au pentagone (`clip`) : Étagères, Niche, Module et
- * Penderie y marchent ; son dernier côté et sa porte sur le pan coupé, de biais, s'ajoutent autour d'elle.
+ * Penderie y marchent ; son dernier côté et sa porte sur le pan coupé, de biais, s'ajoutent autour d'elle. « Remplir »
+ * découpe une zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts.
  *
  * Repère de l'assistant Dressing (document/dressing-plan.ts) : le mur A a sa face en Y = 0 et va vers +X, le dressing est
  * devant lui (Y < 0) ; le mur B a sa face en X = 0 à gauche, le mur C en X = longueur de A à droite, tous deux vers −Y.
@@ -17,6 +18,7 @@ import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, DressingPlan, PlaneFrame, PlaneName, SketchFeature, Vec3 } from "./types";
 import { hingeCount } from "../features/fronts-parts";
 import { nearestPlane } from "../sketcher/frame";
+import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../sketcher/partition-history";
 
 export type PlanModel = DressingPlan["model"];
@@ -183,6 +185,58 @@ export function zoneStep(doc: CadDocument, plan: DressingPlan, id: string): { sk
   return sketch && step ? { sketch: sketch.id, step: step.id } : null;
 }
 
+/** One way of filling a zone: the width of each case, the one left over, closed by a filler or not. */
+export interface FillChoice {
+  label: string;
+  cases: number[];
+  /** The case that takes what is left (null: none does, all are equal). */
+  rest: number | null;
+  filler: boolean;
+}
+
+const cmText = (mm: number) => `${Number((mm / 10).toFixed(1)).toLocaleString("fr-FR")} cm`;
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
+/** What a case left over must leave between its sides (mm). */
+const THINNEST = 30;
+const NARROW_CABINET = 150;
+const WIDEST_FILLER = 300;
+
+/**
+ * The ways of filling this length with cases `width` wide inside (all the sides counted): the cases as asked and what is
+ * left in a cabinet or behind a filler, or equal cases that fill it all. `first`: what is left goes at the start of the run.
+ */
+export function fillChoices(length: number, thickness: number, width: number, first: boolean): FillChoice[] {
+  const n = Math.floor((length - thickness) / (width + thickness));
+  const choices: FillChoice[] = [];
+  const equal = (count: number) => (length - (count + 1) * thickness) / count;
+  if (n >= 1) {
+    const left = length - (n + 1) * thickness - n * width;
+    const rest = left - thickness;
+    const made = (kind: string, filler: boolean): FillChoice => {
+      const cases = Array.from({ length: n }, () => width);
+      return { label: `${plural(n, "caisson")} de ${cmText(width)} et ${kind} de ${cmText(rest)}`, cases: first ? [rest, ...cases] : [...cases, rest], rest: first ? 0 : n, filler };
+    };
+    if (left < 0.5) choices.push({ label: `${plural(n, "caisson")} de ${cmText(width)}, juste à la bonne longueur`, cases: Array.from({ length: n }, () => width), rest: null, filler: false });
+    else {
+      if (rest >= THINNEST && rest <= WIDEST_FILLER) choices.push(made("un fileur", true));
+      if (rest >= NARROW_CABINET) choices.push(made("un caisson", false));
+    }
+  }
+  for (const count of [Math.max(n, 1), n + 1]) {
+    const each = equal(count);
+    if (each >= NARROW_CABINET && Math.abs(each - width) >= 0.5) choices.push({ label: `${plural(count, "caisson")} ${count > 1 ? "égaux" : "égal"} de ${cmText(each)}`, cases: Array.from({ length: count }, () => each), rest: null, filler: false });
+  }
+  return choices;
+}
+
+/** Where a point of a run is on the floor: `along` its wall as its sketch counts, `off` the wall. */
+function runPoint(plan: DressingPlan, zone: PlanZone, along: number, off: number): Point {
+  if (zone.id === "B") return [off, along];
+  if (zone.id === "C") return [plan.lengthA - off, -along];
+  if (zone.id === "D") return [-along, -(2 * plan.depth + plan.aisle) + off];
+  return [along, -off];
+}
+
 /** A sheet of the plan: a closed shape in a sketch of its own, hidden, made into one body of this thickness. */
 function sheet(doc: CadDocument, name: string, shape: Point[], where: { offset: number; frame?: PlaneFrame }, distance: number): CadDocument {
   const id = uniqueId(doc, "sk");
@@ -213,30 +267,47 @@ function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): C
   return { ...next, features: [...next.features, { id: uniqueId(next, "fi"), type: "trim", name: uniqueName(next, `${zone.label} — charnières`), parts }] };
 }
 
-/** What closes a corner around its Répartition, made again: its far side, and its door when asked. */
-function withCornerBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
+/** The filler closing the case of a zone that takes what is left: flush with the front, as wide as the case. */
+function withFiller(doc: CadDocument, plan: DressingPlan, zone: PlanZone, rest: number): CadDocument {
+  const step = plan.made?.[zone.id] ? (findFeature(doc, plan.made[zone.id] as string) as SketchFeature | undefined)?.offsets?.find(isPartition)?.step : undefined;
+  const layout = step ? partitionLayout(step.input) : null;
+  const span = layout && typeof layout === "object" ? layout.caseSpans[rest] : undefined;
+  if (!step || !span) return doc;
+  const [a, b] = [step.origin[0] + span[0], step.origin[0] + span[1]];
+  const { depth: d, thickness: t, plinth, height } = plan;
+  return sheet(doc, `${zone.label} — fileur`, [runPoint(plan, zone, a, d - t), runPoint(plan, zone, b, d - t), runPoint(plan, zone, b, d), runPoint(plan, zone, a, d)], { offset: plinth }, height - plinth);
+}
+
+/** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler. */
+function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
   const { next: clean } = deleteFeatures(base, plan.boards?.[zone.id] ?? []);
   const { cornerB: b, depth: d, thickness: t, height, lengthA: l } = plan;
-  const far = zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b);
-  let doc = sheet(clean, `${zone.label} — côté`, far, { offset: 0 }, height);
-  if (plan.cornerDoor) doc = withCornerDoor(doc, plan, zone);
+  let doc = clean;
+  if (zone.kind === "corner") {
+    doc = sheet(doc, `${zone.label} — côté`, zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b), { offset: 0 }, height);
+    if (plan.cornerDoor) doc = withCornerDoor(doc, plan, zone);
+  }
+  const fill = plan.fills?.[zone.id];
+  if (fill?.filler) doc = withFiller(doc, plan, zone, fill.rest);
   const known = new Set(clean.features.map((f) => f.id));
   return withSettings(doc, planId, { boards: { ...plan.boards, [zone.id]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
 }
 
 const placed = ({ run, clip }: PlanZone) => ({ plane: run.plane, offset: run.offset, ...(run.frame ? { frame: run.frame } : {}), ...(clip ? { clip } : {}) });
 
-/** The Répartition of a zone, against its wall: about one case per 80 cm, to set in its tool; one case in a corner. */
-export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZone): { doc: CadDocument; sketch: string; step: string } | string {
+/** The Répartition of a zone, against its wall: about one case per 80 cm, to set in its tool; one case in a corner; or the cases of `fill`. */
+export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZone, fill?: FillChoice): { doc: CadDocument; sketch: string; step: string } | string {
   const plan = planIn(doc, planId);
   if (!plan) return "Ce plan n'existe plus.";
   const { start, length, depth } = zone.run;
   const corner = zone.kind === "corner";
-  const cases = corner ? 2 : Math.max(2, Math.min(10, Math.round(length / 800)));
+  // A Répartition has 2 cases at least: one is 2 cases with no side between them.
+  const whole = corner || fill?.cases.length === 1;
+  const cases = whole ? 2 : (fill?.cases.length ?? Math.max(2, Math.min(10, Math.round(length / 800))));
   const input: PartitionParams = {
-    length, height: plan.height, thickness: plan.thickness, cases, dividers: Array.from({ length: cases - 1 }, () => (corner ? ("none" as const) : ("single" as const))),
-    boards: true, plinth: plan.plinth, outer: "board", single: "board", double: "side",
+    length, height: plan.height, thickness: plan.thickness, cases, dividers: Array.from({ length: cases - 1 }, () => (whole ? ("none" as const) : ("single" as const))),
+    ...(fill && !whole ? { widths: fill.cases } : {}), boards: true, plinth: plan.plinth, outer: "board", single: "board", double: "side",
   };
   const step = uniqueOffsetId(doc);
   const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: [partitionRecord(step, `Répartition — ${zone.label.toLowerCase()}`, input, [start, 0], depth)] }, step);
@@ -244,15 +315,17 @@ export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZo
   const sketch = uniqueId(doc, "sk");
   const feature: SketchFeature = { id: sketch, type: "sketch", name: `Plan — ${zone.label.toLowerCase()}`, ...placed(zone), ...emptySketchGeometry() };
   const made = withSketchExtrusion({ ...doc, features: [...doc.features, feature] }, sketch, rebuilt.geometry as SketchGeometry, { groups: extrusionGroups([], rebuilt) });
-  const next = withSettings(made, planId, { made: { ...plan.made, [zone.id]: sketch } });
-  return { doc: corner ? withCornerBoards(next, planId, zone) : next, sketch, step };
+  const { [zone.id]: _old, ...fills } = plan.fills ?? {};
+  const kept = fill && !whole && fill.rest !== null ? { fills: { ...fills, [zone.id]: { cases: fill.cases, rest: fill.rest, filler: fill.filler } } } : { fills };
+  const next = withSettings(made, planId, { made: { ...plan.made, [zone.id]: sketch }, ...kept });
+  return { doc: corner || fill?.filler ? withZoneBoards(next, planId, zone) : next, sketch, step };
 }
 
 /** A door on the cut corners, or none: those already made follow. */
 export function withCornerDoors(base: CadDocument, planId: string, on: boolean): CadDocument {
   let doc = withSettings(base, planId, { cornerDoor: on });
   const plan = planIn(doc, planId) as DressingPlan;
-  for (const zone of planZones(plan)) if (zone.kind === "corner" && zoneDone(doc, plan, zone.id)) doc = withCornerBoards(doc, planId, zone);
+  for (const zone of planZones(plan)) if (zone.kind === "corner" && zoneDone(doc, plan, zone.id)) doc = withZoneBoards(doc, planId, zone);
   return doc;
 }
 
@@ -265,8 +338,14 @@ function withoutZone(doc: CadDocument, sketch: SketchFeature, boards: string[]):
 
 /** A Répartition at its new place and sizes: what is in it stays, as far as it still fits. */
 function withZoneFollowing(doc: CadDocument, sketch: SketchFeature, zone: PlanZone, plan: DressingPlan): { doc: CadDocument; problems: string[] } | string {
+  // The cases filled to size keep their width: the one left over takes the change.
+  const fill = plan.fills?.[zone.id];
+  const others = fill ? fill.cases.reduce((sum, w, i) => (i === fill.rest ? sum : sum + w), 0) : 0;
+  const left = fill ? zone.run.length - (fill.cases.length + 1) * plan.thickness - others : 0;
+  const cases = fill && left >= THINNEST ? fill.cases.map((w, i) => (i === fill.rest ? left : w)) : null;
+  if (fill && cases) fill.cases = cases;
   const offsets = (sketch.offsets ?? []).map((r) =>
-    isPartition(r) ? { ...r, step: { ...r.step, origin: [zone.run.start, 0] as [number, number], depth: zone.run.depth, input: { ...r.step.input, length: zone.run.length, height: plan.height, thickness: plan.thickness, plinth: plan.plinth } } } : r,
+    isPartition(r) ? { ...r, step: { ...r.step, origin: [zone.run.start, 0] as [number, number], depth: zone.run.depth, input: { ...r.step.input, ...(cases ? { widths: cases } : {}), length: zone.run.length, height: plan.height, thickness: plan.thickness, plinth: plan.plinth } } } : r,
   );
   const { frame: _frame, clip: _clip, ...rest } = sketch;
   const moved: SketchFeature = { ...rest, ...placed(zone), offsets };
@@ -291,6 +370,7 @@ export function withPlanChanged(base: CadDocument, planId: string, next: Dressin
   const zones = planZones(next);
   const made = { ...plan.made };
   const boards = { ...plan.boards };
+  const fills = structuredClone(plan.fills ?? {});
   const problems: string[] = [];
   let doc = base;
   for (const id of Object.keys(made)) {
@@ -300,14 +380,15 @@ export function withPlanChanged(base: CadDocument, planId: string, next: Dressin
     if (!sketch || !zone) {
       delete made[id];
       delete boards[id];
+      delete fills[id];
     }
     if (!sketch || !zone) continue;
-    const follows = withZoneFollowing(doc, findFeature(doc, sketch.id) as SketchFeature, zone, next);
+    const follows = withZoneFollowing(doc, findFeature(doc, sketch.id) as SketchFeature, zone, { ...next, fills });
     if (typeof follows === "string") return follows;
     doc = follows.doc;
     problems.push(...follows.problems);
   }
-  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...linesGeometry(planLines(next)), dressingPlan: { ...next, made, boards } } : f));
-  for (const zone of zones) if (zone.kind === "corner" && made[zone.id]) doc = withCornerBoards(doc, planId, zone);
+  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...linesGeometry(planLines(next)), dressingPlan: { ...next, made, boards, fills } } : f));
+  for (const zone of zones) if (made[zone.id] && (zone.kind === "corner" || fills[zone.id]?.filler)) doc = withZoneBoards(doc, planId, zone);
   return { doc, problems };
 }

@@ -1,9 +1,10 @@
 /**
- * Aide de l'éditeur : la prise en main en quelques étapes et les raccourcis clavier (3D et esquisse). S'ouvre
- * avec la touche « ? » ou depuis le menu « ⋯ » ; les raccourcis listés ici sont ceux de keyboard.ts et de
- * sketch-controller.ts.
+ * Aide de l'éditeur : la prise en main en quelques étapes, les raccourcis clavier (3D et esquisse) et, dans
+ * help-browser.ts, la fiche de chaque outil. S'ouvre avec le bouton Aide, la touche « ? » ou le menu « ⋯ » ; les
+ * raccourcis listés ici sont ceux de keyboard.ts et de sketch-controller.ts.
  */
 import { el } from "../ui/dom";
+import { helpBrowser } from "./help-browser";
 import { openModal } from "./workshop-ui";
 
 const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -14,6 +15,7 @@ export const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
     title: "Partout",
     keys: [
       [`${MOD} S`, "Enregistrer"],
+      [`${MOD} K`, "Palette de commandes : lancer un outil par son nom"],
       [`${MOD} Z`, "Annuler"],
       [`${MOD} ⇧ Z  ou  ${MOD} Y`, "Rétablir"],
       ["Échap", "Quitter l'outil, puis la sélection"],
@@ -85,28 +87,28 @@ function helpContent(): HTMLElement {
     "div",
     { class: "space-y-5" },
     el("section", {}, el("h3", { class: "mb-2 text-sm font-semibold" }, "Prise en main"), steps),
-    el("div", { class: "grid gap-5 md:grid-cols-3" }, ...groups),
+    el("div", { class: "grid gap-5 lg:grid-cols-3" }, ...groups),
   );
 }
 
 let close: (() => void) | null = null;
 
-export function openHelp(): void {
+function openHelp(root: HTMLElement): void {
   close?.();
-  const shut = openModal("Aide et raccourcis clavier", helpContent());
+  const shut = openModal("Aide", helpBrowser(root, helpContent()));
   close = () => {
     shut();
     close = null;
   };
 }
 
-/** The "?" key (outside text fields) and the menu entry open the help. */
+/** The "?" key (outside text fields), the Aide button and the menu entry open the help. */
 export function bindHelp(root: HTMLElement): void {
-  root.querySelector('[data-action="help"]')?.addEventListener("click", openHelp);
+  for (const button of root.querySelectorAll('[data-action="help"]')) button.addEventListener("click", () => openHelp(root));
   window.addEventListener("keydown", (event) => {
     if (event.key !== "?" || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
     if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
     event.preventDefault();
-    openHelp();
+    openHelp(root);
   });
 }

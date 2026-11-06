@@ -58,7 +58,7 @@ test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page })
   await expect(quote).toContainText("Total TTC");
   await page.keyboard.press("Escape");
   await page.keyboard.press("?");
-  await expect(page.getByRole("dialog", { name: "Aide et raccourcis clavier" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Aide", exact: true })).toBeVisible();
 });
 
 test("les panneaux latéraux s'élargissent à la poignée et gardent leur largeur", async ({ page }) => {

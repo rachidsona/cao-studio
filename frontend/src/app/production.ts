@@ -13,7 +13,7 @@ import { cutList, type CutRow } from "../document/cut-list";
 import { modelHardware } from "../document/hardware";
 import { MATERIALS } from "../document/materials";
 import { layoutSheets, type Sheet, type StockPiece } from "../document/nesting";
-import { combineHardware, combineRows, purchaseList } from "../document/purchase";
+import { combineHardware, combineRows, purchaseCsv, purchaseList } from "../document/purchase";
 import type { DisplayUnit } from "../document/types";
 import { toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
@@ -21,7 +21,7 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { call } from "./sharing";
 import { partsOf } from "./workshop";
-import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
+import { downloadText, escapeHtml, openModal, printHtml, type PrintPage } from "./workshop-ui";
 
 const INPUT = "h-8 w-20 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
 const BUTTON = "h-8 shrink-0 border border-gray-300 px-2 text-xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -70,6 +70,22 @@ const purchaseHtml = (sheets: Sheet[], rows: CutRow[], hardware: { name: string;
   `<table><thead><tr><th>Article</th><th>Quantité</th><th>Détail</th></tr></thead><tbody>${purchaseList(sheets, rows, hardware, bars)
     .map((l) => `<tr><td>${escapeHtml(l.label)}</td><td>${l.quantity.toLocaleString("fr-FR")} ${escapeHtml(l.unit)}</td><td>${escapeHtml(l.detail ?? "")}</td></tr>`)
     .join("")}</tbody></table>`;
+
+/** The sheets of a project and what to buy, using the stock of offcuts when it can be read. */
+export async function layoutFiles(rows: CutRow[], hardware: { name: string; quantity: number; unit?: string }[], unit: DisplayUnit): Promise<{ page: PrintPage; purchase: string; sheets: number }> {
+  const pieces = await stock().catch((): StockPiece[] => []);
+  const { sheets, tooBig } = layoutSheets(rows, undefined, pieces);
+  const { bars, tooLong } = layoutBars(rows);
+  const out = [...tooBig, ...tooLong];
+  return {
+    page: {
+      title: "Calepinage",
+      html: `<h1>Calepinage</h1>${sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}${bars.map((b, i) => barSvg(b, i, unit)).join("")}${out.length ? `<p>À revoir, trop grandes pour leur panneau ou leur barre : ${escapeHtml(out.join(", "))}.</p>` : ""}<h2>Liste d'achat</h2>${purchaseHtml(sheets, rows, hardware, bars)}`,
+    },
+    purchase: purchaseCsv(purchaseList(sheets, rows, hardware, bars)),
+    sheets: sheets.length,
+  };
+}
 
 async function stock(): Promise<StockPiece[]> {
   return (await call<{ offcuts: StockPiece[] }>("/api/offcuts/")).offcuts;

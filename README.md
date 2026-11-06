@@ -28,8 +28,9 @@ projet, projet exemple, puis la liste « Projets 3D ») et **Conception Cuisine 
 dressing ouvre l'atelier sur sa pièce à dessiner, « Ouvrir l'atelier », puis la liste « Projets Cuisine & Dressing »,
 les affaires de l'atelier). Sur téléphone, chaque carte précède sa liste. Chaque nouveau projet
 contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé chêne, fond HDF)
-pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, la
-touche **?** (ou le menu « ⋯ › Aide ») ouvre la prise en main et tous les raccourcis clavier.
+pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, le
+bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis clavier et une
+fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
 
 Chaque projet des deux listes a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner »)
 et les supprimer ensemble avec **« Supprimer la sélection »**, liste par liste. Les deux demandent confirmation : un projet 3D part avec ses versions
@@ -1690,6 +1691,16 @@ opération existante.
   le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
   confirmation. Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
+- **Remplir** (dans le Plan de dressing, sur une zone libre) : on donne la largeur intérieure voulue des caissons, et
+  l'outil propose ce qui tombe juste, côtés comptés : tant de caissons et un **fileur** ou un caisson de la largeur exacte
+  du reste, au début ou à la fin du mur, ou des caissons égaux. Le résultat est une Répartition ordinaire ; quand le plan
+  change, le reste prend la différence et le fileur suit (`fillChoices` de `document/plan-layout.ts`).
+- **Dossier de production** (groupe « Atelier ») : le contrôle du projet d'abord, puis tous les fichiers de l'atelier en
+  un seul .zip : liste de débit, calepinage et liste d'achat, fiches, étiquettes, DXF, G-code, notice de montage et, à la
+  demande, devis ; le résultat du contrôle est écrit dans `00-lisez-moi.txt` (`app/production-folder.ts`).
+- **Palette de commandes** (⌘K ou Ctrl+K, bouton « Outils ») : on tape quelques lettres, sans se soucier des accents,
+  Entrée lance l'outil, même rangé dans un menu ; seuls les outils du mode en cours sont proposés, les derniers utilisés
+  en tête (`app/command-palette.ts`).
 - **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de

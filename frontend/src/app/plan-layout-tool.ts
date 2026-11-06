@@ -5,7 +5,7 @@
  * rouvert retrouve le plan du projet, pour passer à la zone suivante ou le changer : tout ce qui est fait dessus suit.
  * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
-import { PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type PlanModel, type PlanZone } from "../document/plan-layout";
+import { fillChoices, PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type FillChoice, type PlanModel, type PlanZone } from "../document/plan-layout";
 import { findFeature } from "../document/operations";
 import type { DressingPlan, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
@@ -60,6 +60,10 @@ export class PlanLayoutTool {
   private plan: DressingPlan = { ...last };
   /** The plan of the project is being changed, rather than its zones worked on. */
   private editing = false;
+  /** The free zone being filled, the width asked for its cases (mm), and whether what is left goes at its start. */
+  private filling: PlanZone | null = null;
+  private fillWidth = 600;
+  private fillFirst = false;
   private readonly panel: HTMLElement;
 
   constructor(
@@ -94,7 +98,9 @@ export class PlanLayoutTool {
     if (active instanceof HTMLInputElement && this.panel.contains(active)) return;
     const placed = this.placed();
     // A plan made before a setting existed takes its usual value.
-    this.panel.replaceChildren(...(placed?.dressingPlan && !this.editing ? this.zones(placed.id, { ...PLAN, ...placed.dressingPlan }) : this.settings(placed?.id)));
+    const plan = placed?.dressingPlan ? { ...PLAN, ...placed.dressingPlan } : null;
+    if (placed && plan && this.filling) this.panel.replaceChildren(...this.fill(placed.id, plan, this.filling));
+    else this.panel.replaceChildren(...(placed && plan && !this.editing ? this.zones(placed.id, plan) : this.settings(placed?.id)));
   }
 
   // ---- first: the model and its sizes -------------------------------------------------
@@ -195,7 +201,12 @@ export class PlanLayoutTool {
     const row = (zone: PlanZone) => {
       const go = el("button", { type: "button", class: SMALL }, done(zone) ? "Modifier" : "Répartition");
       go.addEventListener("click", () => void this.make(planId, plan, zone));
-      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", {}, `${zone.label} · ${formatLength(zone.run.length, unit)}`), go);
+      const fill = el("button", { type: "button", class: SMALL }, "Remplir");
+      fill.addEventListener("click", () => {
+        this.filling = zone;
+        this.draw();
+      });
+      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, go);
     };
     const door = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: plan.cornerDoor === true });
     door.addEventListener("change", () => void this.editor.change(withCornerDoors(this.editor.doc, planId, door.checked)).then(() => this.draw()));
@@ -217,6 +228,61 @@ export class PlanLayoutTool {
       finish,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
+  }
+
+  // ---- a free zone filled to size -----------------------------------------------------
+
+  private fill(planId: string, plan: DressingPlan, zone: PlanZone): HTMLElement[] {
+    const unit = this.editor.unit;
+    const width = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(this.fillWidth, unit), 4), "aria-label": `Largeur des caissons (${UNIT_LABELS[unit]})` });
+    const apply = () => {
+      const parsed = parseNumber(width.value);
+      const ok = parsed !== null && parsed > 0;
+      width.setAttribute("aria-invalid", String(!ok));
+      if (ok) this.fillWidth = fromDisplay(parsed, unit);
+    };
+    width.addEventListener("change", apply);
+    width.addEventListener("blur", () => this.draw());
+    width.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Enter") {
+        apply();
+        width.blur();
+      }
+    });
+    const side = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Place du reste" }, el("option", { value: "end", selected: !this.fillFirst }, "À la fin du mur"), el("option", { value: "start", selected: this.fillFirst }, "Au début du mur"));
+    side.addEventListener("change", () => {
+      this.fillFirst = side.value === "start";
+      this.draw();
+    });
+    const choices = fillChoices(zone.run.length, plan.thickness, this.fillWidth, this.fillFirst);
+    const options = choices.map((choice) => {
+      const pick = el("button", { type: "button", class: `${SMALL} h-auto min-h-8 w-full py-1 text-left` }, choice.label);
+      pick.addEventListener("click", () => void this.filled(planId, zone, choice));
+      return pick;
+    });
+    const back = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
+    back.addEventListener("click", () => {
+      this.filling = null;
+      this.draw();
+    });
+    return [
+      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, `Remplir : ${zone.label}`),
+      el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(zone.run.length, unit)} à remplir, côtés compris. Choisissez la largeur intérieure des caissons.`),
+      el("label", { class: ROW }, `Largeur des caissons (${UNIT_LABELS[unit]})`, width),
+      el("label", { class: ROW }, "Le reste va", side),
+      ...(options.length ? options : [el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, "Cette largeur ne tient pas dans cette zone.")]),
+      back,
+    ];
+  }
+
+  private async filled(planId: string, zone: PlanZone, choice: FillChoice): Promise<void> {
+    const made = withZonePartition(this.editor.doc, planId, zone, choice);
+    if (typeof made === "string") return this.editor.notify(made, "error");
+    await this.editor.change(made.doc);
+    this.editor.notify(`${zone.label} remplie : ${choice.label}.`, "success");
+    this.filling = null;
+    this.draw();
   }
 
   /** A zone clicked: its Répartition, made if need be, opened in its tool. */

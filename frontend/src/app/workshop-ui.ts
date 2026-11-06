@@ -65,6 +65,21 @@ export function setLetterhead(html: string): void {
   letterhead = html;
 }
 
+/** A printable document: printed at once, or kept as a file of the production folder. */
+export interface PrintPage {
+  title: string;
+  html: string;
+  css?: string;
+}
+
+/** The whole page of a document; `header`: the letterhead first. */
+export function pageHtml({ title, html, css = "" }: PrintPage, header = true): string {
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>
+    body{font:11px system-ui,sans-serif;margin:12mm;color:#111} h1{font-size:16px} table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #999;padding:3px 5px;text-align:left} th{background:#eee} svg{max-width:100%;page-break-inside:avoid}
+    .sheet{page-break-after:always}${css}</style></head><body>${header ? letterhead : ""}${html}</body></html>`;
+}
+
 /** Prints a page made of `html` (to paper, or "Enregistrer en PDF" in the print dialog); `header`: the letterhead first. */
 export function printHtml(title: string, html: string, extraCss = "", header = true): void {
   const frame = document.createElement("iframe");
@@ -73,10 +88,7 @@ export function printHtml(title: string, html: string, extraCss = "", header = t
   const page = frame.contentDocument;
   if (!page || !frame.contentWindow) return frame.remove();
   page.open();
-  page.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>
-    body{font:11px system-ui,sans-serif;margin:12mm;color:#111} h1{font-size:16px} table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid #999;padding:3px 5px;text-align:left} th{background:#eee} svg{max-width:100%;page-break-inside:avoid}
-    .sheet{page-break-after:always}${extraCss}</style></head><body>${header ? letterhead : ""}${html}</body></html>`);
+  page.write(pageHtml({ title, html, css: extraCss }, header));
   page.close();
   setTimeout(() => {
     frame.contentWindow?.focus();

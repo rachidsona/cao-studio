@@ -18,7 +18,7 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
 import { pieceUrl } from "./workshop-progress";
-import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
+import { downloadText, escapeHtml, openModal, printHtml, type PrintPage } from "./workshop-ui";
 import { formatLength, UNIT_LABELS } from "../measurements/units";
 
 const GCODE_KEY = "cao.gcode";
@@ -75,6 +75,9 @@ function loadLayers(): LayerProfile {
     return { ...LAYER_PROFILES[0]!.profile };
   }
 }
+
+/** The DXF of these parts, with the layer names of the machine as last set. */
+export const savedDxf = (parts: FlatPart[]) => partsDxf(parts, 20, loadLayers());
 
 async function exportDxf(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
   const { parts, skipped, edges } = await flatParts(viewport, editor, geometry);
@@ -136,20 +139,26 @@ function loadOptions(): GcodeOptions {
   }
 }
 
+/** The parts by material and thickness, each on the sheets it is cut from. */
+function gcodeGroups(parts: (FlatPart & { material: string })[]) {
+  const by = new Map<string, { label: string; size: [number, number]; parts: FlatPart[] }>();
+  for (const p of parts) {
+    const key = `${p.material}|${Number(p.thickness.toFixed(1))}`;
+    const group = by.get(key) ?? { label: `${p.material} ${Number(p.thickness.toFixed(1))} mm`, size: MATERIALS.find((m) => m.name === p.material)?.sheet ?? [2800, 2070], parts: [] };
+    group.parts.push(p);
+    by.set(key, group);
+  }
+  return [...by.values()];
+}
+
+/** The G-code of these parts, with the settings of the machine as last set. */
+export const savedGcode = (parts: (FlatPart & { material: string })[]) => partsGcode(gcodeGroups(parts), loadOptions()).code;
+
 async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
   const { parts, skipped, flip, edges } = await flatParts(viewport, editor, geometry);
   if (!parts.length) return editor.notify("Aucune pièce à usiner.", "info");
   const o = loadOptions();
-  const groups = () => {
-    const by = new Map<string, { label: string; size: [number, number]; parts: FlatPart[] }>();
-    for (const p of parts) {
-      const key = `${p.material}|${Number(p.thickness.toFixed(1))}`;
-      const group = by.get(key) ?? { label: `${p.material} ${Number(p.thickness.toFixed(1))} mm`, size: MATERIALS.find((m) => m.name === p.material)?.sheet ?? [2800, 2070], parts: [] };
-      group.parts.push(p);
-      by.set(key, group);
-    }
-    return [...by.values()];
-  };
+  const groups = () => gcodeGroups(parts);
   const summary = el("p", { class: "text-xs text-gray-600 dark:text-gray-300" });
   const refresh = () => {
     const { sheets, skipped: left } = partsGcode(groups(), o);
@@ -195,9 +204,10 @@ async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryC
   ]);
 }
 
-function printLabels(viewport: Viewport, editor: Editor): void {
+/** The sheet of labels, one per part, or null with no part. */
+export function labelsPage(viewport: Viewport, editor: Editor): PrintPage | null {
   const { rows } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  if (!rows.length) return editor.notify("Aucune pièce à étiqueter.", "info");
+  if (!rows.length) return null;
   const project = document.title.split("·")[0]?.trim() ?? "";
   const labels = rows.flatMap((r) =>
     r.names.map((name) => {
@@ -206,15 +216,21 @@ function printLabels(viewport: Viewport, editor: Editor): void {
       return `<div class="label"><div class="qr">${qrSvg(pieceUrl(name))}</div><div class="text"><b>${escapeHtml(name)}</b><span>${escapeHtml(size)}</span><span>${escapeHtml(r.material)}</span><span>Chants : ${escapeHtml(edgeText(r.edges))} · Fil : ${escapeHtml(grainText(r.grain))}</span><small>${escapeHtml(project)}</small></div></div>`;
     }),
   );
-  printHtml(
-    "Étiquettes",
-    `<div class="labels">${labels.join("")}</div>`,
-    `@page{size:A4;margin:0}body{margin:0}.labels{display:grid;grid-template-columns:repeat(3,70mm);grid-auto-rows:37mm}
+  return {
+    title: "Étiquettes",
+    html: `<div class="labels">${labels.join("")}</div>`,
+    css: `@page{size:A4;margin:0}body{margin:0}.labels{display:grid;grid-template-columns:repeat(3,70mm);grid-auto-rows:37mm}
      .label{box-sizing:border-box;display:flex;gap:2mm;padding:3mm;overflow:hidden;page-break-inside:avoid;border:0.2mm dashed #ccc}
      .qr{width:22mm;height:22mm;flex:none}.qr svg{width:100%;height:100%}.text{display:flex;flex-direction:column;gap:0.6mm;font-size:8pt;min-width:0}
      .text b{font-size:9pt}.text small{color:#666}`,
-  );
-  editor.notify(`${labels.length} étiquette(s) prête(s) à imprimer (A4, 3 × 8).`, "success");
+  };
+}
+
+function printLabels(viewport: Viewport, editor: Editor): void {
+  const page = labelsPage(viewport, editor);
+  if (!page) return editor.notify("Aucune pièce à étiqueter.", "info");
+  printHtml(page.title, page.html, page.css);
+  editor.notify(`${page.html.split('class="label"').length - 1} étiquette(s) prête(s) à imprimer (A4, 3 × 8).`, "success");
 }
 
 export function bindCnc(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {

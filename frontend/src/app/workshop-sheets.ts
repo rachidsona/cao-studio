@@ -16,14 +16,15 @@ import type { Editor } from "./editor";
 import { partsOf } from "./workshop";
 import { pieceUrl } from "./workshop-progress";
 import { flatParts } from "./workshop-cnc";
-import { escapeHtml, printHtml } from "./workshop-ui";
+import { escapeHtml, printHtml, type PrintPage } from "./workshop-ui";
 
-export async function printPartSheets(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
+/** One sheet per part of the cut list, or null with none laid flat. */
+export async function partSheetsPage(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<PrintPage | null> {
   const inputs = partsOf(viewport, editor.doc);
   const { rows } = cutList(editor.doc, inputs);
   const input = new Map(inputs.map((p) => [bodyLabel(editor.doc, p.id), p]));
   const { parts, flip } = await flatParts(viewport, editor, geometry);
-  if (!rows.length || !parts.length) return editor.notify("Aucune pièce pour les fiches.", "info");
+  if (!rows.length || !parts.length) return null;
   const unit = editor.unit;
   const num = (mm: number) => Number(toDisplay(mm, unit).toFixed(unit === "mm" ? 1 : 3)).toLocaleString("fr-FR");
   const project = document.title.split("·")[0]?.trim() ?? "";
@@ -61,16 +62,22 @@ export async function printPartSheets(viewport: Viewport, editor: Editor, geomet
         <p class="note">Cotes en ${UNIT_LABELS[unit]}. Perçages cotés depuis le bord gauche (en haut) et depuis le bas (à droite), vue de la face percée. Chants : L1 en bas, L2 en haut, l1 à gauche, l2 à droite.</p></aside></div>
     </section>`);
   });
-  if (!sheets.length) return editor.notify("Aucune pièce à plat pour les fiches.", "info");
-  printHtml(
-    "Fiches de fabrication",
-    sheets.join(""),
-    `@page{size:A4 landscape;margin:8mm}body{margin:0}.sheet{display:flex;flex-direction:column;height:190mm;page-break-after:always;box-sizing:border-box}
+  if (!sheets.length) return null;
+  return {
+    title: "Fiches de fabrication",
+    html: sheets.join(""),
+    css: `@page{size:A4 landscape;margin:8mm}body{margin:0}.sheet{display:flex;flex-direction:column;height:190mm;page-break-after:always;box-sizing:border-box}
      header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:0.4mm solid #111;padding-bottom:2mm;margin-bottom:3mm}
      header b{font-size:15px;margin-right:6mm}header span,header div:last-child{color:#555}
      .body{display:flex;gap:5mm;flex:1;min-height:0}.drawing{flex:1;min-width:0}.drawing svg{width:100%;height:auto;max-height:180mm}
      aside{width:72mm;flex:none;display:flex;flex-direction:column;gap:3mm}.qr{width:30mm;height:30mm}.qr svg{width:100%;height:100%}
      th{width:26mm;font-weight:600}td,th{font-size:10px;vertical-align:top}.note{font-size:9px;color:#555;margin:0}`,
-  );
-  editor.notify(`${sheets.length} fiche(s) de fabrication prête(s) à imprimer.`, "success");
+  };
+}
+
+export async function printPartSheets(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<void> {
+  const page = await partSheetsPage(viewport, editor, geometry);
+  if (!page) return editor.notify("Aucune pièce à plat pour les fiches.", "info");
+  printHtml(page.title, page.html, page.css);
+  editor.notify(`${page.html.split('class="sheet"').length - 1} fiche(s) de fabrication prête(s) à imprimer.`, "success");
 }

@@ -1,6 +1,6 @@
 /** Le plan d'un dressing vu de dessus : ses modèles, ses zones, ce qu'on bâtit dessus. */
 import { describe, expect, it } from "vitest";
-import { PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type PlanModel } from "../../frontend/src/document/plan-layout";
+import { fillChoices, PLAN, PLAN_MODELS, planLines, planOf, planProblem, planZones, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type PlanModel } from "../../frontend/src/document/plan-layout";
 import { moduleSizes, withModules } from "../../frontend/src/document/dressing-modules";
 import { modelHardware } from "../../frontend/src/document/hardware";
 import { createReferencePlate, type CadDocument, type DressingPlan, type ExtrudeFeature, type SketchFeature } from "../../frontend/src/document/types";
@@ -8,6 +8,7 @@ import { hingeCount } from "../../frontend/src/features/fronts-parts";
 import { nicheGeometry, nicheProblem } from "../../frontend/src/features/niche-parts";
 import { removeWithShelves } from "../../frontend/src/document/shelf-removal";
 import { parseDocument } from "../../frontend/src/document/validate";
+import { partitionLayout } from "../../frontend/src/sketcher/partition";
 import { isPartition, leafNiches } from "../../frontend/src/sketcher/partition-history";
 
 const empty = (): CadDocument => ({ ...createReferencePlate(), features: [] });
@@ -69,6 +70,42 @@ describe("modèles de plan", () => {
     // The junction at the end of wall A: the side of the run, the joint, the side of the corner.
     const verticals = [...new Set(lines.filter(([a, b]) => a[0] === b[0] && a[0] > 1900 && a[0] < 2100).map(([a]) => a[0]))].sort((x, y) => x - y);
     expect(verticals).toEqual([1982, 2000, 2018]);
+  });
+});
+
+describe("remplir une zone à la largeur voulue", () => {
+  const free = (cases: number[]) => cases.reduce((a, b) => a + b, 0) + (cases.length + 1) * 18;
+
+  it("propose un fileur ou un caisson du reste exact, et des caissons égaux", () => {
+    const choices = fillChoices(2000, 18, 600, false);
+    expect(choices.map((c) => c.label)).toEqual([
+      "3 caissons de 60 cm et un fileur de 11 cm",
+      "3 caissons égaux de 64,3 cm",
+      "4 caissons égaux de 47,8 cm",
+    ]);
+    expect(choices[0]).toMatchObject({ rest: 3, filler: true });
+    for (const choice of choices) expect(free(choice.cases)).toBeCloseTo(2000, 6);
+  });
+
+  it("met le reste où on le demande", () => {
+    const [choice] = fillChoices(2000, 18, 600, true);
+    expect(choice).toMatchObject({ rest: 0, filler: true });
+    expect(choice!.cases[0]).toBeCloseTo(110, 6);
+  });
+
+  it("propose un caisson quand le reste est assez large, un fileur quand il est étroit", () => {
+    expect(fillChoices(2300, 18, 600, false).map((c) => c.filler)).toContain(false);
+    expect(fillChoices(2500, 18, 600, false).some((c) => c.filler)).toBe(false);
+  });
+
+  it("dit quand ça tombe juste", () => {
+    const length = 3 * 600 + 4 * 18;
+    expect(fillChoices(length, 18, 600, false)[0]).toMatchObject({ rest: null, filler: false, cases: [600, 600, 600] });
+    expect(fillChoices(length, 18, 600, false)[0]!.label).toContain("juste");
+  });
+
+  it("ne propose rien d'impossible", () => {
+    expect(fillChoices(100, 18, 600, false)).toEqual([]);
   });
 });
 
@@ -223,6 +260,60 @@ describe("zones du plan", () => {
     expect(next.features.map((f) => f.id)).toEqual([id]);
     expect(zoneDone(next, planOf(next)!.dressingPlan!, "right")).toBe(false);
     expect(lost.length).toBeGreaterThan(0);
+  });
+
+  const filled = () => {
+    const { doc, id, zones } = placed("L-right");
+    const zone = zones.find((z) => z.id === "C")!;
+    const choice = fillChoices(zone.run.length, 18, 400, false).find((c) => c.filler)!;
+    const made = withZonePartition(doc, id, zone, choice);
+    if (typeof made === "string") throw new Error(made);
+    return { ...made, id, zone, choice };
+  };
+  const filler = (doc: CadDocument) => doc.features.find((f) => f.name === "Mur C — fileur" && f.type === "sketch") as SketchFeature | undefined;
+
+  it("une zone remplie a ses largeurs exactes et son fileur, devant le reste", () => {
+    const { doc, sketch, choice, zone } = filled();
+    const step = (doc.features.find((f) => f.id === sketch) as SketchFeature).offsets!.find(isPartition)!.step;
+    expect(step.input.widths).toEqual(choice.cases);
+    const layout = partitionLayout(step.input);
+    if (typeof layout === "string") throw new Error(layout);
+    const last = layout.caseSpans.at(-1)!;
+    expect(last[1] - last[0]).toBeCloseTo(choice.cases.at(-1)!, 3);
+    // Wall C: from its corner along −Y, flush with the front of the panels.
+    const xs = filler(doc)!.points.map((p) => p.x);
+    expect(Math.min(...xs)).toBeCloseTo(3000 - 600, 6);
+    expect(Math.max(...xs)).toBeCloseTo(3000 - 600 + 18, 6);
+    const ys = filler(doc)!.points.map((p) => -p.y).sort((a, b) => a - b);
+    expect(ys[0]).toBeCloseTo(zone.run.start + last[0], 3);
+    expect(ys.at(-1)).toBeCloseTo(zone.run.start + last[1], 3);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();
+  });
+
+  it("quand le plan change, le reste prend la différence et le fileur suit", () => {
+    const { doc, id, sketch, choice } = filled();
+    const changed = withPlanChanged(doc, id, plan({ model: "L-right", lengthC: 2100 }));
+    if (typeof changed === "string") throw new Error(changed);
+    const step = (changed.doc.features.find((f) => f.id === sketch) as SketchFeature).offsets!.find(isPartition)!.step;
+    expect(step.input.widths!.slice(0, -1)).toEqual(choice.cases.slice(0, -1));
+    expect(step.input.widths!.at(-1)).toBeCloseTo(choice.cases.at(-1)! + 100, 6);
+    expect(changed.doc.features.filter((f) => f.name === "Mur C — fileur" && f.type === "extrude")).toHaveLength(1);
+  });
+
+  it("le fileur part avec les corps de sa zone", () => {
+    const { doc, sketch } = filled();
+    const bodies = doc.features.filter((f) => f.type === "extrude" && f.sketch === sketch).map((f) => f.id);
+    const { next } = removeWithShelves(doc, bodies);
+    expect(filler(next)).toBeUndefined();
+    expect(next.features.filter((f) => f.type === "extrude")).toEqual([]);
+  });
+
+  it("toute la zone en un seul caisson", () => {
+    const { doc, id, zones } = placed("I");
+    const zone = zones[0]!;
+    const made = withZonePartition(doc, id, zone, { label: "", cases: [zone.run.length - 36], rest: null, filler: false });
+    if (typeof made === "string") throw new Error(made);
+    expect(leafNiches(made.doc.features.find((f) => f.id === made.sketch) as SketchFeature)).toHaveLength(1);
   });
 
   it("une zone dont l'ouvrage est supprimé redevient libre", () => {
