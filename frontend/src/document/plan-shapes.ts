@@ -7,7 +7,7 @@
  * Repère de l'assistant Dressing (document/dressing-plan.ts) : le mur A a sa face en Y = 0 et va vers +X, le dressing est
  * devant lui (Y < 0) ; le mur B a sa face en X = 0 à gauche, le mur C en X = longueur de A à droite, tous deux vers −Y.
  */
-import type { DressingPlan, PlaneFrame, PlaneName, SlopedCeiling } from "./types";
+import type { CornerJoint, DressingPlan, PlaneFrame, PlaneName, SlopedCeiling } from "./types";
 import { nearestPlane } from "../sketcher/frame";
 
 export type PlanModel = DressingPlan["model"];
@@ -137,12 +137,25 @@ function cornerClip(p: DressingPlan, corner: Corner): Point[] {
   return mirrored(p, corner, [[0, 0], [p.cornerA, 0], ...whole, b, [0, b[1]]]);
 }
 
+/** The square corners of this plan: the two walls that meet there, the one that runs through at first, then the other. */
+export function cornerJoints(p: DressingPlan): { joint: CornerJoint; label: string; walls: [string, string] }[] {
+  const { cut, fields } = PLAN_MODELS[p.model];
+  const closing = p.model === "G-left" || p.model === "G-right";
+  return [
+    ...(p.model !== "T" && "lengthB" in fields && !cut.includes("left") ? [{ joint: "left" as const, label: "Angle gauche", walls: ["Mur A", "Mur B"] as [string, string] }] : []),
+    ...("lengthC" in fields && !cut.includes("right") ? [{ joint: "right" as const, label: "Angle droit", walls: ["Mur A", "Mur C"] as [string, string] }] : []),
+    ...(closing ? [{ joint: "far" as const, label: "Angle du mur D", walls: [p.model === "G-left" ? "Mur B" : "Mur C", "Mur D"] as [string, string] }] : []),
+  ];
+}
+
 /** The zones of this plan, from left to right along the walls. */
 export function planZones(p: DressingPlan): PlanZone[] {
   const model = PLAN_MODELS[p.model];
   const { depth: d, lengthA: l } = p;
-  const from = (corner: Corner) => (model.cut.includes(corner) ? p.cornerA : 0);
-  const gap = (corner: Corner) => (model.cut.includes(corner) ? p.cornerB : d);
+  // A wall stops short of a corner cut or rounded, or of a side wall that runs through.
+  const through = (joint: CornerJoint) => cornerJoints(p).some((c) => c.joint === joint) && p.through?.[joint] === true;
+  const from = (corner: Corner) => (model.cut.includes(corner) ? p.cornerA : through(corner) ? d : 0);
+  const gap = (corner: Corner) => (model.cut.includes(corner) ? p.cornerB : through(corner) ? 0 : d);
   const asks = (field: PlanField) => field in model.fields;
   const closing = p.model === "G-left" || p.model === "G-right";
   const zones: PlanZone[] = [];
@@ -156,19 +169,21 @@ export function planZones(p: DressingPlan): PlanZone[] {
     zones.push(standing("E", "Cloison gauche", [l / 2, 0], [-1, 0], d, p.lengthB, d));
     zones.push(standing("F", "Cloison droite", [l / 2, 0], [1, 0], -d - p.lengthB, p.lengthB, d));
   } else if (asks("lengthB")) {
-    const start = gap("left");
-    zones.push({ id: "B", label: "Mur B", kind: "run", outline: rect(0, -p.lengthB, d, -start), run: { plane: "YZ", offset: 0, start: -p.lengthB, length: p.lengthB - start, depth: d, origin: [0, 0], normal: [1, 0] } });
+    const [start, end] = [gap("left"), p.lengthB - (p.model === "G-left" && through("far") ? d : 0)];
+    zones.push({ id: "B", label: "Mur B", kind: "run", outline: rect(0, -end, d, -start), run: { plane: "YZ", offset: 0, start: -end, length: end - start, depth: d, origin: [0, 0], normal: [1, 0] } });
   }
   if (asks("lengthC")) {
-    const start = gap("right");
+    const [start, end] = [gap("right"), p.lengthC - (p.model === "G-right" && through("far") ? d : 0)];
     const frame: PlaneFrame = { origin: [l, 0, 0], xDir: [0, -1, 0], normal: [-1, 0, 0] };
-    zones.push({ id: "C", label: "Mur C", kind: "run", outline: rect(l - d, -p.lengthC, l, -start), run: { plane: "YZ", offset: l, frame, start, length: p.lengthC - start, depth: d, origin: [l, 0], normal: [-1, 0] } });
+    zones.push({ id: "C", label: "Mur C", kind: "run", outline: rect(l - d, -end, l, -start), run: { plane: "YZ", offset: l, frame, start, length: end - start, depth: d, origin: [l, 0], normal: [-1, 0] } });
   }
   // Across the way, its back to the far wall, facing wall A: u goes along −X.
   if (p.model === "facing") zones.push(standing("D", "Mur D", [0, -(2 * d + p.aisle)], [0, 1], -p.lengthD, p.lengthD, d));
   if (closing) {
+    // The length asked is what stands out of the side wall: wall D running through its corner adds that wall's depth.
     const left = p.model === "G-left";
-    zones.push(standing("D", "Mur D", [0, -(left ? p.lengthB : p.lengthC)], [0, 1], left ? -d - p.lengthE : d - l, p.lengthE, d));
+    const length = p.lengthE + (through("far") ? d : 0);
+    zones.push(standing("D", "Mur D", [0, -(left ? p.lengthB : p.lengthC)], [0, 1], left ? -d - p.lengthE : through("far") ? -l : d - l, length, d));
   }
   // Its back against the back of wall A's run, or on the same wall, less deep.
   if (p.model === "back") zones.push(standing("D", "Face arrière", [0, 0], [0, 1], -l, l, d));

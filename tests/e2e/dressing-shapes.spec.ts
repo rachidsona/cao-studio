@@ -71,3 +71,21 @@ test("îlot : une zone de plus, refusée quand elle touche un autre linéaire", 
   await expect(tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem")).toHaveCount(5);
   await expect(tool.getByRole("list", { name: "Zones du plan" })).toContainText("Îlot");
 });
+
+test("angle droit : le mur B passe, le mur A s'arrête contre lui, et les panneaux suivent", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Angle e2e");
+  const tool = await planOf(page, "En U", async (t) => {
+    await t.getByLabel("Angle gauche").selectOption({ label: "Mur B passe" });
+    await expect(t.getByRole("img", { name: "Schéma du plan vu de dessus" })).toContainText("240 cm");
+    await expect(t.getByRole("img", { name: "Schéma du plan vu de dessus" })).toContainText("200 cm");
+  });
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await expect(tool.getByLabel("Angle gauche")).toHaveValue("1");
+  await tool.getByLabel("Angle gauche").selectOption({ label: "Mur A passe" });
+  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await expect(tool.getByRole("list", { name: "Zones du plan" })).toContainText("Mur A · 300 cm");
+  await expect(tool.getByRole("list", { name: "Zones du plan" })).toContainText("Mur B · 140 cm");
+  expect(errors).toEqual([]);
+});

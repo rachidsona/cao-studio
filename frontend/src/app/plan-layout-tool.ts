@@ -6,7 +6,7 @@
  * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
 import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withZonePartition, zoneDone, zonesLost, zoneStep, type FillChoice } from "../document/plan-layout";
-import { PLAN, PLAN_MODELS, planLines, planProblem, planZones, type PlanField, type PlanModel, type PlanZone } from "../document/plan-shapes";
+import { cornerJoints, PLAN, PLAN_MODELS, planLines, planProblem, planZones, type PlanField, type PlanModel, type PlanZone } from "../document/plan-shapes";
 import { findFeature } from "../document/operations";
 import type { DressingPlan, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
@@ -156,6 +156,7 @@ export class PlanLayoutTool {
       models,
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : planSchema(plan, (z) => (z.kind === "corner" ? [z.label] : [z.label, formatLength(z.run.length, unit)]))),
+      ...this.joints(set),
       number("Longueur mur A", "lengthA"),
       ...(Object.entries(model.fields) as [PlanField, string][]).map(([key, label]) => number(label, key)),
       number("Profondeur", "depth"),
@@ -169,6 +170,16 @@ export class PlanLayoutTool {
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
+  }
+
+  /** At each square corner, the wall that runs through; the other stops against it. */
+  private joints(set: (patch: Partial<DressingPlan>) => void): HTMLElement[] {
+    const plan = this.plan;
+    return cornerJoints(plan).map(({ joint, label, walls }) => {
+      const choice = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": label }, ...walls.map((wall, i) => el("option", { value: String(i), selected: (plan.through?.[joint] === true) === (i === 1) }, `${wall} passe`)));
+      choice.addEventListener("change", () => set({ through: { ...plan.through, [joint]: choice.value === "1" } }));
+      return el("label", { class: ROW }, label, choice);
+    });
   }
 
   /** What most models can have on top: an island in front of wall A, a sloped ceiling over all of it. */

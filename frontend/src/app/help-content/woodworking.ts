@@ -135,7 +135,7 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Commence un dressing par son schéma vu de dessus (droit, en L, en U, à pan coupé ou face à face), puis répartit chaque zone.",
         steps: [
           "Cliquez « Plan de dressing » et choisissez un des dix-huit modèles : droit, en L, en U, à pans coupés ou arrondis, U presque fermé, face à face, cloison centrale, dos à dos, deux profondeurs.",
-          "Tapez les cotes demandées par le modèle, puis « Profondeur », « Hauteur », « Socle », « Épaisseur panneaux ». Pour un angle, « Angle sur le mur A » et « Angle sur l'autre mur ». Choisissez un « Rampant » si le plafond est en pente et cochez « Îlot central » si vous en voulez un. Cliquez « Créer le plan ».",
+          "Tapez les cotes demandées par le modèle, puis « Profondeur », « Hauteur », « Socle », « Épaisseur panneaux ». Pour un angle, « Angle sur le mur A » et « Angle sur l'autre mur ». À chaque angle droit, choisissez le mur qui passe : « Angle gauche », « Angle droit », « Angle du mur D » ; l'autre s'arrête contre lui. Choisissez un « Rampant » si le plafond est en pente et cochez « Îlot central » si vous en voulez un. Cliquez « Créer le plan ».",
           "Cliquez une zone dans le schéma, ou « Répartition » sur sa ligne : sa Répartition s'ouvre pour régler les cases. Validez par « OK ».",
           "Sur un mur encore libre, cliquez plutôt « Remplir » : tapez la « Largeur des caissons » (largeur intérieure), choisissez où va le reste dans « Le reste va », puis cliquez la proposition voulue.",
           "Rouvrez « Plan de dressing » pour la zone suivante : une zone faite montre « Modifier ». « Modifier le plan » change modèle et cotes, et « Appliquer » fait suivre ce qui est fait.",

@@ -1696,6 +1696,7 @@ opération existante.
   angles arrondis, avec leur porte cintrée. Deux réglages s'ajoutent : un **îlot** à un passage devant le mur A, et un
   **rampant**, plafond en pente qui descend à gauche, à droite ou contre le mur A : panneaux, portes et fonds s'arrêtent
   dessous, et chaque zone reçoit un dessus en pente.
+  À chaque angle droit, on choisit le mur qui passe : l'autre s'arrête contre lui, et ce qui est fait dessus suit.
 - **Remplir** (dans le Plan de dressing, sur une zone libre) : on donne la largeur intérieure voulue des caissons, et
   l'outil propose ce qui tombe juste, côtés comptés : tant de caissons et un **fileur** ou un caisson de la largeur exacte
   du reste, au début ou à la fin du mur, ou des caissons égaux. Le résultat est une Répartition ordinaire ; quand le plan
