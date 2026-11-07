@@ -3,10 +3,12 @@
  * visible unless hidden with the eye icon of the browser. The sketch being
  * edited is drawn by the sketch mode itself, so it is left out here. The
  * selected sketch is highlighted, and a click on a sketch in the view (its
- * curves or the inside of its areas) selects it.
+ * curves or the inside of its areas) selects it. « Ajuster » frames these
+ * sketches with the bodies, as large as the view allows.
  */
+import * as THREE from "three";
 import type { CadDocument, SketchFeature } from "../document/types";
-import { frameOf } from "../sketcher/frame";
+import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
 import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
@@ -17,6 +19,19 @@ export interface SketchDisplayHost {
   selected(): string | null;
   select(id: string | null): void;
 }
+
+/** The box of what these sketches draw in the model (empty: nothing drawn). */
+export function sketchBox(sketches: readonly SketchFeature[]): THREE.Box3 {
+  const box = new THREE.Box3();
+  for (const sketch of sketches) {
+    const frame = frameOf(sketch);
+    for (const { points } of sketchCurves(sketch)) for (const [x, y] of points) box.expandByPoint(new THREE.Vector3(...toWorld(frame, x, y)));
+  }
+  return box;
+}
+
+/** From the tightest: leaves the box just inside the view. */
+const MARGINS = [0.55, 0.65, 0.75, 0.85, 1];
 
 export class SketchDisplay {
   private shown: SketchFeature[] = [];
@@ -36,6 +51,23 @@ export class SketchDisplay {
     viewport.onSketchPick = (id) => {
       const current = this.host.selected();
       if (id || (current && this.host.doc().features.find((f) => f.id === current)?.type === "sketch")) this.host.select(id);
+    };
+    const bodies = viewport.fit.bind(viewport);
+    viewport.fit = () => {
+      bodies();
+      const sketches = sketchBox(this.shown);
+      const box = viewport.displayedBodies.length ? viewport.bodiesBox().union(sketches) : sketches;
+      if (box.isEmpty()) return;
+      for (const margin of MARGINS) {
+        viewport.fitBox(box, margin);
+        if (viewport.boxVisible(box, 0.94)) return;
+      }
+    };
+    // A plan alone has no body to frame: a standard view frames it.
+    const standard = viewport.setView.bind(viewport);
+    viewport.setView = (view, distance) => {
+      standard(view, distance);
+      if (!viewport.displayedBodies.length && distance === undefined) viewport.fit();
     };
   }
 

@@ -263,7 +263,8 @@ export class Viewport {
 
   setView(view: rig.StandardView, fixedDistance?: number): void { rig.setView(this.rig, this.layer.bounds(), view, fixedDistance); }
 
-  fit(): void { this.fitBox(this.layer.bounds()); }
+  fit(): void { this.fitBox(this.bodiesBox()); }
+  bodiesBox(): THREE.Box3 { return this.layer.bounds(); }
 
   /** The sun that casts the shadows: fixed in the scene, its shadow map covering the bodies. */
   private readonly sun = (() => {

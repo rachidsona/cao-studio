@@ -6,6 +6,7 @@ import { planOf, withPlan, withZonePartition } from "../../frontend/src/document
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
+import { sketchBox } from "../../frontend/src/app/sketch-display";
 import { pieceKey } from "../../frontend/src/viewport/joinery-view";
 
 const cabinet: CabinetFeature = { id: "c1", type: "cabinet", name: "Caisson", origin: [0, 0, 0], width: 600, height: 800, depth: 500, thickness: 18, back: "none", backThickness: 3, shelves: 1, plinth: 0, construction: "sides-through" };
@@ -71,5 +72,15 @@ describe("l'aperçu d'une étape modifiée", () => {
     expect(pieceKey(side.map(([x, y]) => [x + 0.01, y]), 600)).toBe(built);
     expect(pieceKey([[0, 0], [18, 0], [18, 2200], [0, 2200]], 600)).not.toBe(built);
     expect(pieceKey(side, 500)).not.toBe(built);
+  });
+});
+
+describe("Ajuster et les esquisses", () => {
+  it("cadre ce que dessine un plan, même sans corps", () => {
+    const placed = withPlan({ ...createReferencePlate(), features: [] }, { ...PLAN, model: "I", lengthA: 2700 });
+    const box = sketchBox([planOf(placed.doc)!]);
+    expect(box.isEmpty()).toBe(false);
+    expect(box.max.x - box.min.x).toBeGreaterThanOrEqual(2700);
+    expect(sketchBox([]).isEmpty()).toBe(true);
   });
 });
