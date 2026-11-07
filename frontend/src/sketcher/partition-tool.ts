@@ -331,7 +331,7 @@ export class SketchPartitionTool {
       extrusionOption.on && this.doors?.style === "frame" ? number("Retrait du panneau", this.doors.frameDepth ?? 6, (v) => this.setDoors({ frameDepth: v })) : null,
       // The side each door opens from.
       ...(extrusionOption.on && this.doors && typeof layout !== "string"
-        ? layout.caseWidths.slice(this.doors.joined?.filter((c) => c < layout.caseWidths.length - 1).length ?? 0).map((_, i, doors) =>
+        ? layout.caseWidths.slice((this.doors.joined?.filter((c) => c < layout.caseWidths.length - 1).length ?? 0) + (this.doors.skipped?.length ?? 0)).map((_, i, doors) =>
             select(`Porte ${i + 1}`, this.hinge(i), [["left", "S'ouvre à gauche (charnières à gauche)"], ["right", "S'ouvre à droite (charnières à droite)"]], (v) =>
               this.setDoors({ hinges: doors.map((__, k) => (k === i ? (v as "left" | "right") : this.hinge(k))) }),
             ),

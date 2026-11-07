@@ -285,6 +285,15 @@ export const MODELING: HelpFamily[] = [
         ],
         tip: "L'arrêt au niveau des faces des autres corps ne joue qu'avec le repère « Global » de Déplacer, quand vous tirez une flèche.",
       },
+      {
+        keys: [], selector: "[data-display-menu]", name: "Affichage par famille",
+        what: "Cache ou montre des familles de corps : façades, carcasse, fonds, étagères, plinthes, murs, électroménager.",
+        steps: [
+          "Cliquez « Affichage par famille » : des cases s'ouvrent. Décochez une famille pour la cacher.",
+          "« Vue de travail » cache d'un clic les façades, les murs et l'électroménager pour travailler dedans. « Tout afficher » remet tout.",
+        ],
+        tip: "La vue seule change : liste de débit et devis restent les mêmes. Chaque corps est rangé d'après son nom (porte, étagère, plinthe…).",
+      },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 /**
- * Colonne Vue, portés de poly_3D : « Rayons X » (les corps translucides, pour voir l'intérieur d'un meuble sans rien
- * cacher) et le menu « Affichage » — une case par famille de corps (façades, carcasse, fonds, étagères, plinthes,
+ * Portés de poly_3D : « Rayons X » dans la colonne Vue (les corps translucides, pour voir l'intérieur d'un meuble sans
+ * rien cacher) et, dans la barre Modifier, le menu « Affichage » — une case par famille de corps (façades, carcasse, fonds, étagères, plinthes,
  * pièce, électroménager, autres : document/display-families.ts), « Vue de travail » qui dégage l'intérieur d'un
  * clic (façades, murs et électroménager cachés) et « Tout afficher ». La vue seulement : le document, la liste de
  * débit et le devis n'en changent pas ; les choix sont gardés dans ce navigateur.
@@ -75,9 +75,23 @@ export function bindDisplayToggles(root: HTMLElement, viewport: Viewport, editor
     hidden.clear();
     apply();
   });
+  const close = () => {
+    options?.classList.add("hidden");
+    menu?.setAttribute("aria-expanded", "false");
+  };
   menu?.addEventListener("click", () => {
     const open = options?.classList.toggle("hidden") === false;
     menu.setAttribute("aria-expanded", String(open));
+    if (!open || !options) return;
+    // Under the button, or under its group when the button is put away in the group's menu.
+    const anchor = (menu.offsetWidth ? menu : menu.closest<HTMLElement>(".ribbon-group") ?? menu).getBoundingClientRect();
+    options.style.left = `${Math.min(anchor.left, innerWidth - options.offsetWidth - 8)}px`;
+    options.style.top = `${anchor.bottom + 4}px`;
+  });
+  // It floats over the view: a press anywhere else puts it away.
+  document.addEventListener("pointerdown", (event) => {
+    const target = event.target as Node;
+    if (!options?.contains(target) && !menu?.contains(target)) close();
   });
   // Applied again whenever the bodies are drawn again (a recompute replaces them, shown).
   const previous = editor.onRender;

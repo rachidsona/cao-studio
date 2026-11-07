@@ -4,14 +4,14 @@ export const WOODWORKING: HelpFamily[] = [
   {
     title: "Menuiserie : caissons et cuisine",
     where:
-      "Ruban du haut, groupe « Menuiserie ». Pour une cuisine, l'ordre habituel est : Pièce (les murs), puis Implantation de cuisine, ou Caisson et Meubles de cuisine un par un, puis Façades, Finitions et Éclairage.",
+      "Ruban du haut, onglet « Cuisine » : groupes « Pièce », « Cuisine » et « Meuble ». Pour une cuisine, l'ordre habituel est : Pièce (les murs), puis Implantation de cuisine, ou Caisson et Meubles de cuisine un par un, puis Façades, Finitions et Éclairage.",
     tools: [
       {
         keys: ["data-action:cabinet"],
         name: "Caisson",
         what: "Construit un caisson complet (côtés, dessus, dessous, fond, étagères) à partir de ses cotes extérieures, chaque pièce étant un corps à part.",
         steps: [
-          "Cliquez « Caisson » dans le groupe « Menuiserie ».",
+          "Cliquez « Caisson » dans le groupe « Meuble ».",
           "Choisissez un « Modèle » pour partir de cotes courantes : bas de cuisine, haut, colonne, penderie ou placard.",
           "Réglez « Largeur », « Hauteur », « Profondeur », « Épaisseur », « Socle » et le nombre d'« Étagères ».",
           "Choisissez le « Fond » (vissé derrière, encastré entre les côtés ou sans fond), la « Construction » et l'« Orientation ».",
@@ -22,9 +22,10 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:fronts"],
         name: "Façades",
-        what: "Habille un caisson d'une porte, de deux portes ou de tiroirs, avec charnières et poignées percées.",
+        what: "Habille un caisson, ou les cases d'une Répartition, de portes ou de tiroirs, avec charnières et poignées percées.",
         steps: [
-          "Faites d'abord un caisson : sans lui, l'outil vous le demande.",
+          "Sur une Répartition : cliquez « Façades », puis une case : elle reçoit sa porte, même si elle contient un module. Recliquez pour la retirer, ou utilisez « Toutes les cases » et « Aucune porte ». Le jeu, l'épaisseur, le style et le sens d'ouverture sont dans le panneau.",
+          "Sur un caisson : sélectionnez-le. Sans caisson ni Répartition, l'outil vous le demande.",
           "Cliquez « Façades », choisissez le « Caisson » (le dernier créé est proposé) puis la « Disposition » : une porte, deux portes ou tiroirs (1 à 8).",
           "Choisissez la « Pose » : en applique (devant) ou encastrées (dans l'ouverture), puis le « Jeu » et l'« Épaisseur ».",
           "Cochez « Percer les charnières (boîtiers Ø35) » (portes seulement) et « Percer les poignées (entraxe 128) ».",
@@ -127,7 +128,7 @@ export const WOODWORKING: HelpFamily[] = [
   {
     title: "Menuiserie : dressing et répartition",
     where:
-      "Ruban du haut, groupe « Menuiserie ». Ces outils s'enchaînent du général au détail. 1) Plan de dressing (schéma vu de dessus) ou Assistant Dressing (en nombres), ou une Répartition seule pour un placard. 2) Chaque zone ou mur est une Répartition : cases, côtés, dessus, dessous, portes, fond. 3) Étagères et Cloisons divisent les niches. 4) Niche règle la hauteur d'une niche. 5) Module, Penderie ou Tiroirs équipent les niches. Les outils des étapes 3 à 5 demandent une Répartition : sans elle, ils vous le disent.",
+      "Ruban du haut, onglet « Dressing » : groupe « Dressing ». Ces outils s'enchaînent du général au détail. 1) Plan de dressing (schéma vu de dessus) ou Assistant Dressing (en nombres), ou une Répartition seule pour un placard. 2) Chaque zone ou mur est une Répartition : cases, côtés, dessus, dessous, portes, fond. 3) Étagères et Cloisons divisent les niches. 4) Niche règle la hauteur d'une niche. 5) Module, Penderie ou Tiroirs équipent les niches. Les outils des étapes 3 à 5 demandent une Répartition : sans elle, ils vous le disent.",
     tools: [
       {
         keys: ["data-workshop:dressing-plan"],
@@ -142,9 +143,20 @@ export const WOODWORKING: HelpFamily[] = [
           "Si une tringle dépasse 1,90 m, le bouton « Penderies escamotables » en ajoute une à chaque tringle trop haute, comptée au devis.",
           "Sous la liste des zones, choisissez des « Portes coulissantes » zone par zone, de 2 à 6 vantaux, et lisez le bloc « À vérifier » : passages étroits, portes ou tiroirs bloqués, ouvertures de la pièce cachées.",
           "« Voir » isole une zone pour y travailler : de face, avec ses seules cotes, sans les esquisses ni les autres murs, et les outils ne voient qu'elle, même après une modification. « Tout montrer » rend le reste. « Mes murs » garde un mur fait et le repose sur une zone libre, aux proportions gardées.",
-          "Rouvrez « Plan de dressing » pour la zone suivante : une zone faite montre « Modifier ». « Modifier le plan » change modèle et cotes, et « Appliquer » fait suivre ce qui est fait.",
+          "Sur un grand écran, le plan garde son onglet à côté de « Sélection » : revenez-y pour la zone suivante (sinon, rouvrez « Plan de dressing »). Une zone faite montre « Modifier ». « Modifier le plan » change modèle et cotes, et « Appliquer » fait suivre ce qui est fait.",
         ],
         tip: "« Remplir » compte les côtés : il propose des caissons de la largeur donnée avec un fileur (reste de 3 à 30 cm) ou un caisson (15 cm et plus) pour le reste, ou des caissons égaux. Rampant : tous les panneaux, portes et fonds s'arrêtent sous la pente, et chaque zone a un dessus en pente ; une pièce entièrement au-dessus de la pente reste une erreur, avec un point rouge dans l'Historique : retirez-la ou descendez-la. Pas de portes coulissantes sous un rampant : leur rail doit être de niveau. La pose sur une Pièce demande un mur d'équerre avec les axes. La liste de débit donne la cote hors tout des pièces coupées en biais. Un angle coupé ou arrondi accepte Étagères, Niche, Module et Penderie, mais ni tiroirs ni portes de Répartition ; « Porte sur le pan coupé » ou « Porte cintrée sur l'arrondi » pose la sienne.",
+      },
+      {
+        keys: ["data-workshop:module-palette"],
+        name: "Modules à glisser",
+        what: "Une palette de modules à déposer dans les niches de la vue, sans passer par les réglages.",
+        steps: [
+          "Cliquez « Modules à glisser » : la liste s'ouvre dans le panneau de droite.",
+          "Glissez un module (penderie, tiroirs, étagères…) vers une niche de la vue : la niche visée s'allume en orange.",
+          "Lâchez : le module se pose à ses cotes usuelles. Ctrl+Z l'enlève d'un coup. Ce qui ne rentre pas le dit, et rien ne change.",
+        ],
+        tip: "Pour régler les cotes du module, ouvrez ensuite l'outil « Module » et cliquez-le. Une niche déjà équipée refuse un second module.",
       },
       {
         keys: ["data-action:dressing"],

@@ -1,6 +1,8 @@
 import type { HelpFamily } from "./types";
 
-const WHERE = "Barre d'outils du modèle, groupe « Atelier ». Le nom du groupe ouvre un menu qui liste tous ses outils : plusieurs n'y sont rangés que dans ce menu, un clic les lance.";
+const MENU = "Le nom d'un groupe ouvre un menu qui liste tous ses outils : plusieurs n'y sont rangés que dans ce menu, un clic les lance.";
+const WHERE = `Barre d'outils du modèle, groupe « Atelier ». ${MENU}`;
+const MAKING = `Barre d'outils du modèle, groupe « Fabrication ». ${MENU}`;
 
 export const WORKSHOP: HelpFamily[] = [
   {
@@ -89,8 +91,8 @@ export const WORKSHOP: HelpFamily[] = [
     ],
   },
   {
-    title: "Atelier : apparence et matières",
-    where: WHERE,
+    title: "Apparence et matières",
+    where: `Barre d'outils du modèle, groupes « Atelier » et « Client ». ${MENU}`,
     tools: [
       {
         keys: ["data-action:render-mode"], name: "Rendu",
@@ -200,8 +202,8 @@ export const WORKSHOP: HelpFamily[] = [
     ],
   },
   {
-    title: "Atelier : mesures, vues et plans",
-    where: WHERE,
+    title: "Mesures, vues et plans",
+    where: `Barre d'outils du modèle, groupes « Atelier », « Fabrication » et « Client ». ${MENU}`,
     tools: [
       {
         keys: ["data-workshop:measure"], name: "Mètre et guides",
@@ -251,8 +253,8 @@ export const WORKSHOP: HelpFamily[] = [
     ],
   },
   {
-    title: "Atelier : fabrication",
-    where: WHERE,
+    title: "Fabrication : découpe et commande numérique",
+    where: MAKING,
     tools: [
       {
         keys: ["data-workshop:cutlist"], name: "Liste de débit",
@@ -339,9 +341,18 @@ export const WORKSHOP: HelpFamily[] = [
     ],
   },
   {
-    title: "Atelier : contrôles",
-    where: WHERE,
+    title: "Fabrication : contrôles",
+    where: MAKING,
     tools: [
+      {
+        keys: ["data-workshop:live-check"], name: "Contrôle en direct",
+        what: "Entoure les pièces à problème pendant la conception, sans ouvrir le contrôle complet.",
+        steps: [
+          "Laissez « Contrôle en direct » enfoncé : après chaque changement, un cadre rouge (erreur) ou ambre (à regarder) entoure les pièces en cause.",
+          "Dans la barre d'état, cliquez « à vérifier » pour lire la liste dans le Contrôle avant fabrication.",
+        ],
+        tip: "Il voit les chevauchements, la pièce et son plan, les panneaux bruts et les portes, mais pas les pièces sans matière, qu'on choisit souvent à la fin. Le contrôle complet va plus loin : perçages, ouverture, flèche, stabilité.",
+      },
       {
         keys: ["data-workshop:check"], name: "Contrôle avant fabrication",
         what: "Cherche ce qui gâcherait du panneau ou bloquerait le montage, avant de lancer la découpe.",
@@ -377,9 +388,19 @@ export const WORKSHOP: HelpFamily[] = [
     ],
   },
   {
-    title: "Atelier : documents et client",
-    where: WHERE,
+    title: "Documents et client",
+    where: `Barre d'outils du modèle, groupes « Fabrication » et « Client ». ${MENU}`,
     tools: [
+      {
+        keys: ["data-workshop:variants"], name: "Variantes",
+        what: "Garde plusieurs versions du projet et les compare côte à côte avec leur prix.",
+        steps: [
+          "Cliquez « Variantes », nommez la version en cours, puis « Garder cette version » : jusqu'à six versions, gardées dans le projet.",
+          "Changez le projet : chaque carte montre son image, son prix et l'écart avec le projet en cours.",
+          "Cliquez « Ouvrir » sur la version choisie : elle remplace le projet en cours, et Ctrl+Z revient en arrière.",
+        ],
+        tip: "Le prix affiché est celui du moment où la variante a été gardée.",
+      },
       {
         keys: ["data-workshop:assembly"], name: "Notice de montage",
         what: "Montre le meuble étape par étape dans la vue, éclaté si vous voulez, et imprime la notice.",

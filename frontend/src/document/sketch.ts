@@ -189,6 +189,8 @@ export interface DoorSettings {
   hinges?: ("left" | "right")[];
   /** The cases sharing one door with the next one (the index of the first of each pair). */
   joined?: number[];
+  /** The cases left without a door (a door shared by several: its first case). Kept empty rather than removed. */
+  skipped?: number[];
   /** A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`. */
   style?: "flat" | "frame";
   frameWidth?: number;

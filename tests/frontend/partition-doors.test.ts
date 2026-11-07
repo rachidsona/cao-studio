@@ -1,6 +1,7 @@
 /** Les portes d'une répartition : une par case, à la mesure de ses côtés et séparations, tenues à jour avec l'étape. */
 import { describe, expect, it } from "vitest";
 import { doorSwing, doorWithHandle } from "../../frontend/src/app/drawer-toggle";
+import { caseHasDoor, doorCount, withAllDoors, withCaseDoor, withCasesJoined, withoutDoors } from "../../frontend/src/document/door-fronts";
 import { syncPartitionDoors } from "../../frontend/src/document/partition-doors";
 import { poseOf } from "../../frontend/src/features/motion";
 import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
@@ -128,5 +129,42 @@ describe("fond d'une répartition", () => {
     expect(backOf(changed).map((f) => [f.id, f.split])).toEqual([[thick.id, "whole"]]);
     expect(backOf(withSketchExtrusion(made, "sk1", sketch(DOORS)))).toHaveLength(0);
     expect(doorsOf(withSketchExtrusion(made, "sk1", sketch(DOORS)))).toHaveLength(1);
+  });
+});
+
+describe("une porte par case", () => {
+  const base = doc(sketch(null));
+  const id = (base.features[0] as SketchFeature).id;
+  const partition = (base.features[0] as SketchFeature).offsets![0]!.id;
+
+  it("pose la porte d'une seule case, puis la retire", () => {
+    const one = withCaseDoor(base, id, partition, 1);
+    expect(doorCount(one, id, partition)).toBe(1);
+    expect(caseHasDoor(one, id, partition, 1)).toBe(true);
+    expect(caseHasDoor(one, id, partition, 0)).toBe(false);
+    expect(doorsOf(one)[0]?.skipped).toEqual([0, 2, 3]);
+    const none = withCaseDoor(one, id, partition, 1);
+    expect(doorsOf(none)).toEqual([]);
+    expect(caseHasDoor(none, id, partition, 1)).toBe(false);
+  });
+
+  it("garde les autres portes, et une porte commune vaut pour ses cases", () => {
+    const all = withAllDoors(base, id, partition);
+    expect(doorCount(all, id, partition)).toBe(4);
+    const shared = withCasesJoined(all, id, partition, 0, 1);
+    const left = withCaseDoor(shared, id, partition, 1);
+    expect(caseHasDoor(left, id, partition, 0)).toBe(false);
+    expect(doorCount(left, id, partition)).toBe(2);
+    expect(doorsOf(withoutDoors(left, id, partition))).toEqual([]);
+  });
+
+  it("ne dessine que les portes gardées", () => {
+    const doors = partitionDoors(INPUT, [0, 0], 4) as [number, number, number, number][];
+    expect(partitionDoors(INPUT, [0, 0], 4, [], [0, 2])).toEqual([doors[1], doors[3]]);
+  });
+
+  it("garde un document valide", () => {
+    const made = withCaseDoor(base, id, partition, 2);
+    expect(() => parseDocument(made)).not.toThrow();
   });
 });

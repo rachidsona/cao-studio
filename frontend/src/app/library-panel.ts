@@ -22,7 +22,7 @@ interface ModuleRow {
 }
 
 /** The view as a small JPEG (the drawing buffer is read right after a render). */
-function thumbnail(viewport: Viewport): string {
+export function thumbnail(viewport: Viewport): string {
   viewport.renderer.render(viewport.scene, viewport.camera);
   const source = viewport.renderer.domElement;
   const canvas = document.createElement("canvas");

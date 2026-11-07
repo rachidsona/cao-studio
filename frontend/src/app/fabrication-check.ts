@@ -85,9 +85,8 @@ function stabilityProblems(viewport: Viewport, doc: CadDocument): Problem[] {
   return out;
 }
 
-/** Every problem of the model, in the order of the list. */
-export async function checkModel(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<Problem[]> {
-  const doc = editor.doc;
+/** What can be told right away, without the flat outlines of the pieces: the control in the view (app/live-check.ts). */
+export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
   const parts = partsOf(viewport, doc);
   const idByName = new Map(parts.map((p) => [bodyLabel(doc, p.id), p.id]));
   const { rows } = cutList(doc, parts);
@@ -97,16 +96,25 @@ export async function checkModel(viewport: Viewport, editor: Editor, geometry: G
     return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike };
   });
   const sheets = new Map(MATERIALS.map((m) => [m.name, m.sheet]));
-  const { parts: flats } = await flatParts(viewport, editor, geometry);
   return [
     ...overlapProblems(checked),
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
     ...layoutProblems(layoutOf(viewport, doc)),
     ...dressingChecks(doc).map((message): Problem => ({ kind: "layout", severity: "warning", message, bodies: [] })),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
+    ...doorProblems(doc),
+  ];
+}
+
+/** Every problem of the model, in the order of the list. */
+export async function checkModel(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<Problem[]> {
+  const doc = editor.doc;
+  const idByName = new Map(partsOf(viewport, doc).map((p) => [bodyLabel(doc, p.id), p.id]));
+  const { parts: flats } = await flatParts(viewport, editor, geometry);
+  return [
+    ...quickProblems(viewport, doc),
     ...flats.flatMap((p) => holeProblems(p, idByName.get(p.name) ?? "")),
     ...jointProblems(doc, carcassBoards(viewport, doc, viewport.displayedBodies)),
-    ...doorProblems(doc),
     // A middle load (dishes, jars): the boards that would sag under it, in the long run.
     ...shelves(viewport, doc, 15, 200).filter((s) => !s.check.ok).map((s): Problem => ({ kind: "sag", severity: "warning", message: `${s.name} fléchit de ${s.check.sag.toFixed(1)} mm à long terme (limite ${s.check.limit.toFixed(1)} mm) : ${s.check.thicknessNeeded ? `${s.check.thicknessNeeded} mm d'épaisseur` : "un montant au milieu"} ou une portée de ${Math.floor(s.check.maxSpan / 10) * 10} mm au plus.`, bodies: [s.id] })),
     ...openingProblems(viewport, doc),

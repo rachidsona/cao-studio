@@ -45,6 +45,16 @@ function caseWidth(doc: CadDocument, g: SketchFeature, partition: string, index:
   return remade(doc, g, partition, withInput(g, record, { ...record.step.input, widths: caseWidths.map((w, i) => (i === index ? value : (w * left) / others)) }));
 }
 
+/** The whole Répartition that was `was` mm long or high at `value` mm: its cases keep their shares. */
+export function withPartitionSize(doc: CadDocument, sketchId: string, axis: "x" | "y", was: number, value: number): CadDocument | string {
+  const g = findFeature(doc, sketchId);
+  if (g?.type !== "sketch") return "Cette répartition n'existe plus.";
+  const key = axis === "x" ? "length" : "height";
+  const record = (g.offsets ?? []).find((r) => isPartition(r) && Math.abs(r.step.input[key] - was) < NEAR);
+  if (!record || !isPartition(record)) return "Cette cote n'est pas celle de la répartition.";
+  return remade(doc, g, record.id, withInput(g, record, { ...record.step.input, [key]: value }));
+}
+
 /** The niche that spans from `span[0]` to `span[1]` along x or y (a dimension of the view) set to `value` mm. */
 export function withNicheSize(doc: CadDocument, sketchId: string, axis: "x" | "y", span: [number, number], value: number): CadDocument | string {
   const g = findFeature(doc, sketchId);

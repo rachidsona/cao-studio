@@ -197,7 +197,7 @@ test("Onglets : plusieurs projets ouverts, chacun garde son travail, et ils revi
   await expect(page.locator("iframe[data-project-frame]")).toHaveCSS("visibility", "visible");
   await page.waitForTimeout(2500);
   await second.getByLabel("Fermer Premier e2e").click();
-  await expect(second.getByRole("tab")).toHaveCount(1);
+  await expect(second.getByRole("tablist", { name: "Projets ouverts" }).getByRole("tab")).toHaveCount(1);
 
   // Reloading the page opens the tab that was active, and the + offers the project closed.
   await page.reload();

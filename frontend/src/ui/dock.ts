@@ -2,7 +2,9 @@
  * Les fenêtres des outils (mètre, calques, paramètres, extrusion, caisson, réseau…) s'ouvrent dans le panneau de
  * droite, chacune dans son onglet en haut du panneau, à côté de l'onglet « Sélection » (les propriétés) : la plus
  * récente s'affiche, un clic sur un onglet passe à l'autre, et quand un outil se ferme son onglet disparaît. La vue 3D
- * reste dégagée. Sur un écran étroit, où ce panneau est replié, elles restent posées sur la vue comme avant.
+ * reste dégagée. Une fenêtre épinglée (le Plan de dressing) a son onglet juste après « Sélection », et une fenêtre
+ * discrète s'ouvre sans passer devant celle qu'on regarde. Sur un écran étroit, où ce panneau est replié, elles restent
+ * posées sur la vue comme avant.
  */
 
 /** Classes that place a panel over the view; dropped when it goes into the right panel. */
@@ -17,6 +19,9 @@ function dock(): HTMLElement | null {
   const el = document.querySelector<HTMLElement>('[data-ref="dock"]');
   return el && window.matchMedia("(min-width: 1024px)").matches ? el : null;
 }
+
+/** Whether the right panel can hold the tool windows. */
+export const hasDock = (): boolean => dock() !== null;
 
 /** Name of a tool window: its label, else its title. */
 export function panelName(panel: HTMLElement): string {
@@ -37,6 +42,8 @@ function tab(label: string, selected: boolean, select: () => void, title: string
   return button;
 }
 
+const pinned = (panel: HTMLElement) => panel.hasAttribute("data-dock-pinned");
+
 /** Draws the tabs and shows only what the active one holds. */
 function sync(target: HTMLElement): void {
   const panels = [...target.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
@@ -53,7 +60,7 @@ function sync(target: HTMLElement): void {
   };
   bar.replaceChildren(
     tab("Sélection", active === "properties", choose("properties"), "Propriétés de la sélection ou de l'opération choisie"),
-    ...panels.map((panel) => tab(panelName(panel), panel === active, choose(panel), `Fenêtre de l'outil ${panelName(panel)}`)),
+    ...[...panels.filter(pinned), ...panels.filter((panel) => !pinned(panel))].map((panel) => tab(panelName(panel), panel === active, choose(panel), `Fenêtre de l'outil ${panelName(panel)}`)),
   );
 }
 
@@ -72,8 +79,16 @@ function ensureTabs(target: HTMLElement): void {
   new MutationObserver(() => sync(target)).observe(target, { childList: true });
 }
 
+/** Shows a window of the right panel, or its properties. */
+export function showPanel(what: HTMLElement | "properties"): void {
+  const target = dock();
+  if (!target) return;
+  active = what;
+  sync(target);
+}
+
 /** Puts a tool's panel in the right panel, in its own tab, shown (or over the view, in `container`, on narrow screens). */
-export function placePanel(container: HTMLElement, panel: HTMLElement): void {
+export function placePanel(container: HTMLElement, panel: HTMLElement, { first = false, quiet = false } = {}): void {
   // Drawn like the cards of the navigator and of the properties.
   panel.classList.add("cad-card");
   const target = dock();
@@ -85,8 +100,9 @@ export function placePanel(container: HTMLElement, panel: HTMLElement): void {
   panel.classList.remove(...FLOATING);
   panel.classList.add("w-full", "rounded-none", "shadow-[0_6px_18px_rgba(15,23,42,0.30)]", "dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]");
   panel.dataset.docked = "true";
-  active = panel;
+  panel.toggleAttribute("data-dock-pinned", first);
+  if (!quiet) active = panel;
   target.prepend(panel);
   sync(target);
-  target.parentElement?.scrollTo({ top: 0 });
+  if (!quiet) target.parentElement?.scrollTo({ top: 0 });
 }

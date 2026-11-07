@@ -11,6 +11,7 @@ import { emptySketchGeometry } from "../document/sketch";
 import { findFeature } from "../document/operations";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import * as THREE from "three";
+import type { Vec2 } from "../sketcher/edit";
 import { extrusionOption } from "../sketcher/extrusion-option";
 import { frameOf, rayToSketch, toWorld, type SketchFrame } from "../sketcher/frame";
 import { extractLoops, sketchFaces } from "../sketcher/loops";
@@ -19,7 +20,7 @@ import { isPartition, leafNiches } from "../sketcher/partition-history";
 import { SketchPartitionTool } from "../sketcher/partition-tool";
 import type { NicheBox } from "../sketcher/shelves";
 import { ShelvesTool } from "../sketcher/shelves-tool";
-import { JoineryView } from "../viewport/joinery-view";
+import { JoineryView, pieceKey } from "../viewport/joinery-view";
 import { ModuleTool } from "./module-tool";
 import { NicheHeightTool } from "./niche-height-tool";
 import { nicheUnderPointer } from "./niche-pick";
@@ -76,6 +77,9 @@ export class Joinery3D implements PointerHandler {
   private done = false;
   /** The tool as the menu of a niche names it; none while a step of the history is changed. */
   private action: string | null = null;
+  /** A step of the history changed: the pieces it has, already built, are not drawn over themselves. */
+  private editing = false;
+  private built: Set<string> | null = null;
 
   private constructor(
     private readonly viewport: Viewport,
@@ -93,6 +97,7 @@ export class Joinery3D implements PointerHandler {
     const joinery = new Joinery3D(viewport, host, sketch);
     const tool = new SketchPartitionTool(joinery.toolHost(), editing);
     joinery.tool = tool;
+    joinery.editing = editing !== null;
     tool.start();
     joinery.refresh();
     return joinery;
@@ -102,6 +107,7 @@ export class Joinery3D implements PointerHandler {
   static division(viewport: Viewport, host: JoineryHost, sketch: SketchFeature, vertical: boolean, editing: OffsetRecord | null = null): Joinery3D {
     const joinery = new Joinery3D(viewport, host, sketch);
     const tool = new ShelvesTool(joinery.toolHost(), editing, vertical);
+    joinery.editing = editing !== null;
     joinery.tool = tool;
     joinery.action = editing ? null : vertical ? "cloisons" : "shelves";
     tool.start();
@@ -220,6 +226,7 @@ export class Joinery3D implements PointerHandler {
     if (this.done) return;
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     if (this.sketchId && sketch?.type !== "sketch") return this.cancel();
+    this.built = null;
     this.tool?.sync();
     this.refresh();
   }
@@ -247,10 +254,17 @@ export class Joinery3D implements PointerHandler {
     joineryPlans.changed();
   }
 
+  /** What OK would change: while a step is changed, the pieces as they were when it opened stay out of the preview. */
+  private changed(pieces: Vec2[][], depth: number): Vec2[][] {
+    if (!this.editing) return pieces;
+    this.built ??= new Set(pieces.map((p) => pieceKey(p, depth)));
+    return pieces.filter((p) => !this.built?.has(pieceKey(p, depth)));
+  }
+
   private render(): void {
     if (this.done || !this.tool) return;
     this.publishPlans();
-    if (this.tool instanceof SketchPartitionTool) return this.view.show(this.frame, this.depth() || 1, [], this.tool.pieces());
+    if (this.tool instanceof SketchPartitionTool) return this.view.show(this.frame, this.depth() || 1, [], this.changed(this.tool.pieces(), this.depth() || 1));
     const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
     const tool = this.tool;
     const chosen = tool.chosen();
@@ -260,7 +274,7 @@ export class Joinery3D implements PointerHandler {
       this.frame,
       depth || 1,
       this.niches.map((n, i) => ({ box: n.box, state: chosen.some((c) => same(c, n.box)) ? "chosen" : i === this.hover ? "hover" : "free" })),
-      tool instanceof ShelvesTool || tool instanceof ModuleTool || tool instanceof NicheHeightTool ? tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]) : [],
+      tool instanceof ShelvesTool || tool instanceof ModuleTool || tool instanceof NicheHeightTool ? this.changed(tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]), depth || 1) : [],
       tool instanceof NicheTool || tool instanceof ModuleTool ? tool.solids() : [],
     );
   }

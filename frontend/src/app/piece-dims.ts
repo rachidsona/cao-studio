@@ -1,10 +1,10 @@
 /**
- * « Cotes des pièces » (colonne Vue, à droite de la vue) : un interrupteur qui cote chaque pièce vue de face (traits
- * rouges, chiffres verts) : sa largeur et sa hauteur, et sur une planche vue par la tranche sa longueur
+ * « Cotes des pièces » (colonne Vue, à droite de la vue) : un interrupteur qui cote chaque pièce vue de face : sa largeur et sa hauteur, et sur une planche vue par la tranche sa longueur
  * (features/piece-dims.ts). L'élément sélectionné — un caisson avec ses façades, une répartition entière… — n'a que
  * les siennes, et les garde pendant qu'un outil travaille dessus ; sans sélection, toutes les pièces en vue. Seules
  * les cotes qu'on voit s'écrivent (une porte cache le caisson derrière) ; elles suivent la vue quand elle tourne et le
- * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur.
+ * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur. Sans outil en cours, un clic sur
+ * une cote la change (document/piece-size.ts).
  *
  * Une Répartition a ses cotes de plan, autour du meuble (plan-dims-view.ts) : celles-là remplacent les cotes de ses
  * pièces, et s'affichent d'elles-mêmes tant qu'on y travaille (Répartition, Étagères, Cloisons, Penderie, Tiroirs,
@@ -13,7 +13,7 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody, type CadDocument, type Vec3 } from "../document/types";
+import { featureOfBody, type Axis, type CadDocument, type Vec3 } from "../document/types";
 import type { PartitionPlan } from "../features/partition-dims";
 import { pieceDims, viewAxes, type Box } from "../features/piece-dims";
 import { formatLength } from "../measurements/units";
@@ -21,12 +21,13 @@ import { frameOf, toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { documentPlans, joineryPlans } from "./partition-plan";
-import { editDim } from "./dim-editor";
+import { withPieceSize } from "../document/piece-size";
+import { editDim, editValue } from "./dim-editor";
 import { PlanDimsView } from "./plan-dims-view";
 import { isolatedSketch } from "./zone-view";
 
 const KEY = "cao.piece-dims";
-const COLOR = 0xdc2626;
+const COLOR = 0xf8500a;
 /** More pieces than this in view: only the nearest are written. */
 const MAX_PIECES = 300;
 
@@ -144,7 +145,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
           expected.expandByPoint(corner).expandByPoint(corner.clone().addScaledVector(new THREE.Vector3(...frame.normal), plan.depth));
         }
       }
-      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected), (label, axis, span, value) => editDim(editor, sketch.id, label, axis, span, value));
+      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected), (label, axis, span, value, whole) => editDim(editor, sketch.id, label, axis, span, value, whole));
       done.add(sketch.id);
     }
     return done;
@@ -207,6 +208,14 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
         const span = document.createElement("span");
         span.className = "cad-piece-dim";
         span.textContent = formatLength(d.length, editor.unit).replace(/\s*[a-zµ]+$/i, "");
+        if (!root.dataset.tool) {
+          span.dataset.editable = "";
+          span.style.pointerEvents = "auto";
+          span.style.cursor = "text";
+          span.title = "Cliquez pour changer cette cote";
+          span.addEventListener("pointerdown", (event) => event.stopPropagation());
+          span.addEventListener("click", () => editValue(editor, span, d.length, (mm) => withPieceSize(editor.doc, id, along as Axis, d.length, mm)));
+        }
         const label = new CSS2DObject(span);
         label.position.set(...d.at);
         group.add(label);

@@ -37,7 +37,7 @@ export class FrontsTool extends PanelTool {
   }
 
   protected feature(): FrontsFeature | string {
-    if (!this.settings.cabinet) return "Créez d'abord un caisson (Menuiserie › Caisson).";
+    if (!this.settings.cabinet) return "Créez d'abord un caisson (Meuble › Caisson) ou une Répartition.";
     return { id: this.id, type: "fronts", name: this.name, ...this.settings };
   }
 

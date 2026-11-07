@@ -202,7 +202,7 @@ export const SCREEN: HelpFamily[] = [
           "À droite d'un outil, l'épingle le met dans la barre ou le range dans le menu ; l'étoile l'ajoute à « Mes outils ».",
           "« Par défaut » remet le groupe comme à l'origine. Glissez le nom d'un groupe pour le déplacer : l'ordre est retenu.",
         ],
-        tip: "Quand la fenêtre est trop étroite, des icônes se replient d'elles-mêmes (Menuiserie d'abord) mais restent dans le menu de leur groupe.",
+        tip: "Quand la fenêtre est trop étroite, des icônes se replient d'elles-mêmes (Client et Fabrication d'abord, Dressing et Cuisine en dernier) mais restent dans le menu de leur groupe.",
       },
     ],
   },
@@ -210,6 +210,25 @@ export const SCREEN: HelpFamily[] = [
     title: "Vue et sélection",
     where: "Colonne verticale « Sélection et vue » à droite de la vue. Elle disparaît pendant une esquisse et pendant le rendu.",
     tools: [
+      {
+        keys: [], selector: "[data-ribbon-tab]", name: "Onglets Conception 3D, Dressing et Cuisine",
+        what: "Au-dessus du ruban : chaque onglet montre les outils de son travail.",
+        steps: [
+          "« Conception 3D » : esquisse, volumes, formes et réglages.",
+          "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec les meubles et la pièce.",
+          "« Cuisine » : implantation, meubles de cuisine, découpes du plan de travail, avec les meubles et la pièce.",
+        ],
+        tip: "Modifier, Fabrication et Client sont dans les trois. Le dernier onglet choisi est retenu dans ce navigateur.",
+      },
+      {
+        keys: [], name: "Barre contextuelle",
+        what: "En haut de la vue, seuls les outils utiles à ce que vous venez de cliquer.",
+        steps: [
+          "Cliquez dans une niche : la barre donne sa taille et ses outils (Étagères, Cloisons, Hauteur, Penderie, Tiroirs, Module), la niche étant déjà choisie.",
+          "Cliquez une pièce, un caisson, une répartition ou le plan : la barre propose les outils qui leur servent, même rangés dans un menu.",
+          "Elle s'efface quand un outil travaille, avec Échap, ou d'un clic dans le vide.",
+        ],
+      },
       {
         keys: [], name: "Sélection dans la vue",
         what: "Choisit ce que vous voulez travailler en cliquant dans le modèle.",
@@ -276,6 +295,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez « Cotes des pièces » : chaque pièce vue de face reçoit sa largeur et sa hauteur, une planche vue par la tranche sa longueur.",
           "Sélectionnez un caisson pour ne garder que ses cotes. Recliquez le bouton pour tout effacer.",
+          "Sans outil en cours, cliquez une cote, tapez la nouvelle valeur et Entrée : le caisson ou la planche suit. Pour une pièce d'une Répartition, cliquez la cote de sa niche ou le total.",
         ],
         tip: "Seules les cotes visibles s'écrivent (une porte cache le caisson derrière). Une Répartition a ses cotes de plan, affichées d'elles-mêmes pendant que vous y travaillez.",
       },
@@ -304,15 +324,6 @@ export const SCREEN: HelpFamily[] = [
           "Recliquez pour les retrouver pleins.",
         ],
         tip: "Seul l'aspect change. Le choix est retenu.",
-      },
-      {
-        keys: [], selector: "[data-display-menu]", name: "Affichage par famille",
-        what: "Cache ou montre des familles de corps : façades, carcasse, fonds, étagères, plinthes, murs, électroménager.",
-        steps: [
-          "Cliquez « Affichage par famille » : des cases s'ouvrent. Décochez une famille pour la cacher.",
-          "« Vue de travail » cache d'un clic les façades, les murs et l'électroménager pour travailler dedans. « Tout afficher » remet tout.",
-        ],
-        tip: "La vue seule change : liste de débit et devis restent les mêmes. Chaque corps est rangé d'après son nom (porte, étagère, plinthe…).",
       },
     ],
   },
@@ -416,7 +427,7 @@ export const SCREEN: HelpFamily[] = [
   },
   {
     title: "Barre du rendu",
-    where: "Elle remplace le ruban quand le rendu est ouvert avec le bouton « Rendu » du groupe Atelier. Un panneau de réglages s'ouvre aussi à droite.",
+    where: "Elle remplace le ruban quand le rendu est ouvert avec le bouton « Rendu » du groupe Client. Un panneau de réglages s'ouvre aussi à droite.",
     tools: [
       {
         keys: [], selector: "[data-render=capture]", name: "Barre du rendu",

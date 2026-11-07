@@ -1,9 +1,16 @@
 /** Une cote de la vue changée sur place : un clic ouvre un champ à sa place, Entrée applique, Échap laisse tel quel. */
-import { withNicheSize } from "../document/niche-size";
+import { withNicheSize, withPartitionSize } from "../document/niche-size";
+import type { CadDocument } from "../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import type { Editor } from "./editor";
 
-export function editDim(editor: Editor, sketchId: string, label: HTMLElement, axis: "x" | "y", span: [number, number], value: number): void {
+/** A niche's dimension; `whole`: the dimension of the whole Répartition. */
+export function editDim(editor: Editor, sketchId: string, label: HTMLElement, axis: "x" | "y", span: [number, number], value: number, whole = false): void {
+  editValue(editor, label, value, (mm) => (whole ? withPartitionSize(editor.doc, sketchId, axis, value, mm) : withNicheSize(editor.doc, sketchId, axis, span, mm)));
+}
+
+/** A field over a label of the view: Entrée applies what `apply` makes of the new value (mm). */
+export function editValue(editor: Editor, label: HTMLElement, value: number, apply: (mm: number) => CadDocument | string): void {
   document.querySelector("[data-dim-editor]")?.remove();
   // Over the label, not in it: the labels are drawn again whenever the view moves.
   const { left, top } = label.getBoundingClientRect();
@@ -22,7 +29,7 @@ export function editDim(editor: Editor, sketchId: string, label: HTMLElement, ax
     if (event.key !== "Enter") return;
     const parsed = parseNumber(input.value);
     if (parsed === null || parsed <= 0) return input.blur();
-    const made = withNicheSize(editor.doc, sketchId, axis, span, fromDisplay(parsed, editor.unit));
+    const made = apply(fromDisplay(parsed, editor.unit));
     input.blur();
     if (typeof made === "string") return editor.notify(made, "error");
     void editor.change(made);

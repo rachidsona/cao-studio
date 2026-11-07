@@ -13,9 +13,9 @@ import { toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 
 /** A value of the view clicked: the label, which niche size it is, and its value (mm). */
-export type DimEdit = (label: HTMLElement, axis: "x" | "y", span: [number, number], value: number) => void;
+export type DimEdit = (label: HTMLElement, axis: "x" | "y", span: [number, number], value: number, whole: boolean) => void;
 
-const LINE = 0x38bdf8;
+const LINE = 0xf8500a;
 /** A value needs this much of its line, in pixels: its width along a line across the screen, its height along one up the screen. */
 const ROOM = 30;
 const ROOM_UP = 16;
@@ -93,7 +93,7 @@ export class PlanDimsView {
         value.className = "cad-plan-dim";
         value.dataset.level = dim.level;
         value.textContent = shortValue(toDisplay(dim.length, unit), digits);
-        if (edit && (dim.level === "chain" || dim.level === "inner")) {
+        if (edit && (dim.level === "chain" || dim.level === "inner" || dim.level === "total")) {
           const across = Math.abs(dim.to[0] - dim.from[0]) > Math.abs(dim.to[1] - dim.from[1]);
           const axis = across ? "x" : "y";
           const span: [number, number] = across ? [dim.from[0], dim.to[0]] : [dim.from[1], dim.to[1]];
@@ -104,7 +104,7 @@ export class PlanDimsView {
           value.addEventListener("pointerdown", (event) => event.stopPropagation());
           value.addEventListener("click", (event) => {
             event.stopPropagation();
-            edit(value, axis, span, dim.length);
+            edit(value, axis, span, dim.length, dim.level === "total");
           });
         }
         const label = new CSS2DObject(value);

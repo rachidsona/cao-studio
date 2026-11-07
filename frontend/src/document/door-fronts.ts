@@ -1,6 +1,7 @@
 /**
- * Les façades d'une Répartition, réglées sur le meuble : plusieurs cases voisines sous une seule porte, et le sens
- * d'ouverture de toutes ses portes, par paires en miroir ou toutes du même côté. Pur.
+ * Les façades d'une Répartition, réglées sur le meuble : une porte par case, posée ou retirée case par case, plusieurs
+ * cases voisines sous une seule porte, et le sens d'ouverture de toutes ses portes, par paires en miroir ou toutes du
+ * même côté. Pur.
  */
 import { findFeature, updateFeature } from "./operations";
 import { syncPartitionDoors } from "./partition-doors";
@@ -27,7 +28,58 @@ function withDoors(doc: CadDocument, sketchId: string, partition: string, change
 export function doorCount(doc: CadDocument, sketchId: string, partition: string): number {
   const record = partitionOf(doc, sketchId, partition);
   if (!record || !isPartition(record)) return 0;
-  return record.step.input.cases - (record.step.doors?.joined ?? []).filter((c) => c < record.step.input.cases - 1).length;
+  return record.step.input.cases - (record.step.doors?.joined ?? []).filter((c) => c < record.step.input.cases - 1).length - (record.step.doors?.skipped?.length ?? 0);
+}
+
+/** The case a door over this case starts on. */
+const doorStart = (joined: readonly number[], at: number): number => (joined.includes(at - 1) ? doorStart(joined, at - 1) : at);
+
+/** Has this case a door? */
+export function caseHasDoor(doc: CadDocument, sketchId: string, partition: string, at: number): boolean {
+  const record = partitionOf(doc, sketchId, partition);
+  const doors = record && isPartition(record) ? record.step.doors : undefined;
+  return !!doors && !(doors.skipped ?? []).includes(doorStart(doors.joined ?? [], at));
+}
+
+/** A door on this case, or none if it has one; with no door left, the Répartition has none. */
+export function withCaseDoor(doc: CadDocument, sketchId: string, partition: string, at: number): CadDocument {
+  const record = partitionOf(doc, sketchId, partition);
+  if (!record || !isPartition(record)) return doc;
+  const { cases } = record.step.input;
+  const start = doorStart(record.step.doors?.joined ?? [], at);
+  const skipped = record.step.doors ? record.step.doors.skipped ?? [] : Array.from({ length: cases }, (_, i) => i);
+  const next = skipped.includes(start) ? skipped.filter((c) => c !== start) : [...skipped, start].sort((a, b) => a - b);
+  const made = withDoors(doc, sketchId, partition, ({ hinges: _old, ...doors }) => ({ ...doors, skipped: next }));
+  return doorCount(made, sketchId, partition) > 0 ? made : withoutDoors(made, sketchId, partition);
+}
+
+/** A door on every case. */
+export function withAllDoors(doc: CadDocument, sketchId: string, partition: string): CadDocument {
+  return withDoors(doc, sketchId, partition, ({ hinges: _old, ...doors }) => ({ ...doors, skipped: [] }));
+}
+
+/** No door on the Répartition. */
+export function withoutDoors(doc: CadDocument, sketchId: string, partition: string): CadDocument {
+  const next = updateFeature(doc, sketchId, (f) => {
+    if (f.type !== "sketch") return f;
+    return { ...f, offsets: f.offsets?.map((r) => {
+      if (r.id !== partition || !isPartition(r)) return r;
+      const { doors: _gone, ...step } = r.step;
+      return { ...r, step };
+    }) };
+  });
+  return syncPartitionDoors(next, sketchId);
+}
+
+/** The settings of its doors changed. */
+export function withDoorSettings(doc: CadDocument, sketchId: string, partition: string, patch: Partial<DoorSettings>): CadDocument {
+  return withDoors(doc, sketchId, partition, (doors) => ({ ...doors, ...patch }));
+}
+
+/** The settings of its doors, the usual ones when it has none. */
+export function doorSettings(doc: CadDocument, sketchId: string, partition: string): DoorSettings {
+  const record = partitionOf(doc, sketchId, partition);
+  return (record && isPartition(record) ? record.step.doors : undefined) ?? DOORS;
 }
 
 /** Does a door run from case `from` to case `to`? */

@@ -5,17 +5,21 @@
  * "Par défaut" in a menu brings its group back to the default.
  *
  * The bar stays on one line: when the window is too narrow, icons fold away one by one (still in their group's
- * menu), the groups of FOLD_ORDER first — Menuiserie first of all — each from its last icon.
+ * menu), the groups of FOLD_ORDER first — the documents first of all, the furniture last — each from its last icon.
  *
  * The star ★ of a menu puts the tool in "Mes outils", the favourites bar at the left of the view (favorites.ts).
  * Groups change places by dragging their name; the order is remembered per toolbar.
+ *
+ * Above the model's bar, the tabs of TABS, as Fusion's: each shows the groups of its work; the choice is remembered.
  */
 import { bindFavorites } from "./favorites";
 
 const HIDDEN = "cao.ribbon-hidden.";
 const ORDER = "cao.ribbon-order.";
+const UPGRADED = "cao.ribbon-groups-3";
+const TAB = "cao.ribbon-tab";
 /** Attributes that identify a tool button, in order of preference. */
-const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy", "data-library", "data-snap", "data-hidden-joints"];
+const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy", "data-library", "data-snap", "data-hidden-joints", "data-display-menu"];
 
 /** Tools put away (in their group's menu only) until the user pins them. */
 const DEFAULT_HIDDEN: Record<string, string[]> = {
@@ -25,7 +29,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:extrude-path", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
     "data-workshop:import-parts", "data-workshop:nesting", "data-workshop:offcuts", "data-workshop:batch", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
-    "data-action:room", "data-action:module", "data-action:niche", "data-workshop:dressing-plan", "data-workshop:door-fronts", "data-workshop:edge-paint", "data-workshop:niche-copy", "data-workshop:niche-align", "data-workshop:dressing-style", "data-workshop:production-folder", "data-action:trim", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
+    "data-action:dressing", "data-workshop:door-fronts", "data-workshop:edge-paint", "data-workshop:niche-copy", "data-workshop:niche-align", "data-workshop:dressing-style", "data-workshop:production-folder", "data-action:trim", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
   ],
   sketch: [
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
@@ -36,8 +40,15 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
 
 /** The groups whose icons fold away first when the bar is too narrow, in that order (then the others, from the right). */
 const FOLD_ORDER: Record<string, string[]> = {
-  model: ["Menuiserie", "Atelier", "Curic", "Modifier", "Créer"],
+  model: ["Client", "Fabrication", "Atelier", "Curic", "Modifier", "Pièce", "Meuble", "Créer", "Cuisine", "Dressing"],
   sketch: ["Affichage", "Contraintes", "Cotes", "Modifier", "Créer"],
+};
+
+/** The groups each tab of the model's bar shows. */
+const TABS: Record<string, string[]> = {
+  design: ["Créer", "Modifier", "Curic", "Atelier", "Fabrication", "Client"],
+  dressing: ["Modifier", "Pièce", "Meuble", "Dressing", "Fabrication", "Client"],
+  kitchen: ["Modifier", "Pièce", "Cuisine", "Meuble", "Fabrication", "Client"],
 };
 
 /** A stable name for a tool button ("data-action:array", "data-action:view:front"), or null for any other button. */
@@ -48,6 +59,29 @@ export function keyOf(button: HTMLElement): string | null {
     return `${attribute}:${button.getAttribute(attribute) ?? ""}${view ? `:${view}` : ""}`;
   }
   return null;
+}
+
+/** The order of the groups from before Menuiserie split and Atelier gave up two: the furniture after Modifier. */
+export function upgradedOrder(order: readonly string[]): string[] {
+  const done = order.filter((n) => n !== "Menuiserie" && n !== "Pièce" && n !== "Meuble" && n !== "Dressing" && n !== "Fabrication" && n !== "Client").flatMap((n) => (n === "Atelier" ? [n, "Fabrication", "Client"] : [n]));
+  done.splice(done.indexOf("Modifier") + 1, 0, "Pièce", "Cuisine", "Meuble", "Dressing");
+  return done;
+}
+
+/** Once, what this browser remembers from then: the order of the groups, and the tools that came out or went in. */
+function upgradeRibbon(): void {
+  try {
+    if (localStorage.getItem(UPGRADED)) return;
+    localStorage.setItem(UPGRADED, "1");
+    const order = readOrder("model");
+    if (order.length) writeOrder("model", upgradedOrder(order));
+    if (localStorage.getItem(HIDDEN + "model") === null) return;
+    const hidden = readHidden("model");
+    for (const key of ["data-action:room", "data-action:module", "data-action:niche", "data-workshop:dressing-plan"]) hidden.delete(key);
+    writeHidden("model", hidden.add("data-action:dressing"));
+  } catch {
+    // Not remembered: the default.
+  }
 }
 
 function readHidden(name: string): Set<string> {
@@ -93,6 +127,7 @@ export function bindRibbonLayout(root: HTMLElement): void {
   } catch {
     // Nothing to clean.
   }
+  upgradeRibbon();
   for (const toolbar of root.querySelectorAll<HTMLElement>("[data-ribbon]")) bindToolbar(toolbar, toolbar.dataset.ribbon as string);
 }
 
@@ -125,6 +160,7 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     const listed = FOLD_ORDER[name] ?? [];
     const ordered = [...listed.flatMap((n) => groups.filter((g) => g.name === n)), ...groups.filter((g) => !listed.includes(g.name)).reverse()];
     for (const g of ordered) {
+      if (g.group.hidden) continue;
       for (const t of [...g.tools].reverse()) {
         if (hidden.has(t.key)) continue;
         folded.add(t.key);
@@ -266,7 +302,7 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
   /** One separator between two groups, wherever they are now. */
   const separate = () => {
     for (const sep of [...toolbar.querySelectorAll(":scope > .ribbon-sep")]) sep.remove();
-    const placed = [...toolbar.querySelectorAll<HTMLElement>(":scope > .ribbon-group")];
+    const placed = [...toolbar.querySelectorAll<HTMLElement>(":scope > .ribbon-group:not([hidden])")];
     placed.slice(1).forEach((g) => g.before(Object.assign(document.createElement("span"), { className: "ribbon-sep", ariaHidden: "true" })));
   };
   const saveOrder = () => writeOrder(name, [...toolbar.querySelectorAll<HTMLElement>(":scope > .ribbon-group")].map((g) => g.getAttribute("aria-label") ?? ""));
@@ -309,6 +345,35 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
   toolbar.addEventListener("drop", (event) => {
     if (dragged) event.preventDefault();
   });
+
+  // ---- the tabs of the bar --------------------------------------------------------------
+  const tabs = name === "model" ? [...document.querySelectorAll<HTMLElement>("[data-ribbon-tab]")] : [];
+  const choose = (tab: HTMLElement) => {
+    const shown = TABS[tab.dataset.ribbonTab as string] ?? [];
+    for (const g of groups) g.group.hidden = !shown.includes(g.name);
+    for (const t of tabs) t.setAttribute("aria-selected", String(t === tab));
+    separate();
+    fit();
+  };
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => {
+      open?.close();
+      choose(tab);
+      try {
+        localStorage.setItem(TAB, tab.dataset.ribbonTab as string);
+      } catch {
+        // Not remembered: only this visit.
+      }
+    });
+  }
+  let first: string | null = null;
+  try {
+    first = localStorage.getItem(TAB);
+  } catch {
+    // The first tab.
+  }
+  const opening = tabs.find((t) => t.dataset.ribbonTab === first) ?? tabs[0];
+  if (opening) choose(opening);
 
   let width = -1;
   new ResizeObserver(() => {

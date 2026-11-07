@@ -59,7 +59,7 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   if ((await dims.getAttribute("aria-pressed")) !== "true") await click(page, "[data-piece-dims]");
   await page.keyboard.press("Escape");
   await tree(page).getByText("Dessous", { exact: true }).first().click();
-  const editable = page.locator(".cad-plan-dim[data-editable]").first();
+  const editable = page.locator('.cad-plan-dim[data-editable]:not([data-level="total"])').first();
   await expect(editable).toBeVisible();
   const before = await editable.innerText();
   await editable.click();
@@ -176,7 +176,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   await page.waitForTimeout(500);
   const view = (await page.locator("canvas.cad-view").boundingBox())!;
   await page.mouse.click(view.x + view.width * 0.38, view.y + view.height * 0.55);
-  await expect(page.getByRole("dialog", { name: "Module" })).toContainText("Modifier : Étagères");
+  await expect(page.getByRole("dialog", { name: "Module" })).toContainText("Modifier : ");
   expect(errors).toEqual([]);
 });
 

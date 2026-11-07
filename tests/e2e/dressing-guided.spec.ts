@@ -141,3 +141,40 @@ test("une fenêtre au milieu du mur : le plan se cale sur ce qui reste libre", a
   await expect(zones(page)).toBeVisible();
   await expect(tool.locator("[data-plan-checks]")).toHaveCount(0);
 });
+
+test("le plan garde son onglet à côté de Sélection, quel que soit l'outil ouvert", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Onglet e2e");
+  const tabs = page.getByRole("tablist", { name: "Panneau de droite" }).getByRole("tab");
+  await expect(page.getByRole("tablist", { name: "Panneau de droite" })).toBeHidden();
+  await action(page, '[data-workshop="dressing-plan"]');
+  await planTool(page).getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await planTool(page).getByRole("button", { name: "Créer le plan" }).click();
+  await zones(page).getByRole("listitem").first().getByRole("button").last().click();
+
+  // The Répartition of the zone opens behind it, and the plan stays: it comes first, and it follows what was made.
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await expect(partition).toBeVisible();
+  await expect(tabs).toHaveText(["Sélection", "Plan de dressing", "Répartition"]);
+  await tabs.nth(1).click();
+  await expect(zones(page)).toBeVisible();
+  await tabs.nth(2).click();
+  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(partition).toHaveCount(0);
+  await expect(tabs).toHaveText(["Sélection", "Plan de dressing"]);
+  await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+  await tabs.nth(1).click();
+  await expect(zones(page).getByRole("listitem").first()).toContainText("Modifier");
+
+  // Terminer goes back to Sélection, and the tab stays, even when the project is opened again.
+  await planTool(page).getByRole("button", { name: "Terminer" }).click();
+  await expect(planTool(page)).toHaveCount(0);
+  await expect(tabs).toHaveText(["Sélection", "Plan de dressing"]);
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Enregistré", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(tabs).toHaveText(["Sélection", "Plan de dressing"]);
+  await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+  expect(errors).toEqual([]);
+});

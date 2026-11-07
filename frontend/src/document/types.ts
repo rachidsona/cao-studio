@@ -596,6 +596,8 @@ export interface NicheFeature extends FeatureBase {
   hinges?: ("left" | "right")[];
   /** Doors: the cases sharing one door with the next one. */
   joined?: number[];
+  /** Doors: the cases left without one. */
+  skipped?: number[];
   /** Doors: flat, or a frame round a panel set back (routed in one piece), its width and the panel's set-back (mm). */
   style?: "flat" | "frame";
   frameWidth?: number;
@@ -665,6 +667,19 @@ export interface Parameter {
   expression?: string;
 }
 
+/** A version of the project kept as it was, with its price then. */
+export interface Variant {
+  id: string;
+  name: string;
+  /** The total of the quote when it was kept (null: no priced piece). */
+  total: number | null;
+  /** How many pieces it had. */
+  parts: number;
+  /** A small picture of the view (JPEG data URL). */
+  image?: string;
+  doc: Omit<CadDocument, "variants">;
+}
+
 export interface CadDocument {
   format: typeof DOCUMENT_FORMAT;
   schemaVersion: typeof SCHEMA_VERSION;
@@ -690,6 +705,8 @@ export interface CadDocument {
   layers?: Layer[];
   /** Variants of the model: named sets of parameter values. */
   configurations?: Configuration[];
+  /** Whole versions of the project, kept to compare them with a client: document/variants.ts. */
+  variants?: Variant[];
   /** Folders of the navigator (Fusion's): bodies put together by hand — a placard, a dressing… */
   folders?: Folder[];
   /** Appearances made from images imported by hand (« Mes motifs »): appearance/custom.ts. */

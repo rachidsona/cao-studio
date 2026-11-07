@@ -1,6 +1,10 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
 import { bindCommandPalette } from "./app/command-palette";
+import { bindContextBar } from "./app/context-bar";
+import { bindLiveCheck } from "./app/live-check";
+import { bindVariants } from "./app/variants-tool";
+import { bindModulePalette } from "./app/module-palette";
 import { bindPlanLayout } from "./app/plan-layout-tool";
 import { bindProductionFolder } from "./app/production-folder";
 import { bindProjectTabs } from "./app/project-tabs";
@@ -176,6 +180,10 @@ async function start(): Promise<void> {
   bindLivePrice(root, viewport, editor);
   bindNicheCopy(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);
+  bindModulePalette(root, viewport, editor);
+  bindContextBar(root, viewport, editor);
+  bindLiveCheck(root, viewport, editor);
+  bindVariants(root, viewport, editor);
   bindShelfDrag(viewport, editor);
   bindStylePanel(root, viewport, editor);
   bindDoorFronts(root, viewport, editor);

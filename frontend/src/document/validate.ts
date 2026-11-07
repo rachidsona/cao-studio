@@ -8,6 +8,7 @@ import { nameProblem } from "./expressions";
 import { migrateDocument } from "./migrate";
 import { DOCUMENT_FORMAT, SCHEMA_VERSION, type CadDocument } from "./types";
 import { validateSketch } from "./validate-sketch";
+import { MAX_VARIANTS } from "./variants";
 
 const UNITS = new Set(["mm", "cm", "m", "in"]);
 const PLANES = new Set(["XY", "XZ", "YZ"]);
@@ -243,6 +244,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
       if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
+      if (feature.skipped !== undefined && !(Array.isArray(feature.skipped) && feature.skipped.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : cases sans porte invalides.`);
       if (feature.style !== undefined && feature.style !== "flat" && feature.style !== "frame") errors.push(`${where} : style de porte inconnu.`);
       for (const key of ["frameWidth", "frameDepth"]) if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : « ${key} » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
@@ -297,6 +299,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
   }
 }
 
+const variantsOk = (list: unknown) =>
+  Array.isArray(list) && list.length <= MAX_VARIANTS && list.every((v) => isObject(v) && typeof v.id === "string" && typeof v.name === "string" && (v.total === null || isFiniteNumber(v.total)) && isObject(v.doc) && Array.isArray(v.doc.features));
+
 /** Returns the list of problems found; an empty list means the document is usable. */
 export function validateDocument(input: unknown): string[] {
   const errors: string[] = [];
@@ -341,6 +346,7 @@ export function validateDocument(input: unknown): string[] {
   if (input.quotes !== undefined && (!Array.isArray(input.quotes) || input.quotes.length > 100 || !input.quotes.every((q) => isObject(q) && typeof q.id === "string" && typeof q.label === "string" && typeof q.date === "string" && isFiniteNumber(q.net) && isFiniteNumber(q.gross) && Array.isArray(q.lines) && q.lines.length <= 500 && q.lines.every((l) => isObject(l) && typeof l.label === "string" && isFiniteNumber(l.quantity) && typeof l.unit === "string" && isFiniteNumber(l.unitPrice) && isFiniteNumber(l.total))))) {
     errors.push("« quotes » doit être une liste de versions du devis (id, label, date, lignes, totaux).");
   }
+  if (input.variants !== undefined && !variantsOk(input.variants)) errors.push("« variants » doit être une liste de versions du projet (id, nom, document).");
   if (input.folders !== undefined && (!Array.isArray(input.folders) || !input.folders.every((f) => isObject(f) && typeof f.id === "string" && typeof f.name === "string" && Array.isArray(f.bodies) && f.bodies.every((b) => typeof b === "string")))) {
     errors.push("« folders » doit être une liste de dossiers (id, name, bodies).");
   }

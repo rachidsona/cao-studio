@@ -15,7 +15,7 @@ import type { DressingPlan, SketchFeature } from "../document/types";
 import { wallName } from "../features/room-plan";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { askConfirm } from "../ui/confirm-dialog";
-import { placePanel } from "../ui/dock";
+import { hasDock, placePanel, showPanel } from "../ui/dock";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -76,7 +76,10 @@ export class PlanLayoutTool {
   private filling: PlanZone | null = null;
   private fillWidth = 600;
   private fillFirst = false;
-  private readonly panel: HTMLElement;
+  readonly panel: HTMLElement;
+  /** The document last drawn, and whether it had a plan: when its plan goes, the tool goes. */
+  private drawn: unknown = null;
+  private hadPlan = false;
 
   constructor(
     private readonly editor: Editor,
@@ -84,6 +87,8 @@ export class PlanLayoutTool {
     private readonly closed: () => void,
     /** The sketch of the plan to show; absent: the one of the project. */
     readonly chosen?: string,
+    /** Opened by itself, behind what is being looked at. */
+    quiet = false,
   ) {
     this.panel = el("div", {
       class: "absolute top-2 right-2 z-30 max-h-[calc(100%-1rem)] w-72 space-y-2 overflow-y-auto border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto dark:border-gray-700 dark:bg-gray-900/95",
@@ -91,8 +96,15 @@ export class PlanLayoutTool {
       "aria-label": "Plan de dressing",
     });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    placePanel(container, this.panel);
+    placePanel(container, this.panel, { first: true, quiet });
     this.draw();
+  }
+
+  /** The document changed: the plan shown follows it, even behind another tab. */
+  refresh(): void {
+    if (this.editor.doc === this.drawn) return;
+    if (this.hadPlan && !this.placed()) this.close();
+    else this.draw();
   }
 
   close(): void {
@@ -109,6 +121,8 @@ export class PlanLayoutTool {
     const active = document.activeElement;
     if (active instanceof HTMLInputElement && active.type !== "checkbox" && this.panel.contains(active)) return;
     const placed = this.placed();
+    this.drawn = this.editor.doc;
+    this.hadPlan ||= !!placed;
     // A plan made before a setting existed takes its usual value.
     const plan = placed?.dressingPlan ? { ...PLAN, ...placed.dressingPlan } : null;
     if (placed && plan && this.needing) this.panel.replaceChildren(...needsPanel(placed.id, plan, this.editor, () => {
@@ -335,7 +349,7 @@ export class PlanLayoutTool {
       this.draw();
     });
     const finish = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    finish.addEventListener("click", () => this.close());
+    finish.addEventListener("click", () => (hasDock() ? showPanel("properties") : this.close()));
     const rows: (HTMLElement | null)[] = [
       el("h2", { class: "panel-title" }, "Plan de dressing"),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez une zone pour la répartir."),
@@ -446,8 +460,8 @@ export class PlanLayoutTool {
       await this.editor.change(made.doc);
       target = made;
     }
-    // Its cases are set in the tool of the Répartition, as any other; the plan comes back from its button.
-    this.close();
+    // Its cases are set in the tool of the Répartition, as any other; the plan stays in its tab, or comes back from its button.
+    if (!hasDock()) this.close();
     this.editor.sketches.editOffset(target.sketch, target.step);
   }
 }
@@ -455,15 +469,16 @@ export class PlanLayoutTool {
 export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   let tool: PlanLayoutTool | null = null;
-  const open = (chosen?: string) => {
+  const open = (chosen?: string, quiet = false) => {
     tool?.close();
-    tool = new PlanLayoutTool(editor, container, () => (tool = null), chosen);
+    tool = new PlanLayoutTool(editor, container, () => (tool = null), chosen, quiet);
   };
   /** A sketch chosen: when it is a plan, its tool, unless it is the one open or another tool is at work in a sketch. */
   const show = (id: string | null | undefined) => {
     const sketch = id ? findFeature(editor.doc, id) : undefined;
     if (sketch?.type !== "sketch" || !sketch.dressingPlan || editor.sketches.active) return;
     if (tool?.chosen !== sketch.id) open(sketch.id);
+    else showPanel(tool.panel);
   };
   root.querySelector('[data-workshop="dressing-plan"]')?.addEventListener("click", () => open());
   root.addEventListener("cad:feature-selected", (event) => show((event as CustomEvent<string | null>).detail));
@@ -472,5 +487,12 @@ export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Ed
   viewport.onSelectionChange = (selection) => {
     selected(selection);
     show(selection.sketches[0] ?? selection.sketch[0]?.sketchId);
+  };
+  // On a wide screen, the plan of the project keeps its tab beside Sélection, whatever tool is at work.
+  const rendered = editor.onRender;
+  editor.onRender = () => {
+    rendered();
+    if (tool) tool.refresh();
+    else if (hasDock() && planOf(editor.doc)) open(undefined, true);
   };
 }

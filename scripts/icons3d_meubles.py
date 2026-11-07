@@ -85,10 +85,12 @@ def dressing(i):
 
 
 def niche(i):
-    carcass(i, 11, 6, 14)
-    i.box(-4.4, -3, 4.8, 8.8, 6, 0.9, "white").box(-4.4, -3, 9.2, 8.8, 6, 0.9, "white")
-    i.face([(-4.4, -2.9, 5.7), (4.4, -2.9, 5.7), (4.4, -2.9, 9.2), (-4.4, -2.9, 9.2)], "bl")
-    closed(i, 11, 6, 14)
+    """The height of a niche: an arrow from the shelf under it to the shelf over it."""
+    carcass(i, 11, 6, 15)
+    i.box(-4.4, -3, 2.4, 8.8, 6, 0.9, "white").box(-4.4, -3, 11.2, 8.8, 6, 0.9, "white")
+    i.face([(-4.4, -2.9, 3.3), (4.4, -2.9, 3.3), (4.4, -2.9, 11.2), (-4.4, -2.9, 11.2)], "bl")
+    closed(i, 11, 6, 15)
+    i.arrow((0, 3, 7.2), (0, 3, 11), "orange", 0.95).arrow((0, 3, 7.2), (0, 3, 3.4), "orange", 0.95)
 
 
 def module(i):
@@ -97,6 +99,12 @@ def module(i):
     i.box(-4.4, 2.6, 1.3, 8.8, 0.4, 1.7, "blue").box(-4.4, 2.6, 3.4, 8.8, 0.4, 1.7, "blue")
     i.round(-4.4, 0, 12.6, 0.35, 8.8, "orange", "x")
     closed(i, 11, 6, 15)
+
+
+def module_palette(i):
+    """A module between two arrows: it moves, where the plain module stays put."""
+    module(i)
+    i.arrow((-4.6, 3, 7.5), (-8.8, 3, 7.5), "orange", 1.35).arrow((8.2, 3, 7.5), (12.4, 3, 7.5), "orange", 1.35)
 
 
 def dressing_plan(i):
@@ -133,11 +141,27 @@ def edge_paint(i):
     i.pencil(1, 5.6, 0.8)
 
 
+def variants(i):
+    """Three versions of one cabinet, one behind the other, the one in front in blue."""
+    i.box(2, -8, 2.4, 11, 8, 11, "white").box(-1, -3, 1.2, 11, 8, 11, "white")
+    i.box(-5, 2, 0, 11, 8, 11, "blue")
+    cx, cy = i.p(6, 6, 5.5)
+    i.mark([(cx - 5, cy - 2.4), (cx - 5, cy + 2.4)], "#ffffff", 0.9)
+
+
+def live_check(i):
+    """A board in a red frame, its mark of a part to look at."""
+    i.box(-6, -6, -3, 12, 12, 6)
+    i.wire(-8.5, -8.5, -5.5, 17, 17, 11, "#dc2626", 0.7)
+    i.check(*i.p(0, 0, 3), 1.3)
+
+
 # Drawn from the front: their insides show, as on the plan of a Répartition.
-FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "piece-dims", "part-tags"}
+FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "piece-dims", "part-tags", "module-palette"}
 
 MEUBLES = {
     "cabinet": cabinet, "fronts": fronts, "partition": partition, "shelves": shelves, "cloisons": cloisons, "drawers": drawers,
     "rod": rod, "dressing": dressing, "niche": niche, "module": module, "dressing-plan": dressing_plan, "niche-copy": niche_copy,
     "niche-align": niche_align, "dressing-style": dressing_style, "door-fronts": door_fronts, "edge-paint": edge_paint,
+    "variants": variants, "live-check": live_check, "module-palette": module_palette,
 }

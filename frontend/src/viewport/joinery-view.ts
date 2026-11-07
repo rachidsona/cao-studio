@@ -75,6 +75,9 @@ function worldBoxMesh(a: Vec3, b: Vec3, style: (typeof STYLE)[keyof typeof STYLE
   return mesh;
 }
 
+/** A piece of the preview at this depth, to tell it from the others. */
+export const pieceKey = (outline: Vec2[], depth: number): string => `${Math.round(depth)}|${outline.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(";")}`;
+
 export class JoineryView {
   private readonly group = new THREE.Group();
   private nicheMeshes: THREE.Mesh[] = [];

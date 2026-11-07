@@ -642,7 +642,7 @@ opération existante.
   même niveau), **⌘** verticale ; le point d'arrivée s'affiche alors à la hauteur du point de départ (ou à sa
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
-- **Caisson** (groupe « Menuiserie ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
+- **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
     penderie 1000 × 2400, placard 800 × 2000 ; tout reste modifiable.
@@ -652,7 +652,7 @@ opération existante.
     dessous toute largeur. Les pièces ne partagent jamais de matière.
   - Un nouveau caisson se place à droite des corps existants, sur le même sol et le même alignement avant
     (position X, Y, Z modifiable : coin avant gauche en bas). Il se modifie depuis l'historique ou les Propriétés.
-- **Répartition** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères » et « Cloisons ») : elle se
+- **Répartition** (bouton du ruban **3D**, groupe **Dressing**, à côté d'« Étagères » et « Cloisons ») : elle se
   travaille **directement dans la vue 3D**, comme dans Polyboard, la caméra libre et les corps opaques : les panneaux
   qu'elle fera sont montrés en **volumes orange** (à la profondeur demandée) pendant qu'on règle les valeurs, un clic
   dans la vue pose son coin bas-gauche sur le plan de face, et l'OK (Entrée) les fait. Ses lignes vont dans une
@@ -710,7 +710,7 @@ opération existante.
   le reste, les cotes de la vue suivant le réglage avant l'OK. Supprimer la répartition
   supprime aussi les divisions de ses niches. Seules les répartitions faites avec cette version ont leur historique ;
   les anciennes restent des lignes ordinaires. Le moteur est dans `sketcher/partition-history.ts`.
-- **Étagères** (bouton du ruban **3D**, groupe **Menuiserie**, comme la division d'un compartiment de Polyboard) :
+- **Étagères** (bouton du ruban **3D**, groupe **Dressing**, comme la division d'un compartiment de Polyboard) :
   elle se travaille **dans la vue 3D** : les niches de la répartition (celle choisie dans le navigateur, sinon la
   dernière) qui peuvent encore être divisées sont des **volumes bleus** entre les panneaux, celui sous le pointeur
   s'éclaire, un clic le choisit (vert), les étagères à faire sont montrées en **volumes orange**, et l'OK (Entrée)
@@ -737,12 +737,12 @@ opération existante.
   étagères. Une **esquisse dont le dernier corps est supprimé** s'en va avec lui, ses traits et ses équipements compris,
   et supprimer une Répartition dans l'Historique emporte ses corps. Le tout est une annulation
   (`document/shelf-removal.ts`).
-- **Niche** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères » et « Cloisons ») : on clique une niche
+- **Niche** (bouton du ruban **3D**, groupe **Dressing**, à côté d'« Étagères » et « Cloisons ») : on clique une niche
   d'une Répartition et on tape sa **hauteur** ; les étagères qui la bordent se déplacent, ce qu'elle contient suit, les
   niches déjà réglées gardent la leur et les autres se partagent le reste. L'aperçu et les cotes suivent le champ, OK est
   une annulation, et l'outil reste pour régler d'autres niches. « Partager avec les autres niches » rend une niche réglée
   au partage. L'étape « Étagères n » garde ces hauteurs (`app/niche-height-tool.ts`, `heights` de `sketcher/shelves.ts`).
-- **Cloisons** (bouton du ruban **3D**, groupe **Menuiserie**, à côté d'« Étagères ») : la même division que les
+- **Cloisons** (bouton du ruban **3D**, groupe **Dressing**, à côté d'« Étagères ») : la même division que les
   étagères, mais **en travers** : des panneaux **debout**, du bas au haut de la niche, qui la coupent **de gauche à
   droite**. On clique une ou plusieurs niches de la répartition, on règle le **nombre de cloisons** (1 à 20), leur
   **épaisseur** et le partage de la largeur (niches **égales**, ou **celle de gauche** / **celle de droite** à une
@@ -783,7 +783,7 @@ opération existante.
 
   Une opération « Fond » le fabrique. Elle suit la répartition quand on la modifie ; décocher la rubrique, ou ne plus
   extruder les panneaux, retire le fond.
-- **Penderie** et **Tiroirs** (groupe **Menuiserie**, pour les dressings) : on **équipe une niche** d'une répartition,
+- **Penderie** et **Tiroirs** (groupe **Dressing**, pour les dressings) : on **équipe une niche** d'une répartition,
   dans la vue 3D comme avec Étagères — on clique une ou plusieurs niches (une niche choisie se reclique pour la
   retirer), on règle, les pièces sont montrées en **orange**, puis OK (une seule annulation). La liste « Équipement »
   du panneau passe de l'un à l'autre.
@@ -806,7 +806,7 @@ opération existante.
     répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le
     dit. La modifier depuis l'historique rouvre l'outil, sa niche choisie. Les calculs sont dans
     `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/niche-tool.ts`.
-- **Panneaux** (groupe « Menuiserie », comme la conception de squelette de JoinerCAD) : on dessine le squelette
+- **Panneaux** (groupe « Meuble », comme la conception de squelette de JoinerCAD) : on dessine le squelette
   du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
   étagère), puis chaque ligne devient une planche, un corps à part.
   - *Épaisseur* (18 mm par défaut) et *profondeur* (le long de la normale de l'esquisse, signée) ;
@@ -1009,7 +1009,7 @@ opération existante.
   bleu et l'orange ne changent pas avec la palette (`templates/editor/_icons.html`, `--ic-accent` et `--ic-action`). Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
   l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
   seule ligne** : quand la fenêtre est trop étroite, les icônes se replient une à une dans le menu de leur groupe —
-  celles de **Menuiserie d'abord**, puis Atelier, Curic, Modifier et Créer (en esquisse : Affichage, Contraintes, Cotes,
+  celles de **Client d'abord**, puis Fabrication, Atelier, Curic, Créer, Modifier, Pièce, Meuble et Dressing (en esquisse : Affichage, Contraintes, Cotes,
   Modifier, Créer), chaque groupe en commençant par sa dernière icône — et reviennent quand la fenêtre s'élargit.
 - **Coins carrés partout** : cartes, boutons, champs de saisie, menus, panneaux d'outils, étiquettes et pages n'ont
   plus de coins arrondis (les rayons du thème sont à zéro et les classes d'arrondi retirées) ; seules les pastilles
@@ -1578,7 +1578,7 @@ opération existante.
     modèle 3D et le prix TTC de son devis. Le client passe de l'une à l'autre (modèle, dimensions, prix, réalité
     augmentée) et « Je choisis cette variante » écrit son choix dans un message. Serveur : modèle `ShareVariant`
     (migration `0005_production`), adresse `/s/<jeton>/variants/<n>.glb`.
-- **Implantation de cuisine** (groupe « Menuiserie ») : une cuisine entière le long d'un mur (I), de deux murs en
+- **Implantation de cuisine** (groupe « Cuisine ») : une cuisine entière le long d'un mur (I), de deux murs en
   angle (L) ou de trois (U), avec un îlot si on veut. Chaque mur est découpé en modules du commerce (600 d'abord, puis le plus grand de 300 à 900 qui tient, le
   reste en fileur) ; meubles bas (hauteur, profondeur, socle réglables) avec leurs façades (tiroirs et portes en
   alternance, tiroirs ou portes partout ; deux portes au-delà de 600), plan de travail débordant de 20 mm, meubles
@@ -1606,7 +1606,7 @@ opération existante.
     1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
     `features/room-runs.ts`, `document/kitchen-plan.ts`).
-- **Meubles de cuisine** (groupe « Menuiserie ») : la liste des meubles du commerce, chacun à ses largeurs.
+- **Meubles de cuisine** (groupe « Cuisine ») : la liste des meubles du commerce, chacun à ses largeurs.
   - **Bas** : 1 porte, 2 portes, 3 tiroirs, casseroliers, évier, four.
   - **Hauts** : 1 porte, 2 portes, sur hotte.
   - **Colonnes** : rangement, four, réfrigérateur.
@@ -1621,7 +1621,7 @@ opération existante.
     - Ou on reprend le caisson sélectionné (« Ajouter « … » à ma liste »), avec ses cotes et ses façades.
     - Un clic le pose dans la cuisine comme les autres, sous son nom ; ✕ le retire de la liste.
     - La liste est gardée dans ce navigateur, pour tous les projets (`app/my-units.ts`).
-- **Éclairage** (groupe « Menuiserie ») : des lumières dans la cuisine et le dressing, au choix.
+- **Éclairage** (groupe « Pièce ») : des lumières dans la cuisine et le dressing, au choix.
   - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
     basse).
   - **Dehors** : sous les meubles hauts, un ruban ou des spots (un tous les 60 cm) ; une **corniche** sur les meubles
@@ -1648,7 +1648,7 @@ opération existante.
     - Sur un coin : son coin le plus proche dessus. Échap annule ; la vue tourne toujours en glissant.
   - **↻** le tourne d'un quart de tour sur place.
   - Le document ne change qu'au lâcher ou au clic, une annulation (`app/cabinet-drag.ts`, `app/cabinet-stick.ts`).
-- **Pièce** (groupe « Menuiserie ») : le relevé de la pièce, tel qu'on le mesure.
+- **Pièce** (groupe « Pièce ») : le relevé de la pièce, tel qu'on le mesure.
   - Les murs : chacun par sa longueur et l'angle de chaque coin (90° d'équerre, sinon l'angle relevé : une pièce pas
     d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine
     vers +X, la pièce à sa droite (vers −Y, là où se posent les meubles) ; les suivants tournent à droite. Les murs se
@@ -1662,7 +1662,7 @@ opération existante.
   signale le meuble qui entre dans un mur, une retombée ou sous un rampant, et celui qui cache une prise. Les
   assistants Cuisine et Dressing posent leurs meubles sur ce relevé (« Murs » dans leur panneau) (`features/room-plan.ts`,
   `features/room.ts`, `app/room-tool.ts`).
-- **Finitions** (groupe « Menuiserie ») : habiller un meuble (les corps sélectionnés, sinon tout le meuble affiché)
+- **Finitions** (groupe « Meuble ») : habiller un meuble (les corps sélectionnés, sinon tout le meuble affiché)
   de planches ajustées à sa taille et à la pièce.
   - Joues de finition, contre ses côtés, sur toute la profondeur (portes comprises), du sol au-dessus, avec un
     dépassement en haut si l'on veut.
@@ -1680,7 +1680,7 @@ opération existante.
   opération « Finitions » dont chaque planche est un corps nommé (« Joue gauche », « Fileur droit »…), de la matière
   du meuble, avec l'aperçu en direct ; elle se rouvre pour être retouchée (`features/finish-parts.ts`,
   `app/finish-tool.ts`).
-- **Ma bibliothèque** (groupe « Menuiserie ») : des modules de son compte, à remettre dans n'importe quel projet.
+- **Ma bibliothèque** (groupe « Meuble ») : des modules de son compte, à remettre dans n'importe quel projet.
   - Enregistrer : on sélectionne les corps d'un caisson, d'un tiroir ou d'une colonne réglés (ou une de leurs faces),
     on lui donne un nom. Le module garde ces pièces et tout ce dont elles dépendent : un panneau d'une Répartition
     emporte la Répartition entière, une porte sa répartition. Il garde aussi leurs noms, matières, apparences
@@ -1692,7 +1692,13 @@ opération existante.
   - Supprimer un module ne change pas les projets où il a été inséré.
   Les modules sont gardés par le serveur, par compte (500 au plus) : API `/api/library/`, `document/library.ts`,
   `app/library-panel.ts`.
-- **Plan de dressing** (groupe « Menuiserie ») : un dressing commence par son **schéma vu de dessus**. On choisit un
+- **Onglets du ruban** : au-dessus du ruban, comme dans Fusion, **Conception 3D**, **Dressing** et **Cuisine** montrent chacun les groupes de leur travail ; Modifier, Fabrication et Client sont dans les trois.
+- **Modules à glisser** (groupe « Dressing ») : une palette de modules ; on en glisse un dans une niche de la vue, la niche visée s'allume en orange, et il s'y pose à ses cotes usuelles, en une annulation.
+- **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
+- **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
+- **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
+- **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition la change sur place.
+- **Plan de dressing** (groupe « Dressing ») : un dressing commence par son **schéma vu de dessus**. On choisit un
   modèle — droit, en L à gauche ou à droite, en U, avec des angles droits ou à **pan coupé**, ou deux linéaires **face à
   face** —, ses cotes, et « Créer le plan » pose une esquisse au sol, zones séparées par leurs côtés. Chaque zone se clique
   ensuite : elle reçoit sa **Répartition** contre son mur, ouverte dans son outil pour régler ses cases, et se rouvre de
@@ -1734,7 +1740,7 @@ opération existante.
 - **Palette de commandes** (⌘K ou Ctrl+K, bouton « Outils ») : on tape quelques lettres, sans se soucier des accents,
   Entrée lance l'outil, même rangé dans un menu ; seuls les outils du mode en cours sont proposés, les derniers utilisés
   en tête (`app/command-palette.ts`).
-- **Assistant Dressing** (groupe « Menuiserie ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
+- **Assistant Dressing** (groupe « Dressing ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de
   chaque mur, module par module, de gauche à droite : **penderie longue** (étagère chapeau à 30 cm du haut, tringle
@@ -1764,12 +1770,12 @@ opération existante.
     devis) ; des étagères au-dessus de 2 m demandent un marchepied, le panneau le dit (`document/dressing-extras.ts`).
 - **Orientation des caissons** : un caisson tourne de 90, 180 ou 270° autour de son coin avant gauche (face vers
   +X, vers le fond, vers −X) ; ses façades tournent avec lui.
-- **Recouvrement** (groupe « Menuiserie », comme les liens de Polyboard) : on clique les deux planches d'un angle (un
+- **Recouvrement** (groupe « Atelier », comme les liens de Polyboard) : on clique les deux planches d'un angle (un
   côté et un dessus, un fond et une joue) ; celle qui passait devant le chant de l'autre est raccourcie de
   l'épaisseur de l'autre, l'autre rallongée d'autant. Un dessus posé entre les côtés devient un dessus qui les
   couvre. Ce sont des Étirer (et un Déplacer pour un bout bas) dans l'historique, en une annulation ; les usinages
   suivent les planches (`features/overlap-swap.ts`, `app/overlap-tool.ts`).
-- **Copier l'aménagement** (groupe « Menuiserie », le copier-coller d'intérieur de Polyboard) : un clic sur un caisson
+- **Copier l'aménagement** (groupe « Atelier », le copier-coller d'intérieur de Polyboard) : un clic sur un caisson
   modèle, puis sur les caissons à aménager pareil. Ils prennent son nombre d'étagères et ses façades (une porte,
   deux portes ou des tiroirs, pose, jeu, épaisseur, charnières, poignées, matière), qui s'adaptent à leurs cotes ;
   chacun garde ses dimensions et sa place (`app/layout-copy-tool.ts`).
@@ -1787,7 +1793,7 @@ opération existante.
   vers l'œil.
   Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
   place des cotes pièce par pièce de la Répartition.
-- **Module** (groupe Menuiserie, `app/module-tool.ts`, `document/dressing-modules.ts`) : un clic sur une niche d'une
+- **Module** (groupe Dressing, `app/module-tool.ts`, `document/dressing-modules.ts`) : un clic sur une niche d'une
   Répartition, ou plusieurs, et on y pose un module de dressing complet en une seule annulation : penderie longue, double
   penderie, étagères, tiroirs et étagères, penderie et tiroirs, chaussures, porte-pantalons (accessoire au devis). Hauteur
   du chapeau, zone et nombre de tiroirs, espacement et épaisseur des étagères se règlent dans le panneau ; l'aperçu et
@@ -1833,7 +1839,7 @@ opération existante.
   bas de la vue, juste au-dessus de l'historique, avec ses poignées ✥ et ↻ (`app/cabinet-bar.ts`). Un clic en fait
   un champ, Entrée reconstruit le caisson. Une cote liée à un paramètre (« largeur ») change le paramètre, et tout ce
   qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`).
-- **Façades** (groupe « Menuiserie », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
+- **Façades** (groupe « Meuble », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
   tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
   voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du
   commerce (250 à 600 mm) qui tient dans la profondeur. Charnières à boîtier Ø35 × 13 (2 à 4 selon la hauteur de la

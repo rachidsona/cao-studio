@@ -4,6 +4,7 @@
  * niche sous le pointeur quand c'est un outil de niche.
  */
 import { keyOf } from "../ui/ribbon-layout";
+import { openNicheFront } from "./door-fronts-tool";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -13,10 +14,19 @@ import { nicheUnderPointer, type PickedNiche } from "./niche-pick";
 
 type NicheAction = "shelves" | "cloisons" | "niche" | "rod" | "drawers" | "module";
 
-const ACTIONS: [NicheAction, string][] = [["shelves", "Étagères"], ["cloisons", "Cloisons"], ["niche", "Hauteur de la niche"], ["rod", "Penderie"], ["drawers", "Tiroirs"], ["module", "Module"]];
+/** What can be done in a niche, with the icon of the tool. */
+export const NICHE_ACTIONS: { action: NicheAction; label: string; icon: string }[] = [
+  { action: "shelves", label: "Étagères", icon: "i-shelves" },
+  { action: "cloisons", label: "Cloisons", icon: "i-cloisons" },
+  { action: "niche", label: "Hauteur de la niche", icon: "i-niche" },
+  { action: "rod", label: "Penderie", icon: "i-rod" },
+  { action: "drawers", label: "Tiroirs", icon: "i-drawers" },
+  { action: "module", label: "Module", icon: "i-module" },
+];
 const BUTTON_ACTION: Record<string, NicheAction> = { "data-action:shelves": "shelves", "data-action:cloisons": "cloisons", "data-action:niche": "niche", "data-action:penderie": "rod", "data-action:tiroirs": "drawers", "data-action:module": "module" };
 
-function run(editor: Editor, action: NicheAction, niche: PickedNiche): void {
+/** The tool opened on this niche, already chosen. */
+export function runNiche(editor: Editor, action: NicheAction, niche: PickedNiche): void {
   Joinery3D.pick = niche.middle;
   if (action === "shelves" || action === "cloisons") editor.sketches.startJoinery(action, niche.sketch);
   else editor.sketches.startEquip(action, niche.sketch);
@@ -41,7 +51,8 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     const niche = nicheUnderPointer(viewport, editor.doc, event);
     if (!niche) return;
     const items: [string, () => void][] = [
-      ...ACTIONS.map(([action, label]): [string, () => void] => [label, () => run(editor, action, niche)]),
+      ...NICHE_ACTIONS.map(({ action, label }): [string, () => void] => [label, () => runNiche(editor, action, niche)]),
+      ["Façade de cette case", () => openNicheFront(viewport, editor, niche)],
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],
       ["Aligner sur cette niche", () => openNicheCopy(viewport, editor, "heights", niche)],
     ];
@@ -62,7 +73,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
   // A tool clicked in a niche of another wall than its own.
   document.addEventListener("cad:niche-elsewhere", (event) => {
     const { action, niche } = (event as CustomEvent<{ action: NicheAction; niche: PickedNiche }>).detail;
-    run(editor, action, niche);
+    runNiche(editor, action, niche);
   });
 
   // ---- Répéter --------------------------------------------------------------------------
@@ -79,7 +90,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     event.preventDefault();
     const action = BUTTON_ACTION[keyOf(last) ?? ""];
     const niche = action && pointer ? nicheUnderPointer(viewport, editor.doc, pointer) : null;
-    if (action && niche) run(editor, action, niche);
+    if (action && niche) runNiche(editor, action, niche);
     else last.click();
   });
 }

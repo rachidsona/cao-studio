@@ -389,9 +389,20 @@
   .cad-measure.cad-grip {
     @apply cursor-grab touch-none border border-orange-300 bg-orange-600/90 font-sans hover:bg-orange-500 dark:bg-orange-400/90 dark:text-gray-950;
   }
-  /* The width and height written on each piece seen from the front (app/piece-dims.ts). */
-  .cad-piece-dim {
-    @apply pointer-events-none inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border border-[#63df0f] bg-white px-1 font-mono text-xs leading-none font-semibold whitespace-nowrap text-gray-950;
+  /* The workspaces above the model's toolbar, as Fusion's tabs (ui/ribbon-layout.ts). */
+  .ribbon-tabs {
+    @apply flex shrink-0 items-end gap-1 border-b border-gray-200 bg-white px-3 pt-1 dark:border-gray-800 dark:bg-gray-900;
+  }
+  .ribbon-tabs > button {
+    @apply -mb-px border-b-2 border-transparent px-3 py-1 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100;
+  }
+  .ribbon-tabs > [aria-selected="true"] {
+    @apply border-sky-600 text-sky-800 dark:border-sky-400 dark:text-sky-200;
+  }
+  /* Every dimension of the view, on a piece (app/piece-dims.ts) or around a Répartition (app/plan-dims-view.ts): a small white pill. */
+  .cad-piece-dim,
+  .cad-plan-dim {
+    @apply pointer-events-none inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-[#f8500a] bg-white px-1 font-mono text-[10px] leading-none font-semibold whitespace-nowrap text-[#f8500a];
   }
   /* The dimensions of a Répartition: small, so that the drawing stays in sight. */
   .cad-shelf-handle {
@@ -400,17 +411,8 @@
   .cad-shelf-handle[data-axis="x"] {
     @apply cursor-ew-resize;
   }
-  .cad-plan-dim {
-    @apply pointer-events-none bg-gray-950/70 px-1 py-px font-mono text-[11px] leading-none font-medium text-sky-100;
-  }
-  .cad-plan-dim[data-level="total"] {
-    @apply font-semibold text-white;
-  }
   .cad-plan-dim[data-level="inner"] {
-    @apply bg-gray-950/50;
-  }
-  .cad-plan-dim[data-level="door"] {
-    @apply bg-gray-950/80 font-semibold;
+    @apply bg-white/85 font-medium;
   }
   /* The mark of a part of the cut list (A, B…), in the middle of the part. */
   .cad-part-tag {

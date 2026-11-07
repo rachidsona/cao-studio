@@ -51,7 +51,7 @@ test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page })
   await page.waitForURL("**/editor/");
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('[data-select^="body:"]')).toHaveCount(6);
-  // Folded into « Atelier ▾ » when the bar is narrow: its button still opens the quote.
+  // Folded into « Client ▾ » when the bar is narrow: its button still opens the quote.
   await page.locator('[data-workshop="quote"]').dispatchEvent("click");
   const quote = page.getByRole("dialog", { name: "Devis" });
   await expect(quote).toContainText("Mélaminé chêne 1,8 cm"); // centimetres by default
@@ -103,7 +103,7 @@ test("le mode Rendu s'ouvre et rend la main à l'édition", async ({ page }) => 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Rendu e2e");
-  await page.getByRole("button", { name: "Rendu", exact: true }).click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="render-mode"]')?.click());
   await expect(page.locator("#editor")).toHaveAttribute("data-render", "on");
   await expect(page.locator("[data-render-panel]")).toBeVisible();
   await expect(page.locator("[data-render-status]")).toContainText("échantillons");
@@ -116,7 +116,7 @@ test("le mode Rendu s'ouvre et rend la main à l'édition", async ({ page }) => 
 
 test("la liste de débit s'ouvre avec les pièces du modèle", async ({ page }) => {
   await newProject(page, "Débit e2e");
-  await page.locator('[data-workshop="cutlist"]').click();
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="cutlist"]')?.click());
   await expect(page.getByRole("dialog", { name: /Liste de débit/ })).toBeVisible();
 });
 
@@ -154,13 +154,20 @@ test("poly_3D : le catalogue de l'atelier arrive, Rayons X et Affichage marchent
   await expect(xray).toHaveAttribute("aria-pressed", "true");
   await xray.click();
   await expect(xray).toHaveAttribute("aria-pressed", "false");
-  await page.locator("[data-display-menu]").click();
-  await expect(page.locator("[data-display-options]")).toBeVisible();
+  const display = page.getByRole("group", { name: "Modifier" }).locator("[data-display-menu]");
+  await display.click();
+  const families = page.locator("[data-display-options]");
+  await expect(families).toBeVisible();
+  const [under, panel] = [(await display.boundingBox())!, (await families.boundingBox())!];
+  expect(Math.round(panel.y - under.y - under.height)).toBe(4);
+  await page.mouse.click(700, 500);
+  await expect(families).toBeHidden();
+  await display.click();
   await page.locator("[data-display-work]").click();
   await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "true");
   await page.locator("[data-display-all]").click();
   await expect(page.locator("[data-display-menu]")).toHaveAttribute("aria-pressed", "false");
-  // Sélection++ is back in the column (under Affichage): on by default, it turns off and on again.
+  // Sélection++ is back in the column: on by default, it turns off and on again.
   const selectPlus = page.locator("[data-select-plus]");
   await expect(selectPlus).toBeVisible();
   await expect(selectPlus).toHaveAttribute("aria-pressed", "true");
