@@ -391,7 +391,7 @@
   }
   /* The width and height written on each piece seen from the front (app/piece-dims.ts). */
   .cad-piece-dim {
-    @apply pointer-events-none bg-gray-950/80 px-1 py-px font-mono text-xs leading-none font-semibold text-[#63df0f];
+    @apply pointer-events-none inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border border-[#63df0f] bg-white px-1 font-mono text-xs leading-none font-semibold whitespace-nowrap text-gray-950;
   }
   /* The dimensions of a Répartition: small, so that the drawing stays in sight. */
   .cad-shelf-handle {
