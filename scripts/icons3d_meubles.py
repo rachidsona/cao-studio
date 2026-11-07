@@ -36,9 +36,13 @@ def fronts(i):
 
 
 def partition(i):
-    carcass(i, 16, 6, 13)
-    i.box(-3.4, -3, 1.1, 1, 6, 10.8, "blue").box(2.4, -3, 1.1, 1, 6, 10.8, "blue")
-    closed(i, 16, 6, 13)
+    """A wardrobe of three doors, one per bay, on its plinth."""
+    i.box(-6.2, -2, 0, 12.4, 3.6, 1.3, "blue")
+    i.box(-6.6, -2, 1.3, 13.2, 4, 17, "white")
+    for k, x in enumerate((-6.3, -2.1, 2.1)):
+        i.box(x, 2, 1.7, 4.2, 0.3, 16.2, "blue" if k == 1 else "white")
+    for x in (-2.9, -1.4, 2.8):
+        i.box(x, 2.3, 8.6, 0.5, 0.2, 2.8, "orange")
 
 
 def shelves(i):
