@@ -18,7 +18,7 @@ import type { Point3 } from "./body-points";
 import * as rig from "./camera-rig";
 import { clickCandidates } from "./click-candidates";
 import { edgeAtVertex, pixelDistanceToSegment } from "./edge-geometry";
-import { AdaptiveGrid } from "./grid";
+import { AdaptiveGrid, type GridArea } from "./grid";
 import { HoverHighlight } from "./hover-highlight";
 import { Preselection } from "./preselection";
 import { THIN_CROSSHAIR } from "../ui/cursor";
@@ -48,6 +48,8 @@ export class Viewport {
   private controls: OrbitControls;
   private viewHelper: ViewHelper;
   private grid = new AdaptiveGrid();
+  /** What the grid covers on the floor, outside a sketch. */
+  gridArea: GridArea | null = null;
   private sketches: SketchLayer;
   private layer: BodyLayer;
   private hover: HoverHighlight;
@@ -606,7 +608,7 @@ export class Viewport {
     this.controls.update();
     const distance = this.camera.position.distanceTo(this.controls.target);
     this.fitClipping(distance);
-    this.grid.update(distance);
+    this.grid.update(distance, this.savedCamera ? null : this.gridArea);
     for (const listener of this.frameListeners) listener();
     this.renderer.clear();
     if (this.drawOverride) this.drawOverride();

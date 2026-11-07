@@ -4,7 +4,8 @@
  * edited is drawn by the sketch mode itself, so it is left out here. The
  * selected sketch is highlighted, and a click on a sketch in the view (its
  * curves or the inside of its areas) selects it. « Ajuster » frames these
- * sketches with the bodies, as large as the view allows.
+ * sketches with the bodies, as large as the view allows, and the grid covers
+ * them.
  */
 import * as THREE from "three";
 import type { CadDocument, SketchFeature } from "../document/types";
@@ -76,6 +77,9 @@ export class SketchDisplay {
     this.editing = editingId;
     const doc = this.host.doc();
     const visible = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !f.suppressed && !f.hidden && f.id !== editingId);
+    const box = sketchBox(visible);
+    if (this.viewport.displayedBodies.length) box.union(this.viewport.bodiesBox());
+    this.viewport.gridArea = box.isEmpty() ? null : [box.min.x, box.min.y, box.max.x, box.max.y];
     const selected = visible.find((f) => f.id === this.host.selected())?.id ?? null;
     if (selected === this.highlighted && visible.length === this.shown.length && visible.every((f, i) => f === this.shown[i])) return;
     this.shown = visible;
