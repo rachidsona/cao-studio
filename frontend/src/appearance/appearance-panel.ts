@@ -49,7 +49,7 @@ export class AppearancePanel {
     this.element = el(
       "div",
       { class: "@container w-80 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Apparence", "data-appearance-panel": "" },
-      el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Apparence"), shut),
+      el("div", { class: "flex items-center justify-between" }, el("h2", { class: "panel-title" }, "Apparence"), shut),
       this.body,
     );
     this.element.addEventListener("pointerdown", (event) => event.stopPropagation());

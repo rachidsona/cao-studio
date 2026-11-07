@@ -11,7 +11,7 @@ import { createReferencePlate, type CadDocument, type DressingPlan, type Extrude
 import { partitionHolder } from "../../frontend/src/app/joinery-3d";
 import { partitionLayout } from "../../frontend/src/sketcher/partition";
 import { alignedInputs, partBox, shelfLayout, type NicheBox, type ShelfInput } from "../../frontend/src/sketcher/shelves";
-import { extrusionGroups, isPartition, isShelves, leafNiches, nicheSpans, pathKey, rebuildChain, rehomedPath, shelvesRecord, withCloisonsThrough, withDivisionUnder } from "../../frontend/src/sketcher/partition-history";
+import { extrusionGroups, flatStack, isPartition, isShelves, leafNiches, nicheSpans, pathKey, rebuildChain, rehomedPath, shelvesRecord, withCloisonsThrough, withDivisionUnder } from "../../frontend/src/sketcher/partition-history";
 import { moduleOfNiche } from "../../frontend/src/document/module-edit";
 import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
 
@@ -182,6 +182,69 @@ describe("cloison à travers les étagères", () => {
     expect(span!.box).toEqual({ x0: box(1).x0, y0: box(1).y0, x1: box(1).x1, y1: box(3).y1 });
     expect(nicheSpans(g, [box(1), box(3)])).toEqual([]);
     expect(nicheSpans(g, [box(1), made.niches.get("0")!.box])).toEqual([]);
+  });
+
+  /** As a module makes them: a shelf over the drawers, then shelves in the niche above it. */
+  const nested = () => {
+    const { doc, sketch, partition } = wall();
+    const g = sketchOf(doc, sketch);
+    const shelf = (id: string, name: string, path: number[], input: ShelfInput) => ({ ...shelvesRecord(id, name, partition, path, input, 600), bodies: [`${id}-a`] });
+    const offsets = [...(g.offsets ?? []), shelf("low", "Étagères 1", [1], { count: 1, thickness: 18, mode: "bottom", fixed: 720 }), shelf("high", "Étagères 2", [1, 1], { count: 2, thickness: 18, mode: "equal", fixed: 0 })];
+    const rebuilt = rebuildChain({ ...g, offsets }, partition);
+    if (typeof rebuilt === "string") throw new Error(rebuilt);
+    return { g: { ...g, ...rebuilt.geometry }, partition, rebuilt };
+  };
+
+  it("des étagères faites en deux fois se coupent comme une seule pile", () => {
+    const { g, partition, rebuilt } = nested();
+    const box = (key: string) => rebuilt.niches.get(key)!.box;
+    const [span] = nicheSpans(g, [box("1.0"), box("1.1.0"), box("1.1.1"), box("1.1.2")]);
+    expect(span).toMatchObject({ parent: [1], from: 0, to: 3 });
+    let n = 0;
+    const made = withCloisonsThrough(
+      g,
+      span!,
+      (niche) => shelvesRecord(`new-${n++}`, "Cloisons 9", partition, niche, { count: 1, thickness: 18, mode: "equal", fixed: 300, vertical: true }, 600),
+      (niche, input) => shelvesRecord(`new-${n++}`, "Étagères 9", partition, niche, input, 600),
+      0,
+    );
+    if (typeof made === "string") throw new Error(made);
+    const after = rebuildChain({ ...g, offsets: made.offsets }, partition);
+    if (typeof after === "string") throw new Error(after);
+    // Every shelf cut: each side has the 3 shelves, at the same heights, and the old divisions went with their bodies.
+    expect(after.problems).toEqual([]);
+    const side = (k: number) => [0, 1, 2, 3].map((i) => after.niches.get(`1.${k}.${i}`)!.box);
+    expect(side(0).map((b) => b.y0)).toEqual(side(1).map((b) => b.y0));
+    expect(side(0).map((b) => b.y0)).toEqual([box("1.0"), box("1.1.0"), box("1.1.1"), box("1.1.2")].map((b) => b.y0));
+    expect(side(0).at(-1)!.y1).toBeCloseTo(box("1.1.2").y1);
+    expect(made.removed).toEqual(["low-a", "high-a"]);
+    // What the niches held stays in their own niche, in the side kept.
+    expect(made.repath([1, 1, 2])).toEqual([1, 0, 3]);
+    expect(made.repath([1, 0])).toEqual([1, 0, 0]);
+  });
+
+  it("couper la seule étagère entre les deux divisions garde les autres", () => {
+    const { g, partition, rebuilt } = nested();
+    const box = (key: string) => rebuilt.niches.get(key)!.box;
+    const [span] = nicheSpans(g, [box("1.0"), box("1.1.0")]);
+    expect(span).toMatchObject({ parent: [1], from: 0, to: 1 });
+    const flat = flatStack(g, partition, [1]);
+    if (typeof flat === "string") throw new Error(flat);
+    const again = rebuildChain({ ...g, offsets: flat.offsets }, partition);
+    if (typeof again === "string") throw new Error(again);
+    // One division, the same niches.
+    expect(flat.offsets.filter((r) => isShelves(r) && r.step.niche[0] === 1)).toHaveLength(1);
+    expect(flat.absorbed).toEqual(["high-a"]);
+    expect([0, 1, 2, 3].map((i) => again.niches.get(`1.${i}`)!.box.y0)).toEqual([box("1.0"), box("1.1.0"), box("1.1.1"), box("1.1.2")].map((b) => b.y0));
+  });
+
+  it("des étagères d'épaisseurs différentes restent chacune dans leur division", () => {
+    const { g, partition, rebuilt } = nested();
+    const box = (key: string) => rebuilt.niches.get(key)!.box;
+    const thin = { ...g, offsets: g.offsets!.map((r) => (r.id === "high" && isShelves(r) ? { ...r, step: { ...r.step, input: { ...r.step.input, thickness: 12 } } } : r)) };
+    expect(typeof flatStack(thin, partition, [1])).toBe("string");
+    const spans = nicheSpans(thin, [box("1.1.0"), box("1.0")]);
+    expect(spans).toEqual([]);
   });
 
   it("coupe les deux étagères du milieu, garde celles du bord et les hauteurs", () => {

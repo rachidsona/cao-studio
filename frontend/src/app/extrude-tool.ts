@@ -504,7 +504,7 @@ export class ExtrudeTool implements PointerHandler {
       el(
         "div",
         { class: "flex items-center justify-between" },
-        el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? "Modifier l'extrusion" : "Extrusion"),
+        el("h2", { class: "panel-title" }, this.editing ? "Modifier l'extrusion" : "Extrusion"),
         el("span", { class: `truncate pl-2 ${this.selected ? "text-sky-700 dark:text-sky-300" : "text-amber-700 dark:text-amber-300"}` }, this.selected ? profileText : "Cliquez un profil"),
       ),
       this.selected && this.selected.faces.length > 1

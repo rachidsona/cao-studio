@@ -49,7 +49,7 @@ export class NicheCopyTool implements PointerHandler {
     });
     const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
     end.addEventListener("click", () => this.close());
-    this.panel.append(el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Copier une niche"), this.text, choice, end);
+    this.panel.append(el("h2", { class: "panel-title" }, "Copier une niche"), this.text, choice, end);
     placePanel(container, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { Shape3D } from "replicad";
 import { createReferencePlate, type CadDocument, type Vec3 } from "../../frontend/src/document/types";
 import { validateDocument } from "../../frontend/src/document/validate";
-import { ffdPoint, latticeIndex, latticePoints, subdivide, type Box } from "../../frontend/src/features/ffd";
+import { ffdPoint, latticeIndex, latticePoints, subdivide, type Box, movedSides } from "../../frontend/src/features/ffd";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { setupKernel } from "./kernel-setup";
@@ -71,5 +71,43 @@ describe("déformation FFD dans le noyau", () => {
     expect(bulge.state).toBe("ok");
     expect(bulge.volume).toBeGreaterThan(base.volume * 1.05);
     expect(bulge.ms).toBeLessThan(8000);
+  });
+});
+
+describe("tirer tout un côté", () => {
+  const box: Box = [[0, 0, 0], [1000, 400, 18]];
+  const none = new Array(81).fill(0);
+
+  it("les 9 points du côté bougent ensemble, ceux du milieu de moitié, l'autre côté ne bouge pas", () => {
+    const moved = movedSides(none, [latticeIndex(2, 2, 2)], 0, 100);
+    for (let k = 0; k < 3; k++) for (let j = 0; j < 3; j++) {
+      expect(moved[latticeIndex(2, j, k) * 3]).toBe(100);
+      expect(moved[latticeIndex(1, j, k) * 3]).toBe(50);
+      expect(moved[latticeIndex(0, j, k) * 3]).toBe(0);
+    }
+  });
+
+  it("la pièce s'allonge régulièrement et ses faces restent droites", () => {
+    const moved = movedSides(none, [latticeIndex(2, 0, 0)], 0, 200);
+    expect(ffdPoint([1000, 400, 18], box, moved)).toEqual([1200, 400, 18]);
+    expect(ffdPoint([0, 0, 0], box, moved)).toEqual([0, 0, 0]);
+    const middle = ffdPoint([500, 123, 18], box, moved);
+    expect(middle[0]).toBeCloseTo(600);
+    expect(middle[1]).toBeCloseTo(123);
+    expect(middle[2]).toBeCloseTo(18);
+  });
+
+  it("réduire marche de la même façon, sur l'axe tiré seulement", () => {
+    const moved = movedSides(none, [latticeIndex(0, 2, 1)], 1, -100);
+    expect(ffdPoint([300, 400, 9], box, moved)[1]).toBeCloseTo(300);
+    expect(ffdPoint([300, 400, 9], box, moved)[0]).toBeCloseTo(300);
+  });
+
+  it("une couche du milieu bouge seule, et les deux côtés déplacent tout", () => {
+    const middle = movedSides(none, [latticeIndex(1, 0, 0)], 0, 40);
+    expect(middle[latticeIndex(1, 2, 2) * 3]).toBe(40);
+    expect(middle[latticeIndex(2, 0, 0) * 3]).toBe(0);
+    const both = movedSides(none, [latticeIndex(0, 0, 0), latticeIndex(2, 0, 0)], 0, 30);
+    expect(new Set(Array.from({ length: 27 }, (_, n) => both[n * 3]))).toEqual(new Set([30]));
   });
 });

@@ -235,7 +235,7 @@ export class SketchPartitionTool {
         [["board", "Le dessus passe"], ["side", "Le côté passe"], ...(key === "outer" ? ([["miter", "D'onglet (45°)"]] as [string, string][]) : [])],
         (v) => this.set({ [key]: v as Pass }),
       );
-    const heading = (text: string) => el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, text);
+    const heading = (text: string) => el("h3", { class: "panel-title pt-1" }, text);
     const info = (text: string) => el("p", { class: "text-gray-600 dark:text-gray-300" }, text);
 
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
@@ -270,7 +270,7 @@ export class SketchPartitionTool {
       return el("label", { class: ROW }, `Case ${i + 1} (parts)${width}`, field);
     };
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? `Modifier : ${this.editing.name}` : "Répartition"),
+      el("h2", { class: "panel-title" }, this.editing ? `Modifier : ${this.editing.name}` : "Répartition"),
       info(
         this.editing
           ? `Les étagères posées dans ses niches (${this.divisions().length}) sont refaites avec elle ; chacune reste une étape de l'historique.`

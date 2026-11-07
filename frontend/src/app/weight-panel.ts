@@ -80,9 +80,9 @@ export function bindWeight(root: HTMLElement, viewport: Viewport, editor: Editor
     panel.body.replaceChildren(
       el("p", { class: "text-base font-semibold" }, `${kg(report.mass)} en tout`),
       el("p", {}, `${parts.length} pièces · centre de gravité à ${Math.round(report.height)} mm du sol.`),
-      el("h3", { class: "pt-1 text-[11px] font-semibold text-gray-500 uppercase" }, "Les plus lourdes"),
+      el("h3", { class: "panel-title pt-1" }, "Les plus lourdes"),
       ...heaviest.map((p) => el("p", { class: "flex justify-between gap-2" }, el("span", { class: "truncate" }, p.name), el("span", { class: "shrink-0" }, kg(p.mass)))),
-      el("h3", { class: "pt-1 text-[11px] font-semibold text-gray-500 uppercase" }, "Essai de basculement"),
+      el("h3", { class: "panel-title pt-1" }, "Essai de basculement"),
       el("label", { class: "block space-y-1" }, el("span", {}, "Tous les tiroirs sortis, chargés de"), loadSelect),
       el("label", { class: "block space-y-1" }, el("span", {}, "Face avant"), frontSelect),
       el("p", { class: report.tips ? "font-medium text-red-700 dark:text-red-400" : "font-medium text-emerald-700 dark:text-emerald-400" }, verdict),

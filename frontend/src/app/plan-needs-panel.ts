@@ -61,7 +61,7 @@ export function needsPanel(planId: string, plan: DressingPlan, editor: Editor, d
   back.addEventListener("click", done);
   show();
   return [
-    el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Selon les besoins"),
+    el("h2", { class: "panel-title" }, "Selon les besoins"),
     el("p", { class: "text-gray-600 dark:text-gray-300" }, free.length ? `Ce que le client veut ranger, réparti sur ${free.length} zone${free.length > 1 ? "s" : ""} libre${free.length > 1 ? "s" : ""}.` : "Aucune zone libre : les zones déjà faites ne changent pas."),
     ...inputs,
     result,

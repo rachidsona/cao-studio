@@ -33,7 +33,7 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
         const m = list.find((x) => x.id === select.value);
         if (m) choose(kind, m.id, modelName(m));
       });
-      return el("div", { class: "space-y-1" }, el("h3", { class: "text-[11px] font-semibold text-gray-500 uppercase" }, title), select, el("p", { class: "text-gray-600 dark:text-gray-300" }, `${facts(current)} · ${euros(current.price)} HT`));
+      return el("div", { class: "space-y-1" }, el("h3", { class: "panel-title" }, title), select, el("p", { class: "text-gray-600 dark:text-gray-300" }, `${facts(current)} · ${euros(current.price)} HT`));
     };
     const all = modelHardware(editor.doc);
     panel.body.replaceChildren(
@@ -41,7 +41,7 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
       section("Coulisses", "slide", SLIDE_MODELS, choice.slide, (m) => `${m.load} kg · ${m.full ? "sortie totale" : "sortie partielle"}${m.softClose ? " · amortie" : ""}`),
       section("Poignées", "handle", HANDLE_MODELS, choice.handle, (m) => (m.spacing ? `Entraxe ${m.spacing} mm, trous Ø${m.hole}` : `Un trou Ø${m.hole}`)),
       el("p", { class: "text-[11px] text-gray-500" }, "Les façades, portes et tiroirs sont percés aux cotes du modèle choisi ; un usinage « Charnières » déjà fait garde les siennes, un nouveau prend celles de la charnière choisie. Cotes courantes de chaque gamme : vérifiez la fiche du fabricant avant une série."),
-      el("h3", { class: "pt-1 text-[11px] font-semibold text-gray-500 uppercase" }, "Quincaillerie du projet"),
+      el("h3", { class: "panel-title pt-1" }, "Quincaillerie du projet"),
       ...(all.length ? all.map((h) => el("p", {}, `${h.name} : ${h.quantity}${h.unit ? ` ${h.unit}` : ""}`)) : [el("p", { class: "text-gray-500" }, "Aucune pour l'instant.")]),
     );
   };

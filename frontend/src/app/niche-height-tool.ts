@@ -179,7 +179,7 @@ export class NicheHeightTool {
     const heights = typeof layout === "object" && layout ? layout.niches.map(([a, b]) => formatLength(b - a, unit)).join(" · ") : null;
     const held = input ? heldHeights(input) : [];
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Niche"),
+      el("h2", { class: "panel-title" }, "Niche"),
       el(
         "p",
         { class: "text-gray-600 dark:text-gray-300" },

@@ -33,7 +33,7 @@ class DoorFrontsTool implements PointerHandler {
     });
     const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
     end.addEventListener("click", () => this.close());
-    this.panel.append(el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Façades communes"), this.text, el("label", { class: "block space-y-1" }, "Sens d'ouverture", swing), end);
+    this.panel.append(el("h2", { class: "panel-title" }, "Façades communes"), this.text, el("label", { class: "block space-y-1" }, "Sens d'ouverture", swing), end);
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

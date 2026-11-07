@@ -37,7 +37,7 @@ function dimStyleRows(style: DimStyle | undefined, change: (s: DimStyle | undefi
 }
 
 const row = (label: string, control: HTMLElement) => el("label", { class: "grid grid-cols-[6.5rem_1fr] items-center gap-2" }, el("span", { class: "text-gray-600 dark:text-gray-300" }, label), control);
-const heading = (text: string) => el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase" }, text);
+const heading = (text: string) => el("h3", { class: "panel-title pt-1" }, text);
 
 function select(value: string, options: [string, string][], change: (v: string) => void, label: string): HTMLSelectElement {
   const s = el("select", { class: INPUT, "aria-label": label }, ...options.map(([v, t]) => el("option", { value: v, selected: v === value }, t)));

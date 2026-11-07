@@ -173,7 +173,7 @@ export class PlanLayoutTool {
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null }, this.editing ? "Appliquer" : "Créer le plan");
     ok.addEventListener("click", () => void (this.editing && planId ? this.change(planId) : this.create()));
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Plan de dressing"),
+      el("h2", { class: "panel-title" }, "Plan de dressing"),
       models,
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : planSchema(plan, (z) => (z.kind === "corner" ? [z.label] : [z.label, formatLength(z.run.length, unit)]), undefined, undefined, this.marks(plan))),
@@ -337,7 +337,7 @@ export class PlanLayoutTool {
     const finish = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
     finish.addEventListener("click", () => this.close());
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Plan de dressing"),
+      el("h2", { class: "panel-title" }, "Plan de dressing"),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez une zone pour la répartir."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done, this.marks(plan))),
       el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
@@ -419,7 +419,7 @@ export class PlanLayoutTool {
       this.draw();
     });
     return [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, `Remplir : ${zone.label}`),
+      el("h2", { class: "panel-title" }, `Remplir : ${zone.label}`),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(zone.run.length, unit)} à remplir, côtés compris. Choisissez la largeur intérieure des caissons.`),
       el("label", { class: ROW }, `Largeur des caissons (${UNIT_LABELS[unit]})`, width),
       el("label", { class: ROW }, "Le reste va", side),

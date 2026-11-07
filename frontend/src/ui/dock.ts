@@ -74,6 +74,8 @@ function ensureTabs(target: HTMLElement): void {
 
 /** Puts a tool's panel in the right panel, in its own tab, shown (or over the view, in `container`, on narrow screens). */
 export function placePanel(container: HTMLElement, panel: HTMLElement): void {
+  // Drawn like the cards of the navigator and of the properties.
+  panel.classList.add("cad-card");
   const target = dock();
   if (!target) {
     container.append(panel);

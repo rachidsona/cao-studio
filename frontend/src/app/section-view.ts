@@ -65,7 +65,7 @@ export function bindSection(root: HTMLElement, viewport: Viewport, host: { unit(
     const shut = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Fermer la coupe");
     shut.addEventListener("click", close);
     panel.replaceChildren(
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Coupe"),
+      el("h2", { class: "panel-title" }, "Coupe"),
       axis,
       el("div", { class: "flex justify-between gap-2" }, el("span", {}, "Position"), value),
       slider,

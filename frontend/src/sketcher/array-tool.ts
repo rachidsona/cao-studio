@@ -235,17 +235,17 @@ export class SketchArrayTool {
       this.recompute();
     });
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Réseau"),
+      el("h2", { class: "panel-title" }, "Réseau"),
       kind,
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${this.host.selection.size} élément${this.host.selection.size > 1 ? "s" : ""} choisi${this.host.selection.size > 1 ? "s" : ""}.`),
       ...(inside ? this.insideRows(unit, number) : [
       this.host.selection.size ? contours : null,
       place,
-      el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase" }, "Direction 1"),
+      el("h3", { class: "panel-title pt-1" }, "Direction 1"),
       number("Angle", this.angle, "°", (v) => v, (v) => ((this.angle = v), this.fitSteps(), this.recompute())),
       quantity("Quantité", this.d1),
       length("Pas 1", this.d1),
-      el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase" }, "Direction 2 (perpendiculaire)"),
+      el("h3", { class: "panel-title pt-1" }, "Direction 2 (perpendiculaire)"),
       quantity("Quantité 2", this.d2),
       length("Pas 2", this.d2),
       ]),

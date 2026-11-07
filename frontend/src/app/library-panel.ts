@@ -117,7 +117,7 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
       el("p", { class: "text-gray-600 dark:text-gray-300" }, count ? `${count} élément${count > 1 ? "s" : ""} sélectionné${count > 1 ? "s" : ""} : donnez-lui un nom pour l'enregistrer, avec tout ce dont il dépend.` : "Sélectionnez les corps d'un caisson, d'un tiroir ou d'une colonne pour l'enregistrer comme module."),
       el("div", { class: "flex gap-1" }, name, keep),
       ...(message ? [el("p", { class: "bg-emerald-50 px-2 py-1 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" }, message)] : []),
-      el("h3", { class: "pt-1 text-[11px] font-semibold text-gray-500 uppercase" }, `Mes modules (${modules.length})`),
+      el("h3", { class: "panel-title pt-1" }, `Mes modules (${modules.length})`),
       ...(cards.length ? cards : [el("p", { class: "text-gray-500" }, "Aucun module pour l'instant.")]),
     );
   };

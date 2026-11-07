@@ -1720,7 +1720,7 @@ opération existante.
   « Voir » pour isoler un mur et y travailler, « Mes murs » et « Style du dressing ».
 - **Niche mère** : dans Cloisons, « Couper toute la niche mère » pose une cloison à travers une colonne déjà aménagée. Ses
   étagères et tiroirs restent d'un côté, plus étroits, et l'autre côté devient une niche vide.
-  Plusieurs niches choisies l'une au-dessus de l'autre partagent une seule cloison, qui coupe les étagères entre elles, et des
+  Plusieurs niches choisies l'une au-dessus de l'autre partagent une seule cloison, qui coupe les étagères entre elles, même celles d'un module, faites en plusieurs fois, et des
   niches de largeurs différentes ont leurs cloisons sur une même ligne.
 - **Validation du client** : le Lien client peut proposer « J'accepte ce projet » : le nom, la date, la variante et le prix
   restent sur le lien, et un commentaire prévient l'atelier.

@@ -64,15 +64,28 @@
     --sketch-dim: #8fd14f;
     --sketch-ref: #9ca3af;
     --sketch-preview: #38bdf8;
-    /* Toolbar icons in three colours: the line (the text colour), blue (the geometry: points, lines drawn, faces) and
-       orange (what acts: arrows, pencils, tools, cutting planes); lines only, nothing filled. Blue and orange stay the
-       same whatever the palette. */
+    /* Toolbar icons: small white volumes (scripts/icons3d.py), blue for what matters, orange for what acts. The same in
+       every palette; their white is a shade darker on a light background, to stand out on it. */
     --ic-accent: #0284c7;
     --ic-action: #ea580c;
+    --ic-edge: rgb(51 65 85 / 0.9);
+    --ic-w1: #f8fafc;
+    --ic-w2: #e2e8f0;
+    --ic-w3: #cbd5e1;
+    --ic-w4: #a9b8ca;
+    --ic-w5: #94a3b8;
+    --ic-w6: #74879e;
   }
   .dark {
     --ic-accent: #38bdf8;
     --ic-action: #fb923c;
+    --ic-edge: rgb(15 23 42 / 0.55);
+    --ic-w1: #ffffff;
+    --ic-w2: #f1f4f8;
+    --ic-w3: #e6ebf1;
+    --ic-w4: #cdd7e1;
+    --ic-w5: #bccada;
+    --ic-w6: #9dafc2;
   }
   html,
   body {

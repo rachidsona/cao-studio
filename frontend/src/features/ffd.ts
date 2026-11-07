@@ -24,6 +24,24 @@ export function latticePoints(box: Box, offsets: readonly number[] = []): Vec3[]
   return out;
 }
 
+/**
+ * The offsets with the sides of these points pushed by `delta` along `axis`: all the points of a side go together, the
+ * layer between the sides by half, so that the body stretches evenly and its faces stay straight. Points of the middle
+ * layer move that layer alone. Both sides at once: the whole lattice moves.
+ */
+export function movedSides(offsets: readonly number[], chosen: Iterable<number>, axis: number, delta: number): number[] {
+  const layer = (n: number) => [n % 3, Math.floor(n / 3) % 3, Math.floor(n / 9)][axis] as number;
+  const sides = new Set([...chosen].map(layer));
+  const next = [...offsets];
+  for (let n = 0; n < 27; n++) {
+    const at = layer(n);
+    const push = sides.has(at) ? 1 : 0;
+    const between = at === 1 ? (sides.has(0) ? 0.5 : 0) + (sides.has(2) ? 0.5 : 0) : 0;
+    next[n * 3 + axis] = (next[n * 3 + axis] ?? 0) + delta * Math.min(1, push + between);
+  }
+  return next;
+}
+
 const bernstein = (t: number): [number, number, number] => [(1 - t) * (1 - t), 2 * t * (1 - t), t * t];
 
 /** Where a point of the box goes when the lattice's points are moved by `offsets`. */

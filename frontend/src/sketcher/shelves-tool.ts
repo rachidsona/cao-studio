@@ -170,6 +170,12 @@ export class ShelvesTool {
   }
 
   /** The runs that can share a cloison, when there are some. */
+  /** How many shelves the cloisons go through. */
+  private cutText(): string {
+    const cut = this.spans().reduce((sum, span) => sum + span.to - span.from, 0);
+    return cut > 1 ? `Elle coupe ${cut} étagères.` : "Elle coupe 1 étagère.";
+  }
+
   private spans(): NicheSpan[] {
     return this.kind === "cloisons" && !this.column && !this.editing ? nicheSpans(this.host.geometry(), this.niches.map((n) => n.box)) : [];
   }
@@ -287,7 +293,7 @@ export class ShelvesTool {
       this.keepRight = keep.value === "right";
     });
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.editing ? `Modifier : ${this.editing.name}` : this.words.title),
+      el("h2", { class: "panel-title" }, this.editing ? `Modifier : ${this.editing.name}` : this.words.title),
       el(
         "p",
         { class: "text-gray-600 dark:text-gray-300" },
@@ -319,6 +325,7 @@ export class ShelvesTool {
             this.recompute();
           })
         : null,
+      this.through && this.spans().length ? el("p", { class: "text-gray-500 dark:text-gray-400", "data-cut-shelves": "" }, this.cutText()) : null,
       (this.column || (this.through && this.spans().length)) && !this.editing ? el("label", { class: ROW }, "Ce qu'elle contient va", keep) : null,
       el("label", { class: ROW }, "Saisie rapide", quick),
       el("label", { class: ROW }, this.words.title, count),
@@ -364,6 +371,7 @@ export class ShelvesTool {
     const plain: typeof order = [];
     const repath: NonNullable<SketchExtrusion["repath"]> = [];
     const removed: string[] = [];
+    const absorbed: { into: string; bodies: string[] }[] = [];
     const keep = this.keepRight ? this.input.count : 0;
     const named = (records: readonly OffsetRecord[], word: string) => `${word} ${Math.max(0, ...records.map((r) => new RegExp(`^${word} (\\d+)$`).exec(r.name)?.[1]).filter((n): n is string => n !== undefined).map(Number)) + 1}`;
     let records = offsets;
@@ -407,6 +415,7 @@ export class ShelvesTool {
       records = made.offsets;
       repath.push({ partition: span.partition, path: made.repath });
       removed.push(...made.removed);
+      absorbed.push(...made.absorbed);
       partitions.add(span.partition);
     }
     let geometry: SketchGeometry = { ...g, offsets: records };
@@ -416,7 +425,9 @@ export class ShelvesTool {
       if (typeof rebuilt === "string") return this.host.notify(rebuilt, "error");
       geometry = rebuilt.geometry;
       // The shelves kept change width or are cut: they are made again too.
-      groups.push(...extrusionGroups(g.offsets ?? [], rebuilt, repath.length ? undefined : added));
+      // A division that took in those of a stack makes their bodies again too.
+      const before = (g.offsets ?? []).map((r) => ({ ...r, bodies: [...(r.bodies ?? []), ...absorbed.filter((a) => a.into === r.id).flatMap((a) => a.bodies)] }));
+      groups.push(...extrusionGroups(before, rebuilt, repath.length ? undefined : added));
     }
     if (removed.length) groups.push({ distance: 1, elements: [], remove: removed });
     // Areas that are not niches of a partition: the lines only (nothing to make again).

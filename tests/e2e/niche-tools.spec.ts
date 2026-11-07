@@ -68,7 +68,6 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   await input.press("Enter");
   await expect(input).toHaveCount(0);
   await page.waitForTimeout(1200);
-  await page.screenshot({ path: "/private/tmp/claude-501/-Users-rachidsanohotmail-fr-Desktop-3D-claude/85f34b85-0394-445b-96b3-5c4231afb9c7/scratchpad/d1.png" });
 
   // A shelf pulled by its handle.
   await tree(page).getByRole("button", { name: "Déplier Étagères", exact: true }).first().click();
@@ -386,5 +385,61 @@ test("Éclairage d'un mur de dressing : un ruban par niche, même esquisse cach�
   await page.getByRole("button", { name: "OK", exact: true }).first().click();
   await expect(tree(page).getByRole("button", { name: /^Masquer Ruban LED/ })).toHaveCount(7);
   await expect(page.locator('[data-status="error"], [data-state="error"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("une cloison coupe aussi les étagères d'un module, faites en deux fois", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Cloison module e2e");
+  const { at } = await ready(page);
+  await page.mouse.click(...at(0.38, 0.5), { button: "right" });
+  await page.getByRole("menuitem", { name: "Module" }).click();
+  const moduleTool = page.getByRole("dialog", { name: "Module" });
+  await moduleTool.getByRole("button", { name: /^Tiroirs et étagères/ }).first().click();
+  await moduleTool.getByRole("button", { name: "OK", exact: true }).click();
+  await page.waitForTimeout(1500);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  await click(page, '[data-action="cloisons"]');
+  const cloisons = page.getByRole("dialog", { name: "Cloisons" });
+  // The drawers' niche and the three above the shelf that closes them.
+  for (const y of [0.41, 0.485, 0.55, 0.667]) {
+    await page.mouse.move(...at(0.38, y));
+    await page.waitForTimeout(250);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+  }
+  await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
+  await expect(cloisons.locator("[data-cut-shelves]")).toContainText("Elle coupe 3 étagères");
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
+  await expect(tree(page).getByText("Cloison 2", { exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Déformer : tout le côté suit, la face reste droite", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Déformer e2e");
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.55);
+  await click(page, '[data-action="ffd"]');
+  const tool = page.getByRole("dialog", { name: "Déformer (FFD 3×3×3)" });
+  await expect(tool.getByLabel("Tout le côté suit (la face reste droite)")).toBeChecked();
+  await tool.getByRole("combobox").first().selectOption("top");
+  await tool.getByRole("textbox", { name: /Décalage Z/ }).fill("2");
+  await tool.getByRole("textbox", { name: /Décalage Z/ }).press("Enter");
+  await expect(tool).toContainText("Plus grand déplacement");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });

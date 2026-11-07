@@ -14,7 +14,7 @@ export function floatingPanel(container: HTMLElement, title: string, onClose: ()
   const panel = el(
     "div",
     { class: `absolute top-2 left-2 z-30 max-h-[85%] ${wide ? "w-80" : "w-64"} space-y-2 overflow-y-auto border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95`, role: "dialog", "aria-label": title },
-    el("div", { class: "flex items-center justify-between" }, el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, title), shut),
+    el("div", { class: "flex items-center justify-between" }, el("h2", { class: "panel-title" }, title), shut),
     body,
   );
   panel.addEventListener("pointerdown", (event) => event.stopPropagation());

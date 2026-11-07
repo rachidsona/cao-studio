@@ -156,7 +156,8 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Sélectionnez le corps puis cliquez « Déformer », ou cliquez l'outil puis le corps.",
           "Cliquez un point orange de la grille ; Maj + clic en ajoute, Maj + glisser prend ceux d'un rectangle. Le menu « Choisir » prend une rangée entière.",
-          "Tirez une des flèches X, Y, Z, ou tapez les champs « Décalage X », « Décalage Y », « Décalage Z ».",
+          "Tirez une des flèches X, Y, Z, ou tapez les champs « Décalage X », « Décalage Y », « Décalage Z » : tout le côté du point suit, pour agrandir ou réduire la pièce en gardant ses faces droites.",
+          "Pour bomber ou gauchir, décochez « Tout le côté suit » : seuls les points choisis bougent.",
           "Avec plusieurs points choisis, « Échelle % » puis « Appliquer l'échelle » les rapproche de leur centre.",
           "Cliquez « OK ».",
         ],

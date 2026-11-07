@@ -62,7 +62,7 @@ export function bindProgress(root: HTMLElement, viewport: Viewport, editor: Edit
     panel.body.replaceChildren(
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Le QR code des étiquettes et des fiches ouvre la page de la pièce sur un téléphone (connecté à votre compte) : un bouton la fait passer à l'étape suivante."),
       ...bars,
-      el("div", { class: "flex items-center justify-between pt-1" }, el("h3", { class: "text-[11px] font-semibold text-gray-500 uppercase" }, `Pièces (${names.length})`), refresh),
+      el("div", { class: "flex items-center justify-between pt-1" }, el("h3", { class: "panel-title" }, `Pièces (${names.length})`), refresh),
       ...rows,
     );
   };

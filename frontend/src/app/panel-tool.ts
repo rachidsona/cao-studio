@@ -104,7 +104,7 @@ export abstract class PanelTool implements PointerHandler {
     const status = typeof built === "string" ? undefined : this.ctx.status(built.id);
     const problem = status && status.state !== "ok" ? status.message : undefined;
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, this.heading()),
+      el("h2", { class: "panel-title" }, this.heading()),
       ...this.rows(),
       hint ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, hint) : null,
       problem ? el("p", { class: " bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,

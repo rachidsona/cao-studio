@@ -1,8 +1,9 @@
 /**
  * « Déformer (FFD 3×3×3) » (groupe Modifier, comme la FFD de C. Phillips dans JHS PowerBar) : une grille de
  * 3 × 3 × 3 points orange se tend sur la boîte du corps choisi (sélectionné, ou cliqué). Un clic sur un point le
- * choisit (Maj + clic en ajoute), « Choisir » en prend une rangée ; les trois flèches X, Y, Z tirent les points choisis
- * (ou leurs champs donnent le déplacement au millimètre), et le corps suit en douceur (features/ffd.ts). Comme dans
+ * choisit (Maj + clic en ajoute), « Choisir » en prend une rangée ; les trois flèches X, Y, Z tirent tout le côté de ce
+ * point, pour agrandir ou réduire la pièce en gardant ses faces droites, ou le point seul si on décoche « Tout le côté
+ * suit » (leurs champs donnent le déplacement au millimètre) ; le corps suit en douceur (features/ffd.ts). Comme dans
  * JHS, Maj + glisser trace un rectangle qui prend les points dedans, et « Échelle » rapproche les points choisis de leur
  * centre (ou les écarte) : le dessus réduit de moitié fait d'un cylindre un obus. OK ajoute la déformation à
  * l'historique ; elle se rouvre pour reprendre la grille.
@@ -10,7 +11,7 @@
 import * as THREE from "three";
 import { bodyLabel, uniqueId, uniqueName } from "../document/operations";
 import type { ModifierFeature, Vec3 } from "../document/types";
-import { latticeIndex, latticePoints, type Box } from "../features/ffd";
+import { latticeIndex, latticePoints, movedSides, type Box } from "../features/ffd";
 import { formatLength } from "../measurements/units";
 import { el } from "../ui/dom";
 import { ArrowHandle } from "../viewport/arrow-handle";
@@ -43,6 +44,8 @@ export class FfdTool extends PanelTool {
   private window: { x: number; y: number; box: HTMLElement } | null = null;
   /** Scale (%) of the chosen points about their centre. */
   private scale = 50;
+  /** The arrows pull the whole side of the chosen points, not the points alone. */
+  private together = true;
 
   constructor(ctx: ToolContext, editing: ModifierFeature | null, bodies: string[] = []) {
     super(ctx, "Déformer (FFD 3×3×3)", editing);
@@ -168,12 +171,18 @@ export class FfdTool extends PanelTool {
     Object.assign(box.style, { left: `${Math.min(x, event.clientX)}px`, top: `${Math.min(y, event.clientY)}px`, width: `${Math.abs(event.clientX - x)}px`, height: `${Math.abs(event.clientY - y)}px` });
   }
 
+  /** The chosen points moved along an axis, with the whole of their side when it follows. */
+  private push(axis: number, delta: number): void {
+    if (this.together) this.offsets = movedSides(this.offsets, this.chosen, axis, delta);
+    else for (const n of this.chosen) this.offsets[n * 3 + axis] = this.offsets[n * 3 + axis]! + delta;
+  }
+
   override move(event: PointerEvent): void {
     if (this.window) return this.sizeWindow(event);
     if (!this.drag) return;
     const value = this.arrows[this.drag.axis]!.dragMove(event);
     if (value === null) return;
-    for (const n of this.chosen) this.offsets[n * 3 + this.drag.axis] = this.offsets[n * 3 + this.drag.axis]! + value - this.drag.applied;
+    this.push(this.drag.axis, value - this.drag.applied);
     this.drag.applied = value;
     this.draw();
   }
@@ -255,7 +264,7 @@ export class FfdTool extends PanelTool {
     const first = [...this.chosen][0];
     const field = (axis: number) =>
       this.numberRow(`Décalage ${"XYZ"[axis]}`, first === undefined ? 0 : this.offsets[first * 3 + axis]!, unit, (v) => {
-        for (const n of this.chosen) this.offsets[n * 3 + axis] = v;
+        if (first !== undefined) this.push(axis, v - this.offsets[first * 3 + axis]!);
         this.draw();
         this.schedulePreview();
       }, true);
@@ -263,11 +272,12 @@ export class FfdTool extends PanelTool {
     return [
       this.info(this.target ? `Corps : « ${bodyLabel(this.ctx.doc(), this.target)} ».` : "Cliquez le corps à déformer."),
       this.target ? this.selectRow("Choisir", "", ROWS, (v) => this.choose(v)) : null,
+      this.target ? this.checkRow("Tout le côté suit (la face reste droite)", this.together, (v) => ((this.together = v), this.render())) : null,
       ...(this.chosen.size ? [0, 1, 2].map(field) : []),
       this.chosen.size > 1 ? this.scaleRow() : null,
       this.info(
         this.chosen.size
-          ? `${this.chosen.size} point${this.chosen.size > 1 ? "s" : ""} choisi${this.chosen.size > 1 ? "s" : ""} : tirez une flèche, ou tapez le décalage. Maj + clic ajoute un point.`
+          ? `${this.chosen.size} point${this.chosen.size > 1 ? "s" : ""} choisi${this.chosen.size > 1 ? "s" : ""} : tirez une flèche, ou tapez le décalage${this.together ? " : tout le côté suit, pour agrandir ou réduire la pièce" : ""}. Maj + clic ajoute un point.`
           : this.target
             ? "Cliquez un point orange de la grille (Maj + clic pour en ajouter, Maj + glisser : tous ceux d'un rectangle)."
             : "",

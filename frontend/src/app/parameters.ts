@@ -188,9 +188,9 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
     panel.body.replaceChildren(
       ...(names.length ? names.map((n) => parameterRow(n, parameters[n] as Parameter, errors[n])) : [el("p", { class: "text-gray-500" }, "Aucun paramètre. Ajoutez-en un : la largeur, l'épaisseur des panneaux…")]),
       addRow(),
-      el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Configurations"),
+      el("h3", { class: "panel-title pt-1" }, "Configurations"),
       ...configurationSection(),
-      el("h3", { class: "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Liens avec les cotes"),
+      el("h3", { class: "panel-title pt-1" }, "Liens avec les cotes"),
       ...linkSection(values),
       el("p", { class: "text-[11px] text-gray-500" }, "Formules : + − * / ^ ( ), pi, min(a; b), max, round, floor, ceil, sqrt. Les paramètres et formules sont en millimètres (1 cm = 10). Modifier un paramètre met à jour toutes les cotes liées."),
     );
