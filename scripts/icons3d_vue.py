@@ -1,5 +1,5 @@
 """Le dessin des icônes de la vue et de la sélection (filtres, fenêtre, orbite…) et du crayon : `i` est une scène de scripts/icons3d.py."""
-from math import pi
+from math import cos, pi, sin
 
 BLUE = "#0284c7"
 SKY = "#38bdf8"
@@ -76,20 +76,33 @@ def orbit(i):
 
 
 def piece_dims(i):
-    i.box(-7, -4, 0, 14, 8, 2.4)
-    i.arrow((-1, 6.6, 0), (-7.6, 6.6, 0), "blue", 0.55).arrow((1, 6.6, 0), (7.6, 6.6, 0), "blue", 0.55)
-    i.line((-7, 5, 0), (-7, 8, 0), SKY, 0.5).line((7, 5, 0), (7, 8, 0), SKY, 0.5)
+    """A panel seen from the front, its width under it and its height beside it."""
+    i.box(-4, 0, -6, 13, 2, 14)
+    i.line((-4, 2, -7.2), (-4, 2, -11), SKY, 0.5).line((9, 2, -7.2), (9, 2, -11), SKY, 0.5)
+    i.arrow((2.5, 2, -10), (-3.8, 2, -10), "blue", 0.95).arrow((2.5, 2, -10), (8.8, 2, -10), "blue", 0.95)
+    i.line((-5.2, 2, -6), (-9, 2, -6), SKY, 0.5).line((-5.2, 2, 8), (-9, 2, 8), SKY, 0.5)
+    i.arrow((-8, 2, 1), (-8, 2, -5.8), "blue", 0.95).arrow((-8, 2, 1), (-8, 2, 7.8), "blue", 0.95)
 
 
 def part_tags(i):
-    i.box(-7, -5, 0, 14, 10, 2)
-    cx, cy = i.p(0, 1, 2)
-    i.flat([(cx - 5.5, cy - 1), (cx - 3, cy - 4.2), (cx + 5.5, cy - 4.2), (cx + 5.5, cy + 2.2), (cx - 3, cy + 2.2)], "bl")
-    i.mark([(cx - 0.9, cy + 0.9), (cx + 1.2, cy - 3), (cx + 3.3, cy + 0.9)], "#ffffff", 0.8).mark([(cx + 0.1, cy - 0.5), (cx + 2.3, cy - 0.5)], "#ffffff", 0.7)
+    """A panel seen from the front, with the letter of the part on a blue tag."""
+    i.box(-7, 0, -8, 14, 2, 16)
+    cx, cy = i.p(0, 2, 0)
+    r = 5.6
+    i.flat([(cx + r * cos(k * pi / 16), cy + r * sin(k * pi / 16)) for k in range(32)], "bb")
+    i.mark([(cx - 2.6, cy + 3), (cx, cy - 3.2), (cx + 2.6, cy + 3)], "#ffffff", 1.1).mark([(cx - 1.5, cy + 0.8), (cx + 1.5, cy + 0.8)], "#ffffff", 0.95)
+
+
+def grid(i):
+    """A plate squared in blue, lying like the grid of the view."""
+    s = 9
+    i.box(-s, -s, -1.2, 2 * s, 2 * s, 1.2)
+    for k in (-s, -s / 3, s / 3, s):
+        i.line((k, -s, 0), (k, s, 0), BLUE, 0.65).line((-s, k, 0), (s, k, 0), BLUE, 0.65)
 
 
 VUE = {
     "sketch": sketch, "face-strip": face_strip, "draw-on-face": draw_on_face, "filter-auto": filter_auto, "filter-face": filter_face,
     "filter-edge": filter_edge, "filter-vertex": filter_vertex, "filter-body": filter_body, "window": window, "fit": fit,
-    "orbit": orbit, "piece-dims": piece_dims, "part-tags": part_tags,
+    "orbit": orbit, "piece-dims": piece_dims, "part-tags": part_tags, "grid": grid,
 }

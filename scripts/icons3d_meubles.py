@@ -130,7 +130,7 @@ def edge_paint(i):
 
 
 # Drawn from the front: their insides show, as on the plan of a Répartition.
-FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts"}
+FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "piece-dims", "part-tags"}
 
 MEUBLES = {
     "cabinet": cabinet, "fronts": fronts, "partition": partition, "shelves": shelves, "cloisons": cloisons, "drawers": drawers,
