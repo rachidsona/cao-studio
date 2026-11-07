@@ -41,9 +41,11 @@ test("les onglets Conception 3D, Dressing et Cuisine montrent chacun leurs outil
   await expect(page.locator('[data-action="extrude"]')).toBeVisible();
 
   await tabs.nth(1).click();
-  expect(await groups()).toEqual(["Modifier", "Pièce", "Meuble", "Dressing", "Fabrication", "Client"]);
+  expect(await groups()).toEqual(["Modifier", "Pièce", "Dressing", "Fabrication", "Client"]);
   await expect(page.locator('[data-action="partition"]')).toBeVisible();
   await expect(page.locator('[data-action="extrude"]')).toBeHidden();
+  await expect(page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]')).toBeVisible();
+  await expect(page.getByRole("group", { name: "Dressing" }).locator('[data-action="trim"]')).toBeVisible();
 
   await tabs.nth(2).click();
   expect(await groups()).toEqual(["Modifier", "Pièce", "Cuisine", "Meuble", "Fabrication", "Client"]);
@@ -182,7 +184,8 @@ test("Façades pose une porte sur une case de Répartition, module compris", asy
   await expect(page.getByText(/Niche équipée/)).toBeVisible();
   await page.getByRole("dialog", { name: "Modules à glisser" }).getByRole("button", { name: "Terminer" }).click();
 
-  await click(page, '[data-action="fronts"]');
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
   const fronts = page.getByRole("dialog", { name: "Façades" });
   await expect(fronts).toBeVisible();
   await page.mouse.click(box.x + niche.x, box.y + niche.y);

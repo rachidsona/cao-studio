@@ -29,7 +29,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:extrude-path", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
     "data-workshop:import-parts", "data-workshop:nesting", "data-workshop:offcuts", "data-workshop:batch", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",
-    "data-action:dressing", "data-workshop:door-fronts", "data-workshop:edge-paint", "data-workshop:niche-copy", "data-workshop:niche-align", "data-workshop:dressing-style", "data-workshop:production-folder", "data-action:trim", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
+    "data-action:dressing", "data-workshop:door-fronts", "data-workshop:edge-paint", "data-workshop:niche-copy", "data-workshop:niche-align", "data-workshop:dressing-style", "data-workshop:production-folder", "data-action:oi-intersect", "data-hidden-joints:", "data-library:", "data-workshop:hardware", "data-workshop:assembly", "data-workshop:sheets", "data-workshop:progress", "data-workshop:check", "data-workshop:sag", "data-workshop:weight",
   ],
   sketch: [
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
@@ -47,7 +47,7 @@ const FOLD_ORDER: Record<string, string[]> = {
 /** The groups each tab of the model's bar shows. */
 const TABS: Record<string, string[]> = {
   design: ["Créer", "Modifier", "Curic", "Atelier", "Fabrication", "Client"],
-  dressing: ["Modifier", "Pièce", "Meuble", "Dressing", "Fabrication", "Client"],
+  dressing: ["Modifier", "Pièce", "Dressing", "Fabrication", "Client"],
   kitchen: ["Modifier", "Pièce", "Cuisine", "Meuble", "Fabrication", "Client"],
 };
 

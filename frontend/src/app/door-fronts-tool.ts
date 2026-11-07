@@ -185,8 +185,8 @@ export function openNicheFront(viewport: Viewport, editor: Editor, niche: Picked
 
 export function bindDoorFronts(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   root.querySelector('[data-workshop="door-fronts"]')?.addEventListener("click", () => openTool(viewport, editor, "common"));
-  // Stops the click before the editor opens the cabinet's Façades: this button serves both.
-  root.querySelector('[data-action="fronts"]')?.addEventListener("click", (event) => {
+  // Stops the click before the editor opens the cabinet's Façades: this button serves both, in Meuble and in Dressing.
+  const open = (event: Event) => {
     const body = editor.picked.selection.bodies[0] ?? editor.picked.bodyId;
     const feature = body ? findFeature(editor.doc, featureOfBody(bodyOrigin(editor.doc, body))) : undefined;
     const cabinetPicked = feature?.type === "cabinet" || feature?.type === "fronts";
@@ -195,5 +195,6 @@ export function bindDoorFronts(root: HTMLElement, viewport: Viewport, editor: Ed
     const tool = openTool(viewport, editor, "doors");
     const target = selectedPartition(editor);
     if (target) tool.aim(target);
-  });
+  };
+  for (const button of root.querySelectorAll('[data-action="fronts"]')) button.addEventListener("click", open);
 }

@@ -215,7 +215,7 @@ export const SCREEN: HelpFamily[] = [
         what: "Au-dessus du ruban : chaque onglet montre les outils de son travail.",
         steps: [
           "« Conception 3D » : esquisse, volumes, formes et réglages.",
-          "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec les meubles et la pièce.",
+          "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec la pièce.",
           "« Cuisine » : implantation, meubles de cuisine, découpes du plan de travail, avec les meubles et la pièce.",
         ],
         tip: "Modifier, Fabrication et Client sont dans les trois. Le dernier onglet choisi est retenu dans ce navigateur.",
