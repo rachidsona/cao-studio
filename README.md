@@ -1623,6 +1623,38 @@ opération existante.
     1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
     `features/room-runs.ts`, `document/kitchen-plan.ts`).
+- **Plan de cuisine** (onglet Cuisine, menu du groupe « Cuisine ») : une cuisine commence par son **plan vu de dessus**,
+  comme un dressing. On choisit un modèle — droite, en L à gauche ou à droite, en U, **en G** (un mur B ou C et une
+  **péninsule**, un retour libre au bout du mur A) ou **parallèle** (deux murs face à face, au passage voulu) —, avec ou
+  sans **îlot** face au mur A (110 cm de passage proposés) ; les cotes des murs, la hauteur sous plafond, la profondeur
+  des bas (60) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
+  au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
+  leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
+  chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui : angle mort fermé par deux
+  fileurs, ou meuble d'angle —, l'autre s'arrête contre lui. « Mur A dans la pièce » pose le plan sur la Pièce relevée :
+  cotes et plafond en viennent, ses portes, fenêtres, prises et retombées sont marquées sur le schéma, les meubles bas
+  laissent les portes libres, les hauts les fenêtres, et un plafond bas ôte les hauts (`document/kitchen-plan-room.ts`).
+  - **Éditeur de linéaire** : un clic sur un linéaire ouvre « Linéaire — mur A », sa **bande de face à l'échelle**
+    (dessinée avec les dessins du catalogue) sur deux rangées : en bas les meubles bas et les colonnes, en haut les
+    meubles hauts, la hotte et le micro-ondes. On y ajoute un meuble du catalogue (largeurs du commerce de 300 à 1200),
+    de « Mes meubles » ou un **appareil** — évier, plaque de cuisson, plaque et four, four sous plan, lave-vaisselle,
+    colonne réfrigérateur, colonne four, hotte, micro-ondes —, après celui qui est choisi ; on le glisse pour changer
+    sa place, on l'échange contre un autre modèle, on change sa largeur. Les **fileurs** se calculent seuls (le reste du
+    mur, au bout, au début ou des deux côtés ; une colonne au bout reste contre lui) et le bloc « À revoir » dit ce qui
+    ne tient pas, un fileur trop large, la hotte hors de la plaque, la plaque sans 30 cm de plan de chaque côté ou sous
+    une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-run-items.ts`, `app/kitchen-run-editor.ts`,
+    `app/kitchen-run-strip.ts`).
+  - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
+    leur mur, façades, plan de travail continu sur chaque linéaire avec les découpes de l'évier et de la plaque,
+    crédence, plinthes, électroménager sur le calque « Électroménager », murs sur le calque « Pièce », matières posées
+    (`document/kitchen-plan-build.ts`, `document/kitchen-floor.ts`). « Modifier le plan » change les cotes ou le modèle :
+    la cuisine est refaite, et ce qu'un autre modèle n'a plus part après confirmation.
+  - **Proposer une cuisine** remplit tous les linéaires avec l'algorithme de l'Implantation (600 d'abord, puis le plus
+    grand qui tient, un fileur ; évier, lave-vaisselle, plaque et four, hotte, colonne réfrigérateur au bout libre) :
+    la même cuisine que l'Implantation, à retoucher meuble par meuble (`document/kitchen-propose.ts`).
+  - Le **prix TTC** du devis et l'**ergonomie** (triangle d'activité, passage devant l'îlot) s'affichent dans le panneau.
+    Cliquer l'esquisse « Plan de la cuisine », ou un meuble fait par le plan, dans le navigateur ou la vue, rouvre l'outil
+    sur son linéaire (`app/kitchen-plan-tool.ts`).
 - **Ouvrir / fermer les portes** et **Ouvrir / fermer les tiroirs** (onglets Dressing et Cuisine, à côté l'un de
   l'autre) : un clic ouvre toutes les portes du modèle autour de leurs charnières, ou sort tous les tiroirs avec leurs
   caissons, et le bouton reste enfoncé ; un second clic les referme ou les rentre. Si certains sont déjà ouverts, le
@@ -1741,7 +1773,7 @@ opération existante.
   **rampant**, plafond en pente qui descend à gauche, à droite ou contre le mur A : panneaux, portes et fonds s'arrêtent
   dessous, et chaque zone reçoit un dessus en pente.
   À chaque angle droit, on choisit le mur qui passe : l'autre s'arrête contre lui, et ce qui est fait dessus suit.
-- **Conception guidée** : le prix TTC du devis s'affiche en direct dans la barre d'état et dans le Plan de dressing. « Remplir
+- **Conception guidée** : le prix TTC du devis s'affiche en direct dans la barre d'état, dans le Plan de dressing et dans le Plan de cuisine. « Remplir
   selon les besoins » transforme les mètres de penderie, les paires de chaussures, les tiroirs et les étagères du client en
   modules répartis sur les zones libres, avec un bilan demandé / obtenu. Chaque zone peut recevoir des portes coulissantes,
   de 2 à 6 vantaux. « Mur A dans la pièce » pose le plan sur une Pièce relevée et marque ses ouvertures sur le schéma, et le

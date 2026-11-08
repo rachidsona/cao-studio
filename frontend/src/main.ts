@@ -6,6 +6,7 @@ import { bindLiveCheck } from "./app/live-check";
 import { bindVariants } from "./app/variants-tool";
 import { bindModulePalette } from "./app/module-palette";
 import { bindPlanLayout } from "./app/plan-layout-tool";
+import { bindKitchenPlan } from "./app/kitchen-plan-tool";
 import { bindProductionFolder } from "./app/production-folder";
 import { bindProjectTabs } from "./app/project-tabs";
 import { bindSelectionFilter } from "./app/selection-filter";
@@ -177,6 +178,7 @@ async function start(): Promise<void> {
   bindAssistant(root, viewport, editor, config.apiUrl);
   bindZoneView(viewport, editor);
   bindPlanLayout(root, viewport, editor);
+  bindKitchenPlan(root, viewport, editor);
   bindLivePrice(root, viewport, editor);
   bindNicheCopy(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);

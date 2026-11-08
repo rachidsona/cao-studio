@@ -78,6 +78,8 @@ export interface KitchenUnit {
   drawers?: number;
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
+  /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts). */
+  run?: string;
 }
 
 export interface KitchenBox {
@@ -89,6 +91,7 @@ export interface KitchenBox {
   holes?: { appliance: string; at: Vec3 }[];
   /** Which way a worktop's front faces (kitchen frame). */
   front?: Vec3;
+  run?: string;
 }
 
 export interface KitchenLayout {
@@ -150,7 +153,7 @@ function frontsFor(style: KitchenSettings["fronts"], width: number, index: numbe
 }
 
 /** The front-left-bottom corner a cabinet turned this way has, from its footprint (low and high corners). */
-function originOf(rotation: KitchenUnit["rotation"], lo: Vec3, hi: Vec3): Vec3 {
+export function originOf(rotation: KitchenUnit["rotation"], lo: Vec3, hi: Vec3): Vec3 {
   if (rotation === 0) return [lo[0], lo[1], lo[2]];
   if (rotation === 90) return [hi[0], lo[1], lo[2]];
   if (rotation === 180) return [hi[0], hi[1], lo[2]];

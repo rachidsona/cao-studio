@@ -24,7 +24,7 @@ import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../
 const GAP = 3;
 
 /** A closed or open set of lines as a sketch: points shared, nothing constrained. */
-function linesGeometry(lines: [Point, Point][]): SketchGeometry {
+export function linesGeometry(lines: [Point, Point][]): SketchGeometry {
   const g = emptySketchGeometry();
   const ids = new Map<string, string>();
   const point = ([x, y]: Point) => {

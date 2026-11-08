@@ -22,6 +22,7 @@ const handle = (x1: number, y1: number, x2: number, y2: number) => `<line x1="${
 /** The units whose name says what is built in. */
 const hasOven = (e: CatalogEntry) => /four/i.test(e.name);
 const hasSink = (e: CatalogEntry) => /évier/i.test(e.name);
+const hasMicrowave = (e: CatalogEntry) => /micro-ondes/i.test(e.name);
 
 /** How high a door's handle sits: within reach, low on a wall unit, high on a base unit. */
 function doorGrip(kind: UnitKind, top: number, bottom: number): [number, number] {
@@ -58,14 +59,15 @@ function oven(x0: number, x1: number, top: number): string {
   return box(x0, top, x1 - x0, h, BODY) + box(x0 + 40, top + 150, x1 - x0 - 80, h - 200, GLASS) + handle(x0 + 60, top + 105, x1 - 60, top + 105);
 }
 
-/** The drawing, in SVG, at the scale of its family, standing on its floor line. */
-export function elevation(e: CatalogEntry): string {
+/** The drawing in mm, its top at 0 and the floor at its height (a tap above, at negative y), with no frame: to be placed. */
+export function elevationBody(e: CatalogEntry): { body: string; width: number; height: number; above: number } {
   const kind = KINDS[e.kind];
   const [W, H, plinth] = [e.width, e.height ?? kind.height, e.plinth ?? kind.plinth];
   const carcass = H - plinth;
   const [x0, x1, top, bottom] = [GAP, W - GAP, GAP, carcass - GAP];
   let inside: string;
-  if (!hasOven(e)) inside = fronts(e, x0, x1, top, bottom);
+  if (hasMicrowave(e)) inside = box(x0, top + 120, x1 - x0, Math.min(380, bottom - top - 120), GLASS);
+  else if (!hasOven(e)) inside = fronts(e, x0, x1, top, bottom);
   else if (e.kind === "tall") {
     const at = (bottom - top) * 0.3;
     const door = { ...e, layout: "door" as const };
@@ -74,8 +76,14 @@ export function elevation(e: CatalogEntry): string {
   const above = hasSink(e) ? TAP : 0;
   const tap = above ? `<path d="M${W / 2 - 40} 0 V${-above + 25} Q${W / 2 - 40} ${-above} ${W / 2} ${-above} Q${W / 2 + 45} ${-above} ${W / 2 + 45} ${-above + 45}" fill="none" stroke="${BRASS}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>` : "";
   const legs = plinth ? box(GAP, carcass, W - 2 * GAP, plinth, BODY) : "";
+  return { body: `${tap}${legs}${box(0, 0, W, carcass, BODY)}${inside}`, width: W, height: H, above };
+}
+
+/** The drawing, in SVG, at the scale of its family, standing on its floor line. */
+export function elevation(e: CatalogEntry): string {
+  const { body, width: W, height: H, above } = elevationBody(e);
   const k = SCALE[e.kind];
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${(W * k).toFixed(1)}" height="${((H + above) * k).toFixed(1)}" viewBox="0 ${-above} ${W} ${H + above}" aria-hidden="true">${tap}${legs}${box(0, 0, W, carcass, BODY)}${inside}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${(W * k).toFixed(1)}" height="${((H + above) * k).toFixed(1)}" viewBox="0 ${-above} ${W} ${H + above}" aria-hidden="true">${body}</svg>`;
 }
 
 /** What it is, in a few words. */

@@ -39,8 +39,11 @@ const IDENTITY: Placement = { quarter: 0, origin: [0, 0] };
 
 /** The features of the kitchen (ids free in `doc`), in history order, and what each body is made of. */
 export function kitchenPlan(doc: CadDocument, s: KitchenSettings, frontMaterial: string, worktopMaterial: string, room?: KitchenRoom): KitchenPlan {
-  const layout = kitchenLayout(s, room?.walls);
-  const place = room?.place ?? IDENTITY;
+  return layoutPlan(doc, kitchenLayout(s, room?.walls), s.frontThickness, frontMaterial, worktopMaterial, room?.place);
+}
+
+/** The features of a layout already made (a kitchen plan's, document/kitchen-plan-build.ts), turned and moved by `place`. */
+export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY): KitchenPlan {
   let probe = doc;
   const plan: KitchenPlan = { features: [], info: {}, names: {}, layers: {}, layout, problems: [] };
   const push = (f: Feature) => {
@@ -59,7 +62,7 @@ export function kitchenPlan(doc: CadDocument, s: KitchenSettings, frontMaterial:
     if (u.layout === "none") continue;
     const fronts: FrontsFeature = {
       id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}`, cabinet: cabinet.id, layout: u.layout, drawers: u.drawers ?? 3,
-      mount: "overlay", gap: 3, thickness: s.frontThickness, hinges: true, handles: true,
+      mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: true,
     };
     push(fronts);
     frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material }));

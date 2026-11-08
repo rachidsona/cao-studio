@@ -156,6 +156,12 @@ def kitchen(i):
     i.box(-8.6, 3, 0.6, 5.4, 0.3, 5.8, "blue").box(-2.7, 3, 0.6, 5.4, 0.3, 5.8, "blue").box(3.2, 3, 0.6, 5.4, 0.3, 5.8, "blue")
 
 
+def kitchen_plan(i):
+    # The plan on the floor, its runs drawn in line only: an L along two walls and an island.
+    i.box(-9, -9, 0, 18, 18, 0.8)
+    i.wire(-9, -9, 0.8, 18, 4.5, 6).wire(-9, -4.5, 0.8, 4.5, 13.5, 6).wire(-2, 2.5, 0.8, 9, 4.5, 6)
+
+
 def kitchen_units(i):
     for x in (-9, -3, 3):
         i.box(x, -3, 0, 5.6, 6, 8, "blue" if x == -3 else "white")
@@ -459,7 +465,7 @@ ICONS = {
     "layers": layers, "modifier": modifier, "linked-copy": linked_copy,
     "select-plus": select_plus, "mirror": mirror, "mate": mate, "align": align, "stretch": stretch,
     "array": array, "rotate": rotate, "section": section, "machining": machining, "cutout": cutout, "assembly": assembly,
-    "kitchen": kitchen, "kitchen-units": kitchen_units, "lighting": lighting,
+    "kitchen": kitchen, "kitchen-plan": kitchen_plan, "kitchen-units": kitchen_units, "lighting": lighting,
     "gable": gable, "intersect": intersect, "weight": weight, "sag": sag, "progress": progress, "room": room,
     "finishing": finishing, "standard": standard, "overlap": overlap, "offcuts": offcuts, "batch": batch,
     "layout-copy": layout_copy, "replace": replace_icon, "hardware": hardware, "library": library,

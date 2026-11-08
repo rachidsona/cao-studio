@@ -8,6 +8,7 @@
  */
 
 import type { DrawingSheet } from "../drawing/model";
+import type { CatalogEntry } from "./kitchen-catalog";
 import { centeredRectangle, type OffsetRecord, type SketchConstraint, type SketchCurve, type SketchPoint, type SketchText, type SketchUnderlay } from "./sketch";
 import type { FinishOptions } from "../features/finish-parts";
 import type { RoomInput } from "../features/room-plan";
@@ -105,6 +106,50 @@ export interface DressingPlan {
   fills?: Record<string, { cases: number[]; rest: number; filler: boolean }>;
 }
 
+/** A unit or an appliance of a kitchen run, in its row from left to right: a model at a width; one's own units carried whole. */
+export interface KitchenRunItem {
+  id: string;
+  /** A model of the catalogue (its entry's id without the width) or an appliance ("app-sink"…). */
+  model: string;
+  width: number;
+  own?: CatalogEntry;
+}
+
+/** The plan of a kitchen, seen from above (document/kitchen-plan-shapes.ts): its model, its sizes (mm), and each run's units. */
+export interface KitchenFloorPlan {
+  model: "I" | "L-left" | "L-right" | "U" | "G-left" | "G-right" | "facing";
+  lengthA: number;
+  lengthB: number;
+  lengthC: number;
+  /** The run across (parallel) or the peninsula. */
+  lengthD: number;
+  /** Between two runs face to face. */
+  aisle: number;
+  island?: boolean;
+  islandLength: number;
+  islandDepth: number;
+  /** In front of the island, from the front of wall A's run. */
+  passage: number;
+  height: number;
+  /** Base units (worktop included), wall units, and the top of the worktop. */
+  depth: number;
+  wallDepth: number;
+  worktopHeight: number;
+  /** Square corners where the other run passes: B or C (or the peninsula) past wall A. */
+  through?: Partial<Record<"left" | "right", boolean>>;
+  /** A dead corner closed by two fillers, or a corner unit on the run that passes. */
+  corner?: "dead" | "unit";
+  room?: { id: string; wall: number };
+  place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
+  frontMaterial?: string;
+  worktopMaterial?: string;
+  /** By run: its units and appliances, and where what is left goes. */
+  runs?: Record<string, KitchenRunItem[]>;
+  rest?: Record<string, "end" | "start" | "both">;
+  /** By run (and "walls"): the features made from it. */
+  made?: Record<string, string[]>;
+}
+
 export interface SketchFeature extends FeatureBase {
   type: "sketch";
   plane: PlaneName;
@@ -121,6 +166,8 @@ export interface SketchFeature extends FeatureBase {
   texts?: SketchText[];
   /** The plan of a dressing this sketch draws on the floor (document/plan-layout.ts). */
   dressingPlan?: DressingPlan;
+  /** The plan of a kitchen this sketch draws on the floor (document/kitchen-floor.ts). */
+  kitchenPlan?: KitchenFloorPlan;
   /** What is extruded from this sketch stands over this outline on the floor (ExtrudeFeature.clip). */
   clip?: [number, number][];
   /** What is extruded from this sketch stops under this ceiling, and what equips its niches too. */
