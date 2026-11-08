@@ -38,7 +38,7 @@ export const WOODWORKING: HelpFamily[] = [
         name: "Plan de cuisine",
         what: "Commence une cuisine par son plan vu de dessus, puis aménage chaque linéaire meuble par meuble sur sa vue de face ; la cuisine 3D suit chaque changement.",
         steps: [
-          "Ouvrez l'onglet « Cuisine », puis le menu du groupe « Cuisine » et « Plan de cuisine ».",
+          "Ouvrez l'onglet « Cuisine » et cliquez « Plan de cuisine » dans le groupe « Cuisine ».",
           "Choisissez un modèle : droite, en L, en U, en G (une péninsule au bout d'un mur) ou parallèle ; cochez « Îlot face au mur A » si vous en voulez un.",
           "Si une pièce est relevée, choisissez « Mur A dans la pièce » : ses cotes, ses portes, fenêtres, prises et retombées viennent sur le schéma. Sinon tapez les longueurs et la « Hauteur sous plafond ».",
           "À chaque angle, choisissez le mur qui passe et, dans « Dans l'angle », un angle mort fermé par deux fileurs ou un meuble d'angle.",

@@ -1623,7 +1623,7 @@ opération existante.
     1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
     `features/room-runs.ts`, `document/kitchen-plan.ts`).
-- **Plan de cuisine** (onglet Cuisine, menu du groupe « Cuisine ») : une cuisine commence par son **plan vu de dessus**,
+- **Plan de cuisine** (onglet Cuisine, groupe « Cuisine ») : une cuisine commence par son **plan vu de dessus**,
   comme un dressing. On choisit un modèle — droite, en L à gauche ou à droite, en U, **en G** (un mur B ou C et une
   **péninsule**, un retour libre au bout du mur A) ou **parallèle** (deux murs face à face, au passage voulu) —, avec ou
   sans **îlot** face au mur A (110 cm de passage proposés) ; les cotes des murs, la hauteur sous plafond, la profondeur
