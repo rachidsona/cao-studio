@@ -31,6 +31,8 @@ export interface CheckedPart {
   box: [Vec3, Vec3];
   /** A plain board: its box is its shape (else the overlap is only possible). */
   boxLike: boolean;
+  /** Parts cut against one another by one operation (the panels of « Panneaux sur faces »): they cannot overlap. */
+  together?: string;
 }
 
 const f = (v: number) => Number(v.toFixed(1)).toLocaleString("fr-FR");
@@ -41,6 +43,7 @@ export function overlapProblems(parts: readonly CheckedPart[], tolerance = 0.1):
   for (let i = 0; i < parts.length; i++) {
     for (let j = i + 1; j < parts.length; j++) {
       const [a, b] = [parts[i]!, parts[j]!];
+      if (a.together && a.together === b.together) continue;
       const depth = [0, 1, 2].map((k) => Math.min(a.box[1][k]!, b.box[1][k]!) - Math.max(a.box[0][k]!, b.box[0][k]!));
       if (depth.some((d) => d <= tolerance)) continue;
       const exact = a.boxLike && b.boxLike;

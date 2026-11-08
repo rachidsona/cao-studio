@@ -92,9 +92,7 @@
       </div>
     </details>
   </header>
-
   {% include "editor/_icons.html" %}
-
   {# ---- The workspaces, as Fusion's tabs: each shows the groups of its work ---- #}
   <div class="ribbon-tabs group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden" role="tablist" aria-label="Espaces de travail">
     <button type="button" role="tab" aria-selected="true" data-ribbon-tab="design">Conception 3D</button>
@@ -131,8 +129,9 @@
         <button type="button" class="tool-btn icon-btn" data-action="fillet" title="Congé sur des arêtes" aria-label="Congé"><svg class="tool-icon" aria-hidden="true"><use href="#i-fillet"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="chamfer" title="Chanfrein sur des arêtes" aria-label="Chanfrein"><svg class="tool-icon" aria-hidden="true"><use href="#i-chamfer"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="shell" title="Coque : creuser le corps à une épaisseur de paroi, les faces cliquées restant ouvertes (bac, tiroir, boîte)" aria-label="Coque"><svg class="tool-icon" aria-hidden="true"><use href="#i-shell"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="paneling" title="Panneaux sur faces : les faces planes cliquées d&#x27;un volume deviennent des panneaux de l&#x27;épaisseur voulue, en onglet à tout angle ou bout à bout (seau à pans, boîte)" aria-label="Panneaux sur faces"><svg class="tool-icon" aria-hidden="true"><use href="#i-paneling"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="loft" title="Lissage : un solide passant par les profils fermés de plusieurs esquisses (pied galbé, trémie)" aria-label="Lissage"><svg class="tool-icon" aria-hidden="true"><use href="#i-loft"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-action="ffd" title="Déformer — FFD 3×3×3 (comme celle de JHS PowerBar) : une grille de 27 points sur la boîte du corps ; tirez des points, le corps se déforme en douceur" aria-label="Déformer (FFD 3×3×3)"><svg class="tool-icon" aria-hidden="true"><use href="#i-ffd"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="ffd" title="Déformer : cliquez une face plane puis tirez une poignée verte ; la face s&#x27;agrandit ou se réduit depuis son centre et les côtés suivent bien droits" aria-label="Déformer"><svg class="tool-icon" aria-hidden="true"><use href="#i-ffd"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="swap" title="Échanger (comme le Composwapper de JHS PowerBar) : les éléments sélectionnés sont remplacés par l&#x27;élément cliqué, une copie liée à la place de chacun ; Maj + clic ajoute ou retire un élément à remplacer" aria-label="Échanger"><svg class="tool-icon" aria-hidden="true"><use href="#i-swap"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="spacing" title="Espacement : cliquez deux éléments (corps ou caissons), l&#x27;espace entre eux devient une cote ; tapez le nouvel espace, le second s&#x27;écarte ou se rapproche" aria-label="Espacement"><svg class="tool-icon" aria-hidden="true"><use href="#i-spacing"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="modifier" title="Modificateur de planche : cintrer, effiler ou vriller (dans l'historique)" aria-label="Modificateur"><svg class="tool-icon" aria-hidden="true"><use href="#i-modifier"/></svg></button>
@@ -172,6 +171,8 @@
       <div class="ribbon-row">
         <button type="button" class="tool-btn icon-btn" data-action="kitchen" title="Implantation : une cuisine entière le long d'un mur ou de deux murs en L — meubles bas et hauts aux largeurs du commerce, façades, plan de travail, fileurs et murs (hors débit)" aria-label="Implantation de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="kitchen-units" aria-pressed="false" title="Meubles de cuisine : choisir dans la liste un bas, un haut ou une colonne à sa largeur ; il se pose à côté du caisson sélectionné, construit comme lui, avec ses façades. Un caisson sélectionné se déplace par sa poignée ✥" aria-label="Meubles de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen-units"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="doors-open" aria-pressed="false" title="Ouvrir / fermer les portes : un clic ouvre toutes les portes du modèle, un autre les referme ; le modèle ne change pas" aria-label="Ouvrir / fermer les portes"><svg class="tool-icon" aria-hidden="true"><use href="#i-doors-open"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="drawers-open" aria-pressed="false" title="Ouvrir / fermer les tiroirs : un clic sort tous les tiroirs du modèle, un autre les rentre ; le modèle ne change pas" aria-label="Ouvrir / fermer les tiroirs"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawers-open"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="cutout" title="Découpes du plan de travail : évier, plaque de cuisson, robinet, passe-câble, choisis dans un catalogue et placés sur le plan cliqué" aria-label="Découpes du plan de travail"><svg class="tool-icon" aria-hidden="true"><use href="#i-cutout"/></svg></button>
       </div>
       <span class="ribbon-caption" aria-hidden="true">Cuisine</span>
@@ -201,6 +202,8 @@
         <button type="button" class="tool-btn icon-btn" data-action="penderie" title="Penderie : cliquez une niche d&#x27;une répartition pour y poser une tringle Ø25 sur deux supports, à mi-profondeur ; elle suit sa niche, compte au devis (au mètre) et pas au débit" aria-label="Penderie"><svg class="tool-icon" aria-hidden="true"><use href="#i-rod"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="tiroirs" title="Tiroirs : cliquez une niche d&#x27;une répartition pour la remplir de 1 à 8 tiroirs encastrés (façades, caissons sur coulisses, trous de poignée) ; ils suivent leur niche" aria-label="Tiroirs"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawers"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="fronts" title="Façades : sur une Répartition, un clic pose ou retire la porte d'une case, module compris ; sur un caisson sélectionné, portes ou tiroirs (en applique ou encastrés), charnières et poignées percées, quincaillerie comptée dans le devis" aria-label="Façades"><svg class="tool-icon" aria-hidden="true"><use href="#i-fronts"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="doors-open" aria-pressed="false" title="Ouvrir / fermer les portes : un clic ouvre toutes les portes du modèle, un autre les referme ; le modèle ne change pas" aria-label="Ouvrir / fermer les portes"><svg class="tool-icon" aria-hidden="true"><use href="#i-doors-open"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-workshop="drawers-open" aria-pressed="false" title="Ouvrir / fermer les tiroirs : un clic sort tous les tiroirs du modèle, un autre les rentre ; le modèle ne change pas" aria-label="Ouvrir / fermer les tiroirs"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawers-open"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="trim" title="Finitions : joues de finition, fileurs jusqu&#x27;aux murs, bandeau jusqu&#x27;au plafond et plinthe sous le socle, ajustés au meuble sélectionné (ou à tout le meuble)" aria-label="Finitions"><svg class="tool-icon" aria-hidden="true"><use href="#i-finishing"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="dressing" title="Dressing : un dressing entier le long d&#x27;un mur (I), de deux (L) ou de trois (U) — longueurs, hauteur, profondeur et programme de modules (penderies, étagères, tiroirs), chaque mur une Répartition modifiable ensuite niche par niche" aria-label="Assistant Dressing"><svg class="tool-icon" aria-hidden="true"><use href="#i-dressing"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="niche-copy" title="Copier une niche : cliquez une niche aménagée, puis les niches à faire pareil, aussi en miroir pour le mur d&#x27;en face"><svg class="size-6" aria-hidden="true"><use href="#i-niche-copy"/></svg></button>
@@ -286,7 +289,6 @@
       <span class="ribbon-caption" aria-hidden="true">Client</span>
     </div>
   </div>
-
   {# ---- Render bar (render mode, render/render-mode.ts): replaces the modelling tools ---- #}
   <div class="hidden flex-nowrap items-center gap-2 overflow-x-auto border-b border-gray-200 bg-white px-3 py-1.5 group-data-[render=on]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Rendu" data-render-bar>
     <svg class="tool-icon size-7" aria-hidden="true"><use href="#i-render-studio"/></svg>
@@ -297,7 +299,6 @@
     <button type="button" class="tool-btn min-h-9 border border-gray-300 text-xs dark:border-gray-600" data-render="capture" title="Rendre une image au format choisi dans le panneau (galerie)"><svg class="size-5 shrink-0" aria-hidden="true"><use href="#i-scenes"/></svg>Rendre l'image</button>
     <button type="button" class="tool-btn tool-btn-primary min-h-9 text-xs" data-render="exit" title="Revenir à la modélisation (Échap)">Quitter le rendu</button>
   </div>
-
   {# ---- Toolbar (sketch mode): icons grouped as a ribbon, each with its name in a tooltip ---- #}
   <div class="hidden flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:flex dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Outils d'esquisse" data-ribbon="sketch">
     <div class="ribbon-group" role="group" aria-label="Terminer">

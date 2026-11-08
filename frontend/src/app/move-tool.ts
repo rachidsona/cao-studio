@@ -1,7 +1,7 @@
 /**
  * "Déplacer" in the 3D model: moves a body (a new "move" operation, the real
- * solid translated by the kernel) or a whole sketch (its plane offset and
- * points). The displacement is set by dragging the XYZ manipulator (arrows
+ * solid translated by the kernel), a whole sketch (its plane offset and
+ * points) or a whole cabinet (its origin, its fronts following). The displacement is set by dragging the XYZ manipulator (arrows
  * along an axis, squares inside a plane) or typed: relative, along one axis,
  * or as the absolute position of the centre. The frame is the global one or a
  * local one (the planar face picked, or the sketch's own axes). The result is
@@ -12,7 +12,7 @@
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import type { Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
+import type { CabinetFeature, Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
 import { featureOfBody } from "../document/types";
 import { MIN_LENGTH } from "../features/common";
 import { GLOBAL_FRAME, faceFrame, toGlobal, toLocal, type MoveFrame } from "../features/move";
@@ -27,7 +27,9 @@ import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
 import { AXIS_LOCK_OPTIONS, AxisLock, lockMove, type AxisLockMode } from "./axis-lock";
 import { bodySnap, facePoint, otherBoxes } from "./body-snap";
+import { cabinetBodies } from "./cabinet-drag";
 import { pointText } from "./model-selection";
+import { wholeOf } from "./move-whole";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** What is moved: a body of the model, or a sketch. */
@@ -38,7 +40,7 @@ const PIVOT_COLOR = 0xe11d48;
 const TARGET_COLOR = 0x16a34a;
 export const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.from({ length: 10 }, (_, i): [string, string] => [String(i + 1), `${i + 1} copie${i ? "s" : ""} (l'original reste)`])];
 
-export type MoveSubject = { kind: "body"; id: string } | { kind: "sketch"; id: string };
+export type MoveSubject = { kind: "body" | "sketch" | "cabinet"; id: string };
 
 type InputMode = "relative" | "distance" | "absolute" | "points";
 type FrameMode = "global" | "local";
@@ -50,6 +52,10 @@ export interface MoveToolOptions {
   faceNormal?: Vec3;
   /** Switches to the push/pull of the picked face (moving the face, not the body). */
   moveFace?: () => void;
+  /** Switches to the whole this body belongs to (wholeOf). */
+  whole?: (bodyId: string) => void;
+  /** The whole is being moved: switches back to the element selected. */
+  element?: () => void;
 }
 
 /** A body with more corners than this (a rounded one) shows only the corners of the face pointed at. */
@@ -69,6 +75,9 @@ export class MoveTool extends PanelTool {
   private readonly gizmo: MoveGizmo;
   private dragFrom: Vec3 = [0, 0, 0];
   private readonly sketch: SketchFeature | null;
+  private readonly cabinet: CabinetFeature | null;
+  /** The bodies of the cabinet moved (its fronts too). */
+  private group = new Set<string>();
   /** Pivot (the point moved from, where the manipulator sits) and the target, in model coordinates before the move. */
   private source: Vec3 | null = null;
   private reach: Vec3 | null = null;
@@ -100,18 +109,20 @@ export class MoveTool extends PanelTool {
   private readonly copy: { id: string; name: string };
 
   constructor(ctx: ToolContext, editing: Feature | null, subject: MoveSubject, private readonly options: MoveToolOptions = {}) {
-    super(ctx, subject.kind === "body" ? "Déplacer le corps" : "Déplacer l'esquisse", editing);
+    super(ctx, subject.kind === "sketch" ? "Déplacer l'esquisse" : "Déplacer le corps", editing);
     const doc = ctx.doc();
     this.subject = subject;
     const sketch = subject.kind === "sketch" ? findFeature(doc, subject.id) : undefined;
     this.sketch = sketch?.type === "sketch" ? sketch : null;
+    const cabinet = subject.kind === "cabinet" ? findFeature(doc, subject.id) : undefined;
+    this.cabinet = cabinet?.type === "cabinet" ? cabinet : null;
     if (editing?.type === "move") {
       this.id = editing.id;
       this.name = editing.name;
       this.translate = [...editing.translate];
     } else {
-      this.id = this.sketch ? this.sketch.id : uniqueId(doc, "mv");
-      this.name = this.sketch ? this.sketch.name : uniqueName(doc, "Déplacement");
+      this.id = (this.sketch ?? this.cabinet)?.id ?? uniqueId(doc, "mv");
+      this.name = (this.sketch ?? this.cabinet)?.name ?? uniqueName(doc, "Déplacement");
     }
     this.copy = { id: uniqueId(doc, "ar"), name: uniqueName(doc, "Copie") };
     if (this.sketch) {
@@ -147,6 +158,15 @@ export class MoveTool extends PanelTool {
       const ys = this.sketch.points.map((p) => p.y);
       const c: [number, number] = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
       this.center = toWorld(frame, c[0], c[1]);
+      return;
+    }
+    if (this.cabinet) {
+      this.group = new Set(cabinetBodies(this.ctx.doc(), this.ctx.viewport.displayedBodies, this.cabinet.id));
+      const all = new THREE.Box3();
+      for (const id of this.group) for (const p of this.ctx.viewport.bodyMesh(id)?.metrics.bbox ?? []) all.expandByPoint(new THREE.Vector3(...p));
+      if (all.isEmpty()) return;
+      this.box = [all.min.toArray(), all.max.toArray()] as Box;
+      this.center = all.getCenter(new THREE.Vector3()).toArray() as Vec3;
       return;
     }
     // An existing move shows its result under its own id: take that and take the move back.
@@ -188,7 +208,7 @@ export class MoveTool extends PanelTool {
     const shift = hovered ? [0, 0, 0] : this.translate;
     this.gizmo.place([0, 1, 2].map((i) => (base[i] as number) + (shift[i] as number)) as Vec3, this.frame());
     // The curved arrows turn around the axes of the global frame (the Rotation tool's axes).
-    this.gizmo.showRotation(this.frameMode === "global");
+    this.gizmo.showRotation(this.frameMode === "global" && !this.cabinet);
   }
 
   /** Only the point that will be picked, under the pointer: a small orange dot. */
@@ -216,6 +236,7 @@ export class MoveTool extends PanelTool {
     const length = Math.hypot(...this.translate);
     if (length < MIN_LENGTH) return "Tirez le manipulateur ou saisissez un déplacement.";
     if (this.sketch) return moveSketchPlane(this.sketch, this.translate);
+    if (this.cabinet) return { ...this.cabinet, origin: this.cabinet.origin.map((v, i) => Number((v + this.translate[i]!).toFixed(3))) as Vec3 };
     const translate = this.translate.map((x) => Number(x.toFixed(6))) as Vec3;
     if (this.copies > 0 && !this.editing) return { ...this.copy, type: "array", targets: [this.subject.id], step: translate, count: this.copies };
     return { id: this.id, type: "move", name: this.name, target: this.subject.id, translate } satisfies MoveFeature;
@@ -237,7 +258,7 @@ export class MoveTool extends PanelTool {
   }
 
   protected override heading(): string {
-    return this.sketch ? `Déplacer : ${this.sketch.name}` : this.editing ? `Modifier : ${this.editing.name}` : "Déplacer le corps";
+    return this.sketch || this.cabinet ? `Déplacer : ${(this.sketch ?? this.cabinet)!.name}` : this.editing ? `Modifier : ${this.editing.name}` : "Déplacer le corps";
   }
 
   // ---- panel -----------------------------------------------------------------------
@@ -300,11 +321,18 @@ export class MoveTool extends PanelTool {
     }
     const frameOptions: [string, string][] = [["global", "Global"]];
     if (this.localFrame) frameOptions.push(["local", this.sketch ? "Local (axes de l'esquisse)" : "Local (face choisie)"]);
+    const whole = this.subject.kind === "body" && !this.editing && this.options.whole ? wholeOf(this.ctx.doc(), this.subject.id, this.ctx.viewport.displayedBodies) : null;
+    const choices: [string, string][] = [["element", "L'élément sélectionné"], ...(whole || this.options.element ? ([["whole", "Le corps entier"]] as [string, string][]) : []), ...(this.options.moveFace ? ([["face", "La face seule (pousser/tirer)"]] as [string, string][]) : [])];
     return [
-      this.info(this.sketch ? `Esquisse : ${this.sketch.name}` : `Corps : ${bodyLabel(this.ctx.doc(), this.subject.id)}`),
-      this.options.moveFace && !this.sketch
-        ? this.selectRow("Objet", "body", [["body", "Corps entier"], ["face", "Face seule (pousser/tirer)"]], (v) => v === "face" && this.options.moveFace?.())
+      this.info(this.sketch ? `Esquisse : ${this.sketch.name}` : this.cabinet ? `Meuble : ${this.cabinet.name}` : `Corps : ${bodyLabel(this.ctx.doc(), this.subject.id)}`),
+      choices.length > 1
+        ? this.selectRow("Déplacer", this.options.element ? "whole" : "element", choices, (v) => {
+            if (v === "face") this.options.moveFace?.();
+            if (v === "whole" && whole) this.options.whole?.(this.subject.id);
+            if (v === "element") this.options.element?.();
+          })
         : null,
+      whole ? this.info(`Le corps entier : ${whole.name}, ${whole.bodies.length} pièces.`) : null,
       this.subject.kind === "body" && !this.editing ? this.selectRow("Copier", String(this.copies), COPIES, (v) => ((this.copies = Number(v)), this.sync())) : null,
       this.subject.kind === "body" && !this.editing && bodies.length > 1
         ? this.selectRow("Corps", this.subject.id, bodies.map((b): [string, string] => [b.id, b.name]), (v) => {
@@ -389,8 +417,8 @@ export class MoveTool extends PanelTool {
     if (!this.onSnap()) {
       // A curved arrow: the Rotation tool takes over, around that axis, on what is being moved.
       const handle = this.gizmo.handleAt(event);
-      if (handle?.kind === "rotate" && this.ctx.turn) {
-        this.ctx.turn(handle.axis, this.subject, event);
+      if (handle?.kind === "rotate" && this.ctx.turn && this.subject.kind !== "cabinet") {
+        this.ctx.turn(handle.axis, this.subject as { kind: "body" | "sketch"; id: string }, event);
         return true;
       }
     }
@@ -423,7 +451,7 @@ export class MoveTool extends PanelTool {
     const result = toGlobal(frame, start.map((s, i) => (along.includes(i) ? roundTo(moved[i] as number, step) : s)) as Vec3);
     // Smart snapping (global axes): a face or the middle of the body stops at the level of another body's.
     if (!bodySnap.smart || !this.box || frame !== GLOBAL_FRAME) return (this.guides.clear(), result);
-    const own = (id: string) => (id === this.subject.id && this.copies === 0) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
+    const own = (id: string) => (id === this.subject.id && this.copies === 0) || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
     const aligned = alignBox(this.box, otherBoxes(this.ctx.viewport, own), result, along, bodySnap.tolerance(this.ctx.viewport));
     this.guides.show(aligned.guides, this.ctx.viewport);
     return aligned.translate;
@@ -460,7 +488,7 @@ export class MoveTool extends PanelTool {
     let guides: Guide[] = [];
     const pick = event ? this.ctx.viewport.pickFace(event) : null;
     const usable = (bodyId: string) => {
-      const own = bodyId === this.subject.id || bodyId === this.id || bodyId.startsWith(`${this.copy.id}#`);
+      const own = bodyId === this.subject.id || this.group.has(bodyId) || bodyId === this.id || bodyId.startsWith(`${this.copy.id}#`);
       return this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
     };
     // The corners and points are caught only with the geometry snapping.
@@ -531,7 +559,7 @@ export class MoveTool extends PanelTool {
         this.ctx.notify("Cliquez un des points affichés pour y placer les flèches.", "info");
         return;
       }
-      if (!this.sketch && owner !== this.subject.id && owner !== this.id) {
+      if (!this.sketch && owner !== this.subject.id && owner !== this.id && !this.group.has(owner)) {
         // A point of another body: that body is the one to move.
         this.subject = { kind: "body", id: owner };
         this.measure();
@@ -539,7 +567,7 @@ export class MoveTool extends PanelTool {
         this.reach = null;
       }
       // A point of the body's preview is shown moved: take it back to where it was.
-      this.source = owner === this.id && !this.sketch ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
+      this.source = (owner === this.id || this.group.has(owner)) && !this.sketch ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
       this.pickStep = "reach";
     } else if (point) {
       this.lock.take(event);

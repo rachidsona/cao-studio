@@ -21,6 +21,16 @@ describe("meubles de cuisine", () => {
     expect(doc.bodyInfo?.[`${cabinet.id}#0`]?.material).toBe("melamine-white");
   });
 
+  it("le bas évier a deux traverses et pas de dessus, le fond en HDF comme les autres", () => {
+    const { doc, cabinet } = addKitchenUnit(createReferencePlate(), entry("base-bas-evier-800"));
+    expect(cabinet.top).toBe("rails");
+    expect(doc.bodyInfo?.[`${cabinet.id}#3`]?.material).toBe("melamine-white");
+    expect(doc.bodyInfo?.[`${cabinet.id}#4`]?.material).toBe("hdf");
+    expect(doc.bodyInfo?.[`${cabinet.id}#5`]?.material).toBe("melamine-white");
+    expect(entryFromCabinet(doc, cabinet).top).toBe("rails");
+    expect(addKitchenUnit(createReferencePlate(), entry("base-bas-2-portes-800")).cabinet.top).toBeUndefined();
+  });
+
   it("se pose à droite du caisson choisi, à la première place libre, son fond sur le même plan", () => {
     let doc = createReferencePlate();
     doc = addKitchenUnit(doc, entry("base-bas-1-porte-600")).doc;

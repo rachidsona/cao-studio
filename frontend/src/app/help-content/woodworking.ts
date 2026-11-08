@@ -9,12 +9,12 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:cabinet"],
         name: "Caisson",
-        what: "Construit un caisson complet (côtés, dessus, dessous, fond, étagères) à partir de ses cotes extérieures, chaque pièce étant un corps à part.",
+        what: "Construit un caisson complet (côtés, dessus ou traverses, dessous, fond, étagères) à partir de ses cotes extérieures, chaque pièce étant un corps à part.",
         steps: [
           "Cliquez « Caisson » dans le groupe « Meuble ».",
           "Choisissez un « Modèle » pour partir de cotes courantes : bas de cuisine, haut, colonne, penderie ou placard.",
           "Réglez « Largeur », « Hauteur », « Profondeur », « Épaisseur », « Socle » et le nombre d'« Étagères ».",
-          "Choisissez le « Fond » (vissé derrière, encastré entre les côtés ou sans fond), la « Construction » et l'« Orientation ».",
+          "Choisissez le « Fond » (vissé derrière, encastré entre les côtés ou sans fond), la « Construction », le « Haut du caisson » (dessus plein, ou deux traverses pour un évier) et l'« Orientation ».",
           "Cliquez « OK ».",
         ],
         tip: "Cochez « Remplir une largeur (caissons égaux) », puis « Largeur à remplir » et « Largeur max » : l'outil pose autant de caissons égaux qu'il en faut. Un nouveau caisson se place à droite de ceux qui existent ; sa position est son coin avant gauche en bas.",
@@ -52,10 +52,10 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Ajoute d'un clic un meuble du commerce (bas, haut ou colonne), à sa largeur et avec ses façades, à côté du caisson sélectionné.",
         steps: [
           "Sélectionnez le caisson à côté duquel poser le meuble ; sans sélection, le meuble suit le dernier caisson.",
-          "Cliquez « Meubles de cuisine » : le panneau liste les « Meubles bas », « Meubles hauts » et « Colonnes ».",
-          "Cliquez la largeur voulue sous le nom du meuble : il arrive sélectionné, construit comme son voisin.",
+          "Cliquez « Meubles de cuisine », puis l'onglet « Bas », « Hauts » ou « Colonnes » : chaque meuble est dessiné de face, avec ce qu'il contient et ses cotes.",
+          "Survolez une largeur pour voir le meuble à cette taille, cliquez-la pour l'ajouter : il arrive sélectionné, construit comme son voisin.",
           "Tirez sa poignée ✥ pour le placer le long du mur (Maj : librement). La poignée ↻ le tourne.",
-          "Pour un meuble qui n'est pas dans la liste, utilisez « Mes meubles » : « ＋ Décrire un nouveau meuble », ou « Ajouter … à ma liste » avec un caisson sélectionné.",
+          "Pour un meuble qui n'est pas dans la liste, ouvrez l'onglet « Mes meubles » : « ＋ Décrire un nouveau meuble », ou « Ajouter … à ma liste » avec un caisson sélectionné.",
         ],
         tip: "Chaque clic est une annulation. « Mes meubles » est gardé dans ce navigateur.",
       },
@@ -202,6 +202,26 @@ export const WOODWORKING: HelpFamily[] = [
           "Cliquez un style, ou réglez « Mon style », donnez-lui un nom et cliquez « Garder et appliquer ».",
         ],
         tip: "Seules les pièces affichées changent, et les fonds gardent leur matière. Vos styles sont gardés dans ce navigateur.",
+      },
+      {
+        keys: ["data-workshop:doors-open"],
+        name: "Ouvrir / fermer les portes",
+        what: "Ouvre d'un coup toutes les portes du modèle, de dressing comme de cuisine, pour voir l'intérieur, puis les referme. Le modèle ne change pas.",
+        steps: [
+          "Dans l'onglet Dressing ou Cuisine, cliquez « Ouvrir / fermer les portes » : toutes les portes s'ouvrent.",
+          "Recliquez le bouton : elles se referment toutes.",
+        ],
+        tip: "Un clic sur une porte n'ouvre ou ne ferme que celle-là. Si certaines portes sont déjà ouvertes, le bouton ouvre d'abord les autres. Les tiroirs ne bougent pas.",
+      },
+      {
+        keys: ["data-workshop:drawers-open"],
+        name: "Ouvrir / fermer les tiroirs",
+        what: "Sort d'un coup tous les tiroirs du modèle, de dressing comme de cuisine, pour voir leurs caissons, puis les rentre. Le modèle ne change pas.",
+        steps: [
+          "Dans l'onglet Dressing ou Cuisine, cliquez « Ouvrir / fermer les tiroirs » : tous les tiroirs sortent.",
+          "Recliquez le bouton : ils rentrent tous.",
+        ],
+        tip: "Un clic sur un tiroir ne sort ou ne rentre que celui-là. Si certains sont déjà sortis, le bouton sort d'abord les autres. Les portes ne bougent pas.",
       },
       {
         keys: ["data-workshop:door-fronts"],

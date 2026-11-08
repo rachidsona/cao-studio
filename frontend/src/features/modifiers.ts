@@ -7,11 +7,13 @@
  * - vriller : lissage par des sections tournées peu à peu jusqu'à `amount` degrés à l'autre bout ;
  * - déformer (FFD 3×3×3) : n'importe quel corps, maillé, déformé par sa grille (features/ffd.ts) et recousu en solide.
  * - déplacer un trait : les coins du corps sur le trait vont ailleurs, ses faces s'étirent pour les suivre.
+ * - agrandir une face : ses points s'écartent de son centre, les côtés du corps suivent (features/face-scale.ts).
  */
 import { drawRectangle, makePolygon, makeSolid, Plane, type Face, type Shape3D, type Sketch } from "replicad";
 import type { ModifierFeature } from "../document/types";
 import { bodyMetrics, GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { requireSolid, type OutputLookup } from "./common";
+import { scaledPoint } from "./face-scale";
 import { ffdPoint, isDeformed, subdivide, type Box } from "./ffd";
 import type { SolidOutput } from "./outputs";
 
@@ -22,6 +24,7 @@ export function buildModifier(feature: ModifierFeature, lookup: OutputLookup): S
   const shape = requireSolid(lookup, feature.target).shape;
   if (feature.kind === "ffd") return buildFfd(feature, shape);
   if (feature.kind === "points") return buildPointMove(feature, shape);
+  if (feature.kind === "face-scale") return buildFaceScale(feature, shape);
   const { bbox, volume } = bodyMetrics(shape);
   const size = [0, 1, 2].map((i) => bbox[1][i]! - bbox[0][i]!);
   if (Math.abs(volume - size[0]! * size[1]! * size[2]!) > 1e-3 * volume) throw new GeometryError(`${feature.name} : un modificateur s'applique à une planche droite (une boîte), pas à une pièce déjà usinée.`);
@@ -100,15 +103,29 @@ function buildPointMove(feature: ModifierFeature, shape: Shape3D): SolidOutput {
   const corners = Array.from({ length: mesh.vertices.length / 3 }, (_, i): V => [mesh.vertices[i * 3]!, mesh.vertices[i * 3 + 1]!, mesh.vertices[i * 3 + 2]!]);
   const near = (p: V, q: V) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < SAME_CORNER;
   if (!moves.every((m) => corners.some((p) => near(p, m.from)))) throw new GeometryError(`${feature.name} : le trait n'est plus sur le corps (il a changé) ; refaites le déplacement.`);
-  const moved = (i: number): V => {
-    const p = corners[i]!;
+  return sewn(feature, mesh, corners.map((p) => {
     const m = moves.find((q) => near(p, q.from));
     return m ? [...m.to] : p;
-  };
+  }), "le trait traverse une autre face ?");
+}
+
+/** A flat face scaled about its centre: its points move, and the sides stretch from the old edge to the new one. */
+function buildFaceScale(feature: ModifierFeature, shape: Shape3D): SolidOutput {
+  const face = feature.face;
+  if (!face || (face.scale[0] === 1 && face.scale[1] === 1)) return { kind: "solid", shape: shape.clone() as Shape3D };
+  const mesh = shape.mesh({ tolerance: 0.1, angularTolerance: 0.2 });
+  const corners = Array.from({ length: mesh.vertices.length / 3 }, (_, i): V => [mesh.vertices[i * 3]!, mesh.vertices[i * 3 + 1]!, mesh.vertices[i * 3 + 2]!]);
+  const moved = corners.map((p) => scaledPoint(face, p));
+  if (!moved.some(Boolean)) throw new GeometryError(`${feature.name} : la face n'est plus sur le corps (il a changé) ; refaites la déformation.`);
+  return sewn(feature, mesh, corners.map((p, i) => moved[i] ?? p), "une autre face gêne ?");
+}
+
+/** The triangles of a mesh with their corners moved, sewn back into a solid, the faces left flat merged again. */
+function sewn(feature: ModifierFeature, mesh: { triangles: number[] }, corners: V[], hint: string): SolidOutput {
   const faces: Face[] = [];
   try {
     for (let t = 0; t + 2 < mesh.triangles.length; t += 3) {
-      const [a, b, c] = [moved(mesh.triangles[t]!), moved(mesh.triangles[t + 1]!), moved(mesh.triangles[t + 2]!)];
+      const [a, b, c] = [corners[mesh.triangles[t]!]!, corners[mesh.triangles[t + 1]!]!, corners[mesh.triangles[t + 2]!]!];
       const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
       const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
       const area = Math.hypot(ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!);
@@ -117,6 +134,6 @@ function buildPointMove(feature: ModifierFeature, shape: Shape3D): SolidOutput {
     return { kind: "solid", shape: requireSingleValidSolid(makeSolid(faces).simplify(), feature.name) };
   } catch (error) {
     if (error instanceof GeometryError) throw error;
-    throw new GeometryError(`${feature.name} : le corps ne se déforme pas ainsi (le trait traverse une autre face ?).`);
+    throw new GeometryError(`${feature.name} : le corps ne se déforme pas ainsi (${hint}).`);
   }
 }

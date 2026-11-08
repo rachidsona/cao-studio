@@ -135,6 +135,29 @@ def door_fronts(i):
     i.box(4.8, 3.5, 4.8, 0.6, 0.2, 2.4, "orange")
 
 
+def doors_open(i):
+    """A cabinet with its two doors swung wide open."""
+    carcass(i, 11, 6, 14)
+    closed(i, 11, 6, 14)
+    i.face([(-5.5, 3, 0.3), (-7.6, 9, 0.3), (-7.6, 9, 13.7), (-5.5, 3, 13.7)], "bl")
+    i.face([(5.5, 3, 0.3), (7.6, 9, 0.3), (7.6, 9, 13.7), (5.5, 3, 13.7)], "br")
+
+
+def drawers_open(i):
+    """A cabinet, its two drawers pulled out to the front."""
+    i.box(-6, -4, 0, 12, 8, 13, "white")
+    i.box(-5.4, 4, 7.2, 10.8, 5, 4.6, "blue").box(-5.4, 9, 7, 10.8, 0.9, 5, "white")
+    i.box(-5.4, 4, 1.4, 10.8, 2.6, 4.6, "blue").box(-5.4, 6.6, 1.2, 10.8, 0.9, 5, "white")
+    i.box(-1.6, 9.9, 9.2, 3.2, 0.4, 0.6, "orange").box(-1.6, 7.5, 3.4, 3.2, 0.4, 0.6, "orange")
+
+
+def paneling(i):
+    """A hollow box of panels, the near ones apart to show the mitred corner."""
+    i.box(-6, -5, 0, 12, 10, 1.4, "white")
+    i.box(-6, 3.6, 1.4, 12, 1.4, 8, "white").box(-6, -5, 1.4, 1.4, 8.6, 8, "white")
+    i.box(4.6, -5, 1.4, 1.4, 8.6, 8, "blue").box(-4.6, -5, 1.4, 9.2, 1.4, 8, "blue")
+
+
 def edge_paint(i):
     i.box(-7, -5, 0, 14, 10, 1.8, "white")
     i.face([(-7, 5, 0), (7, 5, 0), (7, 5, 1.8), (-7, 5, 1.8)], "ol")
@@ -157,11 +180,11 @@ def live_check(i):
 
 
 # Drawn from the front: their insides show, as on the plan of a Répartition.
-FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "piece-dims", "part-tags", "module-palette"}
+FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "doors-open", "piece-dims", "part-tags", "module-palette"}
 
 MEUBLES = {
     "cabinet": cabinet, "fronts": fronts, "partition": partition, "shelves": shelves, "cloisons": cloisons, "drawers": drawers,
     "rod": rod, "dressing": dressing, "niche": niche, "module": module, "dressing-plan": dressing_plan, "niche-copy": niche_copy,
-    "niche-align": niche_align, "dressing-style": dressing_style, "door-fronts": door_fronts, "edge-paint": edge_paint,
+    "niche-align": niche_align, "dressing-style": dressing_style, "door-fronts": door_fronts, "doors-open": doors_open, "drawers-open": drawers_open, "paneling": paneling, "edge-paint": edge_paint,
     "variants": variants, "live-check": live_check, "module-palette": module_palette,
 }

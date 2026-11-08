@@ -114,6 +114,6 @@ export function hardwareGeometry(doc: Pick<CadDocument, "hardware">): HardwareSi
 export function stampHardware(doc: CadDocument): CadDocument {
   if (!doc.hardware) return doc;
   const hw = hardwareGeometry(doc);
-  const stamp = (f: Feature): Feature => (f.type === "fronts" || (f.type === "niche" && (f.fill === "drawers" || f.fill === "doors")) ? { ...f, hw } : f);
+  const stamp = (f: Feature): Feature => (f.type === "fronts" || (f.type === "niche" && (f.fill === "drawers" || f.fill === "doors" || f.fill === "door")) ? { ...f, hw } : f);
   return { ...doc, features: doc.features.map(stamp) };
 }

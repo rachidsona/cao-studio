@@ -167,7 +167,7 @@ async function start(): Promise<void> {
   bindSag(root, viewport, editor);
   bindWeight(root, viewport, editor);
   bindMotion(root, viewport, editor);
-  bindDrawers(viewport, editor);
+  bindDrawers(root, viewport, editor);
   bindProjectMenu(root, viewport, editor, bindDrawingWorkspace(root, viewport, editor));
   bindHelp(root);
   bindLayers(root, viewport, editor);

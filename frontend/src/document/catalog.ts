@@ -51,7 +51,7 @@ export function furnitureCounts(doc: CadDocument): Record<Exclude<HardwareRule["
       counts.door += f.layout === "door" ? 1 : f.layout === "doors" ? 2 : 0;
       const cabinet = doc.features.find((c) => c.id === f.cabinet);
       counts.door_hinge += frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined).find((h) => h.name === GENERIC_HINGE)?.quantity ?? 0;
-    } else if (f.type === "niche" && f.fill === "doors") {
+    } else if (f.type === "niche" && (f.fill === "doors" || f.fill === "door")) {
       const hinges = nicheHardware(doc.features, f).find((h) => h.name === GENERIC_HINGE)?.quantity ?? 0;
       counts.door_hinge += hinges;
       counts.door += hinges ? Math.max(1, Math.round(hinges / 2)) : 0;

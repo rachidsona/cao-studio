@@ -52,7 +52,7 @@ export function kitchenPlan(doc: CadDocument, s: KitchenSettings, frontMaterial:
     const cabinet: CabinetFeature = {
       id: uniqueId(probe, "cb"), type: "cabinet", name: u.name, origin: placePoint(place, u.origin), width: u.width, height: u.height, depth: u.depth,
       thickness: 18, back: "applied", backThickness: 3, shelves: u.shelves, plinth: u.plinth, construction: "sides-through",
-      ...(rotation ? { rotation } : {}),
+      ...(u.top ? { top: u.top } : {}), ...(rotation ? { rotation } : {}),
     };
     push(cabinet);
     cabinetPartNames(cabinet).forEach((name, i) => (plan.info[`${cabinet.id}${PART_SEPARATOR}${i}`] = { material: name === "Fond" ? "hdf" : "melamine-white" }));

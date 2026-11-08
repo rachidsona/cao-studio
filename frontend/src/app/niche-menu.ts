@@ -12,7 +12,7 @@ import { Joinery3D } from "./joinery-3d";
 import { openNicheCopy } from "./niche-copy-tool";
 import { nicheUnderPointer, type PickedNiche } from "./niche-pick";
 
-type NicheAction = "shelves" | "cloisons" | "niche" | "rod" | "drawers" | "module";
+type NicheAction = "shelves" | "cloisons" | "niche" | "rod" | "drawers" | "door" | "module";
 
 /** What can be done in a niche, with the icon of the tool. */
 export const NICHE_ACTIONS: { action: NicheAction; label: string; icon: string }[] = [
@@ -21,6 +21,7 @@ export const NICHE_ACTIONS: { action: NicheAction; label: string; icon: string }
   { action: "niche", label: "Hauteur de la niche", icon: "i-niche" },
   { action: "rod", label: "Penderie", icon: "i-rod" },
   { action: "drawers", label: "Tiroirs", icon: "i-drawers" },
+  { action: "door", label: "Porte sur niches", icon: "i-door-fronts" },
   { action: "module", label: "Module", icon: "i-module" },
 ];
 const BUTTON_ACTION: Record<string, NicheAction> = { "data-action:shelves": "shelves", "data-action:cloisons": "cloisons", "data-action:niche": "niche", "data-action:penderie": "rod", "data-action:tiroirs": "drawers", "data-action:module": "module" };

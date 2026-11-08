@@ -229,7 +229,7 @@ export class SketchController {
     this.joinery?.cancel();
     const sketch = partitionHolder(this.host.doc(), editing?.sketch ?? selected);
     if (!sketch) {
-      this.host.notify(`${fill === "niche" ? "Niche règle" : fill === "module" ? "Module équipe" : fill === "rod" ? "Penderie équipe" : "Tiroirs équipe"} les niches d'une répartition : faites d'abord une Répartition.`, "error");
+      this.host.notify(`${fill === "niche" ? "Niche règle" : fill === "module" ? "Module équipe" : fill === "rod" ? "Penderie équipe" : fill === "door" ? "Porte sur niches occupe" : "Tiroirs équipe"} les niches d'une répartition : faites d'abord une Répartition.`, "error");
       return;
     }
     this.joinery = fill === "niche" ? Joinery3D.height(this.viewport, this.joineryHost(), sketch) : fill === "module" ? Joinery3D.module(this.viewport, this.joineryHost(), sketch) : Joinery3D.equip(this.viewport, this.joineryHost(), sketch, fill, editing);

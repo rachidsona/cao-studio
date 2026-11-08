@@ -312,6 +312,11 @@ export class Joinery3D implements PointerHandler {
       picking.click([(niche.box.x0 + niche.box.x1) / 2, (niche.box.y0 + niche.box.y1) / 2]);
       return true;
     }
+    // A Répartition already made stays where it is: a click meant for another element must not carry it there.
+    if (this.editing) {
+      this.host.notify("Cette Répartition reste à sa place : réglez-la dans le panneau, ou terminez pour cliquer ailleurs.", "info");
+      return true;
+    }
     // Répartition: its lower-left corner where the click meets its plane.
     const { origin, direction } = this.viewport.rayFromEvent(event);
     const p = rayToSketch(this.frame, origin, direction);

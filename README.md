@@ -577,7 +577,9 @@ opération existante.
     (« shift » de l'esquisse) : la géométrie et les contraintes ne changent pas, même si elles la lient à
     l'origine. Les corps extrudés de cette esquisse suivent ;
   - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
-    en modifiant le corps ; « Corps entier » déplace le corps, et la normale de la face sert de repère local ;
+    en modifiant le corps ; « Le corps entier » déplace le corps — ou le **meuble dont il est une pièce** : un
+    caisson par son origine, ses façades suivant ; une Répartition par son esquisse, ses panneaux, portes et niches
+    suivant, en une seule annulation (`app/move-whole.ts`) — et la normale de la face sert de repère local ;
   - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
   - Le **manipulateur** est petit (environ 50 px, de taille constante à l'écran), dessiné comme le repère d'axes
     du coin de la vue :
@@ -1516,6 +1518,14 @@ opération existante.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Panneaux sur faces** (groupe Modifier, après Coque), dans l'historique : les faces planes cliquées d'un volume
+  deviennent des panneaux de l'épaisseur voulue, pris dans le volume ; un clic prend aussi les **faces pareilles**
+  (même aire, même périmètre, à plat : les côtés d'un seau à pans, les deux côtés d'un caisson, `app/face-twins.ts`),
+  recliquer retire. Deux assemblages : **en onglet, à tout angle** (deux panneaux voisins se partagent leur coin par
+  le plan bissecteur de leurs faces — le seau à 8 pans, la boîte en onglets) ou **bout à bout** (la première face
+  cliquée passe, les suivantes s'arrêtent contre les panneaux déjà faits). Les faces non choisies restent ouvertes ;
+  les faces se prennent sur le volume d'avant l'opération, comme pour la Coque ; l'opération se rouvre pour la
+  reprendre (`features/paneling.ts`, `app/paneling-tool.ts`).
 - **Lissage** (groupe Modifier, comme Fusion) : un solide passant par les profils fermés de plusieurs esquisses, dans
   l'ordre de l'historique, courbe ou droit entre eux (pied galbé, trémie, moulure qui change de section) ; nouveau
   corps, joindre ou couper. Chaque profil doit être un seul contour fermé, sans trou, dans des plans séparés.
@@ -1523,8 +1533,15 @@ opération existante.
   (une boîte droite) est reconstruite exactement depuis sa section — *cintrée* sur sa longueur (rayon au milieu de
   l'épaisseur, la longueur est gardée), *effilée* (section réduite à un pourcentage au bout) ou *vrillée* (section
   tournée jusqu'à un angle au bout).
-- **Déformer — FFD 3×3×3** (menu du groupe Modifier, comme la FFD de C. Phillips dans JHS PowerBar), dans
-  l'historique : une grille orange de 3 × 3 × 3 points se tend sur la boîte du corps choisi (sélectionné ou cliqué).
+- **Déformer** (groupe Modifier, comme l'échelle centrée de SketchUp, Option · Ctrl), dans l'historique : un clic sur
+  une face plane y pose un cadre jaune, aligné sur les axes du modèle, et ses poignées vertes. Tirer un coin agrandit
+  ou réduit la face dans les deux sens, tirer le milieu d'un côté dans ce sens seulement, toujours depuis son centre
+  (le point rouge) ; le champ « Échelle » la donne au chiffre. Les points du corps sur cette face s'écartent du
+  centre, tout le reste reste en place et les côtés vont droit de l'ancien bord au nouveau : le dessus d'un prisme
+  agrandi fait un seau à pans. La déformation se rouvre pour reprendre le cadre (`features/face-scale.ts`,
+  `app/face-scale-tool.ts`).
+- **FFD 3×3×3** (l'ancien « Déformer », comme la FFD de C. Phillips dans JHS PowerBar ; plus de bouton, les
+  déformations FFD déjà dans les projets se rouvrent toujours), dans l'historique : une grille orange de 3 × 3 × 3 points se tend sur la boîte du corps choisi (sélectionné ou cliqué).
   Un clic sur un point le choisit, Maj + clic en ajoute, Maj + glisser prend tous ceux d'un rectangle (comme la
   fenêtre de sélection de SketchUp), « Choisir » en prend une rangée (les 9 du dessus, du dessous, du milieu, le
   milieu du dessus pour un dôme, les 27). Les trois flèches X, Y, Z tirent les points choisis, ou leurs champs donnent
@@ -1606,7 +1623,17 @@ opération existante.
     1,20 à 2,70 m), le passage devant l'îlot (90 cm au moins, 1,20 m pour deux), la plaque contre une colonne ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-layout.ts`, `features/kitchen-appliances.ts`,
     `features/room-runs.ts`, `document/kitchen-plan.ts`).
+- **Ouvrir / fermer les portes** et **Ouvrir / fermer les tiroirs** (onglets Dressing et Cuisine, à côté l'un de
+  l'autre) : un clic ouvre toutes les portes du modèle autour de leurs charnières, ou sort tous les tiroirs avec leurs
+  caissons, et le bouton reste enfoncé ; un second clic les referme ou les rentre. Si certains sont déjà ouverts, le
+  premier clic ouvre les autres ; sans porte ou sans tiroir, un message le dit. L'un ne touche pas à l'autre, et un
+  clic sur une porte ou un tiroir n'ouvre toujours que lui. La vue seulement : le modèle ne change pas
+  (`app/drawer-toggle.ts`).
 - **Meubles de cuisine** (groupe « Cuisine ») : la liste des meubles du commerce, chacun à ses largeurs.
+  - Chaque modèle montre son **dessin de face** à l'échelle, comme sur une planche de cuisiniste (caisson, socle,
+    portes, tiroirs, poignées, four, robinet de l'évier — tout calculé depuis ses cotes, aux tons du thème, les
+    poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 56 cm ») ; survoler une largeur redessine
+    le meuble à cette largeur (`app/unit-elevation.ts`).
   - **Bas** : 1 porte, 2 portes, 3 tiroirs, casseroliers, évier, four.
   - **Hauts** : 1 porte, 2 portes, sur hotte.
   - **Colonnes** : rangement, four, réfrigérateur.

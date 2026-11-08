@@ -4,6 +4,7 @@
  * throw GeometryError with an explicit message instead of producing bad
  * geometry.
  */
+import { buildPaneling } from "./paneling";
 import { buildTrim } from "./trim";
 import { buildRoom } from "./room";
 import { draw, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
@@ -214,6 +215,8 @@ export function buildFeature(feature: Feature, lookup: OutputLookup, featureOf: 
       return buildSweep(feature, lookup);
     case "shell":
       return buildShell(feature, lookup);
+    case "paneling":
+      return buildPaneling(feature, lookup);
     case "loft":
       return buildLoft(feature, lookup);
     case "modifier":

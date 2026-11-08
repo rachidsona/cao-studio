@@ -7,6 +7,9 @@
  * JHS, Maj + glisser trace un rectangle qui prend les points dedans, et « Échelle » rapproche les points choisis de leur
  * centre (ou les écarte) : le dessus réduit de moitié fait d'un cylindre un obus. OK ajoute la déformation à
  * l'historique ; elle se rouvre pour reprendre la grille.
+ *
+ * Le bouton « Déformer » ouvre maintenant face-scale-tool.ts : cet outil ne sert plus qu'à rouvrir les déformations FFD
+ * déjà dans les projets.
  */
 import * as THREE from "three";
 import { bodyLabel, uniqueId, uniqueName } from "../document/operations";

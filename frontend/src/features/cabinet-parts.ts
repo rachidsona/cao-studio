@@ -6,6 +6,8 @@ import type { CabinetFeature, Vec3 } from "../document/types";
 
 /** Smallest dimension accepted (mm), as the modeller's. */
 const MIN_LENGTH = 1e-3;
+/** Width of the rails that replace the top of a sink unit (mm). */
+const RAIL = 100;
 
 /** One part of the cabinet: its name and its box (two opposite corners, mm). */
 export interface CabinetPart {
@@ -48,7 +50,11 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
   box("Côté droit", W - t, W, 0, sideDepth, sz0, sz1);
   const [hx0, hx1] = sidesThrough ? [t, W - t] : [0, W];
   box("Dessous", hx0, hx1, 0, boardDepth, p, p + t);
-  box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
+  // The front rail takes the place of the top, the back rail comes last: the other bodies keep their numbers.
+  const rails = f.top === "rails";
+  const rail = Math.min(RAIL, boardDepth / 3);
+  if (rails) box("Traverse avant", hx0, hx1, 0, rail, H - t, H);
+  else box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
   if (f.back === "applied") box("Fond", 0, W, D - bt, D, p, H);
   else if (f.back === "inset") box("Fond", t, W - t, D - bt, D, p + t, H - t);
   // Shelves evenly spaced in the inner height.
@@ -58,6 +64,7 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
     const z = z0 + gap * (i + 1) + t * i;
     box(`Étagère ${i + 1}`, t, W - t, 0, boardDepth, z, z + t);
   }
+  if (rails) box("Traverse arrière", hx0, hx1, boardDepth - rail, boardDepth, H - t, H);
   return parts;
 }
 

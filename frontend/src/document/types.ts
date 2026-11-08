@@ -339,6 +339,8 @@ export interface CabinetFeature extends FeatureBase {
   plinth: number;
   /** Sides run full height, or top and bottom run full width. */
   construction: "sides-through" | "top-bottom-through";
+  /** What closes its top: a full board (missing), or two rails, in front and at the back, under a sink. */
+  top?: "panel" | "rails";
   /**
    * Turn about the vertical through the origin (degrees, counterclockwise seen from above): 0 faces −Y, 90 faces +X,
    * 180 faces +Y, 270 faces −X. Its fronts turn with it.
@@ -511,6 +513,18 @@ export interface ShellFeature extends FeatureBase {
   thickness: number;
 }
 
+/**
+ * Panneaux sur faces: the flat faces chosen on a body become boards of `thickness`, taken inside it; mitred at any
+ * angle, or butted (the first face runs through). Each board is a body ("<id>#n"); the body itself is used up.
+ */
+export interface PanelingFeature extends FeatureBase {
+  type: "paneling";
+  target: string;
+  faces: FaceRef[];
+  thickness: number;
+  joint: "miter" | "butt";
+}
+
 /** Loft (lissage): a solid through the closed profiles of several sketches, in order (straight between them when `ruled`). */
 export interface LoftFeature extends FeatureBase {
   type: "loft";
@@ -528,7 +542,8 @@ export interface ModifierFeature extends FeatureBase {
   type: "modifier";
   target: string;
   /** "ffd": free-form deformation of any body by a 3 × 3 × 3 lattice (as JHS PowerBar's FFD), see features/ffd.ts. */
-  kind: "bend" | "taper" | "twist" | "ffd" | "points";
+  /** "face-scale": a flat face made bigger or smaller about its centre, its sides following (features/face-scale.ts). */
+  kind: "bend" | "taper" | "twist" | "ffd" | "points" | "face-scale";
   amount: number;
   /**
    * "points" (« Déplacer ce trait », as moving an edge in SketchUp): the corners of the body at `from` go to `to`, and
@@ -539,6 +554,17 @@ export interface ModifierFeature extends FeatureBase {
   lattice?: number[];
   /** FFD: the box the lattice was set on (to show it again when editing); the build uses the body's own box. */
   frame?: [Vec3, Vec3];
+  /** "face-scale": the face and its scale. */
+  face?: FaceScale;
+}
+
+/** A flat face and how it is scaled: its centre, two unit directions in it, its size along them (mm), a scale for each. */
+export interface FaceScale {
+  center: Vec3;
+  u: Vec3;
+  v: Vec3;
+  size: [number, number];
+  scale: [number, number];
 }
 
 /**
@@ -578,8 +604,13 @@ export interface NicheFeature extends FeatureBase {
   sketch: string;
   partition: string;
   niche: number[];
-  /** « doors »: a door in front of every case of the partition; « back »: its back panel (their `niche` is empty). */
-  fill: "rod" | "drawers" | "doors" | "back";
+  /**
+   * « doors »: a door in front of every case of the partition; « back »: its back panel (their `niche` is empty);
+   * « door »: one door over the niche and those of `span` (neighbours making a rectangle with it).
+   */
+  fill: "rod" | "drawers" | "doors" | "back" | "door";
+  /** Door: the other niches it covers. */
+  span?: number[][];
   /** Rod: its diameter, and the distance from the top of the niche to its axis (mm). */
   diameter: number;
   drop: number;
@@ -638,6 +669,7 @@ export type Feature =
   | FrontsFeature
   | ModifierFeature
   | ShellFeature
+  | PanelingFeature
   | LoftFeature
   | SweepFeature
   | MachiningFeature
@@ -836,6 +868,7 @@ export function featureInputs(feature: Feature): string[] {
     case "loft":
       return feature.target && feature.operation !== "new" ? [...feature.profiles, feature.target] : [...feature.profiles];
     case "shell":
+    case "paneling":
     case "modifier":
       return [feature.target];
     case "panels":
@@ -890,6 +923,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "rotate":
     case "machining":
     case "shell":
+    case "paneling":
     case "modifier":
       return [feature.target];
     case "extrude":
@@ -913,7 +947,7 @@ export function consumedBodies(feature: Feature): string[] {
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["room", "trim", "extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["paneling", "room", "trim", "extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

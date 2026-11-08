@@ -82,7 +82,7 @@ export function doorProblems(doc: CadDocument): Problem[] {
         const { blocked } = hingeHeights(p.from[2], p.to[2], n, shelves);
         if (blocked.length) problems.push({ kind: "hardware", severity: "warning", message: `${bodyLabel(doc, id)} : ${blocked.length > 1 ? "des charnières tombent" : "une charnière tombe"} sur une étagère, même décalée de 32 mm ; déplacez l'étagère.`, bodies: [id] });
       });
-    } else if (f.type === "niche" && f.fill === "doors") {
+    } else if (f.type === "niche" && (f.fill === "doors" || f.fill === "door")) {
       nichePartsIn(doc.features, f).forEach((p, i) => {
         if (p.role !== "front") return;
         const size = [0, 1, 2].map((k) => Math.abs(p.to[k]! - p.from[k]!));

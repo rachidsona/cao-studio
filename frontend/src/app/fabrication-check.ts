@@ -13,8 +13,8 @@ import { layoutProblems } from "../document/layout-check";
 import { layoutOf } from "./layout-check";
 import { carcassBoards } from "./assembly-tool";
 import { MATERIALS } from "../document/materials";
-import { bodyLabel } from "../document/operations";
-import type { CadDocument, RoomFeature } from "../document/types";
+import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
+import { featureOfBody, type CadDocument, type RoomFeature } from "../document/types";
 import { drawerSlide } from "../features/drawer-open";
 import { collisions, type Box } from "../features/motion";
 import type { GeometryClient } from "../geometry/client";
@@ -93,7 +93,8 @@ export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
   const checked = parts.map((p) => {
     const size = [0, 1, 2].map((k) => p.bbox[1][k]! - p.bbox[0][k]!);
     const boxLike = Math.abs(p.volume - size[0]! * size[1]! * size[2]!) <= 1e-3 * size[0]! * size[1]! * size[2]!;
-    return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike };
+    const owner = findFeature(doc, featureOfBody(bodyOrigin(doc, p.id)));
+    return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike, ...(owner?.type === "paneling" ? { together: owner.id } : {}) };
   });
   const sheets = new Map(MATERIALS.map((m) => [m.name, m.sheet]));
   return [

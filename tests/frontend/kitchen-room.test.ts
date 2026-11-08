@@ -64,6 +64,7 @@ describe("cuisine dans une pièce relevée", () => {
     if (typeof runs === "string") throw new Error(runs);
     const { units, boxes, ergonomics: e } = kitchenLayout({ ...KITCHEN, lengthA: 4000, appliances: true, fridge: true, splashback: true, kick: true }, runs.walls);
     const sink = units.find((u) => u.name.startsWith("Évier"))!;
+    expect(sink.top).toBe("rails");
     expect(sink.origin[0] + sink.width > 1400 && sink.origin[0] < 2600).toBe(true);
     expect(boxes.map((b) => b.name)).toEqual(expect.arrayContaining(["Lave-vaisselle", "Plaque de cuisson", "Four", "Hotte", "Crédence A", "Plinthe A"]));
     expect(units.some((u) => u.name === "Colonne réfrigérateur")).toBe(true);

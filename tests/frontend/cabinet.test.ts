@@ -1,7 +1,7 @@
 /** Parametric cabinet: every part is a board of its own, the parts never overlap, and they follow the dimensions. */
 import { beforeAll, describe, expect, it } from "vitest";
 import { bodyLabel } from "../../frontend/src/document/operations";
-import type { CabinetFeature, CadDocument } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { cabinetParts, cabinetProblem, type CabinetPart } from "../../frontend/src/features/cabinet-parts";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
@@ -95,5 +95,42 @@ describe("caisson dans le modèle", () => {
     const bad = JSON.parse(JSON.stringify(d));
     bad.features[0].back = "colle";
     expect(() => parseDocument(bad)).toThrow(/type de fond/);
+  });
+});
+
+describe("caisson d'évier : deux traverses à la place du dessus", () => {
+  const rails = base({ top: "rails", shelves: 0 });
+  const named = (f: CabinetFeature, name: string) => cabinetParts(f).find((p) => p.name === name)!;
+
+  it("n'a plus de dessus, et le milieu reste ouvert pour la cuve", () => {
+    const names = cabinetParts(rails).map((p) => p.name);
+    expect(names).toEqual(["Côté gauche", "Côté droit", "Dessous", "Traverse avant", "Fond", "Traverse arrière"]);
+    const [front, back] = [named(rails, "Traverse avant"), named(rails, "Traverse arrière")];
+    expect([front.from[1], front.to[1]]).toEqual([0, 100]);
+    expect([back.from[1], back.to[1]]).toEqual([457, 557]);
+    expect(back.from[1] - front.to[1]).toBe(357);
+  });
+
+  it("les traverses vont d'un côté à l'autre, à la hauteur du dessus", () => {
+    const top = named(base(), "Dessus");
+    for (const name of ["Traverse avant", "Traverse arrière"]) {
+      const rail = named(rails, name);
+      expect([rail.from[0], rail.to[0], rail.from[2], rail.to[2]]).toEqual([top.from[0], top.to[0], top.from[2], top.to[2]]);
+    }
+  });
+
+  it("garde le numéro des autres pièces : le fond reste le fond", () => {
+    expect(cabinetParts(rails).findIndex((p) => p.name === "Fond")).toBe(cabinetParts(base()).findIndex((p) => p.name === "Fond"));
+  });
+
+  it("un caisson peu profond garde un passage entre ses traverses", () => {
+    const shallow = base({ top: "rails", depth: 150, shelves: 0 });
+    expect(named(shallow, "Traverse arrière").from[1]).toBeGreaterThan(named(shallow, "Traverse avant").to[1]);
+  });
+
+  it("se relit depuis un fichier, et refuse un haut inconnu", () => {
+    const write = (top: string) => ({ ...createReferencePlate(), features: [{ ...rails, top }] });
+    expect(() => parseDocument(write("rails"))).not.toThrow();
+    expect(() => parseDocument(write("grille"))).toThrow();
   });
 });

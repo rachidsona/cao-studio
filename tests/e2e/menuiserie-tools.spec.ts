@@ -202,3 +202,273 @@ test("Façades pose une porte sur une case de Répartition, module compris", asy
   await expect(tree.getByText("Porte 1", { exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("un clic dans la vue ne déplace pas une Répartition rouverte", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Clic e2e");
+  await wall(page);
+  await page.getByRole("tab", { name: "Plan de dressing" }).click();
+  const zones = page.getByRole("dialog", { name: "Plan de dressing" }).getByRole("list", { name: "Zones du plan" });
+  await zones.getByRole("listitem").first().getByRole("button").last().click();
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await expect(partition).toBeVisible();
+  const corner = partition.getByLabel(/^Coin X/);
+  const before = await corner.inputValue();
+
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.8);
+  await expect(page.getByText(/reste à sa place/)).toBeVisible();
+  await expect(corner).toHaveValue(before);
+  expect(errors).toEqual([]);
+});
+
+/** The view under its messages. */
+async function look(page: Page) {
+  const box = (await canvas(page).boundingBox())!;
+  return (await page.screenshot({ clip: { x: box.x, y: box.y + 180, width: box.width, height: box.height - 240 } })).toString("base64");
+}
+const doors = (page: Page, group: string) => page.getByRole("group", { name: group, exact: true }).locator('[data-workshop="doors-open"]');
+
+/** Open, then closed again: the button says so, and the picture changes and comes back. */
+async function opensAndCloses(page: Page, group: string) {
+  const button = doors(page, group);
+  await expect(button).toBeVisible();
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(400);
+  const closed = await look(page);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(600);
+  expect(await look(page)).not.toBe(closed);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(600);
+  expect(await look(page)).toBe(closed);
+}
+
+test("un bouton ouvre et ferme toutes les portes d'un dressing", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Portes e2e");
+  // No door yet: it says so, and stays up.
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await doors(page, "Dressing").click();
+  await expect(page.getByText("Il n'y a aucune porte dans ce modèle.")).toBeVisible();
+  await expect(doors(page, "Dressing")).toHaveAttribute("aria-pressed", "false");
+
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  const fronts = page.getByRole("dialog", { name: "Façades" });
+  await expect(fronts).toBeVisible();
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await expect(page.getByText(/Porte posée sur la case/)).toBeVisible();
+  await fronts.getByRole("button", { name: "Toutes les cases" }).click();
+  await fronts.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(800);
+  await opensAndCloses(page, "Dressing");
+  expect(errors).toEqual([]);
+});
+
+test("le même bouton ouvre et ferme les portes d'un meuble de cuisine", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Portes cuisine e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.waitForTimeout(800);
+  await opensAndCloses(page, "Cuisine");
+  expect(errors).toEqual([]);
+});
+
+test("le catalogue de cuisine montre chaque meuble dessiné, par famille, à la largeur survolée", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Catalogue e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  const families = page.getByRole("tablist", { name: "Familles de meubles" }).getByRole("tab");
+  await expect(families).toHaveText(["Bas", "Hauts", "Colonnes", "Mes meubles"]);
+  const model = page.locator('article[data-model="Bas 2 portes"]');
+  await expect(model.locator("svg")).toBeVisible();
+  await expect(model).toContainText("2 portes · 1 étagère");
+  const before = await model.locator("svg").getAttribute("width");
+  await model.locator('[data-unit="base-bas-2-portes-1200"]').hover();
+  await expect(model.locator("[data-unit-size]")).toContainText("L 120");
+  expect(await model.locator("svg").getAttribute("width")).not.toBe(before);
+
+  await families.filter({ hasText: "Colonnes" }).click();
+  await expect(page.locator('article[data-model="Colonne four"]')).toBeVisible();
+  await expect(model).toHaveCount(0);
+  await families.filter({ hasText: "Mes meubles" }).click();
+  await expect(page.locator("[data-my-units]")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("le bas évier a deux traverses à la place du dessus, et le caisson se règle de même", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Évier e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-evier-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await expect(tree.getByText("Traverse avant", { exact: true })).toBeVisible();
+  await expect(tree.getByText("Traverse arrière", { exact: true })).toBeVisible();
+  await expect(tree.getByText("Dessus", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+
+  // Le même réglage dans l'outil Caisson, pour un caisson sur mesure.
+  await click(page, '[data-action="cabinet"]');
+  const tool = page.getByRole("dialog", { name: "Caisson" });
+  await tool.getByRole("combobox", { name: "Haut du caisson" }).selectOption("rails");
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
+test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Corps entier e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.waitForTimeout(500);
+
+  await click(page, '[data-action="move"]');
+  const choice = page.getByRole("combobox", { name: "Déplacer", exact: true });
+  await expect(choice).toHaveValue("element");
+  await expect(page.getByText(/Le corps entier : Bas 2 portes 800, 8 pièces/)).toBeVisible();
+  await choice.selectOption("whole");
+  await expect(page.getByText("Meuble : Bas 2 portes 800")).toBeVisible();
+  await expect(choice).toHaveValue("whole");
+
+  // Retour à l'élément, puis de nouveau le corps entier.
+  await choice.selectOption("element");
+  await expect(page.getByText(/^Corps : Bas 2 portes 800/)).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Déplacer", exact: true })).toHaveValue("element");
+  await page.getByRole("combobox", { name: "Déplacer", exact: true }).selectOption("whole");
+
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  const before = await canvas(page).screenshot();
+  await page.getByRole("combobox", { name: "Saisie" }).selectOption("relative");
+  // The panel is drawn again when the preview ends: the field is typed in after that.
+  await page.waitForTimeout(600);
+  await page.getByRole("textbox", { name: "ΔX" }).fill("50");
+  await page.getByRole("textbox", { name: "ΔX" }).press("Enter");
+  await expect(page.getByRole("button", { name: "OK", exact: true }).last()).toBeEnabled();
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "OK", exact: true }).last().click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect((await canvas(page).screenshot()).equals(before)).toBe(false);
+  // Le meuble reste un seul meuble, sans une opération par pièce.
+  await expect(tree.getByText("Porte gauche", { exact: true })).toBeVisible();
+  await expect(tree.getByText(/Déplacement/)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Déplacer une Répartition entière emporte toutes ses pièces", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Répartition entière e2e");
+  await wall(page);
+  await page.getByLabel(/^Navigateur : corps/).getByText("Dessous", { exact: true }).first().click();
+  await click(page, '[data-action="move"]');
+  const choice = page.getByRole("combobox", { name: "Déplacer", exact: true });
+  await expect(choice).toHaveValue("element");
+  await choice.selectOption("whole");
+  await expect(page.getByText("Esquisse : Plan — mur a")).toBeVisible();
+  const before = await canvas(page).screenshot();
+  await page.getByRole("combobox", { name: "Saisie" }).selectOption("relative");
+  // The panel is drawn again when the preview ends: the field is typed in after that.
+  await page.waitForTimeout(600);
+  await page.getByRole("textbox", { name: "ΔX" }).fill("40");
+  await page.getByRole("textbox", { name: "ΔX" }).press("Enter");
+  await expect(page.getByRole("button", { name: "OK", exact: true }).last()).toBeEnabled();
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "OK", exact: true }).last().click();
+  await page.waitForTimeout(1000);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect((await canvas(page).screenshot()).equals(before)).toBe(false);
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Déplacement/)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("une porte se pose sur les niches choisies, depuis Façades", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Porte sur niches e2e");
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const tool = page.getByRole("dialog", { name: "Porte sur niches" });
+  await expect(tool).toContainText("Cliquez les niches que la porte va occuper");
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(tool).toContainText("2 niches choisies");
+  await expect(tool).toContainText(/Porte de .* sur 2 niches/);
+  await tool.getByRole("combobox", { name: "Charnières" }).selectOption("right");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Porte posée sur 2 niches.")).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText("Porte 1", { exact: true }).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("un bouton sort et rentre tous les tiroirs", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Tiroirs e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  const button = page.getByRole("group", { name: "Cuisine", exact: true }).locator('[data-workshop="drawers-open"]');
+  // No drawer yet: it says so.
+  await button.click();
+  await expect(page.getByText("Il n'y a aucun tiroir dans ce modèle.")).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-3-tiroirs-600"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.waitForTimeout(800);
+  await page.mouse.move(5, 5);
+  const closed = await look(page);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(600);
+  expect(await look(page)).not.toBe(closed);
+  // The doors' button stays up: only the drawers moved.
+  await expect(page.getByRole("group", { name: "Cuisine", exact: true }).locator('[data-workshop="doors-open"]')).toHaveAttribute("aria-pressed", "false");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(600);
+  expect(await look(page)).toBe(closed);
+  await expect(page.locator('.ribbon-group[aria-label="Dressing"] [data-workshop="drawers-open"]')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+

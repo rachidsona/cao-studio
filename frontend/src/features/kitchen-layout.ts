@@ -76,6 +76,8 @@ export interface KitchenUnit {
   /** The fronts it gets (none: an appliance or panels in front). */
   layout: "door" | "doors" | "drawers" | "none";
   drawers?: number;
+  /** Two rails instead of a top: the sink goes through. */
+  top?: "rails";
 }
 
 export interface KitchenBox {
@@ -293,7 +295,7 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
     };
     if (roles.sink !== undefined) {
       const sl = slots[roles.sink]!;
-      Object.assign(sl.unit, { name: `Évier ${sl.unit.name}`, shelves: 0, layout: sl.width > PREFERRED ? "doors" : "door" });
+      Object.assign(sl.unit, { name: `Évier ${sl.unit.name}`, shelves: 0, top: "rails", layout: sl.width > PREFERRED ? "doors" : "door" });
       hole(sl, sl.width >= 800 ? "sink-1" : "sink-under");
       places.sink = sl.middle;
     }

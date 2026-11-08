@@ -25,7 +25,7 @@ const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command"
 const DEFAULT_HIDDEN: Record<string, string[]> = {
   model: [
     "data-action:revolve", "data-action:rect-array",
-    "data-action:shell", "data-action:loft", "data-action:modifier", "data-action:ffd", "data-action:swap", "data-action:spacing", "data-action:combine",
+    "data-action:shell", "data-action:paneling", "data-action:loft", "data-action:modifier", "data-action:ffd", "data-action:swap", "data-action:spacing", "data-action:combine",
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:extrude-path", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",
     "data-workshop:import-parts", "data-workshop:nesting", "data-workshop:offcuts", "data-workshop:batch", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:gcode", "data-workshop:labels", "data-workshop:share",

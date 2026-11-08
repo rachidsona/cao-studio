@@ -156,6 +156,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["width", "height", "depth", "thickness", "backThickness", "shelves", "plinth"], where, errors);
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
+      if (feature.top !== undefined && !["panel", "rails"].includes(feature.top as string)) errors.push(`${where} : haut du caisson invalide.`);
       if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation du caisson invalide (0, 90, 180 ou 270°).`);
       if (feature.standard !== undefined && typeof feature.standard !== "string") errors.push(`${where} : standard de construction invalide.`);
       break;
@@ -214,6 +215,12 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (!isObject(s) || !isFiniteNumber(s.width) || !isFiniteNumber(s.height) || (s.width as number) <= 0 || (s.height as number) <= 0 || !["center", "left", "right"].includes(s.align as string) || (s.fromEnd !== undefined && typeof s.fromEnd !== "boolean")) errors.push(`${where} : section rectangulaire invalide.`);
       }
       break;
+    case "paneling":
+      if (typeof feature.target !== "string") errors.push(`${where} : corps à mettre en panneaux manquant.`);
+      checkRefs(feature.faces, "faces", where, errors);
+      checkNumbers(feature, ["thickness"], where, errors);
+      if (!["miter", "butt"].includes(feature.joint as string)) errors.push(`${where} : assemblage des panneaux invalide.`);
+      break;
     case "shell":
       if (typeof feature.target !== "string") errors.push(`${where} : corps à creuser manquant.`);
       checkRefs(feature.faces, "faces", where, errors);
@@ -240,7 +247,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
       if (!Array.isArray(feature.niche) || !feature.niche.every((n) => Number.isInteger(n) && (n as number) >= 0)) errors.push(`${where} : niche invalide.`);
-      if (!["rod", "drawers", "doors", "back"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      if (!["rod", "drawers", "doors", "back", "door"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      if (feature.span !== undefined && (!Array.isArray(feature.span) || !feature.span.every((p) => Array.isArray(p) && p.every((k) => Number.isInteger(k))))) errors.push(`${where} : niches de la porte invalides.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
       if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
@@ -253,9 +261,10 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       break;
     case "modifier":
       if (typeof feature.target !== "string") errors.push(`${where} : planche à modifier manquante.`);
-      if (!["bend", "taper", "twist", "ffd", "points"].includes(feature.kind as string)) errors.push(`${where} : modificateur inconnu.`);
+      if (!["bend", "taper", "twist", "ffd", "points", "face-scale"].includes(feature.kind as string)) errors.push(`${where} : modificateur inconnu.`);
       if (feature.moves !== undefined && (!Array.isArray(feature.moves) || !feature.moves.every((p) => isObject(p) && isVec3(p.from) && isVec3(p.to)))) errors.push(`${where} : points à déplacer invalides.`);
       if (feature.lattice !== undefined && (!Array.isArray(feature.lattice) || feature.lattice.length !== 81 || !feature.lattice.every((v) => isFiniteNumber(v)))) errors.push(`${where} : grille de déformation invalide (27 points).`);
+      if (feature.kind === "face-scale" && !(isObject(feature.face) && isVec3(feature.face.center) && isVec3(feature.face.u) && isVec3(feature.face.v) && [feature.face.size, feature.face.scale].every((p) => Array.isArray(p) && p.length === 2 && p.every((v) => isFiniteNumber(v) && v > 0)))) errors.push(`${where} : face à déformer invalide.`);
       checkNumbers(feature, ["amount"], where, errors);
       break;
     case "loft":

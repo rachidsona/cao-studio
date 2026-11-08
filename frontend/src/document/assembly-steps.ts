@@ -36,7 +36,7 @@ const ORDER: StepKind[] = ["carcass", "back", "shelves", "rods", "drawers", "doo
 /** The step a body belongs to: by the equipment that made it, else by its name. */
 export function stepOf(doc: CadDocument, bodyId: string): StepKind {
   const f = doc.features.find((x) => x.id === featureOfBody(bodyId));
-  if (f?.type === "niche") return f.fill === "back" ? "back" : f.fill === "doors" ? "doors" : f.fill === "rod" ? "rods" : "drawers";
+  if (f?.type === "niche") return f.fill === "back" ? "back" : f.fill === "doors" || f.fill === "door" ? "doors" : f.fill === "rod" ? "rods" : "drawers";
   const name = bodyLabel(doc, bodyId).toLowerCase();
   if (/tiroir/.test(name)) return "drawers";
   if (/porte|façade|abattant/.test(name)) return /tiroir/.test(name) ? "drawers" : "doors";
@@ -64,7 +64,7 @@ export function assemblySteps(doc: CadDocument, bodies: readonly string[]): Asse
   for (const f of doc.features) {
     if (f.suppressed) continue;
     if (f.type === "niche") {
-      const kind: StepKind = f.fill === "doors" ? "doors" : f.fill === "rod" ? "rods" : f.fill === "back" ? "back" : "drawers";
+      const kind: StepKind = f.fill === "doors" || f.fill === "door" ? "doors" : f.fill === "rod" ? "rods" : f.fill === "back" ? "back" : "drawers";
       for (const h of nicheHardware(doc.features, f)) add(kind, h);
     } else if (f.type === "fronts") {
       const cabinet = doc.features.find((c) => c.id === f.cabinet);

@@ -19,6 +19,9 @@ describe("contrôle avant fabrication", () => {
     expect(problems[0]!.message).toContain("5 × 540 × 18");
     // A shaped part: only possible.
     expect(overlapProblems([side, { ...tooLong, boxLike: false }])[0]!.severity).toBe("warning");
+    // Les panneaux d'une même mise en panneaux sont coupés l'un contre l'autre : jamais signalés entre eux.
+    expect(overlapProblems([{ ...side, boxLike: false, together: "pn1" }, { ...tooLong, boxLike: false, together: "pn1" }])).toEqual([]);
+    expect(overlapProblems([{ ...side, boxLike: false, together: "pn1" }, { ...tooLong, boxLike: false, together: "pn2" }])).toHaveLength(1);
   });
 
   it("vérifie qu'une pièce tient sur le panneau brut, le fil respecté", () => {

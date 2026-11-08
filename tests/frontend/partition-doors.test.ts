@@ -6,10 +6,10 @@ import { syncPartitionDoors } from "../../frontend/src/document/partition-doors"
 import { poseOf } from "../../frontend/src/features/motion";
 import { withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
 import { emptySketchGeometry, type BackSettings, type DoorSettings, type PartitionParams } from "../../frontend/src/document/sketch";
-import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type NicheFeature, type SketchFeature, type Vec3 } from "../../frontend/src/document/types";
 import { nicheGeometry, nicheHardware, nicheParts, partitionBacks, partitionDoors } from "../../frontend/src/features/niche-parts";
 import { parseDocument } from "../../frontend/src/document/validate";
-import { partitionRecord, rebuildChain } from "../../frontend/src/sketcher/partition-history";
+import { partitionRecord, rebuildChain, shelvesRecord } from "../../frontend/src/sketcher/partition-history";
 
 // 4 cases of 1000 mm altogether (18 mm panels): simple · double · sans côté.
 const INPUT: PartitionParams = { length: 1000, height: 2000, thickness: 18, cases: 4, dividers: ["single", "double", "none"], boards: true, plinth: 0, outer: "board", single: "board", double: "board" };
@@ -95,6 +95,51 @@ describe("portes d'une répartition", () => {
   });
 });
 
+describe("portes d'un caisson", () => {
+  const cabinet = (rotation?: CabinetFeature["rotation"]): CabinetFeature => ({
+    id: "c1", type: "cabinet", name: "Bas", origin: [1000, 500, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 8,
+    shelves: 1, plinth: 150, construction: "sides-through", ...(rotation ? { rotation } : {}),
+  });
+  const fronts = (layout: FrontsFeature["layout"]): FrontsFeature => ({ id: "fr1", type: "fronts", name: "Façades", cabinet: "c1", layout, drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true });
+  const model = (f: FrontsFeature, rotation?: CabinetFeature["rotation"]) => ({ ...doc(sketch(null)), features: [cabinet(rotation), f] }) as CadDocument;
+  /** Where a point goes when the door is open. */
+  const moved = (swing: NonNullable<ReturnType<typeof doorSwing>>, p: Vec3) => {
+    const { rotation: r, translation: t } = poseOf({ kind: "hinge", ...swing });
+    return [0, 1, 2].map((i) => r[i * 3]! * p[0] + r[i * 3 + 1]! * p[1] + r[i * 3 + 2]! * p[2] + t[i]!);
+  };
+
+  it("tournent sur leurs charnières, le bord libre vers l'avant du meuble", () => {
+    const [left, right] = [doorSwing(model(fronts("doors")), "fr1#0")!, doorSwing(model(fronts("doors")), "fr1#1")!];
+    expect(left.pivot).toEqual([1001.5, 481, 510]);
+    expect(right.pivot).toEqual([1598.5, 481, 510]);
+    expect(moved(left, [1300, 481, 510])[1]).toBeLessThan(481 - 250);
+    expect(moved(right, [1300, 481, 510])[1]).toBeLessThan(481 - 250);
+  });
+
+  it("restent à leur place quand le caisson est tourné", () => {
+    // 0 faces −Y, 90 +X, 180 +Y, 270 −X.
+    const out = (rotation: CabinetFeature["rotation"]) => {
+      const swing = doorSwing(model(fronts("door"), rotation), "fr1#0")!;
+      const pivot = swing.pivot;
+      const toFree = 595;
+      // The free edge, 595 mm along the closed door from the hinge.
+      const along: Record<number, Vec3> = { 0: [1, 0, 0], 90: [0, 1, 0], 180: [-1, 0, 0], 270: [0, -1, 0] };
+      const a = along[rotation ?? 0]!;
+      const open = moved(swing, [pivot[0] + a[0] * toFree, pivot[1] + a[1] * toFree, pivot[2]]);
+      return [open[0]! - pivot[0], open[1]! - pivot[1]];
+    };
+    expect(out(0)[1]).toBeLessThan(-500);
+    expect(out(90)[0]).toBeGreaterThan(500);
+    expect(out(180)[1]).toBeGreaterThan(500);
+    expect(out(270)[0]).toBeLessThan(-500);
+  });
+
+  it("ne confondent pas une porte et un tiroir", () => {
+    expect(doorSwing(model(fronts("drawers")), "fr1#0")).toBeNull();
+    expect(doorWithHandle(model(fronts("door")), "fr1#0")).toEqual(["fr1#0"]);
+  });
+});
+
 describe("fond d'une répartition", () => {
   const backOf = (d: CadDocument) => d.features.filter((f): f is NicheFeature => f.type === "niche" && f.fill === "back");
 
@@ -168,3 +213,63 @@ describe("une porte par case", () => {
     expect(() => parseDocument(made)).not.toThrow();
   });
 });
+
+describe("porte sur les niches choisies", () => {
+  /** The partition of INPUT, 400 deep, its first case divided by 3 shelves (4 niches of it, from the bottom). */
+  const shelved = (): SketchFeature => {
+    const records = [partitionRecord("of1", "Répartition", INPUT, [0, 0], 400), shelvesRecord("of2", "Étagères 1", "of1", [0], { count: 3, thickness: 18, mode: "equal", fixed: 0 }, 400)];
+    const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: records }, "of1");
+    if (typeof rebuilt === "string") throw new Error(rebuilt);
+    return { id: "sk1", type: "sketch", name: "Esquisse 1", plane: "XZ", offset: 0, ...rebuilt.geometry };
+  };
+  const door = (niche: number[], span: number[][] = []): NicheFeature =>
+    ({ id: "pn1", type: "niche", name: "Porte 1", sketch: "sk1", partition: "of1", niche, ...(span.length ? { span } : {}), fill: "door", diameter: 25, drop: 60, drawers: 1, gap: 4, thickness: 19, handles: true }) as NicheFeature;
+  const front = (f: NicheFeature, s: SketchFeature) => {
+    const n = nicheGeometry(f, s);
+    if (typeof n === "string") throw new Error(n);
+    return nicheParts(f, n).find((p) => p.role === "front")!;
+  };
+
+  it("sur deux cases entières, elle a la taille d'une porte commune à ces cases", () => {
+    const s = sketch(null);
+    // The first two cases: the outer side on the left, a simple side between them, a double one on the right.
+    const made = front(door([0], [[1]]), s);
+    const common = partitionDoors(INPUT, [0, 0], 4, [0], [2, 3]);
+    if (typeof common === "string") throw new Error(common);
+    expect([made.from[0], made.from[1], made.to[0], made.to[1]].map((v) => Number(v.toFixed(6)))).toEqual(common[0]!.map((v) => Number(v.toFixed(6))));
+    expect([made.from[2], made.to[2]]).toEqual([400, 419]);
+  });
+
+  it("sur une niche entre deux étagères : elle s'arrête au milieu de chaque étagère, et couvre le côté du meuble", () => {
+    const s = shelved();
+    const n = nicheGeometry(door([0, 1]), s);
+    if (typeof n === "string") throw new Error(n);
+    const made = front(door([0, 1]), s);
+    expect(made.from[0]).toBe(2);
+    expect(made.to[0] + 2).toBeCloseTo(18 + 223 + 9);
+    // Half of the shelf under it and of the one above.
+    const height = (2000 - 2 * 18 - 3 * 18) / 4;
+    expect(made.from[1] - 2).toBeCloseTo(18 + height + 9);
+    expect(made.to[1] + 2).toBeCloseTo(18 + 2 * height + 18 + 9);
+  });
+
+  it("deux niches l'une sur l'autre font une seule porte, de leur haut à leur bas", () => {
+    const s = shelved();
+    const made = front(door([0, 0], [[0, 1]]), s);
+    const height = (2000 - 2 * 18 - 3 * 18) / 4;
+    expect(made.from[1]).toBe(2);
+    expect(made.to[1] + 2).toBeCloseTo(18 + 2 * height + 18 + 9);
+  });
+
+  it("refuse des niches qui ne forment pas un rectangle", () => {
+    expect(nicheGeometry(door([0, 0], [[0, 2]]), shelved())).toMatch(/rectangle/);
+    expect(nicheGeometry(door([0, 0], [[1]]), shelved())).toMatch(/rectangle/);
+  });
+
+  it("s'ouvre au clic comme une porte, sur ses charnières", () => {
+    const d: CadDocument = { ...doc(shelved()), features: [shelved(), door([0, 1])] };
+    expect(doorSwing(d, "pn1#0")).not.toBeNull();
+    expect(doorWithHandle(d, "pn1#1")).toEqual(["pn1#0", "pn1#1"]);
+  });
+});
+

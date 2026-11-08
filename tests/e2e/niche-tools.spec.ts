@@ -424,22 +424,71 @@ test("une cloison coupe aussi les étagères d'un module, faites en deux fois", 
   expect(errors).toEqual([]);
 });
 
-test("Déformer : tout le côté suit, la face reste droite", async ({ page }) => {
+test("Déformer agrandit une face depuis son centre, à la poignée ou au chiffre", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "Déformer e2e");
-  const box = (await page.locator("canvas.cad-view").boundingBox())!;
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.55);
+  const view = page.locator("canvas.cad-view");
+  const box = (await view.boundingBox())!;
   await click(page, '[data-action="ffd"]');
-  const tool = page.getByRole("dialog", { name: "Déformer (FFD 3×3×3)" });
-  await expect(tool.getByLabel("Tout le côté suit (la face reste droite)")).toBeChecked();
-  await tool.getByRole("combobox").first().selectOption("top");
-  await tool.getByRole("textbox", { name: /Décalage Z/ }).fill("2");
-  await tool.getByRole("textbox", { name: /Décalage Z/ }).press("Enter");
-  await expect(tool).toContainText("Plus grand déplacement");
+  const tool = page.getByRole("dialog", { name: "Déformer" });
+  await expect(tool).toContainText("Cliquez la face");
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.55);
+  await expect(tool).toContainText("Face de");
+  await tool.getByRole("textbox", { name: "Échelle" }).fill("1,5");
+  await tool.getByRole("textbox", { name: "Échelle" }).press("Enter");
+  await expect(tool).toContainText("Devient");
+  await page.waitForTimeout(800);
+  await tool.getByRole("textbox", { name: "Échelle" }).fill("1");
+  await tool.getByRole("textbox", { name: "Échelle" }).press("Enter");
+
+  // The pointer over a green handle turns into a hand: it is there that the drag starts.
+  let handle: { x: number; y: number } | null = null;
+  for (let y = box.y + 40; !handle && y < box.y + box.height - 40; y += 8) {
+    for (let x = box.x + 40; !handle && x < box.x + box.width - 40; x += 8) {
+      await page.mouse.move(x, y);
+      if (await view.evaluate((c) => c.style.cursor === "grab")) handle = { x, y };
+    }
+  }
+  expect(handle).not.toBeNull();
+  await page.mouse.move(handle!.x, handle!.y);
+  await page.mouse.down();
+  await page.mouse.move(handle!.x - 60, handle!.y - 25, { steps: 6 });
+  await page.mouse.up();
+  await expect(tool).toContainText("Devient");
+  await page.waitForTimeout(800);
   await tool.getByRole("button", { name: "OK", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(page.getByText("Aucun corps")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Panneaux sur faces : les faces d'un volume deviennent des panneaux", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Panneaux sur faces e2e");
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  await click(page, '[data-action="paneling"]');
+  const tool = page.getByRole("dialog", { name: "Panneaux sur faces" });
+  await expect(tool).toContainText("Cliquez une face du volume");
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.55);
+  await expect(tool).toContainText("1 face(s) en panneaux");
+  await tool.getByRole("button", { name: "Toutes les faces planes" }).click();
+  await expect(tool).toContainText("6 face(s) en panneaux");
+  await tool.getByRole("textbox", { name: "Épaisseur" }).fill("0,5");
+  await tool.getByRole("textbox", { name: "Épaisseur" }).press("Enter");
+  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeEnabled({ timeout: 15000 });
+  await page.waitForTimeout(1500);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/panneau 6/i).first()).toBeVisible();
+  // Les panneaux en onglet ne sont pas pris pour des pièces qui se chevauchent.
+  await page.getByText(/à vérifier/).last().click();
+  await expect(page.getByText(/se chevauchent/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });

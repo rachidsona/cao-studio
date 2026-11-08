@@ -7,10 +7,11 @@
  * none (set by hand). OK adds the operation (one undo step); it is edited
  * again from the timeline.
  */
+import { bodyInfo, setBodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import { cabinetStandard, cabinetTo, findStandard } from "../document/standards";
-import type { CabinetFeature, Vec3 } from "../document/types";
-import { cabinetProblem } from "../features/cabinet-parts";
+import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
+import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
 import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { allStandards, workshopStandards } from "./standards-panel";
@@ -98,6 +99,16 @@ export class CabinetTool extends PanelTool {
     return slots.map((slot, i) => ({ ...first, id: slot.id, name: slot.name, origin: first.origin.map((v, k) => Number((v + step[k]! * fill.width * (i + 1)).toFixed(3))) as Vec3 }));
   }
 
+  /** A top changed into rails: the back rail, a body more, in the same material as the carcass. */
+  protected override decorate(doc: CadDocument): CadDocument {
+    const made = this.feature();
+    if (typeof made === "string") return doc;
+    const rear = cabinetPartNames(made).indexOf("Traverse arrière");
+    const carcass = bodyInfo(doc, `${made.id}${PART_SEPARATOR}0`).material;
+    const id = `${made.id}${PART_SEPARATOR}${rear}`;
+    return rear >= 0 && carcass && !bodyInfo(doc, id).material ? setBodyInfo(doc, [id], { material: carcass }) : doc;
+  }
+
   protected override blocker(): string | null {
     const status = this.ctx.status(this.id);
     return status && status.state !== "ok" ? (status.message ?? "Le caisson est invalide.") : null;
@@ -182,6 +193,15 @@ export class CabinetTool extends PanelTool {
         (v) => this.set({ construction: v as Settings["construction"] }),
       ),
       this.selectRow(
+        "Haut du caisson",
+        s.top ?? "panel",
+        [
+          ["panel", "Dessus plein"],
+          ["rails", "Deux traverses (évier)"],
+        ],
+        (v) => this.set({ top: v as NonNullable<Settings["top"]> }),
+      ),
+      this.selectRow(
         "Orientation",
         String(s.rotation ?? 0),
         [
@@ -195,7 +215,7 @@ export class CabinetTool extends PanelTool {
       this.numberRow("Position X", this.origin[0], unit, (v) => moveTo(0, v), true),
       this.numberRow("Position Y", this.origin[1], unit, (v) => moveTo(1, v), true),
       this.numberRow("Position Z", this.origin[2], unit, (v) => moveTo(2, v), true),
-      this.info("Chaque pièce (côtés, dessus, dessous, fond, étagères) est un corps. La position est le coin avant gauche en bas ; le caisson tourne autour de ce coin."),
+      this.info("Chaque pièce (côtés, dessus ou traverses, dessous, fond, étagères) est un corps. La position est le coin avant gauche en bas ; le caisson tourne autour de ce coin."),
     ];
   }
 }

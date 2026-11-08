@@ -137,6 +137,19 @@ export const MODELING: HelpFamily[] = [
         tip: "Sans face ouverte, le corps devient creux et fermé. L'épaisseur est de 3 mm au départ.",
       },
       {
+        keys: ["data-action:paneling"],
+        name: "Panneaux sur faces",
+        what: "Transforme les faces planes d'un volume en panneaux d'une épaisseur donnée, assemblés en onglet à tout angle ou bout à bout : un seau à pans, une boîte, un caisson biais.",
+        steps: [
+          "Dessinez le volume, par exemple un polygone extrudé, évasé avec « Déformer ».",
+          "Cliquez « Panneaux sur faces », puis une face du volume : elle passe en orange, et les faces pareilles avec elle.",
+          "Cliquez d'autres faces, recliquez pour en retirer ; ou « Toutes les faces planes », puis retirez celles à laisser ouvertes.",
+          "Réglez l'« Épaisseur » et l'« Assemblage » : « En onglet (tout angle) » ou « Bout à bout ».",
+          "Cliquez « OK » : chaque face devient un panneau, prêt pour la liste de débit.",
+        ],
+        tip: "Décochez « Faces pareilles ensemble » pour prendre une seule face. En bout à bout, la première face cliquée passe et les autres s'arrêtent contre elle.",
+      },
+      {
         keys: ["data-action:loft"],
         name: "Lissage",
         what: "Crée un solide qui passe par les contours fermés de plusieurs esquisses (pied galbé, trémie).",
@@ -151,17 +164,16 @@ export const MODELING: HelpFamily[] = [
       },
       {
         keys: ["data-action:ffd"],
-        name: "Déformer (FFD 3×3×3)",
-        what: "Étire un corps en douceur avec une grille de 27 points posée autour de lui.",
+        name: "Déformer",
+        what: "Agrandit ou réduit une face plane depuis son centre : les côtés du corps suivent bien droits, le dessus d'un prisme agrandi fait un seau à pans.",
         steps: [
-          "Sélectionnez le corps puis cliquez « Déformer », ou cliquez l'outil puis le corps.",
-          "Cliquez un point orange de la grille ; Maj + clic en ajoute, Maj + glisser prend ceux d'un rectangle. Le menu « Choisir » prend une rangée entière.",
-          "Tirez une des flèches X, Y, Z, ou tapez les champs « Décalage X », « Décalage Y », « Décalage Z » : tout le côté du point suit, pour agrandir ou réduire la pièce en gardant ses faces droites.",
-          "Pour bomber ou gauchir, décochez « Tout le côté suit » : seuls les points choisis bougent.",
-          "Avec plusieurs points choisis, « Échelle % » puis « Appliquer l'échelle » les rapproche de leur centre.",
+          "Cliquez « Déformer », puis la face plane à changer. Vous pouvez aussi sélectionner la face d'abord.",
+          "Un cadre jaune se pose sur la face, avec ses poignées vertes et son centre en rouge.",
+          "Tirez un coin vert pour agrandir ou réduire dans les deux sens, ou le milieu d'un côté pour un seul sens.",
+          "Ou tapez le champ « Échelle » : 1,5 agrandit de moitié, 0,5 réduit de moitié.",
           "Cliquez « OK ».",
         ],
-        tip: "Réduire de moitié les points du dessus fait d'un cylindre un obus. Le corps déformé est refait en facettes fines.",
+        tip: "Vue de profil, la face ne peut pas se tirer : tournez un peu la vue. Une déformation se rouvre depuis l'historique pour reprendre le cadre.",
       },
       {
         keys: ["data-action:swap"],
@@ -242,11 +254,12 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:move"],
         name: "Déplacer",
-        what: "Déplace un corps ou une esquisse, avec ou sans copie.",
+        what: "Déplace un élément, le corps entier auquel il appartient, ou une esquisse, avec ou sans copie.",
         steps: [
           "Sélectionnez un corps, une face, une esquisse ou un point, puis cliquez « Déplacer ».",
           "Avec « Saisie » sur « Pivot et cible », cliquez le point du corps où poser les flèches, puis le point ou la face où l'amener.",
           "Sinon tirez une flèche (un axe) ou une tuile (un plan), ou choisissez une autre « Saisie » et tapez les valeurs : « Relatif (Δ) », « Distance sur un axe » ou « Position absolue ».",
+          "« Déplacer » choisit ce qui bouge : « L'élément sélectionné », ou « Le corps entier », tout le meuble ou toute la Répartition dont il est une pièce.",
           "« Copier » laisse l'original en place et fait des copies.",
           "Cliquez « OK ».",
         ],

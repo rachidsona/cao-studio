@@ -54,7 +54,14 @@ class DoorFrontsTool implements PointerHandler {
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
     end.addEventListener("click", () => this.close());
-    this.panel.append(el("h2", { class: "panel-title" }, title), this.text, this.settings, end);
+    // A door over the niches clicked, not over whole cases (niche-tool.ts).
+    const byNiches = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Porte sur des niches choisies…");
+    byNiches.addEventListener("click", () => {
+      const sketch = this.last?.sketch ?? null;
+      this.close();
+      editor.sketches.startEquip("door", sketch);
+    });
+    this.panel.append(el("h2", { class: "panel-title" }, title), this.text, this.settings, byNiches, end);
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

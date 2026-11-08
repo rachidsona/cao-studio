@@ -22,6 +22,8 @@ export interface CatalogEntry {
   layout: FrontsFeature["layout"] | "none";
   drawers?: number;
   shelves: number;
+  /** Two rails instead of a top: the sink goes through. */
+  top?: CabinetFeature["top"];
   /** Height when not the kind's own (a short unit over the hood). */
   height?: number;
   /** One's own units: their depth and plinth, and their name kept as it is (no width after it). */
@@ -48,7 +50,7 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("base", "Bas 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 1 }),
   ...entries("base", "Bas 3 tiroirs", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, shelves: 0 }),
   ...entries("base", "Bas casseroliers", [600, 800, 900], { layout: "drawers", drawers: 2, shelves: 0 }),
-  ...entries("base", "Bas évier", [600, 800, 1200], { layout: "doors", shelves: 0 }),
+  ...entries("base", "Bas évier", [600, 800, 1200], { layout: "doors", shelves: 0, top: "rails" }),
   ...entries("base", "Bas four", [600], { layout: "none", shelves: 0 }),
   ...entries("wall", "Haut 1 porte", [300, 400, 450, 500, 600], { layout: "door", shelves: 2 }),
   ...entries("wall", "Haut 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 2 }),
@@ -131,7 +133,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const cabinet: CabinetFeature = {
     id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth,
     thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves,
-    plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through",
+    plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through", ...(entry.top ? { top: entry.top } : {}),
     ...(rotation ? { rotation } : {}), ...(like?.standard ? { standard: like.standard } : {}),
   };
   let next: CadDocument = { ...doc, features: [...doc.features, cabinet] };
@@ -219,6 +221,6 @@ export function entryFromCabinet(doc: CadDocument, c: CabinetFeature): CatalogEn
   const name = c.name.replace(/\s*\(\d+\)$/, "");
   return {
     id: `own-${slug(name)}-${Date.now().toString(36)}`, kind: kindOf(c), name, width: c.width, height: c.height, depth: c.depth, plinth: c.plinth,
-    shelves: c.shelves, layout: fronts?.layout ?? "none", ...(fronts?.layout === "drawers" ? { drawers: fronts.drawers } : {}), custom: true,
+    shelves: c.shelves, layout: fronts?.layout ?? "none", ...(fronts?.layout === "drawers" ? { drawers: fronts.drawers } : {}), ...(c.top ? { top: c.top } : {}), custom: true,
   };
 }

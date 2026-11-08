@@ -2,7 +2,7 @@
  * « Penderie » and « Tiroirs » worked in the 3D view, as Étagères (joinery-3d.ts): click one niche of a Répartition —
  * or several (a click on a chosen one releases it) — set the rod or the drawers, see the parts in orange, OK. Each
  * niche gets its own feature (« Penderie 1 », « Tiroirs 1 »), which follows the niche when the Répartition or its
- * divisions change; one OK is one undo step. The tool stays to equip other niches until Échap. The parts are in
+ * divisions change; one OK is one undo step. « Porte sur niches » makes one door over all the niches chosen. The tool stays to equip other niches until Échap. The parts are in
  * features/niche-parts.ts.
  */
 import type { SketchGeometry } from "../document/sketch";
@@ -38,6 +38,7 @@ const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
+  door: { title: "Porte sur niches", one: "porte", help: "Une porte en applique sur les niches choisies, voisines et formant un rectangle : elle couvre la moitié des panneaux autour, le panneau entier au bord du meuble, comme la porte d'une case." },
   drawers: { title: "Tiroirs", one: "tiroirs", help: "Façades encastrées dans la niche, chacune avec son caisson sur coulisses ; pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère." },
 };
 
@@ -89,7 +90,11 @@ export class NicheTool {
     if (this.editing) {
       const n = nicheGeometry(this.editing, this.sketch());
       if (typeof n === "string") this.host.notify(`${this.editing.name} : ${n}`, "error");
-      else this.niches = [{ partition: this.editing.partition, path: this.editing.niche, box: n.box }];
+      else {
+        const leaves = leafNiches(this.geometry()!);
+        const box = (path: number[]) => leaves.find((l) => l.partition === this.editing!.partition && l.path.join(".") === path.join("."))?.box ?? n.box;
+        this.niches = [this.editing.niche, ...(this.editing.span ?? [])].map((path) => ({ partition: this.editing!.partition, path, box: box(path) }));
+      }
     }
     this.recompute();
   }
@@ -102,7 +107,7 @@ export class NicheTool {
 
   /** A click in a niche (its centre, sketch coordinates): chooses it, or releases it. */
   click(p: Vec2): void {
-    if (this.editing) return this.host.notify(`On change ${this.editing.name} ; terminez pour équiper d'autres niches.`, "info");
+    if (this.editing && this.fill !== "door") return this.host.notify(`On change ${this.editing.name} ; terminez pour équiper d'autres niches.`, "info");
     const g = this.geometry();
     const leaf = g ? leafNiches(g).find((n) => p[0] > n.box.x0 && p[0] < n.box.x1 && p[1] > n.box.y0 && p[1] < n.box.y1) : undefined;
     if (!leaf) return this.host.notify("Cliquez dans une niche de la répartition.", "info");
@@ -118,12 +123,22 @@ export class NicheTool {
 
   /** The feature this tool would make for a niche chosen. */
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
-    return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...this.settings };
+    const { span: _span, ...settings } = this.settings as Settings & { span?: number[][] };
+    const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
+    return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
   }
 
   /** Each niche chosen with its geometry, or why it cannot be equipped. */
   private checked(): { niche: Chosen; geometry: NicheGeometry | null; problem: string | null }[] {
     const sketch = this.sketch();
+    if (this.fill === "door") {
+      const [first] = this.niches;
+      if (!first) return [];
+      if (this.niches.some((n) => n.partition !== first.partition)) return [{ niche: first, geometry: null, problem: "Les niches d'une porte sont dans la même répartition." }];
+      const geometry = nicheGeometry(this.feature(first, "preview", ""), sketch);
+      if (typeof geometry === "string") return [{ niche: first, geometry: null, problem: geometry }];
+      return [{ niche: first, geometry, problem: nicheProblem({ fill: "door", ...this.settings }, geometry) }];
+    }
     return this.niches.map((niche) => {
       const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path }, sketch);
       if (typeof geometry === "string") return { niche, geometry: null, problem: geometry };
@@ -180,6 +195,7 @@ export class NicheTool {
       { class: FIELD, "aria-label": "Équipement", disabled: !!this.editing },
       el("option", { value: "rod", selected: this.fill === "rod" }, "Penderie (tringle)"),
       el("option", { value: "drawers", selected: this.fill === "drawers" }, "Tiroirs"),
+      el("option", { value: "door", selected: this.fill === "door" }, "Porte sur niches"),
     );
     kind.addEventListener("change", () => {
       this.fill = kind.value as NicheFill;
@@ -190,6 +206,8 @@ export class NicheTool {
     count.addEventListener("change", () => ((this.settings.drawers = Number(count.value)), this.recompute()));
     const handles = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: this.settings.handles });
     handles.addEventListener("change", () => ((this.settings.handles = handles.checked), this.recompute()));
+    const hinge = el("select", { class: FIELD, "aria-label": "Charnières" }, el("option", { value: "left", selected: this.settings.hinges?.[0] !== "right" }, "À gauche"), el("option", { value: "right", selected: this.settings.hinges?.[0] === "right" }, "À droite"));
+    hinge.addEventListener("change", () => ((this.settings.hinges = [hinge.value as "left" | "right"]), this.recompute()));
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
     cancel.addEventListener("click", () => this.cancel());
     const checked = this.checked();
@@ -203,7 +221,10 @@ export class NicheTool {
     let result: string | null = null;
     if (first?.geometry && !problem && box) {
       const parts = nicheParts(this.feature(first.niche, "preview", ""), first.geometry);
-      if (this.fill === "rod") {
+      if (this.fill === "door") {
+        const door = parts.find((p) => p.role === "front");
+        if (door) result = `Porte de ${formatLength(door.to[0] - door.from[0], unit)} × ${formatLength(door.to[1] - door.from[1], unit)} sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.`;
+      } else if (this.fill === "rod") {
         const rod = parts.find((p) => p.kind === "rod");
         if (rod) result = `Tringle de ${formatLength(rod.to[0] - rod.from[0], unit)}, à ${formatLength(rod.from[1] - box.y0, unit)} du bas de la niche.`;
       } else {
@@ -211,7 +232,7 @@ export class NicheTool {
         const side = parts.find((p) => p.name.endsWith("côté gauche"));
         if (front && side) result = `${this.settings.drawers} façade${this.settings.drawers > 1 ? "s" : ""} de ${formatLength(front.to[1] - front.from[1], unit)} de haut, coulisses de ${formatLength(side.to[2] - side.from[2], unit)}.`;
       }
-      if (result && this.niches.length > 1) result += ` (${this.niches.length} niches)`;
+      if (result && this.niches.length > 1 && this.fill !== "door") result += ` (${this.niches.length} niches)`;
     }
     const rows: (HTMLElement | null)[] = [
       el("h2", { class: "text-[11px] font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400" }, this.editing ? `Modifier : ${this.editing.name}` : words.title),
@@ -219,13 +240,22 @@ export class NicheTool {
         "p",
         { class: "text-gray-600 dark:text-gray-300" },
         this.niches.length === 0
-          ? `Cliquez la niche à équiper ; cliquez-en plusieurs pour y mettre la même ${this.fill === "rod" ? "penderie" : "série de tiroirs"}.`
+          ? this.fill === "door"
+            ? "Cliquez les niches que la porte va occuper : voisines, elles doivent former un rectangle."
+            : `Cliquez la niche à équiper ; cliquez-en plusieurs pour y mettre la même ${this.fill === "rod" ? "penderie" : "série de tiroirs"}.`
           : this.niches.length === 1
             ? `Niche choisie : ${size}.${this.editing ? "" : " Cliquez-en d'autres pour les ajouter, ou la même pour la retirer."}`
             : `${this.niches.length} niches choisies.`,
       ),
       el("label", { class: ROW }, "Équipement", kind),
-      ...(this.fill === "rod"
+      ...(this.fill === "door"
+        ? [
+            number("Jeu", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
+            number("Épaisseur porte", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
+            el("label", { class: ROW }, "Charnières", hinge),
+            el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
+          ]
+        : this.fill === "rod"
         ? [number("Diamètre", this.settings.diameter, (v) => ((this.settings.diameter = v), this.recompute())), number("Axe sous le haut", this.settings.drop, (v) => ((this.settings.drop = v), this.recompute()))]
         : [
             el("label", { class: ROW }, "Tiroirs", count),
@@ -251,7 +281,7 @@ export class NicheTool {
     if (this.done) return;
     const problem = this.checked().find((c) => c.problem)?.problem;
     if (this.niches.length === 0 || problem) return this.host.notify(problem ?? "Cliquez d'abord la niche à équiper.", "error");
-    const title = WORDS[this.fill].title;
+    const title = this.fill === "door" ? "Porte" : WORDS[this.fill].title;
     if (this.editing) {
       const niche = this.niches[0];
       if (!niche || !this.host.apply([this.feature(niche, this.editing.id, this.editing.name)], `${this.editing.name} : modification faite.`)) return;
@@ -262,14 +292,15 @@ export class NicheTool {
     let next = Math.max(0, ...used) + 1;
     // Left to right, bottom to top.
     const order = [...this.niches].sort((a, b) => a.box.x0 - b.box.x0 || a.box.y0 - b.box.y0);
+    if (this.fill === "door") order.splice(1);
     const features = order.map((n) => {
-      const id = uniqueId(doc, this.fill === "rod" ? "pd" : "td");
+      const id = uniqueId(doc, this.fill === "rod" ? "pd" : this.fill === "door" ? "pn" : "td");
       const f = this.feature(n, id, `${title} ${next++}`);
       doc = { ...doc, features: [...doc.features, f] };
       return f;
     });
     const n = features.length;
-    if (!this.host.apply(features, `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${WORDS[this.fill].one}.`)) return;
+    if (!this.host.apply(features, this.fill === "door" ? `Porte posée sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.` : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${WORDS[this.fill].one}.`)) return;
     this.niches = [];
     this.recompute();
   }

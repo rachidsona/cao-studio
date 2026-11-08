@@ -123,7 +123,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     // Doors hidden (the display menu, the eye of the navigator) leave the niches behind them in sight.
     const seenBodies = new Set(viewport.bodyMeshes().filter((m) => m.visible).map((m) => m.userData.bodyId as string));
     const doorsSeen = (sketch: string | undefined) =>
-      doc.features.some((f) => f.type === "niche" && f.fill === "doors" && f.sketch === sketch && [...seenBodies].some((id) => id.startsWith(`${f.id}#`)));
+      doc.features.some((f) => f.type === "niche" && (f.fill === "doors" || f.fill === "door") && f.sketch === sketch && [...seenBodies].some((id) => id.startsWith(`${f.id}#`)));
     const withDoors = <T extends PartitionPlan>(plans: T[], sketch: string | undefined): T[] => (doorsSeen(sketch) ? plans : plans.map((p) => ({ ...p, doors: [] })));
     if (current) {
       if (shown()) for (const w of current) plansView.show(w.frame, w.preview ? w.plans : withDoors(w.plans, w.sketch?.id), editor.unit);

@@ -21,7 +21,7 @@ import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { hingeCount } from "./fronts-parts";
 import { partitionLayout } from "../sketcher/partition";
 import { frameOf, toWorld, type SketchFrame } from "../sketcher/frame";
-import { isPartition, pathKey, rebuildChain } from "../sketcher/partition-history";
+import { isPartition, pathKey, rebuildChain, type NicheNode } from "../sketcher/partition-history";
 import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
 
@@ -56,7 +56,7 @@ export const SUPPORT = 3;
 const MAX_DRAWERS = 8;
 
 /** The niche the feature equips, with the frame of its sketch and the depth of the partition's panels. */
-export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"] }, sketch: SketchFeature | undefined): NicheGeometry | string {
+export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][] }, sketch: SketchFeature | undefined): NicheGeometry | string {
   if (!sketch || sketch.type !== "sketch") return "L'esquisse de la répartition n'existe plus.";
   const frame = frameOf(sketch);
   // The parts are boxes along the axes: the sketch must lie in a main plane (or a parallel one).
@@ -73,9 +73,41 @@ export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { f
   }
   const rebuilt = rebuildChain(sketch, f.partition);
   if (typeof rebuilt === "string") return rebuilt;
+  if (f.fill === "door") {
+    const box = doorBox(rebuilt.niches, [f.niche, ...(f.span ?? [])], step);
+    return typeof box === "string" ? box : { frame, box, depth: record.step.depth, step, ...cut };
+  }
   const node = rebuilt.niches.get(pathKey(f.niche));
   if (!node) return "Sa niche n'existe plus.";
   return { frame, box: node.box, depth: record.step.depth, step, ...cut };
+}
+
+/**
+ * What a door over these niches covers: the rectangle they make, out to the middle of the panels around it (to the
+ * middle of the space to the next niche: half a simple panel, a whole one of a double side), and over the whole panel
+ * at the edge of the cabinet — as the door of a case. The niches must make a rectangle, with no other niche inside.
+ */
+function doorBox(niches: Map<string, NicheNode>, paths: number[][], step: { input: PartitionParams; origin: [number, number] }): NicheBox | string {
+  const chosen = paths.map((p) => niches.get(pathKey(p)));
+  if (chosen.some((n) => !n)) return "Une niche de cette porte n'existe plus : refaites la porte.";
+  const boxes = chosen.map((n) => n!.box);
+  const box = { x0: Math.min(...boxes.map((b) => b.x0)), y0: Math.min(...boxes.map((b) => b.y0)), x1: Math.max(...boxes.map((b) => b.x1)), y1: Math.max(...boxes.map((b) => b.y1)) };
+  const keys = [...niches.keys()];
+  const chosenKeys = new Set(paths.map(pathKey));
+  const leaves = [...niches.values()].filter((n) => !keys.some((k) => k.startsWith(`${pathKey(n.path)}.`)) && !chosenKeys.has(pathKey(n.path)));
+  const EPS = 1e-6;
+  const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0) > EPS;
+  if (leaves.some((n) => overlap(n.box.x0, n.box.x1, box.x0, box.x1) && overlap(n.box.y0, n.box.y1, box.y0, box.y1))) return "Les niches d'une porte doivent former un rectangle, sans autre niche au milieu.";
+  const [ox, oy] = step.origin;
+  const outer = { x0: ox, x1: ox + step.input.length, y0: oy + (step.input.boards ? step.input.plinth : 0), y1: oy + step.input.height };
+  const across = (n: NicheNode, along: "x" | "y") => (along === "x" ? overlap(n.box.y0, n.box.y1, box.y0, box.y1) : overlap(n.box.x0, n.box.x1, box.x0, box.x1));
+  const below = (edge: number, along: "x" | "y", end: "0" | "1") => {
+    const near = leaves.filter((n) => across(n, along) && (end === "0" ? n.box[`${along}1`] <= edge + EPS : n.box[`${along}0`] >= edge - EPS));
+    if (!near.length) return outer[`${along}${end}`];
+    const next = end === "0" ? Math.max(...near.map((n) => n.box[`${along}1`])) : Math.min(...near.map((n) => n.box[`${along}0`]));
+    return (edge + next) / 2;
+  };
+  return { x0: below(box.x0, "x", "0"), x1: below(box.x1, "x", "1"), y0: below(box.y0, "y", "0"), y1: below(box.y1, "y", "1") };
 }
 
 /**
@@ -134,7 +166,7 @@ export function partitionBacks(input: PartitionParams, origin: [number, number],
 /** Why these settings cannot equip this niche, or null. */
 export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "sketch" | "partition" | "niche">, n: NicheGeometry): string | null {
   if (n.cut && f.fill === "drawers") return "Pas de tiroirs dans un angle coupé : ils sortiraient par le pan coupé.";
-  if (n.cut && f.fill === "doors") return "Un angle coupé n'a pas ces portes : cochez « Porte sur le pan coupé » dans le Plan de dressing.";
+  if (n.cut && (f.fill === "doors" || f.fill === "door")) return "Un angle coupé n'a pas ces portes : cochez « Porte sur le pan coupé » dans le Plan de dressing.";
   const width = n.box.x1 - n.box.x0;
   const height = n.box.y1 - n.box.y0;
   if (f.fill === "rod") {
@@ -148,6 +180,11 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
     if (!(f.thickness > 0)) return "L'épaisseur du fond doit être positive.";
     const backs = n.step ? partitionBacks(n.step.input, n.step.origin, f.split) : "La répartition manque.";
     return typeof backs === "string" ? backs : null;
+  }
+  if (f.fill === "door") {
+    if (!(f.thickness > 0)) return "L'épaisseur de la porte doit être positive.";
+    if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
+    return Math.min(width, height) - f.gap < 50 ? "Le jeu est trop grand pour cette porte." : null;
   }
   if (f.fill === "doors") {
     if (!(f.thickness > 0)) return "L'épaisseur des portes doit être positive.";
@@ -183,8 +220,8 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     // Behind the sketch plane, where the panels start: over the top, the bottom and the sides, from end to end.
     return backs.map(([a, b], i, all): NichePart => ({ name: all.length > 1 ? `Fond ${i + 1}` : "Fond", kind: "box", from: [a, y0, -f.thickness], to: [b, y1, 0] }));
   }
-  if (f.fill === "doors") {
-    const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap, f.joined, f.skipped) : [];
+  if (f.fill === "doors" || f.fill === "door") {
+    const doors = f.fill === "door" ? [[x0 + f.gap / 2, y0 + f.gap / 2, x1 - f.gap / 2, y1 - f.gap / 2] as const] : n.step ? partitionDoors(n.step.input, n.step.origin, f.gap, f.joined, f.skipped) : [];
     if (typeof doors === "string") return [];
     // In front of the panels; hinged on the side chosen, else on the left, then on the right, in turn (a pair opens from
     // the middle). The handle goes along the other edge.
@@ -307,7 +344,7 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
     ];
   }
   const fronts = parts.filter((p) => p.role === "front").length;
-  if (f.fill === "doors") {
+  if (f.fill === "doors" || f.fill === "door") {
     const hinges = parts.filter((p) => p.role === "front").reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
     return [{ name: "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
   }
