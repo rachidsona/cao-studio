@@ -212,3 +212,19 @@ def test_projects_page_is_cao_studio_and_links_to_the_catalogue(client_logged):
     assert "CAO Studio" in content and "poly_3D" not in content
     assert 'href="/catalogue/"' in content
     assert client_logged.get("/poly/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_guide_shows_each_step_with_its_picture(client):
+    from pathlib import Path
+
+    from django.conf import settings
+
+    page = client.get("/guide/")
+    assert page.status_code == 200
+    content = page.content.decode()
+    assert "Guide de CAO Studio" in content
+    pictures = re.findall(r'src="/static/(guide/[^"]+\.png)"', content)
+    assert len(pictures) == 10
+    for picture in pictures:
+        assert (Path(settings.BASE_DIR) / "static" / picture).is_file(), picture

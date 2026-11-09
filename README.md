@@ -44,6 +44,13 @@ en fabrication) ; un clic n'y montre que ces projets ; une recherche sur le nom 
 montre son statut, son client, sa date de pose et son montant (`apps/projects/views.py`,
 `templates/projects/project_sheet.html`).
 
+Le **guide illustré** (http://127.0.0.1:8765/guide/, lien « Guide » de l'en-tête, ou « Guide illustré » du menu
+« ⋯ » de l'éditeur) suit une cuisine et un dressing de l'accueil au devis, avec des captures des vrais écrans :
+l'accueil et ses affaires, le plan de cuisine, la cuisine proposée, un linéaire, l'électroménager, la liste de débit,
+le devis, la fiche du projet, un dressing rempli et les paramètres de l'atelier (`templates/guide.html`,
+`static/guide/`). Les captures se refont d'une commande après un changement de l'interface :
+`GUIDE=1 npx playwright test tests/e2e/guide.spec.ts`.
+
 Chaque projet a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner ») et les
 supprimer ensemble avec **« Supprimer la sélection »**. La page demande confirmation : un projet part avec ses
 versions et ses liens partagés (seul son propriétaire peut le supprimer ; `static/home/home-delete.js`).
@@ -93,11 +100,22 @@ npm run watch:js
 
 ## Tests
 
+Deux niveaux, à lancer d'un mot :
+
+```bash
+npm run test:rapide       # build, Vitest, backend, et les 9 parcours marqués @rapide (environ 2 minutes)
+npm run test:tout         # build, Vitest, backend, et tous les parcours du navigateur (environ 12 minutes)
+```
+
+La série rapide pour chaque changement ; la suite complète avant chaque commit. Le détail :
+
 ```bash
 .venv/bin/pytest          # backend Django : modèles, validation, API, CSRF, pages
 npm test                  # Vitest : noyau OpenCascade et solveur planegcs réels, esquisses, historique
 npm run typecheck         # TypeScript strict
 npm run test:e2e          # Playwright : parcours dans un vrai navigateur (après npm run build)
+npm run test:e2e:rapide   # les parcours essentiels seulement ({ tag: "@rapide" })
+GUIDE=1 npx playwright test tests/e2e/guide.spec.ts   # refait les captures du guide (static/guide/)
 .venv/bin/python manage.py check --deploy   # avec DJANGO_DEBUG=false et DJANGO_SECRET_KEY
 ```
 

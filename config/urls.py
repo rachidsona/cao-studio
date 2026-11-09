@@ -1,7 +1,7 @@
 """Root URL configuration for CAO Studio."""
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from apps.projects import sharing, workshop
 from apps.projects.monitoring import healthz
@@ -9,6 +9,8 @@ from apps.projects.monitoring import healthz
 urlpatterns = [
     path("", RedirectView.as_view(url="/projects/", permanent=False), name="home"),
     path("healthz", healthz, name="healthz"),
+    # The user's guide, with pictures of the real screens (tests/e2e/guide.spec.ts makes them again).
+    path("guide/", TemplateView.as_view(template_name="guide.html"), name="guide"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("projects/", include("apps.projects.urls")),

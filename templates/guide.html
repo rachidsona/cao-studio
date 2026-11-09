@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Guide · CAO Studio{% endblock %}
+{% block content %}
+{# The user's guide: a kitchen and a dressing, from the home page to the quote, with pictures of the real screens (tests/e2e/guide.spec.ts). #}
+<article class="mx-auto max-w-4xl space-y-10">
+  <header>
+    <h1 class="text-3xl font-semibold tracking-tight">Guide de CAO Studio</h1>
+    <p class="mt-2 text-gray-600 dark:text-gray-300">De la pièce au devis signé : une cuisine et un dressing, pas à pas. Dans l'éditeur, le bouton <strong>Aide</strong> (ou la touche <kbd class="border px-1 font-mono text-sm">?</kbd>) donne la fiche de chaque outil.</p>
+    <nav class="mt-4 flex flex-wrap gap-2 text-sm" aria-label="Sommaire">
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#accueil">1. L'accueil</a>
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#cuisine">2. Une cuisine</a>
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#atelier">3. Pour l'atelier</a>
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#client">4. Pour le client</a>
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#dressing">5. Un dressing</a>
+      <a class="border border-gray-300 px-3 py-1 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="#parametres">6. Les paramètres</a>
+    </nav>
+  </header>
+
+  <section id="accueil" class="space-y-3">
+    <h2 class="text-2xl font-semibold">1. L'accueil : vos affaires</h2>
+    <p>En haut, on crée un projet : <strong>Conception 3D</strong> pour un meuble libre, ou <strong>Cuisine &amp; Dressing</strong> — donnez un nom, puis « Créer une cuisine » ou « Créer un dressing ». En bas, <strong>Mes projets</strong> est votre tableau de bord : une case par statut (Esquisse, Devis envoyé, Accepté, En fabrication, Posé), le montant des devis en cours, une recherche par projet ou par client. Le bouton <strong>Fiche</strong> d'un projet ouvre sa fiche client.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/01-accueil.png' %}" alt="L'accueil : les deux façons de créer un projet et le tableau de bord des projets par statut" loading="lazy">
+  </section>
+
+  <section id="cuisine" class="space-y-3">
+    <h2 class="text-2xl font-semibold">2. Une cuisine, étape par étape</h2>
+    <p>La cuisine s'ouvre sur l'onglet <strong>Cuisine</strong>. Sous les onglets, la <strong>barre d'étapes</strong> : Pièce, Plan, Meubles, Électroménager, Finitions, Fabrication, Client. Chaque étape montre ses outils, avec leur nom ; une étape faite prend une coche verte. « Tous les outils » remet le ruban complet.</p>
+    <p><strong>Le plan</strong> s'ouvre à droite : choisissez la forme (droite, en L, en U, avec îlot…), réglez les longueurs, puis « Créer le plan ». <strong>« Proposer une cuisine »</strong> la garnit d'un coup.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/02-plan-de-cuisine.png' %}" alt="Le plan de cuisine à droite : les formes de cuisine et les longueurs des murs" loading="lazy">
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/03-cuisine-proposee.png' %}" alt="Une cuisine proposée en 3D, avec la barre d'étapes au-dessus" loading="lazy">
+    <p><strong>Chaque linéaire</strong> (« Aménager ») se règle sur sa bande de face, comme sur une planche de cuisiniste : cliquez un meuble pour changer sa largeur, glissez-le pour le déplacer, ajoutez des meubles, des fileurs, choisissez les angles. La 3D montre chaque changement aussitôt ; <strong>OK</strong> le garde, <strong>Annuler</strong> revient. Un meuble poussé dans la 3D reste où il est : la bande garde la place libre.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/04-lineaire.png' %}" alt="Le linéaire du mur A : la bande de face avec les meubles bas et hauts, leurs largeurs" loading="lazy">
+    <p><strong>L'électroménager</strong> : choisissez un appareil (four, plaque, hotte, réfrigérateur, lave-vaisselle, micro-ondes, évier, robinet), sa taille et sa finition, puis cliquez le caisson. Une plaque ou un évier découpe le plan de travail ; l'appareil suit son caisson s'il bouge.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/05-electromenager.png' %}" alt="La bibliothèque d'électroménager : les familles, les modèles dessinés, les finitions" loading="lazy">
+  </section>
+
+  <section id="atelier" class="space-y-3">
+    <h2 class="text-2xl font-semibold">3. Pour l'atelier</h2>
+    <p>L'étape <strong>Fabrication</strong> réunit ce qui va à l'atelier : le contrôle avant fabrication, la <strong>liste de débit</strong>, l'optimisation de découpe, le dossier de production, la mise en plan, l'export pour la commande numérique, les étiquettes et la notice de montage. Le menu du nom du projet les donne aussi (« Pour l'atelier »).</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/06-liste-de-debit.png' %}" alt="La liste de débit : chaque pièce avec ses cotes, sa matière et ses chants" loading="lazy">
+  </section>
+
+  <section id="client" class="space-y-3">
+    <h2 class="text-2xl font-semibold">4. Pour le client</h2>
+    <p>L'étape <strong>Client</strong> réunit le <strong>devis</strong>, les variantes, les rendus et le <strong>lien client</strong> : votre client voit son meuble en 3D, laisse ses commentaires et donne son accord en ligne. Le projet passe tout seul à « Devis envoyé », puis à « Accepté ».</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/07-devis.png' %}" alt="Le devis : les lignes, la marge, la TVA et le total" loading="lazy">
+    <p>La <strong>fiche du projet</strong> garde le client (nom, téléphone, e-mail, adresse du chantier), le statut, la date de pose, vos notes, le montant du devis et les liens envoyés.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/08-fiche-projet.png' %}" alt="La fiche du projet : le client, le statut, la date de pose, le devis" loading="lazy">
+  </section>
+
+  <section id="dressing" class="space-y-3">
+    <h2 class="text-2xl font-semibold">5. Un dressing</h2>
+    <p>Le dressing s'ouvre sur l'onglet <strong>Dressing</strong>, son plan à droite : la forme (droit, en L, en U, pan coupé…), les longueurs, puis « Créer le plan ». <strong>« Remplir »</strong> garnit une zone de caissons à la bonne largeur ; les étapes Aménagement et Façades posent étagères, penderies, tiroirs, modules et portes.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/09-dressing.png' %}" alt="Un dressing droit rempli de caissons, avec son plan à droite" loading="lazy">
+  </section>
+
+  <section id="parametres" class="space-y-3">
+    <h2 class="text-2xl font-semibold">6. Les paramètres de l'atelier</h2>
+    <p>Lien <strong>Paramètres</strong> en haut de page : vos <strong>matériaux</strong> et leurs prix, la <strong>quincaillerie</strong> comptée d'après le meuble, les <strong>tarifs du devis</strong> (chutes, chant, découpe, montage, taux horaire, marge, TVA) et le <strong>profil</strong> de l'atelier, en-tête de tous vos documents. Ils sont les mêmes sur tous les ordinateurs.</p>
+    <img class="w-full border border-gray-200 dark:border-gray-800" src="{% static 'guide/10-parametres.png' %}" alt="Les paramètres de l'atelier : l'onglet Tarifs du devis" loading="lazy">
+  </section>
+</article>
+{% endblock %}
