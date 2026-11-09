@@ -30,6 +30,3 @@ ruvector.db
 .e2e/
 test-results/
 playwright-report/
-
-# Built by npm run build:css (the theme of the poly_3D workshop)
-static/css/poly-theme.css

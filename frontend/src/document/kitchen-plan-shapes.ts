@@ -15,7 +15,8 @@ import { freeStretches, type RunInfo, type Span } from "../features/room-runs";
 export type KitchenModel = KitchenFloorPlan["model"];
 export type KitchenField = "lengthB" | "lengthC" | "lengthD" | "aisle";
 export type RunEnd = "free" | "pass" | "stop";
-export type RestSide = "end" | "start" | "both";
+/** Where the rest of a run goes: at its end, its start, half at each, or between the walls and its corner units. */
+export type RestSide = "end" | "start" | "both" | "walls";
 
 export const KITCHEN_MODELS: Record<KitchenModel, { label: string; fields: Partial<Record<KitchenField, string>>; noIsland?: boolean }> = {
   I: { label: "Droite (I)", fields: {} },
@@ -30,11 +31,13 @@ export const KITCHEN_MODELS: Record<KitchenModel, { label: string; fields: Parti
 export const KITCHEN_PLAN: KitchenFloorPlan = {
   model: "L-left", lengthA: 3600, lengthB: 2400, lengthC: 2400, lengthD: 1800, aisle: 1200, islandLength: 1800, islandDepth: 600, passage: 1100,
   height: 2500, depth: 600, wallDepth: 350, worktopHeight: 900, corner: "dead",
+  plinth: 150, worktopThickness: 38, fronts: "mixed", wallUnits: true, appliances: true, fridge: true, ovenColumn: false, splashback: true, kick: true,
 };
 
 /** Fronts, worktop, the gap a dead corner keeps for the fronts to open, a corner unit's door, wall units (mm). */
 export const FRONT = 19;
 export const WORKTOP = 38;
+const PLINTH = 150;
 const OVERHANG = 21;
 const CORNER_GAP = 50;
 export const CORNER_DOOR = 450;
@@ -43,11 +46,61 @@ const WALL_HEIGHT = 700;
 /** Kept free on both sides of a door's frame or a window (mm). */
 const MARGIN = 50;
 
+export type CornerKind = NonNullable<NonNullable<KitchenFloorPlan["corners"]>["left"]>;
+export type Joint = "left" | "right";
+
+/** The corner at an end of a run: wall A's own sides, the right end of B (or its peninsula), the left end of C. */
+export const jointOf = (run: KitchenRun, side: Joint): Joint => (run.zone.id === "A" ? side : run.zone.id === "B" ? "left" : "right");
+
+/** What stands in a corner. */
+export const cornerKind = (p: KitchenFloorPlan, joint: Joint): CornerKind => p.corners?.[joint] ?? p.corner ?? "dead";
+
+export type WallCornerKind = NonNullable<NonNullable<KitchenFloorPlan["wallCorners"]>["left"]>;
+
+/** An arm of an L corner unit, from the corner's wall (mm): as set, else 90 cm with 56 cm deep cabinets. */
+export const lArm = (p: KitchenFloorPlan, joint?: Joint): number => (joint && p.cornerSizes?.[joint]?.arm) || kitchenSizes(p).cabinet + 340;
+
+/** A blind corner unit's door (mm): as set, else 45 cm. */
+export const cornerDoor = (p: KitchenFloorPlan, joint: Joint): number => p.cornerSizes?.[joint]?.door || CORNER_DOOR;
+
+/** What stands in a corner up in the wall row, and its sizes: a door of 30 cm, an L of 60 cm with 35 cm deep units. */
+export const wallCornerKind = (p: KitchenFloorPlan, joint: Joint): WallCornerKind => p.wallCorners?.[joint] ?? "none";
+export const wallCornerDoor = (p: KitchenFloorPlan, joint: Joint): number => p.cornerSizes?.[joint]?.wallDoor || 300;
+export const wallArm = (p: KitchenFloorPlan, joint: Joint): number => p.cornerSizes?.[joint]?.wallArm || p.wallDepth + 250;
+/** In the wall row, the other run's units stop this far from the corner's wall, for the fronts to open (mm). */
+export const wallCorner = (p: KitchenFloorPlan): number => p.wallDepth + FRONT + CORNER_GAP;
+
+/** How far from the corner's wall the wall row of a run starts: as the base row with nothing there. */
+export function wallReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): number {
+  if (run[side] === "free") return 0;
+  const joint = jointOf(run, side);
+  const kind = wallCornerKind(p, joint);
+  if (kind === "none") return kitchenSizes(p).corner;
+  if (kind === "l") return wallArm(p, joint);
+  return wallCorner(p) + (run[side] === "pass" ? wallCornerDoor(p, joint) : 0);
+}
+
+/** A corner unit on this end, the run going to the wall: it can stand off it, a filler between. */
+export function movable(p: KitchenFloorPlan, run: KitchenRun, side: Joint): boolean {
+  const kind = cornerKind(p, jointOf(run, side));
+  return run[side] === "pass" && (kind === "unit" || kind === "lemans");
+}
+
+/** How far from the corner's wall the base row of a run starts, at an end in a corner. */
+export function cornerReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): number {
+  const end = run[side];
+  if (end === "free") return 0;
+  const kind = cornerKind(p, jointOf(run, side));
+  const s = kitchenSizes(p);
+  if (kind === "l") return lArm(p, jointOf(run, side));
+  return s.corner + (end === "pass" && (kind === "unit" || kind === "lemans") ? cornerDoor(p, jointOf(run, side)) : 0);
+}
+
 /** The sizes that follow from the plan: the cabinets' depth, the base units' height, the wall units' bottom and top, a corner. */
-export function kitchenSizes(p: KitchenFloorPlan): { cabinet: number; base: number; wallBottom: number; wallTop: number; corner: number } {
+export function kitchenSizes(p: KitchenFloorPlan): { cabinet: number; base: number; wallBottom: number; wallTop: number; corner: number; plinth: number } {
   const cabinet = p.depth - FRONT - OVERHANG;
   const wallBottom = p.worktopHeight + WALL_GAP;
-  return { cabinet, base: p.worktopHeight - WORKTOP, wallBottom, wallTop: wallBottom + WALL_HEIGHT, corner: cabinet + FRONT + CORNER_GAP };
+  return { cabinet, base: p.worktopHeight - (p.worktopThickness ?? WORKTOP), wallBottom, wallTop: wallBottom + WALL_HEIGHT, corner: cabinet + FRONT + CORNER_GAP, plinth: p.plinth ?? PLINTH };
 }
 
 /** A run of the plan: its zone (plan-shapes.ts), its back line, its two ends, a wall behind it or not. */
@@ -133,6 +186,8 @@ export interface RunGeometry {
   rest: RestSide;
   /** Its left and right ends: at a corner, the worktop goes on. */
   ends: [RunEnd, RunEnd];
+  /** The ends with a corner unit that can stand off the wall, a wall filler behind it (the rest « contre les murs »). */
+  movable: [boolean, boolean];
 }
 
 /** Where what is left goes, unless set: at the free end of a run with one, shared on an island, at the end otherwise. */
@@ -141,17 +196,17 @@ export const restOf = (p: KitchenFloorPlan, run: KitchenRun): RestSide => p.rest
 /** The base and wall rows of a run, between its corners (and a corner unit), on what its wall of the room leaves free. */
 export function runGeometry(p: KitchenFloorPlan, run: KitchenRun, info?: RunInfo): RunGeometry {
   const s = kitchenSizes(p);
-  const unit = p.corner === "unit" ? CORNER_DOOR : 0;
-  const cut = (side: RunEnd, wall: boolean) => (side === "free" ? 0 : s.corner + (side === "pass" && !wall ? unit : 0));
+  const cut = (side: Joint, wall: boolean) => (run[side] === "free" ? 0 : wall ? wallReach(p, run, side) : cornerReach(p, run, side));
   const [a, b] = zoneSpan(run);
   const low = Math.min(p.height, info?.ceiling(0) ?? p.height) < s.wallTop;
   return {
-    base: [run.left === "free" ? a : cut(run.left, false), run.right === "free" ? b : run.length - cut(run.right, false)],
-    wall: run.wall && !low ? [cut(run.left, true), run.length - cut(run.right, true)] : null,
+    base: [run.left === "free" ? a : cut("left", false), run.right === "free" ? b : run.length - cut("right", false)],
+    wall: run.wall && !low ? [cut("left", true), run.length - cut("right", true)] : null,
     spans: info?.spans ?? [],
     low: run.wall && low,
     rest: restOf(p, run),
     ends: [run.left, run.right],
+    movable: [movable(p, run, "left"), movable(p, run, "right")],
   };
 }
 
@@ -170,6 +225,8 @@ export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (!(p.depth >= 450 && p.depth <= 800)) return "La profondeur des meubles bas va de 45 à 80 cm.";
   if (!(p.wallDepth >= 200 && p.wallDepth <= 500)) return "La profondeur des meubles hauts va de 20 à 50 cm.";
   if (!(p.worktopHeight >= 700 && p.worktopHeight <= 1100)) return "Le plan de travail est de 70 à 110 cm du sol.";
+  if (p.plinth !== undefined && !(p.plinth >= 50 && p.plinth <= 250)) return "Le socle va de 5 à 25 cm.";
+  if (p.worktopThickness !== undefined && !(p.worktopThickness >= 10 && p.worktopThickness <= 100)) return "Le plan de travail a de 1 à 10 cm d'épaisseur.";
   if (p.model === "facing" && !(p.aisle >= 800)) return "Le passage entre les deux linéaires fait 80 cm au moins.";
   const runs = kitchenRuns(p);
   const short = runs.find((r) => r.zone.run.length < 300);

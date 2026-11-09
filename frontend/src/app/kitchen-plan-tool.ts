@@ -10,13 +10,16 @@ import * as THREE from "three";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../document/kitchen-floor";
 import { kitchenFromPlan } from "../document/kitchen-plan-build";
 import { kitchenMarks, kitchenRoomInfo, linkedKitchen, unlinkedKitchen } from "../document/kitchen-plan-room";
-import { KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, kitchenPlanProblem, kitchenRuns, type KitchenField, type KitchenModel, type KitchenRun } from "../document/kitchen-plan-shapes";
+import { CORNER_KINDS, type CornerSetting } from "../document/kitchen-corners";
+import { cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../document/kitchen-plan-shapes";
 import { proposeKitchen } from "../document/kitchen-propose";
+import type { CatalogEntry } from "../document/kitchen-catalog";
 import { MATERIALS } from "../document/materials";
 import { bodyOrigin, findFeature } from "../document/operations";
 import { planRooms } from "../document/plan-room";
 import { featureOfBody, type KitchenFloorPlan, type SketchFeature } from "../document/types";
 import { wallName } from "../features/room-plan";
+import { turn } from "../features/room-runs";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { askConfirm } from "../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../ui/dock";
@@ -25,7 +28,17 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { kitchenSchema } from "./kitchen-plan-schema";
 import { RunEditor } from "./kitchen-run-editor";
-import { paintPrice } from "./live-price";
+import { endPreview, previewRun, shownDoc } from "./kitchen-run-preview";
+import { Folds } from "../ui/fold";
+import { paintPrice, quoteButton } from "./live-price";
+import { isolatedSketch, isolateFeatures, showAll } from "./zone-view";
+import { RunDimsView } from "./kitchen-run-dims-view";
+import { runDims } from "../document/kitchen-run-dims";
+import { withRunDim } from "../document/kitchen-dim-edit";
+import { editValue } from "./dim-editor";
+import { addNormalizer } from "./doc-normalizers";
+import { syncKitchenPlans } from "../document/kitchen-sync";
+import { appliancesFollow } from "../document/appliance-follow";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -36,14 +49,33 @@ const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gra
 /** Kept for the session: the last plan set. */
 let last: KitchenFloorPlan = { ...KITCHEN_PLAN };
 
-type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage";
+/** The run open in the Plan de cuisine, for « Meubles de cuisine » (app/kitchen-units.ts). */
+export interface OpenRun {
+  plan: string;
+  run: string;
+  /** The unit chosen on its strip. */
+  chosen: string | null;
+  /** Changed and not yet applied: a unit added goes in with the rest, at OK. */
+  dirty: boolean;
+  add(entry: CatalogEntry): void;
+}
+let current: KitchenPlanTool | null = null;
+/** The run seen alone in the view, with its dimensions. */
+let seen: { plan: string; run: string } | null = null;
+export const kitchenRunOpen = (): OpenRun | null => current?.openRunInfo() ?? null;
+
+type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
+type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick";
 
 export class KitchenPlanTool {
   private plan: KitchenFloorPlan = { ...last };
   private editing = false;
   private runEditor: RunEditor | null = null;
+  private runPlan: string | null = null;
+  private readonly folds = new Folds(() => this.draw());
   readonly panel: HTMLElement;
   private drawn: unknown = null;
+  private drawnIsolated: string | null = null;
   private hadPlan = false;
 
   constructor(
@@ -76,12 +108,30 @@ export class KitchenPlanTool {
   }
 
   refresh(): void {
-    if (this.editor.doc === this.drawn) return;
-    if (this.hadPlan && !this.placed()) this.close();
-    else this.draw();
+    // The isolation ended from the view's bar: the panel shows it.
+    const changed = this.editor.doc !== this.drawn;
+    if (!changed && isolatedSketch() === this.drawnIsolated) return;
+    if (this.hadPlan && !this.placed()) return this.close();
+    // A run untouched follows the project (a unit added from « Meubles de cuisine », an undo).
+    const open = changed && this.runEditor && !this.runEditor.dirty && this.runPlan ? kitchenPlanIn(this.editor.doc, this.runPlan) : undefined;
+    const run = open && kitchenRuns(open).find((r) => r.id === this.runEditor?.runId);
+    if (changed && this.runEditor && !this.runEditor.dirty) {
+      if (run) return this.openRun(this.runPlan!, run, false, this.runEditor.chosenItem);
+      this.runEditor = null;
+    }
+    // The project changed under a run being changed: its preview is made again on it.
+    if (changed && this.runEditor?.dirty && this.runPlan) void previewRun(this.editor, this.runPlan, this.runEditor.runId, this.runEditor.pending());
+    this.draw();
+  }
+
+  openRunInfo(): OpenRun | null {
+    const editor = this.runEditor;
+    if (!editor || !this.runPlan) return null;
+    return { plan: this.runPlan, run: editor.runId, chosen: editor.chosenItem, dirty: editor.dirty, add: (entry) => editor.addEntry(entry) };
   }
 
   close(): void {
+    void endPreview(this.editor);
     this.panel.remove();
     this.closed();
   }
@@ -96,6 +146,7 @@ export class KitchenPlanTool {
     if (active instanceof HTMLInputElement && active.type !== "checkbox" && this.panel.contains(active)) return;
     const placed = this.placed();
     this.drawn = this.editor.doc;
+    this.drawnIsolated = isolatedSketch();
     this.hadPlan ||= !!placed;
     const plan = placed ? kitchenPlanIn(this.editor.doc, placed.id) : undefined;
     if (placed && plan && this.runEditor) this.panel.replaceChildren(...this.runEditor.render());
@@ -112,7 +163,7 @@ export class KitchenPlanTool {
 
   private number(label: string, key: Sized): HTMLElement {
     const unit = this.editor.unit;
-    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(this.plan[key], unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
+    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(this.plan[key] ?? KITCHEN_PLAN[key] ?? 0, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
     const apply = () => {
       const parsed = parseNumber(input.value);
       const ok = parsed !== null && parsed > 0;
@@ -129,6 +180,13 @@ export class KitchenPlanTool {
       }
     });
     return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
+  }
+
+  /** A setting on or off, as the Implantation's (an absent one at its usual value). */
+  private check(label: string, key: Switch): HTMLElement {
+    const box = el("input", { type: "checkbox", class: "size-4 shrink-0 accent-sky-600", checked: (this.plan[key] ?? KITCHEN_PLAN[key]) === true, "data-plan-switch": key });
+    box.addEventListener("change", () => this.set({ [key]: box.checked }));
+    return el("label", { class: "flex min-h-7 items-center gap-2" }, box, label);
   }
 
   private select(label: string, value: string, options: [string, string][], change: (v: string) => void): HTMLElement {
@@ -169,19 +227,30 @@ export class KitchenPlanTool {
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : kitchenSchema(plan, (r) => [r.label, formatLength(r.zone.run.length, this.editor.unit)], undefined, {}, kitchenMarks(this.editor.doc, plan))),
       this.roomChoice(),
       ...kitchenJoints(plan).map(({ joint, label, walls }) => this.select(label, plan.through?.[joint] ? "1" : "0", walls.map((w, i): [string, string] => [String(i), `${w} passe`]), (v) => this.set({ through: { ...plan.through, [joint]: v === "1" } }))),
-      kitchenJoints(plan).length ? this.select("Dans l'angle", plan.corner ?? "dead", [["dead", "Angle mort fermé (fileurs)"], ["unit", "Meuble d'angle (porte de 45 cm)"]], (v) => this.set({ corner: v as KitchenFloorPlan["corner"] })) : null,
+      ...kitchenJoints(plan).map(({ joint }) => this.select(`Dans l'angle, à ${joint === "left" ? "gauche" : "droite"}`, cornerKind(plan, joint), (Object.keys(CORNER_KINDS) as CornerKind[]).map((k): [string, string] => [k, CORNER_KINDS[k].label]), (v) => this.set({ corners: { ...plan.corners, [joint]: v as CornerKind } }))),
       plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.number("Longueur mur A", "lengthA"),
       ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.number(label, key)),
       plan.room ? null : this.number("Hauteur sous plafond", "height"),
       this.number("Profondeur des bas", "depth"),
       this.number("Profondeur des hauts", "wallDepth"),
       this.number("Hauteur du plan de travail", "worktopHeight"),
+      this.number("Épaisseur du plan de travail", "worktopThickness"),
+      this.number("Socle", "plinth"),
       model.noIsland ? null : el("label", { class: "flex min-h-8 items-center gap-2" }, island, "Îlot face au mur A"),
       islandRows ? this.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.number("Profondeur de l'îlot", "islandDepth") : null,
       this.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
       this.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
+      this.check("Crédence", "splashback"),
+      this.check("Plinthes", "kick"),
+      el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
+      el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
+      this.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),
+      this.check("Meubles hauts au-dessus", "wallUnits"),
+      this.check("Électroménager (évier, lave-vaisselle, plaque, four, hotte)", "appliances"),
+      this.check("Colonne réfrigérateur", "fridge"),
+      plan.appliances !== false ? this.check("Four en colonne (sinon sous la plaque)", "ovenColumn") : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
@@ -231,9 +300,12 @@ export class KitchenPlanTool {
     const layout = kitchenFromPlan(plan, room);
     const row = (run: KitchenRun) => {
       const count = plan.runs?.[run.id]?.length ?? 0;
+      const free = (layout.fills[run.id]?.free ?? []).reduce((sum, [a, b]) => sum + b - a, 0);
       const go = el("button", { type: "button", class: SMALL, "data-open-run": run.id }, "Aménager");
       go.addEventListener("click", () => this.openRun(planId, run));
-      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${run.label} · ${formatLength(run.zone.run.length, unit)}${count ? ` · ${count} meuble${count > 1 ? "s" : ""}` : ""}`), go);
+      const see = el("button", { type: "button", class: SMALL, "data-see-run": run.id, title: "Isole ce linéaire, de face, avec ses cotes", disabled: !(plan.made?.[run.id]?.length) }, "Voir");
+      see.addEventListener("click", () => this.seeRun(planId, run));
+      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${run.label} · ${formatLength(run.zone.run.length, unit)}${count ? ` · ${count} meuble${count > 1 ? "s" : ""}${free > 0 ? ` · ${formatLength(free, unit)} libres` : ""}` : ""}`), see, go);
     };
     const propose = el("button", { type: "button", class: WIDE, "data-propose": "" }, "Proposer une cuisine");
     propose.title = "Remplit tous les linéaires comme l'Implantation : modules de 60 cm d'abord, puis le plus grand qui tient, un fileur, l'électroménager à sa place";
@@ -251,11 +323,13 @@ export class KitchenPlanTool {
       el("h2", { class: "panel-title" }, "Plan de cuisine"),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez un linéaire pour l'aménager meuble par meuble."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, kitchenSchema(plan, (r) => [r.label], (r) => this.openRun(planId, r), layout.fills, kitchenMarks(doc, plan))),
-      el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
       el("ul", { class: "space-y-1", "aria-label": "Linéaires du plan" }, ...kitchenRuns(plan).map(row)),
       propose,
-      kitchenStarted(plan) && layout.ergonomics.ok.length ? el("div", { class: "space-y-0.5 text-emerald-700 dark:text-emerald-300" }, el("p", { class: "font-semibold" }, "Ergonomie"), ...layout.ergonomics.ok.map((m) => el("p", {}, `• ${m}`))) : null,
-      warn.length ? el("div", { class: "space-y-1 bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100", "data-plan-checks": "" }, el("p", { class: "font-medium" }, "À revoir"), ...warn.map((m) => el("p", {}, m))) : null,
+      isolatedSketch() === planId ? showAllButton(() => this.draw()) : null,
+      // Titled parts fold, one open at a time, all closed at first.
+      kitchenStarted(plan) && layout.ergonomics.ok.length ? this.folds.fold("ergonomics", `Ergonomie (${layout.ergonomics.ok.length})`, () => layout.ergonomics.ok.map((m) => el("p", { class: "text-emerald-700 dark:text-emerald-300" }, `• ${m}`))) : null,
+      warn.length ? this.folds.fold("checks", `À revoir (${warn.length})`, () => warn.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m))) : null,
+      this.folds.fold("price", "Prix du projet", () => [quoteButton()], el("span", { class: "font-mono font-medium", "data-live-total": "" })),
       change,
       finish,
     ];
@@ -272,36 +346,106 @@ export class KitchenPlanTool {
     this.draw();
   }
 
+  /** A run alone in the view, from the front, with its sizes; it stays so as the kitchen is made again. */
+  seeRun(planId: string, run: KitchenRun): void {
+    const plan = kitchenPlanIn(this.editor.doc, planId);
+    if (!plan?.made?.[run.id]?.length) return this.editor.notify(`${run.label} n'a encore rien de bâti : aménagez-le d'abord.`, "info");
+    const [nx, ny] = run.zone.run.normal;
+    const front = turn(plan.place ?? { quarter: 0, origin: [0, 0] }, [nx, ny, 0]);
+    seen = { plan: planId, run: run.id };
+    isolateFeatures(planId, run.label, () => new Set(kitchenPlanIn(shownDoc(this.editor), planId)?.made?.[run.id] ?? []), front);
+    this.draw();
+  }
+
   /** A run opened in its editor, on the plan as it is in the project. */
-  openRun(planId: string, run: KitchenRun, show = true): void {
+  openRun(planId: string, run: KitchenRun, show = true, chosen: string | null = null): void {
     const plan = kitchenPlanIn(this.editor.doc, planId);
     if (!plan) return;
+    this.runPlan = planId;
+    // Another wall opened while one is isolated: it is the one seen.
+    if (show && seen && seen.run !== run.id && isolatedSketch() === planId) this.seeRun(planId, run);
     this.runEditor = new RunEditor({
-      editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan),
+      editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen,
       redraw: () => this.draw(),
-      back: () => ((this.runEditor = null), this.draw()),
-      apply: (items, rest) => void this.applyRun(planId, run, items, rest),
+      changed: () => void previewRun(this.editor, planId, run.id, this.runEditor!.pending()),
+      back: () => ((this.runEditor = null), void endPreview(this.editor), this.draw()),
+      apply: (items, rest, corners) => void this.applyRun(planId, run, items, rest, corners),
+      runs: kitchenRuns(plan),
+      go: (id) => void this.goRun(planId, run, id),
+      see: () => this.seeRun(planId, run),
+      seen: () => isolatedSketch() === planId && seen?.run === run.id,
     });
     if (show) showPanel(this.panel);
     this.draw();
   }
 
-  private async applyRun(planId: string, run: KitchenRun, items: NonNullable<KitchenFloorPlan["runs"]>[string], rest: NonNullable<KitchenFloorPlan["rest"]>[string]): Promise<void> {
+  /** Another run opened from this one; its changes, if any, applied first when one says so. */
+  private async goRun(planId: string, from: KitchenRun, to: string): Promise<void> {
+    const editor = this.runEditor;
+    const target = () => {
+      const plan = kitchenPlanIn(this.editor.doc, planId);
+      return plan && kitchenRuns(plan).find((r) => r.id === to);
+    };
+    if (editor?.dirty) {
+      const next = target();
+      if (!(await askConfirm(`Les changements de « ${from.label} » ne sont pas appliqués : les appliquer, puis voir « ${next?.label ?? to} » ?`, "Appliquer"))) return;
+      if (!(await this.applyRun(planId, from, ...editor.pending()))) return;
+    }
+    const run = target();
+    if (run) this.openRun(planId, run);
+  }
+
+  private async applyRun(planId: string, run: KitchenRun, items: NonNullable<KitchenFloorPlan["runs"]>[string], rest: NonNullable<KitchenFloorPlan["rest"]>[string], corners: CornerSetting): Promise<boolean> {
     const plan = kitchenPlanIn(this.editor.doc, planId);
-    if (!plan) return;
-    const made = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest } });
-    if (typeof made === "string") return this.editor.notify(made, "error");
+    if (!plan) return false;
+    const made = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
+    if (typeof made === "string") {
+      this.editor.notify(made, "error");
+      return false;
+    }
     this.runEditor = null;
     await this.editor.change(made.doc);
+    await endPreview(this.editor);
     if (!kitchenStarted(plan)) this.frame();
     const own = made.problems.filter((m) => m.startsWith(`${run.label} :`));
     this.editor.notify(own.length ? `${run.label} aménagé. ${own.join(" ")}` : `${run.label} aménagé : la cuisine est refaite.`, own.length ? "info" : "success");
     this.draw();
+    return true;
   }
 }
 
+/** « Tout montrer »: everything back in the view. */
+function showAllButton(after: () => void): HTMLElement {
+  const b = el("button", { type: "button", class: WIDE, "data-show-all": "" }, "Tout montrer");
+  b.addEventListener("click", () => (showAll(), after()));
+  return b;
+}
+
 export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: Editor): void {
+  // A unit the plan made, changed in the 3D: the plan follows it, in the same undo. A cabinet moved, by hand or by the
+  // kitchen made again, takes its appliances along (before, so the plan keeps their cuts where they went, and after).
+  addNormalizer((prev, next) => appliancesFollow(prev, next));
+  addNormalizer(syncKitchenPlans);
+  addNormalizer((prev, next) => appliancesFollow(prev, next, false));
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
+  // The dimensions of the run seen alone, as long as it is.
+  const dims = new RunDimsView(viewport);
+  const paintDims = () => {
+    // The run being changed is seen as it would be.
+    const doc = shownDoc(editor);
+    const plan = seen && isolatedSketch() === seen.plan ? kitchenPlanIn(doc, seen.plan) : undefined;
+    const run = plan && kitchenRuns(plan).find((r) => r.id === seen!.run);
+    if (!plan || !run) return dims.clear();
+    const room = kitchenRoomInfo(doc, plan);
+    const fill = kitchenFromPlan(plan, room).fills[run.id];
+    if (!fill) return dims.clear();
+    const at = seen!;
+    dims.show(plan, run, runDims(plan, run, runGeometry(plan, run, room?.[run.id]), fill), editor.unit, (label, d) => {
+      // Typed while a run has changes not applied: they would be lost.
+      if (current?.openRunInfo()?.dirty) return editor.notify("Un linéaire a des changements pas encore appliqués : faites OK ou Annuler d'abord.", "error");
+      editValue(editor, label, d.b - d.a, (mm) => withRunDim(editor.doc, at.plan, at.run, d.edit!, mm));
+    });
+  };
   let tool: KitchenPlanTool | null = null;
   const frame = () => {
     const box = new THREE.Box3();
@@ -313,7 +457,7 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
   };
   const open = (chosen?: string, quiet = false, run?: string) => {
     tool?.close();
-    tool = new KitchenPlanTool(editor, container, () => (tool = null), chosen, quiet, run, frame);
+    tool = current = new KitchenPlanTool(editor, container, () => (tool = current = null), chosen, quiet, run, frame);
   };
   /** A sketch of a plan chosen: its tool; a body it made: its run, unless another is being changed. */
   const show = (sketchId: string | undefined, bodyId: string | undefined) => {
@@ -339,6 +483,7 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
   const rendered = editor.onRender;
   editor.onRender = () => {
     rendered();
+    paintDims();
     if (tool) tool.refresh();
     else if (hasDock() && kitchenPlanOf(editor.doc)) open(undefined, true);
   };

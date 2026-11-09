@@ -1,4 +1,4 @@
-"""Strict parsing, canonicalisation and validation of poly_3D documents (format « cao-studio », kept from CAO Studio).
+"""Strict parsing, canonicalisation and validation of CAO Studio documents (format « cao-studio »).
 
 A document is the JSON description of a parametric part. It is shared with the
 TypeScript editor. This module enforces the envelope (format, schema version,

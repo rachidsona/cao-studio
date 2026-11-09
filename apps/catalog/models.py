@@ -1,4 +1,4 @@
-"""Catalogue de l'atelier, géré dans l'administration (porté de poly_3D) : les matières (famille, format de plaque,
+"""Catalogue de l'atelier, géré dans l'administration : les matières (famille, format de plaque,
 prix au m²), les règles de quincaillerie à quantité automatique, et le profil de l'atelier (l'en-tête des documents
 imprimés). L'éditeur le lit en JSON (api.py) et le mêle à ses matières intégrées."""
 from django.core.validators import MinValueValidator

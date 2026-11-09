@@ -354,6 +354,13 @@
 
 /* Sketch labels rendered by the CSS2D layer above the viewport. */
 @layer components {
+  /* The fields of the catalogue's forms (apps/catalog), as Django draws them. */
+  .catalog-field :is(input:not([type="checkbox"]):not([type="color"]), select, textarea) {
+    @apply block min-h-10 w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100;
+  }
+  .catalog-field input[type="color"] {
+    @apply h-10 w-20 border border-gray-300 dark:border-gray-700;
+  }
   .cad-dimension {
  @apply cursor-pointer border border-sky-500 bg-white/95 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-sky-900
       shadow-sm hover:bg-sky-50 dark:bg-gray-900/95 dark:text-sky-100 dark:hover:bg-gray-700;

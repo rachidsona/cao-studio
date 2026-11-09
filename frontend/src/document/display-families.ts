@@ -1,5 +1,5 @@
 /**
- * Les familles de corps du menu « Affichage » de la colonne Vue (porté de poly_3D) : façades, carcasse, fonds,
+ * Les familles de corps du menu « Affichage » de la colonne Vue : façades, carcasse, fonds,
  * étagères, plinthes et socles, murs de la pièce, électroménager, le reste. Chaque corps est rangé d'après la
  * fonction qui l'a fait (façades, équipement de niche, finitions) puis d'après son nom (les pièces d'un caisson ou
  * d'une Répartition) et ce qu'on sait de lui (un corps de la pièce, le calque Électroménager). Pur.
@@ -38,6 +38,8 @@ const BY_NAME: [RegExp, Family][] = [
 /** The family of a body. */
 export function bodyFamily(doc: CadDocument, bodyId: string): Family {
   const info = bodyInfo(doc, bodyId);
+  // An appliance of the library: bought (out of the cut list, as the room), but an appliance.
+  if (findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)))?.type === "appliance") return "appliances";
   if (info.room) return "room";
   if (info.layer && layersOf(doc).find((l) => l.id === info.layer)?.name === "Électroménager") return "appliances";
   const feature = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));

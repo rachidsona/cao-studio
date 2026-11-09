@@ -1,4 +1,4 @@
-/** Le catalogue de l'atelier (porté de poly_3D) : matières du serveur, règles de quincaillerie comptées, en-tête. */
+/** Le catalogue de l'atelier : matières du serveur, règles de quincaillerie comptées, en-tête. */
 import { describe, expect, it } from "vitest";
 import { autoHardware, companyHeaderHtml, furnitureCounts, registerCatalog, toMaterial } from "../../frontend/src/document/catalog";
 import { MATERIALS, materialById } from "../../frontend/src/document/materials";

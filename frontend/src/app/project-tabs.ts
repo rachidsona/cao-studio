@@ -112,7 +112,7 @@ export class ProjectTabs {
     for (const [key, frame] of this.frames) frame.style.visibility = key === id ? "visible" : "hidden";
     (this.frames.get(id)?.contentWindow ?? window).focus();
     history.replaceState(history.state, "", this.url(id));
-    document.title = `${tab.name} · poly_3D`;
+    document.title = `${tab.name} · CAO Studio`;
     this.changed();
   }
 

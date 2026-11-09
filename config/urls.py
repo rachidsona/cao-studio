@@ -1,4 +1,4 @@
-"""Root URL configuration for poly_3D."""
+"""Root URL configuration for CAO Studio."""
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
@@ -13,10 +13,8 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("projects/", include("apps.projects.urls")),
     path("api/", include("apps.projects.api_urls")),
-    # The workshop's catalogue (materials, hardware, library, profile), edited in the application.
-    path("poly/catalogue/", include("apps.catalog.urls")),
-    # The workshop of the former poly_3D: cabinets edited by volumes, kitchen and dressing rooms in 2D/3D.
-    path("poly/", include("apps.furniture.urls")),
+    # The workshop's catalogue (materials, hardware, profile), edited in the application.
+    path("catalogue/", include("apps.catalog.urls")),
     # Client links: public, by token.
     path("s/<str:token>/", sharing.share_page, name="share-page"),
     path("atelier/<uuid:project_id>/", workshop.piece_page, name="workshop-piece"),

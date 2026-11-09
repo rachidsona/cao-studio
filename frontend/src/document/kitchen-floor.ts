@@ -9,11 +9,11 @@ import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-shapes";
-import { deleteFeatures, findFeature, uniqueId, updateFeature } from "./operations";
+import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
-import type { CadDocument, KitchenFloorPlan, SketchFeature } from "./types";
-import { placePoint } from "../features/room-runs";
+import { featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type SketchFeature, type Vec3 } from "./types";
+import { placePoint, turn } from "../features/room-runs";
 
 const FRONT_MATERIAL = "lacquer-white";
 const WORKTOP_MATERIAL = "solid-oak";
@@ -46,29 +46,87 @@ export function kitchenPlanIn(doc: CadDocument, planId: string): KitchenFloorPla
 /** Something stands on a run of the plan. */
 export const kitchenStarted = (p: KitchenFloorPlan): boolean => Object.values(p.runs ?? {}).some((items) => items.length > 0);
 
+/**
+ * The work done by hand on what the plan made, in its order: a cut under a hob or a sink placed from Électroménager,
+ * a face pulled from a filler… — what takes one of its pieces as its target, and nothing else of it.
+ */
+function handWork(doc: CadDocument, made: Set<string>): Feature[] {
+  const on = new Set(made);
+  const work: Feature[] = [];
+  for (const f of doc.features) {
+    const target = "target" in f && typeof f.target === "string" ? f.target : undefined;
+    if (made.has(f.id) || !target || !on.has(target) || featureInputs(f).some((id) => id !== target && on.has(id))) continue;
+    work.push(f);
+    on.add(f.id);
+  }
+  return work;
+}
+
+/** The work by hand put back on what the plan made again: on its piece of the same name, after what that piece now has. */
+function withWorkBack(doc: CadDocument, before: CadDocument, work: Feature[], made: string[]): CadDocument {
+  const again = new Map<string, string>();
+  let next = doc;
+  for (const f of work) {
+    const old = (f as { target: string }).target;
+    const name = findFeature(before, old)?.name;
+    const target = again.get(old) ?? made.find((id) => findFeature(next, id)?.name === name);
+    if (!target) continue;
+    const id = findFeature(next, f.id) ? uniqueId(next, f.id.replace(/\d+$/, "")) : f.id;
+    again.set(f.id, id);
+    next = { ...next, features: [...next.features, { ...f, id, target: latestBody(next, target) } as Feature] };
+    // Its name and its look, as they were.
+    const own = (key: string) => featureOfBody(key) === f.id;
+    const moved = <T>(record: Record<string, T> | undefined) => Object.fromEntries(Object.entries(record ?? {}).filter(([key]) => own(key)).map(([key, v]) => [id + key.slice(f.id.length), v]));
+    next = { ...next, bodyInfo: { ...next.bodyInfo, ...moved(before.bodyInfo) }, bodyNames: { ...next.bodyNames, ...moved(before.bodyNames) } };
+  }
+  return next;
+}
+
 /** The kitchen of the plan made again from it (its settings changed by `patch`), in place of what it made before. */
 export function withKitchenBuilt(base: CadDocument, planId: string, patch: Partial<KitchenFloorPlan> = {}): { doc: CadDocument; problems: string[] } | string {
   const old = kitchenPlanIn(base, planId);
   if (!old) return "Ce plan n'existe plus.";
   const plan: KitchenFloorPlan = { ...old, ...patch };
-  const { next } = deleteFeatures(base, Object.values(old.made ?? {}).flat());
+  const madeBefore = Object.values(old.made ?? {}).flat();
+  const work = handWork(base, new Set(madeBefore));
+  const { next } = deleteFeatures(base, madeBefore);
   let doc = next;
   const room: KitchenRoomInfo | undefined = kitchenRoomInfo(doc, plan);
   const layout = kitchenFromPlan(plan, room);
   const made: Record<string, string[]> = {};
   const problems: string[] = [];
   for (const run of kitchenRuns(plan)) {
-    // A run with nothing on it: only its wall, if it has one to draw.
+    // A run with nothing on it: only its wall, if it has one to draw, and the corner units chosen.
     const empty = !(plan.runs?.[run.id] ?? []).length;
-    const sub = { ...layout, units: empty ? [] : layout.units.filter((u) => u.run === run.id), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall")) };
+    const sub = { ...layout, units: layout.units.filter((u) => u.run === run.id && (!empty || u.corner)), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall" || b.corner)) };
     if (!sub.units.length && !sub.boxes.length) continue;
     const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place);
     doc = decorateKitchen({ ...doc, features: [...doc.features, ...built.features] }, built);
     made[run.id] = built.features.map((f) => f.id);
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);
   }
+  doc = withWorkBack(doc, base, work, Object.values(made).flat());
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, made } } : f));
   return { doc, problems: [...problems, ...layout.notes] };
+}
+
+/**
+ * How a board door of a kitchen plan opens (its hinge side, the way it faces; world), from the plan that made it: for
+ * a corner door built before doors knew theirs (ExtrudeFeature.door). Null when no plan made it a door.
+ */
+export function madeDoor(doc: CadDocument, featureId: string): { hinge: Vec3; out: Vec3 } | null {
+  const feature = findFeature(doc, featureId);
+  for (const sketch of doc.features) {
+    if (sketch.type !== "sketch" || !sketch.kitchenPlan?.made) continue;
+    const run = Object.entries(sketch.kitchenPlan.made).find(([, ids]) => ids.includes(featureId))?.[0];
+    const plan = run && kitchenPlanIn(doc, sketch.id);
+    if (!plan || !feature) continue;
+    const box = kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.find((b) => b.run === run && b.name === feature.name && b.door);
+    if (!box?.door) return null;
+    const place = plan.place;
+    return place ? { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } : box.door;
+  }
+  return null;
 }
 
 /** The runs with units that this plan would no longer have. */

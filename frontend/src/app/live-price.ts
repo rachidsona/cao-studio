@@ -19,6 +19,16 @@ export function paintPrice(): void {
   if (button) button.hidden = !shown;
 }
 
+/** A button that opens the quote, as a click on the price in the status bar does. */
+export function quoteButton(): HTMLElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "h-7 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+  b.textContent = "Ouvrir le devis";
+  b.addEventListener("click", () => document.querySelector<HTMLElement>("[data-live-price]")?.click());
+  return b;
+}
+
 export function bindLivePrice(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const update = () => {

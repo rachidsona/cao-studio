@@ -2,9 +2,6 @@ Django==6.1.2
 asgiref==3.12.1
 sqlparse==0.6.0
 whitenoise[brotli]==6.12.0
-# PDF of the poly_3D workshop (sketch, cut list, sheet layout, room plan, quote) and their logo
-reportlab==5.1.0
-pillow==10.4.0
 # Assistant de modélisation (API Claude ; clé dans ANTHROPIC_API_KEY)
 anthropic==1.17.0
 pytest==9.1.1

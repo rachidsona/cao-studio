@@ -10,7 +10,8 @@
  * The star ★ of a menu puts the tool in "Mes outils", the favourites bar at the left of the view (favorites.ts).
  * Groups change places by dragging their name; the order is remembered per toolbar.
  *
- * Above the model's bar, the tabs of TABS, as Fusion's: each shows the groups of its work; the choice is remembered.
+ * Above the model's bar, the tabs of TABS, as Fusion's: each shows the groups of its work, has its own bar of
+ * favourites and, clicked, its plan at the right (Plan de dressing, Plan de cuisine); the choice is remembered.
  */
 import { bindFavorites } from "./favorites";
 
@@ -49,6 +50,13 @@ const TABS: Record<string, string[]> = {
   design: ["Créer", "Modifier", "Curic", "Atelier", "Fabrication", "Client"],
   dressing: ["Modifier", "Pièce", "Dressing", "Fabrication", "Client"],
   kitchen: ["Modifier", "Pièce", "Cuisine", "Meuble", "Fabrication", "Client"],
+};
+
+/** Each onglet's own bar of favourites (Conception 3D keeps the model's), and what it starts with. */
+const TAB_FAVORITES: Record<string, { name: string; seed: string[] }> = {
+  design: { name: "model", seed: [] },
+  dressing: { name: "model-dressing", seed: ["data-workshop:dressing-plan", "data-action:partition", "data-action:shelves", "data-action:penderie", "data-action:tiroirs", "data-action:fronts", "data-workshop:dressing-style", "data-workshop:doors-open", "data-action:push"] },
+  kitchen: { name: "model-kitchen", seed: ["data-workshop:kitchen-plan", "data-workshop:kitchen-units", "data-action:appliances", "data-action:cutout", "data-workshop:doors-open", "data-workshop:drawers-open", "data-action:push", "data-action:move"] },
 };
 
 /** A stable name for a tool button ("data-action:array", "data-action:view:front"), or null for any other button. */
@@ -352,6 +360,8 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     const shown = TABS[tab.dataset.ribbonTab as string] ?? [];
     for (const g of groups) g.group.hidden = !shown.includes(g.name);
     for (const t of tabs) t.setAttribute("aria-selected", String(t === tab));
+    const bar = TAB_FAVORITES[tab.dataset.ribbonTab as string];
+    if (bar) favorites?.use(bar.name, bar.seed);
     separate();
     fit();
   };
@@ -359,6 +369,8 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     tab.addEventListener("click", () => {
       open?.close();
       choose(tab);
+      // Its work's panel, at the right (app/tab-panels.ts).
+      document.dispatchEvent(new CustomEvent("cad:ribbon-tab", { detail: tab.dataset.ribbonTab }));
       try {
         localStorage.setItem(TAB, tab.dataset.ribbonTab as string);
       } catch {
@@ -371,6 +383,16 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     first = localStorage.getItem(TAB);
   } catch {
     // The first tab.
+  }
+  // A kitchen or a dressing just made from the home page: its tab (?onglet=kitchen), then kept as any choice.
+  const asked = new URLSearchParams(location.search).get("onglet");
+  if (asked && tabs.some((t) => t.dataset.ribbonTab === asked)) {
+    first = asked;
+    try {
+      localStorage.setItem(TAB, asked);
+    } catch {
+      // Only this visit.
+    }
   }
   const opening = tabs.find((t) => t.dataset.ribbonTab === first) ?? tabs[0];
   if (opening) choose(opening);

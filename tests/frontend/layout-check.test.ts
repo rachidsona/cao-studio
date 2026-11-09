@@ -1,4 +1,4 @@
-/** Contrôle d'implantation (porté de poly_3D) : pièce, plan de travail, hotte, évier et plaque, dégagements, tringle. */
+/** Contrôle d'implantation : pièce, plan de travail, hotte, évier et plaque, dégagements, tringle. */
 import { describe, expect, it } from "vitest";
 import { cabinetBox, fromKitchenLayout, inferFront, inPolygon, layoutProblems, roleOf, type PlacedItem } from "../../frontend/src/document/layout-check";
 import { KITCHEN, kitchenLayout } from "../../frontend/src/features/kitchen-layout";

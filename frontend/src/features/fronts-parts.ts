@@ -73,7 +73,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   const box = (name: string, a: [number, number, number], b: [number, number, number], role?: FrontPart["role"]) =>
     parts.push({ name, from: [ox + a[0], oy + a[1], oz + a[2]], to: [ox + b[0], oy + b[1], oz + b[2]], ...(role ? { role } : {}) });
 
-  if (f.layout === "door") box("Porte", [x0, y0, z0], [x1, y1, z1], { kind: "door", hinge: "left" });
+  if (f.layout === "door") box("Porte", [x0, y0, z0], [x1, y1, z1], { kind: "door", hinge: f.side ?? "left" });
   else if (f.layout === "doors") {
     const mid = (x0 + x1) / 2;
     box("Porte gauche", [x0, y0, z0], [mid - g / 2, y1, z1], { kind: "door", hinge: "left" });

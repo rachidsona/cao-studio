@@ -1,5 +1,5 @@
 /**
- * Portés de poly_3D : « Rayons X » dans la colonne Vue (les corps translucides, pour voir l'intérieur d'un meuble sans
+ * « Rayons X » dans la colonne Vue (les corps translucides, pour voir l'intérieur d'un meuble sans
  * rien cacher) et, dans la barre Modifier, le menu « Affichage » — une case par famille de corps (façades, carcasse, fonds, étagères, plinthes,
  * pièce, électroménager, autres : document/display-families.ts), « Vue de travail » qui dégage l'intérieur d'un
  * clic (façades, murs et électroménager cachés) et « Tout afficher ». La vue seulement : le document, la liste de

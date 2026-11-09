@@ -102,6 +102,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["distance"], where, errors);
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (feature.strip !== undefined && (!isObject(feature.strip) || !isVec3(feature.strip.from) || !isVec3(feature.strip.to))) errors.push(`${where} : bande de face invalide.`);
+      if (feature.door !== undefined && (!isObject(feature.door) || !isVec3(feature.door.hinge) || !isVec3(feature.door.out))) errors.push(`${where} : porte invalide.`);
       if (
         feature.regions !== undefined &&
         (!Array.isArray(feature.regions) || feature.regions.length === 0 || !feature.regions.every((p) => Array.isArray(p) && p.length === 2 && p.every(isFiniteNumber)))
@@ -232,6 +233,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["overlay", "inset"].includes(feature.mount as string)) errors.push(`${where} : pose des façades inconnue.`);
       checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
+      if (feature.side !== undefined && feature.side !== "left" && feature.side !== "right") errors.push(`${where} : côté des charnières inconnu.`);
       break;
     case "room": {
       const num = (v: unknown) => isFiniteNumber(v);
@@ -302,6 +304,12 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!Array.isArray(feature.tools) || !feature.tools.every((t) => typeof t === "string")) errors.push(`${where} : corps outils invalides.`);
       if (!COMBINE_OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
       if (feature.keepTools !== undefined && typeof feature.keepTools !== "boolean") errors.push(`${where} : option invalide.`);
+      break;
+    case "appliance":
+      if (typeof feature.model !== "string" || typeof feature.finish !== "string") errors.push(`${where} : modèle d'électroménager invalide.`);
+      if (!isVec3(feature.origin)) errors.push(`${where} : position de l'appareil invalide.`);
+      checkNumbers(feature, ["width", "height", "depth"], where, errors);
+      if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation de l'appareil invalide (0, 90, 180 ou 270°).`);
       break;
     default:
       errors.push(`${where} : type d'opération inconnu « ${String(feature.type)} ».`);

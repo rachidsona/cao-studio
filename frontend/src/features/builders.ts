@@ -7,6 +7,7 @@
 import { buildPaneling } from "./paneling";
 import { buildTrim } from "./trim";
 import { buildRoom } from "./room";
+import { buildAppliance } from "./appliance";
 import { draw, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
@@ -233,5 +234,7 @@ export function buildFeature(feature: Feature, lookup: OutputLookup, featureOf: 
       return buildTrim(feature);
     case "room":
       return buildRoom(feature);
+    case "appliance":
+      return buildAppliance(feature);
   }
 }

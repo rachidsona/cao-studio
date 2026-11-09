@@ -1,0 +1,91 @@
+/**
+ * Le Plan de cuisine et la cuisine 3D restent d'accord, dans les deux sens. Le plan refait la cuisine quand il change
+ * (kitchen-floor.ts) ; et un meuble qu'il a fait, changé dans la 3D — sa largeur dans ses propriétés, une cote tapée,
+ * Prolonger élément, Déformer… —, change le plan : la largeur, la profondeur (et la hauteur d'un haut ou d'une colonne)
+ * de son meuble du linéaire ; la porte ou le côté d'un meuble d'angle. La cuisine est alors refaite avec, dans la même
+ * annulation : les voisins se placent, les fileurs et le plan de travail suivent. Un meuble poussé le long de son mur
+ * y reste : le linéaire garde la place libre qu'il laisse (kitchen-moves.ts). Ce que le plan ne garde pas (la
+ * hauteur d'un bas, sous le plan de travail) revient comme il le fait. Pur.
+ */
+import { cornerLimits, withCorner, type CornerSetting } from "./kitchen-corners";
+import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
+import { kitchenFromPlan } from "./kitchen-plan-build";
+import { kitchenRoomInfo } from "./kitchen-plan-room";
+import { itemsMoved, unitsMoved } from "./kitchen-moves";
+import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
+import { findFeature } from "./operations";
+import type { CabinetFeature, CadDocument, KitchenRunItem } from "./types";
+import { itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
+
+const NEAR = 0.05;
+const differs = (a: number, b: number) => Math.abs(a - b) > NEAR;
+const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, Math.round(v * 10) / 10));
+
+/** `next` with every kitchen plan following the units of it changed in the 3D (none: `next` itself). */
+export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocument {
+  let doc = next;
+  for (const sketch of next.features) {
+    if (sketch.type !== "sketch" || !sketch.kitchenPlan?.made) continue;
+    const plan = kitchenPlanIn(doc, sketch.id);
+    if (!plan) continue;
+    const room = kitchenRoomInfo(doc, plan);
+    const units = kitchenFromPlan(plan, room).units;
+    const runs: Record<string, KitchenRunItem[]> = { ...plan.runs };
+    let corners: CornerSetting = { corners: plan.corners, wallCorners: plan.wallCorners, cornerSizes: plan.cornerSizes };
+    let changed = false;
+    for (const run of kitchenRuns(plan)) {
+      const own = units.filter((u) => u.run === run.id);
+      const cabinets = (plan.made?.[run.id] ?? []).map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet");
+      if (own.length !== cabinets.length) continue;
+      // Pushed along the run in the 3D: where it now stands, from where the plan puts it.
+      const moved = unitsMoved(doc, plan, run, own, prev);
+      cabinets.forEach((c, i) => {
+        const u = own[i]!;
+        // The side of its door, turned in the 3D (its menu): the plan keeps it.
+        const fronts = doc.features.find((f) => f.type === "fronts" && f.cabinet === c.id);
+        const side = fronts?.type === "fronts" && fronts.layout === "door" ? (fronts.side ?? "left") : null;
+        const k0 = (runs[run.id] ?? []).findIndex((it) => it.id === u.item);
+        if (side && k0 >= 0 && (runs[run.id]![k0]!.side ?? "left") !== side) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (side === "left" ? (({ side: _gone, ...rest }) => rest)(it) : { ...it, side }) : it));
+          changed = true;
+        }
+        // Only a change made since: the plan's own rebuilds are what it builds.
+        const before = findFeature(prev, c.id);
+        if (before?.type === "cabinet" && !differs(before.width, c.width) && !differs(before.depth, c.depth) && !differs(before.height, c.height)) return;
+        if (!differs(c.width, u.width) && !differs(c.depth, u.depth) && !differs(c.height, u.height)) return;
+        if (u.cornerEdit) {
+          const { joint, key, less } = u.cornerEdit;
+          if (!differs(c.width, u.width)) return;
+          corners = withCorner(corners, joint, { [key]: clamp(c.width - less, cornerLimits(plan)[key]) });
+          changed = true;
+          return;
+        }
+        const items = runs[run.id] ?? [];
+        const k = items.findIndex((it) => it.id === u.item);
+        if (k < 0) return;
+        const item = items[k]!;
+        const limits = sizeLimits(plan, itemEntry(item));
+        const next: KitchenRunItem = { ...item };
+        if (differs(c.width, u.width)) next.width = clamp(c.width, limits.width);
+        if (differs(c.depth, u.depth)) next.depth = clamp(c.depth, limits.depth);
+        if (limits.height && differs(c.height, u.height)) next.height = clamp(c.height, limits.height);
+        // A wall or tall unit's height and any depth are its own; a base unit keeps the worktop's height.
+        if (rowOf(itemEntry(item)) === "base" && itemEntry(item).kind !== "tall") delete next.height;
+        runs[run.id] = items.map((it, j) => (j === k ? next : it));
+        changed = true;
+      });
+      if (Object.keys(moved).length) {
+        const s = kitchenSizes(plan);
+        const kept = itemsMoved(runGeometry(plan, run, room?.[run.id]), runs[run.id] ?? [], { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, moved);
+        if (kept) {
+          runs[run.id] = kept;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) continue;
+    const made = withKitchenBuilt(doc, sketch.id, { runs, ...corners });
+    if (typeof made !== "string") doc = made.doc;
+  }
+  return doc;
+}

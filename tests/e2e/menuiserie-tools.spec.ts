@@ -58,6 +58,41 @@ test("les onglets Conception 3D, Dressing et Cuisine montrent chacun leurs outil
   await expect(page.locator('[data-action="kitchen"]')).toBeVisible();
 });
 
+test("Dressing et Cuisine : chacun sa barre de favoris, ses outils de départ, et son plan à droite", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Onglets e2e");
+  const tabs = page.getByRole("tablist", { name: "Espaces de travail" }).getByRole("tab");
+  const bar = page.locator('[data-favorites^="model"]');
+  await expect(bar).toHaveAttribute("data-favorites", "model");
+  // Dressing: its own bar, with its tools, and the Plan de dressing at the right.
+  await tabs.nth(1).click();
+  await expect(bar).toHaveAttribute("data-favorites", "model-dressing");
+  await expect(bar.getByRole("button", { name: "Plan de dressing" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Répartition" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Plan de dressing" })).toBeVisible();
+  // Cuisine: the same, its own.
+  await tabs.nth(2).click();
+  await expect(bar).toHaveAttribute("data-favorites", "model-kitchen");
+  await expect(bar.getByRole("button", { name: "Électroménager" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Répartition" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Plan de cuisine" })).toBeVisible();
+  // A tool taken out of the kitchen's bar stays out of it; the dressing's keeps its own.
+  await bar.getByRole("button", { name: "Électroménager" }).click({ button: "right" });
+  await expect(bar.getByRole("button", { name: "Électroménager" })).toHaveCount(0);
+  await tabs.nth(1).click();
+  await expect(bar.getByRole("button", { name: "Plan de dressing" })).toBeVisible();
+  await tabs.nth(2).click();
+  await expect(bar.getByRole("button", { name: "Plan de cuisine" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Électroménager" })).toHaveCount(0);
+  // Conception 3D: the bar of the model, and Sélection at the right.
+  await tabs.nth(0).click();
+  await expect(bar).toHaveAttribute("data-favorites", "model");
+  await expect(bar.getByRole("button", { name: "Plan de cuisine" })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("un ordre de groupes gardé passe aux nouveaux groupes", async ({ page }) => {
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("seeded")) {
@@ -290,6 +325,43 @@ test("le même bouton ouvre et ferme les portes d'un meuble de cuisine", async (
   expect(errors).toEqual([]);
 });
 
+test("un clic ouvre la porte cliquée, mais pas un clic pris par un outil", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Clic porte e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.waitForTimeout(800);
+  const box = (await canvas(page).boundingBox())!;
+  const [x, y] = [box.x + box.width * 0.5, box.y + box.height * 0.5];
+  await page.getByText("Tout désélectionner").click();
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(1000);
+  const closed = await look(page);
+  // The click begins while a tool holds the view, and the tool closes before the button comes up: no door opens.
+  await click(page, '[data-action="appliances"]');
+  await expect(page.getByRole("dialog", { name: "Électroménager" })).toBeVisible();
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Électroménager" })).toHaveCount(0);
+  await page.mouse.up();
+  // That click only chose the door (no tool holds it any more): unchosen, the door is still shut.
+  await page.getByText("Tout désélectionner").click();
+  await page.mouse.move(5, 5);
+  await expect.poll(() => look(page), { timeout: 5000 }).toBe(closed);
+  // Without a tool, the same click opens the door.
+  await page.mouse.click(x, y);
+  await page.getByText("Tout désélectionner").click();
+  await page.mouse.move(5, 5);
+  await expect.poll(() => look(page), { timeout: 5000 }).not.toBe(closed);
+  expect(errors).toEqual([]);
+});
+
 test("le catalogue de cuisine montre chaque meuble dessiné, par famille, à la largeur survolée", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -341,6 +413,29 @@ test("le bas évier a deux traverses à la place du dessus, et le caisson se rè
   expect(errors).toEqual([]);
 });
 
+test("un double-clic sur une pièce sélectionne le caisson entier, façades comprises", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Double-clic e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+  const view = (await canvas(page).boundingBox())!;
+  await page.mouse.dblclick(view.x + view.width / 2, view.y + view.height / 2);
+  await expect(page.getByText("« Bas 2 portes 800 » sélectionné en entier : 8 pièces.")).toBeVisible();
+  await expect(page.getByText("8 corps sélectionné(s)")).toBeVisible();
+  // The same on a piece of the navigator: one piece, then all of them.
+  await page.keyboard.press("Escape");
+  await page.getByLabel(/^Navigateur : corps/).getByText("Étagère 1", { exact: true }).first().dblclick();
+  await expect(page.getByText("8 corps sélectionné(s)")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -366,6 +461,13 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   await expect(page.getByText(/^Corps : Bas 2 portes 800/)).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Déplacer", exact: true })).toHaveValue("element");
   await page.getByRole("combobox", { name: "Déplacer", exact: true }).selectOption("whole");
+  // The whole starts as a new move does: the manipulator goes on a point clicked, not in the middle.
+  await expect(page.getByRole("combobox", { name: "Saisie" })).toHaveValue("points");
+  await expect(page.getByText(/^Pivot : survolez une face du corps/)).toBeVisible();
+  const view = (await canvas(page).boundingBox())!;
+  await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2);
+  await expect(page.getByRole("button", { name: "Changer le pivot" })).toBeVisible();
 
   const tree = page.getByLabel(/^Navigateur : corps/);
   const before = await canvas(page).screenshot();
@@ -398,6 +500,13 @@ test("Déplacer une Répartition entière emporte toutes ses pièces", async ({ 
   await expect(choice).toHaveValue("element");
   await choice.selectOption("whole");
   await expect(page.getByText("Esquisse : Plan — mur a")).toBeVisible();
+  // Its pivot: a corner of one of its panels, or a point of its sketch.
+  await expect(page.getByRole("combobox", { name: "Saisie" })).toHaveValue("points");
+  await expect(page.getByText(/^Pivot : cliquez un coin d'un de ses panneaux/)).toBeVisible();
+  const view = (await canvas(page).boundingBox())!;
+  await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2);
+  await expect(page.getByRole("button", { name: "Changer le pivot" })).toBeVisible();
   const before = await canvas(page).screenshot();
   await page.getByRole("combobox", { name: "Saisie" }).selectOption("relative");
   // The panel is drawn again when the preview ends: the field is typed in after that.

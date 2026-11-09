@@ -1,5 +1,5 @@
 /**
- * Contrôle d'implantation (porté des alertes de faisabilité de poly_3D), en géométrie pure, sur ce qui est posé dans
+ * Contrôle d'implantation, en géométrie pure, sur ce qui est posé dans
  * la pièce — caissons, électroménager, plans de travail, murs, tringles — :
  * - un meuble ou un appareil qui sort de la pièce relevée ;
  * - une plaque qui ne repose pas sur un plan de travail ;

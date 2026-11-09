@@ -49,7 +49,7 @@ export function openingProblems(viewport: Viewport, doc: CadDocument): Problem[]
   for (const id of all) {
     const box = boxOf(id);
     if (!box) continue;
-    const swing = doorSwing(doc, id);
+    const swing = doorSwing(doc, id, box);
     if (swing) {
       // The view swings a door about its front edge: near the hinge it sweeps through its own thickness, which a
       // real hinge does not; only a deeper overlap is a hit.

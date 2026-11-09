@@ -1,4 +1,4 @@
-"""Le catalogue de l'atelier (porté de poly_3D) : seeds, API JSON pour l'éditeur, profil unique, administration."""
+"""Le catalogue de l'atelier : seeds, API JSON pour l'éditeur, profil unique, administration."""
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client

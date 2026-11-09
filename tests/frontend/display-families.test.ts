@@ -1,4 +1,4 @@
-/** Familles de corps du menu « Affichage » (porté de poly_3D) : façades, carcasse, fonds, étagères, plinthes, pièce… */
+/** Familles de corps du menu « Affichage » : façades, carcasse, fonds, étagères, plinthes, pièce… */
 import { describe, expect, it } from "vitest";
 import { bodyFamily, visibleByFamily, WORK_VIEW_HIDDEN } from "../../frontend/src/document/display-families";
 import { addLayer } from "../../frontend/src/document/layers";

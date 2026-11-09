@@ -29,7 +29,7 @@ import { AXIS_LOCK_OPTIONS, AxisLock, lockMove, type AxisLockMode } from "./axis
 import { bodySnap, facePoint, otherBoxes } from "./body-snap";
 import { cabinetBodies } from "./cabinet-drag";
 import { pointText } from "./model-selection";
-import { wholeOf } from "./move-whole";
+import { wholeBodies, wholeOf } from "./move-whole";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** What is moved: a body of the model, or a sketch. */
@@ -132,7 +132,8 @@ export class MoveTool extends PanelTool {
     this.gizmo = new MoveGizmo(ctx.viewport, { rotate: true });
     this.measure();
     // A new body move starts like Fusion's: hover a face to see its points, click one to put the manipulator there.
-    if (!editing || this.sketch) this.inputMode = "points";
+    // So does the whole of a cabinet or a Répartition: the manipulator goes on a point of it, not its middle.
+    if (!editing || this.sketch || this.cabinet) this.inputMode = "points";
     if (options.points && !this.sketch) {
       this.inputMode = "points";
       this.source = options.points.source;
@@ -158,6 +159,8 @@ export class MoveTool extends PanelTool {
       const ys = this.sketch.points.map((p) => p.y);
       const c: [number, number] = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
       this.center = toWorld(frame, c[0], c[1]);
+      // A whole Répartition: its panels' corners are points of it too.
+      if (this.options.element) this.group = new Set(wholeBodies(this.ctx.doc(), "sketch", this.sketch.id, this.ctx.viewport.displayedBodies));
       return;
     }
     if (this.cabinet) {
@@ -299,7 +302,9 @@ export class MoveTool extends PanelTool {
           this.source
             ? `Pivot : ${pointText(this.source, unit)}`
             : this.sketch
-              ? "Pivot : cliquez un point de l'esquisse (extrémité, centre ou milieu d'une ligne) où placer les flèches."
+              ? this.group.size
+                ? "Pivot : cliquez un coin d'un de ses panneaux, ou un point de l'esquisse, où placer les flèches."
+                : "Pivot : cliquez un point de l'esquisse (extrémité, centre ou milieu d'une ligne) où placer les flèches."
               : "Pivot : survolez une face du corps, ses coins et son centre apparaissent ; cliquez le point où placer les flèches.",
         ),
         this.source ? this.linkButton("Changer le pivot", () => ((this.pickStep = "source"), (this.hover = null), this.sync())) : null,
@@ -489,7 +494,9 @@ export class MoveTool extends PanelTool {
     const pick = event ? this.ctx.viewport.pickFace(event) : null;
     const usable = (bodyId: string) => {
       const own = bodyId === this.subject.id || this.group.has(bodyId) || bodyId === this.id || bodyId.startsWith(`${this.copy.id}#`);
-      return this.sketch ? this.pickStep === "reach" : this.pickStep === "source" ? !this.editing || own : !own;
+      // A sketch's pivot is one of its points, or a corner of the panels it makes (a whole Répartition).
+      if (this.sketch) return this.pickStep === "reach" ? !this.group.has(bodyId) : this.group.has(bodyId);
+      return this.pickStep === "source" ? !this.editing || own : !own;
     };
     // The corners and points are caught only with the geometry snapping.
     if (pick && bodySnap.geometry) {
@@ -567,7 +574,7 @@ export class MoveTool extends PanelTool {
         this.reach = null;
       }
       // A point of the body's preview is shown moved: take it back to where it was.
-      this.source = (owner === this.id || this.group.has(owner)) && !this.sketch ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
+      this.source = this.group.has(owner) || (owner === this.id && !this.sketch) ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
       this.pickStep = "reach";
     } else if (point) {
       this.lock.take(event);

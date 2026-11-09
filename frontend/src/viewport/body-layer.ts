@@ -74,7 +74,7 @@ export class BodyLayer {
   private readonly marks = new WeakMap<BodyMesh, FaceMark[]>();
   private appearanceMaterials = new Map<string, THREE.MeshPhysicalMaterial>();
   private opacity = 1;
-  /** « Rayons X » (poly_3D): the bodies see-through, to look inside without hiding anything. */
+  /** « Rayons X »: the bodies see-through, to look inside without hiding anything. */
   private xray = false;
   /** Joint lines between flush pieces left out (Curic Hidden). */
   private jointsHidden = false;
@@ -266,7 +266,7 @@ export class BodyLayer {
     for (const material of this.materials()) this.fade(material);
   }
 
-  /** X-ray (translucent bodies, as poly_3D's « Rayons X ») on or off; combined with the sketch mode's look. */
+  /** X-ray (translucent bodies, « Rayons X ») on or off; combined with the sketch mode's look. */
   setXray(on: boolean): void {
     this.xray = on;
     for (const material of this.materials()) this.fade(material);

@@ -1,6 +1,6 @@
-# poly_3D
+# CAO Studio
 
-Application web de conception paramétrique de meubles (anciennement CAO Studio, fusionnée avec poly_3D) : Django
+Application web de conception paramétrique de meubles : Django
 (comptes, projets, versions, catalogue de l'atelier) + éditeur 3D TypeScript (Three.js) + noyau B-rep exact
 OpenCascade (WASM, via replicad) exécuté dans un Web Worker.
 
@@ -23,35 +23,27 @@ npm run build                 # typecheck + Tailwind (static/css) + Vite (static
 ```
 
 Ouvrir http://127.0.0.1:8765/ → la **page d'accueil** (`/projects/`, lien « Accueil » de l'en-tête) a deux
-colonnes, chacune avec sa photo (un meuble télé et une cuisine, `static/img/accueil/`) et son titre centré : **Conception 3D** (créer un
-projet, projet exemple, puis la liste « Projets 3D ») et **Conception Cuisine & Dressing** (nommer une cuisine ou un
-dressing ouvre l'atelier sur sa pièce à dessiner, « Ouvrir l'atelier », puis la liste « Projets Cuisine & Dressing »,
-les affaires de l'atelier). Sur téléphone, chaque carte précède sa liste. Chaque nouveau projet
-contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé chêne, fond HDF)
-pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans l'éditeur, le
-bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis clavier et une
-fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
+cartes, chacune avec sa photo (un meuble télé et une cuisine, `static/img/accueil/`) et son titre centré :
+**Conception 3D** (créer un projet, ou ouvrir le projet exemple) et **Conception Cuisine & Dressing** (nommer une
+cuisine ou un dressing, puis « Créer une cuisine » ou « Créer un dressing » : le projet s'ouvre dans l'éditeur sur
+l'onglet Cuisine ou Dressing, son plan à droite, `?onglet=kitchen`). Dessous, la liste « Mes projets ». Chaque
+nouveau projet contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé
+chêne, fond HDF) pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans
+l'éditeur, le bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis
+clavier et une fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
 
-Chaque projet des deux listes a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner »)
-et les supprimer ensemble avec **« Supprimer la sélection »**, liste par liste. Les deux demandent confirmation : un projet 3D part avec ses versions
-et ses liens partagés (seul son propriétaire peut le supprimer), une cuisine ou un dressing part avec sa pièce, mais
-ses caissons restent dans l'atelier, « Sans affaire ».
+Chaque projet a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner ») et les
+supprimer ensemble avec **« Supprimer la sélection »**. La page demande confirmation : un projet part avec ses
+versions et ses liens partagés (seul son propriétaire peut le supprimer ; `static/home/home-delete.js`).
 
-Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/poly/catalogue/ (onglets de l'atelier,
-cartes « Catalogues » des réglages de l'éditeur de caisson) : un onglet par partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut ; un
-matériau utilisé par des caissons n'est pas supprimé), **quincaillerie** (articles et quantité automatique),
-**bibliothèque** des modèles de caissons (renommer, décrire, supprimer) et **profil de l'atelier** (coordonnées et logo
-des PDF). Il est garni au premier `migrate` ; l'administration Django reste disponible pour un superutilisateur.
+Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/catalogue/ (lien « Catalogue » de
+l'en-tête, ou « Catalogue de l'atelier » du menu du nom du projet dans l'éditeur ; connexion requise) : un onglet par
+partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut), **quincaillerie** (articles et
+quantité automatique) et **profil de l'atelier** (coordonnées et logo des documents imprimés). Les suppressions
+demandent confirmation dans la page (`static/home/confirm.js`). Il est garni au premier `migrate` ; l'administration
+Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 
-## Fusion avec poly_3D (novembre 2026)
-
-poly_3D était une seconde application (Django 5.2, JavaScript, reportlab), clone de PolyBoard : caissons relationnels
-reconstruits par le serveur, séparations, étagères, cloisons, liste de débit, devis, éditeur de pièce, PDF. Les deux
-ne font plus qu'une, sur la base de CAO Studio, renommée **poly_3D** (titre des pages, en-tête, connexion ; le format
-de document « cao-studio », l'extension `.cao.json` et les réglages gardés par le navigateur ne changent pas : les
-projets existants s'ouvrent tels quels). Ce qui a été porté dans l'éditeur 3D :
-
-- **Catalogue de l'atelier** (`apps/catalog`, pages `/poly/catalogue/`, `GET /api/catalog/`) : les **matières** (nom,
+- **Catalogue de l'atelier** (`apps/catalog`, pages `/catalogue/`, `GET /api/catalog/`) : les **matières** (nom,
   épaisseur, famille — mélaminé, bois, verre, marbre, pierre, métal, stratifié, uni —, format de plaque, prix au m²),
   23 au départ (aggloméré, MDF laqué, chênes, noyer, hêtre, marbres, quartz, granit, inox, aluminium, verres, béton
   ciré, terrazzo, laqués) ; les **règles de quincaillerie** à quantité automatique (par caisson, par porte, charnières
@@ -74,103 +66,6 @@ projets existants s'ouvrent tels quels). Ce qui a été porté dans l'éditeur 3
   l'évier, moins de 80 cm devant un four, un réfrigérateur, un lave-vaisselle ou un lave-linge, meuble haut à moins de
   45 cm au-dessus de la plaque, tringle de penderie hors de 170 à 190 cm (`document/layout-check.ts`,
   `app/layout-check.ts`).
-
-### Atelier « Caissons et pièces » (`/poly/`)
-
-L'atelier de l'ancien poly_3D est monté tel quel dans le même serveur, sous `/poly/` : lien « Caissons et pièces »
-dans l'en-tête du site et carte « Conception Cuisine & Dressing » de la page d'accueil ; chacune de ses pages a un lien
-« ← Mes projets ». Il demande un compte poly_3D (les pages renvoient à la connexion, son API répond 401 en JSON,
-`apps/furniture/middleware.py`). On y retrouve :
-
-- le **tableau de bord**, premier onglet de l'atelier (Caissons, Matériaux, Quincaillerie, Bibliothèque, Profil
-  atelier) : la **liste des caissons** (nom, dimensions, affaire, date), avec recherche par nom et filtre par affaire
-  ou « Sans affaire », un clic sur le nom ouvre l'éditeur, le menu « … » de la ligne donne la liste de débit (CSV), le
-  devis et la suppression ; **« Nouveau caisson »** ouvre une fenêtre (type, cotes, carcasse, fond, jeu arrière,
-  plinthe, façades) : choisir un des **14 types** (8 de cuisine, 6 de dressing) remplit le formulaire, et le caisson
-  garde ses étagères, tiroirs ou tringle aux cotes données. L'onglet Bibliothèque les liste aussi, avec « Créer un
-  caisson », au-dessus de vos modèles. Les affaires se créent et se listent sur la page d'accueil, les modèles de caissons servent depuis
-  l'onglet Bibliothèque, « Créer un caisson » ;
-- l'**éditeur de caisson** (Three.js) : **Séparer** (division verticale ou horizontale d'une baie, en proportion ou à
-  cote fixe, ou **grille de compartiments** de 2 à 8 colonnes × 1 à 8 rangées, proportions en pourcentages, rangée du
-  haut pleine largeur ; une séparation divise **seulement la niche** : le dessus et le dessous restent d'une pièce,
-  seul un côté double fait avec **Côté** les traverse et les coupe), **Étagère** (une ou une série de 1 à 20, colonne entre côté et cloison ; l'étagère reste à 5 cm au moins du dessous et du dessus de sa niche, la règle du serveur : en proportion, le curseur ne va que de cette limite basse à cette limite haute, une valeur tapée hors limites y est ramenée, et une niche trop basse le dit), **Côté** (côtés doubles, un ou une série),
-  **Déplacer / copier** des étagères vers une autre niche, **Plinthe** (l'outil « Séparation », une cloison entre
-  deux étagères, a été retiré de la barre : une niche se divise avec Séparer ; avec Séparer, Côté et Étagère, un **simple
-  clic** dans la vue choisit la niche, un clic sur une étagère ou une séparation sélectionne ce panneau ; avec les
-  autres outils, le double-clic choisit la niche), **Caisson** (cotes, matières, fond, façades,
-  tringle, tiroirs), **Mesurer** (face, arête, point), **Navigateur** (dessiné comme celui de l'éditeur : cartes en dégradé, l'œil devant chaque nom, ligne choisie éclairée ; à droite, chaque bloc d'options est une carte ombrée à bandeau de titre ; un clic sur le titre, ou Entrée, replie ou déplie la carte (▾ / ▸) ; à droite, en accordéon, les cartes sont fermées à l'ouverture et en ouvrir une ferme les autres (un outil choisi dans la barre du haut ouvre « Outils ») ; l'onglet Devis a trois cartes, « Informations du devis », « Devis » (lignes, totaux, devis imprimable) et « Quincaillerie (BOM) » ; dans Fabrication, « Liste de débit » et « Optimisation de découpe » ont aussi leur titre ; le Navigateur est ouvert par défaut et reste replié au rechargement si on l'a replié ; `poly/css/side-panels.css`, `poly/js/fold-cards.js`) avec un œil par élément, Rayons X, menu
-  d'affichage, vues, annuler / rétablir et historique avec retour arrière, liste de débit, optimisation de découpe,
-  devis, croquis 2D, contrôles, rendu photo, « Enregistrer comme modèle » ;
-- l'**éditeur de pièce** (cuisine, dressing ou autre) : plan 2D vu de dessus et vue 3D, murs aux sommets déplaçables,
-  portes et fenêtres, bibliothèque de meubles de cuisine et de dressing et d'électroménager (évier, plaque, hotte,
-  four, réfrigérateur, lave-vaisselle, micro-ondes, lave-linge), glisser et aimanter, tourner, plans de travail
-  calculés ou posés à la main, contrôles de faisabilité (hotte, évier et plaque, dégagements, tringles…), devis en
-  temps réel, versions de l'affaire, duplication, mode présentation ;
-- les **PDF** de l'atelier (reportlab) : croquis coté d'un caisson ou d'une affaire, plan de pièce avec appareils et
-  contrôles, liste de débit, optimisation de découpe, devis d'affaire, avec l'en-tête et le logo du profil de
-  l'atelier ; liste de débit en CSV, devis d'un caisson en page HTML.
-
-**Organisation des fenêtres de l'atelier** (pensée pour travailler vite, sans chercher les réglages) :
-
-- **Éditeur de pièce** :
-  - des **modes** au-dessus du plan — *Sélection* (poser, déplacer, régler), *Murs* (sommets à glisser, cotes, réglages
-    de la pièce dépliés), *Ouvertures* (liste et formulaire des fenêtres, portes, passages), *Mesurer* (deux clics,
-    accrochés aux angles des murs, des caissons et des appareils ; Maj : point libre ; la distance et ΔX, ΔY) — chacun
-    avec son panneau à gauche ;
-  - à gauche, la **bibliothèque en onglets** (Cuisine, Dressing, Appareils, Plans de travail) et les **réglages de la
-    pièce repliés** en bas ;
-  - à droite, **un seul panneau « Sélection »** : les réglages de ce qui est cliqué (caisson, appareil, plan de
-    travail, mur, ouverture), avec « Éditer le caisson › » et « Retirer » ; les listes (caissons, appareils, plans de
-    travail posés) repliées dessous ;
-  - sous la vue, une **barre de pastilles** — *Contrôles* (vert, ou le nombre d'alertes), *Devis* (le total TTC),
-    *Versions* — dont un clic ouvre le détail (et la fiche de l'affaire) ;
-  - **Plan 2D, Vue 3D ou Côte à côte** (les deux en même temps) ;
-  - **Annuler / Rétablir** (Ctrl+Z, Ctrl+Maj+Z ou Ctrl+Y ; boutons au-dessus du plan) : chaque changement de la pièce
-    (poser, déplacer, tourner, retirer un meuble ou un appareil, les murs, les ouvertures, les plans de travail, une
-    version restaurée) est gardé par le serveur, 40 étapes par affaire (`apps/furniture/room_history.py`) ; les
-    versions gardent maintenant aussi les plans de travail posés à la main ;
-  - **clavier** : Suppr retire, R tourne de 90° (Maj + R dans l'autre sens), Échap désélectionne ;
-  - **appareils encastrés** : un four, un micro-ondes ou un réfrigérateur posé dans un caisson (un four dans une
-    colonne, par exemple) y est encastré : les contrôles de faisabilité ne le signalent plus comme un chevauchement,
-    tant qu'il reste dans le caisson (à 3 cm près) ; un lave-vaisselle ou un appareil qui dépasse reste signalé ;
-  - **rendu 3D des fours et micro-ondes** : une vraie face — cadre inox, bandeau noir avec boutons et afficheur, porte
-    vitrée avec sa fenêtre, poignée en barre (micro-ondes : fenêtre à gauche, touches à droite). Encastré, l'appareil
-    montre seulement sa face, au ras du caisson, et les portes du caisson s'ouvrent autour de lui (une dessous, une
-    dessus) ; posé seul, il garde son corps inox (`apps/furniture/static/poly/js/appliance3d.js`) ;
-  - ce qui est replié, la vue et la pastille ouverte sont **retenus par le navigateur**
-    (`apps/furniture/static/poly/js/room_layout.js`).
-- **Éditeur de caisson** : **trois onglets** au lieu de sept — *Sélection et outil* (la sélection et les réglages de
-  l'outil choisi dans la barre, ensemble), *Fabrication* (liste de débit, optimisation, contrôles), *Devis et
-  croquis* — l'onglet ouvert retenu par le navigateur ; un simple clic dans une niche la choisit avec Séparer, Côté et
-  Étagère.
-- **Menu du nom** (▾), dans l'éditeur de caisson et dans l'éditeur de pièce comme dans l'éditeur 3D : les documents
-  (devis, liste de débit, optimisation, croquis ou plan en PDF, CSV) et les autres endroits (la pièce ou l'affaire du
-  caisson, le tableau de bord de l'atelier, Mes projets). Le retour à la pièce reste visible dans la barre de
-  l'éditeur de caisson (« ← Pièce « … » »), et « Éditer le caisson › » est en tête du panneau Sélection de la pièce.
-- Les messages du serveur (en haut à droite) disparaissent seuls après quelques secondes, ou d'un clic.
-
-Il a **le style de l'éditeur** : les mêmes thèmes clair et sombre et la même palette (choisie dans le menu « ⋯ » de
-l'éditeur, retenue par le navigateur ; un bouton lune / soleil dans l'en-tête de chaque page de l'atelier), la police
-Inter, les coins carrés, l'en-tête blanc (ou du panneau de la palette en sombre) avec la marque « P », les boutons
-principaux au dégradé de la palette et le fond bleu nuit des vues 3D. Le plan 2D d'une pièce reste une feuille claire
-dans les deux thèmes. Les couleurs de l'atelier sont des variables (`frontend/src/styles/poly-theme.css`, compilé en
-`static/css/poly-theme.css` par `npm run build:css`) reprises par sa feuille `apps/furniture/static/poly/css/app.css`.
-
-Les confirmations de l'atelier (retirer un meuble, un appareil, un plan de travail, supprimer une ouverture, un
-caisson, un modèle ou une affaire, restaurer une version, revenir dans l'historique) et la question du bouton « Modèle »
-s'affichent **dans la page** (`apps/furniture/static/poly/js/dialogs.js`) : certains navigateurs intégrés, comme celui
-de l'application de bureau, refusent sans rien montrer les boîtes du navigateur, et rien ne se supprimait.
-
-Il utilise le **même catalogue** que l'éditeur (matières, règles de quincaillerie, profil de l'atelier :
-`apps/catalog`). Ses caissons et ses affaires sont des tables à lui (`apps/furniture`, `apps/quotes`,
-`apps/workshop`), **communes à tous les comptes** du serveur comme dans l'ancienne application, et ne sont pas des
-projets de l'éditeur : un caisson de l'atelier ne s'ouvre pas dans l'éditeur 3D, et inversement. Les caissons de
-l'ancienne base poly_3D ne sont pas repris. Le code est celui de poly_3D, adapté à Django 6.1 et au montage sous
-`/poly/` (URL nommées `poly:…`, gabarits `apps/furniture/templates/poly/`, fichiers statiques
-`apps/furniture/static/poly/`) ; plusieurs de ses fichiers dépassent les 500 lignes (`static/poly/js/editor.js`,
-`room_editor.js`, `services.py`, `room.py`, `pdf_export.py`, `views.py`, `models.py`) et ont été gardés tels quels.
-Ses 154 tests sont dans `tests/backend/test_poly_workshop.py`, son parcours dans `tests/e2e/poly-workshop.spec.ts`.
-Données de démonstration : `python manage.py seed_demo`.
 
 Développement (recompilation continue, dans deux terminaux) :
 
@@ -579,7 +474,10 @@ opération existante.
   - une **face** : « Face seule (pousser/tirer) » passe à l'extrusion de faces, qui déplace la face
     en modifiant le corps ; « Le corps entier » déplace le corps — ou le **meuble dont il est une pièce** : un
     caisson par son origine, ses façades suivant ; une Répartition par son esquisse, ses panneaux, portes et niches
-    suivant, en une seule annulation (`app/move-whole.ts`) — et la normale de la face sert de repère local ;
+    suivant, en une seule annulation (`app/move-whole.ts`) — et la normale de la face sert de repère local. Le corps
+    entier commence comme un nouveau déplacement, en « Pivot et cible » : on clique le point du meuble où poser les
+    flèches (un coin, le milieu d'une face — pour une Répartition, un coin d'un de ses panneaux ou un point de son
+    esquisse), puis le point où l'amener ; ses flèches ne restent plus au milieu du caisson ;
   - un **composant** : le document n'a pas d'assemblage, un composant est un corps.
   - Le **manipulateur** est petit (environ 50 px, de taille constante à l'écran), dessiné comme le repère d'axes
     du coin de la vue :
@@ -644,6 +542,35 @@ opération existante.
   même niveau), **⌘** verticale ; le point d'arrivée s'affiche alors à la hauteur du point de départ (ou à sa
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
+- **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : on sélectionne (ou on clique,
+  l'outil ouvert) la face d'un caisson ou d'une pièce d'une Répartition, du côté à prolonger, puis la face parallèle
+  d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit, d'un coup (`document/extend-element.ts`,
+  `app/extend-tool.ts`). Un caisson change de largeur, de profondeur ou de hauteur avec ses façades — son origine recule
+  quand c'est son côté gauche, son devant ou son dessous qui avance ; une Répartition de longueur ou de hauteur avec ses
+  cases, son esquisse décalée de même. Pour un autre corps, « Tirer une face ». Un meuble du Plan de cuisine (un haut
+  d'angle prolongé jusqu'au voisin) fait suivre le plan.
+- **Pousser** (bouton du groupe **Modifier**, après « Prolonger élément ») : les éléments sélectionnés — un caisson avec
+  ses façades, une Répartition avec ses pièces, sinon le corps seul ; un clic dans la vue en choisit un, Maj + clic en
+  ajoute — avancent d'un **pas** à chaque flèche du clavier. Le pas se tape au clavier, l'outil ouvert (les chiffres vont
+  dans le champ « Pas »), et la flèche suivante pousse de ce pas. Les flèches suivent la vue : ← et → le long de l'axe du
+  sol le plus proche de la droite de l'écran, ↑ et ↓ vers le fond ou vers soi ; **Page↑ / Page↓** (ou Maj + ↑ / ↓)
+  montent et descendent. Six boutons font de même, le total poussé s'affiche, « Remettre à zéro » l'annule. On voit le
+  résultat à chaque pas ; **OK** (ou Entrée) le garde en une annulation, **Annuler** (ou Échap) remet tout
+  (`app/push-tool.ts`). Un élément poussé vers un autre corps — le caisson voisin, un mur, un haut au-dessus —
+  **s'arrête à son contact**, sans y entrer, et un message dit contre quoi (« Déjà contre « Bas 1 porte 400 » » s'il le
+  touche déjà) ; ce qu'il touche déjà en passant (le plan de travail au-dessus, une plinthe) ne l'arrête pas.
+  Un caisson poussé **emporte son électroménager** (un four dedans, une plaque ou un évier sur le plan au-dessus, une
+  hotte au-dessus, un groupe filtrant dessous) ; un four ou un micro-ondes encastré cliqué pousse son caisson ; une
+  plaque, un évier, une hotte, un appareil posable cliqué se poussent entiers. La découpe du plan de travail suit
+  l'appareil, le long du plan.
+- **Coller par face** (bouton du groupe **Modifier**, après « Coïncidence », sur les onglets Conception 3D, Dressing et
+  Cuisine) : on sélectionne une face de l'élément à déplacer (ou on la clique, l'outil ouvert), puis on clique une face
+  d'un autre élément, et le premier s'y colle aussitôt, en une annulation. Des faces opposées se mettent en contact (le
+  côté d'un caisson contre le côté du voisin, le dessous d'un haut sur le dessus d'un bas), des faces de même sens
+  affleurent (deux façades) ; seule la distance entre les deux faces change, l'élément garde sa hauteur et son
+  alignement (`features/face-glue.ts`). Un caisson bouge avec ses façades, ou la pièce seule (« Ce qui bouge ») ; deux
+  faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met en retrait). Les faces doivent être
+  parallèles ; pour tourner la pièce, Aligner › « Face sur face » (`app/face-glue-tool.ts`).
 - **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
@@ -773,7 +700,8 @@ opération existante.
   l'épaisseur (18 mm) et les trous de poignée (entraxe 128 mm, le long du bord opposé aux charnières). Le **sens
   d'ouverture** se choisit porte par porte (« S'ouvre à gauche » ou « à droite », charnières de ce côté) ; par défaut
   il alterne, gauche puis droite. Dans la vue 3D, un clic sur une porte l'**ouvre** (elle tourne de 100° vers l'avant
-  autour de ses charnières) et un second clic la referme, comme les tiroirs. Les portes sont fabriquées par une opération « Portes » qui suit la répartition quand on la
+  autour de ses charnières) et un second clic la referme, comme les tiroirs. Un clic donné pendant qu'un outil
+  est ouvert va à cet outil seul : il n'ouvre aucune porte, même si l'outil se ferme sur ce clic. Les portes sont fabriquées par une opération « Portes » qui suit la répartition quand on la
   modifie ; décocher, ou ne plus extruder, les retire. Les charnières (2 à 4 par porte selon la hauteur) et les
   poignées vont au devis (`document/partition-doors.ts`, `features/niche-parts.ts`).
 - **Fond de la Répartition** (rubrique « Fond », quand les panneaux sont extrudés) : « Panneau de fond » pose un fond
@@ -894,6 +822,10 @@ opération existante.
     une face : un nouveau corps, ou, pour une esquisse dessinée sur un corps, un ajout (tirer) ou un creusement (pousser).
   - Le résultat : une esquisse « Tracé n » sur la face et une « Extrusion n » de sa bande sur le corps, en une seule
     annulation ; la bande suit la forme de la face (face en L, face trouée).
+- **Double-clic : le meuble entier** (`app/select-whole.ts`) : un double-clic sur une pièce, dans la vue ou dans le
+  navigateur, sélectionne tout le meuble dont elle est une pièce — un caisson avec ses côtés, dessus, dessous, fond,
+  étagères, portes et tiroirs, une Répartition avec ses panneaux, portes et niches. Déplacer, Supprimer, Copier, les
+  cotes prennent alors le meuble entier. Hors d'un outil et d'une esquisse ; une pièce seule reste seule.
 - **Sélection++** (comme Curic Select++ ; bouton en bas de la colonne Vue, sous « Affichage », pour l'allumer ou l'éteindre, retenu par le navigateur) : en survolant un corps à la souris, ses niveaux
   s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), la pièce,
   la face — et le niveau courant est en vert dans la vue. **Ctrl** descend d'un niveau (puis revient en haut) ; le
@@ -1099,7 +1031,12 @@ opération existante.
 - **Mes outils** (comme le grand jeu d'outils de SketchUp) : une barre verticale à gauche de la vue, avec les outils
   qu'on utilise souvent. On les choisit avec l'étoile ⭐ des menus de groupe (« CRÉER ▾ », « ATELIER ▾ »…) ; un clic
   droit sur une icône la retire. Chaque icône lance l'outil (même rangé ou replié dans la barre du haut) et en reprend
-  l'état (enfoncé quand l'outil est actif). Une barre pour le modèle, une pour l'esquisse, retenues par le navigateur.
+  l'état (enfoncé quand l'outil est actif). Une barre pour l'esquisse, et une par onglet du modèle : Conception 3D (vide
+  au départ), **Dressing** et **Cuisine**, qui commencent avec leurs outils de tous les jours (Plan de dressing,
+  Répartition, Étagères, Penderie, Tiroirs, Façades, Style du dressing… ; Plan de cuisine, Meubles de cuisine,
+  Électroménager, Découpes…), chacune retenue par le navigateur. Cliquer l'onglet Dressing ou Cuisine ouvre aussi son
+  plan à droite (Plan de dressing, Plan de cuisine ; un linéaire en cours reste où il en est), Conception 3D la
+  Sélection (`ui/favorites.ts`, `app/tab-panels.ts`).
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
   poignée la remet en haut à gauche. Sa place et son sens sont retenus.
@@ -1224,8 +1161,8 @@ opération existante.
       l'emporte.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
     à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
-    - **Règles de quincaillerie de l'atelier** (porté de poly_3D) : les articles du catalogue de l'atelier
-      (pages `/poly/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
+    - **Règles de quincaillerie de l'atelier** : les articles du catalogue de l'atelier
+      (pages `/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
       portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent
       au devis, à leur prix (modifiable dans les tarifs) ; un article « manuel » donne seulement son prix
       (`document/catalog.ts`).
@@ -1271,7 +1208,7 @@ opération existante.
       de même centre sont un lamage, pas une erreur).
     - Porte ou tiroir qui heurte un autre corps en s'ouvrant (murs compris), testé à 30 %, 60 % et en entier.
     - Meuble qui entre dans un mur, une retombée ou sous un rampant de la Pièce relevée, ou qui cache une prise.
-    - **Implantation** (porté de poly_3D) : meuble ou appareil qui sort de la pièce, plaque sans plan de travail, hotte
+    - **Implantation** : meuble ou appareil qui sort de la pièce, plaque sans plan de travail, hotte
       sans plaque, trop basse ou trop haute, plaque trop près de l'évier, moins de 80 cm devant un four, un
       réfrigérateur, un lave-vaisselle ou un lave-linge, meuble haut trop près de la plaque, tringle hors de 170 à
       190 cm (`document/layout-check.ts`). Le panneau Implantation de cuisine le dit aussi avant l'OK.
@@ -1630,23 +1567,101 @@ opération existante.
   des bas (60) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
   leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
-  chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui : angle mort fermé par deux
-  fileurs, ou meuble d'angle —, l'autre s'arrête contre lui. « Mur A dans la pièce » pose le plan sur la Pièce relevée :
+  chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui —, l'autre s'arrête contre lui.
+  - **Angles** (`document/kitchen-corners.ts`, `app/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
+    dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
+    Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
+    étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe ; **meuble d'angle LeMans**, même
+    caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **meuble d'angle en L
+    90 × 90**, un caisson sur chaque mur et une porte pliante. Le meuble d'angle choisi se bâtit même sur un linéaire
+    encore vide, et la bande de face le dessine. Ses cotes se règlent : la **porte** du meuble d'angle (30 à 60 cm)
+    ou le **côté du L** depuis le mur. **En haut**, chaque angle reçoit aussi, au choix, rien, un **haut d'angle à
+    porte** (panneau devant l'angle et porte de 30 cm, sur le mur qui passe ; un fileur sur l'autre) ou un **haut
+    d'angle en L** (60 × 60), porte ou côté réglables ; les hauts des deux murs s'arrêtent contre lui.
+  - **Réglages de l'Implantation** : le plan a aussi le **socle**, l'**épaisseur du plan de travail**, la
+    **crédence** et les **plinthes** (bâtis), et ce que « Proposer une cuisine » met : les **façades des bas**
+    (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
+    la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
+    réfrigérateur, au bout libre).
+  « Mur A dans la pièce » pose le plan sur la Pièce relevée :
   cotes et plafond en viennent, ses portes, fenêtres, prises et retombées sont marquées sur le schéma, les meubles bas
   laissent les portes libres, les hauts les fenêtres, et un plafond bas ôte les hauts (`document/kitchen-plan-room.ts`).
+  - **Le plan et la 3D restent d'accord, dans les deux sens** (`document/kitchen-sync.ts`) : le plan refait la cuisine
+    quand il change ; et un meuble qu'il a fait, changé dans la 3D — sa largeur sous la vue ou dans ses propriétés, une
+    cote tapée, Prolonger élément, Déformer — change le plan : la largeur, la profondeur (et la hauteur d'un haut ou
+    d'une colonne) de son meuble du linéaire, la porte ou le côté d'un meuble d'angle, bas ou haut. La cuisine est alors
+    refaite avec lui dans la même annulation : les voisins se placent, fileurs et plan de travail suivent. Un clic sur
+    un angle de la bande de face ouvre ses réglages.
+  - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer) y reste : le linéaire garde la place libre
+    qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
+    (`document/kitchen-moves.ts`). Les meubles poussés ensemble gardent leurs écarts. Le linéaire les liste dans
+    « Place libre » → « Espaces gardés », chacun à sa largeur tapée ou supprimé (ses meubles se resserrent). Poussé dans
+    son voisin ou au-delà du mur, le plan ne peut pas le dire et ne change pas. Des meubles poussés avant que le plan
+    ne les suive : le linéaire le signale, et « Garder leurs places » les reprend.
+  - **L'électroménager posé à la main** (« Électroménager ») se voit sur la bande du linéaire devant lequel il est, en
+    sombre, là où la 3D l'a (`document/kitchen-hand-appliances.ts`). Quand la cuisine est refaite, ce qui a été fait à
+    la main sur ses pièces — la découpe du plan de travail sous une plaque ou un évier, une face tirée d'un fileur — est
+    remis sur la pièce du même nom, avec son nom et son apparence.
+  - **Voir un linéaire isolé**, comme un mur du Plan de dressing : « Voir » dans la liste des linéaires (ou « Voir mur A
+    isolé » dans l'éditeur) ne garde dans la vue que ce que le plan a fait pour lui, vu de face, avec **ses cotes**
+    (`document/kitchen-run-dims.ts`, `app/kitchen-run-dims-view.ts`) : en bas la chaîne des largeurs — meubles,
+    colonnes, fileurs, places libres, angles — et la longueur du mur ; en haut celle des meubles hauts ; à gauche la
+    hauteur du plan de travail, la rangée haute et le plafond. **Un clic sur une cote la change** sur place
+    (`document/kitchen-dim-edit.ts`) : la largeur d'un meuble (refusée s'il ne tient plus, avec le plus large possible ;
+    un appareil garde ses largeurs), la porte ou le côté d'un meuble d'angle, bas ou haut, la longueur du mur, la
+    hauteur du plan de travail ou sous plafond (pas celles qui viennent de la Pièce) ; un fileur ou une place libre se
+    calculent. La cuisine est refaite d'un coup. L'isolement tient quand la cuisine est refaite ; ouvrir
+    un autre mur le montre à son tour ; « Tout montrer » rend tout (`app/zone-view.ts`). La vue seulement.
   - **Éditeur de linéaire** : un clic sur un linéaire ouvre « Linéaire — mur A », sa **bande de face à l'échelle**
     (dessinée avec les dessins du catalogue) sur deux rangées : en bas les meubles bas et les colonnes, en haut les
     meubles hauts, la hotte et le micro-ondes. On y ajoute un meuble du catalogue (largeurs du commerce de 300 à 1200),
     de « Mes meubles » ou un **appareil** — évier, plaque de cuisson, plaque et four, four sous plan, lave-vaisselle,
     colonne réfrigérateur, colonne four, hotte, micro-ondes —, après celui qui est choisi ; on le glisse pour changer
-    sa place, on l'échange contre un autre modèle, on change sa largeur. Les **fileurs** se calculent seuls (le reste du
-    mur, au bout, au début ou des deux côtés ; une colonne au bout reste contre lui) et le bloc « À revoir » dit ce qui
-    ne tient pas, un fileur trop large, la hotte hors de la plaque, la plaque sans 30 cm de plan de chaque côté ou sous
+    sa place, on l'échange contre un autre modèle. Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
+    prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; la hauteur d'un
+    haut ou d'une colonne et la profondeur de tout meuble se tapent aussi, dans leurs limites (un bas garde la hauteur
+    du plan de travail), et « Cotes du modèle » les rend ; la cuisine 3D est bâtie à ces cotes (`itemSize`). Un appareil
+    garde ses largeurs. **Plusieurs meubles** se choisissent ensemble : **Maj (ou Ctrl, ⌘) + clic** sur la bande en
+    ajoute ou en retire un (surlignés), « Choisir tous les bas » / « Tous les hauts » les prend d'un coup. Le bloc
+    « Meubles choisis (n) » leur donne une **largeur, une profondeur (et la hauteur des hauts et colonnes) commune**
+    (« À tous »), la **même largeur pour tous** (leur largeur totale partagée au millimètre), leur **partage la place
+    libre** de leur rangée (et ses fileurs), les **échange** tous contre un autre modèle, les **duplique** après eux ou les
+    **retire** ; chacun reste dans ses limites, un appareil garde ses largeurs (`features/kitchen-run-multi.ts`,
+    `app/kitchen-run-multi-view.ts`). **Chaque changement se voit aussitôt dans la 3D**, en aperçu (et sur le mur isolé, avec ses
+    cotes) sans être enregistré : **OK** le garde en refaisant la cuisine en une seule annulation, **Annuler** (ou
+    fermer le panneau) remet la cuisine d'avant (`app/kitchen-run-preview.ts`). Dans l'aperçu, les portes et les tiroirs
+    s'ouvrent d'un clic (ou par les boutons de l'atelier) ; un clic droit propose de **garder** l'aperçu (OK) ou de
+    l'annuler, ses pièces n'étant pas encore dans le projet. Sur la bande, chaque façade d'un angle — la **porte**, la
+    **partie fixe**, un fileur — porte sa largeur (cm), en bas comme en haut. Le reste du mur va **à gauche**, **à droite**
+    ou **partagé en deux** — une moitié contre chaque angle ou chaque bout —, ou, avec un meuble d'angle sur un
+    linéaire qui va jusqu'au mur, **contre les murs** : le meuble d'angle s'écarte du mur et un **fileur mural** ferme
+    l'écart. Des boutons placés sous « Place libre » font ce choix, chacun disant ce qu'il donnera (« 2 fileurs de
+    12,1 cm », « 2 fileurs muraux de 12,1 cm ») ; une colonne au bout reste contre lui : jusqu'à 15 cm, un **fileur** le ferme ; au-delà, la **place
+    reste libre**, sans panneau ni plinthe, dessinée en pointillés et **hachurée** avec sa largeur sur la bande (les angles,
+    pris par les meubles de l'angle, ne le sont pas), et « Place libre » dit
+    combien il en reste en bas et en haut. Le bloc « À revoir » dit ce qui ne tient pas, la hotte hors de la plaque, la plaque sans 30 cm de plan de chaque côté ou sous
     une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-run-items.ts`, `app/kitchen-run-editor.ts`,
     `app/kitchen-run-strip.ts`).
+    - En tête du linéaire, **un bouton par mur** (Mur A, Mur B, Mur C, Péninsule, Îlot), gardé en vue quand le
+      panneau défile, ouvre un autre linéaire ; ce qui est changé et pas encore appliqué l'est d'abord, sur un oui.
+    - Sous la bande, **chaque titre se plie** (`ui/fold.ts`) : Place libre, Meuble choisi, Ajouter des meubles, Les
+      angles, À revoir, Prix du projet. Tous sont fermés au départ ; un clic ouvre, un autre ferme, et ouvrir un titre
+      ferme les autres ; choisir un meuble sur la bande ouvre ses réglages. La vue des linéaires plie de même
+      Ergonomie, À revoir et Prix du projet (avec « Ouvrir le devis »).
+    - **Fileurs** : des fileurs posés à la main, **en bas** (entre socle et plan de travail) et **en haut** (dans la
+      rangée des hauts), au début de la rangée, après le meuble choisi ou à la fin, à la largeur tapée (1 à 30 cm).
+      Ils prennent leur place sur le linéaire comme un meuble — se glissent, se règlent, se retirent sur la bande, leur
+      largeur se tape sur sa cote — et se bâtissent en panneaux, « Fileur posé A1 », « Fileur posé haut A2 », sans
+      caisson ; le reste du mur se partage toujours autour. La liste « Fileurs posés », sous les boutons, les nomme
+      (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
+    - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen-catalog-view.ts`) :
+      chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
+      après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
     leur mur, façades, plan de travail continu sur chaque linéaire avec les découpes de l'évier et de la plaque,
-    crédence, plinthes, électroménager sur le calque « Électroménager », murs sur le calque « Pièce », matières posées
+    crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,
+    meuble d'angle, LeMans, L ou fileurs d'angle mort, le linéaire qui passe fermant le coin et l'autre s'arrêtant
+    contre lui —, électroménager sur le calque « Électroménager », murs sur le calque « Pièce », matières posées
     (`document/kitchen-plan-build.ts`, `document/kitchen-floor.ts`). « Modifier le plan » change les cotes ou le modèle :
     la cuisine est refaite, et ce qu'un autre modèle n'a plus part après confirmation.
   - **Proposer une cuisine** remplit tous les linéaires avec l'algorithme de l'Implantation (600 d'abord, puis le plus
@@ -1659,8 +1674,37 @@ opération existante.
   l'autre) : un clic ouvre toutes les portes du modèle autour de leurs charnières, ou sort tous les tiroirs avec leurs
   caissons, et le bouton reste enfoncé ; un second clic les referme ou les rentre. Si certains sont déjà ouverts, le
   premier clic ouvre les autres ; sans porte ou sans tiroir, un message le dit. L'un ne touche pas à l'autre, et un
-  clic sur une porte ou un tiroir n'ouvre toujours que lui. La vue seulement : le modèle ne change pas
-  (`app/drawer-toggle.ts`).
+  clic sur une porte ou un tiroir n'ouvre toujours que lui. La porte d'un **meuble d'angle** (bas ou haut), bâtie en
+  panneau, s'ouvre aussi : sur son bord loin de l'angle, sa poignée côté angle (`ExtrudeFeature.door`) ; dans une
+  cuisine bâtie avant cette version, le Plan de cuisine qui l'a faite donne sa charnière (`madeDoor`), sans rien refaire. La vue seulement : le
+  modèle ne change pas (`app/drawer-toggle.ts`).
+- **Électroménager** (groupe « Cuisine », après « Meubles de cuisine ») : la **bibliothèque d'appareils de cuisine**,
+  par familles — **Fours** (pyrolyse 60 cm, compact 45 cm, vapeur), **Plaques** (induction 60, 80 ou 90 cm, gaz,
+  domino), **Hottes** (murale cheminée, inclinée en verre, groupe filtrant), **Réfrigérateurs** (intégrable, combiné
+  posable, américain), **Lave-vaisselle** (tout intégrable, posable), **Micro-ondes** (encastrable, posable),
+  **Éviers** (inox 1 bac et égouttoir, inox 2 bacs, granit) et **Robinets** (col de cygne, douchette, semi-pro à
+  ressort) —, chacun **dessiné** dans sa carte (de face, de dessus ou de profil, dans sa finition) avec ses cotes, à ses
+  tailles du commerce et dans ses **finitions** (inox, noir, blanc ; chromé, noir mat, laiton). On en choisit un puis
+  on **clique le caisson** où le poser (ou le plan de travail au-dessus, ou un appareil déjà dedans) : un four ou un
+  micro-ondes va **dans** le caisson, centré, au nu de sa face (un four de colonne vers 85 cm du sol) — ses façades et
+  ses étagères ôtées ; une plaque, un évier ou un micro-ondes posable **sur le plan de travail**, centrés, le plan
+  **découpé** dessous ; un robinet au fond du plan, **percé** Ø35 ; une hotte murale **à 65 cm au-dessus** du plan, contre
+  le mur ; un groupe filtrant **sous** un meuble haut ; un réfrigérateur ou un lave-vaisselle posable **debout** à la place
+  du caisson, contre le mur. L'outil reste ouvert pour le suivant ; chaque pose est une annulation.
+  Un second clic sur le même caisson ne pose pas un deuxième appareil du même genre par-dessus le premier : on
+  le supprime d'abord. Un appareil **suit son caisson** : poussé, déplacé ou mis ailleurs quand la cuisine est refaite,
+  le caisson emporte ce qui est dedans, dessus, dessous ou au-dessus de lui, et la découpe du plan de travail faite
+  pour lui (`document/appliance-follow.ts`). Chaque appareil est
+  une opération « Électroménager » (`ApplianceFeature`) bâtie **pièce par pièce** par le noyau — un four : caisse, porte,
+  vitre fumée, bandeau, écran, manettes, poignée ; un robinet : embase, corps et col de cygne, manette —, chaque pièce
+  avec son **apparence réelle** (inox brossé, verre laqué noir, verre fumé, chrome, laiton, granit), visible dans la
+  vue réaliste et le rendu ; sur le calque « Électroménager », **hors liste de débit et devis**
+  (`features/appliance-library.ts`, `features/appliance-parts.ts`, `features/appliance.ts`,
+  `document/appliance-place.ts`, `app/appliance-tool.ts`, `app/appliance-drawings.ts`). Le **Plan de cuisine** et
+  l'**Implantation** posent ces mêmes appareils à la place des anciens blocs : plaque induction, four encastrable (sous
+  la plaque ou en colonne), hotte cheminée jusqu'au plafond, lave-vaisselle intégrable derrière sa façade, micro-ondes,
+  réfrigérateur intégrable dans sa colonne, évier sur sa découpe et robinet derrière. Les dessins sont faits par
+  l'application (SVG) : ce ne sont pas des photos de produits de marque.
 - **Meubles de cuisine** (groupe « Cuisine ») : la liste des meubles du commerce, chacun à ses largeurs.
   - Chaque modèle montre son **dessin de face** à l'échelle, comme sur une planche de cuisiniste (caisson, socle,
     portes, tiroirs, poignées, four, robinet de l'évier — tout calculé depuis ses cotes, aux tons du thème, les
@@ -1669,8 +1713,16 @@ opération existante.
   - **Bas** : 1 porte, 2 portes, 3 tiroirs, casseroliers, évier, four.
   - **Hauts** : 1 porte, 2 portes, sur hotte.
   - **Colonnes** : rangement, four, réfrigérateur.
-  - Un clic ajoute le meuble avec ses façades, à droite du caisson sélectionné (sinon du dernier), à la première place
-    libre le long du même mur, son fond sur le même plan.
+  - **Avec un Plan de cuisine** dans le projet, un clic **range le meuble dans un linéaire du plan**
+    (`document/kitchen-plan-add.ts`) : après le meuble du plan sélectionné, ou celui ajouté juste avant, ou celui choisi
+    dans le linéaire ouvert ; sinon au bout du premier linéaire où il tient sans en chasser un autre. Un haut va dans
+    la rangée haute. La cuisine est refaite en une annulation : fileurs, plan de travail, crédence et plinthe suivent, et
+    ce qu'il faut revoir s'affiche. Chaque pose donne la **place libre** restant sur son mur, en bas et en haut, et le
+    panneau la tient à jour pour chaque linéaire, comme la liste du Plan de cuisine. Un linéaire en cours de changement
+    le reçoit avec le reste, à son OK. Un meuble qui
+    ne tient sur aucun linéaire se pose à part, et un message le dit. Le panneau dit où ira le prochain meuble.
+  - Sans plan, un clic ajoute le meuble avec ses façades, à droite du caisson sélectionné (sinon du dernier), à la
+    première place libre le long du même mur, son fond sur le même plan.
   - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
     et leurs matières.
   - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
@@ -1780,6 +1832,15 @@ opération existante.
   bloc « À vérifier » signale passages étroits, portes et tiroirs bloqués, ouvertures cachées et plafonds bas.
   « Éviter portes, fenêtres et plafonds bas » cale les murs sur ce que la pièce laisse libre, « Dessiner les murs » les pose
   sans Pièce, et le bouton « Penderies escamotables » équipe les tringles trop hautes.
+- **Menu d'une porte** : un **clic droit sur une porte** (ou sa poignée) dans la vue ouvre son menu — Ouvrir / fermer la
+  porte ; **Ouvrir de l'autre côté** (ses charnières passent à gauche ou à droite) ; Ôter ou mettre les poignées ;
+  **Renommer…** (un champ au pointeur, Entrée garde) ; Sélectionner le meuble entier ; **Remplacer par des tiroirs**
+  (porte d'un caisson) ou Portes à cadre / plates (Répartition) ; **Supprimer la porte**. Chaque choix est une
+  annulation. Une porte de caisson (`FrontsFeature.side`), une porte de case de Répartition (son sens seul, dans
+  `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte d'angle bâtie en panneau.
+  Dans une cuisine du Plan de cuisine, le sens choisi passe au meuble du linéaire (`KitchenRunItem.side`) et reste quand
+  la cuisine est refaite (`document/door-edit.ts`, `app/door-menu.ts`). Les deux portes d'un caisson s'ouvrent déjà du
+  milieu : leur sens ne change pas, et une seule se retire comme une pièce.
 - **Concevoir dans la vue** : clic droit sur une niche pour ses outils, cotes de niche cliquables, étagères et cloisons tirées
   à la souris au pas de 32 mm, touche R pour répéter, « Copier une niche » (aussi en miroir), « Aligner les étagères »,
   « Voir » pour isoler un mur et y travailler, « Mes murs » et « Style du dressing ».
@@ -1866,7 +1927,7 @@ opération existante.
   ouvre la même liste de modules pour choisir celui à ajouter.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
-- **Rayons X** et **Affichage** (colonne Vue, sous « Grille », portés de poly_3D) : les corps translucides d'un clic ;
+- **Rayons X** et **Affichage** (colonne Vue, sous « Grille ») : les corps translucides d'un clic ;
   un menu qui cache ou montre chaque famille de corps (façades, carcasse, fonds, étagères, plinthes et socles, murs,
   électroménager, autres), avec « Vue de travail » (façades, murs et électroménager cachés) et « Tout afficher ». La
   vue seulement, retenu par le navigateur (`app/display-toggles.ts`, `document/display-families.ts`).
@@ -2020,7 +2081,7 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   confirmation (« Supprimer les 40 corps ? »). Chacun ne fait qu'une modification : un seul Ctrl+Z la défait
   (`setHidden` dans `document/operations.ts`).
 - **Menu du nom du projet** (en haut à gauche, ▾) : retour à Mes projets, Mise en plan du caisson sélectionné, Mise en
-  plan du projet, et l'atelier poly_3D (« Caissons et pièces »).
+  plan du projet, et le catalogue de l'atelier (`/catalogue/`).
 - **Navigateur** (à gauche) : les **corps** et les **esquisses** du document. Chaque ligne a un œil pour
   l'afficher ou la masquer (un corps masqué reste dans le document, il n'est pas dessiné ; le choix est
   enregistré et s'annule). Un clic sélectionne ; le bouton « ⋯ » ouvre la fenêtre de l'élément.

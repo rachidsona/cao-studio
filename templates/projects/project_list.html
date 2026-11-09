@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static assets %}
-{% block title %}Accueil · poly_3D{% endblock %}
+{% block title %}Accueil · CAO Studio{% endblock %}
 {% block content %}
 {# The home page: the two ways to design, each with its picture, its « new » form and its projects. On a phone, each #}
 {# card comes before its own list; side by side, the two cards then the two lists. #}
@@ -26,23 +26,25 @@
     <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[5/4] w-full object-cover" loading="eager">
     <div class="p-5">
       <h2 id="design-kitchen-title" class="text-center text-2xl font-semibold tracking-tight">Conception Cuisine &amp; Dressing</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Caissons découpés en volumes (séparations, étagères, cloisons, plinthe), posés dans une pièce en plan 2D et en 3D, avec débit, devis et PDF.</p>
-      <form method="post" action="{% url 'poly:project_create' %}" class="mt-4 space-y-4">
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Une cuisine ou un dressing posé dans sa pièce : plan vu de dessus, linéaires, meubles, électroménager, liste de débit, devis et mise en plan.</p>
+      <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
         {% csrf_token %}
         <div class="space-y-1.5">
-          <label for="affair-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
-          <input id="affair-name" name="name" type="text" required maxlength="150" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
+          <label for="space-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
+          <input id="space-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
                  class="block min-h-11 w-full border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
         </div>
-        <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et dessiner la pièce</button>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
+          <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
+        </div>
       </form>
-      <a href="{% url 'poly:home' %}" class="mt-3 inline-flex min-h-11 w-full items-center justify-center border border-gray-300 px-4 text-base font-medium hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-600 dark:hover:bg-gray-800">Ouvrir l'atelier</a>
     </div>
   </section>
 
-  <section class="order-2 min-w-0 lg:order-3" aria-labelledby="projects-title">
+  <section class="order-2 min-w-0 lg:order-3 lg:col-span-2" aria-labelledby="projects-title">
     <div class="flex items-baseline justify-between gap-4">
-      <h2 id="projects-title" class="text-lg font-semibold">Projets 3D</h2>
+      <h2 id="projects-title" class="text-lg font-semibold">Mes projets</h2>
       <span class="text-sm text-gray-500 dark:text-gray-400">{{ projects|length }} projet{{ projects|length|pluralize }}</span>
     </div>
     {% if projects %}
@@ -80,45 +82,6 @@
     {% endif %}
   </section>
 
-  <section class="order-4 min-w-0" aria-labelledby="affairs-title">
-    <div class="flex items-baseline justify-between gap-4">
-      <h2 id="affairs-title" class="text-lg font-semibold">Projets Cuisine &amp; Dressing</h2>
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ affairs|length }} projet{{ affairs|length|pluralize }}</span>
-    </div>
-    {% if affairs %}
-      <form id="bulk-affairs" method="post" action="{% url 'poly:projects_delete' %}" class="mt-2 flex min-h-9 items-center justify-between gap-3" data-one="Ce projet et sa pièce seront supprimés définitivement. Ses caissons restent dans l'atelier, onglet Caissons." data-many="Ces {n} projets et leurs pièces seront supprimés définitivement. Leurs caissons restent dans l'atelier, onglet Caissons.">
-        {% csrf_token %}
-        <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" data-select-all> Tout sélectionner</label>
-        <button type="button" hidden data-delete-selected class="border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">Supprimer la sélection</button>
-      </form>
-      <ul class="mt-1 divide-y divide-gray-200 overflow-hidden border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
-        {% for affair in affairs %}
-          <li class="flex items-center">
-            <label class="flex cursor-pointer items-center self-stretch pl-4"><input type="checkbox" name="ids" value="{{ affair.pk }}" form="bulk-affairs" data-name="{{ affair.name }}" aria-label="Sélectionner {{ affair.name }}"></label>
-            <a href="{% if affair.placement_mode == 'room' %}{% url 'poly:project_room' affair.pk %}{% else %}{% url 'poly:project_detail' affair.pk %}{% endif %}"
-               class="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-4 py-3 pl-3 pr-2 hover:bg-gray-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:hover:bg-gray-800/60">
-              <div class="min-w-0">
-                <p class="truncate font-medium">{{ affair.name }}</p>
-                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                  {{ affair.get_room_type_display }} · {{ affair.item_count }} caisson{{ affair.item_count|pluralize }} · modifié le {{ affair.updated_at|date:"j F Y à H:i" }}
-                </p>
-              </div>
-              <span class="shrink-0 border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">Ouvrir</span>
-            </a>
-            <form method="post" action="{% url 'poly:project_delete' affair.pk %}" class="shrink-0 pr-4" data-delete="« {{ affair.name }} » et sa pièce seront supprimés définitivement. Ses caissons restent dans l'atelier, onglet Caissons.">
-              {% csrf_token %}
-              <button type="button" class="border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" aria-label="Supprimer {{ affair.name }}">Supprimer</button>
-            </form>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="mt-3 border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-gray-700 dark:bg-gray-900">
-        <p class="font-medium">Aucune cuisine ni dressing pour le moment</p>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Donnez-lui un nom : vous dessinez la pièce, puis vous y posez les caissons.</p>
-      </div>
-    {% endif %}
-  </section>
 </div>
 <dialog id="delete-dialog" aria-labelledby="delete-title" class="m-auto w-[min(28rem,calc(100vw-2rem))] border border-gray-200 bg-white p-6 text-gray-900 backdrop:bg-black/50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
   <h2 id="delete-title" class="text-lg font-semibold">Supprimer ce projet ?</h2>
@@ -129,5 +92,5 @@
     <button type="button" data-delete-confirm class="bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800">Supprimer définitivement</button>
   </div>
 </dialog>
-<script src="{% versioned_static 'poly/js/home-delete.js' %}" defer></script>
+<script src="{% versioned_static 'home/home-delete.js' %}" defer></script>
 {% endblock %}

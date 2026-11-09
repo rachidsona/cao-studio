@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static assets %}
 
-{% block title %}{{ project.name }} · poly_3D{% endblock %}
+{% block title %}{{ project.name }} · CAO Studio{% endblock %}
 
 {% block head_extra %}
   <script type="module" src="{% versioned_static 'js/editor.js' %}"></script>
@@ -18,9 +18,9 @@
     <a href="{% url 'projects:list' %}" class="tool-btn" title="Mes projets" aria-label="Retour à mes projets">
       <span aria-hidden="true">←</span><span class="hidden md:inline">Projets</span>
     </a>
-    {# The project's name opens a menu: the projects, the poly_3D workshop, the drawing of the cabinet selected. #}
+    {# The project's name opens a menu: the projects, the workshop's catalogue, the drawing of the cabinet selected. #}
     <details class="relative min-w-0 flex-1" data-project-menu>
-      <summary class="tool-btn max-w-full cursor-pointer list-none justify-start px-1" title="{{ project.name }} — menu : projets, atelier poly_3D, mise en plan d&#x27;un caisson" aria-label="Menu du projet {{ project.name }}">
+      <summary class="tool-btn max-w-full cursor-pointer list-none justify-start px-1" title="{{ project.name }} — menu : projets, catalogue, mise en plan d&#x27;un caisson" aria-label="Menu du projet {{ project.name }}">
         <h1 class="min-w-0 truncate text-sm font-semibold">{{ project.name }}</h1><span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" aria-hidden="true">▾</span>
       </summary>
       <div class="absolute left-0 z-40 mt-1 w-80 space-y-1 border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900" role="menu">
@@ -28,8 +28,8 @@
         <p class="panel-title px-2 pt-2">Mise en plan</p>
         <button type="button" class="tool-btn w-full justify-start text-left" role="menuitem" data-project-menu-cabinet title="Une feuille pour le caisson sélectionné seul (une de ses pièces cliquée dans la vue) : vues de face, de dessus, de côté et isométrique ; les autres corps n'y sont pas">Mise en plan du caisson sélectionné</button>
         <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-workshop="drawing">Mise en plan du projet</button>
-        <p class="panel-title px-2 pt-2">Atelier poly_3D</p>
-        <a href="{% url 'poly:home' %}" class="tool-btn w-full justify-start text-left" role="menuitem" title="L'atelier de l'ancien poly_3D : caissons découpés en volumes, cuisines et dressings posés dans une pièce">Caissons et pièces (tableau de bord)</a>
+        <p class="panel-title px-2 pt-2">Atelier</p>
+        <a href="{% url 'catalog:index' %}" class="tool-btn w-full justify-start text-left" role="menuitem" title="Les matières, la quincaillerie et le profil de l'atelier, qui font les prix du devis">Catalogue de l'atelier</a>
       </div>
     </details>
 
@@ -140,9 +140,12 @@
         <button type="button" class="tool-btn icon-btn" data-action="split" title="Scinder le corps par un plan ou une face plane" aria-label="Scinder le corps"><svg class="tool-icon" aria-hidden="true"><use href="#i-split"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="move" title="Déplacer un corps ou une esquisse (pivot et cible, manipulateur XYZ, saisie)" aria-label="Déplacer"><svg class="tool-icon" aria-hidden="true"><use href="#i-move-3d"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="coincide" title="Coïncidence : coller une esquisse ou un corps par un de ses points sur un point ou un trait (arête, ligne d'esquisse)" aria-label="Coïncidence"><svg class="tool-icon" aria-hidden="true"><use href="#i-coincident"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="face-glue" title="Coller par face : sélectionnez une face de l'élément à déplacer, ouvrez l'outil, puis cliquez la face d'un autre élément : il s'y colle (contact ou affleurant), caisson et façades ensemble" aria-label="Coller par face"><svg class="tool-icon" aria-hidden="true"><use href="#i-face-glue"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="extend-element" title="Prolonger élément : la face d'un caisson ou d'une Répartition, du côté à prolonger, puis la face d'un autre élément : il s'allonge jusqu'à elle (largeur, profondeur ou hauteur), façades et cases comprises" aria-label="Prolonger élément"><svg class="tool-icon" aria-hidden="true"><use href="#i-extend-element"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="push" title="Pousser : sélectionnez un caisson, une Répartition ou un corps, ouvrez l'outil, tapez le pas au clavier puis poussez avec les flèches (Page↑ / Page↓ pour monter ou descendre) ; OK garde" aria-label="Pousser"><svg class="tool-icon" aria-hidden="true"><use href="#i-push"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-snap="geometry" aria-pressed="true" title="Accrochage à la géométrie : Déplacer, Coïncidence et Mesurer se collent aux coins, arêtes et points (activé / désactivé ; le même que dans l&#x27;esquisse)" aria-label="Accrochage à la géométrie"><svg class="tool-icon" aria-hidden="true"><use href="#i-snap-geometry"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-snap="smart" aria-pressed="true" title="Accrochage intelligent : un point s&#x27;aligne sur les coins des corps (même X, Y ou Z), un corps tiré par une flèche de Déplacer s&#x27;arrête au niveau des faces des autres ; guides roses en tirets (activé / désactivé)" aria-label="Accrochage intelligent"><svg class="tool-icon" aria-hidden="true"><use href="#i-snap-smart"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-display-menu aria-pressed="false" aria-expanded="false" title="Affichage (comme poly_3D) : cacher ou montrer les façades, la carcasse, les fonds, les étagères, les plinthes, les murs, l&#x27;électroménager ; Vue de travail dégage l&#x27;intérieur d&#x27;un clic. La vue seulement : débit et devis inchangés" aria-label="Affichage par famille"><svg class="tool-icon" aria-hidden="true"><use href="#i-display"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-display-menu aria-pressed="false" aria-expanded="false" title="Affichage : cacher ou montrer les façades, la carcasse, les fonds, les étagères, les plinthes, les murs, l&#x27;électroménager ; Vue de travail dégage l&#x27;intérieur d&#x27;un clic. La vue seulement : débit et devis inchangés" aria-label="Affichage par famille"><svg class="tool-icon" aria-hidden="true"><use href="#i-display"/></svg></button>
       </div>
       <div data-display-options class="fixed z-40 hidden w-44 shadow-xl flex-col gap-1 border border-gray-200 bg-white p-1.5 text-left text-xs dark:border-gray-700 dark:bg-gray-900" role="group" aria-label="Affichage">
         <label class="flex items-center gap-1.5"><input type="checkbox" data-display-family="fronts" checked> Façades</label>
@@ -172,6 +175,7 @@
         <button type="button" class="tool-btn icon-btn" data-workshop="kitchen-plan" title="Plan de cuisine : commencez par le plan vu de dessus — droite, en L, en U, en G avec une péninsule, parallèle, avec ou sans îlot, posé sur la pièce relevée — puis cliquez chaque linéaire pour l&#x27;aménager meuble par meuble sur sa vue de face" aria-label="Plan de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen-plan"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="kitchen" title="Implantation : une cuisine entière le long d'un mur ou de deux murs en L — meubles bas et hauts aux largeurs du commerce, façades, plan de travail, fileurs et murs (hors débit)" aria-label="Implantation de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="kitchen-units" aria-pressed="false" title="Meubles de cuisine : choisir dans la liste un bas, un haut ou une colonne à sa largeur ; il se pose à côté du caisson sélectionné, construit comme lui, avec ses façades. Un caisson sélectionné se déplace par sa poignée ✥" aria-label="Meubles de cuisine"><svg class="tool-icon" aria-hidden="true"><use href="#i-kitchen-units"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-action="appliances" title="Électroménager : la bibliothèque d'appareils de cuisine — fours, plaques, hottes, réfrigérateurs, lave-vaisselle, micro-ondes, éviers, robinets —, dessinés, à leurs tailles et finitions ; choisissez-en un puis cliquez le caisson où le poser" aria-label="Électroménager"><svg class="tool-icon" aria-hidden="true"><use href="#i-appliances"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="doors-open" aria-pressed="false" title="Ouvrir / fermer les portes : un clic ouvre toutes les portes du modèle, un autre les referme ; le modèle ne change pas" aria-label="Ouvrir / fermer les portes"><svg class="tool-icon" aria-hidden="true"><use href="#i-doors-open"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-workshop="drawers-open" aria-pressed="false" title="Ouvrir / fermer les tiroirs : un clic sort tous les tiroirs du modèle, un autre les rentre ; le modèle ne change pas" aria-label="Ouvrir / fermer les tiroirs"><svg class="tool-icon" aria-hidden="true"><use href="#i-drawers-open"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-action="cutout" title="Découpes du plan de travail : évier, plaque de cuisson, robinet, passe-câble, choisis dans un catalogue et placés sur le plan cliqué" aria-label="Découpes du plan de travail"><svg class="tool-icon" aria-hidden="true"><use href="#i-cutout"/></svg></button>
@@ -457,7 +461,7 @@
         <button type="button" class="tool-btn icon-btn" data-piece-dims aria-pressed="false" title="Cotes des pièces : la largeur et la hauteur de chaque pièce vue de face ; une Répartition a ses cotes de plan autour du meuble, affichées d&#x27;elles-mêmes pendant qu&#x27;on y travaille (activé / désactivé)" aria-label="Cotes des pièces"><svg class="tool-icon" aria-hidden="true"><use href="#i-piece-dims"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-part-tags aria-pressed="false" title="Repères des pièces (comme OpenCutList) : la lettre de chaque pièce dans la liste de débit (A, B, C…), écrite sur la pièce dans la vue ; les pièces identiques ont la même (activé / désactivé)" aria-label="Repères des pièces"><svg class="tool-icon" aria-hidden="true"><use href="#i-part-tags"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-grid-toggle aria-pressed="true" title="Grille : afficher ou cacher la grille de la vue 3D (le dessin s'accroche toujours à son pas)" aria-label="Grille"><svg class="tool-icon" aria-hidden="true"><use href="#i-grid"/></svg></button>
-        <button type="button" class="tool-btn icon-btn" data-xray aria-pressed="false" title="Rayons X (comme poly_3D) : les corps deviennent translucides pour voir l&#x27;intérieur d&#x27;un meuble sans rien cacher (activé / désactivé)" aria-label="Rayons X"><svg class="tool-icon" aria-hidden="true"><use href="#i-xray"/></svg></button>
+        <button type="button" class="tool-btn icon-btn" data-xray aria-pressed="false" title="Rayons X : les corps deviennent translucides pour voir l&#x27;intérieur d&#x27;un meuble sans rien cacher (activé / désactivé)" aria-label="Rayons X"><svg class="tool-icon" aria-hidden="true"><use href="#i-xray"/></svg></button>
         <button type="button" class="tool-btn icon-btn" data-select-plus aria-pressed="true" title="Sélection++ (comme Curic Select++) : au survol, les niveaux (ensemble › pièce › face) ; Ctrl descend d&#x27;un niveau, clic sélectionne, Maj + clic ajoute (activé / désactivé)" aria-label="Sélection++"><svg class="tool-icon" aria-hidden="true"><use href="#i-select-plus"/></svg></button>
       </div>
     </nav>

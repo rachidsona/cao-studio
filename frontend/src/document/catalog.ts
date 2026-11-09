@@ -1,5 +1,5 @@
 /**
- * Le catalogue de l'atelier (apps/catalog, porté de poly_3D) mêlé à ce que l'éditeur sait déjà : ses matières
+ * Le catalogue de l'atelier (apps/catalog) mêlé à ce que l'éditeur sait déjà : ses matières
  * s'ajoutent aux matières intégrées (même liste partout : Matière et chants, Remplacer partout, calepinage) avec leur
  * prix au m² dans les tarifs du devis ; ses règles de quincaillerie comptent, d'après le meuble, les articles à
  * ajouter au devis (par caisson, par porte, charnières selon la hauteur des portes, par étagère, par niche, par

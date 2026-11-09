@@ -148,6 +148,8 @@ export const SCREEN: HelpFamily[] = [
         what: "Liste les corps et les esquisses du projet pour les choisir, les montrer, les cacher ou les ranger en dossiers.",
         steps: [
           "Cliquez un nom pour le sélectionner dans la vue ; Ctrl, ⌘ ou Maj + clic en ajoute d'autres. Le triangle déplie un corps et montre les opérations qui l'ont fait.",
+          "Double-cliquez une pièce (une étagère, une porte, un côté), ici ou dans la vue : tout le caisson est sélectionné, façades comprises, ou toute la Répartition.",
+          "Clic droit sur une porte dans la vue : l'ouvrir ou la fermer, l'ouvrir de l'autre côté, ôter ses poignées, la renommer, sélectionner tout le meuble, la changer en tiroirs (ou en porte à cadre) ou la supprimer.",
           "L'œil montre ou cache la ligne. Le bouton « ⋯ » ouvre la fenêtre pour modifier, renommer ou supprimer. Le clic droit donne le même choix en menu.",
           "Pour un dossier : sélectionnez des corps, cliquez « Nouveau dossier » dans l'en-tête « Corps », puis double-cliquez son nom pour le renommer.",
           "Glissez un corps sur un dossier pour l'y ranger, ou sur l'en-tête « Corps » pour l'en sortir.",
@@ -192,7 +194,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez une icône de la barre pour lancer l'outil, même rangé ou replié dans le ruban. Clic droit sur une icône : elle quitte la barre.",
           "Glissez la poignée à points pour déplacer la barre (double-clic : elle revient). « ⇄ » ou « ⇅ » la met à l'horizontale ou à la verticale.",
         ],
-        tip: "Vide au départ. Il y a une barre pour le modèle et une pour l'esquisse.",
+        tip: "Chaque onglet a la sienne : Conception 3D (vide au départ), Dressing et Cuisine (avec leurs outils de tous les jours, à changer à votre goût). Une autre sert à l'esquisse.",
       },
       {
         keys: [], name: "Ruban : épingler et déplacer les groupes",
@@ -215,10 +217,10 @@ export const SCREEN: HelpFamily[] = [
         what: "Au-dessus du ruban : chaque onglet montre les outils de son travail.",
         steps: [
           "« Conception 3D » : esquisse, volumes, formes et réglages.",
-          "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec la pièce.",
-          "« Cuisine » : implantation, meubles de cuisine, découpes du plan de travail, avec les meubles et la pièce.",
+          "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec la pièce ; le Plan de dressing s'ouvre à droite.",
+          "« Cuisine » : implantation, meubles de cuisine, découpes du plan de travail, avec les meubles et la pièce ; le Plan de cuisine s'ouvre à droite.",
         ],
-        tip: "Modifier, Fabrication et Client sont dans les trois. Le dernier onglet choisi est retenu dans ce navigateur.",
+        tip: "Modifier, Fabrication et Client sont dans les trois. Chaque onglet a sa barre « Mes outils » ; Conception 3D remet la Sélection à droite. Le dernier onglet choisi est retenu dans ce navigateur.",
       },
       {
         keys: [], name: "Barre contextuelle",
@@ -333,11 +335,11 @@ export const SCREEN: HelpFamily[] = [
     tools: [
       {
         keys: [], selector: "[data-project-menu] summary", name: "Menu du projet",
-        what: "Revient à vos projets, ouvre la mise en plan d'un caisson ou l'atelier des caissons.",
+        what: "Revient à vos projets, ouvre la mise en plan d'un caisson ou le catalogue de l'atelier.",
         steps: [
           "Cliquez le nom du projet, en haut à gauche. « ← Mes projets » ramène à la liste des projets.",
           "Rubrique « Mise en plan » : « Mise en plan du caisson sélectionné » (cliquez d'abord une de ses pièces dans la vue) ou « Mise en plan du projet ».",
-          "Rubrique « Atelier poly_3D » : « Caissons et pièces (tableau de bord) » ouvre l'atelier des caissons, cuisines et dressings posés dans une pièce.",
+          "Rubrique « Atelier » : « Catalogue de l'atelier » ouvre les matières, la quincaillerie et le profil de l'atelier, qui font les prix et l'en-tête du devis.",
         ],
         tip: "Sans pièce cliquée, la mise en plan du caisson prend le caisson du modèle s'il n'y en a qu'un ; sinon un message vous demande d'en cliquer une.",
       },

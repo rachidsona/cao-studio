@@ -2,7 +2,8 @@
  * Ma barre d'outils (comme le grand jeu d'outils de SketchUp) : une barre verticale à gauche de la vue, avec les
  * outils qu'on utilise souvent, choisis par l'étoile ★ des menus de groupe (« CRÉER ▾ »…). Chaque icône lance l'outil
  * de la barre du haut (même caché ou replié) et en reprend l'état (enfoncé, grisé) ; un clic droit la retire.
- * Une barre par mode (modèle, esquisse), retenue par le navigateur. On la déplace où l'on veut par sa poignée ⠿, et on
+ * Une barre par mode (modèle, esquisse), et dans le modèle une par onglet du ruban (Conception 3D, Dressing, Cuisine :
+ * use), retenue par le navigateur ; celles du Dressing et de la Cuisine commencent avec leurs outils de tous les jours. On la déplace où l'on veut par sa poignée ⠿, et on
  * la met à l'horizontale ou à la verticale (ui/movable.ts).
  */
 import { makeMovable } from "./movable";
@@ -29,10 +30,22 @@ function write(name: string, keys: string[]): void {
 export interface Favorites {
   has(key: string): boolean;
   toggle(key: string): void;
+  /** Another bar of the same toolbar (an onglet): its tools, or `seed` the first time. */
+  use(name: string, seed?: readonly string[]): void;
+}
+
+/** Whether a bar was ever kept. */
+function kept(name: string): boolean {
+  try {
+    return localStorage.getItem(STORAGE + name) !== null;
+  } catch {
+    return false;
+  }
 }
 
 /** The favourites bar of a toolbar (`name`), placed over the view in `host`; `tools` are the toolbar's buttons by key. */
-export function bindFavorites(host: HTMLElement, name: string, tools: Map<string, HTMLElement>, visibility: string): Favorites {
+export function bindFavorites(host: HTMLElement, first: string, tools: Map<string, HTMLElement>, visibility: string): Favorites {
+  let name = first;
   let keys = read(name).filter((k) => tools.has(k));
   const bar = document.createElement("div");
   bar.dataset.favorites = name;
@@ -52,7 +65,7 @@ export function bindFavorites(host: HTMLElement, name: string, tools: Map<string
   list.className = "flex items-center gap-0.5";
   bar.append(grip, list, turn);
   host.append(bar);
-  const movable = makeMovable(host, bar, grip, `${STORAGE}place.${name}`, (horizontal) => {
+  const movable = makeMovable(host, bar, grip, `${STORAGE}place.${first}`, (horizontal) => {
     bar.classList.toggle("flex-col", !horizontal);
     bar.classList.toggle("flex-row", horizontal);
     list.classList.toggle("flex-col", !horizontal);
@@ -120,5 +133,11 @@ export function bindFavorites(host: HTMLElement, name: string, tools: Map<string
   };
   bar.addEventListener("pointerdown", (event) => event.stopPropagation());
   render();
-  return { has: (key) => keys.includes(key), toggle };
+  const use = (next: string, seed: readonly string[] = []) => {
+    name = next;
+    bar.dataset.favorites = name;
+    keys = (kept(name) ? read(name) : [...seed]).filter((k) => tools.has(k));
+    render();
+  };
+  return { has: (key) => keys.includes(key), toggle, use };
 }

@@ -3,6 +3,7 @@
  * geometry worker, the viewport and the panels together.
  */
 import { confirmDeletion, deletionOf, removeStep, removeWithShelves } from "./delete-selection";
+import { normalizeDoc } from "./doc-normalizers";
 import { askConfirm } from "../ui/confirm-dialog";
 import { addExtrude, addPlate, bodyLabel, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
@@ -58,8 +59,8 @@ export class Editor {
   private panelDeferred = false;
   private extrudeTool: ExtrudeTool | null = null;
   private tools: ToolLauncher;
-  /** Provisional document shown while a tool previews its result (null: the real one). */
-  private previewDoc: CadDocument | null = null;
+  /** Provisional document shown while a tool previews its result (null: the real one); read by what acts on the 3D shown. */
+  previewDoc: CadDocument | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -212,7 +213,7 @@ export class Editor {
 
   /** Applies a new document as one undo step (also used by the workshop tools: materials, parameters, scenes…). */
   change(next: CadDocument): Promise<void> {
-    this.session.apply(next);
+    this.session.apply(normalizeDoc(this.doc, next));
     this.updateHistoryButtons();
     return this.recompute();
   }
@@ -447,7 +448,7 @@ export class Editor {
       cloisons: () => this.sketches.startJoinery("cloisons", this.selectedFeature),
       penderie: () => this.sketches.startEquip("rod", this.selectedFeature),
       tiroirs: () => this.sketches.startEquip("drawers", this.selectedFeature), module: () => this.sketches.startEquip("module", this.selectedFeature), niche: () => this.sketches.startEquip("niche", this.selectedFeature),
-      panels: () => this.openTool("panels"), paneling: () => this.openTool("paneling"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), "oi-intersect": () => this.openTool("intersect"), ffd: () => this.openTool("ffd"), swap: () => this.openTool("swap"), spacing: () => this.openTool("spacing"), "extrude-path": () => this.openTool("extrudePath"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
+      panels: () => this.openTool("panels"), paneling: () => this.openTool("paneling"), cabinet: () => this.openTool("cabinet"), "face-strip": () => this.openTool("faceStrip"), mirror: () => this.openTool("mirror"), align: () => this.openTool("align"), mate: () => this.openTool("mate"), coincide: () => this.openTool("coincide"), "face-glue": () => this.openTool("faceGlue"), "extend-element": () => this.openTool("extend"), push: () => this.openTool("push"), appliances: () => this.openTool("appliances"), trim: () => this.openTool("trim"), room: () => this.openTool("room"), stretch: () => this.openTool("stretch"), array: () => this.openTool("array"), rotate: () => this.openTool("rotate"), "draw-on-face": () => this.openTool("drawOnFace"), machining: () => this.openTool("machining"), cutout: () => this.openTool("cutout"), sweep: () => this.openTool("sweep"), shell: () => this.openTool("shell"), loft: () => this.openTool("loft"), modifier: () => this.openTool("modifier"), fronts: () => this.openTool("fronts"), assembly: () => this.openTool("assembly"), overlap: () => this.openTool("overlap"), "layout-copy": () => this.openTool("layoutCopy"), kitchen: () => this.openTool("kitchen"), lighting: () => this.openTool("lighting"), gable: () => this.openTool("gable"), "oi-intersect": () => this.openTool("intersect"), ffd: () => this.openTool("ffd"), swap: () => this.openTool("swap"), spacing: () => this.openTool("spacing"), "extrude-path": () => this.openTool("extrudePath"), dressing: () => this.openTool("dressing"), "rect-array": () => this.openTool("rectArray"),
       extrude: () => this.extrudeCommand(),
       "export-step": () => void this.files.exportGeometry("step"),
       "export-stl": () => void this.files.exportGeometry("stl"),

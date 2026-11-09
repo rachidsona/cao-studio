@@ -9,7 +9,7 @@
 import type { Closest } from "../measurements/closest";
 import { moveSketchPlane } from "../sketcher/move";
 import { findFeature } from "./operations";
-import type { CadDocument, CabinetFeature, Feature, MoveFeature, Vec3 } from "./types";
+import type { ApplianceFeature, CadDocument, CabinetFeature, Feature, MoveFeature, Vec3 } from "./types";
 
 export type Box = [Vec3, Vec3];
 /** Which element moves to make the new space. */
@@ -95,9 +95,15 @@ function slidingCabinet(doc: CadDocument, m: Moving): CabinetFeature | null {
   return f?.type === "cabinet" ? f : null;
 }
 
+/** An appliance (Électroménager) that slides as a whole, by its origin, or null. */
+function slidingAppliance(doc: CadDocument, m: Moving): ApplianceFeature | null {
+  const f = m.whole ? findFeature(doc, m.key) : undefined;
+  return f?.type === "appliance" ? f : null;
+}
+
 /** How many new features (moves of bodies) the shifts need. */
 export function movesNeeded(doc: CadDocument, moving: readonly Moving[]): number {
-  return moving.filter(moves).reduce((n, m) => n + (slidingCabinet(doc, m) || findFeature(doc, m.key)?.type === "sketch" ? 0 : m.bodies.length), 0);
+  return moving.filter(moves).reduce((n, m) => n + (slidingCabinet(doc, m) || slidingAppliance(doc, m) || findFeature(doc, m.key)?.type === "sketch" ? 0 : m.bodies.length), 0);
 }
 
 /**
@@ -117,6 +123,11 @@ export function spacingFeatures(doc: CadDocument, moving: readonly Moving[], slo
     if (cabinet) {
       const expressions = Object.fromEntries(Object.entries(cabinet.expressions ?? {}).filter(([k]) => ![0, 1, 2].some((i) => k === `origin.${i}` && Math.abs(m.shift[i]!) > 1e-6)));
       out.push({ ...cabinet, origin: cabinet.origin.map((c, i) => round(c + m.shift[i]!)) as Vec3, ...(cabinet.expressions ? { expressions } : {}) });
+      continue;
+    }
+    const appliance = slidingAppliance(doc, m);
+    if (appliance) {
+      out.push({ ...appliance, origin: appliance.origin.map((c, i) => round(c + m.shift[i]!)) as Vec3 });
       continue;
     }
     for (const target of m.bodies) {

@@ -1,9 +1,7 @@
-"""Les formulaires du catalogue, partagés par ses pages dans l'atelier (views.py) et par l'administration."""
+"""Les formulaires du catalogue, partagés par ses pages (views.py) et par l'administration."""
 import base64
 
 from django import forms
-
-from apps.furniture.models import CabinetTemplate
 
 from .models import CompanyProfile, HardwareRule, Material
 
@@ -30,13 +28,6 @@ class HardwareRuleForm(forms.ModelForm):
         model = HardwareRule
         fields = ("name", "description", "unit", "unit_price", "default_quantity", "auto_mode", "auto_per_unit")
         widgets = {"description": forms.Textarea(attrs={"rows": 3})}
-
-
-class CabinetTemplateForm(forms.ModelForm):
-    class Meta:
-        model = CabinetTemplate
-        fields = ("name", "description")
-        labels = {"name": "nom", "description": "description"}
 
 
 class CompanyProfileForm(forms.ModelForm):

@@ -30,6 +30,10 @@ import { RotateTool } from "./rotate-tool";
 import { MachiningTool } from "./machining-tool";
 import { CutoutTool } from "./cutout-tool";
 import { MateTool } from "./mate-tool";
+import { FaceGlueTool } from "./face-glue-tool";
+import { ExtendTool } from "./extend-tool";
+import { PushTool } from "./push-tool";
+import { ApplianceTool } from "./appliance-tool";
 import { SweepTool } from "./sweep-tool";
 import { DrawOnFaceTool } from "./draw-on-face-tool";
 import { SplitTool } from "./split-tool";
@@ -45,7 +49,7 @@ import { LayoutCopyTool } from "./layout-copy-tool";
 import { KitchenTool } from "./kitchen-tool";
 import { DressingTool } from "./dressing-tool";
 
-export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge";
+export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -81,9 +85,9 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels" || kind === "gable")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer" || kind === "pullFace" || kind === "moveEdge") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting") && bodies.length ? { bodies } : {}),
+    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting" || kind === "push") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "extrudePath" || kind === "rectArray" || kind === "coincide" || kind === "spacing" ? curicSketches(selected, picked.selection.sketches) : {}),
-    ...((kind === "split" || kind === "move" || kind === "shell" || kind === "paneling" || kind === "intersect" || kind === "align" || kind === "ffd") && faces.length ? { faces } : {}),
+    ...((kind === "split" || kind === "move" || kind === "shell" || kind === "paneling" || kind === "intersect" || kind === "align" || kind === "ffd" || kind === "faceGlue" || kind === "extend" || kind === "push") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
@@ -209,6 +213,18 @@ export class ToolLauncher {
         break;
       case "mate":
         this.active = new MateTool(ctx, options.bodies ?? []);
+        break;
+      case "faceGlue":
+        this.active = new FaceGlueTool(ctx, options.faces ?? []);
+        break;
+      case "extend":
+        this.active = new ExtendTool(ctx, options.faces ?? []);
+        break;
+      case "appliances":
+        this.active = new ApplianceTool(ctx);
+        break;
+      case "push":
+        this.active = new PushTool(ctx, [...new Set([...(options.bodies ?? []), ...(options.faces ?? []).map((f) => f.bodyId)])]);
         break;
       case "room": {
         const tool = new RoomTool(ctx, editing?.type === "room" ? editing : null);

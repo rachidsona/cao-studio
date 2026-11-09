@@ -1,4 +1,4 @@
-"""WSGI config for poly_3D."""
+"""WSGI config for CAO Studio."""
 import os
 
 from django.core.wsgi import get_wsgi_application

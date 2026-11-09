@@ -8,6 +8,7 @@
  * « Ouvrir / fermer les portes » and « Ouvrir / fermer les tiroirs » (Dressing, Cuisine) do it for every door, or every
  * drawer, of the model at once.
  */
+import { madeDoor } from "../document/kitchen-floor";
 import { bodyLabel, findFeature } from "../document/operations";
 import { featureOfBody, type Axis, type CabinetFeature, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
 import { drawerNumber, drawerSlide, type Box } from "../features/drawer-open";
@@ -56,10 +57,34 @@ function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0],
   return outwards(2, turned(hingeX, part.from[1], z), turned(freeX, part.from[1], z), [-r[1]!, -r[4]!, 0]);
 }
 
-/** How a door turns: about the vertical line of its hinge edge, at its front, outwards. */
-export function doorSwing(doc: CadDocument, bodyId: string): Swing | null {
+/**
+ * A door made as a plain board (a corner unit's, ExtrudeFeature.door), from where it stands (`box`, world): about the
+ * vertical of its hinge edge, on its front face.
+ */
+function boardSwing(door: { hinge: Vec3; out: Vec3 }, [low, high]: Box): Swing | null {
+  const axisOf = (v: Vec3) => [0, 1].find((i) => Math.abs(v[i]!) > 0.5);
+  const [h, o] = [axisOf(door.hinge), axisOf(door.out)];
+  if (h === undefined || o === undefined || h === o) return null;
+  const z = (low[2] + high[2]) / 2;
+  const at = (i: number, v: number) => (v > 0 ? high[i]! : low[i]!);
+  const point = (hinge: boolean): Vec3 => {
+    const p: Vec3 = [0, 0, z];
+    p[h] = at(h, hinge ? door.hinge[h]! : -door.hinge[h]!);
+    p[o] = at(o, door.out[o]!);
+    return p;
+  };
+  return outwards(2, point(true), point(false), door.out);
+}
+
+/** How a door turns: about the vertical line of its hinge edge, at its front, outwards (a board door: from `box`). */
+export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): Swing | null {
   const feature = findFeature(doc, featureOfBody(bodyId));
   if (feature?.type === "fronts") return frontSwing(doc, feature, bodyId);
+  if (feature?.type === "extrude") {
+    // A corner door made by a kitchen plan before doors knew their hinge: the plan tells it.
+    const door = feature.door ?? (/^Porte (d'angle|pliante)/.test(feature.name) ? madeDoor(doc, feature.id) : null);
+    return door && box ? boardSwing(door, box) : null;
+  }
   if (feature?.type !== "niche" || (feature.fill !== "doors" && feature.fill !== "door")) return null;
   const n = nicheGeometry(feature as NicheFeature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
   if (typeof n === "string") return null;
@@ -100,6 +125,8 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   const canvas = viewport.renderer.domElement;
   const open = new Map<string, Open>();
   let down: { x: number; y: number } | null = null;
+  // What the 3D shows: a preview not yet recorded (a run of the kitchen plan being changed), else the project.
+  const shown = () => editor.previewDoc ?? editor.doc;
 
   const boxOf = (id: string): Box | null => {
     const b = viewport.bodyMesh(id)?.metrics.bbox;
@@ -149,7 +176,7 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   const drawerItem = (drawer: { key: string; bodies: string[] }): Item => ({
     ...drawer,
     pose: () => {
-      const label = (id: string) => bodyLabel(editor.doc, id);
+      const label = (id: string) => bodyLabel(shown(), id);
       const front = drawer.bodies.find((id) => /façade/i.test(label(id)));
       const back = drawer.bodies.find((id) => /arrière/i.test(label(id)));
       const [f, b] = [front && boxOf(front), back && boxOf(back)];
@@ -163,9 +190,9 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   const doors = (): Item[] => {
     const found = new Map<string, Item>();
     for (const id of viewport.displayedBodies) {
-      const swing = doorSwing(editor.doc, id);
+      const swing = doorSwing(shown(), id, boxOf(id));
       if (swing) {
-        const item = doorItem(doorWithHandle(editor.doc, id), swing);
+        const item = doorItem(doorWithHandle(shown(), id), swing);
         found.set(item.key, item);
       }
     }
@@ -174,7 +201,7 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   const drawers = (): Item[] => {
     const found = new Map<string, Item>();
     for (const id of viewport.displayedBodies) {
-      const drawer = drawerBodies(editor.doc, viewport.displayedBodies, id);
+      const drawer = drawerBodies(shown(), viewport.displayedBodies, id);
       if (drawer && !found.has(drawer.key)) found.set(drawer.key, drawerItem(drawer));
     }
     return [...found.values()];
@@ -209,16 +236,20 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   };
 
   const toggle = (bodyId: string) => {
-    const doc = editor.doc;
-    const swing = doorSwing(doc, bodyId);
+    const doc = shown();
+    const swing = doorSwing(doc, bodyId, boxOf(bodyId));
     const drawer = swing ? null : drawerBodies(doc, viewport.displayedBodies, bodyId);
     if (swing) flipItem(doorItem(doorWithHandle(doc, bodyId), swing));
     else if (drawer) flipItem(drawerItem(drawer));
     showButtons();
   };
 
+  // « Ouvrir / fermer la porte » of its menu (app/door-menu.ts).
+  document.addEventListener("cad:toggle-door", (event) => toggle((event as CustomEvent<string>).detail));
+
   canvas.addEventListener("pointerdown", (event) => {
-    down = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
+    // A click begun while a tool held the view is that tool's, even when the tool closes on it.
+    down = event.button === 0 && !viewport.inSketch ? { x: event.clientX, y: event.clientY } : null;
   });
   canvas.addEventListener("pointerup", (event) => {
     const start = down;

@@ -1,10 +1,14 @@
 /**
- * Le menu d'une niche : un clic droit sur une niche, sans outil en cours, propose ce qu'on peut y faire. L'outil choisi
+ * Le menu d'une niche : un clic droit sur une niche, sans outil en cours, propose ce qu'on peut y faire (sur une porte :
+ * le menu de la porte, app/door-menu.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
+ * garder (OK) ou de l'annuler : ses pièces ne sont pas encore dans le projet. L'outil choisi
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
  */
 import { keyOf } from "../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
+import { openDoorMenu } from "./door-menu";
+import { shownDoc } from "./kitchen-run-preview";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -49,6 +53,18 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
   canvas.addEventListener("contextmenu", (event) => {
     event.preventDefault();
     if (!free() || !pressed || Math.hypot(event.clientX - pressed[0], event.clientY - pressed[1]) > 5) return;
+    const face = viewport.pickFace(event as PointerEvent);
+    // The kitchen shown is a preview of a run, not kept yet: keep it, or not.
+    if (face && shownDoc(editor) !== editor.doc) {
+      const press = (selector: string) => document.querySelector<HTMLElement>(selector)?.click();
+      menu = popup(event, "Menu de l'aperçu", "Aperçu du linéaire, pas encore gardé : gardez-le pour régler ses meubles.", [
+        ["Garder la cuisine (OK)", () => press("[data-run-ok]")],
+        ["Annuler l'aperçu", () => press("[data-run-cancel]")],
+      ]);
+      return;
+    }
+    // A door (or its handle) under the pointer: its own menu.
+    if (face && openDoorMenu(event, viewport, editor, face.bodyId)) return;
     const niche = nicheUnderPointer(viewport, editor.doc, event);
     if (!niche) return;
     const items: [string, () => void][] = [
@@ -57,7 +73,11 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],
       ["Aligner sur cette niche", () => openNicheCopy(viewport, editor, "heights", niche)],
     ];
-    menu = el("div", { class: "fixed z-50 min-w-44 border border-gray-200 bg-white py-1 text-sm text-gray-900 shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100", role: "menu", "aria-label": "Menu de la niche", style: `left:${event.clientX}px;top:${event.clientY}px` }, ...items.map(([label, go]) => {
+    menu = popup(event, "Menu de la niche", null, items);
+  });
+  /** A menu at the pointer: its items, a line above them if any. */
+  const popup = (event: MouseEvent, name: string, note: string | null, items: [string, () => void][]): HTMLElement => {
+    const box = el("div", { class: "fixed z-50 min-w-44 max-w-72 border border-gray-200 bg-white py-1 text-sm text-gray-900 shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100", role: "menu", "aria-label": name, style: `left:${event.clientX}px;top:${event.clientY}px` }, note ? el("p", { class: "px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400" }, note) : null, ...items.map(([label, go]) => {
       const item = el("button", { type: "button", role: "menuitem", class: "block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-800" }, label);
       item.addEventListener("click", () => {
         closeMenu();
@@ -65,8 +85,9 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       });
       return item;
     }));
-    document.body.append(menu);
-  });
+    document.body.append(box);
+    return box;
+  };
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeMenu();
   });

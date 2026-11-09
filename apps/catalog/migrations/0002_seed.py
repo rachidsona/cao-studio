@@ -1,4 +1,4 @@
-"""Le catalogue de départ, repris de poly_3D : 23 matières (caisson, fonds, plans de travail en marbre, quartz,
+"""Le catalogue de départ : 23 matières (caisson, fonds, plans de travail en marbre, quartz,
 granit, inox, verre, bois, stratifiés, laqués) et 9 règles de quincaillerie (5 automatiques), et le profil."""
 from django.db import migrations
 

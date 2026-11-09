@@ -1,5 +1,5 @@
 /**
- * The menu of the project's name (top bar): back to the projects, the poly_3D workshop, the drawing of the whole
+ * The menu of the project's name (top bar): back to the projects, the workshop's catalogue, the drawing of the whole
  * project, and « Mise en plan du caisson sélectionné » — a sheet of the cabinet one of whose pieces is picked in the
  * view (or of the only cabinet of the model), the other bodies left out (app/drawing/standard-views.ts).
  */

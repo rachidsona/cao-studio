@@ -51,16 +51,18 @@ def test_projects_list_renders(client_logged, project):
     assert "/static/img/accueil/cuisine-dressing.jpg" in content
 
 
-def test_home_lists_kitchens_and_dressings(client_logged):
-    from apps.furniture.models import Project as Affair
-
-    affair = Affair.objects.create(name="Cuisine Dupont", placement_mode=Affair.PLACEMENT_ROOM)
+def test_home_makes_a_kitchen_or_a_dressing_opened_on_its_tab(client_logged, user):
     content = client_logged.get("/projects/").content.decode()
-    assert "Projets Cuisine &amp; Dressing" in content
-    assert "Cuisine Dupont" in content and "Cuisine · 0 caissons ·" in content
-    assert f"/poly/projet/{affair.pk}/piece/" in content
-    # Its « new » form creates an affair in the workshop.
-    assert 'action="/poly/projet/creer/"' in content
+    assert 'name="space" value="kitchen"' in content and 'name="space" value="dressing"' in content
+    assert "/poly/" not in content and "poly_3D" not in content
+    response = client_logged.post("/projects/", {"name": "Cuisine Dupont", "space": "kitchen"})
+    project = Project.objects.get(name="Cuisine Dupont")
+    assert response["Location"] == f"/projects/{project.id}/editor/?onglet=kitchen"
+    response = client_logged.post("/projects/", {"name": "Dressing Martin", "space": "dressing"})
+    assert response["Location"].endswith("?onglet=dressing")
+    # Anything else: the editor as usual.
+    response = client_logged.post("/projects/", {"name": "Autre", "space": "ailleurs"})
+    assert response["Location"] == f"/projects/{Project.objects.get(name='Autre').id}/editor/"
 
 
 def test_create_project_from_form(client_logged, user):
@@ -180,24 +182,6 @@ def test_home_cannot_delete_someone_elses_project(project):
 
 
 @pytest.mark.django_db
-def test_home_deletes_an_affair_and_keeps_its_cabinets(client_logged):
-    from apps.furniture.models import Cabinet, Material, ProjectItem
-    from apps.furniture.models import Project as Affair
-    from apps.furniture.services import create_cabinet
-
-    material = Material.objects.first()
-    cabinet = create_cabinet(name="Bas", width=600, height=720, depth=560, material=material)
-    affair = Affair.objects.create(name="Cuisine Dupont", placement_mode=Affair.PLACEMENT_ROOM)
-    ProjectItem.objects.create(project=affair, cabinet=cabinet, slot=0)
-    assert f'action="/poly/projet/{affair.pk}/supprimer/"' in client_logged.get("/projects/").content.decode()
-    assert client_logged.get(f"/poly/projet/{affair.pk}/supprimer/").status_code == 405
-    response = client_logged.post(f"/poly/projet/{affair.pk}/supprimer/", follow=True)
-    assert response.redirect_chain[-1][0] == "/projects/"
-    assert not Affair.objects.filter(pk=affair.pk).exists()
-    assert Cabinet.objects.filter(pk=cabinet.pk).exists()
-
-
-@pytest.mark.django_db
 def test_home_deletes_the_ticked_3d_projects_and_only_the_users_own(client_logged, user):
     from apps.projects.services import create_project
 
@@ -223,26 +207,8 @@ def test_home_deleting_nothing_changes_nothing(client_logged, project):
 
 
 @pytest.mark.django_db
-def test_home_deletes_the_ticked_affairs_and_keeps_their_cabinets(client_logged):
-    from apps.furniture.models import Cabinet, Material, ProjectItem
-    from apps.furniture.models import Project as Affair
-    from apps.furniture.services import create_cabinet
-
-    cabinet = create_cabinet(name="Bas", width=600, height=720, depth=560, material=Material.objects.first())
-    first = Affair.objects.create(name="Cuisine A")
-    second = Affair.objects.create(name="Cuisine B")
-    kept = Affair.objects.create(name="Cuisine C")
-    ProjectItem.objects.create(project=first, cabinet=cabinet, slot=0)
-    assert 'action="/poly/projet/supprimer/"' in client_logged.get("/projects/").content.decode()
-
-    response = client_logged.post("/poly/projet/supprimer/", {"ids": [first.pk, second.pk, "abc"]}, follow=True)
-    assert "2 projets supprimés." in response.content.decode()
-    assert list(Affair.objects.all()) == [kept]
-    assert Cabinet.objects.filter(pk=cabinet.pk).exists()
-
-
-@pytest.mark.django_db
-def test_projects_page_links_to_the_poly_workshop(client_logged):
+def test_projects_page_is_cao_studio_and_links_to_the_catalogue(client_logged):
     content = client_logged.get("/projects/").content.decode()
-    assert 'href="/poly/"' in content
-    assert "Caissons et pièces" in content
+    assert "CAO Studio" in content and "poly_3D" not in content
+    assert 'href="/catalogue/"' in content
+    assert client_logged.get("/poly/").status_code == 404

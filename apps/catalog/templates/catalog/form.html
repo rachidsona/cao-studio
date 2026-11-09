@@ -1,33 +1,30 @@
 {% extends "catalog/base.html" %}
 {% block page_title %}{{ title }}{% endblock %}
-{% block heading %}{{ title }}{% endblock %}
 {% block body %}
-<div class="card catalog-form-card">
-  <div class="card-head"><h2>{% if instance %}{{ instance.name }}{% else %}{{ title }}{% endif %}</h2></div>
-  <div class="card-body">
-    <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %} novalidate>
-      {% csrf_token %}
-      {% if form.non_field_errors %}<p class="field-error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
-      {% if profile.logo %}<div class="field"><span class="label-like">Logo actuel</span><img class="catalog-logo" src="{{ profile.logo }}" alt="Logo de l'atelier"></div>{% endif %}
-      <div class="catalog-fields">
-        {% for field in form %}
-          {% if field.widget_type == "checkbox" %}
-            <label class="check catalog-wide">{{ field }} {{ field.label|capfirst }}</label>
-          {% else %}
-            <div class="field{% if field.widget_type == 'textarea' %} catalog-wide{% endif %}">
-              <label for="{{ field.id_for_label }}">{{ field.label|capfirst }}</label>
-              {{ field }}
-              {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-            </div>
-          {% endif %}
-        {% endfor %}
-      </div>
-      <div class="catalog-buttons">
-        <button class="btn btn-primary" type="submit">Enregistrer</button>
-        {% if back %}<a class="btn" href="{% url back %}">Annuler</a>{% endif %}
-      </div>
-    </form>
-  </div>
+<div class="max-w-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+  <h2 class="text-lg font-semibold">{% if instance %}{{ instance.name }}{% else %}{{ title }}{% endif %}</h2>
+  <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %} novalidate class="mt-4 space-y-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+    {% if profile.logo %}<div><span class="block text-sm font-medium text-gray-700 dark:text-gray-200">Logo actuel</span><img class="mt-1 max-h-20" src="{{ profile.logo }}" alt="Logo de l'atelier"></div>{% endif %}
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% for field in form %}
+        {% if field.widget_type == "checkbox" %}
+          <label class="flex items-center gap-2 text-sm sm:col-span-2">{{ field }} {{ field.label|capfirst }}</label>
+        {% else %}
+          <div class="space-y-1.5{% if field.widget_type == 'textarea' %} sm:col-span-2{% endif %}">
+            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ field.label|capfirst }}</label>
+            <div class="catalog-field">{{ field }}</div>
+            {% if field.help_text %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div class="flex gap-2">
+      <button class="inline-flex min-h-10 items-center btn-accent px-4 text-sm font-medium" type="submit">Enregistrer</button>
+      {% if back %}<a class="inline-flex min-h-10 items-center border border-gray-300 px-4 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="{% url back %}">Annuler</a>{% endif %}
+    </div>
+  </form>
 </div>
 {% endblock %}

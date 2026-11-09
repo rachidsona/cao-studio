@@ -1,5 +1,5 @@
 """
-Icônes 3D de poly_3D, style « Blanc premium » : de petits volumes blancs en vue isométrique, le bleu pour ce qui compte,
+Icônes 3D de CAO Studio, style « Blanc premium » : de petits volumes blancs en vue isométrique, le bleu pour ce qui compte,
 l'orange pour ce qui agit. Chaque icône décrite ici remplace son symbole dans templates/editor/_icons.html ; les autres
 (esquisse, contraintes : du dessin à plat) gardent leur tracé, posé sur une touche blanche en relief.
 

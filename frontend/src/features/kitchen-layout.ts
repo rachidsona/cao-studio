@@ -76,21 +76,37 @@ export interface KitchenUnit {
   /** The fronts it gets (none: an appliance or panels in front). */
   layout: "door" | "doors" | "drawers" | "none";
   drawers?: number;
+  /** One door: the side of its hinges (missing: left). */
+  side?: "left" | "right";
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
-  /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts). */
+  /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */
   run?: string;
+  item?: string;
+  /** A corner unit chosen for its corner: made even on a run with nothing else. */
+  corner?: boolean;
+  /** Which size of the plan a corner unit's width is: its corner, the size, and what the width has over it (mm). */
+  cornerEdit?: { joint: "left" | "right"; key: "door" | "arm" | "wallDoor" | "wallArm"; less: number };
 }
 
 export interface KitchenBox {
   name: string;
   from: Vec3;
   to: Vec3;
-  kind: "wall" | "worktop" | "filler" | "panel" | "appliance" | "splashback" | "kick";
+  kind: "wall" | "worktop" | "filler" | "panel" | "appliance" | "splashback" | "kick" | "fitting";
+  /** Part of a corner unit chosen for its corner. */
+  corner?: boolean;
   /** A worktop's cut-outs (features/worktop-cutouts.ts): the appliance and the middle of the cut (kitchen frame). */
   holes?: { appliance: string; at: Vec3 }[];
   /** Which way a worktop's front faces (kitchen frame). */
   front?: Vec3;
+  /**
+   * An appliance of the library (features/appliance-library.ts) filling the box, as a cabinet fills its own: its
+   * model, finish and turn (kitchen frame).
+   */
+  appliance?: { model: string; finish: string; rotation: number };
+  /** A board that opens as a door (a corner unit's): toward its hinge edge, the way it faces (kitchen frame). */
+  door?: { hinge: Vec3; out: Vec3 };
   run?: string;
 }
 
@@ -184,6 +200,8 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
     return { name, origin: originOf(rotation[r], lo, hi), rotation: rotation[r], width: w, height, depth, ...rest };
   };
   const box = (name: string, kind: KitchenBox["kind"], [from, to]: [Vec3, Vec3], extra: Partial<KitchenBox> = {}) => out.boxes.push({ name, from, to, kind, ...extra });
+  /** An appliance of the library filling its box, turned as the cabinets of its run. */
+  const put = (r: RunWall, name: string, model: string, at: [Vec3, Vec3], finish = "inox") => box(name, "appliance", at, { appliance: { model, finish, rotation: rotation[r] } });
   const slots: (Slot & { unit: KitchenUnit; stretch: number })[] = [];
   const worktops: { run: RunWall; box: KitchenBox }[] = [];
 
@@ -267,7 +285,8 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
       out.units.push(unit("A", `Meuble d'angle ${c.other}`, u0, u1 - u0, D, 0, H, { plinth: s.plinth, shelves: 1, layout: "none" }));
       box(`Panneau d'angle ${c.other}`, "panel", band("A", p, q, D, D + T, s.plinth, H));
       const [d0, d1] = c.at === "start" ? [corner + 1.5, corner + CORNER_DOOR - 1.5] : [LA - corner - CORNER_DOOR + 1.5, LA - corner - 1.5];
-      box(`Porte d'angle ${c.other}`, "panel", band("A", d0, d1, D, D + T, s.plinth + 1.5, H - 1.5));
+      // Hung on its edge away from the corner (wall A runs along X, its fronts face −Y).
+      box(`Porte d'angle ${c.other}`, "panel", band("A", d0, d1, D, D + T, s.plinth + 1.5, H - 1.5), { door: { hinge: [c.at === "start" ? 1 : -1, 0, 0], out: [0, -1, 0] } });
     } else box(`Fileur d'angle A${c.at === "end" ? " (droite)" : ""}`, "filler", band("A", c.at === "start" ? D : LA - corner, c.at === "start" ? corner : LA - D, D, D + T, s.plinth, H));
     box(`Fileur d'angle ${c.other}`, "filler", band(c.other, D + T, corner, D, D + T, s.plinth, H));
   }
@@ -305,7 +324,8 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
     if (roles.dishwasher !== undefined) {
       const sl = slots[roles.dishwasher]!;
       out.units.splice(out.units.indexOf(sl.unit), 1);
-      box("Lave-vaisselle", "appliance", band(sl.run, sl.at + 2, sl.at + sl.width - 2, 20, D, s.plinth, H - 5));
+      const dw = sl.width >= 598 ? 598 : 448;
+      put(sl.run, "Lave-vaisselle", "dishwasher-builtin", band(sl.run, sl.at + (sl.width - dw) / 2, sl.at + (sl.width + dw) / 2, D - 550, D, H - 5 - 815, H - 5));
       box("Façade lave-vaisselle", "panel", band(sl.run, sl.at + 1.5, sl.at + sl.width - 1.5, D, D + T, s.plinth, H - 3));
       checks.dishwasherBySink = true;
     } else if (roles.sink !== undefined) checks.dishwasherBySink = false;
@@ -313,21 +333,21 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
       const sl = slots[roles.hob]!;
       const mid = sl.at + sl.width / 2;
       hole(sl, sl.width >= 900 ? "hob-90" : sl.width >= 800 ? "hob-80" : "hob-60");
-      box("Plaque de cuisson", "appliance", band(sl.run, mid - 290, mid + 290, depthTop / 2 - 255, depthTop / 2 + 255, top, top + 5));
+      const hw = sl.width >= 900 ? 900 : sl.width >= 800 ? 780 : 590;
+      put(sl.run, "Plaque de cuisson", "hob-induction", band(sl.run, mid - hw / 2, mid + hw / 2, depthTop / 2 - 260, depthTop / 2 + 260, top - 49, top + 6), "black");
       places.hob = sl.middle;
       [checks.hobAtEdge, checks.hobUnderWindow] = [sl.edge, sl.window];
       const ovenTop = H - 20;
       if (!s.ovenColumn && ovenTop - 595 >= s.plinth + 18) {
         Object.assign(sl.unit, { name: `Four ${sl.unit.name}`, shelves: 0, layout: "none" });
-        box("Four", "appliance", band(sl.run, sl.at + 20, sl.at + sl.width - 20, D + T - 560, D + T, ovenTop - 595, ovenTop));
+        put(sl.run, "Four", "oven-pyro", band(sl.run, sl.at + (sl.width - 595) / 2, sl.at + (sl.width + 595) / 2, D - 548, D, ovenTop - 595, ovenTop));
         box("Bandeau sous four", "panel", band(sl.run, sl.at + 1.5, sl.at + sl.width - 1.5, D, D + T, s.plinth, ovenTop - 597));
       } else Object.assign(sl.unit, { name: `Plaque ${sl.unit.name}`, layout: "drawers" });
       // The hood instead of the wall unit over the hob, its duct up to the ceiling.
       const ceiling = room?.[sl.run]?.ceiling(0) ?? s.wallHeight;
       const over = highs.find((h) => h.run === sl.run && mid > h.at && mid < h.at + h.u.width);
       if (over) highs.splice(highs.indexOf(over), 1);
-      box("Hotte", "appliance", band(sl.run, sl.at, sl.at + sl.width, 0, 500, top + 650, top + 750));
-      box("Conduit de hotte", "appliance", band(sl.run, mid - 125, mid + 125, 50, 300, top + 750, ceiling));
+      put(sl.run, "Hotte", "hood-chimney", band(sl.run, sl.at + 1, sl.at + sl.width - 1, 0, 500, top + 650, Math.max(top + 900, ceiling)));
     }
     // The columns, side by side at the free end of their run.
     const cr = columnRun(s);
@@ -341,7 +361,7 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
     }
     if (s.ovenColumn) {
       out.units.push(unit(cr, "Colonne four", p, COLUMN, D, 0, colH, { plinth: s.plinth, shelves: 0, layout: "none" }));
-      box("Four (colonne)", "appliance", band(cr, p + 20, p + COLUMN - 20, D + T - 560, D + T, 900, 1495));
+      put(cr, "Four (colonne)", "oven-pyro", band(cr, p + (COLUMN - 595) / 2, p + (COLUMN + 595) / 2, D - 548, D, 900, 1495));
       box("Porte basse colonne four", "panel", band(cr, p + 1.5, p + COLUMN - 1.5, D, D + T, s.plinth, 897));
       box("Porte haute colonne four", "panel", band(cr, p + 1.5, p + COLUMN - 1.5, D, D + T, 1498, colH - 1.5));
     }

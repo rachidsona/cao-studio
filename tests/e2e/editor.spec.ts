@@ -139,11 +139,11 @@ test("la mise en plan s'ouvre de la barre du haut : une feuille avec les vues st
   expect(errors).toEqual([]);
 });
 
-test("poly_3D : le catalogue de l'atelier arrive, Rayons X et Affichage marchent", async ({ page }) => {
+test("CAO Studio : le catalogue de l'atelier arrive, Rayons X et Affichage marchent", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Catalogue e2e");
-  await expect(page).toHaveTitle(/poly_3D/);
+  await expect(page).toHaveTitle(/CAO Studio/);
   // The catalogue seeded by the migration (apps/catalog): 23 materials, 9 hardware rules, the profile.
   const catalog = await page.evaluate(async () => (await fetch("/api/catalog/", { headers: { Accept: "application/json" } })).json());
   expect(catalog.materials).toHaveLength(23);
@@ -178,7 +178,7 @@ test("poly_3D : le catalogue de l'atelier arrive, Rayons X et Affichage marchent
   expect(errors).toEqual([]);
 });
 
-test("le menu du nom du projet : projets, atelier poly_3D, mise en plan du caisson seul", async ({ page }) => {
+test("le menu du nom du projet : projets, catalogue de l'atelier, mise en plan du caisson seul", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Menu e2e");
@@ -186,7 +186,7 @@ test("le menu du nom du projet : projets, atelier poly_3D, mise en plan du caiss
   await page.locator("[data-project-menu] summary").click();
   const menu = page.locator('[data-project-menu] [role="menu"]');
   await expect(menu.getByRole("menuitem", { name: "← Mes projets" })).toHaveAttribute("href", "/projects/");
-  await expect(menu.getByRole("menuitem", { name: "Caissons et pièces (tableau de bord)" })).toHaveAttribute("href", "/poly/");
+  await expect(menu.getByRole("menuitem", { name: "Catalogue de l'atelier" })).toHaveAttribute("href", "/catalogue/");
   await menu.getByRole("menuitem", { name: "Mise en plan du caisson sélectionné" }).click();
   await expect(page.getByText("Cliquez d'abord une pièce du caisson")).toBeVisible();
   await expect(menu).toBeHidden();

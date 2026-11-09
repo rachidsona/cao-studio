@@ -7,7 +7,7 @@
  * - un perçage qui déborde du bord ou en mord un autre ;
  * - une porte ou un tiroir qui heurte quelque chose en s'ouvrant (calculé dans l'application, app/fabrication-check.ts) ;
  * - un meuble qui entre dans un mur, une retombée ou un rampant de la pièce relevée, ou qui cache une prise ;
- * - l'implantation d'une cuisine ou d'un dressing (document/layout-check.ts, porté de poly_3D).
+ * - l'implantation d'une cuisine ou d'un dressing (document/layout-check.ts).
  */
 import { roomClashes, type RoomInput } from "../features/room-plan";
 import type { FlatEdge, FlatPart } from "../io/dxf";

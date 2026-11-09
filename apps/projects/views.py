@@ -1,16 +1,13 @@
-"""HTML pages: the home page (3D projects and the workshop's kitchens and dressings), the 3D editor shell."""
+"""HTML pages: the home page (a 3D project, or a kitchen or a dressing opened on its tab), the 3D editor shell."""
 import uuid
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
-
-from apps.furniture.models import Project as FurnitureProject
 
 from . import services
 from .documents import default_document, example_document
@@ -31,17 +28,14 @@ def project_list(request):
             project, _ = services.create_project(
                 request.user, form.cleaned_data["name"], default_document()
             )
-            return redirect("projects:editor", project_id=project.id)
+            url = reverse("projects:editor", kwargs={"project_id": project.id})
+            # A kitchen or a dressing: the editor opens on its tab, its plan at the right.
+            space = request.POST.get("space")
+            return redirect(f"{url}?onglet={space}" if space in ("kitchen", "dressing") else url)
     else:
         form = ProjectCreateForm()
     projects = Project.objects.filter(owner=request.user).order_by("-updated_at")
-    # The kitchens and dressings of the workshop (apps.furniture: its affairs belong to no one).
-    affairs = FurnitureProject.objects.annotate(item_count=Count("items")).order_by("-updated_at")
-    return render(
-        request,
-        "projects/project_list.html",
-        {"projects": projects, "affairs": affairs, "form": form},
-    )
+    return render(request, "projects/project_list.html", {"projects": projects, "form": form})
 
 
 @login_required

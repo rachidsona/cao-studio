@@ -1,8 +1,0 @@
-from django.apps import AppConfig
-
-
-class WorkshopConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "apps.workshop"
-    label = "workshop"
-    verbose_name = "Atelier poly_3D : débit"

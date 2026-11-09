@@ -1,5 +1,5 @@
 /**
- * Native poly_3D document model (format "cao-studio", kept from CAO Studio; schema v2).
+ * Native CAO Studio document model (format "cao-studio"; schema v2).
  *
  * The document is the single source of truth: it stores the parametric
  * history (sketches, features, parameters), never meshes. Geometry is always
@@ -113,6 +113,11 @@ export interface KitchenRunItem {
   model: string;
   width: number;
   own?: CatalogEntry;
+  /** Sizes set for this unit (mm), over those of its model and the plan: a wall or tall unit's height, any depth. */
+  height?: number;
+  depth?: number;
+  /** One door: the side of its hinges, chosen (missing: left). */
+  side?: "left" | "right";
 }
 
 /** The plan of a kitchen, seen from above (document/kitchen-plan-shapes.ts): its model, its sizes (mm), and each run's units. */
@@ -137,15 +142,33 @@ export interface KitchenFloorPlan {
   worktopHeight: number;
   /** Square corners where the other run passes: B or C (or the peninsula) past wall A. */
   through?: Partial<Record<"left" | "right", boolean>>;
-  /** A dead corner closed by two fillers, or a corner unit on the run that passes. */
+  /** A dead corner closed by two fillers, or a corner unit on the run that passes: of every corner, unless set below. */
   corner?: "dead" | "unit";
+  /** By corner (document/kitchen-corners.ts): dead, a blind corner unit with a shelf or LeMans trays, an L unit 90 × 90. */
+  corners?: Partial<Record<"left" | "right", "dead" | "unit" | "lemans" | "l">>;
+  /** By corner, up in the wall row: nothing, a wall corner unit with a door, or an L (document/kitchen-corners.ts). */
+  wallCorners?: Partial<Record<"left" | "right", "none" | "unit" | "l">>;
+  /** By corner, its sizes as set (mm): the base corner unit's door or its L's side, the wall one's door or side. */
+  cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number }>>;
   room?: { id: string; wall: number };
   place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
   frontMaterial?: string;
   worktopMaterial?: string;
+  /** As the Implantation's (features/kitchen-layout.ts): the plinth's height and the worktop's thickness (mm), built. */
+  plinth?: number;
+  worktopThickness?: number;
+  /** What « Proposer une cuisine » puts: the base units' fronts, wall units, appliances, a fridge column, the oven in a column. */
+  fronts?: "mixed" | "drawers" | "doors";
+  wallUnits?: boolean;
+  appliances?: boolean;
+  fridge?: boolean;
+  ovenColumn?: boolean;
+  /** A splashback over the worktop and kick boards under the fronts, built. */
+  splashback?: boolean;
+  kick?: boolean;
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
-  rest?: Record<string, "end" | "start" | "both">;
+  rest?: Record<string, "end" | "start" | "both" | "walls">;
   /** By run (and "walls"): the features made from it. */
   made?: Record<string, string[]>;
 }
@@ -237,6 +260,11 @@ export interface ExtrudeFeature extends FeatureBase {
   ceiling?: SlopedCeiling;
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
+  /**
+   * A door made as a plain board (a corner unit's): toward its hinge edge and the way it faces (world, unit vectors).
+   * « Ouvrir / fermer les portes » and a click turn it about the vertical through its hinge edge, at its front.
+   */
+  door?: { hinge: Vec3; out: Vec3 };
   /**
    * Start of the extrusion (as Fusion's "Start: Offset"): this far from the sketch plane along its normal (mm,
    * negative: the other side). Absent or 0: from the sketch plane. Sketch profiles only.
@@ -622,6 +650,8 @@ export interface FrontsFeature extends FeatureBase {
   type: "fronts";
   cabinet: string;
   layout: "door" | "doors" | "drawers";
+  /** One door: the side of its hinges, as one faces it (missing: left). */
+  side?: "left" | "right";
   drawers: number;
   mount: "overlay" | "inset";
   gap: number;
@@ -709,7 +739,26 @@ export interface RoomFeature extends FeatureBase, RoomInput {
   type: "room";
 }
 
+/**
+ * An appliance of the library (features/appliance-library.ts): an oven, a hob, a hood, a fridge, a dishwasher, a
+ * microwave, a sink or a tap, drawn piece by piece (body "<id>#n") with its own looks. Placed as a cabinet is: its
+ * front-left-bottom corner, turned about the vertical through it (0: it faces −Y). Bought: out of the cut list.
+ */
+export interface ApplianceFeature extends FeatureBase {
+  type: "appliance";
+  /** Its model in the library. */
+  model: string;
+  origin: Vec3;
+  rotation?: 0 | 90 | 180 | 270;
+  width: number;
+  height: number;
+  depth: number;
+  /** Its finish: stainless steel, black, white (a tap: chrome, black, brass). */
+  finish: string;
+}
+
 export type Feature =
+  | ApplianceFeature
   | RoomFeature
   | TrimFeature
   | NicheFeature
@@ -927,6 +976,7 @@ export function featureInputs(feature: Feature): string[] {
     case "cabinet":
     case "trim":
     case "room":
+    case "appliance":
       return [];
     case "mirror":
     case "array":
@@ -989,12 +1039,13 @@ export function consumedBodies(feature: Feature): string[] {
     case "array":
     case "trim":
     case "room":
+    case "appliance":
       return [];
   }
 }
 
 /** Features whose output is a solid body. */
-export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["paneling", "room", "trim", "extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
+export const SOLID_FEATURES: ReadonlySet<FeatureType> = new Set(["appliance", "paneling", "room", "trim", "extrude", "hole", "revolve", "fillet", "chamfer", "combine", "split", "move", "panels", "cabinet", "mirror", "align", "stretch", "array", "rotate", "machining", "sweep", "shell", "loft", "modifier", "fronts", "niche"]);
 
 export function cloneDocument(doc: CadDocument): CadDocument {
   return structuredClone(doc);

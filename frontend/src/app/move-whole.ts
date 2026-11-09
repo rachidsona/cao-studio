@@ -14,8 +14,8 @@ export interface Whole {
   bodies: string[];
 }
 
-/** The feature that holds a body together with its neighbours. */
-function ownerOf(doc: CadDocument, bodyId: string): { kind: Whole["kind"]; id: string } | null {
+/** The feature that holds a body together with its neighbours (its cabinet, the sketch of its Répartition), or null. */
+export function wholeOwner(doc: CadDocument, bodyId: string): { kind: Whole["kind"]; id: string } | null {
   const f = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));
   if (f?.type === "cabinet") return { kind: "cabinet", id: f.id };
   if (f?.type === "fronts") return { kind: "cabinet", id: f.cabinet };
@@ -23,13 +23,21 @@ function ownerOf(doc: CadDocument, bodyId: string): { kind: Whole["kind"]; id: s
   return null;
 }
 
+/** The bodies shown of a whole: a cabinet's with its fronts', a Répartition's panels, doors and niches. */
+export function wholeBodies(doc: CadDocument, kind: Whole["kind"], id: string, displayed: readonly string[]): string[] {
+  return displayed.filter((body) => {
+    const other = wholeOwner(doc, body);
+    return other?.kind === kind && other.id === id;
+  });
+}
+
 /** The whole a body belongs to, among the bodies shown; null when it stands alone (it is its own whole). */
 export function wholeOf(doc: CadDocument, bodyId: string, displayed: readonly string[]): Whole | null {
-  const owner = ownerOf(doc, bodyId);
+  const owner = wholeOwner(doc, bodyId);
   const feature = owner && findFeature(doc, owner.id);
   if (!owner || !feature) return null;
   const bodies = displayed.filter((id) => {
-    const other = ownerOf(doc, id);
+    const other = wholeOwner(doc, id);
     return other?.kind === owner.kind && other.id === owner.id;
   });
   return bodies.length > 1 ? { ...owner, name: feature.name, bodies } : null;

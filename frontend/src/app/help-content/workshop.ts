@@ -274,7 +274,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Cliquez « Importer une liste de pièces » et choisissez le fichier.",
           "Les planches apparaissent côte à côte à droite du modèle ; un message indique les lignes ignorées.",
         ],
-        tip: "La première ligne peut nommer les colonnes, et l'unité entre parenthèses : « Longueur (cm) ». Sans cette ligne, l'ordre ci-dessus est suivi. La liste de débit exportée par poly_3D se réimporte telle quelle.",
+        tip: "La première ligne peut nommer les colonnes, et l'unité entre parenthèses : « Longueur (cm) ». Sans cette ligne, l'ordre ci-dessus est suivi. La liste de débit exportée par CAO Studio se réimporte telle quelle.",
       },
       {
         keys: ["data-workshop:nesting"], name: "Optimisation de découpe",

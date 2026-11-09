@@ -75,7 +75,7 @@ describe("cuisine dans une pièce relevée", () => {
     const all: Box[] = [
       ...units.map((u): Box => [[u.origin[0], u.origin[1], u.origin[2]], [u.origin[0] + u.width, u.origin[1] + u.depth, u.origin[2] + u.height]]),
       // (the oven sits inside its unit, the hob on the worktop, the duct over the hood)
-      ...boxes.filter((b) => !["Conduit de hotte", "Plaque de cuisson", "Four"].includes(b.name)).map((b): Box => [b.from, b.to]),
+      ...boxes.filter((b) => !["Hotte", "Plaque de cuisson", "Four"].includes(b.name)).map((b): Box => [b.from, b.to]),
     ];
     for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(overlaps(all[i]!, all[j]!), `${i} et ${j}`).toBe(false);
   });

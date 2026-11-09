@@ -296,7 +296,7 @@ export function packParts(parts: FlatPart[], size: [number, number], o: GcodeOpt
 export function partsGcode(groups: { label: string; size: [number, number]; parts: FlatPart[] }[], o: GcodeOptions = GCODE): { code: string; sheets: number; skipped: string[] } {
   const drills = [...new Set(groups.flatMap((g) => g.parts.flatMap((p) => p.edges.flatMap((e) => (e.kind === "circle" && p.edges.length > 1 && 2 * e.radius <= o.drillMax + EPS ? [Number((2 * e.radius).toFixed(2))] : [])))))].sort((a, b) => a - b);
   const tools = new Map(drills.map((d, i) => [d, i + 2]));
-  const out = ["%", "(poly_3D : usinage des pièces)", `(fraise T1 D${n3(o.tool)} ; ${drills.map((d) => `T${tools.get(d)} foret D${n3(d)}`).join(", ") || "aucun foret"})`, "(Z0 sur le dessus du panneau)", "G21 G90 G17", `G0 Z${n3(o.safeZ)}`];
+  const out = ["%", "(CAO Studio : usinage des pièces)", `(fraise T1 D${n3(o.tool)} ; ${drills.map((d) => `T${tools.get(d)} foret D${n3(d)}`).join(", ") || "aucun foret"})`, "(Z0 sur le dessus du panneau)", "G21 G90 G17", `G0 Z${n3(o.safeZ)}`];
   const skipped: string[] = [];
   let count = 0;
   for (const g of groups) {
