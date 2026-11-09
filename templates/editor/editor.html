@@ -101,6 +101,9 @@
     <button type="button" role="tab" aria-selected="false" data-ribbon-tab="kitchen">Cuisine</button>
   </div>
 
+  {# ---- The steps of a kitchen or a dressing, their tools in place of the whole ribbon (app/workflow-steps.ts) ---- #}
+  <div hidden class="steps-bar flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Étapes" data-steps></div>
+
   {# ---- Toolbar (3D model): icons grouped as a ribbon, each with its name in a tooltip ---- #}
   <div class="flex flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle" data-ribbon="model">
     <div class="ribbon-group" role="group" aria-label="Créer">

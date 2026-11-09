@@ -7,7 +7,7 @@
  */
 import { frontsHardware } from "../features/fronts-parts";
 import { nicheHardware } from "../features/niche-parts";
-import type { CatalogMaterial, CompanyProfile, HardwareRule, ServerCatalog } from "../persistence/catalog";
+import type { CatalogMaterial, CompanyProfile, HardwareRule, ServerCatalog, WorkshopRates } from "../persistence/catalog";
 import { MATERIALS, type Material } from "./materials";
 import { DEFAULT_RATES } from "./quote";
 import type { CadDocument } from "./types";
@@ -19,6 +19,14 @@ export function toMaterial(m: CatalogMaterial): Material {
 }
 
 const rules: HardwareRule[] = [];
+let rates: Partial<WorkshopRates> = {};
+
+/** The quote's rates of the workshop (the server's), over those of the browser; none from an older server. */
+export const workshopRates = (): Partial<WorkshopRates> => rates;
+/** The rates changed here: what the server now keeps. */
+export const setWorkshopRates = (next: Partial<WorkshopRates>): void => {
+  rates = { ...rates, ...next };
+};
 
 /** The hardware rules registered (the server's), for the quote. */
 export const hardwareRules = (): readonly HardwareRule[] => rules;
@@ -31,6 +39,7 @@ export function registerCatalog(catalog: ServerCatalog): void {
     if (m.price > 0) DEFAULT_RATES.boards[m.name] = m.price;
   }
   rules.splice(0, rules.length, ...catalog.hardware);
+  rates = catalog.rates ? { ...catalog.rates } : {};
   for (const r of catalog.hardware) if (r.price > 0 && DEFAULT_RATES.hardware[r.name] === undefined) DEFAULT_RATES.hardware[r.name] = r.price;
 }
 

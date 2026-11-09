@@ -93,6 +93,52 @@ test("Dressing et Cuisine : chacun sa barre de favoris, ses outils de départ, e
   expect(errors).toEqual([]);
 });
 
+test("Cuisine et Dressing : une barre d'étapes, les outils de l'étape à la place du ruban, la coche d'une étape faite", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Étapes e2e");
+  // As a new user: the steps' tools, not the whole ribbon.
+  await page.evaluate(() => localStorage.setItem("cao.steps-ribbon", "0"));
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const tabs = page.getByRole("tablist", { name: "Espaces de travail" }).getByRole("tab");
+  const steps = page.locator("[data-steps]");
+  const ribbon = page.locator('[data-ribbon="model"]');
+  // Conception 3D: the ribbon, no steps.
+  await tabs.nth(0).click();
+  await expect(steps).toBeHidden();
+  await expect(ribbon).toBeVisible();
+  await tabs.nth(2).click();
+  await expect(steps).toBeVisible();
+  await expect(ribbon).toBeHidden();
+  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Meubles", "4Électroménager", "5Finitions", "6Contrôle", "7Devis"]);
+  // A step: its tools, with their names; « Électroménager › » goes on.
+  await steps.locator('[data-step="units"]').click();
+  await expect(steps.locator('[data-step="units"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(steps.getByRole("button", { name: "Meubles de cuisine" })).toBeVisible();
+  await steps.locator("[data-step-next]").click();
+  await expect(steps.locator('[data-step="appliances"]')).toHaveAttribute("aria-pressed", "true");
+  // A tool of the step works as the ribbon's: Électroménager opens.
+  await steps.getByRole("button", { name: "Électroménager", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Électroménager" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // A unit added: « Meubles » gets its tick.
+  await steps.locator('[data-step="units"]').click();
+  await steps.getByRole("button", { name: "Meubles de cuisine" }).click();
+  await page.locator('[data-unit="base-bas-1-porte-600"]').click();
+  await expect(steps.locator('[data-step="units"]')).toContainText("✓");
+  // « Tous les outils »: the ribbon again, kept.
+  await steps.locator("[data-steps-all]").click();
+  await expect(ribbon).toBeVisible();
+  await tabs.nth(1).click();
+  // The kitchen unit has its fronts: « Façades » is done there too.
+  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Aménagement", "✓Façades", "5Finitions", "6Contrôle", "7Devis"]);
+  await expect(ribbon).toBeVisible();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/etapes.png` });
+  expect(errors).toEqual([]);
+});
+
 test("un ordre de groupes gardé passe aux nouveaux groupes", async ({ page }) => {
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("seeded")) {

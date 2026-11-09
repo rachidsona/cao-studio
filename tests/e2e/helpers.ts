@@ -12,6 +12,8 @@ export async function newProject(page: Page, name: string): Promise<string> {
   await page.fill('input[name="password2"]', secret);
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await page.waitForURL("**/projects/");
+  // The tests use the ribbon's tools: in Cuisine and Dressing, the whole ribbon rather than the steps' tools only.
+  await page.evaluate(() => localStorage.setItem("cao.steps-ribbon", "1"));
   await page.fill("#id_name", name);
   await page.getByRole("button", { name: "Créer et ouvrir" }).click();
   await page.waitForURL("**/editor/");

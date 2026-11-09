@@ -49,10 +49,11 @@ import { bindWeight } from "./app/weight-panel";
 import { bindMotion } from "./app/motion";
 import { bindDrawers } from "./app/drawer-toggle";
 import { bindTabPanels } from "./app/tab-panels";
+import { bindWorkflowSteps } from "./app/workflow-steps";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/scenes";
 import { bindWorkshop } from "./app/workshop";
-import { bindWorkshopDocuments } from "./app/workshop-documents";
+import { adoptBrowserRates, bindWorkshopDocuments } from "./app/workshop-documents";
 import { bindSharing } from "./app/sharing";
 import { bindAssistant } from "./app/assistant-panel";
 import { askConfirm } from "./ui/confirm-dialog";
@@ -121,6 +122,7 @@ async function start(): Promise<void> {
 
   if (catalog) {
     registerCatalog(catalog);
+    adoptBrowserRates();
     setLetterhead(companyHeaderHtml(catalog.company));
   }
   const session = new DocumentSession(config.projectId, config.apiUrl, snapshot.document, snapshot.version);
@@ -183,6 +185,7 @@ async function start(): Promise<void> {
   bindPlanLayout(root, viewport, editor);
   bindKitchenPlan(root, viewport, editor);
   bindTabPanels(root);
+  bindWorkflowSteps(root, editor);
   bindLivePrice(root, viewport, editor, config.apiUrl);
   bindNicheCopy(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);

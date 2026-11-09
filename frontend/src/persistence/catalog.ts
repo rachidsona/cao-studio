@@ -35,10 +35,24 @@ export interface CompanyProfile {
   logo: string;
 }
 
+/** The quote's rates of the workshop (apps/catalog, CompanyProfile), by the editor's names. */
+export interface WorkshopRates {
+  waste: number;
+  band: number;
+  cutPerPart: number;
+  hoursPerPart: number;
+  hourly: number;
+  perHole: number;
+  margin: number;
+  vat: number;
+}
+
 export interface ServerCatalog {
   materials: CatalogMaterial[];
   hardware: HardwareRule[];
   company: CompanyProfile;
+  /** Missing on an older server. */
+  rates?: WorkshopRates;
 }
 
 /** The catalogue, or null when the server has none to give (an older server, a network failure): the built-in one then. */

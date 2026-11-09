@@ -11,7 +11,7 @@ import type { CadDocument } from "../document/types";
 import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../geometry/client";
 import { modelHardware } from "../document/hardware";
-import { autoHardware } from "../document/catalog";
+import { autoHardware, setWorkshopRates, workshopRates } from "../document/catalog";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -24,21 +24,57 @@ import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 const RATES_KEY = "cao.quote-rates";
 const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
 
+/**
+ * The quote's rates: the workshop's (the server's, Paramètres de l'atelier → Tarifs du devis) over what this browser
+ * keeps (the prices of the boards and of the hardware changed in the quote), over the usual ones.
+ */
 function loadRates(): QuoteRates {
+  let saved: Partial<QuoteRates> | null = null;
   try {
-    const saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
-    return saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards }, hardware: { ...DEFAULT_RATES.hardware, ...saved.hardware } } : structuredClone(DEFAULT_RATES);
+    saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
   } catch {
-    return structuredClone(DEFAULT_RATES);
+    // The usual ones.
   }
+  const base: QuoteRates = saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards }, hardware: { ...DEFAULT_RATES.hardware, ...saved.hardware } } : structuredClone(DEFAULT_RATES);
+  return { ...base, ...workshopRates() };
 }
 
+/** The workshop's rates as the server first has them. */
+const FIRST_RATES = { waste: 15, band: 1.5, cutPerPart: 4, hoursPerPart: 0.25, hourly: 45, perHole: 0, margin: 30, vat: 20 };
+
+/**
+ * Rates set in this browser before the server kept them: while the server still has its first ones, it takes this
+ * browser's (once; then the server's are everyone's).
+ */
+export function adoptBrowserRates(): void {
+  const server = workshopRates();
+  if (!Object.keys(server).length || Object.entries(FIRST_RATES).some(([k, v]) => server[k as keyof typeof FIRST_RATES] !== v)) return;
+  let saved: Partial<QuoteRates> | null = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
+  } catch {
+    return;
+  }
+  if (!saved || !Object.keys(FIRST_RATES).some((k) => saved![k as keyof QuoteRates] !== undefined && saved![k as keyof QuoteRates] !== FIRST_RATES[k as keyof typeof FIRST_RATES])) return;
+  saveRates({ ...DEFAULT_RATES, ...FIRST_RATES, ...saved } as QuoteRates);
+}
+
+let ratesTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Kept by this browser, and the workshop's rates by the server (for every computer), a moment after the last change. */
 function saveRates(rates: QuoteRates): void {
   try {
     localStorage.setItem(RATES_KEY, JSON.stringify(rates));
   } catch {
     // Not remembered: only this window.
   }
+  const shared = { waste: rates.waste, band: rates.band, cutPerPart: rates.cutPerPart, hoursPerPart: rates.hoursPerPart, hourly: rates.hourly, perHole: rates.perHole ?? 0, margin: rates.margin, vat: rates.vat };
+  setWorkshopRates(shared);
+  clearTimeout(ratesTimer);
+  ratesTimer = setTimeout(() => {
+    const csrf = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)?.[1] ?? "";
+    void fetch("/api/catalog/rates/", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRFToken": decodeURIComponent(csrf) }, body: JSON.stringify(shared) }).catch(() => undefined);
+  }, 800);
 }
 
 const quoteHtml = (quote: Quote) =>

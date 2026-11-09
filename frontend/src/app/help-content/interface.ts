@@ -223,6 +223,17 @@ export const SCREEN: HelpFamily[] = [
         tip: "Modifier, Fabrication et Client sont dans les trois. Chaque onglet a sa barre « Mes outils » ; Conception 3D remet la Sélection à droite. Le dernier onglet choisi est retenu dans ce navigateur.",
       },
       {
+        keys: [], selector: "[data-steps]", name: "Étapes de la cuisine et du dressing",
+        what: "Sous les onglets Cuisine et Dressing : le travail en étapes, chacune avec ses outils, à la place du ruban entier.",
+        steps: [
+          "Cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Contrôle, Devis. Dressing : Pièce, Plan, Aménagement, Façades, Finitions, Contrôle, Devis.",
+          "Cliquez une étape : ses outils s'affichent avec leur nom. Le bouton à droite (« Électroménager › ») passe à l'étape suivante.",
+          "Une étape faite (une pièce posée, un plan, des meubles, de l'électroménager…) prend une coche verte.",
+          "« Tous les outils » remet le ruban entier ; recliquez pour revenir aux outils de l'étape.",
+        ],
+        tip: "L'étape choisie est retenue pour chaque onglet, et « Tous les outils » aussi, dans ce navigateur. L'étape Plan ouvre aussi le plan à droite.",
+      },
+      {
         keys: [], name: "Barre contextuelle",
         what: "En haut de la vue, seuls les outils utiles à ce que vous venez de cliquer.",
         steps: [

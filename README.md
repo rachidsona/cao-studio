@@ -1040,6 +1040,13 @@ opération existante.
   ouvre s'affiche aussitôt, sans faire défiler ; un clic sur un onglet passe de l'outil aux propriétés et
   inversement ; quand l'outil se ferme, son onglet disparaît. La vue 3D reste dégagée. Sur un écran étroit (moins de
   1024 px), où ce panneau est replié, elles restent posées sur la vue.
+- **Les étapes** (onglets Cuisine et Dressing, `app/workflow-steps.ts`) : sous les onglets, une barre d'étapes comme
+  dans un logiciel de cuisiniste — cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Contrôle, Devis ;
+  dressing : Pièce, Plan, Aménagement, Façades, Finitions, Contrôle, Devis. L'étape choisie montre ses outils, avec
+  leur nom, à la place du ruban entier (sept à neuf à la fois) ; « Étape › » passe à la suivante ; une étape faite (une
+  pièce, un plan, des meubles, de l'électroménager, des façades, des finitions) prend une coche verte ; l'étape Plan
+  ouvre le plan à droite. **« Tous les outils »** remet le ruban. L'étape de chaque onglet et ce choix sont retenus par
+  le navigateur. Conception 3D garde le ruban seul.
 - **Mes outils** (comme le grand jeu d'outils de SketchUp) : une barre verticale à gauche de la vue, avec les outils
   qu'on utilise souvent. On les choisit avec l'étoile ⭐ des menus de groupe (« CRÉER ▾ », « ATELIER ▾ »…) ; un clic
   droit sur une icône la retire. Chaque icône lance l'outil (même rangé ou replié dans la barre du haut) et en reprend
