@@ -10,7 +10,7 @@ import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measu
 import { frameOf, nearestPlane, planeThrough, tiltedPlane, type Placement, type Vec3 } from "../sketcher/frame";
 import { el } from "../ui/dom";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
-import { floatingPanel } from "./workshop-ui";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 const INPUT = "h-8 w-full border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
 const BUTTON = "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";

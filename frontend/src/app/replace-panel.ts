@@ -6,7 +6,7 @@ import { EDGE_BANDS, MATERIALS, materialById } from "../document/materials";
 import { materialsUsed, replaceEverywhere, type Replacement } from "../document/replace";
 import { el } from "../ui/dom";
 import type { Editor } from "./editor";
-import { openModal } from "./workshop-ui";
+import { openModal } from "./workshop/workshop-ui";
 
 const SELECT = "h-8 min-w-0 flex-1 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 const BUTTON = "h-8 shrink-0 btn-accent px-3 text-xs font-medium";

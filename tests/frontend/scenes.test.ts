@@ -1,7 +1,7 @@
 /** Scenes (saved views), tape measure text and guides in the document. */
 import { describe, expect, it } from "vitest";
 import { measureText } from "../../frontend/src/app/measure";
-import { freshSceneName } from "../../frontend/src/app/scenes";
+import { freshSceneName } from "../../frontend/src/app/workshop/scenes";
 import type { CadDocument } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 

@@ -10,7 +10,7 @@ import { featureOfBody, type CadDocument, type Feature, type MachiningFeature } 
 import type { Viewport } from "../viewport/viewport";
 import { ASSEMBLY_RULE, applyRule, type AssemblyRule, type Board } from "../features/assembly-rules";
 import { findStandard } from "../document/standards";
-import { workshopStandards } from "./standards-panel";
+import { workshopStandards } from "./workshop/standards-panel";
 import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
 

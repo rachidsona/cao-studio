@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { DRESSING, partitionInput } from "../../frontend/src/document/dressing-plan";
 import { MODULES, moduleLayout, moduleSizes, moduleSteps, moduleWarnings, withModules, type ModuleKind, type ModulePick } from "../../frontend/src/document/dressing-modules";
-import { plansOf } from "../../frontend/src/app/partition-plan";
+import { plansOf } from "../../frontend/src/app/dressing/partition-plan";
 import { removeStep, removeWithShelves } from "../../frontend/src/document/shelf-removal";
 import { deleteFeatures } from "../../frontend/src/document/operations";
 import { nicheGeometry } from "../../frontend/src/features/niche-parts";

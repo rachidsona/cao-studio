@@ -9,7 +9,7 @@ import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { cutList } from "../document/cut-list";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { partsOf } from "./workshop";
+import { partsOf } from "./workshop/workshop";
 
 const KEY = "cao.part-tags";
 

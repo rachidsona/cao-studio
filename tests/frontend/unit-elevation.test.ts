@@ -1,6 +1,6 @@
 /** Le dessin de face des meubles du catalogue : à l'échelle, et fidèle à ce que contient le meuble. */
 import { describe, expect, it } from "vitest";
-import { elevation, unitSummary } from "../../frontend/src/app/unit-elevation";
+import { elevation, unitSummary } from "../../frontend/src/app/kitchen/unit-elevation";
 import { CATALOG, type CatalogEntry } from "../../frontend/src/document/kitchen-catalog";
 
 const unit = (id: string): CatalogEntry => CATALOG.find((e) => e.id === id)!;

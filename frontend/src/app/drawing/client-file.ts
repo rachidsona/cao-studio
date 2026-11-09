@@ -11,8 +11,8 @@ import { poseSheets, type PoseBody } from "../../drawing/pose";
 import { formatLength } from "../../measurements/units";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
-import { savedQuoteHtml } from "../workshop-documents";
-import { escapeHtml, printHtml } from "../workshop-ui";
+import { savedQuoteHtml } from "../workshop/workshop-documents";
+import { escapeHtml, printHtml } from "../workshop/workshop-ui";
 import { withAutoDimensions } from "./sheet-actions";
 
 /** The displayed bodies with their boxes; the room's « Mur … » bodies are the walls. */

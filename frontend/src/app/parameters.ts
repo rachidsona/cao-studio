@@ -15,7 +15,7 @@ import { askConfirm } from "../ui/confirm-dialog";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { floatingPanel } from "./workshop-ui";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 const INPUT = "h-8 min-w-0 border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 const BUTTON = "h-8 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";

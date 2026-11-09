@@ -9,7 +9,7 @@ import { findCurve, pointPos, type Vec2 } from "../sketcher/edit";
 import type { SketchMode } from "../sketcher/mode";
 import { polarCopies, reflection, rotation, scaling, selectionCenter, transformSelection, type Affine } from "../sketcher/transform-selection";
 import { el } from "../ui/dom";
-import { openModal } from "./workshop-ui";
+import { openModal } from "./workshop/workshop-ui";
 
 type Notify = (message: string, kind?: "info" | "success" | "error") => void;
 const FIELD = "h-8 w-32 border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900";

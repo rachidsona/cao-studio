@@ -8,7 +8,7 @@ import { imageFileToDataUrl } from "../appearance/custom";
 import type { SketchUnderlay } from "../document/sketch";
 import type { SketchMode } from "../sketcher/mode";
 import { el } from "../ui/dom";
-import { openModal } from "./workshop-ui";
+import { openModal } from "./workshop/workshop-ui";
 
 type Notify = (message: string, kind?: "info" | "success" | "error") => void;
 const INPUT = "h-8 w-28 border border-gray-300 bg-white px-2 text-right text-sm dark:border-gray-600 dark:bg-gray-900";

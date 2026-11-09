@@ -82,7 +82,7 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   plaque, trop basse (moins de 60 cm) ou trop haute (plus de 80 cm ; 65 à 75 conseillés), plaque à moins de 60 cm de
   l'évier, moins de 80 cm devant un four, un réfrigérateur, un lave-vaisselle ou un lave-linge, meuble haut à moins de
   45 cm au-dessus de la plaque, tringle de penderie hors de 170 à 190 cm (`document/layout-check.ts`,
-  `app/layout-check.ts`).
+  `app/workshop/layout-check.ts`).
 
 Développement (recompilation continue, dans deux terminaux) :
 
@@ -687,7 +687,7 @@ opération existante.
   d'une Répartition et on tape sa **hauteur** ; les étagères qui la bordent se déplacent, ce qu'elle contient suit, les
   niches déjà réglées gardent la leur et les autres se partagent le reste. L'aperçu et les cotes suivent le champ, OK est
   une annulation, et l'outil reste pour régler d'autres niches. « Partager avec les autres niches » rend une niche réglée
-  au partage. L'étape « Étagères n » garde ces hauteurs (`app/niche-height-tool.ts`, `heights` de `sketcher/shelves.ts`).
+  au partage. L'étape « Étagères n » garde ces hauteurs (`app/dressing/niche-height-tool.ts`, `heights` de `sketcher/shelves.ts`).
 - **Cloisons** (bouton du ruban **3D**, groupe **Dressing**, à côté d'« Étagères ») : la même division que les
   étagères, mais **en travers** : des panneaux **debout**, du bas au haut de la niche, qui la coupent **de gauche à
   droite**. On clique une ou plusieurs niches de la répartition, on règle le **nombre de cloisons** (1 à 20), leur
@@ -752,7 +752,7 @@ opération existante.
     sont des corps (« Penderie 1 — Tringle », « Tiroirs 1 — Façade tiroir 1 »…). Elle **suit sa niche** : changer la
     répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le
     dit. La modifier depuis l'historique rouvre l'outil, sa niche choisie. Les calculs sont dans
-    `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/niche-tool.ts`.
+    `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/dressing/niche-tool.ts`.
 - **Panneaux** (groupe « Meuble », comme la conception de squelette de JoinerCAD) : on dessine le squelette
   du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
   étagère), puis chaque ligne devient une planche, un corps à part.
@@ -1087,7 +1087,7 @@ opération existante.
       façades, matières, chants (le chant avant des pièces du caisson, les quatre chants des façades).
     - Le panneau dit quels caissons « ne suivent plus » leur standard (retouchés à la main), pour les remettre
       d'accord. Un nouveau caisson, de nouvelles façades et les Règles d'assemblage partent du standard
-      (`document/standards.ts`, `app/standards-panel.ts`).
+      (`document/standards.ts`, `app/workshop/standards-panel.ts`).
   - *Remplacer partout* (le « Modify Style » de Polyboard) : une matière par une autre, ou une épaisseur de chant par
     une autre, dans tout le projet d'un coup, standards du projet compris, en une annulation (`document/replace.ts`).
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
@@ -1125,7 +1125,7 @@ opération existante.
       d'utilisation), les chutes du stock à sortir, le chant au mètre par épaisseur avec 50 mm de surlongueur par
       chant, la quincaillerie arrondie au conditionnement (vis confirmat et tourillons par boîtes de 100,
       excentriques par 50, pieds par 4), et les tasseaux en barres par section (`document/purchase.ts`,
-      `app/production.ts`).
+      `app/workshop/production.ts`).
     - **Débit en barres** (le débit 1D d'OpenCutList) : les tasseaux ne vont pas sur des panneaux. Ils sont coupés
       dans des barres du commerce de leur section, mis bout à bout, les plus longs d'abord, chacun dans la première
       barre où il tient (trait de scie 4 mm, 10 mm d'équerrage au début de la barre). Un schéma par barre avec les
@@ -1174,7 +1174,7 @@ opération existante.
     - Dans l'éditeur, le panneau montre une barre d'avancement par étape (pièces arrivées au moins à cette étape sur
       toutes celles de la liste de débit), et chaque pièce se règle aussi à la main.
     L'avancement est gardé par le serveur, par projet et par nom de pièce : renommer une pièce la fait repartir de
-    zéro (API `/api/projects/<id>/workshop/`, `apps/projects/workshop.py`, `app/workshop-progress.ts`).
+    zéro (API `/api/projects/<id>/workshop/`, `apps/projects/workshop.py`, `app/workshop/workshop-progress.ts`).
   - *Quincaillerie* : on choisit pour le projet la charnière, la coulisse et la poignée dans un catalogue réel :
     - charnières Blum CLIP top (BLUMOTION 110°, réf. 71B3550, ou 155°), Hettich Sensys, Grass Tiomos, Häfele Metalla,
       petit boîtier Ø26 ;
@@ -1187,7 +1187,7 @@ opération existante.
     - le devis et la notice, avec le nom, la référence et le prix du modèle. Un tarif mis à la main dans le devis
       l'emporte.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
-    à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/hardware-panel.ts`).
+    à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/workshop/hardware-panel.ts`).
     - **Règles de quincaillerie de l'atelier** : les articles du catalogue de l'atelier
       (pages `/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
       portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent
@@ -1203,7 +1203,7 @@ opération existante.
     - Une planche qui fléchit trop reçoit l'épaisseur du commerce qui suffit et la portée la plus longue à son
       épaisseur actuelle (un montant, un taquet au milieu). « Voir » la sélectionne.
     Le Contrôle avant fabrication signale aussi les planches qui fléchissent sous 15 kg/m (`features/shelf-sag.ts`,
-    `app/sag-panel.ts`).
+    `app/workshop/sag-panel.ts`).
   - *Poids et stabilité* : le poids du meuble (volume × masse volumique de chaque matière : aggloméré mélaminé
     650 kg/m³, MDF 750, contreplaqué 680, chêne 700, HDF 900 ; une pièce sans matière est comptée en aggloméré),
     ses cinq pièces les plus lourdes et la hauteur de son centre de gravité.
@@ -1211,7 +1211,7 @@ opération existante.
       centre de gravité doit rester derrière l'arête avant du pied (la face avant se choisit).
     - Un meuble haut d'au moins 1 m et plus de 2,5 fois plus haut que profond est signalé à fixer au mur.
     Le Contrôle avant fabrication reprend l'essai à 15 kg par tiroir (`features/stability.ts`,
-    `app/weight-panel.ts`).
+    `app/workshop/weight-panel.ts`).
   - *Découpes du plan de travail* (bouton de l'Atelier, masqué par défaut) : sur le plan de travail cliqué ou
     sélectionné, des découpes choisies dans un catalogue aux cotes courantes du commerce : évier 1 cuve (780 × 480),
     1 cuve ½ (960 × 480), 2 cuves (1140 × 480), évier sous plan (500 × 400), plaque de cuisson 60, 80 ou 90 cm
@@ -1223,7 +1223,7 @@ opération existante.
     - Sont refusées une découpe qui sort du plan, qui laisse moins de 50 mm de matière au bord, ou qui en chevauche
       une autre.
     - C'est un usinage du plan (une boîte retirée de part en part, un trou), qui suit la planche. Il se rouvre avec
-      « Modifier » (`features/worktop-cutouts.ts`, `app/cutout-tool.ts`). Les cotes sont à vérifier sur la notice
+      « Modifier » (`features/worktop-cutouts.ts`, `app/kitchen/cutout-tool.ts`). Les cotes sont à vérifier sur la notice
       de l'appareil.
   - *Contrôle avant fabrication* : un bouton liste ce qui gâcherait du panneau ou bloquerait le montage, rangé par
     sorte. Chaque ligne a un bouton « Voir » qui sélectionne les pièces en cause.
@@ -1245,7 +1245,7 @@ opération existante.
       le nombre qu'il faudrait), une charnière qui tombe sur une étagère. Les perçages des façades décalent déjà une
       charnière de 32 mm (le pas du système 32) quand son embase tomberait sur une étagère ; reste ce qu'on ne peut
       pas décaler (`document/hardware-rules.ts`).
-    Quand tout va bien, le contrôle le dit (`document/fabrication-check.ts`, `app/fabrication-check.ts`).
+    Quand tout va bien, le contrôle le dit (`document/fabrication-check.ts`, `app/workshop/fabrication-check.ts`).
   - *Notice de montage* : un panneau range les pièces en étapes, dans l'ordre où l'on monte un meuble. Les étapes
     sont le bâti (dessous, côtés, dessus, cloisons, avec les vis confirmat et tourillons des usinages), le fond, les
     étagères, les penderies, les tiroirs, les portes, puis le reste. Chaque étape a sa quincaillerie (coulisses,
@@ -1258,7 +1258,7 @@ opération existante.
     - « Imprimer la notice » donne une page de garde (le meuble monté et éclaté, toute la quincaillerie), puis une
       page par étape avec son image prise dans la vue, ses pièces et sa quincaillerie.
     Tout est en vue seulement : le document ne change pas, et tout revient en place à la fermeture
-    (`document/assembly-steps.ts`, `app/assembly-guide.ts`).
+    (`document/assembly-steps.ts`, `app/workshop/assembly-guide.ts`).
   - *Fiches de fabrication* : une page A4 à l'italienne par pièce, pour usiner sans ouvrir la 3D. Les pièces
     identiques de la liste de débit partagent une fiche, avec leur quantité. Chaque fiche porte :
     - la pièce à plat à l'échelle, vue de sa face percée, avec son contour exact et ses perçages ;
@@ -1268,7 +1268,7 @@ opération existante.
     - les cotes finies et de coupe, la matière, le tableau des perçages (« 4 × Ø5 prof. 12 ») et un QR code (la
       page de la pièce dans le Suivi d'atelier) ;
     - un avertissement quand la pièce doit être retournée (perçages borgnes sur l'autre face).
-    Impression ou PDF (`document/part-sheet.ts`, `app/workshop-sheets.ts`).
+    Impression ou PDF (`document/part-sheet.ts`, `app/workshop/workshop-sheets.ts`).
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur ; au départ, le prix au m² des matières du catalogue de l'atelier) ; impression / PDF et CSV, avec
@@ -1278,7 +1278,7 @@ opération existante.
     - Le prix **au mètre linéaire** du meuble, pour comparer avec les prix du marché.
     - **Scénario** (le « What if » de Mozaik) : une matière remplacée par une autre, le prix des deux et l'écart.
     - **Versions** : « Enregistrer comme devis initial » garde le devis dans le projet ; chaque version suivante est
-      un **avenant**, avec ce qui a changé ligne par ligne et l'écart TTC, imprimable (`app/quote-versions.ts`).
+      un **avenant**, avec ce qui a changé ligne par ligne et l'écart TTC, imprimable (`app/workshop/quote-versions.ts`).
   - *Usinage* : un outil, sept préréglages, tous des coupes exactes du noyau (une opération « Usinage » par planche,
     qui remplace la planche et la **suit** quand elle se déplace) —
     sur une **face** cliquée : *perçages 32* (rangée de trous Ø5 × 12 tous les 32 mm, à 37 mm du bord, 1 ou 2 files),
@@ -1595,7 +1595,7 @@ opération existante.
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
   leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
   chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui —, l'autre s'arrête contre lui.
-  - **Angles** (`document/kitchen-corners.ts`, `app/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
+  - **Angles** (`document/kitchen-corners.ts`, `app/kitchen/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
     dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
     étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe ; **meuble d'angle LeMans**, même
@@ -1631,7 +1631,7 @@ opération existante.
     remis sur la pièce du même nom, avec son nom et son apparence.
   - **Voir un linéaire isolé**, comme un mur du Plan de dressing : « Voir » dans la liste des linéaires (ou « Voir mur A
     isolé » dans l'éditeur) ne garde dans la vue que ce que le plan a fait pour lui, vu de face, avec **ses cotes**
-    (`document/kitchen-run-dims.ts`, `app/kitchen-run-dims-view.ts`) : en bas la chaîne des largeurs — meubles,
+    (`document/kitchen-run-dims.ts`, `app/kitchen/kitchen-run-dims-view.ts`) : en bas la chaîne des largeurs — meubles,
     colonnes, fileurs, places libres, angles — et la longueur du mur ; en haut celle des meubles hauts ; à gauche la
     hauteur du plan de travail, la rangée haute et le plafond. **Un clic sur une cote la change** sur place
     (`document/kitchen-dim-edit.ts`) : la largeur d'un meuble (refusée s'il ne tient plus, avec le plus large possible ;
@@ -1654,9 +1654,9 @@ opération existante.
     (« À tous »), la **même largeur pour tous** (leur largeur totale partagée au millimètre), leur **partage la place
     libre** de leur rangée (et ses fileurs), les **échange** tous contre un autre modèle, les **duplique** après eux ou les
     **retire** ; chacun reste dans ses limites, un appareil garde ses largeurs (`features/kitchen-run-multi.ts`,
-    `app/kitchen-run-multi-view.ts`). **Chaque changement se voit aussitôt dans la 3D**, en aperçu (et sur le mur isolé, avec ses
+    `app/kitchen/kitchen-run-multi-view.ts`). **Chaque changement se voit aussitôt dans la 3D**, en aperçu (et sur le mur isolé, avec ses
     cotes) sans être enregistré : **OK** le garde en refaisant la cuisine en une seule annulation, **Annuler** (ou
-    fermer le panneau) remet la cuisine d'avant (`app/kitchen-run-preview.ts`). Dans l'aperçu, les portes et les tiroirs
+    fermer le panneau) remet la cuisine d'avant (`app/kitchen/kitchen-run-preview.ts`). Dans l'aperçu, les portes et les tiroirs
     s'ouvrent d'un clic (ou par les boutons de l'atelier) ; un clic droit propose de **garder** l'aperçu (OK) ou de
     l'annuler, ses pièces n'étant pas encore dans le projet. Sur la bande, chaque façade d'un angle — la **porte**, la
     **partie fixe**, un fileur — porte sa largeur (cm), en bas comme en haut. Le reste du mur va **à gauche**, **à droite**
@@ -1667,8 +1667,8 @@ opération existante.
     reste libre**, sans panneau ni plinthe, dessinée en pointillés et **hachurée** avec sa largeur sur la bande (les angles,
     pris par les meubles de l'angle, ne le sont pas), et « Place libre » dit
     combien il en reste en bas et en haut. Le bloc « À revoir » dit ce qui ne tient pas, la hotte hors de la plaque, la plaque sans 30 cm de plan de chaque côté ou sous
-    une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-run-items.ts`, `app/kitchen-run-editor.ts`,
-    `app/kitchen-run-strip.ts`).
+    une fenêtre, le lave-vaisselle loin de l'évier (`features/kitchen-run-items.ts`, `app/kitchen/kitchen-run-editor.ts`,
+    `app/kitchen/kitchen-run-strip.ts`).
     - En tête du linéaire, **un bouton par mur** (Mur A, Mur B, Mur C, Péninsule, Îlot), gardé en vue quand le
       panneau défile, ouvre un autre linéaire ; ce qui est changé et pas encore appliqué l'est d'abord, sur un oui.
     - Sous la bande, **chaque titre se plie** (`ui/fold.ts`) : Place libre, Meuble choisi, Ajouter des meubles, Les
@@ -1681,7 +1681,7 @@ opération existante.
       largeur se tape sur sa cote — et se bâtissent en panneaux, « Fileur posé A1 », « Fileur posé haut A2 », sans
       caisson ; le reste du mur se partage toujours autour. La liste « Fileurs posés », sous les boutons, les nomme
       (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
-    - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen-catalog-view.ts`) :
+    - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen/kitchen-catalog-view.ts`) :
       chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
       après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
@@ -1696,7 +1696,7 @@ opération existante.
     la même cuisine que l'Implantation, à retoucher meuble par meuble (`document/kitchen-propose.ts`).
   - Le **prix TTC** du devis et l'**ergonomie** (triangle d'activité, passage devant l'îlot) s'affichent dans le panneau.
     Cliquer l'esquisse « Plan de la cuisine », ou un meuble fait par le plan, dans le navigateur ou la vue, rouvre l'outil
-    sur son linéaire (`app/kitchen-plan-tool.ts`).
+    sur son linéaire (`app/kitchen/kitchen-plan-tool.ts`).
 - **Ouvrir / fermer les portes** et **Ouvrir / fermer les tiroirs** (onglets Dressing et Cuisine, à côté l'un de
   l'autre) : un clic ouvre toutes les portes du modèle autour de leurs charnières, ou sort tous les tiroirs avec leurs
   caissons, et le bouton reste enfoncé ; un second clic les referme ou les rentre. Si certains sont déjà ouverts, le
@@ -1727,7 +1727,7 @@ opération existante.
   avec son **apparence réelle** (inox brossé, verre laqué noir, verre fumé, chrome, laiton, granit), visible dans la
   vue réaliste et le rendu ; sur le calque « Électroménager », **hors liste de débit et devis**
   (`features/appliance-library.ts`, `features/appliance-parts.ts`, `features/appliance.ts`,
-  `document/appliance-place.ts`, `app/appliance-tool.ts`, `app/appliance-drawings.ts`). Le **Plan de cuisine** et
+  `document/appliance-place.ts`, `app/appliances/appliance-tool.ts`, `app/appliances/appliance-drawings.ts`). Le **Plan de cuisine** et
   l'**Implantation** posent ces mêmes appareils à la place des anciens blocs : plaque induction, four encastrable (sous
   la plaque ou en colonne), hotte cheminée jusqu'au plafond, lave-vaisselle intégrable derrière sa façade, micro-ondes,
   réfrigérateur intégrable dans sa colonne, évier sur sa découpe et robinet derrière. Les dessins sont faits par
@@ -1736,7 +1736,7 @@ opération existante.
   - Chaque modèle montre son **dessin de face** à l'échelle, comme sur une planche de cuisiniste (caisson, socle,
     portes, tiroirs, poignées, four, robinet de l'évier — tout calculé depuis ses cotes, aux tons du thème, les
     poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 56 cm ») ; survoler une largeur redessine
-    le meuble à cette largeur (`app/unit-elevation.ts`).
+    le meuble à cette largeur (`app/kitchen/unit-elevation.ts`).
   - **Bas** : 1 porte, 2 portes, 3 tiroirs, casseroliers, évier, four.
   - **Hauts** : 1 porte, 2 portes, sur hotte.
   - **Colonnes** : rangement, four, réfrigérateur.
@@ -1752,13 +1752,13 @@ opération existante.
     première place libre le long du même mur, son fond sur le même plan.
   - Un haut se pose au-dessus du bas choisi. Il est construit comme son voisin : épaisseurs, fond, standard, façades
     et leurs matières.
-  - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen-units.ts`).
+  - Le meuble arrive sélectionné ; une annulation par meuble (`document/kitchen-catalog.ts`, `app/kitchen/kitchen-units.ts`).
   - **Mes meubles**, en tête du panneau : ses propres caissons, ajoutés à la liste.
     - On en décrit un (nom, sorte bas / haut / colonne, largeur, hauteur, profondeur, socle, façades : une porte,
       deux, des tiroirs ou aucune, étagères).
     - Ou on reprend le caisson sélectionné (« Ajouter « … » à ma liste »), avec ses cotes et ses façades.
     - Un clic le pose dans la cuisine comme les autres, sous son nom ; ✕ le retire de la liste.
-    - La liste est gardée dans ce navigateur, pour tous les projets (`app/my-units.ts`).
+    - La liste est gardée dans ce navigateur, pour tous les projets (`app/kitchen/my-units.ts`).
 - **Éclairage** (groupe « Pièce ») : des lumières dans la cuisine et le dressing, au choix.
   - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
     basse).
@@ -1845,7 +1845,7 @@ opération existante.
   son côté du bout s'ajoute, et « Porte sur le pan coupé » pose une porte de biais avec ses charnières au devis. « Modifier
   le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
   confirmation. Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
-  (`document/plan-layout.ts`, `app/plan-layout-tool.ts`).
+  (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les
   angles arrondis, avec leur porte cintrée. Deux réglages s'ajoutent : un **îlot** à un passage devant le mur A, et un
@@ -1883,7 +1883,7 @@ opération existante.
   change, le reste prend la différence et le fileur suit (`fillChoices` de `document/plan-layout.ts`).
 - **Dossier de production** (groupe « Atelier ») : le contrôle du projet d'abord, puis tous les fichiers de l'atelier en
   un seul .zip : liste de débit, calepinage et liste d'achat, fiches, étiquettes, DXF, G-code, notice de montage et, à la
-  demande, devis ; le résultat du contrôle est écrit dans `00-lisez-moi.txt` (`app/production-folder.ts`).
+  demande, devis ; le résultat du contrôle est écrit dans `00-lisez-moi.txt` (`app/workshop/production-folder.ts`).
 - **Palette de commandes** (⌘K ou Ctrl+K, bouton « Outils ») : on tape quelques lettres, sans se soucier des accents,
   Entrée lance l'outil, même rangé dans un menu ; seuls les outils du mode en cours sont proposés, les derniers utilisés
   en tête (`app/command-palette.ts`).
@@ -1903,7 +1903,7 @@ opération existante.
   qu'on retouche ensuite niche par niche avec les outils de menuiserie. En L et en U, l'angle appartient au mur A ; les
   murs B (à gauche) et C (à droite) commencent derrière sa profondeur, leurs façades tournées vers la pièce. Les murs
   sont dessinés (option) sur le calque « Pièce », hors débit et devis. Le calcul est dans `document/dressing-plan.ts`,
-  le panneau dans `app/dressing-tool.ts`.
+  le panneau dans `app/dressing/dressing-tool.ts`.
   - **Sur la Pièce relevée** (« Murs ») : longueurs et hauteur viennent du relevé, le dressing est tourné et posé
     contre ses murs. En I, il prend le plus long passage libre du mur entre portes et fenêtres ; en L et en U, les
     murs B et C s'arrêtent 5 cm avant la première porte ou fenêtre (le mur A doit être libre) ; sous une retombée ou
@@ -1925,11 +1925,11 @@ opération existante.
 - **Copier l'aménagement** (groupe « Atelier », le copier-coller d'intérieur de Polyboard) : un clic sur un caisson
   modèle, puis sur les caissons à aménager pareil. Ils prennent son nombre d'étagères et ses façades (une porte,
   deux portes ou des tiroirs, pose, jeu, épaisseur, charnières, poignées, matière), qui s'adaptent à leurs cotes ;
-  chacun garde ses dimensions et sa place (`app/layout-copy-tool.ts`).
+  chacun garde ses dimensions et sa place (`app/dressing/layout-copy-tool.ts`).
 - **Remplir une largeur** (outil Caisson, nouveau caisson) : la largeur à remplir et la largeur maximale d'un
   caisson donnent autant de caissons égaux qu'il faut, côte à côte dans le sens de la largeur (tournés avec le
   caisson), en une annulation (l'AutoFill de Mozaik).
-- **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/plan-dims-view.ts`) : pendant Répartition,
+- **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/dressing/plan-dims-view.ts`) : pendant Répartition,
   Étagères, Cloisons, Penderie, Tiroirs, Module et l'assistant Dressing (chaque mur le sien), le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
   Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
   panneaux) en bas, à gauche et à droite dès qu'un côté est divisé, en haut seulement si elle dit autre chose que le
@@ -1940,7 +1940,7 @@ opération existante.
   vers l'œil.
   Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
   place des cotes pièce par pièce de la Répartition.
-- **Module** (groupe Dressing, `app/module-tool.ts`, `document/dressing-modules.ts`) : un clic sur une niche d'une
+- **Module** (groupe Dressing, `app/dressing/module-tool.ts`, `document/dressing-modules.ts`) : un clic sur une niche d'une
   Répartition, ou plusieurs, et on y pose un module de dressing complet en une seule annulation : penderie longue, double
   penderie, étagères, tiroirs et étagères, penderie et tiroirs, chaussures, porte-pantalons (accessoire au devis). Hauteur
   du chapeau, zone et nombre de tiroirs, espacement et épaisseur des étagères se règlent dans le panneau ; l'aperçu et

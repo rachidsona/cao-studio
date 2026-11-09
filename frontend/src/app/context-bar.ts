@@ -9,10 +9,10 @@ import { formatLength } from "../measurements/units";
 import { el } from "../ui/dom";
 import { toolIcon } from "../ui/icons";
 import type { Viewport } from "../viewport/viewport";
-import { openNicheFront } from "./door-fronts-tool";
+import { openNicheFront } from "./dressing/door-fronts-tool";
 import type { Editor } from "./editor";
-import { NICHE_ACTIONS, runNiche } from "./niche-menu";
-import { nicheUnderPointer, type PickedNiche } from "./niche-pick";
+import { NICHE_ACTIONS, runNiche } from "./dressing/niche-menu";
+import { nicheUnderPointer, type PickedNiche } from "./dressing/niche-pick";
 
 const BUTTON = "tool-btn icon-btn";
 

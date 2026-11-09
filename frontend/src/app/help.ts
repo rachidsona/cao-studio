@@ -5,7 +5,7 @@
  */
 import { el } from "../ui/dom";
 import { helpBrowser } from "./help-browser";
-import { openModal } from "./workshop-ui";
+import { openModal } from "./workshop/workshop-ui";
 
 const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = mac ? "⌘" : "Ctrl";

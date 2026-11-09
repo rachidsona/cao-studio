@@ -4,7 +4,7 @@ import { casesJoined, doorCount, withCasesJoined, withDoorSwing } from "../../fr
 import { boardAxes, edgeLine, nearestEdge } from "../../frontend/src/document/edge-paint";
 import { withGrainRun, withoutGrainRun } from "../../frontend/src/document/grain-run";
 import { DEFAULT_LABEL, labelCss, labelHtml, movedField, type LabelData } from "../../frontend/src/document/label-template";
-import { compactNames, cutSheetHtml } from "../../frontend/src/app/cut-list-view";
+import { compactNames, cutSheetHtml } from "../../frontend/src/app/workshop/cut-list-view";
 import { rowMatches, type CutRow, type CutTotals } from "../../frontend/src/document/cut-list";
 import { layoutSheets } from "../../frontend/src/document/nesting";
 import { emptySketchGeometry, type OffsetRecord, type PartitionParams } from "../../frontend/src/document/sketch";

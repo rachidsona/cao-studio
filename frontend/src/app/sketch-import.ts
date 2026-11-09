@@ -7,7 +7,7 @@ import { parseDxf, shapesBox } from "../io/dxf-import";
 import { addShapes } from "../sketcher/import-shapes";
 import type { SketchMode } from "../sketcher/mode";
 import { el } from "../ui/dom";
-import { openModal } from "./workshop-ui";
+import { openModal } from "./workshop/workshop-ui";
 
 /** Asks for a .dxf file of the computer, then how to put it in the sketch. */
 export function importDxf(mode: SketchMode, notify: (message: string, kind?: "info" | "success" | "error") => void): void {

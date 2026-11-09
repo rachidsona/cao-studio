@@ -9,8 +9,8 @@ import { featureOfBody, type CadDocument } from "../document/types";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { call } from "./sharing";
-import { floatingPanel } from "./workshop-ui";
+import { call } from "./workshop/sharing";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 const URL = "/api/library/";
 const BUTTON = "h-7 shrink-0 border border-gray-300 px-2 text-xs font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";

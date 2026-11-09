@@ -28,12 +28,12 @@ import { StretchTool } from "./stretch-tool";
 import { ArrayTool } from "./array-tool";
 import { RotateTool } from "./rotate-tool";
 import { MachiningTool } from "./machining-tool";
-import { CutoutTool } from "./cutout-tool";
+import { CutoutTool } from "./kitchen/cutout-tool";
 import { MateTool } from "./mate-tool";
 import { FaceGlueTool } from "./face-glue-tool";
 import { ExtendTool } from "./extend-tool";
 import { PushTool } from "./push-tool";
-import { ApplianceTool } from "./appliance-tool";
+import { ApplianceTool } from "./appliances/appliance-tool";
 import { SweepTool } from "./sweep-tool";
 import { DrawOnFaceTool } from "./draw-on-face-tool";
 import { SplitTool } from "./split-tool";
@@ -45,9 +45,9 @@ import { ModifierTool } from "./modifier-tool";
 import { FrontsTool } from "./fronts-tool";
 import { AssemblyTool } from "./assembly-tool";
 import { OverlapTool } from "./overlap-tool";
-import { LayoutCopyTool } from "./layout-copy-tool";
-import { KitchenTool } from "./kitchen-tool";
-import { DressingTool } from "./dressing-tool";
+import { LayoutCopyTool } from "./dressing/layout-copy-tool";
+import { KitchenTool } from "./kitchen/kitchen-tool";
+import { DressingTool } from "./dressing/dressing-tool";
 
 export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances";
 

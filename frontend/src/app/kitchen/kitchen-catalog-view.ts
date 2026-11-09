@@ -1,0 +1,71 @@
+/**
+ * Le catalogue de cuisine dessiné, partagé par « Meubles de cuisine » (app/kitchen-units.ts) et l'éditeur de linéaire du
+ * Plan de cuisine (app/kitchen-run-editor.ts) : chaque modèle avec son dessin de face à l'échelle (app/unit-elevation.ts),
+ * ce qu'il contient et ses cotes ; survoler une largeur redessine le meuble à cette largeur, un clic l'ajoute. Les
+ * appareils (évier, plaque, fours, lave-vaisselle, colonnes, hotte, micro-ondes) se montrent de même.
+ */
+import { CATALOG, KINDS, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
+import type { DisplayUnit } from "../../document/types";
+import { APPLIANCES, itemEntry } from "../../features/kitchen-run-items";
+import { formatLength } from "../../measurements/units";
+import { el } from "../../ui/dom";
+import { elevation, unitSummary } from "./unit-elevation";
+
+const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-[11px] text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
+
+/** The models of a family, each with its entries at their widths: the catalogue's (one per name) or the appliances. */
+export function familyModels(family: UnitKind | "appliance", wall = true): CatalogEntry[][] {
+  // The dishwasher drawn with its integrated door, as on the run's strip.
+  if (family === "appliance") return APPLIANCES.filter((a) => wall || a.kind !== "wall").map((a) => a.widths.map((width) => ({ ...itemEntry({ id: "", model: a.model, width }), ...(a.role === "dishwasher" ? { layout: "door" as const } : {}) })));
+  return [...new Set(CATALOG.filter((e) => e.kind === family).map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
+}
+
+/** Tabs of families: the one chosen underlined. */
+export function familyTabs<F extends string>(families: [F, string][], chosen: F, choose: (f: F) => void, label = "Familles de meubles"): HTMLElement {
+  return el(
+    "div",
+    { role: "tablist", "aria-label": label, class: "flex border-b border-gray-200 dark:border-gray-700" },
+    ...families.map(([key, text]) => {
+      const on = key === chosen;
+      const tab = el("button", { type: "button", role: "tab", "aria-selected": String(on), class: `-mb-px flex-1 border-b-2 px-1 py-2 text-xs whitespace-nowrap transition-colors ${on ? "border-[var(--brass)] font-medium text-gray-900 dark:text-gray-50" : "border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"}` }, text);
+      tab.addEventListener("click", () => choose(key));
+      return tab;
+    }),
+  );
+}
+
+/** The size of a unit in words: « L 80 · H 87 · P 56 cm ». */
+function sizes(e: CatalogEntry, unit: DisplayUnit): string {
+  const number = (mm: number) => formatLength(mm, unit).replace(/\s?(mm|cm|m)$/, "");
+  const kind = KINDS[e.kind];
+  return `L ${number(e.width)} · H ${number(e.height ?? kind.height)} · P ${number(e.depth ?? kind.depth)} ${unit}`;
+}
+
+/** One model: its drawing and what it is, at the width under the pointer; a click on a width adds it. */
+export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit"): HTMLElement {
+  const usual = entries.find((e) => e.width === 600) ?? entries[Math.floor(entries.length / 2)]!;
+  const art = el("div", { class: "flex h-[92px] items-end justify-center border-b border-gray-300 dark:border-gray-600" });
+  const summary = el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" });
+  const size = el("p", { class: "font-mono text-[10px] text-gray-500 dark:text-gray-400", "data-unit-size": "" });
+  const show = (e: CatalogEntry) => {
+    art.innerHTML = elevation(e);
+    summary.textContent = unitSummary(e);
+    size.textContent = sizes(e, unit);
+  };
+  show(usual);
+  const widths = entries.map((e) => {
+    const label = formatLength(e.width, unit);
+    const b = el("button", { type: "button", class: WIDTH, title: `Ajouter « ${e.name} » de ${label}`, "aria-label": `Ajouter ${e.name} de ${label}`, [attr]: e.id }, label.replace(/\s?(mm|cm|m)$/, ""));
+    b.addEventListener("click", () => add(e));
+    for (const event of ["pointerenter", "focus"]) b.addEventListener(event, () => show(e));
+    for (const event of ["pointerleave", "blur"]) b.addEventListener(event, () => show(usual));
+    return b;
+  });
+  return el(
+    "article",
+    { class: "grid grid-cols-[92px_1fr] gap-3 border-t border-gray-200 py-3 first:border-t-0 dark:border-gray-700", "data-model": usual.name },
+    art,
+    el("div", { class: "flex min-w-0 flex-col" }, el("h3", { class: "text-[13px] font-medium tracking-tight text-gray-900 dark:text-gray-50" }, usual.name), summary, size, el("div", { class: "mt-auto flex flex-wrap gap-1 pt-1.5" }, ...widths)),
+  );
+}
+

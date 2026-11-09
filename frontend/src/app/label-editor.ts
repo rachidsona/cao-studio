@@ -3,8 +3,8 @@ import { LABEL_FIELDS, LABEL_FORMATS, labelCss, labelHtml, loadLabelTemplate, mo
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { labelData, labelsPage } from "./workshop-cnc";
-import { escapeHtml, openModal, printHtml } from "./workshop-ui";
+import { labelData, labelsPage } from "./workshop/workshop-cnc";
+import { escapeHtml, openModal, printHtml } from "./workshop/workshop-ui";
 
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 const SMALL = "size-7 border border-gray-300 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";

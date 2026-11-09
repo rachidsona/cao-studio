@@ -14,7 +14,7 @@ import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type Vec3 } from
 import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
 import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
-import { allStandards, workshopStandards } from "./standards-panel";
+import { allStandards, workshopStandards } from "./workshop/standards-panel";
 
 type Settings = Omit<CabinetFeature, "id" | "type" | "name" | "origin" | "hidden" | "suppressed">;
 

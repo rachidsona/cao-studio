@@ -8,7 +8,7 @@ import { el } from "../ui/dom";
 import { eyeIcon } from "../ui/icons";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { floatingPanel } from "./workshop-ui";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-1.5 hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
 const INPUT = "h-7 min-w-0 flex-1 border border-gray-300 bg-white px-1.5 text-xs dark:border-gray-600 dark:bg-gray-900";

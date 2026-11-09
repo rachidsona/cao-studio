@@ -8,7 +8,7 @@ import { applyActions, assistantContext, describeAction, type AssistantAction } 
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { floatingPanel } from "./workshop-ui";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 interface Turn {
   role: "user" | "assistant";

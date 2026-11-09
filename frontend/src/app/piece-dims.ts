@@ -20,10 +20,10 @@ import { formatLength } from "../measurements/units";
 import { frameOf, toWorld } from "../sketcher/frame";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { documentPlans, joineryPlans } from "./partition-plan";
+import { documentPlans, joineryPlans } from "./dressing/partition-plan";
 import { withPieceSize } from "../document/piece-size";
 import { editDim, editValue } from "./dim-editor";
-import { PlanDimsView } from "./plan-dims-view";
+import { PlanDimsView } from "./dressing/plan-dims-view";
 import { isolatedSketch } from "./zone-view";
 
 const KEY = "cao.piece-dims";

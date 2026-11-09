@@ -9,7 +9,7 @@ import { cabinetStandard, frontsTo } from "../document/standards";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "../document/types";
 import { frontsHardware, frontsMaterials } from "../features/fronts-parts";
 import { PanelTool, type ToolContext } from "./panel-tool";
-import { workshopStandards } from "./standards-panel";
+import { workshopStandards } from "./workshop/standards-panel";
 
 export class FrontsTool extends PanelTool {
   private readonly id: string;

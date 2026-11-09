@@ -24,7 +24,7 @@ import { SnapGuides } from "../viewport/snap-guides";
 import { bodySnap, facePoint } from "./body-snap";
 import { aimAt, captureTargets, type LevelTargets } from "./face-strip-view";
 import { bodyPicked, edgePicked, facePicked, type Picked } from "./measure-shapes";
-import { floatingPanel } from "./workshop-ui";
+import { floatingPanel } from "./workshop/workshop-ui";
 
 /** What two clicks measure between. */
 type Target = "point" | "edge" | "face" | "body";

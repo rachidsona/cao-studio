@@ -22,7 +22,7 @@ import { SketchMode, type SketchExtrusion, type SketchToolName } from "../sketch
 import { extrusionOption } from "../sketcher/extrusion-option";
 import { isPartition } from "../sketcher/partition-history";
 import { Joinery3D, partitionHolder, type JoineryHost } from "./joinery-3d";
-import type { NicheFill } from "./niche-tool";
+import type { NicheFill } from "./dressing/niche-tool";
 import { withEquipment } from "../document/equipment";
 import { planeForFace, projectOutline } from "../sketcher/projection";
 import type { FacePick } from "../viewport/viewport";
