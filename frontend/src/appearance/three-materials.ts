@@ -1,13 +1,13 @@
 /**
  * Matières three.js des apparences, communes à la vue d'édition, au rendu et aux vignettes : couleur, texture
- * calculée ou photo (son relief tiré de ses nuances), carte de relief, rugosité, métal, vernis, velours, et pour le verre la transmission (rendu) ou une simple
+ * calculée ou photo (son relief tiré de ses nuances ; un bois, le veinage d'une photo de vrai bois dans ses couleurs), carte de relief, rugosité, métal, vernis, velours, et pour le verre la transmission (rendu) ou une simple
  * transparence (vue d'édition). Coordonnées de texture des planches posées dans le sens du fil, le motif décalé
  * d'une planche à l'autre (deux planches voisines ne montrent pas le même veinage).
  */
 import * as THREE from "three";
 import type { BodyAppearance } from "./assign";
 import type { Appearance } from "./library";
-import { motifMaps, normalMap } from "./textures";
+import { grainMaps, motifMaps, normalMap, shadesOf } from "./textures";
 
 export type Finish = "auto" | "matte" | "satin" | "gloss" | "lacquer";
 
@@ -92,7 +92,65 @@ export function applyFaceUvs(geometry: THREE.BufferGeometry, look: BodyAppearanc
   uv.needsUpdate = true;
 }
 
-const textures = new Map<string, { map: THREE.Texture; normal: THREE.Texture | null }>();
+const textures = new Map<string, { map: THREE.Texture; normal: THREE.Texture | null; ready?: Promise<void> }>();
+/** The textures still waiting for a photo: the render takes them again once they are drawn. */
+const waiting = new Set<Promise<void>>();
+
+/** Resolves once every texture waiting for its photo is drawn; null when none waits. */
+export function motifsPending(): Promise<void> | null {
+  return waiting.size ? Promise.all([...waiting]).then(() => undefined) : null;
+}
+
+/** The size of a grain's photo, as drawn. */
+const GRAIN_SIZE = 512;
+/** The shades of each wood photo a grain is taken from (shadesOf), loaded once; null if it cannot be. */
+const grains = new Map<string, Promise<Float32Array | null>>();
+
+function grainShades(url: string): Promise<Float32Array | null> {
+  let found = grains.get(url);
+  if (!found) {
+    found = new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = GRAIN_SIZE;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return resolve(null);
+        context.drawImage(image, 0, 0, GRAIN_SIZE, GRAIN_SIZE);
+        resolve(shadesOf(context.getImageData(0, 0, GRAIN_SIZE, GRAIN_SIZE).data));
+      };
+      image.onerror = () => resolve(null);
+      image.src = url;
+    });
+    grains.set(url, found);
+  }
+  return found;
+}
+
+/**
+ * A wood's textures drawn from its grain's photo, in its colours: plain in its mean shade until the photo is there
+ * (the computed motif where there is no photo to load).
+ */
+function grainTextures(appearance: Appearance & { grain: string }, color: string): { map: THREE.Texture; normal: THREE.Texture | null; ready: Promise<void> } {
+  const size = GRAIN_SIZE;
+  const flat = grainMaps(new Float32Array(size * size), size, appearance, color);
+  const map = dataTexture(flat.color, size, true);
+  const relief = appearance.relief ?? 0;
+  const normal = relief > 0 ? dataTexture(normalMap(flat.height, size, 0), size, false) : null;
+  const ready = grainShades(appearance.grain).then((shade) => {
+    if (!shade) return;
+    const maps = grainMaps(shade, size, appearance, color);
+    (map.image as { data: Uint8Array }).data = maps.color;
+    map.needsUpdate = true;
+    if (normal) {
+      (normal.image as { data: Uint8Array }).data = normalMap(maps.height, size, relief * 6);
+      normal.needsUpdate = true;
+    }
+  });
+  waiting.add(ready);
+  void ready.then(() => waiting.delete(ready));
+  return { map, normal, ready };
+}
 /** The photos being loaded (or loaded), by URL. */
 const photos = new Map<string, { map: THREE.Texture; normal: THREE.DataTexture; ready: Promise<void> }>();
 
@@ -135,8 +193,9 @@ function photoTextures(appearance: Appearance & { image: string }): { map: THREE
 }
 
 /** Resolves once the textures of an appearance can be drawn (at once, but for a photo still loading). */
-export function motifReady(appearance: Appearance): Promise<void> {
-  return appearance.image ? photoTextures(appearance as Appearance & { image: string }).ready : Promise.resolve();
+export function motifReady(appearance: Appearance, color = appearance.color): Promise<void> {
+  if (appearance.image) return photoTextures(appearance as Appearance & { image: string }).ready;
+  return motifTextures(appearance, color, true)?.ready ?? Promise.resolve();
 }
 
 function dataTexture(data: Uint8Array, size: number, srgb: boolean): THREE.DataTexture {
@@ -155,9 +214,16 @@ function dataTexture(data: Uint8Array, size: number, srgb: boolean): THREE.DataT
  * The motif's colour and relief textures (computed once per appearance, colour and size, then shared); `small` for
  * the library's swatches.
  */
-export function motifTextures(appearance: Appearance, color = appearance.color, small = false): { map: THREE.Texture; normal: THREE.Texture | null } | null {
+export function motifTextures(appearance: Appearance, color = appearance.color, small = false): { map: THREE.Texture; normal: THREE.Texture | null; ready?: Promise<void> } | null {
   if (appearance.image) return photoTextures(appearance as Appearance & { image: string });
   if (appearance.pattern === "plain") return null;
+  // A wood from its photo's grain: one texture for the view, the render and the swatches.
+  if (appearance.grain && typeof document !== "undefined") {
+    const key = `${appearance.id}|${color}|grain`;
+    let found = textures.get(key);
+    if (!found) textures.set(key, (found = grainTextures(appearance as Appearance & { grain: string }, color)));
+    return found;
+  }
   const size = small ? 128 : appearance.pattern === "fabric" || appearance.pattern === "leather" ? 256 : 512;
   const key = `${appearance.id}|${color}|${size}`;
   let found = textures.get(key);

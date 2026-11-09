@@ -102,8 +102,8 @@ export function swatch(appearance: Appearance, color?: string): Promise<string |
   const key = `${appearanceKey(appearance)}|${color ?? ""}`;
   const known = cache.get(key);
   if (known) return Promise.resolve(known);
-  // A photo is drawn on the sphere once it is loaded.
-  return motifReady(appearance).then(() => new Promise((resolve) => {
+  // A photo (or the photo of a wood's grain) is drawn on the sphere once it is loaded.
+  return motifReady(appearance, color ?? appearance.color).then(() => new Promise((resolve) => {
     const job = waiting.get(key);
     if (job) job.done.push(resolve);
     else waiting.set(key, { appearance, color, done: [resolve] });

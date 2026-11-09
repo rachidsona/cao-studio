@@ -1359,9 +1359,14 @@ opération existante.
     et pierres** (Carrare, Calacatta, Marquina, vert, rose, travertin, granits, quartz, terrazzo, ardoise),
     **métaux** (inox et aluminium brossés, anodisé noir, chrome, laiton, or, cuivre, acier), **plastiques** (dont
     plexiglas transparent et opale), **tissus et cuirs** (lin, chiné, velours, cuirs cognac, noir, blanc), **bétons et
-    sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, cernes et fibres du bois,
-    mouchetures du granit, armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans
-    couture ; le motif du bois suit le fil de chaque planche.
+    sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, mouchetures du granit,
+    armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans couture.
+    **Le veinage des bois vient de vraies photos** : chaque essence (chênes, noyers, hêtre, frêne, érable, merisier,
+    pin, teck, wengé, acajou, bouleau, bambou, zebrano, mélaminés chêne et noyer, contreplaqué) prend les cernes, les
+    pores et les nœuds d'un des bois en photo ci-dessous, recolorés dans ses propres teintes. Le relief vient de ce
+    veinage, à l'échelle réelle (un carreau de 80 cm). Le motif suit le fil de chaque planche, décalé d'une planche à
+    l'autre : deux portes voisines n'ont jamais le même dessin. Les matières de l'atelier en profitent, en vue comme au
+    rendu : le chêne massif, par exemple, prend le « Chêne verni ».
     **Bois en photo** : 10 vrais bois photographiés. Huit viennent d'ambientCG sous licence CC0 : chêne clair, chêne,
     noyer, wengé, hêtre, bouleau, merisier et pin noueux. S'y ajoutent deux placages de noyer à partir de photos
     fournies : **noyer fil** (tranché sur quartier, fil droit, une photo pour 1 m) et **noyer ramage** (tranché à plat,

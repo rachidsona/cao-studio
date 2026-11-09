@@ -1,5 +1,5 @@
 /**
- * Textures calculées des apparences : bois (cernes, fibres), marbre (veines), granit et quartz (mouchetures),
+ * Textures calculées des apparences : bois (cernes, fibres ; tiré d'une photo de vrai bois dès qu'elle est là), marbre (veines), granit et quartz (mouchetures),
  * terrazzo (éclats), béton, ardoise, liège, tissu (armure), cuir (grain) et métal brossé. Chaque motif donne une
  * couleur (mélange des deux couleurs de l'apparence) et un relief, rendu en carte de normales. Toutes les textures se
  * raccordent dans les deux sens (bruits périodiques).
@@ -178,6 +178,42 @@ export function motifMaps(appearance: Appearance, size: number, color = appearan
       out[i * 4 + 3] = 255;
       height[i] = h;
     }
+  }
+  return { color: out, height };
+}
+
+/**
+ * The shades of a photo (RGBA bytes): each texel's lightness as a gap to the photo's mean, in standard deviations —
+ * the same whatever the photo's own colour and contrast.
+ */
+export function shadesOf(pixels: ArrayLike<number>): Float32Array {
+  const count = Math.floor(pixels.length / 4);
+  const shade = new Float32Array(count);
+  let sum = 0;
+  for (let i = 0; i < count; i++) sum += shade[i] = 0.299 * pixels[i * 4]! + 0.587 * pixels[i * 4 + 1]! + 0.114 * pixels[i * 4 + 2]!;
+  const mean = sum / (count || 1);
+  let spread = 0;
+  for (let i = 0; i < count; i++) spread += (shade[i]! - mean) ** 2;
+  const deviation = Math.sqrt(spread / (count || 1)) || 1;
+  for (let i = 0; i < count; i++) shade[i] = (shade[i]! - mean) / deviation;
+  return shade;
+}
+
+/**
+ * A wood's colour and relief (as motifMaps) from the shades of a photo of real wood (shadesOf, `size` × `size`): its
+ * dark grain towards the second colour, its light towards the first; the relief follows the photo, its pores deep.
+ */
+export function grainMaps(shade: Float32Array, size: number, appearance: Appearance, color = appearance.color): { color: Uint8Array; height: Float32Array } {
+  const c1 = hex(color);
+  const c2 = appearance.color2 ? (color === appearance.color ? hex(appearance.color2) : c1.map((c) => c * 0.72) as [number, number, number]) : c1;
+  const out = new Uint8Array(size * size * 4);
+  const height = new Float32Array(size * size);
+  for (let i = 0; i < size * size; i++) {
+    const z = shade[i] ?? 0;
+    const mix = Math.min(1, Math.max(0, 0.32 - 0.3 * z));
+    for (let k = 0; k < 3; k++) out[i * 4 + k] = Math.round(c1[k]! + (c2[k]! - c1[k]!) * mix);
+    out[i * 4 + 3] = 255;
+    height[i] = Math.min(1, Math.max(0, 0.5 + 0.15 * z));
   }
   return { color: out, height };
 }

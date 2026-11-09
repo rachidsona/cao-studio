@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { bodyAppearance, setBodyAppearance } from "../../frontend/src/appearance/assign";
 import { APPEARANCES, CATEGORIES, MATERIAL_APPEARANCE, WALL_APPEARANCE, appearanceById, searchAppearances } from "../../frontend/src/appearance/library";
-import { motifMaps, normalMap, sampleMotif } from "../../frontend/src/appearance/textures";
+import { existsSync } from "node:fs";
+import { grainMaps, motifMaps, normalMap, sampleMotif, shadesOf } from "../../frontend/src/appearance/textures";
 import { appearanceMaterial, boardUvs } from "../../frontend/src/appearance/three-materials";
 import { MATERIALS } from "../../frontend/src/document/materials";
 import type { CadDocument } from "../../frontend/src/document/types";
@@ -95,6 +96,25 @@ describe("textures calculées", () => {
   it("font une carte de normales plate pour un relief plat", () => {
     const flat = normalMap(new Float32Array(16).fill(0.5), 4, 5);
     expect([flat[0], flat[1], flat[2]]).toEqual([128, 128, 255]);
+  });
+
+  it("tirent le veinage de chaque bois d'une photo de vrai bois, dans ses couleurs", () => {
+    // Every computed wood has a photo to take its grain from, and the photo is there.
+    for (const a of APPEARANCES.filter((x) => x.pattern === "wood" && !x.image)) {
+      expect(a.grain, a.id).toMatch(/^\/static\/textures\/bois\/[a-z-]+\.jpg$/);
+      expect(existsSync(a.grain!.slice(1)), a.grain).toBe(true);
+    }
+    // Two texels of a photo, one dark (a ring), one light: the same gaps whatever the photo's contrast.
+    const shade = shadesOf([40, 30, 20, 255, 200, 180, 150, 255]);
+    expect(shade[0]).toBeCloseTo(-1);
+    expect(shade[1]).toBeCloseTo(1);
+    expect(shadesOf([10, 10, 10, 255, 90, 90, 90, 255])[0]).toBeCloseTo(-1);
+    // The ring in the wood's dark colour side, the rest in its light one; the ring lower in the relief.
+    const walnut = appearanceById("wood-walnut")!;
+    const { color, height } = grainMaps(new Float32Array([-2, 2, -2, 2]), 2, walnut);
+    expect(color[0]!).toBeLessThan(0x6b);
+    expect(color[4]).toBe(0x6b);
+    expect(height[0]!).toBeLessThan(height[1]!);
   });
 
   it("suivent la couleur choisie en gardant le motif", () => {

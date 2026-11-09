@@ -7,6 +7,7 @@
 import * as THREE from "three";
 import type { PhysicalCamera, WebGLPathTracer } from "three-gpu-pathtracer";
 import type { FaceAppearance } from "../appearance/assign";
+import { motifsPending } from "../appearance/three-materials";
 import type { Viewport } from "../viewport/viewport";
 import { RenderScene, type BodyLook } from "./render-scene";
 import { installShadowCatcher, setCatcherNorm } from "./shadow-catcher";
@@ -182,6 +183,10 @@ export class RenderMode {
     tracer.setScene(world.scene, this.camera);
     this.signature = this.bodiesSignature();
     this.dirty = false;
+    // A wood whose grain's photo is still loading: the tracer takes its textures again once drawn.
+    void motifsPending()?.then(() => {
+      if (this.tracer === tracer && this.world === world) tracer.setScene(world.scene, this.camera);
+    });
   }
 
   /** Lens, depth of field and tone of the image; with `reset`, the refining starts again. */
