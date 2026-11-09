@@ -1798,6 +1798,17 @@ opération existante.
     - Ou on reprend le caisson sélectionné (« Ajouter « … » à ma liste »), avec ses cotes et ses façades.
     - Un clic le pose dans la cuisine comme les autres, sous son nom ; ✕ le retire de la liste.
     - La liste est gardée dans ce navigateur, pour tous les projets (`app/kitchen/my-units.ts`).
+  - **Isoler et aménager un caisson** : un clic droit sur un caisson de cuisine (ou sur sa porte) propose « Isoler et
+    aménager ».
+    - Le caisson devient un caisson comme ceux du dressing (une Répartition), de mêmes cotes et à la même place, avec
+      son fond, ses étagères et ses façades : portes, ou tiroirs dans sa niche. La carcasse et les façades gardent
+      leurs matières.
+    - La vue ne montre que lui, de face, comme « Isoler » de Fusion. Le clic droit dans une niche ouvre Étagères,
+      Cloisons, Hauteur de la niche, Penderie, Tiroirs, Porte sur niches ou Module. « Tout montrer » rend la cuisine.
+    - S'il venait d'un linéaire du Plan de cuisine, le linéaire lui garde sa place, en espace libre de sa largeur : la
+      cuisine refaite ne le touche plus. Un meuble d'angle ne s'aménage pas ainsi.
+    - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
+      (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
 - **Éclairage** (groupe « Pièce ») : des lumières dans la cuisine et le dressing, au choix.
   - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
     basse).

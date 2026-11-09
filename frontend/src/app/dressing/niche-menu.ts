@@ -1,6 +1,6 @@
 /**
  * Le menu d'une niche : un clic droit sur une niche, sans outil en cours, propose ce qu'on peut y faire (sur une porte :
- * le menu de la porte, app/door-menu.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
+ * le menu de la porte, app/door-menu.ts ; sur un caisson de cuisine : l'isoler et l'aménager, app/cabinet-furnish.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
  * garder (OK) ou de l'annuler : ses pièces ne sont pas encore dans le projet. L'outil choisi
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
@@ -8,6 +8,10 @@
 import { keyOf } from "../../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
+import { cabinetOfBody } from "../../document/cabinet-furnish";
+import { findFeature } from "../../document/operations";
+import { furnishCabinet } from "../cabinet-furnish";
+import { isolatedSketch, isolateSketch } from "../zone-view";
 import { shownDoc } from "../kitchen/kitchen-run-preview";
 import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
@@ -66,12 +70,20 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     // A door (or its handle) under the pointer: its own menu.
     if (face && openDoorMenu(event, viewport, editor, face.bodyId)) return;
     const niche = nicheUnderPointer(viewport, editor.doc, event);
+    // A kitchen cabinet: made a caisson of the dressing, alone in the view, to furnish.
+    const cabinet = !niche && face ? cabinetOfBody(editor.doc, face.bodyId) : null;
+    if (cabinet) {
+      menu = popup(event, "Menu du caisson", cabinet.name, [["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)]]);
+      return;
+    }
     if (!niche) return;
+    const sketchName = findFeature(editor.doc, niche.sketch)?.name ?? "Caisson";
     const items: [string, () => void][] = [
       ...NICHE_ACTIONS.map(({ action, label }): [string, () => void] => [label, () => runNiche(editor, action, niche)]),
       ["Façade de cette case", () => openNicheFront(viewport, editor, niche)],
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],
       ["Aligner sur cette niche", () => openNicheCopy(viewport, editor, "heights", niche)],
+      ...(isolatedSketch() === niche.sketch ? [] : [[`Isoler « ${sketchName} »`, () => isolateSketch(niche.sketch, sketchName)] as [string, () => void]]),
     ];
     menu = popup(event, "Menu de la niche", null, items);
   });

@@ -1,7 +1,8 @@
 /**
  * Le menu d'une porte : un clic droit sur une porte (ou sa poignée) dans la vue, sans outil en cours. On l'ouvre ou la
  * ferme, on inverse son sens d'ouverture, on ôte ou remet ses poignées, on la renomme, on sélectionne le meuble entier,
- * on la change (en tiroirs pour un caisson, en porte à cadre ou plate pour une Répartition), on la supprime. Chaque
+ * on la change (en tiroirs pour un caisson, en porte à cadre ou plate pour une Répartition), on la supprime ; le caisson
+ * de cuisine qui la porte s'isole pour être aménagé (app/cabinet-furnish.ts). Chaque
  * changement est une annulation (document/door-edit.ts).
  */
 import { doorOf, withDoorFlipped, withDoorHandles, withDoorRemoved, withDoorStyle } from "../document/door-edit";
@@ -12,6 +13,7 @@ import { openTreeMenu, type TreeMenuItem } from "../ui/tree-menu";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { wholeOf } from "./move-whole";
+import { furnishCabinet } from "./cabinet-furnish";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
 
@@ -68,6 +70,7 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
       viewport.clearSelection();
       for (const id of whole.bodies) viewport.toggleInSelection("body", id);
     } }] : []),
+    ...(f?.type === "fronts" ? [{ label: "Isoler et aménager le caisson", run: () => void furnishCabinet(editor, f.cabinet) }] : []),
     ...(door.kind === "fronts" ? [{ label: "Remplacer par des tiroirs", run: () => apply(withDoorStyle(doc, bodyId), "Les portes sont devenues des tiroirs.") }] : []),
     ...(door.kind === "partition" && f?.type === "niche" ? [{ label: f.style === "frame" ? "Portes plates" : "Portes à cadre", run: () => apply(withDoorStyle(doc, bodyId), f.style === "frame" ? "Portes plates." : "Portes à cadre.") }] : []),
     "separator",

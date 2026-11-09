@@ -2,7 +2,8 @@
  * « Voir ce mur » : une zone du plan isolée pour y travailler tranquille. La vue se met de face, seuls ses corps et ses
  * cotes restent ; les esquisses et les autres murs disparaissent, et les outils de niche ne voient qu'elle. L'isolement
  * tient pendant le travail, jusqu'à « Tout montrer ». La vue seulement : rien ne change dans le projet. Un linéaire du
- * Plan de cuisine s'isole de même (`isolateFeatures`) : ce que le plan a fait pour lui, vu de face, avec ses cotes.
+ * Plan de cuisine s'isole de même (`isolateFeatures`) : ce que le plan a fait pour lui, vu de face, avec ses cotes ; et
+ * un caisson seul (`isolateSketch`), pour l'aménager, comme « Isoler » de Fusion.
  */
 import * as THREE from "three";
 import { bodyOrigin, findFeature } from "../document/operations";
@@ -52,6 +53,13 @@ export function isolateZone(plan: DressingPlan, zoneId: string, label: string): 
   if (!sketch) return;
   const boards = new Set(plan.boards?.[zoneId] ?? []);
   isolate(sketchId, label, () => (f) => boards.has(f.id) || ((f.type === "extrude" || f.type === "niche") && f.sketch === sketchId), frameOf(sketch).normal);
+}
+
+/** Isolates a caisson (a Répartition of its own, kitchen cabinet furnished by hand), seen from the front. */
+export function isolateSketch(sketchId: string, label: string): void {
+  const sketch = context && (findFeature(context.editor.doc, sketchId) as SketchFeature | undefined);
+  if (!sketch) return;
+  isolate(sketchId, label, () => (f) => (f.type === "extrude" || f.type === "niche") && f.sketch === sketchId, frameOf(sketch).normal);
 }
 
 /**
