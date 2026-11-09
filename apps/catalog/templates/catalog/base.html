@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% load assets %}
-{% block title %}{% block page_title %}Catalogue{% endblock %} · CAO Studio{% endblock %}
+{% block title %}{% block page_title %}Paramètres de l'atelier{% endblock %} · CAO Studio{% endblock %}
 {% block content %}
-{# The workshop's catalogue: its materials, its hardware and its profile, which make the prices and the letterhead of the quotes. #}
-<h1 class="text-2xl font-semibold tracking-tight">Catalogue de l'atelier</h1>
-<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Les matières et la quincaillerie font les prix du devis ; le profil fait son en-tête.</p>
-<nav class="mt-4 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800" aria-label="Catalogue">
+{# The workshop's settings: its materials, its hardware, the quote's rates and its profile — the prices and the letterhead of the quotes, the same on every computer. #}
+<h1 class="text-2xl font-semibold tracking-tight">Paramètres de l'atelier</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Les matières, la quincaillerie et les tarifs font les prix du devis ; le profil fait son en-tête. Les mêmes sur tous les ordinateurs.</p>
+<nav class="mt-4 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800" aria-label="Paramètres de l'atelier">
   <a href="{% url 'catalog:materials' %}" class="-mb-px border-b-2 px-3 py-2 text-sm font-medium {% if section == 'materials' %}border-sky-500 text-sky-700 dark:text-sky-300{% else %}border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white{% endif %}" {% if section == 'materials' %}aria-current="page"{% endif %}>Matériaux</a>
   <a href="{% url 'catalog:hardware' %}" class="-mb-px border-b-2 px-3 py-2 text-sm font-medium {% if section == 'hardware' %}border-sky-500 text-sky-700 dark:text-sky-300{% else %}border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white{% endif %}" {% if section == 'hardware' %}aria-current="page"{% endif %}>Quincaillerie</a>
+  <a href="{% url 'catalog:rates' %}" class="-mb-px border-b-2 px-3 py-2 text-sm font-medium {% if section == 'rates' %}border-sky-500 text-sky-700 dark:text-sky-300{% else %}border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white{% endif %}" {% if section == 'rates' %}aria-current="page"{% endif %}>Tarifs du devis</a>
   <a href="{% url 'catalog:company' %}" class="-mb-px border-b-2 px-3 py-2 text-sm font-medium {% if section == 'company' %}border-sky-500 text-sky-700 dark:text-sky-300{% else %}border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white{% endif %}" {% if section == 'company' %}aria-current="page"{% endif %}>Profil de l'atelier</a>
 </nav>
 <div class="mt-5">{% block body %}{% endblock %}</div>

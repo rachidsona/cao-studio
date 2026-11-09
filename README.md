@@ -48,10 +48,15 @@ Chaque projet a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou 
 supprimer ensemble avec **« Supprimer la sélection »**. La page demande confirmation : un projet part avec ses
 versions et ses liens partagés (seul son propriétaire peut le supprimer ; `static/home/home-delete.js`).
 
-Le **catalogue de l'atelier** se gère dans l'application, http://127.0.0.1:8765/catalogue/ (lien « Catalogue » de
-l'en-tête, ou « Catalogue de l'atelier » du menu du nom du projet dans l'éditeur ; connexion requise) : un onglet par
-partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut), **quincaillerie** (articles et
-quantité automatique) et **profil de l'atelier** (coordonnées et logo des documents imprimés). Les suppressions
+Les **paramètres de l'atelier** se gèrent dans l'application, http://127.0.0.1:8765/catalogue/ (lien « Paramètres »
+de l'en-tête, ou « Paramètres de l'atelier » du menu du nom du projet dans l'éditeur ; connexion requise) : un onglet
+par partie — **matériaux** (liste, ajout, modification, suppression ; un seul par défaut), **quincaillerie** (articles
+et quantité automatique), **tarifs du devis** (chutes, chant collé, découpe et perçage par pièce, montage par pièce,
+taux horaire, trou percé, marge, TVA : gardés par le serveur, les **mêmes sur tous les ordinateurs** ; les changer dans
+le devis de l'éditeur les change ici aussi, `POST /api/catalog/rates/` ; des tarifs réglés dans un navigateur avant
+sont repris tant que le serveur a ceux d'origine) et **profil de l'atelier** (coordonnées et logo des documents
+imprimés). Les prix des matières et de la quincaillerie changés dans le devis restent ceux du navigateur ; les
+standards de construction se règlent dans l'éditeur. Les suppressions
 demandent confirmation dans la page (`static/home/confirm.js`). Il est garni au premier `migrate` ; l'administration
 Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 

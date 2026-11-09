@@ -1,5 +1,7 @@
 """Le catalogue de l'atelier dans l'application (/catalogue/) : matériaux, quincaillerie et profil s'y gèrent sans
 l'administration."""
+import json
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
@@ -26,7 +28,7 @@ def test_pages_need_login():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("path", ["materiaux/", "materiaux/nouveau/", "quincaillerie/", "quincaillerie/nouveau/", "atelier/"])
+@pytest.mark.parametrize("path", ["materiaux/", "materiaux/nouveau/", "quincaillerie/", "quincaillerie/nouveau/", "tarifs/", "atelier/"])
 def test_pages_render(client_logged, path):
     response = client_logged.get(BASE + path)
     assert response.status_code == 200
@@ -106,3 +108,32 @@ def test_the_catalogue_is_cao_studio_s_own(client_logged):
     assert "bibliotheque" not in content
     # Deleting asks first, in the page.
     assert 'data-confirm="Supprimer le matériau' in content and 'id="confirm-dialog"' in content
+
+
+@pytest.mark.django_db
+def test_the_quote_s_rates_are_the_workshop_s(client_logged):
+    page = client_logged.get(f"{BASE}tarifs/")
+    assert page.status_code == 200 and "Tarifs du devis" in page.content.decode()
+    rates = {"waste": "12", "band": "2", "cut_per_part": "5", "hours_per_part": "0.3", "hourly": "50", "per_hole": "0.5", "margin": "35", "vat": "20"}
+    response = client_logged.post(f"{BASE}tarifs/", rates)
+    assert response.status_code == 302 and response["Location"] == f"{BASE}tarifs/"
+    profile = CompanyProfile.load()
+    assert (profile.waste, profile.hourly, profile.margin) == (12, 50, 35)
+    # The editor gets them with the catalogue.
+    assert client_logged.get("/api/catalog/").json()["rates"] == {"waste": 12, "band": 2, "cutPerPart": 5, "hoursPerPart": 0.3, "hourly": 50, "perHole": 0.5, "margin": 35, "vat": 20}
+    # A VAT over 100 %: refused, nothing kept.
+    bad = client_logged.post(f"{BASE}tarifs/", {**rates, "vat": "150"})
+    assert bad.status_code == 200 and "field-error" in bad.content.decode()
+
+
+@pytest.mark.django_db
+def test_the_editor_s_quote_changes_the_rates(client_logged):
+    url = "/api/catalog/rates/"
+    response = client_logged.post(url, json.dumps({"margin": 40, "hourly": 55.5}), content_type="application/json")
+    assert response.status_code == 200 and response.json()["rates"]["margin"] == 40
+    assert (CompanyProfile.load().margin, CompanyProfile.load().hourly) == (40, 55.5)
+    assert client_logged.post(url, json.dumps({"vat": -1}), content_type="application/json").status_code == 400
+    assert client_logged.post(url, json.dumps({"vat": 300}), content_type="application/json").status_code == 400
+    assert client_logged.post(url, json.dumps({"margin": "beaucoup"}), content_type="application/json").status_code == 400
+    assert CompanyProfile.load().vat == 20
+    assert Client().post(url, json.dumps({"margin": 1}), content_type="application/json").status_code == 401

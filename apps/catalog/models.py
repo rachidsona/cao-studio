@@ -1,7 +1,7 @@
 """Catalogue de l'atelier, géré dans l'administration : les matières (famille, format de plaque,
 prix au m²), les règles de quincaillerie à quantité automatique, et le profil de l'atelier (l'en-tête des documents
 imprimés). L'éditeur le lit en JSON (api.py) et le mêle à ses matières intégrées."""
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -70,7 +70,8 @@ class HardwareRule(models.Model):
 
 
 class CompanyProfile(models.Model):
-    """Le profil de l'atelier (un seul) : l'en-tête des documents imprimés (devis, liste de débit, calepinage…)."""
+    """Le profil de l'atelier (un seul) : l'en-tête des documents imprimés (devis, liste de débit, calepinage…) et les
+    tarifs du devis (chutes, chant, découpe, montage, taux horaire, marge, TVA)."""
 
     name = models.CharField("nom", max_length=150, default="Mon atelier")
     slogan = models.CharField("slogan", max_length=200, blank=True, default="")
@@ -79,7 +80,19 @@ class CompanyProfile(models.Model):
     email = models.EmailField("e-mail", blank=True, default="")
     website = models.CharField("site web", max_length=150, blank=True, default="")
     logo = models.TextField("logo", blank=True, default="", help_text="Image PNG ou JPEG en data URL (200 ko au plus).")
+    # The rates of the quote, the same on every computer (the boards and the hardware: their own prices).
+    waste = models.FloatField("chutes (%)", default=15, validators=[MinValueValidator(0), MaxValueValidator(90)], help_text="Part des plaques perdue en chutes.")
+    band = models.FloatField("chant collé (€ HT le mètre)", default=1.5, validators=[MinValueValidator(0)])
+    cut_per_part = models.FloatField("découpe et perçage (€ HT la pièce)", default=4, validators=[MinValueValidator(0)])
+    hours_per_part = models.FloatField("montage (heures par pièce)", default=0.25, validators=[MinValueValidator(0)])
+    hourly = models.FloatField("taux horaire (€ HT)", default=45, validators=[MinValueValidator(0)])
+    per_hole = models.FloatField("trou percé (€ HT, 0 : compris dans la découpe)", default=0, validators=[MinValueValidator(0)])
+    margin = models.FloatField("marge (%)", default=30, validators=[MinValueValidator(0), MaxValueValidator(500)])
+    vat = models.FloatField("TVA (%)", default=20, validators=[MinValueValidator(0), MaxValueValidator(100)])
     updated_at = models.DateTimeField("mis à jour le", auto_now=True)
+
+    #: The rates, by the editor's names (document/quote.ts, QuoteRates).
+    RATES = {"waste": "waste", "band": "band", "cut_per_part": "cutPerPart", "hours_per_part": "hoursPerPart", "hourly": "hourly", "per_hole": "perHole", "margin": "margin", "vat": "vat"}
 
     class Meta:
         verbose_name = "profil de l'atelier"

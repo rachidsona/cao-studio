@@ -47,7 +47,7 @@
         </button>
         {% if user.is_authenticated %}
           <a href="{% url 'projects:list' %}" class="hidden min-h-11 items-center px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 sm:inline-flex dark:text-gray-200 dark:hover:bg-gray-800">Accueil</a>
-          <a href="{% url 'catalog:index' %}" class="hidden min-h-11 items-center px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 sm:inline-flex dark:text-gray-200 dark:hover:bg-gray-800" title="Les matières, la quincaillerie et le profil de l'atelier, qui font les prix du devis">Catalogue</a>
+          <a href="{% url 'catalog:index' %}" class="hidden min-h-11 items-center px-3 text-sm font-medium text-gray-700 hover:bg-gray-100 sm:inline-flex dark:text-gray-200 dark:hover:bg-gray-800" title="Les matières, la quincaillerie, les tarifs du devis et le profil de l'atelier">Paramètres</a>
           <span class="hidden text-sm text-gray-500 md:inline dark:text-gray-400">{{ user.get_username }}</span>
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}

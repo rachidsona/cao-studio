@@ -2,7 +2,8 @@
 {% block page_title %}{{ title }}{% endblock %}
 {% block body %}
 <div class="max-w-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-  <h2 class="text-lg font-semibold">{% if instance %}{{ instance.name }}{% else %}{{ title }}{% endif %}</h2>
+  <h2 class="text-lg font-semibold">{% if instance and section != "rates" %}{{ instance.name }}{% else %}{{ title }}{% endif %}</h2>
+  {% if intro %}<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ intro }}</p>{% endif %}
   <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %} novalidate class="mt-4 space-y-4">
     {% csrf_token %}
     {% if form.non_field_errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}

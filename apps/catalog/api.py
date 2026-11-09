@@ -1,6 +1,8 @@
 """Le catalogue en JSON pour l'éditeur (connexion requise, comme le reste de l'API) :
 
-- GET /api/catalog/ → {"materials": [...], "hardware": [...], "company": {...}}
+- GET  /api/catalog/        → {"materials": [...], "hardware": [...], "company": {...}, "rates": {...}}
+- POST /api/catalog/rates/  {waste?, band?, cutPerPart?, hoursPerPart?, hourly?, perHole?, margin?, vat?} → {"rates": {...}}
+  (the quote's rates changed from the editor's quote: kept for every computer)
 """
 from __future__ import annotations
 
@@ -8,7 +10,7 @@ from typing import Any
 
 from django.http import JsonResponse
 
-from apps.projects.http import api_view
+from apps.projects.http import ApiError, api_view, read_json_body
 
 from .models import CompanyProfile, HardwareRule, Material
 
@@ -50,12 +52,42 @@ def company_payload(p: CompanyProfile) -> dict[str, Any]:
     }
 
 
+def rates_payload(p: CompanyProfile) -> dict[str, float]:
+    return {name: getattr(p, field) for field, name in CompanyProfile.RATES.items()}
+
+
 @api_view(("GET",))
 def catalog(request):
+    profile = CompanyProfile.load()
     return JsonResponse(
         {
             "materials": [material_payload(m) for m in Material.objects.all()],
             "hardware": [hardware_payload(r) for r in HardwareRule.objects.all()],
-            "company": company_payload(CompanyProfile.load()),
+            "company": company_payload(profile),
+            "rates": rates_payload(profile),
         }
     )
+
+
+@api_view(("POST",))
+def rates(request):
+    data = read_json_body(request)
+    if not isinstance(data, dict):
+        raise ApiError(400, "Tarifs invalides.")
+    profile = CompanyProfile.load()
+    changed = []
+    for field, name in CompanyProfile.RATES.items():
+        if name not in data:
+            continue
+        value = data[name]
+        if type(value) not in (int, float) or not 0 <= value <= 1_000_000:
+            raise ApiError(400, "Tarifs invalides.", [f"« {name} » doit être un nombre positif."])
+        setattr(profile, field, float(value))
+        changed.append(field)
+    try:
+        profile.full_clean(exclude=["logo"])
+    except Exception as exc:  # A rate out of its bounds (VAT over 100 %…).
+        raise ApiError(400, "Tarifs invalides.", [str(exc)]) from None
+    if changed:
+        profile.save(update_fields=[*changed, "updated_at"])
+    return JsonResponse({"rates": rates_payload(profile)})

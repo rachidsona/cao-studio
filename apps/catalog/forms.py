@@ -30,6 +30,14 @@ class HardwareRuleForm(forms.ModelForm):
         widgets = {"description": forms.Textarea(attrs={"rows": 3})}
 
 
+class RatesForm(forms.ModelForm):
+    """The quote's rates of the workshop, the same on every computer."""
+
+    class Meta:
+        model = CompanyProfile
+        fields = tuple(CompanyProfile.RATES)
+
+
 class CompanyProfileForm(forms.ModelForm):
     logo_file = forms.FileField(label="Logo (fichier PNG ou JPEG)", required=False)
     remove_logo = forms.BooleanField(label="Retirer le logo", required=False)

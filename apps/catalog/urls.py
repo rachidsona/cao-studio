@@ -14,5 +14,6 @@ urlpatterns = [
     path("quincaillerie/nouveau/", views.edit, {"section": "hardware"}, name="hardware_add"),
     path("quincaillerie/<int:pk>/", views.edit, {"section": "hardware"}, name="hardware_edit"),
     path("quincaillerie/<int:pk>/supprimer/", views.delete, {"section": "hardware"}, name="hardware_delete"),
+    path("tarifs/", views.rates, name="rates"),
     path("atelier/", views.company, name="company"),
 ]

@@ -1,5 +1,6 @@
-"""Le catalogue de l'atelier dans l'application (/catalogue/, connexion requise) : les matières, la quincaillerie et
-le profil de l'atelier, qui font les prix et l'en-tête du devis, sans passer par l'administration."""
+"""Les paramètres de l'atelier dans l'application (/catalogue/, connexion requise) : les matières, la quincaillerie,
+les tarifs du devis et le profil de l'atelier, qui font les prix et l'en-tête du devis, sans passer par
+l'administration."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
@@ -7,7 +8,7 @@ from django.db.models import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import CompanyProfileForm, HardwareRuleForm, MaterialForm
+from .forms import CompanyProfileForm, HardwareRuleForm, MaterialForm, RatesForm
 from .models import CompanyProfile, HardwareRule, Material
 
 # Each section: its model, its form, its list page and the words of its pages.
@@ -83,3 +84,15 @@ def company(request):
         messages.success(request, "Profil de l'atelier enregistré.")
         return redirect("catalog:company")
     return render(request, "catalog/form.html", {"section": "company", "form": form, "title": "Profil de l'atelier", "profile": profile, "multipart": True})
+
+
+@login_required
+def rates(request):
+    """The quote's rates (offcuts, edge band, cutting, assembly, hourly rate, margin, VAT), for every computer."""
+    profile = CompanyProfile.load()
+    form = RatesForm(request.POST or None, instance=profile)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Tarifs du devis enregistrés.")
+        return redirect("catalog:rates")
+    return render(request, "catalog/form.html", {"section": "rates", "form": form, "title": "Tarifs du devis", "intro": "Ce qui fait le prix du devis, le même sur tous les ordinateurs ; les changer dans le devis de l'éditeur les change ici aussi. Les matières et la quincaillerie ont leur prix dans leurs onglets ; les standards de construction se règlent dans l'éditeur (Atelier → Standard de construction)."})

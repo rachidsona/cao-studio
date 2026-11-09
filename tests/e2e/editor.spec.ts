@@ -178,7 +178,7 @@ test("CAO Studio : le catalogue de l'atelier arrive, Rayons X et Affichage march
   expect(errors).toEqual([]);
 });
 
-test("le menu du nom du projet : projets, catalogue de l'atelier, mise en plan du caisson seul", async ({ page }) => {
+test("le menu du nom du projet : projets, paramètres de l'atelier, mise en plan du caisson seul", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Menu e2e");
@@ -186,7 +186,7 @@ test("le menu du nom du projet : projets, catalogue de l'atelier, mise en plan d
   await page.locator("[data-project-menu] summary").click();
   const menu = page.locator('[data-project-menu] [role="menu"]');
   await expect(menu.getByRole("menuitem", { name: "← Mes projets" })).toHaveAttribute("href", "/projects/");
-  await expect(menu.getByRole("menuitem", { name: "Catalogue de l'atelier" })).toHaveAttribute("href", "/catalogue/");
+  await expect(menu.getByRole("menuitem", { name: "Paramètres de l'atelier" })).toHaveAttribute("href", "/catalogue/");
   await menu.getByRole("menuitem", { name: "Mise en plan du caisson sélectionné" }).click();
   await expect(page.getByText("Cliquez d'abord une pièce du caisson")).toBeVisible();
   await expect(menu).toBeHidden();
@@ -390,5 +390,29 @@ test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par
   await expect(page.locator("[data-project-row]")).toHaveCount(1);
   await expect(page.locator("[data-project-row]")).toContainText("M. Dupont");
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/tableau-de-bord.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("paramètres de l'atelier : la marge changée dans le devis de l'éditeur est celle de l'atelier, sur tous les ordinateurs", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Tarifs e2e");
+  await page.goto("/projects/");
+  await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
+  await page.waitForURL("**/editor/");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="quote"]')?.click());
+  await page.getByText("Tarifs (indicatifs, modifiables)").click();
+  const margin = page.getByRole("spinbutton", { name: "Marge", exact: true });
+  await expect(margin).toBeVisible();
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/catalog/rates/") && r.request().method() === "POST");
+  await margin.fill("37");
+  expect((await saved).status()).toBe(200);
+  await page.goto("/catalogue/tarifs/");
+  await expect(page.getByRole("heading", { name: "Paramètres de l'atelier" })).toBeVisible();
+  await expect(page.locator("#id_margin")).toHaveValue("37.0");
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/parametres-atelier.png`, fullPage: true });
   expect(errors).toEqual([]);
 });
