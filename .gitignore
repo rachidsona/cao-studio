@@ -26,7 +26,13 @@ ruvector.db
 # IDE settings
 .idea/
 
-# End-to-end tests (Playwright)
+# End-to-end tests (Playwright), and the copies the Finder makes of their folders (« test-results 2 »)
 .e2e/
 test-results/
+test-results */
 playwright-report/
+
+# Kept on this computer, out of the repository: the agents' memory (ruflo) and the research reports
+agentdb.rvf
+agentdb.rvf.idmap.json
+docs/
