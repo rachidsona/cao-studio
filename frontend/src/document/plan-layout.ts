@@ -9,7 +9,7 @@
 import { slidingDoors } from "./dressing-extras";
 import { WALL_THICKNESS, withWallBoxes, type WallBox } from "./dressing-plan";
 import { addExtrude, deleteFeatures, findFeature, uniqueId, uniqueName, uniqueOffsetId, updateFeature } from "./operations";
-import { arcDoor, circleDoor, cornerOutline, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, zoneHeight, type Corner, type PlanZone, type Point } from "./plan-shapes";
+import { arcDoor, circleDoor, cornerOutline, ellFaces, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, zoneHeight, type Corner, type PlanZone, type Point } from "./plan-shapes";
 import type { PartitionParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
@@ -150,32 +150,49 @@ function arcBand({ center, outer, inner, from, to }: NonNullable<ReturnType<type
 /** What stops under the top boards of a plan under a slope. */
 const belowTop = (plan: DressingPlan) => planCeiling(plan, upright(plan));
 
-/** The door of a corner, on its slanted or rounded front: applied over it, with its hinges (bought parts, for the quote). */
+/**
+ * The door of a corner, on its slanted or rounded front, or its two leaves on the square front of an L-shaped corner:
+ * applied over it, with their hinges (bought parts, for the quote).
+ */
 function withCornerDoor(doc: CadDocument, plan: DressingPlan, zone: PlanZone): CadDocument {
   const side: Corner = zone.id === "left" ? "left" : "right";
   const shape = cornerOutline(plan, side);
-  const [wall, a, b] = [shape[0] as Point, shape[2] as Point, shape[shape.length - 2] as Point];
-  const [ex, ey] = [b[0] - a[0], b[1] - a[1]];
-  const length = Math.hypot(ex, ey);
-  const out = (ey * (a[0] - wall[0]) - ex * (a[1] - wall[1]) > 0 ? 1 : -1) / length;
-  const normal: [number, number] = [ey * out, -ex * out];
-  const middle: Point = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  const flat: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
-  const frame = plan.place ? placeFrame(plan.place, flat) : flat;
-  const [half, z0, z1] = [length / 2 - GAP, plan.plinth + GAP, zoneHeight(plan, zone) - GAP];
+  const wall = shape[0] as Point;
+  const ell = PLAN_MODELS[plan.model].ell;
+  // Each leaf from its outer end to the other: on an L, the one along wall A stops short of the other's thickness.
+  const leaves: { a: Point; b: Point; end: number }[] = ell
+    ? ellFaces(plan, side).map(([outer, inner], i) => ({ a: outer, b: inner, end: GAP + (i === 0 ? plan.thickness : 0) }))
+    : [{ a: shape[2] as Point, b: shape[shape.length - 2] as Point, end: GAP }];
+  const [z0, z1] = [plan.plinth + GAP, zoneHeight(plan, zone) - GAP];
   const ceiling = planCeiling(plan);
-  const circle = circleDoor(plan, side, GAP);
   const turned = ((plan.place?.quarter ?? 0) * Math.PI) / 2;
-  const next = PLAN_MODELS[plan.model].round
-    ? sheet(doc, `${zone.label} — porte cintrée`, circle ? arcBand({ ...circle, center: onFloor(plan, circle.center), from: circle.from + turned, to: circle.to + turned }) : arcDoor(plan, side, GAP).map((p) => onFloor(plan, p)), { offset: z0 }, z1 - z0, ceiling)
-    : sheet(doc, `${zone.label} — porte`, rect(-half, z0, half, z1), { offset: 0, frame }, plan.thickness, ceiling);
-  const hinges = hingeCount(z1 - z0);
-  const [hx, hy] = [a[0] + (ex / length) * 40 - normal[0] * 20, a[1] + (ey / length) * 40 - normal[1] * 20];
-  const parts = Array.from({ length: hinges }, (_, i) => {
-    const z = z0 + 100 + (i * (z1 - z0 - 200)) / Math.max(1, hinges - 1);
-    const [from, to]: [Vec3, Vec3] = [[hx - 10, hy - 10, z - 10], [hx + 10, hy + 10, z + 10]];
-    const box = plan.place ? placeBox(plan.place, from, to) : [from, to];
-    return { name: `${zone.label} — charnière ${i + 1}`, from: box[0] as Vec3, to: box[1] as Vec3, hardware: true, item: "Charnière à boîtier Ø35" };
+  let next = doc;
+  const parts: { name: string; from: Vec3; to: Vec3; hardware: true; item: string }[] = [];
+  leaves.forEach(({ a, b, end }, k) => {
+    const [ex, ey] = [b[0] - a[0], b[1] - a[1]];
+    const length = Math.hypot(ex, ey);
+    const out = (ey * (a[0] - wall[0]) - ex * (a[1] - wall[1]) > 0 ? 1 : -1) / length;
+    const normal: [number, number] = [ey * out, -ex * out];
+    const [ux, uy] = [ex / length, ey / length];
+    // The middle of the leaf, between its gaps.
+    const along = (GAP + length - end) / 2;
+    const middle: Point = [a[0] + ux * along, a[1] + uy * along];
+    const flat: PlaneFrame = { origin: [middle[0], middle[1], 0], xDir: [-normal[1], normal[0], 0], normal: [normal[0], normal[1], 0] };
+    const frame = plan.place ? placeFrame(plan.place, flat) : flat;
+    const half = (length - GAP - end) / 2;
+    const name = leaves.length > 1 ? `${zone.label} — porte ${k + 1}` : `${zone.label} — porte`;
+    if (PLAN_MODELS[plan.model].round) {
+      const circle = circleDoor(plan, side, GAP);
+      next = sheet(next, `${zone.label} — porte cintrée`, circle ? arcBand({ ...circle, center: onFloor(plan, circle.center), from: circle.from + turned, to: circle.to + turned }) : arcDoor(plan, side, GAP).map((p) => onFloor(plan, p)), { offset: z0 }, z1 - z0, ceiling);
+    } else next = sheet(next, name, rect(-half, z0, half, z1), { offset: 0, frame }, plan.thickness, ceiling);
+    const hinges = hingeCount(z1 - z0);
+    const [hx, hy] = [a[0] + ux * 40 - normal[0] * 20, a[1] + uy * 40 - normal[1] * 20];
+    for (let i = 0; i < hinges; i++) {
+      const z = z0 + 100 + (i * (z1 - z0 - 200)) / Math.max(1, hinges - 1);
+      const [from, to]: [Vec3, Vec3] = [[hx - 10, hy - 10, z - 10], [hx + 10, hy + 10, z + 10]];
+      const box = plan.place ? placeBox(plan.place, from, to) : [from, to];
+      parts.push({ name: `${name} — charnière ${i + 1}`, from: box[0] as Vec3, to: box[1] as Vec3, hardware: true, item: "Charnière à boîtier Ø35" });
+    }
   });
   return { ...next, features: [...next.features, { id: uniqueId(next, "fi"), type: "trim", name: uniqueName(next, `${zone.label} — charnières`), parts }] };
 }

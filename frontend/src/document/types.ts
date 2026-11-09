@@ -55,7 +55,7 @@ export type CornerJoint = "left" | "right" | "far";
 
 /** The plan of a dressing, seen from above: its model, its sizes (mm), and what was made on each zone. */
 export interface DressingPlan {
-  model: "I" | "L-left" | "L-right" | "U" | "L-left-cut" | "L-right-cut" | "U-cut" | "facing" | "U-cut-left" | "U-cut-right" | "G-left" | "G-right" | "T" | "back" | "depths" | "L-left-round" | "L-right-round" | "U-round";
+  model: "I" | "L-left" | "L-right" | "U" | "L-left-cut" | "L-right-cut" | "U-cut" | "facing" | "U-cut-left" | "U-cut-right" | "G-left" | "G-right" | "T" | "back" | "depths" | "L-left-round" | "L-right-round" | "U-round" | "L-left-ell" | "L-right-ell" | "U-ell";
   lengthA: number;
   lengthB: number;
   lengthC: number;

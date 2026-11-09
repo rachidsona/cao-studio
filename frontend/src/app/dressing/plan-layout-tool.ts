@@ -362,7 +362,7 @@ export class PlanLayoutTool {
       ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
       ...this.pullDowns(planId, plan),
       ...this.checks(plan),
-      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : "Porte sur le pan coupé") : null,
+      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : PLAN_MODELS[plan.model].ell ? "Deux portes sur le coin en L" : "Porte sur le pan coupé") : null,
       change,
       finish,
     ];

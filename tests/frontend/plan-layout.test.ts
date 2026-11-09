@@ -391,3 +391,18 @@ describe("porte cintrée", () => {
     expect(made.doc.features.some((f) => f.type === "trim" && f.name.startsWith("Angle droit — charnières"))).toBe(true);
   });
 });
+
+describe("coin en L", () => {
+  it("son meuble se pose dans l'angle, et sa porte a deux battants, un par face, chacun ses charnières", () => {
+    const placed = withPlan(empty(), plan({ model: "L-right-ell", cornerDoor: true }));
+    const zone = planZones(planOf(placed.doc)!.dressingPlan!).find((z) => z.kind === "corner")!;
+    const made = withZonePartition(placed.doc, placed.id, zone);
+    if (typeof made === "string") throw new Error(made);
+    const doors = made.doc.features.filter((f): f is ExtrudeFeature => f.type === "extrude" && /^Angle droit — porte \d$/.test(f.name));
+    expect(doors.map((f) => f.name)).toEqual(["Angle droit — porte 1", "Angle droit — porte 2"]);
+    const hinges = made.doc.features.find((f) => f.type === "trim" && f.name.startsWith("Angle droit — charnières"));
+    const each = hingeCount(PLAN.height - PLAN.plinth - 6);
+    expect(hinges?.type === "trim" && hinges.parts.length).toBe(2 * each);
+    expect(made.doc.features.some((f) => f.type === "extrude" && f.name === "Angle droit — côté")).toBe(true);
+  });
+});

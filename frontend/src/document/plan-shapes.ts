@@ -1,7 +1,7 @@
 /**
  * Les formes d'un plan de dressing, vu de dessus : les modèles, les zones qu'ils font, leurs lignes et ce qui les rend
- * impossibles. Une zone est un linéaire dos à son mur ou à sa cloison, ou un angle : pentagone d'un pan coupé, ou quart
- * d'arrondi là où le modèle est arrondi. Deux réglages s'ajoutent à la plupart des modèles : un îlot, posé à un passage
+ * impossibles. Une zone est un linéaire dos à son mur ou à sa cloison, ou un angle : pentagone d'un pan coupé, quart
+ * d'arrondi là où le modèle est arrondi, ou meuble d'angle en L (deux bras le long des murs, façade en équerre). Deux réglages s'ajoutent à la plupart des modèles : un îlot, posé à un passage
  * devant le mur A, et un rampant, un plafond en pente qui coupe tout ce qui est dessous. Pur.
  *
  * Repère de l'assistant Dressing (document/dressing-plan.ts) : le mur A a sa face en Y = 0 et va vers +X, le dressing est
@@ -24,6 +24,8 @@ interface ModelShape {
   /** The corners cut at an angle or rounded. */
   cut: Corner[];
   round?: boolean;
+  /** The corners are L-shaped units: an arm along each wall, as deep as the runs, their front square. */
+  ell?: boolean;
   /** Runs that stand in the room leave no place for an island. */
   noIsland?: boolean;
   /** Wall A under another name, for a run with no wall behind it. */
@@ -52,6 +54,9 @@ export const PLAN_MODELS: Record<PlanModel, ModelShape> = {
   "L-left-round": { label: "En L à gauche, angle arrondi", fields: WALL_B, cut: ["left"], round: true },
   "L-right-round": { label: "En L à droite, angle arrondi", fields: WALL_C, cut: ["right"], round: true },
   "U-round": { label: "En U, angles arrondis", fields: { ...WALL_B, ...WALL_C }, cut: ["left", "right"], round: true },
+  "L-left-ell": { label: "En L à gauche, coin en L", fields: WALL_B, cut: ["left"], ell: true },
+  "L-right-ell": { label: "En L à droite, coin en L", fields: WALL_C, cut: ["right"], ell: true },
+  "U-ell": { label: "En U, coins en L", fields: { ...WALL_B, ...WALL_C }, cut: ["left", "right"], ell: true },
 };
 
 export const PLAN: DressingPlan = { model: "L-right-cut", lengthA: 3000, lengthB: 2000, lengthC: 2000, lengthD: 3000, lengthE: 1200, aisle: 1000, depth: 600, depthB: 350, cornerA: 1000, cornerB: 1000, islandLength: 1200, islandDepth: 500, roofLow: 1200, thickness: 18, height: 2500, plinth: 80 };
@@ -111,9 +116,24 @@ function frontEnds(p: DressingPlan, inset: number): { a: Point; b: Point } {
 
 /** The outline of a corner, the wall corner first, then along wall A; the one on the right is the mirror of the one on the left. */
 export function cornerOutline(p: DressingPlan, corner: Corner, inset = 0): Point[] {
+  // An L-shaped unit: its arm along wall A, its square inner corner, its arm along the other wall.
+  if (PLAN_MODELS[p.model].ell) return mirrored(p, corner, ellOutline(p, inset));
   const { a, b } = frontEnds(p, inset);
   const curve = PLAN_MODELS[p.model].round ? arc(p).filter(([x, y]) => x < a[0] - 1e-6 && x > b[0] + 1e-6 && y < a[1] - 1e-6 && y > b[1] + 1e-6) : [];
   return mirrored(p, corner, [[0, 0], [a[0], 0], a, ...curve, b, [0, b[1]]]);
+}
+
+/** An L-shaped corner on the left, `inset` inside its two ends: its front is square, at the depth of the runs. */
+function ellOutline(p: DressingPlan, inset: number): Point[] {
+  const { depth: d, cornerA: a, cornerB: b } = p;
+  return [[0, 0], [a - inset, 0], [a - inset, -d], [d, -d], [d, inset - b], [0, inset - b]];
+}
+
+/** The two faces of an L-shaped corner's front, each from its outer end to the inner corner (left corner). */
+export function ellFaces(p: DressingPlan, corner: Corner): [Point, Point][] {
+  const { depth: d, cornerA: a, cornerB: b } = p;
+  const [alongA, alongOther] = [mirrored(p, corner, [[a, -d], [d, -d]]), mirrored(p, corner, [[d, -b], [d, -d]])];
+  return [[alongA[0] as Point, alongA[1] as Point], [alongOther[0] as Point, alongOther[1] as Point]];
 }
 
 /** The band of a rounded door, in front of the arc. */
@@ -133,6 +153,7 @@ export function circleDoor(p: DressingPlan, corner: Corner, gap: number): { cent
 
 /** The panels of a corner stand over its outline, up to its far side (itself a board apart). */
 function cornerClip(p: DressingPlan, corner: Corner): Point[] {
+  if (PLAN_MODELS[p.model].ell) return mirrored(p, corner, ellOutline(p, 0).map(([x, y]): Point => [x, y === -p.cornerB ? p.thickness - p.cornerB : y]));
   const { b } = frontEnds(p, p.thickness);
   const whole = PLAN_MODELS[p.model].round ? arc(p).filter(([, y]) => y > b[1] + 1e-6) : [[p.cornerA, -p.depth] as Point];
   return mirrored(p, corner, [[0, 0], [p.cornerA, 0], ...whole, b, [0, b[1]]]);
@@ -213,7 +234,7 @@ export function planProblem(p: DressingPlan): string | null {
   if (!(p.thickness >= 10 && p.thickness <= 40)) return "L'épaisseur des panneaux va de 10 à 40 mm.";
   if (!(p.plinth >= 0 && p.plinth <= 300)) return "Le socle va de 0 à 30 cm.";
   if (p.model === "facing" && !(p.aisle >= 500)) return "Le passage entre les deux linéaires fait 50 cm au moins.";
-  if (model.cut.length && (p.cornerA < p.depth + 100 || p.cornerB < p.depth + 100)) return `Un angle ${model.round ? "arrondi" : "coupé"} dépasse la profondeur d'au moins 10 cm de chaque côté.`;
+  if (model.cut.length && (p.cornerA < p.depth + 100 || p.cornerB < p.depth + 100)) return `Un angle ${model.ell ? "en L" : model.round ? "arrondi" : "coupé"} dépasse la profondeur d'au moins 10 cm de chaque côté.`;
   if (p.model === "depths" && !(p.depthB >= 150 && p.depthB <= 900)) return "La 2e profondeur va de 15 à 90 cm.";
   if (p.model === "G-left" || p.model === "G-right") {
     if (p.lengthA - 2 * p.depth - p.lengthE < 500) return "L'entrée fait 50 cm au moins : raccourcissez le mur D.";

@@ -56,6 +56,25 @@ test("angle arrondi : la porte cintrée se pose, le plan change avec elle", asyn
   expect(errors).toEqual([]);
 });
 
+test("coin en L : un meuble d'angle en L, ses étagères en L, deux portes sur sa façade en équerre", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Coin en L e2e");
+  const tool = await planOf(page, "En L à droite, coin en L");
+  await tool.getByLabel("Deux portes sur le coin en L").check();
+  await expect(page.getByText("Angle droit — porte 1", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Angle droit — porte 2", { exact: true }).first()).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  if (process.env.SHOTS) {
+    await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
+    await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="fit"]')?.click());
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: `${process.env.SHOTS}/coin-en-l.png` });
+  }
+  expect(errors).toEqual([]);
+});
+
 test("îlot : une zone de plus, refusée quand elle touche un autre linéaire", async ({ page }) => {
   await newProject(page, "Îlot e2e");
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click());

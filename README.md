@@ -1876,7 +1876,10 @@ opération existante.
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les
-  angles arrondis, avec leur porte cintrée. Deux réglages s'ajoutent : un **îlot** à un passage devant le mur A, et un
+  angles arrondis, avec leur porte cintrée, et les **coins en L** (en L à gauche, à droite, ou en U aux deux angles) : le
+  meuble d'angle suit les deux murs, un bras le long de chacun, à la profondeur des linéaires, sa façade en équerre ;
+  ses étagères sont en L, et « Deux portes sur le coin en L » pose un battant sur chaque face, avec ses charnières
+  (`ellFaces`, `document/plan-shapes.ts`). Deux réglages s'ajoutent : un **îlot** à un passage devant le mur A, et un
   **rampant**, plafond en pente qui descend à gauche, à droite ou contre le mur A : panneaux, portes et fonds s'arrêtent
   dessous, et chaque zone reçoit un dessus en pente.
   À chaque angle droit, on choisit le mur qui passe : l'autre s'arrête contre lui, et ce qui est fait dessus suit.

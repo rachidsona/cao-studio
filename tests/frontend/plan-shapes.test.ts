@@ -62,6 +62,21 @@ describe("formes de plan", () => {
     expect(planProblem(plan({ model: "U-round", cornerA: 650 }))).toMatch(/arrondi/);
   });
 
+  it("coin en L : un bras le long de chaque mur, façade en équerre, les linéaires s'arrêtent à ses bras", () => {
+    const ell = zone({ model: "L-right-ell" }, "right");
+    const { lengthA: l, depth: d, cornerA: a, cornerB: b } = PLAN;
+    expect(ell.outline).toEqual([[l, 0], [l - a, 0], [l - a, -d], [l - d, -d], [l - d, -b], [l, -b]]);
+    expect(area(ell.outline)).toBeCloseTo(a * d + (b - d) * d, 3);
+    // Its panels stand up to its far side, a board apart.
+    expect(ell.clip).toEqual([[l, 0], [l - a, 0], [l - a, -d], [l - d, -d], [l - d, PLAN.thickness - b], [l, PLAN.thickness - b]]);
+    expect(zone({ model: "L-right-ell" }, "A").run).toMatchObject({ start: 0, length: l - a });
+    expect(zone({ model: "L-right-ell" }, "C").run).toMatchObject({ start: b, length: PLAN.lengthC - b });
+    expect(ids({ model: "U-ell" })).toEqual(["left", "A", "right", "B", "C"]);
+    expect(zone({ model: "L-left-ell" }, "left").outline).toEqual([[0, 0], [a, 0], [a, -d], [d, -d], [d, -b], [0, -b]]);
+    expect(planProblem(plan({ model: "L-right-ell" }))).toBeNull();
+    expect(planProblem(plan({ model: "U-ell", cornerB: 650 }))).toMatch(/en L/);
+  });
+
   it("une zone a les mêmes cotes dans son contour et dans sa répartition, pour toutes les formes", () => {
     for (const model of Object.keys(PLAN_MODELS) as PlanModel[])
       for (const z of planZones(plan({ model }))) if (z.kind === "run") expect(area(z.outline), `${model} ${z.id}`).toBeCloseTo(z.run.length * z.run.depth, 3);
