@@ -360,3 +360,35 @@ test("Apparence : une vignette glissée sur la sélection va à toute la sélect
   await expect(page.locator("[data-appearance]").filter({ hasText: "9 corps" })).not.toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par l'éditeur, sa fiche client", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Tableau e2e");
+  await page.goto("/projects/");
+  await page.fill("#space-name", "Cuisine Dupont");
+  const saved = page.waitForResponse((r) => r.url().endsWith("/price/") && r.request().method() === "POST", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Créer une cuisine" }).click();
+  await page.waitForURL("**/editor/**");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  // Opened on its tab, its plan at the right; the quote's total goes to the server.
+  await expect(page.getByRole("tablist", { name: "Espaces de travail" }).getByRole("tab", { name: "Cuisine" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("dialog", { name: "Plan de cuisine" })).toBeVisible();
+  expect((await saved).status()).toBe(200);
+  // The dashboard: its stage, its total; the sheet keeps the client.
+  await page.goto("/projects/");
+  const row = page.locator("[data-project-row]", { hasText: "Cuisine Dupont" });
+  await expect(row.locator('[data-status="draft"]')).toHaveText("Esquisse");
+  await expect(row.locator("[data-price]")).toContainText("€");
+  await row.getByRole("link", { name: "Fiche" }).click();
+  await page.fill("#id_client_name", "M. Dupont");
+  await page.selectOption("#id_status", "quoted");
+  await page.getByRole("button", { name: "Enregistrer la fiche" }).click();
+  await expect(page.getByText("Fiche du projet enregistrée.")).toBeVisible();
+  await page.goto("/projects/?statut=quoted");
+  await expect(page.locator("[data-project-row]")).toHaveCount(1);
+  await expect(page.locator("[data-project-row]")).toContainText("M. Dupont");
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/tableau-de-bord.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});

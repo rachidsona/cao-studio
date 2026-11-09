@@ -183,7 +183,7 @@ async function start(): Promise<void> {
   bindPlanLayout(root, viewport, editor);
   bindKitchenPlan(root, viewport, editor);
   bindTabPanels(root);
-  bindLivePrice(root, viewport, editor);
+  bindLivePrice(root, viewport, editor, config.apiUrl);
   bindNicheCopy(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);
   bindModulePalette(root, viewport, editor);

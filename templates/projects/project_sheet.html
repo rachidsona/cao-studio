@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Fiche · {{ project.name }} · CAO Studio{% endblock %}
+{% block content %}
+{# The sheet of a project: who it is for, where the job stands, what its quote is worth, the links sent to the client. #}
+<p><a href="{% url 'projects:list' %}" class="text-sm text-gray-600 hover:underline dark:text-gray-300">← Mes projets</a></p>
+<div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+  <div class="flex min-w-0 items-center gap-3">
+    <h1 class="truncate text-2xl font-semibold tracking-tight">{{ project.name }}</h1>
+    {% include "projects/_status.html" with status=project.status label=project.get_status_display %}
+  </div>
+  <a href="{% url 'projects:editor' project_id=project.id %}" class="inline-flex min-h-10 items-center btn-accent px-4 text-sm font-medium">Ouvrir dans l'éditeur</a>
+</div>
+<div class="mt-5 grid gap-6 lg:grid-cols-[1fr_20rem]">
+  <form method="post" novalidate class="space-y-5 border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900" aria-label="Fiche du projet">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+    <fieldset class="space-y-3">
+      <legend class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Le projet</legend>
+      {% include "projects/_sheet_field.html" with field=form.name %}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% include "projects/_sheet_field.html" with field=form.status %}
+        {% include "projects/_sheet_field.html" with field=form.install_date %}
+      </div>
+    </fieldset>
+    <fieldset class="space-y-3">
+      <legend class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Le client</legend>
+      {% include "projects/_sheet_field.html" with field=form.client_name %}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% include "projects/_sheet_field.html" with field=form.client_phone %}
+        {% include "projects/_sheet_field.html" with field=form.client_email %}
+      </div>
+      {% include "projects/_sheet_field.html" with field=form.client_address %}
+    </fieldset>
+    <fieldset class="space-y-3">
+      <legend class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Notes</legend>
+      {% include "projects/_sheet_field.html" with field=form.notes %}
+    </fieldset>
+    <button type="submit" class="inline-flex min-h-10 items-center btn-accent px-4 text-sm font-medium">Enregistrer la fiche</button>
+  </form>
+  <aside class="space-y-4">
+    <section class="border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-labelledby="quote-title">
+      <h2 id="quote-title" class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Devis</h2>
+      {% if project.price is not None %}
+        <p class="mt-1 font-mono text-2xl font-semibold" data-sheet-price>{{ project.price|floatformat:"2g" }} € TTC</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Calculé par l'éditeur aux tarifs de l'atelier, à la dernière modification.</p>
+      {% else %}
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ouvrez le projet dans l'éditeur : son montant s'affiche ici.</p>
+      {% endif %}
+    </section>
+    <section class="border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-labelledby="links-title">
+      <h2 id="links-title" class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Liens envoyés au client</h2>
+      {% for link in links %}
+        <div class="mt-2 border-t border-gray-200 pt-2 text-sm first:border-t-0 first:pt-0 dark:border-gray-800">
+          <p class="font-medium">{{ link.title }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Envoyé le {{ link.created_at|date:"j F Y" }}{% if link.revoked_at %} · retiré{% endif %}</p>
+          {% if link.accepted_at %}<p class="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Accepté le {{ link.accepted_at|date:"j F Y" }} par {{ link.accepted_by }}{% if link.accepted_variant %} ({{ link.accepted_variant }}){% endif %}</p>{% endif %}
+        </div>
+      {% empty %}
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Aucun lien pour le moment : « Lien client » (groupe Client de l'éditeur) en crée un, et le projet passe à « Devis envoyé ».</p>
+      {% endfor %}
+    </section>
+    <section class="border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+      <p>Créé le {{ project.created_at|date:"j F Y" }}</p>
+      <p>Version {{ project.current_version }}, modifié le {{ project.updated_at|date:"j F Y à H:i" }}</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

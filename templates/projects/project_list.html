@@ -45,8 +45,26 @@
   <section class="order-2 min-w-0 lg:order-3 lg:col-span-2" aria-labelledby="projects-title">
     <div class="flex items-baseline justify-between gap-4">
       <h2 id="projects-title" class="text-lg font-semibold">Mes projets</h2>
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ projects|length }} projet{{ projects|length|pluralize }}</span>
+      <span class="text-sm text-gray-500 dark:text-gray-400">{{ total }} projet{{ total|pluralize }}</span>
     </div>
+    {# Where the jobs stand: a tile per stage (a click shows only those), what the quotes sent and accepted are worth. #}
+    <nav class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" aria-label="Projets par statut" data-dashboard>
+      <a href="{% url 'projects:list' %}{% if query %}?q={{ query|urlencode }}{% endif %}" class="border px-3 py-2 {% if not status %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if not status %}aria-current="true"{% endif %}>
+        <span class="block text-xs text-gray-500 dark:text-gray-400">Tous</span><span class="block text-xl font-semibold">{{ total }}</span>
+      </a>
+      {% for s in statuses %}
+        <a href="?statut={{ s.key }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}" data-status-filter="{{ s.key }}" class="border px-3 py-2 {% if status == s.key %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if status == s.key %}aria-current="true"{% endif %}>
+          <span class="block text-xs text-gray-500 dark:text-gray-400">{{ s.label }}</span><span class="block text-xl font-semibold">{{ s.count }}</span>
+          {% if s.key == "quoted" %}<span class="block font-mono text-xs text-amber-700 dark:text-amber-300" data-amount="quoted">{{ amounts.quoted|floatformat:"0g" }} €</span>{% elif s.key == "accepted" %}<span class="block font-mono text-xs text-emerald-700 dark:text-emerald-300" data-amount="accepted">{{ amounts.accepted|floatformat:"0g" }} €</span>{% elif s.key == "production" %}<span class="block font-mono text-xs text-sky-700 dark:text-sky-300">{{ amounts.production|floatformat:"0g" }} €</span>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+    <form method="get" action="{% url 'projects:list' %}" class="mt-3 flex gap-2" role="search">
+      {% if status %}<input type="hidden" name="statut" value="{{ status }}">{% endif %}
+      <input type="search" name="q" value="{{ query }}" placeholder="Chercher un projet ou un client" aria-label="Chercher un projet ou un client"
+             class="block min-h-10 w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+      <button type="submit" class="border border-gray-300 px-4 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Chercher</button>
+    </form>
     {% if projects %}
       <form id="bulk-projects" method="post" action="{% url 'projects:delete_many' %}" class="mt-2 flex min-h-9 items-center justify-between gap-3" data-one="Ce projet et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés." data-many="Ces {n} projets et toutes leurs versions seront supprimés définitivement, ainsi que leurs liens partagés.">
         {% csrf_token %}
@@ -55,18 +73,19 @@
       </form>
       <ul class="mt-1 divide-y divide-gray-200 overflow-hidden border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
         {% for project in projects %}
-          <li class="flex items-center">
+          <li class="flex items-center" data-project-row="{{ project.id }}">
             <label class="flex cursor-pointer items-center self-stretch pl-4"><input type="checkbox" name="ids" value="{{ project.id }}" form="bulk-projects" data-name="{{ project.name }}" aria-label="Sélectionner {{ project.name }}"></label>
             <a href="{% url 'projects:editor' project_id=project.id %}"
                class="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-4 py-3 pl-3 pr-2 hover:bg-gray-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:hover:bg-gray-800/60">
               <div class="min-w-0">
-                <p class="truncate font-medium">{{ project.name }}</p>
-                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                  Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}
+                <p class="flex min-w-0 items-center gap-2"><span class="truncate font-medium">{{ project.name }}</span>{% include "projects/_status.html" with status=project.status label=project.get_status_display %}</p>
+                <p class="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
+                  {% if project.client_name %}{{ project.client_name }} · {% endif %}Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}
                 </p>
               </div>
-              <span class="shrink-0 border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">Ouvrir</span>
+              {% if project.price is not None %}<span class="shrink-0 font-mono text-sm font-medium" data-price>{{ project.price|floatformat:"2g" }} €</span>{% endif %}
             </a>
+            <a href="{% url 'projects:sheet' project_id=project.id %}" class="mr-2 shrink-0 border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Fiche</a>
             <form method="post" action="{% url 'projects:delete' project_id=project.id %}" class="shrink-0 pr-4" data-delete="« {{ project.name }} » et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés.">
               {% csrf_token %}
               <button type="button" class="border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" aria-label="Supprimer {{ project.name }}">Supprimer</button>
@@ -74,6 +93,11 @@
           </li>
         {% endfor %}
       </ul>
+    {% elif total %}
+      <div class="mt-3 border border-dashed border-gray-300 bg-white px-6 py-8 text-center dark:border-gray-700 dark:bg-gray-900">
+        <p class="font-medium">Aucun projet ici</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400"><a class="underline" href="{% url 'projects:list' %}">Voir tous les projets</a></p>
+      </div>
     {% else %}
       <div class="mt-3 border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-gray-700 dark:bg-gray-900">
         <p class="font-medium">Aucun projet pour le moment</p>
@@ -81,7 +105,6 @@
       </div>
     {% endif %}
   </section>
-
 </div>
 <dialog id="delete-dialog" aria-labelledby="delete-title" class="m-auto w-[min(28rem,calc(100vw-2rem))] border border-gray-200 bg-white p-6 text-gray-900 backdrop:bg-black/50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
   <h2 id="delete-title" class="text-lg font-semibold">Supprimer ce projet ?</h2>

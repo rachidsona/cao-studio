@@ -5,6 +5,18 @@ from django.db import models
 
 
 class Project(models.Model):
+    """A project of the editor, and its business: the client, where the job stands, its quote."""
+
+    # Where the job stands, in order, then the one put aside.
+    STATUS_CHOICES = [
+        ("draft", "Esquisse"),
+        ("quoted", "Devis envoyé"),
+        ("accepted", "Accepté"),
+        ("production", "En fabrication"),
+        ("installed", "Posé"),
+        ("lost", "Sans suite"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -16,6 +28,15 @@ class Project(models.Model):
     created_at = models.DateTimeField("créé le", auto_now_add=True)
     updated_at = models.DateTimeField("modifié le", auto_now=True)
     current_version = models.PositiveIntegerField("version courante", default=0)
+    client_name = models.CharField("client", max_length=120, blank=True)
+    client_phone = models.CharField("téléphone", max_length=40, blank=True)
+    client_email = models.EmailField("e-mail", blank=True)
+    client_address = models.TextField("adresse du chantier", blank=True)
+    status = models.CharField("statut", max_length=20, choices=STATUS_CHOICES, default="draft")
+    # The quote's total, as the editor last computed it (TTC); none before the first.
+    price = models.DecimalField("montant TTC", max_digits=12, decimal_places=2, null=True, blank=True)
+    install_date = models.DateField("pose prévue", null=True, blank=True)
+    notes = models.TextField("notes", blank=True)
 
     class Meta:
         ordering = ["-updated_at"]

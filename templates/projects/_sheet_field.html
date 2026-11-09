@@ -1,0 +1,5 @@
+<div class="space-y-1.5">
+  <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-200">{{ field.label|capfirst }}</label>
+  {{ field }}
+  {% for error in field.errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ error }}</p>{% endfor %}
+</div>

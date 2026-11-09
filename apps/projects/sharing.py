@@ -32,7 +32,7 @@ from django.views.decorators.http import require_http_methods
 
 from .api import _get_owned_project, _iso
 from .http import ApiError, api_view, json_error, read_json_body
-from .models import Comment, ShareLink, ShareVariant
+from .models import Comment, Project, ShareLink, ShareVariant
 
 MAX_MODEL_BYTES = 20 * 1024 * 1024
 MAX_SUMMARY_BYTES = 10_000
@@ -140,6 +140,8 @@ def share_collection(request, project_id):
         ShareVariant(link=link, position=i, name=v["name"], price=v["price"], summary=v["summary"], model=v["model"], model_size=len(v["model"]))
         for i, v in enumerate(variants)
     )
+    # A link sent to the client: a job just drawn is now quoted.
+    Project.objects.filter(pk=project.pk, status="draft").update(status="quoted")
     return JsonResponse(_share_payload(request, link), status=201)
 
 
@@ -356,6 +358,8 @@ def share_accept(request, token):
     link.accepted_variant = variant.name if variant else ""
     link.accepted_price = variant.price if variant else link.summary.get("price")
     link.save(update_fields=["accepted_at", "accepted_by", "accepted_variant", "accepted_price"])
+    # The client said yes: the job is accepted (unless it is already further on).
+    Project.objects.filter(pk=link.project_id, status__in=("draft", "quoted")).update(status="accepted")
     choice = f" : {variant.name}" if variant else ""
     Comment.objects.create(project=link.project, link=link, author=name, body=f"Projet accepté{choice}.")
     return JsonResponse({"accepted": _accepted(link)})

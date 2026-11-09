@@ -1,8 +1,10 @@
-"""HTML pages: the home page (a 3D project, or a kitchen or a dressing opened on its tab), the 3D editor shell."""
+"""HTML pages: the home page (a dashboard of the jobs: a new 3D project, kitchen or dressing; the projects by where they
+stand), the sheet of a project (its client, its status, its quote), the 3D editor shell."""
 import uuid
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -11,7 +13,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from . import services
 from .documents import default_document, example_document
-from .forms import ProjectCreateForm
+from .forms import ProjectCreateForm, ProjectInfoForm
 from .models import Project
 
 
@@ -34,8 +36,40 @@ def project_list(request):
             return redirect(f"{url}?onglet={space}" if space in ("kitchen", "dressing") else url)
     else:
         form = ProjectCreateForm()
-    projects = Project.objects.filter(owner=request.user).order_by("-updated_at")
-    return render(request, "projects/project_list.html", {"projects": projects, "form": form})
+    mine = Project.objects.filter(owner=request.user)
+    # The dashboard: how many jobs at each stage, and what is in the quotes sent and accepted.
+    counts = dict(mine.values_list("status").annotate(n=Count("id")))
+    statuses = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in Project.STATUS_CHOICES]
+    amounts = {key: mine.filter(status=key).aggregate(total=Sum("price"))["total"] or 0 for key in ("quoted", "accepted", "production")}
+    # The list: one stage, a search on the name or the client.
+    status = request.GET.get("statut", "")
+    query = request.GET.get("q", "").strip()
+    projects = mine.order_by("-updated_at")
+    if status in counts or status in dict(Project.STATUS_CHOICES):
+        projects = projects.filter(status=status)
+    else:
+        status = ""
+    if query:
+        projects = projects.filter(Q(name__icontains=query) | Q(client_name__icontains=query))
+    return render(
+        request,
+        "projects/project_list.html",
+        {"projects": projects, "form": form, "statuses": statuses, "amounts": amounts, "status": status, "query": query, "total": mine.count()},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def project_sheet(request, project_id):
+    """The sheet of a project: its client, where the job stands, the date of fitting, notes; its quote and its links."""
+    project = get_object_or_404(Project, pk=project_id, owner=request.user)
+    form = ProjectInfoForm(request.POST or None, instance=project)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Fiche du projet enregistrée.")
+        return redirect("projects:sheet", project_id=project.id)
+    links = project.share_links.order_by("-created_at")
+    return render(request, "projects/project_sheet.html", {"project": project, "form": form, "links": links})
 
 
 @login_required

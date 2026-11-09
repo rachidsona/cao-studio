@@ -32,6 +32,18 @@ chêne, fond HDF) pour découvrir la liste de débit, le calepinage, la mise en 
 l'éditeur, le bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis
 clavier et une fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
 
+**Le suivi des affaires.** Chaque projet a sa **fiche** (bouton « Fiche » de la liste, ou « Fiche du projet » du menu
+du nom dans l'éditeur, `/projects/<id>/fiche/`) : le **client** (nom, téléphone, e-mail, adresse du chantier), le
+**statut** — Esquisse, Devis envoyé, Accepté, En fabrication, Posé, Sans suite —, la **date de pose prévue**, des
+**notes**, le **montant du devis** et les liens envoyés au client (avec son accord). Le montant est celui que l'éditeur
+calcule aux tarifs de l'atelier : il l'envoie au serveur quand il change (`POST /api/projects/<id>/price/`, sans
+changer la date de modification). Le statut avance aussi tout seul : un **lien client** créé fait passer une esquisse
+à « Devis envoyé », l'**accord du client** sur son lien la fait passer à « Accepté ». Sur l'accueil, la liste « Mes
+projets » est un **tableau de bord** : une case par statut avec son nombre (et la somme des devis envoyés, acceptés et
+en fabrication) ; un clic n'y montre que ces projets ; une recherche sur le nom du projet ou du client ; chaque ligne
+montre son statut, son client, sa date de pose et son montant (`apps/projects/views.py`,
+`templates/projects/project_sheet.html`).
+
 Chaque projet a un bouton **Supprimer** ; on peut aussi en cocher plusieurs (ou « Tout sélectionner ») et les
 supprimer ensemble avec **« Supprimer la sélection »**. La page demande confirmation : un projet part avec ses
 versions et ses liens partagés (seul son propriétaire peut le supprimer ; `static/home/home-delete.js`).

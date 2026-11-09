@@ -335,9 +335,9 @@ export const SCREEN: HelpFamily[] = [
     tools: [
       {
         keys: [], selector: "[data-project-menu] summary", name: "Menu du projet",
-        what: "Revient à vos projets, ouvre la mise en plan d'un caisson ou le catalogue de l'atelier.",
+        what: "Revient à vos projets, ouvre la fiche du projet, la mise en plan d'un caisson ou le catalogue de l'atelier.",
         steps: [
-          "Cliquez le nom du projet, en haut à gauche. « ← Mes projets » ramène à la liste des projets.",
+          "Cliquez le nom du projet, en haut à gauche. « ← Mes projets » ramène à la liste des projets ; « Fiche du projet » ouvre sa fiche : le client, le statut (esquisse, devis envoyé, accepté, en fabrication, posé), la date de pose, les notes et le montant du devis.",
           "Rubrique « Mise en plan » : « Mise en plan du caisson sélectionné » (cliquez d'abord une de ses pièces dans la vue) ou « Mise en plan du projet ».",
           "Rubrique « Atelier » : « Catalogue de l'atelier » ouvre les matières, la quincaillerie et le profil de l'atelier, qui font les prix et l'en-tête du devis.",
         ],

@@ -15,6 +15,7 @@ urlpatterns = [
     path("batch/", production.batch_collection, name="api-batch"),
     path("batch/<int:item_id>/", production.batch_detail, name="api-batch-item"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
+    path("projects/<uuid:project_id>/price/", api.project_price, name="api-project-price"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),
     path(
         "projects/<uuid:project_id>/versions/<int:number>/",

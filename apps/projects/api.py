@@ -7,9 +7,11 @@ Contract (all errors are ``{"error": str, "details"?: list[str], ...}``):
 - PUT  /api/projects/<uuid>/             → same as GET (new version), 409 on stale base_version
 - GET  /api/projects/<uuid>/versions/    → {"versions": [{number, checksum, size_bytes, message, created_at}]}
 - GET  /api/projects/<uuid>/versions/<n>/ → {number, document, checksum}
+- POST /api/projects/<uuid>/price/       {price: number | null} → {price}: the quote's total, as the editor computes it
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from django.http import JsonResponse
@@ -153,6 +155,24 @@ def version_detail(request, project_id, number):
     return JsonResponse(
         {"number": version.number, "document": version.document, "checksum": version.checksum}
     )
+
+
+# A quote's total beyond this is a mistake (euros).
+PRICE_MAX = 100_000_000
+
+
+@api_view(("POST",))
+def project_price(request, project_id):
+    """The quote's total of a project, sent by the editor when it changes: the dashboard and the sheet show it."""
+    project = _get_owned_project(request, project_id)
+    data = read_json_body(request)
+    price = data.get("price") if isinstance(data, dict) else None
+    if price is not None and (type(price) not in (int, float) or not 0 <= price <= PRICE_MAX):
+        raise ApiError(400, "Montant invalide.", ["« price » doit être un nombre positif, ou null."])
+    value = None if price is None else Decimal(str(round(price, 2)))
+    # Not a change of the design: « modifié le » stays.
+    Project.objects.filter(pk=project.pk).update(price=value)
+    return JsonResponse({"price": None if value is None else float(value)})
 
 
 def not_found(request, *args, **kwargs):
