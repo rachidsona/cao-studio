@@ -213,7 +213,7 @@ test("Onglets : plusieurs projets ouverts, chacun garde son travail, et ils revi
   expect(errors).toEqual([]);
 });
 
-test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, le plan changé", async ({ page }) => {
+test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, le plan changé", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Plan e2e");

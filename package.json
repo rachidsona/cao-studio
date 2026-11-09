@@ -11,7 +11,11 @@
     "build": "npm run typecheck && npm run build:css && npm run build:js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:py": ".venv/bin/pytest -q",
+    "test:e2e": "playwright test",
+    "test:e2e:rapide": "playwright test --grep @rapide",
+    "test:rapide": "npm run build && vitest run && npm run test:py && playwright test --grep @rapide",
+    "test:tout": "npm run build && vitest run && npm run test:py && playwright test"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.3.0",

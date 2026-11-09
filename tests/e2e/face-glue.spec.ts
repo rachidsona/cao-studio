@@ -181,7 +181,7 @@ test("clic droit sur une porte : son sens d'ouverture, son nom, la supprimer", a
   expect(errors).toEqual([]);
 });
 
-test("électroménager : un four choisi dans la bibliothèque se pose dans le caisson cliqué, une hotte au-dessus", async ({ page }) => {
+test("électroménager : un four choisi dans la bibliothèque se pose dans le caisson cliqué, une hotte au-dessus", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });

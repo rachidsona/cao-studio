@@ -488,7 +488,7 @@ test("linéaire : des fileurs posés à la main, en bas et en haut, au début, a
   expect(errors).toEqual([]);
 });
 
-test("linéaire : chaque changement se voit aussitôt dans la 3D, OK le garde, Annuler revient", async ({ page }) => {
+test("linéaire : chaque changement se voit aussitôt dans la 3D, OK le garde, Annuler revient", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-plan-cuisine-apercu");

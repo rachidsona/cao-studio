@@ -12,7 +12,7 @@ async function sketchCurves(page: Page, api: string, sketchId: string): Promise<
   return sketch?.curves?.length ?? 0;
 }
 
-test("un projet s'ouvre : noyau prêt, corps listé, aucune erreur", async ({ page }) => {
+test("un projet s'ouvre : noyau prêt, corps listé, aucune erreur", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Plaque e2e");
@@ -22,7 +22,7 @@ test("un projet s'ouvre : noyau prêt, corps listé, aucune erreur", async ({ pa
   expect(errors).toEqual([]);
 });
 
-test("une ligne tracée dans l'esquisse est enregistrée et retrouvée après rechargement", async ({ page }) => {
+test("une ligne tracée dans l'esquisse est enregistrée et retrouvée après rechargement", { tag: "@rapide" }, async ({ page }) => {
   const api = await newProject(page, "Esquisse e2e");
   const before = await sketchCurves(page, api, "sk1");
   // The sketch's row in the "Esquisses" section (it is also in the history of the body).
@@ -44,7 +44,7 @@ test("une ligne tracée dans l'esquisse est enregistrée et retrouvée après re
   expect(await sketchCurves(page, api, "sk1")).toBe(before + 1);
 });
 
-test("le projet exemple s'ouvre : six panneaux, devis et aide", async ({ page }) => {
+test("le projet exemple s'ouvre : six panneaux, devis et aide", { tag: "@rapide" }, async ({ page }) => {
   await newProject(page, "Compte e2e");
   await page.goto("/projects/");
   await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
@@ -368,7 +368,7 @@ test("Apparence : une vignette glissée sur la sélection va à toute la sélect
   expect(errors).toEqual([]);
 });
 
-test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par l'éditeur, sa fiche client", async ({ page }) => {
+test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par l'éditeur, sa fiche client", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -400,7 +400,7 @@ test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par
   expect(errors).toEqual([]);
 });
 
-test("paramètres de l'atelier : la marge changée dans le devis de l'éditeur est celle de l'atelier, sur tous les ordinateurs", async ({ page }) => {
+test("paramètres de l'atelier : la marge changée dans le devis de l'éditeur est celle de l'atelier, sur tous les ordinateurs", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });

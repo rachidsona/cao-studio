@@ -93,7 +93,7 @@ test("Dressing et Cuisine : chacun sa barre de favoris, ses outils de départ, e
   expect(errors).toEqual([]);
 });
 
-test("Cuisine et Dressing : une barre d'étapes, les outils de l'étape à la place du ruban, la coche d'une étape faite", async ({ page }) => {
+test("Cuisine et Dressing : une barre d'étapes, les outils de l'étape à la place du ruban, la coche d'une étape faite", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
