@@ -18,9 +18,13 @@ export interface CalculatorOptions {
   unit: ExpressionUnit;
   title?: string;
   locked: boolean;
+  /** No lock: a value that drives nothing (a dimension of the view) — a « C » that clears in its place. */
+  noLock?: boolean;
+  /** On its field, besides its name (`data-dim-editor`…). */
+  inputAttrs?: Record<string, string>;
   allowNegative?: boolean;
-  /** Receives the value (mm or degrees); returns false when it was refused (popup stays open). */
-  onSubmit(value: number, locked: boolean): boolean;
+  /** Receives the value (mm or degrees); returns false (or why) when it was refused (popup stays open). */
+  onSubmit(value: number, locked: boolean): boolean | string;
   /**
    * Validates and goes to the next value (the other side of a rectangle…), from the → key, Tab or the
    * up/down arrows; returns false when the value was refused (popup stays open).
@@ -55,6 +59,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     autocomplete: "off",
     // A calculation: « ( » stays what it is (digit-keys.ts).
     "data-expression": "",
+    ...o.inputAttrs,
   });
   const error = el("p", { class: "hidden px-1 text-xs text-red-300", role: "alert" });
   const insert = (text: string) => {
@@ -88,8 +93,11 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
       if (next && o.onNext) {
         if (!o.onNext(value, locked)) showError("Valeur refusée : l'esquisse ne peut pas la respecter.");
         else if (current === handle) handle.close();
-      } else if (o.onSubmit(value, locked)) handle.close();
-      else showError("Valeur refusée : l'esquisse ne peut pas la respecter.");
+      } else {
+        const done = o.onSubmit(value, locked);
+        if (done === true) handle.close();
+        else showError(typeof done === "string" ? done : "Valeur refusée : l'esquisse ne peut pas la respecter.");
+      }
     } catch (e) {
       showError(e instanceof Error ? e.message : String(e));
     }
@@ -145,7 +153,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
       key("5", () => insert("5")),
       key("6", () => insert("6")),
       key("×", () => insert("×"), "", "Multiplier"),
-      lockButton,
+      o.noLock ? key("C", () => ((input.value = ""), input.focus()), "", "Tout effacer") : lockButton,
       key("1", () => insert("1")),
       key("2", () => insert("2")),
       key("3", () => insert("3")),

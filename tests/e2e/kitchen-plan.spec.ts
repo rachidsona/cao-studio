@@ -402,9 +402,15 @@ test("plan de cuisine : « Voir » isole un linéaire, de face, avec ses cotes ;
   const width = page.locator('[data-run-dim="u"][data-editable]').filter({ hasText: /^60$/ }).first();
   await width.click();
   const field = page.locator("[data-dim-editor]");
-  // 60 cm (or 600 mm) becomes 50 cm, in the display unit.
-  await field.fill((await field.inputValue()).replace(/6/, "5"));
-  await field.press("Enter");
+  // The calculator, its keypad: 60 cm (or 600 mm) less a sixth becomes 50 cm, in the display unit.
+  const calculator = page.getByRole("dialog", { name: "Nouvelle cote" });
+  await expect(calculator.getByRole("button", { name: "Diviser" })).toBeVisible();
+  const was = await field.inputValue();
+  await field.fill(`${was} - ${was}`);
+  await calculator.getByRole("button", { name: "Diviser" }).click();
+  await calculator.getByRole("button", { name: "6", exact: true }).click();
+  await shot(page, "16b-calculatrice-cote");
+  await calculator.getByRole("button", { name: "Valider" }).click();
   await expect.poll(async () => /500 \(A\d+\)/.test(await tree(page)), { timeout: 60_000 }).toBe(true);
   await expect(bar).toContainText("Mur A isolé");
   // A size the plan takes from the room or that does not fit is refused with why.

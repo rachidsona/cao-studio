@@ -1661,7 +1661,9 @@ opération existante.
     isolé » dans l'éditeur) ne garde dans la vue que ce que le plan a fait pour lui, vu de face, avec **ses cotes**
     (`document/kitchen-run-dims.ts`, `app/kitchen/kitchen-run-dims-view.ts`) : en bas la chaîne des largeurs — meubles,
     colonnes, fileurs, places libres, angles — et la longueur du mur ; en haut celle des meubles hauts ; à gauche la
-    hauteur du plan de travail, la rangée haute et le plafond. **Un clic sur une cote la change** sur place
+    hauteur du plan de travail, la rangée haute et le plafond. **Un clic sur une cote la change** dans la
+    **calculatrice** qui s'ouvre à côté d'elle (pavé, + − × ÷, parenthèses, unités : « 360 − 2 × 60 », « 1,2 m + 15 cm » ;
+    une valeur refusée y dit pourquoi, `app/dim-editor.ts`, `ui/calculator.ts`)
     (`document/kitchen-dim-edit.ts`) : la largeur d'un meuble (refusée s'il ne tient plus, avec le plus large possible ;
     un appareil garde ses largeurs), la porte ou le côté d'un meuble d'angle, bas ou haut, la longueur du mur, la
     hauteur du plan de travail ou sous plafond (pas celles qui viennent de la Pièce) ; un fileur ou une place libre se
@@ -1863,7 +1865,8 @@ opération existante.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
-- **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition la change sur place.
+- **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition ouvre la
+  calculatrice à côté d'elle : une valeur ou un calcul, au clavier ou sur son pavé.
 - **Plan de dressing** (groupe « Dressing ») : un dressing commence par son **schéma vu de dessus**. On choisit un
   modèle — droit, en L à gauche ou à droite, en U, avec des angles droits ou à **pan coupé**, ou deux linéaires **face à
   face** —, ses cotes, et « Créer le plan » pose une esquisse au sol, zones séparées par leurs côtés. Chaque zone se clique
