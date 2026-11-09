@@ -50,10 +50,12 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
     // No storage (private window): the view shows the materials.
   }
 
+  /** The document shown: a preview's (a run being changed), whose bodies are not the project's, else the project. */
+  const shown = () => editor.previewDoc ?? editor.doc;
   /** The look of a body: its appearance (library) or its material's, the grain along the board's length or width. */
-  const appearance = (id: string): BodyAppearance | null => bodyAppearance(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  const appearance = (id: string): BodyAppearance | null => bodyAppearance(shown(), id, viewport.bodyMesh(id)?.metrics.bbox);
   /** The faces of a body with a motif of their own. */
-  const faces = (id: string): FaceAppearance[] => faceAppearances(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  const faces = (id: string): FaceAppearance[] => faceAppearances(shown(), id, viewport.bodyMesh(id)?.metrics.bbox);
   const showMaterials = () => {
     viewport.setAppearance(rendering ? appearance : null, faces);
     root.querySelector('[data-workshop="render"]')?.setAttribute("aria-pressed", String(rendering));

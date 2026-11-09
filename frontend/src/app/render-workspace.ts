@@ -17,8 +17,8 @@ import type { Editor } from "./editor";
 
 export function bindRenderWorkspace(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
-  const look = (id: string): BodyLook => bodyAppearance(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
-  const faces = (id: string) => faceAppearances(editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  const look = (id: string): BodyLook => bodyAppearance(editor.previewDoc ?? editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
+  const faces = (id: string) => faceAppearances(editor.previewDoc ?? editor.doc, id, viewport.bodyMesh(id)?.metrics.bbox);
   const status = root.querySelector<HTMLElement>("[data-render-status]");
   const pause = root.querySelector<HTMLButtonElement>('[data-render="pause"]');
   let mode: RenderMode | null = null;
