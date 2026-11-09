@@ -62,7 +62,11 @@ export interface StripHost {
   corner?(): void;
   /** The appliances put by hand in front of the run (Électroménager). */
   appliances?: readonly HandAppliance[];
+  /** A width clicked: a unit's, or a corner door's (low or up); its label, for the calculator to open beside it. */
+  edit?(what: StripEdit, label: Element): void;
 }
+
+export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
 /** The strip, in an SVG scaled to its width. */
 export function runStrip(host: StripHost): SVGSVGElement {
@@ -89,11 +93,14 @@ export function runStrip(host: StripHost): SVGSVGElement {
   if (g.base[0] > 1 && run.left !== "free") parts.push(rect(0, y(s.base), g.base[0], s.base, DEAD, 'data-corner="left"'));
   if (L - g.base[1] > 1 && run.right !== "free") parts.push(rect(g.base[1], y(s.base), L - g.base[1], s.base, DEAD, 'data-corner="right"'));
   /** A corner front's width (cm), and what it is: the door, the fixed panel, the filler. */
-  const frontSize = (f: { from: number; to: number; kind: string }, z0: number, z1: number) => {
+  const frontSize = (f: { from: number; to: number; kind: string }, z0: number, z1: number, side: "left" | "right", row: "base" | "wall") => {
     const w = f.to - f.from;
     const what = f.kind === "door" ? "porte" : f.kind === "blind" ? "fixe" : "fileur";
     const mid = y((z0 + z1) / 2);
-    return w < 40 ? "" : `<text x="${(f.from + f.to) / 2}" y="${mid}" text-anchor="middle" font-size="${w < 250 ? 60 : 90}" class="fill-gray-700 dark:fill-gray-200" pointer-events="none" data-corner-width="${f.kind}">${Number((w / 10).toFixed(1)).toLocaleString("fr-FR")}</text><text x="${(f.from + f.to) / 2}" y="${mid + 80}" text-anchor="middle" font-size="55" class="fill-gray-500 dark:fill-gray-400" pointer-events="none">${what}</text>`;
+    // A door's width is clicked to change it; the fixed part is the other wall's depth.
+    const how = f.kind === "door" && host.edit ? ` class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-side="${side}" data-edit-row="${row}" data-edit-width="${w}"` : ' class="fill-gray-700 dark:fill-gray-200"';
+    const hint = f.kind === "door" ? "Cliquer pour changer la largeur de la porte" : f.kind === "blind" ? "La partie fixe vient de la profondeur de l'autre mur : changez la porte" : "Le fileur ferme l'angle";
+    return w < 40 ? "" : `<text x="${(f.from + f.to) / 2}" y="${mid}" text-anchor="middle" font-size="${w < 250 ? 60 : 90}"${how} data-corner-width="${f.kind}"><title>${hint}</title>${Number((w / 10).toFixed(1)).toLocaleString("fr-FR")}</text><text x="${(f.from + f.to) / 2}" y="${mid + 80}" text-anchor="middle" font-size="55" class="fill-gray-500 dark:fill-gray-400" pointer-events="none">${what}</text>`;
   };
   // What each corner has: its filler, or its unit's panel and door, each with its width.
   for (const side of ["left", "right"] as const) {
@@ -101,7 +108,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const high = g.wall ? wallCornerSide(p, run, side) : null;
     for (const f of high?.fronts ?? []) {
       parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : PANEL, `data-wall-corner-front="${f.kind}"`));
-      parts.push(frontSize(f, s.wallBottom, s.wallTop));
+      parts.push(frontSize(f, s.wallBottom, s.wallTop, side, "wall"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
         parts.push(`<line x1="${hx}" y1="${y(s.wallBottom + 60)}" x2="${hx}" y2="${y(s.wallBottom + 260)}" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke"/>`);
@@ -112,7 +119,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     for (const f of corner.fronts) {
       const tone = f.kind === "blind" ? `${PANEL} opacity-70` : PANEL;
       parts.push(rect(f.from, y(s.base), f.to - f.from, s.base - s.plinth, tone, `data-corner-front="${f.kind}"`));
-      parts.push(frontSize(f, s.plinth, s.base));
+      parts.push(frontSize(f, s.plinth, s.base, side, "base"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
         parts.push(`<line x1="${hx}" y1="${y(s.base - 60)}" x2="${hx}" y2="${y(s.base - 260)}" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke"/>`);
@@ -138,6 +145,10 @@ export function runStrip(host: StripHost): SVGSVGElement {
       piece.addEventListener("click", () => host.corner?.());
     }
   }
+  // A unit's width under it (over a wall unit): clicked, the calculator; an appliance keeps its widths.
+  const editable = (pl: Placed) => !!host.edit && !applianceOf(pl.item);
+  const widthText = (pl: Placed, height: number) =>
+    `<text x="${pl.item.width / 2}" y="${pl.row === "wall" ? -30 : height + 120}" text-anchor="middle" font-size="90" ${editable(pl) ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${pl.item.id}"` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none"'}>${editable(pl) ? "<title>Cliquer pour changer la largeur</title>" : ""}${Math.round(pl.item.width / 10)}</text>`;
   // The chosen unit's edge, drawn last: over the unit next to it.
   let handle = () => {};
   for (const pl of fill.placed) {
@@ -150,12 +161,25 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const chosen = pl.item.id === host.chosen;
     const picked = host.picked?.includes(pl.item.id) ?? false;
     if (picked) group.setAttribute("data-picked", "");
-    group.innerHTML = `<title>${label}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}<text x="${pl.item.width / 2}" y="${pl.row === "wall" ? -30 : height + 120}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Math.round(pl.item.width / 10)}</text>`;
+    group.innerHTML = `<title>${label}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
     drag(node, group, pl, fill, host);
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
   }
   handle();
+  // A width clicked: not a drag of its unit, the calculator.
+  if (host.edit) {
+    for (const t of node.querySelectorAll<SVGElement>("[data-edit-item], [data-edit-side]")) {
+      t.addEventListener("pointerdown", (event) => event.stopPropagation());
+      t.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const item = t.dataset.editItem;
+        const placed = item ? fill.placed.find((pl) => pl.item.id === item) : undefined;
+        if (placed) host.edit!({ kind: "item", id: placed.item.id, width: placed.item.width }, t);
+        else if (t.dataset.editSide) host.edit!({ kind: "corner", side: t.dataset.editSide as "left" | "right", row: t.dataset.editRow as "base" | "wall", width: Number(t.dataset.editWidth) }, t);
+      });
+    }
+  }
   // The appliances put by hand, over the units: as the 3D has them.
   for (const a of host.appliances ?? []) {
     const shape = document.createElementNS(SVG, "g");

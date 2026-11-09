@@ -367,8 +367,9 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   const strip = tool.locator('[data-run-strip="A"]');
   await expect(strip.locator('[data-corner-width="door"]')).toHaveCount(2);
   // Up 40 cm, low 60 cm, less their gaps.
-  expect((await strip.locator('[data-corner-width="door"]').allTextContents()).sort()).toEqual(["39,7", "59,7"]);
-  await expect(strip.locator('[data-corner-width="blind"]').first()).toHaveText(/^\d+(,\d)?$/);
+  // (the number, its tip aside)
+  expect((await strip.locator('[data-corner-width="door"]').allTextContents()).map((t) => t.replace(/^\D+/, "")).sort()).toEqual(["39,7", "59,7"]);
+  await expect(strip.locator('[data-corner-width="blind"]').first()).toHaveText(/\d+(,\d)?$/);
   await shot(page, "14-hauts-angle");
   await tool.locator("[data-run-ok]").click();
   await expect(page.getByText("Haut d'angle A").first()).toBeVisible({ timeout: 60_000 });
@@ -678,5 +679,46 @@ test("linéaire : un clic droit sur l'aperçu propose de le garder ; gardé, le 
   // Kept: the same click opens the door's menu.
   await page.mouse.click(500, 610, { button: "right" });
   await expect(page.locator("[data-tree-menu]")).toContainText("Ouvrir de l'autre côté");
+  expect(errors).toEqual([]);
+});
+
+test("linéaire : une largeur cliquée sur la bande s'ouvre dans la calculatrice, d'un meuble ou d'une porte d'angle", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-plan-cuisine-calculatrice");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await unfold(tool, "corners");
+  await tool.locator('[data-corner-choice="left"] [data-corner-kind="unit"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  const field = page.locator("[data-strip-width]");
+  const unit = async () => ((await field.getAttribute("aria-label"))?.match(/\((\w+)\)/)?.[1] ?? "cm");
+  const typed = (cm: string, u: string) => (u === "mm" ? `${cm} × 10` : u === "m" ? `${cm} ÷ 100` : cm);
+  // A unit's width: 60 → 50 by a calculation.
+  await strip.locator("[data-edit-item]").first().click();
+  await expect(page.getByRole("dialog", { name: "Largeur du meuble" })).toBeVisible();
+  await field.fill(typed("60 - 10", await unit()));
+  await field.press("Enter");
+  await expect(strip.locator("[data-edit-item]").first()).toHaveText(/50$/);
+  // Too narrow: refused, with why, the calculator still open.
+  await strip.locator("[data-edit-item]").first().click();
+  await field.fill(typed("5", await unit()));
+  await field.press("Enter");
+  await expect(page.getByText(/La largeur va de/).first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  // The corner's door: 44,7 → 49,7 on the strip.
+  await strip.locator('[data-edit-side="left"][data-edit-row="base"]').click();
+  await expect(page.getByRole("dialog", { name: "Largeur de la porte d'angle" })).toBeVisible();
+  await field.fill(typed("49,7", await unit()));
+  await field.press("Enter");
+  await expect(strip.locator('[data-edit-side="left"][data-edit-row="base"]')).toHaveText(/49,7$/);
+  await expect(tool.locator("[data-run-preview]")).toBeVisible();
   expect(errors).toEqual([]);
 });

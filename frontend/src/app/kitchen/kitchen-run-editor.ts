@@ -23,6 +23,7 @@ import { quoteButton } from "../workshop/live-price";
 import { BRASS } from "./unit-elevation";
 import { showAll } from "../zone-view";
 import { runStrip } from "./kitchen-run-strip";
+import { editStripWidth } from "./kitchen-strip-edit";
 import { handAppliances } from "../../document/kitchen-hand-appliances";
 import { myUnits } from "./my-units";
 import { multiRows, pickAllRow } from "./kitchen-run-multi-view";
@@ -159,7 +160,7 @@ export class RunEditor {
         }
         this.folds.open = "chosen";
         this.host.redraw();
-      }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances: handAppliances(editor.doc, this.host.plan, run) });
+      }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances: handAppliances(editor.doc, this.host.plan, run), edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label) });
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-run-cancel": "" }, "Annuler");
     cancel.addEventListener("click", () => this.host.back());
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium", "data-run-ok": "" }, "OK");

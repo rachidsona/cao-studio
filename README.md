@@ -1675,7 +1675,11 @@ opération existante.
     de « Mes meubles » ou un **appareil** — évier, plaque de cuisson, plaque et four, four sous plan, lave-vaisselle,
     colonne réfrigérateur, colonne four, hotte, micro-ondes —, après celui qui est choisi ; on le glisse pour changer
     sa place, on l'échange contre un autre modèle. Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
-    prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; la hauteur d'un
+    prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; un **clic sur
+    une largeur écrite sur la bande** — sous un meuble, ou celle d'une porte d'angle, en bas comme en haut, la porte
+    pliante d'un L comprise (son bras suit) — ouvre la **calculatrice** à côté d'elle : une valeur ou un calcul, refusé
+    hors limites avec ses bornes (`app/kitchen/kitchen-strip-edit.ts` ; la partie fixe d'un angle vient de la
+    profondeur de l'autre mur et ne se change pas) ; la hauteur d'un
     haut ou d'une colonne et la profondeur de tout meuble se tapent aussi, dans leurs limites (un bas garde la hauteur
     du plan de travail), et « Cotes du modèle » les rend ; la cuisine 3D est bâtie à ces cotes (`itemSize`). Un appareil
     garde ses largeurs. **Plusieurs meubles** se choisissent ensemble : **Maj (ou Ctrl, ⌘) + clic** sur la bande en
