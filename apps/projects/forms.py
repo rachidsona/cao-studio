@@ -24,7 +24,7 @@ class ProjectInfoForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ("name", "client_name", "client_phone", "client_email", "client_address", "status", "install_date", "notes")
+        fields = ("name", "space", "client_name", "client_phone", "client_email", "client_address", "status", "install_date", "notes")
         widgets = {
             "client_address": forms.Textarea(attrs={"rows": 2}),
             "notes": forms.Textarea(attrs={"rows": 4, "placeholder": "Ce qu'il faut retenir : mesures prises, choix du client, rendez-vous…"}),

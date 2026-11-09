@@ -17,6 +17,9 @@ class Project(models.Model):
         ("lost", "Sans suite"),
     ]
 
+    # The editor's space a project belongs to: it opens there; the other spaces open their own projects.
+    SPACE_CHOICES = [("design", "Conception 3D"), ("kitchen", "Cuisine"), ("dressing", "Dressing")]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -28,6 +31,7 @@ class Project(models.Model):
     created_at = models.DateTimeField("créé le", auto_now_add=True)
     updated_at = models.DateTimeField("modifié le", auto_now=True)
     current_version = models.PositiveIntegerField("version courante", default=0)
+    space = models.CharField("espace", max_length=20, choices=SPACE_CHOICES, default="design")
     client_name = models.CharField("client", max_length=120, blank=True)
     client_phone = models.CharField("téléphone", max_length=40, blank=True)
     client_email = models.EmailField("e-mail", blank=True)

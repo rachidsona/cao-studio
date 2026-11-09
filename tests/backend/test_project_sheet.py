@@ -22,14 +22,14 @@ def test_the_sheet_keeps_the_client_the_status_and_the_notes(client_logged, proj
     assert page.status_code == 200 and "Fiche du projet" in page.content.decode()
     response = client_logged.post(
         f"/projects/{project.id}/fiche/",
-        {"name": "Cuisine Dupont", "client_name": "M. Dupont", "client_phone": "06 12 34 56 78", "client_email": "dupont@example.com",
+        {"name": "Cuisine Dupont", "space": "kitchen", "client_name": "M. Dupont", "client_phone": "06 12 34 56 78", "client_email": "dupont@example.com",
          "client_address": "3 rue des Lilas", "status": "accepted", "install_date": "2026-12-15", "notes": "Plinthe inox."},
     )
     assert response.status_code == 302 and response["Location"] == f"/projects/{project.id}/fiche/"
     project.refresh_from_db()
     assert (project.name, project.client_name, project.status, str(project.install_date), project.notes) == ("Cuisine Dupont", "M. Dupont", "accepted", "2026-12-15", "Plinthe inox.")
     # A bad e-mail or no name: the errors, nothing kept.
-    bad = client_logged.post(f"/projects/{project.id}/fiche/", {"name": "", "client_email": "pas-un-mail", "status": "draft"})
+    bad = client_logged.post(f"/projects/{project.id}/fiche/", {"name": "", "space": "design", "client_email": "pas-un-mail", "status": "draft"})
     assert bad.status_code == 200 and bad.content.decode().count("field-error") >= 2
 
 
@@ -97,3 +97,45 @@ def test_the_dashboard_counts_filters_and_searches(client_logged, user, other_us
     assert [p.name for p in client_logged.get("/projects/?q=dupont").context["projects"]] == ["Cuisine Dupont"]
     # An unknown stage: all of them.
     assert len(client_logged.get("/projects/?statut=nimporte").context["projects"]) == 3
+
+
+@pytest.mark.django_db
+def test_each_project_has_its_space(client_logged, user):
+    from importlib import import_module
+
+    client_logged.post("/projects/", {"name": "Cuisine A", "space": "kitchen"})
+    client_logged.post("/projects/", {"name": "Placard", "space": "dressing"})
+    client_logged.post("/projects/", {"name": "Meuble"})
+    assert {p.name: p.space for p in Project.objects.filter(owner=user)} == {"Cuisine A": "kitchen", "Placard": "dressing", "Meuble": "design"}
+    # The editor knows it; the home page shows it.
+    kitchen = Project.objects.get(name="Cuisine A")
+    assert 'data-space="kitchen"' in client_logged.get(f"/projects/{kitchen.id}/editor/").content.decode()
+    assert '<span data-space="dressing">Dressing</span>' in client_logged.get("/projects/").content.decode()
+    # The API lists it and makes a project of a space.
+    listed = {p["name"]: p["space"] for p in client_logged.get("/api/projects/").json()["projects"]}
+    assert listed["Placard"] == "dressing"
+    made = client_logged.post("/api/projects/", json.dumps({"name": "Entrée", "space": "dressing"}), content_type="application/json")
+    assert made.status_code == 201 and made.json()["space"] == "dressing"
+    assert client_logged.post("/api/projects/", json.dumps({"name": "X", "space": "garage"}), content_type="application/json").status_code == 400
+    # The sheet changes it.
+    client_logged.post(f"/projects/{kitchen.id}/fiche/", {"name": "Cuisine A", "space": "design", "status": "draft"})
+    kitchen.refresh_from_db()
+    assert kitchen.space == "design"
+    # Projects made before the spaces: a kitchen, a dressing or a placard, else a 3D design.
+    space_of = import_module("apps.projects.migrations.0008_project_space").space_of
+    assert space_of("Plan", {"features": [{"type": "sketch", "kitchenPlan": {}}]}) == "kitchen"
+    assert space_of("Four", {"features": [{"type": "appliance"}]}) == "kitchen"
+    assert space_of("placard nada sous sol", {"features": [{"type": "extrude"}]}) == "dressing"
+    assert space_of("Bibliothèque", {"features": [{"type": "niche"}]}) == "dressing"
+    assert space_of("Caisson exemple", {"features": [{"type": "cabinet"}]}) == "design"
+
+
+@pytest.mark.django_db
+def test_a_kitchen_or_a_dressing_starts_empty(client_logged, user):
+    client_logged.post("/projects/", {"name": "Cuisine vide", "space": "kitchen"})
+    client_logged.post("/projects/", {"name": "Meuble"})
+    made = client_logged.post("/api/projects/", json.dumps({"name": "Placard", "space": "dressing"}), content_type="application/json").json()
+    assert Project.objects.get(name="Cuisine vide").versions.get().document["features"] == []
+    assert made["document"]["features"] == []
+    # A 3D design: the reference plate, as always.
+    assert Project.objects.get(name="Meuble").versions.get().document == default_document()

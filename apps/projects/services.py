@@ -34,8 +34,8 @@ def _build_version(project, number, document, user, message) -> ProjectVersion:
 
 
 @transaction.atomic
-def create_project(owner, name: str, document: dict[str, Any], message: str = "") -> tuple[Project, ProjectVersion]:
-    project = Project.objects.create(owner=owner, name=name, current_version=1)
+def create_project(owner, name: str, document: dict[str, Any], message: str = "", space: str = "design") -> tuple[Project, ProjectVersion]:
+    project = Project.objects.create(owner=owner, name=name, current_version=1, space=space)
     version = _build_version(project, 1, document, owner, message or "Création")
     version.save()
     return project, version

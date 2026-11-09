@@ -12,7 +12,7 @@
 {% block header %}{% endblock %}
 
 {% block main %}
-<div id="editor" data-mode="model" class="group/editor flex h-dvh flex-col">
+<div id="editor" data-mode="model" data-space="{{ project.space }}" class="group/editor flex h-dvh flex-col">
   {# ---- Top bar: project, file and history commands ---- #}
   <header class="flex items-center gap-1 border-b border-gray-200 bg-white px-2 pt-[env(safe-area-inset-top)] dark:border-gray-800 dark:bg-gray-900">
     <a href="{% url 'projects:list' %}" class="tool-btn" title="Mes projets" aria-label="Retour à mes projets">

@@ -1,8 +1,8 @@
 /**
  * Chaque onglet du ruban montre, à droite, le panneau de son travail : Dressing → le Plan de dressing, Cuisine → le
  * Plan de cuisine (ouverts s'ils ne le sont pas, pour poser un plan s'il n'y en a pas encore), Conception 3D → la
- * Sélection. Un plan déjà ouvert garde son état (un linéaire en cours de changement reste où il en est). Un projet
- * créé depuis l'accueil comme cuisine ou dressing (?onglet=kitchen) s'ouvre ainsi, son plan à droite.
+ * Sélection. Un plan déjà ouvert garde son état (un linéaire en cours de changement reste où il en est). Un projet de
+ * cuisine ou de dressing s'ouvre ainsi, son plan à droite.
  */
 import { showPanel } from "../ui/dock";
 
@@ -20,9 +20,9 @@ export function bindTabPanels(root: HTMLElement): void {
     if (open) showPanel(open);
     else root.querySelector<HTMLElement>(plan.button)?.click();
   });
+  // A kitchen or a dressing opens with its plan at the right (?onglet=kitchen: just made from the home page).
   const asked = new URLSearchParams(location.search).get("onglet");
-  if (asked && PLANS[asked]) {
-    history.replaceState(null, "", location.pathname);
-    document.dispatchEvent(new CustomEvent("cad:ribbon-tab", { detail: asked }));
-  }
+  if (asked) history.replaceState(null, "", location.pathname);
+  const space = asked ?? root.dataset.space ?? document.getElementById("editor")?.dataset.space;
+  if (space && PLANS[space]) document.dispatchEvent(new CustomEvent("cad:ribbon-tab", { detail: space }));
 }

@@ -1,8 +1,8 @@
 """JSON API for projects (session auth + CSRF; owner-only access).
 
 Contract (all errors are ``{"error": str, "details"?: list[str], ...}``):
-- GET  /api/projects/                    → {"projects": [{id, name, current_version, updated_at}]}
-- POST /api/projects/                    → 201 {id, name, version, document, checksum, updated_at}
+- GET  /api/projects/                    → {"projects": [{id, name, space, current_version, updated_at}]}
+- POST /api/projects/  {name, space?, …}  → 201 {id, name, space, version, document, checksum, updated_at}
 - GET  /api/projects/<uuid>/             → {id, name, version, document, checksum, updated_at}
 - PUT  /api/projects/<uuid>/             → same as GET (new version), 409 on stale base_version
 - GET  /api/projects/<uuid>/versions/    → {"versions": [{number, checksum, size_bytes, message, created_at}]}
@@ -17,7 +17,7 @@ from typing import Any
 from django.http import JsonResponse
 
 from . import services
-from .documents import default_document
+from .documents import project_document
 from .http import ApiError, api_view, json_error, read_json_body
 from .models import Project, ProjectVersion
 from .validation import validate_document
@@ -34,6 +34,7 @@ def _project_payload(project: Project, version: ProjectVersion) -> dict[str, Any
     return {
         "id": str(project.id),
         "name": project.name,
+        "space": project.space,
         "version": version.number,
         "document": version.document,
         "checksum": version.checksum,
@@ -84,19 +85,23 @@ def project_collection(request):
             {
                 "id": str(p.id),
                 "name": p.name,
+                "space": p.space,
                 "current_version": p.current_version,
                 "updated_at": _iso(p.updated_at),
             }
-            for p in rows.only("id", "name", "current_version", "updated_at")
+            for p in rows.only("id", "name", "space", "current_version", "updated_at")
         ]
         return JsonResponse({"projects": projects})
 
     data = read_json_body(request)
     name = _clean_name(data.get("name"))
+    space = data.get("space", "design")
+    if space not in dict(Project.SPACE_CHOICES):
+        raise ApiError(400, "Espace invalide.", ["« space » : design, kitchen ou dressing."])
     document = data.get("document")
-    document = default_document() if document is None else _clean_document(document)
+    document = project_document(space) if document is None else _clean_document(document)
     message = _clean_message(data.get("message"))
-    project, version = services.create_project(request.user, name, document, message)
+    project, version = services.create_project(request.user, name, document, message, space)
     return JsonResponse(_project_payload(project, version), status=201)
 
 

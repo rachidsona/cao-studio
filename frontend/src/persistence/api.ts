@@ -98,12 +98,12 @@ export function saveOnExit(apiUrl: string, doc: CadDocument, baseVersion: number
 }
 
 /** The projects of the user, the last changed first. */
-export async function listProjects(url: string): Promise<{ id: string; name: string }[]> {
-  return (await request(url)).projects as { id: string; name: string }[];
+export async function listProjects(url: string): Promise<{ id: string; name: string; space?: string }[]> {
+  return (await request(url)).projects as { id: string; name: string; space?: string }[];
 }
 
-/** A new empty project. */
-export async function createProject(url: string, name: string): Promise<{ id: string; name: string }> {
-  const { id, name: kept } = await request(url, { method: "POST", body: JSON.stringify({ name }) });
+/** A new empty project, of a space (a 3D design by default, a kitchen, a dressing). */
+export async function createProject(url: string, name: string, space = "design"): Promise<{ id: string; name: string }> {
+  const { id, name: kept } = await request(url, { method: "POST", body: JSON.stringify({ name, space }) });
   return { id: id as string, name: kept as string };
 }

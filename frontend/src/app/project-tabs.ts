@@ -146,6 +146,11 @@ export class ProjectTabs {
 
 type TabsWindow = Window & { cadTabs?: ProjectTabs };
 
+/** The open projects of the page (this editor's, or the one of the page around this frame). */
+export function pageTabs(): ProjectTabs | undefined {
+  return window.parent === window ? (window as TabsWindow).cadTabs : (window.parent as TabsWindow).cadTabs;
+}
+
 const TAB = "flex h-8 max-w-48 shrink-0 items-center border-r border-white/10 text-xs";
 
 function tabRow(tabs: ProjectTabs, tab: OpenProject, close: (tab: OpenProject) => void): HTMLElement {

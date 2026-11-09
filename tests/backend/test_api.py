@@ -166,13 +166,13 @@ def test_list_projects(client_logged, project, other_user):
     data = client_logged.get(LIST_URL).json()
     assert [p["name"] for p in data["projects"]] == ["Plaque"]
     item = data["projects"][0]
-    assert set(item) == {"id", "name", "current_version", "updated_at"}
+    assert set(item) == {"id", "name", "space", "current_version", "updated_at"}
     assert item["id"] == str(project.id) and item["current_version"] == 1
 
 
 def test_get_project(client_logged, project):
     data = client_logged.get(detail_url(project.id)).json()
-    assert set(data) == {"id", "name", "version", "document", "checksum", "updated_at"}
+    assert set(data) == {"id", "name", "space", "version", "document", "checksum", "updated_at"}
     assert data["version"] == 1
     assert data["document"] == default_document()
 

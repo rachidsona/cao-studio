@@ -107,6 +107,7 @@ def test_editor_renders_config(client_logged, project):
     assert json.loads(match.group(1)) == {
         "projectId": str(project.id),
         "projectName": "Plaque",
+        "space": "design",
         "apiUrl": f"/api/projects/{project.id}/",
         "projectsUrl": "/projects/",
         "catalogUrl": "/api/catalog/",

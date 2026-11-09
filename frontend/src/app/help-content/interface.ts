@@ -220,7 +220,7 @@ export const SCREEN: HelpFamily[] = [
           "« Dressing » : plan, Répartition, Étagères, Cloisons, modules, avec la pièce ; le Plan de dressing s'ouvre à droite.",
           "« Cuisine » : implantation, meubles de cuisine, découpes du plan de travail, avec les meubles et la pièce ; le Plan de cuisine s'ouvre à droite.",
         ],
-        tip: "Modifier, Fabrication et Client sont dans les trois. Chaque onglet a sa barre « Mes outils » ; Conception 3D remet la Sélection à droite. Le dernier onglet choisi est retenu dans ce navigateur.",
+        tip: "Chaque projet est un projet 3D, une cuisine ou un dressing, et s'ouvre sur son onglet. L'onglet d'un autre espace propose d'ouvrir ou de créer un projet de cet espace dans un autre onglet de projet (ou d'utiliser ses outils ici). Modifier, Fabrication et Client sont dans les trois ; chaque onglet a sa barre « Mes outils ».",
       },
       {
         keys: [], selector: "[data-steps]", name: "Étapes de la cuisine et du dressing",

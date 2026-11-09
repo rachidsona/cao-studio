@@ -71,6 +71,16 @@ def default_document() -> dict[str, Any]:
     }
 
 
+def empty_document() -> dict[str, Any]:
+    """A project with nothing in it yet: a kitchen or a dressing starts from its plan, not from the reference plate."""
+    return {**default_document(), "features": []}
+
+
+def project_document(space: str) -> dict[str, Any]:
+    """What a new project of this space starts with."""
+    return default_document() if space == "design" else empty_document()
+
+
 def example_document() -> dict[str, Any]:
     """Return the example project offered to new users: a base cabinet (caisson de cuisine).
 

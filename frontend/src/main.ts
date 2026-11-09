@@ -49,6 +49,7 @@ import { bindWeight } from "./app/workshop/weight-panel";
 import { bindMotion } from "./app/motion";
 import { bindDrawers } from "./app/drawer-toggle";
 import { bindTabPanels } from "./app/tab-panels";
+import { bindSpaceSwitch } from "./app/space-switch";
 import { bindWorkflowSteps } from "./app/workflow-steps";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/workshop/scenes";
@@ -185,6 +186,7 @@ async function start(): Promise<void> {
   bindPlanLayout(root, viewport, editor);
   bindKitchenPlan(root, viewport, editor);
   bindTabPanels(root);
+  bindSpaceSwitch(config, root.dataset.space, (m, k) => editor.notify(m, k));
   bindWorkflowSteps(root, editor);
   bindLivePrice(root, viewport, editor, config.apiUrl);
   bindNicheCopy(root, viewport, editor);

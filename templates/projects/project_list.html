@@ -80,7 +80,7 @@
               <div class="min-w-0">
                 <p class="flex min-w-0 items-center gap-2"><span class="truncate font-medium">{{ project.name }}</span>{% include "projects/_status.html" with status=project.status label=project.get_status_display %}</p>
                 <p class="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
-                  {% if project.client_name %}{{ project.client_name }} · {% endif %}Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}
+                  <span data-space="{{ project.space }}">{{ project.get_space_display }}</span> · {% if project.client_name %}{{ project.client_name }} · {% endif %}Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}
                 </p>
               </div>
               {% if project.price is not None %}<span class="shrink-0 font-mono text-sm font-medium" data-price>{{ project.price|floatformat:"2g" }} €</span>{% endif %}

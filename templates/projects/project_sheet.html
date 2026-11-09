@@ -16,7 +16,10 @@
     {% if form.non_field_errors %}<p class="field-error text-sm text-red-700 dark:text-red-400">{{ form.non_field_errors|join:" " }}</p>{% endif %}
     <fieldset class="space-y-3">
       <legend class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Le projet</legend>
-      {% include "projects/_sheet_field.html" with field=form.name %}
+      <div class="grid gap-3 sm:grid-cols-[1fr_12rem]">
+        {% include "projects/_sheet_field.html" with field=form.name %}
+        {% include "projects/_sheet_field.html" with field=form.space %}
+      </div>
       <div class="grid gap-3 sm:grid-cols-2">
         {% include "projects/_sheet_field.html" with field=form.status %}
         {% include "projects/_sheet_field.html" with field=form.install_date %}

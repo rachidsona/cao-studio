@@ -32,6 +32,16 @@ chêne, fond HDF) pour découvrir la liste de débit, le calepinage, la mise en 
 l'éditeur, le bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis
 clavier et une fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
 
+**Un projet par espace.** Chaque projet est un **projet 3D**, une **cuisine** ou un **dressing** (un placard compris) :
+il s'ouvre sur son onglet (Conception 3D, Cuisine, Dressing), et une cuisine ou un dressing neuf démarre vide, son
+plan à droite. L'onglet d'un autre espace n'affiche pas le projet ouvert : depuis un placard, « Cuisine » propose
+d'**ouvrir une cuisine** existante ou d'en **créer une nouvelle**, dans un autre onglet de projet ; le placard reste
+dans son projet (`app/space-switch.ts`). Ses outils peuvent tout de même servir dans ce projet-ci, sur demande
+(« Utiliser les outils Cuisine dans ce projet-ci »). L'espace se voit dans la liste « Mes projets » et se change sur la
+fiche du projet ; les projets d'avant les espaces ont été classés d'après leur contenu et leur nom (un plan de cuisine,
+de l'électroménager ou « cuisine » : une cuisine ; un plan de dressing, des Répartitions, « dressing » ou « placard » :
+un dressing ; sinon un projet 3D).
+
 **Le suivi des affaires.** Chaque projet a sa **fiche** (bouton « Fiche » de la liste, ou « Fiche du projet » du menu
 du nom dans l'éditeur, `/projects/<id>/fiche/`) : le **client** (nom, téléphone, e-mail, adresse du chantier), le
 **statut** — Esquisse, Devis envoyé, Accepté, En fabrication, Posé, Sans suite —, la **date de pose prévue**, des

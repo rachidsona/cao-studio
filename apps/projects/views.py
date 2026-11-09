@@ -12,7 +12,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
 from . import services
-from .documents import default_document, example_document
+from .documents import example_document, project_document
 from .forms import ProjectCreateForm, ProjectInfoForm
 from .models import Project
 
@@ -27,13 +27,12 @@ def project_list(request):
     if request.method == "POST":
         form = ProjectCreateForm(request.POST)
         if form.is_valid():
-            project, _ = services.create_project(
-                request.user, form.cleaned_data["name"], default_document()
-            )
-            url = reverse("projects:editor", kwargs={"project_id": project.id})
-            # A kitchen or a dressing: the editor opens on its tab, its plan at the right.
+            # A kitchen or a dressing: a project of its space, opened there, its plan at the right.
             space = request.POST.get("space")
-            return redirect(f"{url}?onglet={space}" if space in ("kitchen", "dressing") else url)
+            space = space if space in ("kitchen", "dressing") else "design"
+            project, _ = services.create_project(request.user, form.cleaned_data["name"], project_document(space), space=space)
+            url = reverse("projects:editor", kwargs={"project_id": project.id})
+            return redirect(f"{url}?onglet={space}" if space != "design" else url)
     else:
         form = ProjectCreateForm()
     mine = Project.objects.filter(owner=request.user)
@@ -113,6 +112,7 @@ def editor(request, project_id):
     editor_config = {
         "projectId": str(project.id),
         "projectName": project.name,
+        "space": project.space,
         "apiUrl": reverse("api-project", kwargs={"project_id": project.id}),
         "projectsUrl": reverse("projects:list"),
         "catalogUrl": reverse("api-catalog"),

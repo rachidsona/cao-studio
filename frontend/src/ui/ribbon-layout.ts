@@ -365,9 +365,32 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     separate();
     fit();
   };
+  // The project's space (a kitchen, a dressing, a 3D design): its tab; another tab opens a project of its own
+  // (app/space-switch.ts), unless its tools were borrowed for this project.
+  // « cao.free-spaces »: every tab in every project, as before the spaces (the older browser tests).
+  let free = false;
+  try {
+    free = localStorage.getItem("cao.free-spaces") === "1";
+  } catch {
+    // Spaces kept apart.
+  }
+  const space = free ? undefined : document.getElementById("editor")?.dataset.space;
+  const borrowed = new Set<string>(space ? [space] : []);
+  document.addEventListener("cad:use-space", (event) => {
+    const wanted = (event as CustomEvent<string>).detail;
+    const tab = tabs.find((t) => t.dataset.ribbonTab === wanted);
+    if (!tab) return;
+    borrowed.add(wanted);
+    tab.click();
+  });
   for (const tab of tabs) {
     tab.addEventListener("click", () => {
       open?.close();
+      const wanted = tab.dataset.ribbonTab as string;
+      if (space && !borrowed.has(wanted)) {
+        document.dispatchEvent(new CustomEvent("cad:other-space", { detail: wanted }));
+        return;
+      }
       choose(tab);
       // Its work's panel, at the right (app/tab-panels.ts).
       document.dispatchEvent(new CustomEvent("cad:ribbon-tab", { detail: tab.dataset.ribbonTab }));
@@ -394,6 +417,8 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
       // Only this visit.
     }
   }
+  // A project of a space opens on its tab.
+  if (space && tabs.some((t) => t.dataset.ribbonTab === space)) first = space;
   const opening = tabs.find((t) => t.dataset.ribbonTab === first) ?? tabs[0];
   if (opening) choose(opening);
 
