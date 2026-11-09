@@ -187,6 +187,13 @@ test("le menu du nom du projet : projets, paramètres de l'atelier, mise en plan
   const menu = page.locator('[data-project-menu] [role="menu"]');
   await expect(menu.getByRole("menuitem", { name: "← Mes projets" })).toHaveAttribute("href", "/projects/");
   await expect(menu.getByRole("menuitem", { name: "Paramètres de l'atelier" })).toHaveAttribute("href", "/catalogue/");
+  await expect(menu.getByRole("menuitem", { name: "Fiche du projet" })).toHaveAttribute("href", /\/fiche\/$/);
+  for (const name of ["Dossier de production", "Liste de débit", "Devis", "Lien client"]) await expect(menu.getByRole("menuitem", { name, exact: true })).toBeVisible();
+  // « Pour l'atelier » runs the ribbon's tool: the cut list of the plate.
+  await menu.getByRole("menuitem", { name: "Liste de débit", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Liste de débit" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Liste de débit" }).getByRole("button", { name: "Fermer" }).first().click();
+  await page.locator("[data-project-menu] summary").click();
   await menu.getByRole("menuitem", { name: "Mise en plan du caisson sélectionné" }).click();
   await expect(page.getByText("Cliquez d'abord une pièce du caisson")).toBeVisible();
   await expect(menu).toBeHidden();

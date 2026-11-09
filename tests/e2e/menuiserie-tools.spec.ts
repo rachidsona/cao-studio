@@ -112,7 +112,7 @@ test("Cuisine et Dressing : une barre d'étapes, les outils de l'étape à la pl
   await tabs.nth(2).click();
   await expect(steps).toBeVisible();
   await expect(ribbon).toBeHidden();
-  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Meubles", "4Électroménager", "5Finitions", "6Contrôle", "7Devis"]);
+  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Meubles", "4Électroménager", "5Finitions", "6Fabrication", "7Client"]);
   // A step: its tools, with their names; « Électroménager › » goes on.
   await steps.locator('[data-step="units"]').click();
   await expect(steps.locator('[data-step="units"]')).toHaveAttribute("aria-pressed", "true");
@@ -133,7 +133,7 @@ test("Cuisine et Dressing : une barre d'étapes, les outils de l'étape à la pl
   await expect(ribbon).toBeVisible();
   await tabs.nth(1).click();
   // The kitchen unit has its fronts: « Façades » is done there too.
-  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Aménagement", "✓Façades", "5Finitions", "6Contrôle", "7Devis"]);
+  await expect(steps.locator("[data-step]")).toHaveText(["1Pièce", "2Plan", "3Aménagement", "✓Façades", "5Finitions", "6Fabrication", "7Client"]);
   await expect(ribbon).toBeVisible();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/etapes.png` });
   expect(errors).toEqual([]);

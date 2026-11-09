@@ -1046,8 +1046,11 @@ opération existante.
   inversement ; quand l'outil se ferme, son onglet disparaît. La vue 3D reste dégagée. Sur un écran étroit (moins de
   1024 px), où ce panneau est replié, elles restent posées sur la vue.
 - **Les étapes** (onglets Cuisine et Dressing, `app/workflow-steps.ts`) : sous les onglets, une barre d'étapes comme
-  dans un logiciel de cuisiniste — cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Contrôle, Devis ;
-  dressing : Pièce, Plan, Aménagement, Façades, Finitions, Contrôle, Devis. L'étape choisie montre ses outils, avec
+  dans un logiciel de cuisiniste — cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Fabrication, Client ;
+  dressing : Pièce, Plan, Aménagement, Façades, Finitions, Fabrication, Client. Les deux dernières **séparent ce qui
+  va à l'atelier** (contrôle avant fabrication, liste de débit, calepinage, dossier de production, mise en plan, DXF,
+  étiquettes, notice) **de ce qui va au client** (devis, variantes, rendus, scènes, lien client, commentaires) ; le
+  menu du nom du projet a de même ses rubriques « Pour l'atelier » et « Pour le client ». L'étape choisie montre ses outils, avec
   leur nom, à la place du ruban entier (sept à neuf à la fois) ; « Étape › » passe à la suivante ; une étape faite (une
   pièce, un plan, des meubles, de l'électroménager, des façades, des finitions) prend une coche verte ; l'étape Plan
   ouvre le plan à droite. **« Tous les outils »** remet le ruban. L'étape de chaque onglet et ce choix sont retenus par
@@ -2105,7 +2108,8 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   confirmation (« Supprimer les 40 corps ? »). Chacun ne fait qu'une modification : un seul Ctrl+Z la défait
   (`setHidden` dans `document/operations.ts`).
 - **Menu du nom du projet** (en haut à gauche, ▾) : retour à Mes projets, Mise en plan du caisson sélectionné, Mise en
-  plan du projet, et le catalogue de l'atelier (`/catalogue/`).
+  plan du projet (rubrique « Pour l'atelier », avec le dossier de production et la liste de débit), le devis et le
+  lien client (« Pour le client »), la fiche du projet et les paramètres de l'atelier (`/catalogue/`).
 - **Navigateur** (à gauche) : les **corps** et les **esquisses** du document. Chaque ligne a un œil pour
   l'afficher ou la masquer (un corps masqué reste dans le document, il n'est pas dessiné ; le choix est
   enregistré et s'annule). Un clic sélectionne ; le bouton « ⋯ » ouvre la fenêtre de l'élément.

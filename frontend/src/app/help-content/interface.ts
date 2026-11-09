@@ -226,7 +226,7 @@ export const SCREEN: HelpFamily[] = [
         keys: [], selector: "[data-steps]", name: "Étapes de la cuisine et du dressing",
         what: "Sous les onglets Cuisine et Dressing : le travail en étapes, chacune avec ses outils, à la place du ruban entier.",
         steps: [
-          "Cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Contrôle, Devis. Dressing : Pièce, Plan, Aménagement, Façades, Finitions, Contrôle, Devis.",
+          "Cuisine : Pièce, Plan, Meubles, Électroménager, Finitions, Fabrication, Client. Dressing : Pièce, Plan, Aménagement, Façades, Finitions, Fabrication, Client. Fabrication réunit ce qui va à l'atelier (contrôle, débit, calepinage, dossier de production, mise en plan, CNC, étiquettes, notice) ; Client, ce qui va au client (devis, variantes, rendus, lien client, commentaires).",
           "Cliquez une étape : ses outils s'affichent avec leur nom. Le bouton à droite (« Électroménager › ») passe à l'étape suivante.",
           "Une étape faite (une pièce posée, un plan, des meubles, de l'électroménager…) prend une coche verte.",
           "« Tous les outils » remet le ruban entier ; recliquez pour revenir aux outils de l'étape.",
@@ -346,10 +346,10 @@ export const SCREEN: HelpFamily[] = [
     tools: [
       {
         keys: [], selector: "[data-project-menu] summary", name: "Menu du projet",
-        what: "Revient à vos projets, ouvre la fiche du projet, la mise en plan d'un caisson ou les paramètres de l'atelier.",
+        what: "Revient à vos projets, ouvre la fiche du projet, ce qui va à l'atelier ou au client, et les paramètres de l'atelier.",
         steps: [
           "Cliquez le nom du projet, en haut à gauche. « ← Mes projets » ramène à la liste des projets ; « Fiche du projet » ouvre sa fiche : le client, le statut (esquisse, devis envoyé, accepté, en fabrication, posé), la date de pose, les notes et le montant du devis.",
-          "Rubrique « Mise en plan » : « Mise en plan du caisson sélectionné » (cliquez d'abord une de ses pièces dans la vue) ou « Mise en plan du projet ».",
+          "Rubrique « Pour l'atelier » : le dossier de production, la liste de débit, la mise en plan du caisson sélectionné (cliquez d'abord une de ses pièces dans la vue) ou du projet. Rubrique « Pour le client » : le devis et le lien client.",
           "Rubrique « Atelier » : « Paramètres de l'atelier » ouvre les matières, la quincaillerie, les tarifs du devis et le profil de l'atelier, qui font les prix et l'en-tête du devis, les mêmes sur tous les ordinateurs.",
         ],
         tip: "Sans pièce cliquée, la mise en plan du caisson prend le caisson du modèle s'il n'y en a qu'un ; sinon un message vous demande d'en cliquer une.",

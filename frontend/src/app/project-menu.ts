@@ -1,9 +1,11 @@
 /**
- * The menu of the project's name (top bar): back to the projects, the workshop's catalogue, the drawing of the whole
+ * The menu of the project's name (top bar): back to the projects, the project's sheet, what goes to the workshop (the
+ * production folder, the cut list, the drawings) and to the client (the quote, the link), the workshop's settings; the drawing of the whole
  * project, and « Mise en plan du caisson sélectionné » — a sheet of the cabinet one of whose pieces is picked in the
  * view (or of the only cabinet of the model), the other bodies left out (app/drawing/standard-views.ts).
  */
 import { furnitureBodies, furnitureOf } from "../document/cabinet-of";
+import { keyOf } from "../ui/ribbon-layout";
 import type { Viewport } from "../viewport/viewport";
 import { cabinetSheetName, type CabinetFocus } from "./drawing/standard-views";
 import type { Editor } from "./editor";
@@ -24,6 +26,14 @@ export function bindProjectMenu(root: HTMLElement, viewport: Viewport, editor: E
   document.addEventListener("pointerdown", (event) => {
     if (menu.open && !menu.contains(event.target as Node)) menu.removeAttribute("open");
   });
+  // « Pour l'atelier », « Pour le client »: the ribbon's tools, as if clicked there (folded or hidden too).
+  for (const item of menu.querySelectorAll<HTMLElement>("[data-menu-run]")) {
+    item.addEventListener("click", () => {
+      const key = item.dataset.menuRun!;
+      const tool = [...root.querySelectorAll<HTMLElement>('[data-ribbon="model"] button')].find((b) => keyOf(b) === key);
+      tool?.click();
+    });
+  }
   menu.querySelector("[data-project-menu-cabinet]")?.addEventListener("click", () => {
     const doc = editor.doc;
     const displayed = viewport.displayedBodies;

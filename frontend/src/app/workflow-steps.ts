@@ -1,7 +1,7 @@
 /**
  * La barre d'étapes des onglets Cuisine et Dressing, comme dans un logiciel de cuisiniste : Pièce → Plan → Meubles →
- * Électroménager → Finitions → Contrôle → Devis (pour un dressing : Pièce → Plan → Aménagement → Façades → Finitions →
- * Contrôle → Devis). Chaque étape montre ses outils, avec leur nom, à la place du ruban entier ; « Tous les outils » le
+ * Électroménager → Finitions → Fabrication → Client (pour un dressing : Pièce → Plan → Aménagement → Façades →
+ * Finitions → Fabrication → Client) ; les deux dernières séparent ce qui va à l'atelier de ce qui va au client. Chaque étape montre ses outils, avec leur nom, à la place du ruban entier ; « Tous les outils » le
  * remet (retenu par le navigateur). Une étape faite (une pièce posée, un plan, des meubles…) prend sa coche ; l'étape
  * choisie est retenue pour chaque onglet. Les boutons lancent les outils du ruban, même repliés, et en reprennent l'état.
  */
@@ -23,8 +23,10 @@ interface Step {
 
 const has = (doc: CadDocument, ...types: string[]) => doc.features.some((f) => types.includes(f.type));
 const room: Step = { id: "room", label: "Pièce", tools: ["data-action:room", "data-workshop:layers"], done: (d) => has(d, "room") };
-const check: Step = { id: "check", label: "Contrôle", tools: ["data-workshop:check", "data-workshop:live-check", "data-workshop:cutlist", "data-workshop:nesting", "data-workshop:weight", "data-workshop:sag"] };
-const quote: Step = { id: "quote", label: "Devis", tools: ["data-workshop:quote", "data-workshop:variants", "data-workshop:render", "data-workshop:share", "data-workshop:comments", "data-workshop:drawing"] };
+/** What goes to the workshop: checked, then cut, machined, labelled, assembled. */
+const check: Step = { id: "check", label: "Fabrication", tools: ["data-workshop:check", "data-workshop:cutlist", "data-workshop:nesting", "data-workshop:production-folder", "data-workshop:drawing", "data-workshop:dxf", "data-workshop:labels", "data-workshop:assembly"] };
+/** What goes to the client: the quote, its variants, the pictures, the link to say yes. */
+const quote: Step = { id: "quote", label: "Client", tools: ["data-workshop:quote", "data-workshop:variants", "data-workshop:render", "data-workshop:scenes", "data-workshop:share", "data-workshop:comments"] };
 
 export const STEPS: Record<string, Step[]> = {
   kitchen: [

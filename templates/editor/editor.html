@@ -20,15 +20,20 @@
     </a>
     {# The project's name opens a menu: the projects, the workshop's catalogue, the drawing of the cabinet selected. #}
     <details class="relative min-w-0 flex-1" data-project-menu>
-      <summary class="tool-btn max-w-full cursor-pointer list-none justify-start px-1" title="{{ project.name }} — menu : projets, fiche du projet, paramètres de l&#x27;atelier, mise en plan d&#x27;un caisson" aria-label="Menu du projet {{ project.name }}">
+      <summary class="tool-btn max-w-full cursor-pointer list-none justify-start px-1" title="{{ project.name }} — menu : projets, fiche du projet, pour l&#x27;atelier, pour le client, paramètres de l&#x27;atelier" aria-label="Menu du projet {{ project.name }}">
         <h1 class="min-w-0 truncate text-sm font-semibold">{{ project.name }}</h1><span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" aria-hidden="true">▾</span>
       </summary>
       <div class="absolute left-0 z-40 mt-1 w-80 space-y-1 border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900" role="menu">
         <a href="{% url 'projects:list' %}" class="tool-btn w-full justify-start" role="menuitem">← Mes projets</a>
         <a href="{% url 'projects:sheet' project_id=project.id %}" class="tool-btn w-full justify-start text-left" role="menuitem" title="Le client, le statut (esquisse, devis envoyé, accepté…), la date de pose, les notes et le montant du devis">Fiche du projet</a>
-        <p class="panel-title px-2 pt-2">Mise en plan</p>
+        <p class="panel-title px-2 pt-2">Pour l'atelier</p>
+        <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-menu-run="data-workshop:production-folder">Dossier de production</button>
+        <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-menu-run="data-workshop:cutlist">Liste de débit</button>
         <button type="button" class="tool-btn w-full justify-start text-left" role="menuitem" data-project-menu-cabinet title="Une feuille pour le caisson sélectionné seul (une de ses pièces cliquée dans la vue) : vues de face, de dessus, de côté et isométrique ; les autres corps n'y sont pas">Mise en plan du caisson sélectionné</button>
         <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-workshop="drawing">Mise en plan du projet</button>
+        <p class="panel-title px-2 pt-2">Pour le client</p>
+        <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-menu-run="data-workshop:quote">Devis</button>
+        <button type="button" class="tool-btn w-full justify-start" role="menuitem" data-menu-run="data-workshop:share">Lien client</button>
         <p class="panel-title px-2 pt-2">Atelier</p>
         <a href="{% url 'catalog:index' %}" class="tool-btn w-full justify-start text-left" role="menuitem" title="Les matières, la quincaillerie, les tarifs du devis et le profil de l'atelier, les mêmes sur tous les ordinateurs">Paramètres de l'atelier</a>
       </div>
