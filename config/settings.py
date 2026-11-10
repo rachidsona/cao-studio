@@ -1,7 +1,8 @@
 """Django settings for CAO Studio.
 
 Configuration is read from environment variables:
-- DJANGO_DEBUG ("1"/"true"/"yes" → debug; default true for local dev)
+- DJANGO_DEBUG ("1"/"true"/"yes" → debug; default FALSE: a deployment that forgets it is safe. manage.py — the
+  development commands — sets it to true unless it is set: wsgi.py and asgi.py, which serve production, do not)
 - DJANGO_SECRET_KEY (required when DJANGO_DEBUG is false)
 - DJANGO_ALLOWED_HOSTS (comma separated)
 - DJANGO_CSRF_TRUSTED_ORIGINS (comma separated, optional)
@@ -33,7 +34,7 @@ def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-DEBUG = env_bool("DJANGO_DEBUG", True)
+DEBUG = env_bool("DJANGO_DEBUG", False)
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
@@ -192,6 +193,9 @@ LOGGING = {
     },
     "loggers": {
         "apps": {"handlers": ["console"], "level": "INFO"},
+        # Django's security events (CSRF refused, a Host not allowed, a suspicious operation): written in production
+        # too — by default Django writes them only in debug (audit of 10/11/2026, L8). The refused logins: apps.security.
+        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         "django.request": {"handlers": ["console", *(["mail_admins"] if ADMINS and not DEBUG else [])], "level": "ERROR", "propagate": False},
     },
 }

@@ -196,7 +196,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L5 | Entiers géants | Corrigé (lot 1) : 10^15 au plus |
 | L6 | Worker sans délai | Ouvert : accord requis |
 | L7 | Nom de connexion sur les pages client | Ouvert : accord requis |
-| L8 | Événements de sécurité non journalisés | Ouvert : accord requis (`settings.py`) |
+| L8 | Événements de sécurité non journalisés | Corrigé : logger `django.security` en production, connexions refusées dans `apps.security` (`apps/accounts/signals.py`) |
 | L9 | Erreurs 500 sur entrées invalides | Corrigé (lot 1) |
 | L10 | Ni changement de mot de passe, ni suppression, ni export | Ouvert : accord requis |
 | L11 | Google Fonts sur la page client | Ouvert : avec la CSP |
@@ -205,7 +205,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L15 | Dossiers d'agents non ignorés | Corrigé (lot 1) : `.gitignore` |
 | 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
 | 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |
-| 6 | `DEBUG` vrai par défaut | Ouvert : accord requis |
+| 6 | `DEBUG` vrai par défaut | Corrigé : faux par défaut ; `manage.py` et les tests (`config/settings_test.py`) le mettent à vrai pour le développement |
 | 7 | Pas de CSP | Ouvert : accord requis (CSP prête dans le rapport) |
 | 8 | Fausses lignes dans les journaux | Corrigé (lot 1) |
 | 9 | Acceptation d'un lien non atomique | Corrigé (lot 1) ; ouverture à tout porteur : choix de fonctionnement |

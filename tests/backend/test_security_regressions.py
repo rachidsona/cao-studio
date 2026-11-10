@@ -3,6 +3,7 @@ dont dépend la sécurité, testée ici pour ne pas revenir. Lancés à chaque p
 
 Ajouter un test pour chaque faille corrigée ; ne jamais en affaiblir ni en retirer un sans l'accord de l'utilisateur."""
 import json
+import logging
 import os
 import re
 import subprocess
@@ -331,3 +332,42 @@ def test_the_logo_is_read_by_its_bytes(client_staff):
     response = client_staff.post("/catalogue/atelier/", {"name": "Atelier", "logo_file": fake})
     assert response.status_code == 200 and "PNG ou JPEG" in response.content.decode()
     assert not CompanyProfile.load().logo
+
+
+class _Records(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+@pytest.mark.django_db
+def test_security_events_are_logged(user):
+    """L8 : une connexion refusée et un refus CSRF s'écrivent dans le journal, en production comme en développement."""
+    from django.conf import settings
+
+    assert settings.LOGGING["loggers"]["django.security"]["level"] == "WARNING"
+    records = _Records()
+    for name in ("apps.security", "django.security.csrf"):
+        logging.getLogger(name).addHandler(records)
+    try:
+        Client().post("/accounts/login/", {"username": "alice\nfaux", "password": "pas-le-bon"})
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(user)
+        client.post("/api/projects/", json.dumps({"name": "x"}), content_type="application/json")
+    finally:
+        for name in ("apps.security", "django.security.csrf"):
+            logging.getLogger(name).removeHandler(records)
+    messages = [r.getMessage() for r in records.records]
+    assert any("Connexion refusée pour « alice faux »" in m for m in messages), messages
+    assert any(r.name == "django.security.csrf" for r in records.records), messages
+    assert all("pas-le-bon" not in m and "\n" not in m for m in messages)
+
+
+def test_debug_is_off_unless_asked():
+    """Constat 6 : sans DJANGO_DEBUG, les réglages sont ceux de production (et la clé secrète est exigée)."""
+    run = _settings_with({"DJANGO_SECRET_KEY": "test-" + "k" * 60, "DJANGO_ALLOWED_HOSTS": "example.com"})
+    assert run.returncode == 0, run.stderr
+    assert json.loads(run.stdout.strip().splitlines()[-1])["DEBUG"] is False
