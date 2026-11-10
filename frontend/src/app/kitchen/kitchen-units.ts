@@ -163,7 +163,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
       ? [corners]
       : family === "mine"
         ? [myUnitsSection({ doc: () => editor.doc, unit: () => editor.unit, selected: () => selectedCabinet(editor), add: (e) => void add(e), notify: (m, k) => editor.notify(m, k), refresh: render })]
-        : [...new Set(CATALOG.filter((e) => e.kind === family).map((e) => e.name))].map((name) => modelRow(CATALOG.filter((e) => e.name === name), editor.unit, (e) => void add(e)));
+        : [...new Set(CATALOG.filter((e) => e.kind === family).map((e) => e.name))].map((name) => modelRow(CATALOG.filter((e) => e.name === name), editor.unit, (e) => void add(e), "data-unit", { limits: () => [100, 2400] }));
     panel.body.style.setProperty("--brass", BRASS);
     panel.body.replaceChildren(
       tabs,

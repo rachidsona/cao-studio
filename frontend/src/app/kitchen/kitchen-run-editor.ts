@@ -11,7 +11,7 @@ import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, FILLER, FILLER_WALL, fillRun, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, WIDTHS } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, FILLER, FILLER_WALL, fillRun, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import type { Editor } from "../editor";
@@ -466,12 +466,17 @@ export class RunEditor {
     const unit = this.host.editor.unit;
     const wall = this.host.run.wall;
     const add = (e: CatalogEntry) => this.addEntry(e);
+    // A width of one's own, or that of the room left in its row.
+    const plan = this.current();
+    const s = kitchenSizes(plan);
+    const fill = fillRun(this.geometry(), this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
+    const free = { limits: (e: CatalogEntry) => sizeLimits(plan, e).width, room: (e: CatalogEntry) => widestRoom(fill, rowOf(e)) || null };
     const tabs = familyTabs(FAMILIES.filter(([f]) => wall || f !== "wall"), this.family, (f) => ((this.family = f), this.host.redraw()), "Ajouter");
     let rows: HTMLElement[];
     if (this.family === "mine") {
       const own = myUnits().filter((e) => wall || e.kind !== "wall");
-      rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add")) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
-    } else rows = familyModels(this.family, wall).map((entries) => modelRow(entries, unit, add, "data-add"));
+      rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add", free)) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
+    } else rows = familyModels(this.family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free));
     const box = el("div", {}, tabs, el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
     box.style.setProperty("--brass", BRASS);
     return [box];

@@ -1,13 +1,14 @@
 /**
  * Le catalogue de cuisine dessiné, partagé par « Meubles de cuisine » (app/kitchen-units.ts) et l'éditeur de linéaire du
  * Plan de cuisine (app/kitchen-run-editor.ts) : chaque modèle avec son dessin de face à l'échelle (app/unit-elevation.ts),
- * ce qu'il contient et ses cotes ; survoler une largeur redessine le meuble à cette largeur, un clic l'ajoute. Les
- * appareils (évier, plaque, fours, lave-vaisselle, colonnes, hotte, micro-ondes) se montrent de même.
+ * ce qu'il contient et ses cotes ; survoler une largeur redessine le meuble à cette largeur, un clic l'ajoute. Une
+ * autre largeur se tape (« Autre… »), ou se prend à la place libre du linéaire (« Place libre »). Les appareils (évier,
+ * plaque, fours, lave-vaisselle, colonnes, hotte, micro-ondes) se montrent de même, à leurs largeurs seulement.
  */
 import { CATALOG, KINDS, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
 import type { DisplayUnit } from "../../document/types";
-import { APPLIANCES, itemEntry } from "../../features/kitchen-run-items";
-import { formatLength } from "../../measurements/units";
+import { APPLIANCES, itemEntry, modelOf } from "../../features/kitchen-run-items";
+import { formatLength, fromDisplay, parseNumber, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { elevation, unitSummary } from "./unit-elevation";
 
@@ -41,8 +42,72 @@ function sizes(e: CatalogEntry, unit: DisplayUnit): string {
   return `L ${number(e.width)} · H ${number(e.height ?? kind.height)} · P ${number(e.depth ?? kind.depth)} ${unit}`;
 }
 
-/** One model: its drawing and what it is, at the width under the pointer; a click on a width adds it. */
-export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit"): HTMLElement {
+/** A model at a width of one's own (whole mm): one's own unit as it is, a model of the catalogue made at that width. */
+export function entryAtWidth(e: CatalogEntry, width: number): CatalogEntry {
+  return e.custom ? { ...e, width } : { ...e, id: `${modelOf(e)}-${width}`, width };
+}
+
+/** Widths of one's own: what they may be, and the room left on the run for this model (null: none to show). */
+export interface FreeWidths {
+  limits: (e: CatalogEntry) => [number, number];
+  room?: (e: CatalogEntry) => number | null;
+}
+
+const isAppliance = (e: CatalogEntry) => e.id.startsWith("app-");
+
+/** « Autre… » (a width typed) and « Place libre » (the room left), after the widths of the model. */
+function freeWidthButtons(usual: CatalogEntry, unit: DisplayUnit, add: (e: CatalogEntry) => void, show: (e: CatalogEntry) => void, free: FreeWidths): HTMLElement[] {
+  const [min, max] = free.limits(usual);
+  const out: HTMLElement[] = [];
+  const room = free.room?.(usual);
+  if (room != null && room >= min) {
+    const width = Math.min(max, Math.floor(room + 1e-6));
+    const label = formatLength(width, unit);
+    const b = el("button", { type: "button", class: WIDTH, "data-width-room": usual.id, title: `Ajouter « ${usual.name} » à la largeur de la place libre : ${label}`, "aria-label": `Ajouter ${usual.name} à la place libre, ${label}` }, `Place libre · ${label.replace(/\s?(mm|cm|m|po)$/, "")}`);
+    b.addEventListener("click", () => add(entryAtWidth(usual, width)));
+    b.addEventListener("pointerenter", () => show(entryAtWidth(usual, width)));
+    out.push(b);
+  }
+  const other = el("button", { type: "button", class: WIDTH, "data-width-other": usual.id, title: `Ajouter « ${usual.name} » à une autre largeur` }, "Autre…");
+  other.addEventListener("click", () => {
+    const input = el("input", { type: "text", inputmode: "decimal", class: "h-6 w-16 border border-[var(--brass)] bg-transparent px-1 font-mono text-[11px] focus:outline-none", "aria-label": `Largeur de « ${usual.name} » (${UNIT_LABELS[unit]})`, placeholder: UNIT_LABELS[unit], "data-width-input": usual.id });
+    const ok = el("button", { type: "button", class: WIDTH, "data-width-ok": usual.id }, "OK");
+    const box = el("span", { class: "flex items-center gap-1" }, input, ok);
+    const take = () => {
+      const value = parseNumber(input.value);
+      const width = value === null ? NaN : Math.round(fromDisplay(value, unit));
+      if (!(width >= min && width <= max)) {
+        input.setAttribute("aria-invalid", "true");
+        input.title = `Entre ${formatLength(min, unit)} et ${formatLength(max, unit)}.`;
+        input.classList.add("border-red-500");
+        return;
+      }
+      // Out of the field first: the panel is not drawn again under a field being typed in.
+      input.blur();
+      add(entryAtWidth(usual, width));
+    };
+    input.addEventListener("input", () => {
+      const value = parseNumber(input.value);
+      if (value !== null && value > 0) show(entryAtWidth(usual, Math.round(fromDisplay(value, unit))));
+    });
+    input.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Enter") take();
+      if (event.key === "Escape") box.replaceWith(other);
+    });
+    ok.addEventListener("click", take);
+    other.replaceWith(box);
+    input.focus();
+  });
+  out.push(other);
+  return out;
+}
+
+/**
+ * One model: its drawing and what it is, at the width under the pointer; a click on a width adds it. With `free`, a
+ * width of one's own too (not for an appliance: its widths are those it is sold in).
+ */
+export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit", free?: FreeWidths): HTMLElement {
   const usual = entries.find((e) => e.width === 600) ?? entries[Math.floor(entries.length / 2)]!;
   const art = el("div", { class: "flex h-[92px] items-end justify-center border-b border-gray-300 dark:border-gray-600" });
   const summary = el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" });
@@ -65,7 +130,7 @@ export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: Ca
     "article",
     { class: "grid grid-cols-[92px_1fr] gap-3 border-t border-gray-200 py-3 first:border-t-0 dark:border-gray-700", "data-model": usual.name },
     art,
-    el("div", { class: "flex min-w-0 flex-col" }, el("h3", { class: "text-[13px] font-medium tracking-tight text-gray-900 dark:text-gray-50" }, usual.name), summary, size, el("div", { class: "mt-auto flex flex-wrap gap-1 pt-1.5" }, ...widths)),
+    el("div", { class: "flex min-w-0 flex-col" }, el("h3", { class: "text-[13px] font-medium tracking-tight text-gray-900 dark:text-gray-50" }, usual.name), summary, size, el("div", { class: "mt-auto flex flex-wrap gap-1 pt-1.5" }, ...widths, ...(free && !isAppliance(usual) ? freeWidthButtons(usual, unit, add, show, free) : []))),
   );
 }
 

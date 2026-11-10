@@ -1725,6 +1725,11 @@ opération existante.
     - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen/kitchen-catalog-view.ts`) :
       chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
       après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.
+    - **Largeur libre** : après les largeurs du modèle, « Autre… » ouvre un champ où taper n'importe quelle largeur, dans
+      l'unité du projet (28,6 cm par exemple). Entrée l'ajoute, Échap le referme ; une largeur hors limites (10 à 240 cm
+      pour un meuble) est refusée. « Place libre · 91,4 » ajoute le meuble à la largeur exacte de la plus grande place
+      qui reste dans sa rangée, sans compter les places gardées (`widestRoom`). Les appareils gardent leurs largeurs. Dans
+      « Meubles de cuisine », « Autre… » y est aussi.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
     leur mur, façades, plan de travail continu sur chaque linéaire avec les découpes de l'évier et de la plaque,
     crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,

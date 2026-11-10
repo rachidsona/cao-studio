@@ -257,6 +257,21 @@ function joined(stretches: [number, number][]): [number, number][] {
   return out;
 }
 
+/**
+ * The widest room left open in a row of a filled run (mm), for a unit put there: the open stretches and those a filler
+ * closes, not the room kept free (a space, a furnished caisson's); 0 when the row is full.
+ */
+export function widestRoom(fill: Pick<RunFill, "free" | "wallFree" | "fillers" | "spaces">, row: "base" | "wall"): number {
+  const kept = fill.spaces.filter((pl) => pl.row === row).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  const open = (row === "wall" ? fill.wallFree : [...fill.free, ...fill.fillers]).flatMap(([a, b]) => {
+    // Less the spaces kept in it.
+    let parts: [number, number][] = [[a, b]];
+    for (const [k0, k1] of kept) parts = parts.flatMap(([p0, p1]): [number, number][] => (k1 <= p0 || k0 >= p1 ? [[p0, p1]] : [[p0, Math.max(p0, k0)], [Math.min(p1, k1), p1]]));
+    return parts;
+  });
+  return Math.max(0, ...open.map(([a, b]) => b - a));
+}
+
 /** The room left on a run, in words: « 137,1 cm libres en bas, 60 cm + 120 cm en haut ». */
 export function spaceLeft(fill: Pick<RunFill, "free" | "wallFree">, length: (mm: number) => string, wall = true): string {
   const list = (gaps: [number, number][]) => gaps.map(([a, b]) => length(b - a)).join(" + ");
