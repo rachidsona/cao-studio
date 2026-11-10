@@ -98,7 +98,8 @@ describe("découpes du plan de travail", () => {
   it("un « Bas évier » du Plan de cuisine découpe le plan de travail au-dessus de lui, sauf sous un évier posé à la main", () => {
     const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
     let items: KitchenRunItem[] = [];
-    for (const [model, width] of [["base-bas-1-porte", 600], ["base-bas-evier", 800]] as const) items = [...items, newItem(items, model, width)];
+    // The sink base between two units: the worktop, which stops at the last unit, leaves it its 50 mm at each end.
+    for (const [model, width] of [["base-bas-1-porte", 600], ["base-bas-evier", 800], ["base-bas-1-porte", 500]] as const) items = [...items, newItem(items, model, width)];
     const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items } });
     if (typeof built === "string") throw new Error(built);
     const cut = built.doc.features.find((f): f is MachiningFeature => f.type === "machining" && f.kind === "cutout")!;
@@ -108,9 +109,9 @@ describe("découpes du plan de travail", () => {
     expect(cut.ops.filter((o) => o.kind === "hole")).toHaveLength(4);
     // A hob added by hand in the plan's cut-outs, the sink given the sizes of its leaflet: the kitchen made again
     // (a unit added at the end) keeps both, and does not cut its own sink over the changed one.
-    const byHand: MachiningFeature = { ...cut, cutouts: [{ appliance: "sink-1", along: 1000, front: 70, size: [740, 460], radius: 15, name: "Évier Franke" }, { appliance: "hob-60", along: 1900, front: null }] };
+    const byHand: MachiningFeature = { ...cut, cutouts: [{ appliance: "sink-1", along: 1000, front: 70, size: [740, 460], radius: 15, name: "Évier Franke" }, { appliance: "hob-60", along: 1750, front: null }] };
     const edited = { ...built.doc, features: built.doc.features.map((f) => (f.id === cut.id ? byHand : f)) };
-    const more = withKitchenBuilt(edited, made.id, { runs: { A: [...items, newItem(items, "base-bas-1-porte", 400)] } });
+    const more = withKitchenBuilt(edited, made.id, { runs: { A: [...items, newItem(items, "base-bas-1-porte", 500)] } });
     if (typeof more === "string") throw new Error(more);
     const kept = more.doc.features.find((f): f is MachiningFeature => f.type === "machining" && f.kind === "cutout")!;
     expect(kept.cutouts).toEqual(byHand.cutouts);

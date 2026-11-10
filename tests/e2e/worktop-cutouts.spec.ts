@@ -30,6 +30,8 @@ test("un Bas évier découpe le plan de travail ; une plaque aux cotes de la not
   // A plain unit, then the sink base of the tab « Bas » (no appliance of « Électro. »).
   await plan.locator('[data-add="base-bas-1-porte-600"]').click();
   await plan.locator('[data-add="base-bas-evier-800"]').click();
+  // More units after it: the worktop stops at the last one, and a cut needs 5 cm of worktop at each end.
+  await plan.locator('[data-add="base-bas-2-portes-1200"]').click();
   await plan.locator("[data-run-ok]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await plan.getByRole("button", { name: "Terminer" }).click();
@@ -47,6 +49,9 @@ test("un Bas évier découpe le plan de travail ; une plaque aux cotes de la not
   await tool.getByLabel("Ajouter une découpe").selectOption("hob-60");
   // The tool opens on the plan's own cut-outs: the sink is the first, the hob the second.
   await expect(tool).toContainText("Modifier : Découpes Plan de travail A");
+  // Over the unit of 120, clear of the sink: its middle at 200 cm from the end of the worktop.
+  await tool.getByLabel("Milieu ← bout", { exact: true }).last().fill("200");
+  await tool.getByLabel("Milieu ← bout", { exact: true }).last().press("Tab");
   const width = tool.getByLabel("Largeur", { exact: true }).last();
   await expect(width).toHaveValue("56");
   await width.fill("58");

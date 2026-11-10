@@ -1800,12 +1800,18 @@ opération existante.
       son esquisse avec, et sa place redevient libre (`document/kitchen-delete-sync.ts`). Pour refermer le vide,
       « Place libre » du linéaire retire l'espace.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
-    leur mur, façades, plan de travail continu sur chaque linéaire avec les découpes de l'évier et de la plaque,
-    crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,
+    leur mur, façades, plan de travail **au-dessus des meubles** de chaque linéaire avec les découpes de l'évier et de
+    la plaque, crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,
     meuble d'angle, LeMans, L ou fileurs d'angle mort, le linéaire qui passe fermant le coin et l'autre s'arrêtant
     contre lui —, électroménager sur le calque « Électroménager », murs sur le calque « Pièce », matières posées
     (`document/kitchen-plan-build.ts`, `document/kitchen-floor.ts`). « Modifier le plan » change les cotes ou le modèle :
     la cuisine est refaite, et ce qu'un autre modèle n'a plus part après confirmation.
+  - **Le plan de travail suit les meubles** : il s'arrête au dernier meuble du linéaire au lieu de couvrir tout le
+    mur, et la crédence avec lui ; ils s'allongent quand on ajoute un meuble. Il s'interrompt sur une place gardée
+    libre (celle d'une cuisinière à poser) et à une colonne, qu'il ne traverse plus : un linéaire a alors plusieurs
+    plans (« Plan de travail A », « Plan de travail A2 »), chacun avec les découpes des meubles qu'il couvre. Il passe
+    sur un lave-vaisselle, sur la place d'un caisson aménagé et sur une place libre de moins de 5 cm. Une découpe
+    d'évier ou de plaque a besoin de 5 cm de plan à chaque bout : un meuble d'évier tout au bout du plan est signalé.
   - **Proposer une cuisine** remplit tous les linéaires avec l'algorithme de l'Implantation (600 d'abord, puis le plus
     grand qui tient, un fileur ; évier, lave-vaisselle, plaque et four, hotte, colonne réfrigérateur au bout libre) :
     la même cuisine que l'Implantation, à retoucher meuble par meuble (`document/kitchen-propose.ts`).

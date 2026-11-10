@@ -31,7 +31,7 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   // The front of the plinth, under the doors; then the front of the worktop, 2,1 cm before it.
   await page.mouse.click(430, 735);
   await expect(tool).toContainText("À prolonger : « Plinthe A »");
-  await page.mouse.click(760, 596);
+  await page.mouse.click(470, 596);
   await expect(page.getByText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
   await expect(tool).toHaveCount(0);
   // An operation on the plinth, to change or take away like any other.

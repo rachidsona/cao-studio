@@ -3,7 +3,7 @@
  * implantation, comme celle de l'outil Implantation (features/kitchen-layout.ts) que document/kitchen-plan.ts sait bâtir :
  * caissons tournés selon leur mur, façades, électroménager (évier et plaque découpant le plan, lave-vaisselle et sa façade,
  * fours, hotte et son conduit, micro-ondes), fileurs, angle mort fermé par deux fileurs ou meuble d'angle sur le mur qui
- * passe, plan de travail continu sur chaque zone, crédence, plinthes, murs. Chaque pièce sait de quel linéaire elle vient
+ * passe, plan de travail et crédence au-dessus des meubles seulement (pas sur la place libre), plinthes, murs. Chaque pièce sait de quel linéaire elle vient
  * (`run`). Le triangle d'activité et le reste de l'ergonomie suivent (features/kitchen-appliances.ts). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
@@ -59,10 +59,11 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     if (g.low) out.notes.push(`Pas de meubles hauts sur ${run.label.toLowerCase()} : le plafond y descend à ${Math.round(ceiling)} mm.`);
     let n = 0;
     let fillers = 0;
-    const holes: NonNullable<KitchenBox["holes"]> = [];
+    const holes: (NonNullable<KitchenBox["holes"]>[number] & { u: number })[] = [];
     const hole = (pl: Placed, appliance: string, soft = false) => {
-      const [x, y] = runAt(run, pl.at + pl.item.width / 2, run.back + p.depth / 2);
-      holes.push({ appliance, at: [x, y, p.worktopHeight], ...(soft ? { soft } : {}) });
+      const u = pl.at + pl.item.width / 2;
+      const [x, y] = runAt(run, u, run.back + p.depth / 2);
+      holes.push({ appliance, at: [x, y, p.worktopHeight], u, ...(soft ? { soft } : {}) });
     };
     const front = (pl: Placed): [number, number] => runAt(run, pl.at + pl.item.width / 2, run.back + D + FRONT);
     for (const pl of fill.placed) {
@@ -138,8 +139,15 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     }
     fill.fillers.forEach(([a, b], i) => box(`Fileur ${run.id}${i ? i + 1 : ""}`, "filler", band(a, b, D, D + FRONT, s.plinth, s.base)));
     corners(p, run, fill.walls, g.wall !== null, band, box, cabinet);
-    worktop(p, run, holes, box);
-    if (run.wall && p.splashback !== false) splashback(p, run, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
+    // The worktop and the splashback follow the units: none over the room left open, nor over a room kept free
+    // that no furnished caisson holds.
+    const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+    const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
+    // Nor through a column: it stands from the floor to the top of the wall units.
+    const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+    const covered = without(zoneSpan(run), [...open, ...columns]).filter(([a, b]) => b - a >= 1);
+    worktops(p, run, covered, holes, band, box);
+    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, part, i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, fill.free))) {
@@ -221,18 +229,35 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
   }
 }
 
-/** One worktop over the zone of the run, with the cut-outs of its sink and hob. */
-function worktop(p: KitchenFloorPlan, run: KitchenRun, holes: NonNullable<KitchenBox["holes"]>, box: BoxOf): void {
+/** Room open narrower than this (mm) does not break the worktop: it runs over it. */
+const NARROW = 50;
+
+/**
+ * The worktop of the run: over its units only (`covered`, along the run), one piece per stretch of them — the first
+ * keeps the run's name —, each with the cut-outs of the sinks and hobs under it.
+ */
+function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number][], holes: (NonNullable<KitchenBox["holes"]>[number] & { u: number })[], band: Band, box: BoxOf): void {
   const xs = run.zone.outline.map((q) => q[0]);
   const ys = run.zone.outline.map((q) => q[1]);
   const base = kitchenSizes(p).base;
   const [nx, ny] = run.zone.run.normal;
-  box(`Plan de travail ${run.id}`, "worktop", [[Math.min(...xs), Math.min(...ys), base], [Math.max(...xs), Math.max(...ys), p.worktopHeight]], { holes, front: [nx, ny, 0] });
+  // Along the run: the axis its normal is not on. Across it, the zone as it is (its corner, an island's depth).
+  const along = Math.abs(nx) > 0.5 ? 1 : 0;
+  const whole: [Vec3, Vec3] = [[Math.min(...xs), Math.min(...ys), base], [Math.max(...xs), Math.max(...ys), p.worktopHeight]];
+  covered.forEach(([a, b], i) => {
+    const [lo, hi] = band(a, b, 0, 1, base, p.worktopHeight);
+    const from: Vec3 = [...whole[0]];
+    const to: Vec3 = [...whole[1]];
+    from[along] = Math.max(whole[0][along]!, lo[along]!);
+    to[along] = Math.min(whole[1][along]!, hi[along]!);
+    if (to[along]! - from[along]! < 1) return;
+    const own = holes.filter((h) => h.u >= a - 1e-6 && h.u <= b + 1e-6).map(({ u: _u, ...h }) => h);
+    box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0] });
+  });
 }
 
-/** Up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */
-function splashback(p: KitchenFloorPlan, run: KitchenRun, spans: RunInfo["spans"], full: number, band: Band, box: BoxOf): void {
-  const [from, to] = zoneSpan(run);
+/** Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */
+function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, number], part: number, spans: RunInfo["spans"], full: number, band: Band, box: BoxOf): void {
   const top = p.worktopHeight;
   const windows = spans.filter((sp) => sp.bottom > 0 && sp.from < to && sp.to > from);
   const doors = spans.filter((sp) => sp.bottom <= 0 && sp.from < to && sp.to > from);
@@ -242,6 +267,6 @@ function splashback(p: KitchenFloorPlan, run: KitchenRun, spans: RunInfo["spans"
     const [a, b] = [cuts[i]!, cuts[i + 1]!];
     if (doors.some((d) => d.from < b && d.to > a)) continue;
     const z1 = Math.min(full, ...windows.filter((sp) => sp.from < b && sp.to > a).map((sp) => sp.bottom));
-    if (z1 - top >= 20) box(`Crédence ${run.id}${n++ ? `-${n}` : ""}`, "splashback", band(a, b, 0, 10, top, z1));
+    if (z1 - top >= 20) box(`Crédence ${run.id}${part ? part + 1 : ""}${n++ ? `-${n}` : ""}`, "splashback", band(a, b, 0, 10, top, z1));
   }
 }
