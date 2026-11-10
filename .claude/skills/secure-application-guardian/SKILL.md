@@ -187,7 +187,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | M6 | Django 6.1.2 (CVE-2026-108147) | Corrigé : Django 6.1.3 (accord du 10/11/2026) ; suivre les annonces de sécurité de Django, que pip-audit ne voyait pas encore |
 | M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Ouvert : accord requis |
 | M8 | Inscription libre, données commerciales lisibles | Ouvert : accord requis |
-| M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Ouvert : accord requis |
+| M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Corrigé : actions par SHA, images par digest, outils par version ; `codeql-action` v4.39.3 ; gitleaks `pull-requests: read` ; barrière par `contains(needs.*.result, …)` |
 | M10 | Outils d'agents non épinglés | Ouvert : accord requis (configuration de l'utilisateur) |
 | L1 | Titre d'impression non échappé | Corrigé (lot 1) |
 | L2 | Couleur de matière non validée | Corrigé dans l'éditeur (lot 1) ; validateur serveur : à faire avec une migration |
@@ -201,7 +201,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L10 | Ni changement de mot de passe, ni suppression, ni export | Ouvert : accord requis |
 | L11 | Google Fonts sur la page client | Ouvert : avec la CSP |
 | L12 | sqlparse 0.6.0 | Corrigé : sqlparse 0.6.1 (dernière version, projet arrêté : à suivre avec Django) |
-| L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | `.venv` nettoyé (pillow, numpy, ezdxf, reportlab retirés ; pip 26.3) ; `ci.yml` et fichier verrouillé avec hachages : accord requis |
+| L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | `.venv` nettoyé (pillow, numpy, ezdxf, reportlab retirés ; pip 26.3) ; `ci.yml` : `permissions: contents: read`, traces gardées 7 jours ; fichier verrouillé avec hachages : accord requis |
 | L15 | Dossiers d'agents non ignorés | Corrigé (lot 1) : `.gitignore` |
 | 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
 | 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |

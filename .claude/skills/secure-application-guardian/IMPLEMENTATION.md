@@ -34,7 +34,8 @@ Le dépôt n'a pas encore de remote GitHub configuré ici. Une fois poussé :
    - interdire le contournement aux administrateurs.
 
    C'est ce qui empêche de fusionner, donc de déployer, avec une vulnérabilité critique ouverte.
-4. **gitleaks** : rien à régler pour un compte personnel. Pour un dépôt d'organisation, `gitleaks-action` demande une licence gratuite (`GITLEAKS_LICENSE` dans les secrets du dépôt).
+4. **gitleaks** : rien à régler pour un compte personnel. Pour un dépôt d'organisation, `gitleaks-action` demande une licence gratuite (`GITLEAKS_LICENSE` dans les secrets du dépôt). Sur `push`, gitleaks ne lit que les commits poussés : après le premier push, lancer le workflow à la main (« Run workflow », `workflow_dispatch`) pour lire tout l'historique.
+4 bis. **Épinglage** : les actions sont épinglées par SHA de commit (version en commentaire), les images par digest (`semgrep/semgrep:1.184.0@sha256:…`, `postgres:17.11@sha256:…`), pip-audit et psycopg par version. Dependabot (écosystème `github-actions`) propose les mises à jour des actions ; les images et les outils se mettent à jour à la main, en relisant leurs notes de version.
 5. **Premier passage** : les rulesets `p/owasp-top-ten`, `p/django` et `p/typescript` de Semgrep, et CodeQL, n'ont jamais tourné sur ce code. Le premier rouge est à trier avec le skill :
    - corriger ce qui est réel ;
    - marquer les faux positifs avec leur raison (`# nosemgrep: <règle> — raison`, ou « Dismiss » avec commentaire dans Code scanning) ;
