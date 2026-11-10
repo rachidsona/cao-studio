@@ -5,7 +5,7 @@ import { frameOf, rayToSketch, toWorld } from "../../sketcher/frame";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import type { NicheBox } from "../../sketcher/shelves";
 import type { Viewport } from "../../viewport/viewport";
-import { isolatedSketch } from "../zone-view";
+import { sketchShown } from "../zone-view";
 
 export interface PickedNiche extends NichePlace {
   box: NicheBox;
@@ -19,8 +19,7 @@ const SAMPLES = 8;
 export function nicheUnderPointer(viewport: Viewport, doc: CadDocument, event: PointerEvent | MouseEvent): PickedNiche | null {
   const { origin, direction } = viewport.rayFromEvent(event as PointerEvent);
   let best: { niche: PickedNiche; distance: number } | null = null;
-  const alone = isolatedSketch();
-  for (const sketch of doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !f.suppressed && (f.offsets ?? []).some(isPartition) && (!alone || f.id === alone))) {
+  for (const sketch of doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !f.suppressed && (f.offsets ?? []).some(isPartition) && sketchShown(f.id))) {
     const frame = frameOf(sketch);
     const leaves = leafNiches(sketch);
     // A niche is a volume: seen in perspective, a ray can enter it in front and leave through a side.

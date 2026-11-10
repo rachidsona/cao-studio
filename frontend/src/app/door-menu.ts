@@ -14,6 +14,7 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { wholeOf } from "./move-whole";
 import { furnishCabinet } from "./cabinet-furnish";
+import { isolateMenuItem } from "./isolate-selection";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
 
@@ -58,6 +59,8 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
   const f = findFeature(doc, door.feature);
   const pair = f?.type === "fronts" && f.layout === "doors";
   const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
+  // The elements selected, alone in the view (app/isolate-selection.ts).
+  const alone = isolateMenuItem(editor);
   const items: TreeMenuItem[] = [
     { heading: name },
     { label: "Ouvrir / fermer la porte", run: () => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: bodyId })) },
@@ -74,6 +77,7 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
       for (const id of whole.bodies) viewport.toggleInSelection("body", id);
     } }] : []),
     ...(f?.type === "fronts" ? [{ label: "Isoler et aménager le caisson", run: () => void furnishCabinet(editor, f.cabinet) }] : []),
+    ...(alone ? [{ label: alone[0], run: alone[1] }] : []),
     ...(door.kind === "fronts" ? [{ label: "Remplacer par des tiroirs", run: () => apply(withDoorStyle(doc, bodyId), "Les portes sont devenues des tiroirs.") }] : []),
     ...(door.kind === "partition" && f?.type === "niche" ? [{ label: f.style === "frame" ? "Portes plates" : "Portes à cadre", run: () => apply(withDoorStyle(doc, bodyId), f.style === "frame" ? "Portes plates." : "Portes à cadre.") }] : []),
     "separator",

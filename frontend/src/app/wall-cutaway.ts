@@ -15,6 +15,7 @@ import type { BodyMesh } from "../geometry/protocol";
 import type { Viewport } from "../viewport/viewport";
 import { furnitureOut, pieceOf, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
 import type { Editor } from "./editor";
+import { isolating } from "./zone-view";
 
 const KEY = "cao.wall-cutaway";
 const FURNITURE_KEY = "cao.wall-cutaway-furniture";
@@ -112,7 +113,8 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     last = "";
   };
   const update = () => {
-    if (!on || !walls) return;
+    // Elements isolated (app/zone-view.ts): what is in view is theirs to say, nothing more is taken out.
+    if (!on || !walls || isolating()) return;
     const eye = viewport.eye();
     const key = eye.map((v) => Math.round(v)).join(",");
     if (key === last) return;
@@ -138,7 +140,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
   };
   const again = () => {
     last = "";
-    if (on) return update();
+    if (on && !isolating()) return update();
     viewport.setCutaway(new Set());
     viewport.setSketchCutaway(new Set());
     if (canvas) canvas.dataset.wallsCut = canvas.dataset.furnitureCut = "0";
@@ -154,6 +156,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     store(FURNITURE_KEY, withFurniture);
     again();
   });
+  document.addEventListener("cad:isolated", again);
   const previous = editor.onRender;
   editor.onRender = () => {
     previous();

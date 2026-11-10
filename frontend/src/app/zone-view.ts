@@ -3,33 +3,62 @@
  * cotes restent ; les esquisses et les autres murs disparaissent, et les outils de niche ne voient qu'elle. L'isolement
  * tient pendant le travail, jusqu'à « Tout montrer ». La vue seulement : rien ne change dans le projet. Un linéaire du
  * Plan de cuisine s'isole de même (`isolateFeatures`) : ce que le plan a fait pour lui, vu de face, avec ses cotes ; et
- * un caisson seul (`isolateSketch`), pour l'aménager, comme « Isoler » de Fusion.
+ * un caisson seul (`isolateSketch`), pour l'aménager, comme « Isoler » de Fusion ; et plusieurs éléments choisis à la
+ * fois (`isolateElements` : « Isoler la sélection »), pour ne travailler que sur eux.
  */
 import * as THREE from "three";
 import { bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody, type DressingPlan, type Feature, type SketchFeature, type Vec3 } from "../document/types";
+import { featureOfBody, type CadDocument, type DressingPlan, type Feature, type SketchFeature, type Vec3 } from "../document/types";
 import { el } from "../ui/dom";
 import { frameOf } from "../sketcher/frame";
 import type { SketchDrawing } from "../viewport/sketch-layer";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
+import { wholeOwner } from "./move-whole";
 
-let focus: { sketch: string; label: string; keep: () => (f: Feature) => boolean; bar: HTMLElement; dimsWereOff: boolean } | null = null;
+interface Focus {
+  sketch: string;
+  label: string;
+  keep: () => (f: Feature, bodyId: string) => boolean;
+  bar: HTMLElement;
+  dimsWereOff: boolean;
+  /** The Répartition the niche tools work in (a zone, a caisson alone), or null: several elements, each its own. */
+  partition: string | null;
+  /** Whether this sketch's Répartition is among what is isolated. */
+  shows: (sketchId: string) => boolean;
+  /** What is isolated is still there: when it is gone, everything is shown again. */
+  alive: () => boolean;
+}
+let focus: Focus | null = null;
 let context: { viewport: Viewport; editor: Editor; drawSketches: (items: SketchDrawing[]) => void; sketches: SketchDrawing[] } | null = null;
 
-/** The sketch of the zone isolated (or the key of what is), or null. */
-export const isolatedSketch = (): string | null => focus?.sketch ?? null;
+/** The sketch of the zone isolated (or the key of what is), or null: nothing isolated, or several elements. */
+export const isolatedSketch = (): string | null => focus?.partition ?? null;
+/** Something is isolated. */
+export const isolating = (): boolean => focus !== null;
+/** Whether the Répartition of this sketch is in view: nothing isolated, or it is part of what is. */
+export const sketchShown = (sketchId: string): boolean => !focus || focus.shows(sketchId);
+/** Told when something is isolated, or everything shown again. */
+const told = () => document.dispatchEvent(new CustomEvent("cad:isolated"));
+
+/** What a body is a piece of, as a key: its cabinet or the sketch it is made on (a Répartition), else the body itself. */
+export function elementOf(doc: CadDocument, bodyId: string): string {
+  const owner = wholeOwner(doc, bodyId);
+  return owner ? `${owner.kind}:${owner.id}` : bodyOrigin(doc, bodyId);
+}
 
 function apply(): void {
   if (!focus || !context) return;
   const { viewport, editor } = context;
   const doc = editor.doc;
-  if (!findFeature(doc, focus.sketch)) return showAll();
+  if (!focus.alive()) return showAll();
   const keep = focus.keep();
   for (const id of viewport.displayedBodies) {
     const feature = findFeature(doc, featureOfBody(bodyOrigin(doc, id)));
-    viewport.setBodyVisible(id, !!feature && keep(feature));
+    viewport.setBodyVisible(id, !!feature && keep(feature, id));
   }
+  // How many bodies are left in view, on its bar.
+  focus.bar.dataset.shown = String(viewport.bodyMeshes().filter((m) => m.visible).length);
 }
 
 /** Shows everything again. */
@@ -43,6 +72,7 @@ export function showAll(): void {
   drawSketches(sketches);
   if (was?.dimsWereOff) document.querySelector<HTMLElement>("[data-piece-dims]")?.click();
   editor.render();
+  told();
 }
 
 /** Isolates this zone of a plan, seen from the front. */
@@ -74,18 +104,40 @@ export function isolateFeatures(key: string, label: string, ids: () => ReadonlyS
   }, front, frame, false);
 }
 
-function isolate(key: string, label: string, keep: () => (f: Feature) => boolean, front: readonly number[], frame = true, pieceDims = true): void {
+/**
+ * Isolates several elements at once (« Isoler la sélection », app/isolate-selection.ts): their bodies only, by the
+ * keys `elementOf` gives; what is made while they are isolated shows too, to work on them. The view keeps its way and
+ * frames them; the niche tools work in each of their Répartitions.
+ */
+export function isolateElements(keys: ReadonlySet<string>, text: string): void {
+  if (!context || !keys.size) return;
+  const { viewport, editor } = context;
+  const known = new Set(viewport.displayedBodies.map((id) => bodyOrigin(editor.doc, id)));
+  const sketches = new Set([...keys].filter((k) => k.startsWith("sketch:")).map((k) => k.slice("sketch:".length)));
+  const kept = (id: string) => keys.has(elementOf(context!.editor.doc, id));
+  isolate("selection", text, () => (_f, id) => kept(id) || !known.has(bodyOrigin(context!.editor.doc, id)), [0, -1, 0], false, false, {
+    text,
+    partition: keys.size === 1 && sketches.size === 1 ? [...sketches][0]! : null,
+    shows: (id) => sketches.has(id),
+    alive: () => viewport.displayedBodies.some(kept),
+  });
+  const box = new THREE.Box3();
+  for (const mesh of viewport.bodyMeshes()) if (mesh.visible) box.expandByObject(mesh);
+  if (!box.isEmpty()) viewport.fitBox(box, 1.15);
+}
+
+function isolate(key: string, label: string, keep: Focus["keep"], front: readonly number[], frame = true, pieceDims = true, more: Partial<Pick<Focus, "partition" | "shows" | "alive">> & { text?: string } = {}): void {
   if (!context) return;
   const { viewport, editor, drawSketches } = context;
   focus?.bar.remove();
-  const bar = el("div", { class: "absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-gray-200 bg-white/95 px-2 py-1 text-xs shadow dark:border-gray-700 dark:bg-gray-900/95", "data-zone-isolated": "" }, el("span", { class: "font-medium" }, `${label} isolé`));
+  const bar = el("div", { class: "absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-gray-200 bg-white/95 px-2 py-1 text-xs shadow dark:border-gray-700 dark:bg-gray-900/95", "data-zone-isolated": "" }, el("span", { class: "font-medium" }, more.text ?? `${label} isolé`));
   const back = el("button", { type: "button", class: "h-7 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
   back.addEventListener("click", () => showAll());
   bar.append(back);
   (viewport.renderer.domElement.parentElement as HTMLElement).append(bar);
   const dims = document.querySelector<HTMLElement>("[data-piece-dims]");
   const dimsWereOff = pieceDims && (focus?.dimsWereOff ?? dims?.getAttribute("aria-pressed") !== "true");
-  focus = { sketch: key, label, keep, bar, dimsWereOff };
+  focus = { sketch: key, label, keep, bar, dimsWereOff, partition: "partition" in more ? more.partition ?? null : key, shows: more.shows ?? ((id) => id === key), alive: more.alive ?? (() => !!findFeature(context!.editor.doc, key)) };
   viewport.clearSelection();
   apply();
   drawSketches([]);
@@ -101,6 +153,7 @@ function isolate(key: string, label: string, keep: () => (f: Feature) => boolean
     viewport.fitBox(box, 1.15);
   }
   editor.render();
+  told();
 }
 
 /** The isolation holds while the model changes and the sketches are drawn again. */

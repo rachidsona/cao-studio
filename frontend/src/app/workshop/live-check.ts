@@ -52,9 +52,10 @@ export function bindLiveCheck(root: HTMLElement, viewport: Viewport, editor: Edi
     status.textContent = `⚠ ${problems.length} à vérifier`;
     status.title = `${problems.slice(0, 3).map((p) => p.message).join("\n")}\nCliquez pour ouvrir le contrôle.`;
   };
-  // A wall taken out of the view because it hides the room (app/wall-cutaway.ts), or a unit against it: its frame too.
+  // A piece no longer in view — a wall that hides the room (app/wall-cutaway.ts), what is not isolated
+  // (app/zone-view.ts) —: its frame goes too.
   viewport.onEachFrame(() => {
-    for (const frame of group.children) frame.visible = !viewport.isCutaway(frame.userData.bodyId as string);
+    for (const frame of group.children) frame.visible = viewport.bodyInView(frame.userData.bodyId as string);
   });
   // The material comes last in a design: a board without one is not a problem yet.
   const update = () => show(on ? quickProblems(viewport, editor.doc).filter((p) => p.kind !== "material") : []);

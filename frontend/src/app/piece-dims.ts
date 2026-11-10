@@ -24,7 +24,7 @@ import { documentPlans, joineryPlans } from "./dressing/partition-plan";
 import { withPieceSize } from "../document/piece-size";
 import { editDim, editValue } from "./dim-editor";
 import { PlanDimsView } from "./dressing/plan-dims-view";
-import { isolatedSketch } from "./zone-view";
+import { sketchShown } from "./zone-view";
 
 const KEY = "cao.piece-dims";
 const COLOR = 0xf8500a;
@@ -132,8 +132,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     const done = new Set<string>();
     const panels = viewport.displayedBodies.map((id) => ({ id, sketch: sketchOfBody(doc, id) }));
     for (const { sketch, plans } of documentPlans(doc)) {
-      const alone = isolatedSketch();
-      if (alone && sketch.id !== alone) continue;
+      if (!sketchShown(sketch.id)) continue;
       const own = panels.filter((p) => p.sketch === sketch.id).map((p) => p.id);
       const moved = own.filter((id) => findFeature(doc, featureOfBody(bodyOrigin(doc, id)))?.type === "extrude");
       if (!moved.length || (element && !moved.some((id) => element.has(featureOfBody(bodyOrigin(doc, id)))))) continue;

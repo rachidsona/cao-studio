@@ -338,6 +338,17 @@ export const SCREEN: HelpFamily[] = [
         ],
         tip: "Seul l'aspect change. Le choix est retenu.",
       },
+      {
+        keys: [], selector: "[data-isolate-selection]", name: "Isoler la sélection",
+        what: "Garde seuls dans la vue les éléments choisis, pour travailler sur eux sans être gêné par le reste.",
+        steps: [
+          "Sélectionnez les éléments : cliquez le premier, puis Ctrl ou Maj + clic pour en ajouter (ou une fenêtre de sélection, ou le navigateur).",
+          "Cliquez « Isoler la sélection » (ou la touche I, ou clic droit → « Isoler la sélection ») : les autres sont cachés et la vue se cadre sur eux.",
+          "Travaillez : tous les outils marchent, et ce que vous créez s'affiche aussi.",
+          "« Tout montrer », en bas de la vue (ou I sans rien de sélectionné), rend le reste.",
+        ],
+        tip: "Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
+      },
     ],
   },
   {

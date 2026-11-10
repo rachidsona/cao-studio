@@ -94,6 +94,15 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   étagères, plinthes et socles, pièce (murs), électroménager, autres —, **Vue de travail** (façades, murs et
   électroménager cachés d'un clic) et **Tout afficher**. La vue seulement : le document, le débit et le devis ne
   changent pas ; retenu par le navigateur (`document/display-families.ts`).
+- **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
+  éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
+  restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble
+  entier dont on a choisi une pièce, une face ou une arête : un caisson avec ses façades, une Répartition avec ses
+  panneaux et ses niches, sinon le corps lui-même (`elementOf`). La vue garde son sens et se cadre sur eux ; tous les
+  outils marchent, ceux de niche dans chacune des Répartitions isolées, et ce qu'on crée pendant ce temps se voit
+  aussi. Une barre en bas dit ce qui est isolé (« 3 éléments isolés ») ; « Tout montrer », ou I sans sélection, rend
+  le reste. Tant que des éléments sont isolés, les murs ne sont plus masqués d'eux-mêmes. La vue seulement
+  (`app/isolate-selection.ts`, `app/zone-view.ts`).
 - **Murs qui cachent la vue masqués** (case du menu Affichage, cochée d'office) : la vue tournée, le mur qui se
   trouve entre l'œil et la pièce n'est plus dessiné, et un clic le traverse ; il revient dès qu'on repasse devant
   lui. Un mur est reconnu à sa forme (une dalle verticale, mince et haute) parmi les corps de la pièce : ceux d'un

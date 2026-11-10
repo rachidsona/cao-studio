@@ -5,6 +5,7 @@
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
  */
+import { isolateMenuItem } from "../isolate-selection";
 import { keyOf } from "../../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
@@ -73,11 +74,16 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     const niche = nicheUnderPointer(viewport, editor.doc, event);
     // A kitchen cabinet: made a caisson of the dressing, alone in the view, to furnish.
     const cabinet = !niche && face ? cabinetOfBody(editor.doc, face.bodyId) : null;
+    // The elements selected: alone in the view, to work on them (app/isolate-selection.ts).
+    const alone = isolateMenuItem(editor);
     if (cabinet) {
-      menu = popup(event, "Menu du caisson", cabinet.name, [["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)]]);
+      menu = popup(event, "Menu du caisson", cabinet.name, [["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)], ...(alone ? [alone] : [])]);
       return;
     }
-    if (!niche) return;
+    if (!niche) {
+      if (alone) menu = popup(event, "Menu de la sélection", null, [alone]);
+      return;
+    }
     const sketchName = findFeature(editor.doc, niche.sketch)?.name ?? "Caisson";
     const items: [string, () => void][] = [
       ...NICHE_ACTIONS.map(({ action, label }): [string, () => void] => [label, () => runNiche(editor, action, niche)]),
@@ -85,6 +91,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],
       ["Aligner sur cette niche", () => openNicheCopy(viewport, editor, "heights", niche)],
       ...(isolatedSketch() === niche.sketch ? [] : [[`Isoler « ${sketchName} »`, () => isolateSketch(niche.sketch, sketchName)] as [string, () => void]]),
+      ...(alone ? [alone] : []),
       ["Garder ce caisson dans Mes caissons…", () => keepCaisson(event, editor, niche, sketchName)],
       ...(myUnits().some((e) => e.caisson) ? [["Poser un de Mes caissons ici…", () => (menu = popup(event, "Mes caissons", "Son intérieur et ses portes vont dans cette case et les suivantes.", myUnits().filter((e) => e.caisson).map((e): [string, () => void] => [e.name, () => putCaisson(editor, niche, e)])))] as [string, () => void]] : []),
     ];
