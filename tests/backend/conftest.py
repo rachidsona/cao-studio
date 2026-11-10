@@ -31,6 +31,15 @@ def client_logged(user):
 
 
 @pytest.fixture
+def client_staff(db):
+    """One of the workshop's staff: it changes the catalogue, the rates and the profile."""
+    staff = get_user_model().objects.create_user(username="chef", password="motdepasse-solide-42", is_staff=True)
+    client = Client()
+    client.force_login(staff)
+    return client
+
+
+@pytest.fixture
 def project(user):
     project, _ = create_project(user, "Plaque", default_document())
     return project

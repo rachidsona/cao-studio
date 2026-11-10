@@ -361,7 +361,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez le nom du projet, en haut à gauche. « ← Mes projets » ramène à la liste des projets ; « Fiche du projet » ouvre sa fiche : le client, le statut (esquisse, devis envoyé, accepté, en fabrication, posé), la date de pose, les notes et le montant du devis.",
           "Rubrique « Pour l'atelier » : le dossier de production, la liste de débit, la mise en plan du caisson sélectionné (cliquez d'abord une de ses pièces dans la vue) ou du projet. Rubrique « Pour le client » : le devis et le lien client.",
-          "Rubrique « Atelier » : « Paramètres de l'atelier » ouvre les matières, la quincaillerie, les tarifs du devis et le profil de l'atelier, qui font les prix et l'en-tête du devis, les mêmes sur tous les ordinateurs.",
+          "Rubrique « Atelier » : « Paramètres de l'atelier » ouvre les matières, la quincaillerie, les tarifs du devis et le profil de l'atelier, qui font les prix et l'en-tête du devis, les mêmes sur tous les ordinateurs. Seul le personnel de l'atelier les modifie ; les autres comptes les lisent.",
         ],
         tip: "Sans pièce cliquée, la mise en plan du caisson prend le caisson du modèle s'il n'y en a qu'un ; sinon un message vous demande d'en cliquer une.",
       },

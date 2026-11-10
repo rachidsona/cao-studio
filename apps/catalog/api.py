@@ -1,8 +1,9 @@
 """Le catalogue en JSON pour l'éditeur (connexion requise, comme le reste de l'API) :
 
 - GET  /api/catalog/        → {"materials": [...], "hardware": [...], "company": {...}, "rates": {...}}
+- GET  also says ``canEdit``: whether this account may change the workshop's rates (the staff only)
 - POST /api/catalog/rates/  {waste?, band?, cutPerPart?, hoursPerPart?, hourly?, perHole?, margin?, vat?} → {"rates": {...}}
-  (the quote's rates changed from the editor's quote: kept for every computer)
+  (the quote's rates changed from the editor's quote: kept for every computer); 403 for an account not of the staff
 """
 from __future__ import annotations
 
@@ -65,12 +66,15 @@ def catalog(request):
             "hardware": [hardware_payload(r) for r in HardwareRule.objects.all()],
             "company": company_payload(profile),
             "rates": rates_payload(profile),
+            "canEdit": request.user.is_staff,
         }
     )
 
 
 @api_view(("POST",))
 def rates(request):
+    if not request.user.is_staff:
+        raise ApiError(403, "Seul le personnel de l'atelier peut changer les tarifs du devis.")
     data = read_json_body(request)
     if not isinstance(data, dict):
         raise ApiError(400, "Tarifs invalides.")

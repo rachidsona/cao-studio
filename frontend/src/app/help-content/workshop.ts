@@ -449,7 +449,7 @@ export const WORKSHOP: HelpFamily[] = [
         what: "Chiffre matières, chants, découpe, montage et quincaillerie d'après la liste de débit.",
         steps: [
           "Cliquez « Devis ».",
-          "Ouvrez « Tarifs (indicatifs, modifiables) » et corrigez les prix, « Chutes », « Marge » et « TVA » ; le devis se recalcule.",
+          "Ouvrez « Tarifs (indicatifs, modifiables) » et corrigez les prix, « Chutes », « Marge » et « TVA » ; le devis se recalcule. Les tarifs de l'atelier (chutes, chant, découpe, montage, taux horaire, marge, TVA) sont grisés si votre compte n'est pas du personnel de l'atelier ; les prix des matières et de la quincaillerie restent modifiables.",
           "Cliquez « Exporter en CSV » ou « Imprimer / PDF ».",
           "Ouvrez « Versions du devis » pour garder le devis initial puis des avenants, avec les écarts entre eux.",
         ],

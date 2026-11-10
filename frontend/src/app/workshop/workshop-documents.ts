@@ -11,7 +11,7 @@ import type { CadDocument } from "../../document/types";
 import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../../geometry/client";
 import { modelHardware } from "../../document/hardware";
-import { autoHardware, setWorkshopRates, workshopRates } from "../../document/catalog";
+import { autoHardware, canEditWorkshop, setWorkshopRates, workshopRates } from "../../document/catalog";
 import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
@@ -48,6 +48,7 @@ const FIRST_RATES = { waste: 15, band: 1.5, cutPerPart: 4, hoursPerPart: 0.25, h
  * browser's (once; then the server's are everyone's).
  */
 export function adoptBrowserRates(): void {
+  if (!canEditWorkshop()) return;
   const server = workshopRates();
   if (!Object.keys(server).length || Object.entries(FIRST_RATES).some(([k, v]) => server[k as keyof typeof FIRST_RATES] !== v)) return;
   let saved: Partial<QuoteRates> | null = null;
@@ -69,6 +70,8 @@ function saveRates(rates: QuoteRates): void {
   } catch {
     // Not remembered: only this window.
   }
+  // The workshop's rates are the staff's: the others keep only this browser's prices of the boards and hardware.
+  if (!canEditWorkshop()) return;
   const shared = { waste: rates.waste, band: rates.band, cutPerPart: rates.cutPerPart, hoursPerPart: rates.hoursPerPart, hourly: rates.hourly, perHole: rates.perHole ?? 0, margin: rates.margin, vat: rates.vat };
   setWorkshopRates(shared);
   clearTimeout(ratesTimer);
@@ -92,8 +95,10 @@ function showQuote(viewport: Viewport, editor: Editor): void {
   const table = el("div", {
     class: "text-xs [&_table]:mb-3 [&_table]:w-full [&_td]:border-b [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border-b [&_th]:border-gray-300 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left dark:[&_td]:border-gray-700 dark:[&_th]:border-gray-600 [&_td:not(:first-child)]:text-right",
   });
-  const field = (label: string, value: number, unit: string, set: (v: number) => void) => {
-    const input = el("input", { type: "number", step: "any", min: "0", class: INPUT, value: String(value), "aria-label": label });
+  /** A rate; `workshop`: one of the workshop's (the same for everyone), changed by the staff only. */
+  const field = (label: string, value: number, unit: string, set: (v: number) => void, workshop = false) => {
+    const locked = workshop && !canEditWorkshop();
+    const input = el("input", { type: "number", step: "any", min: "0", class: INPUT, value: String(value), "aria-label": label, ...(locked ? { disabled: "", title: "Tarif de l'atelier : seul le personnel peut le changer (Paramètres de l'atelier)." } : {}) });
     input.addEventListener("input", () => {
       const v = Number(input.value);
       if (!Number.isFinite(v) || v < 0) return;
@@ -109,14 +114,14 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     { class: "grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" },
     ...boards,
     ...hardware.map((h) => field(h.name, rates.hardware[h.name] ?? 0, "€", (v) => (rates.hardware[h.name] = v))),
-    field("Chutes", rates.waste, "%", (v) => (rates.waste = v)),
-    field("Chant collé", rates.band, "€/m", (v) => (rates.band = v)),
-    field("Découpe par pièce", rates.cutPerPart, "€", (v) => (rates.cutPerPart = v)),
-    field("Perçage (usinage)", rates.perHole ?? 0, "€", (v) => (rates.perHole = v)),
-    field("Montage par pièce", rates.hoursPerPart, "h", (v) => (rates.hoursPerPart = v)),
-    field("Taux horaire", rates.hourly, "€/h", (v) => (rates.hourly = v)),
-    field("Marge", rates.margin, "%", (v) => (rates.margin = v)),
-    field("TVA", rates.vat, "%", (v) => (rates.vat = v)),
+    field("Chutes", rates.waste, "%", (v) => (rates.waste = v), true),
+    field("Chant collé", rates.band, "€/m", (v) => (rates.band = v), true),
+    field("Découpe par pièce", rates.cutPerPart, "€", (v) => (rates.cutPerPart = v), true),
+    field("Perçage (usinage)", rates.perHole ?? 0, "€", (v) => (rates.perHole = v), true),
+    field("Montage par pièce", rates.hoursPerPart, "h", (v) => (rates.hoursPerPart = v), true),
+    field("Taux horaire", rates.hourly, "€/h", (v) => (rates.hourly = v), true),
+    field("Marge", rates.margin, "%", (v) => (rates.margin = v), true),
+    field("TVA", rates.vat, "%", (v) => (rates.vat = v), true),
     tiersField(),
   );
   function tiersField() {

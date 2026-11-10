@@ -5,7 +5,7 @@
  * Les images vont dans static/guide/.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { joinStaff, newProject } from "./helpers";
 
 const OUT = "static/guide";
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
@@ -18,6 +18,8 @@ test.setTimeout(240_000);
 test("guide : une cuisine et un dressing, de l'accueil au devis", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 860 });
   await newProject(page, "Buffet du salon");
+  // The workshop's settings, as its staff sees them.
+  joinStaff();
   // As a new user: the steps, not the whole ribbon.
   await page.evaluate(() => localStorage.setItem("cao.steps-ribbon", "0"));
 

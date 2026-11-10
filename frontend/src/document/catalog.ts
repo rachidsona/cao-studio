@@ -20,6 +20,7 @@ export function toMaterial(m: CatalogMaterial): Material {
 
 const rules: HardwareRule[] = [];
 let rates: Partial<WorkshopRates> = {};
+let editable = true;
 
 /** The quote's rates of the workshop (the server's), over those of the browser; none from an older server. */
 export const workshopRates = (): Partial<WorkshopRates> => rates;
@@ -27,6 +28,9 @@ export const workshopRates = (): Partial<WorkshopRates> => rates;
 export const setWorkshopRates = (next: Partial<WorkshopRates>): void => {
   rates = { ...rates, ...next };
 };
+
+/** Whether this account may change the workshop's rates (the staff only; without a server catalogue, or from an older server: yes). */
+export const canEditWorkshop = (): boolean => editable;
 
 /** The hardware rules registered (the server's), for the quote. */
 export const hardwareRules = (): readonly HardwareRule[] => rules;
@@ -40,6 +44,7 @@ export function registerCatalog(catalog: ServerCatalog): void {
   }
   rules.splice(0, rules.length, ...catalog.hardware);
   rates = catalog.rates ? { ...catalog.rates } : {};
+  editable = catalog.canEdit ?? true;
   for (const r of catalog.hardware) if (r.price > 0 && DEFAULT_RATES.hardware[r.name] === undefined) DEFAULT_RATES.hardware[r.name] = r.price;
 }
 

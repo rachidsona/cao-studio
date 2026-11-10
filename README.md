@@ -73,7 +73,11 @@ taux horaire, trou percé, marge, TVA : gardés par le serveur, les **mêmes sur
 le devis de l'éditeur les change ici aussi, `POST /api/catalog/rates/` ; des tarifs réglés dans un navigateur avant
 sont repris tant que le serveur a ceux d'origine) et **profil de l'atelier** (coordonnées et logo des documents
 imprimés). Les prix des matières et de la quincaillerie changés dans le devis restent ceux du navigateur ; les
-standards de construction se règlent dans l'éditeur. Les suppressions
+standards de construction se règlent dans l'éditeur. Ces paramètres sont communs à tous les comptes : **seul le
+personnel de l'atelier** les modifie (pages, `POST /api/catalog/rates/` : 403 sinon) ; les autres comptes les lisent,
+sans boutons pour les changer, et dans le devis de l'éditeur les tarifs de l'atelier sont grisés (`GET /api/catalog/`
+dit `canEdit`). Un compte entre dans le personnel par `python manage.py personnel <nom>` (`personnel` seul : la
+liste ; `--retirer` : l'en sort). Les suppressions
 demandent confirmation dans la page (`static/home/confirm.js`). Il est garni au premier `migrate` ; l'administration
 Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 

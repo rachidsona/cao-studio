@@ -4,7 +4,7 @@
  * test (base .e2e/db.sqlite3, recréée à chaque lancement).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { joinStaff, newProject } from "./helpers";
 
 async function sketchCurves(page: Page, api: string, sketchId: string): Promise<number> {
   const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
@@ -409,6 +409,8 @@ test("paramètres de l'atelier : la marge changée dans le devis de l'éditeur e
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "Tarifs e2e");
+  // The workshop's rates are the staff's.
+  joinStaff();
   await page.goto("/projects/");
   await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
   await page.waitForURL("**/editor/");
@@ -425,6 +427,29 @@ test("paramètres de l'atelier : la marge changée dans le devis de l'éditeur e
   await expect(page.getByRole("heading", { name: "Paramètres de l'atelier" })).toBeVisible();
   await expect(page.locator("#id_margin")).toHaveValue("37.0");
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/parametres-atelier.png`, fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test("paramètres de l'atelier : un compte hors du personnel voit les tarifs de l'atelier sans pouvoir les changer", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Tarifs lus e2e");
+  await page.goto("/projects/");
+  await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
+  await page.waitForURL("**/editor/");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="quote"]')?.click());
+  await page.getByText("Tarifs (indicatifs, modifiables)").click();
+  await expect(page.getByRole("spinbutton", { name: "Marge", exact: true })).toBeDisabled();
+  await expect(page.getByRole("spinbutton", { name: "TVA", exact: true })).toBeDisabled();
+  // The prices of the boards stay this browser's.
+  await expect(page.getByRole("dialog", { name: "Devis" }).getByRole("spinbutton").first()).toBeEnabled();
+  await page.goto("/catalogue/tarifs/");
+  await expect(page.getByText("Seul le personnel de l'atelier peut modifier ces réglages.")).toBeVisible();
+  await expect(page.locator("#id_margin")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Enregistrer" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

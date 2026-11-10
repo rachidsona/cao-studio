@@ -53,6 +53,8 @@ export interface ServerCatalog {
   company: CompanyProfile;
   /** Missing on an older server. */
   rates?: WorkshopRates;
+  /** Whether this account may change the workshop's rates (the staff only); missing on an older server. */
+  canEdit?: boolean;
 }
 
 /** The catalogue, or null when the server has none to give (an older server, a network failure): the built-in one then. */
