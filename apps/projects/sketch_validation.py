@@ -16,6 +16,7 @@ MAX_CURVES = 5000
 MAX_CONSTRAINTS = 10000
 MAX_LABEL_LENGTH = 80
 MAX_ERRORS_PER_SKETCH = 50
+MAX_MESSAGE_LENGTH = 300
 
 RESERVED_POINTS = frozenset({"origin"})
 RESERVED_LINES = frozenset({"axisX", "axisY"})
@@ -98,7 +99,8 @@ class _SketchChecker:
         if len(self.errors) >= MAX_ERRORS_PER_SKETCH:
             self.errors.append(f"{self.prefix}trop d'erreurs, liste tronquée.")
             raise _TooManyErrors
-        self.errors.append(f"{self.prefix}{message}")
+        # The names in a message are the sender's: cut, so that 50 messages stay small (audit of 10/11/2026, H2).
+        self.errors.append(f"{self.prefix}{message}"[:MAX_MESSAGE_LENGTH])
 
     def register_id(self, item: Any, where: str) -> str | None:
         """Validate ``item`` is an object with a fresh, non-reserved id."""
@@ -308,7 +310,8 @@ class _SketchChecker:
 def feature_prefix(index: int, feature: dict) -> str:
     feature_id = feature.get("id")
     if isinstance(feature_id, str) and feature_id:
-        return f"Opération {index + 1} ({feature_id}) : "
+        shown = feature_id if len(feature_id) <= 60 else f"{feature_id[:60]}…"
+        return f"Opération {index + 1} ({shown}) : "
     return f"Opération {index + 1} : "
 
 

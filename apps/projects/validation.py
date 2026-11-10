@@ -22,6 +22,12 @@ SUPPORTED_SCHEMA_VERSIONS = (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION)
 ALLOWED_UNITS = frozenset({"mm", "cm", "m", "in"})
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024  # canonical UTF-8 size
 MAX_DEPTH = 64  # nesting depth of dicts/lists
+# Errors given back for one document: enough to correct it, never a way to make the server build a huge answer
+# (each message names what is wrong, and an attacker chooses those names).
+MAX_ERRORS = 100
+MAX_MESSAGE_LENGTH = 300
+# Integers beyond this are read as Infinity (or rounded) by the editor's JSON.parse: the project would not open.
+MAX_INTEGER = 10**15
 
 
 class DocumentParseError(ValueError):
@@ -30,6 +36,13 @@ class DocumentParseError(ValueError):
 
 def _reject_constant(name: str) -> Any:
     raise DocumentParseError(f"Valeur numérique non autorisée : {name}.")
+
+
+def _parse_bounded_int(text: str) -> int:
+    # Checked on the text first: int() of a huge string is itself slow.
+    if len(text.lstrip("-")) > 16 or abs(value := int(text)) > MAX_INTEGER:
+        raise DocumentParseError(f"Nombre entier hors limites : {text[:32]}.")
+    return value
 
 
 def _parse_finite_float(text: str) -> float:
@@ -48,7 +61,7 @@ def parse_json_strict(raw: bytes | str) -> Any:
             raise DocumentParseError("Le contenu n'est pas encodé en UTF-8.") from exc
     try:
         return json.loads(
-            raw, parse_constant=_reject_constant, parse_float=_parse_finite_float
+            raw, parse_constant=_reject_constant, parse_float=_parse_finite_float, parse_int=_parse_bounded_int
         )
     except DocumentParseError:
         raise
@@ -93,6 +106,11 @@ def _structure_errors(doc: Any) -> list[str]:
     return []
 
 
+def _short(text: str, limit: int = 60) -> str:
+    """A name chosen by the sender, quoted in a message: cut, so that the answer stays small."""
+    return text if len(text) <= limit else f"{text[:limit]}…"
+
+
 def _features_errors(features: Any) -> list[str]:
     if not isinstance(features, list):
         return ["« features » doit être une liste."]
@@ -107,7 +125,7 @@ def _features_errors(features: Any) -> list[str]:
         if not isinstance(feature_id, str) or not feature_id:
             errors.append(f"{where}.id doit être une chaîne non vide.")
         elif feature_id in seen:
-            errors.append(f"{where}.id « {feature_id} » est en double.")
+            errors.append(f"{where}.id « {_short(feature_id)} » est en double.")
         else:
             seen.add(feature_id)
         feature_type = feature.get("type")
@@ -168,4 +186,12 @@ def validate_document(doc: Any) -> list[str]:
                 f"Le document dépasse la taille maximale de "
                 f"{MAX_DOCUMENT_BYTES // (1024 * 1024)} Mo."
             )
-    return errors
+    return _bounded(errors)
+
+
+def _bounded(errors: list[str]) -> list[str]:
+    """At most MAX_ERRORS messages of MAX_MESSAGE_LENGTH characters (audit of 10/11/2026, H2)."""
+    shown = [m if len(m) <= MAX_MESSAGE_LENGTH else f"{m[: MAX_MESSAGE_LENGTH - 1]}…" for m in errors[:MAX_ERRORS]]
+    if len(errors) > MAX_ERRORS:
+        shown.append(f"… et {len(errors) - MAX_ERRORS} autres erreurs.")
+    return shown

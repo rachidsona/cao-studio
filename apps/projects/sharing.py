@@ -18,7 +18,6 @@ price are kept on the link, and a comment tells the workshop.
 """
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from django.core.cache import cache
@@ -31,7 +30,9 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from .api import _get_owned_project, _iso
+from .glb import glb_problem
 from .http import ApiError, api_view, json_error, read_json_body
+from .validation import DocumentParseError, parse_json_strict
 from .models import Comment, Project, ShareLink, ShareVariant
 
 MAX_MODEL_BYTES = 20 * 1024 * 1024
@@ -120,11 +121,16 @@ def share_collection(request, project_id):
     if len(raw_summary.encode()) > MAX_SUMMARY_BYTES:
         raise ApiError(400, "Résumé trop long.")
     try:
-        summary = json.loads(raw_summary)
-    except ValueError:
+        # Strict, as every body: a NaN would make the database refuse the row (a 500), and the client's page fail.
+        summary = parse_json_strict(raw_summary)
+    except DocumentParseError:
         raise ApiError(400, "Résumé invalide.", ["« summary » doit être un objet JSON."]) from None
     if not isinstance(summary, dict):
         raise ApiError(400, "Résumé invalide.", ["« summary » doit être un objet JSON."])
+    # Its price is copied when the client accepts (a number field): a number, or none.
+    price = summary.get("price")
+    if price is not None and (isinstance(price, bool) or not isinstance(price, (int, float)) or not 0 <= price < 1e8):
+        raise ApiError(400, "Prix invalide.", ["« summary.price » doit être un nombre positif."])
     title = _clean_text(request.POST.get("title") or project.name, "title", TITLE_MAX)
     variants = _clean_variants(request, summary.get("variants"))
     link = ShareLink.objects.create(
@@ -151,8 +157,9 @@ def _read_glb(upload, field: str) -> bytes:
     if upload.size > MAX_MODEL_BYTES:
         raise ApiError(400, "Modèle trop lourd.", [f"Le modèle ne doit pas dépasser {MAX_MODEL_BYTES // (1024 * 1024)} Mo."])
     data = upload.read()
-    if data[:4] != b"glTF":
-        raise ApiError(400, "Modèle invalide.", [f"« {field} » doit être un fichier glTF binaire (GLB)."])
+    problem = glb_problem(data)
+    if problem:
+        raise ApiError(400, "Modèle invalide.", [f"« {field} » {problem}"])
     return data
 
 
@@ -353,11 +360,12 @@ def share_accept(request, token):
             raise ApiError(400, "Choisissez une variante.")
     except ApiError as exc:
         return exc.response()
-    link.accepted_at = timezone.now()
-    link.accepted_by = name
-    link.accepted_variant = variant.name if variant else ""
-    link.accepted_price = variant.price if variant else link.summary.get("price")
-    link.save(update_fields=["accepted_at", "accepted_by", "accepted_variant", "accepted_price"])
+    # Once, even when two answers come at the same moment: only the one that finds the link not yet accepted writes.
+    fields = {"accepted_at": timezone.now(), "accepted_by": name, "accepted_variant": variant.name if variant else "", "accepted_price": variant.price if variant else link.summary.get("price")}
+    if not ShareLink.objects.filter(pk=link.pk, accepted_at__isnull=True).update(**fields):
+        return json_error(409, "Ce projet est déjà accepté.")
+    for field, value in fields.items():
+        setattr(link, field, value)
     # The client said yes: the job is accepted (unless it is already further on).
     Project.objects.filter(pk=link.project_id, status__in=("draft", "quoted")).update(status="accepted")
     choice = f" : {variant.name}" if variant else ""

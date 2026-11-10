@@ -17,6 +17,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
 
 from .api import _iso
@@ -188,7 +189,8 @@ def batch_collection(request):
     if data.get("project") is not None:
         try:
             project = Project.objects.get(pk=data.get("project"), owner=request.user)
-        except (Project.DoesNotExist, ValueError, TypeError):
+        except (Project.DoesNotExist, ValueError, TypeError, ValidationError):
+            # « abc » is not an id at all: not found either (it was a 500).
             raise ApiError(404, "Projet introuvable.") from None
     fields = {
         "name": _text(data.get("name"), "name", NAME_MAX),

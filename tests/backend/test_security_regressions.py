@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from glb_files import glb
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
@@ -20,7 +21,7 @@ from apps.projects.documents import default_document
 from apps.projects.models import LibraryModule, Offcut, ShareLink
 
 ROOT = Path(__file__).resolve().parents[2]
-GLB = b"glTF" + b"\x02\x00\x00\x00" + b"\x00" * 64
+GLB = glb()
 
 
 @pytest.fixture(autouse=True)
@@ -250,3 +251,83 @@ def test_production_settings_are_hardened():
 def test_production_refuses_to_start_without_a_secret_key():
     run = _settings_with({"DJANGO_DEBUG": "0", "DJANGO_ALLOWED_HOSTS": "example.com"})
     assert run.returncode != 0 and "DJANGO_SECRET_KEY" in run.stderr
+
+
+# ---- audit du 10/11/2026 (deuxième rapport) : lot 1 ------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_validation_messages_stay_small_whatever_the_names(client_logged):
+    """H2 : chaque message répète des noms choisis par l'expéditeur ; ni leur longueur ni leur nombre n'enflent la
+    réponse (avant : un corps de 1 Mo donnait 51 Mo de réponse)."""
+    sketch = lambda i: {"id": f"s{i}-" + "x" * 20_000, "type": "sketch", "name": "E", "plane": "XY",
+                        "geometry": {"points": [1] * 51, "curves": [], "constraints": []}}
+    doc = {**default_document(), "features": [sketch(i) for i in range(50)]}
+    body = json.dumps({"name": "Gonflé", "document": doc})
+    response = client_logged.post("/api/projects/", body, content_type="application/json")
+    assert response.status_code == 400
+    details = response.json()["details"]
+    assert len(details) <= 101 and len(response.content) < 100_000, (len(details), len(response.content))
+
+
+@pytest.mark.django_db
+def test_huge_integers_are_refused(client_logged):
+    """L5 : un entier de 400 chiffres serait lu Infinity par l'éditeur, et le projet ne s'ouvrirait plus."""
+    body = '{"name": "x", "document": {"n": ' + "9" * 400 + "}}"
+    response = client_logged.post("/api/projects/", body, content_type="application/json")
+    assert response.status_code == 400 and "hors limites" in json.dumps(response.json(), ensure_ascii=False)
+    assert client_logged.post("/api/projects/", json.dumps({"name": "ok", "message": "1", "space": "design"}), content_type="application/json").status_code == 201
+
+
+@pytest.mark.django_db
+def test_a_glb_that_loads_from_elsewhere_or_lies_about_its_size_is_refused(client_logged, project):
+    """L4 : le GLB est servi au client anonyme ; une adresse dans le modèle ferait charger une ressource ailleurs."""
+    url = f"/api/projects/{project.id}/shares/"
+    send = lambda data: client_logged.post(url, {"model": SimpleUploadedFile("m.glb", data, "model/gltf-binary"), "title": "x"})
+    assert send(glb({"images": [{"uri": "https://pisteur.example/t.png"}]})).status_code == 400
+    assert send(glb({"buffers": [{"uri": "//pisteur.example/b.bin", "byteLength": 4}]})).status_code == 400
+    assert send(glb() + b"reste").status_code == 400
+    assert send(b"glTF" + b"\x01\x00\x00\x00" + b"\x00" * 64).status_code == 400
+    # Embedded data, as the editor's: kept.
+    assert send(glb({"images": [{"uri": "data:image/png;base64,AAAA"}]})).status_code == 201
+
+
+@pytest.mark.django_db
+def test_hostile_inputs_are_400_not_500(client_logged, project):
+    """L9 : un identifiant qui n'en est pas un, un NaN ou un prix en texte dans le résumé d'un lien."""
+    batch = client_logged.post("/api/batch/", json.dumps({"project": "abc", "name": "x", "rows": []}), content_type="application/json")
+    assert batch.status_code == 404
+    url = f"/api/projects/{project.id}/shares/"
+    for summary in ('{"price": NaN}', '{"price": "beaucoup"}', '{"price": -1}'):
+        response = client_logged.post(url, {"model": SimpleUploadedFile("m.glb", GLB, "model/gltf-binary"), "title": "x", "summary": summary})
+        assert response.status_code == 400, summary
+
+
+@pytest.mark.django_db
+def test_a_link_is_accepted_once(client_logged, project):
+    """Constat 9 : deux acceptations : la seconde est refusée, un seul commentaire « Projet accepté »."""
+    data = {"model": SimpleUploadedFile("m.glb", GLB, "model/gltf-binary"), "title": "x", "summary": '{"price": 900}', "allow_accept": "1"}
+    token = client_logged.post(f"/api/projects/{project.id}/shares/", data).json()["token"]
+    first = Client().post(f"/s/{token}/accept/", json.dumps({"name": "Mme Martin"}), content_type="application/json")
+    second = Client().post(f"/s/{token}/accept/", json.dumps({"name": "Quelqu'un d'autre"}), content_type="application/json")
+    assert first.status_code == 200 and first.json()["accepted"]["by"] == "Mme Martin" and first.json()["accepted"]["price"] == 900
+    assert second.status_code == 409
+    assert ShareLink.objects.get(token=token).accepted_by == "Mme Martin"
+    assert project.comments.filter(body__startswith="Projet accepté").count() == 1
+
+
+@pytest.mark.django_db
+def test_a_browser_report_writes_one_log_line(client_logged, caplog):
+    """Constat 8 : un retour à la ligne dans un rapport d'erreur n'écrit pas de fausse ligne dans le journal."""
+    with caplog.at_level("ERROR", logger="apps.client"):
+        client_logged.post("/api/client-errors/", json.dumps({"message": "panne\n2026-11-10 ERROR django : faux\r\nautre"}), content_type="application/json")
+    assert caplog.records and all("\n" not in r.getMessage() and "\r" not in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.django_db
+def test_the_logo_is_read_by_its_bytes(client_staff):
+    """Constat 10 : un fichier qui se dit PNG sans en être un est refusé."""
+    fake = SimpleUploadedFile("logo.png", b"<svg onload=alert(1)>", content_type="image/png")
+    response = client_staff.post("/catalogue/atelier/", {"name": "Atelier", "logo_file": fake})
+    assert response.status_code == 200 and "PNG ou JPEG" in response.content.decode()
+    assert not CompanyProfile.load().logo

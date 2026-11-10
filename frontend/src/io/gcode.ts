@@ -163,6 +163,13 @@ export function offsetLoop(loop: Seg[], d: number): Seg[] {
 
 const n3 = (v: number) => (Math.abs(v) < 5e-4 ? "0" : Number(v.toFixed(3)).toString());
 
+/**
+ * A text (a part's or a material's name) made safe inside a G-code comment: a « ) » would close the comment and what
+ * follows would be run by the machine, a line break would start a line of commands, « % » marks the program's ends.
+ * Those and every control character become a space; the accents stay; 80 characters at most.
+ */
+export const gcodeComment = (text: string) => text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029()%;]/g, " ").replace(/ {2,}/g, " ").trim().slice(0, 80);
+
 interface Hole {
   at: P2;
   diameter: number;
@@ -247,7 +254,7 @@ function sheetCode(jobs: Job[], o: GcodeOptions, tools: Map<number, number>): st
         continue;
       }
       const bottom = h.depth >= j.thickness - 0.01 ? -(j.thickness + o.overcut) : -h.depth;
-      out.push(`(${j.name} : trou D${n3(h.diameter)})`);
+      out.push(`(${gcodeComment(j.name)} : trou D${n3(h.diameter)})`);
       for (const z of passes(bottom, o.pass)) {
         for (const x of rings(h.diameter / 2, o)) {
           if (x === 0) out.push(`G0 X${n3(h.at[0])} Y${n3(h.at[1])}`, `G1 Z${n3(z)} F${o.plunge}`);
@@ -258,7 +265,7 @@ function sheetCode(jobs: Job[], o: GcodeOptions, tools: Map<number, number>): st
     }
   }
   for (const j of jobs) {
-    out.push(`(${j.name} : contour)`);
+    out.push(`(${gcodeComment(j.name)} : contour)`);
     for (const path of j.contours) for (const z of passes(-(j.thickness + o.overcut), o.pass)) out.push(...pathCode(path, z, o));
   }
   return out;
@@ -304,7 +311,7 @@ export function partsGcode(groups: { label: string; size: [number, number]; part
     skipped.push(...tooBig.map((n) => `${n} (plus grande que le panneau)`));
     for (const sheet of sheets) {
       count++;
-      out.push("", `(Panneau ${count} : ${g.label}, ${g.size[0]} x ${g.size[1]} mm, ${sheet.length} pièce${sheet.length > 1 ? "s" : ""})`);
+      out.push("", `(Panneau ${count} : ${gcodeComment(g.label)}, ${g.size[0]} x ${g.size[1]} mm, ${sheet.length} pièce${sheet.length > 1 ? "s" : ""})`);
       if (count > 1) out.push("M5", `M0 (posez le panneau ${count})`);
       const jobs: Job[] = [];
       for (const { part, at } of sheet) {

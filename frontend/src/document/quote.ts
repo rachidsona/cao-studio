@@ -5,6 +5,7 @@
  * par le navigateur). Un scénario remplace une matière par une autre pour comparer les prix ; les versions
  * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
  */
+import { csvText } from "./csv-text";
 import { formatLength } from "../measurements/units";
 import { barLength } from "./bars";
 import type { CutTotals } from "./cut-list";
@@ -139,7 +140,8 @@ export function quoteCsv(quote: Quote): string {
     ["TVA", "", "", "", n(quote.vat)],
     ["Total TTC", "", "", "", n(quote.gross)],
   ];
-  return rows.map((r) => r.map((c) => (/^[\d,]*$/.test(c) ? c : `"${c.replace(/"/g, '""')}"`)).join(";")).join("\r\n");
+  // A number (a discount is negative) as it is; a text quoted, a formula kept as text.
+  return rows.map((r) => r.map((c) => (/^-?[\d,]*$/.test(c) ? c : csvText(c))).join(";")).join("\r\n");
 }
 
 /** The totals with one material replaced by another (a scenario): the same areas, priced at the other's rate. */

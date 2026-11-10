@@ -36,3 +36,6 @@ playwright-report/
 agentdb.rvf
 agentdb.rvf.idmap.json
 docs/
+.ruv-swarm/
+# Reports of the agents' security scans (ruflo), kept on this computer
+.claude/security-scans/

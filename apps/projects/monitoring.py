@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from django.db import connection
@@ -32,10 +33,12 @@ def healthz(request):
 
 
 def _clean(data: dict[str, Any], field: str) -> str:
+    """A field of the report, cut, and on one line: a line break would let a browser write false lines in the log
+    (audit of 10/11/2026, constat 8)."""
     value = data.get(field, "")
     if not isinstance(value, str):
         return ""
-    return value[: FIELD_LIMITS[field]]
+    return re.sub(r"[\x00-\x1f\x7f\u2028\u2029]", " ⏎ " if field == "stack" else " ", value[: FIELD_LIMITS[field]])
 
 
 @api_view(("POST",))

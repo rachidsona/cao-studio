@@ -39,7 +39,7 @@ export const STYLES: Record<LineStyle, string> = {
 };
 
 const line = (a: Vec2, b: Vec2, style: string) => `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" ${style}/>`;
-const text = (at: Vec2, t: string, extra = "", size = TEXT_SIZE) => `<text x="${f(at[0])}" y="${f(at[1])}" font-size="${size}" font-family="Helvetica, Arial, sans-serif" ${extra}>${esc(t)}</text>`;
+const text = (at: Vec2, t: string, extra = "", size = TEXT_SIZE) => `<text x="${f(at[0])}" y="${f(at[1])}" font-size="${Number(size) || TEXT_SIZE}" font-family="Helvetica, Arial, sans-serif" ${extra}>${esc(t)}</text>`;
 
 /** An annotation's lines, arrows, texts, circles and arcs as SVG. */
 export function drawnSvg(d: Drawn, color: string): string {
@@ -180,18 +180,18 @@ export function renderSheet(sheet: DrawingSheet, layout: SheetLayout, options: R
     }
     const label = view.kind === "section" && view.cut ? `COUPE ${view.cut.letter}-${view.cut.letter}` : view.kind === "detail" && view.detail ? `DÉTAIL ${view.detail.letter}` : view.label;
     parts.push(text(layout.labelAt(sheet, view), `${label} (${scaleText(view.scale)})`, `fill="${picked(view.id) ? PICKED : INK}" text-anchor="middle" font-weight="bold"`, 3.5));
-    out.push(`<g data-id="${view.id}">${parts.join("")}</g>`);
+    out.push(`<g data-id="${esc(view.id)}">${parts.join("")}</g>`);
   }
 
   const itemOf = (body: string) => options.bom.find((r) => r.bodies.includes(body))?.item ?? null;
   for (const a of sheet.annotations) {
     if (off.has(a.id)) continue;
     if (a.kind === "bom") {
-      out.push(`<g data-id="${a.id}">${bomSvg(a.at, options.bom).svg}</g>`);
+      out.push(`<g data-id="${esc(a.id)}">${bomSvg(a.at, options.bom).svg}</g>`);
       continue;
     }
-    out.push(`<g data-id="${a.id}">${drawnSvg(drawAnnotation(sheet, layout, a, options.format, itemOf), picked(a.id) ? PICKED : a.kind === "text" || a.kind === "note" || a.kind === "balloon" ? INK : DIM)}</g>`);
+    out.push(`<g data-id="${esc(a.id)}">${drawnSvg(drawAnnotation(sheet, layout, a, options.format, itemOf), picked(a.id) ? PICKED : a.kind === "text" || a.kind === "note" || a.kind === "balloon" ? INK : DIM)}</g>`);
   }
-  for (const item of sheet.sketch.items.filter((i) => !off.has(i.id))) out.push(`<g data-id="${item.id}">${sketchSvg(sheet, item, picked(item.id) ? `stroke="${PICKED}" stroke-width="0.4"` : undefined)}</g>`);
+  for (const item of sheet.sketch.items.filter((i) => !off.has(i.id))) out.push(`<g data-id="${esc(item.id)}">${sketchSvg(sheet, item, picked(item.id) ? `stroke="${PICKED}" stroke-width="0.4"` : undefined)}</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}"><defs>${hatch.join("")}</defs><rect width="${w}" height="${h}" fill="#fff"/>${out.join("")}</svg>`;
 }

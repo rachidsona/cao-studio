@@ -2,13 +2,14 @@
 import json
 
 import pytest
+from glb_files import glb
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from apps.projects.models import BatchItem, Offcut
 
-GLB = b"glTF" + b"\x02\x00\x00\x00" + b"\x00" * 64
+GLB = glb()
 ROW = {"names": ["Côté gauche", "Côté droit"], "quantity": 2, "length": 720, "width": 557, "thickness": 18, "material": "Mélaminé blanc", "grain": "length", "edges": {"length1": True}, "band": 1, "cutLength": 720, "cutWidth": 556}
 
 
@@ -72,8 +73,8 @@ def test_a_link_offers_variants_with_their_models_and_prices(client_logged, proj
     summary = {"size": [600, 560, 720], "variants": [{"name": "Petit 600", "price": 480.5, "size": [600, 560, 720]}, {"name": "Grand 900", "price": 690}]}
     data = {
         "model": SimpleUploadedFile("m.glb", GLB),
-        "variant_0": SimpleUploadedFile("v0.glb", GLB + b"0"),
-        "variant_1": SimpleUploadedFile("v1.glb", GLB + b"1"),
+        "variant_0": SimpleUploadedFile("v0.glb", glb(tag="0")),
+        "variant_1": SimpleUploadedFile("v1.glb", glb(tag="1")),
         "title": "Buffet",
         "summary": json.dumps(summary),
     }
@@ -84,7 +85,7 @@ def test_a_link_offers_variants_with_their_models_and_prices(client_logged, proj
     payload = json.loads(page.content.decode().split('id="share-data" type="application/json">')[1].split("</script>")[0])
     assert [(v["name"], v["price"]) for v in payload["variants"]] == [("Petit 600", 480.5), ("Grand 900", 690.0)]
     model = Client().get(payload["variants"][1]["modelUrl"])
-    assert model.status_code == 200 and model.content == GLB + b"1"
+    assert model.status_code == 200 and model.content == glb(tag="1")
     assert Client().get(f"/s/{token}/variants/9.glb").status_code == 404
     # A variant without its model is refused.
     missing = client_logged.post(f"/api/projects/{project.id}/shares/", {"model": SimpleUploadedFile("m.glb", GLB), "summary": json.dumps({"variants": [{"name": "A"}]})})

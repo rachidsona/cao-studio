@@ -6,6 +6,7 @@
  * band. Bodies that are not boxes are listed by their bounding box (marked).
  * Each row gets a mark (A, B, C… as OpenCutList's part numbers), written on the sheet layout and in the view.
  */
+import { csvText } from "./csv-text";
 import { rowKinds } from "./cut-groups";
 import { bodyLabel } from "./operations";
 import { bodyInfo, materialById } from "./materials";
@@ -129,7 +130,7 @@ export function edgeText(edges: CutRow["edges"]): string {
 export function cutListCsv(rows: CutRow[], unit: DisplayUnit = "mm"): string {
   const u = UNIT_LABELS[unit];
   const head = ["Repère", "Pièce", "Qté", `Longueur (${u})`, `Largeur (${u})`, `Épaisseur (${u})`, "Matière", "Fil", "Chants", "Chant (mm)", `Longueur de coupe (${u})`, `Largeur de coupe (${u})`, `Débit brut L (${u})`, `Débit brut l (${u})`, "Type"];
-  const cell = (v: string | number) => (typeof v === "number" ? String(v).replace(".", ",") : `"${v.replace(/"/g, '""')}"`);
+  const cell = (v: string | number) => (typeof v === "number" ? String(v).replace(".", ",") : csvText(v));
   const len = (mm: number) => Number(toDisplay(mm, unit).toFixed(4));
   const lines = rows.map((r) => [r.tag ?? "", r.names.join(", ") + (r.approximate ? " (≈)" : ""), r.quantity, len(r.length), len(r.width), len(r.thickness), r.material, GRAIN[r.grain], edgeText(r.edges), r.band, len(r.cutLength), len(r.cutWidth), len(r.roughLength ?? r.cutLength), len(r.roughWidth ?? r.cutWidth), rowKinds(r)].map(cell).join(";"));
   return [head.map(cell).join(";"), ...lines].join("\r\n");

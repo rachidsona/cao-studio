@@ -169,20 +169,44 @@ Tout le reste se **propose** sans s'appliquer : changement de modèle de droits,
 | Moyenne | Pas de limite de connexion ; pas de quota de stockage ; `DEBUG` vrai par défaut | Dans le rapport, avec un plan ; ne bloque pas seule |
 | Faible / Info | Fausses lignes dans les journaux ; durcissement (CSP) ; XSS limitée à soi-même | Dans le rapport |
 
-## Suivi des constats (audit du 10 novembre 2026)
+## Suivi des constats
 
-Rapport : `docs/securite/audit-securite-2026-11-10.md`. Garder ce tableau à jour à chaque audit.
+Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-securite-2026-11-10-2.md` (audit initial par quatre spécialistes, numéros H, M, L). Garder ce tableau à jour à chaque audit.
 
 | # | Constat | État |
 |---|---|---|
-| 1 | XSS stockée par l'unité de quincaillerie (devis) | Corrigé (commit 3ca5fe0), test `tests/frontend/quote-html.test.ts` |
-| 2 | Catalogue, tarifs et profil modifiables par tout compte | Corrigé : réservés au personnel (`staff_only`, commande `manage.py personnel`) |
-| 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis (dépendance et `settings.py`) |
-| 4 | Pas de quota de stockage par compte | Ouvert : proposition à faire |
-| 5 | Limites de débit non atomiques, sur un cache par processus | Ouvert : accord requis (`CACHES`) |
-| 6 | `DEBUG` vrai par défaut | Ouvert : accord requis (`settings.py`) |
-| 7 | Pas de CSP | Ouvert : accord requis (`settings.py`) |
-| 8 | Fausses lignes dans les journaux (`client-errors`) | Ouvert : correction sûre possible |
-| 9 | Lien client : acceptation et commentaires ouverts à tout porteur du lien | Ouvert : choix de fonctionnement |
-| 10 | Type du logo lu dans l'en-tête déclaré | Ouvert : correction sûre possible |
-| 11 | XSS limitée à soi-même dans la bande du linéaire | Ouvert : correction sûre possible |
+| 1 | XSS stockée par l'unité de quincaillerie (devis) | Corrigé (3ca5fe0), `tests/frontend/quote-html.test.ts` |
+| 2 | Catalogue, tarifs et profil modifiables par tout compte | Corrigé (aad2bce) : personnel seulement (`rachidsonaa`) |
+| H1 | Injection de commandes G-code par un nom de pièce ou de matière | Corrigé (lot 1) : `gcodeComment` |
+| H2 | Mémoire épuisée par les messages de validation | Corrigé (lot 1) : 100 messages de 300 caractères au plus |
+| M1 | XSS par un projet importé dans la bande du linéaire (ancien n° 11) | Corrigé (lot 1) : échappement + `validate-kitchen.ts` |
+| M2 | XSS dans la mise en plan par un projet importé | Corrigé (lot 1) : `esc` des `data-id`, taille numérique, annotations validées |
+| M3 | Pollution de prototype par les formules | Corrigé (lot 1) : `drivablePath`, `Object.hasOwn` |
+| M4 | Variantes jamais validées | Corrigé côté éditeur (lot 1) ; côté serveur : accord requis |
+| M5 | Injection de formules dans les CSV | Corrigé (lot 1) : `csvText` |
+| M6 | Django 6.1.2 (CVE-2026-108147) | Ouvert : installer 6.1.3, accord requis (téléchargement) |
+| M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Ouvert : accord requis |
+| M8 | Inscription libre, données commerciales lisibles | Ouvert : accord requis |
+| M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Ouvert : accord requis |
+| M10 | Outils d'agents non épinglés | Ouvert : accord requis (configuration de l'utilisateur) |
+| L1 | Titre d'impression non échappé | Corrigé (lot 1) |
+| L2 | Couleur de matière non validée | Corrigé dans l'éditeur (lot 1) ; validateur serveur : à faire avec une migration |
+| L3 | DXF : bombe ELLIPSE, NaN | Corrigé (lot 1) : 20 Mo, un tour, 200 000 traits, valeurs finies |
+| L4 | GLB public qui charge ailleurs | Corrigé (lot 1) : `apps/projects/glb.py` + `setURLModifier` |
+| L5 | Entiers géants | Corrigé (lot 1) : 10^15 au plus |
+| L6 | Worker sans délai | Ouvert : accord requis |
+| L7 | Nom de connexion sur les pages client | Ouvert : accord requis |
+| L8 | Événements de sécurité non journalisés | Ouvert : accord requis (`settings.py`) |
+| L9 | Erreurs 500 sur entrées invalides | Corrigé (lot 1) |
+| L10 | Ni changement de mot de passe, ni suppression, ni export | Ouvert : accord requis |
+| L11 | Google Fonts sur la page client | Ouvert : avec la CSP |
+| L12 | sqlparse 0.6.0 | Ouvert : avec M6 |
+| L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | Ouvert : accord requis |
+| L15 | Dossiers d'agents non ignorés | Corrigé (lot 1) : `.gitignore` |
+| 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
+| 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |
+| 6 | `DEBUG` vrai par défaut | Ouvert : accord requis |
+| 7 | Pas de CSP | Ouvert : accord requis (CSP prête dans le rapport) |
+| 8 | Fausses lignes dans les journaux | Corrigé (lot 1) |
+| 9 | Acceptation d'un lien non atomique | Corrigé (lot 1) ; ouverture à tout porteur : choix de fonctionnement |
+| 10 | Type du logo lu dans l'en-tête déclaré | Corrigé (lot 1) : octets magiques |

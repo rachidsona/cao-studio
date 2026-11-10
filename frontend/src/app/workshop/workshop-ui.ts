@@ -74,7 +74,7 @@ export interface PrintPage {
 
 /** The whole page of a document; `header`: the letterhead first. */
 export function pageHtml({ title, html, css = "" }: PrintPage, header = true): string {
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
     body{font:11px system-ui,sans-serif;margin:12mm;color:#111} h1{font-size:16px} table{border-collapse:collapse;width:100%}
     th,td{border:1px solid #999;padding:3px 5px;text-align:left} th{background:#eee} svg{max-width:100%;page-break-inside:avoid}
     .sheet{page-break-after:always}${css}</style></head><body>${header ? letterhead : ""}${html}</body></html>`;

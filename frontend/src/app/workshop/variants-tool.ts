@@ -6,6 +6,7 @@
 import { euros } from "../../document/quote";
 import { openedVariant, withoutVariant, withVariant } from "../../document/variants";
 import type { Variant } from "../../document/types";
+import { parseDocument } from "../../document/validate";
 import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
@@ -25,7 +26,21 @@ const gap = (total: number | null, current: number | null) => {
 };
 
 function picture(src: string | undefined): HTMLElement {
-  return src ? el("img", { src, alt: "", class: "h-28 w-full object-contain" }) : el("div", { class: "h-28 w-full bg-gray-100 dark:bg-gray-800" });
+  // An image of its own only (a data URL): never an address that would be fetched from elsewhere.
+  return src && /^data:image\/(png|jpeg|webp);base64,/.test(src) ? el("img", { src, alt: "", class: "h-28 w-full object-contain" }) : el("div", { class: "h-28 w-full bg-gray-100 dark:bg-gray-800" });
+}
+
+/**
+ * A variant checked as a project opened from a file is: its document was kept inside the project and nothing has read
+ * it since (audit of 10/11/2026, M4 — without this, an operation copied a billion times would reach the kernel).
+ */
+function checkedVariant(made: ReturnType<typeof openedVariant>): ReturnType<typeof openedVariant> {
+  if (typeof made === "string") return made;
+  try {
+    return parseDocument(made);
+  } catch {
+    return "Cette variante est invalide : elle ne peut pas être ouverte.";
+  }
 }
 
 export function bindVariants(root: HTMLElement, viewport: Viewport, editor: Editor): void {
@@ -46,7 +61,7 @@ export function bindVariants(root: HTMLElement, viewport: Viewport, editor: Edit
     const card = (v: Variant) => {
       const reopen = el("button", { type: "button", class: SMALL }, "Ouvrir");
       reopen.addEventListener("click", () => {
-        again(openedVariant(editor.doc, v.id), `Variante ouverte : ${v.name}. Ctrl+Z revient en arrière.`);
+        again(checkedVariant(openedVariant(editor.doc, v.id)), `Variante ouverte : ${v.name}. Ctrl+Z revient en arrière.`);
         close();
       });
       const remove = el("button", { type: "button", class: SMALL, "aria-label": `Supprimer ${v.name}` }, "Supprimer");

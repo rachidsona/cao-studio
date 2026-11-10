@@ -3,7 +3,7 @@
  * référence (traits de construction fixes, pour dessiner le meuble par-dessus) ou comme dessin (traits ordinaires, à
  * extruder), à ses coordonnées ou son coin bas-gauche sur l'origine ; une seule annulation.
  */
-import { parseDxf, shapesBox } from "../io/dxf-import";
+import { MAX_DXF_BYTES, parseDxf, shapesBox } from "../io/dxf-import";
 import { addShapes } from "../sketcher/import-shapes";
 import type { SketchMode } from "../sketcher/mode";
 import { el } from "../ui/dom";
@@ -15,6 +15,7 @@ export function importDxf(mode: SketchMode, notify: (message: string, kind?: "in
   input.addEventListener("change", async () => {
     const file = input.files?.[0];
     if (!file) return;
+    if (file.size > MAX_DXF_BYTES) return notify(`Ce DXF pèse plus de ${MAX_DXF_BYTES / (1024 * 1024)} Mo : enregistrez-le plus léger (sans les calques inutiles) pour l'importer.`, "error");
     const read = parseDxf(await file.text());
     const box = shapesBox(read.shapes);
     if (!box) return notify("Rien à importer : ce DXF n'a ni ligne, ni cercle, ni arc, ni polyligne.", "error");

@@ -15,7 +15,9 @@ import type { CadDocument } from "./types";
 /** A material of the server as the editor's: wood shows a grain; a thin « Fond » is a backing panel. */
 export function toMaterial(m: CatalogMaterial): Material {
   const backing = m.thickness <= 8 && /^fond\b/i.test(m.name);
-  return { id: m.id, name: m.name, color: m.color, look: m.category === "wood" ? "wood" : "plain", sheet: [m.sheet[0], m.sheet[1]], kind: backing ? "backing" : "panel" };
+  // The colour goes into style attributes: a colour #rrggbb, or white (audit of 10/11/2026, L2).
+  const color = typeof m.color === "string" && /^#[0-9a-f]{6}$/i.test(m.color) ? m.color : "#ffffff";
+  return { id: m.id, name: m.name, color, look: m.category === "wood" ? "wood" : "plain", sheet: [m.sheet[0], m.sheet[1]], kind: backing ? "backing" : "panel" };
 }
 
 const rules: HardwareRule[] = [];

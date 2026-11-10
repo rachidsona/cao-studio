@@ -97,15 +97,16 @@ export function evaluate(text: string, scope: Scope): number {
       expect(")");
       return v;
     }
-    if (peekOp("(") && t.value in FUNCTIONS) {
+    if (peekOp("(") && Object.hasOwn(FUNCTIONS, t.value)) {
       i++;
       const args = [sum()];
       while (eat(";")) args.push(sum());
       expect(")");
       return (FUNCTIONS[t.value] as (...a: number[]) => number)(...args);
     }
-    if (t.value in scope) return scope[t.value] as number;
-    if (t.value in CONSTANTS) return CONSTANTS[t.value] as number;
+    // Own names only: « constructor », « toString »… are not parameters.
+    if (Object.hasOwn(scope, t.value)) return scope[t.value] as number;
+    if (Object.hasOwn(CONSTANTS, t.value)) return CONSTANTS[t.value] as number;
     throw new ExpressionError(`« ${t.value} » n'est pas un paramètre connu.`);
   };
   const value = sum();
@@ -157,15 +158,27 @@ export function resolveParameters(params: Record<string, Parameter>): { values: 
 /** Numbers that are whole counts, rounded after a formula. */
 const INTEGER_PATHS = new Set(["shelves", "count"]);
 
+/**
+ * A path a formula may drive: own fields of the feature, never through « __proto__ », « prototype » or « constructor »
+ * (a document's formulas come from a file: « __proto__.x » would set x on every object of the page — audit of
+ * 10/11/2026, M3).
+ */
+const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+export const drivablePath = (path: string) => path.split(".").every((k) => k !== "" && !FORBIDDEN_KEYS.has(k));
+
 function getAt(feature: Feature, path: string): unknown {
-  return path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], feature);
+  return path.split(".").reduce<unknown>((o, k) => (o !== null && typeof o === "object" && Object.hasOwn(o, k) ? (o as Record<string, unknown>)[k] : undefined), feature);
 }
 
 function setAt<T extends Feature>(feature: T, path: string, value: number): T {
   const copy = structuredClone(feature) as unknown as Record<string, unknown>;
   const keys = path.split(".");
   let node = copy;
-  for (const k of keys.slice(0, -1)) node = node[k] as Record<string, unknown>;
+  for (const k of keys.slice(0, -1)) {
+    const next = Object.hasOwn(node, k) ? node[k] : undefined;
+    if (next === null || typeof next !== "object") throw new ExpressionError(`« ${path} » ne désigne pas une cote de l'opération.`);
+    node = next as Record<string, unknown>;
+  }
   node[keys.at(-1) as string] = value;
   return copy as unknown as T;
 }
@@ -205,6 +218,7 @@ export function applyExpressions(doc: CadDocument): { doc: CadDocument; errors: 
     let next = feature;
     for (const [path, text] of Object.entries(links)) {
       try {
+        if (!drivablePath(path)) throw new ExpressionError(`« ${path} » ne désigne pas une cote de l'opération.`);
         const raw = evaluate(text, values);
         const value = INTEGER_PATHS.has(path) ? Math.round(raw) : Number(raw.toFixed(6));
         if (getAt(next, path) !== value) {

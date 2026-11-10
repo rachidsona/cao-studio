@@ -13,6 +13,7 @@ import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenFloorPlan } from "../../document/types";
 import { applianceOf, isFiller, itemSize, type Placed, type RunFill } from "../../features/kitchen-run-items";
 import { BRASS, elevationBody } from "./unit-elevation";
+import { escapeHtml } from "../workshop/workshop-ui";
 
 const SVG = "http://www.w3.org/2000/svg";
 const WALL = "fill-gray-50 dark:fill-gray-900";
@@ -167,7 +168,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
   // A unit's width under it (over a wall unit): clicked, the calculator; an appliance keeps its widths.
   const editable = (pl: Placed) => !!host.edit && !applianceOf(pl.item);
   const widthText = (pl: Placed, height: number) =>
-    `<text x="${pl.item.width / 2}" y="${pl.row === "wall" ? -30 : height + 120}" text-anchor="middle" font-size="90" ${editable(pl) ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${pl.item.id}"` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none"'}>${editable(pl) ? "<title>Cliquer pour changer la largeur</title>" : ""}${Math.round(pl.item.width / 10)}</text>`;
+    `<text x="${pl.item.width / 2}" y="${pl.row === "wall" ? -30 : height + 120}" text-anchor="middle" font-size="90" ${editable(pl) ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none"'}>${editable(pl) ? "<title>Cliquer pour changer la largeur</title>" : ""}${Math.round(pl.item.width / 10)}</text>`;
   // The chosen unit's edge, drawn last: over the unit next to it.
   let handle = () => {};
   for (const pl of fill.placed) {
@@ -180,7 +181,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const chosen = pl.item.id === host.chosen;
     const picked = host.picked?.includes(pl.item.id) ?? false;
     if (picked) group.setAttribute("data-picked", "");
-    group.innerHTML = `<title>${label}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
+    group.innerHTML = `<title>${escapeHtml(label)}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
     drag(node, group, pl, fill, host);
     if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
@@ -211,7 +212,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
       shape.addEventListener("pointerdown", (event) => event.stopPropagation());
       shape.addEventListener("click", () => host.pickOther!({ kind: "appliance", id: a.id }));
     } else shape.setAttribute("pointer-events", "none");
-    shape.innerHTML = `<title>${a.name}</title>${rect(a.from, y(a.z1), a.to - a.from, a.z1 - a.z0, "fill-gray-800/90 stroke-gray-950 dark:fill-gray-950/90 dark:stroke-gray-300", on ? `stroke="${BRASS}" stroke-width="3" style="stroke:${BRASS}"` : "")}`;
+    shape.innerHTML = `<title>${escapeHtml(a.name)}</title>${rect(a.from, y(a.z1), a.to - a.from, a.z1 - a.z0, "fill-gray-800/90 stroke-gray-950 dark:fill-gray-950/90 dark:stroke-gray-300", on ? `stroke="${BRASS}" stroke-width="3" style="stroke:${BRASS}"` : "")}`;
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));

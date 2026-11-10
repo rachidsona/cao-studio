@@ -5,6 +5,7 @@
  * Older schema versions are migrated by parseDocument before validation.
  */
 import { nameProblem } from "./expressions";
+import { kitchenPlanProblem } from "./validate-kitchen";
 import { migrateDocument } from "./migrate";
 import { DOCUMENT_FORMAT, SCHEMA_VERSION, type CadDocument } from "./types";
 import { validateSketch } from "./validate-sketch";
@@ -98,6 +99,10 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         const f = feature.frame as Json;
         const length = (v: unknown) => (isVec3(v) ? Math.hypot(...(v as number[])) : 0);
         if (!isObject(f) || !isVec3(f.origin) || length(f.xDir) < 1e-9 || length(f.normal) < 1e-9) errors.push(`${where} : plan de construction invalide.`);
+      }
+      if (feature.kitchenPlan !== undefined) {
+        const problem = kitchenPlanProblem(feature.kitchenPlan);
+        if (problem) errors.push(`${where} : ${problem}`);
       }
       validateSketch(feature, where, errors);
       break;
@@ -324,7 +329,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
 }
 
 const variantsOk = (list: unknown) =>
-  Array.isArray(list) && list.length <= MAX_VARIANTS && list.every((v) => isObject(v) && typeof v.id === "string" && typeof v.name === "string" && (v.total === null || isFiniteNumber(v.total)) && isObject(v.doc) && Array.isArray(v.doc.features));
+  Array.isArray(list) && list.length <= MAX_VARIANTS && list.every((v) => isObject(v) && typeof v.id === "string" && typeof v.name === "string" && (v.total === null || isFiniteNumber(v.total)) && isObject(v.doc) && Array.isArray(v.doc.features) &&
+      // Its picture is shown as is: an image of its own, never an address elsewhere (audit of 10/11/2026, M4).
+      (v.image === undefined || v.image === "" || (typeof v.image === "string" && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]*$/.test(v.image))));
 
 /** Returns the list of problems found; an empty list means the document is usable. */
 export function validateDocument(input: unknown): string[] {
@@ -349,7 +356,16 @@ export function validateDocument(input: unknown): string[] {
     const sheetOk = (d: unknown) =>
       isObject(d) && typeof d.id === "string" && typeof d.name === "string" && Array.isArray(d.views) && Array.isArray(d.annotations) && isObject(d.sketch) && Array.isArray(d.sketch.items) && isObject(d.title) &&
       d.views.every((v) => isObject(v) && typeof v.id === "string" && isFiniteNumber(v.scale) && (v.scale as number) > 0 && Array.isArray(v.at) && isObject(v.spec)) &&
-      d.annotations.every((a) => isObject(a) && typeof a.id === "string" && typeof a.kind === "string");
+      d.annotations.every(
+        (a) =>
+          isObject(a) &&
+          typeof a.id === "string" &&
+          typeof a.kind === "string" &&
+          // Written in the SVG of the sheet: a text where a number is expected would go in as markup (audit of 10/11/2026, M2).
+          (a.text === undefined || typeof a.text === "string") &&
+          (a.size === undefined || (isFiniteNumber(a.size) && (a.size as number) > 0)) &&
+          (a.at === undefined || (Array.isArray(a.at) && a.at.length === 2 && a.at.every(isFiniteNumber))),
+      );
     if (!Array.isArray(sheets) || sheets.length > 50 || !sheets.every(sheetOk)) errors.push("« drawings » : feuilles de mise en plan invalides.");
   }
   if (input.bodyInfo !== undefined && (!isObject(input.bodyInfo) || !Object.values(input.bodyInfo).every(isObject))) errors.push("« bodyInfo » doit décrire chaque corps.");

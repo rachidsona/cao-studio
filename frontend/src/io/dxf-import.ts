@@ -29,6 +29,14 @@ const UNITS: Record<number, [number, string]> = {
   6: [1000, "m"],
 };
 
+/**
+ * A DXF comes from anyone: what it says is bounded (audit of 10/11/2026, L3). Its file at most MAX_DXF_BYTES, at most
+ * MAX_SHAPES shapes, coordinates finite within ±COORD_LIMIT mm; an ellipse is at most one turn.
+ */
+export const MAX_DXF_BYTES = 20 * 1024 * 1024;
+const MAX_SHAPES = 200_000;
+const COORD_LIMIT = 1e7;
+
 /** The pairs (group code, value) of a DXF text. */
 function pairs(text: string): [number, string][] {
   const lines = text.split(/\r?\n/);
@@ -134,6 +142,12 @@ export function parseDxf(text: string): DxfImport {
       const t0 = num(d, 41, 0);
       let t1 = num(d, 42, 2 * Math.PI);
       if (t1 <= t0) t1 += 2 * Math.PI;
+      // One turn at most, 64 steps a turn: a parameter of 1e8 would ask for a billion points.
+      if (!Number.isFinite(t0) || !Number.isFinite(t1)) {
+        skipped.ELLIPSE = (skipped.ELLIPSE ?? 0) + 1;
+        continue;
+      }
+      t1 = Math.min(t1, t0 + 2 * Math.PI);
       const steps = Math.max(8, Math.ceil(((t1 - t0) / (2 * Math.PI)) * 64));
       const pts: P2[] = Array.from({ length: steps + 1 }, (_, k) => {
         const t = t0 + ((t1 - t0) * k) / steps;
@@ -154,12 +168,19 @@ export function parseDxf(text: string): DxfImport {
       const pts = fit.length >= 2 ? fit : control;
       if (pts.length >= 2) shapes.push(...segments(pts));
     } else skipped[e.type] = (skipped[e.type] ?? 0) + 1;
+    if (shapes.length > MAX_SHAPES) {
+      skipped["au-delà de 200 000 traits"] = 1;
+      break;
+    }
   }
   const s = (p: P2): P2 => [p[0] * scale, p[1] * scale];
-  const scaled = shapes
-    .filter((sh) => (sh.kind === "line" ? Math.hypot(sh.b[0] - sh.a[0], sh.b[1] - sh.a[1]) > 1e-9 : sh.radius > 1e-9))
-    .map((sh): ImportedShape => (sh.kind === "line" ? { kind: "line", a: s(sh.a), b: s(sh.b) } : { ...sh, center: s(sh.center), radius: sh.radius * scale }));
-  return { shapes: scaled, scale, unitName, skipped };
+  const scaled = shapes.map((sh): ImportedShape => (sh.kind === "line" ? { kind: "line", a: s(sh.a), b: s(sh.b) } : { ...sh, center: s(sh.center), radius: sh.radius * scale }));
+  // A value that is not a number (« abc »), infinite (1e999) or out of any room: the shape is left out, and said.
+  const ok = (v: number) => Number.isFinite(v) && Math.abs(v) <= COORD_LIMIT;
+  const valid = scaled.filter((sh) => (sh.kind === "line" ? [...sh.a, ...sh.b].every(ok) : [...sh.center, sh.radius].every(ok) && (sh.kind === "circle" || (Number.isFinite(sh.start) && Number.isFinite(sh.end)))));
+  if (valid.length < scaled.length) skipped["valeurs invalides"] = scaled.length - valid.length;
+  const kept = valid.filter((sh) => (sh.kind === "line" ? Math.hypot(sh.b[0] - sh.a[0], sh.b[1] - sh.a[1]) > 1e-9 * scale : sh.radius > 1e-9 * scale));
+  return { shapes: kept, scale, unitName, skipped };
 }
 
 /** The box (min, max) of shapes, as drawn. */
@@ -170,5 +191,13 @@ export function shapesBox(shapes: readonly ImportedShape[]): [P2, P2] | null {
     if (sh.kind === "line") xs.push(sh.a[0], sh.b[0]), ys.push(sh.a[1], sh.b[1]);
     else xs.push(sh.center[0] - sh.radius, sh.center[0] + sh.radius), ys.push(sh.center[1] - sh.radius, sh.center[1] + sh.radius);
   }
-  return xs.length ? [[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]] : null;
+  if (!xs.length) return null;
+  // A loop, not Math.min(...xs): spreading 200 000 values overflows the call stack.
+  const box: [P2, P2] = [[Infinity, Infinity], [-Infinity, -Infinity]];
+  xs.forEach((x, k) => {
+    const y = ys[k]!;
+    box[0] = [Math.min(box[0][0], x), Math.min(box[0][1], y)];
+    box[1] = [Math.max(box[1][0], x), Math.max(box[1][1], y)];
+  });
+  return box;
 }

@@ -4,6 +4,7 @@
  * épaisseur, avec sa surlongueur de collage, et la quincaillerie arrondie au conditionnement (boîtes de vis, de
  * tourillons). Pur.
  */
+import { csvText } from "./csv-text";
 import type { CutRow } from "./cut-list";
 import type { Bar } from "./bars";
 import type { Sheet } from "./nesting";
@@ -83,8 +84,9 @@ export function purchaseList(sheets: readonly Sheet[], rows: readonly CutRow[], 
 
 /** The list to buy for a spreadsheet or a supplier: « ; » between columns, as cutListCsv. */
 export function purchaseCsv(lines: readonly PurchaseLine[]): string {
-  const cell = (text: string) => (/[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
-  return ["Article;Quantité;Unité;Détail", ...lines.map((l) => [l.label, String(l.quantity).replace(".", ","), l.unit, l.detail ?? ""].map(cell).join(";"))].join("\n");
+  // Quoted only when needed (a « ; », a quote, a line break), or when it would read as a formula (csvText).
+  const cell = (text: string) => (/^[=+\-@\t\r]/.test(text) || /[;"\n]/.test(text) ? csvText(text) : text);
+  return ["Article;Quantité;Unité;Détail", ...lines.map((l) => [cell(l.label), String(l.quantity).replace(".", ","), cell(l.unit), cell(l.detail ?? "")].join(";"))].join("\n");
 }
 
 /** Cut lists of several projects made `quantity` times each, as one (part names prefixed by their project). */

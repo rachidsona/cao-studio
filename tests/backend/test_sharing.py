@@ -2,13 +2,14 @@
 import json
 
 import pytest
+from glb_files import glb
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from apps.projects.models import Comment, ShareLink
 
-GLB = b"glTF" + b"\x02\x00\x00\x00" + b"\x00" * 64
+GLB = glb()
 
 
 def shares_url(project):

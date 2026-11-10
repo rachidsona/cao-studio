@@ -263,7 +263,8 @@ serveur accepte les deux versions.
 - **Importer un plan DXF** (menu « Créer ▾ » de l'esquisse) : le plan d'un architecte, d'un client ou d'un autre
   logiciel entre dans l'esquisse ouverte. Sont lus : lignes, cercles, arcs, polylignes avec leurs arrondis, ellipses
   et splines (approchées par des segments), dans l'unité du fichier ramenée en mm. Textes, cotes, blocs et hachures
-  sont comptés et laissés de côté. Deux façons de le poser :
+  sont comptés et laissés de côté, comme les traits aux valeurs illisibles. Un fichier de plus de 20 Mo est refusé ;
+  une ellipse ne fait jamais plus d'un tour, et un plan s'arrête à 200 000 traits. Deux façons de le poser :
   - **comme référence** : des traits de construction fixes, pour s'y accrocher et dessiner le meuble par-dessus ;
   - **comme dessin** : des traits ordinaires, à extruder.
   On le garde à ses coordonnées ou on pose son coin bas-gauche sur l'origine. Les bouts de traits qui se touchent

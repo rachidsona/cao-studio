@@ -52,8 +52,13 @@ class CompanyProfileForm(forms.ModelForm):
             return None
         if upload.size > LOGO_MAX_BYTES:
             raise forms.ValidationError("Le logo doit peser 200 ko au plus.")
-        if upload.content_type not in ("image/png", "image/jpeg"):
+        # The file's own first bytes, not the type the browser declared (audit of 10/11/2026, constat 10).
+        head = upload.read(8)
+        upload.seek(0)
+        kind = "image/png" if head.startswith(b"\x89PNG\r\n\x1a\n") else "image/jpeg" if head.startswith(b"\xff\xd8\xff") else None
+        if upload.content_type not in ("image/png", "image/jpeg") or kind is None:
             raise forms.ValidationError("Le logo doit être une image PNG ou JPEG.")
+        upload.content_type = kind
         return upload
 
     def save(self, commit=True):

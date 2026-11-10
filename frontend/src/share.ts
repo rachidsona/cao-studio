@@ -139,7 +139,11 @@ function setMarker(key: string, position: Vec3 | null, label: string, pending = 
 
 /** Shows the model at `url` (the link's, or a variant's) in place of the one shown. */
 function load(url: string): void {
-  new GLTFLoader().load(
+  // The model's own data only: an address written in the GLB (a texture elsewhere) would tell the client's IP to whoever
+  // put it there (audit of 10/11/2026, L4; the server refuses such a GLB too).
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier((u) => (u.startsWith("data:") || u.startsWith("blob:") || new URL(u, location.href).origin === location.origin ? u : "data:,"));
+  new GLTFLoader(manager).load(
     url,
     (gltf) => {
       if (model) scene.remove(model);
