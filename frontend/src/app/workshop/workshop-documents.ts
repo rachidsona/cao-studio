@@ -20,6 +20,7 @@ import { bindCnc } from "./workshop-cnc";
 import { printPartSheets } from "./workshop-sheets";
 import { showCheck } from "./fabrication-check";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
+import { quoteHtml } from "./quote-html";
 
 const RATES_KEY = "cao.quote-rates";
 const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -76,20 +77,6 @@ function saveRates(rates: QuoteRates): void {
     void fetch("/api/catalog/rates/", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRFToken": decodeURIComponent(csrf) }, body: JSON.stringify(shared) }).catch(() => undefined);
   }, 800);
 }
-
-const quoteHtml = (quote: Quote) =>
-  `<table><thead><tr><th>Désignation</th><th>Quantité</th><th>Prix unitaire HT</th><th>Total HT</th></tr></thead><tbody>${quote.lines
-    .map((l) => `<tr><td>${escapeHtml(l.label)}</td><td>${l.quantity.toLocaleString("fr-FR")} ${l.unit === "pièce" && l.quantity > 1 ? "pièces" : l.unit}</td><td>${euros(l.unitPrice)}</td><td>${euros(l.total)}</td></tr>`)
-    .join("")}</tbody></table><table><tbody>${[
-    ["Coût", quote.cost],
-    ["Marge", quote.margin],
-    ...(quote.discount ? [[`Remise ${quote.discountRate} %`, -quote.discount]] : []),
-    ["Total HT", quote.net],
-    ["TVA", quote.vat],
-    ["Total TTC", quote.gross],
-  ]
-    .map(([label, value]) => `<tr><th>${label}</th><td>${euros(value as number)}</td></tr>`)
-    .join("")}</tbody></table>`;
 
 /** Holes drilled in the model (its machining), priced one by one when the rates say so. */
 export function holesOf(doc: CadDocument): number {
