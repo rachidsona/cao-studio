@@ -6,7 +6,7 @@
  * un linéaire change, en une seule annulation, et chaque pièce faite garde son linéaire (`made`), pour le rouvrir ; un
  * caisson aménagé à la main suit sa place (caisson-follow.ts). Pur.
  */
-import { withCaissonsFollowing } from "./caisson-follow";
+import { withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
 import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -15,6 +15,7 @@ import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
 import { featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type SketchFeature, type Vec3 } from "./types";
+import { isSpace } from "../features/kitchen-run-items";
 import { placePoint, turn } from "../features/room-runs";
 
 const FRONT_MATERIAL = "lacquer-white";
@@ -88,7 +89,9 @@ function withWorkBack(doc: CadDocument, before: CadDocument, work: Feature[], ma
 export function withKitchenBuilt(base: CadDocument, planId: string, patch: Partial<KitchenFloorPlan> = {}): { doc: CadDocument; problems: string[] } | string {
   const old = kitchenPlanIn(base, planId);
   if (!old) return "Ce plan n'existe plus.";
-  const plan: KitchenFloorPlan = { ...old, ...patch };
+  // Its rooms kept for caissons furnished before they kept them, linked to them where they stand.
+  const unlinked = Object.values(old.runs ?? {}).some((items) => items.some((i) => isSpace(i) && !i.furnished));
+  const plan: KitchenFloorPlan = unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch };
   const madeBefore = Object.values(old.made ?? {}).flat();
   const work = handWork(base, new Set(madeBefore));
   const { next } = deleteFeatures(base, madeBefore);
@@ -111,8 +114,8 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   // The caissons furnished by hand go where their room now is.
   const followed = withCaissonsFollowing(doc, plan, layout.kept);
   doc = followed.doc;
-  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...followed.plan, made } } : f));
-  return { doc, problems: [...problems, ...layout.notes] };
+  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, made } } : f));
+  return { doc, problems: [...problems, ...followed.problems, ...layout.notes] };
 }
 
 /**

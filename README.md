@@ -1808,8 +1808,12 @@ opération existante.
     - S'il venait d'un linéaire du Plan de cuisine, le linéaire lui garde sa place, en espace libre de sa largeur : la
       cuisine refaite ne le refait plus, mais il suit cette place. Un meuble ajouté avant lui, un voisin élargi, le
       reste du mur envoyé de l'autre côté ou le plan tourné le déplacent avec elle. Cette place élargie ou rétrécie
-      (sa largeur dans la calculatrice), il est refait à sa nouvelle largeur, son intérieur adapté
-      (`document/caisson-follow.ts`). Un meuble d'angle ne s'aménage pas ainsi.
+      (sa largeur dans la calculatrice), sa Répartition prend la nouvelle largeur sur place : son intérieur s'adapte et
+      chaque pièce garde sa matière (`document/caisson-follow.ts`).
+    - Ses finitions (« Finitions » posées sur lui seul : joues, fileurs, bandeau, plinthe, pieds) le suivent, déplacées,
+      tournées, allongées avec lui (`document/caisson-trims.ts`).
+    - Un caisson aménagé avant cette version est relié à sa place à la prochaine cuisine refaite, s'il s'y trouve
+      encore. Un meuble d'angle ne s'aménage pas ainsi.
     - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
       (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
   - **Mes caissons** : un caisson aménagé se garde pour tous les projets, avec son intérieur.

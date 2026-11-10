@@ -1,16 +1,20 @@
 /**
  * Un caisson de cuisine aménagé à la main (document/cabinet-furnish.ts) suit sa place dans le linéaire : la cuisine
  * refaite (un voisin élargi, un meuble ajouté avant lui, le mur allongé, le plan tourné), il va où va l'« Espace libre »
- * qui lui est gardé, tourné comme lui ; cette place élargie ou rétrécie, il est refait à sa nouvelle largeur, son
- * intérieur (étagères, cloisons, penderie, tiroirs) adapté, comme un caisson de « Mes caissons » reposé. Pur.
+ * qui lui est gardé, tourné comme lui ; cette place élargie ou rétrécie, sa Répartition prend sa nouvelle largeur sur
+ * place, son intérieur adapté et chaque pièce gardant sa matière, comme une zone de dressing. Ses finitions le suivent
+ * (caisson-trims.ts). Un caisson aménagé avant que sa place le retienne y est relié, s'il se trouve juste à cette place. Pur.
  */
-import { caissonSpecOf, withCaissonPlaced } from "./caisson-spec";
+import { caissonPose, withTrimsFollowing } from "./caisson-trims";
 import { cabinetAxes } from "./kitchen-catalog";
-import { deleteFeatures, findFeature, updateFeature } from "./operations";
-import type { CadDocument, KitchenFloorPlan, PlaneFrame, Vec3 } from "./types";
+import { findFeature, updateFeature } from "./operations";
+import type { OffsetRecord } from "./sketch";
+import { withSketchExtrusion } from "./sketch-extrusion";
+import type { CadDocument, KitchenFloorPlan, KitchenRunItem, PlaneFrame, SketchFeature, Vec3 } from "./types";
 import type { KitchenUnit } from "../features/kitchen-layout";
 import { placePoint } from "../features/room-runs";
 import { nearestPlane } from "../sketcher/frame";
+import { extrusionGroups, isPartition, rebuildChain } from "../sketcher/partition-history";
 
 /**
  * The frame of a caisson's panels in a cabinet's place: `set` behind its front (mm), at its bottom; x along its width,
@@ -22,35 +26,100 @@ export function panelsFrame(c: { origin: Vec3; rotation?: number }, set: number)
   return { origin, xDir: [along[0], along[1], 0], normal: [-inwards[0], -inwards[1], 0] };
 }
 
-const near = (a: Vec3, b: Vec3) => a.every((v, i) => Math.abs(v - b[i]!) < 1e-6);
+const near = (a: Vec3, b: Vec3, tolerance = 1e-6) => a.every((v, i) => Math.abs(v - b[i]!) < tolerance);
 const sameFrame = (a: PlaneFrame, b: PlaneFrame) => near(a.origin, b.origin) && near(a.xDir, b.xDir) && near(a.normal, b.normal);
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+type Partition = OffsetRecord & { step: Extract<NonNullable<OffsetRecord["step"]>, { kind: "partition" }> };
+/** The Répartition a caisson's sketch is made of: the first one extruded. */
+const partitionOf = (sketch: SketchFeature): Partition | undefined => (sketch.offsets ?? []).find((r): r is Partition => isPartition(r) && r.step.kind === "partition" && !!r.step.depth);
+
+/** A room of the plan where the plan stands in the room, as its cabinets are (kitchen-plan.ts). */
+const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
+
+/** The caisson's Répartition at a new width, on its new frame: its boards made again, each keeping its material. */
+function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: PlaneFrame, width: number): { doc: CadDocument; problems: string[] } | string {
+  const make = (widths: boolean) => {
+    const offsets = (sketch.offsets ?? []).map((r) => {
+      if (r !== partitionOf(sketch) || r.step?.kind !== "partition") return r;
+      const { widths: shares, ...input } = r.step.input;
+      return { ...r, step: { ...r.step, input: { ...input, length: width, ...(widths && shares ? { widths: shares } : {}) } } } as OffsetRecord;
+    });
+    const moved: SketchFeature = { ...sketch, frame, plane: nearestPlane(frame.normal), offsets };
+    return { moved, offsets, rebuilt: rebuildChain(moved, partitionOf(sketch)!.id) };
+  };
+  // Cases of a set width that no longer fit: shared again.
+  let tried = make(true);
+  if (typeof tried.rebuilt === "string" || tried.rebuilt.problems.length) tried = make(false);
+  const { moved, offsets, rebuilt } = tried;
+  if (typeof rebuilt === "string") return rebuilt;
+  const next = updateFeature(doc, sketch.id, () => moved);
+  return { doc: withSketchExtrusion(next, sketch.id, rebuilt.geometry, { groups: extrusionGroups(offsets, rebuilt) }), problems: rebuilt.problems };
+}
 
 /**
  * The caissons furnished in the plan's runs set in their room as the plan now has it (`kept`: kitchen-plan-build.ts):
- * moved and turned with it, made again at its width when it changed. The plan, its rooms linked to the caissons made again.
+ * moved and turned with it, made to its width when it changed, their finishings with them. What could not follow.
  */
-export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan, kept: readonly KitchenUnit[]): { doc: CadDocument; plan: KitchenFloorPlan } {
+export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan, kept: readonly KitchenUnit[]): { doc: CadDocument; problems: string[] } {
   let doc = base;
-  let runs = plan.runs;
+  const problems: string[] = [];
   for (const u of kept) {
-    const item = u.run ? runs?.[u.run]?.find((i) => i.id === u.item) : undefined;
+    const item = u.run ? plan.runs?.[u.run]?.find((i) => i.id === u.item) : undefined;
     const sketch = item?.furnished ? findFeature(doc, item.furnished) : undefined;
-    if (!item || !u.run || sketch?.type !== "sketch" || !sketch.frame) continue;
-    const spec = caissonSpecOf(doc, sketch.id);
-    if (typeof spec === "string") continue;
-    // Where the plan stands in the room, as its cabinets are (kitchen-plan.ts).
-    const at = plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u;
-    // Its front where the room's front is.
-    const frame = panelsFrame(at, spec.depth);
-    if (Math.abs(spec.input.length - u.width) < 0.05) {
-      if (!sameFrame(frame, sketch.frame)) doc = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" ? { ...f, frame, plane: nearestPlane(frame.normal) } : f));
-      continue;
-    }
-    const made = withCaissonPlaced(deleteFeatures(doc, [sketch.id]).next, spec, { frame, width: u.width, height: spec.input.height, name: sketch.name });
-    if (typeof made === "string") continue;
-    doc = made.doc;
-    const run = u.run;
-    runs = { ...runs, [run]: runs![run]!.map((i) => (i === item ? { ...i, furnished: made.sketch } : i)) };
+    const record = sketch?.type === "sketch" ? partitionOf(sketch) : undefined;
+    if (sketch?.type !== "sketch" || !sketch.frame || record?.step.kind !== "partition") continue;
+    const frame = panelsFrame(placed(plan, u), record.step.depth!);
+    const width = record.step.input.length;
+    const resized = Math.abs(width - u.width) >= 0.05;
+    if (!resized && sameFrame(frame, sketch.frame)) continue;
+    const before = caissonPose(doc, sketch, width);
+    let next: CadDocument;
+    if (resized) {
+      const made = withCaissonResized(doc, sketch, frame, u.width);
+      if (typeof made === "string") {
+        problems.push(`${sketch.name} : ${made}`);
+        continue;
+      }
+      problems.push(...made.problems.map((m) => `${sketch.name} : ${m}`));
+      next = made.doc;
+    } else next = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" ? { ...f, frame, plane: nearestPlane(frame.normal) } : f));
+    doc = withTrimsFollowing(doc, next, before, caissonPose(next, findFeature(next, sketch.id) as SketchFeature, u.width));
   }
-  return { doc, plan: runs === plan.runs ? plan : { ...plan, runs } };
+  return { doc, problems };
+}
+
+/**
+ * The rooms of the plan kept free with no caisson linked, linked to the caisson furnished there before rooms kept theirs:
+ * the one standing just where its room was (`kept`: the rooms of `old`, the plan as it was), of its width. Its depth and,
+ * up in the wall row, its height then are the caisson's. `next`, its rooms linked.
+ */
+export function withRoomsLinked(doc: CadDocument, old: KitchenFloorPlan, kept: readonly KitchenUnit[], next: KitchenFloorPlan): KitchenFloorPlan {
+  const items = Object.values(old.runs ?? {}).flat();
+  const linked = new Set(items.map((i) => i.furnished).filter(Boolean));
+  const free = kept.filter((u) => !items.find((i) => i.id === u.item)?.furnished);
+  if (!free.length) return next;
+  const caissons = doc.features.filter((f): f is SketchFeature => f.type === "sketch" && !!f.frame && !linked.has(f.id) && !!partitionOf(f));
+  const found = new Map<string, Partial<KitchenRunItem>>();
+  for (const u of free) {
+    const wall = u.origin[2] > 0;
+    const at = panelsFrame(placed(old, u), 0);
+    const k = caissons.findIndex((s) => {
+      const step = partitionOf(s)!.step;
+      if (step.kind !== "partition" || Math.abs(step.input.length - u.width) >= 0.5 || !near(s.frame!.xDir, at.xDir) || !near(s.frame!.normal, at.normal)) return false;
+      const d = s.frame!.origin.map((v, i) => v - at.origin[i]!) as Vec3;
+      // Just there: at its left, its bottom, its front a little in or out of the room's.
+      return Math.abs(dot(d, at.xDir)) < 1 && (wall || Math.abs(d[2]) < 1) && Math.abs(dot(d, at.normal) + step.depth!) < 400;
+    });
+    if (k < 0) continue;
+    const s = caissons.splice(k, 1)[0]!;
+    const step = partitionOf(s)!.step;
+    if (step.kind !== "partition") continue;
+    // Its front where the room's is: the room as deep as from the wall to it.
+    const d = s.frame!.origin.map((v, i) => v - at.origin[i]!) as Vec3;
+    found.set(u.item!, { furnished: s.id, depth: u.depth + dot(d, at.normal) + step.depth!, ...(wall ? { height: u.height - d[2] } : {}) });
+  }
+  if (!found.size) return next;
+  const runs = Object.fromEntries(Object.entries(next.runs ?? {}).map(([run, list]) => [run, list.map((i) => (found.has(i.id) && !i.furnished ? { ...i, ...found.get(i.id) } : i))]));
+  return { ...next, runs };
 }

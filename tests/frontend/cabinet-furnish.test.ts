@@ -7,8 +7,9 @@ import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type KitchenRunItem, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type KitchenRunItem, type NicheFeature, type SketchFeature, type TrimFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
+import { FINISH_DEFAULTS } from "../../frontend/src/features/finish-parts";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 import { frameOf } from "../../frontend/src/sketcher/frame";
 import { isPartition, isShelves } from "../../frontend/src/sketcher/partition-history";
@@ -170,5 +171,56 @@ describe("caisson de cuisine aménagé", () => {
     expect(Math.max(...[0, 1].map((i) => hi2[i]! - lo2[i]!))).toBeCloseTo(1000, 1);
     expect(Math.min(lo2[0]!, lo2[1]!)).toBeCloseTo(Math.min(lo1[0]!, lo1[1]!), 1);
     expect(() => parseDocument(wider.doc)).not.toThrow();
+  });
+
+  it("refait à une autre largeur, garde la matière de chaque pièce ; ses finitions le suivent", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    // A side of oak, a door of walnut, and a right end put by Finitions on it alone.
+    const side = made.doc.features.find((f) => f.type === "extrude" && f.sketch === made.sketch && f.name.startsWith("Côté"))!;
+    const doors = made.doc.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === made.sketch && f.fill === "doors")!;
+    const [lo, hi] = caissonBox(made.doc, made.sketch);
+    const own = made.doc.features.filter((f) => (f.type === "extrude" || f.type === "niche") && f.sketch === made.sketch).map((f) => (f.type === "niche" ? `${f.id}${PART_SEPARATOR}0` : f.id));
+    const trim: TrimFeature = { id: "fi9", type: "trim", name: "Finitions", source: own, settings: { ...FINISH_DEFAULTS, front: { axis: 1, sign: -1 } }, parts: [{ name: "Joue droite", from: [hi[0]!, lo[1]!, 0], to: [hi[0]! + 18, hi[1]!, hi[2]!] }, { name: "Plinthe", from: [lo[0]!, lo[1]!, 0], to: [hi[0]!, lo[1]! + 16, 100] }] };
+    const dressed: CadDocument = { ...made.doc, features: [...made.doc.features, trim], bodyInfo: { ...made.doc.bodyInfo, [side.id]: { material: "solid-oak" }, [`${doors.id}${PART_SEPARATOR}0`]: { material: "walnut" } } };
+    const room = kitchenPlanIn(dressed, plan)!.runs!.A![0]!;
+    // Its room 1000 wide: the same caisson made 1000 wide, its pieces in their materials, its end at its new right side.
+    const wider = withKitchenBuilt(dressed, plan, { runs: { A: kitchenPlanIn(dressed, plan)!.runs!.A!.map((i) => (i.id === room.id ? { ...i, width: 1000 } : i)) } });
+    if (typeof wider === "string") throw new Error(wider);
+    expect(kitchenPlanIn(wider.doc, plan)!.runs!.A![0]!.furnished).toBe(made.sketch);
+    const [lo1, hi1] = caissonBox(wider.doc, made.sketch);
+    expect(hi1[0]! - lo1[0]!).toBeCloseTo(1000, 1);
+    const sides = wider.doc.features.filter((f) => f.type === "extrude" && f.sketch === made.sketch && f.name === side.name);
+    expect(sides.map((f) => wider.doc.bodyInfo?.[f.id]?.material)).toEqual(["solid-oak"]);
+    expect(wider.doc.bodyInfo?.[`${doors.id}${PART_SEPARATOR}0`]?.material).toBe("walnut");
+    const after = wider.doc.features.find((f): f is TrimFeature => f.id === "fi9")!;
+    expect(after.parts[0]!.from[0]).toBeCloseTo(hi1[0]!, 1);
+    expect(after.parts[1]!.to[0]! - after.parts[1]!.from[0]!).toBeCloseTo(1000, 1);
+    expect(after.source!.every((id) => wider.doc.features.some((f) => f.id === id.split(PART_SEPARATOR)[0]))).toBe(true);
+    // A unit put before it: its finishings go along with it.
+    const items = kitchenPlanIn(wider.doc, plan)!.runs!.A!;
+    const moved = withKitchenBuilt(wider.doc, plan, { runs: { A: [newItem(items, "base-bas-1-porte", 400), ...items] } });
+    if (typeof moved === "string") throw new Error(moved);
+    const shifted = moved.doc.features.find((f): f is TrimFeature => f.id === "fi9")!;
+    expect(shifted.parts[0]!.from[0]! - after.parts[0]!.from[0]!).toBeCloseTo(400, 1);
+    expect(shifted.settings!.front).toEqual({ axis: 1, sign: -1 });
+  });
+
+  it("relie un caisson aménagé avant que sa place le retienne, puis le fait suivre", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    // As it was saved before: a space of its width, nothing more.
+    const older: CadDocument = { ...made.doc, features: made.doc.features.map((f) => (f.id === plan && f.type === "sketch" ? { ...f, kitchenPlan: { ...f.kitchenPlan!, runs: { A: f.kitchenPlan!.runs!.A!.map(({ furnished: _f, depth: _d, height: _h, ...i }) => i) } } } : f)) };
+    const [lo0] = caissonBox(older, made.sketch);
+    const items = kitchenPlanIn(older, plan)!.runs!.A!;
+    const moved = withKitchenBuilt(older, plan, { runs: { A: [newItem(items, "base-bas-1-porte", 400), ...items] } });
+    if (typeof moved === "string") throw new Error(moved);
+    expect(kitchenPlanIn(moved.doc, plan)!.runs!.A![1]).toMatchObject({ model: "space", furnished: made.sketch, depth: cabinet.depth });
+    const [lo1] = caissonBox(moved.doc, made.sketch);
+    expect(Math.hypot(...[0, 1, 2].map((i) => lo1[i]! - lo0[i]!))).toBeCloseTo(400, 1);
   });
 });
