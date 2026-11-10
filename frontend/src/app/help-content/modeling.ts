@@ -338,6 +338,7 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Cliquez « Affichage par famille » : des cases s'ouvrent. Décochez une famille pour la cacher.",
           "« Vue de travail » cache d'un clic les façades, les murs et l'électroménager pour travailler dedans. « Tout afficher » remet tout.",
+          "« Murs qui cachent la vue masqués » (coché d'office) : quand vous tournez autour de la pièce, le mur entre vous et elle s'efface, et un clic le traverse ; il revient quand vous repassez devant. « avec leurs meubles » efface aussi les meubles de ce mur, dont on ne verrait que le dos, pour voir l'intérieur de la pièce ; ceux des autres murs restent entiers, et il reste toujours une rangée à regarder. Décochez une case pour les garder.",
         ],
         tip: "La vue seule change : liste de débit et devis restent les mêmes. Chaque corps est rangé d'après son nom (porte, étagère, plinthe…).",
       },

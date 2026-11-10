@@ -244,6 +244,13 @@ export class Viewport {
    */
   setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); }
   setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); }
+
+  /** Takes these bodies (the walls in the way) out of the view and out of reach, the others back in. */
+  setCutaway(ids: ReadonlySet<string>): void { this.layer.setCut(ids); }
+  isCutaway(bodyId: string): boolean { return this.layer.isCut(bodyId); }
+
+  /** Where the eye is. */
+  eye(): [number, number, number] { return this.camera.position.toArray() as [number, number, number]; }
   setXray(on: boolean): void { this.layer.setXray(on); }
 
   /** Colours the bodies by their material; null puts the plain tints back. Applied again to every regeneration. */

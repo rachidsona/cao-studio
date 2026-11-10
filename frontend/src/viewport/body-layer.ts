@@ -61,6 +61,9 @@ export function drawnEdgeAt(groups: DrawnEdges["groups"], vertexIndex: number): 
 /** Colour of the bodies by default (no appearance, no material shown). */
 export const BODY_COLOR = 0xf8f8f8;
 
+/** The layer of the bodies taken out of the view (the camera draws layer 0 only). */
+const CUT_LAYER = 5;
+
 export class BodyLayer {
   readonly bodies = new Map<string, BodyObject>();
   /** Second material of every mesh: the selected faces. */
@@ -103,6 +106,8 @@ export class BodyLayer {
   replace(meshes: BodyMesh[]): void {
     for (const body of this.bodies.values()) this.disposeBody(body);
     this.bodies.clear();
+    // New meshes, all in view: the walls in the way are taken out again at the next frame.
+    this.cut = new Set();
     for (const [index, data] of meshes.entries()) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(data.vertices, 3));
@@ -151,7 +156,28 @@ export class BodyLayer {
 
   /** The bodies in sight: a ray goes through the hidden ones, as the eye does. */
   private shown(): BodyObject[] {
-    return [...this.bodies.values()].filter((b) => b.mesh.visible);
+    return [...this.bodies.values()].filter((b) => b.mesh.visible && !this.cut.has(b.data.bodyId));
+  }
+
+  /** The walls taken out of the view because they stand between the eye and the room (app/wall-cutaway.ts). */
+  private cut = new Set<string>();
+
+  /** Whether this body is out of the view that way. */
+  isCut(bodyId: string): boolean {
+    return this.cut.has(bodyId);
+  }
+
+  /**
+   * Takes these bodies out of the view, and out of reach of a click, without hiding them: on a layer the camera does
+   * not draw. The others back on the camera's.
+   */
+  setCut(ids: ReadonlySet<string>): void {
+    for (const [id, body] of this.bodies) {
+      const out = ids.has(id);
+      if (out === this.cut.has(id)) continue;
+      for (const object of [body.mesh, body.edges]) object.layers.set(out ? CUT_LAYER : 0);
+    }
+    this.cut = new Set([...ids].filter((id) => this.bodies.has(id)));
   }
 
   /** The meshes a pick can hit. */

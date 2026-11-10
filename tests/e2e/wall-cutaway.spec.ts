@@ -1,0 +1,84 @@
+/** Les murs qui cachent la vue s'effacent quand on tourne autour de la pièce, et reviennent devant elle. */
+import { expect, test, type Page } from "@playwright/test";
+import { newProject } from "./helpers";
+
+const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
+const shot = async (page: Page, name: string) => {
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+};
+
+test("le mur entre l'œil et la cuisine s'efface avec ses meubles, la vue tournée derrière lui", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-murs-masques");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  for (const run of ["A", "B"]) {
+    await tool.locator(`[data-open-run="${run}"]`).click();
+    const add = tool.locator('[data-fold="add"]');
+    if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+    await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+    await tool.locator("[data-run-ok]").click();
+    await expect(page.getByText(`Mur ${run} aménagé`).first()).toBeVisible({ timeout: 60_000 });
+  }
+  const view = page.locator("canvas.cad-view");
+
+  // In front of wall A's run: no wall in the way.
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await expect(view).toHaveAttribute("data-walls-cut", "0");
+  await expect(view).toHaveAttribute("data-furniture-cut", "0");
+  await shot(page, "mur-devant");
+  // Turned round to look from behind wall A: it is no longer drawn, nor the units standing against it (their backs);
+  // those of wall B stay.
+  const box = (await view.boundingBox())!;
+  const halfTurn = async () => {
+    // The view set by a button turns to it, and a drag glides on: wait for it to be still.
+    await page.waitForTimeout(900);
+    for (let turn = 0; turn < 2; turn++) {
+      await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.5);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.5, { steps: 20 });
+      await page.mouse.up();
+    }
+    await page.waitForTimeout(900);
+  };
+  await halfTurn();
+  await expect(view).not.toHaveAttribute("data-walls-cut", "0");
+  const hidden = Number(await view.getAttribute("data-furniture-cut"));
+  expect(hidden).toBeGreaterThan(5);
+  await page.waitForTimeout(800);
+  await shot(page, "mur-masque");
+
+  // From the right, in front of wall B's run: all back. Half a turn on, behind wall B: its units only go, those of
+  // wall A stay whole, in the corner too.
+  await click(page, '[data-action="view"][data-view="right"]');
+  await click(page, '[data-action="fit"]');
+  await expect(view).toHaveAttribute("data-furniture-cut", "0");
+  await halfTurn();
+  await expect(view).not.toHaveAttribute("data-walls-cut", "0");
+  const behindB = Number(await view.getAttribute("data-furniture-cut"));
+  expect(behindB).toBeGreaterThan(5);
+  await shot(page, "mur-b-masque");
+
+  // In « Affichage »: the units back with « avec leurs meubles » off, the wall too with the first box off.
+  await click(page, "[data-display-menu]");
+  const units = page.locator("[data-wall-cutaway-furniture]");
+  await units.uncheck();
+  await expect(view).toHaveAttribute("data-furniture-cut", "0");
+  await expect(view).not.toHaveAttribute("data-walls-cut", "0");
+  await shot(page, "mur-masque-meubles-gardes");
+  await units.check();
+  await expect(view).toHaveAttribute("data-furniture-cut", String(behindB));
+  const option = page.locator("[data-wall-cutaway]");
+  await option.uncheck();
+  await expect(view).toHaveAttribute("data-walls-cut", "0");
+  await expect(units).toBeDisabled();
+  await option.check();
+  await expect(view).not.toHaveAttribute("data-walls-cut", "0");
+  expect(errors).toEqual([]);
+});

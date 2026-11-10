@@ -70,7 +70,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await unfold(tool, "add");
   await tool.getByRole("tab", { name: "Mes meubles" }).click();
   await expect(tool.getByText("Caisson aménagé").first()).toBeVisible();
-  await tool.getByRole("button", { name: /^Ajouter Mon caisson rangement/ }).click();
+  await tool.getByRole("button", { name: /^Ajouter Mon caisson rangement de / }).click();
   await expect(tool.locator("[data-run-preview]")).toBeVisible();
   await tool.locator("[data-run-ok]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });

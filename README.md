@@ -94,6 +94,19 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   étagères, plinthes et socles, pièce (murs), électroménager, autres —, **Vue de travail** (façades, murs et
   électroménager cachés d'un clic) et **Tout afficher**. La vue seulement : le document, le débit et le devis ne
   changent pas ; retenu par le navigateur (`document/display-families.ts`).
+- **Murs qui cachent la vue masqués** (case du menu Affichage, cochée d'office) : la vue tournée, le mur qui se
+  trouve entre l'œil et la pièce n'est plus dessiné, et un clic le traverse ; il revient dès qu'on repasse devant
+  lui. Un mur est reconnu à sa forme (une dalle verticale, mince et haute) parmi les corps de la pièce : ceux d'un
+  plan de cuisine ou de dressing, ou d'une pièce relevée. Le sol reste.
+  - **avec leurs meubles** (seconde case, cochée d'office) : les meubles du mur masqué, dont on ne verrait que le dos,
+    s'effacent avec lui, **entiers et eux seuls**. Un meuble est celui du mur auquel il tourne le dos
+    (`document/furniture-facing.ts`) : un caisson de cuisine et ses façades, un appareil, un caisson de dressing, et
+    tout ce qu'un linéaire a fait avec ses caissons (plan de travail, crédence, plinthe, fileurs), ses finitions. Les
+    meubles des autres murs restent entiers, même dans l'angle ; l'îlot aussi.
+  - Il reste toujours quelque chose à regarder : derrière l'angle d'une cuisine en L, seule la rangée du mur le plus en
+    travers de la vue s'efface ; une cuisine sur un seul mur garde ses meubles (on voit leur dos).
+  - Les cadres du contrôle en direct des pièces masquées s'effacent aussi. La vue seulement ; retenu par le navigateur
+    (`viewport/wall-cutaway.ts`, `app/wall-cutaway.ts`).
 - **Contrôle d'implantation** (dans le Contrôle avant fabrication, et dans le panneau Implantation de cuisine avant
   l'OK) : meuble ou appareil qui sort de la pièce relevée, plaque sans plan de travail, hotte au-dessus d'aucune
   plaque, trop basse (moins de 60 cm) ou trop haute (plus de 80 cm ; 65 à 75 conseillés), plaque à moins de 60 cm de

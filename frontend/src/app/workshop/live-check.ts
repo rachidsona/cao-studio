@@ -44,6 +44,7 @@ export function bindLiveCheck(root: HTMLElement, viewport: Viewport, editor: Edi
       frame.position.set((low[0] + high[0]) / 2, (low[1] + high[1]) / 2, (low[2] + high[2]) / 2);
       frame.scale.set(high[0] - low[0] + 2, high[1] - low[1] + 2, high[2] - low[2] + 2);
       frame.renderOrder = 45;
+      frame.userData.bodyId = id;
       group.add(frame);
     }
     if (!status) return;
@@ -51,6 +52,10 @@ export function bindLiveCheck(root: HTMLElement, viewport: Viewport, editor: Edi
     status.textContent = `⚠ ${problems.length} à vérifier`;
     status.title = `${problems.slice(0, 3).map((p) => p.message).join("\n")}\nCliquez pour ouvrir le contrôle.`;
   };
+  // A wall taken out of the view because it hides the room (app/wall-cutaway.ts), or a unit against it: its frame too.
+  viewport.onEachFrame(() => {
+    for (const frame of group.children) frame.visible = !viewport.isCutaway(frame.userData.bodyId as string);
+  });
   // The material comes last in a design: a board without one is not a problem yet.
   const update = () => show(on ? quickProblems(viewport, editor.doc).filter((p) => p.kind !== "material") : []);
 
