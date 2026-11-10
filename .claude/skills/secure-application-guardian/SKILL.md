@@ -184,7 +184,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | M3 | Pollution de prototype par les formules | Corrigé (lot 1) : `drivablePath`, `Object.hasOwn` |
 | M4 | Variantes jamais validées | Corrigé côté éditeur (lot 1) ; côté serveur : accord requis |
 | M5 | Injection de formules dans les CSV | Corrigé (lot 1) : `csvText` |
-| M6 | Django 6.1.2 (CVE-2026-108147) | Ouvert : installer 6.1.3, accord requis (téléchargement) |
+| M6 | Django 6.1.2 (CVE-2026-108147) | Corrigé : Django 6.1.3 (accord du 10/11/2026) ; suivre les annonces de sécurité de Django, que pip-audit ne voyait pas encore |
 | M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Ouvert : accord requis |
 | M8 | Inscription libre, données commerciales lisibles | Ouvert : accord requis |
 | M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Ouvert : accord requis |
