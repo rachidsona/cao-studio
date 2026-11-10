@@ -17,7 +17,8 @@ import { el } from "../../ui/dom";
 import type { FaceAppearance } from "../../viewport/body-layer";
 import type { BodyAppearance, Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
-import { CUT_SHEET_CSS, cutSheetHtml } from "./cut-list-view";
+import { CUT_SHEET_CSS, cutSheet, cutSheetHtml } from "./cut-list-view";
+import { CUT_GROUPINGS, type CutGrouping } from "../../document/cut-groups";
 import { downloadText, floatingPanel, openModal, printHtml, type PrintPage } from "./workshop-ui";
 
 type Edges = NonNullable<BodyInfo["edges"]>;
@@ -37,9 +38,10 @@ export function partsOf(viewport: Viewport, doc: CadDocument): PartInput[] {
 }
 
 /** The cut list as a document. */
-export const cutListPage = (rows: CutRow[], totals: CutTotals[], unit: DisplayUnit): PrintPage => ({ title: "Liste de débit", html: `<h1>Liste de débit</h1>${cutSheetHtml(rows, totals, unit)}`, css: CUT_SHEET_CSS });
+export const cutListPage = (rows: CutRow[], totals: CutTotals[], unit: DisplayUnit, by: CutGrouping = "material"): PrintPage => ({ title: "Liste de débit", html: `<h1>Liste de débit${by === "material" ? "" : ` — par ${CUT_GROUPINGS.find(([id]) => id === by)?.[1].toLowerCase()}`}</h1>${cutSheetHtml(rows, totals, unit, by)}`, css: CUT_SHEET_CSS });
 
 const RENDER_KEY = "cao.render-materials";
+const CUT_GROUPING_KEY = "cao.cut-grouping";
 
 export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
@@ -132,10 +134,20 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
     const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
     if (!rows.length) return editor.notify("Aucun corps à lister.", "info");
     const holder = el("div");
-    holder.innerHTML = `<style>${CUT_SHEET_CSS}</style>${cutSheetHtml(rows, totals, editor.unit)}`;
+    const sheet = el("div");
+    // The lists it is made of: by material and thickness, or by kind of piece, wood, thickness (kept by the browser).
+    let by: CutGrouping = "material";
+    try {
+      const kept = localStorage.getItem(CUT_GROUPING_KEY);
+      if (CUT_GROUPINGS.some(([id]) => id === kept)) by = kept as CutGrouping;
+    } catch {
+      // No storage: by material.
+    }
+    /** The rows as they are shown: a row shared between two lists is two of them. */
+    let shownRows: CutRow[] = rows;
     // A row: its parts selected in the model (as OpenCutList's highlight), brought into view when out of it.
     holder.addEventListener("click", (event) => {
-      const row = rows[Number((event.target as HTMLElement).closest<HTMLElement>("tr[data-row]")?.dataset.row ?? NaN)];
+      const row = shownRows[Number((event.target as HTMLElement).closest<HTMLElement>("tr[data-row]")?.dataset.row ?? NaN)];
       if (!row?.ids?.length) return;
       close();
       viewport.selectLevel({ bodies: row.ids }, false);
@@ -153,7 +165,7 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
     const filter = () => {
       let parts = 0;
       for (const tr of holder.querySelectorAll<HTMLElement>("tr[data-row]")) {
-        const row = rows[Number(tr.dataset.row)];
+        const row = shownRows[Number(tr.dataset.row)];
         const on = !!row && rowMatches(row, search.value);
         tr.hidden = !on;
         if (on) parts += row.quantity;
@@ -163,11 +175,28 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
       shown.textContent = search.value.trim() ? `${parts} pièce${parts > 1 ? "s" : ""} trouvée${parts > 1 ? "s" : ""}.` : "";
     };
     search.addEventListener("input", filter);
-    holder.prepend(el("div", { class: "sticky top-0 z-10 flex h-11 items-center gap-3 bg-white pb-2 dark:bg-gray-900" }, search, shown));
+    const draw = () => {
+      const made = cutSheet(rows, totals, editor.unit, by);
+      shownRows = made.rows;
+      sheet.innerHTML = `<style>${CUT_SHEET_CSS}</style>${made.html}`;
+      filter();
+    };
+    const grouping = el("select", { class: "h-9 shrink-0 border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900", "aria-label": "Listes par", title: "Ranger la liste en plusieurs listes : par matière et épaisseur, par type d'élément (côtés, dessus, étagères…), par type de bois, par épaisseur, ou par type et épaisseur à la fois" }, ...CUT_GROUPINGS.map(([id, label]) => el("option", { value: id, selected: id === by }, `Par ${label.charAt(0).toLowerCase()}${label.slice(1)}`)));
+    grouping.addEventListener("change", () => {
+      by = grouping.value as CutGrouping;
+      try {
+        localStorage.setItem(CUT_GROUPING_KEY, by);
+      } catch {
+        // Kept for this list only.
+      }
+      draw();
+    });
+    holder.append(el("div", { class: "sticky top-0 z-10 flex h-11 items-center gap-3 bg-white pb-2 dark:bg-gray-900" }, search, grouping, shown), sheet);
+    draw();
     const close = openModal("Liste de débit", holder, [
-      { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(rows, editor.unit)}`, "text/csv") },
+      { label: "Exporter en CSV", run: () => downloadText("liste-de-debit.csv", `﻿${cutListCsv(shownRows, editor.unit)}`, "text/csv") },
       { label: "Imprimer / PDF", run: () => {
-        const page = cutListPage(rows, totals, editor.unit);
+        const page = cutListPage(rows, totals, editor.unit, by);
         printHtml(page.title, page.html, page.css);
       } },
       { label: "Fermer", run: () => close() },

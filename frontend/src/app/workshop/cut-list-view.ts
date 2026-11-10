@@ -1,9 +1,11 @@
 /**
- * La liste de débit à lire : un résumé, puis une carte par matière et épaisseur. Une colonne qui ne dit rien de plus
+ * La liste de débit à lire : un résumé, puis une carte par matière et épaisseur — ou, au choix, par type d'élément,
+ * par type de bois, par épaisseur, par type et épaisseur (document/cut-groups.ts). Une colonne qui ne dit rien de plus
  * disparaît (la coupe égale à la cote finie, le fil commun à toutes les pièces, le débit brut du panneau). Le même HTML
  * sert à l'écran, en clair ou en sombre, et à l'impression ; sur téléphone, chaque ligne devient une petite fiche.
  */
 import { barLength } from "../../document/bars";
+import { cutGroups, type CutGroup, type CutGrouping } from "../../document/cut-groups";
 import { edgeText, grainText, type CutRow, type CutTotals } from "../../document/cut-list";
 import type { DisplayUnit } from "../../document/types";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
@@ -46,31 +48,48 @@ function edgeCell(r: CutRow): string {
   return `<span class="cut-band">${edgeDrawing(r)}<span>${text}${r.band ? ` <small>${fr(r.band, r.band % 1 ? 1 : 0)} mm</small>` : ""}</span></span>`;
 }
 
-function groupHtml(t: CutTotals, own: (readonly [CutRow, number])[], unit: DisplayUnit): string {
+function groupHtml(group: CutGroup, own: (readonly [CutRow, number])[], unit: DisplayUnit, by: CutGrouping): string {
   const [showCut, showRough] = [own.some(([r]) => hasCut(r)), own.some(([r]) => hasRough(r))];
   const grains = new Set(own.map(([r]) => r.grain));
   const oneGrain = grains.size === 1 ? own[0]?.[0].grain : undefined;
-  const facts = [plural(t.parts, "pièce"), barLength(t.material) !== null ? `${fr(t.metres ?? 0, 2)} m bout à bout` : `${fr(t.area, 2)} m²`];
-  if (t.bandLength) facts.push(`${fr(t.bandLength, 1)} m de chant`);
+  // What the list adds up to: its parts, their surface (or their length, end to end, for wood sold in bars), their bands.
+  const sum = (take: (r: CutRow) => number) => own.reduce((total, [r]) => total + take(r) * r.quantity, 0);
+  const bars = own.filter(([r]) => barLength(r.material) !== null);
+  const facts = [plural(sum(() => 1), "pièce")];
+  if (bars.length < own.length) facts.push(`${fr(own.reduce((total, [r]) => total + (barLength(r.material) === null ? (r.length * r.width * r.quantity) / 1e6 : 0), 0), 2)} m²`);
+  if (bars.length) facts.push(`${fr(bars.reduce((total, [r]) => total + (r.length * r.quantity) / 1000, 0), 2)} m bout à bout`);
+  const band = sum((r) => (r.length * (Number(r.edges.length1) + Number(r.edges.length2)) + r.width * (Number(r.edges.width1) + Number(r.edges.width2))) / 1000);
+  if (band) facts.push(`${fr(band, 1)} m de chant`);
   if (oneGrain) facts.push(oneGrain === "none" ? "sans fil" : `fil ${grainText(oneGrain)}`);
-  const columns: [string, string, (r: CutRow) => string][] = [
+  type Column = [string, string, (r: CutRow) => string];
+  // What the heading of the list does not say of each row: its wood, its thickness.
+  const wood: Column[] = by === "material" || by === "wood" ? [] : [["Matière", "cut-soft cut-wood", (r) => escapeHtml(r.material)]];
+  const thick: Column[] = group.thickness !== undefined ? [] : [["Ép.", "cut-num", (r) => num(r.thickness, unit)]];
+  const columns: Column[] = [
     ["Repère", "cut-tag-cell", (r) => `<span class="cut-tag">${r.tag ?? ""}</span>`],
     ["Pièce", "cut-name", (r) => `${escapeHtml(compactNames(r.names))}${r.approximate ? ` <span class="cut-none" title="Forme non rectangulaire : cotes de son encombrement">≈</span>` : ""}`],
     ["Qté", "cut-num cut-qty", (r) => (r.quantity > 1 ? `<b>${r.quantity}</b>` : String(r.quantity))],
     ["Longueur", "cut-num", (r) => num(r.length, unit)],
     ["Largeur", "cut-num", (r) => num(r.width, unit)],
-    ...(showCut ? [["Coupe", "cut-num cut-soft", (r: CutRow) => (hasCut(r) ? `${num(r.cutLength, unit)} × ${num(r.cutWidth, unit)}` : `<span class="cut-none">=</span>`)] as [string, string, (r: CutRow) => string]] : []),
-    ...(oneGrain ? [] : [["Fil", "cut-soft", (r: CutRow) => grainText(r.grain)] as [string, string, (r: CutRow) => string]]),
+    ...thick,
+    ...wood,
+    ...(showCut ? [["Coupe", "cut-num cut-soft", (r: CutRow) => (hasCut(r) ? `${num(r.cutLength, unit)} × ${num(r.cutWidth, unit)}` : `<span class="cut-none">=</span>`)] as Column] : []),
+    ...(oneGrain ? [] : [["Fil", "cut-soft", (r: CutRow) => grainText(r.grain)] as Column]),
     ["Chants", "cut-chants", edgeCell],
-    ...(showRough ? [["Débit brut", "cut-num cut-soft", (r: CutRow) => (hasRough(r) ? `${num(r.roughLength as number, unit)} × ${num(r.roughWidth as number, unit)}` : `<span class="cut-none">=</span>`)] as [string, string, (r: CutRow) => string]] : []),
+    ...(showRough ? [["Débit brut", "cut-num cut-soft", (r: CutRow) => (hasRough(r) ? `${num(r.roughLength as number, unit)} × ${num(r.roughWidth as number, unit)}` : `<span class="cut-none">=</span>`)] as Column] : []),
   ];
   const head = columns.map(([label, kind]) => `<th scope="col" class="${kind}">${label}</th>`).join("");
   const rows = own.map(([r, i]) => `<tr data-row="${i}" title="Voir ces pièces dans le modèle">${columns.map(([label, kind, cell]) => `<td class="${kind}" data-label="${label}">${cell(r)}</td>`).join("")}</tr>`);
-  return `<section class="cut-group"><header><h3>${escapeHtml(t.material)}<span>${formatLength(t.thickness, unit)}</span></h3><p>${facts.join(" · ")}</p></header><table><thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody></table></section>`;
+  const size = group.thickness !== undefined ? `<span>${formatLength(group.thickness, unit)}</span>` : "";
+  return `<section class="cut-group" data-cut-group="${escapeHtml(group.title)}"><header><h3>${escapeHtml(group.title)}${size}</h3><p>${facts.join(" · ")}</p></header><table><thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody></table></section>`;
 }
 
-/** The whole list: its summary, its cards, its short legend. */
-export function cutSheetHtml(rows: readonly CutRow[], totals: readonly CutTotals[], unit: DisplayUnit): string {
+/**
+ * The whole list: its summary, its cards — one per material and thickness, or per kind of piece, per wood, per
+ * thickness, per kind and thickness (document/cut-groups.ts) —, its short legend. `rows`: those shown, in their order;
+ * a `tr[data-row]` gives its place in them (a row shared between two lists is two of them).
+ */
+export function cutSheet(rows: readonly CutRow[], totals: readonly CutTotals[], unit: DisplayUnit, by: CutGrouping = "material"): { html: string; rows: CutRow[] } {
   const sum = (take: (t: CutTotals) => number) => totals.reduce((total, t) => total + take(t), 0);
   const panels = totals.filter((t) => barLength(t.material) === null);
   const metres = sum((t) => (barLength(t.material) !== null ? (t.metres ?? 0) : 0));
@@ -80,13 +99,18 @@ export function cutSheetHtml(rows: readonly CutRow[], totals: readonly CutTotals
   const band = sum((t) => t.bandLength);
   if (band) facts.push(["Chant", `${fr(band, 1)} m`]);
   facts.push(["Matières et épaisseurs", String(totals.length)]);
-  const groups = totals.map((t) => groupHtml(t, rows.map((r, i) => [r, i] as const).filter(([r]) => r.material === t.material && r.thickness === t.thickness), unit));
+  const lists = cutGroups(rows, by);
+  if (by !== "material") facts.push(["Listes", String(lists.length)]);
+  const shown: CutRow[] = [];
+  const groups = lists.map((group) => groupHtml(group, group.rows.map((r) => [r, shown.push(r) - 1] as const), unit, by));
   const notes = [`Cotes finies en ${UNIT_LABELS[unit]}, repères comme sur le calepinage.`];
   if (rows.some(hasCut)) notes.push("Coupe : la cote à scier, chants déduits ; = : la même que la cote finie.");
   if (rows.some(hasRough)) notes.push("Débit brut : le massif scié avec sa surcote, puis raboté à la cote de coupe.");
   if (rows.some((r) => edgeText(r.edges) !== "—")) notes.push("Chants : L1 et L2 sur les grands côtés, l1 et l2 sur les petits.");
-  return `<div class="cut-sheet"><dl class="cut-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl>${groups.join("")}<p class="cut-notes">${notes.join(" ")}</p></div>`;
+  return { html: `<div class="cut-sheet"><dl class="cut-facts">${facts.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl>${groups.join("")}<p class="cut-notes">${notes.join(" ")}</p></div>`, rows: shown };
 }
+
+export const cutSheetHtml = (rows: readonly CutRow[], totals: readonly CutTotals[], unit: DisplayUnit, by: CutGrouping = "material"): string => cutSheet(rows, totals, unit, by).html;
 
 export const CUT_SHEET_CSS = `
 .cut-sheet{--ink:var(--g900,#111827);--soft:var(--g500,#6b7280);--line:var(--g200,#e5e7eb);--tint:var(--g50,#f9fafb);--accent:var(--color-sky-600,#0284c7);--accent-tint:var(--color-sky-100,#e0f2fe);color:var(--ink);font:13px/1.45 var(--font-sans,system-ui,-apple-system,"Segoe UI",sans-serif);-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -114,7 +138,7 @@ export const CUT_SHEET_CSS = `
 .cut-sheet .cut-qty{width:3em}
 .cut-sheet .cut-soft{color:var(--soft)}
 .cut-sheet .cut-name{width:100%;min-width:9em}
-.cut-sheet .cut-chants{white-space:nowrap}
+.cut-sheet .cut-chants,.cut-sheet .cut-wood{white-space:nowrap}
 .cut-tag{display:inline-block;min-width:1.7em;padding:1px 4px;background:var(--accent-tint);color:var(--ink);font-size:12px;font-weight:600;text-align:center}
 .cut-none{color:var(--soft)}
 .cut-band{display:inline-flex;align-items:center;gap:7px}

@@ -1226,6 +1226,15 @@ opération existante.
   - *Façades communes* : une seule porte sur plusieurs cases voisines d'une Répartition, et le sens d'ouverture de ses
     portes, par paires en miroir ou d'un seul côté.
   - *Liste de débit* : un champ filtre les pièces par nom, repère, matière, épaisseur ou chant.
+    - **Listes au choix** (« Listes par », à côté du filtre, retenu par le navigateur) : par matière et épaisseur
+      (comme avant), par **type d'élément** (une liste des côtés, une des dessus, une des étagères, des portes…), par
+      **type de bois**, par **épaisseur**, ou par **type d'élément et épaisseur** à la fois. Chaque liste a son total
+      (pièces, m², chant) ; les colonnes « Matière » et « Ép. » apparaissent quand le titre de la liste ne les dit pas.
+    - Le type d'une pièce se lit dans son nom, sans son meuble, son numéro ni son côté : « Bas 2 portes (A1) — Côté
+      gauche » est un « Côté » (`partKind`). Une ligne qui réunit des pièces identiques de types différents (une
+      cloison et une étagère de mêmes cotes) est partagée entre leurs listes, sous le même repère
+      (`document/cut-groups.ts`). Le filtre, le clic sur une ligne, l'impression et le CSV suivent la liste choisie ;
+      le CSV a une colonne « Type ».
   - *Saisie rapide* dans Étagères et Cloisons : `*3` (3 pièces), `/4` (4 niches égales), `30;40;50` (ces hauteurs de niches, puis le reste).
   - *Suivi d'atelier* : où en est chaque pièce. Les étapes sont « Débitée », « Chantée », « Percée » et « Montée ».
     - Sur un téléphone connecté au compte, le QR code d'une étiquette ou d'une fiche ouvre la page de la pièce

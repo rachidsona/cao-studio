@@ -262,8 +262,9 @@ export const WORKSHOP: HelpFamily[] = [
         what: "Liste toutes les pièces du meuble avec leurs cotes, leur matière, leurs chants et leur quantité.",
         steps: [
           "Cliquez « Liste de débit » : le total du projet, puis un tableau par matière et par épaisseur. La colonne « Coupe » n'apparaît que si une cote à scier diffère de la cote finie.",
+          "« Listes par », à côté du filtre, range la liste autrement : par type d'élément (une liste des côtés, une des dessus, une des étagères…), par type de bois, par épaisseur, ou par type d'élément et épaisseur à la fois. Chaque liste a son total.",
           "Cliquez une ligne pour sélectionner ces pièces dans le modèle.",
-          "Cliquez « Exporter en CSV » pour le tableur, ou « Imprimer / PDF ».",
+          "Cliquez « Exporter en CSV » pour le tableur, ou « Imprimer / PDF » : ils suivent la liste choisie.",
         ],
         tip: "Chaque ligne porte un repère (lettre) qu'on retrouve sur le calepinage. Le massif est donné avec sa surcote de débit brut. Les murs de la pièce et la quincaillerie ne sont pas listés.",
       },
