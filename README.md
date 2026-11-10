@@ -1806,7 +1806,10 @@ opération existante.
     - La vue ne montre que lui, de face, comme « Isoler » de Fusion. Le clic droit dans une niche ouvre Étagères,
       Cloisons, Hauteur de la niche, Penderie, Tiroirs, Porte sur niches ou Module. « Tout montrer » rend la cuisine.
     - S'il venait d'un linéaire du Plan de cuisine, le linéaire lui garde sa place, en espace libre de sa largeur : la
-      cuisine refaite ne le touche plus. Un meuble d'angle ne s'aménage pas ainsi.
+      cuisine refaite ne le refait plus, mais il suit cette place. Un meuble ajouté avant lui, un voisin élargi, le
+      reste du mur envoyé de l'autre côté ou le plan tourné le déplacent avec elle. Cette place élargie ou rétrécie
+      (sa largeur dans la calculatrice), il est refait à sa nouvelle largeur, son intérieur adapté
+      (`document/caisson-follow.ts`). Un meuble d'angle ne s'aménage pas ainsi.
     - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
       (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
   - **Mes caissons** : un caisson aménagé se garde pour tous les projets, avec son intérieur.

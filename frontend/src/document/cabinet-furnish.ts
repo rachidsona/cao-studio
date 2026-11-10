@@ -3,15 +3,15 @@
  * cotes, à la même place, avec son fond, ses étagères et ses façades (portes ou tiroirs) — ou, venu de « Mes caissons »,
  * celui qu'on avait gardé, à sa largeur. Étagères, Cloisons, Niche, Tiroirs, Penderie et Portes y marchent alors comme
  * dans un dressing. S'il venait d'un linéaire du Plan de cuisine, le linéaire lui garde sa place (un « Espace libre »
- * de sa largeur) : la cuisine refaite ne le touche plus. Pur.
+ * de sa largeur) : la cuisine refaite ne le refait plus, mais il suit cette place (caisson-follow.ts). Pur.
  */
+import { panelsFrame } from "./caisson-follow";
 import { withCaissonPlaced, type CaissonSpec } from "./caisson-spec";
-import { cabinetAxes } from "./kitchen-catalog";
 import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt } from "./kitchen-floor";
 import { runCabinets } from "./kitchen-plan-add";
 import type { NicheRecipe } from "./niche-recipe";
-import { bodyOrigin, deleteFeatures, findFeature } from "./operations";
-import { featureOfBody, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature, type PlaneFrame, type Vec3 } from "./types";
+import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "./operations";
+import { featureOfBody, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "./types";
 import { itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
 
 /** The kitchen cabinet a body belongs to: one of its boards, or of its fronts; null for anything else. */
@@ -25,8 +25,11 @@ export function cabinetOfBody(doc: CadDocument, bodyId: string): CabinetFeature 
   return null;
 }
 
-/** The cabinet's place in its run turned into a space of its width, the kitchen made again without it; null if no plan made it. */
-function freedFromPlan(doc: CadDocument, c: CabinetFeature): CadDocument | string | null {
+/**
+ * The cabinet's place in its run turned into a space of its size, the kitchen made again without it; null if no plan
+ * made it. With where that space is, to link it to the caisson made there.
+ */
+function freedFromPlan(doc: CadDocument, c: CabinetFeature): { doc: CadDocument; plan: string; run: string; item: string } | string | null {
   const owner = kitchenRunOf(doc, c.id);
   const plan = owner && kitchenPlanIn(doc, owner.plan);
   if (!owner || !plan) return null;
@@ -34,20 +37,20 @@ function freedFromPlan(doc: CadDocument, c: CabinetFeature): CadDocument | strin
   const itemId = runCabinets(doc, owner.plan, owner.run).find((x) => x.cabinet === c.id)?.item;
   const item = items.find((i) => i.id === itemId);
   if (!item) return itemId === undefined && (plan.made?.[owner.run] ?? []).includes(c.id) ? "Un meuble d'angle ne s'aménage pas ainsi : choisissez un autre meuble du linéaire." : "Ce meuble n'est plus retrouvé dans son linéaire : refaites la cuisine, puis réessayez.";
-  const space = { ...newItem(items, rowOf(itemEntry(item)) === "wall" ? SPACE_WALL : SPACE, c.width), id: item.id };
+  const wall = rowOf(itemEntry(item)) === "wall";
+  // Its depth, and up in the wall row its height: the room is where the cabinet was, the caisson in it.
+  const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}) };
   const built = withKitchenBuilt(doc, owner.plan, { runs: { ...plan.runs, [owner.run]: items.map((i) => (i === item ? space : i)) } });
-  return typeof built === "string" ? built : built.doc;
+  return typeof built === "string" ? built : { doc: built.doc, plan: owner.plan, run: owner.run, item: item.id };
 }
 
-/**
- * The frame of the caisson's panels: on the cabinet's back less its back panel's thickness, at the cabinet's bottom; x
- * along its width, y up, the front towards the normal.
- */
-function panelsFrame(c: CabinetFeature, back: number): PlaneFrame {
-  const { along, back: inwards } = cabinetAxes(c.rotation ?? 0);
-  const set = c.depth - back;
-  const origin: Vec3 = [c.origin[0] + inwards[0] * set, c.origin[1] + inwards[1] * set, c.origin[2]];
-  return { origin, xDir: [along[0], along[1], 0], normal: [-inwards[0], -inwards[1], 0] };
+/** The room kept in a run linked to the caisson made there: it follows that room (caisson-follow.ts). */
+function withRoomLinked(doc: CadDocument, at: { plan: string; run: string; item: string }, sketch: string): CadDocument {
+  return updateFeature(doc, at.plan, (f) => {
+    if (f.type !== "sketch" || !f.kitchenPlan?.runs?.[at.run]) return f;
+    const runs = { ...f.kitchenPlan.runs, [at.run]: f.kitchenPlan.runs[at.run]!.map((i) => (i.id === at.item ? { ...i, furnished: sketch } : i)) };
+    return { ...f, kitchenPlan: { ...f.kitchenPlan, runs } };
+  });
 }
 
 /** The caisson a kitchen cabinet is: its carcass, its back, its shelves, its doors or its drawers, their materials. */
@@ -87,9 +90,10 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
   const freed = freedFromPlan(doc, c);
   if (typeof freed === "string") return freed;
   // Made again, the kitchen no longer has it (its ids now another's); otherwise it goes with its fronts.
-  const next = freed ?? deleteFeatures(doc, [c.id, ...fronts.map((f) => f.id)]).next;
-  const placed = withCaissonPlaced(next, made, { frame: panelsFrame(c, c.depth - made.depth), width: c.width, height: c.height, name: `Caisson — ${spec ? c.name.replace(/\s*\([A-Z]\d+\)$/, "") : c.name}` });
-  return typeof placed === "string" ? placed : { ...placed, notes };
+  const next = freed?.doc ?? deleteFeatures(doc, [c.id, ...fronts.map((f) => f.id)]).next;
+  const placed = withCaissonPlaced(next, made, { frame: panelsFrame(c, made.depth), width: c.width, height: c.height, name: `Caisson — ${spec ? c.name.replace(/\s*\([A-Z]\d+\)$/, "") : c.name}` });
+  if (typeof placed === "string") return placed;
+  return { doc: freed ? withRoomLinked(placed.doc, freed, placed.sketch) : placed.doc, sketch: placed.sketch, notes };
 }
 
 /** Each unit of the plan's runs that is one of « Mes caissons » made that caisson, in its place. */

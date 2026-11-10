@@ -146,6 +146,8 @@ export interface RunFill {
   walls: [number, number];
   /** The free stretches of the base row. */
   stretches: [number, number][];
+  /** The room kept free, at its place (out of `placed`: nothing is made there). */
+  spaces: Placed[];
   missing: KitchenRunItem[];
   problems: string[];
 }
@@ -230,7 +232,9 @@ export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], height
   for (const m of wall.missing) problems.push(g.wall ? `${m.entry.name} ${cm(m.item.width)} ne tient pas en haut.` : g.low ? `${m.entry.name} : le plafond est trop bas pour des meubles hauts.` : `${m.entry.name} : pas de mur derrière pour un meuble haut.`);
   const fillers = base.gaps.filter(([a, b]) => b - a >= MIN_FILLER && b - a <= WIDE_FILLER);
   // The room kept free stays open, whatever its width: nothing stands there, it is not closed by a filler.
+  const spaced: Placed[] = [];
   const kept = (row: Placed[]) => {
+    spaced.push(...row.filter((pl) => isSpace(pl.item)));
     const spaces = row.filter((pl) => isSpace(pl.item)).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
     row.splice(0, row.length, ...row.filter((pl) => !isSpace(pl.item)));
     return spaces;
@@ -239,7 +243,7 @@ export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], height
   const wallFree = joined([...wall.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...kept(wall.placed)]);
   const placed = [...base.placed, ...wall.placed];
   problems.push(...constraints(placed, g, stretches));
-  return { placed, fillers, free, wallFree, walls, stretches, missing: [...base.missing, ...wall.missing].map((m) => m.item), problems };
+  return { placed, fillers, free, wallFree, walls, stretches, spaces: spaced, missing: [...base.missing, ...wall.missing].map((m) => m.item), problems };
 }
 
 /** Stretches side by side made one, in their order. */

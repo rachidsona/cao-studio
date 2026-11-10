@@ -118,6 +118,8 @@ export interface KitchenRunItem {
   depth?: number;
   /** One door: the side of its hinges, chosen (missing: left). */
   side?: "left" | "right";
+  /** Room kept for a caisson furnished by hand (its sketch, document/caisson-follow.ts): it goes where this room goes. */
+  furnished?: string;
 }
 
 /** The plan of a kitchen, seen from above (document/kitchen-plan-shapes.ts): its model, its sizes (mm), and each run's units. */

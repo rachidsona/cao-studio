@@ -3,8 +3,10 @@
  * (`kitchenPlan`) et ce que chaque linéaire reçoit. La cuisine en 3D en est tirée d'un coup (kitchen-plan-build.ts, bâtie
  * par kitchen-plan.ts) : caissons tournés selon leur mur, façades, plan de travail découpé, crédence, plinthes,
  * électroménager sur son calque, murs sur le calque « Pièce », matières posées. Elle est refaite entière quand le plan ou
- * un linéaire change, en une seule annulation, et chaque pièce faite garde son linéaire (`made`), pour le rouvrir. Pur.
+ * un linéaire change, en une seule annulation, et chaque pièce faite garde son linéaire (`made`), pour le rouvrir ; un
+ * caisson aménagé à la main suit sa place (caisson-follow.ts). Pur.
  */
+import { withCaissonsFollowing } from "./caisson-follow";
 import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -106,7 +108,10 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);
   }
   doc = withWorkBack(doc, base, work, Object.values(made).flat());
-  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, made } } : f));
+  // The caissons furnished by hand go where their room now is.
+  const followed = withCaissonsFollowing(doc, plan, layout.kept);
+  doc = followed.doc;
+  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...followed.plan, made } } : f));
   return { doc, problems: [...problems, ...layout.notes] };
 }
 

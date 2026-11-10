@@ -16,7 +16,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
-  await newProject(page, "zz-test-caisson-amenage");
+  const api = await newProject(page, "zz-test-caisson-amenage");
   await click(page, '[data-ribbon-tab="kitchen"]');
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
@@ -77,6 +77,37 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Mon caisson rangement/);
   await shot(page, "caisson-repose");
+
+  // The rest of the wall sent to the other side: the furnished caissons go with their places.
+  const caissons = async () => {
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    const features = project.document.features as { id: string; name: string; frame?: { origin: number[] } }[];
+    return Object.fromEntries(features.filter((f) => f.name.startsWith("Caisson — ")).map((f) => [f.name, f.frame!.origin[0]!]));
+  };
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(800);
+  await shot(page, "caisson-avant");
+  const before = await caissons();
+  expect(Object.keys(before)).toHaveLength(2);
+  await click(page, '[data-workshop="kitchen-plan"]');
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "space");
+  const other = tool.locator('[data-rest][aria-pressed="false"]').filter({ hasNotText: "Partagé" }).first();
+  await other.click();
+  await tool.locator("[data-run-ok]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  const after = await caissons();
+  expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort());
+  const shifts = Object.keys(before).map((name) => after[name]! - before[name]!);
+  expect(Math.abs(shifts[0]!)).toBeGreaterThan(100);
+  expect(shifts[1]).toBeCloseTo(shifts[0]!, 0);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(800);
+  await shot(page, "caisson-suit");
   expect(errors).toEqual([]);
 });
 

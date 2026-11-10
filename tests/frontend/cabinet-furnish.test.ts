@@ -137,4 +137,38 @@ describe("caisson de cuisine aménagé", () => {
     expect(column.input.length).toBeLessThan(1200);
     expect(column.doors?.joined).toEqual([0]);
   });
+
+  it("suit sa place quand la cuisine est refaite : décalé par un meuble ajouté avant lui, refait quand sa place change de largeur", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    const room = kitchenPlanIn(made.doc, plan)!.runs!.A![0]!;
+    expect(room).toMatchObject({ model: "space", width: 800, depth: cabinet.depth, furnished: made.sketch });
+    const [lo0, hi0] = caissonBox(made.doc, made.sketch);
+    // Made again as it is: the caisson stays where it is.
+    const same = withKitchenBuilt(made.doc, plan);
+    if (typeof same === "string") throw new Error(same);
+    expect(caissonBox(same.doc, made.sketch)).toEqual([lo0, hi0]);
+    // A unit of 400 put before it: it moves 400 along the wall, its shelf and its doors with it.
+    const items = kitchenPlanIn(made.doc, plan)!.runs!.A!;
+    const moved = withKitchenBuilt(made.doc, plan, { runs: { A: [newItem(items, "base-bas-1-porte", 400), ...items] } });
+    if (typeof moved === "string") throw new Error(moved);
+    const [lo1, hi1] = caissonBox(moved.doc, made.sketch);
+    const shift = [0, 1, 2].map((i) => lo1[i]! - lo0[i]!);
+    expect(Math.hypot(...shift)).toBeCloseTo(400, 1);
+    expect(hi1[2]! - lo1[2]!).toBeCloseTo(hi0[2]! - lo0[2]!, 1);
+    expect(moved.doc.features.filter((f) => f.type === "niche" && f.sketch === made.sketch).length).toBeGreaterThan(0);
+    // Its room made 1000 wide: the caisson made again at that width, its shelf kept, the room linked to it.
+    const wider = withKitchenBuilt(moved.doc, plan, { runs: { A: kitchenPlanIn(moved.doc, plan)!.runs!.A!.map((i) => (i.id === room.id ? { ...i, width: 1000 } : i)) } });
+    if (typeof wider === "string") throw new Error(wider);
+    const link = kitchenPlanIn(wider.doc, plan)!.runs!.A!.find((i) => i.id === room.id)!.furnished!;
+    expect(wider.doc.features.filter((f) => f.type === "sketch" && f.name === "Caisson — Bas 2 portes 800 (A1)")).toHaveLength(1);
+    const sketch = wider.doc.features.find((f) => f.id === link) as SketchFeature;
+    expect(sketch.offsets!.filter(isShelves)).toHaveLength(1);
+    const [lo2, hi2] = caissonBox(wider.doc, link);
+    expect(Math.max(...[0, 1].map((i) => hi2[i]! - lo2[i]!))).toBeCloseTo(1000, 1);
+    expect(Math.min(lo2[0]!, lo2[1]!)).toBeCloseTo(Math.min(lo1[0]!, lo1[1]!), 1);
+    expect(() => parseDocument(wider.doc)).not.toThrow();
+  });
 });

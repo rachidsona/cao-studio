@@ -21,10 +21,13 @@ export type KitchenRoomInfo = Partial<Record<string, RunInfo>>;
 const WALL_THICKNESS = 100;
 const OVEN = 595;
 
-/** The layout of the plan, each piece with its run, and how each run was filled. */
-export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): KitchenLayout & { fills: Record<string, RunFill> } {
+/**
+ * The layout of the plan, each piece with its run, and how each run was filled; `kept`: the room kept free, each as the
+ * unit it has room for (nothing made: where a caisson furnished by hand goes).
+ */
+export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): KitchenLayout & { fills: Record<string, RunFill>; kept: KitchenUnit[] } {
   const s = kitchenSizes(p);
-  const out: KitchenLayout & { fills: Record<string, RunFill> } = { units: [], boxes: [], notes: [], ergonomics: { ok: [], warn: [] }, fills: {} };
+  const out: KitchenLayout & { fills: Record<string, RunFill>; kept: KitchenUnit[] } = { units: [], boxes: [], notes: [], ergonomics: { ok: [], warn: [] }, fills: {}, kept: [] };
   const places: Parameters<typeof ergonomics>[0] = {};
   const checks: Parameters<typeof ergonomics>[1] = p.island ? { islandPassage: p.passage } : {};
   for (const run of kitchenRuns(p)) {
@@ -48,6 +51,11 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       const [lo, hi] = band(u, u + w, 0, depth, z, z + height);
       out.units.push({ name, origin: originOf(rotation, lo, hi), rotation, width: w, height, depth, run: run.id, ...rest });
     };
+    for (const pl of fill.spaces) {
+      const { height, depth, z } = itemSize(p, pl.item, pl.entry);
+      const [lo, hi] = band(pl.at, pl.at + pl.item.width, 0, depth, z, z + height);
+      out.kept.push({ name: pl.entry.name, origin: originOf(rotation, lo, hi), rotation, width: pl.item.width, height, depth, run: run.id, item: pl.item.id, plinth: 0, shelves: 0, layout: "none" });
+    }
     if (g.low) out.notes.push(`Pas de meubles hauts sur ${run.label.toLowerCase()} : le plafond y descend à ${Math.round(ceiling)} mm.`);
     let n = 0;
     let fillers = 0;
