@@ -605,12 +605,18 @@ opération existante.
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
 - **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : on sélectionne (ou on clique,
-  l'outil ouvert) la face d'un caisson ou d'une pièce d'une Répartition, du côté à prolonger, puis la face parallèle
+  l'outil ouvert) la face d'un caisson, d'une pièce d'une Répartition ou de toute autre pièce, du côté à prolonger,
+  puis la face parallèle
   d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit, d'un coup (`document/extend-element.ts`,
   `app/extend-tool.ts`). Un caisson change de largeur, de profondeur ou de hauteur avec ses façades — son origine recule
   quand c'est son côté gauche, son devant ou son dessous qui avance ; une Répartition de longueur ou de hauteur avec ses
-  cases, son esquisse décalée de même. Pour un autre corps, « Tirer une face ». Un meuble du Plan de cuisine (un haut
-  d'angle prolongé jusqu'au voisin) fait suivre le plan.
+  cases, son esquisse décalée de même. Un meuble du Plan de cuisine (un haut d'angle prolongé jusqu'au voisin) fait
+  suivre le plan.
+  - **Toute autre pièce** — une plinthe, un fileur, un plan de travail, une crédence, une planche — se prolonge de
+    même : sa face cliquée est tirée jusqu'au plan de l'autre (ou rentrée), par une opération « Prolongement » sur le
+    corps, comme « Tirer une face », qui se retouche ou se supprime dans l'historique. Exemple : le bout d'une plinthe
+    de cuisine, puis le bout de la plinthe d'en face, pour fermer le vide sous un four. Sur une pièce du Plan de
+    cuisine, l'opération est gardée quand la cuisine est refaite.
 - **Pousser** (bouton du groupe **Modifier**, après « Prolonger élément ») : les éléments sélectionnés — un caisson avec
   ses façades, une Répartition avec ses pièces, sinon le corps seul ; un clic dans la vue en choisit un, Maj + clic en
   ajoute — avancent d'un **pas** à chaque flèche du clavier. Le pas se tape au clavier, l'outil ouvert (les chiffres vont

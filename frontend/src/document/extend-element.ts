@@ -4,15 +4,16 @@
  * jusqu'au plan de l'autre : un caisson change de largeur, de profondeur ou de hauteur — son origine recule quand c'est
  * son côté gauche, son devant ou son dessous qui avance —, une Répartition de longueur ou de hauteur, son esquisse se
  * décalant de même. Ses pièces, façades et cases suivent. Un caisson fait par le Plan de cuisine le fait suivre
- * (document/kitchen-sync.ts). Pur.
+ * (document/kitchen-sync.ts). Toute autre pièce — une plinthe, un fileur, un plan de travail, une planche — voit sa
+ * face tirée jusqu'à ce plan (une opération sur le corps, comme « Tirer une face »). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
 import { withPartitionSize } from "./niche-size";
-import { bodyOrigin, findFeature, updateFeature } from "./operations";
+import { bodyOrigin, findFeature, latestBody, uniqueId, uniqueName, updateFeature } from "./operations";
 import { isPartition } from "../sketcher/partition-history";
 import { frameOf } from "../sketcher/frame";
 import { moveSketchPlane } from "../sketcher/move";
-import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "./types";
+import { featureOfBody, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type Vec3 } from "./types";
 
 export interface ExtendFace {
   point: Vec3;
@@ -37,15 +38,29 @@ export function extendable(doc: CadDocument, bodyId: string): { kind: "cabinet" 
   return { kind: owner.type === "cabinet" ? "cabinet" : "sketch", id: owner.id, name: owner.name };
 }
 
-/** The document with the element of `bodyId` extended from its face `from` to the plane of `to`, or why it cannot be. */
-export function extendElement(doc: CadDocument, bodyId: string, from: ExtendFace, to: ExtendFace): { doc: CadDocument; by: number } | string {
+/**
+ * A piece that is neither a cabinet's nor a Répartition's (a plinth, a filler, a worktop, a board): its face pushed out
+ * (or in) by `by`, as « Tirer une face » does — an operation on the body, which a kitchen made again keeps on its
+ * piece of the same name (document/kitchen-floor.ts). The operation added.
+ */
+function withFacePulled(doc: CadDocument, bodyId: string, face: FaceRef, by: number): { doc: CadDocument; by: number; id: string } {
+  const id = uniqueId(doc, "ex");
+  const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, by > 0 ? "Prolongement" : "Raccourci"), faces: [face], target: latestBody(doc, bodyId), distance: by, operation: by > 0 ? "join" : "cut" };
+  return { doc: { ...doc, features: [...doc.features, feature] }, by, id };
+}
+
+/**
+ * The document with the element of `bodyId` extended from its face `from` to the plane of `to`, or why it cannot be.
+ * `face`: that face as the kernel describes it, for a piece that is no cabinet nor Répartition (its face is pulled).
+ */
+export function extendElement(doc: CadDocument, bodyId: string, from: ExtendFace, to: ExtendFace, face?: FaceRef): { doc: CadDocument; by: number; id?: string } | string {
   const n = unit(from.normal);
   if (Math.abs(dot(n, unit(to.normal))) < 0.9998) return "Ces deux faces ne sont pas parallèles : choisissez une face d'arrivée tournée dans le même axe.";
   // How far its face goes out (negative: in), to the other's plane.
   const by = Math.round(dot(n, [to.point[0] - from.point[0], to.point[1] - from.point[1], to.point[2] - from.point[2]]) * 10) / 10;
   if (Math.abs(by) < 0.1) return "Ces deux faces sont déjà dans le même plan.";
   const owner = extendable(doc, bodyId);
-  if (!owner) return "Prolonger élément allonge un caisson ou une Répartition ; pour un autre corps, utilisez « Tirer une face ».";
+  if (!owner) return face ? withFacePulled(doc, bodyId, face, by) : "Prolonger élément allonge un caisson ou une Répartition ; pour un autre corps, utilisez « Tirer une face ».";
   if (owner.kind === "cabinet") {
     const c = findFeature(doc, owner.id) as CabinetFeature;
     const { along, back } = cabinetAxes(c.rotation ?? 0);

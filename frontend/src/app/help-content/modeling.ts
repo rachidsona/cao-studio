@@ -281,13 +281,13 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:extend-element"],
         name: "Prolonger élément",
-        what: "Allonge un caisson ou une Répartition jusqu'à la face d'un autre élément : largeur, profondeur ou hauteur, façades et cases comprises.",
+        what: "Allonge un caisson, une Répartition ou une pièce (plinthe, fileur, plan de travail, planche) jusqu'à la face d'un autre élément.",
         steps: [
-          "Sélectionnez la face du caisson (ou d'une pièce de la Répartition) du côté à prolonger, ou ouvrez l'outil et cliquez-la.",
+          "Sélectionnez la face à prolonger — d'un caisson, d'une pièce de la Répartition, ou d'une autre pièce comme le bout d'une plinthe —, ou ouvrez l'outil et cliquez-la.",
           "Cliquez « Prolonger élément », dans le groupe Modifier.",
           "Cliquez la face parallèle d'un autre élément : il s'allonge jusqu'à elle aussitôt, en une annulation.",
         ],
-        tip: "Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Un meuble du Plan de cuisine fait suivre le plan. Pour un autre corps, utilisez « Tirer une face ».",
+        tip: "Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Un meuble du Plan de cuisine fait suivre le plan. Une plinthe, un fileur ou une planche reçoit une opération « Prolongement », à retoucher ou supprimer dans l'historique ; pour fermer le vide sous un four, cliquez le bout d'une plinthe puis le bout de celle d'en face.",
       },
       {
         keys: ["data-action:push"],

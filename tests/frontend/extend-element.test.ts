@@ -5,11 +5,15 @@ import { planOf, withPlan, withZonePartition } from "../../frontend/src/document
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { frameOf } from "../../frontend/src/sketcher/frame";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
-import { createReferencePlate, type CabinetFeature, type CadDocument, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type KitchenRunItem, type SketchFeature } from "../../frontend/src/document/types";
+import { withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { parseDocument } from "../../frontend/src/document/validate";
+import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
 const cabinet: CabinetFeature = { id: "c1", type: "cabinet", name: "Haut d'angle", origin: [0, 0, 1450], width: 600, height: 700, depth: 350, thickness: 18, back: "none", backThickness: 3, shelves: 1, plinth: 0, construction: "sides-through" };
 const withCabinet = (patch: Partial<CabinetFeature> = {}): CadDocument => ({ ...createReferencePlate(), features: [{ ...cabinet, ...patch }] });
-const done = (r: { doc: CadDocument; by: number } | string) => {
+const done = (r: { doc: CadDocument; by: number; id?: string } | string) => {
   if (typeof r === "string") throw new Error(r);
   return r;
 };
@@ -60,5 +64,33 @@ describe("prolonger un élément", () => {
     expect(length(left.doc)).toBeCloseTo(was + 50, 3);
     const moved = frameOf(left.doc.features.find((f) => f.id === made.sketch) as SketchFeature).origin;
     expect(moved.map((c, i) => Math.round((c - frame.origin[i]!) * 10) / 10)).toEqual(frame.u.map((c) => Math.round(-c * 50 * 10) / 10 || 0));
+  });
+
+  it("une plinthe de cuisine a sa face tirée jusqu'à l'autre : une opération sur elle, gardée quand la cuisine est refaite", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
+    const items: KitchenRunItem[] = [newItem([], "base-bas-2-portes", 800)];
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items } });
+    if (typeof built === "string") throw new Error(built);
+    const plinth = built.doc.features.find((f) => f.name.startsWith("Plinthe"))!;
+    expect(extendable(built.doc, plinth.id)).toBeNull();
+    // Its right end, 300 short of the face to reach; without the face described, as before: refused.
+    const from = { point: [800, -570, 50] as [number, number, number], normal: [1, 0, 0] as [number, number, number] };
+    const to = { point: [1100, -300, 400] as [number, number, number], normal: [-1, 0, 0] as [number, number, number] };
+    expect(extendElement(built.doc, plinth.id, from, to)).toMatch(/Tirer une face/);
+    const face: FaceRef = { type: "PLANE", center: from.point, rel: [1, 0.5, 0.5], normal: from.normal, area: 16 * 97 };
+    const r = done(extendElement(built.doc, plinth.id, from, to, face));
+    expect(r.by).toBe(300);
+    const pulled = r.doc.features.find((f) => f.id === r.id) as ExtrudeFeature;
+    expect(pulled).toMatchObject({ type: "extrude", name: "Prolongement 1", target: plinth.id, distance: 300, operation: "join", faces: [face] });
+    expect(() => parseDocument(r.doc)).not.toThrow();
+    // Shortened: a cut.
+    const less = done(extendElement(built.doc, plinth.id, from, { ...to, point: [700, 0, 0] }, face));
+    expect(less.doc.features.find((f) => f.id === less.id)).toMatchObject({ distance: -100, operation: "cut", name: "Raccourci 1" });
+    // The kitchen made again (a unit added): the plinth is made anew, its extension on it still.
+    const again = withKitchenBuilt(r.doc, made.id, { runs: { A: [...items, newItem(items, "base-bas-1-porte", 400)] } });
+    if (typeof again === "string") throw new Error(again);
+    const kept = again.doc.features.find((f): f is ExtrudeFeature => f.type === "extrude" && f.name === "Prolongement 1")!;
+    expect(again.doc.features.find((f) => f.id === kept.target)?.name).toBe(plinth.name);
+    expect(kept.distance).toBe(300);
   });
 });

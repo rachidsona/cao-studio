@@ -57,7 +57,7 @@ test("prolonger élément : un haut s'allonge en profondeur jusqu'au plan de la 
   await page.keyboard.press("Escape");
   await click(page, '[data-action="extend-element"]');
   const tool = page.getByRole("dialog", { name: "Prolonger élément" });
-  await expect(tool).toContainText("1. Cliquez la face du caisson ou de la Répartition");
+  await expect(tool).toContainText("1. Cliquez la face à prolonger");
   const canvas = (await page.locator("canvas").first().boundingBox())!;
   const at = (x: number, y: number) => page.mouse.click(canvas.x + canvas.width * x, canvas.y + canvas.height * y);
   await page.waitForTimeout(800);

@@ -1,13 +1,14 @@
 /**
- * « Prolonger élément » : on sélectionne (ou on clique, l'outil ouvert) la face d'un caisson ou d'une pièce d'une
- * Répartition, du côté à prolonger, puis la face d'un autre élément, parallèle : l'élément s'allonge jusqu'à elle, ou
- * se raccourcit, d'un coup (document/extend-element.ts). Un caisson change de largeur, de profondeur ou de hauteur avec
- * ses façades ; une Répartition de longueur ou de hauteur avec ses cases. Un meuble du Plan de cuisine le fait suivre.
- * Une seule annulation.
+ * « Prolonger élément » : on sélectionne (ou on clique, l'outil ouvert) la face d'un caisson, d'une pièce d'une
+ * Répartition ou de toute autre pièce (une plinthe, un fileur, un plan de travail), du côté à prolonger, puis la face
+ * d'un autre élément, parallèle : l'élément s'allonge jusqu'à elle, ou se raccourcit, d'un coup
+ * (document/extend-element.ts). Un caisson change de largeur, de profondeur ou de hauteur avec ses façades ; une
+ * Répartition de longueur ou de hauteur avec ses cases ; une autre pièce a sa face tirée. Un meuble du Plan de cuisine
+ * le fait suivre. Une seule annulation.
  */
 import { bodyLabel } from "../document/operations";
 import { extendable, extendElement, type ExtendFace } from "../document/extend-element";
-import type { Feature, Vec3 } from "../document/types";
+import type { FaceRef, Feature, Vec3 } from "../document/types";
 import { formatLength } from "../measurements/units";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
@@ -15,7 +16,11 @@ import { PanelTool, type ToolContext } from "./panel-tool";
 
 interface Picked extends ExtendFace {
   bodyId: string;
+  /** The face as the kernel describes it: what is pulled on a piece that is no cabinet nor Répartition. */
+  ref?: FaceRef;
 }
+
+const FIRST = "1. Cliquez la face à prolonger : d'un caisson, d'une Répartition ou d'une pièce (plinthe, fileur, plan de travail…).";
 
 export class ExtendTool extends PanelTool {
   private moving: Picked | null = null;
@@ -34,16 +39,18 @@ export class ExtendTool extends PanelTool {
       const doc = this.ctx.doc();
       const own = this.moving ? extendable(doc, this.moving.bodyId) : null;
       const other = extendable(doc, pick.bodyId);
-      if (!this.moving || (own && other && own.id === other.id)) {
-        if (!other) return this.ctx.notify("Choisissez la face d'un caisson ou d'une Répartition, du côté à prolonger.", "info");
+      // The same element clicked again (its cabinet, its Répartition, or the piece itself): another face of it to extend.
+      if (!this.moving || (own?.id ?? this.moving.bodyId) === (other?.id ?? pick.bodyId)) {
+        // A piece on its own: its face is pulled, as the kernel describes it.
+        if (!other) face.ref = (await this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex)).face ?? undefined;
         this.moving = face;
         return this.render();
       }
-      const made = extendElement(doc, this.moving.bodyId, this.moving, face);
+      const made = extendElement(doc, this.moving.bodyId, this.moving, face, this.moving.ref);
       if (typeof made === "string") return this.ctx.notify(made, "error");
       const verb = made.by > 0 ? "prolongé" : "raccourci";
       this.ctx.notify(`« ${own?.name ?? bodyLabel(doc, this.moving.bodyId)} » ${verb} de ${formatLength(Math.abs(made.by), this.ctx.unit())} jusqu'à « ${bodyLabel(doc, face.bodyId)} ».`, "success");
-      const id = own?.id ?? this.moving.bodyId;
+      const id = own?.id ?? made.id ?? this.moving.bodyId;
       this.close();
       this.ctx.commit(made.doc, id);
     } catch (e) {
@@ -53,7 +60,7 @@ export class ExtendTool extends PanelTool {
 
   /** Nothing to preview: the second click does it. */
   protected feature(): Feature | string {
-    return this.moving ? "2. Cliquez la face d'arrivée, sur un autre élément." : "1. Cliquez la face du caisson ou de la Répartition, du côté à prolonger.";
+    return this.moving ? "2. Cliquez la face d'arrivée, sur un autre élément." : FIRST;
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -62,8 +69,8 @@ export class ExtendTool extends PanelTool {
     const restart = el("button", { type: "button", class: "h-8 w-full border border-gray-300 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Recommencer");
     restart.addEventListener("click", () => ((this.moving = null), this.render()));
     return [
-      this.info(own ? `À prolonger : « ${own.name} », par la face cliquée. 2. Cliquez la face où l'amener, sur un autre élément : il s'y allonge aussitôt.` : "1. Cliquez la face du caisson ou de la Répartition, du côté à prolonger."),
-      this.info("Un caisson s'allonge en largeur, profondeur ou hauteur, avec ses façades ; une Répartition en longueur ou en hauteur, avec ses cases. Les deux faces doivent être parallèles."),
+      this.info(this.moving ? `À prolonger : « ${own?.name ?? bodyLabel(doc, this.moving.bodyId)} », par la face cliquée. 2. Cliquez la face où l'amener, sur un autre élément : il s'y allonge aussitôt.` : FIRST),
+      this.info("Un caisson s'allonge en largeur, profondeur ou hauteur, avec ses façades ; une Répartition en longueur ou en hauteur, avec ses cases ; une autre pièce (plinthe, fileur, plan de travail, planche) par la face cliquée. Les deux faces doivent être parallèles."),
       this.moving ? restart : null,
     ];
   }
