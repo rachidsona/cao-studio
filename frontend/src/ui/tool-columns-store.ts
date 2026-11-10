@@ -1,0 +1,62 @@
+/**
+ * Ce que retient la barre à quatre colonnes (ui/tool-columns.ts) : les outils de chaque colonne et les colonnes
+ * repliées, gardés dans ce navigateur. Les colonnes sont vides au départ, et ce sont les mêmes dans les trois
+ * espaces (Conception 3D, Dressing, Cuisine) : elles restent en place quand on change d'onglet.
+ */
+
+export const COLUMN_COUNT = 4;
+const STORAGE = "cao.tool-columns";
+
+export interface ColumnsState {
+  /** The tools of each column, by key (ui/ribbon-layout.ts keyOf). */
+  columns: string[][];
+  /** Whether each column is folded away (only its tab at the edge of the view is left). */
+  folded: boolean[];
+}
+
+/** A state made of four columns, whatever was read (missing columns empty, unknown tools dropped, no duplicates). */
+export function normalize(raw: unknown, known: (key: string) => boolean): ColumnsState {
+  const source = raw && typeof raw === "object" ? (raw as Partial<Record<keyof ColumnsState, unknown>>) : {};
+  const columns = Array.isArray(source.columns) ? source.columns : [];
+  const folded = Array.isArray(source.folded) ? source.folded : [];
+  return {
+    columns: Array.from({ length: COLUMN_COUNT }, (_, i) => {
+      const keys = Array.isArray(columns[i]) ? (columns[i] as unknown[]) : [];
+      return [...new Set(keys.filter((k): k is string => typeof k === "string" && known(k)))];
+    }),
+    folded: Array.from({ length: COLUMN_COUNT }, (_, i) => folded[i] === true),
+  };
+}
+
+/** The kept columns, or four empty ones the first time. */
+export function readColumns(known: (key: string) => boolean): ColumnsState {
+  let kept: string | null = null;
+  try {
+    kept = localStorage.getItem(STORAGE);
+  } catch {
+    // Empty columns, for this visit.
+  }
+  try {
+    return normalize(kept === null ? {} : JSON.parse(kept), known);
+  } catch {
+    return normalize({}, known);
+  }
+}
+
+export function writeColumns(state: ColumnsState): void {
+  try {
+    localStorage.setItem(STORAGE, JSON.stringify(state));
+  } catch {
+    // Not remembered: only this visit.
+  }
+}
+
+/** Adds the tool to the column, or takes it out if it is there. */
+export function toggleTool(state: ColumnsState, column: number, key: string): ColumnsState {
+  const columns = state.columns.map((keys, i) => (i !== column ? keys : keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
+  return { ...state, columns };
+}
+
+export function toggleFold(state: ColumnsState, column: number): ColumnsState {
+  return { ...state, folded: state.folded.map((f, i) => (i === column ? !f : f)) };
+}

@@ -32,6 +32,8 @@ export async function newProject(page: Page, name: string): Promise<string> {
     localStorage.setItem("cao.steps-ribbon", "1");
     // And every tab in this project, the kitchen's or the dressing's tools on a 3D project (spaces: their own tests).
     localStorage.setItem("cao.free-spaces", "1");
+    // And the view where it was before the four columns of tools (their own test), for the clicks by coordinates.
+    localStorage.setItem("cao.tool-columns-off", "1");
   });
   await page.fill("#id_name", name);
   await page.getByRole("button", { name: "Créer et ouvrir" }).click();

@@ -141,7 +141,7 @@ export const CURIC: HelpFamily[] = [
 export const SCREEN: HelpFamily[] = [
   {
     title: "Se repérer à l'écran",
-    where: "Navigateur à gauche, vue au centre (onglets de projets au-dessus, Historique en dessous), panneau Propriétés à droite.",
+    where: "Navigateur à gauche, quatre colonnes d'outils à côté, vue au centre (onglets de projets au-dessus, Historique en dessous), panneau Propriétés à droite.",
     tools: [
       {
         keys: [], name: "Navigateur",
@@ -195,6 +195,16 @@ export const SCREEN: HelpFamily[] = [
           "Glissez la poignée à points pour déplacer la barre (double-clic : elle revient). « ⇄ » ou « ⇅ » la met à l'horizontale ou à la verticale.",
         ],
         tip: "Chaque onglet a la sienne : Conception 3D (vide au départ), Dressing et Cuisine (avec leurs outils de tous les jours, à changer à votre goût). Une autre sert à l'esquisse.",
+      },
+      {
+        keys: [], name: "Quatre colonnes d'outils",
+        what: "Quatre colonnes d'icônes entre le Navigateur et la vue, vides au départ, que vous garnissez vous-même avec les outils du ruban.",
+        steps: [
+          "Cliquez le « + » en bas d'une colonne : la liste de tous les outils s'ouvre, rangés par groupe. Tapez un nom pour le trouver, cliquez-le pour l'ajouter (cliqué à nouveau, il est retiré). Échap ou « Fermer » referme la liste.",
+          "Cliquez une icône d'une colonne pour lancer l'outil, le même que dans le ruban. Clic droit sur une icône : elle quitte la colonne.",
+          "La flèche ‹ en haut d'une colonne la replie : elle disparaît et la vue reprend sa place. Un petit onglet numéroté (› 1, › 2…) reste en bas du bord gauche de la vue ; cliquez-le pour rouvrir la colonne.",
+        ],
+        tip: "Ce sont les mêmes colonnes en Conception 3D, en Dressing et en Cuisine : elles restent en place quand vous changez d'onglet. Vos choix et les colonnes repliées sont retenus. Les colonnes sont cachées pendant une esquisse, pendant le rendu et sur un écran étroit.",
       },
       {
         keys: [], name: "Ruban : épingler et déplacer les groupes",

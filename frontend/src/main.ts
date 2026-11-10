@@ -1,6 +1,7 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
 import { Editor, type EditorConfig } from "./app/editor";
 import { bindCommandPalette } from "./app/command-palette";
+import { bindToolColumns } from "./ui/tool-columns";
 import { bindContextBar } from "./app/context-bar";
 import { bindLiveCheck } from "./app/workshop/live-check";
 import { bindVariants } from "./app/workshop/variants-tool";
@@ -204,6 +205,7 @@ async function start(): Promise<void> {
   bindDoorFronts(root, viewport, editor);
   bindEdgePaint(root, viewport, editor);
   bindCommandPalette(root);
+  bindToolColumns(root);
   bindProductionFolder(root, viewport, editor, geometry, notice);
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
   editor.render();
