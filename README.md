@@ -1141,15 +1141,17 @@ opération existante.
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
   poignée la remet en haut à gauche. Sa place et son sens sont retenus.
-- **Quatre colonnes d'outils**, entre le Navigateur et la vue : quatre colonnes d'icônes, **vides au départ**, que l'on
+- **Sept colonnes d'outils**, entre le Navigateur et la vue : sept colonnes d'icônes, **vides au départ**, que l'on
   garnit soi-même. Le **« + »** en bas d'une colonne ouvre la liste de tous les outils du ruban et de la colonne de
   sélection et de vue, rangés par groupe, avec une recherche ; un clic ajoute l'outil à la colonne, ou l'en retire s'il
   y est (coché). Un clic sur une icône lance l'outil, le même que celui du ruban (même rangé ou replié), et en reprend
-  l'état (enfoncé, grisé) ; un clic droit la retire. La **flèche ‹** en haut d'une colonne la replie : elle disparaît
-  sans laisser de bande et la vue reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord
-  gauche de la vue, par-dessus, pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine :
-  elles restent en place quand on change d'onglet. Le choix et les colonnes repliées sont retenus par le navigateur.
-  Cachées en esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,
+  l'état (enfoncé, grisé) ; un clic droit la retire. **L'ordre** des icônes se change en les glissant plus haut ou plus
+  bas (un trait bleu montre où elle se pose), ou dans une autre colonne ; au clavier, **Alt + ↑ / ↓** monte ou descend
+  l'icône d'une place. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
+  reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord gauche de la vue, par-dessus,
+  pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine : elles restent en place
+  quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Cachées en
+  esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,
   `ui/tool-columns-store.ts`).
 - **Colonne de sélection et de vue**, à droite de la vue 3D (contre le panneau Mesures) : les cinq filtres
   (Auto, Faces, Arêtes, Points, Corps) et la sélection par fenêtre, puis « Ajuster » (Échap désélectionne). Elle reste

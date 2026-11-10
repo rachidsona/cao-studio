@@ -1,10 +1,10 @@
 /**
- * Ce que retient la barre à quatre colonnes (ui/tool-columns.ts) : les outils de chaque colonne et les colonnes
- * repliées, gardés dans ce navigateur. Les colonnes sont vides au départ, et ce sont les mêmes dans les trois
+ * Ce que retient la barre à sept colonnes (ui/tool-columns.ts) : les outils de chaque colonne, dans leur ordre, et les
+ * colonnes repliées, gardés dans ce navigateur. Les colonnes sont vides au départ, et ce sont les mêmes dans les trois
  * espaces (Conception 3D, Dressing, Cuisine) : elles restent en place quand on change d'onglet.
  */
 
-export const COLUMN_COUNT = 4;
+export const COLUMN_COUNT = 7;
 const STORAGE = "cao.tool-columns";
 
 export interface ColumnsState {
@@ -59,4 +59,16 @@ export function toggleTool(state: ColumnsState, column: number, key: string): Co
 
 export function toggleFold(state: ColumnsState, column: number): ColumnsState {
   return { ...state, folded: state.folded.map((f, i) => (i === column ? !f : f)) };
+}
+
+/**
+ * Moves a tool to `index` of a column (its own or another): `index` counts the tools of that column without it. A tool
+ * already in the target column is not doubled.
+ */
+export function moveTool(state: ColumnsState, from: number, key: string, to: number, index: number): ColumnsState {
+  if (!state.columns[from]?.includes(key) || !state.columns[to]) return state;
+  const columns = state.columns.map((keys, i) => (i === from || i === to ? keys.filter((k) => k !== key) : keys));
+  const target = columns[to] as string[];
+  target.splice(Math.max(0, Math.min(index, target.length)), 0, key);
+  return { ...state, columns };
 }

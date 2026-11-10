@@ -1,5 +1,5 @@
 /**
- * La liste des outils qu'ouvre le « + » d'une colonne de la barre à quatre colonnes (ui/tool-columns.ts) : tous les
+ * La liste des outils qu'ouvre le « + » d'une colonne de la barre à sept colonnes (ui/tool-columns.ts) : tous les
  * outils du ruban et de la colonne Sélection et vue, rangés par groupe, avec une recherche. Un clic ajoute l'outil à
  * la colonne, ou l'en retire s'il y est déjà (coché) ; la liste reste ouverte pour en choisir plusieurs. Échap, un clic
  * dehors ou « Fermer » la referment.

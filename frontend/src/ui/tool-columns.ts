@@ -1,6 +1,7 @@
 /**
- * La barre à quatre colonnes, entre le Navigateur et la vue : quatre colonnes d'icônes d'outils, chacune avec les
- * outils qu'on y met soi-même par son « + » (ui/tool-columns-picker.ts) ; un clic droit sur une icône l'en retire.
+ * La barre à sept colonnes, entre le Navigateur et la vue : sept colonnes d'icônes d'outils, chacune avec les outils
+ * qu'on y met soi-même par son « + » (ui/tool-columns-picker.ts) ; un clic droit sur une icône l'en retire. Une icône
+ * se glisse plus haut ou plus bas dans sa colonne, ou dans une autre ; Alt + ↑ / ↓ la monte ou la descend.
  * Chaque icône lance l'outil du ruban (ou de la colonne Sélection et vue), le même, même caché ou replié, et en
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
  * et seul un petit onglet numéroté reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir. Les colonnes sont vides
@@ -10,7 +11,7 @@
 import { el } from "./dom";
 import { keyOf } from "./ribbon-layout";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
-import { COLUMN_COUNT, readColumns, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
+import { COLUMN_COUNT, moveTool, readColumns, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
 
 /** The view tools beside the viewport have no ribbon key: their first data attribute names them. */
 function toolKey(button: HTMLElement): string | null {
@@ -55,7 +56,7 @@ export function bindToolColumns(root: HTMLElement): void {
 
   const bar = el("aside", {
     class: `flex shrink-0 border-r border-gray-200 bg-white empty:hidden dark:border-gray-800 dark:bg-gray-900 ${visibility}`,
-    "aria-label": "Barre d'outils en quatre colonnes",
+    "aria-label": "Barre d'outils en sept colonnes",
     "data-tool-columns": "",
   });
   tree.after(bar);
@@ -68,16 +69,20 @@ export function bindToolColumns(root: HTMLElement): void {
   });
   root.querySelector("#main")?.append(tabs);
   const watchers: MutationObserver[] = [];
+  /** The icon being dragged to another place. */
+  let dragging: { column: number; key: string } | null = null;
 
   const save = (next: ColumnsState) => {
     state = next;
     writeColumns(state);
     render();
   };
+  const iconAt = (column: number, key: string) =>
+    [...bar.querySelectorAll<HTMLElement>(`[data-tool-column="${column}"] [data-tool-column-tool]`)].find((b) => b.dataset.toolColumnTool === key);
 
   /** A column's icon: runs the tool's own button and mirrors its state. */
   const iconButton = (tool: Tool, column: number): HTMLElement => {
-    const button = el("button", { type: "button", class: "tool-btn icon-btn", "aria-label": tool.label, title: `${tool.button.title || tool.label} — clic droit : retirer de la colonne`, "data-tool-column-tool": tool.key }, iconOf(tool.button));
+    const button = el("button", { type: "button", class: "tool-btn icon-btn", "aria-label": tool.label, title: `${tool.button.title || tool.label} — glisser pour changer sa place (Alt + ↑ / ↓) ; clic droit : retirer de la colonne`, "data-tool-column-tool": tool.key, draggable: "true" }, iconOf(tool.button));
     const sync = () => {
       button.disabled = (tool.button as HTMLButtonElement).disabled === true;
       const pressed = tool.button.getAttribute("aria-pressed");
@@ -93,6 +98,26 @@ export function bindToolColumns(root: HTMLElement): void {
       event.preventDefault();
       save(toggleTool(state, column, tool.key));
     });
+    button.addEventListener("dragstart", (event) => {
+      dragging = { column, key: tool.key };
+      event.dataTransfer?.setData("text/plain", tool.label);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+      requestAnimationFrame(() => button.classList.add("opacity-40"));
+    });
+    button.addEventListener("dragend", () => {
+      dragging = null;
+      button.classList.remove("opacity-40");
+      for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+    });
+    // Alt + ↑ / ↓: one place up or down in the column.
+    button.addEventListener("keydown", (event) => {
+      if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const at = state.columns[column]?.indexOf(tool.key) ?? -1;
+      save(moveTool(state, column, tool.key, column, at + (event.key === "ArrowUp" ? -1 : 1)));
+      iconAt(column, tool.key)?.focus();
+    });
     return button;
   };
 
@@ -102,7 +127,7 @@ export function bindToolColumns(root: HTMLElement): void {
       "button",
       {
         type: "button",
-        class: "pointer-events-auto flex h-11 w-5 flex-col items-center justify-center border border-l-0 border-gray-200 bg-white/95 text-[10px] leading-none text-gray-500 shadow-md hover:bg-gray-100 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+        class: "pointer-events-auto flex h-9 w-5 flex-col items-center justify-center border border-l-0 border-gray-200 bg-white/95 text-[10px] leading-none text-gray-500 shadow-md hover:bg-gray-100 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
         "aria-expanded": "false",
         "aria-label": `Déplier la colonne ${index + 1}`,
         title: `Déplier la colonne d'outils ${index + 1}`,
@@ -135,6 +160,7 @@ export function bindToolColumns(root: HTMLElement): void {
       "aria-label": `Colonne ${number}`,
       "data-tool-column": String(index),
     }, fold);
+    bindDrop(section, index);
     const list = el("div", { class: "cad-no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto py-1" });
     list.append(...(state.columns[index] ?? []).flatMap((key) => {
       const tool = byKey.get(key);
@@ -155,6 +181,45 @@ export function bindToolColumns(root: HTMLElement): void {
     );
     section.append(list, add);
     return section;
+  };
+
+  /**
+   * Where a dragged icon lands in a column: before or after the icon under the pointer (by its half), or at the end.
+   * Returns the place among the column's tools without the dragged one, and the icon to mark.
+   */
+  const dropPlace = (column: number, event: DragEvent): { index: number; over: HTMLElement | null; side: "before" | "after" } => {
+    const keys = (state.columns[column] ?? []).filter((k) => k !== dragging?.key);
+    const over = (event.target as HTMLElement).closest<HTMLElement>("[data-tool-column-tool]");
+    const key = over?.dataset.toolColumnTool;
+    if (!over || !key || key === dragging?.key) return { index: keys.length, over: null, side: "after" };
+    const box = over.getBoundingClientRect();
+    const side = event.clientY < box.top + box.height / 2 ? "before" : "after";
+    return { index: keys.indexOf(key) + (side === "after" ? 1 : 0), over, side };
+  };
+  const bindDrop = (section: HTMLElement, column: number) => {
+    section.addEventListener("dragover", (event) => {
+      if (!dragging) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      const { over, side } = dropPlace(column, event);
+      for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) if (marked !== over && marked !== section) delete marked.dataset.drop;
+      if (over) {
+        over.dataset.drop = side;
+        delete section.dataset.drop;
+      } else section.dataset.drop = "end";
+    });
+    section.addEventListener("dragleave", (event) => {
+      if (!section.contains(event.relatedTarget as Node)) for (const marked of section.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+      if (!section.contains(event.relatedTarget as Node)) delete section.dataset.drop;
+    });
+    section.addEventListener("drop", (event) => {
+      if (!dragging) return;
+      event.preventDefault();
+      const { index } = dropPlace(column, event);
+      const moved = dragging;
+      dragging = null;
+      save(moveTool(state, moved.column, moved.key, column, index));
+    });
   };
 
   const render = () => {
