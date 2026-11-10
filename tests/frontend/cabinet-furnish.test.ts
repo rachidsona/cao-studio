@@ -223,4 +223,36 @@ describe("caisson de cuisine aménagé", () => {
     const [lo1] = caissonBox(moved.doc, made.sketch);
     expect(Math.hypot(...[0, 1, 2].map((i) => lo1[i]! - lo0[i]!))).toBeCloseTo(400, 1);
   });
+
+  it("le caisson aménagé supprimé, sa place gardée redevient libre : un meuble de sa largeur la prend", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    const room = kitchenPlanIn(made.doc, plan)!.runs!.A![0]!;
+    expect(room).toMatchObject({ model: "space", width: 800, furnished: made.sketch });
+    // While the caisson holds it, a unit of 1200 more finds no room (2400: 800 held + 600, 1000 left open).
+    const items = kitchenPlanIn(made.doc, plan)!.runs!.A!;
+    const wide = newItem(items, "base-bas-2-portes", 1200);
+    const held = withKitchenBuilt(made.doc, plan, { runs: { A: [...items, wide] } });
+    if (typeof held === "string") throw new Error(held);
+    expect(held.problems.join(" ")).toMatch(/ne tient pas/);
+    expect(kitchenPlanIn(held.doc, plan)!.runs!.A![0]).toMatchObject({ model: "space", furnished: made.sketch });
+
+    // The caisson deleted by hand, another sketch taking its id since: the room is no longer held.
+    const sketch = made.doc.features.find((f) => f.id === made.sketch)!;
+    const without = { ...made.doc, features: made.doc.features.filter((f) => f.id !== made.sketch && !((f.type === "extrude" || f.type === "niche") && f.sketch === made.sketch)) };
+    const reused: CadDocument = { ...without, features: [...without.features, { id: made.sketch, type: "sketch", name: "Esquisse", plane: "XY", offset: 0, points: [], curves: [], constraints: [] } as unknown as SketchFeature] };
+    expect(sketch.type).toBe("sketch");
+    for (const gone of [without, reused]) {
+      expect(kitchenPlanIn(gone, plan)!.runs!.A![0]!.furnished).toBeUndefined();
+      // The same unit added at the end of the run: it stands in the room (and the open room beside), first of the run.
+      const built = withKitchenBuilt(gone, plan, { runs: { A: [...kitchenPlanIn(gone, plan)!.runs!.A!, wide] } });
+      if (typeof built === "string") throw new Error(built);
+      expect(built.problems.filter((m) => /ne tient pas/.test(m))).toEqual([]);
+      expect(kitchenPlanIn(built.doc, plan)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["base-bas-2-portes", 1200], ["base-bas-3-tiroirs", 600], ["wall-haut-1-porte", 600]]);
+      const put = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+      expect(put.origin).toEqual(cabinet.origin);
+    }
+  });
 });

@@ -1760,8 +1760,24 @@ opération existante.
     - **Largeur libre** : après les largeurs du modèle, « Autre… » ouvre un champ où taper n'importe quelle largeur, dans
       l'unité du projet (28,6 cm par exemple). Entrée l'ajoute, Échap le referme ; une largeur hors limites (10 à 240 cm
       pour un meuble) est refusée. « Place libre · 91,4 » ajoute le meuble à la largeur exacte de la plus grande place
-      qui reste dans sa rangée, sans compter les places gardées (`widestRoom`). Les appareils gardent leurs largeurs. Dans
-      « Meubles de cuisine », « Autre… » y est aussi.
+      qui reste dans sa rangée, sans compter celles qu'un caisson aménagé tient (`widestRoom`). Les appareils gardent
+      leurs largeurs. Dans « Meubles de cuisine », « Autre… » y est aussi.
+    - **Un meuble prend la place gardée libre** : quand il ne reste pas de place ouverte, le meuble ajouté va dans un
+      « Espace libre » de sa rangée (la place hachurée), à l'endroit de cet espace, qui garde ce qui reste de lui
+      (`settledItems`). La place qu'un caisson aménagé tient n'est pas prise ; ce caisson supprimé, elle redevient libre
+      (`kitchenPlanIn` oublie le lien vers un caisson qui n'existe plus).
+    - **Un meuble qui ne tient pas est refusé** à l'ajout, avec la place qui reste (« il reste 60 cm au plus en bas ») :
+      il ne reste plus dans le linéaire sans être vu. Ceux qui s'y trouvent déjà sans place (ajoutés avant, un meuble
+      élargi, le mur raccourci) sont listés sous « À revoir », chacun avec « Retirer »
+      (`app/kitchen/kitchen-run-missing.ts`).
+    - **Voir** un linéaire montre aussi ses caissons aménagés, pas seulement ce que le plan a bâti (`runFeatures`).
+    - **Supprimer un meuble dans la 3D** (le caisson choisi entier, puis Suppr) le supprime vraiment : l'opération
+      elle-même part, avec ses façades, au lieu de ses planches une à une (`deletionOf`). Sur un linéaire du plan, sa
+      place devient un « Espace libre » de sa largeur : il ne revient pas quand la cuisine est refaite, ses voisins ne
+      bougent pas, et le prochain meuble ajouté assez étroit va dans cette place (`inKeptRoom`), une seule fois — la
+      place prise, un autre meuble est refusé. Un caisson aménagé dont on supprime les panneaux disparaît en entier,
+      son esquisse avec, et sa place redevient libre (`document/kitchen-delete-sync.ts`). Pour refermer le vide,
+      « Place libre » du linéaire retire l'espace.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
     leur mur, façades, plan de travail continu sur chaque linéaire avec les découpes de l'évier et de la plaque,
     crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,

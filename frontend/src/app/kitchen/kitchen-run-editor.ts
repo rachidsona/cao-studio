@@ -11,7 +11,7 @@ import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, FILLER, FILLER_WALL, fillRun, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, FILLER, FILLER_WALL, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import type { Editor } from "../editor";
@@ -26,6 +26,7 @@ import { runStrip } from "./kitchen-run-strip";
 import { editStripWidth } from "./kitchen-strip-edit";
 import { handAppliances } from "../../document/kitchen-hand-appliances";
 import { myUnits } from "./my-units";
+import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { multiRows, pickAllRow } from "./kitchen-run-multi-view";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -114,7 +115,19 @@ export class RunEditor {
   }
 
   private put(item: KitchenRunItem): void {
-    this.change(insertItem(this.items, item, this.chosen), item.id);
+    // In the room kept free when it has some wide enough (a unit deleted leaves its place); else after the one chosen.
+    const next = inKeptRoom(this.items, item) ?? insertItem(this.items, item, this.chosen);
+    // No room for it, even in the room kept free: not added, rather than left on the run unseen.
+    const why = noRoomFor(this.fillOf(next), item, this.host.editor.unit);
+    if (why) return this.host.editor.notify(why, "error");
+    this.change(next, item.id);
+  }
+
+  /** The run filled with these items (its own), as the plan would be. */
+  private fillOf(items: readonly KitchenRunItem[] = this.items): RunFill {
+    const plan = this.current();
+    const s = kitchenSizes(plan);
+    return fillRun(this.geometry(), items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
   }
 
   /** A unit of « Meubles de cuisine », added like one of the palette, not applied before OK. */
@@ -147,6 +160,8 @@ export class RunEditor {
     const g = this.geometry();
     const s = kitchenSizes(plan);
     const fill = fillRun(g, this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
+    // A unit put in the room kept free stands there in the run's order too.
+    this.items = fill.items;
     const strip = runStrip({ plan, run, geometry: g, fill, chosen: this.chosen, picked: this.picked, pick: (id, add) => {
         // A unit picked on the strip: its settings open; with Maj, Ctrl or ⌘, it joins those chosen (or leaves them).
         if (add) {
@@ -192,7 +207,7 @@ export class RunEditor {
             }, () => this.host.redraw(), false),
           ])
         : null,
-      fill.problems.length ? f.fold("checks", `À revoir (${fill.problems.length})`, () => fill.problems.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m))) : null,
+      fill.problems.length ? f.fold("checks", `À revoir (${fill.problems.length})`, () => [...fill.problems.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m)), ...missingRows(fill, unit, (ids) => this.change(this.items.filter((i) => !ids.includes(i.id)), this.chosen))]) : null,
       f.fold("price", "Prix du projet", () => [quoteButton()], el("span", { class: "font-mono font-medium", "data-live-total": "" })),
       clear,
       this.dirty ? el("p", { class: "border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100", "data-run-preview": "" }, "Aperçu dans la 3D : OK garde ces changements, Annuler revient à la cuisine d'avant.") : null,
@@ -468,8 +483,7 @@ export class RunEditor {
     const add = (e: CatalogEntry) => this.addEntry(e);
     // A width of one's own, or that of the room left in its row.
     const plan = this.current();
-    const s = kitchenSizes(plan);
-    const fill = fillRun(this.geometry(), this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
+    const fill = this.fillOf();
     const free = { limits: (e: CatalogEntry) => sizeLimits(plan, e).width, room: (e: CatalogEntry) => widestRoom(fill, rowOf(e)) || null };
     const tabs = familyTabs(FAMILIES.filter(([f]) => wall || f !== "wall"), this.family, (f) => ((this.family = f), this.host.redraw()), "Ajouter");
     let rows: HTMLElement[];

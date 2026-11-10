@@ -2,13 +2,14 @@
  * What Suppr deletes, whatever is picked in the 3D view: whole bodies and
  * sketches; a body through a face, an edge or a corner of it (the whole body:
  * the question says so); a piece of a cabinet, of panels or of a split on its
- * own (the operation and its other pieces stay); lines and points of a sketch, taken out of it (with
+ * own (the operation and its other pieces stay; all its pieces picked, the operation itself goes); lines and points
+ * of a sketch, taken out of it (with
  * their constraints). An area of a sketch is not deleted (its lines are, or
  * the whole sketch). Everything goes in one undo step.
  */
-import { bodyLabel, featuresOfPick, findFeature } from "../document/operations";
+import { bodyLabel, bodyOrigin, featuresOfPick, findFeature } from "../document/operations";
 export { removeStep, removeWithShelves } from "../document/shelf-removal";
-import type { CadDocument, SketchFeature } from "../document/types";
+import { featureOfBody, type CadDocument, type SketchFeature } from "../document/types";
 import { removeEntities } from "../sketcher/edit";
 import { askConfirm } from "../ui/confirm-dialog";
 import type { ModelSelection } from "../viewport/viewport";
@@ -26,7 +27,12 @@ export interface Deletion {
   skipped: number;
 }
 
-export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>): Deletion {
+/**
+ * `displayed`: the bodies in the view. With them, an operation all of whose pieces are picked (a cabinet chosen whole,
+ * every door of its fronts) is deleted itself rather than emptied piece by piece: nothing of it is left, and what
+ * hangs on it (a cabinet's fronts) goes with it.
+ */
+export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>, displayed: readonly string[] = []): Deletion {
   const bodies = [...(selection.bodies ?? [])];
   const implied: string[] = [];
   for (const { bodyId } of [...(selection.faces ?? []), ...(selection.edges ?? []), ...(selection.vertices ?? [])]) {
@@ -36,7 +42,12 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>)
     }
   }
   const whole = selection.sketches ?? [];
-  const { ids, pieces } = featuresOfPick(doc, bodies, whole);
+  const picked = featuresOfPick(doc, bodies, whole);
+  const ownerOf = (body: string) => featureOfBody(bodyOrigin(doc, body));
+  // The operations with no piece left in the view once these are gone.
+  const emptied = [...new Set(picked.pieces.map(featureOfBody))].filter((owner) => displayed.some((b) => ownerOf(b) === owner) && displayed.every((b) => ownerOf(b) !== owner || picked.pieces.includes(bodyOrigin(doc, b))));
+  const ids = [...new Set([...picked.ids, ...emptied])];
+  const pieces = picked.pieces.filter((p) => !emptied.includes(featureOfBody(p)));
   const items = (selection.sketch ?? []).filter((p) => !whole.includes(p.sketchId));
   const edits = [...new Set(items.filter((p) => p.kind !== "region").map((p) => p.sketchId))].flatMap((sketchId) => {
     const sketch = findFeature(doc, sketchId);

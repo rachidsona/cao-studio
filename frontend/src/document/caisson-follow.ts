@@ -34,6 +34,18 @@ type Partition = OffsetRecord & { step: Extract<NonNullable<OffsetRecord["step"]
 /** The Répartition a caisson's sketch is made of: the first one extruded. */
 const partitionOf = (sketch: SketchFeature): Partition | undefined => (sketch.offsets ?? []).find((r): r is Partition => isPartition(r) && r.step.kind === "partition" && !!r.step.depth);
 
+/** Whether this feature is a caisson a kept room may hold: a sketch with a Répartition extruded, its panels still there. */
+export function isCaisson(doc: CadDocument, id: string): boolean {
+  const f = findFeature(doc, id);
+  return f?.type === "sketch" && !!partitionOf(f) && doc.features.some((x) => x.type === "extrude" && x.sketch === id);
+}
+
+/** What stands on a run: what the plan made for it, and the caissons furnished in its kept rooms (their panels, doors, drawers). */
+export function runFeatures(doc: CadDocument, plan: KitchenFloorPlan, run: string): Set<string> {
+  const held = new Set((plan.runs?.[run] ?? []).map((i) => i.furnished).filter(Boolean));
+  return new Set([...(plan.made?.[run] ?? []), ...doc.features.filter((f) => (f.type === "extrude" || f.type === "niche") && held.has(f.sketch)).map((f) => f.id)]);
+}
+
 /** A room of the plan where the plan stands in the room, as its cabinets are (kitchen-plan.ts). */
 const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
 

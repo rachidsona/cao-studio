@@ -121,6 +121,19 @@ export function insertItem(items: readonly KitchenRunItem[], item: KitchenRunIte
   return [...items.slice(0, at), item, ...items.slice(at)];
 }
 
+/**
+ * `item` put in the room kept free in its row — an « Espace libre » no furnished caisson holds, wide enough for it, the
+ * narrowest such —, in its place there, that room keeping what is left of it; null when there is none.
+ */
+export function inKeptRoom(items: readonly KitchenRunItem[], item: KitchenRunItem): KitchenRunItem[] | null {
+  const row = rowOf(itemEntry(item));
+  const space = items.filter((i) => isSpace(i) && !i.furnished && rowOf(itemEntry(i)) === row && i.width >= item.width - 0.5).sort((a, b) => a.width - b.width)[0];
+  if (!space) return null;
+  const at = items.indexOf(space);
+  const left = space.width - item.width;
+  return [...items.slice(0, at), item, ...(left >= 1 ? [{ ...space, width: left }] : []), ...items.slice(at + 1)];
+}
+
 /** The run item of a catalogue entry (one's own unit kept whole). */
 export function entryItem(items: readonly KitchenRunItem[], entry: CatalogEntry): KitchenRunItem {
   return entry.custom ? newItem(items, entry.id, entry.width, entry) : newItem(items, modelOf(entry), entry.width);
@@ -148,6 +161,8 @@ export interface RunFill {
   stretches: [number, number][];
   /** The room kept free, at its place (out of `placed`: nothing is made there). */
   spaces: Placed[];
+  /** The run's items as they are placed: a unit put in the room kept free, before what is left of that room. */
+  items: KitchenRunItem[];
   missing: KitchenRunItem[];
   problems: string[];
 }
@@ -200,8 +215,10 @@ function pack(stretches: [number, number][], items: Omit<Placed, "at">[], rest: 
   return { placed, gaps, missing };
 }
 
-/** A run's items at their place: the base row (and the columns), then the wall row around the columns. */
-export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], heights: { worktop: number; wallBottom: number; wallTop: number }): RunFill {
+type Heights = { worktop: number; wallBottom: number; wallTop: number };
+
+/** The two rows packed: the base row (and the columns), then the wall row around the columns. */
+function packedRows(g: RunGeometry, items: readonly KitchenRunItem[], heights: Heights) {
   const all = items.map((item) => {
     const entry = itemEntry(item);
     return { item, entry, row: rowOf(entry) };
@@ -211,6 +228,50 @@ export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], height
   const [ml, mr] = g.movable ?? [false, false];
   const rest: Exclude<RestSide, "walls"> = g.rest !== "walls" ? g.rest : ml && mr ? "both" : ml ? "start" : mr ? "end" : g.ends[0] !== "free" && g.ends[1] !== "free" ? "both" : g.ends[0] !== "free" ? "start" : "end";
   const base = pack(stretches, all.filter((i) => i.row === "base"), rest);
+  const columns = base.placed.filter((p) => p.entry.kind === "tall").map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
+  const high = g.wall ? rowStretches(g, g.wall, heights.wallBottom, heights.wallTop).flatMap(([a, b]) => freeStretches(columns, a, b, 0, 1)) : [];
+  const highs = all.filter((i) => i.row === "wall");
+  const wall = g.wall ? pack(high, highs, rest) : { placed: [], gaps: [], missing: highs };
+  return { stretches, base, wall, ml, mr };
+}
+
+/**
+ * The items with each unit that finds no room put in the room kept free in its row (an « Espace libre » no furnished
+ * caisson holds), the first where it then stands: the unit takes its place there, the space keeps what is left of it
+ * (a narrower space goes whole, the unit taking the open room beside it too). The same array when nothing moves.
+ */
+export function settledItems(g: RunGeometry, items: readonly KitchenRunItem[], heights: Heights): readonly KitchenRunItem[] {
+  let list = items;
+  const tried = new Set<string>();
+  for (let guard = 0; guard <= items.length; guard++) {
+    const { base, wall } = packedRows(g, list, heights);
+    const m = [...base.missing, ...wall.missing].find((x) => !isSpace(x.item) && !tried.has(x.item.id));
+    if (!m) break;
+    tried.add(m.item.id);
+    const out = new Set([...base.missing, ...wall.missing].map((x) => x.item.id));
+    for (const space of list.filter((i) => isSpace(i) && !i.furnished && rowOf(itemEntry(i)) === m.row)) {
+      // In its place, the space keeping what is left of it; with the open room beside it when it is narrower.
+      const left = space.width - m.item.width;
+      const others = list.filter((i) => i !== m.item);
+      const at = others.indexOf(space);
+      const moved = [...others.slice(0, at), m.item, ...(left >= 1 ? [{ ...space, width: left }] : []), ...others.slice(at + 1)];
+      const again = packedRows(g, moved, heights);
+      // It stands now, and nothing that stood is pushed out.
+      if ([...again.base.missing, ...again.wall.missing].some((x) => x.item.id === m.item.id || !out.has(x.item.id))) continue;
+      list = moved;
+      break;
+    }
+  }
+  return list;
+}
+
+/**
+ * A run's items at their place: the base row (and the columns), then the wall row around the columns. A unit with no
+ * room left takes the room kept free (`settledItems`): `items` gives them in that order.
+ */
+export function fillRun(g: RunGeometry, given: readonly KitchenRunItem[], heights: Heights): RunFill {
+  const items = settledItems(g, given, heights);
+  const { stretches, base, wall, ml, mr } = packedRows(g, items, heights);
   const walls: [number, number] = [0, 0];
   if (g.rest === "walls" && base.placed.length) {
     const at = (x: number) => base.gaps.findIndex(([a, b]) => Math.abs((x === g.base[0] ? a : b) - x) < 1e-6);
@@ -222,10 +283,6 @@ export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], height
       base.gaps.splice(k, 1);
     }
   }
-  const columns = base.placed.filter((p) => p.entry.kind === "tall").map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
-  const high = g.wall ? rowStretches(g, g.wall, heights.wallBottom, heights.wallTop).flatMap(([a, b]) => freeStretches(columns, a, b, 0, 1)) : [];
-  const highs = all.filter((i) => i.row === "wall");
-  const wall = g.wall ? pack(high, highs, rest) : { placed: [], gaps: [], missing: highs };
   const problems: string[] = [];
   const most = Math.max(0, ...base.gaps.map(([a, b]) => b - a));
   for (const m of base.missing) problems.push(`${m.entry.name} ${cm(m.item.width)} ne tient pas : ${most >= 1 ? `il reste ${cm(most)} au plus` : "le mur est plein"}.`);
@@ -243,7 +300,7 @@ export function fillRun(g: RunGeometry, items: readonly KitchenRunItem[], height
   const wallFree = joined([...wall.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...kept(wall.placed)]);
   const placed = [...base.placed, ...wall.placed];
   problems.push(...constraints(placed, g, stretches));
-  return { placed, fillers, free, wallFree, walls, stretches, spaces: spaced, missing: [...base.missing, ...wall.missing].map((m) => m.item), problems };
+  return { placed, fillers, free, wallFree, walls, stretches, spaces: spaced, items: items as KitchenRunItem[], missing: [...base.missing, ...wall.missing].map((m) => m.item), problems };
 }
 
 /** Stretches side by side made one, in their order. */
@@ -258,11 +315,11 @@ function joined(stretches: [number, number][]): [number, number][] {
 }
 
 /**
- * The widest room left open in a row of a filled run (mm), for a unit put there: the open stretches and those a filler
- * closes, not the room kept free (a space, a furnished caisson's); 0 when the row is full.
+ * The widest room left open in a row of a filled run (mm), for a unit put there: the open stretches, those a filler
+ * closes and the room kept free, not the room a furnished caisson holds; 0 when the row is full.
  */
 export function widestRoom(fill: Pick<RunFill, "free" | "wallFree" | "fillers" | "spaces">, row: "base" | "wall"): number {
-  const kept = fill.spaces.filter((pl) => pl.row === row).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  const kept = fill.spaces.filter((pl) => pl.row === row && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const open = (row === "wall" ? fill.wallFree : [...fill.free, ...fill.fillers]).flatMap(([a, b]) => {
     // Less the spaces kept in it.
     let parts: [number, number][] = [[a, b]];

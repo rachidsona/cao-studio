@@ -30,6 +30,7 @@ import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { kitchenSchema } from "./kitchen-plan-schema";
 import { RunEditor } from "./kitchen-run-editor";
+import { runFeatures } from "../../document/caisson-follow";
 import { endPreview, previewRun, shownDoc } from "./kitchen-run-preview";
 import { Folds } from "../../ui/fold";
 import { paintPrice, quoteButton } from "../workshop/live-price";
@@ -40,6 +41,7 @@ import { withRunDim } from "../../document/kitchen-dim-edit";
 import { editValue } from "../dim-editor";
 import { addNormalizer } from "../doc-normalizers";
 import { syncKitchenPlans } from "../../document/kitchen-sync";
+import { withDeletedFreed } from "../../document/kitchen-delete-sync";
 import { appliancesFollow } from "../../document/appliance-follow";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -357,7 +359,7 @@ export class KitchenPlanTool {
     const [nx, ny] = run.zone.run.normal;
     const front = turn(plan.place ?? { quarter: 0, origin: [0, 0] }, [nx, ny, 0]);
     seen = { plan: planId, run: run.id };
-    isolateFeatures(planId, run.label, () => new Set(kitchenPlanIn(shownDoc(this.editor), planId)?.made?.[run.id] ?? []), front);
+    isolateFeatures(planId, run.label, () => runFeatures(shownDoc(this.editor), kitchenPlanIn(shownDoc(this.editor), planId) ?? plan, run.id), front);
     this.draw();
   }
 
@@ -432,7 +434,7 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
   // A unit the plan made, changed in the 3D: the plan follows it, in the same undo. A cabinet moved, by hand or by the
   // kitchen made again, takes its appliances along (before, so the plan keeps their cuts where they went, and after).
   addNormalizer((prev, next) => appliancesFollow(prev, next));
-  addNormalizer(syncKitchenPlans);
+  addNormalizer((prev, next) => syncKitchenPlans(prev, withDeletedFreed(prev, next)));
   addNormalizer((prev, next) => appliancesFollow(prev, next, false));
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   // The dimensions of the run seen alone, as long as it is.

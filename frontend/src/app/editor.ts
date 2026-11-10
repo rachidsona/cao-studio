@@ -327,7 +327,7 @@ export class Editor {
 
   /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, lines and points of sketches. */
   private async removePicked(selection: Parameters<typeof deletionOf>[1]): Promise<void> {
-    const plan = deletionOf(this.doc, selection);
+    const plan = deletionOf(this.doc, selection, this.viewport.displayedBodies);
     if (!plan.features.length && !plan.edits.length && !plan.pieces.length) return void (plan.skipped && this.notify("Une zone ne se supprime pas : sélectionnez ses traits, ou l'esquisse entière.", "info"));
     if (await confirmDeletion(this.doc, plan)) await this.removeFeature(plan.features, plan.edits, plan.pieces);
   }

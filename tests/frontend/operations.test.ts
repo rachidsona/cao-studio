@@ -82,6 +82,10 @@ describe("supprimer la sélection (corps et esquisses)", () => {
     expect(isRemovedBody(without, "cb1#1")).toBe(false);
     expect(() => parseDocument(JSON.parse(JSON.stringify(without)))).not.toThrow();
     expect(deletionQuestion(doc(), deletionOf(doc(), { bodies: ["cb1#2"] }))).toBeNull();
+    // Every piece of it in the view picked (one already taken away): the cabinet itself, not its pieces one by one.
+    const shown = ["cb1#0", "cb1#1", "cb1#3", "ex1"];
+    expect(deletionOf(without, { bodies: ["cb1#0", "cb1#1"] }, shown)).toMatchObject({ features: [], pieces: ["cb1#0", "cb1#1"] });
+    expect(deletionOf(without, { bodies: ["cb1#0", "cb1#1", "cb1#3"] }, shown)).toMatchObject({ features: ["cb1"], pieces: [] });
   });
 
   it("plusieurs à la fois, en une seule fois ; les opérations qui en dépendent partent avec", () => {

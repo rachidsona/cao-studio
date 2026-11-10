@@ -6,7 +6,7 @@
  * un linéaire change, en une seule annulation, et chaque pièce faite garde son linéaire (`made`), pour le rouvrir ; un
  * caisson aménagé à la main suit sa place (caisson-follow.ts). Pur.
  */
-import { withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
+import { isCaisson, withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
 import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -14,7 +14,7 @@ import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-s
 import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
-import { featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type SketchFeature, type Vec3 } from "./types";
+import { featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature, type Vec3 } from "./types";
 import { isSpace } from "../features/kitchen-run-items";
 import { placePoint, turn } from "../features/room-runs";
 
@@ -43,7 +43,12 @@ export const kitchenPlanOf = (doc: CadDocument): SketchFeature | undefined => [.
 /** The settings of a plan of the document, a setting added since taking its usual value. */
 export function kitchenPlanIn(doc: CadDocument, planId: string): KitchenFloorPlan | undefined {
   const sketch = findFeature(doc, planId);
-  return sketch?.type === "sketch" && sketch.kitchenPlan ? { ...KITCHEN_PLAN, ...sketch.kitchenPlan } : undefined;
+  if (sketch?.type !== "sketch" || !sketch.kitchenPlan) return undefined;
+  const plan = { ...KITCHEN_PLAN, ...sketch.kitchenPlan };
+  // A room kept for a caisson that is no longer there (deleted, its id another's since) is free again.
+  const gone = (i: KitchenRunItem) => i.furnished !== undefined && !isCaisson(doc, i.furnished);
+  if (!Object.values(plan.runs ?? {}).some((items) => items.some(gone))) return plan;
+  return { ...plan, runs: Object.fromEntries(Object.entries(plan.runs ?? {}).map(([run, items]) => [run, items.map((i) => (gone(i) ? (({ furnished: _gone, ...free }) => free)(i) : i))])) };
 }
 
 /** Something stands on a run of the plan. */
@@ -114,7 +119,9 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   // The caissons furnished by hand go where their room now is.
   const followed = withCaissonsFollowing(doc, plan, layout.kept);
   doc = followed.doc;
-  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, made } } : f));
+  // Each run as it is placed: a unit put in a room kept free stands there in its order too.
+  const runs = plan.runs && Object.fromEntries(Object.entries(plan.runs).map(([run, items]) => [run, layout.fills[run]?.items ?? items]));
+  doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, ...(runs ? { runs } : {}), made } } : f));
   return { doc, problems: [...problems, ...followed.problems, ...layout.notes] };
 }
 
