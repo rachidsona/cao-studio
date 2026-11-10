@@ -248,6 +248,7 @@ export class Viewport {
   /** Takes these bodies (the walls in the way) out of the view and out of reach, the others back in. */
   setCutaway(ids: ReadonlySet<string>): void { this.layer.setCut(ids); }
   isCutaway(bodyId: string): boolean { return this.layer.isCut(bodyId); }
+  setSketchCutaway(ids: ReadonlySet<string>): void { this.sketches.setCut(ids); }
 
   /** Where the eye is. */
   eye(): [number, number, number] { return this.camera.position.toArray() as [number, number, number]; }

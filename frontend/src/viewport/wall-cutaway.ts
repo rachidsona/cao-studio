@@ -13,8 +13,12 @@ export interface Slab {
   reach: number;
 }
 
-/** What stands against a wall is no further from it than this (mm): a unit, its fronts and handles, its worktop. */
+/**
+ * What stands against a wall is no further from it than this (mm): a unit, its fronts and handles, its worktop; and,
+ * of furniture known to turn its back to that wall (a deep dressing, its sliding doors), than `AGAINST_BACK`.
+ */
 export const AGAINST = 700;
+export const AGAINST_BACK = 950;
 
 /** Thicker than this, or lower, or shorter: not a wall (a floor, a column, an appliance). */
 const THICKEST = 600;
@@ -64,9 +68,9 @@ export function slabOf(vertices: ArrayLike<number>, indices: ArrayLike<number>):
 
 /**
  * Whether a body (its box, seen from above) stands against this wall, on the room's side (`inside`: a point of the
- * room): all of it between the wall and `AGAINST` in front of it, along the wall's length.
+ * room): all of it between the wall and `within` in front of it, along the wall's length.
  */
-export function againstWall(wall: Slab, inside: [number, number], [lo, hi]: [Vec3, Vec3]): boolean {
+export function againstWall(wall: Slab, inside: [number, number], [lo, hi]: [Vec3, Vec3], within = AGAINST): boolean {
   const side = (inside[0] - wall.center[0]) * wall.normal[0] + (inside[1] - wall.center[1]) * wall.normal[1];
   if (Math.abs(side) <= wall.half) return false;
   const sign = side > 0 ? 1 : -1;
@@ -76,7 +80,7 @@ export function againstWall(wall: Slab, inside: [number, number], [lo, hi]: [Vec
       // From the wall's inner face towards the room, and along the wall from its middle.
       const off = (dx * wall.normal[0] + dy * wall.normal[1]) * sign - wall.half;
       const run = Math.abs(-dx * wall.normal[1] + dy * wall.normal[0]);
-      if (off < -(2 * wall.half + 10) || off > AGAINST || run > wall.reach + 150) return false;
+      if (off < -(2 * wall.half + 10) || off > within || run > wall.reach + 150) return false;
     }
   }
   return true;
@@ -90,7 +94,7 @@ export function againstWall(wall: Slab, inside: [number, number], [lo, hi]: [Vec
 export function wallOf(walls: ReadonlyMap<string, Slab>, inside: [number, number], box: [Vec3, Vec3], back: [number, number] | null): string | null {
   const found: string[] = [];
   for (const [id, wall] of walls) {
-    if (!againstWall(wall, inside, box)) continue;
+    if (!againstWall(wall, inside, box, back ? AGAINST_BACK : AGAINST)) continue;
     if (back) {
       // Towards the room from the wall, against the back's way.
       const sign = (inside[0] - wall.center[0]) * wall.normal[0] + (inside[1] - wall.center[1]) * wall.normal[1] > 0 ? 1 : -1;
@@ -99,6 +103,20 @@ export function wallOf(walls: ReadonlyMap<string, Slab>, inside: [number, number
     found.push(id);
   }
   return found.length === 1 ? found[0]! : null;
+}
+
+/**
+ * The piece of furniture a body with no back known goes with (a hinge, a sliding door, an accessory): the one whose
+ * box (`pieces`, by key) its middle is in, or nearest to within `near` mm; null when none is that close.
+ */
+export function pieceOf(pieces: ReadonlyMap<string, [Vec3, Vec3]>, [lo, hi]: [Vec3, Vec3], near = 150): string | null {
+  const mid = [0, 1, 2].map((i) => (lo[i]! + hi[i]!) / 2);
+  let best: [string, number] | null = null;
+  for (const [key, [a, b]] of pieces) {
+    const off = Math.hypot(...[0, 1, 2].map((i) => Math.max(a[i]! - mid[i]!, 0, mid[i]! - b[i]!)));
+    if (off <= near && (!best || off < best[1])) best = [key, off];
+  }
+  return best?.[0] ?? null;
 }
 
 /**

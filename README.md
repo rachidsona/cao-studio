@@ -103,6 +103,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
     (`document/furniture-facing.ts`) : un caisson de cuisine et ses façades, un appareil, un caisson de dressing, et
     tout ce qu'un linéaire a fait avec ses caissons (plan de travail, crédence, plinthe, fileurs), ses finitions. Les
     meubles des autres murs restent entiers, même dans l'angle ; l'îlot aussi.
+  - **Dans un dressing** de même : la zone du mur masqué (sa Répartition, ses étagères, cloisons, penderies, tiroirs,
+    portes et fond) s'efface avec lui, le tracé de son esquisse aussi ; les zones des autres murs restent entières. Ce
+    qui équipe une zone sans avoir de sens à soi — charnières, portes coulissantes, accessoires, lumières — va avec le
+    meuble sur lequel il se trouve (`pieceOf` : à moins de 15 cm de sa boîte).
   - Il reste toujours quelque chose à regarder : derrière l'angle d'une cuisine en L, seule la rangée du mur le plus en
     travers de la vue s'efface ; une cuisine sur un seul mur garde ses meubles (on voit leur dos).
   - Les cadres du contrôle en direct des pièces masquées s'effacent aussi. La vue seulement ; retenu par le navigateur

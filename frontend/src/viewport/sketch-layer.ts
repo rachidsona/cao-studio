@@ -82,6 +82,24 @@ export class SketchLayer {
       }
       this.group.add(group);
     }
+    this.applyCut();
+  }
+
+  /** The sketches taken out of the view with their furniture (app/wall-cutaway.ts): not drawn, out of reach. */
+  private cut = new Set<string>();
+
+  setCut(ids: ReadonlySet<string>): void {
+    if (ids.size === this.cut.size && [...ids].every((id) => this.cut.has(id))) return;
+    this.cut = new Set(ids);
+    this.applyCut();
+  }
+
+  /** On a layer the camera does not draw, nor a ray hit (the bodies' : viewport/body-layer.ts). */
+  private applyCut(): void {
+    for (const group of this.group.children) {
+      const layer = this.cut.has(group.userData.sketchId as string) ? 5 : 0;
+      group.traverse((object) => object.layers.set(layer));
+    }
   }
 
   /** Draws in rose the sketch selected alone (in the browser) and the sketches of a multiple selection. */

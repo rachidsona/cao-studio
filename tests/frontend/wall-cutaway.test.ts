@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import { featureBacks } from "../../frontend/src/document/furniture-facing";
 import { withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { withPlan, withPlanWalls, withZonePartition } from "../../frontend/src/document/plan-layout";
+import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type KitchenRunItem } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
-import { againstWall, furnitureOut, slabOf, wallOf, wallsBehind, type Slab } from "../../frontend/src/viewport/wall-cutaway";
+import { againstWall, furnitureOut, pieceOf, slabOf, wallOf, wallsBehind, type Slab } from "../../frontend/src/viewport/wall-cutaway";
 
 /** The 12 triangles of a box between two corners. */
 function box([x0, y0, z0]: [number, number, number], [x1, y1, z1]: [number, number, number]): { vertices: number[]; indices: number[] } {
@@ -91,9 +93,10 @@ describe("murs qui cachent la vue", () => {
     if (typeof built === "string") throw new Error(built);
     const backs = featureBacks(built.doc);
     const named = (start: string) => built.doc.features.find((f) => f.name.startsWith(start))!;
-    const back = backs.get(named("Bas 2 portes").id)!;
+    const { back, group } = backs.get(named("Bas 2 portes").id)!;
+    expect(group).toBe(`${made.id}:A`);
     expect(Math.hypot(...back)).toBeCloseTo(1);
-    for (const name of ["Façades", "Plan de travail", "Plinthe"]) expect(backs.get(named(name).id), name).toEqual(back);
+    for (const name of ["Façades", "Plan de travail", "Plinthe"]) expect(backs.get(named(name).id), name).toEqual({ back, group });
     // The plate of the project: no furniture, no back.
     expect(featureBacks(createReferencePlate()).size).toBe(0);
   });
@@ -108,5 +111,32 @@ describe("murs qui cachent la vue", () => {
     // One wall only: its units stay, their backs seen.
     expect([...furnitureOut(["A"], of, ["a1", "a2"])]).toEqual([]);
     expect([...furnitureOut(["C"], of, ["a1"])]).toEqual([]);
+  });
+
+  it("sait à quel mur une zone de dressing tourne le dos, et y rattache ce qui l'équipe", () => {
+    const plan = { ...PLAN, model: "L-left" as const, lengthA: 3000, lengthB: 2000 };
+    const made = withPlan({ ...createReferencePlate(), features: [] }, plan);
+    let doc = withPlanWalls(made.doc, made.id, true);
+    const sketches: string[] = [];
+    for (const zone of planZones(plan)) {
+      const next = withZonePartition(doc, made.id, zone);
+      if (typeof next === "string") throw new Error(next);
+      doc = next.doc;
+      sketches.push(next.sketch);
+    }
+    const backs = featureBacks(doc);
+    const of = (sketch: string) => backs.get(doc.features.find((f) => f.type === "extrude" && f.sketch === sketch)!.id)!;
+    // Each zone one piece, its back square to the other's; the walls and the plan's lines have none.
+    const [a, b] = [of(sketches[0]!), of(sketches[1]!)];
+    expect([a.group, b.group]).toEqual(sketches);
+    expect(Math.abs(a.back[0] * b.back[0] + a.back[1] * b.back[1])).toBeCloseTo(0);
+    expect(backs.has(doc.features.find((f) => f.name === "Mur A")!.id)).toBe(false);
+
+    // A hinge on a side of zone A, a sliding door just in front of it: with it; a stool in the room: with none.
+    const pieces = new Map<string, [[number, number, number], [number, number, number]]>([["A", [[0, -600, 0], [3000, 0, 2500]]], ["B", [[0, -2000, 0], [350, -600, 2500]]]]);
+    expect(pieceOf(pieces, [[1500, -590, 1200], [1520, -560, 1250]])).toBe("A");
+    expect(pieceOf(pieces, [[0, -680, 80], [1500, -640, 2480]])).toBe("A");
+    expect(pieceOf(pieces, [[10, -900, 1200], [30, -870, 1250]])).toBe("B");
+    expect(pieceOf(pieces, [[1800, -1700, 0], [2200, -1300, 450]])).toBeNull();
   });
 });

@@ -7,13 +7,13 @@
  * seulement : le document n'en change pas.
  */
 import { bodyFamily } from "../document/display-families";
-import { featureBacks } from "../document/furniture-facing";
+import { featureBacks, type Facing } from "../document/furniture-facing";
 import { bodyInfo } from "../document/materials";
 import { bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody } from "../document/types";
+import { featureOfBody, type Vec3 } from "../document/types";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Viewport } from "../viewport/viewport";
-import { furnitureOut, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
+import { furnitureOut, pieceOf, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
 import type { Editor } from "./editor";
 
 const KEY = "cao.wall-cutaway";
@@ -46,6 +46,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
   /** The furniture: every body that is not of the room, nor a light; and what of it must not all go. */
   let furniture: string[] = [];
   let counts: string[] = [];
+  let drawn = new Map<string, string[]>();
   let inside: [number, number] = [0, 0];
   let last = "";
   const read = () => {
@@ -77,13 +78,35 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     inside = Number.isFinite(x0) ? [(x0 + x1) / 2, (y0 + y1) / 2] : [(w0 + w1) / 2, (v0 + v1) / 2];
     // Each body with the wall it is furniture of: the one its furniture turns its back to.
     const backs = featureBacks(doc);
+    const facing = new Map<string, Facing>();
+    const pieces = new Map<string, [Vec3, Vec3]>();
+    for (const [body, [lo, hi]] of boxes) {
+      const known = backs.get(featureOfBody(bodyOrigin(doc, body)));
+      if (!known) continue;
+      facing.set(body, known);
+      const box = pieces.get(known.group);
+      pieces.set(known.group, box ? [box[0].map((v, i) => Math.min(v, lo[i]!)) as Vec3, box[1].map((v, i) => Math.max(v, hi[i]!)) as Vec3] : [[...lo], [...hi]]);
+    }
+    // What equips a piece with no way of its own (hinges, sliding doors, accessories, lights): as the piece it is on.
+    const groupBack = new Map([...facing.values()].map((f) => [f.group, f.back]));
+    for (const [body, box] of boxes) {
+      const piece = facing.has(body) ? null : pieceOf(pieces, box);
+      if (piece) facing.set(body, { back: groupBack.get(piece)!, group: piece });
+    }
     against = new Map([...walls.keys()].map((id) => [id, []]));
     for (const [body, box] of boxes) {
-      const wall = wallOf(walls, inside, box, backs.get(featureOfBody(bodyOrigin(doc, body))) ?? null);
+      const wall = wallOf(walls, inside, box, facing.get(body)?.back ?? null);
       if (wall) against.get(wall)!.push(body);
     }
+    // The sketch of each piece (a zone's Répartition), with the bodies made on it: it goes when they all do.
+    drawn = new Map();
+    for (const body of boxes.keys()) {
+      const feature = findFeature(doc, featureOfBody(bodyOrigin(doc, body)));
+      const sketch = (feature?.type === "extrude" || feature?.type === "niche") && feature.sketch;
+      if (sketch) drawn.set(sketch, [...(drawn.get(sketch) ?? []), body]);
+    }
     // What is worth looking at: the furniture one knows the back of (units, caissons, what goes with them); else all.
-    const known = furniture.filter((body) => backs.has(featureOfBody(bodyOrigin(doc, body))));
+    const known = furniture.filter((body) => facing.has(body));
     counts = known.length ? known : furniture;
     if (canvas) canvas.dataset.walls = String(walls.size);
     last = "";
@@ -98,6 +121,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     // Their furniture shows its back only: out too, the most in the way first, never all there is to look at.
     const hidden = withFurniture ? furnitureOut(cut, against, counts) : new Set<string>();
     viewport.setCutaway(new Set([...cut, ...hidden]));
+    viewport.setSketchCutaway(new Set([...drawn].filter(([, bodies]) => bodies.every((id) => hidden.has(id))).map(([sketch]) => sketch)));
     // How many are out of the view, on the view itself (for the tests).
     if (canvas) {
       canvas.dataset.wallsCut = String(cut.size);
@@ -116,6 +140,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     last = "";
     if (on) return update();
     viewport.setCutaway(new Set());
+    viewport.setSketchCutaway(new Set());
     if (canvas) canvas.dataset.wallsCut = canvas.dataset.furnitureCut = "0";
   };
   box?.addEventListener("change", () => {
