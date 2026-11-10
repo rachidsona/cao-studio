@@ -41,7 +41,7 @@ function sheetSvg(sheet: Sheet, index: number, unit: DisplayUnit): string {
   const [W, H] = sheet.size;
   const rects = sheet.placements
     .map((p) => {
-      const label = `${p.tag ? `${p.tag} · ` : ""}${num(p.w, unit)}×${num(p.h, unit)}`;
+      const label = `${p.tag ? `${escapeHtml(p.tag)} · ` : ""}${num(p.w, unit)}×${num(p.h, unit)}`;
       const size = Math.max(14, Math.min(p.w / (label.length * 0.62), p.h / 2.2, Math.min(p.w, p.h) / 4));
       return `<g><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111"><title>${escapeHtml(p.name)}</title>${label}</text></g>`;
     })
@@ -59,7 +59,7 @@ function barSvg(bar: Bar, index: number, unit: DisplayUnit): string {
   const H = Math.max(60, bar.section[0]) * 1.6;
   const cuts = bar.cuts
     .map((c) => {
-      const label = `${c.tag ? `${c.tag} · ` : ""}${num(c.length, unit)}`;
+      const label = `${c.tag ? `${escapeHtml(c.tag)} · ` : ""}${num(c.length, unit)}`;
       const size = Math.min(H * 0.45, c.length / (label.length * 0.62));
       return `<g><rect x="${c.x}" y="0" width="${c.length}" height="${H}" fill="#fde68a" stroke="#92400e" stroke-width="2"/><text x="${c.x + c.length / 2}" y="${H / 2}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#111"><title>${escapeHtml(c.name)}</title>${label}</text></g>`;
     })

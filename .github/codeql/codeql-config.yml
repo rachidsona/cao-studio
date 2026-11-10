@@ -1,0 +1,15 @@
+# CodeQL de CAO Studio (workflow security.yml) : les requêtes de sécurité étendues, sur le code de l'application.
+name: "CodeQL — CAO Studio"
+queries:
+  - uses: security-extended
+paths:
+  - apps
+  - config
+  - frontend/src
+  - templates
+paths-ignore:
+  - "**/migrations/**"
+  - "**/*.test.ts"
+  - static/js
+  - staticfiles
+  - node_modules

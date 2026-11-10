@@ -1,0 +1,146 @@
+# Sécurité de CAO Studio (skill secure-application-guardian), à chaque pull request, à chaque push et chaque semaine :
+# CodeQL, Semgrep, dépendances (npm audit, pip-audit), secrets (gitleaks), réglages de production (check --deploy) et
+# tests de non-régression de sécurité. Le job « Barrière de sécurité » échoue si l'un d'eux échoue : c'est lui que la
+# protection de branche exige avant une fusion ou un déploiement (voir .claude/skills/secure-application-guardian/IMPLEMENTATION.md).
+name: Sécurité
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          config-file: ./.github/codeql/codeql-config.yml
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyse complète (rapport dans Code scanning)
+        run: semgrep scan --metrics=off --config .semgrep/ --config p/owasp-top-ten --config p/django --config p/typescript --sarif --output semgrep.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Barrière (règles de gravité ERROR)
+        run: semgrep scan --metrics=off --config .semgrep/ --config p/owasp-top-ten --config p/django --severity ERROR --error
+
+  dependencies:
+    name: Dépendances
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: npm audit (élevée et critique)
+        run: npm audit --audit-level=high
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: pip-audit
+        run: |
+          python -m pip install --upgrade pip-audit
+          pip-audit -r requirements.txt --desc
+
+  secrets:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  django-deploy:
+    name: Réglages de production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: manage.py check --deploy
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ${{ format('ci-check-deploy-{0}-{1}-une-cle-longue-et-propre-au-controle', github.run_id, github.run_attempt) }}
+          DJANGO_ALLOWED_HOSTS: example.com
+        run: python manage.py check --deploy --fail-level WARNING
+
+  security-tests:
+    name: Tests de sécurité
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Serveur (droits, CSRF, entrées, envois, réglages)
+        run: python -m pytest -q tests/backend/test_security_regressions.py tests/backend/test_catalog_pages.py tests/backend/test_sharing.py tests/backend/test_validation.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Navigateur (échappement du HTML généré)
+        run: npx vitest run tests/frontend/security-escaping.test.ts tests/frontend/quote-html.test.ts
+
+  gate:
+    name: Barrière de sécurité
+    if: always()
+    needs: [codeql, semgrep, dependencies, secrets, django-deploy, security-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aucun contrôle de sécurité en échec
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -q -E '"result": "(failure|cancelled)"'; then
+            echo "::error::Un contrôle de sécurité a échoué : ne pas fusionner ni déployer tant qu'il n'est pas corrigé (ou accepté par écrit, voir le rapport d'audit)."
+            exit 1
+          fi

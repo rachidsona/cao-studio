@@ -1,0 +1,33 @@
+# Mises à jour des dépendances (skill secure-application-guardian). Les alertes et les mises à jour de sécurité se
+# règlent dans GitHub (Settings → Code security) ; ici, les mises à jour régulières, testées par la CI.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    open-pull-requests-limit: 10
+    labels: [dependencies, security]
+    groups:
+      npm-correctifs:
+        update-types: [minor, patch]
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    open-pull-requests-limit: 10
+    labels: [dependencies, security]
+    groups:
+      pip-correctifs:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    labels: [dependencies, ci]

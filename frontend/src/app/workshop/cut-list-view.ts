@@ -66,7 +66,7 @@ function groupHtml(group: CutGroup, own: (readonly [CutRow, number])[], unit: Di
   const wood: Column[] = by === "material" || by === "wood" ? [] : [["Matière", "cut-soft cut-wood", (r) => escapeHtml(r.material)]];
   const thick: Column[] = group.thickness !== undefined ? [] : [["Ép.", "cut-num", (r) => num(r.thickness, unit)]];
   const columns: Column[] = [
-    ["Repère", "cut-tag-cell", (r) => `<span class="cut-tag">${r.tag ?? ""}</span>`],
+    ["Repère", "cut-tag-cell", (r) => `<span class="cut-tag">${escapeHtml(r.tag ?? "")}</span>`],
     ["Pièce", "cut-name", (r) => `${escapeHtml(compactNames(r.names))}${r.approximate ? ` <span class="cut-none" title="Forme non rectangulaire : cotes de son encombrement">≈</span>` : ""}`],
     ["Qté", "cut-num cut-qty", (r) => (r.quantity > 1 ? `<b>${r.quantity}</b>` : String(r.quantity))],
     ["Longueur", "cut-num", (r) => num(r.length, unit)],

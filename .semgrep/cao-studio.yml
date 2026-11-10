@@ -1,0 +1,103 @@
+# Règles Semgrep propres à CAO Studio (skill secure-application-guardian).
+# ERROR : bloque la CI (workflow security.yml). WARNING : à relire, montré dans « Code scanning », ne bloque pas.
+# Une exception se marque « # nosemgrep: <id> — raison » (ou « // nosemgrep: … ») et va dans le rapport d'audit.
+rules:
+  # ---- Serveur (Django) ---------------------------------------------------------------------------------------------
+  - id: cao-django-csrf-exempt
+    languages: [python]
+    severity: ERROR
+    message: "csrf_exempt retire la protection CSRF : les vues de CAO Studio n'en ont jamais (OWASP A01, CWE-352)."
+    pattern-either:
+      - pattern: django.views.decorators.csrf.csrf_exempt
+      - pattern: csrf_exempt
+  - id: cao-django-mark-safe
+    languages: [python]
+    severity: ERROR
+    message: "mark_safe / format_html sur une donnée : risque de XSS. Laisser l'échappement de Django, ou json_script (OWASP A03, CWE-79)."
+    pattern-either:
+      - pattern: django.utils.safestring.mark_safe(...)
+      - pattern: mark_safe(...)
+      - pattern: django.utils.safestring.SafeString(...)
+  - id: cao-django-raw-sql
+    languages: [python]
+    severity: ERROR
+    message: "SQL brut : utiliser l'ORM (OWASP A03, CWE-89)."
+    pattern-either:
+      - pattern: $M.objects.raw(...)
+      - pattern: $Q.extra(...)
+      - pattern: django.db.models.expressions.RawSQL(...)
+      - patterns:
+          - pattern: $CURSOR.execute($SQL, ...)
+          - pattern-not: $CURSOR.execute("...", ...)
+  - id: cao-django-json-body
+    languages: [python]
+    severity: ERROR
+    message: "Corps JSON lu sans read_json_body (limite de 6 Mo, NaN refusé, objet exigé) : apps/projects/http.py."
+    pattern-either:
+      - pattern: json.loads($REQ.body, ...)
+      - pattern: json.load($REQ, ...)
+  - id: cao-python-dangerous-exec
+    languages: [python]
+    severity: ERROR
+    message: "Exécution ou désérialisation dangereuse (OWASP A03/A08, CWE-94/CWE-502)."
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: yaml.load(...)
+      - pattern: os.system(...)
+      - pattern: subprocess.$F(..., shell=True, ...)
+  - id: cao-rate-limit-not-atomic
+    languages: [python]
+    severity: WARNING
+    message: "Compteur de limite de débit en get puis set : non atomique. Préférer cache.add puis cache.incr, sur un cache partagé (audit du 10/11/2026, constat 5)."
+    patterns:
+      - pattern-inside: |
+          $COUNT = cache.get($KEY, ...)
+          ...
+      - pattern: cache.set($KEY, $COUNT + 1, ...)
+  - id: cao-debug-default-true
+    languages: [python]
+    severity: WARNING
+    message: "DEBUG vrai par défaut : un déploiement qui oublie DJANGO_DEBUG tourne en mode debug (audit du 10/11/2026, constat 6). Changement soumis à l'accord de l'utilisateur."
+    pattern: env_bool("DJANGO_DEBUG", True)
+  - id: cao-django-template-safe
+    languages: [generic]
+    severity: ERROR
+    message: "|safe ou autoescape off dans un gabarit : risque de XSS (OWASP A03, CWE-79). Seul le help_text écrit dans le code est admis."
+    paths:
+      include:
+        - "templates/**/*.html"
+        - "apps/**/templates/**/*.html"
+      exclude:
+        - "templates/registration/_field.html"
+    pattern-either:
+      - pattern-regex: '\|\s*safe\b'
+      - pattern-regex: '\{%\s*autoescape\s+off\s*%\}'
+
+  # ---- Navigateur (TypeScript) --------------------------------------------------------------------------------------
+  - id: cao-ts-eval
+    languages: [typescript]
+    severity: ERROR
+    message: "Code construit depuis une chaîne (eval, new Function, setTimeout de chaîne) : interdit (OWASP A03, CWE-95)."
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+  - id: cao-ts-inner-html
+    languages: [typescript]
+    severity: WARNING
+    message: "HTML brut : chaque valeur insérée doit être un nombre ou passer par escapeHtml(...). Le catalogue, le profil, les commentaires et les noms viennent d'autres comptes ou de fichiers (OWASP A03, CWE-79)."
+    paths:
+      exclude:
+        - "tests/"
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $V
+          - pattern: $EL.outerHTML = $V
+          - pattern: $EL.insertAdjacentHTML($POS, $V)
+          - pattern: $DOC.write($V)
+      - pattern-not: $EL.innerHTML = "..."
+      - pattern-not: $EL.innerHTML = escapeHtml(...)
