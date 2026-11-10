@@ -52,11 +52,76 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await shot(page, "caisson-etageres");
   expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Bas 2 portes 1000/);
 
+  // Kept in « Mes caissons », under its name.
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.45, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: /Garder ce caisson/ }).click();
+  await page.locator("[data-caisson-name]").fill("Mon caisson rangement");
+  await page.locator("[data-caisson-name]").press("Enter");
+  await expect(page.getByText(/gardé dans Mes caissons/).first()).toBeVisible();
+
   // The whole kitchen again; its run keeps the cabinet's place, free.
   await page.locator("[data-zone-isolated]").getByRole("button", { name: "Tout montrer" }).click();
   await expect(page.locator("[data-zone-isolated]")).toHaveCount(0);
   await click(page, '[data-workshop="kitchen-plan"]');
   await tool.locator('[data-open-run="A"]').click();
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);
+
+  // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
+  await unfold(tool, "add");
+  await tool.getByRole("tab", { name: "Mes meubles" }).click();
+  await expect(tool.getByText("Caisson aménagé").first()).toBeVisible();
+  await tool.getByRole("button", { name: /^Ajouter Mon caisson rangement/ }).click();
+  await expect(tool.locator("[data-run-preview]")).toBeVisible();
+  await tool.locator("[data-run-ok]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Mon caisson rangement/);
+  await shot(page, "caisson-repose");
+  expect(errors).toEqual([]);
+});
+
+test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une autre case", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-mes-caissons-dressing");
+  await click(page, '[data-workshop="dressing-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de dressing" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(partition).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(700);
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  const at = (x: number, y: number) => [box.x + box.width * x, box.y + box.height * y] as const;
+
+  // Shelves in a case, and the caisson kept.
+  const [x1, y1] = at(0.38, 0.55);
+  await page.mouse.click(x1, y1, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
+  const shelves = page.getByRole("dialog", { name: "Étagères" });
+  await shelves.getByRole("combobox").first().selectOption("3");
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1200);
+  await page.mouse.click(x1, y1, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: /Garder ce caisson/ }).click();
+  await page.locator("[data-caisson-name]").fill("Colonne à étagères");
+  await page.locator("[data-caisson-name]").press("Enter");
+  await expect(page.getByText(/gardé dans Mes caissons/).first()).toBeVisible();
+
+  // Put in another case: its inside there.
+  const [x2, y2] = at(0.62, 0.55);
+  await page.mouse.click(x2, y2, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: /Poser un de Mes caissons/ }).click();
+  await page.getByRole("menu", { name: "Mes caissons" }).getByRole("menuitem", { name: "Colonne à étagères" }).click();
+  await expect(page.getByText(/« Colonne à étagères » posé/).first()).toBeVisible();
+  await page.waitForTimeout(1200);
+  await shot(page, "mes-caissons-dressing");
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });

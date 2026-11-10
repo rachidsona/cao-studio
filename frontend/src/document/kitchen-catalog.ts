@@ -6,6 +6,7 @@
  * Sans caisson dans le projet, il part de l'origine, devant le mur Y = 0 (comme l'Implantation). On y ajoute ses
  * propres meubles : décrits (nom, sorte, cotes, façades, étagères) ou repris d'un caisson du projet.
  */
+import type { CaissonSpec } from "./caisson-spec";
 import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
 import { frontsMaterials } from "../features/fronts-parts";
 import { WALL_UNIT } from "../features/kitchen-layout";
@@ -30,6 +31,8 @@ export interface CatalogEntry {
   depth?: number;
   plinth?: number;
   custom?: boolean;
+  /** One of « Mes caissons »: the caisson it makes, its inside furnished (document/caisson-spec.ts). */
+  caisson?: CaissonSpec;
 }
 
 /** Height, depth, plinth and floor-to-bottom of each kind (those of the Implantation). */

@@ -88,6 +88,8 @@ export function elevation(e: CatalogEntry): string {
 
 /** What it is, in a few words. */
 export function unitSummary(e: CatalogEntry): string {
+  // One of « Mes caissons »: its inside as it was kept.
+  if (e.caisson) return ["Caisson aménagé", e.caisson.doors ? "portes" : "", e.caisson.cases.some((c) => c.equipment.some((q) => q.feature.fill === "drawers")) ? "tiroirs" : ""].filter(Boolean).join(" · ");
   const shelves = e.top === "rails" ? "2 traverses" : e.shelves ? `${e.shelves} étagère${e.shelves > 1 ? "s" : ""}` : "";
   const what = hasOven(e) ? "Niche pour four" : e.layout === "drawers" ? `${e.drawers ?? 3} tiroirs` : e.layout === "doors" ? "2 portes" : e.layout === "door" ? "1 porte" : "Sans façade";
   return [what, shelves].filter(Boolean).join(" · ");

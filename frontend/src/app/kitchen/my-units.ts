@@ -25,6 +25,11 @@ export function myUnits(): CatalogEntry[] {
   }
 }
 
+/** One more of one's own units (one of « Mes caissons »…), first in the list; false if it could not be kept. */
+export function addMyUnit(entry: CatalogEntry): boolean {
+  return save([entry, ...myUnits()]);
+}
+
 function save(list: CatalogEntry[]): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(list));

@@ -1,6 +1,9 @@
 /** Un caisson de cuisine aménagé à la main : une Répartition de mêmes cotes à sa place, le linéaire lui gardant sa place. */
 import { describe, expect, it } from "vitest";
-import { cabinetOfBody, withCabinetFurnished } from "../../frontend/src/document/cabinet-furnish";
+import { cabinetOfBody, withCabinetFurnished, withCaissonsPlaced } from "../../frontend/src/document/cabinet-furnish";
+import { caissonEntry, caissonSpecOf, withCaissonInCase } from "../../frontend/src/document/caisson-spec";
+import { withPlan, withZonePartition } from "../../frontend/src/document/plan-layout";
+import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
@@ -82,5 +85,56 @@ describe("caisson de cuisine aménagé", () => {
     expect(lo[2]).toBeCloseTo(wall.origin[2], 1);
     expect(hi[2]! - lo[2]!).toBeCloseTo(wall.height, 1);
     expect(withCabinetFurnished(doc, "nothing")).toMatch(/n'existe plus/);
+  });
+
+  it("se garde dans « Mes caissons », se repose dans un linéaire à une autre largeur et dans la case d'un dressing", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    // Kept: a low unit of its size, its inside with it.
+    const entry = caissonEntry(made.doc, made.sketch, "Mon bas 2 portes");
+    if (typeof entry === "string") throw new Error(entry);
+    expect(entry).toMatchObject({ kind: "base", width: 800, height: cabinet.height, depth: cabinet.depth, custom: true, layout: "none" });
+    const spec = caissonSpecOf(made.doc, made.sketch);
+    if (typeof spec === "string") throw new Error(spec);
+    expect(spec.cases[0]!.steps).toHaveLength(1);
+    expect(spec).toMatchObject({ carcass: "melamine-white", doors: { gap: 3 }, back: { thickness: cabinet.backThickness } });
+    expect(caissonEntry(made.doc, "nothing", "x")).toMatch(/pas un caisson/);
+
+    // Put on the run at 1000 wide: a space keeps its place, the caisson stands there, its shelf and doors with it.
+    const p = kitchenPlanIn(made.doc, plan)!;
+    const built = withKitchenBuilt(made.doc, plan, { runs: { A: [...p.runs!.A!, { ...newItem(p.runs!.A!, entry.id, 1000, { ...entry, width: 1000 }) }] } });
+    if (typeof built === "string") throw new Error(built);
+    const placed = withCaissonsPlaced(built.doc, plan);
+    expect(placed.problems).toEqual([]);
+    expect(kitchenPlanIn(placed.doc, plan)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["space", 800], ["base-bas-3-tiroirs", 600], ["wall-haut-1-porte", 600], ["space", 1000]]);
+    const caissons = placed.doc.features.filter((f): f is SketchFeature => f.type === "sketch" && (f.offsets ?? []).some(isPartition));
+    expect(caissons.map((c) => c.name)).toEqual(["Caisson — Bas 2 portes 800 (A1)", "Caisson — Mon bas 2 portes"]);
+    const [lo, hi] = caissonBox(placed.doc, caissons[1]!.id);
+    expect(hi[0]! - lo[0]!).toBeCloseTo(1000, 1);
+    expect(lo[0]).toBeCloseTo(1400, 1);
+    expect(caissons[1]!.offsets!.filter(isShelves)).toHaveLength(1);
+    expect(() => parseDocument(placed.doc)).not.toThrow();
+
+    // In the second case of a dressing: its inside and its door there.
+    const dressing = withPlan({ ...createReferencePlate(), features: [] }, { ...PLAN, model: "I", lengthA: 2400 });
+    const zone = withZonePartition(dressing.doc, dressing.id, planZones({ ...PLAN, model: "I", lengthA: 2400 })[0]!);
+    if (typeof zone === "string") throw new Error(zone);
+    const put = withCaissonInCase(zone.doc, zone.sketch, zone.step, 1, spec);
+    if (typeof put === "string") throw new Error(put);
+    const sketch = put.features.find((f) => f.id === zone.sketch) as SketchFeature;
+    expect(sketch.offsets!.filter(isShelves).map((r) => r.step.kind === "shelves" && r.step.niche)).toEqual([[1]]);
+    const doors = put.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === zone.sketch && f.fill === "doors");
+    expect(doors).toBeDefined();
+    // That case kept alone: a caisson of one case, its sides around it, its shelf and its door.
+    const column = caissonSpecOf(put, zone.sketch, 1);
+    if (typeof column === "string") throw new Error(column);
+    expect(column.cases).toHaveLength(1);
+    expect(column.cases[0]!.steps).toHaveLength(1);
+    expect(column.input).toMatchObject({ cases: 2, dividers: ["none"] });
+    expect(column.input.length).toBeGreaterThan(300);
+    expect(column.input.length).toBeLessThan(1200);
+    expect(column.doors?.joined).toEqual([0]);
   });
 });

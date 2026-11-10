@@ -3,6 +3,7 @@
  * avec lui et montrée dans la 3D sans être enregistrée (Editor.showUnrecorded). OK l'enregistre en une annulation,
  * Annuler (ou fermer) remet la 3D du projet. La vue isolée d'un mur et ses cotes suivent l'aperçu.
  */
+import { withCaissonsPlaced } from "../../document/cabinet-furnish";
 import { kitchenPlanIn, withKitchenBuilt } from "../../document/kitchen-floor";
 import type { CornerSetting } from "../../document/kitchen-corners";
 import type { RestSide } from "../../document/kitchen-plan-shapes";
@@ -20,8 +21,10 @@ export async function previewRun(editor: Editor, planId: string, runId: string, 
   if (!plan) return;
   const made = withKitchenBuilt(editor.doc, planId, { runs: { ...plan.runs, [runId]: items }, rest: { ...plan.rest, [runId]: rest }, ...corners });
   if (typeof made === "string") return;
-  previewing = made.doc;
-  await editor.showUnrecorded(made.doc);
+  // « Mes caissons » shown as they will be made.
+  const { doc } = withCaissonsPlaced(made.doc, planId);
+  previewing = doc;
+  await editor.showUnrecorded(doc);
 }
 
 /** The 3D of the project again (nothing if no preview is shown). */

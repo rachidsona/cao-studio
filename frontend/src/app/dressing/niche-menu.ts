@@ -10,7 +10,8 @@ import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
 import { cabinetOfBody } from "../../document/cabinet-furnish";
 import { findFeature } from "../../document/operations";
-import { furnishCabinet } from "../cabinet-furnish";
+import { furnishCabinet, keepCaisson, putCaisson } from "../cabinet-furnish";
+import { myUnits } from "../kitchen/my-units";
 import { isolatedSketch, isolateSketch } from "../zone-view";
 import { shownDoc } from "../kitchen/kitchen-run-preview";
 import { el } from "../../ui/dom";
@@ -84,6 +85,8 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],
       ["Aligner sur cette niche", () => openNicheCopy(viewport, editor, "heights", niche)],
       ...(isolatedSketch() === niche.sketch ? [] : [[`Isoler « ${sketchName} »`, () => isolateSketch(niche.sketch, sketchName)] as [string, () => void]]),
+      ["Garder ce caisson dans Mes caissons…", () => keepCaisson(event, editor, niche, sketchName)],
+      ...(myUnits().some((e) => e.caisson) ? [["Poser un de Mes caissons ici…", () => (menu = popup(event, "Mes caissons", "Son intérieur et ses portes vont dans cette case et les suivantes.", myUnits().filter((e) => e.caisson).map((e): [string, () => void] => [e.name, () => putCaisson(editor, niche, e)])))] as [string, () => void]] : []),
     ];
     menu = popup(event, "Menu de la niche", null, items);
   });
@@ -98,6 +101,10 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       return item;
     }));
     document.body.append(box);
+    // Whole in the window: moved up or left when it would go past its edge.
+    const { width, height } = box.getBoundingClientRect();
+    box.style.left = `${Math.max(4, Math.min(event.clientX, innerWidth - width - 4))}px`;
+    box.style.top = `${Math.max(4, Math.min(event.clientY, innerHeight - height - 4))}px`;
     return box;
   };
   window.addEventListener("keydown", (event) => {

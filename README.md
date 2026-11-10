@@ -1809,6 +1809,17 @@ opération existante.
       cuisine refaite ne le touche plus. Un meuble d'angle ne s'aménage pas ainsi.
     - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
       (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
+  - **Mes caissons** : un caisson aménagé se garde pour tous les projets, avec son intérieur.
+    - Clic droit dans une de ses niches → « Garder ce caisson dans Mes caissons… », puis son nom. D'un mur de dressing,
+      seule la case cliquée est gardée, ses côtés autour d'elle.
+    - Il est gardé : cotes, construction, fond, portes, étagères, cloisons, penderie, tiroirs, matières
+      (`document/caisson-spec.ts`). Il rejoint « Mes meubles » (bas, haut ou colonne d'après sa place et sa hauteur),
+      marqué « Caisson aménagé ».
+    - **En cuisine** : « Ajouter des meubles » d'un linéaire, onglet « Mes meubles », ou « Meubles de cuisine ». Il
+      entre dans le linéaire à la largeur choisie, l'aperçu le montre aménagé ; à OK, il est fait à sa place, son
+      intérieur adapté à sa largeur, et le linéaire lui garde cette place.
+    - **En dressing** : clic droit dans une case → « Poser un de Mes caissons ici… ». Son intérieur va dans cette case
+      (et les suivantes s'il en avait plusieurs), à sa largeur, avec sa porte s'il en avait une.
 - **Éclairage** (groupe « Pièce ») : des lumières dans la cuisine et le dressing, au choix.
   - **Dedans** : un ruban LED sous le dessus et sous chaque étagère, à 3 cm de la façade (pas sous la planche la plus
     basse).

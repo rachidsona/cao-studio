@@ -10,6 +10,7 @@
  * - Sinon il se pose, avec ses façades, à côté du caisson sélectionné (sinon du dernier), construit comme lui
  *   (document/kitchen-catalog.ts), et arrive sélectionné, prêt à être glissé par sa poignée « ✥ » (app/cabinet-drag.ts).
  */
+import { withCabinetFurnished, withCaissonsPlaced } from "../../document/cabinet-furnish";
 import * as THREE from "three";
 import { CATALOG, KINDS, addKitchenUnit, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
 import { kitchenPlanIn, kitchenPlanOf, withKitchenBuilt } from "../../document/kitchen-floor";
@@ -75,14 +76,21 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     const inPlan = addToKitchenPlan(editor.doc, entry, planAnchor());
     if (inPlan && typeof inPlan !== "string") {
       const selected = anchor?.id;
+      // One of « Mes caissons »: made in its place.
+      if (entry.caisson) ({ doc: inPlan.doc } = withCaissonsPlaced(inPlan.doc, inPlan.plan));
       await editor.change(inPlan.doc);
       lastAdded = { doc: editor.doc, selected, at: { plan: inPlan.plan, run: inPlan.run.id, item: inPlan.item } };
-      if (inPlan.cabinet) show(inPlan.cabinet);
+      if (inPlan.cabinet && !entry.caisson) show(inPlan.cabinet);
       render();
       const space = `Place libre sur le ${lower(inPlan.run.label)} : ${spaceLeft(inPlan.fill, length, inPlan.run.wall)}.`;
       return editor.notify([`${entry.name} rangé dans le plan de cuisine, ${lower(inPlan.run.label)}.`, space, ...inPlan.problems].join(" "), inPlan.problems.length ? "info" : "success");
     }
     const { doc, cabinet, fronts } = addKitchenUnit(editor.doc, entry, anchor?.id);
+    const furnished = entry.caisson ? withCabinetFurnished(doc, cabinet.id, entry.caisson) : null;
+    if (furnished && typeof furnished !== "string") {
+      await editor.change(furnished.doc);
+      return editor.notify(`${entry.name} posé, aménagé comme vous l'avez gardé ; tirez ✥ pour le placer.`, "success");
+    }
     await editor.change(doc);
     if (typeof inPlan === "string") editor.notify(`${inPlan} Il est posé à part.`, "info");
     show(cabinet.id);

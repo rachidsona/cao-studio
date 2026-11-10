@@ -6,6 +6,8 @@
  * « Proposer une cuisine » les remplit tous comme l'Implantation. OK refait la cuisine 3D entière, en une annulation, et
  * « Modifier le plan » la fait suivre. Cliquer l'esquisse du plan, ou un meuble fait par lui, rouvre l'outil.
  */
+import { SPACE } from "../../features/kitchen-run-items";
+import { withCaissonsPlaced } from "../../document/cabinet-furnish";
 import * as THREE from "three";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../../document/kitchen-floor";
 import { kitchenFromPlan } from "../../document/kitchen-plan-build";
@@ -300,7 +302,9 @@ export class KitchenPlanTool {
     const layout = kitchenFromPlan(plan, room);
     const row = (run: KitchenRun) => {
       const count = plan.runs?.[run.id]?.length ?? 0;
-      const free = (layout.fills[run.id]?.free ?? []).reduce((sum, [a, b]) => sum + b - a, 0);
+      // The places kept (a unit pushed, a caisson furnished by hand) are not free.
+      const kept = (plan.runs?.[run.id] ?? []).filter((i) => i.model === SPACE).reduce((sum, i) => sum + i.width, 0);
+      const free = Math.max(0, (layout.fills[run.id]?.free ?? []).reduce((sum, [a, b]) => sum + b - a, 0) - kept);
       const go = el("button", { type: "button", class: SMALL, "data-open-run": run.id }, "Aménager");
       go.addEventListener("click", () => this.openRun(planId, run));
       const see = el("button", { type: "button", class: SMALL, "data-see-run": run.id, title: "Isole ce linéaire, de face, avec ses cotes", disabled: !(plan.made?.[run.id]?.length) }, "Voir");
@@ -398,11 +402,14 @@ export class KitchenPlanTool {
   private async applyRun(planId: string, run: KitchenRun, items: NonNullable<KitchenFloorPlan["runs"]>[string], rest: NonNullable<KitchenFloorPlan["rest"]>[string], corners: CornerSetting): Promise<boolean> {
     const plan = kitchenPlanIn(this.editor.doc, planId);
     if (!plan) return false;
-    const made = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
-    if (typeof made === "string") {
-      this.editor.notify(made, "error");
+    const built = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
+    if (typeof built === "string") {
+      this.editor.notify(built, "error");
       return false;
     }
+    // « Mes caissons » made in their places.
+    const placed = withCaissonsPlaced(built.doc, planId);
+    const made = { doc: placed.doc, problems: [...built.problems, ...placed.problems.map((m) => `${run.label} : ${m}`)] };
     this.runEditor = null;
     await this.editor.change(made.doc);
     await endPreview(this.editor);

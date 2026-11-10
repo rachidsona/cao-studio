@@ -17,9 +17,12 @@ import { furnishCabinet } from "./cabinet-furnish";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
 
-/** A name typed in a small field at the pointer; Entrée keeps it, Échap or a click beside leaves it. */
-function askName(x: number, y: number, value: string, done: (name: string) => void): void {
-  const input = el("input", { type: "text", value, class: "h-8 w-56 border border-sky-500 bg-white px-2 text-xs shadow-xl focus:outline-none dark:bg-gray-900", "aria-label": "Nom de la porte", "data-door-name": "" });
+/**
+ * A name typed in a small field at the pointer; Entrée keeps it, Échap or a click beside leaves it. A name to give
+ * (`what`: its label and its attribute) is kept even unchanged.
+ */
+export function askName(x: number, y: number, value: string, done: (name: string) => void, what?: { label: string; attr: string }): void {
+  const input = el("input", { type: "text", value, class: "h-8 w-56 border border-sky-500 bg-white px-2 text-xs shadow-xl focus:outline-none dark:bg-gray-900", "aria-label": what?.label ?? "Nom de la porte", [what?.attr ?? "data-door-name"]: "" });
   const box = el("div", { class: "fixed z-50", style: `left:${Math.min(x, innerWidth - 240)}px;top:${Math.min(y, innerHeight - 40)}px` }, input);
   let ended = false;
   const end = (keep: boolean) => {
@@ -28,7 +31,7 @@ function askName(x: number, y: number, value: string, done: (name: string) => vo
     ended = true;
     box.remove();
     const name = input.value.trim();
-    if (keep && name && name !== value) done(name);
+    if (keep && name && (what || name !== value)) done(name);
   };
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
