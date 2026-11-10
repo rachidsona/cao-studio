@@ -6,12 +6,12 @@
  * Chaque changement se voit aussitôt dans la 3D, en aperçu (app/kitchen-plan-tool.ts) ; rien ne change dans le projet avant
  * OK, qui le garde en refaisant toute la cuisine en une seule annulation (document/kitchen-floor.ts) ; Annuler revient.
  */
-import { kitchenFromPlan, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
+import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, FILLER, FILLER_WALL, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import type { Editor } from "../editor";
@@ -22,11 +22,14 @@ import { cornerChoice } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
 import { BRASS } from "./unit-elevation";
 import { showAll } from "../zone-view";
-import { runStrip } from "./kitchen-run-strip";
+import { runStrip, type StripOther } from "./kitchen-run-strip";
 import { editStripWidth } from "./kitchen-strip-edit";
 import { handAppliances } from "../../document/kitchen-hand-appliances";
 import { myUnits } from "./my-units";
 import { missingRows, noRoomFor } from "./kitchen-run-missing";
+import { fillerRows } from "./kitchen-run-fillers";
+import { stripActions } from "./kitchen-strip-actions";
+import { withApplianceRemoved } from "../../document/appliance-remove";
 import { multiRows, pickAllRow } from "./kitchen-run-multi-view";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -71,6 +74,11 @@ export class RunEditor {
   private family: Family = "base";
   /** The width of the next filler put by hand (mm). */
   private fillerWidth = 50;
+  /** What else is chosen on the strip: an appliance put by hand, or the worktop; the worktop taken away or put back here. */
+  private other: StripOther | null = null;
+  private worktop: boolean | undefined;
+  /** The strip takes the keyboard when it is drawn next: something on it was just chosen or changed. */
+  private focusStrip = false;
   private readonly folds = new Folds(() => this.host.redraw());
   /** Something changed since it opened. */
   dirty = false;
@@ -118,7 +126,7 @@ export class RunEditor {
     // In the room kept free when it has some wide enough (a unit deleted leaves its place); else after the one chosen.
     const next = inKeptRoom(this.items, item) ?? insertItem(this.items, item, this.chosen);
     // No room for it, even in the room kept free: not added, rather than left on the run unseen.
-    const why = noRoomFor(this.fillOf(next), item, this.host.editor.unit);
+    const why = noRoomFor(this.fillOf(next), item, this.host.editor.unit, this.fillOf());
     if (why) return this.host.editor.notify(why, "error");
     this.change(next, item.id);
   }
@@ -147,10 +155,15 @@ export class RunEditor {
     this.change([...others.slice(0, at), item, ...others.slice(at)], id);
   }
 
+  /** The corners chosen here, and the worktop taken away or put back. */
+  private get settings(): CornerSetting {
+    return this.worktop === undefined ? this.corners : { ...this.corners, noWorktop: { ...this.host.plan.noWorktop, [this.host.run.id]: !this.worktop } };
+  }
+
   /** The plan as it would be: this run's rest and the corners chosen here. */
   private current(): KitchenFloorPlan {
     const { plan, run } = this.host;
-    return { ...plan, rest: { ...plan.rest, [run.id]: this.rest }, ...this.corners };
+    return { ...plan, rest: { ...plan.rest, [run.id]: this.rest }, ...this.settings };
   }
 
   render(): HTMLElement[] {
@@ -162,7 +175,38 @@ export class RunEditor {
     const fill = fillRun(g, this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
     // A unit put in the room kept free stands there in the run's order too.
     this.items = fill.items;
-    const strip = runStrip({ plan, run, geometry: g, fill, chosen: this.chosen, picked: this.picked, pick: (id, add) => {
+    const appliances = handAppliances(editor.doc, this.host.plan, run);
+    const off = plan.noWorktop?.[run.id] === true;
+    // What is chosen on the strip, acted on from under it, by the keyboard or a right click.
+    const actions = stripActions({
+      items: this.items, chosen: this.chosen, picked: this.picked, other: this.other, worktopOff: off, appliances,
+      change: (items, chosen, picked) => ((this.focusStrip = true), this.change(items, chosen, picked ?? [])),
+      putAfter: (copy, after) => {
+        const next = insertItem(this.items, copy, after);
+        const why = noRoomFor(this.fillOf(next), copy, unit, fill);
+        if (why) return editor.notify(why, "error");
+        this.focusStrip = true;
+        this.change(next, copy.id, []);
+      },
+      move: (id, index) => ((this.focusStrip = true), this.move(id, index)),
+      removeAppliance: (id) => {
+        this.other = null;
+        void editor.change(withApplianceRemoved(editor.doc, id)).then(() => (this.host.redraw(), this.host.changed()));
+      },
+      setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()),
+    });
+    const focus = this.focusStrip;
+    this.focusStrip = false;
+    const strip = runStrip({ plan, run, geometry: g, fill, chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
+        // An appliance put by hand, or the worktop: chosen instead of a unit (clicked again: no longer).
+        this.other = this.other && this.other.kind === what.kind && (what.kind === "worktop" || (this.other as { id?: string }).id === what.id) ? null : what;
+        this.chosen = null;
+        this.picked = [];
+        this.focusStrip = true;
+        this.host.redraw();
+      }, pick: (id, add) => {
+        this.other = null;
+        this.focusStrip = true;
         // A unit picked on the strip: its settings open; with Maj, Ctrl or ⌘, it joins those chosen (or leaves them).
         if (add) {
           const was = this.picked.length ? this.picked : this.chosen ? [this.chosen] : [];
@@ -175,11 +219,11 @@ export class RunEditor {
         }
         this.folds.open = "chosen";
         this.host.redraw();
-      }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances: handAppliances(editor.doc, this.host.plan, run), edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label) });
+      }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label) });
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-run-cancel": "" }, "Annuler");
     cancel.addEventListener("click", () => this.host.back());
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium", "data-run-ok": "" }, "OK");
-    ok.addEventListener("click", () => this.host.apply(this.items, this.rest, this.corners));
+    ok.addEventListener("click", () => this.host.apply(this.items, this.rest, this.settings));
     const clear = el("button", { type: "button", class: WIDE, disabled: !this.items.length }, "Vider le linéaire");
     clear.addEventListener("click", () => this.change([], null));
     const used = fill.placed.filter((p) => p.row === "base").reduce((sum, p) => sum + p.item.width, 0);
@@ -191,6 +235,7 @@ export class RunEditor {
       this.seeButton(),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(run.length, unit)} de mur, ${formatLength(Math.max(0, g.base[1] - g.base[0]), unit)} pour les meubles bas, ${formatLength(used, unit)} pris. Glissez un meuble pour le changer de place.`),
       el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
+      actions.bar,
       this.dirty ? null : this.keepMoves(),
       // Every titled part folds; one open at a time, all closed at first.
       f.fold("space", `Place libre : ${spaceLeft(fill, (mm) => formatLength(mm, unit), run.wall)}`, () => [this.restChoice(), this.spaceRows()]),
@@ -293,7 +338,7 @@ export class RunEditor {
 
   /** The changes not yet applied: the units, where the rest goes, the corners. */
   pending(): [KitchenRunItem[], RestSide, CornerSetting] {
-    return [this.items, this.rest, this.corners];
+    return [this.items, this.rest, this.settings];
   }
 
   /** « Voir ce mur isolé », or « Tout montrer » when it is. */
@@ -412,68 +457,9 @@ export class RunEditor {
     ];
   }
 
-  /**
-   * Fillers put by hand, low (between plinth and worktop) and up (the wall row): at the start of the row, after the unit
-   * chosen, or at its end, at the width typed. They take their place on the run as a unit does; the rest is still shared.
-   */
+  /** Fillers put by hand, low and up, and those placed (kitchen-run-fillers.ts). */
   private fillerRows(): HTMLElement[] {
-    const unit = this.host.editor.unit;
-    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(this.fillerWidth, unit), 4), "aria-label": `Largeur du fileur (${UNIT_LABELS[unit]})`, "data-filler-width": "" });
-    const read = () => {
-      const parsed = parseNumber(input.value);
-      const mm = parsed === null ? NaN : Math.round(fromDisplay(parsed, unit) * 10) / 10;
-      const ok = mm >= 10 && mm <= 300;
-      input.setAttribute("aria-invalid", String(!ok));
-      if (ok) this.fillerWidth = mm;
-      return ok;
-    };
-    input.addEventListener("change", read);
-    input.addEventListener("keydown", (event) => event.stopPropagation());
-    const chosen = this.items.find((i) => i.id === this.chosen);
-    const rows: ["base" | "wall", string][] = [["base", "En bas"], ...(this.host.run.wall ? ([["wall", "En haut"]] as ["wall", string][]) : [])];
-    return [
-      el("label", { class: ROW }, `Largeur (${UNIT_LABELS[unit]})`, input),
-      el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "De 1 à 30 cm. Un fileur posé se règle en le cliquant sur la bande, et se supprime dans la liste ci-dessous."),
-      ...rows.map(([row, label]) => {
-        const model = row === "wall" ? FILLER_WALL : FILLER;
-        const put = (where: "start" | "after" | "end") => {
-          if (!read()) return this.host.editor.notify("Un fileur fait de 1 à 30 cm.", "error");
-          const item = newItem(this.items, model, this.fillerWidth);
-          const first = this.items.findIndex((i) => rowOf(itemEntry(i)) === row);
-          const items = where === "start" ? [...this.items.slice(0, first < 0 ? this.items.length : first), item, ...this.items.slice(first < 0 ? this.items.length : first)] : insertItem(this.items, item, where === "after" ? this.chosen : null);
-          this.change(items, item.id);
-        };
-        const button = (where: "start" | "after" | "end", text: string, disabled = false) => {
-          const b = el("button", { type: "button", class: `${SMALL} flex-1`, disabled, "data-filler-add": `${row}:${where}` }, text);
-          b.addEventListener("click", () => put(where));
-          return b;
-        };
-        const after = !!chosen && rowOf(itemEntry(chosen)) === row;
-        return el("div", { class: "space-y-1" }, el("p", { class: "font-medium" }, label), el("div", { class: "flex gap-1" }, button("start", "Au début"), button("after", "Après le choisi", !after), button("end", "À la fin")));
-      }),
-      this.placedFillers(),
-    ];
-  }
-
-  /** The fillers put by hand on this run, each with its button to take it out, and one to take them all out. */
-  private placedFillers(): HTMLElement {
-    const unit = this.host.editor.unit;
-    // Low ones first, then up, each in its order along the run.
-    const hand = (i: KitchenRunItem) => isFiller(i) && !isSpace(i);
-    const placed = [...this.items.filter((i) => hand(i) && rowOf(itemEntry(i)) !== "wall"), ...this.items.filter((i) => hand(i) && rowOf(itemEntry(i)) === "wall")];
-    if (!placed.length) return el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400", "data-fillers-placed": "0" }, "Aucun fileur posé sur ce linéaire.");
-    const remove = (ids: string[]) => this.change(this.items.filter((i) => !ids.includes(i.id)), ids.includes(this.chosen ?? "") ? null : this.chosen);
-    const rows = placed.map((item) => {
-      const row = rowOf(itemEntry(item));
-      const same = this.items.filter((i) => rowOf(itemEntry(i)) === row);
-      const where = `${row === "wall" ? "Haut" : "Bas"} · ${formatLength(item.width, unit)} · place ${same.indexOf(item) + 1}/${same.length}`;
-      const b = el("button", { type: "button", class: SMALL, "data-filler-remove": item.id, title: "Supprimer ce fileur" }, "Supprimer");
-      b.addEventListener("click", () => remove([item.id]));
-      return el("div", { class: `flex items-center gap-1 ${item.id === this.chosen ? "text-sky-700 dark:text-sky-300" : ""}` }, el("span", { class: "flex-1" }, where), b);
-    });
-    const all = el("button", { type: "button", class: `${SMALL} w-full`, "data-filler-remove-all": "" }, placed.length > 1 ? `Supprimer les ${placed.length} fileurs` : "Supprimer le fileur");
-    all.addEventListener("click", () => remove(placed.map((i) => i.id)));
-    return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-fillers-placed": String(placed.length) }, el("p", { class: "font-medium" }, "Fileurs posés"), ...rows, all);
+    return fillerRows({ items: this.items, chosen: this.chosen, wall: this.host.run.wall, unit: this.host.editor.unit, width: this.fillerWidth, setWidth: (mm) => (this.fillerWidth = mm), change: (items, chosen) => this.change(items, chosen), notify: (m, k) => this.host.editor.notify(m, k) });
   }
 
   /** What one adds, as « Meubles de cuisine » shows it: each model drawn, by family; one's own; the appliances. */

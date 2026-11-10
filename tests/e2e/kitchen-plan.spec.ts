@@ -51,7 +51,7 @@ test("plan de cuisine : plan en L avec îlot, mur A aménagé, cuisine proposée
   // The drawers chosen on the strip, a step to the left, then wider.
   await tool.locator('[data-run-strip="A"] [data-item]').nth(2).click();
   await expect(tool.locator('[data-fold="chosen"]')).toContainText("Bas 3 tiroirs");
-  await tool.getByRole("button", { name: "←" }).click();
+  await tool.locator("[data-run-item]").getByRole("button", { name: "←" }).click();
   await tool.locator('[data-run-item] [data-width="800"]').click();
   await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Bas 3 tiroirs · 80/);
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);

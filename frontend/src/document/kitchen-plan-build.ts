@@ -139,14 +139,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     }
     fill.fillers.forEach(([a, b], i) => box(`Fileur ${run.id}${i ? i + 1 : ""}`, "filler", band(a, b, D, D + FRONT, s.plinth, s.base)));
     corners(p, run, fill.walls, g.wall !== null, band, box, cabinet);
-    // The worktop and the splashback follow the units: none over the room left open, nor over a room kept free
-    // that no furnished caisson holds.
-    const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
-    const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
-    // Nor through a column: it stands from the floor to the top of the wall units.
-    const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
-    const covered = without(zoneSpan(run), [...open, ...columns]).filter(([a, b]) => b - a >= 1);
-    worktops(p, run, covered, holes, band, box);
+    const covered = worktopSpans(run, fill);
+    // Taken away on the run's strip: no worktop (the splashback stays on the wall).
+    if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
     if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, part, i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
@@ -231,6 +226,18 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
 
 /** Room open narrower than this (mm) does not break the worktop: it runs over it. */
 const NARROW = 50;
+
+/**
+ * Where the worktop of a run lies, along it: it follows the units — none over the room left open, nor over a room
+ * kept free that no furnished caisson holds, nor through a column, which stands from the floor to the top of the wall
+ * units. The splashback follows it.
+ */
+export function worktopSpans(run: KitchenRun, fill: RunFill): [number, number][] {
+  const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
+  const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  return without(zoneSpan(run), [...open, ...columns]).filter(([a, b]) => b - a >= 1);
+}
 
 /**
  * The worktop of the run: over its units only (`covered`, along the run), one piece per stretch of them — the first

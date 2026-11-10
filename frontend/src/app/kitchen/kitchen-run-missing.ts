@@ -10,12 +10,16 @@ import { el } from "../../ui/dom";
 
 const SMALL = "h-6 border border-gray-300 px-1.5 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
-/** Why this unit, just put on the run, finds no room there; null when it stands. */
-export function noRoomFor(fill: RunFill, item: KitchenRunItem, unit: DisplayUnit): string | null {
-  if (!fill.missing.some((i) => i.id === item.id)) return null;
+/**
+ * Why this unit, just put on the run (`fill`: the run with it, `before`: without), finds no room there: it does not
+ * stand, or it pushes out one that stood. Null when all is well.
+ */
+export function noRoomFor(fill: RunFill, item: KitchenRunItem, unit: DisplayUnit, before: RunFill): string | null {
+  const was = new Set(before.missing.map((i) => i.id));
+  if (!fill.missing.some((i) => !was.has(i.id))) return null;
   const entry = itemEntry(item);
   const row = rowOf(entry);
-  const room = widestRoom(fill, row);
+  const room = widestRoom(before, row);
   const left = room >= 1 ? `il reste ${formatLength(Math.floor(room), unit)} au plus ${row === "wall" ? "en haut" : "en bas"}` : row === "wall" ? "le haut est plein" : "le bas est plein";
   return `« ${entry.name} » de ${formatLength(item.width, unit)} ne tient pas sur ce linéaire : ${left}. Choisissez une largeur plus petite (« Autre… », « Place libre ») ou retirez un meuble.`;
 }

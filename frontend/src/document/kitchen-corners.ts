@@ -28,7 +28,8 @@ export const WALL_CORNER_KINDS: Record<WallCornerKind, { label: string; summary:
 };
 
 /** A corner's settings, as the plan keeps them. */
-export type CornerSetting = Pick<KitchenFloorPlan, "corners" | "wallCorners" | "cornerSizes">;
+/** What a run's editor sets beside its units: the corners, and whether the run keeps its worktop. */
+export type CornerSetting = Pick<KitchenFloorPlan, "corners" | "wallCorners" | "cornerSizes" | "noWorktop">;
 export interface CornerChange {
   kind?: CornerKind;
   wall?: WallCornerKind;

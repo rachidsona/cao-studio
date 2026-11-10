@@ -3,8 +3,9 @@
  * fenêtres, le plan de travail, en bas les meubles bas et les colonnes, en haut les meubles hauts, la hotte et le
  * micro-ondes, chacun dessiné par app/unit-elevation.ts ; les fileurs, les angles (pris par les meubles de l'angle), et
  * la place libre hachurée, en pointillés, avec sa largeur (cm) ; les appareils posés à la main (Électroménager), en
- * sombre, là où la 3D les a. Un clic choisit un meuble, le glisser
- * le change de place dans sa rangée.
+ * sombre, là où la 3D les a. Un clic choisit un meuble, un appareil posé à la main ou le plan de travail ; glisser un
+ * meuble le change de place dans sa rangée ; le clavier (Suppr, Ctrl + D, les flèches) et le clic droit agissent sur
+ * ce qui est choisi (kitchen-strip-actions.ts).
  */
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
 import { kitchenSizes, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
@@ -64,7 +65,20 @@ export interface StripHost {
   appliances?: readonly HandAppliance[];
   /** A width clicked: a unit's, or a corner door's (low or up); its label, for the calculator to open beside it. */
   edit?(what: StripEdit, label: Element): void;
+  /** Where the worktop lies along the run (document/kitchen-plan-build.ts, `worktopSpans`); empty: taken away. */
+  worktop?: readonly [number, number][];
+  /** What else is chosen than a unit: an appliance put by hand, or the worktop. */
+  other?: StripOther | null;
+  /** An appliance put by hand, or the worktop, clicked. */
+  pickOther?(what: StripOther): void;
+  /** A key pressed on the strip (Suppr, Ctrl + D, the arrows); a right click on a unit. */
+  key?(event: KeyboardEvent): void;
+  menu?(id: string, event: MouseEvent): void;
+  /** The strip takes the keyboard as it is drawn: something on it was just chosen or changed. */
+  focus?: boolean;
 }
+
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -128,8 +142,13 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const [a, b] = corner.cabinet ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
     parts.push(`<text x="${(a + b) / 2}" y="${H + 120}" text-anchor="middle" font-size="80" class="fill-gray-500 dark:fill-gray-400" pointer-events="none"><title>${corner.name}</title>${corner.kind === "dead" ? "angle" : "angle ✓"}</text>`);
   }
-  const [w0, w1] = zoneSpan(run);
-  if (fill.placed.some((pl) => pl.row === "base")) parts.push(rect(w0, y(p.worktopHeight), w1 - w0, p.worktopHeight - s.base, STONE));
+  // The worktop, over the units only; clicked (a band taller than it takes the click), it is chosen.
+  const tops = host.worktop ?? (fill.placed.some((pl) => pl.row === "base") ? [zoneSpan(run)] : []);
+  const topOn = host.other?.kind === "worktop";
+  for (const [a, b] of tops) {
+    parts.push(rect(a, y(p.worktopHeight), b - a, p.worktopHeight - s.base, STONE, topOn ? `stroke="${BRASS}" stroke-width="3"` : ""));
+    if (host.pickOther) parts.push(`<rect x="${a}" y="${y(p.worktopHeight + 90)}" width="${b - a}" height="${p.worktopHeight - s.base + 90}" fill="transparent" class="cursor-pointer" data-worktop=""><title>Plan de travail : cliquer pour le choisir</title></rect>`);
+  }
   for (const [a, b] of fill.fillers) parts.push(rect(a, y(s.base), b - a, s.base - s.plinth, PANEL, 'data-filler=""'));
   // The room left open, dashed, with its width (cm).
   const open = (a: number, b: number, z0: number, z1: number, row: string) =>
@@ -163,6 +182,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     if (picked) group.setAttribute("data-picked", "");
     group.innerHTML = `<title>${label}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
     drag(node, group, pl, fill, host);
+    if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
   }
@@ -184,9 +204,23 @@ export function runStrip(host: StripHost): SVGSVGElement {
   for (const a of host.appliances ?? []) {
     const shape = document.createElementNS(SVG, "g");
     shape.setAttribute("data-hand-appliance", a.id);
-    shape.setAttribute("pointer-events", "none");
-    shape.innerHTML = `<title>${a.name}</title>${rect(a.from, y(a.z1), a.to - a.from, a.z1 - a.z0, "fill-gray-800/90 stroke-gray-950 dark:fill-gray-950/90 dark:stroke-gray-300")}`;
+    const on = host.other?.kind === "appliance" && host.other.id === a.id;
+    // Clicked, it is chosen (to take it away); with no one to tell, the click goes through to the unit under it.
+    if (host.pickOther) {
+      shape.setAttribute("class", "cursor-pointer");
+      shape.addEventListener("pointerdown", (event) => event.stopPropagation());
+      shape.addEventListener("click", () => host.pickOther!({ kind: "appliance", id: a.id }));
+    } else shape.setAttribute("pointer-events", "none");
+    shape.innerHTML = `<title>${a.name}</title>${rect(a.from, y(a.z1), a.to - a.from, a.z1 - a.z0, "fill-gray-800/90 stroke-gray-950 dark:fill-gray-950/90 dark:stroke-gray-300", on ? `stroke="${BRASS}" stroke-width="3" style="stroke:${BRASS}"` : "")}`;
     node.append(shape);
+  }
+  for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
+  // The keyboard on what is chosen: Suppr, Ctrl + D, the arrows.
+  if (host.key) {
+    node.setAttribute("tabindex", "0");
+    node.style.outline = "none";
+    node.addEventListener("keydown", (event) => host.key!(event));
+    if (host.focus) queueMicrotask(() => node.isConnected && node.focus({ preventScroll: true }));
   }
   return node;
 }

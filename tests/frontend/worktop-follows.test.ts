@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import type { KitchenFloorPlan, KitchenRunItem } from "../../frontend/src/document/types";
+import { withApplianceRemoved } from "../../frontend/src/document/appliance-remove";
+import { createReferencePlate, type ApplianceFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type MachiningFeature } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
 const plan = (list: [string, number, Partial<KitchenRunItem>?][], rest: "start" | "end" = "end"): KitchenFloorPlan => {
@@ -41,4 +42,21 @@ describe("plan de travail qui suit les meubles", () => {
     const tops = kitchenFromPlan(p).boxes.filter((b) => b.kind === "worktop");
     expect(tops.map((b) => [b.name, (b.holes ?? []).map((h) => h.appliance)])).toEqual([["Plan de travail A", ["sink-1"]], ["Plan de travail A2", ["hob-60"]]]);
   });
+
+  it("ôté d'un linéaire sur sa bande, il n'est plus bâti, ni ses découpes ; la crédence reste", () => {
+    const p = { ...plan([["base-bas-1-porte", 600], ["app-sink", 800], ["base-bas-1-porte", 400]]), noWorktop: { A: true } };
+    expect(spans(p, "worktop")).toEqual([]);
+    expect(spans(p, "splashback")).toEqual([["Crédence A", 0, 1800]]);
+    expect(spans({ ...p, noWorktop: { A: false } }, "worktop")).toEqual([["Plan de travail A", 0, 1800]]);
+  });
+
+  it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
+    const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
+    const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });
+    const doc: CadDocument = { ...createReferencePlate(), features: [...createReferencePlate().features, sink, cut("mc1", "Découpe Évier inox", 1000), cut("mc2", "Découpe Évier inox", 3000), cut("mc3", "Découpe Plaque", 1000)] };
+    const without = withApplianceRemoved(doc, "ap1");
+    expect(without.features.filter((f) => f.type === "appliance" || f.type === "machining").map((f) => f.id)).toEqual(["mc2", "mc3"]);
+    expect(withApplianceRemoved(doc, "mc1")).toBe(doc);
+  });
 });
+

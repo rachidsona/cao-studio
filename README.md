@@ -1729,6 +1729,21 @@ opération existante.
     hauteur du plan de travail ou sous plafond (pas celles qui viennent de la Pièce) ; un fileur ou une place libre se
     calculent. La cuisine est refaite d'un coup. L'isolement tient quand la cuisine est refaite ; ouvrir
     un autre mur le montre à son tour ; « Tout montrer » rend tout (`app/zone-view.ts`). La vue seulement.
+  - **Agir sur la bande** (`app/kitchen/kitchen-strip-actions.ts`) : ce qui est choisi sur la bande — un meuble (ou
+    plusieurs, Maj + clic), un appareil posé à la main, le plan de travail — se règle sans ouvrir un volet.
+    - Une **barre sous la bande** : « ← » et « → » (un cran dans sa rangée), « Dupliquer » (une copie juste après, si
+      elle tient), « Supprimer ».
+    - Le **clavier**, la bande ayant la main : Suppr supprime, Ctrl + D duplique, ← et → déplacent d'un cran.
+    - Le **clic droit** sur un meuble : Dupliquer, Un cran à gauche ou à droite, Supprimer.
+    - Un **appareil posé à la main** (Électroménager), cliqué sur la bande, se supprime avec la découpe du plan de
+      travail faite pour lui (`document/appliance-remove.ts`).
+    - Le **plan de travail**, cliqué, se supprime pour ce linéaire (ni plan ni découpes ; la crédence reste) et se remet
+      par « Remettre le plan de travail ». La bande le dessine là où il est : au-dessus des meubles.
+    - Un meuble ajouté ou dupliqué qui pousserait un autre hors du linéaire est refusé, avec la place qui reste.
+  - **Dans la 3D**, la barre du caisson choisi a « ✥ Déplacer » (glisser le long du mur, aimanté aux voisins, aux murs
+    et au bout du plan ; un clic puis un clic sur une face ou un coin l'y colle), « ↻ », et maintenant
+    « ⧉ Dupliquer » (Ctrl + D) — le même juste après lui sur son linéaire quand le Plan de cuisine l'a fait, sinon sa
+    copie à sa droite avec ses façades et ses matières (`document/unit-duplicate.ts`) — et « ✕ » qui le supprime.
   - **Éditeur de linéaire** : un clic sur un linéaire ouvre « Linéaire — mur A », sa **bande de face à l'échelle**
     (dessinée avec les dessins du catalogue) sur deux rangées : en bas les meubles bas et les colonnes, en haut les
     meubles hauts, la hotte et le micro-ondes. On y ajoute un meuble du catalogue (largeurs du commerce de 300 à 1200),

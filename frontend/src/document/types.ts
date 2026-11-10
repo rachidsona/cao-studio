@@ -168,6 +168,8 @@ export interface KitchenFloorPlan {
   /** A splashback over the worktop and kick boards under the fronts, built. */
   splashback?: boolean;
   kick?: boolean;
+  /** The runs whose worktop was taken away (on the run's strip): no worktop there, nor its cut-outs. */
+  noWorktop?: Record<string, boolean>;
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
   rest?: Record<string, "end" | "start" | "both" | "walls">;

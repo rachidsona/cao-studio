@@ -3,13 +3,16 @@
  * dans la barre du bas de la vue, avec ses cotes (app/cabinet-bar.ts). « ✥ » se tire : le caisson glisse le long de son mur (Maj : librement sur le sol), avec ses façades,
  * et s'arrête au ras des autres corps — contre le côté d'un voisin, dans l'alignement de son fond ou de sa façade,
  * au bout du plan de travail, contre un mur (Alt : sans aimant). Un clic sur « ✥ » sans tirer le colle à une face ou
- * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place.
+ * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
+ * (Ctrl + D) en met une copie à côté — sur son linéaire quand le Plan de cuisine l'a fait
+ * (document/unit-duplicate.ts) — et « ✕ » le supprime avec ses façades.
  * Le document ne change qu'au lâcher, une annulation ; Échap rend le caisson à sa place. Rien ne s'affiche pendant un
  * outil.
  */
 import * as THREE from "three";
 import { cabinetAxes, slideCabinet, turnCabinet } from "../document/kitchen-catalog";
-import { bodyOrigin, findFeature, updateFeature } from "../document/operations";
+import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../document/operations";
+import { withCabinetDuplicated } from "../document/unit-duplicate";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
 import { alignBox, type Box } from "../features/smart-align";
 import { formatLength } from "../measurements/units";
@@ -179,10 +182,36 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
       event.stopPropagation();
       void editor.change(updateFeature(editor.doc, cabinet.id, (f) => (f.type === "cabinet" ? turnCabinet(f) : f)));
     });
-    bar.grips.replaceChildren(slide, turn);
+    // A copy of it beside it (on its run, when the plan made it), and itself taken away.
+    const act = (text: string, title: string, label: string, go: () => void) => {
+      const g = grip(text, title, label);
+      g.style.cursor = "pointer";
+      g.addEventListener("pointerdown", (event) => event.stopPropagation());
+      g.addEventListener("click", (event) => (event.stopPropagation(), go()));
+      return g;
+    };
+    const copy = act("⧉ Dupliquer", "Une copie du caisson à côté de lui ; sur un linéaire du Plan de cuisine, juste après lui s'il y a la place (Ctrl + D)", "Dupliquer le caisson", () => duplicate(cabinet.id));
+    const remove = act("✕", "Supprimer le caisson et ses façades ; sur un linéaire, sa place reste libre pour un autre meuble (Suppr)", "Supprimer le caisson", () => void editor.change(deleteFeatures(editor.doc, [cabinet.id]).next));
+    bar.grips.replaceChildren(slide, turn, copy, remove);
     bar.refresh();
     slider = slide;
   };
+
+  const duplicate = (id: string) => {
+    const made = withCabinetDuplicated(editor.doc, id);
+    if (typeof made === "string") return editor.notify(made, "error");
+    void editor.change(made.doc);
+    editor.notify(made.note, "success");
+  };
+  // Ctrl + D on the cabinet selected (not while typing, nor in a tool, nor on the run's strip, which has its own).
+  window.addEventListener("keydown", (event) => {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "d" || root.dataset.tool || root.dataset.mode !== "model") return;
+    if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable], [data-run-strip]")) return;
+    const cabinet = selectedCabinet(editor);
+    if (!cabinet) return;
+    event.preventDefault();
+    duplicate(cabinet.id);
+  });
 
   const previous = editor.onRender;
   editor.onRender = () => {
