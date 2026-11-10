@@ -1361,10 +1361,12 @@ opération existante.
     plexiglas transparent et opale), **tissus et cuirs** (lin, chiné, velours, cuirs cognac, noir, blanc), **bétons et
     sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, mouchetures du granit,
     armure du tissu, grain du cuir, métal brossé), avec leur relief, et se raccordent sans couture.
-    **Le veinage des bois vient de vraies photos** : chaque essence (chênes, noyers, hêtre, frêne, érable, merisier,
-    pin, teck, wengé, acajou, bouleau, bambou, zebrano, mélaminés chêne et noyer, contreplaqué) prend les cernes, les
-    pores et les nœuds d'un des bois en photo ci-dessous, recolorés dans ses propres teintes. Le relief vient de ce
-    veinage, à l'échelle réelle (un carreau de 80 cm). Le motif suit le fil de chaque planche, décalé d'une planche à
+    **Le veinage des bois est un fil droit tiré d'une vraie photo** : chaque essence (chênes, noyers, hêtre, frêne,
+    érable, merisier, pin, teck, wengé, acajou, bouleau, bambou, zebrano, mélaminés chêne et noyer, contreplaqué)
+    prend les lignes et les pores du placage « noyer fil » ci-dessous (tranché sur quartier), recolorés dans ses
+    propres teintes. Les fentes et les nœuds en travers du fil sont lissés, et la photo se raccorde sans couture dans
+    les deux sens (`seamlessGrain`). Le relief vient de ce veinage, à l'échelle réelle (un carreau de 1 m). Pour un
+    ramage ou un autre dessin, on choisit un bois en photo. Le motif suit le fil de chaque planche, décalé d'une planche à
     l'autre : deux portes voisines n'ont jamais le même dessin. Les matières de l'atelier en profitent, en vue comme au
     rendu : le chêne massif, par exemple, prend le « Chêne verni ».
     **Bois en photo** : 10 vrais bois photographiés. Huit viennent d'ambientCG sous licence CC0 : chêne clair, chêne,

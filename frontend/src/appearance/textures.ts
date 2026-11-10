@@ -200,6 +200,46 @@ export function shadesOf(pixels: ArrayLike<number>): Float32Array {
 }
 
 /**
+ * The shades of a photo of straight grain (shadesOf, `size` × `size`) made to tile with no seam: each way, its ends
+ * blended into its middle over a band of an eighth of it, the contrast kept there; the cracks and knots across its lines
+ * smoothed away along them.
+ */
+export function seamlessGrain(shade: Float32Array, size: number): Float32Array {
+  const band = Math.max(1, Math.round(size / 8));
+  // How much of the shifted copy is taken, by the distance to the nearest end.
+  const weight = Array.from({ length: size }, (_, i) => {
+    const d = Math.min(i, size - 1 - i) / band;
+    return d >= 1 ? 0 : 0.5 + 0.5 * Math.cos(Math.PI * d);
+  });
+  const blend = (from: Float32Array, across: boolean) => {
+    const out = new Float32Array(size * size);
+    const half = size >> 1;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const m = weight[across ? y : x]!;
+        const i = y * size + x;
+        const j = across ? ((y + half) % size) * size + x : y * size + ((x + half) % size);
+        out[i] = (from[i]! * (1 - m) + from[j]! * m) / Math.hypot(1 - m, m);
+      }
+    }
+    return out;
+  };
+  // Along the grain (x), the median of a few texels: the lines stay, the cracks and knots across them go.
+  const reach = Math.max(1, Math.round(size / 100));
+  const tamed = new Float32Array(size * size);
+  const window: number[] = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      window.length = 0;
+      for (let k = -reach; k <= reach; k++) window.push(shade[y * size + ((x + k + size) % size)]!);
+      window.sort((a, b) => a - b);
+      tamed[y * size + x] = Math.max(-2.2, Math.min(2.2, window[reach]!));
+    }
+  }
+  return blend(blend(tamed, false), true);
+}
+
+/**
  * A wood's colour and relief (as motifMaps) from the shades of a photo of real wood (shadesOf, `size` × `size`): its
  * dark grain towards the second colour, its light towards the first; the relief follows the photo, its pores deep.
  */

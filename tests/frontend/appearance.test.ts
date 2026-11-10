@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { bodyAppearance, setBodyAppearance } from "../../frontend/src/appearance/assign";
 import { APPEARANCES, CATEGORIES, MATERIAL_APPEARANCE, WALL_APPEARANCE, appearanceById, searchAppearances } from "../../frontend/src/appearance/library";
 import { existsSync } from "node:fs";
-import { grainMaps, motifMaps, normalMap, sampleMotif, shadesOf } from "../../frontend/src/appearance/textures";
+import { grainMaps, motifMaps, normalMap, sampleMotif, seamlessGrain, shadesOf } from "../../frontend/src/appearance/textures";
 import { appearanceMaterial, boardUvs } from "../../frontend/src/appearance/three-materials";
 import { MATERIALS } from "../../frontend/src/document/materials";
 import type { CadDocument } from "../../frontend/src/document/types";
@@ -115,6 +115,22 @@ describe("textures calculées", () => {
     expect(color[0]!).toBeLessThan(0x6b);
     expect(color[4]).toBe(0x6b);
     expect(height[0]!).toBeLessThan(height[1]!);
+  });
+
+  it("prennent toutes un fil droit, raccordé sans couture", () => {
+    for (const a of APPEARANCES.filter((x) => x.pattern === "wood" && !x.image)) expect([a.grain, a.straight], a.id).toEqual(["/static/textures/bois/noyer-fil.jpg", true]);
+    // Random shades: across each seam, no bigger a step than between two neighbours inside, that way; a knot gone.
+    const size = 64;
+    let seed = 7;
+    const shade = new Float32Array(size * size).map(() => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5) * 4);
+    shade[size * 20 + 20] = -9;
+    const out = seamlessGrain(shade, size);
+    const at = (x: number, y: number) => out[y * size + x]!;
+    const step = (pairs: [number, number, number, number][]) => pairs.reduce((sum, [a, b, c, d]) => sum + Math.abs(at(a, b) - at(c, d)), 0) / pairs.length;
+    const rows = Array.from({ length: size }, (_, y) => y);
+    expect(step(rows.map((y) => [size - 1, y, 0, y]))).toBeLessThan(step(rows.map((y) => [31, y, 32, y])) * 1.5);
+    expect(step(rows.map((x) => [x, size - 1, x, 0]))).toBeLessThan(step(rows.map((x) => [x, 31, x, 32])) * 1.5);
+    expect(Math.min(...out)).toBeGreaterThan(-4);
   });
 
   it("suivent la couleur choisie en gardant le motif", () => {

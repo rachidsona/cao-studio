@@ -4,7 +4,7 @@
  * surface (couleurs, motif calculé, rugosité, métal, vernis, transparence) ; les textures sont calculées
  * (appearance/textures.ts), sauf les bois en photo (static/textures/bois, CC0) et les images qu'on importe soi-même
  * (« Mes motifs », gardées avec le projet : appearance/custom.ts). Chaque essence de bois tire son veinage d'une de ces
- * photos (cernes, pores, nœuds de vrai bois), dans ses propres couleurs. Une matière de l'atelier a son apparence par défaut.
+ * photos : le fil droit d'un noyer tranché sur quartier, raccordé sans couture, dans ses propres couleurs. Une matière de l'atelier a son apparence par défaut.
  */
 
 export type Pattern = "plain" | "wood" | "marble" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
@@ -44,6 +44,8 @@ export interface Appearance {
    * along its width): its rings, pores and knots, the dark of the photo in `color2`, the light in `color`.
    */
   grain?: string;
+  /** Its grain photo is straight grain, made to tile with no seam (appearance/textures.ts, seamlessGrain). */
+  straight?: boolean;
   /**
    * One photo over the whole board, never repeated (the library's woods: a panel in one piece, as a veneer leaf):
    * stretched to its length along the grain and to its width, however long it is. `tile` then only sizes the swatch.
@@ -65,13 +67,16 @@ export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "custom", name: "Mes motifs (images importées)" },
 ];
 
-/** A tile of a wood's grain on the board (mm, along the grain then across): its photo's rings at their real spacing. */
-const WOOD_TILE: [number, number] = [800, 800];
+/**
+ * A tile of a wood's grain on the board (mm, along the grain then across): its photo's lines at their real spacing (the
+ * photo of straight walnut grain is a metre wide).
+ */
+const WOOD_TILE: [number, number] = [1000, 1000];
 
-/** The photos (static/textures/bois, seamless) whose grain the woods take. */
-type Grain = "chene-clair" | "chene" | "noyer" | "hetre" | "bouleau" | "merisier" | "pin-noueux";
+/** The photo every wood takes its grain from: straight grain (fil, quarter cut), made to tile with no seam. */
+const STRAIGHT_GRAIN = "/static/textures/bois/noyer-fil.jpg";
 
-const wood = (id: string, name: string, color: string, color2: string, finish: "raw" | "oiled" | "varnished" = "oiled", grain: Grain = "chene-clair"): Appearance => ({
+const wood = (id: string, name: string, color: string, color2: string, finish: "raw" | "oiled" | "varnished" = "oiled"): Appearance => ({
   id,
   name,
   category: "wood",
@@ -83,7 +88,8 @@ const wood = (id: string, name: string, color: string, color2: string, finish: "
   clearcoatRoughness: 0.15,
   tile: WOOD_TILE,
   relief: finish === "raw" ? 0.35 : 0.15,
-  grain: `/static/textures/bois/${grain}.jpg`,
+  grain: STRAIGHT_GRAIN,
+  straight: true,
 });
 
 /**
@@ -145,19 +151,19 @@ export const APPEARANCES: Appearance[] = [
   wood("wood-oak-smoked", "Chêne fumé", "#7b5a3e", "#4a3220"),
   wood("wood-oak-varnished", "Chêne verni", "#c08d58", "#7f5530", "varnished"),
   wood("wood-oak-raw", "Chêne brut", "#c9a77f", "#937049", "raw"),
-  wood("wood-walnut", "Noyer", "#6b4a34", "#3d2618", "oiled", "noyer"),
-  wood("wood-walnut-american", "Noyer américain", "#5a3c2a", "#2e1c12", "varnished", "noyer"),
-  wood("wood-beech", "Hêtre", "#d9b38c", "#b98a5e", "oiled", "hetre"),
+  wood("wood-walnut", "Noyer", "#6b4a34", "#3d2618", "oiled"),
+  wood("wood-walnut-american", "Noyer américain", "#5a3c2a", "#2e1c12", "varnished"),
+  wood("wood-beech", "Hêtre", "#d9b38c", "#b98a5e", "oiled"),
   wood("wood-ash", "Frêne", "#dcc9a6", "#a8916b"),
-  wood("wood-maple", "Érable", "#e6d3b3", "#c9ae86", "oiled", "hetre"),
-  wood("wood-cherry", "Merisier", "#a5603b", "#6f3a20", "varnished", "merisier"),
-  wood("wood-pine", "Pin", "#dfbe86", "#b07d3e", "raw", "pin-noueux"),
+  wood("wood-maple", "Érable", "#e6d3b3", "#c9ae86", "oiled"),
+  wood("wood-cherry", "Merisier", "#a5603b", "#6f3a20", "varnished"),
+  wood("wood-pine", "Pin", "#dfbe86", "#b07d3e", "raw"),
   wood("wood-teak", "Teck", "#a2703f", "#6a4422"),
-  wood("wood-wenge", "Wengé", "#3b2a20", "#1b120c", "oiled", "noyer"),
-  wood("wood-mahogany", "Acajou", "#7c3a26", "#4a1d10", "varnished", "noyer"),
-  wood("wood-birch", "Bouleau", "#e3cba0", "#c2a272", "oiled", "hetre"),
-  wood("wood-bamboo", "Bambou", "#d8bb7c", "#a88a4c", "oiled", "bouleau"),
-  wood("wood-zebrano", "Zebrano", "#d6b98b", "#4f3a26", "oiled", "chene"),
+  wood("wood-wenge", "Wengé", "#3b2a20", "#1b120c", "oiled"),
+  wood("wood-mahogany", "Acajou", "#7c3a26", "#4a1d10", "varnished"),
+  wood("wood-birch", "Bouleau", "#e3cba0", "#c2a272", "oiled"),
+  wood("wood-bamboo", "Bambou", "#d8bb7c", "#a88a4c", "oiled"),
+  wood("wood-zebrano", "Zebrano", "#d6b98b", "#4f3a26", "oiled"),
 
   // ---- Mélaminés et panneaux ----
   { id: "melamine-white", name: "Mélaminé blanc", category: "melamine", color: "#f1f1ef", pattern: "plain", roughness: 0.42 },
@@ -165,10 +171,10 @@ export const APPEARANCES: Appearance[] = [
   { id: "melamine-anthracite", name: "Mélaminé anthracite", category: "melamine", color: "#3f4448", pattern: "plain", roughness: 0.45 },
   { id: "melamine-black", name: "Mélaminé noir", category: "melamine", color: "#1c1c1e", pattern: "plain", roughness: 0.45 },
   { ...wood("melamine-oak", "Mélaminé chêne", "#c9a26b", "#94703f"), category: "melamine", roughness: 0.5, relief: 0.05 },
-  { ...wood("melamine-walnut", "Mélaminé noyer", "#7a5236", "#46301e", "oiled", "noyer"), category: "melamine", roughness: 0.5, relief: 0.05 },
+  { ...wood("melamine-walnut", "Mélaminé noyer", "#7a5236", "#46301e", "oiled"), category: "melamine", roughness: 0.5, relief: 0.05 },
   { id: "mdf-raw", name: "MDF brut", category: "melamine", color: "#b8916a", color2: "#a37c56", pattern: "concrete", roughness: 0.88, tile: [400, 400], relief: 0.08 },
   { id: "hdf", name: "Panneau de fond (HDF)", category: "melamine", color: "#d9c3a0", color2: "#c6ad86", pattern: "concrete", roughness: 0.8, tile: [400, 400], relief: 0.05 },
-  { ...wood("plywood-birch", "Contreplaqué bouleau", "#e2c99b", "#c09f6b", "raw", "hetre"), category: "melamine" },
+  { ...wood("plywood-birch", "Contreplaqué bouleau", "#e2c99b", "#c09f6b", "raw"), category: "melamine" },
   { id: "osb", name: "OSB", category: "melamine", color: "#c9a46a", color2: "#8c6a3a", pattern: "terrazzo", roughness: 0.8, tile: [300, 300], relief: 0.3 },
 
   // ---- Laques et peintures ----

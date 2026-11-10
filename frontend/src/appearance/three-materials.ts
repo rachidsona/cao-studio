@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import type { BodyAppearance } from "./assign";
 import type { Appearance } from "./library";
-import { grainMaps, motifMaps, normalMap, shadesOf } from "./textures";
+import { grainMaps, motifMaps, normalMap, seamlessGrain, shadesOf } from "./textures";
 
 export type Finish = "auto" | "matte" | "satin" | "gloss" | "lacquer";
 
@@ -106,8 +106,9 @@ const GRAIN_SIZE = 512;
 /** The shades of each wood photo a grain is taken from (shadesOf), loaded once; null if it cannot be. */
 const grains = new Map<string, Promise<Float32Array | null>>();
 
-function grainShades(url: string): Promise<Float32Array | null> {
-  let found = grains.get(url);
+function grainShades(url: string, straight = false): Promise<Float32Array | null> {
+  const key = `${url}|${straight ? "straight" : ""}`;
+  let found = grains.get(key);
   if (!found) {
     found = new Promise((resolve) => {
       const image = new Image();
@@ -117,12 +118,13 @@ function grainShades(url: string): Promise<Float32Array | null> {
         const context = canvas.getContext("2d", { willReadFrequently: true });
         if (!context) return resolve(null);
         context.drawImage(image, 0, 0, GRAIN_SIZE, GRAIN_SIZE);
-        resolve(shadesOf(context.getImageData(0, 0, GRAIN_SIZE, GRAIN_SIZE).data));
+        const shade = shadesOf(context.getImageData(0, 0, GRAIN_SIZE, GRAIN_SIZE).data);
+        resolve(straight ? seamlessGrain(shade, GRAIN_SIZE) : shade);
       };
       image.onerror = () => resolve(null);
       image.src = url;
     });
-    grains.set(url, found);
+    grains.set(key, found);
   }
   return found;
 }
@@ -137,7 +139,7 @@ function grainTextures(appearance: Appearance & { grain: string }, color: string
   const map = dataTexture(flat.color, size, true);
   const relief = appearance.relief ?? 0;
   const normal = relief > 0 ? dataTexture(normalMap(flat.height, size, 0), size, false) : null;
-  const ready = grainShades(appearance.grain).then((shade) => {
+  const ready = grainShades(appearance.grain, appearance.straight).then((shade) => {
     if (!shade) return;
     const maps = grainMaps(shade, size, appearance, color);
     (map.image as { data: Uint8Array }).data = maps.color;
