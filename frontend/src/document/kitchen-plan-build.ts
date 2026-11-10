@@ -59,10 +59,10 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     if (g.low) out.notes.push(`Pas de meubles hauts sur ${run.label.toLowerCase()} : le plafond y descend à ${Math.round(ceiling)} mm.`);
     let n = 0;
     let fillers = 0;
-    const holes: { appliance: string; at: Vec3 }[] = [];
-    const hole = (pl: Placed, appliance: string) => {
+    const holes: NonNullable<KitchenBox["holes"]> = [];
+    const hole = (pl: Placed, appliance: string, soft = false) => {
       const [x, y] = runAt(run, pl.at + pl.item.width / 2, run.back + p.depth / 2);
-      holes.push({ appliance, at: [x, y, p.worktopHeight] });
+      holes.push({ appliance, at: [x, y, p.worktopHeight], ...(soft ? { soft } : {}) });
     };
     const front = (pl: Placed): [number, number] => runAt(run, pl.at + pl.item.width / 2, run.back + D + FRONT);
     for (const pl of fill.placed) {
@@ -112,6 +112,8 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         continue;
       }
       cabinet(name, at, w, itemSize(p, pl.item, entry).depth, 0, s.base, { plinth, ...look });
+      // A sink base of the catalogue, or one's own on two rails: the worktop is cut over it too, for the sink to come.
+      if (!role && entry.top === "rails") hole(pl, w >= 800 ? "sink-1" : "sink-under", true);
       if (role === "sink") {
         hole(pl, w >= 800 ? "sink-1" : "sink-under");
         places.sink ??= front(pl);
@@ -220,7 +222,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
 }
 
 /** One worktop over the zone of the run, with the cut-outs of its sink and hob. */
-function worktop(p: KitchenFloorPlan, run: KitchenRun, holes: { appliance: string; at: Vec3 }[], box: BoxOf): void {
+function worktop(p: KitchenFloorPlan, run: KitchenRun, holes: NonNullable<KitchenBox["holes"]>, box: BoxOf): void {
   const xs = run.zone.outline.map((q) => q[0]);
   const ys = run.zone.outline.map((q) => q[1]);
   const base = kitchenSizes(p).base;

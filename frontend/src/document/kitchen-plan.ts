@@ -8,9 +8,11 @@
 import { cabinetPartNames } from "../features/cabinet-parts";
 import { frontsMaterials } from "../features/fronts-parts";
 import { kitchenLayout, originOf, type KitchenLayout, type KitchenSettings } from "../features/kitchen-layout";
+import { applianceDef } from "../features/appliance-library";
 import { applianceParts } from "../features/appliance-parts";
 import { placeBox, placePoint, turn, type Placement, type RunInfo, type RunWall } from "../features/room-runs";
-import { cutoutOps } from "../features/worktop-cutouts";
+import { cutoutOps, mergedCutouts, type Cutout } from "../features/worktop-cutouts";
+import { cabinetAxes } from "./kitchen-catalog";
 import { addLayer, layersOf } from "./layers";
 import { uniqueId, uniqueName } from "./operations";
 import { rectangleAt } from "./sketch";
@@ -44,8 +46,19 @@ export function kitchenPlan(doc: CadDocument, s: KitchenSettings, frontMaterial:
   return layoutPlan(doc, kitchenLayout(s, room?.walls), s.frontThickness, frontMaterial, worktopMaterial, room?.place);
 }
 
+/** Whether a sink or a hob of the library stands over this point of the floor: placed by hand, with its own cut. */
+function cutByHand(doc: CadDocument, [x, y]: number[]): boolean {
+  return doc.features.some((f) => {
+    if (f.type !== "appliance" || !["sink", "hob"].includes(applianceDef(f.model)?.category ?? "")) return false;
+    const { along, back } = cabinetAxes(f.rotation ?? 0);
+    const middle = [0, 1].map((i) => f.origin[i]! + (along[i]! * f.width + back[i]! * f.depth) / 2);
+    return Math.hypot(middle[0]! - x!, middle[1]! - y!) < Math.max(f.width, f.depth) / 2;
+  });
+}
+
 /** The features of a layout already made (a kitchen plan's, document/kitchen-plan-build.ts), turned and moved by `place`. */
-export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY): KitchenPlan {
+/** `kept`: the cut-outs each worktop had before (by its name), those put or changed by hand staying in it. */
+export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map()): KitchenPlan {
   let probe = doc;
   const plan: KitchenPlan = { features: [], info: {}, names: {}, layers: {}, layout, problems: [] };
   const push = (f: Feature) => {
@@ -103,11 +116,13 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     if (box.kind === "appliance") plan.layers[id] = APPLIANCE_LAYER;
     if (box.kind === "fitting") plan.layers[id] = FITTING_LAYER;
     // The worktop's cut-outs, machined in it: their middle along its length from its low end, its front edge's side.
-    if (box.holes?.length && box.front) {
+    if ((box.holes?.length || kept.get(box.name)?.length) && box.front) {
       const along = w >= d ? 0 : 1;
       const front = turn(place, box.front);
       const frontSign = (Math.sign(front[1 - along]!) || -1) as -1 | 1;
-      const cutouts = box.holes.map((hole) => ({ appliance: hole.appliance, along: Math.round(placePoint(place, hole.at)[along]! - from[along]!), front: null }));
+      // Not where a sink or a hob placed by hand stands: it has cut the worktop for itself (appliance-place.ts).
+      const fresh = (box.holes ?? []).filter((hole) => !hole.soft || !cutByHand(doc, placePoint(place, hole.at))).map((hole): Cutout => ({ appliance: hole.appliance, along: Math.round(placePoint(place, hole.at)[along]! - from[along]!), front: null, auto: true }));
+      const cutouts = mergedCutouts(fresh, kept.get(box.name) ?? []);
       const { ops, problems } = cutoutOps([from, to], cutouts, frontSign);
       plan.problems.push(...problems.map((p) => `${box.name} : ${p}`));
       if (ops.length) push({ id: uniqueId(probe, "mc"), type: "machining", name: `Découpes ${box.name}`, target: id, kind: "cutout", ops, cutouts, frontSign } satisfies MachiningFeature);

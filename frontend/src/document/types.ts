@@ -541,7 +541,7 @@ export interface MachiningFeature extends FeatureBase {
   kind: "drilling32" | "hinge" | "groove" | "dowel" | "confirmat" | "minifix" | "halflap" | "tenon" | "cutout" | "custom";
   ops: MachiningOp[];
   /** The cut-outs of a worktop (kind "cutout"), kept to reopen them in their tool. */
-  cutouts?: { appliance: string; along: number; front: number | null }[];
+  cutouts?: { appliance: string; along: number; front: number | null; size?: [number, number]; diameter?: number; radius?: number; name?: string; auto?: boolean }[];
   /** The side the worktop faces (kind "cutout"): its low (−1) or high (+1) side across its length. */
   frontSign?: -1 | 1;
   /**

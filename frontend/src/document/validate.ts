@@ -23,6 +23,13 @@ function standardOk(s: unknown): boolean {
   return ["carcass", "fronts", "backs"].every((k) => s[k] === undefined || typeof s[k] === "string");
 }
 
+/** The sizes of its own a worktop cut-out may have: length × depth, a diameter, a corner radius, a name. */
+const cutSizesOk = (c: Record<string, unknown>): boolean => {
+  const size = c.size;
+  const mm = (v: unknown) => isFiniteNumber(v) && v > 0 && v <= 5000;
+  return (size === undefined || (Array.isArray(size) && size.length === 2 && size.every(mm))) && (c.diameter === undefined || mm(c.diameter)) && (c.radius === undefined || (isFiniteNumber(c.radius) && c.radius >= 0 && c.radius <= 2500)) && (c.name === undefined || (typeof c.name === "string" && c.name.length <= 80)) && (c.auto === undefined || typeof c.auto === "boolean");
+};
+
 const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "minifix", "halflap", "tenon", "cutout", "custom"]);
 const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect"]);
 
@@ -278,7 +285,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à usiner manquant.`);
       if (!MACHINING_KINDS.has(feature.kind as string)) errors.push(`${where} : type d'usinage inconnu.`);
       if ((feature.anchor !== undefined && !isVec3(feature.anchor)) || (feature.anchorHigh !== undefined && !isVec3(feature.anchorHigh))) errors.push(`${where} : point d'ancrage invalide.`);
-      if (feature.cutouts !== undefined && (!Array.isArray(feature.cutouts) || feature.cutouts.length > 50 || !feature.cutouts.every((c) => isObject(c) && typeof c.appliance === "string" && isFiniteNumber(c.along) && (c.front === null || isFiniteNumber(c.front)))))
+      if (feature.cutouts !== undefined && (!Array.isArray(feature.cutouts) || feature.cutouts.length > 50 || !feature.cutouts.every((c) => isObject(c) && typeof c.appliance === "string" && isFiniteNumber(c.along) && (c.front === null || isFiniteNumber(c.front)) && cutSizesOk(c))))
         errors.push(`${where} : découpes invalides.`);
       const ops = feature.ops;
       if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) errors.push(`${where} : usinages invalides (1 à 500).`);

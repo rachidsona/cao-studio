@@ -99,6 +99,12 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   const plan: KitchenFloorPlan = unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch };
   const madeBefore = Object.values(old.made ?? {}).flat();
   const work = handWork(base, new Set(madeBefore));
+  // The cut-outs of each worktop, to keep those put or changed by hand in it.
+  const cuts = new Map(madeBefore.flatMap((id) => {
+    const f = findFeature(base, id);
+    const worktop = f?.type === "machining" && f.kind === "cutout" && f.cutouts ? findFeature(base, f.target)?.name : undefined;
+    return f?.type === "machining" && worktop ? [[worktop, f.cutouts ?? []] as const] : [];
+  }));
   const { next } = deleteFeatures(base, madeBefore);
   let doc = next;
   const room: KitchenRoomInfo | undefined = kitchenRoomInfo(doc, plan);
@@ -110,7 +116,7 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
     const empty = !(plan.runs?.[run.id] ?? []).length;
     const sub = { ...layout, units: layout.units.filter((u) => u.run === run.id && (!empty || u.corner)), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall" || b.corner)) };
     if (!sub.units.length && !sub.boxes.length) continue;
-    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place);
+    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, cuts);
     doc = decorateKitchen({ ...doc, features: [...doc.features, ...built.features] }, built);
     made[run.id] = built.features.map((f) => f.id);
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);

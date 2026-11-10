@@ -1282,6 +1282,18 @@ opération existante.
     - Une nouvelle découpe se met au milieu du plan, le robinet derrière l'évier, sinon à la première place libre.
     - Sont refusées une découpe qui sort du plan, qui laisse moins de 50 mm de matière au bord, ou qui en chevauche
       une autre.
+    - **Cotes de la notice et angles arrondis** : chaque découpe a sa « Largeur », sa « Profondeur » et son « Rayon des
+      angles » (un trou rond, son « Diamètre »), qui remplacent celles du catalogue. Les éviers du catalogue ont des
+      angles de 10 mm, les plaques des angles vifs. Une découpe arrondie est faite d'une croix de deux boîtes et d'un
+      trou rond dans chaque angle : pas d'usinage nouveau.
+    - **Mes découpes** : « Garder dans Mes découpes… » garde ces cotes sous un nom (celui de l'évier ou de la plaque),
+      pour tous les projets ; elles s'ajoutent d'un clic depuis « + Ajouter une découpe… » et s'oublient par ✕
+      (`app/kitchen/my-cutouts.ts`, gardées par le navigateur).
+    - **Dans un Plan de cuisine**, un meuble d'évier découpe le plan de travail tout seul : l'« Évier » de l'onglet
+      Électro., et aussi le « Bas évier » de l'onglet Bas (ou un meuble à soi sur deux traverses), sauf sous un évier
+      de la bibliothèque posé à la main, qui a sa propre découpe. Une découpe ajoutée ou retouchée à la main dans les
+      découpes du plan (une plaque, les cotes d'un évier) est gardée quand la cuisine est refaite (`mergedCutouts`) ;
+      la découpe du plan lui laisse la place quand elles se recouvrent.
     - C'est un usinage du plan (une boîte retirée de part en part, un trou), qui suit la planche. Il se rouvre avec
       « Modifier » (`features/worktop-cutouts.ts`, `app/kitchen/cutout-tool.ts`). Les cotes sont à vérifier sur la notice
       de l'appareil.

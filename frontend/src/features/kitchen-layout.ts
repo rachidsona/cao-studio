@@ -96,8 +96,12 @@ export interface KitchenBox {
   kind: "wall" | "worktop" | "filler" | "panel" | "appliance" | "splashback" | "kick" | "fitting";
   /** Part of a corner unit chosen for its corner. */
   corner?: boolean;
-  /** A worktop's cut-outs (features/worktop-cutouts.ts): the appliance and the middle of the cut (kitchen frame). */
-  holes?: { appliance: string; at: Vec3 }[];
+  /**
+   * A worktop's cut-outs (features/worktop-cutouts.ts): the appliance and the middle of the cut (kitchen frame).
+   * `soft`: cut because the unit under it is made for it (a sink base), with no appliance of the plan's — left out when
+   * a sink or a hob placed by hand (Électroménager) already cuts the worktop there.
+   */
+  holes?: { appliance: string; at: Vec3; soft?: boolean }[];
   /** Which way a worktop's front faces (kitchen frame). */
   front?: Vec3;
   /**

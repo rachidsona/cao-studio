@@ -51,9 +51,10 @@ export const WORKSHOP: HelpFamily[] = [
           "Cliquez « Découpes du plan de travail », puis cliquez le plan de travail dans la vue.",
           "Choisissez dans « + Ajouter une découpe… » l'évier, la plaque, le robinet ou le passe-câble.",
           "Réglez « Milieu ← bout » (position le long du plan) et « Bord avant → » (distance depuis le bord avant).",
+          "Mettez les cotes de la notice de l'appareil : « Largeur », « Profondeur » et « Rayon des angles » (0 pour des angles vifs). « Garder dans Mes découpes… » les garde sous un nom, pour les reposer d'un clic dans vos autres projets.",
           "Si le bord avant est du mauvais côté, changez « Bord avant ». Cliquez « OK ».",
         ],
-        tip: "Les cotes de découpe sont courantes : vérifiez-les sur la notice de l'appareil. Le panneau refuse une découpe qui sort du plan, laisse moins de matière au bord ou en recouvre une autre.",
+        tip: "Les cotes proposées sont courantes : remplacez-les par celles de la notice. Le panneau refuse une découpe qui sort du plan, laisse moins de matière au bord ou en recouvre une autre. Dans un Plan de cuisine, un meuble d'évier (« Évier » ou « Bas évier ») découpe le plan tout seul, et vos découpes faites à la main sont gardées quand la cuisine est refaite.",
       },
       {
         keys: ["data-action:overlap"], name: "Recouvrement",
