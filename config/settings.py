@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -65,6 +66,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # The Content-Security-Policy header (SECURE_CSP below) and the nonce of the inline scripts.
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # Serves the static files in production, compressed (gzip/brotli) and cached (see STORAGES below).
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -87,6 +90,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.csp",
             ],
         },
     },
@@ -162,6 +166,31 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_FAILURE_VIEW = "apps.projects.http.csrf_failure"
 SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
+
+# Content-Security-Policy (audit of 10/11/2026, constat 7): only this site's scripts — and the inline ones of
+# base.html, by their nonce — run; WebAssembly (OpenCascade, planegcs) is allowed to compile. Styles stay
+# 'unsafe-inline' (style attributes everywhere), Inter comes from Google Fonts. Images, fetches and workers: this site,
+# data: and blob: (thumbnails, renders, textures, the model of a link). No plugin, no other base, no form elsewhere.
+# The frames keep X-Frame-Options (DENY, the editor SAMEORIGIN). DJANGO_CSP_REPORT_ONLY=1: the same policy, reported
+# by the browsers but not applied (to try it on a deployment first).
+CONTENT_SECURITY_POLICY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE, CSP.WASM_UNSAFE_EVAL],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE, "https://fonts.googleapis.com"],
+    "font-src": [CSP.SELF, "data:", "https://fonts.gstatic.com"],
+    "img-src": [CSP.SELF, "data:", "blob:"],
+    "media-src": [CSP.SELF, "data:", "blob:"],
+    "connect-src": [CSP.SELF, "data:", "blob:"],
+    "worker-src": [CSP.SELF, "blob:"],
+    "frame-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "form-action": [CSP.SELF],
+}
+if env_bool("DJANGO_CSP_REPORT_ONLY", False):
+    SECURE_CSP_REPORT_ONLY = CONTENT_SECURITY_POLICY
+else:
+    SECURE_CSP = CONTENT_SECURITY_POLICY
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 

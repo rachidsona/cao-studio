@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}CAO Studio{% endblock %}</title>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     /* Theme before first paint: localStorage ("light"/"dark") or system preference. */
     (function () {
       var dark = false;
@@ -78,7 +78,7 @@
   </main>
   {% endblock %}
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     /* Palette buttons (data-palette: a class, or "" for the default one). */
     function showPalette() {
       var current = (document.documentElement.className.match(/palette-[a-z]+/) || [""])[0];

@@ -169,6 +169,15 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
 
 ## Mise en production
 
+- **Sécurité par défaut** : sans `DJANGO_DEBUG`, le serveur (`wsgi.py`, `asgi.py`) tourne en production — la clé
+  secrète est alors exigée. Seul `manage.py` (les commandes du développement, dont `runserver`, et les tests par
+  `config/settings_test.py`) se met en mode debug s'il n'est pas réglé. Une **Content-Security-Policy** est envoyée
+  sur chaque page (`CONTENT_SECURITY_POLICY` dans `config/settings.py`) : seuls les scripts du site, et ceux de
+  `base.html` par leur nonce, s'exécutent ; le WebAssembly du noyau est permis. `DJANGO_CSP_REPORT_ONLY=true` la fait
+  seulement signaler par les navigateurs, sans l'appliquer, pour l'essayer d'abord sur un déploiement. Les événements
+  de sécurité (refus CSRF, hôte refusé, connexion refusée) sont écrits dans le journal (`django.security`,
+  `apps.security`). Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
   `DJANGO_TRUST_X_FORWARDED_PROTO=true` derrière un proxy HTTPS ; `DJANGO_ADMINS` (adresses) pour recevoir les erreurs

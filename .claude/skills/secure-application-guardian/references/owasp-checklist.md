@@ -104,9 +104,9 @@ grep -n -E "DEBUG|ALLOWED_HOSTS|SECURE_|SESSION_|CSRF_|X_FRAME|CSP" config/setti
 
 - `check --deploy` est sans avertissement, hormis ceux acceptés et notés dans le rapport.
 - Les en-têtes sont présents : `X-Frame-Options: DENY` (`SAMEORIGIN` pour l'éditeur seulement), `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy`.
-- **À faire, avec accord :**
-  - une CSP (`SECURE_CSP` de Django 6) : `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'self'`. Commencer en mode `SECURE_CSP_REPORT_ONLY`, relever ce qui casse dans l'éditeur (WebAssembly, workers, styles en ligne), puis appliquer.
-  - `DEBUG` faux par défaut (constat 6).
+- **En place :**
+  - la CSP (`CONTENT_SECURITY_POLICY` dans `config/settings.py`, appliquée par `SECURE_CSP`) : tout nouveau script en ligne prend `nonce="{{ csp_nonce }}"` ; toute nouvelle ressource extérieure (police, image, API) s'ajoute à la directive qui la concerne, avec l'accord de l'utilisateur ; `tests/e2e/csp.spec.ts` doit rester sans violation.
+  - `DEBUG` faux par défaut hors de `manage.py` et des tests ; le passer à vrai ailleurs est une configuration critique.
 
 **Test :** `test_security_regressions.py::test_security_headers_are_sent`.
 

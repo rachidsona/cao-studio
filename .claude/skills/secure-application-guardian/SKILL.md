@@ -206,7 +206,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
 | 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |
 | 6 | `DEBUG` vrai par défaut | Corrigé : faux par défaut ; `manage.py` et les tests (`config/settings_test.py`) le mettent à vrai pour le développement |
-| 7 | Pas de CSP | Ouvert : accord requis (CSP prête dans le rapport) |
+| 7 | Pas de CSP | Corrigé : `CONTENT_SECURITY_POLICY` (nonce, `wasm-unsafe-eval`, `object-src none`), `tests/e2e/csp.spec.ts` ; styles encore en `unsafe-inline` |
 | 8 | Fausses lignes dans les journaux | Corrigé (lot 1) |
 | 9 | Acceptation d'un lien non atomique | Corrigé (lot 1) ; ouverture à tout porteur : choix de fonctionnement |
 | 10 | Type du logo lu dans l'en-tête déclaré | Corrigé (lot 1) : octets magiques |
