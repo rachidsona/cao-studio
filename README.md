@@ -1740,6 +1740,10 @@ opération existante.
     - Le **plan de travail**, cliqué, se supprime pour ce linéaire (ni plan ni découpes ; la crédence reste) et se remet
       par « Remettre le plan de travail ». La bande le dessine là où il est : au-dessus des meubles.
     - Un meuble ajouté ou dupliqué qui pousserait un autre hors du linéaire est refusé, avec la place qui reste.
+    - **Aligner sur le bas** (un meuble haut choisi ; aussi au clic droit) : son bord gauche vient au-dessus de celui
+      du meuble bas qu'il recouvre le plus, sinon leurs bords droits, sinon il s'aligne sur le meuble bas suivant. Le
+      décalage se fait par de la place gardée libre en haut, mise avant ou après lui ou reprise à celle qui s'y
+      trouve ; refusé quand un meuble haut n'aurait plus sa place (`features/kitchen-run-align.ts`).
   - **Dans la 3D**, la barre du caisson choisi a « ✥ Déplacer » (glisser le long du mur, aimanté aux voisins, aux murs
     et au bout du plan ; un clic puis un clic sur une face ou un coin l'y colle), « ↻ », et maintenant
     « ⧉ Dupliquer » (Ctrl + D) — le même juste après lui sur son linéaire quand le Plan de cuisine l'a fait, sinon sa

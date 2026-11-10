@@ -29,6 +29,7 @@ import { myUnits } from "./my-units";
 import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerRows } from "./kitchen-run-fillers";
 import { stripActions } from "./kitchen-strip-actions";
+import { alignedOver } from "../../features/kitchen-run-align";
 import { withApplianceRemoved } from "../../document/appliance-remove";
 import { multiRows, pickAllRow } from "./kitchen-run-multi-view";
 
@@ -194,6 +195,13 @@ export class RunEditor {
         void editor.change(withApplianceRemoved(editor.doc, id)).then(() => (this.host.redraw(), this.host.changed()));
       },
       setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()),
+      align: (id) => {
+        const made = alignedOver(g, this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, id);
+        if (typeof made === "string") return editor.notify(made, "info");
+        this.focusStrip = true;
+        this.change(made.items, id, []);
+        editor.notify(`Aligné sur « ${made.on} », bord ${made.side}.`, "success");
+      },
     });
     const focus = this.focusStrip;
     this.focusStrip = false;

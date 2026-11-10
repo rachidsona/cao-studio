@@ -1,6 +1,6 @@
 /**
  * Ce qu'on fait de ce qui est choisi sur la bande d'un linéaire, sans ouvrir un volet : une barre sous la bande
- * (← →, Dupliquer, Supprimer), le clavier — Suppr le supprime, Ctrl + D le duplique, les flèches le déplacent d'un
+ * (← →, Aligner sur le bas pour un meuble haut, Dupliquer, Supprimer), le clavier — Suppr le supprime, Ctrl + D le duplique, les flèches le déplacent d'un
  * cran — et le clic droit sur un meuble. Un meuble (ou plusieurs), un appareil posé à la main (Électroménager, ôté avec
  * sa découpe), ou le plan de travail du linéaire, qu'on supprime et qu'on remet.
  */
@@ -28,6 +28,8 @@ export interface StripActionsHost {
   move(id: string, index: number): void;
   removeAppliance(id: string): void;
   setWorktop(on: boolean): void;
+  /** A wall unit set over the base unit under it (features/kitchen-run-align.ts). */
+  align(id: string): void;
 }
 
 export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(event: KeyboardEvent): void; menu(id: string, event: MouseEvent): void } {
@@ -51,6 +53,10 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     const [index, count] = place(id);
     if (index + by >= 0 && index + by < count) host.move(id, index + by);
   };
+  const high = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    return !!item && !isSpace(item) && rowOf(itemEntry(item)) === "wall";
+  };
   const button = (text: string, attr: string, title: string, go: () => void, disabled = false) => {
     const b = el("button", { type: "button", class: SMALL, title, disabled, [attr]: "" }, text);
     b.addEventListener("click", go);
@@ -72,6 +78,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     label = one ? itemEntry(one).name : `${ids.length} meubles`;
     buttons = [
       ...(one ? [button("←", "data-strip-left", "Un cran à gauche (←)", () => step(one.id, -1), index <= 0), button("→", "data-strip-right", "Un cran à droite (→)", () => step(one.id, 1), index < 0 || index >= count - 1)] : []),
+      ...(one && high(one.id) ? [button("Aligner sur le bas", "data-strip-align", "Son bord au-dessus de celui du meuble bas qui est sous lui : à gauche, sinon à droite", () => host.align(one.id))] : []),
       button("Dupliquer", "data-strip-copy", "Une copie juste après (Ctrl + D)", () => duplicate(ids)),
       button("Supprimer", "data-strip-remove", "Ôter du linéaire (Suppr)", () => remove(ids)),
     ];
@@ -80,7 +87,8 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     buttons = host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : [];
   }
   const chosen = !!appliance || host.other?.kind === "worktop" || ids.length > 0;
-  const bar = el("div", { class: "flex min-h-7 flex-wrap items-center gap-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("span", { class: `min-w-0 flex-1 ${chosen ? "truncate font-medium" : "text-[11px] text-gray-500 dark:text-gray-400"}` }, label), ...buttons);
+  // Its name on a line of its own, whole; what one does of it under it.
+  const bar = el("div", { class: "space-y-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("p", { class: chosen ? "truncate font-medium" : "text-[11px] text-gray-500 dark:text-gray-400" }, label), buttons.length ? el("div", { class: "flex flex-wrap gap-1" }, ...buttons) : null);
   return {
     bar,
     key(event) {
@@ -110,6 +118,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
         { label: "Dupliquer", run: () => duplicate([id]) },
         { label: "Un cran à gauche", disabled: index <= 0, run: () => step(id, -1) },
         { label: "Un cran à droite", disabled: index >= count - 1, run: () => step(id, 1) },
+        ...(high(id) ? [{ label: "Aligner sur le meuble du dessous", run: () => host.align(id) }] : []),
         "separator",
         { label: "Supprimer", danger: true, run: () => remove([id]) },
       ]);

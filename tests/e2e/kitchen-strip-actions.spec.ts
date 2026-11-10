@@ -120,3 +120,43 @@ test("dans la 3D : le caisson choisi se duplique sur son linéaire et se supprim
   expect(await cabinets()).toEqual([["Bas 1 porte 600", 1000], ["Bas 1 porte 600", 1600]]);
   expect(errors).toEqual([]);
 });
+
+test("sur la bande : un meuble haut s'aligne sur le meuble bas qui est sous lui", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-aligner-haut");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  // Low: 100 then 60 (from 100 to 160 cm). Up: 80, then 60 — from 80 to 140 cm, astride the two low units.
+  await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.locator('[data-add="wall-haut-2-portes-800"]').click();
+  await tool.locator('[data-add="wall-haut-1-porte-600"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  const bar = tool.locator("[data-strip-actions]");
+  const chosenAt = async () => Number((await strip.locator("[data-item]").last().getAttribute("transform"))!.match(/translate\(([\d.]+)/)![1]);
+  await expect(bar).toContainText("Haut 1 porte");
+  expect(await chosenAt()).toBe(800);
+
+  // Aligned: its left edge over the left edge of the low unit of 60, 20 cm of room kept free before it.
+  await bar.locator("[data-strip-align]").click();
+  await expect(page.getByText("Aligné sur « Bas 1 porte », bord gauche.").first()).toBeVisible();
+  expect(await chosenAt()).toBe(1000);
+  await expect(tool.locator('[data-fold="space"]')).toContainText("20 cm");
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/bande-aligner.png` });
+  // Again: nothing to do, said so. A low unit has no such button.
+  await bar.locator("[data-strip-align]").click();
+  await expect(page.getByText(/« Haut 1 porte » est déjà aligné sur « Bas 1 porte »/).first()).toBeVisible();
+  await strip.locator("[data-item]").first().click();
+  await expect(bar).toContainText("Bas 2 portes");
+  await expect(bar.locator("[data-strip-align]")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
