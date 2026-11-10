@@ -240,6 +240,17 @@
   [data-tool-columns] .icon-btn svg {
     @apply size-6;
   }
+  /* The Navigator folded away (ui/navigator-fold.ts): the view takes its room; on phones it stays the « Arbre » sheet. */
+  @media (min-width: 1024px) {
+    [data-ref="panel-tree"][data-folded="true"] {
+      display: none !important;
+    }
+  }
+  /* The name of an edge tab, written downwards (ui/edge-tabs.ts). */
+  .edge-tab-vertical {
+    writing-mode: vertical-rl;
+    @apply py-1 text-[10px] tracking-wider uppercase;
+  }
   /* Where a dragged icon will land: a line above or below an icon, or at the end of the column. */
   [data-tool-columns] [data-drop="before"] {
     box-shadow: inset 0 3px 0 var(--color-sky-600);

@@ -9,6 +9,7 @@
  * (ui/tool-columns-store.ts). Cachées en esquisse, en rendu et sur les petits écrans.
  */
 import { el } from "./dom";
+import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
 import { keyOf } from "./ribbon-layout";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
 import { COLUMN_COUNT, moveTool, readColumns, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
@@ -62,12 +63,12 @@ export function bindToolColumns(root: HTMLElement): void {
   tree.after(bar);
   // The tabs of the folded columns, over the left edge of the view: they take no room beside it.
   const tabs = el("div", {
-    class: `pointer-events-none absolute bottom-4 left-0 z-30 flex flex-col gap-1 ${visibility}`,
+    class: `flex flex-col gap-1 ${visibility}`,
     role: "group",
     "aria-label": "Colonnes d'outils repliées",
     "data-tool-column-tabs": "",
   });
-  root.querySelector("#main")?.append(tabs);
+  edgeTabs(root)?.append(tabs);
   const watchers: MutationObserver[] = [];
   /** The icon being dragged to another place. */
   let dragging: { column: number; key: string } | null = null;
@@ -127,7 +128,7 @@ export function bindToolColumns(root: HTMLElement): void {
       "button",
       {
         type: "button",
-        class: "pointer-events-auto flex h-9 w-5 flex-col items-center justify-center border border-l-0 border-gray-200 bg-white/95 text-[10px] leading-none text-gray-500 shadow-md hover:bg-gray-100 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+        class: `${EDGE_TAB_CLASS} h-9`,
         "aria-expanded": "false",
         "aria-label": `Déplier la colonne ${index + 1}`,
         title: `Déplier la colonne d'outils ${index + 1}`,

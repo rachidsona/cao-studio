@@ -1141,6 +1141,9 @@ opération existante.
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
   poignée la remet en haut à gauche. Sa place et son sens sont retenus.
+- **Navigateur replié** (grands écrans) : la flèche ‹ de son titre le fait disparaître et la vue prend sa place ; l'onglet
+  « › Navigateur », en bas du bord gauche de la vue avec ceux des colonnes repliées, le rouvre. Retenu par le navigateur.
+  Sur les petits écrans, le bouton « Arbre » l'ouvre toujours en feuille (`ui/navigator-fold.ts`, `ui/edge-tabs.ts`).
 - **Sept colonnes d'outils**, entre le Navigateur et la vue : sept colonnes d'icônes, **vides au départ**, que l'on
   garnit soi-même. Le **« + »** en bas d'une colonne ouvre la liste de tous les outils du ruban et de la colonne de
   sélection et de vue, rangés par groupe, avec une recherche ; un clic ajoute l'outil à la colonne, ou l'en retire s'il
