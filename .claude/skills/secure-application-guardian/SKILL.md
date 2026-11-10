@@ -200,8 +200,8 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L9 | Erreurs 500 sur entrées invalides | Corrigé (lot 1) |
 | L10 | Ni changement de mot de passe, ni suppression, ni export | Ouvert : accord requis |
 | L11 | Google Fonts sur la page client | Ouvert : avec la CSP |
-| L12 | sqlparse 0.6.0 | Ouvert : avec M6 |
-| L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | Ouvert : accord requis |
+| L12 | sqlparse 0.6.0 | Corrigé : sqlparse 0.6.1 (dernière version, projet arrêté : à suivre avec Django) |
+| L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | `.venv` nettoyé (pillow, numpy, ezdxf, reportlab retirés ; pip 26.3) ; `ci.yml` et fichier verrouillé avec hachages : accord requis |
 | L15 | Dossiers d'agents non ignorés | Corrigé (lot 1) : `.gitignore` |
 | 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
 | 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |

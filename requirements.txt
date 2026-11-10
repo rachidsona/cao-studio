@@ -1,6 +1,6 @@
 Django==6.1.3
 asgiref==3.12.1
-sqlparse==0.6.0
+sqlparse==0.6.1
 whitenoise[brotli]==6.12.0
 # Assistant de modélisation (API Claude ; clé dans ANTHROPIC_API_KEY)
 anthropic==1.17.0
