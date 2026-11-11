@@ -709,9 +709,12 @@ opération existante.
     équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — avec la hauteur, la longueur et la largeur
     de chaque case, et toutes les petites cotes (en cm, en bleu) : l'épaisseur des panneaux (« ép. 1,8 », en haut à
     gauche), celle de chaque étagère à son bout droit et de chaque cloison à son sommet, la hauteur libre de chaque
-    niche en son milieu (« ↕ 38,2 », ou « largeur × hauteur » pour une niche plus étroite que sa case), la hauteur de
+    niche en son milieu (et sa largeur, pour une niche plus étroite que sa case), la hauteur de
     chaque façade de tiroir sur elle, la hauteur d'une tringle depuis le sol sous elle (« tringle 180 ») et celle du
-    socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Elle suit le
+    socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Chaque cote se lit
+    sur une **ligne de cote fléchée** qui va d'un bout à l'autre de ce qu'elle mesure — d'une étagère à la suivante,
+    de côté à côté, du haut au bas d'une façade, du sol à la tringle, sur toute la longueur, la hauteur et la largeur
+    de chaque case — la valeur à côté (seules les épaisseurs, trop minces, n'ont que leur chiffre). Elle suit le
     panneau (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
     clic dans une case ne choisit rien (pas de cadre). Chaque côté entre deux cases se tire (curseur ↔ au survol,
     sa poignée laiton cachée jusque-là) : la case de gauche change de largeur au centimètre, celle de droite prend la

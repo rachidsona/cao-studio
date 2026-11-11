@@ -99,6 +99,8 @@ export interface FaceLabel {
   kind: "niche" | "shelf" | "cloison" | "front" | "rod" | "plinth" | "panel";
   anchor: "start" | "middle" | "end";
   edit?: number;
+  /** The dimension line it reads, from end to end of what it measures (x1, y1, x2, y2), arrows at both ends. */
+  span?: [number, number, number, number];
 }
 
 /** Where each case of the panel lies, from the left (a side left out keeps its place in the niche). */
@@ -221,7 +223,10 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
     face.edits.push({ edit, value });
   };
   add({ x: 0, y: -(fs / SMALL) * 0.6, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }, { what: "thickness" }, input.thickness);
-  if (input.boards && input.plinth > 0) add({ x: face.length / 2, y: H - input.plinth / 2 + fs * 0.35, text: `socle ${cm(input.plinth)}`, kind: "plinth", anchor: "middle" }, { what: "plinth" }, input.plinth);
+  if (input.boards && input.plinth > 0) {
+    const at = face.length / 2 - fs * 2.6;
+    add({ x: face.length / 2, y: H - input.plinth / 2 + fs * 0.35, text: `socle ${cm(input.plinth)}`, kind: "plinth", anchor: "middle", span: [at, H - input.plinth, at, H] }, { what: "plinth" }, input.plinth);
+  }
   for (const p of face.pieces) {
     const edit = { what: "division" as const, record: p.record };
     if (p.vertical) add({ x: p.x + p.w / 2, y: p.y + fs * 1.1, text: cm(p.w), kind: "cloison", anchor: "middle" }, edit, p.w);
@@ -233,18 +238,27 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
     if (n.h < fs * 1.6 || n.w < fs * 2.5 || face.fronts.some((f) => inside(n, f.x + f.w / 2, f.y + f.h / 2))) continue;
     const own = face.cases.find((c) => n.x + n.w / 2 > c.x0 && n.x + n.w / 2 < c.x1);
     const narrower = own && own.width - n.w > 1 && n.w > fs * 6;
-    const text = narrower ? `${cm(n.w)} × ${cm(n.h)}` : `↕ ${cm(n.h)}`;
-    add({ x: n.x + n.w / 2, y: n.y + n.h / 2 + fs * 0.35, text, kind: "niche", anchor: "middle" }, { what: "niche", path: n.path, axis: narrower ? "x" : "y" }, narrower ? n.w : n.h);
+    // Its free height: a line from the shelf under it to the one over it, the figure beside it.
+    const cx = n.x + n.w / 2;
+    add({ x: cx + fs * 0.3, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "start", span: [cx, n.y, cx, n.y + n.h] }, { what: "niche", path: n.path, axis: "y" }, n.h);
+    // Narrower than its case (beside a cloison): its width too, from side to side, low in it.
+    if (narrower) {
+      const y = n.y + n.h - fs * 1.1;
+      add({ x: cx, y: y - fs * 0.3, text: cm(n.w), kind: "niche", anchor: "middle", span: [n.x, y, n.x + n.w, y] }, { what: "niche", path: n.path, axis: "x" }, n.w);
+    }
   }
   for (const f of face.fronts) {
     const block = niches.find((e) => e.id === f.of);
     if (f.h < fs * 1.2) continue;
-    const label = { x: f.x + fs * 0.4, y: f.y + f.h / 2 + fs * 0.35, text: cm(f.h), kind: "front" as const, anchor: "start" as const };
+    const line = f.x + fs * 0.3;
+    const label = { x: line + fs * 0.3, y: f.y + f.h / 2 + fs * 0.35, text: cm(f.h), kind: "front" as const, anchor: "start" as const, span: [line, f.y, line, f.y + f.h] as [number, number, number, number] };
     if (block) add(label, { what: "front", id: block.id, count: block.drawers, path: [...block.niche] }, f.h);
     else face.labels.push(label);
   }
   for (const r of face.rods) {
-    const label = { x: Math.min(r.x0, r.x1) + fs * 0.4, y: r.y + fs * 1.3, text: `tringle ${cm(H - r.y)}`, kind: "rod" as const, anchor: "start" as const };
+    // From the floor to the rod's axis.
+    const line = Math.min(r.x0, r.x1) + fs * 0.3;
+    const label = { x: line + fs * 0.3, y: r.y + fs * 1.3, text: `tringle ${cm(H - r.y)}`, kind: "rod" as const, anchor: "start" as const, span: [line, r.y, line, H] as [number, number, number, number] };
     if (r.id) add(label, { what: "rod", id: r.id }, H - r.y);
     else face.labels.push(label);
   }

@@ -13,7 +13,23 @@ const PANEL = "fill-gray-300 stroke-gray-600 dark:fill-gray-600 dark:stroke-gray
 const NICHE = "fill-gray-50 stroke-gray-500 dark:fill-gray-900 dark:stroke-gray-500";
 const FRONT = "fill-gray-100 stroke-gray-500 dark:fill-gray-700 dark:stroke-gray-400";
 const LABEL = "fill-gray-600 dark:fill-gray-300";
+const MAIN = "stroke-gray-500 dark:stroke-gray-400";
 const OUTLINE = `fill="rgb(184 151 90 / 0.25)" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none" data-picked=""`;
+/**
+ * A dimension line from end to end of what it measures, an arrow at each end (`a`: their length, in mm of the face);
+ * nothing when it is too short to hold its arrows.
+ */
+export function dimLine([x1, y1, x2, y2]: [number, number, number, number], a: number, tone = DIM): string {
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  if (length < a * 2.5) return "";
+  const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
+  const head = (x: number, y: number, dx: number, dy: number) => `<path d="M${x} ${y}L${x + dx * a - dy * a * 0.35} ${y + dy * a + dx * a * 0.35}L${x + dx * a + dy * a * 0.35} ${y + dy * a - dx * a * 0.35}Z" class="${tone.replace(/stroke-/g, "fill-")}"/>`;
+  return `<g pointer-events="none" data-dimline=""><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>${head(x1, y1, ux, uy)}${head(x2, y2, -ux, -uy)}</g>`;
+}
+
+/** The lines of the dimensions, as their figures (blue). */
+const DIM = "stroke-sky-700 dark:stroke-sky-300";
+
 const box = (r: FaceRect, tone: string, extra = "") => `<rect x="${r.x}" y="${r.y}" width="${Math.max(0, r.w)}" height="${Math.max(0, r.h)}" class="${tone}" vector-effect="non-scaling-stroke" ${extra}/>`;
 
 /** A thin piece made easier to take: at least `least` across its axis, around its middle. */
@@ -57,6 +73,11 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
     for (const r of face.rods.filter((r) => r.id === pick.id)) parts.push(`<line x1="${r.x0}" y1="${r.y}" x2="${r.x1}" y2="${r.y}" stroke="${BRASS}" stroke-width="5" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" data-picked=""/>`);
   }
   // The small dimensions, then the main ones: the length over it, the height on its left, each case's width under it.
+  // The dimension lines first, their figures over them.
+  const arrow = fs * SMALL * 0.28;
+  for (const l of face.labels) if (l.span) parts.push(dimLine(l.span, arrow));
+  parts.push(dimLine([0, -fs * 0.3, L, -fs * 0.3], arrow, MAIN), dimLine([-fs * 0.3, 0, -fs * 0.3, H], arrow, MAIN));
+  for (const c of face.cases) parts.push(dimLine([c.x0, H + fs * 0.3, c.x1, H + fs * 0.3], arrow, MAIN));
   const editable = (k: number | undefined) => (k === undefined ? 'class="fill-sky-800 dark:fill-sky-300" pointer-events="none"' : `class="fill-sky-800 dark:fill-sky-300 cursor-text" data-edit="${k}"`);
   for (const l of face.labels) parts.push(`<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="${fs * SMALL}" ${editable(l.edit)} data-label="${l.kind}">${l.text}</text>`);
   parts.push(`<text x="${L / 2}" y="${-fs * 0.6}" text-anchor="middle" font-size="${fs}" class="${LABEL} cursor-text" data-edit="0" data-dim="length">${cm(L)}</text>`);

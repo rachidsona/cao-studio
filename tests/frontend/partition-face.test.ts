@@ -82,7 +82,18 @@ describe("face d'une Répartition", () => {
     expect(of("shelf")).toEqual(["1,8", "1,8", "1,8"]);
     // The first case: its four niches share 2390 mm less three shelves of 18 mm; the second is all drawers.
     const free = Number((((2390 - 3 * 18) / 4) / 10).toFixed(1)).toLocaleString("fr-FR");
-    expect(of("niche")).toEqual([`↕ ${free}`, `↕ ${free}`, `↕ ${free}`, `↕ ${free}`]);
+    expect(of("niche")).toEqual([free, free, free, free]);
+    // Each one read on a line from the shelf under it to the one over it.
+    for (const l of face.labels.filter((x) => x.kind === "niche")) {
+      const [x1, y1, x2, y2] = l.span!;
+      expect(x1).toBe(x2);
+      expect(y2 - y1).toBeCloseTo((2390 - 3 * 18) / 4, 6);
+    }
+    // The fronts and the rod too: each front from its top to its bottom, the rod from the floor.
+    expect(face.labels.filter((x) => x.kind === "front").every((x) => x.span && Math.abs(x.span[3] - x.span[1] - (2390 - 4 * 3) / 3) < 1e-6)).toBe(true);
+    const rod = face.labels.find((x) => x.kind === "rod")!;
+    expect(rod.span![3]).toBe(2500);
+    expect(rod.span![3] - rod.span![1]).toBeCloseTo(2410, 6);
     // Three fronts sharing the niche's height, less the gaps (3 mm above, under and between): as the 3D builds them.
     const front = Number((((2390 - 4 * 3) / 3) / 10).toFixed(1)).toLocaleString("fr-FR");
     expect(of("front")).toEqual([front, front, front]);
@@ -91,6 +102,8 @@ describe("face d'une Répartition", () => {
     const svg = partitionFaceSvg(face);
     expect(count(svg, 'data-label="')).toBe(face.labels.length);
     expect(svg).toContain(`data-label="shelf">1,8<`);
+    // The lines: one per dimension that has one, and the length, the height and each case's width.
+    expect(count(svg, "data-dimline=")).toBe(face.labels.filter((l) => l.span).length + 2 + face.cases.length);
   });
 
   it("cote une niche de cloison par sa largeur et sa hauteur, une case entière par sa hauteur", () => {
@@ -98,7 +111,10 @@ describe("face d'une Répartition", () => {
     const face = partitionFace({ input: INPUT, origin: [0, 0], depth: 600, id: "of1" }, { ...emptySketchGeometry(), offsets })!;
     const niches = face.labels.filter((l) => l.kind === "niche").map((l) => l.text);
     expect(face.labels.filter((l) => l.kind === "cloison").map((l) => l.text)).toEqual(["1,8"]);
-    expect(niches.sort()).toEqual(["34,4 × 239", "34,4 × 239", "↕ 239"]);
+    // The niches beside the cloison have their width on a line from side to side, and their height.
+    expect(niches.sort()).toEqual(["239", "239", "239", "34,4", "34,4"]);
+    const width = face.labels.find((l) => l.text === "34,4")!;
+    expect(width.span![2] - width.span![0]).toBeCloseTo((705 - 18) / 2, 6);
   });
 
   it("entoure la case choisie", () => {
