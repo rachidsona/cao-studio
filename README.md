@@ -185,7 +185,13 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   d'un lien se téléchargent 120 fois au plus en 10 minutes depuis une même adresse. **L'inscription libre est
   fermée** (`SIGNUP_OPEN`) : `/accounts/signup/` dit de demander un compte à l'atelier, et les pages n'y mènent plus ;
   le personnel crée les comptes (`manage.py compte <nom>`, le mot de passe est demandé deux fois ; `--mot-de-passe`
-  le change). `DJANGO_SIGNUP_OPEN=1` la rouvre (le serveur des tests e2e s'en sert). Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  le change). `DJANGO_SIGNUP_OPEN=1` la rouvre (le serveur des tests e2e s'en sert). **Mon compte** (`/accounts/`,
+  le nom du compte dans l'en-tête) : changer son mot de passe (l'ancien, puis le nouveau deux fois), télécharger le
+  ZIP de toutes ses données (la dernière version de chaque projet en `.cao.json` à réimporter, fiches, clients,
+  historiques, commentaires, liens clients sans leurs jetons, modules, chutes, fabrication groupée ; 5 exports en
+  10 minutes au plus), supprimer son compte avec son mot de passe et une case à cocher (tout ce qu'il possède part
+  avec lui ; un compte du personnel ne se supprime pas là). Les mauvais mots de passe de ces deux formulaires
+  comptent comme des connexions refusées. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
@@ -216,7 +222,7 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 | Dossier | Rôle |
 |---|---|
 | `config/` | Réglages Django (variables d'environnement, SQLite par défaut, PostgreSQL via `POSTGRES_*`) |
-| `apps/accounts/` | Connexion, déconnexion, inscription (fermée par défaut), commandes `compte` et `personnel` |
+| `apps/accounts/` | Connexion, déconnexion, inscription (fermée par défaut), « Mon compte » (mot de passe, export, suppression), commandes `compte` et `personnel` |
 | `apps/projects/` | Projets, versions immuables avec checksum, API JSON, validation des documents |
 | `templates/` | Pages Django + Tailwind ; `editor/editor.html` charge l'éditeur |
 | `frontend/src/document/` | Format natif `cao-studio` v1, validation, éditions pures (annulables) |

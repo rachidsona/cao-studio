@@ -127,7 +127,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Serveur (droits, CSRF, entrées, envois, réglages)
-        run: python -m pytest -q tests/backend/test_security_regressions.py tests/backend/test_catalog_pages.py tests/backend/test_sharing.py tests/backend/test_validation.py tests/backend/test_signup.py
+        run: python -m pytest -q tests/backend/test_security_regressions.py tests/backend/test_catalog_pages.py tests/backend/test_sharing.py tests/backend/test_validation.py tests/backend/test_signup.py tests/backend/test_account.py
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24

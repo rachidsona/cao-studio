@@ -198,7 +198,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L7 | Nom de connexion sur les pages client | Ouvert : accord requis |
 | L8 | Événements de sécurité non journalisés | Corrigé : logger `django.security` en production, connexions refusées dans `apps.security` (`apps/accounts/signals.py`) |
 | L9 | Erreurs 500 sur entrées invalides | Corrigé (lot 1) |
-| L10 | Ni changement de mot de passe, ni suppression, ni export | Ouvert : accord requis |
+| L10 | Ni changement de mot de passe, ni suppression, ni export | Corrigé : « Mon compte » (`apps/accounts/account.py`, `export.py`), `tests/backend/test_account.py`, `tests/e2e/account.spec.ts` |
 | L11 | Google Fonts sur la page client | Ouvert : avec la CSP |
 | L12 | sqlparse 0.6.0 | Corrigé : sqlparse 0.6.1 (dernière version, projet arrêté : à suivre avec Django) |
 | L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | `.venv` nettoyé (pillow, numpy, ezdxf, reportlab retirés ; pip 26.3) ; `ci.yml` : `permissions: contents: read`, traces gardées 7 jours ; fichier verrouillé avec hachages : accord requis |

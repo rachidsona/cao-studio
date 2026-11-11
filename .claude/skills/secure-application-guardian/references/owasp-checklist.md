@@ -135,6 +135,7 @@ pip-audit -r requirements.txt   # pip install pip-audit, dans un environnement �
 - La connexion se fait par `LoginView` (`next` validé).
 - La déconnexion se fait en POST.
 - Les tentatives de connexion sont limitées (`apps/accounts/throttle.py`) ; l'inscription libre est fermée par défaut (`SIGNUP_OPEN`, comptes créés par `manage.py compte`).
+- « Mon compte » : le changement de mot de passe et la suppression du compte redemandent le mot de passe, et leurs échecs comptent avec ceux de la connexion ; l'export ne contient pas les jetons des liens clients.
 - **À faire, avec accord :** un cache partagé pour les limites (constat 5) et la double authentification pour `/admin/`.
 
 ## A08 — Intégrité des logiciels et des données
