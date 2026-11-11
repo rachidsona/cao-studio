@@ -4,11 +4,30 @@
  * de la barre du haut (même caché ou replié) et en reprend l'état (enfoncé, grisé) ; un clic droit la retire.
  * Une barre par mode (modèle, esquisse), et dans le modèle une par onglet du ruban (Conception 3D, Dressing, Cuisine :
  * use), retenue par le navigateur ; celles du Dressing et de la Cuisine commencent avec leurs outils de tous les jours. On la déplace où l'on veut par sa poignée ⠿, et on
- * la met à l'horizontale ou à la verticale (ui/movable.ts).
+ * la met à l'horizontale ou à la verticale (ui/movable.ts). Son « – » la cache : il n'en reste qu'une étoile ★, à sa
+ * place, qui la fait réapparaître ; cachée ou non, c'est retenu par le navigateur, pour toutes les barres.
  */
 import { makeMovable } from "./movable";
 
 const STORAGE = "cao.favorites.";
+const HIDDEN = `${STORAGE}hidden`;
+
+function readHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDDEN) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeHidden(hidden: boolean): void {
+  try {
+    if (hidden) localStorage.setItem(HIDDEN, "1");
+    else localStorage.removeItem(HIDDEN);
+  } catch {
+    // Not remembered: only this visit.
+  }
+}
 
 function read(name: string): string[] {
   try {
@@ -63,7 +82,30 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
   turn.className = "flex shrink-0 items-center justify-center text-[11px] leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
   const list = document.createElement("div");
   list.className = "flex items-center gap-0.5";
-  bar.append(grip, list, turn);
+  // « – » hides the bar; only its star stays, at its place, to bring it back.
+  const iconClass = "flex size-6 shrink-0 items-center justify-center text-sm leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
+  const hide = document.createElement("button");
+  hide.type = "button";
+  hide.className = iconClass;
+  hide.textContent = "–";
+  hide.title = "Cacher ma barre (l'étoile ★ la fait réapparaître)";
+  hide.setAttribute("aria-label", "Cacher ma barre");
+  const show = document.createElement("button");
+  show.type = "button";
+  show.className = `${iconClass} size-8 text-base text-amber-500 hover:text-amber-600`;
+  show.textContent = "★";
+  show.title = "Afficher ma barre (Mes outils)";
+  show.setAttribute("aria-label", "Afficher ma barre");
+  bar.append(grip, list, turn, hide, show);
+  const setHidden = (hidden: boolean) => {
+    bar.dataset.hidden = String(hidden);
+    for (const part of [grip, list, turn, hide]) part.style.display = hidden ? "none" : "";
+    show.style.display = hidden ? "" : "none";
+    writeHidden(hidden);
+  };
+  hide.addEventListener("click", () => setHidden(true));
+  show.addEventListener("click", () => setHidden(false));
+  setHidden(readHidden());
   host.append(bar);
   const movable = makeMovable(host, bar, grip, `${STORAGE}place.${first}`, (horizontal) => {
     bar.classList.toggle("flex-col", !horizontal);

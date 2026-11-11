@@ -1219,7 +1219,8 @@ opération existante.
   Sélection (`ui/favorites.ts`, `app/tab-panels.ts`).
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
-  poignée la remet en haut à gauche. Sa place et son sens sont retenus.
+  poignée la remet en haut à gauche. Sa place et son sens sont retenus. Son « – » la **cache** : il n'en reste
+  qu'une étoile ★ à sa place, qui la fait réapparaître (cachée ou non, retenu pour toutes les barres).
 - **Recherche du Navigateur** : le champ « Rechercher… » sous son titre garde seulement les corps, dossiers et esquisses
   dont le nom contient le texte tapé, sans tenir compte des accents ni des majuscules (un dossier trouvé par son nom
   garde tout ce qu'il contient ; Échap vide le champ). Le bouton à l'œil barré montre **seulement les éléments
