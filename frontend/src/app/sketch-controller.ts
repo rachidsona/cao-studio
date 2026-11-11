@@ -261,6 +261,7 @@ export class SketchController {
       apply: (sketchId, geometry, success, extrusion) => this.applyJoinery(sketchId, geometry, success, extrusion),
       applyFeatures: (features, success) => this.applyEquipment(features, success),
       applyDocument: (doc, success) => (this.host.change(doc), this.host.notify(success, "success")),
+      openStep: (sketch, step) => this.editOffset(sketch, step),
       notify: (message, kind) => this.host.notify(message, kind),
       closed: () => {
         this.joinery = null;

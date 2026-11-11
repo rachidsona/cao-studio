@@ -45,6 +45,8 @@ export interface PartitionHost {
   /** The tool ended. */
   closed(): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
+  /** What goes under the title (the walls of a dressing plan), drawn again by `redraw`; none: nothing. */
+  header?(redraw: () => void): HTMLElement | null;
   /** The sketch as a feature and what equips its niches, for the face of the panel (the 3D view only). */
   equipment?(): { sketch: SketchFeature; niches: readonly NicheFeature[] } | null;
 }
@@ -300,6 +302,7 @@ export class SketchPartitionTool {
     };
     const rows: (HTMLElement | null)[] = [
       el("h2", { class: "panel-title" }, this.editing ? `Modifier : ${this.editing.name}` : "Répartition"),
+      this.host.header?.(() => this.draw()) ?? null,
       info(
         this.editing
           ? `Les étagères posées dans ses niches (${this.divisions().length}) sont refaites avec elle ; chacune reste une étape de l'historique.`

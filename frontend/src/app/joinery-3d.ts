@@ -27,6 +27,7 @@ import { nicheUnderPointer } from "./dressing/niche-pick";
 import { NicheTool, type NicheFill } from "./dressing/niche-tool";
 import { joineryPlans, plansOf } from "./dressing/partition-plan";
 import { isolatedSketch } from "./zone-view";
+import { wallBar } from "./dressing/wall-bar";
 import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
 
@@ -47,6 +48,8 @@ export interface JoineryHost {
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** Stores a document made by a tool, as one undo step. */
   applyDocument(doc: CadDocument, success: string): void;
+  /** Opens a step of the history in its tool (the one open now ends). */
+  openStep(sketch: string, step: string): void;
   /** The tool ended. */
   closed(): void;
 }
@@ -219,6 +222,11 @@ export class Joinery3D implements PointerHandler {
       closed: () => this.close(),
       notify: (message: string, kind?: "info" | "success" | "error") => this.host.notify(message, kind),
       // The face of a Répartition shows what equips its niches (drawers, rods, doors).
+      // The walls of a dressing plan, as the runs of a kitchen: another one opened, the one changed seen alone.
+      header: (redraw: () => void) =>
+        this.sketchId
+          ? wallBar({ doc: () => this.host.doc(), change: (doc, success) => this.host.applyDocument(doc, success), notify: (m, k) => this.host.notify(m, k), open: (sketch, step) => this.host.openStep(sketch, step), redraw }, this.sketchId)
+          : null,
       equipment: () => {
         const doc = this.host.doc();
         const sketch = this.sketchId ? findFeature(doc, this.sketchId) : null;

@@ -739,6 +739,11 @@ opération existante.
     (Ctrl + Z) chacun ; après une annulation, le panneau reprend les valeurs du document. OK ferme l'outil sans
     ajouter d'étape quand tout est déjà enregistré ; Annuler ferme sans défaire ce qui l'est. Une **nouvelle**
     Répartition, elle, n'existe pas encore : ses panneaux s'affichent en volumes orange et OK la crée.
+  - **Les murs du dressing** (en haut du panneau, sous son titre, comme les linéaires de la cuisine) : pour une
+    Répartition faite sur un Plan de dressing, un bouton par zone du plan (« Mur A », « Mur B », les coins…), celle
+    qu'on règle marquée ; un clic ouvre la Répartition d'une autre zone — faite d'abord, en une étape, si elle ne
+    l'est pas encore. « Voir mur A isolé » la montre seule, de face, avec ses cotes (rien ne change dans le projet),
+    « Tout montrer » rend tout ; une autre zone ouverte pendant ce temps est celle qu'on voit seule.
   - **Le panneau et la 3D en même temps** : pendant qu'une Répartition déjà faite est ouverte dans son panneau, la
     vue 3D reste libre — sélectionner, tourner, tirer une étagère par sa poignée, supprimer un corps, ouvrir une
     porte — sans message qui l'empêche ; chaque changement fait dans la 3D (ou ailleurs) est relu aussitôt par le
