@@ -2,7 +2,7 @@
  * La liste des outils qu'ouvre le « + » d'une colonne de la barre à sept colonnes (ui/tool-columns.ts) : tous les
  * outils du ruban et de la colonne Sélection et vue, rangés par groupe, avec une recherche. Un clic ajoute l'outil à
  * la colonne, ou l'en retire s'il y est déjà (coché) ; la liste reste ouverte pour en choisir plusieurs. Échap, un clic
- * dehors ou « Fermer » la referment.
+ * dehors ou « Fermer » la referment. En haut, « Ligne » et « Espace » ajoutent un séparateur au bas de la colonne.
  */
 import { el } from "./dom";
 
@@ -19,6 +19,8 @@ export interface PickerOptions {
   tools: readonly Tool[];
   chosen: (key: string) => boolean;
   toggle: (key: string) => void;
+  /** Adds a separator at the end of the column: a line, or an empty place. */
+  separate: (kind: "line" | "space") => void;
 }
 
 let closeOpen: (() => void) | null = null;
@@ -28,6 +30,21 @@ export function iconOf(button: HTMLElement): Node | null {
   const icon = button.querySelector("svg")?.cloneNode(true) as SVGElement | undefined;
   icon?.setAttribute("aria-hidden", "true");
   return icon ?? null;
+}
+
+/** « Ligne » and « Espace »: a separator added at the end of the column (dragged next to where it goes). */
+function separators(options: PickerOptions): HTMLElement {
+  const add = (kind: "line" | "space", text: string, title: string) => {
+    const b = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 text-xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title, "data-add-separator": kind }, text);
+    b.addEventListener("click", () => options.separate(kind));
+    return b;
+  };
+  return el(
+    "div",
+    { class: "mb-1.5 flex gap-1.5", role: "group", "aria-label": "Séparateurs" },
+    add("line", "＋ Ligne", "Une ligne entre deux icônes, ajoutée au bas de la colonne : glissez-la à sa place"),
+    add("space", "＋ Espace vide", "Un espace vide de la taille d'une icône, ajouté au bas de la colonne : glissez-le à sa place"),
+  );
 }
 
 const normalized = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -41,6 +58,7 @@ export function openPicker(anchor: HTMLElement, options: PickerOptions): void {
     "div",
     { class: "ribbon-menu flex w-72 flex-col", role: "dialog", "aria-label": `Outils de la colonne ${options.column}`, "data-tool-picker": String(options.column - 1) },
     el("p", { class: "panel-title px-1 pb-1" }, `Colonne ${options.column} : choisir les outils`),
+    separators(options),
     input,
     list,
     el("div", { class: "ribbon-menu-footer" }, el("span", { class: "ribbon-menu-hint" }, "Clic : ajouter ou retirer"), close),

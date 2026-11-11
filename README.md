@@ -1249,7 +1249,10 @@ opération existante.
   l'état (enfoncé, grisé). On la **retire** en la glissant hors des colonnes (elle devient rouge) et en la lâchant
   ailleurs, ou par un clic droit ; Échap pendant le glisser l'annule. **L'ordre** des icônes se change en les glissant
   plus haut ou plus bas (un trait bleu montre où elle se pose), ou dans une autre colonne ; au clavier, **Alt + ↑ / ↓**
-  monte ou descend l'icône d'une place. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
+  monte ou descend l'icône d'une place. Pour **séparer** les icônes, le « + » a en haut **« ＋ Ligne »** (un trait fin
+  entre deux icônes) et **« ＋ Espace vide »** (une place vide de la taille d'une icône) : ajoutés au bas de la colonne,
+  ils se glissent à leur place, se déplacent, se retirent (clic droit, ou glissés dehors) et sont retenus comme une
+  icône (« sep:line:1 », « sep:space:2 »). La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
   reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord gauche de la vue, par-dessus,
   pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine : elles restent en place
   quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Cachées en

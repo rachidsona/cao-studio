@@ -206,6 +206,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez le « + » en bas d'une colonne : la liste de tous les outils s'ouvre, rangés par groupe. Tapez un nom pour le trouver, cliquez-le pour l'ajouter (cliqué à nouveau, il est retiré). Échap ou « Fermer » referme la liste.",
           "Cliquez une icône d'une colonne pour lancer l'outil, le même que dans le ruban. Pour la retirer, glissez-la hors des colonnes (elle devient rouge) et lâchez-la, ou faites un clic droit dessus.",
           "Pour changer l'ordre, glissez une icône plus haut ou plus bas : un trait bleu montre où elle se pose. Glissée dans une autre colonne, elle y passe. Au clavier, Alt + ↑ ou Alt + ↓ la monte ou la descend d'une place.",
+          "Pour séparer des icônes, cliquez dans la liste du « + » « ＋ Ligne » (un trait fin) ou « ＋ Espace vide » (une place vide de la taille d'une icône) : il s'ajoute au bas de la colonne ; glissez-le entre les icônes voulues. Un clic droit le retire.",
           "La flèche ‹ en haut d'une colonne la replie : elle disparaît et la vue reprend sa place. Un petit onglet numéroté (› 1, › 2…) reste en bas du bord gauche de la vue ; cliquez-le pour rouvrir la colonne.",
         ],
         tip: "Ce sont les mêmes colonnes en Conception 3D, en Dressing et en Cuisine : elles restent en place quand vous changez d'onglet. Vos choix et les colonnes repliées sont retenus. Les colonnes sont cachées pendant une esquisse, pendant le rendu et sur un écran étroit.",

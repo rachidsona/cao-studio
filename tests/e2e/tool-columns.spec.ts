@@ -69,6 +69,28 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   await expect(column(5).locator("[data-tool-column-tool]")).toHaveCount(0);
   await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "data-action:fronts"]);
 
+  // Separators from the « + »: a line and an empty place as big as an icon, at the end; the line dragged between the two
+  // icons; the empty place taken out by a right-click. They stay after a reload.
+  await column(0).locator("[data-tool-column-add]").click();
+  const picker = page.getByRole("dialog", { name: "Outils de la colonne 1" });
+  await picker.locator('[data-add-separator="line"]').click();
+  await picker.locator('[data-add-separator="space"]').click();
+  await page.keyboard.press("Escape");
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "data-action:fronts", "sep:line:1", "sep:space:2"]);
+  const line = column(0).locator('[data-separator="line"]');
+  const space = column(0).locator('[data-separator="space"]');
+  const icon = (await plan.boundingBox())!;
+  expect(Math.abs((await space.boundingBox())!.height - icon.height)).toBeLessThan(2);
+  expect((await line.boundingBox())!.height).toBeLessThan(icon.height / 2);
+  await line.dragTo(fronts, { targetPosition: { x: 18, y: 4 } });
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts", "sep:space:2"]);
+  await shot(page, "colonnes-separateurs");
+  await space.click({ button: "right" });
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts"]);
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts"]);
+
   // Its icon runs the tool itself and shows its state.
   const grid = page.locator('[data-tool-column-tool="data-grid-toggle:"]');
   await expect(grid).toHaveAttribute("aria-pressed", "true");
@@ -91,7 +113,7 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   await expect(tab(3)).toBeVisible();
   await expect(column(3)).toHaveCount(0);
-  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "data-action:fronts"]);
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts"]);
 
   // The same columns in the other spaces, and their tools run there too.
   for (const space of ["dressing", "kitchen"]) {

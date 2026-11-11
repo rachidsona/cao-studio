@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COLUMN_COUNT, moveTool, normalize, readColumns, toggleFold, toggleTool } from "../../frontend/src/ui/tool-columns-store";
+import { addSeparator, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, separatorKind, toggleFold, toggleTool } from "../../frontend/src/ui/tool-columns-store";
 
 const known = (key: string) => key !== "data-action:gone";
 
@@ -41,5 +41,21 @@ describe("barre à sept colonnes : ce qui est retenu", () => {
     expect(across.columns[1]).toEqual(["c"]);
     expect(moveTool(state, 0, "b", 1, 0).columns[1]).toEqual(["b", "c"]);
     expect(moveTool(state, 1, "zz", 0, 0)).toBe(state);
+  });
+
+  it("ajoute des lignes et des espaces vides, chacun le sien, qui se déplacent, se gardent et se retirent comme un outil", () => {
+    let state = toggleTool(normalize({}, known), 0, "data-action:move");
+    state = addSeparator(state, 0, "line");
+    state = addSeparator(state, 0, "space");
+    state = addSeparator(state, 3, "line");
+    expect(state.columns[0]).toEqual(["data-action:move", "sep:line:1", "sep:space:2"]);
+    expect(state.columns[3]).toEqual(["sep:line:3"]);
+    expect([separatorKind("sep:line:1"), separatorKind("sep:space:2"), separatorKind("data-action:move")]).toEqual(["line", "space", null]);
+    expect(isSeparator("sep:mur:1")).toBe(false);
+    // Moved before the tool, kept as they are (an unknown tool dropped), then taken out.
+    state = moveTool(state, 0, "sep:space:2", 0, 0);
+    expect(state.columns[0]).toEqual(["sep:space:2", "data-action:move", "sep:line:1"]);
+    expect(normalize(JSON.parse(JSON.stringify({ ...state, columns: [[...state.columns[0]!, "data-action:gone"]] })), known).columns[0]).toEqual(state.columns[0]);
+    expect(toggleTool(state, 0, "sep:line:1").columns[0]).toEqual(["sep:space:2", "data-action:move"]);
   });
 });

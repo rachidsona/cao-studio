@@ -1,7 +1,8 @@
 /**
  * Ce que retient la barre à sept colonnes (ui/tool-columns.ts) : les outils de chaque colonne, dans leur ordre, et les
  * colonnes repliées, gardés dans ce navigateur. Les colonnes sont vides au départ, et ce sont les mêmes dans les trois
- * espaces (Conception 3D, Dressing, Cuisine) : elles restent en place quand on change d'onglet.
+ * espaces (Conception 3D, Dressing, Cuisine) : elles restent en place quand on change d'onglet. Entre les icônes, des
+ * séparateurs : une ligne, ou un espace vide de la taille d'une icône (« sep:line:3 », « sep:space:4 »), chacun le sien.
  */
 
 export const COLUMN_COUNT = 7;
@@ -22,7 +23,7 @@ export function normalize(raw: unknown, known: (key: string) => boolean): Column
   return {
     columns: Array.from({ length: COLUMN_COUNT }, (_, i) => {
       const keys = Array.isArray(columns[i]) ? (columns[i] as unknown[]) : [];
-      return [...new Set(keys.filter((k): k is string => typeof k === "string" && known(k)))];
+      return [...new Set(keys.filter((k): k is string => typeof k === "string" && (known(k) || isSeparator(k))))];
     }),
     folded: Array.from({ length: COLUMN_COUNT }, (_, i) => folded[i] === true),
   };
@@ -55,6 +56,24 @@ export function writeColumns(state: ColumnsState): void {
 export function toggleTool(state: ColumnsState, column: number, key: string): ColumnsState {
   const columns = state.columns.map((keys, i) => (i !== column ? keys : keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
   return { ...state, columns };
+}
+
+/** A separator between the icons: a line, or an empty place as big as an icon. */
+export type SeparatorKind = "line" | "space";
+
+export function isSeparator(key: string): boolean {
+  return /^sep:(line|space):\d+$/.test(key);
+}
+
+export function separatorKind(key: string): SeparatorKind | null {
+  return isSeparator(key) ? (key.split(":")[1] as SeparatorKind) : null;
+}
+
+/** Adds a line or an empty place at the end of the column, with a number no other separator has. */
+export function addSeparator(state: ColumnsState, column: number, kind: SeparatorKind): ColumnsState {
+  const used = state.columns.flat().filter(isSeparator).map((k) => Number(k.split(":")[2]));
+  const key = `sep:${kind}:${Math.max(0, ...used) + 1}`;
+  return { ...state, columns: state.columns.map((keys, i) => (i === column ? [...keys, key] : keys)) };
 }
 
 export function toggleFold(state: ColumnsState, column: number): ColumnsState {
