@@ -198,6 +198,9 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   **nom de l'atelier** (son profil, `/catalogue/`), jamais du nom de connexion, même les réponses écrites avant. Le
   serveur vérifie aussi les **variantes** d'un projet enregistré (`apps/projects/validation.py`) comme l'éditeur :
   6 au plus, une image en data URL seulement (jamais une adresse ailleurs), un document valide sans autres variantes.
+  Le **noyau 3D a un délai** (`frontend/src/geometry/client.ts`, `TIME_LIMITS`) : un recalcul de plus de 90 s, un
+  export de plus de 180 s, une autre demande de plus de 30 s (comptés une fois le noyau chargé) arrêtent le worker,
+  qui redémarre ; un message propose d'annuler la dernière modification.
   Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,

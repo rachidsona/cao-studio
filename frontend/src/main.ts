@@ -112,6 +112,15 @@ async function start(): Promise<void> {
   kernelStatus.textContent = "Chargement du noyau…";
   loading.show("Démarrage du noyau 3D…", 0.05);
   geometry.onProgress = (loaded, total) => loading.download(loaded, total);
+  // A computation stopped after its time limit: the next one starts a new kernel (geometry/client.ts, TIME_LIMITS).
+  geometry.onRestart = () => {
+    kernelStatus.textContent = "Redémarrage du noyau…";
+    kernelStatus.dataset.state = "";
+    void geometry.init().then(() => {
+      kernelStatus.textContent = "Noyau OpenCascade prêt";
+      kernelStatus.dataset.state = "ready";
+    }).catch(() => undefined);
+  };
   const [snapshot, catalog] = await Promise.all([
     loadProject(config.apiUrl),
     // The workshop's catalogue: its materials and hardware join the built-in ones, its profile heads the documents.

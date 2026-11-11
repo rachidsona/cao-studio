@@ -404,7 +404,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez « ↶ » ou appuyez sur ⌘Z (Ctrl+Z) pour annuler.",
           "Cliquez « ↷ » ou appuyez sur ⇧⌘Z (Ctrl+Y) pour rétablir.",
         ],
-        tip: "Les boutons sont grisés quand il n'y a rien à annuler. Un outil entier (Symétrie, Réseau, un import…) ne compte que pour une étape.",
+        tip: "Les boutons sont grisés quand il n'y a rien à annuler. Un outil entier (Symétrie, Réseau, un import…) ne compte que pour une étape. Un recalcul de plus de 90 secondes est arrêté et le noyau 3D redémarre : annulez alors la dernière modification si elle en est la cause.",
       },
       {
         keys: ["data-action:save"], name: "Enregistrer",

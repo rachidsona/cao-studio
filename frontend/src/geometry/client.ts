@@ -5,17 +5,32 @@ import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, ExportResponse, P3, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
 
-type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
+type Pending = { type: WorkerRequest["type"]; resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> };
+
+/**
+ * How long one request may compute, in seconds, from when the kernel begins it (audit of 10/11/2026, L6). OpenCascade
+ * cannot be interrupted: past this, the worker is stopped and a new one started, so that a document which never ends
+ * (a huge pattern, a boolean that loops) does not freeze the editor for good. Far above a real project's times.
+ */
+export const TIME_LIMITS: Partial<Record<WorkerRequest["type"], number>> & { other: number } = { init: 0, recompute: 90, export: 180, other: 30 };
+
+const limitOf = (type: WorkerRequest["type"]) => TIME_LIMITS[type] ?? TIME_LIMITS.other;
 
 export class GeometryClient {
-  private worker: Worker;
+  private worker!: Worker;
   private nextId = 1;
   private pending = new Map<number, Pending>();
   /** Download of the kernel (bytes), while it starts. */
   onProgress: (loaded: number, total: number) => void = () => {};
+  /** The worker was stopped after a too long computation, and a new one started (its kernel loads on next use). */
+  onRestart: (message: string) => void = () => {};
 
-  constructor() {
-    this.worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+  constructor(private readonly makeWorker: () => Worker = () => new Worker(new URL("./worker.ts", import.meta.url), { type: "module" })) {
+    this.start();
+  }
+
+  private start(): void {
+    this.worker = this.makeWorker();
     this.worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
       const message = event.data;
       if ("progress" in message) {
@@ -24,21 +39,40 @@ export class GeometryClient {
       }
       const entry = this.pending.get(message.id);
       if (!entry) return;
+      if ("started" in message) {
+        const seconds = limitOf(entry.type);
+        if (seconds > 0) entry.timer = setTimeout(() => this.restart(message.id, seconds), seconds * 1000);
+        return;
+      }
       this.pending.delete(message.id);
+      clearTimeout(entry.timer);
       if (message.ok) entry.resolve(message.result);
       else entry.reject(new Error(message.error));
     };
-    this.worker.onerror = (event) => {
-      const error = new Error(`Le worker géométrique a échoué : ${event.message}`);
-      for (const entry of this.pending.values()) entry.reject(error);
-      this.pending.clear();
-    };
+    this.worker.onerror = (event) => this.failAll(new Error(`Le worker géométrique a échoué : ${event.message}`));
+  }
+
+  private failAll(error: Error, first?: { id: number; error: Error }): void {
+    for (const [id, entry] of this.pending) {
+      clearTimeout(entry.timer);
+      entry.reject(id === first?.id ? first.error : error);
+    }
+    this.pending.clear();
+  }
+
+  /** The request `id` computes for too long: the worker is stopped, every waiting request fails, a new one starts. */
+  private restart(id: number, seconds: number): void {
+    this.worker.terminate();
+    const message = `Le calcul a duré plus de ${seconds} s : il est arrêté et le noyau 3D redémarre. Si la dernière modification en est la cause, annulez-la (Ctrl+Z).`;
+    this.failAll(new Error("Le noyau 3D a redémarré : relancez l'opération."), { id, error: new Error(message) });
+    this.start();
+    this.onRestart(message);
   }
 
   private call<T>(request: WorkerRequest): Promise<T> {
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+      this.pending.set(id, { type: request.type, resolve: resolve as (value: unknown) => void, reject });
       this.worker.postMessage({ ...request, id } satisfies WorkerEnvelope);
     });
   }

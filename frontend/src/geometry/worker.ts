@@ -173,6 +173,8 @@ function faceInfo(bodyId: string, faceIndex: number): FaceInfo {
 
 async function handle(request: WorkerEnvelope): Promise<{ result: unknown; transfer: Transferable[] }> {
   await ensureKernel(request.id);
+  // The download and start of the kernel do not count in the request's time limit.
+  scope.postMessage({ id: request.id, started: true });
   switch (request.type) {
     case "init":
       return { result: true, transfer: [] };

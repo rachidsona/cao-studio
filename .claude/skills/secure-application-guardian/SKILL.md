@@ -194,7 +194,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L3 | DXF : bombe ELLIPSE, NaN | Corrigé (lot 1) : 20 Mo, un tour, 200 000 traits, valeurs finies |
 | L4 | GLB public qui charge ailleurs | Corrigé (lot 1) : `apps/projects/glb.py` + `setURLModifier` |
 | L5 | Entiers géants | Corrigé (lot 1) : 10^15 au plus |
-| L6 | Worker sans délai | Ouvert : accord requis |
+| L6 | Worker sans délai | Corrigé : délais et redémarrage du worker (`geometry/client.ts`, `TIME_LIMITS`), `tests/frontend/geometry-time-limit.test.ts` |
 | L7 | Nom de connexion sur les pages client | Corrigé : réponses signées du nom de l'atelier (`sharing.py`, `_workshop_name`), `test_sharing.py::test_the_client_sees_the_workshops_name_never_the_owners_login` |
 | L8 | Événements de sécurité non journalisés | Corrigé : logger `django.security` en production, connexions refusées dans `apps.security` (`apps/accounts/signals.py`) |
 | L9 | Erreurs 500 sur entrées invalides | Corrigé (lot 1) |

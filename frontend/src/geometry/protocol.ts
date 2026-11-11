@@ -100,6 +100,8 @@ export type WorkerResponse =
   | { id: number; ok: true; result: unknown }
   | { id: number; ok: false; error: string }
   /** Download of the kernel, while "init" runs (bytes). */
-  | { id: number; progress: { loaded: number; total: number } };
+  | { id: number; progress: { loaded: number; total: number } }
+  /** The kernel is ready and this request begins: its time limit starts now (client.ts, TIME_LIMITS). */
+  | { id: number; started: true };
 
 export type WorkerEnvelope = WorkerRequest & { id: number };
