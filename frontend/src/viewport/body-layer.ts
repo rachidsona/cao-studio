@@ -81,6 +81,12 @@ export class BodyLayer {
   private xray = false;
   /** Joint lines between flush pieces left out (Curic Hidden). */
   private jointsHidden = false;
+  /**
+   * The bodies drawn a hair behind where they are (the walls of the room): a back panel or a unit against a wall lies
+   * in its very plane, and the two would show in patches, one through the other. Their materials, pushed back.
+   */
+  private behind = new Set<string>();
+  private behindMaterials = new Map<THREE.Material, THREE.Material>();
 
   /** `environment`: what the appearances reflect (a studio), so metals and lacquers look like them. */
   constructor(
@@ -99,7 +105,7 @@ export class BodyLayer {
 
   /** Every material of the bodies (the section of the view and the sketch mode change them all). */
   materials(): THREE.Material[] {
-    return [...this.tints, ...this.appearanceMaterials.values(), this.highlightMaterial, this.edgeMaterial];
+    return [...this.tints, ...this.appearanceMaterials.values(), ...this.behindMaterials.values(), this.highlightMaterial, this.edgeMaterial];
   }
 
   /** Replaces the bodies drawn by these meshes. */
@@ -219,11 +225,34 @@ export class BodyLayer {
     this.applyAppearance();
   }
 
+  /** The walls of the room, drawn behind what stands against them in their plane (app/wall-cutaway.ts). */
+  setBehind(ids: ReadonlySet<string>): void {
+    if (ids.size === this.behind.size && [...ids].every((id) => this.behind.has(id))) return;
+    this.behind = new Set(ids);
+    this.applyAppearance();
+  }
+
+  /** A material pushed back in depth: what lies in the same plane in front of it wins, whatever the angle. */
+  private pushedBack(material: THREE.Material): THREE.Material {
+    let back = this.behindMaterials.get(material);
+    if (!back) {
+      back = material.clone();
+      back.polygonOffset = true;
+      back.polygonOffsetFactor = 4;
+      back.polygonOffsetUnits = 8;
+      // The section of the view cuts it as the others.
+      back.clippingPlanes = material.clippingPlanes;
+      this.behindMaterials.set(material, back);
+    }
+    return back;
+  }
+
   private applyAppearance(): void {
     for (const [id, body] of this.bodies) {
       const look = this.appearance?.(id);
+      const own = (m: THREE.Material) => (this.behind.has(id) ? this.pushedBack(m) : m);
       // Materials: the body's, the selection's, then one per motif of its faces (mesh.userData.faceMaterials).
-      const materials: THREE.Material[] = [look ? this.appearanceMaterial(look) : body.tint, this.highlightMaterial];
+      const materials: THREE.Material[] = [own(look ? this.appearanceMaterial(look) : body.tint), this.highlightMaterial];
       const perFace = body.data.faceGroups.map(() => 0);
       const ownFaces: { face: number; look: BodyAppearance }[] = [];
       const faces = this.faceAppearance?.(id) ?? [];
@@ -233,7 +262,7 @@ export class BodyLayer {
         for (const f of faces) {
           const face = matchFace(marks, f.mark);
           if (face < 0) continue;
-          const material = this.appearanceMaterial(f.look);
+          const material = own(this.appearanceMaterial(f.look));
           const k = materials.indexOf(material);
           perFace[face] = k >= 0 ? k : materials.push(material) - 1;
           ownFaces.push({ face, look: f.look });

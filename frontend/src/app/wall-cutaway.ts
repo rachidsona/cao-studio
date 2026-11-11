@@ -59,6 +59,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     const doc = editor.doc;
     walls = new Map();
     furniture = [];
+    const room = new Set<string>();
     const boxes = new Map<string, BodyMesh["metrics"]["bbox"]>();
     let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
     let [w0, v0, w1, v1] = [Infinity, Infinity, -Infinity, -Infinity];
@@ -70,6 +71,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
       // The walls of the room: of a surveyed room, or drawn by a plan (its other room bodies too, slabs or not).
       const wall = (findFeature(doc, featureOfBody(bodyOrigin(doc, id)))?.type === "room" || bodyFamily(doc, id) === "room") && !light;
       if (wall) {
+        room.add(id);
         if (!slabs.has(mesh)) slabs.set(mesh, slabOf(mesh.vertices, mesh.indices));
         const slab = slabs.get(mesh);
         if (slab) walls.set(id, slab);
@@ -124,6 +126,8 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     // What is worth looking at: the furniture one knows the back of (units, caissons, what goes with them); else all.
     const known = furniture.filter((body) => facing.has(body));
     counts = known.length ? known : furniture;
+    // A back panel or a unit against a wall lies in its plane: the wall drawn behind, not in patches through it.
+    viewport.setBehind(room);
     if (canvas) canvas.dataset.walls = String(walls.size);
     last = "";
   };

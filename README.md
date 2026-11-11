@@ -127,6 +127,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
     travers de la vue s'efface ; une cuisine sur un seul mur garde ses meubles (on voit leur dos).
   - Les cadres du contrôle en direct des pièces masquées s'effacent aussi. La vue seulement ; retenu par le navigateur
     (`viewport/wall-cutaway.ts`, `app/wall-cutaway.ts`).
+- **Un fond contre un mur ne le traverse plus par plaques** : un panneau de fond, un caisson ou un meuble posé contre
+  un mur de la pièce est dans son plan même, et la carte graphique, ne sachant lequel dessiner devant, les mêlait par
+  taches (le blanc du mur dans le beige du fond). Les murs de la pièce sont dessinés un rien en retrait (`setBehind`,
+  `viewport/body-layer.ts`) : ce qui est contre eux se voit entier. La vue seulement ; le document n'en change pas.
 - **Contrôle d'implantation** (dans le Contrôle avant fabrication, et dans le panneau Implantation de cuisine avant
   l'OK) : meuble ou appareil qui sort de la pièce relevée, plaque sans plan de travail, hotte au-dessus d'aucune
   plaque, trop basse (moins de 60 cm) ou trop haute (plus de 80 cm ; 65 à 75 conseillés), plaque à moins de 60 cm de
