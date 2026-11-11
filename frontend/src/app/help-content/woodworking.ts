@@ -372,12 +372,12 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:tiroirs"],
         name: "Tiroirs",
-        what: "Remplit une ou plusieurs niches de 1 à 8 tiroirs encastrés, chacun avec sa façade et son caisson sur coulisses.",
+        what: "Remplit une ou plusieurs niches de 1 à 8 tiroirs, chacun avec sa façade (encastrée ou en applique) et son caisson sur coulisses.",
         steps: [
           "Cliquez « Tiroirs », puis une niche de la Répartition ; cliquez-en plusieurs pour y mettre la même série.",
-          "Choisissez le nombre de « Tiroirs ».",
+          "Choisissez le nombre de « Tiroirs », et la pose des « Façades » : « Encastrée (dans la niche) », au nu des panneaux, ou « En applique (devant) », sur la moitié des panneaux autour de la niche.",
           "Réglez « Jeu en haut », « Jeu entre façades », « Jeu en bas », « Jeu de côté » et l'« Épaisseur façades », et cochez « Trous de poignée (entraxe 128) ».",
-          "Lisez la ligne du panneau (hauteur des façades, longueur des coulisses) : c'est enregistré aussitôt.",
+          "Lisez la ligne du panneau (hauteur des façades, longueur des coulisses), puis cliquez « OK ». « Terminer » ferme l'outil.",
         ],
         tip: "Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère. Les pièces vont au débit, coulisses et poignées au devis. Les tiroirs suivent leur niche.",
       },

@@ -908,6 +908,12 @@ opération existante.
     longueur du commerce qui tient dans la profondeur (350 mm pour 40 cm de profondeur), et ses **trous de poignée**
     (entraxe 128 mm) si on le demande. Coulisses et poignées vont au devis, les pièces au débit. Pour des tiroirs sous
     une penderie, on divise d'abord la niche par une étagère.
+  - **Pose des façades** (liste « Façades » des Tiroirs, « Pose » de la Porte sur niches) : **encastrée** (dans la
+    niche, au nu des panneaux) ou **en applique** (devant les panneaux, sur la moitié de ceux autour de la niche — le
+    panneau entier au bord du meuble —, comme une porte de case). Des tiroirs encastrés d'office, en applique au choix :
+    leurs jeux de bord (haut, bas, côtés) sont alors partagés avec la façade voisine (la moitié de chaque côté), et
+    leurs caissons restent dans la niche. Une porte sur niches en applique d'office, encastrée au choix : un jeu tout
+    autour dans ses niches (`NicheFeature.mount`, `drawerFronts` et `doorBox` dans `features/niche-parts.ts`).
   - Chaque niche équipée est une opération de l'historique (« **Penderie 1** », « **Tiroirs 1** »), dont les pièces
     sont des corps (« Penderie 1 — Tringle », « Tiroirs 1 — Façade tiroir 1 »…). Elle **suit sa niche** : changer la
     répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le

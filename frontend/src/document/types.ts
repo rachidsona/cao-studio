@@ -716,6 +716,11 @@ export interface NicheFeature extends FeatureBase {
   frameDepth?: number;
   /** Back: one panel for the whole cabinet, or one per case. */
   split?: "whole" | "cases";
+  /**
+   * Door over niches and drawers: « overlay », in front of the panels (out to the middle of those around, as a case's
+   * door), or « inset », in the niche, its face flush with the panels'. Missing: a door overlaid, drawers inset.
+   */
+  mount?: "overlay" | "inset";
   thickness: number;
   handles: boolean;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */

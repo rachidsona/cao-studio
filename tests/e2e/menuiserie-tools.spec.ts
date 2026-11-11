@@ -586,6 +586,11 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   await expect(tool).toContainText("2 niches choisies");
   await expect(tool).toContainText(/Porte de .* sur 2 niches/);
   await tool.getByRole("combobox", { name: "Charnières" }).selectOption("right");
+  // Inset, it fits in the niches: smaller than over the panels around them.
+  const size = tool.getByText(/Porte de .* sur 2 niches/);
+  const over = await size.textContent();
+  await tool.getByRole("combobox", { name: "Pose" }).selectOption("inset");
+  await expect(size).not.toHaveText(over!);
   await tool.getByRole("button", { name: "OK", exact: true }).click();
   await expect(page.getByText("Porte posée sur 2 niches.")).toBeVisible();
   await tool.getByRole("button", { name: "Terminer" }).click();

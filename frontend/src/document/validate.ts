@@ -272,6 +272,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.style !== undefined && feature.style !== "flat" && feature.style !== "frame") errors.push(`${where} : style de porte inconnu.`);
       for (const key of ["frameWidth", "frameDepth"]) if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : « ${key} » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
+      if (feature.mount !== undefined && feature.mount !== "overlay" && feature.mount !== "inset") errors.push(`${where} : pose des façades inconnue.`);
       for (const key of ["sideGap", "betweenGap", "bottomGap"]) if (feature[key] !== undefined && !isFiniteNumber(feature[key])) errors.push(`${where} : « ${key} » doit être un nombre fini.`);
       if (typeof feature.handles !== "boolean") errors.push(`${where} : réglage des poignées invalide.`);
       break;

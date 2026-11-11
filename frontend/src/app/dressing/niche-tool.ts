@@ -39,8 +39,8 @@ const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
-  door: { title: "Porte sur niches", one: "porte", help: "Une porte en applique sur les niches choisies, voisines et formant un rectangle : elle couvre la moitié des panneaux autour, le panneau entier au bord du meuble, comme la porte d'une case." },
-  drawers: { title: "Tiroirs", one: "tiroirs", help: "Façades encastrées dans la niche, chacune avec son caisson sur coulisses ; pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère." },
+  door: { title: "Porte sur niches", one: "porte", help: "Une porte sur les niches choisies, voisines et formant un rectangle. En applique, elle couvre la moitié des panneaux autour (le panneau entier au bord du meuble), comme la porte d'une case ; encastrée, elle est dans les niches, au nu des panneaux, un jeu tout autour." },
+  drawers: { title: "Tiroirs", one: "tiroirs", help: "Façades encastrées dans la niche (au nu des panneaux), ou en applique devant eux (elles couvrent la moitié des panneaux autour) ; chacune avec son caisson sur coulisses. Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère." },
 };
 
 const FIELD =
@@ -141,7 +141,7 @@ export class NicheTool {
       return [{ niche: first, geometry, problem: nicheProblem({ fill: "door", ...this.settings }, geometry) }];
     }
     return this.niches.map((niche) => {
-      const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path }, sketch);
+      const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path, fill: this.fill, mount: this.settings.mount }, sketch);
       if (typeof geometry === "string") return { niche, geometry: null, problem: geometry };
       return { niche, geometry, problem: nicheProblem({ fill: this.fill, ...this.settings }, geometry) };
     });
@@ -207,6 +207,10 @@ export class NicheTool {
     count.addEventListener("change", () => ((this.settings.drawers = Number(count.value)), this.recompute()));
     const handles = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: this.settings.handles });
     handles.addEventListener("change", () => ((this.settings.handles = handles.checked), this.recompute()));
+    // Door and drawer fronts: in front of the panels, or in the niche. Each its own default when none is chosen.
+    const mounted = this.settings.mount ?? (this.fill === "door" ? "overlay" : "inset");
+    const mount = el("select", { class: FIELD, "aria-label": "Pose" }, el("option", { value: "overlay", selected: mounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: mounted === "inset" }, "Encastrée (dans la niche)"));
+    mount.addEventListener("change", () => ((this.settings.mount = mount.value as "overlay" | "inset"), this.recompute()));
     const hinge = el("select", { class: FIELD, "aria-label": "Charnières" }, el("option", { value: "left", selected: this.settings.hinges?.[0] !== "right" }, "À gauche"), el("option", { value: "right", selected: this.settings.hinges?.[0] === "right" }, "À droite"));
     hinge.addEventListener("change", () => ((this.settings.hinges = [hinge.value as "left" | "right"]), this.recompute()));
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
@@ -251,6 +255,7 @@ export class NicheTool {
       el("label", { class: ROW }, "Équipement", kind),
       ...(this.fill === "door"
         ? [
+            el("label", { class: ROW }, "Pose", mount),
             number("Jeu", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
             number("Épaisseur porte", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
             el("label", { class: ROW }, "Charnières", hinge),
@@ -260,6 +265,7 @@ export class NicheTool {
         ? [number("Diamètre", this.settings.diameter, (v) => ((this.settings.diameter = v), this.recompute())), number("Axe sous le haut", this.settings.drop, (v) => ((this.settings.drop = v), this.recompute()))]
         : [
             el("label", { class: ROW }, "Tiroirs", count),
+            el("label", { class: ROW }, "Façades", mount),
             number("Jeu en haut", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
             this.settings.drawers > 1 ? number("Jeu entre façades", this.settings.betweenGap ?? this.settings.gap, (v) => ((this.settings.betweenGap = v), this.recompute()), true) : null,
             number("Jeu en bas", this.settings.bottomGap ?? this.settings.gap, (v) => ((this.settings.bottomGap = v), this.recompute()), true),
