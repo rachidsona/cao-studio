@@ -3,7 +3,9 @@
  * derrière lui) n'est plus dessiné et un clic le traverse ; il revient dès qu'on repasse devant. Les meubles de ce
  * mur — ceux qui lui tournent le dos (document/furniture-facing.ts), entiers, et eux seuls : ceux des autres murs
  * restent, même dans l'angle — s'effacent avec lui, le mur le plus en travers d'abord, jamais au point de ne plus
- * rien laisser à regarder (une cuisine sur un seul mur, ou en L vue de derrière son angle). Deux cases du menu « Affichage » le règlent (activées d'office, retenues par le navigateur). La vue
+ * rien laisser à regarder (une cuisine sur un seul mur, ou en L vue de derrière son angle). Un mur de dressing (la
+ * Répartition d'une zone) fait de même sans mur de pièce : l'œil passé derrière son dos, il s'efface, entier, jamais
+ * tout le dressing (viewport/wall-cutaway.ts, piecesInTheWay). Deux cases du menu « Affichage » le règlent (activées d'office, retenues par le navigateur). La vue
  * seulement : le document n'en change pas.
  */
 import { bodyFamily } from "../document/display-families";
@@ -13,7 +15,7 @@ import { bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, type Vec3 } from "../document/types";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Viewport } from "../viewport/viewport";
-import { furnitureOut, pieceOf, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
+import { furnitureOut, pieceOf, piecesInTheWay, piecesOut, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
 import type { Editor } from "./editor";
 import { isolating } from "./zone-view";
 
@@ -48,6 +50,9 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
   let furniture: string[] = [];
   let counts: string[] = [];
   let drawn = new Map<string, string[]>();
+  /** The walls of a dressing standing on their own: each Répartition's box and back, and its bodies. */
+  let dressing = new Map<string, { box: [Vec3, Vec3]; back: [number, number] }>();
+  let dressingBodies = new Map<string, string[]>();
   let inside: [number, number] = [0, 0];
   let last = "";
   const read = () => {
@@ -106,6 +111,16 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
       const sketch = (feature?.type === "extrude" || feature?.type === "niche") && feature.sketch;
       if (sketch) drawn.set(sketch, [...(drawn.get(sketch) ?? []), body]);
     }
+    // The Répartitions (a dressing's walls): each one a piece, its back known, with the bodies made on it.
+    dressing = new Map();
+    dressingBodies = new Map();
+    for (const [body, f] of facing) {
+      if (findFeature(doc, f.group)?.type !== "sketch") continue;
+      const box = pieces.get(f.group);
+      if (!box) continue;
+      dressing.set(f.group, { box, back: f.back });
+      dressingBodies.set(f.group, [...(dressingBodies.get(f.group) ?? []), body]);
+    }
     // What is worth looking at: the furniture one knows the back of (units, caissons, what goes with them); else all.
     const known = furniture.filter((body) => facing.has(body));
     counts = known.length ? known : furniture;
@@ -122,12 +137,16 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     const cut = wallsBehind(walls, inside, eye);
     // Their furniture shows its back only: out too, the most in the way first, never all there is to look at.
     const hidden = withFurniture ? furnitureOut(cut, against, counts) : new Set<string>();
+    // A dressing's walls seen from behind, with or without the walls of a room: out too, never the whole dressing.
+    const pieces = withFurniture ? piecesOut(piecesInTheWay(dressing, eye), dressingBodies, counts, hidden) : new Set<string>();
+    for (const id of pieces) hidden.add(id);
     viewport.setCutaway(new Set([...cut, ...hidden]));
     viewport.setSketchCutaway(new Set([...drawn].filter(([, bodies]) => bodies.every((id) => hidden.has(id))).map(([sketch]) => sketch)));
     // How many are out of the view, on the view itself (for the tests).
     if (canvas) {
       canvas.dataset.wallsCut = String(cut.size);
       canvas.dataset.furnitureCut = String(hidden.size);
+      canvas.dataset.piecesCut = String(pieces.size);
     }
   };
   viewport.onEachFrame(update);
@@ -143,7 +162,7 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     if (on && !isolating()) return update();
     viewport.setCutaway(new Set());
     viewport.setSketchCutaway(new Set());
-    if (canvas) canvas.dataset.wallsCut = canvas.dataset.furnitureCut = "0";
+    if (canvas) canvas.dataset.wallsCut = canvas.dataset.furnitureCut = canvas.dataset.piecesCut = "0";
   };
   box?.addEventListener("change", () => {
     on = box.checked;

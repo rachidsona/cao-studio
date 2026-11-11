@@ -151,3 +151,32 @@ export function furnitureOut(cut: Iterable<string>, of: ReadonlyMap<string, read
   }
   return out;
 }
+
+/**
+ * The walls of a dressing (each zone's Répartition, standing on its own, no wall of a room needed) in the way: those
+ * the eye has gone behind — past the back of the piece, seen from above (`back`: where it turns it, unit) — the one it
+ * is furthest behind first. A dressing seen from behind a wall: that wall shows only its back and hides the others.
+ */
+export function piecesInTheWay(pieces: ReadonlyMap<string, { box: [Vec3, Vec3]; back: [number, number] }>, eye: Vec3): string[] {
+  const behind = [...pieces].map(([key, { box: [lo, hi], back }]) => {
+    // Its back face: the furthest of its corners towards its back.
+    const face = Math.max(...[lo[0], hi[0]].flatMap((x) => [lo[1], hi[1]].map((y) => x * back[0] + y * back[1])));
+    return [key, eye[0] * back[0] + eye[1] * back[1] - face] as const;
+  });
+  return behind.filter(([, d]) => d > 0).sort((a, b) => b[1] - a[1]).map(([key]) => key);
+}
+
+/**
+ * What goes with them: piece after piece (`ways`, the one most in the way first; `of`: each piece's bodies), on top of
+ * what is already out, as long as some of what `counts` is left in view — never the whole dressing.
+ */
+export function piecesOut(ways: Iterable<string>, of: ReadonlyMap<string, readonly string[]>, counts: readonly string[], already: ReadonlySet<string> = new Set()): Set<string> {
+  const out = new Set<string>();
+  for (const key of ways) {
+    const own = of.get(key) ?? [];
+    if (!own.length) continue;
+    const gone = new Set([...already, ...out, ...own]);
+    if (counts.some((id) => !gone.has(id))) for (const id of own) out.add(id);
+  }
+  return out;
+}

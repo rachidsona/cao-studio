@@ -119,7 +119,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   - **Dans un dressing** de même : la zone du mur masqué (sa Répartition, ses étagères, cloisons, penderies, tiroirs,
     portes et fond) s'efface avec lui, le tracé de son esquisse aussi ; les zones des autres murs restent entières. Ce
     qui équipe une zone sans avoir de sens à soi — charnières, portes coulissantes, accessoires, lumières — va avec le
-    meuble sur lequel il se trouve (`pieceOf` : à moins de 15 cm de sa boîte).
+    meuble sur lequel il se trouve (`pieceOf` : à moins de 15 cm de sa boîte). **Sans pièce** (aucun mur dessiné),
+    chaque Répartition du dressing fait office de mur : la vue tournée de façon à voir son dos (l'œil passé derrière
+    sa face arrière, vu de dessus), elle s'efface entière, avec tout ce qu'elle porte, celle qu'on voit le plus de dos
+    d'abord, jamais tout le dressing (`piecesInTheWay`, `piecesOut`) ; elle revient dès qu'on repasse devant.
   - Il reste toujours quelque chose à regarder : derrière l'angle d'une cuisine en L, seule la rangée du mur le plus en
     travers de la vue s'efface ; une cuisine sur un seul mur garde ses meubles (on voit leur dos).
   - Les cadres du contrôle en direct des pièces masquées s'effacent aussi. La vue seulement ; retenu par le navigateur

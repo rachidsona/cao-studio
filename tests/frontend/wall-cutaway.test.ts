@@ -7,7 +7,7 @@ import { withPlan, withPlanWalls, withZonePartition } from "../../frontend/src/d
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type KitchenRunItem } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
-import { againstWall, furnitureOut, pieceOf, slabOf, wallOf, wallsBehind, type Slab } from "../../frontend/src/viewport/wall-cutaway";
+import { againstWall, furnitureOut, pieceOf, piecesInTheWay, piecesOut, slabOf, wallOf, wallsBehind, type Slab } from "../../frontend/src/viewport/wall-cutaway";
 
 /** The 12 triangles of a box between two corners. */
 function box([x0, y0, z0]: [number, number, number], [x1, y1, z1]: [number, number, number]): { vertices: number[]; indices: number[] } {
@@ -138,5 +138,32 @@ describe("murs qui cachent la vue", () => {
     expect(pieceOf(pieces, [[0, -680, 80], [1500, -640, 2480]])).toBe("A");
     expect(pieceOf(pieces, [[10, -900, 1200], [30, -870, 1250]])).toBe("B");
     expect(pieceOf(pieces, [[1800, -1700, 0], [2200, -1300, 450]])).toBeNull();
+  });
+});
+
+describe("murs d'un dressing sans pièce : la Répartition vue de dos s'efface", () => {
+  // A U seen from above: wall A along y = 0..600 (back towards −y), B on the left (back −x), C on the right (back +x).
+  const pieces = new Map([
+    ["A", { box: [[0, 0, 0], [3000, 600, 2500]] as [[number, number, number], [number, number, number]], back: [0, -1] as [number, number] }],
+    ["B", { box: [[0, 600, 0], [600, 2400, 2500]] as [[number, number, number], [number, number, number]], back: [-1, 0] as [number, number] }],
+    ["C", { box: [[2400, 600, 0], [3000, 2400, 2500]] as [[number, number, number], [number, number, number]], back: [1, 0] as [number, number] }],
+  ]);
+
+  it("l'œil devant le dressing : rien ; passé derrière le mur A : lui seul ; en biais derrière A et C : le plus en travers d'abord", () => {
+    expect(piecesInTheWay(pieces, [1500, 6000, 1600])).toEqual([]);
+    expect(piecesInTheWay(pieces, [1500, -4000, 1600])).toEqual(["A"]);
+    expect(piecesInTheWay(pieces, [4000, -6000, 1600])).toEqual(["A", "C"]);
+    // Just at its back face: not yet behind it.
+    expect(piecesInTheWay(pieces, [1500, 0, 1600])).toEqual([]);
+  });
+
+  it("ses corps s'en vont avec lui, jamais tout le dressing, ni ce qui est déjà hors de la vue", () => {
+    const of = new Map([["A", ["a1", "a2"]], ["B", ["b1"]], ["C", ["c1"]]]);
+    const counts = ["a1", "a2", "b1", "c1"];
+    expect([...piecesOut(["A", "C"], of, counts)]).toEqual(["a1", "a2", "c1"]);
+    // All three in the way: the last one stays.
+    expect([...piecesOut(["A", "C", "B"], of, counts)]).toEqual(["a1", "a2", "c1"]);
+    // B already out with a wall of a room: C stays to be looked at.
+    expect([...piecesOut(["A", "C"], of, counts, new Set(["b1"]))]).toEqual(["a1", "a2"]);
   });
 });
