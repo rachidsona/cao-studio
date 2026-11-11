@@ -71,6 +71,34 @@ describe("face d'une Répartition", () => {
     expect(partitionFaceSvg(doors)).toContain('data-door="left"');
   });
 
+  it("cote tout : l'épaisseur des panneaux et des étagères, la hauteur libre de chaque niche, chaque tiroir, la tringle, le socle", () => {
+    const sketch = wall();
+    const face = partitionFace({ input: INPUT, origin: [100, 0], depth: 600, id: "of1" }, sketch, { sketch, niches: [niche("drawers", [1]), niche("rod", [0, 3])] })!;
+    const of = (kind: string) => face.labels.filter((l) => l.kind === kind).map((l) => l.text);
+    expect(of("panel")).toEqual(["ép. 3"]);
+    expect(of("plinth")).toEqual(["socle 5"]);
+    expect(of("shelf")).toEqual(["1,8", "1,8", "1,8"]);
+    // The first case: its four niches share 2390 mm less three shelves of 18 mm; the second is all drawers.
+    const free = Number((((2390 - 3 * 18) / 4) / 10).toFixed(1)).toLocaleString("fr-FR");
+    expect(of("niche")).toEqual([`↕ ${free}`, `↕ ${free}`, `↕ ${free}`, `↕ ${free}`]);
+    // Three fronts sharing the niche's height, less the gaps (3 mm above, under and between): as the 3D builds them.
+    const front = Number((((2390 - 4 * 3) / 3) / 10).toFixed(1)).toLocaleString("fr-FR");
+    expect(of("front")).toEqual([front, front, front]);
+    // The rod, from the floor: the top of the cases (2470) less its drop (60).
+    expect(of("rod")).toEqual(["tringle 241"]);
+    const svg = partitionFaceSvg(face);
+    expect(count(svg, 'data-label="')).toBe(face.labels.length);
+    expect(svg).toContain(`data-label="shelf">1,8<`);
+  });
+
+  it("cote une niche de cloison par sa largeur et sa hauteur, une case entière par sa hauteur", () => {
+    const offsets = [partitionRecord("of1", "R", INPUT, [0, 0], 600), shelvesRecord("of2", "Cloisons 1", "of1", [0], { ...SHELVES, count: 1, vertical: true }, 600)];
+    const face = partitionFace({ input: INPUT, origin: [0, 0], depth: 600, id: "of1" }, { ...emptySketchGeometry(), offsets })!;
+    const niches = face.labels.filter((l) => l.kind === "niche").map((l) => l.text);
+    expect(face.labels.filter((l) => l.kind === "cloison").map((l) => l.text)).toEqual(["1,8"]);
+    expect(niches.sort()).toEqual(["34,4 × 239", "34,4 × 239", "↕ 239"]);
+  });
+
   it("entoure la case choisie", () => {
     const face = partitionFace({ input: INPUT, origin: [0, 0] }, emptySketchGeometry())!;
     const svg = partitionFaceSvg(face, 1);

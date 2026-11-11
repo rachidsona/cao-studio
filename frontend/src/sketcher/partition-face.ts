@@ -10,8 +10,8 @@ import type { DoorSettings, OffsetRecord, SketchGeometry } from "../document/ske
 import type { NicheFeature, SketchFeature } from "../document/types";
 import { nicheGeometry, nicheParts, partitionDoors } from "../features/niche-parts";
 import { partitionLayout, type PartitionInput, type PartitionLayout } from "./partition";
-import { pathKey, partitionRecord, rebuildChain } from "./partition-history";
-import type { NicheBox } from "./shelves";
+import { isShelves, pathKey, partitionRecord, rebuildChain } from "./partition-history";
+import { partBox, shelfLayout, type NicheBox } from "./shelves";
 
 /** Laiton, comme les poignées de la cuisine : ce qui est choisi et ce qui se tire. */
 export const BRASS = "#b8975a";
@@ -47,6 +47,17 @@ export interface PartitionFace {
   doors: (FaceRect & { hinge: "left" | "right" })[];
   rods: { x0: number; x1: number; y: number }[];
   handles: { x1: number; y1: number; x2: number; y2: number }[];
+  /** Every small dimension: the free height of each niche, each shelf's thickness, each drawer front, rods, plinth. */
+  labels: FaceLabel[];
+}
+
+/** A small dimension written on the face, in cm (`text`), where it lies (its baseline). */
+export interface FaceLabel {
+  x: number;
+  y: number;
+  text: string;
+  kind: "niche" | "shelf" | "cloison" | "front" | "rod" | "plinth" | "panel";
+  anchor: "start" | "middle" | "end";
 }
 
 /** Where each case of the panel lies, from the left (a side left out keeps its place in the niche). */
@@ -92,6 +103,7 @@ export function partitionFace(draft: FaceDraft, g: SketchGeometry, equipment: { 
     doors: [],
     rods: [],
     handles: [],
+    labels: [],
   };
   // The doors of the step itself (« Une porte par case »), hinged left, right… unless chosen.
   if (draft.doors && draft.depth !== undefined) {
@@ -117,8 +129,51 @@ export function partitionFace(draft: FaceDraft, g: SketchGeometry, equipment: { 
       }
     }
   }
+  face.labels = faceLabels(face, input, typeof rebuilt === "string" ? [] : divisionPieces(offsets, id, rebuilt.niches).map((p) => ({ ...rect(p.box), vertical: p.vertical })));
   return face;
 }
+
+/** The shelves and cloisons of the divisions of this partition, as the history makes them again. */
+function divisionPieces(offsets: readonly OffsetRecord[], id: string, niches: Map<string, { box: NicheBox }>): { box: NicheBox; vertical: boolean }[] {
+  return offsets.flatMap((d) => {
+    if (!isShelves(d) || d.step.of !== id) return [];
+    const node = niches.get(pathKey(d.step.niche));
+    const lay = node ? shelfLayout(node.box, d.step.input) : "";
+    if (!node || typeof lay === "string") return [];
+    return lay.shelves.map((span) => ({ box: partBox(node.box, span, lay), vertical: lay.vertical === true }));
+  });
+}
+
+/**
+ * The small dimensions, each where it can be read: the panels' thickness over the top left corner, each shelf's on its
+ * right end, each cloison's at its top; the free height inside each niche (« largeur × hauteur » for a niche narrower
+ * than its case), the height of each drawer front on it, a rod's height from the floor under it, the plinth in it. A
+ * dimension with no room (a niche lower than the text) is left out.
+ */
+function faceLabels(face: PartitionFace, input: PartitionInput, pieces: (FaceRect & { vertical: boolean })[]): FaceLabel[] {
+  const fs = faceFont(face) * SMALL;
+  const H = face.height;
+  const labels: FaceLabel[] = [{ x: 0, y: -(fs / SMALL) * 0.6, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }];
+  if (input.boards && input.plinth > 0) labels.push({ x: face.length / 2, y: H - input.plinth / 2 + fs * 0.35, text: `socle ${cm(input.plinth)}`, kind: "plinth", anchor: "middle" });
+  for (const p of pieces) {
+    if (p.vertical) labels.push({ x: p.x + p.w / 2, y: p.y + fs * 1.1, text: cm(p.w), kind: "cloison", anchor: "middle" });
+    else labels.push({ x: p.x + p.w - fs * 0.2, y: p.y + p.h / 2 + fs * 0.35, text: cm(p.h), kind: "shelf", anchor: "end" });
+  }
+  const inside = (r: FaceRect, x: number, y: number) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
+  for (const n of face.niches) {
+    // A niche of drawers: its fronts have their heights.
+    if (n.h < fs * 1.6 || n.w < fs * 2.5 || face.fronts.some((f) => inside(n, f.x + f.w / 2, f.y + f.h / 2))) continue;
+    const own = face.cases.find((c) => n.x + n.w / 2 > c.x0 && n.x + n.w / 2 < c.x1);
+    const narrower = own && own.width - n.w > 1 && n.w > fs * 6;
+    labels.push({ x: n.x + n.w / 2, y: n.y + n.h / 2 + fs * 0.35, text: narrower ? `${cm(n.w)} × ${cm(n.h)}` : `↕ ${cm(n.h)}`, kind: "niche", anchor: "middle" });
+  }
+  for (const f of face.fronts) if (f.h >= fs * 1.2) labels.push({ x: f.x + fs * 0.4, y: f.y + f.h / 2 + fs * 0.35, text: cm(f.h), kind: "front", anchor: "start" });
+  for (const r of face.rods) labels.push({ x: Math.min(r.x0, r.x1) + fs * 0.4, y: r.y + fs * 1.3, text: `tringle ${cm(H - r.y)}`, kind: "rod", anchor: "start" });
+  return labels;
+}
+
+/** The small dimensions' size, against the main ones'. */
+const SMALL = 0.8;
 
 const PANEL = "fill-gray-300 stroke-gray-600 dark:fill-gray-600 dark:stroke-gray-300";
 const NICHE = "fill-gray-50 stroke-gray-500 dark:fill-gray-900 dark:stroke-gray-500";
@@ -128,7 +183,7 @@ const cm = (mm: number) => Number((mm / 10).toFixed(1)).toLocaleString("fr-FR");
 const box = (r: FaceRect, tone: string, extra = "") => `<rect x="${r.x}" y="${r.y}" width="${Math.max(0, r.w)}" height="${Math.max(0, r.h)}" class="${tone}" vector-effect="non-scaling-stroke" ${extra}/>`;
 
 /** The size of the labels (mm), to read them at the width of the panel. */
-export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math.max(50, Math.max(face.length, face.height * 0.6) / 30);
+export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math.max(50, Math.max(face.length, face.height * 0.6) / 26);
 
 /** The face as SVG content (its viewBox from `faceViewBox`); `chosen`: the case outlined, null: none. */
 export function partitionFaceSvg(face: PartitionFace, chosen: number | null = null): string {
@@ -144,7 +199,8 @@ export function partitionFaceSvg(face: PartitionFace, chosen: number | null = nu
     ...face.doors.map((d) => box(d, "fill-sky-400/10 stroke-sky-600 dark:stroke-sky-400", `stroke-dasharray="5 3" data-door="${d.hinge}"`)),
     ...face.handles.map((h) => `<line x1="${h.x1}" y1="${h.y1}" x2="${h.x2 === h.x1 && h.y2 === h.y1 ? h.x2 + 1 : h.x2}" y2="${h.y2}" stroke="${BRASS}" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke" data-handle=""/>`),
   ];
-  // The dimensions: the length over it, the height on its left, each case's width under it.
+  // The small dimensions, then the main ones: the length over it, the height on its left, each case's width under it.
+  for (const l of face.labels) parts.push(`<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="${fs * SMALL}" class="fill-sky-800 dark:fill-sky-300" pointer-events="none" data-label="${l.kind}">${l.text}</text>`);
   parts.push(`<text x="${L / 2}" y="${-fs * 0.6}" text-anchor="middle" font-size="${fs}" class="${LABEL}" data-dim="length">${cm(L)}</text>`);
   parts.push(`<text x="${-fs * 0.6}" y="${H / 2}" text-anchor="middle" font-size="${fs}" class="${LABEL}" transform="rotate(-90 ${-fs * 0.6} ${H / 2})" data-dim="height">${cm(H)}</text>`);
   face.cases.forEach((c, i) => {

@@ -47,6 +47,12 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   expect(await strip.locator("[data-front]").count()).toBeGreaterThanOrEqual(3);
   expect(await strip.locator("[data-rod]").count()).toBeGreaterThanOrEqual(1);
   await expect(strip.locator('[data-dim="height"]')).toHaveText(/\d/);
+  // Every dimension: the panels' thickness, each drawer front's height, the rod's height, the free height of the niches.
+  await expect(strip.locator('[data-label="panel"]')).toHaveText(/^ép\. \d/);
+  expect(await strip.locator('[data-label="front"]').count()).toBe(await strip.locator("[data-front]").count());
+  await expect(strip.locator('[data-label="rod"]').first()).toHaveText(/^tringle \d/);
+  await expect(strip.locator('[data-label="niche"]').first()).toHaveText(/\d/);
+  await partition.screenshot({ path: "test-results/partition-strip-dims.png" });
 
   // As the modules left it (their widths), to find it again after the undo.
   const stored = await strip.locator('[data-width="0"]').textContent();

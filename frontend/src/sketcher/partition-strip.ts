@@ -26,7 +26,7 @@ export function partitionStrip(host: StripHost): SVGSVGElement {
   const { face } = host;
   const node = document.createElementNS(SVG, "svg");
   node.setAttribute("viewBox", faceViewBox(face));
-  node.setAttribute("class", "block w-full max-h-72 select-none");
+  node.setAttribute("class", "block w-full max-h-[30rem] select-none");
   node.setAttribute("role", "img");
   node.setAttribute("aria-label", host.label);
   node.setAttribute("data-partition-strip", "");
