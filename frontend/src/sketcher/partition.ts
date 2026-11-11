@@ -18,6 +18,8 @@
  * ready to extrude. Pure: lengths in mm, the sketch in its own coordinates (x along the length, y along the height).
  */
 import type { DividerKind, OuterPass, PartitionParams, Pass, SketchGeometry } from "../document/sketch";
+import type { DisplayUnit } from "../document/types";
+import { formatLength } from "../measurements/units";
 import { cloneGeometry, nextId } from "./edit";
 
 export type { DividerKind, OuterPass, Pass };
@@ -220,4 +222,15 @@ export function addPartition(base: SketchGeometry, partition: SketchGeometry, or
     g.curves.push({ id: nextId(g, "l"), kind: "line", p1: ids.get(c.p1)!, p2: ids.get(c.p2)! });
   }
   return g;
+}
+
+export const KIND_NAMES: Record<DividerKind, string> = { single: "simple", double: "double", none: "sans" };
+
+/** « 3 cases de 57 cm », or « 2 cases de 57 cm et 114 cm » when they differ. */
+export function casesText(layout: PartitionLayout, unit: DisplayUnit): string {
+  const widths = layout.caseWidths;
+  const equal = widths.every((w) => Math.abs(w - (widths[0] as number)) < 1e-6);
+  if (equal) return `${widths.length} cases de ${formatLength(widths[0] as number, unit)}`;
+  const shown = widths.map((w) => formatLength(w, unit));
+  return `${widths.length} cases de ${shown.slice(0, -1).join(", ")} et ${shown.at(-1)}`;
 }

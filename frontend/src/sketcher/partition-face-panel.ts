@@ -287,10 +287,9 @@ export class FacePanel {
     }
   }
 
-  /** A measure of the Répartition itself changed on the face: in the panel, and stored at once when live. */
-  private measure(patch: Partial<PartitionInput>, said: string): void {
+  /** A measure of the Répartition itself changed on the face: in the panel (stored at once when live, as every setting). */
+  private measure(patch: Partial<PartitionInput>, _said: string): void {
     this.host.set(patch);
-    if (this.host.live() && this.host.commit(said)) this.host.redraw();
   }
 
   /** A dimension typed on the face. */

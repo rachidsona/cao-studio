@@ -710,9 +710,7 @@ opération existante.
     panneau avant OK (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
     clic sur une case la choisit (cadre laiton, un autre clic la laisse) ; ses bords se tirent, au centimètre, pour
     changer sa largeur : la case voisine prend la différence, la longueur reste, et « Largeur des cases » passe en
-    proportions. Sur la face encore — et pour une Répartition déjà faite, **chaque geste est enregistré aussitôt**
-    (une étape d'historique, une annulation chacun, la 3D est refaite pendant que le panneau reste ouvert, avec les
-    réglages en cours du panneau ; pour une nouvelle Répartition, tout attend OK) :
+    proportions. Sur la face encore :
     - **Déplacer** : une étagère ou une cloison cliquée (cadre laiton, une barre sous la face) se tire le long de son
       axe ; elle s'accroche au **pas de 32 mm** du système de perçage (`DRILLING_32`), compté depuis le bas de sa
       niche, ou à **l'étagère d'une case voisine** quand elle passe à moins d'un demi-pas (Alt : librement), jamais à
@@ -732,8 +730,14 @@ opération existante.
       division), du socle, hauteur d'une niche (la voisine prend la différence ; « l × h » règle la largeur entre
       cloisons), d'une façade de tiroir (la niche grandit d'autant par façade), d'une tringle depuis le sol. Entrée
       règle, Échap laisse. Une cote impossible est refusée avec la raison.
-    OK enregistre ce que le panneau a encore en cours et ferme l'outil ; Annuler ferme sans toucher à ce que la face a
-    déjà enregistré (Ctrl + Z le reprend, geste par geste).
+  - **Tout apparaît aussitôt dans la 3D** (une Répartition déjà faite, ouverte par « Modifier », par le Plan de
+    dressing ou par l'Historique) : chaque réglage du panneau — hauteur, longueur, épaisseur, cases, largeurs, côtés,
+    dessus et dessous, socle, qui passe aux angles, extrusion et profondeur, portes et leurs réglages, sens
+    d'ouverture, fond, position — et chaque geste sur la face est enregistré dès qu'il est fait (un champ chiffré à
+    Entrée ou en le quittant) : la 3D est refaite, le panneau reste ouvert, une étape d'historique et une annulation
+    (Ctrl + Z) chacun ; après une annulation, le panneau reprend les valeurs du document. OK ferme l'outil sans
+    ajouter d'étape quand tout est déjà enregistré ; Annuler ferme sans défaire ce qui l'est. Une **nouvelle**
+    Répartition, elle, n'existe pas encore : ses panneaux s'affichent en volumes orange et OK la crée.
   - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
     il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
     « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.

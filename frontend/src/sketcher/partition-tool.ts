@@ -20,7 +20,7 @@ import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
 import { FacePanel } from "./partition-face-panel";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
-import { defaultDividers, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
+import { casesText, defaultDividers, KIND_NAMES, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
 import { extractLoops, sketchFaces } from "./loops";
 import { removeEntities } from "./edit";
 import { regionAt } from "./region-pick";
@@ -70,17 +70,6 @@ const lastBack: BackSettings = { thickness: 8, split: "whole" };
 /** The plinth height offered when the option is ticked (mm): 4 cm. */
 let plinthHeight = 40;
 
-const KIND_NAMES: Record<DividerKind, string> = { single: "simple", double: "double", none: "sans" };
-
-/** « 3 cases de 57 cm », or « 2 cases de 57 cm et 114 cm » when they differ. */
-function casesText(layout: PartitionLayout, unit: DisplayUnit): string {
-  const widths = layout.caseWidths;
-  const equal = widths.every((w) => Math.abs(w - (widths[0] as number)) < 1e-6);
-  if (equal) return `${widths.length} cases de ${formatLength(widths[0] as number, unit)}`;
-  const shown = widths.map((w) => formatLength(w, unit));
-  return `${widths.length} cases de ${shown.slice(0, -1).join(", ")} et ${shown.at(-1)}`;
-}
-
 const FIELD =
   "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
@@ -104,14 +93,7 @@ export class SketchPartitionTool {
     private readonly host: PartitionHost,
     private readonly editing: OffsetRecord | null = null,
   ) {
-    if (editing && isPartition(editing)) {
-      this.input = structuredClone(editing.step.input);
-      this.origin = [...editing.step.origin];
-      extrusionOption.on = editing.step.depth !== undefined;
-      if (editing.step.depth !== undefined) extrusionOption.depth = editing.step.depth;
-      this.doors = editing.step.doors ? { ...editing.step.doors } : null;
-      this.back = editing.step.back ? { ...editing.step.back } : null;
-    }
+    if (editing && isPartition(editing)) this.load(editing);
     this.panel = el("div", {
       class:
         "absolute top-2 right-2 z-30 max-h-[calc(100%-1rem)] w-64 space-y-2 overflow-y-auto border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur " +
@@ -152,15 +134,37 @@ export class SketchPartitionTool {
 
   /** The sketch changed under the tool (undo, redo). */
   sync(): void {
-    // What the face changed was drawn on the sketch as it was.
+    // What the face changed was drawn on the sketch as it was; the step is read again (an undo takes its values back).
     this.face = this.facePanel();
+    const stored = this.editing ? this.host.geometry().offsets?.find((r) => r.id === this.editing?.id) : undefined;
+    if (stored && isPartition(stored)) this.load(stored);
     this.recompute();
+  }
+
+  /** The panel with the values of a step of the history. */
+  private load(record: OffsetRecord): void {
+    if (!isPartition(record)) return;
+    this.input = structuredClone(record.step.input);
+    this.origin = [...record.step.origin];
+    extrusionOption.on = record.step.depth !== undefined;
+    if (record.step.depth !== undefined) extrusionOption.depth = record.step.depth;
+    this.doors = record.step.doors ? { ...record.step.doors } : null;
+    this.back = record.step.back ? { ...record.step.back } : null;
+  }
+
+  /**
+   * A Répartition already made takes each setting at once: the step is stored (one undo step) and the 3D is made again,
+   * the tool staying open. A new one waits for OK (its volumes are shown in orange meanwhile).
+   */
+  private live(): void {
+    if (this.editing && !this.done) this.store();
   }
 
   /** A click in the view puts the lower-left corner of the partition there (to the millimetre). */
   click(p: Vec2): void {
     this.origin = [Math.round(p[0]), Math.round(p[1])];
     this.recompute();
+    this.live();
   }
 
   /** The panels OK would make, as outlines of the sketch (each closed area of a panel, mitred ends included): the preview in volume of the 3D view. */
@@ -198,6 +202,7 @@ export class SketchPartitionTool {
   private set(patch: Partial<PartitionInput>): void {
     this.input = { ...this.input, ...patch };
     this.recompute();
+    this.live();
   }
 
   private recompute(): void {
@@ -320,6 +325,7 @@ export class SketchPartitionTool {
         const { widths: _omit, ...rest } = this.input;
         this.input = v === "shares" ? { ...rest, widths: Array.from({ length: rest.cases }, () => 1) } : rest;
         this.recompute();
+        this.live();
       }),
       ...(this.input.widths ? Array.from({ length: this.input.cases }, (_, i) => share(i)) : []),
       this.input.widths ? info("Chaque case prend sa part de la longueur libre : 1 et 2, la seconde est deux fois plus large.") : null,
@@ -339,12 +345,12 @@ export class SketchPartitionTool {
       this.input.boards ? pass("Côtés simples", "single") : null,
       this.input.boards ? pass("Côtés doubles", "double") : null,
       heading("Extrusion"),
-      check("Extruder les panneaux", extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw())),
-      extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw())) : null,
+      check("Extruder les panneaux", extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw(), this.live())),
+      extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw(), this.live())) : null,
       extrusionOption.on ? info("Chaque panneau devient un corps, nommé Dessous, Dessus ou Côté ; les niches restent vides.") : null,
       heading("Portes"),
       extrusionOption.on
-        ? check("Une porte par case", this.doors !== null, (v) => ((this.doors = v ? { ...lastDoors } : null), this.draw()))
+        ? check("Une porte par case", this.doors !== null, (v) => ((this.doors = v ? { ...lastDoors } : null), this.draw(), this.live()))
         : info("Cochez « Extruder les panneaux » pour poser des portes."),
       extrusionOption.on && this.doors ? number("Jeu", this.doors.gap, (v) => this.setDoors({ gap: v }), true) : null,
       extrusionOption.on && this.doors ? number("Épaisseur portes", this.doors.thickness, (v) => this.setDoors({ thickness: v })) : null,
@@ -367,7 +373,7 @@ export class SketchPartitionTool {
         : null,
       heading("Fond"),
       extrusionOption.on
-        ? check("Panneau de fond", this.back !== null, (v) => ((this.back = v ? { ...lastBack } : null), this.draw()))
+        ? check("Panneau de fond", this.back !== null, (v) => ((this.back = v ? { ...lastBack } : null), this.draw(), this.live()))
         : info("Cochez « Extruder les panneaux » pour poser un fond."),
       extrusionOption.on && this.back ? number("Épaisseur fond", this.back.thickness, (v) => this.setBack({ thickness: v })) : null,
       extrusionOption.on && this.back
@@ -377,8 +383,8 @@ export class SketchPartitionTool {
         ? info("En applique derrière les panneaux : le fond couvre le dessus, le dessous et les côtés jusqu'à leurs bords. Par case, il est coupé au milieu d'un côté simple, entier sur un côté double.")
         : null,
       heading("Position"),
-      number("Coin X", this.origin[0], (v) => ((this.origin = [v, this.origin[1]]), this.recompute()), true),
-      number("Coin Y", this.origin[1], (v) => ((this.origin = [this.origin[0], v]), this.recompute()), true),
+      number("Coin X", this.origin[0], (v) => ((this.origin = [v, this.origin[1]]), this.recompute(), this.live()), true),
+      number("Coin Y", this.origin[1], (v) => ((this.origin = [this.origin[0], v]), this.recompute(), this.live()), true),
       result ? el("p", { class: " bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       this.host.flat()
         ? el(
@@ -428,7 +434,7 @@ export class SketchPartitionTool {
     const step = { kind: "partition" as const, input: structuredClone(this.input), origin: [...this.origin] as [number, number], ...(depth !== undefined ? { depth } : {}), ...doors, ...back };
     // Nothing left to store (the face stored it all already): OK only closes, no empty undo step.
     const stored = g.offsets?.find((r) => r.id === id);
-    if (!said && stored && JSON.stringify(stored.step) === JSON.stringify(step) && !this.face.offsets() && !this.face.niches().length && !this.face.removedNiches().length) return true;
+    if (stored && JSON.stringify(stored.step) === JSON.stringify(step) && !this.face.offsets() && !this.face.niches().length && !this.face.removedNiches().length) return true;
     // What was changed on the face of the wall (shelves, cloisons) goes in the same step.
     const before = this.face.offsets() ?? g.offsets ?? [];
     const offsets = this.editing
@@ -463,6 +469,7 @@ export class SketchPartitionTool {
     const { hinges: _own, ...kept } = this.doors;
     Object.assign(lastDoors, kept);
     this.draw();
+    this.live();
   }
 
   private setBack(change: Partial<BackSettings>): void {
@@ -470,6 +477,7 @@ export class SketchPartitionTool {
     this.back = { ...this.back, ...change };
     Object.assign(lastBack, this.back);
     this.draw();
+    this.live();
   }
 
   cancel(): void {

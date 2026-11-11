@@ -57,9 +57,10 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   // As the modules left it (their widths), to find it again after the undo.
   const stored = await strip.locator('[data-width="0"]').textContent();
 
-  // It follows the panel: a case more, before OK (the cases are then equal again).
+  // Each setting of the panel is stored at once (the 3D is made again): a case more, then one less (equal again).
   await partition.getByLabel("Cases", { exact: true }).selectOption(String(cases + 1));
   await expect(strip.locator("[data-case]")).toHaveCount(cases + 1);
+  await expect(page.getByText(new RegExp(`Répartition modifiée en ${cases + 1} cases`))).toBeVisible();
   await partition.getByLabel("Cases", { exact: true }).selectOption(String(cases));
   await expect(strip.locator("[data-case]")).toHaveCount(cases);
 
@@ -82,7 +83,8 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   await expect(partition.getByLabel("Largeur des cases")).toHaveValue("shares");
   await partition.screenshot({ path: "test-results/partition-strip.png" });
 
-  // Stored as soon as it is let go (one step); OK has nothing more to store: one undo takes it back.
+  // Stored as soon as it is let go (one step); OK has nothing more to store: one undo takes the pull back, two more
+  // the cases changed in the panel.
   await partition.getByRole("button", { name: "OK", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1500);
@@ -92,6 +94,14 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   await expect(partition).toHaveCount(0);
   await page.locator('[data-action="undo"]').first().click();
   await page.waitForTimeout(1500);
+  await reopen();
+  await expect(strip.locator('[data-width="0"]')).toHaveText(before!);
+  await partition.getByRole("button", { name: "Annuler" }).click();
+  await expect(partition).toHaveCount(0);
+  for (let k = 0; k < 2; k++) {
+    await page.locator('[data-action="undo"]').first().click();
+    await page.waitForTimeout(1500);
+  }
   await reopen();
   await expect(strip.locator('[data-width="0"]')).toHaveText(stored!);
   expect(errors).toEqual([]);
