@@ -272,6 +272,8 @@ export class Viewport {
   bodyMesh(bodyId: string): BodyMesh | undefined { return this.bodies.get(bodyId)?.data; }
 
   get displayedBodies(): string[] { return [...this.bodies.keys()]; }
+  /** Every body of the last regeneration, hidden ones included (set by the editor): the parts to make are read here. */
+  modelBodies: readonly BodyMesh[] = [];
 
   // ---- camera -----------------------------------------------------------------------
 

@@ -193,6 +193,7 @@ export class Editor {
       this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
       this.picked.invalidate();
       // Bodies hidden with the eye of the browser stay in the document but are not drawn.
+      this.viewport.modelBodies = result.bodies;
       this.viewport.setBodies(result.bodies.filter((b) => !isBodyHidden(this.previewDoc ?? this.doc, b.bodyId)));
       if (fitView) this.viewport.setView("iso");
       const failures = result.statuses.filter((s) => s.state === "error").length;

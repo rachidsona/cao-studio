@@ -10,7 +10,7 @@ import { withGrainRun, withoutGrainRun } from "../../document/grain-run";
 import { cutList, cutListCsv, rowMatches, type CutRow, type CutTotals, type PartInput } from "../../document/cut-list";
 import { bodyAppearance, faceAppearances } from "../../appearance/assign";
 import { EDGE_BANDS, MATERIALS, bodyInfo, setBodyInfo } from "../../document/materials";
-import { isHardwareBody } from "../../document/hardware";
+import { fabricationParts } from "../../document/fabrication-parts";
 import { importParts as placeParts, parsePartsCsv } from "../../document/parts-import";
 import type { BodyInfo, CadDocument, DisplayUnit } from "../../document/types";
 import { el } from "../../ui/dom";
@@ -25,16 +25,9 @@ type Edges = NonNullable<BodyInfo["edges"]>;
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
 const EDGE_NAMES: [keyof Edges, string][] = [["length1", "L1"], ["length2", "L2"], ["width1", "l1"], ["width2", "l2"]];
 
-/** Every displayed body as a part of the cut list. */
-/** The displayed bodies that are parts of the furniture (not walls of the room). */
+/** The parts of the furniture, hidden ones included (document/fabrication-parts.ts): not the walls, not the hardware. */
 export function partsOf(viewport: Viewport, doc: CadDocument): PartInput[] {
-  const parts: PartInput[] = [];
-  for (const id of viewport.displayedBodies) {
-    if (bodyInfo(doc, id).room || isHardwareBody(doc, id)) continue;
-    const metrics = viewport.bodyMesh(id)?.metrics;
-    if (metrics) parts.push({ id, bbox: metrics.bbox, volume: metrics.volume });
-  }
-  return parts;
+  return fabricationParts(doc, viewport.modelBodies);
 }
 
 /** The cut list as a document. */

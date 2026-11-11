@@ -110,6 +110,31 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
   return { name, thickness, edges: moved, width: Math.max(...xs) - x0, height: Math.max(...ys) - y0 };
 }
 
+/** A hole as the document drills it (document/hardware-rules.ts opsOf): where, into which direction, how wide and deep. */
+export interface DrilledHole {
+  at: P3;
+  dir: P3;
+  diameter: number;
+  depth: number;
+}
+
+/**
+ * How deep a round hole goes, as the document says (audit of 11/11/2026): the drilled hole whose axis passes through
+ * this circle of the face, with its diameter; null when none does (then the mesh is read, holeDepth).
+ */
+export function documentedHoleDepth(holes: readonly DrilledHole[], center: P3, radius: number, thickness: number): number | null {
+  for (const hole of holes) {
+    if (Math.abs(hole.diameter / 2 - radius) > 0.05) continue;
+    const n = unit(hole.dir);
+    const d = sub(center, hole.at);
+    const along = dot(d, n);
+    const off = Math.hypot(...sub(d, n.map((c) => c * along) as P3));
+    // On its axis, and the circle at its entry (along ≈ 0) or at its bottom when it is seen from the other face.
+    if (off < 0.05 && along > -0.05 && along < hole.depth + 0.05) return Math.min(hole.depth, thickness);
+  }
+  return null;
+}
+
 /**
  * How deep a round hole goes into a board, from the mesh: the farthest of the points on its wall (at its radius from
  * its axis) below the face. The thickness when it goes through.

@@ -101,7 +101,7 @@ export const CURIC: HelpFamily[] = [
           "Pour y ranger d'autres corps, sélectionnez-les dans la vue puis cliquez le « + » du calque.",
           "L'œil montre ou cache les corps du calque. ✕ supprime le calque : ses corps restent, sans calque.",
         ],
-        tip: "Le nombre à droite du nom est le nombre de corps du calque.",
+        tip: "Le nombre à droite du nom est le nombre de corps du calque. Un corps caché reste une pièce du meuble : la liste de débit, le devis et la CNC le comptent.",
       },
       {
         keys: ["data-action:oi-intersect"], name: "Lignes tout autour",

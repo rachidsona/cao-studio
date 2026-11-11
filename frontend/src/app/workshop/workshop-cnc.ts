@@ -7,9 +7,10 @@
 import { cutList, edgeText, grainText } from "../../document/cut-list";
 import { bodyInfo, MATERIALS, materialById } from "../../document/materials";
 import { bodyLabel } from "../../document/operations";
-import { isHardwareBody } from "../../document/hardware";
+import { isFabricated } from "../../document/fabrication-parts";
+import { opsOf } from "../../document/hardware-rules";
 import type { GeometryClient } from "../../geometry/client";
-import { LAYER_PROFILES, boardFaces, flattenOutline, holeDepth, layerName, partsDxf, type FlatPart, type LayerProfile } from "../../io/dxf";
+import { LAYER_PROFILES, boardFaces, documentedHoleDepth, flattenOutline, holeDepth, layerName, partsDxf, type FlatPart, type LayerProfile } from "../../io/dxf";
 import { edgeHoles } from "../../document/face-ops";
 import { GCODE, partsGcode, type GcodeOptions } from "../../io/gcode";
 import { qrSvg } from "../../io/qr";
@@ -36,10 +37,11 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
   const flip: string[] = [];
   /** Boards with holes in their edges: horizontal drilling, not in the flat file. */
   const edges: string[] = [];
-  for (const id of viewport.displayedBodies) {
+  // Every part to make, hidden ones included (document/fabrication-parts.ts).
+  for (const mesh of viewport.modelBodies) {
+    const id = mesh.bodyId;
+    if (!isFabricated(editor.doc, id)) continue;
     const info = bodyInfo(editor.doc, id);
-    if (info.room || isHardwareBody(editor.doc, id)) continue;
-    const mesh = viewport.bodyMesh(id);
     const faces = mesh ? boardFaces(mesh) : [];
     const name = bodyLabel(editor.doc, id);
     if (!mesh || !faces.length) {
@@ -49,11 +51,13 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
     const box = mesh.metrics.bbox;
     if (edgeHoles(editor.doc, id, [[...box[0]], [...box[1]]]).length) edges.push(name);
     const thickness = Math.min(...[0, 1, 2].map((i) => box[1][i]! - box[0][i]!));
+    const drilled = opsOf(editor.doc, id).flatMap((op) => (op.kind === "hole" ? [op] : []));
     try {
       const flats = await Promise.all(
         faces.map(async (face) => {
           const outline = await geometry.faceOutline(id, face);
-          return flattenOutline(outline, name, thickness, (center, radius) => holeDepth(mesh.vertices, center, outline.normal, radius, thickness));
+          // The depth the document drills first; the mesh only for a hole it does not describe (a hinge cup).
+          return flattenOutline(outline, name, thickness, (center, radius) => documentedHoleDepth(drilled, center, radius, thickness) ?? holeDepth(mesh.vertices, center, outline.normal, radius, thickness));
         }),
       );
       const holes = (p: FlatPart) => p.edges.filter((e) => e.kind === "circle").length;
