@@ -270,6 +270,10 @@ Principes :
   utiliser est désactivée et dite à l'ouverture, au lieu de refuser tout le projet ; seule une faute du document
   lui-même (format, version, ses listes) l'empêche d'ouvrir. À l'inverse, une modification qui rendrait le projet
   impossible à rouvrir est refusée avec son message, avant d'être enregistrée.
+- **Un seul contrat de document** : ce que chaque contrainte d'esquisse désigne (un point, une ligne, un cercle…)
+  est écrit une fois, dans `frontend/src/document/sketch-constraints.json`, lu par l'éditeur et par le serveur ;
+  les documents de `tests/fixtures/documents/` sont vérifiés des deux côtés (vitest et pytest). Une esquisse a au
+  plus 600 contraintes, sous le plafond où le solveur manque de mémoire.
 
 ## Esquisses (phase 4)
 

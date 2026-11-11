@@ -232,21 +232,24 @@ def test_length_dimension_value_must_be_positive(value):
 @pytest.mark.parametrize("kind, refs", [
     ("distance", {"a": "p1", "b": "p2"}),
     ("pointLineDistance", {"point": "p3", "line": "l1"}),
-    ("radius", {"curve": "l1"}),
-    ("diameter", {"curve": "l1"}),
+    ("radius", {"curve": "ci"}),
+    ("diameter", {"curve": "ci"}),
 ])
 def test_positive_dimensions_reject_zero(kind, refs):
-    errors = errors_for(lambda sk: sk["constraints"].append({"id": "x1", "kind": kind, "value": 0, **refs}))
+    def mutate(sk):
+        sk["curves"].append({"id": "ci", "kind": "circle", "center": "origin", "radius": 4})
+        sk["constraints"].append({"id": "x1", "kind": kind, "value": 0, **refs})
+    errors = errors_for(mutate)
     assert len(errors) == 1 and "strictement positif" in errors[0]
 
 
-@pytest.mark.parametrize("kind", ["distanceX", "distanceY", "angle"])
-def test_signed_dimensions_accept_zero_and_negative(kind):
+@pytest.mark.parametrize("kind, a, b", [("distanceX", "p1", "p3"), ("distanceY", "p1", "p3"), ("angle", "l1", "l2")])
+def test_signed_dimensions_accept_zero_and_negative(kind, a, b):
     def mutate(sk):
-        sk["constraints"].append({"id": "x1", "kind": kind, "a": "p1", "b": "p2", "value": 0})
-        sk["constraints"].append({"id": "x2", "kind": kind, "a": "l1", "b": "l2", "value": -12.5})
+        sk["constraints"].append({"id": "x1", "kind": kind, "a": a, "b": b, "value": 0})
+        sk["constraints"].append({"id": "x2", "kind": kind, "a": a, "b": b, "value": -12.5})
     assert errors_for(mutate) == []
-    errors = errors_for(lambda sk: sk["constraints"].append({"id": "x1", "kind": kind, "a": "p1", "b": "p2"}))
+    errors = errors_for(lambda sk: sk["constraints"].append({"id": "x1", "kind": kind, "a": a, "b": b}))
     assert errors == [f"Opération 1 (sk1) : contrainte « x1 » : « value » doit être un nombre fini."]
 
 
@@ -386,3 +389,16 @@ def test_sketch_texts_accepted_and_checked():
     assert validate_document(doc) == []
     doc["features"][0]["texts"] = [{"id": "t1", "text": "CAO", "x": 0, "y": 0, "height": 0}]
     assert any("texts" in e for e in validate_document(doc))
+
+
+@pytest.mark.parametrize("constraint", [
+    {"id": "x1", "kind": "radius", "curve": "l1", "value": 10},
+    {"id": "x1", "kind": "distanceX", "a": "l1", "b": "l2", "value": 10},
+    {"id": "x1", "kind": "symmetric", "a": "p1", "b": "p3", "axis": "c1"},
+    {"id": "x1", "kind": "coincident", "a": "p1", "b": "l2"},
+])
+def test_the_server_refuses_what_the_editor_could_not_open(constraint):
+    """Audit of 11/11/2026: one table of constraints (frontend/src/document/sketch-constraints.json) for both sides."""
+    errors = errors_for(lambda sk: sk["constraints"].append(constraint))
+    # A line where a point is wanted, a circle radius on a line, a constraint id as the axis: refused, as the editor does.
+    assert errors and all("ne convient pas" in e or "introuvable" in e for e in errors)

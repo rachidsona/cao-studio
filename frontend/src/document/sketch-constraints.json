@@ -1,0 +1,27 @@
+{
+  "_comment": "Ce que chaque contrainte d'esquisse désigne, par champ : lu par l'éditeur (document/validate-sketch.ts) et par le serveur (apps/projects/sketch_validation.py), pour que ce que l'un accepte, l'autre l'ouvre (audit d'architecture du 11/11/2026). point, line, curve (ligne, cercle ou arc), round (cercle ou arc), pointOrLine.",
+  "geometric": {
+    "coincident": { "a": "point", "b": "point" },
+    "horizontal": { "line": "line" },
+    "vertical": { "line": "line" },
+    "parallel": { "a": "line", "b": "line" },
+    "perpendicular": { "a": "line", "b": "line" },
+    "tangent": { "a": "curve", "b": "curve" },
+    "equal": { "a": "curve", "b": "curve" },
+    "symmetric": { "a": "point", "b": "point", "axis": "pointOrLine" },
+    "concentric": { "a": "round", "b": "round" },
+    "fix": { "point": "point" },
+    "pointOnCurve": { "point": "point", "curve": "curve" },
+    "midpoint": { "point": "point", "line": "line" }
+  },
+  "dimension": {
+    "distance": { "a": "point", "b": "point" },
+    "distanceX": { "a": "point", "b": "point" },
+    "distanceY": { "a": "point", "b": "point" },
+    "pointLineDistance": { "point": "point", "line": "line" },
+    "length": { "line": "line" },
+    "angle": { "a": "line", "b": "line" },
+    "radius": { "curve": "round" },
+    "diameter": { "curve": "round" }
+  }
+}

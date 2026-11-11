@@ -3,36 +3,20 @@
  * untrusted source. Mirrors the server-side rules in apps/projects.
  */
 import { AXIS_X, AXIS_Y, DIMENSION_KINDS, ORIGIN, RESERVED_IDS } from "./sketch";
+import CONSTRAINTS from "./sketch-constraints.json";
 
 type Json = Record<string, unknown>;
 
 const isObject = (v: unknown): v is Json => typeof v === "object" && v !== null && !Array.isArray(v);
 const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-type RefCategory = "point" | "line" | "curve" | "any";
+/** "any": what a constraint id is declared as (nothing may point to it). */
+type RefCategory = "point" | "line" | "curve" | "round" | "pointOrLine" | "any";
 
-/** Reference fields of each constraint kind and the category they must point to. */
+/** Reference fields of each constraint kind and the category they must point to: the file the server reads too. */
 const CONSTRAINT_FIELDS: Record<string, Record<string, RefCategory>> = {
-  coincident: { a: "point", b: "point" },
-  horizontal: { line: "line" },
-  vertical: { line: "line" },
-  parallel: { a: "line", b: "line" },
-  perpendicular: { a: "line", b: "line" },
-  tangent: { a: "curve", b: "curve" },
-  equal: { a: "curve", b: "curve" },
-  symmetric: { a: "point", b: "point", axis: "any" },
-  concentric: { a: "curve", b: "curve" },
-  fix: { point: "point" },
-  pointOnCurve: { point: "point", curve: "curve" },
-  midpoint: { point: "point", line: "line" },
-  distance: { a: "point", b: "point" },
-  distanceX: { a: "point", b: "point" },
-  distanceY: { a: "point", b: "point" },
-  pointLineDistance: { point: "point", line: "line" },
-  length: { line: "line" },
-  angle: { a: "line", b: "line" },
-  radius: { curve: "curve" },
-  diameter: { curve: "curve" },
+  ...(CONSTRAINTS.geometric as Record<string, Record<string, RefCategory>>),
+  ...(CONSTRAINTS.dimension as Record<string, Record<string, RefCategory>>),
 };
 
 const POSITIVE_DIMENSIONS = new Set(["distance", "length", "radius", "diameter", "pointLineDistance"]);
@@ -82,7 +66,10 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
     const found = typeof value === "string" ? categories.get(value) : undefined;
     const ok =
       found !== undefined &&
-      (category === "any" || found === category || (category === "curve" && (found === "line" || found === "curve")));
+      (found === category ||
+        (category === "curve" && found === "line") ||
+        (category === "round" && found === "curve") ||
+        (category === "pointOrLine" && (found === "point" || found === "line")));
     if (!ok) errors.push(`${where} : ${owner} référence « ${String(value)} » introuvable ou de mauvais type.`);
   };
 

@@ -7,7 +7,9 @@ constraint system: that is the editor's job.
 """
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 from typing import Any
 
 ALLOWED_PLANES = frozenset({"XY", "XZ", "YZ"})
@@ -23,7 +25,7 @@ RESERVED_LINES = frozenset({"axisX", "axisY"})
 RESERVED_IDS = RESERVED_POINTS | RESERVED_LINES
 
 # Reference field categories.
-POINT, LINE, CURVE, ANY = "point", "line", "curve", "any"
+POINT, LINE, CURVE, ROUND, POINT_OR_LINE = "point", "line", "curve", "round", "pointOrLine"
 
 # Curve kind -> reference fields (all point references).
 CURVE_POINT_FIELDS: dict[str, tuple[str, ...]] = {
@@ -32,42 +34,27 @@ CURVE_POINT_FIELDS: dict[str, tuple[str, ...]] = {
     "arc": ("center", "start", "end"),
 }
 
+# What each constraint points to, field by field: the same file as the editor's (frontend/src/document/
+# validate-sketch.ts), so that what the server accepts the editor opens (audit of 11/11/2026).
+_SHARED = json.loads((Path(__file__).resolve().parents[2] / "frontend/src/document/sketch-constraints.json").read_text("utf-8"))
 GEOMETRIC_CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
-    "coincident": (("a", ANY), ("b", ANY)),
-    "horizontal": (("line", LINE),),
-    "vertical": (("line", LINE),),
-    "parallel": (("a", ANY), ("b", ANY)),
-    "perpendicular": (("a", ANY), ("b", ANY)),
-    "tangent": (("a", ANY), ("b", ANY)),
-    "equal": (("a", ANY), ("b", ANY)),
-    "symmetric": (("a", ANY), ("b", ANY), ("axis", ANY)),
-    "concentric": (("a", ANY), ("b", ANY)),
-    "fix": (("point", POINT),),
-    "pointOnCurve": (("point", POINT), ("curve", CURVE)),
-    "midpoint": (("point", POINT), ("line", LINE)),
+    kind: tuple(fields.items()) for kind, fields in _SHARED["geometric"].items()
 }
-
 DIMENSION_CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
-    "distance": (("a", ANY), ("b", ANY)),
-    "distanceX": (("a", ANY), ("b", ANY)),
-    "distanceY": (("a", ANY), ("b", ANY)),
-    "pointLineDistance": (("point", POINT), ("line", LINE)),
-    "length": (("line", LINE),),
-    "angle": (("a", ANY), ("b", ANY)),
-    "radius": (("curve", CURVE),),
-    "diameter": (("curve", CURVE),),
+    kind: tuple(fields.items()) for kind, fields in _SHARED["dimension"].items()
 }
 
 POSITIVE_DIMENSIONS = frozenset(
     {"distance", "length", "radius", "diameter", "pointLineDistance"}
 )
 
-_CATEGORY_LABELS = {POINT: "point", LINE: "ligne", CURVE: "courbe", ANY: "élément"}
+_CATEGORY_LABELS = {POINT: "point", LINE: "ligne", CURVE: "courbe", ROUND: "cercle", POINT_OR_LINE: "élément"}
 _CATEGORY_EXPECTED = {
     POINT: "un point",
     LINE: "une ligne",
     CURVE: "une courbe",
-    ANY: "un point ou une courbe",
+    ROUND: "un cercle ou un arc",
+    POINT_OR_LINE: "un point ou une ligne",
 }
 
 
@@ -141,7 +128,8 @@ class _SketchChecker:
             POINT: is_point,
             LINE: is_line,
             CURVE: is_curve,
-            ANY: True,
+            ROUND: self.curves.get(ref) in ("circle", "arc"),
+            POINT_OR_LINE: is_point or is_line,
         }[category]
         if not ok:
             self.error(

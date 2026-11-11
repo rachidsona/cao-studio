@@ -1,0 +1,124 @@
+{
+ "format": "cao-studio",
+ "schemaVersion": 2,
+ "units": "cm",
+ "parameters": {},
+ "features": [
+  {
+   "id": "sk1",
+   "type": "sketch",
+   "name": "Esquisse 1",
+   "plane": "XY",
+   "offset": 0,
+   "points": [
+    {
+     "id": "p1",
+     "x": -40,
+     "y": -25
+    },
+    {
+     "id": "p2",
+     "x": 40,
+     "y": -25
+    },
+    {
+     "id": "p3",
+     "x": 40,
+     "y": 25
+    },
+    {
+     "id": "p4",
+     "x": -40,
+     "y": 25
+    }
+   ],
+   "curves": [
+    {
+     "id": "l1",
+     "kind": "line",
+     "p1": "p1",
+     "p2": "p2"
+    },
+    {
+     "id": "l2",
+     "kind": "line",
+     "p1": "p2",
+     "p2": "p3"
+    },
+    {
+     "id": "l3",
+     "kind": "line",
+     "p1": "p3",
+     "p2": "p4"
+    },
+    {
+     "id": "l4",
+     "kind": "line",
+     "p1": "p4",
+     "p2": "p1"
+    }
+   ],
+   "constraints": [
+    {
+     "id": "c1",
+     "kind": "horizontal",
+     "line": "l1"
+    },
+    {
+     "id": "c2",
+     "kind": "horizontal",
+     "line": "l3"
+    },
+    {
+     "id": "c3",
+     "kind": "vertical",
+     "line": "l2"
+    },
+    {
+     "id": "c4",
+     "kind": "vertical",
+     "line": "l4"
+    },
+    {
+     "id": "c5",
+     "kind": "symmetric",
+     "a": "p1",
+     "b": "p3",
+     "axis": "origin"
+    },
+    {
+     "id": "d1",
+     "kind": "length",
+     "line": "l1",
+     "value": 80,
+     "label": "Longueur"
+    },
+    {
+     "id": "d2",
+     "kind": "length",
+     "line": "l2",
+     "value": 50,
+     "label": "Largeur"
+    }
+   ]
+  },
+  {
+   "id": "ex1",
+   "type": "extrude",
+   "name": "Extrusion 1",
+   "sketch": "sk1",
+   "distance": 10,
+   "operation": "new"
+  },
+  {
+   "id": "h1",
+   "type": "hole",
+   "name": "Perçage 1",
+   "target": "ex1",
+   "x": 0,
+   "y": 0,
+   "diameter": 10,
+   "depth": "through"
+  }
+ ]
+}
