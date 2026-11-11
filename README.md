@@ -191,7 +191,8 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   historiques, commentaires, liens clients sans leurs jetons, modules, chutes, fabrication groupée ; 5 exports en
   10 minutes au plus), supprimer son compte avec son mot de passe et une case à cocher (tout ce qu'il possède part
   avec lui ; un compte du personnel ne se supprime pas là). Les mauvais mots de passe de ces deux formulaires
-  comptent comme des connexions refusées. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  comptent comme des connexions refusées. Sur la page d'un lien client, les réponses de l'atelier sont signées du
+  **nom de l'atelier** (son profil, `/catalogue/`), jamais du nom de connexion, même les réponses écrites avant. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;

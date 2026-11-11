@@ -155,3 +155,21 @@ def test_accepting_a_link_with_variants_names_the_variant(client_logged, project
     assert accepted["variant"] == "Prestige" and accepted["price"] == 4000
     link = ShareLink.objects.get(token=made["token"])
     assert link.accepted_at is not None
+
+
+def test_the_client_sees_the_workshops_name_never_the_owners_login(client_logged, project, api, user):
+    """Audit of 10/11/2026, L7: the login on a public page helps guessing passwords."""
+    from apps.catalog.models import CompanyProfile
+
+    profile = CompanyProfile.load()
+    profile.name = "Menuiserie Sonaa"
+    profile.save()
+    made = make_link(client_logged, project)
+    # A reply written before the fix, signed with the login.
+    Comment.objects.create(project=project, link=ShareLink.objects.get(token=made["token"]), author=user.username, body="Ancienne réponse", from_owner=True)
+    reply = api.post(client_logged, f"/api/projects/{project.id}/comments/", {"body": "Nouvelle réponse", "token": made["token"]})
+    assert reply.json()["author"] == "Menuiserie Sonaa"
+    public = Client().get(f"/s/{made['token']}/comments/").json()["comments"]
+    assert [c["author"] for c in public] == ["Menuiserie Sonaa", "Menuiserie Sonaa"]
+    page = Client().get(f"/s/{made['token']}/").content.decode()
+    assert "Menuiserie Sonaa" in page and user.username not in page

@@ -35,6 +35,7 @@ from . import quotas
 from .http import ApiError, api_view, json_error, read_json_body
 from .validation import DocumentParseError, parse_json_strict
 from .models import Comment, Project, ShareLink, ShareVariant
+from apps.catalog.models import CompanyProfile
 
 MAX_MODEL_BYTES = 20 * 1024 * 1024
 MAX_SUMMARY_BYTES = 10_000
@@ -232,8 +233,8 @@ def comment_collection(request, project_id):
         link = project.share_links.filter(token=data["token"]).first()
         if link is None:
             raise ApiError(404, "Lien introuvable.")
-    author = request.user.get_full_name() or request.user.get_username()
-    comment = Comment.objects.create(project=project, link=link, author=author[:AUTHOR_MAX], body=body, from_owner=True)
+    # Signed by the workshop, never by the login, which the client page would publish (audit of 10/11/2026, L7).
+    comment = Comment.objects.create(project=project, link=link, author=_workshop_name()[:AUTHOR_MAX], body=body, from_owner=True)
     return JsonResponse(_comment_payload(comment), status=201)
 
 
@@ -262,14 +263,24 @@ def _live_link(token: str) -> ShareLink:
     return link
 
 
+def _workshop_name() -> str:
+    """The name the client knows the workshop by (its profile, /catalogue/)."""
+    return CompanyProfile.load().name.strip() or "L'atelier"
+
+
 def _public_comments(link: ShareLink) -> list[dict[str, Any]]:
     rows = link.project.comments.filter(Q(link=link) | Q(link__isnull=True, from_owner=True)).select_related("link")
-    return [_public(_comment_payload(c)) for c in rows.order_by("created_at")]
+    workshop = _workshop_name()
+    return [_public(_comment_payload(c), workshop) for c in rows.order_by("created_at")]
 
 
-def _public(payload: dict[str, Any]) -> dict[str, Any]:
-    """A comment as a client sees it: without the owner's link names and tokens."""
-    return {k: v for k, v in payload.items() if k not in ("link", "token")}
+def _public(payload: dict[str, Any], workshop: str | None = None) -> dict[str, Any]:
+    """A comment as a client sees it: without the owner's link names and tokens; the owner's replies are signed by
+    the workshop's name, even those written before (their author was the login: audit of 10/11/2026, L7)."""
+    public = {k: v for k, v in payload.items() if k not in ("link", "token")}
+    if public.get("from_owner"):
+        public["author"] = (workshop or _workshop_name())[:AUTHOR_MAX]
+    return public
 
 
 @require_http_methods(["GET"])
