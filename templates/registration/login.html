@@ -21,7 +21,7 @@
 
     <p class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
       Pas encore de compte ?
-      <a href="{% url 'signup' %}" class="inline-flex min-h-11 items-center font-medium text-sky-700 hover:underline dark:text-sky-400">Créer un compte</a>
+      {% if signup_open %}<a href="{% url 'signup' %}" class="inline-flex min-h-11 items-center font-medium text-sky-700 hover:underline dark:text-sky-400">Créer un compte</a>{% else %}Demandez-le à l'atelier.{% endif %}
     </p>
   </div>
 </div>

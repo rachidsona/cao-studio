@@ -18,7 +18,7 @@ python3.12 -m venv .venv
 npm install
 .venv/bin/python manage.py migrate
 npm run build                 # typecheck + Tailwind (static/css) + Vite (static/js)
-.venv/bin/python manage.py createsuperuser   # ou /accounts/signup/
+.venv/bin/python manage.py compte <nom>      # crée un compte (l'inscription libre est fermée)
 .venv/bin/python manage.py runserver 127.0.0.1:8765
 ```
 
@@ -182,7 +182,10 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   **Plafonds par compte** (`apps/projects/quotas.py`) : 500 projets, 2 Go en tout (versions, modèles des liens clients,
   bibliothèque), 50 liens clients actifs de 40 Mo au plus (modèle et variantes), 5 000 pièces suivies par projet ;
   rien n'est effacé pour faire de la place, ce qui dépasse est refusé avec ce qu'il faut faire. Les modèles 3D publics
-  d'un lien se téléchargent 120 fois au plus en 10 minutes depuis une même adresse. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  d'un lien se téléchargent 120 fois au plus en 10 minutes depuis une même adresse. **L'inscription libre est
+  fermée** (`SIGNUP_OPEN`) : `/accounts/signup/` dit de demander un compte à l'atelier, et les pages n'y mènent plus ;
+  le personnel crée les comptes (`manage.py compte <nom>`, le mot de passe est demandé deux fois ; `--mot-de-passe`
+  le change). `DJANGO_SIGNUP_OPEN=1` la rouvre (le serveur des tests e2e s'en sert). Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
@@ -213,7 +216,7 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 | Dossier | Rôle |
 |---|---|
 | `config/` | Réglages Django (variables d'environnement, SQLite par défaut, PostgreSQL via `POSTGRES_*`) |
-| `apps/accounts/` | Connexion, déconnexion, inscription |
+| `apps/accounts/` | Connexion, déconnexion, inscription (fermée par défaut), commandes `compte` et `personnel` |
 | `apps/projects/` | Projets, versions immuables avec checksum, API JSON, validation des documents |
 | `templates/` | Pages Django + Tailwind ; `editor/editor.html` charge l'éditeur |
 | `frontend/src/document/` | Format natif `cao-studio` v1, validation, éditions pures (annulables) |

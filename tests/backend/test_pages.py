@@ -128,7 +128,8 @@ def test_editor_requires_login(project):
 
 
 @pytest.mark.django_db
-def test_signup_creates_user_and_logs_in():
+def test_signup_creates_user_and_logs_in(settings):
+    settings.SIGNUP_OPEN = True  # closed by default: tests/backend/test_signup.py
     client = Client()
     assert client.get("/accounts/signup/").status_code == 200
     response = client.post(
@@ -141,7 +142,8 @@ def test_signup_creates_user_and_logs_in():
 
 
 @pytest.mark.django_db
-def test_signup_rejects_mismatched_passwords():
+def test_signup_rejects_mismatched_passwords(settings):
+    settings.SIGNUP_OPEN = True
     response = Client().post(
         "/accounts/signup/",
         {"username": "dan", "password1": "Tr3s-Solide-Mdp!", "password2": "autre-chose-99"},

@@ -91,6 +91,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.csp",
+                "apps.accounts.context_processors.signup",
             ],
         },
     },
@@ -159,6 +160,10 @@ WHITENOISE_IMMUTABLE_FILE_TEST = immutable_static
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/projects/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+# Account creation by anyone (/accounts/signup/) is closed by default (security audit of 10/11/2026, M8): the staff
+# makes the accounts (python manage.py compte <nom>). DJANGO_SIGNUP_OPEN=1 opens it (the end-to-end tests' server).
+SIGNUP_OPEN = env_bool("DJANGO_SIGNUP_OPEN", False)
 
 # Upload/body limits: the API enforces its own 6 MB limit (→ 413 JSON); this
 # Django-level cap is slightly above so the API check runs first.

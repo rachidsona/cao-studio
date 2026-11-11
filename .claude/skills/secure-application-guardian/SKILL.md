@@ -148,7 +148,7 @@ Tout le reste se **propose** sans s'appliquer : changement de modèle de droits,
    - l'impact.
 
    Une alerte d'outil non confirmée est un « faux positif » (dire pourquoi) ou une « piste » (dire ce qui manque).
-5. **Gravité** : Critique / Élevée / Moyenne / Faible / Info. La gravité vient de l'exploitabilité (qui peut le faire : visiteur anonyme, tout compte, propriétaire) et de l'impact (autres comptes touchés, données des clients, argent, disponibilité). L'inscription est libre : « tout compte » veut donc dire « n'importe qui ».
+5. **Gravité** : Critique / Élevée / Moyenne / Faible / Info. La gravité vient de l'exploitabilité (qui peut le faire : visiteur anonyme, tout compte, propriétaire) et de l'impact (autres comptes touchés, données des clients, argent, disponibilité). L'inscription libre est fermée par défaut (`SIGNUP_OPEN`) : « tout compte » veut dire un compte créé par le personnel ; si elle est rouverte (`DJANGO_SIGNUP_OPEN=1`), « tout compte » veut dire « n'importe qui ».
 6. **Corriger** ce qui est sûr (voir plus haut) ; **proposer** le reste. Pour une configuration critique : montrer le diff et attendre l'accord.
 7. **Rapport** : `docs/securite/audit-securite-AAAA-MM-JJ.md`, puis l'envoyer à l'utilisateur. Le rapport précédent sert de base : dire ce qui est corrigé, ce qui reste ouvert et ce qui est nouveau.
 
@@ -186,7 +186,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | M5 | Injection de formules dans les CSV | Corrigé (lot 1) : `csvText` |
 | M6 | Django 6.1.2 (CVE-2026-108147) | Corrigé : Django 6.1.3 (accord du 10/11/2026) ; suivre les annonces de sécurité de Django, que pip-audit ne voyait pas encore |
 | M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Corrigé : `apps/projects/quotas.py` (500 projets, 2 Go, 50 liens actifs de 40 Mo, 5 000 pièces suivies), 120 téléchargements publics / 10 min par adresse ; GLB encore en base (`BinaryField`) |
-| M8 | Inscription libre, données commerciales lisibles | Ouvert : accord requis |
+| M8 | Inscription libre, données commerciales lisibles | Corrigé : inscription fermée par défaut, comptes créés par le personnel (`manage.py compte`), `tests/backend/test_signup.py` |
 | M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Corrigé : actions par SHA, images par digest, outils par version ; `codeql-action` v4.39.3 ; gitleaks `pull-requests: read` ; barrière par `contains(needs.*.result, …)` |
 | M10 | Outils d'agents non épinglés | Ouvert : accord requis (configuration de l'utilisateur) |
 | L1 | Titre d'impression non échappé | Corrigé (lot 1) |

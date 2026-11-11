@@ -134,7 +134,8 @@ pip-audit -r requirements.txt   # pip install pip-audit, dans un environnement �
 - Les validateurs de mot de passe sont actifs.
 - La connexion se fait par `LoginView` (`next` validé).
 - La déconnexion se fait en POST.
-- **À faire, avec accord :** limiter les tentatives (django-axes ou une limite sur cache partagé), freiner l'inscription, et prévoir la double authentification pour `/admin/` (constat 3).
+- Les tentatives de connexion sont limitées (`apps/accounts/throttle.py`) ; l'inscription libre est fermée par défaut (`SIGNUP_OPEN`, comptes créés par `manage.py compte`).
+- **À faire, avec accord :** un cache partagé pour les limites (constat 5) et la double authentification pour `/admin/`.
 
 ## A08 — Intégrité des logiciels et des données
 
