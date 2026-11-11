@@ -203,7 +203,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | L12 | sqlparse 0.6.0 | Corrigé : sqlparse 0.6.1 (dernière version, projet arrêté : à suivre avec Django) |
 | L13–L14 | Permissions et artefacts de `ci.yml` ; verrouillage pip, `.venv` dérivé | `.venv` nettoyé (pillow, numpy, ezdxf, reportlab retirés ; pip 26.3) ; `ci.yml` : `permissions: contents: read`, traces gardées 7 jours ; fichier verrouillé avec hachages : accord requis |
 | L15 | Dossiers d'agents non ignorés | Corrigé (lot 1) : `.gitignore` |
-| 3 | Pas de limite de tentatives de connexion | Ouvert : accord requis |
+| 3 | Pas de limite de tentatives de connexion | Corrigé : 5 échecs par nom, 30 par adresse, en 15 min (`apps/accounts/throttle.py`, `ThrottledModelBackend`, admin compris) ; compteurs par processus tant que `CACHES` n'est pas partagé (n° 5) |
 | 5 | Limites de débit non atomiques | Ouvert : accord requis (`CACHES`) |
 | 6 | `DEBUG` vrai par défaut | Corrigé : faux par défaut ; `manage.py` et les tests (`config/settings_test.py`) le mettent à vrai pour le développement |
 | 7 | Pas de CSP | Corrigé : `CONTENT_SECURITY_POLICY` (nonce, `wasm-unsafe-eval`, `object-src none`), `tests/e2e/csp.spec.ts` ; styles encore en `unsafe-inline` |

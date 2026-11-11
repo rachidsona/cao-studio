@@ -15,7 +15,7 @@ def signup(request):
         form = SignupForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            login(request, user, backend="apps.accounts.backends.ThrottledModelBackend")
             return redirect(settings.LOGIN_REDIRECT_URL)
     else:
         form = SignupForm()

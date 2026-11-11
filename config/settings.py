@@ -122,6 +122,10 @@ else:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Django's authentication, with the attempts limited (apps/accounts/throttle.py: 5 failures for a name, 30 from an
+# address, in 15 minutes), on the login page and the admin's.
+AUTHENTICATION_BACKENDS = ["apps.accounts.backends.ThrottledModelBackend"]
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

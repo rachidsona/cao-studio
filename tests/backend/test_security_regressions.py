@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from glb_files import glb
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
@@ -371,3 +372,51 @@ def test_debug_is_off_unless_asked():
     run = _settings_with({"DJANGO_SECRET_KEY": "test-" + "k" * 60, "DJANGO_ALLOWED_HOSTS": "example.com"})
     assert run.returncode == 0, run.stderr
     assert json.loads(run.stdout.strip().splitlines()[-1])["DEBUG"] is False
+
+
+# ---- constat 3 : tentatives de connexion limitées ---------------------------------------------------------------------
+
+
+def _login(client, username, password, path="/accounts/login/"):
+    return client.post(path, {"username": username, "password": password})
+
+
+@pytest.mark.django_db
+def test_too_many_failed_logins_for_a_name_make_it_wait(user):
+    """5 échecs sur un nom : la 6e tentative est refusée, même avec le bon mot de passe ; un autre nom passe."""
+    client = Client()
+    for _ in range(5):
+        assert _login(client, "Alice", "faux").status_code == 200
+    refused = _login(client, "alice", "motdepasse-solide-42")
+    assert refused.status_code == 200 and "Trop de tentatives" in refused.content.decode()
+    assert "_auth_user_id" not in client.session
+    # The admin's login is held back too.
+    admin = Client()
+    _login(admin, "alice", "motdepasse-solide-42", "/admin/login/")
+    assert "_auth_user_id" not in admin.session
+    # Another name is not held back by these.
+    get_user_model().objects.create_user(username="bob2", password="motdepasse-solide-42")
+    assert _login(Client(), "bob2", "motdepasse-solide-42").status_code == 302
+
+
+@pytest.mark.django_db
+def test_a_successful_login_resets_its_name(user):
+    client = Client()
+    for _ in range(4):
+        _login(client, "alice", "faux")
+    assert _login(client, "alice", "motdepasse-solide-42").status_code == 302
+    client.logout()
+    for _ in range(4):
+        _login(client, "alice", "faux")
+    assert _login(client, "alice", "motdepasse-solide-42").status_code == 302
+
+
+@pytest.mark.django_db
+def test_too_many_failures_from_one_address(user, settings):
+    """30 échecs depuis une adresse, sur des noms différents : elle attend aussi."""
+    client = Client(REMOTE_ADDR="203.0.113.7")
+    for i in range(30):
+        _login(client, f"inconnu{i}", "faux")
+    refused = _login(client, "alice", "motdepasse-solide-42")
+    assert "Trop de tentatives" in refused.content.decode()
+    assert _login(Client(REMOTE_ADDR="203.0.113.8"), "alice", "motdepasse-solide-42").status_code == 302

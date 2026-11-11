@@ -176,7 +176,9 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   `base.html` par leur nonce, s'exécutent ; le WebAssembly du noyau est permis. `DJANGO_CSP_REPORT_ONLY=true` la fait
   seulement signaler par les navigateurs, sans l'appliquer, pour l'essayer d'abord sur un déploiement. Les événements
   de sécurité (refus CSRF, hôte refusé, connexion refusée) sont écrits dans le journal (`django.security`,
-  `apps.security`). Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  `apps.security`). Les **tentatives de connexion** sont limitées (`apps/accounts/throttle.py`) : après 5
+  échecs sur un même nom, ou 30 depuis une même adresse, en 15 minutes, la connexion attend la fin de ces 15 minutes,
+  sur la page de connexion comme dans l'administration ; une connexion réussie remet le compte de son nom à zéro. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;
