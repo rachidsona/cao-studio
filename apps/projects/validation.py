@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from typing import Any
 
 from .sketch_validation import sketch_errors
@@ -28,6 +29,10 @@ MAX_ERRORS = 100
 MAX_MESSAGE_LENGTH = 300
 # Integers beyond this are read as Infinity (or rounded) by the editor's JSON.parse: the project would not open.
 MAX_INTEGER = 10**15
+# The variants a project keeps (frontend/src/document/variants.ts, MAX_VARIANTS), and their picture: an image of its
+# own, never an address elsewhere that the client's browser would call (document/validate.ts, variantsOk).
+MAX_VARIANTS = 6
+VARIANT_IMAGE = re.compile(r"data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]*")
 
 
 class DocumentParseError(ValueError):
@@ -152,6 +157,25 @@ def validate_document(doc: Any) -> list[str]:
     if structural:
         return structural
 
+    errors = _content_errors(doc)
+    if "variants" in doc:
+        errors.extend(_variants_errors(doc["variants"]))
+
+    try:
+        size = len(canonical_json(doc).encode("utf-8"))
+    except (ValueError, TypeError, RecursionError):
+        errors.append("Le document n'est pas sérialisable en JSON strict.")
+    else:
+        if size > MAX_DOCUMENT_BYTES:
+            errors.append(
+                f"Le document dépasse la taille maximale de "
+                f"{MAX_DOCUMENT_BYTES // (1024 * 1024)} Mo."
+            )
+    return _bounded(errors)
+
+
+def _content_errors(doc: dict) -> list[str]:
+    """The envelope and the features of a document, or of one of its variants."""
     errors: list[str] = []
     if doc.get("format") != DOCUMENT_FORMAT:
         errors.append(f"« format » doit valoir « {DOCUMENT_FORMAT} ».")
@@ -175,18 +199,39 @@ def validate_document(doc: Any) -> list[str]:
 
     if "parameters" in doc and not isinstance(doc["parameters"], dict):
         errors.append("« parameters » doit être un objet.")
+    return errors
 
-    try:
-        size = len(canonical_json(doc).encode("utf-8"))
-    except (ValueError, TypeError, RecursionError):
-        errors.append("Le document n'est pas sérialisable en JSON strict.")
-    else:
-        if size > MAX_DOCUMENT_BYTES:
-            errors.append(
-                f"Le document dépasse la taille maximale de "
-                f"{MAX_DOCUMENT_BYTES // (1024 * 1024)} Mo."
-            )
-    return _bounded(errors)
+
+def _variants_errors(variants: Any) -> list[str]:
+    """The variants kept in a project (frontend/src/document/variants.ts), checked as the editor checks them
+    (document/validate.ts, variantsOk) and their documents as the project's own (audit of 10/11/2026, M4): a variant
+    saved by hand cannot hold a picture from elsewhere, a document that would not open, or more variants."""
+    if not isinstance(variants, list):
+        return ["« variants » doit être une liste."]
+    if len(variants) > MAX_VARIANTS:
+        return [f"Pas plus de {MAX_VARIANTS} variantes."]
+    errors: list[str] = []
+    for index, variant in enumerate(variants):
+        where = f"variants[{index}]"
+        if not isinstance(variant, dict):
+            errors.append(f"{where} doit être un objet.")
+            continue
+        if not isinstance(variant.get("id"), str) or not isinstance(variant.get("name"), str):
+            errors.append(f"{where} : « id » et « name » doivent être des chaînes.")
+        total = variant.get("total")
+        if total is not None and (type(total) not in (int, float) or not math.isfinite(total)):
+            errors.append(f"{where}.total doit être un nombre ou null.")
+        image = variant.get("image")
+        if image not in (None, "") and not (isinstance(image, str) and VARIANT_IMAGE.fullmatch(image)):
+            errors.append(f"{where}.image doit être une image en data URL (png, jpeg ou webp).")
+        snapshot = variant.get("doc")
+        if not isinstance(snapshot, dict):
+            errors.append(f"{where}.doc doit être un document.")
+            continue
+        if "variants" in snapshot:
+            errors.append(f"{where}.doc ne peut pas contenir d'autres variantes.")
+        errors.extend(f"{where}.doc : {message}" for message in _content_errors(snapshot))
+    return errors
 
 
 def _bounded(errors: list[str]) -> list[str]:

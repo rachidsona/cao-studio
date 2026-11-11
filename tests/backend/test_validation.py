@@ -161,3 +161,47 @@ def test_checksum_independent_of_key_order():
     reordered = dict(reversed(list(copy.deepcopy(doc).items())))
     assert compute_checksum(doc) == compute_checksum(reordered)
     assert canonical_json(doc) == canonical_json(reordered)
+
+
+def _with_variants(*variants):
+    doc = default_document()
+    doc["variants"] = list(variants)
+    return doc
+
+
+def _variant(**fields):
+    snapshot = default_document()
+    return {"id": "v1", "name": "Chêne", "total": 1250.5, "parts": 12, "image": "data:image/jpeg;base64,/9j/4AAQ", "doc": snapshot, **fields}
+
+
+def test_variants_kept_by_the_editor_are_valid():
+    assert validate_document(_with_variants(_variant(), _variant(id="v2", name="Noyer", total=None, image=""))) == []
+
+
+@pytest.mark.parametrize(
+    ("variants", "expected"),
+    [
+        ("pas une liste", "« variants » doit être une liste"),
+        ([_variant() for _ in range(7)], "Pas plus de 6 variantes"),
+        ([_variant(image="https://exemple.net/pixel.png")], "data URL"),
+        ([_variant(image="data:image/svg+xml;base64,PHN2Zz4=")], "data URL"),
+        ([_variant(total="beaucoup")], "total"),
+        ([_variant(name=3)], "« name »"),
+        ([_variant(doc="rien")], "doc doit être un document"),
+        ([_variant(doc={**default_document(), "features": "aucune"})], "variants[0].doc : « features » doit être une liste"),
+        ([_variant(doc={**default_document(), "format": "autre"})], "variants[0].doc : « format »"),
+        ([_variant(doc={**default_document(), "variants": []})], "ne peut pas contenir d'autres variantes"),
+    ],
+)
+def test_variants_saved_by_hand_are_checked_on_the_server(variants, expected):
+    """Audit of 10/11/2026, M4: a picture from elsewhere, a variant that would not open, variants without end."""
+    errors = validate_document(_with_variants(*variants) if isinstance(variants, list) else {**default_document(), "variants": variants})
+    assert any(expected in message for message in errors), errors
+
+
+def test_saving_a_project_with_a_variant_from_elsewhere_is_refused(client_logged, project, api):
+    url = f"/api/projects/{project.id}/"
+    bad = api.put(client_logged, url, {"document": _with_variants(_variant(image="https://exemple.net/pixel.png")), "base_version": 1})
+    assert bad.status_code == 400 and "data URL" in bad.content.decode("utf-8")
+    good = api.put(client_logged, url, {"document": _with_variants(_variant()), "base_version": 1})
+    assert good.status_code == 200, good.content

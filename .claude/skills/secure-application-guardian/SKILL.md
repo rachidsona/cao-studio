@@ -182,7 +182,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | M1 | XSS par un projet importé dans la bande du linéaire (ancien n° 11) | Corrigé (lot 1) : échappement + `validate-kitchen.ts` |
 | M2 | XSS dans la mise en plan par un projet importé | Corrigé (lot 1) : `esc` des `data-id`, taille numérique, annotations validées |
 | M3 | Pollution de prototype par les formules | Corrigé (lot 1) : `drivablePath`, `Object.hasOwn` |
-| M4 | Variantes jamais validées | Corrigé côté éditeur (lot 1) ; côté serveur : accord requis |
+| M4 | Variantes jamais validées | Corrigé : éditeur (lot 1) et serveur (`validation.py`, `_variants_errors`), `test_validation.py` |
 | M5 | Injection de formules dans les CSV | Corrigé (lot 1) : `csvText` |
 | M6 | Django 6.1.2 (CVE-2026-108147) | Corrigé : Django 6.1.3 (accord du 10/11/2026) ; suivre les annonces de sécurité de Django, que pip-audit ne voyait pas encore |
 | M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Corrigé : `apps/projects/quotas.py` (500 projets, 2 Go, 50 liens actifs de 40 Mo, 5 000 pièces suivies), 120 téléchargements publics / 10 min par adresse ; GLB encore en base (`BinaryField`) |
