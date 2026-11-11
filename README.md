@@ -1143,6 +1143,11 @@ opération existante.
   La barre se **déplace** où l'on veut sur la vue en la saisissant par sa poignée ⠿ (elle reste dans la vue, même
   quand on la redimensionne) ; le bouton ⇄ / ⇅ la met à l'horizontale ou à la verticale ; un double-clic sur la
   poignée la remet en haut à gauche. Sa place et son sens sont retenus.
+- **Recherche du Navigateur** : le champ « Rechercher… » sous son titre garde seulement les corps, dossiers et esquisses
+  dont le nom contient le texte tapé, sans tenir compte des accents ni des majuscules (un dossier trouvé par son nom
+  garde tout ce qu'il contient ; Échap vide le champ). Le bouton à l'œil barré montre **seulement les éléments
+  cachés**, pour les retrouver et les réafficher par leur œil ; les deux vont ensemble. Pendant un filtre, les dossiers
+  sont ouverts et la corbeille du titre « Corps » n'est pas proposée (`ui/browser-filter.ts`).
 - **Navigateur replié** (grands écrans) : la flèche ‹ de son titre le fait disparaître et la vue prend sa place ; l'onglet
   « › Navigateur », en bas du bord gauche de la vue avec ceux des colonnes repliées, le rouvre. Retenu par le navigateur.
   Sur les petits écrans, le bouton « Arbre » l'ouvre toujours en feuille (`ui/navigator-fold.ts`, `ui/edge-tabs.ts`).

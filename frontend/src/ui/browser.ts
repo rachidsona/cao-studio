@@ -91,6 +91,8 @@ const toggled = loadToggled();
 // Folders of a cabinet open by default; the folders of the kinds of pieces (Étagères, Côtés… : body-kinds.ts) closed,
 // so that a long cabinet fits; a click remembers the other state.
 const isOpen = (key: string) => (key.startsWith("group:") && !key.startsWith("group:kind:") ? !toggled.has(key) : toggled.has(key));
+/** While the search filters the tree (browser-filter.ts), its folders are open, to show what was found (not the bodies' histories). */
+let showAll = false;
 
 function chevron(key: string, name: string): HTMLElement {
   const open = isOpen(key);
@@ -118,7 +120,7 @@ const flat = (selected: boolean, idle = "hover:bg-gray-100 dark:hover:bg-gray-70
 
 /** Rows under a folder or a body, shifted right with a guide line. */
 const children = (key: string, rows: HTMLElement[]) =>
-  el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-600", "data-children": key, ...(isOpen(key) ? {} : { hidden: "" }) }, ...rows);
+  el("ul", { class: "ml-4 space-y-0.5 border-l border-gray-200 pl-1 dark:border-gray-600", "data-children": key, ...((showAll && key.startsWith("group:")) || isOpen(key) ? {} : { hidden: "" }) }, ...rows);
 
 function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = item.id, toggle: HTMLElement | null = null, menuKind = ""): HTMLElement {
   const badge = STATE_BADGES[item.state];
@@ -252,9 +254,9 @@ function groupNode(group: BodyFolder, s: Selection): HTMLElement {
 const HEAD_BUTTON = "flex size-7 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
 
 /** The eye and the bin of a heading (`all`: « tous les corps », « toutes les esquisses »), tagged `data-hide-<kind>` and `data-remove-<kind>`. */
-function eyeAndBin(all: string, allHidden: boolean, kind: string): HTMLElement[] {
+function eyeAndBin(all: string, allHidden: boolean, kind: string, filtered = false): HTMLElement[] {
   const hide = `${allHidden ? "Afficher" : "Masquer"} ${all}`;
-  return [
+  const buttons = [
     el(
       "button",
       { type: "button", class: `${HEAD_BUTTON} ${allHidden ? "" : "text-sky-700 dark:text-sky-300"}`, title: hide, "aria-label": hide, "aria-pressed": String(!allHidden), [`data-hide-${kind}`]: allHidden ? "show" : "hide" },
@@ -266,13 +268,15 @@ function eyeAndBin(all: string, allHidden: boolean, kind: string): HTMLElement[]
       fine(trashIcon(), 15),
     ),
   ];
+  // While the search filters the tree, the eye acts on what is shown and the bin, which would delete all, is not offered.
+  return filtered ? buttons.slice(0, 1) : buttons;
 }
 
-function bodiesActions(rows: BodyRow[]): HTMLElement[] {
+function bodiesActions(rows: BodyRow[], filtered = false): HTMLElement[] {
   return [
     el("button", { type: "button", class: HEAD_BUTTON, title: "Nouveau dossier (avec les corps sélectionnés)", "aria-label": "Nouveau dossier", "data-new-folder": "" }, fine(folderIcon(true), 15)),
     el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
-    ...eyeAndBin("tous les corps", rows.every((r) => r.item.hidden), "all"),
+    ...eyeAndBin("tous les corps", rows.every((r) => r.item.hidden), "all", filtered),
   ];
 }
 
@@ -294,17 +298,18 @@ function section(title: string, count: number, rows: HTMLElement[], empty: strin
 
 export function renderBrowser(
   container: HTMLElement,
-  data: { bodies: BodyEntry[]; sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null; picked: { bodies: string[]; sketches: string[] } },
+  data: { bodies: BodyEntry[]; sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null; picked: { bodies: string[]; sketches: string[] }; filtering?: boolean },
   handlers: BrowserHandlers,
 ): void {
+  showAll = !!data.filtering;
   const bodies = data.bodies.map((entry) => entryNode(entry, data));
   const all = data.bodies.flatMap(entryBodies);
   const sketches = data.sketches.map((s) => el("li", {}, row(s, s.id === data.selectedId || data.picked.sketches.includes(s.id), `sketch:${s.id}`)));
   const root = el(
     "div",
     {},
-    section("Corps", all.length, bodies, "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all) : [], true),
-    section("Esquisses", sketches.length, sketches, "Aucune esquisse.", sketches.length ? eyeAndBin("toutes les esquisses", data.sketches.every((s) => s.hidden), "sketches") : []),
+    section("Corps", all.length, bodies, data.filtering ? "Aucun corps trouvé." : "Aucun corps. Extrudez une esquisse.", all.length ? bodiesActions(all, data.filtering) : [], true),
+    section("Esquisses", sketches.length, sketches, data.filtering ? "Aucune esquisse trouvée." : "Aucune esquisse.", sketches.length ? eyeAndBin("toutes les esquisses", data.sketches.every((s) => s.hidden), "sketches", data.filtering) : []),
   );
   const foldAll = root.querySelector<HTMLElement>("[data-fold-all]");
   if (foldAll) {

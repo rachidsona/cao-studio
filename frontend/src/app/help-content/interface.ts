@@ -153,6 +153,7 @@ export const SCREEN: HelpFamily[] = [
           "L'œil montre ou cache la ligne. Le bouton « ⋯ » ouvre la fenêtre pour modifier, renommer ou supprimer. Le clic droit donne le même choix en menu.",
           "Pour un dossier : sélectionnez des corps, cliquez « Nouveau dossier » dans l'en-tête « Corps », puis double-cliquez son nom pour le renommer.",
           "Glissez un corps sur un dossier pour l'y ranger, ou sur l'en-tête « Corps » pour l'en sortir.",
+          "Tapez dans « Rechercher… » sous le titre : seuls restent les corps, dossiers et esquisses dont le nom contient ce texte (Échap vide le champ). Le bouton à l'œil barré montre seulement les éléments cachés ; cliquez leur œil pour les réafficher.",
           "La flèche ‹ à droite du titre « Navigateur » le replie : la vue prend sa place. L'onglet « › Navigateur » en bas du bord gauche de la vue le rouvre.",
         ],
         tip: "Un point de couleur signale une opération en erreur ou désactivée : survolez la ligne pour lire pourquoi. Seuls vos dossiers se renomment ; les pièces d'un caisson se rangent d'elles-mêmes.",

@@ -14,6 +14,7 @@ import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
 import { groupByCorps } from "../ui/body-kinds";
+import { bindBrowserFilter, filterEntries, filterSketches, filtering, type BrowserFilter } from "../ui/browser-filter";
 import { askConfirm } from "../ui/confirm-dialog";
 import { ref } from "../ui/dom";
 import { FeatureDialog } from "../ui/feature-dialog";
@@ -59,6 +60,8 @@ export interface NavigatorHost {
 
 export class Navigator {
   private readonly dialog: FeatureDialog;
+  /** The search and the « hidden only » button of the Navigator. */
+  private readonly filter: () => BrowserFilter;
 
   constructor(
     private readonly root: HTMLElement,
@@ -72,6 +75,7 @@ export class Navigator {
       remove: (item) =>
         item.body ? host.removeBody(item.id) : item.offset ? host.removeOffset(item.offset.sketchId, item.id) : host.remove(item.id),
     });
+    this.filter = bindBrowserFilter(root, () => this.render());
   }
 
   private item(feature: Feature, name = feature.name): NavItem {
@@ -174,9 +178,10 @@ export class Navigator {
   render(): void {
     const { sketches, operations, bodies } = this.items();
     const selectedId = this.host.selectedId();
+    const filter = this.filter();
     renderBrowser(
       ref(this.root, "tree"),
-      { bodies: this.tree(bodies), sketches, selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.picked() },
+      { bodies: filterEntries(this.tree(bodies), filter), sketches: filterSketches(sketches, filter), selectedId, selectedBodyId: this.host.selectedBodyId(), picked: this.picked(), filtering: filtering(filter) },
       {
         onSelectBody: (bodyId, adding) => (adding ? this.host.toggleInSelection("body", bodyId) : this.host.selectBody(bodyId)),
         onSelectSketch: (id, adding) => (adding ? this.host.toggleInSelection("sketch", id) : this.host.selectFeature(id)),
