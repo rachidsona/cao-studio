@@ -258,8 +258,12 @@ Principes :
 - La géométrie est calculée dans le navigateur. Django ne reçoit que des documents complets :
   enregistrement automatique 4 s après une modification, manuel avec ⌘S, et envoi
   `keepalive` à la fermeture de la page.
-- Chaque enregistrement crée une version. Un `base_version` périmé renvoie 409 et la copie
-  locale est conservée.
+- Chaque enregistrement crée une version, sauf si le document est identique au dernier (rien ne change : pas de
+  copie de plus). La réponse ne renvoie que la version et l'empreinte. Un `base_version` périmé renvoie 409 : la
+  copie locale est conservée et l'éditeur demande quoi faire — **garder sa version** (enregistrée par-dessus celle
+  du serveur, qui reste dans l'historique) ou recharger celle du serveur (la sienne est encore proposée à
+  l'ouverture). Après un échec réseau, l'enregistrement **réessaie seul** (5 s, 10 s… jusqu'à une minute) et dès
+  le retour du réseau ; une page revenue du cache du navigateur se recharge (`app/session.ts`).
 - Une opération en échec est signalée dans le navigateur et la ligne de temps, ses dépendantes sont marquées
   « bloquées », et le dernier corps valide reste affiché.
 - **Un projet s'ouvre toujours** (`document/validate.ts`, `openDocument`) : une opération que l'éditeur ne sait pas

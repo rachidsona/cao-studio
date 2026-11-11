@@ -19,6 +19,11 @@ export class DocumentSession {
   state: SaveState = "saved";
   autosave = true;
   onStateChange: (state: SaveState, detail?: string) => void = () => {};
+  /** The server holds a newer version (`current`): what to do is asked (main.ts), then keepMine() or a reload. */
+  onConflict: (current: number) => void = () => {};
+  /** Next try after a failed save (ms), doubled each time up to a minute (audit of 11/11/2026). */
+  private retryDelay = 0;
+  private retryTimer: number | undefined;
 
   constructor(
     private readonly projectId: string,
@@ -27,6 +32,17 @@ export class DocumentSession {
     public baseVersion: number,
   ) {
     this.savedJson = JSON.stringify(doc);
+    // Back online: what failed is sent at once.
+    window.addEventListener("online", () => {
+      if (this.state === "offline") void this.save("Enregistrement automatique").catch(() => undefined);
+    });
+  }
+
+  /** After a conflict, the user keeps this copy: it is saved as the version after the server's `current`. */
+  keepMine(current: number): Promise<void> {
+    this.baseVersion = current;
+    this.setState("modified");
+    return this.save("Ma version, gardée après un conflit");
   }
 
   get dirty(): boolean {
@@ -95,6 +111,7 @@ export class DocumentSession {
       const snapshot: ProjectSnapshot = await saveProject(this.apiUrl, this.doc, this.baseVersion, message);
       this.baseVersion = snapshot.version;
       this.savedJson = json;
+      this.retryDelay = 0;
       if (this.dirty) {
         // Edited while the request was in flight: keep the newer local copy.
         writeRecovery(this.projectId, this.doc, this.baseVersion);
@@ -107,9 +124,14 @@ export class DocumentSession {
       if (error instanceof ApiError && error.status === 409) {
         const current = Number(error.payload.current_version);
         this.setState("conflict", `Le projet a été modifié ailleurs (version ${current}). Vos modifications sont conservées localement.`);
+        this.onConflict(current);
       } else {
         const detail = error instanceof Error ? error.message : String(error);
-        this.setState("offline", `Échec de l'enregistrement : ${detail}. Copie locale conservée.`);
+        // Tried again by itself: 5 s, then 10, 20… up to a minute, and as soon as the network is back.
+        this.retryDelay = Math.min(60_000, this.retryDelay ? this.retryDelay * 2 : 5_000);
+        window.clearTimeout(this.retryTimer);
+        this.retryTimer = window.setTimeout(() => void this.save("Enregistrement automatique").catch(() => undefined), this.retryDelay);
+        this.setState("offline", `Échec de l'enregistrement : ${detail}. Copie locale conservée ; nouvel essai dans ${this.retryDelay / 1000} s.`);
       }
       throw error;
     }

@@ -141,6 +141,17 @@ async function start(): Promise<void> {
     setLetterhead(companyHeaderHtml(catalog.company));
   }
   const session = new DocumentSession(config.projectId, config.apiUrl, snapshot.document, snapshot.version);
+  // A newer version on the server: keep this copy over it, or reload the server's (the local copy stays offered).
+  session.onConflict = (current) => {
+    void askConfirm(`Le projet a été modifié ailleurs (version ${current}). Garder votre version et l'enregistrer par-dessus ? « Annuler » recharge la version du serveur ; la vôtre vous sera encore proposée.`, "Garder la mienne").then((keep) => {
+      if (keep) void session.keepMine(current).catch(() => undefined);
+      else window.location.reload();
+    });
+  };
+  // Back from the browser's page cache: its version may be old, the page is loaded again.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) window.location.reload();
+  });
   const recovery = readRecovery(config.projectId);
   if (recovery && sameDocument(recovery.document, snapshot.document)) {
     // The exit save reached the server: the local copy is no longer needed.

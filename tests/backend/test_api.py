@@ -189,7 +189,8 @@ def test_update_creates_new_version(client_logged, api, project):
     assert response.status_code == 200
     data = response.json()
     assert data["version"] == 2 and data["name"] == "Plaque v2"
-    assert data["document"] == doc
+    # The document is not sent back: the editor holds it; its checksum says what was kept.
+    assert "document" not in data and data["checksum"] == compute_checksum(doc)
     project.refresh_from_db()
     assert project.current_version == 2 and project.name == "Plaque v2"
     assert project.versions.count() == 2
@@ -197,8 +198,9 @@ def test_update_creates_new_version(client_logged, api, project):
 
 
 def test_update_conflict_409(client_logged, api, project):
-    assert api.put(client_logged, detail_url(project.id), {"document": default_document(), "base_version": 1}).status_code == 200
-    response = api.put(client_logged, detail_url(project.id), {"document": float_document(), "base_version": 1})
+    # A real change makes version 2 (the same document again would make none).
+    assert api.put(client_logged, detail_url(project.id), {"document": float_document(), "base_version": 1}).status_code == 200
+    response = api.put(client_logged, detail_url(project.id), {"document": default_document(), "base_version": 1})
     assert response.status_code == 409
     data = response.json()
     assert data["current_version"] == 2 and data["error"]
@@ -255,13 +257,14 @@ def test_round_trip_preserves_document_and_checksum(client_logged, api):
     assert loaded["checksum"] == created["checksum"] == compute_checksum(doc)
     assert compute_checksum(loaded["document"]) == loaded["checksum"]
 
-    # Saving the reloaded document again keeps the checksum stable.
+    # Saving the reloaded document again keeps the checksum stable — and makes no new version (nothing changed).
     saved = api.put(client_logged, url, {"document": loaded["document"], "base_version": 1}).json()
-    assert saved["version"] == 2 and saved["checksum"] == created["checksum"]
+    assert saved["version"] == 1 and saved["checksum"] == created["checksum"]
+    assert ProjectVersion.objects.filter(project_id=created["id"]).count() == 1
     reloaded = client_logged.get(url).json()
     assert reloaded["document"] == doc and reloaded["checksum"] == created["checksum"]
 
-    stored = ProjectVersion.objects.get(project_id=created["id"], number=2)
+    stored = ProjectVersion.objects.get(project_id=created["id"], number=1)
     stored.refresh_from_db()
     assert stored.document == doc
 
@@ -281,10 +284,11 @@ def test_round_trip_v2_default_document(client_logged, api):
 
     saved = api.put(client_logged, url, {"document": loaded["document"], "base_version": 1})
     assert saved.status_code == 200
-    assert saved.json()["version"] == 2 and saved.json()["checksum"] == checksum
+    # Nothing changed: no new version, the same checksum.
+    assert saved.json()["version"] == 1 and saved.json()["checksum"] == checksum
 
     reloaded = client_logged.get(url).json()
-    assert reloaded["version"] == 2
+    assert reloaded["version"] == 1
     assert reloaded["document"] == doc == default_document()
     assert reloaded["checksum"] == checksum == compute_checksum(reloaded["document"])
 
@@ -296,3 +300,13 @@ def test_create_rejects_invalid_v2_sketch(client_logged, api):
     assert response.status_code == 400
     assert response.json()["details"] == ["Opération 1 (sk1) : point « p9 » introuvable."]
     assert Project.objects.count() == 0
+
+
+def test_saving_the_same_document_again_makes_no_version_but_renames(client_logged, api, project):
+    """Audit of 11/11/2026: autosaves of an unchanged document filled the history with copies."""
+    url = detail_url(project.id)
+    same = client_logged.get(url).json()["document"]
+    response = api.put(client_logged, url, {"document": same, "base_version": 1, "name": "Plaque renommée"})
+    assert response.status_code == 200 and response.json()["version"] == 1
+    project.refresh_from_db()
+    assert project.versions.count() == 1 and project.name == "Plaque renommée"

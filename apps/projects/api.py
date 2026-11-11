@@ -140,7 +140,10 @@ def project_detail(request, project_id):
             "Le projet a été modifié entre-temps. Rechargez la dernière version.",
             current_version=conflict.current_version,
         )
-    return JsonResponse(_project_payload(project, version))
+    # The editor already holds the document it sent: the answer carries its version and checksum only.
+    payload = _project_payload(project, version)
+    del payload["document"]
+    return JsonResponse(payload)
 
 
 @api_view(("GET",))
