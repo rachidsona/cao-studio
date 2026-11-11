@@ -202,7 +202,7 @@ export const SCREEN: HelpFamily[] = [
         what: "Sept colonnes d'icônes entre le Navigateur et la vue, vides au départ, que vous garnissez vous-même avec les outils du ruban.",
         steps: [
           "Cliquez le « + » en bas d'une colonne : la liste de tous les outils s'ouvre, rangés par groupe. Tapez un nom pour le trouver, cliquez-le pour l'ajouter (cliqué à nouveau, il est retiré). Échap ou « Fermer » referme la liste.",
-          "Cliquez une icône d'une colonne pour lancer l'outil, le même que dans le ruban. Clic droit sur une icône : elle quitte la colonne.",
+          "Cliquez une icône d'une colonne pour lancer l'outil, le même que dans le ruban. Pour la retirer, glissez-la hors des colonnes (elle devient rouge) et lâchez-la, ou faites un clic droit dessus.",
           "Pour changer l'ordre, glissez une icône plus haut ou plus bas : un trait bleu montre où elle se pose. Glissée dans une autre colonne, elle y passe. Au clavier, Alt + ↑ ou Alt + ↓ la monte ou la descend d'une place.",
           "La flèche ‹ en haut d'une colonne la replie : elle disparaît et la vue reprend sa place. Un petit onglet numéroté (› 1, › 2…) reste en bas du bord gauche de la vue ; cliquez-le pour rouvrir la colonne.",
         ],

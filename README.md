@@ -1150,9 +1150,10 @@ opération existante.
   garnit soi-même. Le **« + »** en bas d'une colonne ouvre la liste de tous les outils du ruban et de la colonne de
   sélection et de vue, rangés par groupe, avec une recherche ; un clic ajoute l'outil à la colonne, ou l'en retire s'il
   y est (coché). Un clic sur une icône lance l'outil, le même que celui du ruban (même rangé ou replié), et en reprend
-  l'état (enfoncé, grisé) ; un clic droit la retire. **L'ordre** des icônes se change en les glissant plus haut ou plus
-  bas (un trait bleu montre où elle se pose), ou dans une autre colonne ; au clavier, **Alt + ↑ / ↓** monte ou descend
-  l'icône d'une place. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
+  l'état (enfoncé, grisé). On la **retire** en la glissant hors des colonnes (elle devient rouge) et en la lâchant
+  ailleurs, ou par un clic droit ; Échap pendant le glisser l'annule. **L'ordre** des icônes se change en les glissant
+  plus haut ou plus bas (un trait bleu montre où elle se pose), ou dans une autre colonne ; au clavier, **Alt + ↑ / ↓**
+  monte ou descend l'icône d'une place. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
   reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord gauche de la vue, par-dessus,
   pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine : elles restent en place
   quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Cachées en

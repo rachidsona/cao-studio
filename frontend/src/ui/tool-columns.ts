@@ -1,7 +1,8 @@
 /**
  * La barre à sept colonnes, entre le Navigateur et la vue : sept colonnes d'icônes d'outils, chacune avec les outils
- * qu'on y met soi-même par son « + » (ui/tool-columns-picker.ts) ; un clic droit sur une icône l'en retire. Une icône
- * se glisse plus haut ou plus bas dans sa colonne, ou dans une autre ; Alt + ↑ / ↓ la monte ou la descend.
+ * qu'on y met soi-même par son « + » (ui/tool-columns-picker.ts) ; un clic droit sur une icône l'en retire, ou la
+ * glisser hors des colonnes. Une icône se glisse plus haut ou plus bas dans sa colonne, ou dans une autre ; Alt + ↑ / ↓
+ * la monte ou la descend.
  * Chaque icône lance l'outil du ruban (ou de la colonne Sélection et vue), le même, même caché ou replié, et en
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
  * et seul un petit onglet numéroté reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir. Les colonnes sont vides
@@ -83,7 +84,7 @@ export function bindToolColumns(root: HTMLElement): void {
 
   /** A column's icon: runs the tool's own button and mirrors its state. */
   const iconButton = (tool: Tool, column: number): HTMLElement => {
-    const button = el("button", { type: "button", class: "tool-btn icon-btn", "aria-label": tool.label, title: `${tool.button.title || tool.label} — glisser pour changer sa place (Alt + ↑ / ↓) ; clic droit : retirer de la colonne`, "data-tool-column-tool": tool.key, draggable: "true" }, iconOf(tool.button));
+    const button = el("button", { type: "button", class: "tool-btn icon-btn", "aria-label": tool.label, title: `${tool.button.title || tool.label} — glisser pour changer sa place (Alt + ↑ / ↓) ; glisser hors des colonnes ou clic droit : retirer`, "data-tool-column-tool": tool.key, draggable: "true" }, iconOf(tool.button));
     const sync = () => {
       button.disabled = (tool.button as HTMLButtonElement).disabled === true;
       const pressed = tool.button.getAttribute("aria-pressed");
@@ -108,6 +109,7 @@ export function bindToolColumns(root: HTMLElement): void {
     button.addEventListener("dragend", () => {
       dragging = null;
       button.classList.remove("opacity-40");
+      delete button.dataset.remove;
       for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
     });
     // Alt + ↑ / ↓: one place up or down in the column.
@@ -222,6 +224,26 @@ export function bindToolColumns(root: HTMLElement): void {
       save(moveTool(state, moved.column, moved.key, column, index));
     });
   };
+
+  // Dragged out of the columns and let go anywhere else: the icon leaves its column (Escape cancels the drag).
+  const outside = (event: DragEvent) => !!dragging && !bar.contains(event.target as Node);
+  document.addEventListener("dragover", (event) => {
+    if (!dragging) return;
+    const away = outside(event);
+    const icon = iconAt(dragging.column, dragging.key);
+    if (icon) icon.dataset.remove = String(away);
+    if (!away) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+  }, true);
+  document.addEventListener("drop", (event) => {
+    if (!outside(event) || !dragging) return;
+    event.preventDefault();
+    const removed = dragging;
+    dragging = null;
+    save(toggleTool(state, removed.column, removed.key));
+  }, true);
 
   const render = () => {
     for (const w of watchers.splice(0)) w.disconnect();

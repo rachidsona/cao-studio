@@ -7,7 +7,7 @@ const shot = async (page: Page, name: string) => {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
 };
 
-test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un outil choisi s'y lance et change de place ; repliée, une colonne laisse sa place", async ({ page }) => {
+test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un outil choisi s'y lance, change de place et s'en retire en le glissant dehors ; repliée, une colonne laisse sa place", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-quatre-colonnes");
@@ -63,6 +63,10 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   // And into another column.
   await column(0).locator('[data-tool-column-tool="data-action:cabinet"]').dragTo(column(5).locator("[data-tool-column-add]"));
   await expect(column(5).locator('[data-tool-column-tool="data-action:cabinet"]')).toBeVisible();
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "data-action:fronts"]);
+  // Dragged out of the columns, onto the view: taken out.
+  await column(5).locator('[data-tool-column-tool="data-action:cabinet"]').dragTo(page.locator('[data-ref="viewport"]'));
+  await expect(column(5).locator("[data-tool-column-tool]")).toHaveCount(0);
   await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "data-action:fronts"]);
 
   // Its icon runs the tool itself and shows its state.

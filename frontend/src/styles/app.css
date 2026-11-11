@@ -261,6 +261,10 @@
   [data-tool-columns] [data-drop="end"] {
     @apply bg-sky-50 dark:bg-sky-950;
   }
+  /* Dragged out of the columns: let go, it is taken out. */
+  [data-tool-columns] [data-remove="true"] {
+    @apply bg-red-100 outline outline-2 outline-red-500 dark:bg-red-950;
+  }
   /* The column of selection and view tools beside the viewport: compact, scrolling only on very short screens. */
   [data-side-tools] {
     scrollbar-width: none;
