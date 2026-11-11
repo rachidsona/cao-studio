@@ -51,15 +51,16 @@ function extrudeSection(feature: ExtrudeFeature, ctx: PropertiesContext): HTMLEl
     operationChoices("new", "join", "cut"),
     (value) => {
       const op = value as ExtrudeFeature["operation"];
-      if (op === "new") patch({ operation: op, target: undefined });
+      // Faces pulled from a body: the body stays the one they are read on, whatever the operation (a new body too).
+      if (op === "new" && !feature.faces) patch({ operation: op, target: undefined });
       else patch({ operation: op, target: feature.target ?? ctx.targets[ctx.targets.length - 1]?.id });
     },
   );
   const target =
-    feature.operation === "new"
+    feature.operation === "new" && !feature.faces
       ? null
       : selectField(
-          "Corps cible",
+          feature.faces ? "Corps des faces" : "Corps cible",
           feature.target ?? "",
           [["", "— choisir —"], ...ctx.targets.map((t): [string, string] => [t.id, t.name])],
           (value) => patch({ target: value || undefined }),

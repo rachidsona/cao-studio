@@ -109,7 +109,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "extrude":
       if (feature.faces !== undefined) {
         checkRefs(feature.faces, "faces", where, errors);
-        if (typeof feature.target !== "string") errors.push(`${where} : corps des faces manquant.`);
+        // Without its body, the extrusion fails alone (« corps des faces manquant », features/solids.ts) and its
+        // properties let choose it again: the project still opens (a « Nouveau corps » used to drop it).
+        if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : corps des faces invalide.`);
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
