@@ -690,6 +690,13 @@ opération existante.
     double, double, simple (les doubles au milieu) ; et chaque côté se change un par un (« Côté 1 », « Côté 2 »…).
   - **Largeur d'une case** : `(longueur − 2 × épaisseur − côtés) / cases` (1500 mm, 18 mm, 3 cases : 470 mm, comme
     l'esquisse du lit), écrite dans la vue pendant qu'on règle.
+  - **Face du mur** (en haut du panneau, sous son titre, comme la bande du linéaire de la cuisine) : la Répartition
+    vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
+    équipe (façades de tiroirs, tringles, portes en pointillés, poignées) — avec la hauteur, la longueur et la largeur
+    de chaque case. Elle suit le panneau avant OK (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
+    clic sur une case la choisit (cadre laiton, un autre clic la laisse) ; ses bords se tirent, au centimètre, pour
+    changer sa largeur : la case voisine prend la différence, la longueur reste, et « Largeur des cases » passe en
+    proportions. OK enregistre le tout en une étape, une seule annulation.
   - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
     il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
     « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.

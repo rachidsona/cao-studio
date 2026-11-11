@@ -11,13 +11,15 @@
  * partition.ts.
  */
 import type { BackSettings, DoorSettings, OffsetRecord, SketchGeometry } from "../document/sketch";
-import type { DisplayUnit } from "../document/types";
+import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
+import { partitionFace } from "./partition-face";
+import { partitionStrip } from "./partition-strip";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
 import { defaultDividers, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
 import { extractLoops, sketchFaces } from "./loops";
@@ -43,6 +45,8 @@ export interface PartitionHost {
   /** The tool ended. */
   closed(): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
+  /** The sketch as a feature and what equips its niches, for the face of the panel (the 3D view only). */
+  equipment?(): { sketch: SketchFeature; niches: readonly NicheFeature[] } | null;
 }
 
 /** Kept for the session: the last measures given (mm). */
@@ -91,6 +95,8 @@ export class SketchPartitionTool {
   /** The back behind the panels, null: none. */
   private back: BackSettings | null = null;
   private done = false;
+  /** The case chosen on the face of the panel, null: none. */
+  private chosen: number | null = null;
   private readonly panel: HTMLElement;
 
   /** `editing`: the step of the history to make again (its values come back, its lines and bodies are replaced). */
@@ -276,6 +282,7 @@ export class SketchPartitionTool {
           ? `Les étagères posées dans ses niches (${this.divisions().length}) sont refaites avec elle ; chacune reste une étape de l'historique.`
           : "Un rectangle réparti en cases égales, une par porte, avec ses côtés à leur épaisseur. Cliquez dans la vue pour poser son coin bas-gauche.",
       ),
+      this.strip(unit),
       number("Hauteur", this.input.height, (v) => this.resize({ height: v })),
       number("Longueur", this.input.length, (v) => this.resize({ length: v })),
       number("Épaisseur", this.input.thickness, (v) => this.set({ thickness: v })),
@@ -366,6 +373,18 @@ export class SketchPartitionTool {
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
+  }
+
+  /** The face of the partition, at scale, as the panel has it: a case clicked is chosen, its edges pulled. */
+  private strip(unit: DisplayUnit): HTMLElement | null {
+    const draft = { input: this.input, origin: this.origin, doors: this.doors, ...(extrusionOption.on ? { depth: extrusionOption.depth } : {}), ...(this.editing ? { id: this.editing.id } : {}) };
+    const face = partitionFace(draft, this.host.geometry(), this.host.equipment?.() ?? null);
+    if (!face) return null;
+    const chosen = this.chosen !== null && this.chosen < face.cases.length ? this.chosen : null;
+    const width = chosen === null ? 0 : face.cases[chosen]!.width;
+    const text = `${formatLength(face.height, unit)} de haut, ${formatLength(face.length, unit)} de long, ${face.cases.length} cases. ${chosen === null ? "Cliquez une case pour la choisir." : `Case ${chosen + 1} choisie : ${formatLength(width, unit)}. Tirez son bord en laiton pour changer sa largeur ; la case voisine prend la différence.`}`;
+    const svg = partitionStrip({ face, chosen, label: `Face de ${this.editing?.name ?? "la répartition"}`, pick: (i) => ((this.chosen = i), this.draw()), widths: (widths) => this.set({ widths }) });
+    return el("div", { class: "space-y-1", "data-ref": "partition-face" }, el("p", { class: "text-gray-600 dark:text-gray-300" }, text), svg);
   }
 
   // ---- end --------------------------------------------------------------------------

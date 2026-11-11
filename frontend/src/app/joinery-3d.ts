@@ -213,6 +213,13 @@ export class Joinery3D implements PointerHandler {
       },
       closed: () => this.close(),
       notify: (message: string, kind?: "info" | "success" | "error") => this.host.notify(message, kind),
+      // The face of a Répartition shows what equips its niches (drawers, rods, doors).
+      equipment: () => {
+        const doc = this.host.doc();
+        const sketch = this.sketchId ? findFeature(doc, this.sketchId) : null;
+        if (sketch?.type !== "sketch") return null;
+        return { sketch, niches: doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === sketch.id) };
+      },
     };
   }
 
