@@ -2418,11 +2418,13 @@ recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre ar�
   en haut de chaque panneau (ou Échap) le ferme en gardant tout ; Entrée enregistre tout de suite. Une opération
   faite se change ensuite par son étape dans l'**Historique** (« Modifier »), ou, pour une Répartition, sur sa face
   et dans son panneau. Ainsi pour les outils de modélisation (Extrusion, Congé, Combiner, Déplacer…), ceux du
-  dressing (Répartition, Étagères, Cloisons, Niche, Penderie, Tiroirs, Module, Façades — un clic sur une niche
-  l'équipe aussitôt avec les réglages du panneau ; une porte sur niches s'agrandit des niches cliquées ensuite),
+  dressing (Répartition, Hauteur de niche, Module, Façades),
   ceux de l'esquisse (Déplacer, Décalage, Réseau), le **linéaire de la cuisine** (chaque changement enregistré un
   demi-instant après, la cuisine refaite) et « Modifier le plan » (cuisine, dressing : chaque réglage appliqué,
-  confirmé seulement quand il retirerait des zones déjà faites). Restent des boutons : « Créer le plan », les
+  confirmé seulement quand il retirerait des zones déjà faites). **Sauf Étagères, Cloisons, Penderie, Tiroirs et
+  Porte sur niches**, qui ont de nouveau **« OK » et « Terminer »** : on clique une ou plusieurs niches, on règle,
+  puis « OK » (ou Entrée) les équipe en une étape, l'outil restant ouvert pour d'autres niches ; « Terminer », la
+  croix ✕ ou Échap le ferme sans rien ajouter (`sketcher/shelves-tool.ts`, `app/dressing/niche-tool.ts`). Restent aussi des boutons : « Créer le plan », les
   questions de confirmation (supprimer, retirer des zones), et les petites boîtes de saisie (texte d'esquisse,
   import). Plus bas dans ce fichier, « OK » désigne le moment où l'opération est enregistrée : elle l'est
   désormais d'elle-même.

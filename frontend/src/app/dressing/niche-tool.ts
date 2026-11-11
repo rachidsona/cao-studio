@@ -55,10 +55,6 @@ export class NicheTool {
   /** The niches chosen: their partition and path, and their box (sketch coordinates). */
   private niches: Chosen[] = [];
   private done = false;
-  /** Stored a moment after each whole setting (no « OK »): what was stored last, the door being made. */
-  private storeTimer: number | undefined;
-  private storedKey = "";
-  private doorId: string | null = null;
   private readonly panel: HTMLElement;
 
   /** `editing`: the equipment to change (its niche is chosen, its values come back). */
@@ -100,32 +96,13 @@ export class NicheTool {
         const box = (path: number[]) => leaves.find((l) => l.partition === this.editing!.partition && l.path.join(".") === path.join("."))?.box ?? n.box;
         this.niches = [this.editing.niche, ...(this.editing.span ?? [])].map((path) => ({ partition: this.editing!.partition, path, box: box(path) }));
       }
-      // As it is: nothing to store until something changes.
-      this.storedKey = this.key();
     }
     this.recompute();
   }
 
-  /** What would be stored: the equipment, its settings, its niches. */
-  private key(): string {
-    return JSON.stringify([this.fill, this.settings, this.niches.map((n) => n.path)]);
-  }
-
-  /** A whole setting (a niche chosen, nothing wrong) is stored a moment later. */
-  private schedule(): void {
-    window.clearTimeout(this.storeTimer);
-    this.storeTimer = undefined;
-    if (this.done || this.niches.length === 0 || this.key() === this.storedKey || this.checked().some((c) => c.problem)) return;
-    // Niches being picked (several clicks may share one equipment): a little longer before it is stored.
-    this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), this.editing || this.doorId ? 300 : 1200);
-  }
-
   /** The document changed under the tool (undo, redo): the niches chosen may be gone. */
   sync(): void {
-    // A door taken back by an undo: the next clicks make a new one.
-    if (this.doorId && !this.host.doc().features.some((f) => f.id === this.doorId)) this.doorId = null;
-    if (!this.editing && !this.doorId) this.niches = [];
-    this.storedKey = this.key();
+    if (!this.editing) this.niches = [];
     this.recompute();
   }
 
@@ -188,7 +165,6 @@ export class NicheTool {
     if (!this.editing) Object.assign(LAST, this.settings);
     this.draw();
     this.host.changed();
-    this.schedule();
   }
 
   private draw(): void {
@@ -233,8 +209,12 @@ export class NicheTool {
     handles.addEventListener("change", () => ((this.settings.handles = handles.checked), this.recompute()));
     const hinge = el("select", { class: FIELD, "aria-label": "Charnières" }, el("option", { value: "left", selected: this.settings.hinges?.[0] !== "right" }, "À gauche"), el("option", { value: "right", selected: this.settings.hinges?.[0] === "right" }, "À droite"));
     hinge.addEventListener("change", () => ((this.settings.hinges = [hinge.value as "left" | "right"]), this.recompute()));
+    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
+    cancel.addEventListener("click", () => this.cancel());
     const checked = this.checked();
     const problem = checked.find((c) => c.problem)?.problem ?? null;
+    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: this.niches.length === 0 || problem !== null }, "OK");
+    ok.addEventListener("click", () => this.confirm());
 
     const first = checked[0];
     const box = first?.niche.box;
@@ -290,24 +270,15 @@ export class NicheTool {
       result ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       el("p", { class: "text-[11px] text-gray-500" }, words.help),
+      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
   // ---- end --------------------------------------------------------------------------
 
-  /** Entrée: stored now. */
+  /** OK: one feature per niche chosen (or the one changed), as one undo step; the tool stays for other niches. */
   confirm(): void {
-    window.clearTimeout(this.storeTimer);
-    this.storeTimer = undefined;
-    this.store();
-  }
-
-  /**
-   * One feature per niche chosen (or the one changed, or the door being made), as one undo step; the tool stays for
-   * other niches. A door goes on growing with the niches clicked next; what is changed stays chosen.
-   */
-  private store(): void {
     if (this.done) return;
     const problem = this.checked().find((c) => c.problem)?.problem;
     if (this.niches.length === 0 || problem) return this.host.notify(problem ?? "Cliquez d'abord la niche à équiper.", "error");
@@ -315,16 +286,9 @@ export class NicheTool {
     if (this.editing) {
       const niche = this.niches[0];
       if (!niche || !this.host.apply([this.feature(niche, this.editing.id, this.editing.name)], `${this.editing.name} : modification faite.`)) return;
-      this.storedKey = this.key();
-      return;
+      return this.cancel();
     }
     let doc = this.host.doc();
-    if (this.fill === "door" && this.doorId) {
-      const made = doc.features.find((f) => f.id === this.doorId);
-      const first = [...this.niches].sort((a, b) => a.box.x0 - b.box.x0 || a.box.y0 - b.box.y0)[0];
-      if (made && first && this.host.apply([this.feature(first, made.id, made.name)], `Porte sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.`)) this.storedKey = this.key();
-      return;
-    }
     const used = doc.features.map((f) => new RegExp(`^${title} (\\d+)$`).exec(f.name)?.[1]).filter((n): n is string => n !== undefined).map(Number);
     let next = Math.max(0, ...used) + 1;
     // Left to right, bottom to top.
@@ -338,26 +302,17 @@ export class NicheTool {
     });
     const n = features.length;
     if (!this.host.apply(features, this.fill === "door" ? `Porte posée sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.` : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${WORDS[this.fill].one}.`)) return;
-    if (this.fill === "door") {
-      this.doorId = features[0]?.id ?? null;
-      this.storedKey = this.key();
-      return this.draw();
-    }
     this.niches = [];
-    this.storedKey = this.key();
     this.recompute();
   }
 
-  /** The cross, or Échap: closes; a setting still waiting is stored first. */
   cancel(): void {
     if (this.done) return;
-    if (this.storeTimer !== undefined) this.confirm();
     this.dispose();
     this.host.closed();
   }
 
   dispose(): void {
-    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.panel.remove();
   }

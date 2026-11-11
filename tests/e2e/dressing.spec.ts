@@ -43,7 +43,7 @@ test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm e
   await expect(shelves).toContainText(/40 cm \(du bas vers le haut\)/);
   // The dimensions in the view already say it, as the orange preview does.
   await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
   await expect(shelves).toHaveCount(0);
   await expect(tree.getByText("Tiroirs 1", { exact: true }).first()).toBeVisible();
   await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();

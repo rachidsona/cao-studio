@@ -271,8 +271,8 @@ export class SketchMode implements PointerHandler {
     if (this.kind !== "select" && this.kind !== "dimension") return HINTS[this.kind];
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement : appliqué aussitôt — ✕ ou Échap ferme";
     if (this.partition) return "Répartition : réglez la hauteur, la longueur et les cases ; cliquez dans la vue pour poser le coin bas-gauche : chaque réglage est enregistré — ✕ ou Échap ferme";
-    if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche (enregistré aussitôt) ; cliquez une niche obtenue pour la diviser à son tour — ✕ ou Échap ferme";
-    if (this.shelves) return "Étagères : cliquez une niche (enregistré aussitôt) ; cliquez une niche obtenue pour la diviser à son tour — ✕ ou Échap ferme";
+    if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche, réglez les cloisons, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Terminer ou Échap ferme";
+    if (this.shelves) return "Étagères : cliquez une niche, réglez les étagères, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Terminer ou Échap ferme";
     if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions : enregistré dès qu'il est prêt — ✕ ou Échap ferme";
     if (this.kind === "dimension") return HINTS.dimension;
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";

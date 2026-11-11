@@ -32,7 +32,8 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("2");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await expect(bar).toHaveAttribute("data-shown", "7");
   await page.waitForTimeout(1000);
 

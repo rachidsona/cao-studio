@@ -586,9 +586,9 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   await expect(tool).toContainText("2 niches choisies");
   await expect(tool).toContainText(/Porte de .* sur 2 niches/);
   await tool.getByRole("combobox", { name: "Charnières" }).selectOption("right");
-  // Stored by itself a moment later (no « OK »).
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
   await expect(page.getByText("Porte posée sur 2 niches.")).toBeVisible();
-  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(800);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(page.getByLabel(/^Navigateur : corps/).getByText("Porte 1", { exact: true }).first()).toBeVisible();

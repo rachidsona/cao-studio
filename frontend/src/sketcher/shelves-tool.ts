@@ -1,9 +1,9 @@
 /**
  * « Étagères » tool of the sketch (as Polyboard's division of a compartment): click one niche — a closed rectangular
  * area, a case of a « Répartition » — or several (a click on a chosen one releases it), set how many shelves, their thickness and how the niches share the height
- * (equal, or the bottom or the top one with a given height); they are stored as soon as the niche is chosen (no
- * « OK »), each setting changed next stored too. The result is a set of niches, each of which can be clicked and divided
- * again; the tool stays until the cross or Échap. Each store is one undo step. « Cloisons » is the same tool across: upright panels dividing the niche from left to right. The maths are in
+ * (equal, or the bottom or the top one with a given height); the shelves are shown dashed before OK. The result is a
+ * set of niches, each of which can be clicked and divided again; the tool stays until Échap. Confirming is one undo
+ * step. « Cloisons » is the same tool across: upright panels dividing the niche from left to right. The maths are in
  * shelves.ts.
  */
 import type { OffsetRecord, SketchGeometry } from "../document/sketch";
@@ -66,9 +66,6 @@ export class ShelvesTool {
   private column = false;
   /** Where that goes: at the left, or at the right. */
   private keepRight = false;
-  /** Stored a moment after each whole setting (no « OK »), and what was stored last. */
-  private storeTimer: number | undefined;
-  private storedKey = "";
 
   /** `editing`: the division of a niche to make again (its niche is chosen, its values come back). `vertical`: cloisons. */
   constructor(
@@ -103,31 +100,14 @@ export class ShelvesTool {
       const node = typeof rebuilt === "string" ? undefined : rebuilt.niches.get(pathKey(this.editing.step.niche));
       if (node) this.niches = [{ box: node.box, curves: [] }];
       else this.host.notify(`La niche de ${this.words.these} n'existe plus.`, "error");
-      // As it is: nothing to store until something changes.
-      this.storedKey = this.key();
     }
     this.recompute();
   }
 
-  /** What would be stored: the division asked, where. */
-  private key(): string {
-    return JSON.stringify([this.input, this.niches.map((n) => n.box), this.through, this.inLine, this.column, this.keepRight, extrusionOption.on, extrusionOption.depth]);
-  }
-
-  /** A whole setting (a niche chosen, every division possible) is stored a moment later. */
-  private schedule(): void {
-    window.clearTimeout(this.storeTimer);
-    this.storeTimer = undefined;
-    if (this.done || this.niches.length === 0 || this.layouts.some((l) => typeof l === "string") || this.key() === this.storedKey) return;
-    // Niches being picked (several clicks may make one division): a little longer before it is stored.
-    this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), this.editing ? 400 : 1200);
-  }
-
   /** The sketch changed under the tool (undo, redo): the niches chosen may be gone. */
   sync(): void {
-    if (!this.editing) this.niches = [];
+    this.niches = [];
     this.host.selection.clear();
-    this.storedKey = this.key();
     this.recompute();
   }
 
@@ -219,7 +199,6 @@ export class ShelvesTool {
     this.preview = lines.length ? { lines, circles: [], arcs: [] } : null;
     this.draw();
     this.host.changed();
-    this.schedule();
   }
 
   private draw(): void {
@@ -268,6 +247,10 @@ export class ShelvesTool {
       box.addEventListener("change", () => set(box.checked));
       return el("label", { class: "flex min-h-8 items-center gap-2" }, box, label);
     };
+    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
+    cancel.addEventListener("click", () => this.cancel());
+    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: this.niches.length === 0 || this.layouts.some((l) => typeof l === "string") }, "OK");
+    ok.addEventListener("click", () => this.confirm());
 
     const first = this.targets[0]?.box;
     const size = first ? `${formatLength(first.x1 - first.x0, unit)} × ${formatLength(first.y1 - first.y0, unit)}` : null;
@@ -307,7 +290,7 @@ export class ShelvesTool {
         this.niches.length === 0
           ? `Cliquez une niche (une zone fermée entre deux côtés) à diviser par des ${this.words.many} ; cliquez-en plusieurs pour leur mettre les mêmes ${this.words.many}.`
           : this.editing
-            ? `Niche de ${this.words.these} : ${size}. Chaque réglage est enregistré aussitôt : la répartition est refaite avec elles.`
+            ? `Niche de ${this.words.these} : ${size}. Réglez-les, puis OK : la répartition est refaite avec elles.`
             : this.niches.length === 1
               ? `Niche choisie : ${size}. Cliquez-en d'autres pour les ajouter, ou la même pour la retirer.`
               : `${this.niches.length} niches choisies. Cliquez-en d'autres pour les ajouter, ou une choisie pour la retirer.`,
@@ -344,6 +327,7 @@ export class ShelvesTool {
       result ? el("p", { class: " bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, this.niches.length > 1 ? `Une niche choisie ne peut pas être divisée : ${problem}` : problem) : null,
       el("p", { class: "text-[11px] text-gray-500" }, this.words.between),
+      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
@@ -354,14 +338,7 @@ export class ShelvesTool {
    * OK: the shelves are drawn in every niche chosen. A niche of a « Répartition » gets a step of its history (made
    * again with it); another area just gets its lines. The tool stays, to divide others (or the ones just made).
    */
-  /** Entrée: stored now. */
   confirm(): void {
-    window.clearTimeout(this.storeTimer);
-    this.storeTimer = undefined;
-    this.store();
-  }
-
-  private store(): void {
     if (this.done) return;
     const problem = this.layouts.find((l): l is string => typeof l === "string");
     if (this.niches.length === 0 || problem) {
@@ -457,11 +434,10 @@ export class ShelvesTool {
     if (!this.host.apply(geometry, `${n} ${this.words.one}${n > 1 ? "s" : ""}${where}${depth !== undefined ? `, extrudées de ${formatLength(depth, this.host.unit())}` : ""}.`, extruded)) return;
     this.niches = [];
     this.host.selection.clear();
-    this.storedKey = this.key();
     this.recompute();
   }
 
-  /** A division being changed: its step takes the new values, and the partition is made again from its steps; the tool stays. */
+  /** OK on a division being changed: its step takes the new values, and the partition is made again from its steps. */
   private confirmEdit(): void {
     const rec = this.editing;
     if (!rec || !isShelves(rec)) return;
@@ -473,13 +449,12 @@ export class ShelvesTool {
     const groups = extrusionGroups(g.offsets ?? [], rebuilt);
     const n = this.input.count;
     if (!this.host.apply(rebuilt.geometry, `${rec.name} : ${n} ${this.words.one}${n > 1 ? "s" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`, groups.length ? { groups } : undefined)) return;
-    this.storedKey = this.key();
+    this.cancel();
   }
 
-  /** The cross, or Échap: closes; a setting still waiting is stored first. */
+  /** Échap or « Terminer ». */
   cancel(): void {
     if (this.done) return;
-    if (this.storeTimer !== undefined) this.confirm();
     this.dispose();
     this.host.selection.clear();
     this.host.closed();
@@ -487,7 +462,6 @@ export class ShelvesTool {
 
   /** Removes the panel without notifying the host (the sketch mode is switching tools itself). */
   dispose(): void {
-    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.preview = null;
     this.panel.remove();

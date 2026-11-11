@@ -46,7 +46,8 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await expect(shelves).toContainText("Niche choisie");
   await shelves.getByRole("combobox").first().selectOption("2");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1200);
   await shot(page, "caisson-etageres");
   expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Bas 2 portes 1000/);
@@ -134,7 +135,8 @@ test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une aut
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1200);
   await page.mouse.click(x1, y1, { button: "right" });
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: /Garder ce caisson/ }).click();

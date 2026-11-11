@@ -37,7 +37,8 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await expect(shelves).toContainText("Niche choisie");
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await expect(tree(page).getByText("Étagères", { exact: true }).first()).toBeVisible();
   await page.waitForTimeout(1200);
 
@@ -138,7 +139,8 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1000);
 
   // The niche at the left edge, seen in perspective, aligned on the model.
@@ -233,7 +235,8 @@ test("Cloisons coupe la niche mère : les étagères restent d'un côté, l'autr
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1000);
 
   await page.mouse.click(mx, my, { button: "right" });
@@ -243,7 +246,8 @@ test("Cloisons coupe la niche mère : les étagères restent d'un côté, l'autr
   await cloisons.getByLabel("Couper toute la niche mère").check();
   await expect(cloisons).not.toHaveText(niche);
   await expect(cloisons.getByLabel("Ce qu'elle contient va")).toHaveValue("left");
-  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
   await page.waitForTimeout(1000);
   await expect(tree(page).getByText("Étagères", { exact: true }).first().locator("..")).toContainText("3");
@@ -261,7 +265,8 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("5");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1200);
 
   await click(page, '[data-action="cloisons"]');
@@ -275,7 +280,8 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   }
   await expect(cloisons).toContainText("3 niches choisies");
   await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
-  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
@@ -294,7 +300,8 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   }
   await expect(line.getByLabel("Cloisons alignées sur une seule ligne")).toBeChecked();
   await expect(line).toContainText("Cloisons sur une même ligne");
-  await line.getByRole("button", { name: "Fermer", exact: true }).click();
+  await line.getByRole("button", { name: "OK", exact: true }).click();
+  await line.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
@@ -366,7 +373,7 @@ test("Éclairage d'un mur de dressing : un ruban par niche, même esquisse cach�
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
+  await shelves.getByRole("button", { name: "OK", exact: true }).click();
   await page.waitForTimeout(800);
   await page.keyboard.press("Escape");
 
@@ -408,7 +415,8 @@ test("une cloison coupe aussi les étagères d'un module, faites en deux fois", 
   }
   await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
   await expect(cloisons.locator("[data-cut-shelves]")).toContainText("Elle coupe 3 étagères");
-  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
+  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
+  await cloisons.getByRole("button", { name: "Terminer" }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
