@@ -428,6 +428,44 @@ export function validateDocument(input: unknown): string[] {
   return errors;
 }
 
+/**
+ * A saved project as it can be opened (audit of 11/11/2026): an operation the editor cannot use no longer keeps the
+ * whole project closed — it is switched off (suppressed), kept for its author to repair, and said in `problems`; one
+ * without an id or a type is left out. Only a fault of the document itself (format, version, its lists) still throws.
+ */
+export function openDocument(input: unknown): { doc: CadDocument; problems: string[] } {
+  const upgraded = migrateDocument(input);
+  if (validateDocument(upgraded).length === 0) return { doc: parseDocument(upgraded), problems: [] };
+  if (!isObject(upgraded) || !Array.isArray(upgraded.features)) return { doc: parseDocument(upgraded), problems: [] };
+  const envelope = validateDocument({ ...upgraded, features: [] });
+  if (envelope.length) throw new Error(`Document invalide :\n- ${envelope.join("\n- ")}`);
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const features: unknown[] = [];
+  for (const feature of upgraded.features) {
+    const alone = validateDocument({ ...upgraded, features: [feature] }).map((m) => m.replace(/^Opération 1 /, ""));
+    const named = isObject(feature) && typeof feature.id === "string" && typeof feature.type === "string" && !ids.has(feature.id);
+    const label = isObject(feature) && typeof feature.name === "string" ? `« ${feature.name} »` : "Une opération";
+    if (!named) {
+      problems.push(`${label} est retirée : elle n'a pas d'identifiant propre.`);
+      continue;
+    }
+    ids.add(feature.id as string);
+    if (alone.length === 0) features.push(feature);
+    else {
+      features.push({ ...feature, suppressed: true });
+      problems.push(`${label} est désactivée : ${alone.join(" ; ")}`);
+    }
+  }
+  return { doc: parseDocumentLoose({ ...upgraded, features }), problems };
+}
+
+/** The document with its broken operations switched off: checked as a whole except them. */
+function parseDocumentLoose(input: Record<string, unknown>): CadDocument {
+  const doc = input as unknown as CadDocument;
+  return { ...doc, parameters: doc.parameters ?? {} };
+}
+
 /** Validates an untrusted document, upgrading older schema versions first. */
 export function parseDocument(input: unknown): CadDocument {
   const upgraded = migrateDocument(input);

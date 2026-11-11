@@ -3,7 +3,7 @@
  * camera moves and edits in progress never reach the server.
  */
 import type { CadDocument } from "../document/types";
-import { parseDocument } from "../document/validate";
+import { openDocument } from "../document/validate";
 
 export interface ProjectSnapshot {
   id: string;
@@ -11,6 +11,8 @@ export interface ProjectSnapshot {
   version: number;
   document: CadDocument;
   checksum: string;
+  /** The operations switched off on opening, and why (document/validate.ts openDocument). */
+  problems?: string[];
 }
 
 export class ApiError extends Error {
@@ -52,18 +54,11 @@ async function request(url: string, init: RequestInit = {}): Promise<Record<stri
   return payload;
 }
 
-function toSnapshot(payload: Record<string, unknown>): ProjectSnapshot {
-  return {
-    id: String(payload.id),
-    name: String(payload.name),
-    version: Number(payload.version),
-    checksum: String(payload.checksum),
-    document: parseDocument(payload.document),
-  };
-}
-
 export async function loadProject(apiUrl: string): Promise<ProjectSnapshot> {
-  return toSnapshot(await request(apiUrl));
+  const payload = await request(apiUrl);
+  // Opened even with an operation the editor cannot use: it is switched off and said (audit of 11/11/2026).
+  const { doc, problems } = openDocument(payload.document);
+  return { id: String(payload.id), name: String(payload.name), version: Number(payload.version), checksum: String(payload.checksum), document: doc, problems };
 }
 
 export async function saveProject(
@@ -73,7 +68,9 @@ export async function saveProject(
   message = "",
 ): Promise<ProjectSnapshot> {
   const body = JSON.stringify({ document: doc, base_version: baseVersion, message });
-  return toSnapshot(await request(apiUrl, { method: "PUT", body }));
+  const payload = await request(apiUrl, { method: "PUT", body });
+  // What was sent is what was kept: the answer is not parsed again (a check failing there left the save half done).
+  return { id: String(payload.id), name: String(payload.name), version: Number(payload.version), checksum: String(payload.checksum), document: doc };
 }
 
 /** Browsers cap keepalive request bodies at 64 KiB. */

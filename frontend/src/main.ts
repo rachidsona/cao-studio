@@ -225,6 +225,10 @@ async function start(): Promise<void> {
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);
   loading.done();
+  // Operations switched off on opening (document/validate.ts openDocument): said once, they stay in the history.
+  if (snapshot.problems?.length) {
+    editor.notify(`Projet ouvert, mais ${snapshot.problems.length} opération(s) désactivée(s) : ${snapshot.problems.join(" — ")}`, "error");
+  }
 }
 
 const loading = new LoadingScreen(document.querySelector<HTMLElement>('[data-ref="loading"]'));

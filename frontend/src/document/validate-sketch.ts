@@ -38,7 +38,8 @@ const CONSTRAINT_FIELDS: Record<string, Record<string, RefCategory>> = {
 const POSITIVE_DIMENSIONS = new Set(["distance", "length", "radius", "diameter", "pointLineDistance"]);
 export const MAX_SKETCH_POINTS = 5000;
 export const MAX_SKETCH_CURVES = 5000;
-export const MAX_SKETCH_CONSTRAINTS = 10000;
+/** The solver runs out of memory near a thousand constraints (measured, audit of 11/11/2026): a margin under it. */
+export const MAX_SKETCH_CONSTRAINTS = 600;
 
 export function validateSketch(feature: Json, where: string, errors: string[]): void {
   const { points, curves, constraints } = feature;

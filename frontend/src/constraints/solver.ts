@@ -301,8 +301,16 @@ function runPass(prims: Prim[]): Pass {
   const wrapper = new GcsWrapper(new solverModule.GcsSystem());
   wrapper.debug_mode = DebugMode.NoDebug;
   try {
-    wrapper.push_primitives_and_params(prims);
-    const status = wrapper.solve();
+    let status: ReturnType<typeof wrapper.solve>;
+    try {
+      wrapper.push_primitives_and_params(prims);
+      status = wrapper.solve();
+    } catch (error) {
+      // The solver's own WebAssembly runs out of memory on a very large sketch (« Aborted(OOM) », about a thousand
+      // constraints): said plainly rather than as a raw kernel error (audit of 11/11/2026).
+      if (error instanceof SketchError) throw error;
+      throw new SketchError(`Esquisse trop grande pour le solveur de contraintes (${prims.length} éléments) : partagez-la en plusieurs esquisses, puis rechargez la page.`);
+    }
     wrapper.apply_solution();
     return {
       status,

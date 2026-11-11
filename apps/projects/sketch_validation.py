@@ -13,7 +13,7 @@ from typing import Any
 ALLOWED_PLANES = frozenset({"XY", "XZ", "YZ"})
 MAX_POINTS = 5000
 MAX_CURVES = 5000
-MAX_CONSTRAINTS = 10000
+MAX_CONSTRAINTS = 600  # the editor's solver runs out of memory near a thousand (audit of 11/11/2026)
 MAX_LABEL_LENGTH = 80
 MAX_ERRORS_PER_SKETCH = 50
 MAX_MESSAGE_LENGTH = 300

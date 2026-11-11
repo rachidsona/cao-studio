@@ -262,6 +262,10 @@ Principes :
   locale est conservée.
 - Une opération en échec est signalée dans le navigateur et la ligne de temps, ses dépendantes sont marquées
   « bloquées », et le dernier corps valide reste affiché.
+- **Un projet s'ouvre toujours** (`document/validate.ts`, `openDocument`) : une opération que l'éditeur ne sait pas
+  utiliser est désactivée et dite à l'ouverture, au lieu de refuser tout le projet ; seule une faute du document
+  lui-même (format, version, ses listes) l'empêche d'ouvrir. À l'inverse, une modification qui rendrait le projet
+  impossible à rouvrir est refusée avec son message, avant d'être enregistrée.
 
 ## Esquisses (phase 4)
 

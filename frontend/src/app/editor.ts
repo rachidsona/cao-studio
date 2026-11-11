@@ -7,6 +7,7 @@ import { normalizeDoc } from "./doc-normalizers";
 import { askConfirm } from "../ui/confirm-dialog";
 import { addExtrude, addPlate, bodyLabel, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";
+import { validateDocument } from "../document/validate";
 import type { GeometryClient } from "../geometry/client";
 import type { RecomputeResponse } from "../geometry/protocol";
 import type { FeatureStatus } from "../history/recompute";
@@ -214,7 +215,10 @@ export class Editor {
 
   /** Applies a new document as one undo step (workshop tools too); `amend`: in place of the last one (a tool set again). */
   change(next: CadDocument, amend = false): Promise<void> {
-    this.session[amend ? "replace" : "apply"](normalizeDoc(this.doc, next));
+    // A change the project could not be reopened with is refused, said, and not recorded (audit of 11/11/2026).
+    const doc = normalizeDoc(this.doc, next), problems = validateDocument(doc);
+    if (problems.length) return (this.notify(`Modification refusée, le projet ne se rouvrirait plus : ${problems.slice(0, 2).join(" ; ")}`, "error"), Promise.resolve());
+    this.session[amend ? "replace" : "apply"](doc);
     this.sketches.followDocument();
     this.updateHistoryButtons();
     return this.recompute();
