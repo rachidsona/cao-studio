@@ -82,7 +82,7 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   await expect(partition.getByLabel("Largeur des cases")).toHaveValue("shares");
   await partition.screenshot({ path: "test-results/partition-strip.png" });
 
-  // OK stores it as one step: the face shows it again; one undo takes it back.
+  // Stored as soon as it is let go (one step); OK has nothing more to store: one undo takes it back.
   await partition.getByRole("button", { name: "OK", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1500);

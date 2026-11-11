@@ -6,9 +6,20 @@
  */
 import type { SketchGeometry } from "./sketch";
 import type { SketchExtrusion } from "../sketcher/mode";
-import { addExtrude, bodyOrigin, deleteFeature, findFeature, updateFeature } from "./operations";
+import { addExtrude, bodyOrigin, deleteFeature, findFeature, uniqueId, uniqueName, updateFeature } from "./operations";
 import { syncPartitionDoors } from "./partition-doors";
-import type { BodyInfo, CadDocument, SketchFeature } from "./types";
+import type { BodyInfo, CadDocument, NicheFeature, SketchFeature } from "./types";
+
+/** Drawers and rods of this sketch as changed in the step: each one replaces its own; a new one gets an id and a name of its own. */
+function withNiches(doc: CadDocument, sketchId: string, niches: readonly NicheFeature[] = []): CadDocument {
+  let next = doc;
+  for (const f of niches) {
+    if (f.sketch !== sketchId) continue;
+    if (findFeature(next, f.id)?.type === "niche") next = { ...next, features: next.features.map((g) => (g.id === f.id ? structuredClone(f) : g)) };
+    else next = { ...next, features: [...next.features, { ...structuredClone(f), id: uniqueId(next, f.fill === "rod" ? "pd" : "td"), name: uniqueName(next, f.name.replace(/ \d+$/, "")) }] };
+  }
+  return next;
+}
 
 /** « Côté 3 »: the next number after the bodies of this name already in the document. */
 export function nextNumber(doc: CadDocument, name: string): number {
@@ -38,7 +49,8 @@ export function stepOfBody(doc: CadDocument, body: string): { sketch: string; of
 }
 
 export function withSketchExtrusion(base: CadDocument, featureId: string, geometry: SketchGeometry, extrusion?: SketchExtrusion): CadDocument {
-  const updated = updateFeature(base, featureId, (f) => (f.type === "sketch" ? { ...f, ...geometry } : f));
+  const pruned = (extrusion?.removeNiches ?? []).reduce((d, id) => (findFeature(d, id)?.type === "niche" ? deleteFeature(d, id) : d), base);
+  const updated = withNiches(updateFeature(pruned, featureId, (f) => (f.type === "sketch" ? { ...f, ...geometry } : f)), featureId, extrusion?.niches);
   const doc = (extrusion?.repath ?? []).reduce((d, { partition, path }) => ({ ...d, features: d.features.map((f) => (f.type === "niche" && f.sketch === featureId && f.partition === partition && (f.fill === "rod" || f.fill === "drawers") ? { ...f, niche: path(f.niche) } : f)) }), updated);
   // The doors of its partitions follow (made, changed or taken away with their step).
   if (!extrusion) return syncPartitionDoors(doc, featureId);

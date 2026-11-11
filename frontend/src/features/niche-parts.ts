@@ -53,7 +53,7 @@ export interface NichePart {
 }
 
 export const SUPPORT = 3;
-const MAX_DRAWERS = 8;
+export const MAX_DRAWERS = 8;
 
 /** The niche the feature equips, with the frame of its sketch and the depth of the partition's panels. */
 export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][] }, sketch: SketchFeature | undefined): NicheGeometry | string {

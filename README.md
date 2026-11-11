@@ -710,7 +710,30 @@ opération existante.
     panneau avant OK (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
     clic sur une case la choisit (cadre laiton, un autre clic la laisse) ; ses bords se tirent, au centimètre, pour
     changer sa largeur : la case voisine prend la différence, la longueur reste, et « Largeur des cases » passe en
-    proportions. OK enregistre le tout en une étape, une seule annulation.
+    proportions. Sur la face encore — et pour une Répartition déjà faite, **chaque geste est enregistré aussitôt**
+    (une étape d'historique, une annulation chacun, la 3D est refaite pendant que le panneau reste ouvert, avec les
+    réglages en cours du panneau ; pour une nouvelle Répartition, tout attend OK) :
+    - **Déplacer** : une étagère ou une cloison cliquée (cadre laiton, une barre sous la face) se tire le long de son
+      axe ; elle s'accroche au **pas de 32 mm** du système de perçage (`DRILLING_32`), compté depuis le bas de sa
+      niche, ou à **l'étagère d'une case voisine** quand elle passe à moins d'un demi-pas (Alt : librement), jamais à
+      moins d'un pas de ses voisines ; ses deux niches s'affichent pendant le geste et se partagent le changement. Les
+      flèches la poussent d'un pas. Des tiroirs ou une tringle se tirent dans une **niche vide** pour y être portés ;
+      une tringle se monte ou se descend (au centimètre depuis le sol, accrochée aux autres tringles ; flèches : 1 cm).
+    - **Dupliquer** (Ctrl + D) : une étagère de plus juste au-dessus, au même écart que sous elle (au milieu de la niche
+      quand la place manque) — ce qui équipait les niches du dessus monte d'un rang avec elles ; des tiroirs ou une
+      tringle copiés dans la niche vide la plus proche (même rangée d'abord). « + tiroir » / « − tiroir » (1 à 8).
+    - **Aligner** : l'étagère (ou la cloison, ou la tringle) va à la hauteur de la plus proche d'à côté.
+    - **Supprimer** (Suppr) : une étagère ou une cloison retirée, ses deux niches n'en font plus qu'une, les autres
+      restent en place ; la niche fusionnée garde ce que contenait celle du bas (de gauche), ou celle du haut quand
+      celle du bas était vide, et ce que contenait l'autre s'en va ; la dernière d'une division emporte son étape, ses
+      traits et ses corps. Des tiroirs ou une tringle supprimés.
+    - **Cotes sur place** : un clic sur n'importe quelle cote l'ouvre dans un champ, dans l'unité du projet — longueur,
+      hauteur, largeur d'une case (les autres se partagent le reste), épaisseur des panneaux, d'une étagère (toute sa
+      division), du socle, hauteur d'une niche (la voisine prend la différence ; « l × h » règle la largeur entre
+      cloisons), d'une façade de tiroir (la niche grandit d'autant par façade), d'une tringle depuis le sol. Entrée
+      règle, Échap laisse. Une cote impossible est refusée avec la raison.
+    OK enregistre ce que le panneau a encore en cours et ferme l'outil ; Annuler ferme sans toucher à ce que la face a
+    déjà enregistré (Ctrl + Z le reprend, geste par geste).
   - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
     il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
     « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.

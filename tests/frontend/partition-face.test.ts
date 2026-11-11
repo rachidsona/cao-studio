@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { emptySketchGeometry, type PartitionParams } from "../../frontend/src/document/sketch";
 import type { NicheFeature, SketchFeature } from "../../frontend/src/document/types";
-import { partitionFace, partitionFaceSvg, pulledWidths } from "../../frontend/src/sketcher/partition-face";
+import { partitionFace, pulledWidths } from "../../frontend/src/sketcher/partition-face";
+import { partitionFaceSvg } from "../../frontend/src/sketcher/partition-face-svg";
 import { partitionRecord, rebuildChain, shelvesRecord } from "../../frontend/src/sketcher/partition-history";
 
 const INPUT: PartitionParams = { length: 1500, height: 2500, thickness: 30, cases: 2, dividers: ["single"], boards: true, plinth: 50, outer: "side", single: "board", double: "side" };

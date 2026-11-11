@@ -18,11 +18,11 @@ import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
-import { partitionFace } from "./partition-face";
-import { partitionStrip } from "./partition-strip";
+import { FacePanel } from "./partition-face-panel";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
 import { defaultDividers, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
 import { extractLoops, sketchFaces } from "./loops";
+import { removeEntities } from "./edit";
 import { regionAt } from "./region-pick";
 import { pointPos } from "./edit";
 import type { SketchExtrusion } from "./mode";
@@ -95,8 +95,8 @@ export class SketchPartitionTool {
   /** The back behind the panels, null: none. */
   private back: BackSettings | null = null;
   private done = false;
-  /** The case chosen on the face of the panel, null: none. */
-  private chosen: number | null = null;
+  /** The face of the wall in the panel, and what is changed on it before OK. */
+  private face: FacePanel;
   private readonly panel: HTMLElement;
 
   /** `editing`: the step of the history to make again (its values come back, its lines and bodies are replaced). */
@@ -122,6 +122,22 @@ export class SketchPartitionTool {
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     placePanel(host.container(), this.panel);
+    this.face = this.facePanel();
+  }
+
+  private facePanel(): FacePanel {
+    return new FacePanel({
+      draft: () => ({ input: this.input, origin: this.origin, doors: this.doors, ...(extrusionOption.on ? { depth: extrusionOption.depth } : {}), ...(this.editing ? { id: this.editing.id } : {}) }),
+      geometry: () => this.host.geometry(),
+      equipment: () => this.host.equipment?.() ?? null,
+      unit: () => this.host.unit(),
+      notify: (message, kind) => this.host.notify(message, kind),
+      set: (patch) => this.set(patch),
+      redraw: () => this.draw(),
+      live: () => this.editing !== null,
+      commit: (said) => this.store(said),
+      name: () => this.editing?.name ?? "la répartition",
+    });
   }
 
   start(): void {
@@ -136,6 +152,8 @@ export class SketchPartitionTool {
 
   /** The sketch changed under the tool (undo, redo). */
   sync(): void {
+    // What the face changed was drawn on the sketch as it was.
+    this.face = this.facePanel();
     this.recompute();
   }
 
@@ -282,7 +300,7 @@ export class SketchPartitionTool {
           ? `Les étagères posées dans ses niches (${this.divisions().length}) sont refaites avec elle ; chacune reste une étape de l'historique.`
           : "Un rectangle réparti en cases égales, une par porte, avec ses côtés à leur épaisseur. Cliquez dans la vue pour poser son coin bas-gauche.",
       ),
-      this.strip(unit),
+      this.face.view(),
       number("Hauteur", this.input.height, (v) => this.resize({ height: v })),
       number("Longueur", this.input.length, (v) => this.resize({ length: v })),
       number("Épaisseur", this.input.thickness, (v) => this.set({ thickness: v })),
@@ -375,18 +393,6 @@ export class SketchPartitionTool {
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
-  /** The face of the partition, at scale, as the panel has it: a case clicked is chosen, its edges pulled. */
-  private strip(unit: DisplayUnit): HTMLElement | null {
-    const draft = { input: this.input, origin: this.origin, doors: this.doors, ...(extrusionOption.on ? { depth: extrusionOption.depth } : {}), ...(this.editing ? { id: this.editing.id } : {}) };
-    const face = partitionFace(draft, this.host.geometry(), this.host.equipment?.() ?? null);
-    if (!face) return null;
-    const chosen = this.chosen !== null && this.chosen < face.cases.length ? this.chosen : null;
-    const width = chosen === null ? 0 : face.cases[chosen]!.width;
-    const text = `${formatLength(face.height, unit)} de haut, ${formatLength(face.length, unit)} de long, ${face.cases.length} cases. ${chosen === null ? "Cliquez une case pour la choisir." : `Case ${chosen + 1} choisie : ${formatLength(width, unit)}. Tirez son bord en laiton pour changer sa largeur ; la case voisine prend la différence.`}`;
-    const svg = partitionStrip({ face, chosen, label: `Face de ${this.editing?.name ?? "la répartition"}`, pick: (i) => ((this.chosen = i), this.draw()), widths: (widths) => this.set({ widths }) });
-    return el("div", { class: "space-y-1", "data-ref": "partition-face" }, el("p", { class: "text-gray-600 dark:text-gray-300" }, text), svg);
-  }
-
   // ---- end --------------------------------------------------------------------------
 
   /** The divisions of this partition's niches by shelves (steps of the history after it). */
@@ -400,11 +406,19 @@ export class SketchPartitionTool {
    * niches are then divided with « Étagères ». Changing a step made before makes it, and what follows it, again.
    */
   confirm(): void {
-    if (this.done) return;
+    if (this.store()) this.cancel();
+  }
+
+  /**
+   * The step stored as the panel and the face have it (one undo step); `said`: the message of a change made on the face,
+   * which stores it at once and leaves the tool open. False: refused (said why).
+   */
+  private store(said?: string): boolean {
+    if (this.done) return false;
     const layout = partitionLayout(this.input);
     if (typeof layout === "string") {
       this.host.notify(layout, "error");
-      return;
+      return false;
     }
     const g = this.host.geometry();
     const depth = extrusionOption.on ? extrusionOption.depth : undefined;
@@ -412,22 +426,30 @@ export class SketchPartitionTool {
     const doors = depth !== undefined && this.doors ? { doors: { ...this.doors } } : {};
     const back = depth !== undefined && this.back ? { back: { ...this.back } } : {};
     const step = { kind: "partition" as const, input: structuredClone(this.input), origin: [...this.origin] as [number, number], ...(depth !== undefined ? { depth } : {}), ...doors, ...back };
+    // Nothing left to store (the face stored it all already): OK only closes, no empty undo step.
+    const stored = g.offsets?.find((r) => r.id === id);
+    if (!said && stored && JSON.stringify(stored.step) === JSON.stringify(step) && !this.face.offsets() && !this.face.niches().length && !this.face.removedNiches().length) return true;
+    // What was changed on the face of the wall (shelves, cloisons) goes in the same step.
+    const before = this.face.offsets() ?? g.offsets ?? [];
     const offsets = this.editing
       ? // An automatic name follows the number of cases ("Répartition 2 cases" → "Répartition 3 cases"); one the user chose stays.
-        (g.offsets ?? []).map((r) => (r.id === id ? { ...r, step, name: /^Répartition \d+ cases( \(\d+\))?$/.test(r.name) ? r.name.replace(/\d+ cases/, `${this.input.cases} cases`) : r.name } : r))
-      : [...(g.offsets ?? []), { ...partitionRecord(id, stepName(g, `Répartition ${this.input.cases} cases`), this.input, this.origin, depth), step }];
-    const rebuilt = rebuildChain({ ...g, offsets }, id);
+        before.map((r) => (r.id === id ? { ...r, step, name: /^Répartition \d+ cases( \(\d+\))?$/.test(r.name) ? r.name.replace(/\d+ cases/, `${this.input.cases} cases`) : r.name } : r))
+      : [...before, { ...partitionRecord(id, stepName(g, `Répartition ${this.input.cases} cases`), this.input, this.origin, depth), step }];
+    // Shelves taken away on the face with the last of their division: the step goes, its lines and its bodies too.
+    const gone = (g.offsets ?? []).filter((r) => isShelves(r) && r.step.of === id && !offsets.some((o) => o.id === r.id));
+    const rebuilt = rebuildChain({ ...(gone.length ? removeEntities(g, gone.flatMap((r) => r.curves)) : g), offsets }, id);
     if (typeof rebuilt === "string") {
       this.host.notify(rebuilt, "error");
-      return;
+      return false;
     }
     // The panels (not the niches) are extruded when asked, each one a body of its own (replacing the ones made before).
-    const groups = extrusionGroups(g.offsets ?? [], rebuilt);
-    const extruded: SketchExtrusion | undefined = groups.length ? { groups } : undefined;
+    const groups = [...extrusionGroups(g.offsets ?? [], rebuilt), ...gone.filter((r) => r.bodies?.length).map((r) => ({ distance: 1, elements: [], remove: r.bodies }))];
+    const niches = this.face.niches();
+    const removeNiches = this.face.removedNiches();
+    const extruded: SketchExtrusion | undefined = groups.length || niches.length || removeNiches.length ? { groups, ...(niches.length ? { niches } : {}), ...(removeNiches.length ? { removeNiches } : {}) } : undefined;
     const unit = this.host.unit();
     const made = `${this.editing ? "Répartition modifiée" : "Répartition"} en ${casesText(layout, unit)}${depth !== undefined ? `, panneaux extrudés de ${formatLength(depth, unit)}` : ""}${"doors" in doors ? `, ${layout.caseWidths.length} porte${layout.caseWidths.length > 1 ? "s" : ""}` : ""}${"back" in back ? ", avec son fond" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`;
-    if (!this.host.apply(rebuilt.geometry, made, extruded)) return;
-    this.cancel();
+    return this.host.apply(rebuilt.geometry, said ?? made, extruded);
   }
 
   /** The side door i opens from: the one chosen, else left, right, left… in turn. */

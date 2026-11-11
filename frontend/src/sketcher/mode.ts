@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { classify, COMMANDS, describeConstraints } from "../constraints/catalog";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
 import { ORIGIN, type OffsetRecord, type SketchConstraint, type SketchGeometry } from "../document/sketch";
-import type { DisplayUnit, SketchFeature } from "../document/types";
+import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import type { EdgeOutline, FaceOutline } from "../geometry/protocol";
 import { closeCalculator } from "../ui/calculator";
@@ -75,6 +75,10 @@ export interface SketchExtrusion {
   groups: ExtrusionGroup[];
   /** Niches divided again from above: what equips them follows to its new path. */
   repath?: { partition: string; path: (path: number[]) => number[] }[];
+  /** Drawers and rods changed in the same step (moved, copied: a copy's id starts with « face-new- » until stored). */
+  niches?: NicheFeature[];
+  /** Drawers and rods taken away in the same step. */
+  removeNiches?: string[];
 }
 
 export interface SketchModeHost {
