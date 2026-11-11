@@ -1,4 +1,4 @@
-/** La face d'un mur du dressing dans le panneau de sa Répartition : ce qu'il a, à l'échelle ; une case choisie, son bord tiré, une étape d'historique. */
+/** La face d'un mur du dressing dans le panneau de sa Répartition : ce qu'il a, à l'échelle ; un côté entre deux cases tiré, une étape d'historique. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
 
@@ -6,7 +6,7 @@ const action = (page: Page, selector: string) => page.evaluate((s) => document.q
 const planTool = (page: Page) => page.getByRole("dialog", { name: "Plan de dressing" });
 const zones = (page: Page) => planTool(page).getByRole("list", { name: "Zones du plan" });
 
-test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit en tirant son bord, OK puis une annulation", async ({ page }) => {
+test("face du mur : les tiroirs posés s'y voient, une case s'élargit en tirant le côté qui la sépare de sa voisine, OK puis une annulation", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "Face du mur e2e");
@@ -64,13 +64,15 @@ test("face du mur : les tiroirs posés s'y voient, une case choisie s'élargit e
   await partition.getByLabel("Cases", { exact: true }).selectOption(String(cases));
   await expect(strip.locator("[data-case]")).toHaveCount(cases);
 
-  // A case clicked is chosen; its right edge, pulled, makes it wider and its neighbour narrower.
+  // A click in a case chooses nothing (no brass frame); the side between two cases, pulled, makes the first one
+  // wider and its neighbour narrower.
   const before = await strip.locator('[data-width="0"]').textContent();
   const next = await strip.locator('[data-width="1"]').textContent();
   await strip.locator('[data-case="0"]').click({ position: { x: 5, y: 5 } });
-  await expect(partition).toContainText("Case 1 choisie");
-  await expect(strip.locator("[data-chosen]")).toHaveCount(1);
-  const grip = (await strip.locator('[data-resize="right"] rect').last().boundingBox())!;
+  await expect(strip.locator("[data-chosen]")).toHaveCount(0);
+  await expect(partition).not.toContainText("choisie");
+  await expect(strip.locator("[data-resize]")).toHaveCount(cases - 1);
+  const grip = (await strip.locator('[data-side="0"] rect').last().boundingBox())!;
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
   for (let k = 1; k <= 5; k++) await page.mouse.move(grip.x + grip.width / 2 + k * 4, grip.y + grip.height / 2);

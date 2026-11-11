@@ -35,10 +35,10 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
     ...face.doors.map((d) => box(d, "fill-sky-400/10 stroke-sky-600 dark:stroke-sky-400", `stroke-dasharray="5 3" pointer-events="none" data-door="${d.hinge}"`)),
     ...face.handles.map((h) => `<line x1="${h.x1}" y1="${h.y1}" x2="${h.x2 === h.x1 && h.y2 === h.y1 ? h.x2 + 1 : h.x2}" y2="${h.y2}" stroke="${BRASS}" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" data-handle=""/>`),
   ];
-  // Each case takes the click, over what it holds; the chosen one is outlined.
+  // Each case, under what it holds: a click there chooses nothing (its width is pulled by the sides between cases).
   face.cases.forEach((c, i) => {
     const on = pick?.kind === "case" && pick.index === i;
-    parts.push(`<rect x="${c.x0}" y="${top}" width="${c.width}" height="${bottom - top}" fill="${on ? "rgb(184 151 90 / 0.15)" : "transparent"}" ${on ? `stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" data-chosen=""` : ""} class="cursor-pointer" data-case="${i}"><title>Case ${i + 1} : ${cm(c.width)} cm${on ? "" : " — cliquer pour la choisir"}</title></rect>`);
+    parts.push(`<rect x="${c.x0}" y="${top}" width="${c.width}" height="${bottom - top}" fill="${on ? "rgb(184 151 90 / 0.15)" : "transparent"}" ${on ? `stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" data-chosen=""` : ""} data-case="${i}"><title>Case ${i + 1} : ${cm(c.width)} cm</title></rect>`);
   });
   // Over the cases: the shelves and cloisons, the drawers and rods, each taken by a click or pulled.
   face.pieces.forEach((p, k) => {

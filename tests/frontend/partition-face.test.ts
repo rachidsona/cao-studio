@@ -104,7 +104,7 @@ describe("face d'une Répartition", () => {
     const face = partitionFace({ input: INPUT, origin: [0, 0] }, emptySketchGeometry())!;
     const svg = partitionFaceSvg(face, 1);
     expect(count(svg, "data-chosen")).toBe(1);
-    expect(svg).toMatch(/data-chosen="" class="cursor-pointer" data-case="1"/);
+    expect(svg).toMatch(/data-chosen="" data-case="1"/);
   });
 
   it("tire le bord d'une case au centimètre, la voisine prend la différence", () => {

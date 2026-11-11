@@ -708,10 +708,10 @@ opération existante.
     niche en son milieu (« ↕ 38,2 », ou « largeur × hauteur » pour une niche plus étroite que sa case), la hauteur de
     chaque façade de tiroir sur elle, la hauteur d'une tringle depuis le sol sous elle (« tringle 180 ») et celle du
     socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Elle suit le
-    panneau avant OK (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
-    clic sur une case la choisit (cadre laiton, un autre clic la laisse) ; ses bords se tirent, au centimètre, pour
-    changer sa largeur : la case voisine prend la différence, la longueur reste, et « Largeur des cases » passe en
-    proportions. Sur la face encore :
+    panneau (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
+    clic dans une case ne choisit rien (pas de cadre). Chaque côté entre deux cases porte une poignée laiton qui
+    se tire (curseur ↔) : la case de gauche change de largeur au centimètre, celle de droite prend la
+    différence, la longueur reste, et « Largeur des cases » passe en proportions. Sur la face encore :
     - **Déplacer** : une étagère ou une cloison cliquée (cadre laiton, une barre sous la face) se tire le long de son
       axe ; elle s'accroche au **pas de 32 mm** du système de perçage (`DRILLING_32`), compté depuis le bas de sa
       niche, ou à **l'étagère d'une case voisine** quand elle passe à moins d'un demi-pas (Alt : librement), jamais à

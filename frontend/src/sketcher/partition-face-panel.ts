@@ -154,7 +154,7 @@ export class FacePanel {
   private caption(face: PartitionFace, pick: FacePick | null, unit: DisplayUnit): string {
     const f = (mm: number) => formatLength(mm, unit);
     const head = `${f(face.height)} de haut, ${f(face.length)} de long, ${face.cases.length} cases.`;
-    if (pick?.kind === "case") return `${head} Case ${pick.index + 1} choisie : ${f(face.cases[pick.index]!.width)}. Tirez son bord en laiton pour changer sa largeur ; la case voisine prend la différence.`;
+    if (pick?.kind === "case") return head;
     if (pick?.kind === "piece") {
       const p = face.pieces[pick.index]!;
       const [a, b] = [p.centre - p.travel[0], p.travel[1] - p.centre];
@@ -170,7 +170,7 @@ export class FacePanel {
       const count = this.base().niches.find((n) => n.id === e.id)?.drawers ?? 0;
       return `${count} tiroir${count > 1 ? "s" : ""} choisi${count > 1 ? "s" : ""}. Tirez-les dans une niche vide pour les y porter.`;
     }
-    return `${head} Cliquez une case, une étagère, une cloison, des tiroirs ou une tringle pour les choisir ; cliquez une cote pour la changer.`;
+    return `${head} Cliquez une étagère, une cloison, des tiroirs ou une tringle pour les choisir ; tirez une poignée en laiton entre deux cases pour changer leurs largeurs ; cliquez une cote pour la changer.`;
   }
 
   private bar(face: PartitionFace, pick: FacePick | null): HTMLElement | null {

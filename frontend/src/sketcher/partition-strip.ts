@@ -1,8 +1,9 @@
 /**
  * La bande de face d'une Répartition dans le panneau de l'outil (partition-tool.ts), comme celle du linéaire de la
- * cuisine : le dessin de partition-face-svg.ts, et ce qu'on y fait à la souris. Un clic choisit une case, une étagère,
- * une cloison, un bloc de tiroirs ou une tringle (un autre clic sur une case la laisse). Les bords de la case choisie,
- * en laiton, se tirent pour changer sa largeur au centimètre. Une étagère ou une cloison se tire le long de son axe :
+ * cuisine : le dessin de partition-face-svg.ts, et ce qu'on y fait à la souris. Un clic choisit une étagère, une
+ * cloison, un bloc de tiroirs ou une tringle ; un clic ailleurs (dans une niche, dans une case) ne choisit rien et
+ * laisse ce qui l'était. Chaque côté entre deux cases porte une poignée en laiton : tirée, la case de gauche change de
+ * largeur au centimètre, celle de droite prend la différence. Une étagère ou une cloison se tire le long de son axe :
  * au pas de 32 mm, ou sur celle d'une case voisine quand elle passe près (Alt : librement), ses deux niches affichées.
  * Des tiroirs ou une tringle se portent dans une autre niche ; une tringle se monte ou se descend. Un clic sur une cote
  * l'ouvre sur place : Entrée la règle, Échap la laisse. Le panneau reçoit chaque geste ; OK les enregistre en une étape.
@@ -21,7 +22,7 @@ export interface StripHost {
   picked: FacePick | null;
   /** What the strip is the face of, for the screen readers. */
   label: string;
-  /** Something clicked (null: the chosen case clicked again). */
+  /** Something clicked (null: nothing, a click beside everything). */
   pick(pick: FacePick | null): void;
   /** An edge of a case pulled and let go: the shares of the cases. */
   widths(shares: number[]): void;
@@ -49,20 +50,13 @@ export function partitionStrip(host: StripHost): HTMLElement {
   node.innerHTML = partitionFaceSvg(face, host.picked);
   const wrap = el("div", { class: "relative" }, node);
   node.addEventListener("keydown", (event) => host.key(event));
-  for (const piece of node.querySelectorAll<SVGRectElement>("[data-case]")) {
-    piece.addEventListener("click", () => {
-      const i = Number(piece.dataset.case);
-      host.pick(host.picked?.kind === "case" && host.picked.index === i ? null : { kind: "case", index: i });
-    });
-  }
+  // A click on nothing that can be chosen leaves what was chosen.
+  for (const empty of node.querySelectorAll<SVGRectElement>("[data-case]")) empty.addEventListener("click", () => host.picked && host.pick(null));
   for (const target of node.querySelectorAll<SVGRectElement>("[data-piece]")) pull(node, target, host, Number(target.dataset.piece), null);
   for (const target of node.querySelectorAll<SVGRectElement>("[data-equip]")) pull(node, target, host, null, face.equips[Number(target.dataset.equip)]?.id ?? null);
   for (const text of node.querySelectorAll<SVGTextElement>("[data-edit]")) text.addEventListener("click", (event) => (event.stopPropagation(), typeIn(wrap, text, host, Number(text.dataset.edit))));
-  const picked = host.picked;
-  if (picked?.kind === "case" && face.cases[picked.index]) {
-    if (picked.index < face.cases.length - 1) edge(node, host, picked.index, "right");
-    if (picked.index > 0) edge(node, host, picked.index, "left");
-  }
+  // A grip on each side between two cases: pulled, the case on its left changes width, the one on its right follows.
+  face.cases.slice(0, -1).forEach((_, i) => edge(node, host, i, "right"));
   return wrap;
 }
 
@@ -180,11 +174,12 @@ function edge(node: SVGSVGElement, host: StripHost, i: number, side: "left" | "r
   const fs = faceFont(face);
   const x0 = side === "right" ? c.x1 : c.x0;
   const handle = document.createElementNS(SVG, "g");
-  handle.setAttribute("class", "cursor-ew-resize");
+  handle.setAttribute("class", "cursor-ew-resize opacity-70 hover:opacity-100");
   handle.setAttribute("data-resize", side);
+  handle.setAttribute("data-side", String(i));
   const h = bottom - top;
   const grip = Math.min(h * 0.3, fs * 4);
-  handle.innerHTML = `<title>Tirer pour changer la largeur de la case ${i + 1}</title><rect x="${-fs * 0.5}" y="0" width="${fs}" height="${h}" fill="transparent"/><rect x="${-fs * 0.25}" y="${h / 2 - grip / 2}" width="${fs * 0.5}" height="${grip}" rx="${fs * 0.15}" fill="${BRASS}" stroke="white" stroke-width="1" vector-effect="non-scaling-stroke"/><text y="${-fs * 0.3}" text-anchor="middle" font-size="${fs}" fill="${BRASS}" pointer-events="none"></text>`;
+  handle.innerHTML = `<title>Tirer pour changer la largeur des cases ${i + 1} et ${i + 2}</title><rect x="${-fs * 0.5}" y="0" width="${fs}" height="${h}" fill="transparent"/><rect x="${-fs * 0.25}" y="${h / 2 - grip / 2}" width="${fs * 0.5}" height="${grip}" rx="${fs * 0.15}" fill="${BRASS}" stroke="white" stroke-width="1" vector-effect="non-scaling-stroke"/><text y="${-fs * 0.3}" text-anchor="middle" font-size="${fs}" fill="${BRASS}" pointer-events="none"></text>`;
   const at = (x: number) => handle.setAttribute("transform", `translate(${x} ${top})`);
   at(x0);
   const label = handle.querySelector("text")!;
