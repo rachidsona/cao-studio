@@ -10,6 +10,7 @@ import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measu
 import { BODY, BOX, BUTTON, FIELD, row, TITLE } from "./offset-panel";
 import { openCalculator } from "./calculator";
 import { el } from "./dom";
+import { CLOSE_TITLE } from "./panel-close";
 
 export type MoveMode = "relative" | "polar" | "absolute";
 
@@ -137,10 +138,8 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
     ? "Tirez la sélection à la souris, ou saisissez le déplacement. L'aperçu (pointillés) montre le résultat avec les contraintes."
     : "Cliquez des points, lignes, cercles ou arcs — plusieurs si besoin — puis tirez-les ou saisissez le déplacement.";
   const dof = state.dof === null ? null : state.dof === 0 ? "Esquisse entièrement contrainte après le déplacement." : `${state.dof} cote(s) ou contrainte(s) manquante(s) après le déplacement.`;
-  const ok = el("button", { type: "button", class: "h-8 min-w-20 btn-accent px-3 text-xs font-medium disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-neutral-600 dark:disabled:text-neutral-400", disabled: !state.ready }, "OK");
-  ok.addEventListener("click", actions.confirm);
-  const cancel = el("button", { type: "button", class: `${BUTTON} min-w-20` }, "Annuler");
-  cancel.addEventListener("click", actions.cancel);
+  const cross = el("button", { type: "button", class: "ml-auto flex size-6 items-center justify-center text-sm normal-case hover:bg-gray-300 dark:hover:bg-neutral-600", title: CLOSE_TITLE, "aria-label": "Fermer", "data-panel-close": "" }, "✕");
+  cross.addEventListener("click", actions.cancel);
 
   const body = [
     row("Éléments", count),
@@ -150,14 +149,12 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
     state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
     !state.problem && dof && state.ready ? el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, dof) : null,
   ];
-  const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, el("span", { class: "flex-1" }), ok, cancel);
   panel.replaceChildren(
     el(
       "div",
       { class: BOX, role: "group" },
-      el("div", { class: TITLE }, el("h2", {}, "Déplacer")),
+      el("div", { class: TITLE }, el("h2", {}, "Déplacer"), cross),
       el("div", { class: BODY }, ...body.filter((n): n is HTMLElement => n !== null)),
-      footer,
     ),
   );
 }

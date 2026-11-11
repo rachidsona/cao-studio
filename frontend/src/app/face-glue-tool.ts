@@ -60,7 +60,7 @@ export class FaceGlueTool extends PanelTool {
       const glue = glueShift(this.moving, face, this.gap);
       const how = typeof glue !== "string" && glue.meet === "flush" ? "à fleur de" : "contre";
       this.ctx.notify(`« ${this.movingName()} » collé ${how} « ${bodyLabel(this.ctx.doc(), face.bodyId)} ».`, "success");
-      this.confirm();
+      this.finish();
     } catch (e) {
       this.ctx.notify(e instanceof Error ? e.message : String(e), "error");
     }

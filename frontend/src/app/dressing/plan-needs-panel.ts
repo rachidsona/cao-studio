@@ -9,6 +9,7 @@ import { zoneDone } from "../../document/plan-layout";
 import type { DressingPlan } from "../../document/types";
 import { parseNumber } from "../../measurements/units";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900";
@@ -57,14 +58,12 @@ export function needsPanel(planId: string, plan: DressingPlan, editor: Editor, d
       done();
     });
   });
-  const back = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
-  back.addEventListener("click", done);
   show();
   return [
-    el("h2", { class: "panel-title" }, "Selon les besoins"),
+    panelHeader("Selon les besoins", done),
     el("p", { class: "text-gray-600 dark:text-gray-300" }, free.length ? `Ce que le client veut ranger, réparti sur ${free.length} zone${free.length > 1 ? "s" : ""} libre${free.length > 1 ? "s" : ""}.` : "Aucune zone libre : les zones déjà faites ne changent pas."),
     ...inputs,
     result,
-    el("div", { class: "flex gap-1.5 pt-0.5" }, back, apply),
+    apply,
   ];
 }

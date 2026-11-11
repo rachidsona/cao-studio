@@ -2,13 +2,14 @@
  * "Réseau rectangulaire" tool of the sketch (as Fusion's rectangular pattern): the user picks points, lines,
  * circles or arcs (whole contours too), then sets two directions — the first at an angle (0° = along X), the
  * second perpendicular to it — each with a quantity (the original included) and a step or a distance. The copies
- * are shown dashed before OK; confirming is one undo step. The maths are in sketch-array.ts.
+ * are shown dashed, then stored as soon as they can be (no « OK »), each setting changed next stored again. The maths are in sketch-array.ts.
  */
 import { panelDefaults } from "../document/panel-defaults";
 import { RESERVED_IDS } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
+import { panelHeader } from "../ui/panel-close";
 import type { Vec2 } from "./edit";
 import { hitTest, toggleTarget } from "./hit";
 import { pointPos } from "./edit";
@@ -67,6 +68,9 @@ export class SketchArrayTool {
   private picking = false;
   private outcome: ArrayOutcome | null = null;
   private done = false;
+  /** Stored a moment after each ready setting (no « OK »): the sketch before it, and after (to make it again from before). */
+  private stored: { base: SketchGeometry; after: string } | null = null;
+  private storeTimer: number | undefined;
   private readonly panel: HTMLElement;
 
   constructor(private readonly host: ArrayHost) {
@@ -91,7 +95,7 @@ export class SketchArrayTool {
 
   /** Re-reads the sketch (after an undo/redo). */
   sync(): void {
-    const g = this.host.geometry();
+    const g = this.source();
     const known = new Set([...g.points.map((p) => p.id), ...g.curves.map((c) => c.id)]);
     for (const id of [...this.host.selection]) if (!known.has(id)) this.host.selection.delete(id);
     this.recompute();
@@ -99,7 +103,7 @@ export class SketchArrayTool {
 
   /** The size of what is copied along each direction: the copies start side by side. */
   private fitSteps(): void {
-    const g = this.host.geometry();
+    const g = this.source();
     const { points } = copiedElements(g, this.host.selection);
     const pos = points.map((id) => pointPos(g, id));
     const span = (axis: 0 | 1) => (pos.length ? Math.max(...pos.map((p) => p[axis])) - Math.min(...pos.map((p) => p[axis])) : 0);
@@ -128,7 +132,7 @@ export class SketchArrayTool {
 
   /** The rectangle the lines are spread in: the chosen one, else the smallest around the selection. */
   private rectangle(): SketchRectangle | null {
-    const g = this.host.geometry();
+    const g = this.source();
     return (this.rectSide ? rectangleOfCurve(g, this.rectSide) : null) ?? rectangleAround(g, this.host.selection);
   }
 
@@ -138,7 +142,7 @@ export class SketchArrayTool {
   }
 
   private computeInside(): ArrayOutcome {
-    const g = this.host.geometry();
+    const g = this.source();
     const rect = this.rectangle();
     if (!rect) return { ok: false, reason: "Aucun rectangle autour de la sélection : dessinez-le, ou touchez « Choisir le rectangle »." };
     const axis = this.spread === "auto" ? spreadAxis(g, this.host.selection) : this.spread === "x" ? 0 : 1;
@@ -151,10 +155,19 @@ export class SketchArrayTool {
   private recompute(): void {
     const selected = this.host.selection.size > 0;
     this.annotations = [];
-    this.outcome = !selected ? null : this.type === "inside" ? this.computeInside() : arrayElements(this.host.geometry(), this.host.selection, this.grid());
+    this.outcome = !selected ? null : this.type === "inside" ? this.computeInside() : arrayElements(this.source(), this.host.selection, this.grid());
     this.preview = this.outcome?.ok ? this.outcome.preview : null;
     this.draw();
     this.host.changed();
+    // Ready: stored a moment later (no « OK »), the tool staying open.
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = this.ready ? window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400) : undefined;
+  }
+
+  /** The sketch the array is made from: as it was before this array was stored, while it still stands. */
+  private source(): SketchGeometry {
+    const now = this.host.geometry();
+    return this.stored && JSON.stringify(now) === this.stored.after ? this.stored.base : now;
   }
 
   get ready(): boolean {
@@ -211,13 +224,9 @@ export class SketchArrayTool {
       this.place = place.value as "step" | "spread";
       this.recompute();
     });
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
-    cancel.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: !this.ready }, "OK");
-    ok.addEventListener("click", () => this.confirm());
     const contours = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Ajouter les contours entiers");
     contours.addEventListener("click", () => {
-      for (const id of withContours(this.host.geometry(), this.host.selection)) this.host.selection.add(id);
+      for (const id of withContours(this.source(), this.host.selection)) this.host.selection.add(id);
       this.fitSteps();
       this.recompute();
     });
@@ -235,7 +244,7 @@ export class SketchArrayTool {
       this.recompute();
     });
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Réseau"),
+      panelHeader("Réseau", () => this.cancel()),
       kind,
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${this.host.selection.size} élément${this.host.selection.size > 1 ? "s" : ""} choisi${this.host.selection.size > 1 ? "s" : ""}.`),
       ...(inside ? this.insideRows(unit, number) : [
@@ -251,7 +260,6 @@ export class SketchArrayTool {
       ]),
       this.outcome?.ok ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `${this.outcome.copies} copie${this.outcome.copies > 1 ? "s" : ""}.`) : null,
       message ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, message) : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
@@ -333,13 +341,13 @@ export class SketchArrayTool {
   /** A click: adds or removes the element under the pointer (a point, else a curve); or, choosing the rectangle, picks one of its sides. */
   click(p: Vec2): void {
     if (this.picking) {
-      const side = hitTest(this.host.geometry(), p, this.host.tolerance()).find((h) => h.kind === "line" && rectangleOfCurve(this.host.geometry(), h.id));
+      const side = hitTest(this.source(), p, this.host.tolerance()).find((h) => h.kind === "line" && rectangleOfCurve(this.source(), h.id));
       if (!side) return this.host.notify("Cliquez un côté d'un rectangle.", "info");
       this.rectSide = side.id;
       this.picking = false;
       return this.recompute();
     }
-    const hits = hitTest(this.host.geometry(), p, this.host.tolerance()).filter((h) => !RESERVED_IDS.has(h.id));
+    const hits = hitTest(this.source(), p, this.host.tolerance()).filter((h) => !RESERVED_IDS.has(h.id));
     const target = toggleTarget(hits, this.host.selection);
     if (!target) return;
     if (this.host.selection.has(target.id)) this.host.selection.delete(target.id);
@@ -350,18 +358,36 @@ export class SketchArrayTool {
 
   // ---- end --------------------------------------------------------------------------
 
+  /** Entrée: stored now, and the tool ends. */
   confirm(): void {
-    if (this.done) return;
-    if (!this.outcome || !this.outcome.ok) {
-      this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : "Cliquez les éléments à copier.", "error");
-      return;
-    }
-    const n = this.outcome.copies;
-    if (!this.host.apply(this.outcome.geometry, `${n} copie${n > 1 ? "s" : ""} créée${n > 1 ? "s" : ""}.`)) return;
-    this.finish();
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    if (this.store(true)) this.finish();
   }
 
+  /** The copies stored (one undo step), the tool staying open: set otherwise, they are made again from the sketch before them. */
+  private store(loud = false): boolean {
+    if (this.done) return false;
+    if (!this.outcome || !this.outcome.ok) {
+      if (!loud) return false;
+      this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : "Cliquez les éléments à copier.", "error");
+      return false;
+    }
+    const n = this.outcome.copies;
+    const base = this.source();
+    if (JSON.stringify(this.outcome.geometry) === JSON.stringify(this.host.geometry())) return true;
+    if (!this.host.apply(this.outcome.geometry, `${n} copie${n > 1 ? "s" : ""} créée${n > 1 ? "s" : ""}.`)) return false;
+    this.stored = { base, after: JSON.stringify(this.host.geometry()) };
+    return true;
+  }
+
+  /** The cross, or Échap: closes; a setting still waiting is stored first. */
   cancel(): void {
+    if (this.storeTimer !== undefined) {
+      window.clearTimeout(this.storeTimer);
+      this.storeTimer = undefined;
+      this.store();
+    }
     this.finish();
   }
 
@@ -373,6 +399,7 @@ export class SketchArrayTool {
 
   /** Removes the panel without notifying the host (the sketch mode is switching tools itself). */
   dispose(): void {
+    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.preview = null;
     this.annotations = [];

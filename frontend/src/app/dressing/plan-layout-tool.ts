@@ -17,6 +17,8 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
+import { planSchema } from "./plan-schema";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { paintPrice } from "../workshop/live-price";
@@ -24,7 +26,6 @@ import { needsPanel } from "./plan-needs-panel";
 import { wallsSection } from "./plan-walls-panel";
 import { isolatedSketch, isolateZone, showAll } from "../zone-view";
 
-const SVG = "http://www.w3.org/2000/svg";
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[8rem_1fr] items-center gap-1.5";
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
@@ -32,44 +33,12 @@ const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gra
 /** Kept for the session: the last plan set. */
 let last: DressingPlan = { ...PLAN };
 
-const svg = (tag: string, attrs: Record<string, string>, ...children: (Node | string)[]): SVGElement => {
-  const node = document.createElementNS(SVG, tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-  node.append(...children);
-  return node;
-};
-
-/** The plan seen from above, wall A at the top; `labels`: its zones named and measured, `pick`: a click chooses a zone; `marks`: the doors, windows and sockets of its room. */
-export function planSchema(plan: DressingPlan, labels: ((zone: PlanZone) => string[]) | null, pick?: (zone: PlanZone) => void, done?: (zone: PlanZone) => boolean, marks: PlanObstacle[] = []): SVGElement {
-  const zones = planZones(plan);
-  const points = [...zones.flatMap((z) => z.outline), ...marks.flatMap((m) => [m.from, m.to])];
-  const [xs, ys] = [points.map((p) => p[0]), points.map((p) => -p[1])];
-  const [x0, y0, x1, y1] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-  const size = Math.max(x1 - x0, y1 - y0);
-  const pad = size * 0.04;
-  const node = svg("svg", { viewBox: `${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}`, class: "max-h-56 w-full", ...(labels ? { role: "img", "aria-label": "Schéma du plan vu de dessus" } : { "aria-hidden": "true" }) });
-  for (const zone of zones) {
-    const shape = svg("polygon", { points: zone.outline.map(([x, y]) => `${x},${-y}`).join(" "), fill: done?.(zone) ? "#38bdf866" : "#38bdf822", ...(pick ? { class: "cursor-pointer hover:fill-sky-400/50", "data-zone": zone.id } : {}) });
-    if (pick) shape.addEventListener("click", () => pick(zone));
-    node.append(shape);
-  }
-  for (const [[ax, ay], [bx, by]] of planLines(plan)) node.append(svg("line", { x1: String(ax), y1: String(-ay), x2: String(bx), y2: String(-by), stroke: "#38bdf8", "stroke-width": String(size / 300), "pointer-events": "none" }));
-  for (const mark of marks) node.append(svg("line", { x1: String(mark.from[0]), y1: String(-mark.from[1]), x2: String(mark.to[0]), y2: String(-mark.to[1]), stroke: mark.kind === "door" ? "#f97316" : mark.kind === "window" ? "#22c55e" : "#eab308", "stroke-width": String(size / 60), "data-obstacle": mark.kind }, svg("title", {}, mark.what)));
-  if (labels) {
-    for (const zone of zones) {
-      const [cx, cy] = zone.outline.reduce(([a, b], [x, y]) => [a + x / zone.outline.length, b + y / zone.outline.length], [0, 0]);
-      const lines = labels(zone);
-      const height = size / 24;
-      lines.forEach((line, i) => node.append(svg("text", { x: String(cx), y: String(-cy + (i - (lines.length - 1) / 2) * height * 1.2), "text-anchor": "middle", "dominant-baseline": "middle", "font-size": String(height), fill: "currentColor", "pointer-events": "none" }, line)));
-    }
-  }
-  return node;
-}
-
 export class PlanLayoutTool {
   private plan: DressingPlan = { ...last };
   /** The plan of the project is being changed, rather than its zones worked on. */
   private editing = false;
+  /** A setting of the plan being changed, waiting to be applied. */
+  private changeTimer: number | undefined;
   /** The needs of the client are being typed. */
   private needing = false;
   /** The free zone being filled, the width asked for its cases (mm), and whether what is left goes at its start. */
@@ -148,6 +117,7 @@ export class PlanLayoutTool {
     const set = (patch: Partial<DressingPlan>) => {
       this.plan = last = { ...this.plan, ...patch };
       this.draw();
+      if (this.editing && planId) this.changeSoon(planId);
     };
     const number = (label: string, key: PlanField | "lengthA" | "depth" | "cornerA" | "cornerB" | "height" | "plinth" | "thickness" | "islandLength" | "islandDepth" | "roofLow", allowZero = false) => {
       const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(plan[key], unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
@@ -178,16 +148,17 @@ export class PlanLayoutTool {
       }),
     );
     const problem = planProblem(plan);
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, this.editing ? "Annuler" : "Terminer");
-    cancel.addEventListener("click", () => {
+    // A plan being changed takes each setting at once (no « Appliquer »); the cross goes back to its zones. A new one
+    // is made by « Créer le plan ».
+    const close = () => {
       if (!this.editing) return this.close();
       this.editing = false;
       this.draw();
-    });
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null }, this.editing ? "Appliquer" : "Créer le plan");
-    ok.addEventListener("click", () => void (this.editing && planId ? this.change(planId) : this.create()));
+    };
+    const ok = this.editing ? null : el("button", { type: "button", class: "h-8 w-full btn-accent font-medium disabled:opacity-40", disabled: problem !== null }, "Créer le plan");
+    ok?.addEventListener("click", () => void this.create());
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Plan de dressing"),
+      panelHeader("Plan de dressing", close),
       models,
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : planSchema(plan, (z) => (z.kind === "corner" ? [z.label] : [z.label, formatLength(z.run.length, unit)]), undefined, undefined, this.marks(plan))),
@@ -204,7 +175,7 @@ export class PlanLayoutTool {
       number("Épaisseur panneaux", "thickness"),
       ...this.options(number, set),
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
+      ok,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }
@@ -299,13 +270,23 @@ export class PlanLayoutTool {
 
   private async change(planId: string): Promise<void> {
     const lost = zonesLost(this.editor.doc, planId, this.plan);
-    if (lost.length && !(await askConfirm(`Ce plan n'a plus : ${lost.join(", ")}. Ce qui y est fait sera supprimé. Continuer ?`, "Appliquer"))) return;
+    if (lost.length && !(await askConfirm(`Ce plan n'a plus : ${lost.join(", ")}. Ce qui y est fait sera supprimé. Continuer ?`, "Appliquer"))) {
+      // Refused: the plan as it is in the project.
+      const kept = (findFeature(this.editor.doc, planId) as SketchFeature | undefined)?.dressingPlan;
+      if (kept) this.plan = { ...kept };
+      return this.draw();
+    }
     const made = withPlanChanged(this.editor.doc, planId, this.plan);
     if (typeof made === "string") return this.editor.notify(made, "error");
     await this.editor.change(made.doc);
     this.editor.notify(made.problems.length ? `Plan modifié. ${made.problems.join(" ")}` : "Plan modifié : ce qui est fait dessus a suivi.", made.problems.length ? "info" : "success");
-    this.editing = false;
     this.draw();
+  }
+
+  /** A setting of the plan being changed, applied a moment later. */
+  private changeSoon(planId: string): void {
+    window.clearTimeout(this.changeTimer);
+    this.changeTimer = window.setTimeout(() => void this.change(planId), 400);
   }
 
   // ---- then: the zones of the plan ----------------------------------------------------
@@ -348,10 +329,9 @@ export class PlanLayoutTool {
       this.editing = true;
       this.draw();
     });
-    const finish = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    finish.addEventListener("click", () => (hasDock() ? showPanel("properties") : this.close()));
+    const finish = () => (hasDock() ? showPanel("properties") : this.close());
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Plan de dressing"),
+      panelHeader("Plan de dressing", finish),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez une zone pour la répartir."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done, this.marks(plan))),
       el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
@@ -364,7 +344,6 @@ export class PlanLayoutTool {
       ...this.checks(plan),
       zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : PLAN_MODELS[plan.model].ell ? "Deux portes sur le coin en L" : "Porte sur le pan coupé") : null,
       change,
-      finish,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }
@@ -427,18 +406,16 @@ export class PlanLayoutTool {
       pick.addEventListener("click", () => void this.filled(planId, zone, choice));
       return pick;
     });
-    const back = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
-    back.addEventListener("click", () => {
+    const back = () => {
       this.filling = null;
       this.draw();
-    });
+    };
     return [
-      el("h2", { class: "panel-title" }, `Remplir : ${zone.label}`),
+      panelHeader(`Remplir : ${zone.label}`, back),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(zone.run.length, unit)} à remplir, côtés compris. Choisissez la largeur intérieure des caissons.`),
       el("label", { class: ROW }, `Largeur des caissons (${UNIT_LABELS[unit]})`, width),
       el("label", { class: ROW }, "Le reste va", side),
       ...(options.length ? options : [el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, "Cette largeur ne tient pas dans cette zone.")]),
-      back,
     ];
   }
 

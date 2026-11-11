@@ -26,10 +26,12 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { kitchenSchema } from "./kitchen-plan-schema";
 import { RunEditor } from "./kitchen-run-editor";
+import { planFields } from "./kitchen-plan-fields";
 import { runFeatures } from "../../document/caisson-follow";
 import { endPreview, previewRun, shownDoc } from "./kitchen-run-preview";
 import { Folds } from "../../ui/fold";
@@ -68,15 +70,19 @@ let current: KitchenPlanTool | null = null;
 let seen: { plan: string; run: string } | null = null;
 export const kitchenRunOpen = (): OpenRun | null => current?.openRunInfo() ?? null;
 
-type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
-type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick";
 
 export class KitchenPlanTool {
   private plan: KitchenFloorPlan = { ...last };
   private editing = false;
+  /** A setting of the plan being changed, waiting to be applied. */
+  private changeTimer: number | undefined;
   private runEditor: RunEditor | null = null;
+  /** A change of the run waiting to be stored. */
+  private runTimer: number | undefined;
   private runPlan: string | null = null;
   private readonly folds = new Folds(() => this.draw());
+  /** The fields of the plan's form. */
+  private readonly fields = planFields({ plan: () => this.plan, unit: () => this.editor.unit, set: (patch) => this.set(patch), draw: () => this.draw() });
   readonly panel: HTMLElement;
   private drawn: unknown = null;
   private drawnIsolated: string | null = null;
@@ -163,40 +169,8 @@ export class KitchenPlanTool {
   private set(patch: Partial<KitchenFloorPlan>): void {
     this.plan = last = { ...this.plan, ...patch };
     this.draw();
-  }
-
-  private number(label: string, key: Sized): HTMLElement {
-    const unit = this.editor.unit;
-    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(this.plan[key] ?? KITCHEN_PLAN[key] ?? 0, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
-    const apply = () => {
-      const parsed = parseNumber(input.value);
-      const ok = parsed !== null && parsed > 0;
-      input.setAttribute("aria-invalid", String(!ok));
-      if (ok && fromDisplay(parsed, unit) !== this.plan[key]) this.set({ [key]: fromDisplay(parsed, unit) });
-    };
-    input.addEventListener("change", apply);
-    input.addEventListener("blur", () => this.draw());
-    input.addEventListener("keydown", (event) => {
-      event.stopPropagation();
-      if (event.key === "Enter") {
-        apply();
-        input.blur();
-      }
-    });
-    return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
-  }
-
-  /** A setting on or off, as the Implantation's (an absent one at its usual value). */
-  private check(label: string, key: Switch): HTMLElement {
-    const box = el("input", { type: "checkbox", class: "size-4 shrink-0 accent-sky-600", checked: (this.plan[key] ?? KITCHEN_PLAN[key]) === true, "data-plan-switch": key });
-    box.addEventListener("change", () => this.set({ [key]: box.checked }));
-    return el("label", { class: "flex min-h-7 items-center gap-2" }, box, label);
-  }
-
-  private select(label: string, value: string, options: [string, string][], change: (v: string) => void): HTMLElement {
-    const choice = el("select", { class: SELECT, "aria-label": label }, ...options.map(([v, text]) => el("option", { value: v, selected: v === value }, text)));
-    choice.addEventListener("change", () => change(choice.value));
-    return el("label", { class: ROW }, label, choice);
+    const placed = this.placed();
+    if (this.editing && placed) this.changeSoon(placed.id);
   }
 
   private settings(planId?: string): HTMLElement[] {
@@ -212,51 +186,52 @@ export class KitchenPlanTool {
       }),
     );
     const problem = kitchenPlanProblem(plan);
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, this.editing ? "Annuler" : "Terminer");
-    cancel.addEventListener("click", () => {
+    // A plan being changed takes each setting at once (no « Appliquer »); the cross goes back to its zones. A new one
+    // is made by « Créer le plan ».
+    const close = () => {
       if (!this.editing) return this.close();
       this.editing = false;
       this.draw();
-    });
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null }, this.editing ? "Appliquer" : "Créer le plan");
-    ok.addEventListener("click", () => void (this.editing && planId ? this.change(planId) : this.create()));
+    };
+    const ok = this.editing ? null : el("button", { type: "button", class: "h-8 w-full btn-accent font-medium disabled:opacity-40", disabled: problem !== null }, "Créer le plan");
+    ok?.addEventListener("click", () => void this.create());
     const materials = MATERIALS.filter((m) => m.id !== "hdf").map((m): [string, string] => [m.id, m.name]);
     const island = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: plan.island === true, "aria-label": "Îlot" });
     island.addEventListener("change", () => this.set({ island: island.checked }));
     const islandRows = plan.island && !model.noIsland;
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Plan de cuisine"),
+      panelHeader("Plan de cuisine", close),
       models,
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : kitchenSchema(plan, (r) => [r.label, formatLength(r.zone.run.length, this.editor.unit)], undefined, {}, kitchenMarks(this.editor.doc, plan))),
       this.roomChoice(),
-      ...kitchenJoints(plan).map(({ joint, label, walls }) => this.select(label, plan.through?.[joint] ? "1" : "0", walls.map((w, i): [string, string] => [String(i), `${w} passe`]), (v) => this.set({ through: { ...plan.through, [joint]: v === "1" } }))),
-      ...kitchenJoints(plan).map(({ joint }) => this.select(`Dans l'angle, à ${joint === "left" ? "gauche" : "droite"}`, cornerKind(plan, joint), (Object.keys(CORNER_KINDS) as CornerKind[]).map((k): [string, string] => [k, CORNER_KINDS[k].label]), (v) => this.set({ corners: { ...plan.corners, [joint]: v as CornerKind } }))),
-      plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.number("Longueur mur A", "lengthA"),
-      ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.number(label, key)),
-      plan.room ? null : this.number("Hauteur sous plafond", "height"),
-      this.number("Profondeur des bas", "depth"),
-      this.number("Profondeur des hauts", "wallDepth"),
-      this.number("Hauteur du plan de travail", "worktopHeight"),
-      this.number("Épaisseur du plan de travail", "worktopThickness"),
-      this.number("Socle", "plinth"),
+      ...kitchenJoints(plan).map(({ joint, label, walls }) => this.fields.select(label, plan.through?.[joint] ? "1" : "0", walls.map((w, i): [string, string] => [String(i), `${w} passe`]), (v) => this.set({ through: { ...plan.through, [joint]: v === "1" } }))),
+      ...kitchenJoints(plan).map(({ joint }) => this.fields.select(`Dans l'angle, à ${joint === "left" ? "gauche" : "droite"}`, cornerKind(plan, joint), (Object.keys(CORNER_KINDS) as CornerKind[]).map((k): [string, string] => [k, CORNER_KINDS[k].label]), (v) => this.set({ corners: { ...plan.corners, [joint]: v as CornerKind } }))),
+      plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.fields.number("Longueur mur A", "lengthA"),
+      ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.fields.number(label, key)),
+      plan.room ? null : this.fields.number("Hauteur sous plafond", "height"),
+      this.fields.number("Profondeur des bas", "depth"),
+      this.fields.number("Profondeur des hauts", "wallDepth"),
+      this.fields.number("Hauteur du plan de travail", "worktopHeight"),
+      this.fields.number("Épaisseur du plan de travail", "worktopThickness"),
+      this.fields.number("Socle", "plinth"),
       model.noIsland ? null : el("label", { class: "flex min-h-8 items-center gap-2" }, island, "Îlot face au mur A"),
-      islandRows ? this.number("Passage devant l'îlot", "passage") : null,
-      islandRows ? this.number("Longueur de l'îlot", "islandLength") : null,
-      islandRows ? this.number("Profondeur de l'îlot", "islandDepth") : null,
-      this.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
-      this.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
-      this.check("Crédence", "splashback"),
-      this.check("Plinthes", "kick"),
+      islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
+      islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
+      islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null,
+      this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
+      this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
+      this.fields.check("Crédence", "splashback"),
+      this.fields.check("Plinthes", "kick"),
       el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
       el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
-      this.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),
-      this.check("Meubles hauts au-dessus", "wallUnits"),
-      this.check("Électroménager (évier, lave-vaisselle, plaque, four, hotte)", "appliances"),
-      this.check("Colonne réfrigérateur", "fridge"),
-      plan.appliances !== false ? this.check("Four en colonne (sinon sous la plaque)", "ovenColumn") : null,
+      this.fields.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),
+      this.fields.check("Meubles hauts au-dessus", "wallUnits"),
+      this.fields.check("Électroménager (évier, lave-vaisselle, plaque, four, hotte)", "appliances"),
+      this.fields.check("Colonne réfrigérateur", "fridge"),
+      plan.appliances !== false ? this.fields.check("Four en colonne (sinon sous la plaque)", "ovenColumn") : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
+      ok,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }
@@ -267,7 +242,7 @@ export class KitchenPlanTool {
     if (!rooms.length) return null;
     const current = this.plan.room ? `${this.plan.room.id}:${this.plan.room.wall}` : "";
     const options: [string, string][] = [["", "Cotes tapées ici"], ...rooms.flatMap((room) => room.walls.map((_, i): [string, string] => [`${room.id}:${i}`, `${room.name}, ${wallName(i)}`]))];
-    return this.select("Mur A dans la pièce", current, options, (value) => {
+    return this.fields.select("Mur A dans la pièce", current, options, (value) => {
       const [id, wall] = value.split(":");
       const room = rooms.find((r) => r.id === id);
       const next = room ? linkedKitchen(this.plan, room, Number(wall)) : unlinkedKitchen(this.plan);
@@ -286,13 +261,23 @@ export class KitchenPlanTool {
 
   private async change(planId: string): Promise<void> {
     const lost = runsLost(this.editor.doc, planId, this.plan);
-    if (lost.length && !(await askConfirm(`Ce plan n'a plus : ${lost.join(", ")}. Ses meubles seront supprimés. Continuer ?`, "Appliquer"))) return;
+    if (lost.length && !(await askConfirm(`Ce plan n'a plus : ${lost.join(", ")}. Ses meubles seront supprimés. Continuer ?`, "Appliquer"))) {
+      // Refused: the plan as it is in the project.
+      const kept = kitchenPlanIn(this.editor.doc, planId);
+      if (kept) this.plan = { ...kept };
+      return this.draw();
+    }
     const made = withKitchenChanged(this.editor.doc, planId, this.plan);
     if (typeof made === "string") return this.editor.notify(made, "error");
     await this.editor.change(made.doc);
     this.editor.notify(made.problems.length ? `Plan modifié. ${made.problems.join(" ")}` : "Plan modifié : la cuisine a suivi.", made.problems.length ? "info" : "success");
-    this.editing = false;
     this.draw();
+  }
+
+  /** A setting of the plan being changed, applied a moment later. */
+  private changeSoon(planId: string): void {
+    window.clearTimeout(this.changeTimer);
+    this.changeTimer = window.setTimeout(() => void this.change(planId), 400);
   }
 
   // ---- the runs of the plan -----------------------------------------------------------
@@ -322,11 +307,10 @@ export class KitchenPlanTool {
       this.editing = true;
       this.draw();
     });
-    const finish = el("button", { type: "button", class: WIDE }, "Terminer");
-    finish.addEventListener("click", () => (hasDock() ? showPanel("properties") : this.close()));
+    const finish = () => (hasDock() ? showPanel("properties") : this.close());
     const warn = kitchenStarted(plan) ? [...layout.ergonomics.warn, ...layout.notes] : [];
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Plan de cuisine"),
+      panelHeader("Plan de cuisine", finish),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez un linéaire pour l'aménager meuble par meuble."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, kitchenSchema(plan, (r) => [r.label], (r) => this.openRun(planId, r), layout.fills, kitchenMarks(doc, plan))),
       el("ul", { class: "space-y-1", "aria-label": "Linéaires du plan" }, ...kitchenRuns(plan).map(row)),
@@ -337,7 +321,6 @@ export class KitchenPlanTool {
       warn.length ? this.folds.fold("checks", `À revoir (${warn.length})`, () => warn.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m))) : null,
       this.folds.fold("price", "Prix du projet", () => [quoteButton()], el("span", { class: "font-mono font-medium", "data-live-total": "" })),
       change,
-      finish,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }
@@ -373,9 +356,8 @@ export class KitchenPlanTool {
     this.runEditor = new RunEditor({
       editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen,
       redraw: () => this.draw(),
-      changed: () => void previewRun(this.editor, planId, run.id, this.runEditor!.pending()),
-      back: () => ((this.runEditor = null), void endPreview(this.editor), this.draw()),
-      apply: (items, rest, corners) => void this.applyRun(planId, run, items, rest, corners),
+      changed: () => this.storeRunSoon(planId, run),
+      back: () => void this.leaveRun(planId, run),
       runs: kitchenRuns(plan),
       go: (id) => void this.goRun(planId, run, id),
       see: () => this.seeRun(planId, run),
@@ -392,35 +374,50 @@ export class KitchenPlanTool {
       const plan = kitchenPlanIn(this.editor.doc, planId);
       return plan && kitchenRuns(plan).find((r) => r.id === to);
     };
-    if (editor?.dirty) {
-      const next = target();
-      if (!(await askConfirm(`Les changements de « ${from.label} » ne sont pas appliqués : les appliquer, puis voir « ${next?.label ?? to} » ?`, "Appliquer"))) return;
-      if (!(await this.applyRun(planId, from, ...editor.pending()))) return;
-    }
+    // What is waiting is stored first.
+    if (editor?.dirty && !(await this.storeRun(planId, from))) return;
     const run = target();
     if (run) this.openRun(planId, run);
   }
 
-  private async applyRun(planId: string, run: KitchenRun, items: NonNullable<KitchenFloorPlan["runs"]>[string], rest: NonNullable<KitchenFloorPlan["rest"]>[string], corners: CornerSetting): Promise<boolean> {
+  /** Each change of the run is stored a moment after the last one (no « OK »): the kitchen made again, one undo step. */
+  private storeRunSoon(planId: string, run: KitchenRun): void {
+    window.clearTimeout(this.runTimer);
+    this.runTimer = window.setTimeout(() => void this.storeRun(planId, run), 500);
+  }
+
+  /** What the run editor has, stored now; it stays open. False: refused (said why). */
+  private async storeRun(planId: string, run: KitchenRun): Promise<boolean> {
+    window.clearTimeout(this.runTimer);
+    const editor = this.runEditor;
+    if (!editor?.dirty || editor.runId !== run.id) return true;
     const plan = kitchenPlanIn(this.editor.doc, planId);
     if (!plan) return false;
+    const [items, rest, corners] = editor.pending();
     const built = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
     if (typeof built === "string") {
       this.editor.notify(built, "error");
       return false;
     }
-    // « Mes caissons » made in their places.
     const placed = withCaissonsPlaced(built.doc, planId);
-    const made = { doc: placed.doc, problems: [...built.problems, ...placed.problems.map((m) => `${run.label} : ${m}`)] };
-    this.runEditor = null;
-    await this.editor.change(made.doc);
-    await endPreview(this.editor);
+    const problems = [...built.problems, ...placed.problems.map((m) => `${run.label} : ${m}`)].filter((m) => m.startsWith(`${run.label} :`));
+    // Stored: the editor follows the project again.
+    editor.dirty = false;
+    await this.editor.change(placed.doc);
     if (!kitchenStarted(plan)) this.frame();
-    const own = made.problems.filter((m) => m.startsWith(`${run.label} :`));
-    this.editor.notify(own.length ? `${run.label} aménagé. ${own.join(" ")}` : `${run.label} aménagé : la cuisine est refaite.`, own.length ? "info" : "success");
+    this.editor.notify(problems.length ? `${run.label} aménagé. ${problems.join(" ")}` : `${run.label} aménagé : la cuisine est refaite.`, problems.length ? "info" : "success");
     this.draw();
     return true;
   }
+
+  /** The cross of the run: what is waiting is stored, then the run closes. */
+  private async leaveRun(planId: string, run: KitchenRun): Promise<void> {
+    await this.storeRun(planId, run);
+    this.runEditor = null;
+    await endPreview(this.editor);
+    this.draw();
+  }
+
 }
 
 /** « Tout montrer »: everything back in the view. */
@@ -451,7 +448,7 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
     const at = seen!;
     dims.show(plan, run, runDims(plan, run, runGeometry(plan, run, room?.[run.id]), fill), editor.unit, (label, d) => {
       // Typed while a run has changes not applied: they would be lost.
-      if (current?.openRunInfo()?.dirty) return editor.notify("Un linéaire a des changements pas encore appliqués : faites OK ou Annuler d'abord.", "error");
+      if (current?.openRunInfo()?.dirty) return editor.notify("Un linéaire est en train d'être enregistré : un instant.", "info");
       editValue(editor, label, d.b - d.a, (mm) => withRunDim(editor.doc, at.plan, at.run, d.edit!, mm));
     });
   };

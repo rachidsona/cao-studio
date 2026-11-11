@@ -11,6 +11,7 @@ import { featureOfBody, type CadDocument, type SketchFeature } from "../../docum
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
 import type { PointerHandler } from "../../viewport/pointer-input";
 import type { Viewport } from "../../viewport/viewport";
@@ -52,8 +53,6 @@ class DoorFrontsTool implements PointerHandler {
     const title = mode === "doors" ? "Façades" : "Façades communes";
     this.panel = el("div", { class: "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": title });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-    const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    end.addEventListener("click", () => this.close());
     // A door over the niches clicked, not over whole cases (niche-tool.ts).
     const byNiches = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Porte sur des niches choisies…");
     byNiches.addEventListener("click", () => {
@@ -61,7 +60,7 @@ class DoorFrontsTool implements PointerHandler {
       this.close();
       editor.sketches.startEquip("door", sketch);
     });
-    this.panel.append(el("h2", { class: "panel-title" }, title), this.text, this.settings, byNiches, end);
+    this.panel.append(panelHeader(title, () => this.close()), this.text, this.settings, byNiches);
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

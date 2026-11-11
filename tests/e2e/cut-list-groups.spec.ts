@@ -21,9 +21,9 @@ test("la liste de débit se range par type d'élément, par bois, par épaisseur
   const add = plan.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   for (const unit of ["base-bas-2-portes-1000", "base-bas-1-porte-600"]) await plan.locator(`[data-add="${unit}"]`).click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
 
   await click(page, '[data-workshop="cutlist"]');
   const list = page.getByRole("dialog", { name: "Liste de débit" });

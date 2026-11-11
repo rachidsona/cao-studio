@@ -3,10 +3,11 @@
  * deux cloisons, une cote tapée dans la vue ; ou une étagère ou une cloison tirée à la souris, ses voisines restant en
  * place. Les autres pièces suivent, les corps sont refaits en une annulation. Pur.
  */
-import { findFeature } from "./operations";
+import { bodyOrigin, findFeature } from "./operations";
 import type { OffsetRecord, PartitionParams, ShelfParams } from "./sketch";
-import { withSketchExtrusion } from "./sketch-extrusion";
-import type { CadDocument, SketchFeature } from "./types";
+import { stepOfBody, withSketchExtrusion } from "./sketch-extrusion";
+import type { CadDocument, SketchFeature, Vec3 } from "./types";
+import { frameOf } from "../sketcher/frame";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, heightStep, isPartition, isShelves, leafNiches, pathKey, rebuildChain, withNicheHeight } from "../sketcher/partition-history";
 
@@ -108,4 +109,29 @@ export function withShelfMoved(doc: CadDocument, sketchId: string, recordId: str
   const heights: (number | null)[] = sizes.map((s, i) => (i === index ? size : i === index + 1 ? total - size : s));
   heights[heights.length - 1] = null;
   return remade(doc, g, of, withInput(g, record, { ...input, mode: "set", heights }));
+}
+
+/**
+ * A shelf or a cloison of a Répartition moved like a body (« Déplacer ») by `translate` (world, mm): when it moves
+ * along its own axis only (up or down for a shelf, sideways for a cloison), it moves in its division instead — its two
+ * niches share the change and what equips them follows, as with its handle. Null: not such a body, or another move
+ * (it stays a move of the body); a string: why it cannot go there.
+ */
+export function shelfMovedBy(doc: CadDocument, bodyId: string, translate: Vec3): CadDocument | string | null {
+  const step = stepOfBody(doc, bodyId);
+  if (step?.kind !== "shelves") return null;
+  const sketch = findFeature(doc, step.sketch);
+  const record = sketch?.type === "sketch" ? sketch.offsets?.find((r) => r.id === step.offset) : undefined;
+  const index = record?.bodies?.indexOf(bodyOrigin(doc, bodyId)) ?? -1;
+  if (sketch?.type !== "sketch" || index < 0) return null;
+  const travel = shelfTravel(sketch, step.offset, index);
+  if (!travel) return null;
+  const frame = frameOf(sketch);
+  const axis = travel.vertical ? frame.u : frame.v;
+  const along = translate[0] * axis[0] + translate[1] * axis[1] + translate[2] * axis[2];
+  const off = Math.hypot(...translate.map((t, i) => t - along * axis[i]!));
+  if (Math.abs(along) < 1e-6 || off > 0.5) return null;
+  const position = travel.position + along;
+  if (position <= travel.low || position >= travel.high) return "L'étagère touche sa voisine : déplacez-la moins loin.";
+  return withShelfMoved(doc, sketch.id, step.offset, index, position);
 }

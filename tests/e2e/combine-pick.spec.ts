@@ -24,7 +24,7 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   // Nothing taken for granted: the target is clicked first.
   await expect(tool.locator('[data-combine-pick="target"]')).toHaveAttribute("aria-pressed", "true");
   await expect(tool.getByLabel("Cible")).toHaveValue("");
-  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeDisabled();
+  await expect(tool).toContainText("Cliquez dans la vue le corps cible");
 
   const view = (await canvas(page).boundingBox())!;
   const at = (fx: number, fy: number): [number, number] => [view.x + view.width * fx, view.y + view.height * fy];
@@ -42,7 +42,6 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await expect(tools).toHaveCount(1);
   const tool1 = (await tools.first().getAttribute("data-combine-tool"))!;
   expect(tool1).not.toBe(target);
-  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeEnabled();
   await tool.screenshot({ path: "test-results/combine-pick.png" });
 
   // Taken away with its ✕, then the list of every body stays folded.

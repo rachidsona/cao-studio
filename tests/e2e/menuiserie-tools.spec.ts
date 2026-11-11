@@ -11,7 +11,7 @@ async function cabinet(page: Page) {
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(600);
-  const ok = page.getByRole("button", { name: "OK", exact: true }).first();
+  const ok = page.getByRole("button", { name: "Fermer", exact: true }).first();
   if (await ok.isVisible()) await ok.click();
   await page.waitForTimeout(1200);
 }
@@ -24,7 +24,7 @@ async function wall(page: Page) {
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1000);
   await click(page, '[data-action="view"][data-view="front"]');
@@ -263,7 +263,7 @@ test("Façades pose une porte sur une case de Répartition, module compris", asy
   await click(page, '[data-workshop="module-palette"]');
   await page.locator('[data-module="drawers"]').dragTo(view, { targetPosition: niche });
   await expect(page.getByText(/Niche équipée/)).toBeVisible();
-  await page.getByRole("dialog", { name: "Modules à glisser" }).getByRole("button", { name: "Terminer" }).click();
+  await page.getByRole("dialog", { name: "Modules à glisser" }).getByRole("button", { name: "Fermer", exact: true }).click();
 
   await page.getByRole("tab", { name: "Dressing", exact: true }).click();
   await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
@@ -352,7 +352,7 @@ test("un bouton ouvre et ferme toutes les portes d'un dressing", async ({ page }
   await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
   await expect(page.getByText(/Porte posée sur la case/)).toBeVisible();
   await fronts.getByRole("button", { name: "Toutes les cases" }).click();
-  await fronts.getByRole("button", { name: "Terminer" }).click();
+  await fronts.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(800);
   await opensAndCloses(page, "Dressing");
   expect(errors).toEqual([]);
@@ -455,7 +455,7 @@ test("le bas évier a deux traverses à la place du dessus, et le caisson se rè
   const tool = page.getByRole("dialog", { name: "Caisson" });
   await tool.getByRole("combobox", { name: "Haut du caisson" }).selectOption("rails");
   await page.waitForTimeout(800);
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
@@ -524,9 +524,8 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   await page.waitForTimeout(600);
   await page.getByRole("textbox", { name: "ΔX" }).fill("50");
   await page.getByRole("textbox", { name: "ΔX" }).press("Enter");
-  await expect(page.getByRole("button", { name: "OK", exact: true }).last()).toBeEnabled();
   await page.waitForTimeout(1000);
-  await page.getByRole("button", { name: "OK", exact: true }).last().click();
+  await page.getByRole("button", { name: "Fermer", exact: true }).last().click();
   await page.waitForTimeout(800);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect((await canvas(page).screenshot()).equals(before)).toBe(false);
@@ -561,9 +560,8 @@ test("Déplacer une Répartition entière emporte toutes ses pièces", async ({ 
   await page.waitForTimeout(600);
   await page.getByRole("textbox", { name: "ΔX" }).fill("40");
   await page.getByRole("textbox", { name: "ΔX" }).press("Enter");
-  await expect(page.getByRole("button", { name: "OK", exact: true }).last()).toBeEnabled();
   await page.waitForTimeout(1000);
-  await page.getByRole("button", { name: "OK", exact: true }).last().click();
+  await page.getByRole("button", { name: "Fermer", exact: true }).last().click();
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect((await canvas(page).screenshot()).equals(before)).toBe(false);
@@ -588,9 +586,9 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   await expect(tool).toContainText("2 niches choisies");
   await expect(tool).toContainText(/Porte de .* sur 2 niches/);
   await tool.getByRole("combobox", { name: "Charnières" }).selectOption("right");
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Porte posée sur 2 niches.")).toBeVisible();
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(800);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(page.getByLabel(/^Navigateur : corps/).getByText("Porte 1", { exact: true }).first()).toBeVisible();

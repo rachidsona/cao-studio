@@ -14,6 +14,7 @@ import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 import { Folds } from "../../ui/fold";
 import { familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
@@ -51,15 +52,15 @@ export interface RunEditorHost {
   /** The unit chosen when it opens. */
   chosen?: string | null;
   redraw(): void;
-  /** Something changed: the 3D shows it, not yet recorded. */
+  /** Something changed: stored a moment later (no « OK »), the kitchen made again. */
   changed(): void;
-  apply(items: KitchenRunItem[], rest: RestSide, corners: CornerSetting): void;
   /** The other runs of the plan, to open one of them. */
   runs: KitchenRun[];
   go(runId: string): void;
   /** This run alone in the view, from the front, with its sizes; and whether it is so. */
   see(): void;
   seen(): boolean;
+  /** The cross: what is waiting is stored, and the run closes. */
   back(): void;
 }
 
@@ -81,13 +82,20 @@ export class RunEditor {
   /** The strip takes the keyboard when it is drawn next: something on it was just chosen or changed. */
   private focusStrip = false;
   private readonly folds = new Folds(() => this.host.redraw());
-  /** Something changed since it opened. */
+  /** Something changed and not stored yet (it is, a moment later). */
   dirty = false;
 
   constructor(private readonly host: RunEditorHost) {
     this.items = structuredClone(host.plan.runs?.[host.run.id] ?? []);
     this.chosen = this.items.some((i) => i.id === host.chosen) ? host.chosen! : null;
     this.rest = runGeometry(host.plan, host.run).rest;
+  }
+
+  /** The title, with the cross that stores what waits and closes the run. */
+  private header(title: string): HTMLElement {
+    const head = panelHeader(title, () => this.host.back());
+    head.querySelector("[data-panel-close]")?.setAttribute("data-run-close", "");
+    return head;
   }
 
   get runId(): string {
@@ -228,17 +236,13 @@ export class RunEditor {
         this.folds.open = "chosen";
         this.host.redraw();
       }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label) });
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-run-cancel": "" }, "Annuler");
-    cancel.addEventListener("click", () => this.host.back());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium", "data-run-ok": "" }, "OK");
-    ok.addEventListener("click", () => this.host.apply(this.items, this.rest, this.settings));
     const clear = el("button", { type: "button", class: WIDE, disabled: !this.items.length }, "Vider le linéaire");
     clear.addEventListener("click", () => this.change([], null));
     const used = fill.placed.filter((p) => p.row === "base").reduce((sum, p) => sum + p.item.width, 0);
     const f = this.folds;
     const chosen = fill.placed.find((p) => p.item.id === this.chosen)?.item ?? this.items.find((i) => i.id === this.chosen);
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, `Linéaire — ${run.label.toLowerCase()}`),
+      this.header(`Linéaire — ${run.label.toLowerCase()}`),
       this.walls(),
       this.seeButton(),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(run.length, unit)} de mur, ${formatLength(Math.max(0, g.base[1] - g.base[0]), unit)} pour les meubles bas, ${formatLength(used, unit)} pris. Glissez un meuble pour le changer de place.`),
@@ -263,8 +267,7 @@ export class RunEditor {
       fill.problems.length ? f.fold("checks", `À revoir (${fill.problems.length})`, () => [...fill.problems.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m)), ...missingRows(fill, unit, (ids) => this.change(this.items.filter((i) => !ids.includes(i.id)), this.chosen))]) : null,
       f.fold("price", "Prix du projet", () => [quoteButton()], el("span", { class: "font-mono font-medium", "data-live-total": "" })),
       clear,
-      this.dirty ? el("p", { class: "border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100", "data-run-preview": "" }, "Aperçu dans la 3D : OK garde ces changements, Annuler revient à la cuisine d'avant.") : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
+      this.dirty ? el("p", { class: "border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100", "data-run-preview": "" }, "Enregistré dans un instant : la cuisine est refaite, Ctrl + Z annule.") : null,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
   }

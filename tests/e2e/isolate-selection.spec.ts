@@ -21,9 +21,9 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   const add = plan.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   for (let i = 0; i < 3; i++) await plan.locator('[data-add="base-bas-2-portes-1000"]').click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
   await click(page, '[data-action="view"][data-view="front"]');
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1500);

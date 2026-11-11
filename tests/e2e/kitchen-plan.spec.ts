@@ -56,7 +56,7 @@ test("plan de cuisine : plan en L avec îlot, mur A aménagé, cuisine proposée
   await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Bas 3 tiroirs · 80/);
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);
   await shot(page, "2-lineaire");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText(/Mur A aménagé/).first()).toBeVisible();
   await expect(page.getByText("Évier 600 (A1)").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Plan de travail A").first()).toBeVisible();
@@ -78,12 +78,12 @@ test("plan de cuisine : plan en L avec îlot, mur A aménagé, cuisine proposée
   await length.fill(unit === "mm" ? "4200" : unit === "m" ? "4,2" : "420");
   await length.press("Enter");
   await tool.getByLabel("Îlot", { exact: true }).uncheck();
-  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.getByRole("button", { name: "Appliquer", exact: true }).last().click();
   await expect(runs.getByRole("listitem")).toHaveCount(2);
   await expect(page.getByText("Plan de travail I")).toHaveCount(0, { timeout: 60_000 });
   await expect(page.getByText("Plan de travail A").first()).toBeVisible();
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
 
   // A unit it made, chosen in the browser: its run opens again.
   await page.evaluate(() => ([...document.querySelectorAll<HTMLElement>('[data-select^="body:"]')].find((b) => /Évier 600/.test(b.textContent ?? "")) as HTMLElement | undefined)?.click());
@@ -136,7 +136,7 @@ test("angles : chaque angle se choisit dans le linéaire ou dans Meubles de cuis
   await expect(left.locator('[data-corner-kind="lemans"]')).toHaveAttribute("aria-checked", "true");
   await expect(tool.locator('[data-run-strip="A"] [data-corner-front="door"]')).toHaveCount(1);
   await shot(page, "6-angle-lineaire");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Meuble d'angle LeMans A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Plateau LeMans 1 A").first()).toBeVisible();
 
@@ -166,14 +166,13 @@ test("linéaire : un bouton par mur pour voir les autres, ce qui est changé app
   // Nothing changed: wall C opens at once.
   await walls.locator('[data-go-run="C"]').click();
   await expect(tool.getByRole("heading", { name: "Linéaire — mur C" })).toBeVisible();
-  // A unit added, then wall B asked for: applied first, on its yes.
+  // A unit added, then wall B asked for: what waits is stored first.
   await unfold(tool, "add");
   await tool.locator('[data-add="base-bas-1-porte-600"]').click();
   // Still in sight with the panel scrolled down.
   await expect(tool.getByRole("group", { name: "Voir un autre linéaire" })).toBeInViewport();
   await shot(page, "8-murs");
   await tool.getByRole("group", { name: "Voir un autre linéaire" }).locator('[data-go-run="B"]').click();
-  await page.getByRole("button", { name: "Appliquer", exact: true }).last().click();
   await expect(tool.getByRole("heading", { name: "Linéaire — mur B" })).toBeVisible();
   await expect(page.getByText("Bas 1 porte 600 (C1)").first()).toBeVisible({ timeout: 60_000 });
   expect(errors).toEqual([]);
@@ -203,7 +202,7 @@ test("linéaire : le reste partagé en deux, un fileur de chaque côté, entre l
   await expect(tool.locator('[data-rest="both"]')).toHaveAttribute("aria-pressed", "true");
   await expect(strip.locator("[data-filler]")).toHaveCount(2);
   await shot(page, "9-reste-partage");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Fileur A2").first()).toBeVisible({ timeout: 60_000 });
   expect(errors).toEqual([]);
 });
@@ -231,7 +230,7 @@ test("linéaire : le reste contre les murs, entre chaque mur et son meuble d'ang
   await expect(tool.locator('[data-run-strip="A"] [data-corner-front="filler"]')).toHaveCount(2);
   await tool.locator('[data-run-strip="A"]').scrollIntoViewIfNeeded();
   await shot(page, "10-contre-les-murs");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Fileur mural A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Fileur mural A (droite)").first()).toBeVisible();
   expect(errors).toEqual([]);
@@ -276,7 +275,7 @@ test("linéaire : les cotes d'un meuble se tapent, ou sa largeur se tire par son
   await page.mouse.up();
   await expect(panel.locator('[data-size="width"]')).toHaveValue(typed(700));
   await shot(page, "11-cotes");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Bas 1 porte 700 (A1)").first()).toBeVisible({ timeout: 60_000 });
   expect(errors).toEqual([]);
 });
@@ -371,7 +370,7 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   expect((await strip.locator('[data-corner-width="door"]').allTextContents()).map((t) => t.replace(/^\D+/, "")).sort()).toEqual(["39,7", "59,7"]);
   await expect(strip.locator('[data-corner-width="blind"]').first()).toHaveText(/\d+(,\d)?$/);
   await shot(page, "14-hauts-angle");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Haut d'angle A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Meuble d'angle A").first()).toBeVisible();
   await expect(page.getByText("Porte d'angle haute A").first()).toBeVisible();
@@ -483,7 +482,7 @@ test("linéaire : des fileurs posés à la main, en bas et en haut, au début, a
   // The second low one taken out by its button: two are left.
   await tool.locator("[data-filler-remove]").nth(1).click();
   await expect(strip.locator("[data-hand-filler]")).toHaveCount(2);
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Fileur posé A1").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Fileur posé haut A2").first()).toBeVisible();
   // All taken out at once.
@@ -495,7 +494,7 @@ test("linéaire : des fileurs posés à la main, en bas et en haut, au début, a
   expect(errors).toEqual([]);
 });
 
-test("linéaire : chaque changement se voit aussitôt dans la 3D, OK le garde, Annuler revient", { tag: "@rapide" }, async ({ page }) => {
+test("linéaire : chaque changement est gardé aussitôt dans la 3D, une annulation revient", { tag: "@rapide" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-plan-cuisine-apercu");
@@ -510,9 +509,7 @@ test("linéaire : chaque changement se voit aussitôt dans la 3D, OK le garde, A
   await tool.locator('[data-open-run="A"]').click();
   const widths = () => page.locator('[data-run-dim="u"]').allTextContents();
   const before = await widths();
-  const navigator = page.getByLabel(/^Navigateur : corps/);
-  const project = await navigator.innerText();
-  // A unit's width typed: the 3D (and the wall's dimensions) show it at once, the project is not changed.
+  // A unit's width typed: the 3D (and the wall's dimensions) show it, stored at once.
   const strip = tool.locator('[data-run-strip="A"]');
   await strip.locator("[data-item]").first().click();
   const width = tool.locator('[data-run-item] [data-size="width"]');
@@ -520,19 +517,19 @@ test("linéaire : chaque changement se voit aussitôt dans la 3D, OK le garde, A
   const typed = (mm: number) => (unit === "mm" ? String(mm) : unit === "m" ? String(mm / 1000).replace(".", ",") : String(mm / 10).replace(".", ","));
   await width.fill(typed(370));
   await width.press("Enter");
-  await expect(tool.locator("[data-run-preview]")).toBeVisible();
+  // Stored at once (no « OK »): the kitchen made again.
   await expect.poll(async () => (await widths()).some((t) => /^37(0)?$/.test(t.trim())), { timeout: 60_000 }).toBe(true);
-  expect(await navigator.innerText()).toBe(project);
   await shot(page, "18-apercu");
-  // Annuler: the kitchen as it was.
-  await tool.getByRole("button", { name: "Annuler" }).click();
+  // Closed, then one undo: the kitchen as it was.
+  await tool.locator("[data-run-close]").click();
+  await page.locator('[data-action="undo"]').first().click();
   await expect.poll(widths, { timeout: 60_000 }).toEqual(before);
-  // Again, and OK keeps it.
+  // Again, and closing keeps it.
   await tool.locator('[data-open-run="A"]').click();
   await strip.locator("[data-item]").first().click();
   await width.fill(typed(370));
   await width.press("Enter");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect.poll(async () => /370 \(A\d+\)/.test(await tree(page)), { timeout: 60_000 }).toBe(true);
   await page.waitForTimeout(1500);
   await shot(page, "18b-apercu-ok");
@@ -597,7 +594,7 @@ test("plan de cuisine : un meuble haut poussé dans la 3D reste où il est, le l
   const strip = tool.locator('[data-run-strip="A"]');
   await strip.locator("[data-item]").filter({ has: page.locator("title", { hasText: "Hotte" }) }).click();
   await tool.locator("[data-run-item]").getByRole("button", { name: "Retirer" }).click();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible();
   await click(page, '[data-action="view"][data-view="front"]');
   await page.keyboard.press("Escape");
@@ -623,7 +620,7 @@ test("plan de cuisine : un meuble haut poussé dans la 3D reste où il est, le l
   // Taken out: the unit closes up, the room is one again at the end.
   await tool.locator("[data-space-remove]").click();
   await expect(strip.locator('[data-free="wall"]')).toHaveCount(1);
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   expect(errors).toEqual([]);
 });
 
@@ -639,7 +636,6 @@ test("linéaire : pendant l'aperçu, pas encore gardé, les portes des meubles a
   await tool.locator('[data-open-run="A"]').click();
   await unfold(tool, "add");
   await tool.locator('[data-add="base-bas-1-porte-600"]').click();
-  await expect(tool.locator("[data-run-preview]")).toBeVisible();
   await page.waitForTimeout(1500);
   // Not recorded yet: the doors shown open all the same, and close again.
   const doors = page.getByRole("group", { name: "Cuisine", exact: true }).locator('[data-workshop="doors-open"]');
@@ -651,7 +647,7 @@ test("linéaire : pendant l'aperçu, pas encore gardé, les portes des meubles a
   expect(errors).toEqual([]);
 });
 
-test("linéaire : un clic droit sur l'aperçu propose de le garder ; gardé, le menu de la porte s'ouvre", async ({ page }) => {
+test("linéaire : un meuble ajouté est gardé aussitôt ; un clic droit sur sa porte ouvre le menu de la porte", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -664,19 +660,13 @@ test("linéaire : un clic droit sur l'aperçu propose de le garder ; gardé, le 
   await tool.locator('[data-open-run="A"]').click();
   await unfold(tool, "add");
   await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
-  await expect(tool.locator("[data-run-preview]")).toBeVisible();
   await page.waitForTimeout(1500);
   await click(page, '[data-action="view"][data-view="front"]');
   await page.waitForTimeout(1500);
-  // On a door of the preview: keep it, or not.
-  await page.mouse.click(500, 610, { button: "right" });
-  const preview = page.getByRole("menu", { name: "Menu de l'aperçu" });
-  await expect(preview).toContainText("pas encore gardé");
-  await shot(page, "plan-cuisine-clic-droit-apercu");
-  await preview.getByRole("menuitem", { name: "Garder la cuisine (OK)" }).click();
+  // Stored by itself (no « OK »): the kitchen is made again with it.
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await page.waitForTimeout(1500);
-  // Kept: the same click opens the door's menu.
+  // Kept: a right click on its door opens the door's menu.
   await page.mouse.click(500, 610, { button: "right" });
   await expect(page.locator("[data-tree-menu]")).toContainText("Ouvrir de l'autre côté");
   expect(errors).toEqual([]);
@@ -719,6 +709,5 @@ test("linéaire : une largeur cliquée sur la bande s'ouvre dans la calculatrice
   await field.fill(typed("49,7", await unit()));
   await field.press("Enter");
   await expect(strip.locator('[data-edit-side="left"][data-edit-row="base"]')).toHaveText(/49,7$/);
-  await expect(tool.locator("[data-run-preview]")).toBeVisible();
   expect(errors).toEqual([]);
 });

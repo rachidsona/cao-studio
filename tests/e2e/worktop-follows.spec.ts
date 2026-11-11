@@ -18,9 +18,9 @@ test("le plan de travail suit les meubles du linéaire, puis s'allonge avec eux"
   const add = plan.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   for (const unit of ["base-bas-2-portes-1000", "base-bas-1-porte-600"]) await plan.locator(`[data-add="${unit}"]`).click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
   await click(page, '[data-action="view"][data-view="iso"]');
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1500);
@@ -43,9 +43,10 @@ test("le plan de travail suit les meubles du linéaire, puis s'allonge avec eux"
   await plan.locator('[data-open-run="A"]').click();
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   await plan.locator('[data-add="base-bas-2-portes-1000"]').click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
-  expect(await lengthOf("plan de travail")).toBe("260");
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
+  // Stored a moment after the unit is added (the message of the first one may still show): until it is.
+  await expect.poll(() => lengthOf("plan de travail"), { timeout: 60_000 }).toBe("260");
   expect(errors).toEqual([]);
 });

@@ -63,9 +63,8 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     // The kitchen shown is a preview of a run, not kept yet: keep it, or not.
     if (face && shownDoc(editor) !== editor.doc) {
       const press = (selector: string) => document.querySelector<HTMLElement>(selector)?.click();
-      menu = popup(event, "Menu de l'aperçu", "Aperçu du linéaire, pas encore gardé : gardez-le pour régler ses meubles.", [
-        ["Garder la cuisine (OK)", () => press("[data-run-ok]")],
-        ["Annuler l'aperçu", () => press("[data-run-cancel]")],
+      menu = popup(event, "Menu de l'aperçu", "Linéaire en train d'être enregistré : un instant, puis réglez ses meubles.", [
+        ["Fermer le linéaire (il est enregistré)", () => document.querySelector("[data-run-strip]")?.parentElement?.querySelector<HTMLElement>("[data-panel-close]")?.click()],
       ]);
       return;
     }

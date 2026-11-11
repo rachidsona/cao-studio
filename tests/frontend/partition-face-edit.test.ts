@@ -92,10 +92,17 @@ describe("face d'un mur : étagères et cloisons", () => {
 
   it("une niche tapée à sa cote : sa voisine prend la différence ; l'épaisseur d'une étagère pour toute sa division", () => {
     const { sketch, work } = setUp();
-    expect(sizesOf(resizeNiche(sketch, "of1", work, [0, 3], "y", 500), "of2")).toMatchObject({ heights: [584, 584, 668, null] });
-    expect(sizesOf(resizeNiche(sketch, "of1", work, [0, 1], "y", 400), "of2")).toMatchObject({ heights: [584, 400, 768, null] });
+    // The other niches were equal: they share the 84 mm and stay equal.
+    expect(sizesOf(resizeNiche(sketch, "of1", work, [0, 3], "y", 500), "of2")).toMatchObject({ heights: [612, 612, 612, null] });
+    const given = sizesOf(resizeNiche(sketch, "of1", work, [0, 1], "y", 400), "of2")!;
+    expect(given.heights![1]).toBe(400);
+    expect(given.heights![0]).toBeCloseTo(584 + 184 / 3, 1);
+    expect(given.heights![2]).toBe(given.heights![0]);
     expect(resizeNiche(sketch, "of1", work, [0, 1], "x", 400)).toMatch(/largeur de la case/);
-    expect(resizeNiche(sketch, "of1", work, [0, 1], "y", 2000)).toMatch(/pas la place/);
+    expect(resizeNiche(sketch, "of1", work, [0, 1], "y", 2400)).toMatch(/pas la place/);
+    // A niche of its own size keeps it: only those equal to the next one share.
+    const apart = must(resizeNiche(sketch, "of1", must(resizeNiche(sketch, "of1", work, [0, 3], "y", 400)), [0, 0], "y", 500));
+    expect(sizesOf(apart, "of2")!.heights![0]).toBe(500);
     expect(sizesOf(pieceThickness(work, "of2", 25), "of2")).toMatchObject({ thickness: 25, count: 3 });
   });
 

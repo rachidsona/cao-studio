@@ -191,7 +191,7 @@ export class DrawOnFaceTool extends PanelTool {
         this.marks.clear();
         this.curvedOffset.draw(this.marks);
         const v = formatLength(this.curvedOffset.distance, this.ctx.unit());
-        return this.box.show(this.curvedOffset.label, `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau, puis OK." : "Cliquez pour le poser, puis réglez la profondeur.");
+        return this.box.show(this.curvedOffset.label, `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau : elle est enregistrée aussitôt." : "Cliquez pour le poser, puis réglez la profondeur.");
       }
     }
     this.snapped = "free";

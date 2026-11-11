@@ -13,7 +13,7 @@ async function ready(page: Page) {
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1000);
   await click(page, '[data-action="view"][data-view="front"]');
@@ -37,8 +37,7 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await expect(shelves).toContainText("Niche choisie");
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tree(page).getByText("Étagères", { exact: true }).first()).toBeVisible();
   await page.waitForTimeout(1200);
 
@@ -50,7 +49,7 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   const [x2, y2] = at(0.62, 0.55);
   await page.mouse.click(x2, y2);
   await expect(page.getByText("Niche copiée.")).toBeVisible();
-  await copy.getByRole("button", { name: "Terminer" }).click();
+  await copy.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tree(page).getByText("Étagères", { exact: true }).first().locator("..")).toContainText("6");
   await page.waitForTimeout(1200);
 
@@ -93,7 +92,7 @@ test("menu de la niche, copie, cote tapée, étagère tirée, répétition", asy
   // R runs the last tool again, with its settings, on the niche under the pointer.
   await click(page, '[data-action="shelves"]');
   const again = page.getByRole("dialog", { name: "Étagères" });
-  await again.getByRole("button", { name: "Terminer" }).click();
+  await again.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.mouse.move(...at(0.2, 0.55));
   await page.keyboard.press("r");
   await expect(page.getByRole("dialog", { name: "Étagères" })).toBeVisible();
@@ -139,8 +138,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1000);
 
   // The niche at the left edge, seen in perspective, aligned on the model.
@@ -149,7 +147,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   const copy = page.getByRole("dialog", { name: "Copier une niche" });
   await page.mouse.click(...at(0.2, 0.55));
   await expect(page.getByText("Étagères alignées.")).toBeVisible();
-  await copy.getByRole("button", { name: "Terminer" }).click();
+  await copy.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1000);
 
   await click(page, '[data-action="module"]');
@@ -157,7 +155,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   await page.mouse.click(...at(0.2, 0.5));
   await expect(mod).toContainText("Modifier : Étagères");
   await mod.getByRole("button", { name: "Penderie longue" }).click();
-  await mod.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(tree(page).getByText("Penderie 1", { exact: true }).first()).toBeVisible();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1000);
@@ -167,7 +165,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   const tool = page.getByRole("dialog", { name: "Plan de dressing" });
   await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").nth(1).getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1000);
   await click(page, '[data-action="view"][data-view="front"]');
@@ -204,7 +202,7 @@ test("Voir isole un mur : seul avec ses cotes, et il le reste pendant le travail
   await expect(page.locator(".cad-plan-dim").first()).toBeVisible();
 
   // A tool from the ribbon works on that wall, and the wall stays alone after its OK.
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   const box = (await page.locator("canvas.cad-view").boundingBox())!;
   // Through an empty niche, the hidden wall behind it is neither lit nor picked.
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
@@ -214,7 +212,7 @@ test("Voir isole un mur : seul avec ses cotes, et il le reste pendant le travail
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
   const mod = page.getByRole("dialog", { name: "Module" });
   await expect(mod).toContainText("Niche choisie");
-  await mod.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1500);
   await expect(bar).toContainText("Mur A isolé");
@@ -235,8 +233,7 @@ test("Cloisons coupe la niche mère : les étagères restent d'un côté, l'autr
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1000);
 
   await page.mouse.click(mx, my, { button: "right" });
@@ -246,8 +243,7 @@ test("Cloisons coupe la niche mère : les étagères restent d'un côté, l'autr
   await cloisons.getByLabel("Couper toute la niche mère").check();
   await expect(cloisons).not.toHaveText(niche);
   await expect(cloisons.getByLabel("Ce qu'elle contient va")).toHaveValue("left");
-  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
-  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
   await page.waitForTimeout(1000);
   await expect(tree(page).getByText("Étagères", { exact: true }).first().locator("..")).toContainText("3");
@@ -265,8 +261,7 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   await page.getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("5");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1200);
 
   await click(page, '[data-action="cloisons"]');
@@ -280,8 +275,7 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   }
   await expect(cloisons).toContainText("3 niches choisies");
   await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
-  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
-  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
@@ -300,8 +294,7 @@ test("une cloison à travers trois niches coupe les deux étagères entre elles"
   }
   await expect(line.getByLabel("Cloisons alignées sur une seule ligne")).toBeChecked();
   await expect(line).toContainText("Cloisons sur une même ligne");
-  await line.getByRole("button", { name: "OK", exact: true }).click();
-  await line.getByRole("button", { name: "Terminer" }).click();
+  await line.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
@@ -328,7 +321,7 @@ test("façades communes, chants d'un clic et modèle d'étiquette", async ({ pag
   await page.waitForTimeout(800);
   await fronts.getByRole("combobox", { name: "Sens d'ouverture" }).selectOption("right");
   await page.waitForTimeout(800);
-  await fronts.getByRole("button", { name: "Terminer" }).click();
+  await fronts.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(fronts).toHaveCount(0);
 
   // An edge band laid with a click, then taken off; Échap closes the tool.
@@ -373,7 +366,7 @@ test("Éclairage d'un mur de dressing : un ruban par niche, même esquisse cach�
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(800);
   await page.keyboard.press("Escape");
 
@@ -382,7 +375,7 @@ test("Éclairage d'un mur de dressing : un ruban par niche, même esquisse cach�
   await expect(page.getByRole("button", { name: "Afficher Plan — mur a", exact: true })).toBeVisible();
   await click(page, '[data-action="lighting"]');
   await expect(page.getByText(/7 ruban\(s\) LED/)).toBeVisible();
-  await page.getByRole("button", { name: "OK", exact: true }).first().click();
+  await page.getByRole("button", { name: "Fermer", exact: true }).first().click();
   await expect(tree(page).getByRole("button", { name: /^Masquer Ruban LED/ })).toHaveCount(7);
   await expect(page.locator('[data-status="error"], [data-state="error"]')).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -398,7 +391,7 @@ test("une cloison coupe aussi les étagères d'un module, faites en deux fois", 
   await page.getByRole("menuitem", { name: "Module" }).click();
   const moduleTool = page.getByRole("dialog", { name: "Module" });
   await moduleTool.getByRole("button", { name: /^Tiroirs et étagères/ }).first().click();
-  await moduleTool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await page.waitForTimeout(1500);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
@@ -415,8 +408,7 @@ test("une cloison coupe aussi les étagères d'un module, faites en deux fois", 
   }
   await expect(cloisons.getByLabel("Une seule cloison, qui coupe les étagères")).toBeChecked();
   await expect(cloisons.locator("[data-cut-shelves]")).toContainText("Elle coupe 3 étagères");
-  await cloisons.getByRole("button", { name: "OK", exact: true }).click();
-  await cloisons.getByRole("button", { name: "Terminer" }).click();
+  await cloisons.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(tree(page).getByText("Cloison 1", { exact: true }).first()).toBeVisible();
@@ -459,7 +451,7 @@ test("Déformer agrandit une face depuis son centre, à la poignée ou au chiffr
   await page.mouse.up();
   await expect(tool).toContainText("Devient");
   await page.waitForTimeout(800);
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(page.getByText("Aucun corps")).toHaveCount(0);
@@ -481,14 +473,14 @@ test("Panneaux sur faces : les faces d'un volume deviennent des panneaux", async
   await expect(tool).toContainText("6 face(s) en panneaux");
   await tool.getByRole("textbox", { name: "Épaisseur" }).fill("0,5");
   await tool.getByRole("textbox", { name: "Épaisseur" }).press("Enter");
-  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeEnabled({ timeout: 15000 });
   await page.waitForTimeout(1500);
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(page.getByLabel(/^Navigateur : corps/).getByText(/panneau 6/i).first()).toBeVisible();
-  // Les panneaux en onglet ne sont pas pris pour des pièces qui se chevauchent.
-  await page.getByText(/à vérifier/).last().click();
+  // Les panneaux en onglet ne sont pas pris pour des pièces qui se chevauchent (rien à vérifier : le bouton reste caché).
+  const problems = page.locator("[data-live-problems]");
+  if (await problems.isVisible()) await problems.click();
   await expect(page.getByText(/se chevauchent/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });

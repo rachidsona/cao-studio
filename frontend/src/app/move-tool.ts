@@ -12,7 +12,8 @@
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import type { CabinetFeature, Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
+import type { CabinetFeature, CadDocument, Feature, MoveFeature, SketchFeature, Vec3 } from "../document/types";
+import { shelfMovedBy } from "../document/niche-size";
 import { featureOfBody } from "../document/types";
 import { MIN_LENGTH } from "../features/common";
 import { GLOBAL_FRAME, faceFrame, toGlobal, toLocal, type MoveFrame } from "../features/move";
@@ -243,6 +244,16 @@ export class MoveTool extends PanelTool {
     const translate = this.translate.map((x) => Number(x.toFixed(6))) as Vec3;
     if (this.copies > 0 && !this.editing) return { ...this.copy, type: "array", targets: [this.subject.id], step: translate, count: this.copies };
     return { id: this.id, type: "move", name: this.name, target: this.subject.id, translate } satisfies MoveFeature;
+  }
+
+  /**
+   * One shelf (or cloison) of a Répartition moved along its own axis: moved in its division instead of as a body, so
+   * its niches change and what equips them (drawers, a rod) follows it.
+   */
+  protected override decorate(doc: CadDocument): CadDocument {
+    if (this.subject.kind !== "body" || this.copies > 0 || this.editing) return doc;
+    const moved = shelfMovedBy({ ...doc, features: doc.features.filter((f) => f.id !== this.id) }, this.subject.id, this.translate);
+    return moved && typeof moved !== "string" ? moved : doc;
   }
 
   /** The result cannot be validated while the kernel refuses it. */

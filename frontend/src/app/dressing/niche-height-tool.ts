@@ -13,6 +13,7 @@ import type { SketchExtrusion } from "../../sketcher/mode";
 import { extrusionGroups, heightStep, isShelves, leafNiches, pathKey, rebuildChain, withNicheHeight } from "../../sketcher/partition-history";
 import { heldHeights, partBox, shelfLayout, type NicheBox } from "../../sketcher/shelves";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
 
 export interface NicheHeightHost {
@@ -39,6 +40,9 @@ export class NicheHeightTool {
   private height: number | null = null;
   private done = false;
   private readonly panel: HTMLElement;
+  /** Stored a moment after the height is changed (no « OK »), and what was stored last. */
+  private storeTimer: number | undefined;
+  private storedKey = "";
 
   constructor(private readonly host: NicheHeightHost) {
     this.panel = el("div", {
@@ -58,8 +62,35 @@ export class NicheHeightTool {
 
   /** The document changed under the tool (undo, redo): the niche chosen may be gone. */
   sync(): void {
-    this.niche = null;
+    // The niche chosen, read again from the sketch as it is now.
+    this.niche = this.niche ? this.again(this.niche) : null;
+    if (this.niche) this.height = this.niche.box.y1 - this.niche.box.y0;
+    this.storedKey = this.key();
     this.recompute();
+  }
+
+  /** A niche chosen, as the sketch has it now (null: gone). */
+  private again(n: Chosen): Chosen | null {
+    const g = this.host.geometry();
+    const path = [...n.division, n.index];
+    const leaf = leafNiches(g).find((l) => l.partition === n.partition && pathKey(l.path) === pathKey(path));
+    const step = leaf && heightStep(g, leaf.partition, leaf.path);
+    if (!leaf || !step || !isShelves(step.record)) return null;
+    return { partition: leaf.partition, box: leaf.box, record: step.record, input: step.record.step.input, division: step.record.step.niche, index: step.index };
+  }
+
+  private key(): string {
+    return JSON.stringify(this.niche ? [this.niche.partition, this.niche.division, this.niche.index, this.height] : null);
+  }
+
+  /** The height changed (and possible) is stored a moment later. */
+  private schedule(): void {
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    if (this.done || !this.niche || this.key() === this.storedKey) return;
+    const made = this.rebuilt();
+    if (!made?.rebuilt || made.problem) return;
+    this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 300);
   }
 
   /** A click in a niche (its centre, sketch coordinates): chooses it, or releases it. */
@@ -75,6 +106,8 @@ export class NicheHeightTool {
       this.niche = { partition: leaf.partition, box: leaf.box, record: step.record, input: step.record.step.input, division: step.record.step.niche, index: step.index };
       this.height = leaf.box.y1 - leaf.box.y0;
     }
+    // As it is: nothing to store until its height changes.
+    this.storedKey = this.key();
     this.recompute();
   }
 
@@ -128,6 +161,7 @@ export class NicheHeightTool {
   private recompute(): void {
     this.draw();
     this.host.changed();
+    this.schedule();
   }
 
   private draw(): void {
@@ -172,14 +206,10 @@ export class NicheHeightTool {
       this.height = null;
       this.recompute();
     });
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    cancel.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: !niche || problem !== null }, "OK");
-    ok.addEventListener("click", () => this.confirm());
     const heights = typeof layout === "object" && layout ? layout.niches.map(([a, b]) => formatLength(b - a, unit)).join(" · ") : null;
     const held = input ? heldHeights(input) : [];
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, "Niche"),
+      panelHeader("Niche", () => this.cancel()),
       el(
         "p",
         { class: "text-gray-600 dark:text-gray-300" },
@@ -192,15 +222,21 @@ export class NicheHeightTool {
       heights && !problem ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, `${heights} (du bas vers le haut).`) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       niche ? el("p", { class: "text-[11px] text-gray-500" }, held.some((h, i) => h !== null && i !== niche.index) ? "Les niches déjà réglées gardent leur hauteur ; les autres se partagent le reste." : "Les autres niches se partagent le reste à parts égales.") : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
   // ---- end --------------------------------------------------------------------------
 
-  /** OK: the niche takes its height, as one undo step; the tool stays for others. */
+  /** Entrée: stored now. */
   confirm(): void {
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    this.store();
+  }
+
+  /** The niche takes its height, as one undo step; it stays chosen, the tool stays for others. */
+  private store(): void {
     if (this.done) return;
     const made = this.rebuilt();
     if (!this.niche || !made) return this.host.notify("Cliquez d'abord une niche.", "error");
@@ -209,18 +245,23 @@ export class NicheHeightTool {
     const groups = extrusionGroups(g.offsets ?? [], made.rebuilt);
     const height = this.height;
     const name = this.niche.record.name;
+    const chosen = this.niche;
     if (!this.host.apply(made.rebuilt.geometry, `${name} : ${height === null ? "niche partagée avec les autres" : `niche de ${formatLength(height, this.host.unit())}`}.`, groups.length ? { groups } : undefined)) return;
-    this.niche = null;
+    this.niche = this.again(chosen);
+    this.storedKey = this.key();
     this.recompute();
   }
 
+  /** The cross, or Échap: closes; a height still waiting is stored first. */
   cancel(): void {
     if (this.done) return;
+    if (this.storeTimer !== undefined) this.confirm();
     this.dispose();
     this.host.closed();
   }
 
   dispose(): void {
+    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.panel.remove();
   }

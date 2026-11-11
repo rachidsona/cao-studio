@@ -10,6 +10,7 @@ import { moduleOfNiche, withModuleChanged, withoutModule } from "../../frontend/
 import { modelHardware } from "../../frontend/src/document/hardware";
 import { emptySketchGeometry, type ShelfParams, type SketchGeometry } from "../../frontend/src/document/sketch";
 import { stepOfBody, withSketchExtrusion } from "../../frontend/src/document/sketch-extrusion";
+import { shelfMovedBy } from "../../frontend/src/document/niche-size";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { extrusionGroups, heightStep, isShelves, leafNiches, partitionRecord, rebuildChain, withNicheHeight } from "../../frontend/src/sketcher/partition-history";
@@ -394,3 +395,39 @@ const sketchShelves = (doc: CadDocument, offset: string): number => {
   const r = sketchOf(doc).offsets?.find((o) => o.id === offset);
   return r && isShelves(r) ? r.step.input.count : 0;
 };
+
+describe("un module dans une niche vide d'un module posé", () => {
+  it("une colonne d'une seule étagère : la niche du dessous, vide, reçoit des tiroirs et étagères", () => {
+    const one = withModules(cabinet(), "sk1", picks(cabinet(), 1), "shelves", 18, { ...moduleSizes("shelves"), shelves: 1 });
+    if (typeof one === "string") throw new Error(one);
+    const below = leafNiches(sketchOf(one)).find((n) => n.path.join(".") === "1.0")!;
+    // The niche counts as part of the column of shelves placed…
+    expect(moduleOfNiche(one, sketchOf(one), below.partition, below.path)).not.toBeNull();
+    // …and still takes a module of its own (the palette drops it there).
+    const next = withModules(one, "sk1", [{ partition: below.partition, path: below.path, box: below.box }], "drawers", 18, moduleSizes("drawers"));
+    if (typeof next === "string") throw new Error(next);
+    expect(niches(next).some((n) => n.fill === "drawers" && n.niche.slice(0, 2).join(".") === "1.0")).toBe(true);
+  });
+});
+
+describe("une étagère déplacée comme un corps (Déplacer)", () => {
+  it("le long de son axe : elle bouge dans sa division, ses niches et ce qui les équipe suivent ; de travers : un déplacement de corps", () => {
+    const doc = made(cabinet(), picks(cabinet(), 0), "drawers");
+    const sketch = sketchOf(doc);
+    const drawers = niches(doc).find((n) => n.fill === "drawers")!;
+    const record = (sketch.offsets ?? []).find((r) => isShelves(r) && r.bodies?.length)!;
+    const body = record.bodies![0]!;
+    const before = nicheGeometry(drawers, sketch);
+    // The sketch of the wall is upright, in XZ: a shelf goes up and down along Z.
+    const moved = shelfMovedBy(doc, body, [0, 0, -50]);
+    expect(typeof moved).toBe("object");
+    const after = moved as CadDocument;
+    expect((sketchOf(after).offsets ?? []).find((r) => r.id === record.id)?.step).not.toEqual(record.step);
+    const following = nicheGeometry(niches(after).find((n) => n.fill === "drawers")!, sketchOf(after));
+    expect(typeof before === "string" || typeof following === "string").toBe(false);
+    if (typeof before !== "string" && typeof following !== "string") expect(following.box).not.toEqual(before.box);
+    // Sideways, or not a shelf of a Répartition: it stays a move of the body.
+    expect(shelfMovedBy(doc, body, [30, 0, 0])).toBeNull();
+    expect(shelfMovedBy(doc, "nothing", [0, 0, -50])).toBeNull();
+  });
+});

@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { edgeLine, nearestEdge, type EdgeKey, type Edges } from "../document/edge-paint";
 import { bodyInfo, EDGE_BANDS, setBodyInfo } from "../document/materials";
 import { el } from "../ui/dom";
+import { panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
 import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
@@ -46,9 +47,7 @@ class EdgePaintTool implements PointerHandler {
     });
     const band = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Épaisseur du chant" }, ...EDGE_BANDS.map((b) => el("option", { value: String(b), selected: b === this.band }, `Chant ${b} mm`)));
     band.addEventListener("change", () => (this.band = Number(band.value)));
-    const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    end.addEventListener("click", () => this.close());
-    this.panel.append(el("h2", { class: "panel-title" }, "Peindre les chants"), this.text, mode, band, end);
+    this.panel.append(panelHeader("Peindre les chants", () => this.close()), this.text, mode, band);
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     this.lines.renderOrder = this.hovered.renderOrder = 60;
     viewport.scene.add(this.lines, this.hovered);

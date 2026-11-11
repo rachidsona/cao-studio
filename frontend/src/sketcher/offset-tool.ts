@@ -61,6 +61,9 @@ export class OffsetTool {
   private outcome: OffsetOutcome | null = null;
   private problem: string | null = null;
   private busy = false;
+  /** Stored a moment after each result (no « OK »), and the curves it made. */
+  private storeTimer: number | undefined;
+  private made: string[] = [];
   private paths: OffsetPath[] = [];
   private ticket = 0;
   private latest: Promise<void> = Promise.resolve();
@@ -75,7 +78,7 @@ export class OffsetTool {
   /** `editing`: the offset to redo (its settings are restored, its curves replaced on confirmation). */
   constructor(
     private readonly host: OffsetHost,
-    private readonly editing: OffsetRecord | null = null,
+    private editing: OffsetRecord | null = null,
   ) {
     if (editing) {
       this.distance = editing.distance;
@@ -327,27 +330,39 @@ export class OffsetTool {
     this.preview = outcome ? offsetPreview(outcome.curves) : null;
     this.draw();
     this.host.changed();
+    // A result shown is stored a moment later (no « OK »): the offset made, then set again in place.
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = outcome && !this.rerun ? window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400) : undefined;
     if (this.rerun) {
       this.rerun = false;
       this.refresh();
     }
   }
 
+  /** Entrée: stored now, and the tool ends. */
   async confirm(): Promise<void> {
     if (this.done) return;
     await this.latest; // the result shown is the one that gets applied
     if (this.done) return;
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    if (this.store(true)) this.finish(this.made);
+  }
+
+  /** The offset stored (one undo step); it is then the one changed: its curves are replaced by the next settings. */
+  private store(loud = false): boolean {
+    if (this.done) return false;
     if (!this.outcome || this.curveIds().length === 0) {
-      this.host.notify(this.problem ?? "Sélectionnez les lignes, arcs ou cercles à décaler.", "error");
-      return;
+      if (loud) this.host.notify(this.problem ?? "Sélectionnez les lignes, arcs ou cercles à décaler.", "error");
+      return false;
     }
     const current = this.host.geometry();
     // Redoing an offset replaces the curves it made before.
     const base = this.editing ? removeEntities(current, this.editing.curves) : current;
     const { geometry, created } = addOffsetCurves(base, this.outcome.curves, allConstruction(base, this.curveIds()));
     if (created.length === 0) {
-      this.host.notify("Le décalage n'a produit aucune courbe.", "error");
-      return;
+      if (loud) this.host.notify("Le décalage n'a produit aucune courbe.", "error");
+      return false;
     }
     const record: OffsetRecord = {
       id: this.editing?.id ?? this.host.newOffsetId(),
@@ -361,15 +376,25 @@ export class OffsetTool {
     const previous = current.offsets ?? [];
     geometry.offsets = this.editing ? previous.map((o) => (o.id === record.id ? record : o)) : [...previous, record];
     const done = this.editing ? "mis à jour" : `${created.length} courbe(s) ajoutée(s), l'original est conservé`;
-    if (!this.host.apply(geometry, `${record.name} : ${done}.`)) return;
-    this.finish(created);
+    if (JSON.stringify(geometry) === JSON.stringify(current)) return true;
+    if (!this.host.apply(geometry, `${record.name} : ${done}.`)) return false;
+    this.editing = this.host.geometry().offsets?.find((o) => o.id === record.id) ?? record;
+    this.made = created;
+    return true;
   }
 
+  /** The cross, or Échap: closes; a result still waiting is stored first. */
   cancel(): void {
-    this.finish([]);
+    if (this.storeTimer !== undefined) {
+      window.clearTimeout(this.storeTimer);
+      this.storeTimer = undefined;
+      this.store();
+    }
+    this.finish(this.made);
   }
 
   private finish(created: string[]): void {
+    window.clearTimeout(this.storeTimer);
     if (this.done) return;
     this.done = true;
     this.ticket++;

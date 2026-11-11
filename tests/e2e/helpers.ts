@@ -34,6 +34,8 @@ export async function newProject(page: Page, name: string): Promise<string> {
     localStorage.setItem("cao.free-spaces", "1");
     // And the view where it was before the columns of tools (their own test), for the clicks by coordinates.
     localStorage.setItem("cao.tool-columns-off", "1");
+    // And the ribbon and the steps at the top (hidden by default: their own test).
+    localStorage.setItem("cao.ribbon-shown", "1");
   });
   await page.fill("#id_name", name);
   await page.getByRole("button", { name: "Créer et ouvrir" }).click();

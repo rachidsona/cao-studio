@@ -16,7 +16,7 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   const corner = zones.getByRole("listitem").filter({ hasText: "Angle droit" });
   await corner.getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1500);
 
@@ -32,8 +32,7 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("2");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(bar).toHaveAttribute("data-shown", "7");
   await page.waitForTimeout(1000);
 
@@ -57,12 +56,12 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   await page.waitForTimeout(1500);
   await expect(bar).toHaveAttribute("data-shown", "7");
   await expect(pull.getByRole("alert")).toHaveCount(0);
-  await pull.getByRole("button", { name: "OK", exact: true }).click();
+  await pull.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(pull).toHaveCount(0);
   await page.waitForTimeout(1500);
   await expect(bar).toHaveAttribute("data-shown", "7");
-  await expect(page.getByLabel("Corps cible")).toHaveValue(/.+/);
-  await expect(page.getByLabel("Corps cible").locator("option:checked")).toHaveText(/^Étagère/);
+  await expect(page.getByLabel("Corps des faces")).toHaveValue(/.+/);
+  await expect(page.getByLabel("Corps des faces").locator("option:checked")).toHaveText(/^Étagère/);
   await expect(page.getByLabel("Distance (cm)")).toHaveValue("3");
   await expect(page.locator('[data-state="error"]')).toHaveCount(0);
 
@@ -70,7 +69,7 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   pull = await pullShelf("Nouveau corps");
   await page.waitForTimeout(1500);
   await expect(bar).toHaveAttribute("data-shown", "8");
-  await pull.getByRole("button", { name: "OK", exact: true }).click();
+  await pull.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1500);
   await expect(bar).toHaveAttribute("data-shown", "8");
   await expect(page.locator('[data-state="error"]')).toHaveCount(0);

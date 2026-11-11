@@ -43,7 +43,7 @@ test("guide : une cuisine et un dressing, de l'accueil au devis", async ({ page 
   await plan.locator('[data-open-run="A"]').click();
   await page.waitForTimeout(800);
   await shot(page, "04-lineaire");
-  await plan.getByRole("button", { name: "Annuler" }).click();
+  await plan.locator("[data-run-close]").click();
 
   // 3. The steps: the appliances.
   const steps = page.locator("[data-steps]");

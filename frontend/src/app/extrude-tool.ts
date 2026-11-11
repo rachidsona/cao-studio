@@ -24,10 +24,12 @@ import { ReferenceMarker } from "./reference-marker";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { operationChoices } from "../ui/feature-meta";
 import { placePanel } from "../ui/dock";
+import { CLOSE_TITLE } from "../ui/panel-close";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
-  change(next: CadDocument): void;
+  /** One undo step; `amend`: in place of the last one (the same extrusion, set again). */
+  change(next: CadDocument, amend?: boolean): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** Visible bodies, in history order (join/cut targets). */
   bodies(): { id: string; name: string }[];
@@ -381,8 +383,10 @@ export class ExtrudeTool implements PointerHandler {
       this.cancel();
       return true;
     }
+    // Entrée: stored now, and the tool closes.
     if (event.key === "Enter") {
       this.confirm();
+      if (this.whole()) this.cancel();
       return true;
     }
     return false;
@@ -390,7 +394,24 @@ export class ExtrudeTool implements PointerHandler {
 
   // ---- dialog -----------------------------------------------------------------
 
+  /** What this extrusion stored: the document before it, and the one it made (to set it again in place). */
+  private stored: { base: CadDocument; doc: CadDocument; id: string } | null = null;
+  private storeTimer: number | undefined;
+
+  /** The document the extrusion works on: the one before it stored anything, while what it stored still stands. */
+  private docBefore(): CadDocument {
+    return this.stored && this.host.doc() === this.stored.doc ? this.stored.base : this.host.doc();
+  }
+
+  /** Whole: a profile, an area, a target when it joins, cuts or intersects. */
+  private whole(): boolean {
+    return !!this.selected && this.chosen.size > 0 && (this.operation === "new" || !!this.target);
+  }
+
   private renderDialog(): void {
+    // Each setting, once whole, is stored a moment later (no « OK »): the tool stays open.
+    window.clearTimeout(this.storeTimer);
+    if (this.whole()) this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400);
     const unit = this.host.unit();
     const count = this.chosen.size;
     const profileText = this.selected ? `${this.selected.sketch.name}${this.explicit ? ` — ${count} zone${count > 1 ? "s" : ""}` : ""}` : "Cliquez un profil dans la vue";
@@ -417,6 +438,7 @@ export class ExtrudeTool implements PointerHandler {
         event.preventDefault();
         commitDistance();
         this.confirm();
+        if (this.whole()) this.cancel();
       }
     });
     const flip = el(
@@ -487,25 +509,16 @@ export class ExtrudeTool implements PointerHandler {
             })(),
           );
 
-    const cancel = el(
-      "button",
-      { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" },
-      "Annuler",
-    );
-    cancel.addEventListener("click", () => this.cancel());
-    const ok = el(
-      "button",
-      { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: !this.selected || this.chosen.size === 0 },
-      "OK",
-    );
-    ok.addEventListener("click", () => this.confirm());
+    const cross = el("button", { type: "button", class: "size-7 shrink-0 border border-gray-300 text-sm leading-none hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: CLOSE_TITLE, "aria-label": "Fermer", "data-panel-close": "" }, "✕");
+    cross.addEventListener("click", () => this.cancel());
 
     const children: (HTMLElement | null)[] = [
       el(
         "div",
         { class: "flex items-center justify-between" },
         el("h2", { class: "panel-title" }, this.editing ? "Modifier l'extrusion" : "Extrusion"),
-        el("span", { class: `truncate pl-2 ${this.selected ? "text-sky-700 dark:text-sky-300" : "text-amber-700 dark:text-amber-300"}` }, this.selected ? profileText : "Cliquez un profil"),
+        el("span", { class: `min-w-0 flex-1 truncate pl-2 ${this.selected ? "text-sky-700 dark:text-sky-300" : "text-amber-700 dark:text-amber-300"}` }, this.selected ? profileText : "Cliquez un profil"),
+        cross,
       ),
       this.selected && this.selected.faces.length > 1
         ? el("p", { class: "text-gray-600 dark:text-gray-300" }, this.chosen.size === 0 ? "Cliquez une zone à extruder." : "Cliquez des zones pour choisir ce qui est extrudé ; recliquez pour en retirer.")
@@ -519,24 +532,28 @@ export class ExtrudeTool implements PointerHandler {
       this.selected ? el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Arête", edgeTake) : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Opération", operation),
       target,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.dialog.replaceChildren(...children.filter((c): c is HTMLElement => c !== null));
   }
 
   // ---- commit -----------------------------------------------------------------
 
+  /** Stores it now (Entrée, or a moment after each whole setting), the tool staying open. */
   confirm(): void {
+    this.store(true);
+  }
+
+  private store(loud = false): void {
     const profile = this.selected;
     if (!profile || this.chosen.size === 0) {
-      this.host.notify("Sélectionnez d'abord un profil à extruder.", "error");
+      if (loud) this.host.notify("Sélectionnez d'abord un profil à extruder.", "error");
       return;
     }
     if (this.operation !== "new" && !this.target) {
-      this.host.notify("Choisissez le corps cible (Joindre, Couper ou Intersection).", "error");
+      if (loud) this.host.notify("Choisissez le corps cible (Joindre, Couper ou Intersection).", "error");
       return;
     }
-    const doc = this.host.doc();
+    const doc = this.docBefore();
     // Chosen areas are stored only when they differ from the default (every material area).
     const defaults = this.defaultFaces(profile);
     const isDefault = this.chosen.size === defaults.length && defaults.every((f) => this.chosen.has(f));
@@ -558,17 +575,27 @@ export class ExtrudeTool implements PointerHandler {
       id = next.features[next.features.length - 1]?.id as string;
       next = updateFeature(next, id, (f) => (f.type === "extrude" ? { ...f, ...values } : f));
     }
-    this.close();
-    this.host.change(next);
-    this.host.closed(id);
+    const now = this.host.doc();
+    if (JSON.stringify(next) === JSON.stringify(now)) return;
+    const amend = !!this.stored && now === this.stored.doc;
+    const base = amend ? this.stored!.base : now;
+    this.host.change(next, amend);
+    this.stored = { base, doc: this.host.doc(), id };
   }
 
+  /** The cross, or Échap: closes; a setting still waiting is stored first, nothing done is taken back. */
   cancel(): void {
+    if (this.storeTimer !== undefined) {
+      window.clearTimeout(this.storeTimer);
+      this.storeTimer = undefined;
+      this.store();
+    }
     this.close();
-    this.host.closed(null);
+    this.host.closed(this.stored?.id ?? null);
   }
 
   private close(): void {
+    window.clearTimeout(this.storeTimer);
     closeCalculator();
     this.arrow.dispose();
     this.marker.dispose();

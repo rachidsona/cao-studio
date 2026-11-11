@@ -247,7 +247,7 @@ export class PushTool extends PanelTool {
   protected override click(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
     if (!face) return;
-    if (Math.hypot(...this.shift) > 1e-6) return this.ctx.notify("Faites OK pour garder la poussée (ou Annuler) avant de choisir un autre élément.", "info");
+    if (Math.hypot(...this.shift) > 1e-6) return this.ctx.notify("Cette poussée est enregistrée : fermez l'outil (✕), puis rouvrez-le pour pousser un autre élément (Ctrl + Z la reprend).", "info");
     if (!event.shiftKey) this.elements = [];
     this.add(face.bodyId);
     this.render();

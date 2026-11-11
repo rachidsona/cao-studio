@@ -29,6 +29,7 @@ import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import type { NicheBox } from "../../sketcher/shelves";
 import { el } from "../../ui/dom";
 import { placePanel } from "../../ui/dock";
+import { panelHeader } from "../../ui/panel-close";
 import { moduleChoice, moduleList } from "./module-list";
 import { myModules, removeMyModule, saveMyModule } from "./my-modules";
 
@@ -67,6 +68,9 @@ export class ModuleTool {
   private editing: PlacedModule | null = null;
   private clicked: Chosen | null = null;
   private done = false;
+  /** Stored a moment after each whole setting (no « OK »), and what was stored last. */
+  private storeTimer: number | undefined;
+  private storedKey = "";
   private readonly panel: HTMLElement;
 
   constructor(private readonly host: ModuleToolHost) {
@@ -92,9 +96,32 @@ export class ModuleTool {
 
   /** The document changed under the tool (undo, redo): the niches chosen may be gone. */
   sync(): void {
-    this.niches = [];
-    this.editing = null;
+    // The module being changed, read again (an undo takes its values back); else nothing chosen.
+    const sketch = this.sketch();
+    const placed = this.editing && sketch ? moduleOfNiche(this.host.doc(), sketch, this.editing.partition, [...this.editing.path, 0]) : null;
+    if (placed) this.follow(placed);
+    else Object.assign(this, { niches: [], editing: null });
+    this.storedKey = this.key();
     this.recompute();
+  }
+
+  /** The module placed, as it is now, is the one changed. */
+  private follow(placed: PlacedModule): void {
+    Object.assign(this, { editing: placed, kind: placed.kind, sizes: { ...placed.sizes }, thickness: placed.thickness, niches: [{ partition: placed.partition, path: placed.path, box: placed.box }] });
+  }
+
+  /** What would be stored: the module, its sizes, its niches. */
+  private key(): string {
+    return JSON.stringify([this.kind, this.sizes, this.thickness, this.niches.map((n) => n.path), this.editing?.step ?? null]);
+  }
+
+  /** A whole setting (a niche chosen, nothing wrong) is stored a moment later. */
+  private schedule(): void {
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    if (this.done || this.niches.length === 0 || this.key() === this.storedKey || this.laid().some((l) => l.problem)) return;
+    // Niches being picked (several clicks may share one module): a little longer before it is stored.
+    this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), this.editing ? 400 : 1200);
   }
 
   /** A click in a niche (its centre, sketch coordinates): chooses it, or releases it. */
@@ -105,7 +132,12 @@ export class ModuleTool {
     // A module placed comes back to be changed, unless free niches are being chosen.
     const placed = this.niches.length && !this.editing ? null : moduleOfNiche(this.host.doc(), sketch, leaf.partition, leaf.path);
     if (placed) {
-      if (placed.step !== this.editing?.step) Object.assign(this, { editing: placed, kind: placed.kind, sizes: { ...placed.sizes }, thickness: placed.thickness, mine: null, niches: [{ partition: placed.partition, path: placed.path, box: placed.box }] });
+      if (placed.step !== this.editing?.step) {
+        this.follow(placed);
+        this.mine = null;
+        // As it is: nothing to store until something changes.
+        this.storedKey = this.key();
+      }
       this.clicked = { partition: leaf.partition, path: leaf.path, box: leaf.box };
       return this.recompute();
     }
@@ -165,6 +197,7 @@ export class ModuleTool {
     if (!this.editing) Object.assign(LAST, { kind: this.kind, sizes: { ...this.sizes }, thickness: this.thickness });
     this.draw();
     this.host.changed();
+    this.schedule();
   }
 
   private setKind(kind: ModuleKind): void {
@@ -283,20 +316,16 @@ export class ModuleTool {
     inside.addEventListener("click", () => Object.assign(this, { editing: null, niches: this.clicked ? [this.clicked] : [] }) && this.recompute());
     const remove = el("button", { type: "button", class: `${SMALL} w-full` }, "Retirer ce module");
     remove.addEventListener("click", () => this.remove());
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    cancel.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: this.niches.length === 0 || problem !== null }, "OK");
-    ok.addEventListener("click", () => this.confirm());
     const box = first?.niche.box;
     const heading = !box
       ? "Cliquez une niche de la répartition, ou plusieurs : elles recevront le même module. Cliquez un module posé pour le changer."
       : this.editing
-        ? `Niche du module : ${formatLength(box.x1 - box.x0, unit)} × ${formatLength(box.y1 - box.y0, unit)}. Changez-le, puis OK.`
+        ? `Niche du module : ${formatLength(box.x1 - box.x0, unit)} × ${formatLength(box.y1 - box.y0, unit)}. Chaque réglage changé est enregistré aussitôt.`
         : this.niches.length === 1
         ? `Niche choisie : ${formatLength(box.x1 - box.x0, unit)} × ${formatLength(box.y1 - box.y0, unit)}. Cliquez-en d'autres pour les ajouter, ou la même pour la retirer.`
         : `${this.niches.length} niches choisies.`;
     const rows = [
-      el("h3", { class: "font-semibold text-gray-700 dark:text-gray-200" }, this.editing ? `Modifier : ${MODULES[this.editing.kind].label}` : "Module"),
+      panelHeader(this.editing ? `Modifier : ${MODULES[this.editing.kind].label}` : "Module", () => this.cancel(), "h3"),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, heading),
       list,
       owned ? el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, "Mes modules") : null,
@@ -329,15 +358,24 @@ export class ModuleTool {
       el("div", { class: "flex gap-1.5" }, name, keep, this.mine ? forget : null),
       this.editing ? inside : null,
       this.editing ? remove : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
   // ---- end --------------------------------------------------------------------------
 
-  /** OK: the module in every niche chosen, as one undo step; the tool stays for other niches. */
+  /** Entrée: stored now. */
   confirm(): void {
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    this.store();
+  }
+
+  /**
+   * The module in every niche chosen (or the one changed), as one undo step; the tool stays. A module just placed in
+   * one niche stays chosen: what is changed next changes it.
+   */
+  private store(): void {
     if (this.done) return;
     const problem = this.laid().find((l) => l.problem)?.problem;
     if (this.niches.length === 0 || problem) return this.host.notify(problem ?? "Cliquez d'abord la niche à équiper.", "error");
@@ -347,9 +385,14 @@ export class ModuleTool {
       : withModules(this.host.doc(), this.host.sketchId(), this.niches, this.kind, this.thickness, this.sizes);
     if (typeof made === "string") return this.host.notify(made, "error");
     const n = this.niches.length;
+    const one = this.niches.length === 1 ? this.niches[0]! : editing ? { partition: editing.partition, path: editing.path, box: editing.box } : null;
     this.niches = [];
     this.editing = null;
     this.host.apply(made, editing ? `Module modifié : ${MODULES[this.kind].label.toLowerCase()}.` : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${MODULES[this.kind].label.toLowerCase()}.`);
+    const sketch = this.sketch();
+    const placed = one && sketch ? moduleOfNiche(this.host.doc(), sketch, one.partition, [...one.path, 0]) : null;
+    if (placed) this.follow(placed);
+    this.storedKey = this.key();
     this.recompute();
   }
 
@@ -364,13 +407,16 @@ export class ModuleTool {
     this.recompute();
   }
 
+  /** The cross, or Échap: closes; a setting still waiting is stored first. */
   cancel(): void {
     if (this.done) return;
+    if (this.storeTimer !== undefined) this.confirm();
     this.dispose();
     this.host.closed();
   }
 
   dispose(): void {
+    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.panel.remove();
   }

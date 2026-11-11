@@ -32,9 +32,9 @@ test("un Bas évier découpe le plan de travail ; une plaque aux cotes de la not
   await plan.locator('[data-add="base-bas-evier-800"]').click();
   // More units after it: the worktop stops at the last one, and a cut needs 5 cm of worktop at each end.
   await plan.locator('[data-add="base-bas-2-portes-1200"]').click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
   // The worktop is cut over the sink base: its middle at 60 + 40 cm.
   expect(await cuts()).toEqual([[{ appliance: "sink-1", along: 1000, front: null, auto: true }]]);
   await click(page, '[data-action="view"][data-view="iso"]');
@@ -63,7 +63,7 @@ test("un Bas évier découpe le plan de travail ; une plaque aux cotes de la not
   await page.locator("[data-cutout-name]").press("Enter");
   await expect(page.getByText("« Plaque Bosch 58 » gardée dans Mes découpes.").first()).toBeVisible();
   await expect(tool.getByText("Plaque Bosch 58 — 580 × 490, R8")).toBeVisible();
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
@@ -76,9 +76,9 @@ test("un Bas évier découpe le plan de travail ; une plaque aux cotes de la not
   await plan.locator('[data-open-run="A"]').click();
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   await plan.locator('[data-add="base-bas-1-porte-400"]').click();
-  await plan.locator("[data-run-ok]").click();
+  await plan.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await plan.getByRole("button", { name: "Terminer" }).click();
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
   expect((await cuts()).flat().map((c) => c.appliance).sort()).toEqual(["hob-60", "sink-1"]);
 
   // Kept: offered again under its name.

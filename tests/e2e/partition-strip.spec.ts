@@ -37,6 +37,8 @@ test("face du mur : les tiroirs posés s'y voient, une case s'élargit en tirant
 
   // The face, at the top of the panel, before the measures: its cases, their widths, the drawers and the rod.
   await expect(strip).toBeVisible();
+  // The title, the walls and the face stay in sight while the panel scrolls.
+  await expect(partition.locator('[data-ref="partition-top"]')).toHaveCSS("position", "sticky");
   const box = (await strip.boundingBox())!;
   const height = (await partition.getByLabel(/^Hauteur/).first().boundingBox())!;
   expect(box.y).toBeLessThan(height.y);
@@ -87,18 +89,18 @@ test("face du mur : les tiroirs posés s'y voient, une case s'élargit en tirant
 
   // Stored as soon as it is let go (one step); OK has nothing more to store: one undo takes the pull back, two more
   // the cases changed in the panel.
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1500);
   await reopen();
   await expect(strip.locator('[data-width="0"]')).toHaveText(wider!);
-  await partition.getByRole("button", { name: "Annuler" }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.locator('[data-action="undo"]').first().click();
   await page.waitForTimeout(1500);
   await reopen();
   await expect(strip.locator('[data-width="0"]')).toHaveText(before!);
-  await partition.getByRole("button", { name: "Annuler" }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   for (let k = 0; k < 2; k++) {
     await page.locator('[data-action="undo"]').first().click();

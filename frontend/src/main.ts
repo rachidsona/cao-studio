@@ -42,6 +42,7 @@ import { bindPieceDims } from "./app/piece-dims";
 import { bindSelectWhole } from "./app/select-whole";
 import { bindGridToggle } from "./app/grid-toggle";
 import { bindDisplayToggles } from "./app/display-toggles";
+import { bindRibbonToggle } from "./app/ribbon-toggle";
 import { bindWallCutaway } from "./app/wall-cutaway";
 import { bindIsolateSelection } from "./app/isolate-selection";
 import { bindOrbit } from "./app/orbit-tool";
@@ -180,6 +181,7 @@ async function start(): Promise<void> {
   bindSelectWhole(root, viewport, editor);
   bindGridToggle(root, viewport);
   bindDisplayToggles(root, viewport, editor);
+  bindRibbonToggle(root);
   bindWallCutaway(root, viewport, editor);
   bindIsolateSelection(root, viewport, editor);
   bindOrbit(root, viewport, (message) => editor.notify(message, "info"));

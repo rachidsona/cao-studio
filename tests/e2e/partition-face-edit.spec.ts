@@ -120,13 +120,13 @@ test("face du mur : étagère dupliquée, tirée, poussée, supprimée ; tiroirs
 
   // Left without OK: every gesture is already in the document.
   const rodTyped = await strip.locator('[data-label="rod"]').first().textContent();
-  await partition.getByRole("button", { name: "Annuler" }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await reopen();
   await expect(pieces).toHaveCount(storedPieces);
   await expect(fronts).toHaveCount(afterDelete);
   await expect(strip.locator('[data-label="rod"]').first()).toHaveText(rodTyped!);
-  await partition.getByRole("button", { name: "Annuler" }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   // One undo: the last gesture only (the rod's height).
   await page.locator('[data-action="undo"]').first().click();

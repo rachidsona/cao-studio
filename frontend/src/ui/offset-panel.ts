@@ -8,6 +8,7 @@ import type { OffsetJoin } from "../geometry/offset";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { openCalculator } from "./calculator";
 import { el } from "./dom";
+import { CLOSE_TITLE } from "./panel-close";
 
 export interface OffsetPanelState {
   /** Signed distance in mm. */
@@ -155,7 +156,9 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     state.collapsed ? "+" : "−",
   );
   collapse.addEventListener("click", actions.toggleCollapsed);
-  const title = el("div", { class: `${TITLE} ${state.collapsed ? "" : ""}` }, collapse, el("h2", {}, "Décalage"));
+  const cross = el("button", { type: "button", class: "ml-auto flex size-6 items-center justify-center text-sm normal-case hover:bg-gray-300 dark:hover:bg-neutral-600", title: CLOSE_TITLE, "aria-label": "Fermer", "data-panel-close": "" }, "✕");
+  cross.addEventListener("click", actions.cancel);
+  const title = el("div", { class: `${TITLE} ${state.collapsed ? "" : ""}` }, collapse, el("h2", {}, "Décalage"), cross);
   if (state.collapsed) {
     panel.replaceChildren(el("div", { class: BOX, role: "group" }, title));
     return;
@@ -197,10 +200,6 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     "i",
   );
   info.addEventListener("click", actions.toggleHelp);
-  const ok = el("button", { type: "button", class: "h-8 min-w-20 btn-accent px-3 text-xs font-medium disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-neutral-600 dark:disabled:text-neutral-400", disabled: state.result === null || state.busy }, "OK");
-  ok.addEventListener("click", actions.confirm);
-  const cancel = el("button", { type: "button", class: `${BUTTON} min-w-20` }, "Annuler");
-  cancel.addEventListener("click", actions.cancel);
 
   const status =
     state.selected === 0
@@ -219,6 +218,6 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     ...state.warnings.map((w) => el("p", { class: " border border-amber-300 bg-amber-50 px-2 py-1.5 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" }, w)),
     state.showHelp ? el("p", { class: " bg-gray-200 px-2 py-1.5 text-gray-700 dark:bg-neutral-700 dark:text-neutral-200" }, HELP) : null,
   ];
-  const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, info, el("span", { class: "flex-1" }), ok, cancel);
+  const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, info, el("span", { class: "flex-1" }), el("span", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, "Enregistré dès qu'il est prêt"));
   panel.replaceChildren(el("div", { class: BOX, role: "group" }, title, el("div", { class: BODY }, ...body.filter((n): n is HTMLElement => n !== null)), footer));
 }

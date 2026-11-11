@@ -22,7 +22,7 @@ test("le mur entre l'œil et la cuisine s'efface avec ses meubles, la vue tourn�
     const add = tool.locator('[data-fold="add"]');
     if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
     await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
-    await tool.locator("[data-run-ok]").click();
+    await tool.locator("[data-run-close]").click();
     await expect(page.getByText(`Mur ${run} aménagé`).first()).toBeVisible({ timeout: 60_000 });
   }
   const view = page.locator("canvas.cad-view");
@@ -98,7 +98,7 @@ test("dressing en L : le mur qui cache la vue s'efface avec sa zone, l'autre zon
   await expect(zones).toHaveCount(2);
   for (let i = 0; i < 2; i++) {
     await zones.nth(i).getByRole("button").last().click();
-    await partition.getByRole("button", { name: "OK", exact: true }).click();
+    await partition.getByRole("button", { name: "Fermer", exact: true }).click();
     await expect(partition).toHaveCount(0);
     await page.waitForTimeout(1000);
     if (!(await tool.isVisible())) await click(page, '[data-workshop="dressing-plan"]');

@@ -148,12 +148,12 @@ export class Editor {
         this.previewDoc = doc;
         return this.recompute();
       },
-      commit: (doc, id, after) => {
+      commit: (doc, id, after, amend) => {
         this.previewDoc = null;
         this.selectedFeature = id;
-        void this.change(doc).then(after);
+        void this.change(doc, amend).then(after);
       },
-      notify: (message, kind) => this.notify(message, kind), extrude: () => this.extrudeCommand(),
+      notify: (message, kind) => this.notify(message, kind), extrude: () => this.extrudeCommand(), select: (id) => ((this.selectedFeature = id), this.render()),
       closed: () => {
         this.root.dataset.tool = "";
         this.render();
@@ -211,9 +211,9 @@ export class Editor {
     }
   }
 
-  /** Applies a new document as one undo step (also used by the workshop tools: materials, parameters, scenes…). */
-  change(next: CadDocument): Promise<void> {
-    this.session.apply(normalizeDoc(this.doc, next));
+  /** Applies a new document as one undo step (workshop tools too); `amend`: in place of the last one (a tool set again). */
+  change(next: CadDocument, amend = false): Promise<void> {
+    this.session[amend ? "replace" : "apply"](normalizeDoc(this.doc, next));
     this.sketches.followDocument();
     this.updateHistoryButtons();
     return this.recompute();
@@ -381,7 +381,7 @@ export class Editor {
     const main = this.root.querySelector("main");
     if (!main) return;
     this.extrudeTool = new ExtrudeTool(this.viewport, {
-      doc: () => this.doc, change: (next) => void this.change(next), notify: (message, kind) => this.notify(message, kind),
+      doc: () => this.doc, change: (next, amend) => void this.change(next, amend), notify: (message, kind) => this.notify(message, kind),
       bodies: () => this.visibleBodies(), unit: () => this.unit,
       closed: (id) => {
         this.extrudeTool = null;

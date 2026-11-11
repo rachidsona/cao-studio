@@ -282,7 +282,7 @@ export class FaceStripTool extends PanelTool {
             )
           : null,
         sides ? this.info(`Bords : ← ${sides.back === null ? "—" : formatLength(sides.back, unit)} · ${sides.ahead === null ? "—" : formatLength(sides.ahead, unit)} →`) : null,
-        this.info("2. Clic : poser le trait, puis tirer/pousser. Tab : côté du double trait. OK : tracé seul. Échap : autre départ."),
+        this.info("2. Clic : poser le trait, puis tirer/pousser. Tab : côté du double trait. ✕ : tracé seul. Échap : autre départ."),
       ];
     }
     const op = this.operation();
@@ -303,7 +303,7 @@ export class FaceStripTool extends PanelTool {
         this.reversed = v;
         changed();
       }),
-      this.info(`${this.target ? "Niveau visé (point vert)." : "Visez un coin ou un trait d'un corps pour vous arrêter à son niveau."} 3. Clic, OK ou Entrée : terminer. Échap : revenir au tracé.`),
+      this.info(`${this.target ? "Niveau visé (point vert)." : "Visez un coin ou un trait d'un corps pour vous arrêter à son niveau."} 3. Clic ou Entrée : terminer. Échap : revenir au tracé.`),
     ];
   }
 
@@ -408,7 +408,7 @@ export class FaceStripTool extends PanelTool {
 
   protected override click(event: PointerEvent): void {
     if (this.phase === "pull") {
-      this.confirm();
+      this.finish();
       return;
     }
     if (this.phase === "place") {

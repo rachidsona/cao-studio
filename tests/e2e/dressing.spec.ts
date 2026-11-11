@@ -26,7 +26,7 @@ test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm e
   const module = page.getByRole("dialog", { name: "Module" });
   await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await module.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
   await page.keyboard.press("Escape");
 
@@ -43,7 +43,7 @@ test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm e
   await expect(shelves).toContainText(/40 cm \(du bas vers le haut\)/);
   // The dimensions in the view already say it, as the orange preview does.
   await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(shelves).toHaveCount(0);
   await expect(tree.getByText("Tiroirs 1", { exact: true }).first()).toBeVisible();
   await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();
@@ -72,7 +72,7 @@ test("Niche : un clic, sa hauteur, le reste se partage, et une autre niche ensui
   const module = page.getByRole("dialog", { name: "Module" });
   await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
   await page.mouse.click(middle.x, middle.y);
-  await module.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1500);
@@ -89,7 +89,7 @@ test("Niche : un clic, sa hauteur, le reste se partage, et une autre niche ensui
   await tool.getByLabel(/^Hauteur/).press("Enter");
   await expect(tool).toContainText("36,35 cm · 36,35 cm · 20 cm · 36,35 cm · 36,35 cm");
   await expect(dims.filter({ hasText: /^20$/ }).first()).toBeVisible();
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Étagères 2 : niche de 20 cm.")).toBeVisible();
 
   // Still in the tool: the top niche too (once the message no longer covers it); the first keeps its height.
@@ -98,7 +98,7 @@ test("Niche : un clic, sa hauteur, le reste se partage, et une autre niche ensui
   await tool.getByLabel(/^Hauteur/).fill("40");
   await tool.getByLabel(/^Hauteur/).press("Enter");
   await expect(tool).toContainText("35,1333 cm · 20 cm · 35,1333 cm · 40 cm");
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Étagères 2 : niche de 40 cm.")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(tool).toHaveCount(0);
@@ -126,7 +126,7 @@ test("Étagères supprimées : leurs traits et leurs niches partent avec elles",
   const module = page.getByRole("dialog", { name: "Module" });
   await module.getByRole("button", { name: "Tiroirs et étagères" }).click();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await module.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1500);
@@ -229,7 +229,7 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await expect(zones).toBeVisible();
 
   // The plan on the floor, clicked in the view, comes back too.
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
   await page.waitForTimeout(800);
   const view = (await page.locator("canvas.cad-view").boundingBox())!;
@@ -250,7 +250,7 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   for (const name of ["Mur A", "Angle droit", "Mur C"]) {
     await zone(name).click();
     await expect(partition).toContainText("Modifier");
-    await partition.getByRole("button", { name: "OK", exact: true }).click();
+    await partition.getByRole("button", { name: "Fermer", exact: true }).click();
     await expect(partition).toHaveCount(0);
     await page.waitForTimeout(1200);
     await open();
@@ -262,7 +262,7 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await expect(page.getByText("Angle droit — porte", { exact: true }).first()).toBeVisible();
 
   // Shelves in the corner, as in any Répartition, then the Niche tool on them.
-  await page.getByRole("button", { name: "Terminer" }).click();
+  await page.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="top"]')?.click());
   await page.waitForTimeout(1000);
   await page.screenshot({ path: "test-results/plan-top.png" });
@@ -273,7 +273,7 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
   await tool.getByLabel(/^Longueur mur A/).fill("450");
   await tool.getByLabel(/^Longueur mur A/).press("Enter");
-  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText("Plan modifié : ce qui est fait dessus a suivi.")).toBeVisible();
   await expect(zones.getByRole("listitem").filter({ hasText: "Mur A · 350 cm" })).toBeVisible();
   await page.waitForTimeout(1500);
@@ -290,7 +290,7 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await expect(tool.getByLabel("Porte sur le pan coupé")).toBeChecked();
 
   // The sketch of the plan, clicked in the browser, shows it again.
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await page.getByText("Plan du dressing", { exact: true }).first().click();
   await expect(zones.getByRole("listitem")).toHaveCount(3);
@@ -301,14 +301,14 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   // Another model: what it no longer has goes, once asked.
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
   await tool.getByRole("button", { name: "Face à face" }).click();
-  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText(/Ce plan n'a plus : Angle droit, Mur C/)).toBeVisible();
   await page.getByRole("button", { name: "Appliquer" }).last().click();
   await expect(zones.getByRole("listitem")).toHaveCount(2);
   await expect(page.getByText("Angle droit — porte", { exact: true })).toHaveCount(0);
 
   // All the bodies of a zone deleted from the browser: its sketch goes with them, and the zone is free again.
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText("Plan — mur a", { exact: true }).first()).toBeVisible();
   await page.locator('[data-head^="group:"]').filter({ hasText: "Plan — mur a" }).first().click();
   await page.getByRole("button", { name: /^Supprimer( \(\d+\))?$/ }).first().click();
@@ -338,7 +338,7 @@ test("Module posé, rouvert dans son outil : étagères, tiroirs, hauteur d'une 
   const tool = page.getByRole("dialog", { name: "Module" });
   await tool.getByRole("button", { name: "Tiroirs et étagères" }).click();
   await page.mouse.click(middle.x, middle.y);
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Niche équipée : tiroirs et étagères.")).toBeVisible();
   await page.waitForTimeout(1500);
 
@@ -353,7 +353,7 @@ test("Module posé, rouvert dans son outil : étagères, tiroirs, hauteur d'une 
   await tool.getByLabel(/^Niche 5/).press("Enter");
   await expect(tool.getByLabel(/^Niche 5/)).toHaveValue("40");
   await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
-  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Module modifié : tiroirs et étagères.")).toBeVisible();
   await page.keyboard.press("Escape");
   const tree = page.getByLabel(/^Navigateur : corps/);
@@ -401,7 +401,7 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   await expect(page.getByText(/Mur A remplie/)).toBeVisible();
   await expect(tool.getByRole("button", { name: "Modifier", exact: true })).toBeVisible();
   await expect(page.getByText("Mur A — fileur", { exact: true }).first()).toBeVisible();
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/Recalcul \d/);
   await page.waitForTimeout(1500);
 

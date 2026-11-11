@@ -281,7 +281,8 @@ export class Joinery3D implements PointerHandler {
 
   /** What OK would change: while a step is changed, the pieces as they were when it opened stay out of the preview. */
   private changed(pieces: Vec2[][], depth: number): Vec2[][] {
-    if (!this.editing) return pieces;
+    // A new Répartition stored at its first setting: as one being changed.
+    if (!this.editing && !(this.tool instanceof SketchPartitionTool && this.tool.stored())) return pieces;
     this.built ??= new Set(pieces.map((p) => pieceKey(p, depth)));
     return pieces.filter((p) => !this.built?.has(pieceKey(p, depth)));
   }

@@ -48,7 +48,7 @@ test("plan posé sur la pièce : longueurs reprises, panneaux sur le mur, et le 
   await action(page, '[data-action="room"]');
   const room = page.getByRole("dialog", { name: /Pièce/ });
   await room.getByRole("button", { name: "+ Fenêtre" }).click();
-  await room.getByRole("button", { name: "OK", exact: true }).click();
+  await room.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(room).toHaveCount(0);
   await page.waitForTimeout(800);
 
@@ -64,7 +64,7 @@ test("plan posé sur la pièce : longueurs reprises, panneaux sur le mur, et le 
   await expect(tool.locator("[data-plan-checks]")).toContainText("La fenêtre du mur A est derrière Mur A.");
   await zones(page).getByRole("listitem").first().getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await expect(page.getByText("Plan — mur a", { exact: true }).first()).toBeVisible();
   expect(errors).toEqual([]);
@@ -127,7 +127,7 @@ test("une fenêtre au milieu du mur : le plan se cale sur ce qui reste libre", a
   await action(page, '[data-action="room"]');
   const room = page.getByRole("dialog", { name: /Pièce/ });
   await room.getByRole("button", { name: "+ Fenêtre" }).click();
-  await room.getByRole("button", { name: "OK", exact: true }).click();
+  await room.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(room).toHaveCount(0);
   await page.waitForTimeout(800);
   await action(page, '[data-workshop="dressing-plan"]');
@@ -160,7 +160,7 @@ test("le plan garde son onglet à côté de Sélection, quel que soit l'outil ou
   await tabs.nth(1).click();
   await expect(zones(page)).toBeVisible();
   await tabs.nth(2).click();
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await expect(tabs).toHaveText(["Sélection", "Plan de dressing"]);
   await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
@@ -168,7 +168,7 @@ test("le plan garde son onglet à côté de Sélection, quel que soit l'outil ou
   await expect(zones(page).getByRole("listitem").first()).toContainText("Modifier");
 
   // Terminer goes back to Sélection, and the tab stays, even when the project is opened again.
-  await planTool(page).getByRole("button", { name: "Terminer" }).click();
+  await planTool(page).getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(planTool(page)).toHaveCount(0);
   await expect(tabs).toHaveText(["Sélection", "Plan de dressing"]);
   await page.getByRole("button", { name: "Enregistrer" }).click();

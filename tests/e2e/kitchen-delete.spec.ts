@@ -18,9 +18,9 @@ test("supprimer un meuble dans la 3D libère sa place ; un autre meuble la prend
   const add = tool.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   for (let i = 0; i < 3; i++) await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await click(page, '[data-action="view"][data-view="front"]');
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1500);
@@ -59,7 +59,7 @@ test("supprimer un meuble dans la 3D libère sa place ; un autre meuble la prend
   await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
   await expect(space).toContainText("60 cm libres en bas");
   await expect(space).not.toContainText("100 cm +");
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await page.keyboard.press("Control+s");
   expect((await cabinets()).map(([, x]) => x).sort((a, b) => Number(a) - Number(b))).toEqual([0, 1000, 2000]);

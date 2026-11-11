@@ -70,7 +70,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     const open = kitchenRunOpen();
     if (open?.dirty) {
       open.add(entry);
-      return editor.notify(`${entry.name} ajouté au linéaire en cours (Plan de cuisine) : OK pour l'appliquer.`, "success");
+      return editor.notify(`${entry.name} ajouté au linéaire en cours (Plan de cuisine).`, "success");
     }
     const anchor = selectedCabinet(editor);
     const inPlan = addToKitchenPlan(editor.doc, entry, planAnchor());
@@ -134,7 +134,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     return cornerChoice(plan, runA, editor.unit, (joint, c) => void chooseCorner(sketch.id, joint, c), render);
   };
   const chooseCorner = async (planId: string, joint: Joint, c: CornerChange) => {
-    if (kitchenRunOpen()?.dirty) return editor.notify("Un linéaire est en cours de changement au Plan de cuisine : faites OK ou Annuler d'abord.", "error");
+    if (kitchenRunOpen()?.dirty) return editor.notify("Un linéaire est en train d'être enregistré au Plan de cuisine : un instant.", "error");
     const plan = kitchenPlanIn(editor.doc, planId);
     if (!plan) return;
     const made = withKitchenBuilt(editor.doc, planId, withCorner(plan, joint, c));

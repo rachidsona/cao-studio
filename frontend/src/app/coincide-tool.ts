@@ -190,7 +190,7 @@ export class CoincideTool extends PanelTool {
         ? `2. Cliquez le point de « ${this.subject.name} » à coller : seuls ses points à lui se prennent.`
         : !this.target
           ? `3. Cliquez où coller le point de « ${this.subject.name} » : un point, une arête de corps, une ligne d'esquisse ou une face plane.`
-          : `« ${this.subject.name} » vient sur « ${this.target.name} ». OK pour valider, ou cliquez un autre point, trait ou face.`;
+          : `« ${this.subject.name} » vient sur « ${this.target.name} ». C'est enregistré ; cliquez un autre point, trait ou face pour changer.`;
     const again = document.createElement("button");
     again.type = "button";
     again.className = "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";

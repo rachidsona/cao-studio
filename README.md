@@ -744,17 +744,16 @@ opération existante.
       traits et ses corps. Des tiroirs ou une tringle supprimés.
     - **Cotes sur place** : un clic sur n'importe quelle cote l'ouvre dans un champ, dans l'unité du projet — longueur,
       hauteur, largeur d'une case (les autres se partagent le reste), épaisseur des panneaux, d'une étagère (toute sa
-      division), du socle, hauteur d'une niche (la voisine prend la différence ; « l × h » règle la largeur entre
+      division), du socle, hauteur d'une niche (les niches de la même mesure que sa voisine se partagent la différence et restent égales, une niche de sa propre mesure garde la sienne ; la largeur se règle de même entre
       cloisons), d'une façade de tiroir (la niche grandit d'autant par façade), d'une tringle depuis le sol. Entrée
       règle, Échap laisse. Une cote impossible est refusée avec la raison.
-  - **Tout apparaît aussitôt dans la 3D** (une Répartition déjà faite, ouverte par « Modifier », par le Plan de
-    dressing ou par l'Historique) : chaque réglage du panneau — hauteur, longueur, épaisseur, cases, largeurs, côtés,
+  - **Tout apparaît aussitôt dans la 3D** : chaque réglage du panneau — hauteur, longueur, épaisseur, cases, largeurs, côtés,
     dessus et dessous, socle, qui passe aux angles, extrusion et profondeur, portes et leurs réglages, sens
     d'ouverture, fond, position — et chaque geste sur la face est enregistré dès qu'il est fait (un champ chiffré à
     Entrée ou en le quittant) : la 3D est refaite, le panneau reste ouvert, une étape d'historique et une annulation
-    (Ctrl + Z) chacun ; après une annulation, le panneau reprend les valeurs du document. OK ferme l'outil sans
-    ajouter d'étape quand tout est déjà enregistré ; Annuler ferme sans défaire ce qui l'est. Une **nouvelle**
-    Répartition, elle, n'existe pas encore : ses panneaux s'affichent en volumes orange et OK la crée.
+    (Ctrl + Z) chacun ; après une annulation, le panneau reprend les valeurs du document. La croix ✕ (ou Échap)
+    ferme l'outil sans rien défaire, Entrée enregistre et ferme. Une **nouvelle** Répartition est faite dès son
+    premier réglage ou son premier clic dans la vue, puis se règle comme une autre.
   - **Les murs du dressing** (en haut du panneau, sous son titre, comme les linéaires de la cuisine) : pour une
     Répartition faite sur un Plan de dressing, un bouton par zone du plan (« Mur A », « Mur B », les coins…), celle
     qu'on règle marquée ; un clic ouvre la Répartition d'une autre zone — faite d'abord, en une étape, si elle ne
@@ -763,7 +762,7 @@ opération existante.
   - **Le panneau et la 3D en même temps** : pendant qu'une Répartition déjà faite est ouverte dans son panneau, la
     vue 3D reste libre — sélectionner, tourner, tirer une étagère par sa poignée, supprimer un corps, ouvrir une
     porte — sans message qui l'empêche ; chaque changement fait dans la 3D (ou ailleurs) est relu aussitôt par le
-    panneau et sa face, ce qui y était choisi le restant. Échap ferme le panneau, Entrée aussi (OK).
+    panneau et sa face, ce qui y était choisi le restant. Échap ou la croix ✕ ferme le panneau.
   - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
     il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
     « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.
@@ -2115,7 +2114,7 @@ opération existante.
   Les modules sont gardés par le serveur, par compte (500 au plus) : API `/api/library/`, `document/library.ts`,
   `app/library-panel.ts`.
 - **Onglets du ruban** : au-dessus du ruban, comme dans Fusion, **Conception 3D**, **Dressing** et **Cuisine** montrent chacun les groupes de leur travail ; Modifier, Fabrication et Client sont dans les trois.
-- **Modules à glisser** (groupe « Dressing ») : une palette de modules ; on en glisse un dans une niche de la vue, la niche visée s'allume en orange, et il s'y pose à ses cotes usuelles, en une annulation.
+- **Modules à glisser** (groupe « Dressing ») : une palette de modules ; on en glisse un dans une niche de la vue, la niche visée s'allume en orange, et il s'y pose à ses cotes usuelles, en une annulation. Une niche **vide** le prend même quand elle fait partie d'un module posé (la niche sous la seule étagère d'une colonne, le chapeau au-dessus d'une penderie) ; seule une niche qui a déjà une tringle ou des tiroirs le refuse.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
@@ -2159,6 +2158,10 @@ opération existante.
 - **Concevoir dans la vue** : clic droit sur une niche pour ses outils, cotes de niche cliquables, étagères et cloisons tirées
   à la souris au pas de 32 mm, touche R pour répéter, « Copier une niche » (aussi en miroir), « Aligner les étagères »,
   « Voir » pour isoler un mur et y travailler, « Mes murs » et « Style du dressing ».
+- **Une étagère déplacée avec « Déplacer »** : une seule étagère (ou cloison) d'une Répartition, déplacée le long de son
+  axe (vers le haut ou le bas ; de côté pour une cloison), bouge dans sa division, comme par sa poignée : ses deux
+  niches se partagent le changement et ce qui les équipe (tiroirs, tringle) suit (`shelfMovedBy`,
+  `document/niche-size.ts`). Déplacée de travers, ou avec des copies, elle reste un déplacement du corps.
 - **Niche mère** : dans Cloisons, « Couper toute la niche mère » pose une cloison à travers une colonne déjà aménagée. Ses
   étagères et tiroirs restent d'un côté, plus étroits, et l'autre côté devient une niche vide.
   Plusieurs niches choisies l'une au-dessus de l'autre partagent une seule cloison, qui coupe les étagères entre elles, même celles d'un module, faites en plusieurs fois, et des
@@ -2391,6 +2394,30 @@ arête ne correspond plus, l'opération passe en erreur avec le message « … i
 recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre arête en silence.
 
 ## Utilisation de l'éditeur
+
+- **Ruban et barre des étapes cachés d'office** : la barre des étapes (Pièce, Plan, Aménagement… Tous les outils) et
+  le ruban d'outils ne s'affichent plus en haut ; les outils restent dans les colonnes à gauche et dans « Outils ».
+  La case « Ruban et étapes en haut » du menu ⋯ (Réglages) les remet ; le choix est gardé par le navigateur, et ils
+  restent montrés si les colonnes d'outils sont fermées (`app/ribbon-toggle.ts`).
+- **Le haut du panneau Répartition reste en vue** : son titre (avec ✕), les boutons des murs, « Voir mur … isolé » et
+  la face du mur restent en haut quand on fait défiler les réglages dessous.
+
+- **Pas de « OK » ni d'« Annuler »** (dans tout le projet) : chaque outil enregistre son résultat **dès que le
+  réglage est valable** et que l'aperçu du noyau est sans erreur, un instant après le dernier geste
+  (`app/panel-tool.ts`, `ui/panel-close.ts`). Tant que l'outil reste ouvert, ses réglages suivants **remplacent**
+  ce qu'il a enregistré : une seule étape d'historique par utilisation d'outil, que Ctrl + Z reprend (une annulation
+  faite entre-temps, ou un autre changement, fait repartir de l'état du moment, sans rien écraser). La **croix ✕**
+  en haut de chaque panneau (ou Échap) le ferme en gardant tout ; Entrée enregistre tout de suite. Une opération
+  faite se change ensuite par son étape dans l'**Historique** (« Modifier »), ou, pour une Répartition, sur sa face
+  et dans son panneau. Ainsi pour les outils de modélisation (Extrusion, Congé, Combiner, Déplacer…), ceux du
+  dressing (Répartition, Étagères, Cloisons, Niche, Penderie, Tiroirs, Module, Façades — un clic sur une niche
+  l'équipe aussitôt avec les réglages du panneau ; une porte sur niches s'agrandit des niches cliquées ensuite),
+  ceux de l'esquisse (Déplacer, Décalage, Réseau), le **linéaire de la cuisine** (chaque changement enregistré un
+  demi-instant après, la cuisine refaite) et « Modifier le plan » (cuisine, dressing : chaque réglage appliqué,
+  confirmé seulement quand il retirerait des zones déjà faites). Restent des boutons : « Créer le plan », les
+  questions de confirmation (supprimer, retirer des zones), et les petites boîtes de saisie (texte d'esquisse,
+  import). Plus bas dans ce fichier, « OK » désigne le moment où l'opération est enregistrée : elle l'est
+  désormais d'elle-même.
 
 - **Esquisses visibles** : les esquisses restent affichées dans la vue 3D (nettes devant les corps,
   atténuées à travers) ; l'icône œil à côté de chaque esquisse, dans le navigateur, la masque ou la réaffiche.

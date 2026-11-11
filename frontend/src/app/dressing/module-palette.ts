@@ -1,7 +1,8 @@
 /**
  * « Modules à glisser » : la liste des modules (document/dressing-modules.ts) ; on en glisse un dans une niche d'une
  * Répartition, la niche visée s'allume en orange, et le module s'y pose à ses cotes usuelles, en une annulation. Ce qui
- * ne rentre pas le dit sans rien changer. On le règle ensuite d'un clic avec l'outil Module.
+ * ne rentre pas le dit sans rien changer ; une niche vide le prend, même dans un module posé (une colonne d'étagères), une
+ * niche qui a déjà une tringle ou des tiroirs non. On le règle ensuite d'un clic avec l'outil Module.
  */
 import * as THREE from "three";
 import { MODULES, moduleEquipment, moduleLayout, moduleSizes, withModules, type ModuleKind } from "../../document/dressing-modules";
@@ -13,6 +14,7 @@ import { frameOf, toWorld } from "../../sketcher/frame";
 import { isPartition } from "../../sketcher/partition-history";
 import { placePanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
+import { panelHeader } from "../../ui/panel-close";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { moduleChoice } from "./module-list";
@@ -30,7 +32,11 @@ function drop(editor: Editor, kind: ModuleKind, niche: PickedNiche): void {
   const sketch = findFeature(editor.doc, niche.sketch);
   const record = sketch?.type === "sketch" ? partitionOf(sketch, niche.partition) : undefined;
   if (sketch?.type !== "sketch" || !record) return editor.notify("Cette répartition n'existe plus.", "error");
-  if (moduleOfNiche(editor.doc, sketch, niche.partition, niche.path)) return editor.notify("Cette niche a déjà son module : ouvrez l'outil Module pour le changer.", "error");
+  // An empty niche takes the module, even inside one placed (a column of shelves, a hat over a rod); a niche that
+  // holds a rod or drawers is already equipped.
+  const key = niche.path.join(".");
+  const held = editor.doc.features.some((f) => f.type === "niche" && f.sketch === niche.sketch && f.partition === niche.partition && (f.fill === "rod" || f.fill === "drawers") && f.niche.join(".") === key);
+  if (held) return editor.notify(moduleOfNiche(editor.doc, sketch, niche.partition, niche.path) ? "Cette niche a déjà son module : ouvrez l'outil Module pour le changer." : "Cette niche est déjà équipée : retirez d'abord ce qu'elle a.", "error");
   const sizes = moduleSizes(kind);
   const { thickness } = record.step.input;
   const layout = moduleLayout(niche.box, niche.path, kind, thickness, sizes);
@@ -91,15 +97,12 @@ export function bindModulePalette(root: HTMLElement, viewport: Viewport, editor:
         return row;
       }),
     );
-    const end = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
-    end.addEventListener("click", close);
     panel = el(
       "div",
       { class: "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Modules à glisser" },
-      el("h2", { class: "panel-title" }, "Modules à glisser"),
+      panelHeader("Modules à glisser", close),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Glissez un module dans une niche de la vue. Vous le réglez ensuite avec l'outil Module."),
       list,
-      end,
     );
     placePanel(container, panel);
   };

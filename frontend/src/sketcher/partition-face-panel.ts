@@ -134,7 +134,9 @@ export class FacePanel {
     svg?.addEventListener("focus", () => (this.focused = true));
     svg?.addEventListener("blur", () => (this.focused = false));
     if (this.focused && svg) queueMicrotask(() => svg.isConnected && svg.focus());
-    return el("div", { class: "space-y-1", "data-ref": "partition-face" }, el("p", { class: "text-gray-600 dark:text-gray-300" }, this.caption(face, pick, unit)), strip, this.bar(face, pick));
+    // A line over the face only for what is chosen (its sizes); nothing otherwise.
+    const said = pick && pick.kind !== "case" ? el("p", { class: "text-gray-600 dark:text-gray-300" }, this.caption(face, pick, unit)) : null;
+    return el("div", { class: "space-y-1", "data-ref": "partition-face" }, said, strip, this.bar(face, pick));
   }
 
   private facePick(face: PartitionFace): FacePick | null {

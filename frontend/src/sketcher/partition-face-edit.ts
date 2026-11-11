@@ -169,18 +169,24 @@ export function divisionOn(work: FaceWork, of: string, path: number[], axis: "x"
   return null;
 }
 
-/** A niche at `value` mm along an axis: the next one (the one under it, for the last) takes the difference, the others stay. */
+/** A niche at `value` mm along an axis: the niches of the same size as the next one share the difference, the others stay. */
 export function resizeNiche(g: SketchGeometry, of: string, work: FaceWork, path: number[], axis: "x" | "y", value: number): FaceWork | string {
   const on = divisionOn(work, of, path, axis);
   if (!on) return axis === "y" ? "Cette niche va du dessous au dessus : posez d'abord une étagère pour la découper." : "Cette niche a toute la largeur de sa case : changez la largeur de la case.";
   const r = shelvesOf(work, on.record)!;
   const s = sizes(g, of, r);
   if (typeof s === "string") return s;
+  // The difference is shared by the next niche (the one under it, for the last) and every other one of the same size
+  // as it: niches that were equal stay equal; one of its own size (a top niche set apart) keeps it.
   const other = on.index < s.length - 1 ? on.index + 1 : on.index - 1;
-  const total = s[on.index]! + s[other]!;
-  if (!(value >= 1) || total - value < 1) return "La niche voisine n'a pas la place.";
-  return withSizes(work, on.record, s.map((v, i) => (i === on.index ? value : i === other ? total - value : v)));
+  const alike = s.map((v, i) => i).filter((i) => i !== on.index && Math.abs(s[i]! - s[other]!) < SAME);
+  const each = (s[on.index]! - value) / alike.length;
+  if (!(value >= 1) || alike.some((i) => s[i]! + each < 1)) return "Les autres niches n'ont pas la place.";
+  return withSizes(work, on.record, s.map((v, i) => (i === on.index ? value : alike.includes(i) ? v + each : v)));
 }
+
+/** Niches closer than this (mm) are of the same size. */
+const SAME = 0.5;
 
 /** Every piece of a division at this thickness: the niches keep their sizes, the last one gives or takes the difference. */
 export function pieceThickness(work: FaceWork, record: string, thickness: number): FaceWork | string {

@@ -42,7 +42,7 @@ export function partitionStrip(host: StripHost): HTMLElement {
   const { face } = host;
   const node = document.createElementNS(SVG, "svg");
   node.setAttribute("viewBox", faceViewBox(face));
-  node.setAttribute("class", "block w-full max-h-[30rem] select-none outline-none focus-visible:ring-2 focus-visible:ring-amber-500");
+  node.setAttribute("class", "block w-full max-h-[42vh] select-none outline-none focus-visible:ring-2 focus-visible:ring-amber-500");
   node.setAttribute("role", "img");
   node.setAttribute("tabindex", "0");
   node.setAttribute("aria-label", host.label);

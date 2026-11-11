@@ -266,7 +266,7 @@ test("Répartition avec portes : chaque porte a ses cotes, sur le bouton Cotes d
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.getByLabel("Une porte par case").check();
-  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await page.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.evaluate(() => document.querySelector<HTMLElement>("[data-piece-dims]")?.click());
@@ -328,7 +328,7 @@ test("Module : la liste, l'aperçu et les cotes, une seule annulation, Mes modul
   // The two rods are out of reach or not, but the niches of the module are already in the dimensions.
   const niches = page.locator('.cad-plan-dim');
   await expect(niches.filter({ hasText: /^30$/ }).first()).toBeVisible();
-  await panel.getByRole("button", { name: "OK", exact: true }).click();
+  // Stored by itself a moment later (no « OK »).
   await expect(page.getByText("Niche équipée : double penderie.")).toBeVisible();
 
   // Kept under a name, it comes back in the list.
@@ -337,10 +337,12 @@ test("Module : la liste, l'aperçu et les cotes, une seule annulation, Mes modul
   await panel.getByRole("button", { name: "Garder" }).click();
   await expect(panel.getByRole("list", { name: "Mes modules" }).getByRole("button", { name: "Mes tiroirs" })).toBeVisible();
 
-  // One undo takes the whole module away.
+  // Each setting is stored at once: the module placed, then changed to « Tiroirs et étagères » — two undos take it away.
   await page.keyboard.press("Escape");
   const tree = page.getByLabel(/^Navigateur : corps/);
   await expect(tree.getByText("Étagères", { exact: true })).toBeVisible();
+  await page.locator('[data-action="undo"]').click();
+  await page.waitForTimeout(800);
   await page.locator('[data-action="undo"]').click();
   await expect(tree.getByText("Étagères", { exact: true })).toHaveCount(0);
   await expect(tree.getByText("Côtés", { exact: true })).toBeVisible();

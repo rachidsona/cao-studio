@@ -40,7 +40,7 @@ test("ajouter un meuble à une largeur tapée, puis un autre à la largeur de la
   // Appliances keep their widths only.
   await tool.getByRole("tab", { name: "Électro." }).click();
   await expect(tool.locator("[data-width-other]")).toHaveCount(0);
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/largeur-libre.png` });
   expect(errors).toEqual([]);

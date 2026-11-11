@@ -25,7 +25,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await tool.locator('[data-open-run="A"]').click();
   await unfold(tool, "add");
   await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await click(page, '[data-action="view"][data-view="front"]');
   await page.waitForTimeout(1500);
@@ -46,8 +46,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await expect(shelves).toContainText("Niche choisie");
   await shelves.getByRole("combobox").first().selectOption("2");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1200);
   await shot(page, "caisson-etageres");
   expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Bas 2 portes 1000/);
@@ -71,8 +70,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await tool.getByRole("tab", { name: "Mes meubles" }).click();
   await expect(tool.getByText("Caisson aménagé").first()).toBeVisible();
   await tool.getByRole("button", { name: /^Ajouter Mon caisson rangement de / }).click();
-  await expect(tool.locator("[data-run-preview]")).toBeVisible();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => document.body.innerText)).toMatch(/Caisson — Mon caisson rangement/);
@@ -96,7 +94,7 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await unfold(tool, "space");
   const other = tool.locator('[data-rest][aria-pressed="false"]').filter({ hasNotText: "Partagé" }).first();
   await other.click();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await page.waitForTimeout(1500);
   const after = await caissons();
@@ -122,7 +120,7 @@ test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une aut
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
-  await partition.getByRole("button", { name: "OK", exact: true }).click();
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
   await page.waitForTimeout(1000);
   await click(page, '[data-action="view"][data-view="front"]');
@@ -136,8 +134,7 @@ test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une aut
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Étagères" }).click();
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await shelves.getByRole("combobox").first().selectOption("3");
-  await shelves.getByRole("button", { name: "OK", exact: true }).click();
-  await shelves.getByRole("button", { name: "Terminer" }).click();
+  await shelves.getByRole("button", { name: "Fermer", exact: true }).click();
   await page.waitForTimeout(1200);
   await page.mouse.click(x1, y1, { button: "right" });
   await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: /Garder ce caisson/ }).click();

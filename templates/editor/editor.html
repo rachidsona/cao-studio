@@ -75,6 +75,10 @@
             <option value="in">Pouce</option>
           </select>
         </label>
+        <label class="flex min-h-11 items-center justify-between gap-2 px-3 text-sm" title="La barre des étapes et le ruban d'outils en haut de l'écran ; cachés, les outils restent dans les colonnes à gauche et dans « Outils »">
+          Ruban et étapes en haut
+          <input type="checkbox" data-ref="ribbon-shown" class="size-5 accent-sky-600">
+        </label>
         <label class="flex min-h-11 items-center justify-between gap-2 px-3 text-sm">
           Enregistrement automatique
           <input type="checkbox" data-ref="autosave" class="size-5 accent-sky-600" checked>
@@ -108,10 +112,10 @@
   </div>
 
   {# ---- The steps of a kitchen or a dressing, their tools in place of the whole ribbon (app/workflow-steps.ts) ---- #}
-  <div hidden class="steps-bar flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Étapes" data-steps></div>
+  <div hidden class="steps-bar flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-gray-200 bg-white px-2 py-1 group-data-[ribbon=off]/editor:hidden group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Étapes" data-steps></div>
 
   {# ---- Toolbar (3D model): icons grouped as a ribbon, each with its name in a tooltip ---- #}
-  <div class="flex flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle" data-ribbon="model">
+  <div class="flex flex-nowrap items-stretch overflow-hidden border-b border-gray-200 bg-white px-2 py-1 group-data-[ribbon=off]/editor:hidden group-data-[mode=sketch]/editor:hidden group-data-[render=on]/editor:hidden dark:border-gray-800 dark:bg-gray-900" role="toolbar" aria-label="Tous les outils du modèle" data-ribbon="model">
     <div class="ribbon-group" role="group" aria-label="Créer">
       <div class="ribbon-row">
         <details class="relative shrink-0">

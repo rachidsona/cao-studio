@@ -63,14 +63,14 @@ test("sur la bande : dupliquer, déplacer et supprimer un meuble, ôter et remet
   await expect(bar).toContainText("Plan de travail");
   await bar.locator("[data-strip-remove]").click();
   await expect(strip.locator("[data-worktop]")).toHaveCount(0);
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('[data-select^="body:"]').filter({ hasText: "Plan de travail A" })).toHaveCount(0);
   await expect(page.locator('[data-select^="body:"]').filter({ hasText: "Crédence A" })).toHaveCount(1);
   await tool.locator('[data-open-run="A"]').click();
   await tool.locator("[data-strip-worktop-on]").click();
   await expect(strip.locator("[data-worktop]")).toHaveCount(1);
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.locator('[data-select^="body:"]').filter({ hasText: "Plan de travail A" })).toHaveCount(1, { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
@@ -90,9 +90,9 @@ test("dans la 3D : le caisson choisi se duplique sur son linéaire et se supprim
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
   await tool.locator('[data-add="base-bas-1-porte-600"]').click();
-  await tool.locator("[data-run-ok]").click();
+  await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   const cabinets = async () => {
     await page.keyboard.press("Control+s");
     await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });

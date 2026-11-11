@@ -265,15 +265,15 @@ export class SketchMode implements PointerHandler {
 
   get hint(): string {
     if (this.edgeOffset) return "Décaler l'arête : cliquez un trait, une arête ou une face d'un corps, puis tirez la flèche (ou tapez la distance) ; cliquez-en un autre pour continuer — Échap termine";
-    if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance, puis OK (Entrée) — Échap annule";
+    if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance : enregistré dès qu'il est prêt — ✕ ou Échap ferme";
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
     if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
     if (this.kind !== "select" && this.kind !== "dimension") return HINTS[this.kind];
-    if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement, puis OK (Entrée) — Échap annule";
-    if (this.partition) return "Répartition : réglez la hauteur, la longueur et les cases ; cliquez dans la vue pour poser le coin bas-gauche, puis OK (Entrée) — Échap annule";
-    if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche, réglez les cloisons, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Échap termine";
-    if (this.shelves) return "Étagères : cliquez une niche, réglez les étagères, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Échap termine";
-    if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions, puis OK (Entrée) — Échap annule";
+    if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement : appliqué aussitôt — ✕ ou Échap ferme";
+    if (this.partition) return "Répartition : réglez la hauteur, la longueur et les cases ; cliquez dans la vue pour poser le coin bas-gauche : chaque réglage est enregistré — ✕ ou Échap ferme";
+    if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche (enregistré aussitôt) ; cliquez une niche obtenue pour la diviser à son tour — ✕ ou Échap ferme";
+    if (this.shelves) return "Étagères : cliquez une niche (enregistré aussitôt) ; cliquez une niche obtenue pour la diviser à son tour — ✕ ou Échap ferme";
+    if (this.arrayTool) return "Réseau rectangulaire : cliquez les éléments à copier, réglez les deux directions : enregistré dès qu'il est prêt — ✕ ou Échap ferme";
     if (this.kind === "dimension") return HINTS.dimension;
     return this.tool ? this.tool.step : "Sélectionnez des éléments, puis appliquez une contrainte — un trait de cote ou un symbole de contrainte sélectionné se supprime avec Suppr";
   }

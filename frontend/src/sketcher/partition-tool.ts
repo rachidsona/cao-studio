@@ -1,19 +1,15 @@
 /**
- * « Répartition » tool of the sketch, next to « Étagères »: a rectangle (a cabinet front: height and length) divided
- * into 2 to 12 cases of the same width, one per door, by dividers drawn with their thickness — simple (one panel) or
- * double (two panels back to back): 3 cases give a simple and a double, 4 give simple · double · simple, 5 give simple
- * · double · double · simple, and each one can be changed. The bottom can be raised (an option, 4 cm), leaving a plinth
- * under it, and where the sides meet the top and the bottom it is chosen which runs through (the doubles cut the
- * boards by default). The partition is shown dashed in the sketch as the values change; a click in the view puts its
- * lower-left corner there, and OK draws it: every panel and case is then a closed area, ready to extrude, and the
- * niches can be divided by shelves. Doors can be asked for (extruded panels): one in front of each case, as wide as
- * its sides and dividers allow, and a back applied behind the panels (document/partition-doors.ts). The maths are in
- * partition.ts.
+ * « Répartition » tool: a rectangle (a cabinet front) divided into 2 to 12 cases, one per door, by dividers drawn with
+ * their thickness — simple, double or none —, a plinth as an option, and which panel runs through at the corners.
+ * Each setting is stored at once (no « OK »): a click in the view puts its lower-left corner there; every panel and
+ * case is then a closed area, extruded when asked, and the niches can be divided by shelves. Doors and a back can be
+ * asked for (document/partition-doors.ts). The maths are in partition.ts.
  */
 import type { BackSettings, DoorSettings, OffsetRecord, SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
+import { panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
@@ -86,14 +82,14 @@ export class SketchPartitionTool {
   /** The back behind the panels, null: none. */
   private back: BackSettings | null = null;
   private done = false;
-  /** The face of the wall in the panel, and what is changed on it before OK. */
+  /** The face of the wall in the panel, and what is changed on it. */
   private face: FacePanel;
   private readonly panel: HTMLElement;
 
   /** `editing`: the step of the history to make again (its values come back, its lines and bodies are replaced). */
   constructor(
     private readonly host: PartitionHost,
-    private readonly editing: OffsetRecord | null = null,
+    private editing: OffsetRecord | null = null,
   ) {
     if (editing && isPartition(editing)) this.load(editing);
     this.panel = el("div", {
@@ -155,11 +151,19 @@ export class SketchPartitionTool {
   }
 
   /**
-   * A Répartition already made takes each setting at once: the step is stored (one undo step) and the 3D is made again,
-   * the tool staying open. A new one waits for OK (its volumes are shown in orange meanwhile).
+   * Each setting is stored at once (no « OK »): one undo step, the 3D made again, the tool staying open. A new
+   * Répartition is made at its first setting or click, and is then the one changed.
    */
   private live(): void {
-    if (this.editing && !this.done) this.store();
+    if (this.done || !this.store() || this.editing) return;
+    const made = (this.host.geometry().offsets ?? []).filter(isPartition).at(-1);
+    if (made) this.editing = made;
+    this.draw();
+  }
+
+  /** Stored in the document already (no preview to show over its bodies). */
+  stored(): boolean {
+    return this.editing !== null;
   }
 
   /** A click in the view puts the lower-left corner of the partition there (to the millimetre). */
@@ -169,7 +173,7 @@ export class SketchPartitionTool {
     this.live();
   }
 
-  /** The panels OK would make, as outlines of the sketch (each closed area of a panel, mitred ends included): the preview in volume of the 3D view. */
+  /** The panels made, as outlines of the sketch (each closed area of a panel, mitred ends included): the preview in volume of the 3D view. */
   pieces(): Vec2[][] {
     const layout = partitionLayout(this.input);
     if (typeof layout === "string") return [];
@@ -181,7 +185,7 @@ export class SketchPartitionTool {
     });
   }
 
-  /** The Répartition OK would make, for the dimensions in the view. */
+  /** The Répartition as set, for the dimensions in the view. */
   plan(): PartitionPlan | null {
     const layout = partitionLayout(this.input);
     if (typeof layout === "string") return null;
@@ -269,10 +273,6 @@ export class SketchPartitionTool {
     const heading = (text: string) => el("h3", { class: "panel-title pt-1" }, text);
     const info = (text: string) => el("p", { class: "text-gray-600 dark:text-gray-300" }, text);
 
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
-    cancel.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: typeof layout === "string" }, "OK");
-    ok.addEventListener("click", () => this.confirm());
 
     const joined = typeof layout !== "string" && layout.caseSpans.length < this.input.cases;
     const result =
@@ -301,14 +301,18 @@ export class SketchPartitionTool {
       return el("label", { class: ROW }, `Case ${i + 1} (parts)${width}`, field);
     };
     const rows: (HTMLElement | null)[] = [
-      el("h2", { class: "panel-title" }, this.editing ? `Modifier : ${this.editing.name}` : "Répartition"),
-      this.host.header?.(() => this.draw()) ?? null,
-      info(
-        this.editing
-          ? `Les étagères posées dans ses niches (${this.divisions().length}) sont refaites avec elle ; chacune reste une étape de l'historique.`
-          : "Un rectangle réparti en cases égales, une par porte, avec ses côtés à leur épaisseur. Cliquez dans la vue pour poser son coin bas-gauche.",
+      // The title, the walls and the face stay in sight while the settings under them scroll.
+      el(
+        "div",
+        { class: "sticky top-0 z-10 -mx-2.5 -mt-2.5 space-y-2 border-b border-gray-200 bg-white px-2.5 pt-2.5 pb-2 dark:border-gray-700 dark:bg-gray-900", "data-ref": "partition-top" },
+        ...[
+          panelHeader(this.editing ? `Modifier : ${this.editing.name}` : "Répartition", () => this.cancel()),
+          this.host.header?.(() => this.draw()) ?? null,
+          // A new one says where it goes; one made says nothing more (its face shows it).
+          this.editing ? null : info("Un rectangle réparti en cases égales, une par porte, avec ses côtés à leur épaisseur. Cliquez dans la vue pour poser son coin bas-gauche."),
+          this.face.view(),
+        ].filter((r): r is HTMLElement => r !== null),
       ),
-      this.face.view(),
       number("Hauteur", this.input.height, (v) => this.resize({ height: v })),
       number("Longueur", this.input.length, (v) => this.resize({ length: v })),
       number("Épaisseur", this.input.thickness, (v) => this.set({ thickness: v })),
@@ -397,22 +401,15 @@ export class SketchPartitionTool {
           )
         : null,
       typeof layout === "string" ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, layout) : null,
-      el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
 
   // ---- end --------------------------------------------------------------------------
 
-  /** The divisions of this partition's niches by shelves (steps of the history after it). */
-  private divisions(): OffsetRecord[] {
-    const id = this.editing?.id;
-    return (this.host.geometry().offsets ?? []).filter((r) => isShelves(r) && r.step.of === id);
-  }
-
   /**
-   * OK: the partition is a step of the sketch's history, its lines made from it (one undo step), and the tool ends; the
-   * niches are then divided with « Étagères ». Changing a step made before makes it, and what follows it, again.
+   * Entrée: stored now, and the tool ends. The partition is a step of the sketch's history, its lines made from it;
+   * the niches are then divided with « Étagères ». Changing a step made before makes it, and what follows it, again.
    */
   confirm(): void {
     if (this.store()) this.cancel();
@@ -435,7 +432,7 @@ export class SketchPartitionTool {
     const doors = depth !== undefined && this.doors ? { doors: { ...this.doors } } : {};
     const back = depth !== undefined && this.back ? { back: { ...this.back } } : {};
     const step = { kind: "partition" as const, input: structuredClone(this.input), origin: [...this.origin] as [number, number], ...(depth !== undefined ? { depth } : {}), ...doors, ...back };
-    // Nothing left to store (the face stored it all already): OK only closes, no empty undo step.
+    // Nothing left to store (stored already): no empty undo step.
     const stored = g.offsets?.find((r) => r.id === id);
     if (stored && JSON.stringify(stored.step) === JSON.stringify(step) && !this.face.offsets() && !this.face.niches().length && !this.face.removedNiches().length) return true;
     // What was changed on the face of the wall (shelves, cloisons) goes in the same step.
@@ -483,6 +480,7 @@ export class SketchPartitionTool {
     this.live();
   }
 
+  /** The cross, or Échap: closes; what is stored stays (a new Répartition never set is not made). */
   cancel(): void {
     if (this.done) return;
     this.dispose();

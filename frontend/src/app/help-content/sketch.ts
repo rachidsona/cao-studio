@@ -21,7 +21,7 @@ export const SKETCH: HelpFamily[] = [
           "Dans la vue, cliquez la zone fermée à extruder ; recliquez une zone pour la retirer.",
           "Tirez la flèche, ou tapez la « Distance » dans le panneau.",
           "Choisissez l'« Opération » : Nouveau corps, Joindre, Couper ou Intersection.",
-          "Pour Joindre, Couper ou Intersection, choisissez la « Cible », puis cliquez « OK ».",
+          "Pour Joindre, Couper ou Intersection, choisissez la « Cible » : c'est enregistré aussitôt.",
         ],
         tip: "Une esquisse qui n'a que des lignes, sans zone fermée, n'est pas extrudée : elle ouvre l'outil Toit (une ligne sur le dessus d'un corps) ou l'outil Panneaux (chaque ligne devient un panneau).",
       },
@@ -164,7 +164,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez les lignes, arcs ou cercles à décaler. Avec « Sélection en chaîne » cochée, un clic prend toute la chaîne reliée.",
           "Réglez la « Distance » dans le panneau, ou tirez la flèche dans la vue.",
           "Choisissez la « Direction » (Un côté, Deux côtés), « Inverser » si la copie part du mauvais côté, et les « Coins » (Arrondis, Vifs).",
-          "Cliquez « OK » (Entrée).",
+          "C'est enregistré dès que c'est prêt (Entrée l'enregistre tout de suite).",
         ],
         tip: "L'original est conservé. Une distance négative décale de l'autre côté. Le décalage reste dans l'historique : on peut le rouvrir pour le changer.",
       }, {
@@ -239,7 +239,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez « Déplacer » (ou M), puis cliquez les éléments dans l'esquisse. « Étendre aux contours » ajoute les contours entiers.",
           "Tirez la sélection ou ses flèches, ou choisissez la « Saisie » : Relatif (ΔX, ΔY), Distance et angle, ou Position absolue.",
           "Contrôlez l'aperçu en pointillés, qui tient compte des contraintes.",
-          "Cliquez « OK » (Entrée), ou « Annuler ».",
+          "C'est enregistré dès que c'est prêt ; la croix ✕ (ou Échap) ferme.",
         ],
         tip: "L'origine et les axes ne bougent pas. Le panneau indique s'il manque encore des cotes après le déplacement.",
       }, {
@@ -279,7 +279,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez « Réseau » et cliquez les points, lignes, cercles ou arcs à copier (« Ajouter les contours entiers » prend les formes complètes).",
           "Choisissez « Placement » : Un pas entre copies, ou Réparties sur une distance.",
           "Direction 1 : « Angle », « Quantité » (l'original compris) et « Pas 1 ». Direction 2, perpendiculaire : « Quantité 2 » et « Pas 2 ».",
-          "Vérifiez les copies en pointillés, puis « OK » (Entrée).",
+          "Vérifiez les copies en pointillés : enregistrées dès qu'elles sont prêtes.",
         ],
         tip: "Le « Type de réseau » « Linéaire dans un rectangle » répartit des lignes régulièrement entre les côtés d'un rectangle (« Choisir le rectangle », « Lignes », « Égaliser ») : n lignes font n + 1 ouvertures égales, pour des étagères par exemple.",
       }, {

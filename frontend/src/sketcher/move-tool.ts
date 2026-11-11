@@ -67,6 +67,8 @@ export class SketchMoveTool {
   private readonly gizmo: MoveGizmo;
   private gizmoFrom: Vec2 = [0, 0];
   private done = false;
+  /** A displacement given is applied a moment later (no « OK »); the tool stays for the next one. */
+  private storeTimer: number | undefined;
   private redrawPending = false;
   private readonly panel: HTMLElement;
 
@@ -119,6 +121,8 @@ export class SketchMoveTool {
     this.placeGizmo();
     this.draw();
     this.host.changed();
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = this.outcome?.ok && !this.outcome.unchanged && !this.drag ? window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400) : undefined;
   }
 
   /** The manipulator sits on the base point, where the selection will land (nothing selected: hidden). */
@@ -257,26 +261,45 @@ export class SketchMoveTool {
 
   /** Ends a drag (the preview stays until OK); true when there was one. */
   up(): boolean {
-    if (this.gizmo.dragEnd()) return true;
+    // Let go: the displacement is applied a moment later.
+    if (this.gizmo.dragEnd()) return (this.recompute(), true);
     const was = this.drag !== null;
     this.drag = null;
+    if (was) this.recompute();
     return was;
   }
 
   // ---- end --------------------------------------------------------------------------
 
+  /** Entrée: applied now, and the tool ends. */
   confirm(): void {
-    if (this.done) return;
-    if (!this.outcome || !this.outcome.ok || this.outcome.unchanged) {
-      this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : "Tirez la sélection ou saisissez un déplacement.", "error");
-      return;
-    }
-    const count = this.pointIds().length;
-    if (!this.host.apply(this.outcome.geometry, `Déplacement appliqué (${count} point${count > 1 ? "s" : ""}).`)) return;
-    this.finish();
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    if (this.outcome?.ok && this.outcome.unchanged) return this.finish();
+    if (this.store(true)) this.finish();
   }
 
+  /** The displacement applied (one undo step); the selection stays, ready to be moved again from where it is. */
+  private store(loud = false): boolean {
+    if (this.done) return false;
+    if (!this.outcome || !this.outcome.ok || this.outcome.unchanged) {
+      if (loud) this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : "Tirez la sélection ou saisissez un déplacement.", "error");
+      return false;
+    }
+    const count = this.pointIds().length;
+    if (!this.host.apply(this.outcome.geometry, `Déplacement appliqué (${count} point${count > 1 ? "s" : ""}).`)) return false;
+    this.delta = [0, 0];
+    this.recompute();
+    return true;
+  }
+
+  /** The cross, or Échap: closes; a displacement still waiting is applied first. */
   cancel(): void {
+    if (this.storeTimer !== undefined) {
+      window.clearTimeout(this.storeTimer);
+      this.storeTimer = undefined;
+      this.store();
+    }
     this.finish();
   }
 
@@ -288,6 +311,7 @@ export class SketchMoveTool {
 
   /** Removes the panel without notifying the host (the sketch mode is switching tools itself). */
   dispose(): void {
+    window.clearTimeout(this.storeTimer);
     this.done = true;
     this.gizmo.dispose();
     this.preview = null;

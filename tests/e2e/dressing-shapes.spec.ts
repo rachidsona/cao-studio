@@ -16,7 +16,7 @@ async function planOf(page: Page, name: string, set?: (tool: ReturnType<Page["ge
   const count = await zones.getByRole("listitem").count();
   for (let i = 0; i < count; i++) {
     await zones.getByRole("listitem").nth(i).getByRole("button").last().click();
-    await partition.getByRole("button", { name: "OK", exact: true }).click();
+    await partition.getByRole("button", { name: "Fermer", exact: true }).click();
     await expect(partition).toHaveCount(0);
     await page.waitForTimeout(800);
     await open();
@@ -33,7 +33,7 @@ test("rampant : pas de dessus à plat, une planche en pente, et rien au-dessus",
     await t.getByLabel("Rampant").selectOption({ label: "Bas à gauche" });
   });
   await expect(page.getByText("Mur A — dessus", { exact: true }).first()).toBeVisible();
-  await tool.getByRole("button", { name: "Terminer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText("Dessus", { exact: true })).toHaveCount(0);
   await page.getByText("Mur A — dessus", { exact: true }).first().click();
   await expect(page.locator("[data-ref=status-selection], [data-ref=selection-status]").first()).not.toHaveText("Aucune sélection");
@@ -50,7 +50,7 @@ test("angle arrondi : la porte cintrée se pose, le plan change avec elle", asyn
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
   await tool.getByLabel(/^Angle sur le mur A/).fill("120");
   await tool.getByLabel(/^Angle sur le mur A/).press("Enter");
-  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool.getByRole("list", { name: "Zones du plan" })).toBeVisible();
   await expect(page.getByText("Angle droit — porte cintrée", { exact: true }).first()).toBeVisible();
   expect(errors).toEqual([]);
@@ -103,7 +103,7 @@ test("angle droit : le mur B passe, le mur A s'arrête contre lui, et les pannea
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
   await expect(tool.getByLabel("Angle gauche")).toHaveValue("1");
   await tool.getByLabel("Angle gauche").selectOption({ label: "Mur A passe" });
-  await tool.getByRole("button", { name: "Appliquer" }).click();
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool.getByRole("list", { name: "Zones du plan" })).toContainText("Mur A · 300 cm");
   await expect(tool.getByRole("list", { name: "Zones du plan" })).toContainText("Mur B · 140 cm");
   expect(errors).toEqual([]);
