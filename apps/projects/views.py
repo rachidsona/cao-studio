@@ -11,7 +11,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
-from . import services
+from . import quotas, services
 from .documents import example_document, project_document
 from .forms import ProjectCreateForm, ProjectInfoForm
 from .models import Project
@@ -20,6 +20,9 @@ from .models import Project
 @login_required
 @require_http_methods(["GET", "POST"])
 def project_list(request):
+    if request.method == "POST" and (problem := quotas.project_problem(request.user)):
+        messages.error(request, problem)
+        return redirect("projects:list")
     if request.method == "POST" and "example" in request.POST:
         # The example project: a cabinet to explore (cut list, cutting layout, drawings).
         project, _ = services.create_project(request.user, "Caisson exemple", example_document())

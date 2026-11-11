@@ -178,7 +178,11 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   de sécurité (refus CSRF, hôte refusé, connexion refusée) sont écrits dans le journal (`django.security`,
   `apps.security`). Les **tentatives de connexion** sont limitées (`apps/accounts/throttle.py`) : après 5
   échecs sur un même nom, ou 30 depuis une même adresse, en 15 minutes, la connexion attend la fin de ces 15 minutes,
-  sur la page de connexion comme dans l'administration ; une connexion réussie remet le compte de son nom à zéro. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
+  sur la page de connexion comme dans l'administration ; une connexion réussie remet le compte de son nom à zéro.
+  **Plafonds par compte** (`apps/projects/quotas.py`) : 500 projets, 2 Go en tout (versions, modèles des liens clients,
+  bibliothèque), 50 liens clients actifs de 40 Mo au plus (modèle et variantes), 5 000 pièces suivies par projet ;
+  rien n'est effacé pour faire de la place, ce qui dépasse est refusé avec ce qu'il faut faire. Les modèles 3D publics
+  d'un lien se téléchargent 120 fois au plus en 10 minutes depuis une même adresse. Tests : `tests/e2e/csp.spec.ts` (aucune violation sur les parcours principaux), et la garde du
   skill `.claude/skills/secure-application-guardian`.
 - Variables : `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
   `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` (avec `psycopg[binary]`) ;

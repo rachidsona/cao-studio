@@ -185,7 +185,7 @@ Rapports : `docs/securite/audit-securite-2026-11-10.md` (premier), puis `audit-s
 | M4 | Variantes jamais validées | Corrigé côté éditeur (lot 1) ; côté serveur : accord requis |
 | M5 | Injection de formules dans les CSV | Corrigé (lot 1) : `csvText` |
 | M6 | Django 6.1.2 (CVE-2026-108147) | Corrigé : Django 6.1.3 (accord du 10/11/2026) ; suivre les annonces de sécurité de Django, que pip-audit ne voyait pas encore |
-| M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Ouvert : accord requis |
+| M7 | GLB des liens : mémoire, disque, débit (et ancien n° 4, quotas) | Corrigé : `apps/projects/quotas.py` (500 projets, 2 Go, 50 liens actifs de 40 Mo, 5 000 pièces suivies), 120 téléchargements publics / 10 min par adresse ; GLB encore en base (`BinaryField`) |
 | M8 | Inscription libre, données commerciales lisibles | Ouvert : accord requis |
 | M9 | CI à durcir (épinglage SHA, permissions de gitleaks, CodeQL v4) | Corrigé : actions par SHA, images par digest, outils par version ; `codeql-action` v4.39.3 ; gitleaks `pull-requests: read` ; barrière par `contains(needs.*.result, …)` |
 | M10 | Outils d'agents non épinglés | Ouvert : accord requis (configuration de l'utilisateur) |

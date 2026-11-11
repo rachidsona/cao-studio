@@ -420,3 +420,51 @@ def test_too_many_failures_from_one_address(user, settings):
     refused = _login(client, "alice", "motdepasse-solide-42")
     assert "Trop de tentatives" in refused.content.decode()
     assert _login(Client(REMOTE_ADDR="203.0.113.8"), "alice", "motdepasse-solide-42").status_code == 302
+
+
+# ---- constat 4 et M7 : quotas de stockage et débit des modèles publics -----------------------------------------------
+
+
+@pytest.mark.django_db
+def test_an_account_cannot_fill_the_disk(client_logged, project, monkeypatch, api):
+    """Au-delà de l'espace du compte, ni nouveau projet, ni nouvelle version, ni nouveau lien : refusés en 413."""
+    from apps.projects import quotas
+
+    monkeypatch.setattr(quotas, "MAX_STORAGE", quotas.storage_used(project.owner) + 10)
+    created = client_logged.post("/api/projects/", json.dumps({"name": "Encore"}), content_type="application/json")
+    assert created.status_code == 413 and "Espace de stockage plein" in created.json()["error"]
+    saved = api.put(client_logged, f"/api/projects/{project.id}/", {"base_version": 1, "document": default_document()})
+    assert saved.status_code == 413
+    link = client_logged.post(f"/api/projects/{project.id}/shares/", {"model": SimpleUploadedFile("m.glb", GLB, "model/gltf-binary"), "title": "x"})
+    assert link.status_code == 413
+    project.refresh_from_db()
+    assert project.current_version == 1 and type(project).objects.filter(owner=project.owner).count() == 1
+
+
+@pytest.mark.django_db
+def test_projects_and_links_are_counted(client_logged, project, monkeypatch):
+    from apps.projects import quotas
+
+    monkeypatch.setattr(quotas, "MAX_PROJECTS", 1)
+    assert client_logged.post("/api/projects/", json.dumps({"name": "Deux"}), content_type="application/json").status_code == 400
+    page = client_logged.post("/projects/", {"example": "1"}, follow=True)
+    assert "1 projets au plus" in page.content.decode()
+    monkeypatch.setattr(quotas, "MAX_ACTIVE_LINKS", 1)
+    url = f"/api/projects/{project.id}/shares/"
+    send = lambda: client_logged.post(url, {"model": SimpleUploadedFile("m.glb", GLB, "model/gltf-binary"), "title": "x"})
+    first = send()
+    assert first.status_code == 201 and send().status_code == 400
+    # A revoked link frees its place.
+    client_logged.delete(f"{url}{first.json()['token']}/")
+    assert send().status_code == 201
+    monkeypatch.setattr(quotas, "MAX_LINK_BYTES", len(GLB) - 1)
+    assert send().status_code == 400
+
+
+@pytest.mark.django_db
+def test_public_models_are_rate_limited(client_logged, project, monkeypatch):
+    monkeypatch.setattr(sharing, "DOWNLOADS_LIMIT", 3)
+    token = make_link(client_logged, project)["token"]
+    visitor = Client(REMOTE_ADDR="198.51.100.4")
+    assert [visitor.get(f"/s/{token}/model.glb").status_code for _ in range(4)] == [200, 200, 200, 429]
+    assert Client(REMOTE_ADDR="198.51.100.5").get(f"/s/{token}/model.glb").status_code == 200

@@ -17,6 +17,7 @@ from django.utils.http import urlencode
 from django.views.decorators.http import require_http_methods
 
 from .api import _get_owned_project, _iso
+from . import quotas
 from .http import ApiError, api_view, read_json_body
 from .models import PartProgress, Project
 
@@ -34,6 +35,7 @@ def _set_step(project: Project, part: str, step: str, user) -> PartProgress | No
     if step == "":
         PartProgress.objects.filter(project=project, part=part).delete()
         return None
+    quotas.check_new_progress(project, part)
     progress, _ = PartProgress.objects.update_or_create(project=project, part=part, defaults={"step": step, "updated_by": user})
     return progress
 
@@ -64,7 +66,10 @@ def piece_page(request, project_id):
     if request.method == "POST":
         step = request.POST.get("step", "")
         if piece and step in ("", *STEP_KEYS):
-            _set_step(project, piece, step, request.user)
+            try:
+                _set_step(project, piece, step, request.user)
+            except ApiError:  # the project follows too many pieces already: nothing changes
+                pass
         return redirect(f"{reverse('workshop-piece', kwargs={'project_id': project.id})}?{urlencode({'piece': piece})}")
     progress = {p.part: p for p in project.progress.all()}
     current = progress.get(piece)

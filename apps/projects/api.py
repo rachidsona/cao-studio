@@ -16,11 +16,11 @@ from typing import Any
 
 from django.http import JsonResponse
 
-from . import services
+from . import quotas, services
 from .documents import project_document
 from .http import ApiError, api_view, json_error, read_json_body
 from .models import Project, ProjectVersion
-from .validation import validate_document
+from .validation import canonical_json, validate_document
 
 NAME_MAX_LENGTH = Project._meta.get_field("name").max_length
 MESSAGE_MAX_LENGTH = ProjectVersion._meta.get_field("message").max_length
@@ -101,6 +101,7 @@ def project_collection(request):
     document = data.get("document")
     document = project_document(space) if document is None else _clean_document(document)
     message = _clean_message(data.get("message"))
+    quotas.check_new_project(request.user, len(canonical_json(document).encode("utf-8")))
     project, version = services.create_project(request.user, name, document, message, space)
     return JsonResponse(_project_payload(project, version), status=201)
 
@@ -120,6 +121,8 @@ def project_detail(request, project_id):
     document = _clean_document(data["document"])
     name = _clean_name(data["name"]) if data.get("name") is not None else None
     message = _clean_message(data.get("message"))
+    # Each version is kept whole: the account's space must hold one more.
+    quotas.check_storage(request.user, len(canonical_json(document).encode("utf-8")))
     try:
         project, version = services.save_new_version(
             project_id=project_id,

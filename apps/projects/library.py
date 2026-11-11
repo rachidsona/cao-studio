@@ -12,7 +12,9 @@ from typing import Any
 from django.http import HttpResponse, JsonResponse
 
 from .api import _clean_document, _iso
+from . import quotas
 from .http import ApiError, api_view, read_json_body
+from .validation import canonical_json
 from .models import LibraryModule
 
 NAME_MAX = LibraryModule._meta.get_field("name").max_length
@@ -55,8 +57,10 @@ def library_collection(request):
         raise ApiError(400, "Module vide.", ["Le module doit contenir au moins une fonction."])
     if LibraryModule.objects.filter(owner=request.user).count() >= MODULES_MAX:
         raise ApiError(400, "Bibliothèque pleine.", [f"{MODULES_MAX} modules au plus : supprimez-en avant d'en ajouter."])
+    thumbnail = _clean_thumbnail(data.get("thumbnail"))
+    quotas.check_storage(request.user, len(canonical_json(document).encode("utf-8")) + len(thumbnail))
     module = LibraryModule.objects.create(
-        owner=request.user, name=name.strip(), document=document, thumbnail=_clean_thumbnail(data.get("thumbnail"))
+        owner=request.user, name=name.strip(), document=document, thumbnail=thumbnail
     )
     return JsonResponse(_payload(module, document=True), status=201)
 

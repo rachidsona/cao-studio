@@ -31,6 +31,7 @@ from django.views.decorators.http import require_http_methods
 
 from .api import _get_owned_project, _iso
 from .glb import glb_problem
+from . import quotas
 from .http import ApiError, api_view, json_error, read_json_body
 from .validation import DocumentParseError, parse_json_strict
 from .models import Comment, Project, ShareLink, ShareVariant
@@ -45,6 +46,20 @@ COMMENTS_PER_LINK = 300
 RATE_LIMIT = 10
 RATE_WINDOW = 600
 VARIANTS_MAX = 8
+# The public models (anyone with the link): at most this many downloads from one address of one link in
+# RATE_WINDOW — a client looks at a few, the page and the AR viewer fetch each once (audit of 10/11/2026, M7).
+DOWNLOADS_LIMIT = 120
+
+
+def _too_many_downloads(request, token: str) -> bool:
+    """Counts this download (atomic: add, then incr) and says whether it goes past DOWNLOADS_LIMIT."""
+    key = f"share-model:{token}:{request.META.get('REMOTE_ADDR', '')[:64]}"
+    if cache.add(key, 1, RATE_WINDOW):
+        return False
+    try:
+        return cache.incr(key) > DOWNLOADS_LIMIT
+    except ValueError:  # expired between the two calls
+        return not cache.add(key, 1, RATE_WINDOW)
 
 
 def _share_url(request, link: ShareLink) -> str:
@@ -133,6 +148,7 @@ def share_collection(request, project_id):
         raise ApiError(400, "Prix invalide.", ["« summary.price » doit être un nombre positif."])
     title = _clean_text(request.POST.get("title") or project.name, "title", TITLE_MAX)
     variants = _clean_variants(request, summary.get("variants"))
+    quotas.check_new_link(request.user, len(data) + sum(len(v["model"]) for v in variants))
     link = ShareLink.objects.create(
         project=project,
         title=title,
@@ -284,6 +300,8 @@ def share_page(request, token):
 @require_http_methods(["GET"])
 def share_model(request, token):
     link = _live_link(token)
+    if _too_many_downloads(request, token):
+        return json_error(429, "Trop de téléchargements du modèle : réessayez dans quelques minutes.")
     response = HttpResponse(bytes(link.model), content_type="model/gltf-binary")
     response["Content-Disposition"] = 'inline; filename="meuble.glb"'
     response["Cache-Control"] = "private, max-age=300"
@@ -295,6 +313,8 @@ def share_model(request, token):
 @require_http_methods(["GET"])
 def share_variant(request, token, position):
     link = _live_link(token)
+    if _too_many_downloads(request, token):
+        return json_error(429, "Trop de téléchargements du modèle : réessayez dans quelques minutes.")
     variant = link.variants.filter(position=position).first()
     if variant is None:
         raise Http404("Variante introuvable.")
