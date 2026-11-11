@@ -2359,6 +2359,13 @@ opération existante.
     face —, « Toute la face » la tire en entier. Si un autre corps est **devant la face** (le côté d'un caisson, un
     mur), « Jusqu'au corps voisin » la tire jusqu'à le toucher ; un clic sur un mur ou un autre corps arrête la face à
     son niveau (`viewport/body-points.ts`, `features/solids.ts`, `features/touch.ts`).
+  - **dans une zone isolée** (« Voir angle droit isolé », un caisson ou des éléments isolés) : la face d'une étagère,
+    même d'un coin coupé en biais, se tire comme ailleurs. L'étagère **reste en vue pendant l'aperçu** (la vue isolée
+    lit le document montré, aperçu compris), et un corps tiré d'une face en « Nouveau corps » reste avec le corps d'où
+    il vient (`app/zone-members.ts`). Si le noyau ne peut pas tirer la face, le panneau dit pourquoi et OK attend :
+    rien ne disparaît. Une distance **en cours de frappe** reste telle quelle quand un aperçu se termine pendant ce
+    temps (le panneau redessiné garde ce qui est tapé et le curseur, `app/panel-tool.ts`, pour tous les outils à
+    panneau) : sur un gros projet, le premier aperçu ne remet plus 1 cm à la place des 3 cm qu'on tape.
 - **Déplacer ce trait** (comme déplacer une arête dans SketchUp) : une seule arête sélectionnée, le bouton « Déplacer
   ce trait (les faces suivent) » du panneau Sélection la déplace et **les faces du corps qui la bordent s'étirent**
   pour la suivre — le bout d'une planche amené en biais contre le côté d'un caisson, un dessus incliné. Les flèches X,

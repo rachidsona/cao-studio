@@ -28,7 +28,7 @@ export const MODELING: HelpFamily[] = [
           "Choisissez l'« Opération » : « Nouveau corps », « Joindre », « Couper » ou « Intersection ». Pour les trois dernières, choisissez la « Cible ».",
           "Cliquez « OK ».",
         ],
-        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
+        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée (« Extrusion de faces »), même sur une étagère d'un coin de dressing isolé : l'étagère reste en vue pendant qu'on règle la distance, la distance tapée reste même quand l'aperçu se termine pendant la frappe, et un nouveau corps tiré d'une face reste avec elle. Si la face ne peut pas être tirée ainsi, le panneau dit pourquoi et « OK » attend. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
       },
       {
         keys: ["data-action:gable"],

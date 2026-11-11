@@ -174,6 +174,12 @@ export class FaceExtrudeTool extends PanelTool {
     };
   }
 
+  /** The kernel cannot pull the face so (its message is on the panel): OK waits, and the body stays as it is. */
+  protected override blocker(): string | null {
+    const status = this.ctx.status(this.id);
+    return status && status.state !== "ok" ? (status.message ?? "Cette face ne peut pas être extrudée ainsi.") : null;
+  }
+
   /** « Face tirée »: which face along the edge, named by where it looks. */
   private choiceRow(): HTMLElement | null {
     if (this.choices.length < 2) return null;

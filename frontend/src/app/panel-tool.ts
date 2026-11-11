@@ -110,7 +110,28 @@ export abstract class PanelTool implements PointerHandler {
       problem ? el("p", { class: " bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
+    const typing = this.typing();
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
+    typing?.();
+  }
+
+  /**
+   * A field being typed in, its value not given yet (Entrée, or leaving it, gives it): the panel drawn again meanwhile
+   * (a preview ending) keeps what is typed and the caret, instead of putting back the old value.
+   */
+  private typing(): (() => void) | null {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLInputElement) || !this.panel.contains(active) || active.value === active.defaultValue) return null;
+    const label = active.getAttribute("aria-label");
+    if (!label) return null;
+    const { value, selectionStart, selectionEnd } = active;
+    return () => {
+      const next = [...this.panel.querySelectorAll("input")].find((input) => input.getAttribute("aria-label") === label);
+      if (!next) return;
+      next.value = value;
+      next.focus();
+      if (next.type === "text") next.setSelectionRange(selectionStart, selectionEnd);
+    };
   }
 
   /** Further new features made with the main one (one per body for Aligner, Étirer), in the same undo step. */
@@ -232,7 +253,10 @@ export abstract class PanelTool implements PointerHandler {
       const parsed = parseNumber(input.value);
       const ok = parsed !== null && (signed || parsed > 0);
       input.setAttribute("aria-invalid", String(!ok));
-      if (ok) onChange(isAngle ? parsed : fromDisplay(parsed, unit));
+      if (!ok) return;
+      // Given: no longer being typed (the panel drawn again does not keep it).
+      input.defaultValue = input.value;
+      onChange(isAngle ? parsed : fromDisplay(parsed, unit));
     };
     input.addEventListener("change", apply);
     input.addEventListener("keydown", (event) => {

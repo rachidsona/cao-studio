@@ -8,7 +8,8 @@
  */
 import * as THREE from "three";
 import { bodyOrigin, findFeature } from "../document/operations";
-import { featureOfBody, type CadDocument, type DressingPlan, type Feature, type SketchFeature, type Vec3 } from "../document/types";
+import type { CadDocument, DressingPlan, SketchFeature, Vec3 } from "../document/types";
+import { staysInView, type Keep } from "./zone-members";
 import { el } from "../ui/dom";
 import { frameOf } from "../sketcher/frame";
 import type { SketchDrawing } from "../viewport/sketch-layer";
@@ -19,7 +20,7 @@ import { wholeOwner } from "./move-whole";
 interface Focus {
   sketch: string;
   label: string;
-  keep: () => (f: Feature, bodyId: string) => boolean;
+  keep: () => Keep;
   bar: HTMLElement;
   dimsWereOff: boolean;
   /** The Répartition the niche tools work in (a zone, a caisson alone), or null: several elements, each its own. */
@@ -50,13 +51,11 @@ export function elementOf(doc: CadDocument, bodyId: string): string {
 function apply(): void {
   if (!focus || !context) return;
   const { viewport, editor } = context;
-  const doc = editor.doc;
   if (!focus.alive()) return showAll();
+  // The bodies shown are those of a tool's preview while it is open: they are read in it.
+  const doc = editor.previewDoc ?? editor.doc;
   const keep = focus.keep();
-  for (const id of viewport.displayedBodies) {
-    const feature = findFeature(doc, featureOfBody(bodyOrigin(doc, id)));
-    viewport.setBodyVisible(id, !!feature && keep(feature, id));
-  }
+  for (const id of viewport.displayedBodies) viewport.setBodyVisible(id, staysInView(doc, id, keep));
   // How many bodies are left in view, on its bar.
   focus.bar.dataset.shown = String(viewport.bodyMeshes().filter((m) => m.visible).length);
 }
@@ -114,8 +113,9 @@ export function isolateElements(keys: ReadonlySet<string>, text: string): void {
   const { viewport, editor } = context;
   const known = new Set(viewport.displayedBodies.map((id) => bodyOrigin(editor.doc, id)));
   const sketches = new Set([...keys].filter((k) => k.startsWith("sketch:")).map((k) => k.slice("sketch:".length)));
-  const kept = (id: string) => keys.has(elementOf(context!.editor.doc, id));
-  isolate("selection", text, () => (_f, id) => kept(id) || !known.has(bodyOrigin(context!.editor.doc, id)), [0, -1, 0], false, false, {
+  const shown = () => context!.editor.previewDoc ?? context!.editor.doc;
+  const kept = (id: string) => keys.has(elementOf(shown(), id));
+  isolate("selection", text, () => (_f, id) => kept(id) || !known.has(bodyOrigin(shown(), id)), [0, -1, 0], false, false, {
     text,
     partition: keys.size === 1 && sketches.size === 1 ? [...sketches][0]! : null,
     shows: (id) => sketches.has(id),
