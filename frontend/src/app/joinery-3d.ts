@@ -98,6 +98,9 @@ export class Joinery3D implements PointerHandler {
     const tool = new SketchPartitionTool(joinery.toolHost(), editing);
     joinery.tool = tool;
     joinery.editing = editing !== null;
+    // A Répartition already made is changed in its panel while the 3D stays free: select, pull a shelf, delete a body
+    // there, and the panel follows; each setting of the panel shows in the 3D at once.
+    if (editing) viewport.releasePointerHandler(joinery);
     tool.start();
     joinery.refresh();
     return joinery;
@@ -199,6 +202,8 @@ export class Joinery3D implements PointerHandler {
           const sketch = findFeature(this.host.doc(), id);
           if (sketch?.type === "sketch") this.frame = frameOf(sketch);
         }
+        // What is built now is what the panel has: nothing left to preview over it.
+        this.built = null;
         this.refresh();
         return true;
       },
@@ -226,6 +231,11 @@ export class Joinery3D implements PointerHandler {
   private geometry(): SketchGeometry {
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     return sketch?.type === "sketch" ? sketch : emptySketchGeometry();
+  }
+
+  /** The document changed, in the 3D or anywhere: a Répartition being changed reads its values again. */
+  follow(): void {
+    if (this.tool instanceof SketchPartitionTool && this.editing) this.sync();
   }
 
   /** The document changed (an OK, undo, redo): the niches are found again. */
@@ -356,7 +366,7 @@ export class Joinery3D implements PointerHandler {
     joineryPlans.current = null;
     joineryPlans.changed();
     this.viewport.renderer.domElement.style.cursor = "";
-    this.viewport.setPointerHandler(null);
+    this.viewport.releasePointerHandler(this);
     this.host.closed();
   }
 }

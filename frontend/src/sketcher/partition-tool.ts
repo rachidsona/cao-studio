@@ -135,7 +135,7 @@ export class SketchPartitionTool {
   /** The sketch changed under the tool (undo, redo). */
   sync(): void {
     // What the face changed was drawn on the sketch as it was; the step is read again (an undo takes its values back).
-    this.face = this.facePanel();
+    this.face.reset();
     const stored = this.editing ? this.host.geometry().offsets?.find((r) => r.id === this.editing?.id) : undefined;
     if (stored && isPartition(stored)) this.load(stored);
     this.recompute();

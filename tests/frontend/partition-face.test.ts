@@ -65,7 +65,8 @@ describe("face d'une Répartition", () => {
     const svg = partitionFaceSvg(face);
     expect(count(svg, "data-front=")).toBe(3);
     expect(count(svg, "data-rod=")).toBe(1);
-    expect(count(svg, "data-handle=")).toBe(3);
+    // Their handles are known, not drawn: the face stays clear.
+    expect(count(svg, "data-handle=")).toBe(0);
 
     const doors = partitionFace({ input: INPUT, origin: [100, 0], depth: 600, id: "of1", doors: { gap: 3, thickness: 18, handles: true } }, sketch)!;
     expect(doors.doors.map((d) => d.hinge)).toEqual(["left", "right"]);

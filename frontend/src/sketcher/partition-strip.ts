@@ -174,7 +174,7 @@ function edge(node: SVGSVGElement, host: StripHost, i: number, side: "left" | "r
   const fs = faceFont(face);
   const x0 = side === "right" ? c.x1 : c.x0;
   const handle = document.createElementNS(SVG, "g");
-  handle.setAttribute("class", "cursor-ew-resize opacity-70 hover:opacity-100");
+  handle.setAttribute("class", "cursor-ew-resize opacity-0 hover:opacity-100");
   handle.setAttribute("data-resize", side);
   handle.setAttribute("data-side", String(i));
   const h = bottom - top;

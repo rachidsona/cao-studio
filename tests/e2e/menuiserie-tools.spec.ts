@@ -284,7 +284,7 @@ test("Façades pose une porte sur une case de Répartition, module compris", asy
   expect(errors).toEqual([]);
 });
 
-test("un clic dans la vue ne déplace pas une Répartition rouverte", async ({ page }) => {
+test("un clic dans la vue ne déplace pas une Répartition rouverte : la vue reste libre, sans message, le panneau ouvert", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -300,7 +300,9 @@ test("un clic dans la vue ne déplace pas une Répartition rouverte", async ({ p
 
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.8);
-  await expect(page.getByText(/reste à sa place/)).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(page.getByText(/reste à sa place/)).toHaveCount(0);
+  await expect(partition).toBeVisible();
   await expect(corner).toHaveValue(before);
   expect(errors).toEqual([]);
 });

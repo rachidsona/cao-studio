@@ -702,15 +702,15 @@ opération existante.
     l'esquisse du lit), écrite dans la vue pendant qu'on règle.
   - **Face du mur** (en haut du panneau, sous son titre, comme la bande du linéaire de la cuisine) : la Répartition
     vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
-    équipe (façades de tiroirs, tringles, portes en pointillés, poignées) — avec la hauteur, la longueur et la largeur
+    équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — avec la hauteur, la longueur et la largeur
     de chaque case, et toutes les petites cotes (en cm, en bleu) : l'épaisseur des panneaux (« ép. 1,8 », en haut à
     gauche), celle de chaque étagère à son bout droit et de chaque cloison à son sommet, la hauteur libre de chaque
     niche en son milieu (« ↕ 38,2 », ou « largeur × hauteur » pour une niche plus étroite que sa case), la hauteur de
     chaque façade de tiroir sur elle, la hauteur d'une tringle depuis le sol sous elle (« tringle 180 ») et celle du
     socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Elle suit le
     panneau (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
-    clic dans une case ne choisit rien (pas de cadre). Chaque côté entre deux cases porte une poignée laiton qui
-    se tire (curseur ↔) : la case de gauche change de largeur au centimètre, celle de droite prend la
+    clic dans une case ne choisit rien (pas de cadre). Chaque côté entre deux cases se tire (curseur ↔ au survol,
+    sa poignée laiton cachée jusque-là) : la case de gauche change de largeur au centimètre, celle de droite prend la
     différence, la longueur reste, et « Largeur des cases » passe en proportions. Sur la face encore :
     - **Déplacer** : une étagère ou une cloison cliquée (cadre laiton, une barre sous la face) se tire le long de son
       axe ; elle s'accroche au **pas de 32 mm** du système de perçage (`DRILLING_32`), compté depuis le bas de sa
@@ -739,6 +739,10 @@ opération existante.
     (Ctrl + Z) chacun ; après une annulation, le panneau reprend les valeurs du document. OK ferme l'outil sans
     ajouter d'étape quand tout est déjà enregistré ; Annuler ferme sans défaire ce qui l'est. Une **nouvelle**
     Répartition, elle, n'existe pas encore : ses panneaux s'affichent en volumes orange et OK la crée.
+  - **Le panneau et la 3D en même temps** : pendant qu'une Répartition déjà faite est ouverte dans son panneau, la
+    vue 3D reste libre — sélectionner, tourner, tirer une étagère par sa poignée, supprimer un corps, ouvrir une
+    porte — sans message qui l'empêche ; chaque changement fait dans la 3D (ou ailleurs) est relu aussitôt par le
+    panneau et sa face, ce qui y était choisi le restant. Échap ferme le panneau, Entrée aussi (OK).
   - **Socle** (option, décochée au départ) : le **dessous est relevé** de la hauteur du socle (4 cm proposés, à régler) ;
     il reste de la même épaisseur que le reste, et le vide du socle dessous est une zone à part. Les côtés qui
     « passent » descendent jusqu'en bas, au travers du socle ; les autres s'arrêtent sur le dessous relevé.

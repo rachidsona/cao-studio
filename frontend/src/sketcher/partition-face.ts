@@ -1,7 +1,7 @@
 /**
  * La face d'une Répartition, à l'échelle, comme la bande du linéaire de la cuisine (app/kitchen/kitchen-run-strip.ts) :
  * ses panneaux (côtés, dessus, dessous, socle, et les étagères et cloisons de ses niches), ses niches vides, puis ce
- * qui les équipe — façades de tiroirs, tringles, portes en pointillés avec leur poignée —, et ses cotes : la longueur
+ * qui les équipe — façades de tiroirs, tringles, portes en pointillés (leurs poignées sont connues, pas dessinées) —, et ses cotes : la longueur
  * en haut, la hauteur à gauche, la largeur de chaque case en dessous. Tout vient des étapes de l'historique telles que
  * le panneau de l'outil les a (rien n'est encore enregistré) : la face suit chaque réglage. Chaque étagère, cloison,
  * bloc de tiroirs et tringle y garde son identité (pour être choisi, tiré, dupliqué), et chaque cote ce qu'elle règle

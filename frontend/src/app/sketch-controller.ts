@@ -242,6 +242,11 @@ export class SketchController {
     return true;
   }
 
+  /** The document changed (any change, from the 3D or a panel): a Répartition being changed follows it. */
+  followDocument(): void {
+    this.joinery?.follow();
+  }
+
   /** Another tool takes the view: the joinery tool in progress ends. */
   cancelJoinery(): void {
     this.joinery?.cancel();

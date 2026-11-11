@@ -354,6 +354,11 @@ export class Viewport {
 
   // ---- pointer and picking -------------------------------------------------------------
 
+  /** Gives the view back, when this tool still has it (another one may have taken it since). */
+  releasePointerHandler(handler: PointerHandler): void {
+    if (this.pointerHandler === handler) this.pointerHandler = null;
+  }
+
   /** Installs (or removes) the tool receiving pointer events, without changing the camera. */
   setPointerHandler(handler: PointerHandler | null): void {
     this.pointerHandler = handler;

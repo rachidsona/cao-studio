@@ -49,6 +49,11 @@ export class FacePanel {
 
   constructor(private readonly host: FacePanelHost) {}
 
+  /** The document changed under the face: it is read again, what is chosen stays chosen. */
+  reset(): void {
+    this.work = null;
+  }
+
   /** The history as the face changed it (null: unchanged). */
   offsets(): OffsetRecord[] | null {
     return this.work?.offsets ?? null;
@@ -170,7 +175,7 @@ export class FacePanel {
       const count = this.base().niches.find((n) => n.id === e.id)?.drawers ?? 0;
       return `${count} tiroir${count > 1 ? "s" : ""} choisi${count > 1 ? "s" : ""}. Tirez-les dans une niche vide pour les y porter.`;
     }
-    return `${head} Cliquez une étagère, une cloison, des tiroirs ou une tringle pour les choisir ; tirez une poignée en laiton entre deux cases pour changer leurs largeurs ; cliquez une cote pour la changer.`;
+    return `${head} Cliquez une étagère, une cloison, des tiroirs ou une tringle pour les choisir ; tirez un côté entre deux cases pour changer leurs largeurs ; cliquez une cote pour la changer.`;
   }
 
   private bar(face: PartitionFace, pick: FacePick | null): HTMLElement | null {

@@ -33,7 +33,7 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
     ...face.fronts.map((f) => box(f, FRONT, 'data-front=""')),
     ...face.rods.map((r) => `<line x1="${r.x0}" y1="${r.y}" x2="${r.x1}" y2="${r.y}" class="stroke-gray-500 dark:stroke-gray-300" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke" data-rod=""/>`),
     ...face.doors.map((d) => box(d, "fill-sky-400/10 stroke-sky-600 dark:stroke-sky-400", `stroke-dasharray="5 3" pointer-events="none" data-door="${d.hinge}"`)),
-    ...face.handles.map((h) => `<line x1="${h.x1}" y1="${h.y1}" x2="${h.x2 === h.x1 && h.y2 === h.y1 ? h.x2 + 1 : h.x2}" y2="${h.y2}" stroke="${BRASS}" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none" data-handle=""/>`),
+    // The handles of drawers and doors are not drawn: the face shows the fronts, their heights, without them.
   ];
   // Each case, under what it holds: a click there chooses nothing (its width is pulled by the sides between cases).
   face.cases.forEach((c, i) => {

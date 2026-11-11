@@ -134,5 +134,24 @@ test("face du mur : étagère dupliquée, tirée, poussée, supprimée ; tiroirs
   await reopen();
   await expect(strip.locator('[data-label="rod"]').first()).toHaveText(rodText!);
   await expect(fronts).toHaveCount(afterDelete);
+
+  // The 3D stays free while the panel is open: a shelf chosen in the Navigator, pulled by its handle in the view —
+  // the face follows at once, the panel stays open, no message stops it.
+  const free = async () => (await strip.locator('[data-label="niche"]').allTextContents()).join("|");
+  const freeBefore = await free();
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await tree.getByRole("button", { name: "Déplier Étagères", exact: true }).first().click();
+  await tree.getByText("Étagère 1", { exact: true }).first().click();
+  const handle = page.locator("[data-shelf-handle]");
+  await expect(handle).toBeVisible();
+  const h = (await handle.boundingBox())!;
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2, h.y - 30, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(free).not.toBe(freeBefore);
+  await expect(partition).toBeVisible();
+  await expect(page.getByText(/reste à sa place/)).toHaveCount(0);
+  await partition.screenshot({ path: "test-results/partition-face-follows-3d.png" });
   expect(errors).toEqual([]);
 });

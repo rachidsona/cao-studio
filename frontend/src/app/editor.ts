@@ -214,6 +214,7 @@ export class Editor {
   /** Applies a new document as one undo step (also used by the workshop tools: materials, parameters, scenes…). */
   change(next: CadDocument): Promise<void> {
     this.session.apply(normalizeDoc(this.doc, next));
+    this.sketches.followDocument();
     this.updateHistoryButtons();
     return this.recompute();
   }
