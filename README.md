@@ -555,7 +555,11 @@ opération existante.
   Ces réglages se gardent dans l'opération et se rouvrent avec elle (`features/solids.ts`,
   test `tests/frontend/edge-variants.test.ts`).
 - **Combiner** : union, soustraction ou intersection d'un corps cible avec un ou plusieurs corps
-  outils. Les corps outils peuvent être conservés.
+  outils. Les corps outils peuvent être conservés. Les corps se **cliquent dans la vue** : « Cible » enfoncé, le
+  corps cliqué devient la cible, puis « Corps outils » s'enfonce et chaque corps cliqué s'ajoute aux outils (un autre
+  clic, ou ✕, l'en retire) ; le résultat montré par l'aperçu tient lieu de la cible. Le panneau ne liste que les
+  outils choisis ; « Choisir dans la liste » déplie tous les corps, à cocher. Sans sélection d'avance, rien n'est
+  choisi d'office (`app/combine-pick.ts`).
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.

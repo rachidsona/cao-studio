@@ -230,13 +230,13 @@ export const MODELING: HelpFamily[] = [
         name: "Combiner",
         what: "Joint des corps, ou coupe l'un avec l'autre, ou garde ce qu'ils ont en commun.",
         steps: [
-          "Sélectionnez les corps : le premier sera la cible, les autres les outils. Cliquez « Combiner ».",
-          "Vérifiez la « Cible » et choisissez l'« Opération » : « Joindre », « Couper » ou « Intersection ».",
-          "Cochez les « Corps outils ».",
+          "Cliquez « Combiner » (ou sélectionnez d'abord les corps : le premier sera la cible, les autres les outils).",
+          "Cliquez la cible dans la vue (bouton « Cible » enfoncé) : ensuite, chaque corps cliqué s'ajoute aux « Corps outils », et un autre clic l'en retire (ou ✕ dans la liste). « Cible » permet d'en choisir une autre.",
+          "Choisissez l'« Opération » : « Joindre », « Couper » ou « Intersection ». « Choisir dans la liste » déplie tous les corps, à cocher.",
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
           "Cliquez « OK ».",
         ],
-        tip: "Au moins un corps outil doit être coché, sinon l'outil refuse de valider.",
+        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic.",
       },
       {
         keys: ["data-action:split"],

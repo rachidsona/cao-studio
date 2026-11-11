@@ -6,6 +6,8 @@ import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { operationChoices } from "../ui/feature-meta";
+import { el } from "../ui/dom";
+import { pickBody } from "./combine-pick";
 
 const OPERATIONS = operationChoices("new", "join", "cut", "intersect");
 
@@ -122,6 +124,8 @@ export class CombineTool extends PanelTool {
   private tools: Set<string>;
   private operation: CombineFeature["operation"];
   private keepTools: boolean;
+  /** What a click on a body in the view chooses: the target, or the tools (added, or taken away). */
+  private choosing: "target" | "tools";
 
   /** `preselected`: bodies picked in the model (first = target, others = tools). */
   constructor(ctx: ToolContext, editing: CombineFeature | null, preselected: string[] = []) {
@@ -135,6 +139,37 @@ export class CombineTool extends PanelTool {
     this.tools = new Set(editing?.tools ?? (first ? others : bodies[1] ? [bodies[1].id] : []));
     this.operation = editing?.operation ?? "join";
     this.keepTools = editing?.keepTools ?? false;
+    this.choosing = preselected.length || editing ? "tools" : "target";
+    // Chosen in the view: nothing is taken for granted when nothing was picked first.
+    if (!preselected.length && !editing) {
+      this.target = undefined;
+      this.tools = new Set();
+    }
+  }
+
+  override move(event: PointerEvent): void {
+    const target = this.ctx.viewport.hoverTargetForTool(event);
+    this.ctx.viewport.setHoverHighlight(target?.kind === "body" ? { bodies: [target.id] } : null);
+  }
+
+  /** A body clicked in the view: the target, or a tool added or taken away. */
+  protected override click(event: PointerEvent): void {
+    const target = this.ctx.viewport.hoverTargetForTool(event);
+    if (target?.kind !== "body") return;
+    const next = pickBody({ target: this.target, tools: [...this.tools], choosing: this.choosing }, target.id, this.id);
+    if (next.target === this.target && next.tools.length === this.tools.size && next.choosing === this.choosing && next.tools.every((t) => this.tools.has(t))) {
+      if (target.id === this.target || target.id === this.id) this.ctx.notify("C'est la cible : cliquez « Cible » pour en choisir une autre.", "info");
+      return;
+    }
+    this.target = next.target;
+    this.tools = new Set(next.tools);
+    this.choosing = next.choosing;
+    this.render();
+    this.schedulePreview();
+  }
+
+  protected override dispose(): void {
+    this.ctx.viewport.setHoverHighlight(null);
   }
 
   /** Bodies offered: the visible ones, plus those already used when editing. */
@@ -147,9 +182,9 @@ export class CombineTool extends PanelTool {
   }
 
   protected feature(): CombineFeature | string {
-    if (!this.target) return "Choisissez le corps cible.";
+    if (!this.target) return "Cliquez dans la vue le corps cible (ou choisissez-le dans la liste).";
     const tools = [...this.tools].filter((t) => t !== this.target);
-    if (tools.length === 0) return "Cochez au moins un corps outil.";
+    if (tools.length === 0) return "Cliquez dans la vue au moins un corps outil (ou cochez-le dans la liste).";
     return { id: this.id, type: "combine", name: this.name, target: this.target, tools, operation: this.operation, ...(this.keepTools ? { keepTools: true } : {}) };
   }
 
@@ -159,10 +194,36 @@ export class CombineTool extends PanelTool {
       this.schedulePreview();
     };
     const bodies = this.bodies();
+    const name = (id: string) => bodies.find((b) => b.id === id)?.name ?? bodyLabel(this.ctx.doc(), id);
+    // What a click in the view chooses: the target, or the tools.
+    const mode = (which: "target" | "tools", label: string) => {
+      const b = el("button", { type: "button", class: `h-8 flex-1 border font-medium ${this.choosing === which ? "border-sky-600 text-sky-700 dark:border-sky-400 dark:text-sky-300" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}`, "aria-pressed": String(this.choosing === which), "data-combine-pick": which }, label);
+      b.addEventListener("click", () => ((this.choosing = which), this.render()));
+      return b;
+    };
+    const chosen = [...this.tools].filter((t) => t !== this.target).map((id) => {
+      const drop = el("button", { type: "button", class: "size-6 shrink-0 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Retirer ce corps outil", "aria-label": `Retirer ${name(id)}` }, "✕");
+      drop.addEventListener("click", () => (this.tools.delete(id), changed()));
+      return el("li", { class: "flex items-center gap-1.5", "data-combine-tool": id }, el("span", { class: "min-w-0 flex-1 truncate" }, name(id)), drop);
+    });
+    const list = el("details", { class: "border border-gray-200 px-2 py-1 dark:border-gray-700" }, el("summary", { class: "cursor-pointer" }, `Choisir dans la liste (${bodies.length - (this.target ? 1 : 0)} corps)`),
+      ...bodies
+        .filter((b) => b.id !== this.target)
+        .map((b) =>
+          this.checkRow(b.name, this.tools.has(b.id), (on) => {
+            if (on) this.tools.add(b.id);
+            else this.tools.delete(b.id);
+            changed();
+          }),
+        ),
+    );
     return [
-      this.selectRow("Cible", this.target ?? "", bodies.map((b): [string, string] => [b.id, b.name]), (v) => {
-        this.target = v;
-        this.tools.delete(v);
+      this.info("Cliquez les corps dans la vue :"),
+      el("div", { class: "flex gap-1.5", role: "group", "aria-label": "Ce que choisit un clic dans la vue" }, mode("target", "Cible"), mode("tools", "Corps outils")),
+      this.info(this.choosing === "target" ? "Le corps cliqué devient la cible ; ensuite, les clics choisissent les corps outils." : "Un corps cliqué s'ajoute aux corps outils ; cliqué de nouveau, il en sort."),
+      this.selectRow("Cible", this.target ?? "", [["", "— cliquez-la dans la vue —"], ...bodies.map((b): [string, string] => [b.id, b.name])], (v) => {
+        this.target = v || undefined;
+        if (v) this.tools.delete(v);
         changed();
       }),
       this.selectRow(
@@ -174,16 +235,9 @@ export class CombineTool extends PanelTool {
           changed();
         },
       ),
-      this.info("Corps outils :"),
-      ...bodies
-        .filter((b) => b.id !== this.target)
-        .map((b) =>
-          this.checkRow(b.name, this.tools.has(b.id), (on) => {
-            if (on) this.tools.add(b.id);
-            else this.tools.delete(b.id);
-            changed();
-          }),
-        ),
+      this.info(`Corps outils (${chosen.length}) :`),
+      chosen.length ? el("ul", { class: "space-y-1", "aria-label": "Corps outils choisis" }, ...chosen) : null,
+      list,
       this.checkRow("Conserver les corps outils", this.keepTools, (on) => {
         this.keepTools = on;
         changed();

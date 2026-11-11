@@ -1,0 +1,53 @@
+/** « Combiner des corps » : la cible et les corps outils cliqués dans la vue, la liste repliée. */
+import { expect, test, type Page } from "@playwright/test";
+import { newProject } from "./helpers";
+
+const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
+const canvas = (page: Page) => page.locator("canvas.cad-view");
+
+test("combiner des corps : la cible puis les corps outils se cliquent dans la vue, un autre clic en retire un", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Combiner e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+
+  await click(page, '[data-action="combine"]');
+  const tool = page.getByRole("dialog", { name: "Combiner des corps" });
+  await expect(tool).toBeVisible();
+  // Nothing taken for granted: the target is clicked first.
+  await expect(tool.locator('[data-combine-pick="target"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(tool.getByLabel("Cible")).toHaveValue("");
+  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeDisabled();
+
+  const view = (await canvas(page).boundingBox())!;
+  const at = (fx: number, fy: number): [number, number] => [view.x + view.width * fx, view.y + view.height * fy];
+  await page.mouse.click(...at(0.5, 0.5));
+  await expect(tool.getByLabel("Cible")).not.toHaveValue("");
+  const target = await tool.getByLabel("Cible").inputValue();
+  await expect(tool.locator('[data-combine-pick="tools"]')).toHaveAttribute("aria-pressed", "true");
+
+  // Another body: a tool. Points across the unit until one is not the target.
+  const tools = tool.locator("[data-combine-tool]");
+  for (const [fx, fy] of [[0.42, 0.5], [0.58, 0.5], [0.5, 0.38], [0.5, 0.62], [0.35, 0.45], [0.65, 0.45]] as [number, number][]) {
+    await page.mouse.click(...at(fx, fy));
+    if ((await tools.count()) > 0) break;
+  }
+  await expect(tools).toHaveCount(1);
+  const tool1 = (await tools.first().getAttribute("data-combine-tool"))!;
+  expect(tool1).not.toBe(target);
+  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeEnabled();
+  await tool.screenshot({ path: "test-results/combine-pick.png" });
+
+  // Taken away with its ✕, then the list of every body stays folded.
+  await tools.first().getByRole("button").click();
+  await expect(tools).toHaveCount(0);
+  await expect(tool.locator("details")).not.toHaveAttribute("open", "");
+  expect(errors).toEqual([]);
+});
