@@ -80,11 +80,13 @@ describe("face d'une Répartition", () => {
     expect(of("panel")).toEqual(["ép. 3"]);
     expect(of("plinth")).toEqual(["socle 5"]);
     expect(of("shelf")).toEqual(["1,8", "1,8", "1,8"]);
-    // The first case: its four niches share 2390 mm less three shelves of 18 mm; the second is all drawers.
+    // The first case: its four niches share 2390 mm less three shelves of 18 mm, in the chain on the left; the second
+    // is all drawers, its height in the chain on the right.
     const free = Number((((2390 - 3 * 18) / 4) / 10).toFixed(1)).toLocaleString("fr-FR");
-    expect(of("niche")).toEqual([free, free, free, free]);
+    expect(of("niche").sort()).toEqual(["239", free, free, free, free].sort());
+    expect(face.labels.filter((x) => x.kind === "niche").map((x) => x.side).sort()).toEqual(["left", "left", "left", "left", "right"]);
     // Each one read on a line from the shelf under it to the one over it.
-    for (const l of face.labels.filter((x) => x.kind === "niche")) {
+    for (const l of face.labels.filter((x) => x.kind === "niche" && x.side === "left")) {
       const [x1, y1, x2, y2] = l.span!;
       expect(x1).toBe(x2);
       expect(y2 - y1).toBeCloseTo((2390 - 3 * 18) / 4, 6);

@@ -1,8 +1,9 @@
 /**
  * La face d'une Répartition, à l'échelle, comme la bande du linéaire de la cuisine (app/kitchen/kitchen-run-strip.ts) :
  * ses panneaux (côtés, dessus, dessous, socle, et les étagères et cloisons de ses niches), ses niches vides, puis ce
- * qui les équipe — façades de tiroirs, tringles, portes en pointillés (leurs poignées sont connues, pas dessinées) —, et ses cotes : la longueur
- * en haut, la hauteur à gauche, la largeur de chaque case en dessous. Tout vient des étapes de l'historique telles que
+ * qui les équipe — façades de tiroirs, tringles, portes en pointillés (leurs poignées sont connues, pas dessinées) —, et ses cotes, dehors comme
+ * sur un plan : la largeur de chaque case au-dessus et la longueur au-dessus d'elles, la hauteur des niches contre le
+ * côté gauche à gauche et contre le côté droit à droite, la hauteur au bout. Tout vient des étapes de l'historique telles que
  * le panneau de l'outil les a (rien n'est encore enregistré) : la face suit chaque réglage. Chaque étagère, cloison,
  * bloc de tiroirs et tringle y garde son identité (pour être choisi, tiré, dupliqué), et chaque cote ce qu'elle règle
  * (pour être tapée sur place). Le dessin est dans partition-face-svg.ts, le clic et le glisser dans partition-strip.ts.
@@ -101,6 +102,8 @@ export interface FaceLabel {
   edit?: number;
   /** The dimension line it reads, from end to end of what it measures (x1, y1, x2, y2), arrows at both ends. */
   span?: [number, number, number, number];
+  /** Written upright beside the face (a niche of the first or the last case, in the chains on the left and right). */
+  side?: "left" | "right";
 }
 
 /** Where each case of the panel lies, from the left (a side left out keeps its place in the niche). */
@@ -210,37 +213,55 @@ function divisionPieces(offsets: readonly OffsetRecord[], id: string, niches: Ma
 }
 
 /**
- * The small dimensions, each where it can be read: the panels' thickness over the top left corner, each shelf's on its
- * right end, each cloison's at its top; the free height inside each niche (« largeur × hauteur » for a niche narrower
+ * The small dimensions, each where it can be read: the panels' thickness under the bottom left corner, each shelf's on
+ * its right end and each cloison's at its top when they are not as thick as the panels; the free height of each niche,
+ * outside for those against the left or the right side (end to end, as on a drawing), inside for the others (« largeur × hauteur » for a niche narrower
  * than its case), the height of each drawer front on it, a rod's height from the floor under it, the plinth in it. A
  * dimension with no room (a niche lower than the text) is left out. Each one says what it sets.
  */
 function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly NicheFeature[]): void {
-  const fs = faceFont(face) * SMALL;
+  const F = faceFont(face);
+  const fs = F * SMALL;
   const H = face.height;
+  const first = face.cases[0];
+  const last = face.cases.length > 1 ? face.cases.at(-1) : undefined;
+  // The niches against the left side, then those against the right side, are dimensioned outside, end to end.
+  const side = (n: FaceRect): "left" | "right" | undefined => (first && Math.abs(n.x - first.x0) < 1 ? "left" : last && Math.abs(n.x + n.w - last.x1) < 1 ? "right" : undefined);
   const add = (label: Omit<FaceLabel, "edit">, edit: FaceEdit, value: number) => {
     face.labels.push({ ...label, edit: face.edits.length });
     face.edits.push({ edit, value });
   };
-  add({ x: 0, y: -(fs / SMALL) * 0.6, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }, { what: "thickness" }, input.thickness);
+  add({ x: 0, y: H + F * 1.05, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }, { what: "thickness" }, input.thickness);
   if (input.boards && input.plinth > 0) {
     const at = face.length / 2 - fs * 2.6;
     add({ x: face.length / 2, y: H - input.plinth / 2 + fs * 0.35, text: `socle ${cm(input.plinth)}`, kind: "plinth", anchor: "middle", span: [at, H - input.plinth, at, H] }, { what: "plinth" }, input.plinth);
   }
   for (const p of face.pieces) {
+    // As thick as the panels (« ép. » says it): not written again on each shelf.
+    if (Math.abs((p.vertical ? p.w : p.h) - input.thickness) < 0.05) continue;
     const edit = { what: "division" as const, record: p.record };
     if (p.vertical) add({ x: p.x + p.w / 2, y: p.y + fs * 1.1, text: cm(p.w), kind: "cloison", anchor: "middle" }, edit, p.w);
     else add({ x: p.x + p.w - fs * 0.2, y: p.y + p.h / 2 + fs * 0.35, text: cm(p.h), kind: "shelf", anchor: "end" }, edit, p.h);
   }
   const inside = (r: FaceRect, x: number, y: number) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
   for (const n of face.niches) {
-    // A niche of drawers: its fronts have their heights.
-    if (n.h < fs * 1.6 || n.w < fs * 2.5 || face.fronts.some((f) => inside(n, f.x + f.w / 2, f.y + f.h / 2))) continue;
+    const out = side(n);
+    // A niche of drawers: its fronts have their heights (outside, it keeps its own in the chain).
+    const drawers = face.fronts.some((f) => inside(n, f.x + f.w / 2, f.y + f.h / 2));
+    if (n.h < fs * 1.6 || (!out && (n.w < fs * 2.5 || drawers))) continue;
     const own = face.cases.find((c) => n.x + n.w / 2 > c.x0 && n.x + n.w / 2 < c.x1);
-    const narrower = own && own.width - n.w > 1 && n.w > fs * 6;
-    // Its free height: a line from the shelf under it to the one over it, the figure beside it.
+    const narrower = !drawers && own && own.width - n.w > 1 && n.w > fs * 3.5;
+    const height = { what: "niche" as const, path: n.path, axis: "y" as const };
     const cx = n.x + n.w / 2;
-    add({ x: cx + fs * 0.3, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "start", span: [cx, n.y, cx, n.y + n.h] }, { what: "niche", path: n.path, axis: "y" }, n.h);
+    if (out) {
+      // Beside the face, upright, its line from the shelf under it to the one over it.
+      const line = out === "left" ? -F * CHAIN : face.length + F * CHAIN;
+      const x = out === "left" ? line - F * 0.45 : line + F * 0.45;
+      add({ x, y: n.y + n.h / 2, text: cm(n.h), kind: "niche", anchor: "middle", side: out, span: [line, n.y, line, n.y + n.h] }, height, n.h);
+    } else {
+      // Its free height: a line from the shelf under it to the one over it, the figure beside it.
+      add({ x: cx + fs * 0.3, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "start", span: [cx, n.y, cx, n.y + n.h] }, height, n.h);
+    }
     // Narrower than its case (beside a cloison): its width too, from side to side, low in it.
     if (narrower) {
       const y = n.y + n.h - fs * 1.1;
@@ -269,13 +290,24 @@ export const SMALL = 0.8;
 
 export const cm = (mm: number) => Number((mm / 10).toFixed(1)).toLocaleString("fr-FR");
 
-/** The size of the labels (mm), to read them at the width of the panel. */
-export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math.max(50, Math.max(face.length, face.height * 0.6) / 26);
+/** The size of the labels (mm), to read them at the width and the height the panel gives the face. */
+export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math.max(50, face.length / 30, face.height / 22);
+
+/**
+ * Where the dimension lines lie outside the face, in label sizes: the first chain (each case's width over it, the
+ * niches against its sides beside it), then the whole (its length over that, its height on the right).
+ */
+export const CHAIN = 0.65;
+export const WHOLE = 1.8;
+
+/** Where the line of the whole height lies: beyond the chain of the right side when there is one. */
+export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE : CHAIN);
 
 /** Room for the dimensions around the face. */
-export function faceViewBox(face: Pick<PartitionFace, "length" | "height">): string {
+export function faceViewBox(face: Pick<PartitionFace, "length" | "height" | "cases">): string {
   const fs = faceFont(face);
-  return `${-fs * 1.6} ${-fs * 1.6} ${face.length + fs * 2.2} ${face.height + fs * 3.2}`;
+  const [x0, y0] = [-fs * 1.5, -fs * 2.75];
+  return `${x0} ${y0} ${heightLine(face) + fs * 1.0 - x0} ${face.height + fs * 1.35 - y0}`;
 }
 
 /** The narrowest a case can be pulled to (mm). */

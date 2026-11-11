@@ -715,10 +715,13 @@ opération existante.
     l'esquisse du lit), écrite dans la vue pendant qu'on règle.
   - **Face du mur** (en haut du panneau, sous son titre, comme la bande du linéaire de la cuisine) : la Répartition
     vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
-    équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — avec la hauteur, la longueur et la largeur
-    de chaque case, et toutes les petites cotes (en cm, en bleu) : l'épaisseur des panneaux (« ép. 1,8 », en haut à
-    gauche), celle de chaque étagère à son bout droit et de chaque cloison à son sommet, la hauteur libre de chaque
-    niche en son milieu (et sa largeur, pour une niche plus étroite que sa case), la hauteur de
+    équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — et ses cotes
+    (en cm, en **rouge**), **dehors comme sur un plan**, chacune entre deux lignes d'attache : au-dessus, la largeur
+    de chaque case, puis la longueur ; à gauche, bout à bout, la hauteur libre des niches de la première case (socle
+    compris dans le dessin) ; à droite, celle des niches de la dernière case, puis la hauteur. Dans le dessin restent
+    l'épaisseur des panneaux (« ép. 1,8 », sous le coin gauche), celle d'une étagère ou d'une cloison quand elle
+    n'est pas celle des panneaux, la hauteur libre des niches des cases du milieu (et la largeur d'une niche plus
+    étroite que sa case), la hauteur de
     chaque façade de tiroir sur elle, la hauteur d'une tringle depuis le sol sous elle (« tringle 180 ») et celle du
     socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Chaque cote se lit
     sur une **ligne de cote fléchée** qui va d'un bout à l'autre de ce qu'elle mesure — d'une étagère à la suivante,

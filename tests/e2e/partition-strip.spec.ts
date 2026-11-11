@@ -37,6 +37,7 @@ test("face du mur : les tiroirs posés s'y voient, une case s'élargit en tirant
 
   // The face, at the top of the panel, before the measures: its cases, their widths, the drawers and the rod.
   await expect(strip).toBeVisible();
+  if (process.env.SHOTS) await strip.screenshot({ path: `${process.env.SHOTS}/face-cotes.png` });
   // The title, the walls and the face stay in sight while the panel scrolls.
   await expect(partition.locator('[data-ref="partition-top"]')).toHaveCSS("position", "sticky");
   const box = (await strip.boundingBox())!;
