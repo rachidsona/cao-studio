@@ -104,4 +104,11 @@ export type WorkerResponse =
   /** The kernel is ready and this request begins: its time limit starts now (client.ts, TIME_LIMITS). */
   | { id: number; started: true };
 
-export type WorkerEnvelope = WorkerRequest & { id: number };
+/**
+ * `generation`: on a recompute, its number; on a question about the bodies (faceInfo, describe, mesh…), the recompute
+ * whose bodies the asker sees — the worker refuses it when a newer one ran since (audit of 11/11/2026).
+ */
+export type WorkerEnvelope = WorkerRequest & { id: number; generation?: number };
+
+/** The requests that name a face or an edge by its number, which only means something on the recompute it came from. */
+export const BODY_QUESTIONS: ReadonlySet<WorkerRequest["type"]> = new Set(["faceInfo", "edgeInfo", "faceOutline", "edgeOutline", "describe"]);

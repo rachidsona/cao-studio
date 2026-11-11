@@ -138,6 +138,8 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   if (next.hiddenBodies) next = { ...next, hiddenBodies: next.hiddenBodies.filter((key) => !gone(key)) };
   if (next.removedBodies) next = { ...next, removedBodies: next.removedBodies.filter((key) => !gone(key)) };
   if (next.bodyInfo) next = { ...next, bodyInfo: Object.fromEntries(Object.entries(next.bodyInfo).filter(([key]) => !gone(key))) };
+  // Nor its place in a folder of the browser (audit of 11/11/2026): the folder keeps only what still exists.
+  if (next.folders) next = { ...next, folders: next.folders.map((f) => ({ ...f, bodies: f.bodies.filter((key) => !gone(key)) })) };
   return next;
 }
 

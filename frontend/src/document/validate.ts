@@ -123,6 +123,9 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       ) {
         errors.push(`${where} : zones à extruder invalides.`);
       }
+      if (feature.regionKeys !== undefined && (!Array.isArray(feature.regionKeys) || !Array.isArray(feature.regions) || feature.regionKeys.length !== feature.regions.length || !feature.regionKeys.every((k) => typeof k === "string"))) {
+        errors.push(`${where} : noms des zones à extruder invalides.`);
+      }
       if (!OPERATIONS.has(feature.operation as string)) errors.push(`${where} : opération inconnue.`);
       if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : cible invalide.`);
       break;

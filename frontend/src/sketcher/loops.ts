@@ -115,6 +115,24 @@ export function extractLoops(geometry: SketchGeometry): Loop[] {
   return loops;
 }
 
+/**
+ * What a loop is made of, by name: the ids of the sketch points at its corners (a circle: its centre), sorted, with
+ * "*" for a corner that is only where two curves cross. A dimension changed moves the points but keeps their ids, so
+ * an extruded area is found again by it where its stored inside point would land in a neighbour (audit of 11/11/2026).
+ */
+export function loopKey(loop: Loop, geometry: Pick<SketchGeometry, "points">): string {
+  const corners = loop.shape.kind === "circle" ? [loop.shape.center] : [loop.shape.start, ...loop.shape.steps.map((s) => s.to)];
+  // The chain ends where it starts: each corner once.
+  const named = new Set(corners.map((c) => {
+    const ids = geometry.points.filter((p) => Math.abs(p.x - c[0]) < KEY_TOLERANCE && Math.abs(p.y - c[1]) < KEY_TOLERANCE).map((p) => p.id);
+    return ids.length ? ids.sort().join("+") : `*${c[0].toFixed(3)},${c[1].toFixed(3)}`;
+  }));
+  return [...named].map((k) => (k.startsWith("*") ? "*" : k)).sort().join("|");
+}
+
+/** How near a corner must be to a sketch point to be that point (mm). */
+const KEY_TOLERANCE = 1e-3;
+
 /** Nesting depth of each loop (number of larger loops containing it). */
 export function loopDepths(loops: Loop[]): number[] {
   return loops.map((loop, i) => {

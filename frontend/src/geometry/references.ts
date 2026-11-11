@@ -17,6 +17,13 @@ import { GeometryError } from "./kernel";
 export const MAX_RELATIVE_DISTANCE = 0.15;
 /** Maximum 1 − |cos| between directions/normals for a match (≈ 8°). */
 export const MAX_DIRECTION_ERROR = 0.01;
+/**
+ * Two candidates closer than this in score are a tie (audit of 11/11/2026): two shelves of the same side, two holes of
+ * a row. The tie is broken by the point stored in millimetres (where the entity was when picked); when that does not
+ * part them either (less than TIE_MM apart), the reference is refused rather than one picked by chance.
+ */
+export const TIE_SCORE = 0.02;
+export const TIE_MM = 0.5;
 
 interface Box {
   min: Vec3;
@@ -75,14 +82,34 @@ export function describeFace(shape: Shape3D, face: Face, box = boxOf(shape)): Fa
   return { type: face.geomType, center, rel: relative(center, box), normal: [normal[0] / n, normal[1] / n, normal[2] / n], area: 0 };
 }
 
+interface Candidate {
+  index: number;
+  score: number;
+  /** Where it is now (mm). */
+  at: Vec3;
+}
+
+/**
+ * The candidate a reference designates: the best score; between candidates tied on it (TIE_SCORE), the one nearest
+ * the point stored in millimetres — and "tie" when that does not part them either. Null when there is none.
+ */
+export function pick(candidates: readonly Candidate[], stored: Vec3 | undefined): number | "tie" | null {
+  if (!candidates.length) return null;
+  const best = Math.min(...candidates.map((c) => c.score));
+  const tied = candidates.filter((c) => c.score - best < TIE_SCORE);
+  if (tied.length === 1) return tied[0]!.index;
+  if (!stored || !stored.every(Number.isFinite)) return "tie";
+  const byPlace = tied.map((c) => ({ c, d: dist(c.at, stored) })).sort((a, b) => a.d - b.d);
+  return byPlace[1]!.d - byPlace[0]!.d < TIE_MM ? "tie" : byPlace[0]!.c.index;
+}
+
 /** Finds the edges of `shape` matching `refs` (one distinct edge per reference). */
 export function resolveEdges(shape: Shape3D, refs: EdgeRef[], what = "Arête"): Edge[] {
   const box = boxOf(shape);
   const edges = shape.edges;
   const used = new Set<number>();
   return refs.map((ref, k) => {
-    let best = -1;
-    let bestScore = Infinity;
+    const candidates: Candidate[] = [];
     edges.forEach((edge, i) => {
       if (used.has(i) || edge.geomType !== ref.type) return;
       const { mid, dir } = edgeData(edge);
@@ -91,13 +118,11 @@ export function resolveEdges(shape: Shape3D, refs: EdgeRef[], what = "Arête"): 
       const direction = ref.type === "LINE" ? 1 - Math.abs(dot(dir, ref.dir)) : 0;
       const size = ref.type === "LINE" ? 0 : Math.abs(Math.log(edge.length / ref.length));
       if (position > MAX_RELATIVE_DISTANCE || direction > MAX_DIRECTION_ERROR || size > 0.7) return;
-      const score = position + 10 * direction + 0.1 * size;
-      if (score < bestScore) {
-        bestScore = score;
-        best = i;
-      }
+      candidates.push({ index: i, score: position + 10 * direction + 0.1 * size, at: mid });
     });
-    if (best < 0) throw new GeometryError(`${what} n° ${k + 1} introuvable après recalcul : sélectionnez-la à nouveau.`);
+    const best = pick(candidates, ref.mid);
+    if (best === null) throw new GeometryError(`${what} n° ${k + 1} introuvable après recalcul : sélectionnez-la à nouveau.`);
+    if (best === "tie") throw new GeometryError(`${what} n° ${k + 1} ambiguë après recalcul (plusieurs arêtes lui ressemblent) : sélectionnez-la à nouveau.`);
     used.add(best);
     return edges[best] as Edge;
   });
@@ -106,23 +131,21 @@ export function resolveEdges(shape: Shape3D, refs: EdgeRef[], what = "Arête"): 
 /** Finds the face of `shape` matching `ref`. */
 export function resolveFace(shape: Shape3D, ref: FaceRef): Face {
   const box = boxOf(shape);
-  let best: Face | null = null;
-  let bestScore = Infinity;
-  for (const face of shape.faces) {
-    if (face.geomType !== ref.type) continue;
+  const faces = shape.faces;
+  const candidates: Candidate[] = [];
+  faces.forEach((face, i) => {
+    if (face.geomType !== ref.type) return;
     const { center, normal } = faceData(face);
     const n = Math.hypot(...normal) || 1;
     const alignment = 1 - dot([normal[0] / n, normal[1] / n, normal[2] / n], ref.normal);
     const position = dist(relative(center, box), ref.rel);
-    if (position > MAX_RELATIVE_DISTANCE || (ref.type === "PLANE" && alignment > MAX_DIRECTION_ERROR)) continue;
-    const score = position + alignment;
-    if (score < bestScore) {
-      bestScore = score;
-      best = face;
-    }
-  }
-  if (!best) throw new GeometryError("Face d'appui introuvable après recalcul : replacez l'opération sur une face.");
-  return best;
+    if (position > MAX_RELATIVE_DISTANCE || (ref.type === "PLANE" && alignment > MAX_DIRECTION_ERROR)) return;
+    candidates.push({ index: i, score: position + alignment, at: center });
+  });
+  const best = pick(candidates, ref.center);
+  if (best === null) throw new GeometryError("Face d'appui introuvable après recalcul : replacez l'opération sur une face.");
+  if (best === "tie") throw new GeometryError("Face d'appui ambiguë après recalcul (plusieurs faces lui ressemblent) : replacez l'opération sur une face.");
+  return faces[best] as Face;
 }
 
 /** Plane (a point and the outward unit normal) of the planar face of `shape` matching `ref`. */

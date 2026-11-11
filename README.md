@@ -2408,7 +2408,16 @@ opération existante.
 Ainsi un congé posé sur les arêtes verticales des coins reste sur ces arêtes quand la plaque
 s'élargit, et un perçage sur une face latérale suit cette face si la pièce s'allonge. Si aucune
 arête ne correspond plus, l'opération passe en erreur avec le message « … introuvable après
-recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre arête en silence.
+recalcul : sélectionnez-la à nouveau » ; elle ne choisit jamais une autre arête en silence. Quand deux candidates
+se ressemblent presque autant (deux trous voisins, deux étagères), c'est le point gardé en millimètres au moment du
+choix qui les départage ; si lui non plus ne les sépare pas, l'opération dit que la face ou l'arête est **ambiguë**
+plutôt que d'en prendre une au hasard (`geometry/references.ts`, `pick`).
+Une face choisie dans la vue n'est gardée après un recalcul que si son corps est resté le même ; une question
+posée au noyau sur une face (mesure, contour, référence) porte le numéro du recalcul montré, et le noyau la refuse si
+le corps a changé depuis (`viewport/selection-layer.ts`, `geometry/worker.ts`). Une **zone d'esquisse** extrudée est
+retenue par les points de son contour : quand une cote change, elle suit ses points au lieu de passer à la zone
+voisine où tomberait son ancien point ; si son contour a changé, l'extrusion demande de la rechoisir
+(`sketcher/loops.ts` `loopKey`, `regionKeys`).
 
 ## Utilisation de l'éditeur
 

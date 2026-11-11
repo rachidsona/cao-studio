@@ -82,7 +82,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
   let drawing: Drawing;
   if (feature.regions) {
     try {
-      drawing = buildProfile(profile.geometry, feature.regions) as Drawing;
+      drawing = buildProfile(profile.geometry, feature.regions, feature.regionKeys) as Drawing;
     } catch (error) {
       if (error instanceof ProfileError) throw new GeometryError(`${feature.name} : ${error.message}`);
       throw error;

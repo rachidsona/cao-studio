@@ -258,6 +258,8 @@ export interface ExtrudeFeature extends FeatureBase {
    * Absent: every material area by the even–odd rule.
    */
   regions?: [number, number][];
+  /** For each area of `regions`, what its outline is made of (sketcher/loops.ts loopKey): it follows its points. */
+  regionKeys?: string[];
   /** Only what stands over this outline on the floor (world X, Y): the boards of a corner cut at an angle. */
   clip?: [number, number][];
   /** Only what is under this ceiling: the boards of a dressing under a slope. */
@@ -1000,9 +1002,11 @@ export function featureInputs(feature: Feature): string[] {
     case "hole":
     case "fillet":
     case "chamfer":
-    case "split":
     case "move":
       return [feature.target];
+    case "split":
+      // Cut by a face of another body: that body is read too (features/split.ts toolPlane), its change remakes the cut.
+      return feature.tool.kind === "face" ? [feature.target, feature.tool.body] : [feature.target];
     case "combine":
       return [feature.target, ...feature.tools];
   }

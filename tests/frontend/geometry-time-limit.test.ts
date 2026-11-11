@@ -71,3 +71,23 @@ describe("délai du noyau 3D", () => {
     expect(w(0).terminated).toBe(false);
   });
 });
+
+describe("questions sur les corps d'un recalcul", () => {
+  it("portent le numéro du recalcul montré ; un recalcul en attente ne change pas ce numéro avant sa réponse", async () => {
+    const geometry = client();
+    const first = geometry.recompute({ format: "cao-studio", schemaVersion: 2, units: "cm", parameters: {}, features: [] } as never);
+    const r1 = w(0).sent[0]! as { id: number; generation?: number };
+    expect(r1.generation).toBe(1);
+    w(0).reply({ id: r1.id, started: true });
+    w(0).reply({ id: r1.id, ok: true, result: { statuses: [], bodies: [], durationMs: 1 } });
+    await first;
+    void geometry.recompute({ format: "cao-studio", schemaVersion: 2, units: "cm", parameters: {}, features: [] } as never);
+    void geometry.faceInfo("b1", 3);
+    void geometry.offset([], 1, "round");
+    const [r2, face, offset] = w(0).sent.slice(1) as { type: string; generation?: number }[];
+    expect(r2!.generation).toBe(2);
+    // Asked while the second is computing: about the bodies shown, those of the first.
+    expect(face!.generation).toBe(1);
+    expect(offset!.generation).toBeUndefined();
+  });
+});

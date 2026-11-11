@@ -16,7 +16,7 @@ import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel"
 import { offsetPaths } from "./offset";
 import { seamEdges } from "./seams";
 import { describeEdge, describeFace } from "./references";
-import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, FaceInfo, FaceOutline, OutlineEdge, P3, RecomputeResponse, WorkerEnvelope, WorkerResponse } from "./protocol";
+import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type FaceInfo, type FaceOutline, type OutlineEdge, type P3, type RecomputeResponse, type WorkerEnvelope, type WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -171,8 +171,22 @@ function faceInfo(bodyId: string, faceIndex: number): FaceInfo {
   return { bodyId, faceIndex, surface: face.geomType, area: measureArea(face) };
 }
 
+/** The recompute whose bodies the worker holds (protocol.ts, WorkerEnvelope). */
+let generation = 0;
+/** For the last recomputes, what each body was (its numbers of faces and edges, its box): a question asked about an
+ * older one is answered while its body stayed the same, and refused once the body changed. */
+const shapes = new Map<number, Map<string, string>>();
+const shapeKey = (m: BodyMesh) => [m.faceGroups.length, m.edgeGroups.length, ...m.metrics.bbox.flat().map((v) => Math.round(v * 100))].join(",");
+
 async function handle(request: WorkerEnvelope): Promise<{ result: unknown; transfer: Transferable[] }> {
   await ensureKernel(request.id);
+  // A question about the bodies of an older recompute: its face numbers would be other faces now.
+  if (BODY_QUESTIONS.has(request.type) && request.generation !== undefined && request.generation !== generation && "bodyId" in request) {
+    const then = shapes.get(request.generation)?.get(request.bodyId);
+    if (then === undefined || then !== shapes.get(generation)?.get(request.bodyId)) {
+      throw new GeometryError("Le modèle vient d'être recalculé : refaites la sélection.");
+    }
+  }
   // The download and start of the kernel do not count in the request's time limit.
   scope.postMessage({ id: request.id, started: true });
   switch (request.type) {
@@ -185,6 +199,11 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       const { statuses, bodies } = recomputer.recompute(request.doc);
       visibleBodies = bodies;
       const meshes = bodies.map(meshBody);
+      if (request.generation !== undefined) {
+        generation = request.generation;
+        shapes.set(generation, new Map(meshes.map((m) => [m.bodyId, shapeKey(m)])));
+        for (const old of shapes.keys()) if (old < generation - 3) shapes.delete(old);
+      }
       const response: RecomputeResponse = { statuses, bodies: meshes, durationMs: performance.now() - started };
       const transfer = meshes.flatMap((m) => [m.vertices.buffer, m.normals.buffer, m.indices.buffer, m.edges.buffer]);
       return { result: response, transfer };

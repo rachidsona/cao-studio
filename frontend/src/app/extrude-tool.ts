@@ -14,7 +14,7 @@ import { addExtrude, findFeature, latestBody, updateFeature } from "../document/
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
 import { UNIT_LABELS, formatLength, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import { frameOf, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
-import { centroid, extractLoops, interiorPoint, pointInPolygon, sketchFaces, type Region, type SketchFace } from "../sketcher/loops";
+import { centroid, extractLoops, interiorPoint, loopKey, pointInPolygon, sketchFaces, type Region, type SketchFace } from "../sketcher/loops";
 import { el } from "../ui/dom";
 import { textBox } from "../sketcher/text-outline";
 import { textInputClass } from "../ui/fields";
@@ -42,6 +42,8 @@ interface Face {
   region: SketchFace;
   /** A point strictly inside the area (stored in the feature to find the area again). */
   probe: [number, number];
+  /** What its outline is made of (loopKey): stored too, the area then follows its points when a dimension changes. */
+  key?: string;
   mesh: THREE.Mesh;
 }
 
@@ -147,7 +149,9 @@ export class ExtrudeTool implements PointerHandler {
     if (profile) {
       // An existing extrusion that chose its areas gets them back (found again from their points).
       const saved = existing?.type === "extrude" ? existing.regions : undefined;
-      const faces = saved ? new Set(saved.map((p) => faceAt(profile, p)).filter((f): f is Face => f !== undefined)) : null;
+      const keys = existing?.type === "extrude" ? existing.regionKeys : undefined;
+      const found = (p: [number, number], i: number) => (keys?.[i] ? profile.faces.find((f) => f.key === keys[i]) : undefined) ?? faceAt(profile, p);
+      const faces = saved ? new Set(saved.map(found).filter((f): f is Face => f !== undefined)) : null;
       this.select(profile, faces && faces.size > 0 ? [...faces] : undefined);
     }
     else if (this.profiles.length === 0) this.host.notify("Aucune esquisse ne contient de profil fermé à extruder.", "error");
@@ -161,8 +165,10 @@ export class ExtrudeTool implements PointerHandler {
     for (const feature of this.host.doc().features) {
       if (feature.type !== "sketch" || feature.suppressed) continue;
       let found: SketchFace[];
+      let loops: ReturnType<typeof extractLoops> = [];
       try {
-        found = sketchFaces(extractLoops(feature));
+        loops = extractLoops(feature);
+        found = sketchFaces(loops);
       } catch {
         found = []; // open or branched profile: only its texts can be extruded
       }
@@ -186,7 +192,8 @@ export class ExtrudeTool implements PointerHandler {
         mesh.position.z = 0.02;
         mesh.renderOrder = 15;
         group.add(mesh);
-        return { region, probe: interiorPoint(region), mesh };
+        const loop = loops[region.loop];
+        return { region, probe: interiorPoint(region), ...(loop ? { key: loopKey(loop, feature) } : {}), mesh };
       });
       this.root.add(group);
       this.profiles.push({ sketch: feature, frame, faces });
@@ -557,9 +564,11 @@ export class ExtrudeTool implements PointerHandler {
     // Chosen areas are stored only when they differ from the default (every material area).
     const defaults = this.defaultFaces(profile);
     const isDefault = this.chosen.size === defaults.length && defaults.every((f) => this.chosen.has(f));
-    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "startOffset" | "operation" | "target" | "regions"> = {
+    const chosen = [...this.chosen];
+    const values: Pick<ExtrudeFeature, "sketch" | "distance" | "startOffset" | "operation" | "target" | "regions" | "regionKeys"> = {
       sketch: profile.sketch.id,
-      regions: isDefault ? undefined : [...this.chosen].map((f) => f.probe),
+      regions: isDefault ? undefined : chosen.map((f) => f.probe),
+      regionKeys: isDefault || !chosen.some((f) => f.key) ? undefined : chosen.map((f) => f.key ?? ""),
       distance: this.distance,
       startOffset: this.startOffset ? this.startOffset : undefined,
       operation: this.operation,

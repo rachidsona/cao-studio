@@ -74,6 +74,12 @@ const SELECTED_WIDTH = 2.5;
 /** The line of the distance between two parallel edges (amber, apart from the green of the edges). */
 const GAP_LINE = 0xf59e0b;
 
+/** What makes a face index mean the same face: as many faces and edges, the same size and volume (to 0.01 mm). */
+export function topologyKey(data: Pick<BodyMesh, "faceGroups" | "edgeGroups" | "metrics">): string {
+  const r = (v: number) => Math.round(v * 100);
+  return [data.faceGroups.length, data.edgeGroups.length, ...data.metrics.bbox.flat().map(r), Math.round(data.metrics.volume)].join(",");
+}
+
 export class SelectionLayer {
   faces: FacePick[] = [];
   edges: EdgePick[] = [];
@@ -82,6 +88,8 @@ export class SelectionLayer {
   bodies: string[] = [];
   sketches: string[] = [];
   private group = new THREE.Group();
+  /** What each body was when it was last drawn (topologyKey): a face index means something only on the same body. */
+  private shapes = new Map<string, string>();
   private labels = new Map<string, string>();
   /** The distance between two selected parallel edges: a line square to them, with its text. */
   private gap: { from: THREE.Vector3; to: THREE.Vector3; text: string } | null = null;
@@ -194,10 +202,18 @@ export class SelectionLayer {
     this.gap = gap;
   }
 
-  /** Drops picks that no longer exist after the bodies were regenerated. */
+  /**
+   * Drops picks that no longer exist after the bodies were regenerated — and the faces and edges of a body whose shape
+   * changed: the kernel numbers them anew, the same index would be another face (audit of 11/11/2026).
+   */
   prune(bodies: Map<string, BodyView>): void {
-    this.faces = this.faces.filter((f) => !!bodies.get(f.bodyId)?.data.faceGroups[f.faceIndex]);
-    this.edges = this.edges.filter((e) => !!bodies.get(e.bodyId)?.data.edgeGroups[e.edgeIndex]);
+    const same = (id: string) => {
+      const body = bodies.get(id);
+      return !!body && this.shapes.get(id) === topologyKey(body.data);
+    };
+    this.faces = this.faces.filter((f) => same(f.bodyId) && !!bodies.get(f.bodyId)?.data.faceGroups[f.faceIndex]);
+    this.edges = this.edges.filter((e) => same(e.bodyId) && !!bodies.get(e.bodyId)?.data.edgeGroups[e.edgeIndex]);
+    this.shapes = new Map([...bodies].map(([id, body]) => [id, topologyKey(body.data)]));
     this.vertices = this.vertices.filter((v) => {
       const body = bodies.get(v.bodyId);
       return !!body && bodyVertices(body.data).some((q) => samePoint(q, v.point));

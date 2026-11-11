@@ -3,7 +3,7 @@ import { stampHardware } from "../document/hardware-catalog";
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
-import type { BodyMesh, DescribeResponse, EdgeInfo, EdgeOutline, ExportResponse, P3, FaceOutline, FaceInfo, RecomputeResponse, WorkerEnvelope, WorkerRequest, WorkerResponse } from "./protocol";
+import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type ExportResponse, type P3, type FaceOutline, type FaceInfo, type RecomputeResponse, type WorkerEnvelope, type WorkerRequest, type WorkerResponse } from "./protocol";
 
 type Pending = { type: WorkerRequest["type"]; resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> };
 
@@ -19,6 +19,9 @@ const limitOf = (type: WorkerRequest["type"]) => TIME_LIMITS[type] ?? TIME_LIMIT
 export class GeometryClient {
   private worker!: Worker;
   private nextId = 1;
+  /** Recomputes asked, and the last one answered: the bodies the editor shows (protocol.ts, WorkerEnvelope). */
+  private sent = 0;
+  private shown = 0;
   private pending = new Map<number, Pending>();
   /** Download of the kernel (bytes), while it starts. */
   onProgress: (loaded: number, total: number) => void = () => {};
@@ -65,15 +68,18 @@ export class GeometryClient {
     this.worker.terminate();
     const message = `Le calcul a duré plus de ${seconds} s : il est arrêté et le noyau 3D redémarre. Si la dernière modification en est la cause, annulez-la (Ctrl+Z).`;
     this.failAll(new Error("Le noyau 3D a redémarré : relancez l'opération."), { id, error: new Error(message) });
+    this.sent = this.shown = 0;
     this.start();
     this.onRestart(message);
   }
 
-  private call<T>(request: WorkerRequest): Promise<T> {
+  private call<T>(request: WorkerRequest, generation?: number): Promise<T> {
     const id = this.nextId++;
+    // A question about the bodies names the recompute whose bodies are shown: the worker refuses it after a newer one.
+    const tag = generation ?? (BODY_QUESTIONS.has(request.type) ? this.shown : undefined);
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { type: request.type, resolve: resolve as (value: unknown) => void, reject });
-      this.worker.postMessage({ ...request, id } satisfies WorkerEnvelope);
+      this.worker.postMessage({ ...request, id, ...(tag === undefined ? {} : { generation: tag }) } satisfies WorkerEnvelope);
     });
   }
 
@@ -81,9 +87,12 @@ export class GeometryClient {
     return this.call({ type: "init" });
   }
 
-  recompute(doc: CadDocument): Promise<RecomputeResponse> {
+  async recompute(doc: CadDocument): Promise<RecomputeResponse> {
     // The chosen hardware's sizes go into the fronts and doors it drills.
-    return this.call({ type: "recompute", doc: stampHardware(doc) });
+    const generation = ++this.sent;
+    const result = await this.call<RecomputeResponse>({ type: "recompute", doc: stampHardware(doc) }, generation);
+    this.shown = Math.max(this.shown, generation);
+    return result;
   }
 
   async export(format: ExportFormat, names: Record<string, string>): Promise<Blob> {

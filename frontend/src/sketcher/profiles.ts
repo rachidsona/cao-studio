@@ -4,9 +4,9 @@
  */
 import { draw, drawCircle, type Drawing } from "replicad";
 import type { SketchGeometry } from "../document/sketch";
-import { extractLoops, loopAt, loopDepths, ProfileError, sketchFaces, type Loop } from "./loops";
+import { extractLoops, loopAt, loopDepths, loopKey, ProfileError, sketchFaces, type Loop } from "./loops";
 
-export { ProfileError, extractLoops, pointInPolygon, VERTEX_TOLERANCE } from "./loops";
+export { ProfileError, extractLoops, loopKey, pointInPolygon, VERTEX_TOLERANCE } from "./loops";
 
 function buildLoop(loop: Loop): Drawing {
   const shape = loop.shape;
@@ -19,12 +19,27 @@ function buildLoop(loop: Loop): Drawing {
   return pen.close();
 }
 
+/** The loop of a chosen area: by its key when it has one (loopKey), else the smallest loop around its inside point. */
+export function chosenLoop(loops: Loop[], geometry: Pick<SketchGeometry, "points">, point: [number, number], key: string | undefined): number {
+  if (key) {
+    const keys = loops.map((loop) => loopKey(loop, geometry));
+    const named = keys.indexOf(key);
+    if (named >= 0) return named;
+    // Its corners are no longer a loop (a line added across it, a point removed): the point says where it was, but
+    // another area there would be extruded in its place — the area is to be chosen again.
+    const at = loopAt(loops, point);
+    if (at >= 0 && keys[at] !== key) throw new ProfileError("Une zone choisie a changé de forme : choisissez à nouveau la zone à extruder.");
+    return at;
+  }
+  return loopAt(loops, point);
+}
+
 /** The chosen areas: each is a loop minus the loops directly inside it; touching areas merge. */
-function buildAreas(loops: Loop[], inside: [number, number][]): Drawing {
+function buildAreas(loops: Loop[], geometry: SketchGeometry, inside: [number, number][], keys?: string[]): Drawing {
   const faces = sketchFaces(loops);
   const chosen = new Set<number>();
-  for (const point of inside) {
-    const index = loopAt(loops, point);
+  for (const [i, point] of inside.entries()) {
+    const index = chosenLoop(loops, geometry, point, keys?.[i] || undefined);
     if (index < 0) throw new ProfileError("Une zone choisie n'existe plus : l'esquisse a changé, choisissez à nouveau la zone à extruder.");
     chosen.add(index);
   }
@@ -42,10 +57,10 @@ function buildAreas(loops: Loop[], inside: [number, number][]): Drawing {
  * Builds the region bounded by the sketch's closed loops, or null when there is
  * none. With `areas` (points inside the wanted areas) only those areas are built.
  */
-export function buildProfile(geometry: SketchGeometry, areas?: [number, number][]): Drawing | null {
+export function buildProfile(geometry: SketchGeometry, areas?: [number, number][], keys?: string[]): Drawing | null {
   const loops = extractLoops(geometry);
   if (loops.length === 0) return null;
-  if (areas) return buildAreas(loops, areas);
+  if (areas) return buildAreas(loops, geometry, areas, keys);
   const depth = loopDepths(loops);
   const order = loops.map((_, i) => i).sort((a, b) => (depth[a] as number) - (depth[b] as number));
   let region: Drawing | null = null;
