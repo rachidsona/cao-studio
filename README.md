@@ -286,6 +286,7 @@ Principes :
   Au doigt, un geste annulé par la tablette rend la caméra (elle ne reste plus figée), un deuxième doigt posé pendant
   qu'on tire une poignée ne la déplace pas, et la flèche et le manipulateur sont plus grands
   (`viewport/pointer-input.ts`).
+  En vue en coupe, ce que la coupe cache ne se choisit plus à travers elle.
 
 ## Esquisses (phase 4)
 

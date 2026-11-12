@@ -393,7 +393,24 @@ export class Viewport {
   intersect(event: PointerEvent, objects: THREE.Object3D[], linePx = 6): THREE.Intersection[] {
     this.rayFromEvent(event);
     this.raycaster.params.Line = { threshold: linePx * this.worldPerPixel() };
-    return this.raycaster.intersectObjects(objects, true);
+    return this.shownHits(this.raycaster.intersectObjects(objects, true));
+  }
+
+  /** The plane of the section shown (setSection), null without one: what lies on its far side is hidden. */
+  private sectionPlane: THREE.Plane | null = null;
+
+  /**
+   * Hits the eye can see: not those the section hides (audit of 11/11/2026: a click went through the cut to the part
+   * hidden by it). The renderer clips where the plane's distance is negative.
+   */
+  private shownHits(hits: THREE.Intersection[]): THREE.Intersection[] {
+    const plane = this.sectionPlane;
+    return plane ? hits.filter((h) => plane.distanceToPoint(h.point) >= -1e-6) : hits;
+  }
+
+  /** The bodies' faces under the ray cast last, the nearest shown first. */
+  private meshHits(): THREE.Intersection[] {
+    return this.shownHits(this.raycaster.intersectObjects(this.layer.shownMeshes(), false));
   }
 
   private rays(event: PointerEvent): PointerRays {
@@ -403,7 +420,7 @@ export class Viewport {
   /** Face of a displayed body under the pointer. */
   pickFace(event: PointerEvent): FacePick | null {
     this.rayFromEvent(event);
-    const hit = this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0];
+    const hit = this.meshHits()[0];
     if (!hit || hit.faceIndex === undefined || hit.faceIndex === null) return null;
     const bodyId = hit.object.userData.bodyId as string;
     const groups = this.bodies.get(bodyId)?.data.faceGroups ?? [];
@@ -421,7 +438,7 @@ export class Viewport {
     const hits = this.intersect(event, this.layer.shownEdges(), 16);
     if (hits.length === 0) return null;
     // The first face under the pointer: an edge farther than it (beyond a margin of a few pixels) is hidden.
-    const face = this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0];
+    const face = this.meshHits()[0];
     const pixelAt = (depth: number) => (2 * depth * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)) / (this.renderer.domElement.clientHeight || 1);
     const hidden = face ? face.distance + 24 * pixelAt(face.distance) : Infinity;
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -572,7 +589,7 @@ export class Viewport {
       bodyAt: (x, y) => {
         this.freshMatrices();
         this.raycaster.setFromCamera(new THREE.Vector2((x / canvas.clientWidth) * 2 - 1, 1 - (y / canvas.clientHeight) * 2), this.camera);
-        return (this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0]?.object.userData.bodyId as string | undefined) ?? null;
+        return (this.meshHits()[0]?.object.userData.bodyId as string | undefined) ?? null;
       },
     });
     this.selection.addWindow(taken.bodies, taken.sketches);
@@ -611,6 +628,7 @@ export class Viewport {
     const normal = new THREE.Vector3();
     if (section) normal.setComponent(section.axis, section.flip ? 1 : -1);
     const planes = section ? [new THREE.Plane(normal, section.flip ? -section.position : section.position)] : [];
+    this.sectionPlane = planes[0] ?? null;
     this.renderer.localClippingEnabled = planes.length > 0;
     for (const material of [...this.layer.materials(), ...this.hover.materials(), ...this.sketches.materials()]) {
       material.clippingPlanes = planes;
