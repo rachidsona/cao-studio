@@ -23,8 +23,16 @@ describe("chargement", () => {
 
   it("un fichier plus gros que prévu ne fait pas dépasser la barre", async () => {
     const seen: [number, number][] = [];
-    await readWithProgress(streamed([8, 8]), 10, (loaded, total) => seen.push([loaded, total]));
+    const bytes = await readWithProgress(streamed([8, 8]), 10, (loaded, total) => seen.push([loaded, total]));
     expect(seen.every(([loaded, total]) => loaded <= total)).toBe(true);
+    // The buffer grew: every byte is there, in order.
+    expect(Array.from(bytes)).toEqual([...Array(8).fill(1), ...Array(8).fill(2)]);
+  });
+
+  it("à la taille annoncée, les octets sont lus dans un seul tampon, sans copie finale", async () => {
+    const bytes = await readWithProgress(streamed([4, 6]), 10, () => {});
+    expect(bytes.byteLength).toBe(10);
+    expect(bytes.buffer.byteLength).toBe(10);
   });
 
   it("une réponse en erreur est refusée avec un message", async () => {
