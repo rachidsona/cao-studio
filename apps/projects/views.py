@@ -4,7 +4,8 @@ import uuid
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q
+from django.db.models.functions import Length
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -39,15 +40,11 @@ def project_list(request):
     else:
         form = ProjectCreateForm()
     mine = Project.objects.filter(owner=request.user)
-    # The dashboard: how many jobs at each stage, and what is in the quotes sent and accepted.
-    counts = dict(mine.values_list("status").annotate(n=Count("id")))
-    statuses = [{"key": key, "label": label, "count": counts.get(key, 0)} for key, label in Project.STATUS_CHOICES]
-    amounts = {key: mine.filter(status=key).aggregate(total=Sum("price"))["total"] or 0 for key in ("quoted", "accepted", "production")}
-    # The list: one stage, a search on the name or the client.
+    # The list: one stage (?statut=, from a link), a search on the name or the client.
     status = request.GET.get("statut", "")
     query = request.GET.get("q", "").strip()
     projects = mine.order_by("-updated_at")
-    if status in counts or status in dict(Project.STATUS_CHOICES):
+    if status in dict(Project.STATUS_CHOICES):
         projects = projects.filter(status=status)
     else:
         status = ""
@@ -67,7 +64,8 @@ def project_list(request):
         request,
         "projects/project_list.html",
         {
-            "projects": projects.select_related("folder"), "form": form, "statuses": statuses, "amounts": amounts, "status": status, "query": query,
+            # The previews stay in the database (served one by one, thumbnails.py); only whether there is one.
+            "projects": projects.select_related("folder").defer("thumbnail").annotate(preview=Length("thumbnail")), "form": form, "status": status, "query": query,
             "total": mine.count(), "folders": folders, "folder": folder, "shown": shown, "unfiled": mine.filter(folder__isnull=True).count(),
         },
     )
@@ -132,6 +130,7 @@ def editor(request, project_id):
         "apiUrl": reverse("api-project", kwargs={"project_id": project.id}),
         "projectsUrl": reverse("projects:list"),
         "catalogUrl": reverse("api-catalog"),
+        "hasPreview": bool(project.thumbnail),
     }
     return render(
         request, "editor/editor.html", {"project": project, "editor_config": editor_config}

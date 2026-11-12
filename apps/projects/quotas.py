@@ -29,12 +29,13 @@ FULL = "Espace de stockage plein (2 Go) : supprimez d'anciens projets ou révoqu
 
 
 def storage_used(user) -> int:
-    """The bytes this account keeps: versions, link models and variants, library modules."""
+    """The bytes this account keeps: versions, link models and variants, library modules, previews of the projects."""
     versions = ProjectVersion.objects.filter(project__owner=user).aggregate(n=Coalesce(Sum("size_bytes"), 0))["n"]
     links = ShareLink.objects.filter(project__owner=user).aggregate(n=Coalesce(Sum("model_size"), 0))["n"]
     variants = ShareVariant.objects.filter(link__project__owner=user).aggregate(n=Coalesce(Sum("model_size"), 0))["n"]
     library = LibraryModule.objects.filter(owner=user).aggregate(n=Coalesce(Sum(Length("thumbnail")), 0))["n"]
-    return versions + links + variants + library
+    previews = Project.objects.filter(owner=user).aggregate(n=Coalesce(Sum(Length("thumbnail")), 0))["n"]
+    return versions + links + variants + library + previews
 
 
 def check_storage(user, adding: int) -> None:

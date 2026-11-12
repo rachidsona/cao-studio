@@ -85,6 +85,7 @@ import { bindRibbonLayout } from "./ui/ribbon-layout";
 import { bindDigitKeys } from "./ui/digit-keys";
 import { bindScrollArrows } from "./ui/scroll-arrows";
 import { Viewport } from "./viewport/viewport";
+import { bindProjectPreview } from "./app/project-preview";
 
 function readConfig(): EditorConfig {
   const node = document.getElementById("editor-config");
@@ -236,6 +237,14 @@ async function start(): Promise<void> {
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);
   loading.done();
+  // The picture of the model on its card of the home page (app/project-preview.ts): after the saves, and now if none.
+  const preview = bindProjectPreview(viewport, () => editor.doc, config.apiUrl);
+  const savedState = session.onStateChange;
+  session.onStateChange = (state, detail) => {
+    savedState(state, detail);
+    if (state === "saved") preview.saved();
+  };
+  if (!config.hasPreview) preview.now();
   // Operations switched off on opening (document/validate.ts openDocument): said once, they stay in the history.
   if (snapshot.problems?.length) {
     editor.notify(`Projet ouvert, mais ${snapshot.problems.length} opération(s) désactivée(s) : ${snapshot.problems.join(" — ")}`, "error");

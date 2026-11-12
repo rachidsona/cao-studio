@@ -2,7 +2,7 @@ from django.urls import path, re_path
 
 from apps.catalog import api as catalog_api
 
-from . import api, assistant, library, monitoring, production, sharing, workshop
+from . import api, assistant, library, monitoring, production, sharing, thumbnails, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
@@ -17,6 +17,7 @@ urlpatterns = [
     path("batch/<int:item_id>/", production.batch_detail, name="api-batch-item"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
     path("projects/<uuid:project_id>/price/", api.project_price, name="api-project-price"),
+    path("projects/<uuid:project_id>/thumbnail/", thumbnails.project_thumbnail, name="api-project-thumbnail"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),
     path(
         "projects/<uuid:project_id>/versions/<int:number>/",

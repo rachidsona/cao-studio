@@ -67,6 +67,8 @@ class Project(models.Model):
     folder = models.ForeignKey(
         ProjectFolder, on_delete=models.SET_NULL, null=True, blank=True, related_name="projects", verbose_name="dossier"
     )
+    # A small picture of the model (JPEG data URL), taken by the editor after a save: its card on the home page.
+    thumbnail = models.TextField("aperçu", blank=True)
 
     class Meta:
         ordering = ["-updated_at"]

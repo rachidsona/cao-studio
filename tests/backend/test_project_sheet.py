@@ -79,7 +79,7 @@ def test_a_job_further_on_keeps_its_status(client_logged, project):
 
 
 @pytest.mark.django_db
-def test_the_dashboard_counts_filters_and_searches(client_logged, user, other_user):
+def test_the_home_page_filters_and_searches(client_logged, user, other_user):
     a, _ = create_project(user, "Cuisine Dupont", default_document())
     b, _ = create_project(user, "Dressing Martin", default_document())
     c, _ = create_project(user, "Buffet", default_document())
@@ -89,8 +89,8 @@ def test_the_dashboard_counts_filters_and_searches(client_logged, user, other_us
     Project.objects.filter(pk=c.pk).update(status="accepted", price=Decimal("800"))
     page = client_logged.get("/projects/")
     content = page.content.decode()
-    assert [s["count"] for s in page.context["statuses"]] == [0, 2, 1, 0, 0, 0]
-    assert page.context["amounts"]["quoted"] == Decimal("3500") and "Pas à moi" not in content
+    # No status tiles any more (taken away on 12/11/2026): each card says where its job stands.
+    assert "data-dashboard" not in content and "Pas à moi" not in content
     assert 'data-status="quoted"' in content and "M. Dupont" in content
     quoted = client_logged.get("/projects/?statut=quoted").context["projects"]
     assert {p.name for p in quoted} == {"Cuisine Dupont", "Dressing Martin"}
@@ -110,7 +110,7 @@ def test_each_project_has_its_space(client_logged, user):
     # The editor knows it; the home page shows it.
     kitchen = Project.objects.get(name="Cuisine A")
     assert 'data-space="kitchen"' in client_logged.get(f"/projects/{kitchen.id}/editor/").content.decode()
-    assert '<span data-space="dressing">Dressing</span>' in client_logged.get("/projects/").content.decode()
+    assert 'data-space="dressing">Dressing</span>' in client_logged.get("/projects/").content.decode()
     # The API lists it and makes a project of a space.
     listed = {p["name"]: p["space"] for p in client_logged.get("/api/projects/").json()["projects"]}
     assert listed["Placard"] == "dressing"

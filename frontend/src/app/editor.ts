@@ -37,6 +37,7 @@ export interface EditorConfig {
   apiUrl: string;
   projectsUrl: string;
   catalogUrl?: string; // the workshop's catalogue (materials, hardware rules, letterhead); missing on an older server
+  hasPreview?: boolean; // the project has its picture for the home page (app/project-preview.ts)
 }
 
 const SAVE_LABELS: Record<SaveState, string> = {

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import folders, views
+from . import folders, thumbnails, views
 
 app_name = "projects"
 
@@ -13,5 +13,6 @@ urlpatterns = [
     path("dossiers/<int:folder_id>/supprimer/", folders.folder_delete, name="folder_delete"),
     path("<uuid:project_id>/editor/", views.editor, name="editor"),
     path("<uuid:project_id>/fiche/", views.project_sheet, name="sheet"),
+    path("<uuid:project_id>/apercu.jpg", thumbnails.project_preview, name="preview"),
     path("<uuid:project_id>/supprimer/", views.project_delete, name="delete"),
 ]

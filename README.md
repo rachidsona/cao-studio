@@ -26,9 +26,9 @@ Ouvrir http://127.0.0.1:8765/ → la **page d'accueil** (`/projects/`, lien « A
 bienvenue (« Bonjour … », « Ouvrir le projet exemple ») avec deux cartes pour commencer, chacune avec son dessin
 (sans photo) : **Conception 3D** (nommer le projet, « Créer et ouvrir ») et **Cuisine & Dressing** (nommer une
 cuisine ou un dressing, puis « Créer une cuisine » ou « Créer un dressing » : le projet s'ouvre dans l'éditeur sur
-l'onglet Cuisine ou Dressing, son plan à droite, `?onglet=kitchen`). Dessous, « Mes projets » : les tuiles des
-statuts, les dossiers, la recherche, et **chaque projet en carte** — le dessin de son espace dans sa couleur (bleu
-pour la 3D, ambre pour la cuisine, violet pour le dressing), son statut, son client, son dossier, sa dernière version,
+l'onglet Cuisine ou Dressing, son plan à droite, `?onglet=kitchen`). Dessous, « Mes projets » : les dossiers, la
+recherche, et **chaque projet en carte** — l'image de son modèle (prise par l'éditeur après un enregistrement,
+`app/project-preview.ts`), ou le dessin de son espace tant qu'il n'en a pas, son statut, son client, son dossier, sa dernière version,
 son devis ; un clic sur la carte l'ouvre, « Fiche » et la corbeille sont dessus (`templates/projects/_project_card.html`). Chaque
 nouveau projet contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé
 chêne, fond HDF) pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans
