@@ -12,7 +12,6 @@ import { clearRecovery } from "../persistence/recovery";
 import { askConfirm } from "../ui/confirm-dialog";
 import { el } from "../ui/dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "../ui/edge-tabs";
-import { fine, folderIcon } from "../ui/icons";
 import type { EditorConfig } from "./editor";
 import { MOST_TABS, pageTabs, type ProjectTabs } from "./project-tabs";
 
@@ -55,6 +54,27 @@ export function groupProjects(list: FolderList, search = ""): ProjectGroup[] {
   const groups: ProjectGroup[] = list.folders.map((f) => ({ id: f.id, name: f.name, projects: matching.filter((p) => p.folder === f.id) }));
   groups.push({ id: null, name: "Sans dossier", projects: matching.filter((p) => p.folder === null || !known.has(p.folder)) });
   return wanted ? groups.filter((g) => g.projects.length > 0) : groups;
+}
+
+/** A folder drawn full, as the 📁 it replaces, in the colour of the text (#f8500a in the column). */
+function filledFolder(): SVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("aria-hidden", "true");
+  for (const [d, opacity] of [
+    ["M2 6.5A2.5 2.5 0 0 1 4.5 4h4.6l2.2 2.2h8.2A2.5 2.5 0 0 1 22 8.7V18a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18z", "0.7"],
+    ["M2 10.2A1.7 1.7 0 0 1 3.7 8.5h16.6a1.7 1.7 0 0 1 1.7 1.7V18a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18z", "1"],
+  ] as const) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("fill-opacity", opacity);
+    svg.append(path);
+  }
+  return svg;
 }
 
 const said = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
@@ -300,7 +320,7 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
       "button",
       { type: "button", class: "flex min-h-8 min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-gray-800 dark:text-gray-200", "aria-expanded": String(open), title: open ? `Plier « ${g.name} »` : `Déplier « ${g.name} »`, "data-folder-toggle": "" },
       el("span", { class: "w-3 shrink-0 text-gray-400", "aria-hidden": "true" }, open ? "▾" : "▸"),
-      el("span", { class: `shrink-0 text-orange-500 dark:text-orange-400${g.id === null ? " opacity-60" : ""}`, "aria-hidden": "true", "data-folder-icon": "" }, fine(folderIcon(), 15)),
+      el("span", { class: `shrink-0 text-[#f8500a] ${g.id === null ? "opacity-60" : ""}`, "aria-hidden": "true", "data-folder-icon": "" }, filledFolder()),
       el("span", { class: "truncate" }, g.name),
       el("span", { class: "ml-auto shrink-0 font-normal text-gray-400" }, String(g.projects.length)),
     );
