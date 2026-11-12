@@ -3,7 +3,7 @@
  * geometry worker, the viewport and the panels together.
  */
 import { confirmDeletion, deletionOf, removeStep, removeWithShelves } from "./delete-selection";
-import { normalizeDoc } from "./doc-normalizers";
+import { normalizeDoc } from "../document/doc-normalizers";
 import { askConfirm } from "../ui/confirm-dialog";
 import { addExtrude, addPlate, bodyLabel, findFeature, isBodyHidden, removePieces, renameBody, setHidden, toggleHidden, updateFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type DisplayUnit, type SketchFeature } from "../document/types";

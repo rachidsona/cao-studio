@@ -41,10 +41,6 @@ import { RunDimsView } from "./kitchen-run-dims-view";
 import { runDims } from "../../document/kitchen-run-dims";
 import { withRunDim } from "../../document/kitchen-dim-edit";
 import { editValue } from "../dim-editor";
-import { addNormalizer } from "../doc-normalizers";
-import { syncKitchenPlans } from "../../document/kitchen-sync";
-import { withDeletedFreed } from "../../document/kitchen-delete-sync";
-import { appliancesFollow } from "../../document/appliance-follow";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -428,11 +424,7 @@ function showAllButton(after: () => void): HTMLElement {
 }
 
 export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: Editor): void {
-  // A unit the plan made, changed in the 3D: the plan follows it, in the same undo. A cabinet moved, by hand or by the
-  // kitchen made again, takes its appliances along (before, so the plan keeps their cuts where they went, and after).
-  addNormalizer((prev, next) => appliancesFollow(prev, next));
-  addNormalizer((prev, next) => syncKitchenPlans(prev, withDeletedFreed(prev, next)));
-  addNormalizer((prev, next) => appliancesFollow(prev, next, false));
+  // The plan following the 3D (and the appliances their cabinets) is a rule of the document: document/doc-normalizers.ts.
   const container = viewport.renderer.domElement.parentElement as HTMLElement;
   // The dimensions of the run seen alone, as long as it is.
   const dims = new RunDimsView(viewport);
