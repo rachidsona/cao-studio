@@ -2,68 +2,48 @@
 {% load static assets %}
 {% block title %}Accueil · CAO Studio{% endblock %}
 {% block content %}
-{# The home page: a greeting and the three ways to begin (a 3D project, a kitchen, a dressing — each with its picture), #}
+{# The home page: the two ways to begin (a 3D project; a kitchen or a dressing), each with its picture, #}
 {# then « Mes projets »: where the jobs stand, the folders, a search, and every project as a card. #}
 <div class="space-y-10">
-  <section class="relative overflow-hidden rounded-[18px] border border-gray-200 bg-gradient-to-br from-white via-slate-50 to-sky-50 px-6 py-7 shadow-sm sm:px-8 dark:border-gray-800 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900" aria-labelledby="welcome-title">
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p class="text-sm font-medium text-sky-700 dark:text-sky-300">Bonjour {{ user.get_username }}</p>
-        <h1 id="welcome-title" class="mt-1 text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl dark:text-gray-50">Vos meubles sur mesure, du croquis à l'atelier</h1>
-        <p class="mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-300">Dessinez, chiffrez et préparez la fabrication : liste de débit, devis et mise en plan suivent le modèle.</p>
-      </div>
-      <form method="post" action="{% url 'projects:list' %}">
-        {% csrf_token %}
-        <button type="submit" name="example" value="1" class="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-gray-300 bg-white/70 px-4 text-sm font-medium text-gray-800 backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:hover:bg-gray-800">✨ Ouvrir le projet exemple</button>
-      </form>
-    </div>
-
-    <div class="mt-6 grid gap-4 md:grid-cols-2">
-      <div class="overflow-hidden rounded-[14px] border border-gray-200 bg-white/90 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-3d-title">
-        <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[16/9] w-full object-cover" loading="eager" data-home-picture>
-        <div class="p-5">
-        <div class="flex items-center gap-3">
-          <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">{% include "projects/_space_icon.html" with space="design" class="size-7" %}</span>
-          <div>
-            <h2 id="design-3d-title" class="text-lg font-semibold">Conception 3D</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Pièces et meubles : esquisses, volumes, assemblages.</p>
-          </div>
-        </div>
-        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-3" novalidate>
+  {# The two ways to design, each with its picture, its title and its « new » form; side by side on a wide screen. #}
+  <div class="grid gap-x-8 gap-y-6 lg:grid-cols-2">
+    <section class="overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-3d-title">
+      <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[5/4] w-full object-cover" loading="eager">
+      <div class="p-5">
+        <h1 id="design-3d-title" class="text-center text-2xl font-semibold tracking-tight">Conception 3D</h1>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Pièces et meubles modélisés en 3D : esquisses, volumes, assemblages, liste de débit et mise en plan.</p>
+        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
           {% csrf_token %}
           {% include "registration/_field.html" with field=form.name %}
-          <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
+          <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
         </form>
-        </div>
+        <form method="post" action="{% url 'projects:list' %}" class="mt-3">
+          {% csrf_token %}
+          <button type="submit" name="example" value="1" class="inline-flex min-h-11 w-full items-center justify-center border border-gray-300 px-4 text-base font-medium hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-600 dark:hover:bg-gray-800">Ouvrir le projet exemple</button>
+        </form>
       </div>
+    </section>
 
-      <div class="overflow-hidden rounded-[14px] border border-gray-200 bg-white/90 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-kitchen-title">
-        <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[16/9] w-full object-cover" loading="eager" data-home-picture>
-        <div class="p-5">
-        <div class="flex items-center gap-3">
-          <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">{% include "projects/_space_icon.html" with space="kitchen" class="size-7" %}</span>
-          <span class="-ml-5 flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 ring-4 ring-white dark:bg-sky-950 dark:text-sky-300 dark:ring-gray-900">{% include "projects/_space_icon.html" with space="dressing" class="size-7" %}</span>
-          <div>
-            <h2 id="design-kitchen-title" class="text-lg font-semibold">Cuisine &amp; Dressing</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Posés dans leur pièce : plan, linéaires, électroménager.</p>
-          </div>
-        </div>
-        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-3" novalidate>
+    <section class="overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-kitchen-title">
+      <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[5/4] w-full object-cover" loading="eager">
+      <div class="p-5">
+        <h2 id="design-kitchen-title" class="text-center text-2xl font-semibold tracking-tight">Conception Cuisine &amp; Dressing</h2>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Une cuisine ou un dressing posé dans sa pièce : plan vu de dessus, linéaires, meubles, électroménager, liste de débit, devis et mise en plan.</p>
+        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
           {% csrf_token %}
           <div class="space-y-1.5">
             <label for="space-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
             <input id="space-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
-                   class="block min-h-11 w-full rounded-[10px] border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                   class="block min-h-11 w-full border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
-            <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
+            <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
+            <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
           </div>
         </form>
-        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <section class="min-w-0" aria-labelledby="projects-title">
     <div class="flex items-baseline justify-between gap-4">
