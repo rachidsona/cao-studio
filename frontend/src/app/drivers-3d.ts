@@ -106,9 +106,7 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
     bar.refresh();
   };
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     show();
-  };
+  });
 }

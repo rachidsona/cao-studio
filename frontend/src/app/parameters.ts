@@ -212,11 +212,9 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
   };
 
   button?.addEventListener("click", toggle);
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     render();
-  };
+  });
 }
 
 /** The feature without the formulas that name a parameter (its numbers stay as they are). */

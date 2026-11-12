@@ -467,11 +467,9 @@ export function bindDrawingWorkspace(root: HTMLElement, viewport: Viewport, edit
       open = new DrawingWorkspace(editor, viewport, () => (open = null));
     });
   }
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     open?.render();
-  };
+  });
   return (focus) => {
     open?.close();
     open = new DrawingWorkspace(editor, viewport, () => (open = null), focus);

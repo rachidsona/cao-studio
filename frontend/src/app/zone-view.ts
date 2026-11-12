@@ -170,9 +170,7 @@ export function bindZoneView(viewport: Viewport, editor: Editor): void {
     setBodies(bodies);
     apply();
   };
-  const rendered = editor.onRender;
-  editor.onRender = () => {
-    rendered();
+  editor.afterRender(() => {
     apply();
-  };
+  });
 }

@@ -136,9 +136,7 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     } else editor.notify("Lâchez l'apparence sur un corps.", "info");
   });
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     panel?.draw();
-  };
+  });
 }

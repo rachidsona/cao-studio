@@ -222,10 +222,8 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
   button("cutlist")?.addEventListener("click", showCutList);
   button("import-parts")?.addEventListener("click", importParts);
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     renderMaterial();
     if (rendering) viewport.setAppearance(appearance, faces);
-  };
+  });
 }

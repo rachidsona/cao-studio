@@ -183,11 +183,9 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     button.setAttribute("aria-pressed", "true");
     render();
   });
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     // Not while a field of the panel is being typed in.
     const typing = document.activeElement?.matches("input, select, textarea");
     if (!(typing && panel?.body.contains(document.activeElement))) render();
-  };
+  });
 }

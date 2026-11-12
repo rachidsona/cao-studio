@@ -466,10 +466,8 @@ export function bindPlanLayout(root: HTMLElement, viewport: Viewport, editor: Ed
     show(selection.sketches[0] ?? selection.sketch[0]?.sketchId);
   };
   // On a wide screen, the plan of the project keeps its tab beside Sélection, whatever tool is at work.
-  const rendered = editor.onRender;
-  editor.onRender = () => {
-    rendered();
+  editor.afterRender(() => {
     if (tool) tool.refresh();
     else if (hasDock() && planOf(editor.doc)) open(undefined, true);
-  };
+  });
 }

@@ -199,12 +199,10 @@ export function bindMotion(root: HTMLElement, viewport: Viewport, editor: Editor
   });
 
   // A regeneration builds the meshes again: the pose is put back on the new ones.
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (panel && body) {
       if (viewport.bodyMesh(body)) render();
       else choose(null);
     }
-  };
+  });
 }

@@ -486,11 +486,9 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
     selected(selection);
     show(selection.sketches[0] ?? selection.sketch[0]?.sketchId, selection.bodies[0] ?? selection.faces[0]?.bodyId);
   };
-  const rendered = editor.onRender;
-  editor.onRender = () => {
-    rendered();
+  editor.afterRender(() => {
     paintDims();
     if (tool) tool.refresh();
     else if (hasDock() && kitchenPlanOf(editor.doc)) open(undefined, true);
-  };
+  });
 }

@@ -91,9 +91,7 @@ export function bindRenderWorkspace(root: HTMLElement, viewport: Viewport, edito
     else exit();
   });
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (mode?.active) mode.markDirty();
-  };
+  });
 }

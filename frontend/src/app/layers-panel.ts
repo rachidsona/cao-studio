@@ -69,9 +69,7 @@ export function bindLayers(root: HTMLElement, viewport: Viewport, editor: Editor
     render();
   };
   button?.addEventListener("click", toggle);
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     render();
-  };
+  });
 }

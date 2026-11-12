@@ -274,11 +274,9 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     draw();
   };
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (shown()) draw();
-  };
+  });
 }
 
 const center = (b: Box) => new THREE.Vector3((b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, (b[0][2] + b[1][2]) / 2);

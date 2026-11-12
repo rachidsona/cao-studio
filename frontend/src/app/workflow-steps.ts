@@ -164,15 +164,13 @@ export function bindWorkflowSteps(root: HTMLElement, editor: Editor): void {
   // The tab changes (a click, or the page opening on the one kept): the bar follows.
   const observer = new MutationObserver(render);
   for (const t of tabs) observer.observe(t, { attributes: true, attributeFilter: ["aria-selected"] });
-  const rendered = editor.onRender;
-  editor.onRender = () => {
-    rendered();
+  editor.afterRender(() => {
     // Only the ticks change with the model.
     for (const s of STEPS[tab()] ?? []) {
       const chip = bar.querySelector(`[data-step="${s.id}"] span`);
       const done = s.done?.(editor.doc) ?? false;
       if (chip && (chip.textContent === "✓") !== done) return render();
     }
-  };
+  });
   render();
 }

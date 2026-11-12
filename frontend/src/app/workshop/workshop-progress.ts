@@ -98,9 +98,7 @@ export function bindProgress(root: HTMLElement, viewport: Viewport, editor: Edit
     void load();
   });
   // The pieces follow the model (and its first computation, when the panel is opened early).
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (panel && !panel.body.contains(document.activeElement)) render();
-  };
+  });
 }

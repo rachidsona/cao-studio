@@ -427,12 +427,10 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
   };
 
   button?.addEventListener("click", start);
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     targets = null;
     drawGuides();
     render();
-  };
+  });
   drawGuides();
 }

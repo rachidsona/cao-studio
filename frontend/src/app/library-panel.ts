@@ -217,9 +217,7 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
     void load();
   });
   // The count of the selection follows the clicks in the view.
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (panel && !panel.body.contains(document.activeElement)) render();
-  };
+  });
 }

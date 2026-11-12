@@ -94,10 +94,8 @@ export function bindDisplayToggles(root: HTMLElement, viewport: Viewport, editor
     if (!options?.contains(target) && !menu?.contains(target)) close();
   });
   // Applied again whenever the bodies are drawn again (a recompute replaces them, shown).
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (hidden.size) apply();
-  };
+  });
   apply();
 }

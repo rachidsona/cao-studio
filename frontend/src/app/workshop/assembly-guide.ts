@@ -164,11 +164,9 @@ export function bindAssembly(root: HTMLElement, viewport: Viewport, editor: Edit
   };
   button?.addEventListener("click", start);
   // A regeneration puts the bodies back in place: the panel shows its step again.
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (panel) render();
-  };
+  });
   return () => {
     const steps = assemblySteps(editor.doc, bodies());
     if (!steps.length) return null;

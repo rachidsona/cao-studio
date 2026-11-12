@@ -80,12 +80,10 @@ export function bindContextBar(root: HTMLElement, viewport: Viewport, editor: Ed
     selected(selection);
     later();
   };
-  const rendered = editor.onRender;
-  editor.onRender = () => {
-    rendered();
+  editor.afterRender(() => {
     niche = null;
     later();
-  };
+  });
   new MutationObserver(later).observe(root, { attributes: true, attributeFilter: ["data-tool", "data-mode"] });
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") hide();

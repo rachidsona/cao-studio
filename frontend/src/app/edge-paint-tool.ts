@@ -34,7 +34,8 @@ class EdgePaintTool implements PointerHandler {
     event.stopImmediatePropagation();
     this.close();
   };
-  private readonly rendered: () => void;
+  /** Stops redrawing the edges after each render (Editor.afterRender). */
+  private readonly unhook: () => void;
 
   constructor(private readonly viewport: Viewport, private readonly editor: Editor, private readonly closed: () => void) {
     this.panel = el("div", { class: "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Peindre les chants" });
@@ -53,11 +54,7 @@ class EdgePaintTool implements PointerHandler {
     viewport.scene.add(this.lines, this.hovered);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);
-    this.rendered = editor.onRender;
-    editor.onRender = () => {
-      this.rendered();
-      this.draw();
-    };
+    this.unhook = editor.afterRender(() => this.draw());
     this.draw();
     this.say();
   }
@@ -130,7 +127,7 @@ class EdgePaintTool implements PointerHandler {
     this.segments(this.lines, this.painted, []);
     this.segments(this.hovered, this.hover, []);
     this.viewport.scene.remove(this.lines, this.hovered);
-    this.editor.onRender = this.rendered;
+    this.unhook();
     this.panel.remove();
     this.viewport.setPointerHandler(null);
     this.closed();

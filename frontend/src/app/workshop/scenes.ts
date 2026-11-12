@@ -77,9 +77,7 @@ export function bindScenes(root: HTMLElement, viewport: Viewport, editor: Editor
     button.setAttribute("aria-pressed", "true");
     render();
   });
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     render();
-  };
+  });
 }

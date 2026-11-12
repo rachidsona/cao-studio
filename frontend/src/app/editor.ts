@@ -284,11 +284,16 @@ export class Editor {
       onCommit: (patch) => this.patchSelected(patch),
     });
     this.updateHistoryButtons();
-    this.onRender();
+    for (const hook of [...this.renderHooks]) hook();
   }
 
-  /** Called after every render: the workshop panels and the body colours follow the document. */
-  onRender: () => void = () => {};
+  /** Called after every render, in the order subscribed: the panels and the body colours follow the document. */
+  private renderHooks: (() => void)[] = [];
+  /** Runs `hook` after every render (audit of 11/11/2026, instead of chaining a callback); returns what stops it. */
+  afterRender(hook: () => void): () => void {
+    this.renderHooks.push(hook);
+    return () => void (this.renderHooks = this.renderHooks.filter((h) => h !== hook));
+  }
   /** Shows `doc` regenerated without recording it (a variant to capture), or the document again (null). */
   showUnrecorded = async (doc: CadDocument | null): Promise<void> => { this.previewDoc = doc; await this.recompute(); while (this.recomputing) await new Promise((r) => setTimeout(r, 30)); };
   private updateHistoryButtons(): void {

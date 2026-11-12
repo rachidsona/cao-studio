@@ -237,11 +237,9 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
     };
     for (const button of kind.buttons) button.addEventListener("click", flipAll);
   }
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     showButtons();
-  };
+  });
 
   const toggle = (bodyId: string) => {
     const doc = shown();

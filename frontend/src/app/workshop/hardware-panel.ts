@@ -55,9 +55,7 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
     button.setAttribute("aria-pressed", "true");
     render();
   });
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (panel && !panel.body.contains(document.activeElement)) render();
-  };
+  });
 }

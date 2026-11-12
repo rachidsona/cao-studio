@@ -213,9 +213,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     duplicate(cabinet.id);
   });
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     show();
-  };
+  });
 }

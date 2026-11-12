@@ -180,10 +180,8 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     again();
   });
   document.addEventListener("cad:isolated", again);
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     read();
-  };
+  });
   read();
 }

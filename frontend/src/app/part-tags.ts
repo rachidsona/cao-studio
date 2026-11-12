@@ -93,9 +93,7 @@ export function bindPartTags(root: HTMLElement, viewport: Viewport, editor: Edit
   button?.addEventListener("click", () => set(!on));
   button?.setAttribute("aria-pressed", String(on));
 
-  const previous = editor.onRender;
-  editor.onRender = () => {
-    previous();
+  editor.afterRender(() => {
     if (on) draw();
-  };
+  });
 }
