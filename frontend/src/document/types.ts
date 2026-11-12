@@ -664,9 +664,18 @@ export interface FrontsFeature extends FeatureBase {
   thickness: number;
   hinges: boolean;
   handles: boolean;
+  /** Doors: plain boards, or glazed (an aluminium frame `frameWidth` wide round tempered glass, features/glass-door.ts). */
+  style?: "flat" | "glass";
+  frameWidth?: number;
+  glass?: GlassKind;
+  profile?: ProfileFinish;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
   hw?: HardwareSizes;
 }
+
+/** The glass of a glazed door, and the finish of its aluminium frame. */
+export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze";
+export type ProfileFinish = "brushed" | "black";
 
 /** Drilling sizes of the hardware chosen for the project: handle holes and hinge cups (mm). */
 export interface HardwareSizes {
@@ -712,10 +721,15 @@ export interface NicheFeature extends FeatureBase {
   joined?: number[];
   /** Doors: the cases left without one. */
   skipped?: number[];
-  /** Doors: flat, or a frame round a panel set back (routed in one piece), its width and the panel's set-back (mm). */
-  style?: "flat" | "frame";
+  /**
+   * Doors: flat, a frame round a panel set back (routed in one piece), or glazed (an aluminium frame round tempered
+   * glass, features/glass-door.ts); the frame's width and the panel's set-back (mm), the glass and the frame's finish.
+   */
+  style?: "flat" | "frame" | "glass";
   frameWidth?: number;
   frameDepth?: number;
+  glass?: GlassKind;
+  profile?: ProfileFinish;
   /** Back: one panel for the whole cabinet, or one per case. */
   split?: "whole" | "cases";
   /**

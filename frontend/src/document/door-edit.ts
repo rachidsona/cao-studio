@@ -2,14 +2,17 @@
  * Une porte, prise par une de ses pièces (la porte ou sa poignée) : ce qu'elle est et ce qu'on peut y changer, pour le
  * menu du clic droit (app/door-menu.ts). La porte d'un caisson (ses façades), d'une case de Répartition (réglée sur la
  * Répartition), posée sur des niches, ou bâtie en panneau (un meuble d'angle). Son sens d'ouverture s'inverse, sa
- * poignée s'ôte ou revient, elle se retire ; celle d'un caisson se change en tiroirs, celle d'une Répartition en porte à
- * cadre. Pur.
+ * poignée s'ôte ou revient, elle se retire ; celle d'un caisson se change en tiroirs ou en porte vitrée, celle d'une
+ * Répartition ou sur niches en porte plate, à cadre ou vitrée (cadre alu). Pur.
  */
+import { frontsParts } from "../features/fronts-parts";
+import { styleChange, type DoorStyle } from "../features/glass-door";
+import { nichePartsIn } from "../features/niche-parts";
 import { withCaseDoor, withDoorSettings } from "./door-fronts";
 import { madeDoor } from "./kitchen-floor";
 import { bodyOrigin, deleteFeatures, findFeature, removePieces, updateFeature } from "./operations";
 import type { DoorSettings } from "./sketch";
-import { featureOfBody, type CadDocument, type ExtrudeFeature, type FrontsFeature, type NicheFeature, type SketchFeature } from "./types";
+import { featureOfBody, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FrontsFeature, type NicheFeature, type SketchFeature } from "./types";
 import { isPartition } from "../sketcher/partition-history";
 
 export type DoorKind = "fronts" | "partition" | "niche" | "board";
@@ -52,15 +55,16 @@ export function doorOf(doc: CadDocument, bodyId: string): DoorInfo | null {
   const f = findFeature(doc, featureOfBody(id));
   if (f?.type === "fronts") {
     if (f.layout === "drawers") return null;
-    const index = partNumber(id);
+    // The glass of a glazed door is that door.
+    const index = frontsParts(f, findFeature(doc, f.cabinet) as CabinetFeature | undefined)[partNumber(id)]?.of ?? partNumber(id);
     if (index > (f.layout === "doors" ? 1 : 0)) return null;
     return { kind: "fronts", feature: f.id, index, hinge: f.layout === "door" ? (f.side ?? "left") : null, handles: f.handles };
   }
   if (f?.type === "niche" && (f.fill === "doors" || f.fill === "door")) {
     const count = f.fill === "door" ? 1 : nicheDoors(f, doc);
     const part = partNumber(id);
-    // A handle comes after the doors, one per door, in order.
-    const index = part < count ? part : part - count;
+    // A handle (and the glass of a glazed door) comes after the doors, one per door, in order, and says whose it is.
+    const index = nichePartsIn(doc.features, f)[part]?.of ?? (part < count ? part : part - count);
     if (index < 0 || index >= count) return null;
     return { kind: f.fill === "door" ? "niche" : "partition", feature: f.id, index, hinge: f.hinges?.[index] ?? inTurn(count)[index]!, handles: f.handles };
   }
@@ -104,7 +108,11 @@ export function withDoorRemoved(doc: CadDocument, bodyId: string): CadDocument |
   }
   if (door.kind === "niche") return deleteFeatures(doc, [door.feature]).next;
   if (door.kind === "fronts" && f?.type === "fronts" && f.layout === "door") return deleteFeatures(doc, [f.id]).next;
-  // One of a cabinet's two doors, a corner door: the piece taken out (undo brings it back).
+  // One of a cabinet's two doors (with its glass), a corner door: the piece taken out (undo brings it back).
+  if (door.kind === "fronts" && f?.type === "fronts") {
+    const parts = frontsParts(f, findFeature(doc, f.cabinet) as CabinetFeature | undefined);
+    return removePieces(doc, parts.flatMap((p, i) => (i === door.index || p.of === door.index ? [`${f.id}#${i}`] : [])));
+  }
   return removePieces(doc, [bodyOrigin(doc, bodyId)]);
 }
 
@@ -119,11 +127,21 @@ export function withDoorHandles(doc: CadDocument, bodyId: string): CadDocument |
   return "Cette porte n'a pas de poignée à régler.";
 }
 
-/** A cabinet's doors made drawers (three), or a Répartition's doors flat or framed, the other way. */
-export function withDoorStyle(doc: CadDocument, bodyId: string): CadDocument | string {
+/**
+ * Without `style`: a cabinet's doors made drawers (three), or a Répartition's doors flat or framed, the other way.
+ * With it: the doors in that style — plain or glazed for a cabinet; flat, framed or glazed for a Répartition or a door
+ * over niches (a glazed one with an aluminium frame of 20 mm, clear glass and brushed aluminium unless chosen before).
+ */
+export function withDoorStyle(doc: CadDocument, bodyId: string, style?: DoorStyle): CadDocument | string {
   const door = doorOf(doc, bodyId);
   const f = door && findFeature(doc, door.feature);
-  if (f?.type === "fronts") return updateFeature(doc, f.id, () => ({ ...f, layout: "drawers" as const, drawers: f.drawers || 3 }));
-  if (f?.type === "niche" && door?.kind === "partition") return withDoorSettings(doc, f.sketch, f.partition, { style: f.style === "frame" ? "flat" : "frame" });
+  if (f?.type === "fronts" && !style) return updateFeature(doc, f.id, () => ({ ...f, layout: "drawers" as const, drawers: f.drawers || 3 }));
+  if (f?.type === "fronts") {
+    if (style === "frame") return "La porte d'un caisson est plate ou vitrée.";
+    return updateFeature(doc, f.id, () => ({ ...f, ...styleChange(style!, f) }) as FrontsFeature);
+  }
+  const next = style ?? (f?.type === "niche" && f.style === "frame" ? "flat" : "frame");
+  if (f?.type === "niche" && door?.kind === "partition") return withDoorSettings(doc, f.sketch, f.partition, styleChange(next, f));
+  if (f?.type === "niche" && door?.kind === "niche" && style) return updateFeature(doc, f.id, () => ({ ...f, ...styleChange(style, f) }));
   return "Rien d'autre à proposer pour cette porte.";
 }

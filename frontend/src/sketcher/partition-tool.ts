@@ -14,6 +14,7 @@ import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
+import { doorStyleRows } from "./partition-door-style";
 import { FacePanel } from "./partition-face-panel";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
 import { casesText, defaultDividers, KIND_NAMES, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
@@ -362,11 +363,8 @@ export class SketchPartitionTool {
       extrusionOption.on && this.doors ? number("Jeu", this.doors.gap, (v) => this.setDoors({ gap: v }), true) : null,
       extrusionOption.on && this.doors ? number("Épaisseur portes", this.doors.thickness, (v) => this.setDoors({ thickness: v })) : null,
       extrusionOption.on && this.doors ? check("Trous de poignée (entraxe 128)", this.doors.handles, (v) => this.setDoors({ handles: v })) : null,
-      extrusionOption.on && this.doors
-        ? select("Style des portes", this.doors.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre (panneau en retrait, usinée dans la masse)"]], (v) => this.setDoors(v === "frame" ? { style: "frame", frameWidth: this.doors?.frameWidth ?? 70, frameDepth: this.doors?.frameDepth ?? 6 } : { style: "flat" }))
-        : null,
-      extrusionOption.on && this.doors?.style === "frame" ? number("Largeur du cadre", this.doors.frameWidth ?? 70, (v) => this.setDoors({ frameWidth: v })) : null,
-      extrusionOption.on && this.doors?.style === "frame" ? number("Retrait du panneau", this.doors.frameDepth ?? 6, (v) => this.setDoors({ frameDepth: v })) : null,
+      // Flat, framed or glazed (an aluminium frame round tempered glass).
+      ...(extrusionOption.on && this.doors ? doorStyleRows(this.doors, (change) => this.setDoors(change), { number, select }) : []),
       // The side each door opens from.
       ...(extrusionOption.on && this.doors && typeof layout !== "string"
         ? layout.caseWidths.slice((this.doors.joined?.filter((c) => c < layout.caseWidths.length - 1).length ?? 0) + (this.doors.skipped?.length ?? 0)).map((_, i, doors) =>

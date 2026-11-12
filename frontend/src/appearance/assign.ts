@@ -1,8 +1,10 @@
 /**
  * L'apparence de chaque corps : celle qu'on lui a donnée (bibliothèque, et sa couleur pour une laque ou une peinture),
- * sinon celle de sa matière d'atelier, sinon aucune ; une face peut avoir la sienne (face-looks.ts). Gardée avec la matière dans `bodyInfo` (annulable comme toute
+ * sinon celle de sa porte vitrée (son verre, son cadre alu : document/glass-look.ts), sinon celle de sa matière
+ * d'atelier, sinon aucune ; une face peut avoir la sienne (face-looks.ts). Gardée avec la matière dans `bodyInfo` (annulable comme toute
  * modification), elle ne change ni la liste de débit ni le devis.
  */
+import { glassDoorLook } from "../document/glass-look";
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import type { BodyInfo, CadDocument, FaceLook } from "../document/types";
 import { syncCustom } from "./custom";
@@ -37,7 +39,7 @@ export const isColor = (value: unknown): value is string => typeof value === "st
 export function bodyAppearance(doc: CadDocument, bodyId: string, box: [number[], number[]] | undefined): BodyAppearance | null {
   syncCustom(doc);
   const info = bodyInfo(doc, bodyId);
-  const appearance = appearanceById(info.appearance) ?? appearanceById(MATERIAL_APPEARANCE[info.material ?? ""]) ?? (info.room ? WALL_APPEARANCE : undefined);
+  const appearance = appearanceById(info.appearance) ?? appearanceById(glassDoorLook(doc, bodyId)) ?? appearanceById(MATERIAL_APPEARANCE[info.material ?? ""]) ?? (info.room ? WALL_APPEARANCE : undefined);
   if (!appearance) return null;
   return { appearance, color: appearance.paintable && isColor(info.color) ? info.color : undefined, grainAxis: grainAxis(info, box), shift: motifShift(bodyId), ...(info.light ? { emit: info.light.up ? "up" : "down" } : {}) };
 }

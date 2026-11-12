@@ -1,7 +1,8 @@
 /**
  * Drawers and doors opened by a click in the 3D view, and closed by another click (on it, open where it now is). All
  * the bodies of a drawer — its front and its box — slide out together, the way its front faces; a door of a
- * Répartition or of a cabinet turns outwards about its hinges (the side chosen for it), by 100°. View only, as
+ * Répartition or of a cabinet turns outwards about its hinges (the side chosen for it), by 100°, with its handle and the
+ * glass of a glazed door. View only, as
  * « Mouvements »: nothing changes in the model, and a regeneration of the model closes them. Not while a tool or a
  * sketch takes the clicks of the view, nor with Ctrl, Cmd or Maj (they add to the selection).
  *
@@ -45,7 +46,10 @@ function outwards(axis: Axis, pivot: Vec3, free: Vec3, normal: Vec3): Swing {
 /** A door of a cabinet's fronts: they face −Y, then turn with the cabinet about the vertical through its origin. */
 function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0], bodyId: string): Swing | null {
   const cabinet = findFeature(doc, fronts.cabinet) as CabinetFeature | undefined;
-  const part = frontsParts(fronts, cabinet)[partNumber(bodyId)];
+  const parts = frontsParts(fronts, cabinet);
+  // The glass of a glazed door turns with its door.
+  const own = parts[partNumber(bodyId)];
+  const part = own?.of !== undefined ? parts[own.of] : own;
   if (!cabinet || part?.role?.kind !== "door") return null;
   const r = rotationMatrix(2, cabinet.rotation ?? 0);
   const turned = (x: number, y: number, z: number): Vec3 => {
@@ -90,8 +94,8 @@ export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): S
   if (typeof n === "string") return null;
   const parts = nicheParts(feature, n);
   const own = parts[partNumber(bodyId)];
-  // A handle swings with its door.
-  const part = own?.kind === "handle" && own.of !== undefined ? parts[own.of] : own;
+  // A handle, or the glass of a glazed door, swings with its door.
+  const part = own?.of !== undefined ? parts[own.of] : own;
   if (!part?.handle) return null;
   const [hingeU, freeU] = part.handle === "right" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
   const [v, w] = [(part.from[1] + part.to[1]) / 2, part.to[2]];
@@ -100,14 +104,18 @@ export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): S
   return outwards(n.frame.v.findIndex((c) => Math.abs(c) > 0.5) as Axis, pivot, free, n.frame.normal);
 }
 
-/** A door of a Répartition and its handle, by body id (the door first), from either of them. */
+/**
+ * A door of a Répartition with its handle and its glass, or a cabinet's door with its glass, by body id (the door
+ * first), from any of them.
+ */
 export function doorWithHandle(doc: CadDocument, bodyId: string): string[] {
   const feature = findFeature(doc, featureOfBody(bodyId));
-  if (feature?.type !== "niche") return [bodyId];
-  const parts = nichePartsIn(doc.features, feature);
+  const parts: { of?: number }[] =
+    feature?.type === "niche" ? nichePartsIn(doc.features, feature) : feature?.type === "fronts" ? frontsParts(feature, findFeature(doc, feature.cabinet) as CabinetFeature | undefined) : [];
+  if (!feature || !parts.length) return [bodyId];
   const index = partNumber(bodyId);
-  const door = parts[index]?.kind === "handle" ? (parts[index]!.of ?? index) : index;
-  return [door, ...parts.flatMap((p, i) => (p.kind === "handle" && p.of === door ? [i] : []))].map((i) => `${feature.id}#${i}`);
+  const door = parts[index]?.of ?? index;
+  return [door, ...parts.flatMap((p, i) => (p.of === door ? [i] : []))].map((i) => `${feature.id}#${i}`);
 }
 
 /** The bodies of the drawer this body is a piece of (null: not a drawer). */

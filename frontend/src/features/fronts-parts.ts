@@ -5,9 +5,12 @@
  * - Une porte, deux portes, ou n tiroirs de même hauteur ; chaque tiroir a son caisson (deux côtés, avant, arrière,
  *   fond) monté sur coulisses de 12,5 mm de chaque côté, sa longueur arrondie aux longueurs de coulisses du commerce.
  * - Quincaillerie : charnières à boîtier Ø35 (2 à 4 selon la hauteur de la porte), poignées entraxe 128 mm.
+ * - Porte vitrée : la porte est le cadre en profilé alu, son verre une pièce à part après les façades (« Vitre … »),
+ *   au milieu de l'épaisseur, qui pivote avec elle ; charnières pour cadre alu (glass-door.ts).
  */
 import type { CabinetFeature, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "./cabinet-parts";
+import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass } from "./glass-door";
 
 export interface FrontPart {
   name: string;
@@ -15,6 +18,8 @@ export interface FrontPart {
   to: Vec3;
   /** Door (hinged on its left or right edge) or drawer front: where its hardware goes. */
   role?: { kind: "door"; hinge: "left" | "right" } | { kind: "drawer" };
+  /** The glass of a glazed door: the index of its door (it turns with it). */
+  of?: number;
 }
 
 /** Commercial slide lengths (mm). */
@@ -23,13 +28,19 @@ export const SLIDE_PLAY = 12.5;
 export const DRAWER_SIDE = 16;
 export const DRAWER_BOTTOM = 8;
 
-export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness">, cabinet: CabinetFeature | undefined): string | null {
+export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth">>, cabinet: CabinetFeature | undefined): string | null {
   if (!cabinet || cabinet.type !== "cabinet") return "Choisissez le caisson à habiller.";
   const problem = cabinetProblem(cabinet);
   if (problem) return problem;
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
   if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
   if (f.layout === "drawers" && (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > 8)) return "De 1 à 8 tiroirs.";
+  if (f.layout !== "drawers" && isGlass(f)) {
+    // The size of each door, as frontsParts lays them out.
+    const { width: W, height: H, thickness: t, plinth: p } = cabinet;
+    const [w, h] = f.mount === "inset" ? [W - 2 * t - 2 * f.gap, H - p - 2 * t - 2 * f.gap] : [W - f.gap, H - p - f.gap];
+    return glassProblem(f, [{ width: f.layout === "doors" ? (w - f.gap) / 2 : w, height: h }], f.thickness);
+  }
   return null;
 }
 
@@ -78,6 +89,13 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
     const mid = (x0 + x1) / 2;
     box("Porte gauche", [x0, y0, z0], [mid - g / 2, y1, z1], { kind: "door", hinge: "left" });
     box("Porte droite", [mid + g / 2, y0, z0], [x1, y1, z1], { kind: "door", hinge: "right" });
+  }
+  if (f.layout !== "drawers") {
+    // The glass of each glazed door, after the doors: in the middle of its thickness (along Y).
+    if (isGlass(f)) parts.slice().forEach((door, i) => {
+      const [from, to] = glassPane(door.from, door.to, 1, glassFrame(f));
+      parts.push({ name: `Vitre ${door.name.toLowerCase()}`, from, to, of: i });
+    });
   } else {
     const n = f.drawers;
     const h = (z1 - z0 - (n - 1) * g) / n;
@@ -109,20 +127,25 @@ export function frontsPartNames(f: FrontsFeature, cabinet: CabinetFeature | unde
   return frontsParts(f, cabinet).map((p) => p.name);
 }
 
-/** Default material of each part: the cabinet's for the fronts, birch plywood for the drawer boxes, HDF bottoms. */
+/**
+ * Default material of each part: the cabinet's for the fronts (and the glass of a glazed door, which is bought and
+ * looks like glass all the same), birch plywood for the drawer boxes, HDF bottoms.
+ */
 export function frontsMaterials(f: FrontsFeature, cabinet: CabinetFeature | undefined, cabinetMaterial = "melamine-white"): string[] {
-  return frontsParts(f, cabinet).map((p) => (p.role ? cabinetMaterial : p.name.endsWith("fond") ? "hdf" : "birch-plywood"));
+  return frontsParts(f, cabinet).map((p) => (p.role || p.of !== undefined ? cabinetMaterial : p.name.endsWith("fond") ? "hdf" : "birch-plywood"));
 }
 
 /** Hardware of the fronts: hinges, slide pairs, handles (to buy, and in the quote). */
-export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undefined): { name: string; quantity: number }[] {
+export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undefined): { name: string; quantity: number; unit?: string }[] {
   const parts = frontsParts(f, cabinet);
   const doors = parts.filter((p) => p.role?.kind === "door");
   const drawers = parts.filter((p) => p.role?.kind === "drawer");
-  const out: { name: string; quantity: number }[] = [];
+  const out: { name: string; quantity: number; unit?: string }[] = [];
   const hinges = f.hinges ? doors.reduce((n, d) => n + hingeCount(d.to[2] - d.from[2]), 0) : 0;
-  if (hinges) out.push({ name: "Charnière à boîtier Ø35", quantity: hinges });
+  // A glazed door hangs on hinges made for its aluminium frame; its glass and its profile are bought.
+  if (hinges) out.push({ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges });
   if (drawers.length) out.push({ name: "Coulisse de tiroir (paire)", quantity: drawers.length });
   if (f.handles && doors.length + drawers.length) out.push({ name: "Poignée entraxe 128 mm", quantity: doors.length + drawers.length });
+  out.push(...glassHardware(f, doors.map((d) => ({ from: d.from, to: d.to, depth: 1 as const }))));
   return out;
 }

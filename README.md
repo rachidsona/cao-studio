@@ -887,6 +887,15 @@ opération existante.
   dite « shaker » : un cadre (70 mm par défaut) autour d'un panneau en retrait (6 mm), usinée dans la masse comme
   en MDF. La porte reste une seule pièce dans la liste de débit ; charnières, poignées, ouverture d'un clic et sens
   d'ouverture ne changent pas. Un cadre trop large pour la porte, ou un panneau de moins de 3 mm, sont refusés.
+- **Portes vitrées (cadre alu)** (« Style des portes » de la Répartition et de Façades sur une Répartition, Porte sur
+  niches, Façades d'un caisson de cuisine, clic droit sur une porte) : un cadre en profilé aluminium (20 mm de large
+  par défaut, réglable ; brossé ou noir) autour d'un verre trempé de 4 mm (clair, extra-clair, dépoli, fumé ou bronze),
+  au milieu de l'épaisseur, engagé de 5 mm dans la rainure du profilé. Le verre est un corps à part (« Vitre porte n »)
+  qui pivote avec sa porte ; cadre et verre prennent l'apparence de l'aluminium et du verre choisis (tant qu'on ne
+  leur en donne pas une autre). Ni l'un ni l'autre ne se scie : ils sortent de la liste de débit et vont au devis et
+  à la liste d'achat, le verre au m² (« Verre trempé 4 mm … »), le profilé au mètre (tour de chaque porte), avec des
+  charnières pour cadre alu ; tarifs indicatifs en MAD (`features/glass-door.ts`). Un cadre de moins de 10 mm, trop
+  large pour la porte, ou une porte de moins de 8 mm d'épaisseur sont refusés.
 - **Poignées en 3D** : les portes de la Répartition et les tiroirs des niches qui ont leurs trous de poignée
   reçoivent aussi la poignée elle-même, devant ses trous, à l'entraxe de la poignée choisie dans la Quincaillerie :
   deux pieds et une barre qui dépasse de 15 mm, ou un bouton. C'est de la quincaillerie (hors liste de débit, comptée
@@ -2201,7 +2210,8 @@ opération existante.
 - **Menu d'une porte** : un **clic droit sur une porte** (ou sa poignée) dans la vue ouvre son menu — Ouvrir / fermer la
   porte ; **Ouvrir de l'autre côté** (ses charnières passent à gauche ou à droite) ; Ôter ou mettre les poignées ;
   **Renommer…** (un champ au pointeur, Entrée garde) ; Sélectionner le meuble entier ; **Remplacer par des tiroirs**
-  (porte d'un caisson) ou Portes à cadre / plates (Répartition) ; **Supprimer la porte**. Chaque choix est une
+  ou Porte vitrée / pleine (porte d'un caisson), Portes plates / à cadre / vitrées (Répartition, porte sur niches) ;
+  **Supprimer la porte**. Chaque choix est une
   annulation. Une porte de caisson (`FrontsFeature.side`), une porte de case de Répartition (son sens seul, dans
   `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte d'angle bâtie en panneau.
   Dans une cuisine du Plan de cuisine, le sens choisi passe au meuble du linéaire (`KitchenRunItem.side`) et reste quand

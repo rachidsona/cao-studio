@@ -6,6 +6,7 @@
  * solver's starting guess, which keeps solutions stable from one edit to the
  * next. Coordinates are in millimetres in the sketch plane; angles in degrees.
  */
+import type { GlassKind, ProfileFinish } from "./types";
 
 /** Implicit, fixed references available in every sketch. */
 export const ORIGIN = "origin";
@@ -191,10 +192,15 @@ export interface DoorSettings {
   joined?: number[];
   /** The cases left without a door (a door shared by several: its first case). Kept empty rather than removed. */
   skipped?: number[];
-  /** A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`. */
-  style?: "flat" | "frame";
+  /**
+   * A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`; a
+   * glass door: an aluminium frame `frameWidth` wide (`profile`) round tempered glass (`glass`).
+   */
+  style?: "flat" | "frame" | "glass";
   frameWidth?: number;
   frameDepth?: number;
+  glass?: GlassKind;
+  profile?: ProfileFinish;
 }
 
 /**

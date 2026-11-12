@@ -1,7 +1,8 @@
 /**
  * Le menu d'une porte : un clic droit sur une porte (ou sa poignée) dans la vue, sans outil en cours. On l'ouvre ou la
  * ferme, on inverse son sens d'ouverture, on ôte ou remet ses poignées, on la renomme, on sélectionne le meuble entier,
- * on la change (en tiroirs pour un caisson, en porte à cadre ou plate pour une Répartition), on la supprime ; le caisson
+ * on la change (en tiroirs ou en porte vitrée pour un caisson, en porte plate, à cadre ou vitrée pour une Répartition ou
+ * une porte sur niches), on la supprime ; le caisson
  * de cuisine qui la porte s'isole pour être aménagé (app/cabinet-furnish.ts). Chaque
  * changement est une annulation (document/door-edit.ts).
  */
@@ -17,6 +18,13 @@ import { furnishCabinet } from "./cabinet-furnish";
 import { isolateMenuItem } from "./isolate-selection";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
+
+/** The styles a door can take, as the menu offers them (the one it has left out). */
+const STYLES = [
+  ["flat", "Portes plates"],
+  ["frame", "Portes à cadre"],
+  ["glass", "Portes vitrées (cadre alu)"],
+] as const;
 
 /**
  * A name typed in a small field at the pointer; Entrée keeps it, Échap or a click beside leaves it. A name to give
@@ -79,7 +87,12 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
     ...(f?.type === "fronts" ? [{ label: "Isoler et aménager le caisson", run: () => void furnishCabinet(editor, f.cabinet) }] : []),
     ...(alone ? [{ label: alone[0], run: alone[1] }] : []),
     ...(door.kind === "fronts" ? [{ label: "Remplacer par des tiroirs", run: () => apply(withDoorStyle(doc, bodyId), "Les portes sont devenues des tiroirs.") }] : []),
-    ...(door.kind === "partition" && f?.type === "niche" ? [{ label: f.style === "frame" ? "Portes plates" : "Portes à cadre", run: () => apply(withDoorStyle(doc, bodyId), f.style === "frame" ? "Portes plates." : "Portes à cadre.") }] : []),
+    ...(door.kind === "fronts" && f?.type === "fronts"
+      ? [f.style === "glass" ? { label: "Porte pleine", run: () => apply(withDoorStyle(doc, bodyId, "flat"), "Portes pleines.") } : { label: "Porte vitrée (cadre alu)", run: () => apply(withDoorStyle(doc, bodyId, "glass"), "Portes vitrées, cadre alu.") }]
+      : []),
+    ...((door.kind === "partition" || door.kind === "niche") && f?.type === "niche"
+      ? STYLES.filter(([style]) => style !== (f.style ?? "flat")).map(([style, label]) => ({ label, run: () => apply(withDoorStyle(doc, bodyId, style), `${label}.`) }))
+      : []),
     "separator",
     { label: "Supprimer la porte", danger: true, run: () => apply(withDoorRemoved(doc, bodyId), `« ${name} » supprimée (Annuler la remet).`) },
   ];

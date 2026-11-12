@@ -8,6 +8,7 @@
 import type { SketchGeometry } from "../../document/sketch";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature, Vec3 } from "../../document/types";
 import { uniqueId } from "../../document/operations";
+import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../../features/glass-door";
 import { nicheGeometry, nicheParts, nicheProblem, worldBox, type NicheGeometry } from "../../features/niche-parts";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import type { Vec2 } from "../../sketcher/edit";
@@ -124,7 +125,10 @@ export class NicheTool {
 
   /** The feature this tool would make for a niche chosen. */
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
-    const { span: _span, ...settings } = this.settings as Settings & { span?: number[][] };
+    const { span: _span, ...all } = this.settings as Settings & { span?: number[][] };
+    // Only a door has a style (and its glass).
+    const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, ...rest } = all;
+    const settings = this.fill === "door" ? all : rest;
     const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
     return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
   }
@@ -211,6 +215,22 @@ export class NicheTool {
     const mounted = this.settings.mount ?? (this.fill === "door" ? "overlay" : "inset");
     const mount = el("select", { class: FIELD, "aria-label": "Pose" }, el("option", { value: "overlay", selected: mounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: mounted === "inset" }, "Encastrée (dans la niche)"));
     mount.addEventListener("change", () => ((this.settings.mount = mount.value as "overlay" | "inset"), this.recompute()));
+    // A door's style: flat, framed, or glazed (an aluminium frame round tempered glass, its glass and finish).
+    const pick = (label: string, value: string, options: readonly (readonly [string, string])[], set: (v: string) => void) => {
+      const list = el("select", { class: FIELD, "aria-label": label }, ...options.map(([v, text]) => el("option", { value: v, selected: v === value }, text)));
+      list.addEventListener("change", () => (set(list.value), this.recompute()));
+      return el("label", { class: ROW }, label, list);
+    };
+    const styles = [
+      pick("Style", this.settings.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ["glass", "Vitrée (cadre alu)"]], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      ...(this.settings.style === "glass"
+        ? [
+            number("Cadre alu", this.settings.frameWidth ?? GLASS_FRAME, (v) => ((this.settings.frameWidth = v), this.recompute())),
+            pick("Verre", this.settings.glass ?? "clear", GLASS_KINDS, (v) => (this.settings.glass = v as NicheFeature["glass"])),
+            pick("Cadre", this.settings.profile ?? "brushed", PROFILE_FINISHES, (v) => (this.settings.profile = v as NicheFeature["profile"])),
+          ]
+        : []),
+    ];
     const hinge = el("select", { class: FIELD, "aria-label": "Charnières" }, el("option", { value: "left", selected: this.settings.hinges?.[0] !== "right" }, "À gauche"), el("option", { value: "right", selected: this.settings.hinges?.[0] === "right" }, "À droite"));
     hinge.addEventListener("change", () => ((this.settings.hinges = [hinge.value as "left" | "right"]), this.recompute()));
     const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Terminer");
@@ -258,6 +278,7 @@ export class NicheTool {
             el("label", { class: ROW }, "Pose", mount),
             number("Jeu", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
             number("Épaisseur porte", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
+            ...styles,
             el("label", { class: ROW }, "Charnières", hinge),
             el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
           ]

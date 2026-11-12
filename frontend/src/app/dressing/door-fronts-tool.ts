@@ -7,6 +7,8 @@
  */
 import { caseHasDoor, casesJoined, doorSettings, withAllDoors, withCaseDoor, withCasesJoined, withDoorSettings, withDoorSwing, withoutDoors, type DoorSwing } from "../../document/door-fronts";
 import { bodyOrigin, findFeature } from "../../document/operations";
+import type { DoorSettings } from "../../document/sketch";
+import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../../features/glass-door";
 import { featureOfBody, type CadDocument, type SketchFeature } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
@@ -110,8 +112,21 @@ class DoorFrontsTool implements PointerHandler {
       });
       return el("label", { class: "block space-y-1" }, `${label} (${UNIT_LABELS[unit]})`, input);
     };
-    const style = el("select", { class: FIELD, "aria-label": "Style des portes" }, el("option", { value: "flat", selected: doors.style !== "frame" }, "Plate"), el("option", { value: "frame", selected: doors.style === "frame" }, "À cadre"));
-    style.addEventListener("change", () => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { style: style.value as "flat" | "frame" })));
+    // Flat, framed, or glazed: an aluminium frame round tempered glass, its glass and its finish chosen.
+    const choice = (label: string, value: string, options: readonly (readonly [string, string])[], set: (v: string) => void) => {
+      const list = el("select", { class: FIELD, "aria-label": label }, ...options.map(([v, text]) => el("option", { value: v, selected: v === value }, text)));
+      list.addEventListener("change", () => set(list.value));
+      return el("label", { class: "block space-y-1" }, label, list);
+    };
+    const settings = (patch: Partial<DoorSettings>) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, patch));
+    const style = choice("Style des portes", doors.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ["glass", "Vitrée (cadre alu)"]], (v) => settings(styleChange(v as DoorStyle, doors)));
+    const glass = doors.style === "glass"
+      ? [
+          length("Largeur du cadre alu", doors.frameWidth ?? GLASS_FRAME, (frameWidth) => settings({ frameWidth })),
+          choice("Verre (trempé 4 mm)", doors.glass ?? "clear", GLASS_KINDS, (v) => settings({ glass: v as DoorSettings["glass"] })),
+          choice("Cadre", doors.profile ?? "brushed", PROFILE_FINISHES, (v) => settings({ profile: v as DoorSettings["profile"] })),
+        ]
+      : [];
     const handles = el("input", { type: "checkbox", checked: doors.handles }) as HTMLInputElement;
     handles.addEventListener("change", () => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { handles: handles.checked })));
     const all = el("button", { type: "button", class: SMALL }, "Toutes les cases");
@@ -122,7 +137,8 @@ class DoorFrontsTool implements PointerHandler {
       el("div", { class: "flex gap-1" }, all, none),
       length("Jeu", doors.gap, (gap) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { gap }))),
       length("Épaisseur", doors.thickness, (thickness) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { thickness }))),
-      el("label", { class: "block space-y-1" }, "Style des portes", style),
+      style,
+      ...glass,
       el("label", { class: "flex items-center gap-1.5" }, handles, "Trous de poignée"),
       opening,
     );

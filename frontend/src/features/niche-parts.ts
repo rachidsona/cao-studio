@@ -13,6 +13,8 @@
  *   un côté extérieur ou un côté double (chaque case a le sien), elle le couvre en entier ; un côté simple, elle en
  *   couvre la moitié, l'autre moitié est à la porte voisine ; deux cases sans côté entre elles ont chacune leur porte,
  *   qui se rejoignent au milieu de la place du côté absent.
+ * - Porte vitrée (portes de case ou sur niches) : la porte est le cadre en profilé alu ; son verre trempé vient après
+ *   les poignées (« Vitre porte n »), au milieu de l'épaisseur, et pivote avec elle (glass-door.ts).
  * - Fond (de toute la répartition) : en applique derrière les panneaux, sur le dessus, le dessous et les côtés ; un seul
  *   pour tout le placard, ou un par case (coupé au milieu d'un côté simple, comme les portes ; un seul pour des cases
  *   sans côté entre elles).
@@ -28,6 +30,7 @@ import { frameOf, toWorld, type SketchFrame } from "../sketcher/frame";
 import { isPartition, pathKey, rebuildChain, type NicheNode } from "../sketcher/partition-history";
 import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
+import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass } from "./glass-door";
 
 export interface NicheGeometry {
   frame: SketchFrame;
@@ -54,7 +57,7 @@ export interface NichePart {
   role?: "front" | "hardware";
   /** A door: the edge its handle goes along (the other one has the hinges). */
   handle?: "left" | "right";
-  /** A handle: the index of the front it is on (it swings or slides with it). */
+  /** A handle or the glass of a door: the index of the front it is on (it swings or slides with it). */
   of?: number;
 }
 
@@ -172,6 +175,16 @@ export function partitionBacks(input: PartitionParams, origin: [number, number],
   return spans;
 }
 
+/** Why doors of these sizes cannot have this style: a frame too wide or a panel too thin, a glass door impossible. */
+function styleProblem(f: Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "glass" | "profile" | "thickness">, doors: { width: number; height: number }[]): string | null {
+  if (f.style === "frame") {
+    const [w, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
+    if (doors.some((door) => Math.min(door.width, door.height) - 2 * w < 40)) return "Le cadre est trop large pour ces portes.";
+    if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
+  }
+  return glassProblem(f, doors, f.thickness);
+}
+
 /** Why these settings cannot equip this niche, or null. */
 export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "sketch" | "partition" | "niche">, n: NicheGeometry): string | null {
   if (n.cut && f.fill === "drawers") return "Pas de tiroirs dans un angle coupé : ils sortiraient par le pan coupé.";
@@ -194,7 +207,9 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
     if (!(f.thickness > 0)) return "L'épaisseur de la porte doit être positive.";
     if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
     if (f.mount === "inset" && !(f.thickness < n.depth)) return "La porte encastrée doit être moins épaisse que la profondeur des niches.";
-    return Math.min(width, height) - (f.mount === "inset" ? 2 * f.gap : f.gap) < 50 ? "Le jeu est trop grand pour cette porte." : null;
+    const g = f.mount === "inset" ? 2 * f.gap : f.gap;
+    if (Math.min(width, height) - g < 50) return "Le jeu est trop grand pour cette porte.";
+    return styleProblem(f, [{ width: width - g, height: height - g }]);
   }
   if (f.fill === "doors") {
     if (!(f.thickness > 0)) return "L'épaisseur des portes doit être positive.";
@@ -202,12 +217,7 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
     const doors = n.step ? partitionDoors(n.step.input, n.step.origin, f.gap, f.joined, f.skipped) : "La répartition manque.";
     if (typeof doors === "string") return doors;
     if (doors.some(([x0, , x1]) => x1 - x0 < 50)) return "Le jeu est trop grand pour ces portes.";
-    if (f.style === "frame") {
-      const [w, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
-      if (doors.some(([x0, y0, x1, y1]) => Math.min(x1 - x0, y1 - y0) - 2 * w < 40)) return "Le cadre est trop large pour ces portes.";
-      if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
-    }
-    return null;
+    return styleProblem(f, doors.map(([x0, y0, x1, y1]) => ({ width: x1 - x0, height: y1 - y0 })));
   }
   if (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > MAX_DRAWERS) return `De 1 à ${MAX_DRAWERS} tiroirs.`;
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
@@ -244,11 +254,19 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
       const hinge = f.hinges?.[i] ?? (i % 2 === 0 ? "left" : "right");
       return { name: `Porte ${i + 1}`, kind: "box", from: [a, b, w0], to: [c, d, w1], role: "front", handle: hinge === "left" ? "right" : "left" };
     });
-    // The handles, after the doors (their numbers stay): along the edge opposite the hinges, 40 mm in, at mid-height.
+    // The handles, after the doors (their numbers stay): along the edge opposite the hinges, 40 mm in (on the frame of
+    // a glass door), at mid-height.
+    const count = parts.length;
+    const handleIn = handleInset(f);
     if (f.handles) parts.forEach((door, i) => {
-      const u = door.handle === "left" ? door.from[0] + 40 : door.to[0] - 40;
+      const u = door.handle === "left" ? door.from[0] + handleIn : door.to[0] - handleIn;
       const v = (door.from[1] + door.to[1]) / 2;
       parts.push({ name: `Poignée porte ${i + 1}`, kind: "handle", from: [u, v - half(f), door.to[2]], to: [u, v + half(f), door.to[2]], role: "hardware", of: i });
+    });
+    // The glass of each glazed door, last: bought, it turns with its door.
+    if (isGlass(f)) parts.slice(0, count).forEach((door, i) => {
+      const [from, to] = glassPane(door.from, door.to, 2, glassFrame(f));
+      parts.push({ name: `Vitre porte ${i + 1}`, kind: "box", from, to, role: "hardware", of: i });
     });
     return parts;
   }
@@ -368,8 +386,11 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
   }
   const fronts = parts.filter((p) => p.role === "front").length;
   if (f.fill === "doors" || f.fill === "door") {
-    const hinges = parts.filter((p) => p.role === "front").reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
-    return [{ name: "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
+    const doors = parts.filter((p) => p.role === "front");
+    const hinges = doors.reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
+    // A glass door: its glass and its aluminium frame bought, hinges made for the frame.
+    const glass = glassHardware(f, doors.map((p) => ({ from: p.from, to: p.to, depth: 2 as const })));
+    return [{ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []), ...glass];
   }
   return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
 }

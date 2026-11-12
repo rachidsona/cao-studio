@@ -4,6 +4,7 @@
  * check in apps/projects/validation.py and adds per-feature checks.
  * Older schema versions are migrated by parseDocument before validation.
  */
+import { glassFieldsProblem } from "../features/glass-door";
 import { nameProblem } from "./expressions";
 import { kitchenPlanProblem } from "./validate-kitchen";
 import { migrateDocument } from "./migrate";
@@ -251,6 +252,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
       if (feature.side !== undefined && feature.side !== "left" && feature.side !== "right") errors.push(`${where} : côté des charnières inconnu.`);
+      if (glassFieldsProblem(feature, ["flat", "glass"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "glass"])}`);
       break;
     case "room": {
       const num = (v: unknown) => isFiniteNumber(v);
@@ -272,8 +274,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
       if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
       if (feature.skipped !== undefined && !(Array.isArray(feature.skipped) && feature.skipped.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : cases sans porte invalides.`);
-      if (feature.style !== undefined && feature.style !== "flat" && feature.style !== "frame") errors.push(`${where} : style de porte inconnu.`);
-      for (const key of ["frameWidth", "frameDepth"]) if (feature[key] !== undefined && !(isFiniteNumber(feature[key]) && (feature[key] as number) > 0)) errors.push(`${where} : « ${key} » doit être un nombre positif.`);
+      if (glassFieldsProblem(feature, ["flat", "frame", "glass"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass"])}`);
+      if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
       if (feature.mount !== undefined && feature.mount !== "overlay" && feature.mount !== "inset") errors.push(`${where} : pose des façades inconnue.`);
       for (const key of ["sideGap", "betweenGap", "bottomGap"]) if (feature[key] !== undefined && !isFiniteNumber(feature[key])) errors.push(`${where} : « ${key} » doit être un nombre fini.`);

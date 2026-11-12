@@ -4,8 +4,10 @@
  * la marge, une remise par paliers de montant et la TVA. Les tarifs sont indicatifs et se règlent (ils sont retenus
  * par le navigateur). Un scénario remplace une matière par une autre pour comparer les prix ; les versions
  * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
- * Les prix sont en dirhams marocains (MAD). Les tarifs d'origine, fixés en euros, sont convertis à 10,8 MAD l'euro.
+ * Les prix sont en dirhams marocains (MAD). Les tarifs d'origine, fixés en euros, sont convertis à 10,8 MAD l'euro ;
+ * ceux des portes vitrées (verre trempé au m², profilé alu au mètre, charnière pour cadre alu) sont fixés en MAD.
  */
+import { GLASS_RATES } from "../features/glass-door";
 import { csvText } from "./csv-text";
 import { formatLength } from "../measurements/units";
 import { barLength } from "./bars";
@@ -62,7 +64,11 @@ export const DEFAULT_RATES: QuoteRates = {
     "Tasseau chêne": 12,
   }),
   waste: 15,
-  hardware: inMad({ "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 }),
+  hardware: {
+    ...inMad({ "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 }),
+    // Glazed doors, in MAD already.
+    ...GLASS_RATES,
+  },
   band: mad(1.5),
   cutPerPart: mad(4),
   hoursPerPart: 0.25,

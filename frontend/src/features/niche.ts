@@ -3,12 +3,14 @@
  * cylindres pour la tringle et ses supports ; les façades de tiroir et les portes reçoivent leurs trous de poignée
  * (traversants, à l'entraxe et au diamètre de la poignée choisie, Ø5 × 128 mm par défaut) quand on le demande : en
  * travers au milieu d'une façade, le long du bord d'une porte opposé aux charnières ; et la poignée elle-même en 3D,
- * devant ses trous (deux pieds et une barre, ou un bouton).
+ * devant ses trous (deux pieds et une barre, ou un bouton). Une porte vitrée est un cadre en profilé alu : l'ouverture
+ * du verre traverse la porte, et la rainure où il s'engage est creusée dans le cadre ; le verre est une pièce à part.
  */
 import { makeBox, makeCylinder, type Shape3D } from "replicad";
 import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import type { SolidsOutput } from "./outputs";
+import { glassFrame, glassOpening, glassPane, handleInset, isGlass } from "./glass-door";
 import { nicheGeometry, nicheParts, nicheProblem, nicheWorld, worldBox, type NicheGeometry, type NichePart } from "./niche-parts";
 import { underCeiling } from "./sloped-ceiling";
 
@@ -58,13 +60,25 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     pocket.delete();
     solid = cut;
   }
+  // A glass door: the opening through the aluminium frame, and the groove the glass sits in.
+  if (part.role === "front" && part.handle && isGlass(f)) {
+    for (const [from, to] of [glassOpening(part.from, part.to, 2, glassFrame(f)), glassPane(part.from, part.to, 2, glassFrame(f))]) {
+      const [p, q] = worldBox(n, { from, to });
+      const tool = makeBox(p, q) as unknown as Shape3D;
+      const cut = solid.cut(tool) as Shape3D;
+      solid.delete();
+      tool.delete();
+      solid = cut;
+    }
+  }
   if (part.role === "front" && f.handles) {
     // Two holes through the front, the handle's spacing apart across its middle (one for a knob), drilled from the
     // front face backwards.
     const [u0, v0, w0] = part.from;
     const [u1, v1, w1] = part.to;
-    // A door: along its edge, 40 mm in, at mid-height.
-    const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + 40 : u1 - 40, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, (v0 + v1) / 2]);
+    // A door: along its edge, 40 mm in (on the frame of a glass door), at mid-height.
+    const inset = handleInset(f);
+    const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + inset : u1 - inset, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, (v0 + v1) / 2]);
     const spacing = f.hw?.handleSpacing ?? 128;
     for (const du of spacing > 0 ? [-spacing / 2, spacing / 2] : [0]) {
       const start = nicheWorld(n, [...at(du), w1 + 0.005]);

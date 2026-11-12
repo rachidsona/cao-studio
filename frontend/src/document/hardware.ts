@@ -1,9 +1,11 @@
 /**
  * Quincaillerie du modèle, pour le devis : charnières, coulisses et poignées des façades, tringles et supports des
  * penderies, coulisses et poignées des tiroirs de niche, vis confirmat, tourillons et excentriques
- * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble).
+ * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble) ; le verre trempé (au m²) et le
+ * profilé alu (au mètre) des portes vitrées, qui s'achètent au lieu de se scier.
  */
-import { frontsHardware } from "../features/fronts-parts";
+import { frontsHardware, frontsParts } from "../features/fronts-parts";
+import { isGlass } from "../features/glass-door";
 import { nicheHardware, nichePartsIn } from "../features/niche-parts";
 import { catalogItems } from "./hardware-catalog";
 import type { CadDocument } from "./types";
@@ -23,7 +25,10 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
     if (f.suppressed) continue;
     if (f.type === "fronts") {
       const cabinet = doc.features.find((c) => c.id === f.cabinet);
-      for (const h of frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined)) add(h.name, h.quantity);
+      for (const h of frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined)) {
+        add(h.name, h.quantity);
+        if (h.unit) units.set(h.name, h.unit);
+      }
     } else if (f.type === "niche") {
       for (const h of nicheHardware(doc.features, f)) {
         add(h.name, h.quantity);
@@ -49,12 +54,22 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}) })));
 }
 
-/** Bodies that are bought, not cut (the rods of the penderies and their supports): out of the cut list. */
+/**
+ * Bodies that are bought, not cut (the rods of the penderies and their supports, handles, the aluminium frame and the
+ * glass of a glazed door): out of the cut list.
+ */
 export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   const [featureId, index] = bodyId.split("#");
   const f = doc.features.find((x) => x.id === featureId);
   if (index === undefined) return false;
   if (f?.type === "trim") return !!f.parts[Number(index)]?.hardware;
+  if (f?.type === "fronts") {
+    if (!isGlass(f) || f.layout === "drawers") return false;
+    const cabinet = doc.features.find((c) => c.id === f.cabinet);
+    const part = frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined)[Number(index)];
+    return part?.role?.kind === "door" || part?.of !== undefined;
+  }
   if (f?.type !== "niche") return false;
-  return nichePartsIn(doc.features, f)[Number(index)]?.role === "hardware";
+  const role = nichePartsIn(doc.features, f)[Number(index)]?.role;
+  return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door") && isGlass(f));
 }
