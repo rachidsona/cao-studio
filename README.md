@@ -1567,7 +1567,8 @@ opération existante.
       gardait (convertis une fois à leur lecture, `savedRates`). Les montants déjà enregistrés dans un projet (son
       prix dans la liste, les versions de devis, les variantes d'un lien client) ne sont pas réécrits : le prix d'un
       projet se met à jour à sa prochaine ouverture dans l'éditeur.
-    - **Perçages** au prix de l'unité si on le veut (le « Tooling Price » de Polyboard) et **remises par paliers**
+    - **Perçages** au prix de l'unité si on le veut (le « Tooling Price » de Polyboard) — ceux des usinages et ceux
+      que percent les façades (boîtiers de charnière, trous de poignée, `features/fronts-drillings.ts`) — et **remises par paliers**
       (« 30000:5, 60000:8 » : 5 % dès 30 000 MAD HT, 8 % dès 60 000 MAD).
     - Le prix **au mètre linéaire** du meuble, pour comparer avec les prix du marché.
     - **Scénario** (le « What if » de Mozaik) : une matière remplacée par une autre, le prix des deux et l'écart.

@@ -7,7 +7,7 @@
 import { cutList } from "../../document/cut-list";
 import { barLength } from "../../document/bars";
 import { CURRENCY, DEFAULT_RATES, EURO_IN_MAD, mad, money, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../../document/quote";
-import type { CadDocument } from "../../document/types";
+import type { CabinetFeature, CadDocument } from "../../document/types";
 import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../../geometry/client";
 import { modelHardware } from "../../document/hardware";
@@ -21,6 +21,7 @@ import { printPartSheets } from "./workshop-sheets";
 import { showCheck } from "./fabrication-check";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 import { quoteHtml } from "./quote-html";
+import { frontsHoleCount } from "../../features/fronts-drillings";
 
 const RATES_KEY = "cao.quote-rates";
 const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
@@ -105,9 +106,20 @@ function saveRates(rates: QuoteRates): void {
   }, 800);
 }
 
-/** Holes drilled in the model (its machining), priced one by one when the rates say so. */
+/**
+ * Holes drilled in the model, priced one by one when the rates say so: those of its machining, and those its fronts
+ * drill — hinge cups and handle holes (features/fronts-drillings.ts; audit of 11/11/2026, they were left out).
+ */
 export function holesOf(doc: CadDocument): number {
-  return doc.features.reduce((n, f) => n + (f.type === "machining" && !f.suppressed ? f.ops.filter((op) => op.kind === "hole").length : 0), 0);
+  return doc.features.reduce((n, f) => {
+    if (f.suppressed) return n;
+    if (f.type === "machining") return n + f.ops.filter((op) => op.kind === "hole").length;
+    if (f.type === "fronts") {
+      const cabinet = doc.features.find((c): c is CabinetFeature => c.type === "cabinet" && c.id === f.cabinet);
+      return n + frontsHoleCount(f, cabinet);
+    }
+    return n;
+  }, 0);
 }
 
 function showQuote(viewport: Viewport, editor: Editor): void {
