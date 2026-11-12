@@ -281,7 +281,8 @@ Principes :
   2 secondes après, puis 4 images par seconde au repos, au lieu de 60 (`viewport/redraw.ts`). Les ombres ne sont
   recalculées que quand les corps changent (soleil fixe), sur une carte de 2048 (1024 au doigt) ; un écran tactile
   dessine à une netteté de 1,5 au plus. Les objets que le noyau crée pour lire une forme (arêtes, faces, points,
-  sections) sont libérés aussitôt lus.
+  sections) sont libérés aussitôt lus. À chaque recalcul, seuls les corps qui ont changé sont remaillés et envoyés
+  à la vue ; les autres gardent leur maillage et leur géométrie (`geometry/worker.ts` `meshesOf`, `BodyLayer.replace`).
 
 ## Esquisses (phase 4)
 

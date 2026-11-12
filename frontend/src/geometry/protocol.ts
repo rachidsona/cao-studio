@@ -7,7 +7,8 @@ import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 
 export type WorkerRequest =
   | { type: "init" }
-  | { type: "recompute"; doc: CadDocument }
+  /** `known`: the meshes the editor already holds, by body (meshId): those of unchanged bodies are not sent again. */
+  | { type: "recompute"; doc: CadDocument; known?: Record<string, number> }
   | { type: "export"; format: ExportFormat; names: Record<string, string> }
   | { type: "faceInfo"; bodyId: string; faceIndex: number }
   | { type: "edgeInfo"; bodyId: string; edgeIndex: number }
@@ -41,7 +42,12 @@ export interface BodyMesh {
   /** Edges between two coplanar faces (a board's face made of pieces): kept for picking, not drawn. */
   seams?: number[];
   metrics: BodyMetrics;
+  /** Which tessellation this is (worker.ts): an unchanged body keeps its mesh, named by it, across recomputes. */
+  meshId?: number;
 }
+
+/** A body of a recompute as the worker sends it: its mesh, or « the one you hold » when the body did not change. */
+export type WireMesh = BodyMesh | { bodyId: string; meshId: number; same: true };
 
 export interface RecomputeResponse {
   statuses: FeatureStatus[];

@@ -108,13 +108,25 @@ export class BodyLayer {
     return [...this.tints, ...this.appearanceMaterials.values(), ...this.behindMaterials.values(), this.highlightMaterial, this.edgeMaterial];
   }
 
-  /** Replaces the bodies drawn by these meshes. */
+  /**
+   * Replaces the bodies drawn by these meshes. A body whose mesh is the very same object as before (unchanged: the
+   * kernel did not send it again, geometry/worker.ts meshesOf) keeps its geometry — put back as a new one would be
+   * (in view, at its place) — instead of being built again (audit of 11/11/2026).
+   */
   replace(meshes: BodyMesh[]): void {
-    for (const body of this.bodies.values()) this.disposeBody(body);
+    const previous = new Map(this.bodies);
     this.bodies.clear();
     // New meshes, all in view: the walls in the way are taken out again at the next frame.
     this.cut = new Set();
     for (const [index, data] of meshes.entries()) {
+      const kept = previous.get(data.bodyId);
+      if (kept && kept.data === data) {
+        previous.delete(data.bodyId);
+        this.bodies.set(data.bodyId, kept);
+        kept.mesh.visible = kept.edges.visible = true;
+        this.setPose(data.bodyId, null);
+        continue;
+      }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(data.vertices, 3));
       geometry.setAttribute("normal", new THREE.BufferAttribute(data.normals, 3));
@@ -132,6 +144,7 @@ export class BodyLayer {
       this.scene.add(mesh, edges);
       this.bodies.set(data.bodyId, { mesh, edges, data, tint });
     }
+    for (const body of previous.values()) this.disposeBody(body);
     this.drawEdges();
     this.applyAppearance();
   }

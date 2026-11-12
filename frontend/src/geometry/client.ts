@@ -3,7 +3,7 @@ import { stampHardware } from "../document/hardware-catalog";
 import type { CadDocument } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
-import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type ExportResponse, type P3, type FaceOutline, type FaceInfo, type RecomputeResponse, type WorkerEnvelope, type WorkerRequest, type WorkerResponse } from "./protocol";
+import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type ExportResponse, type P3, type FaceOutline, type FaceInfo, type RecomputeResponse, type WireMesh, type WorkerEnvelope, type WorkerRequest, type WorkerResponse } from "./protocol";
 
 type Pending = { type: WorkerRequest["type"]; resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> };
 
@@ -22,6 +22,8 @@ export class GeometryClient {
   /** Recomputes asked, and the last one answered: the bodies the editor shows (protocol.ts, WorkerEnvelope). */
   private sent = 0;
   private shown = 0;
+  /** The meshes of the last recompute, by body: an unchanged body's is kept, the very same object (BodyLayer reuses it). */
+  private meshes = new Map<string, BodyMesh>();
   private pending = new Map<number, Pending>();
   /** Download of the kernel (bytes), while it starts. */
   onProgress: (loaded: number, total: number) => void = () => {};
@@ -69,6 +71,7 @@ export class GeometryClient {
     const message = `Le calcul a duré plus de ${seconds} s : il est arrêté et le noyau 3D redémarre. Si la dernière modification en est la cause, annulez-la (Ctrl+Z).`;
     this.failAll(new Error("Le noyau 3D a redémarré : relancez l'opération."), { id, error: new Error(message) });
     this.sent = this.shown = 0;
+    this.meshes.clear();
     this.start();
     this.onRestart(message);
   }
@@ -90,9 +93,13 @@ export class GeometryClient {
   async recompute(doc: CadDocument): Promise<RecomputeResponse> {
     // The chosen hardware's sizes go into the fronts and doors it drills.
     const generation = ++this.sent;
-    const result = await this.call<RecomputeResponse>({ type: "recompute", doc: stampHardware(doc) }, generation);
+    // The meshes held: the worker sends again only those of bodies that changed (worker.ts meshesOf).
+    const known = Object.fromEntries([...this.meshes].map(([id, mesh]) => [id, mesh.meshId ?? 0]));
+    const wire = await this.call<Omit<RecomputeResponse, "bodies"> & { bodies: WireMesh[] }>({ type: "recompute", doc: stampHardware(doc), known }, generation);
+    const bodies = wire.bodies.map((m) => ("same" in m ? this.meshes.get(m.bodyId) : m)).filter((m): m is BodyMesh => !!m);
+    this.meshes = new Map(bodies.map((m) => [m.bodyId, m]));
     this.shown = Math.max(this.shown, generation);
-    return result;
+    return { ...wire, bodies };
   }
 
   async export(format: ExportFormat, names: Record<string, string>): Promise<Blob> {

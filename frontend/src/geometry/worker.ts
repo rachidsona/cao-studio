@@ -16,7 +16,7 @@ import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel"
 import { offsetPaths } from "./offset";
 import { seamEdges } from "./seams";
 import { describeEdge, describeFace } from "./references";
-import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type FaceInfo, type FaceOutline, type OutlineEdge, type P3, type RecomputeResponse, type WorkerEnvelope, type WorkerResponse } from "./protocol";
+import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type FaceInfo, type FaceOutline, type OutlineEdge, type P3, type WireMesh, type WorkerEnvelope, type WorkerResponse } from "./protocol";
 
 interface WorkerScope {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
@@ -62,6 +62,35 @@ function meshBody(bodyId: string): BodyMesh {
     seams: seamEdges(shape),
     metrics: bodyMetrics(shape),
   };
+}
+
+/**
+ * The meshes of a recompute (audit of 11/11/2026): a body whose solid is the very one already tessellated (its operation
+ * was reused from the cache) and whose mesh the editor holds is sent as « same » — not tessellated, measured and copied
+ * again; the others are meshed anew. On a dressing of 200 boards, a change remeshes only what it changed.
+ */
+const meshCache = new Map<string, { shape: Shape3D; meshId: number; key: string }>();
+let nextMeshId = 1;
+
+function meshesOf(bodies: readonly string[], known: Record<string, number>): { wire: WireMesh[]; keys: Map<string, string> } {
+  const wire: WireMesh[] = [];
+  const keys = new Map<string, string>();
+  for (const bodyId of bodies) {
+    const shape = solid(bodyId);
+    const cached = meshCache.get(bodyId);
+    if (cached && cached.shape === shape && known[bodyId] === cached.meshId) {
+      wire.push({ bodyId, meshId: cached.meshId, same: true });
+      keys.set(bodyId, cached.key);
+      continue;
+    }
+    const mesh = { ...meshBody(bodyId), meshId: nextMeshId++ };
+    const key = shapeKey(mesh);
+    meshCache.set(bodyId, { shape, meshId: mesh.meshId, key });
+    keys.set(bodyId, key);
+    wire.push(mesh);
+  }
+  for (const id of [...meshCache.keys()]) if (!keys.has(id)) meshCache.delete(id);
+  return { wire, keys };
 }
 
 /** Radius of the circle through three points (circular edges). */
@@ -223,14 +252,14 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       const started = performance.now();
       const { statuses, bodies } = recomputer.recompute(request.doc);
       visibleBodies = bodies;
-      const meshes = bodies.map(meshBody);
+      const { wire, keys } = meshesOf(bodies, request.known ?? {});
       if (request.generation !== undefined) {
         generation = request.generation;
-        shapes.set(generation, new Map(meshes.map((m) => [m.bodyId, shapeKey(m)])));
+        shapes.set(generation, keys);
         for (const old of shapes.keys()) if (old < generation - 3) shapes.delete(old);
       }
-      const response: RecomputeResponse = { statuses, bodies: meshes, durationMs: performance.now() - started };
-      const transfer = meshes.flatMap((m) => [m.vertices.buffer, m.normals.buffer, m.indices.buffer, m.edges.buffer]);
+      const response = { statuses, bodies: wire, durationMs: performance.now() - started };
+      const transfer = wire.flatMap((m) => ("same" in m ? [] : [m.vertices.buffer, m.normals.buffer, m.indices.buffer, m.edges.buffer]));
       return { result: response, transfer };
     }
     case "export": {
