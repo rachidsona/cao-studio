@@ -66,7 +66,7 @@ function summary(): void {
     rows.push(["Dimensions", `${shown.join(" × ")} ${unit === "in" ? "po" : unit}`]);
   }
   if (s.parts) rows.push(["Pièces", String(s.parts)]);
-  if (typeof s.price === "number") rows.push(["Prix indicatif", s.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) + " TTC"]);
+  if (typeof s.price === "number") rows.push(["Prix indicatif", s.price.toLocaleString("fr-FR", { style: "currency", currency: "MAD" }) + " TTC"]);
   if (s.date) rows.push(["Version du", new Date(s.date).toLocaleDateString("fr-FR")]);
   const dl = $<HTMLDListElement>("[data-share-summary]")!;
   dl.replaceChildren(...rows.flatMap(([k, v]) => {
@@ -177,9 +177,9 @@ function setupVariants(): void {
   const bar = $<HTMLDivElement>("[data-share-variants]");
   if (!bar || variants.length < 2) return;
   bar.hidden = false;
-  const euros = (v: number | null) => (typeof v === "number" ? ` · ${v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}` : "");
+  const money = (v: number | null) => (typeof v === "number" ? ` · ${v.toLocaleString("fr-FR", { style: "currency", currency: "MAD" })}` : "");
   const buttons = variants.map((v, i) => {
-    const b = el("button", `${v.name}${euros(v.price)}`) as HTMLButtonElement;
+    const b = el("button", `${v.name}${money(v.price)}`) as HTMLButtonElement;
     b.type = "button";
     b.addEventListener("click", () => pick(i));
     return b;
@@ -192,7 +192,7 @@ function setupVariants(): void {
     const body = document.querySelector<HTMLTextAreaElement>('[data-share-form] textarea[name="body"]');
     if (!body) return;
     const v = variants[chosen]!;
-    body.value = `Je choisis la variante « ${v.name} »${typeof v.price === "number" ? ` (${v.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} TTC)` : ""}.`;
+    body.value = `Je choisis la variante « ${v.name} »${typeof v.price === "number" ? ` (${v.price.toLocaleString("fr-FR", { style: "currency", currency: "MAD" })} TTC)` : ""}.`;
     body.focus();
   });
   const pick = (i: number) => {
@@ -322,7 +322,7 @@ function setupAccept(): void {
   box.hidden = false;
   const shown = (accepted: Accepted) => {
     form.hidden = true;
-    const price = typeof accepted.price === "number" ? `, ${accepted.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} TTC` : "";
+    const price = typeof accepted.price === "number" ? `, ${accepted.price.toLocaleString("fr-FR", { style: "currency", currency: "MAD" })} TTC` : "";
     text.textContent = `Projet accepté par ${accepted.by} le ${dateText(accepted.at)}${accepted.variant ? `, ${accepted.variant}` : ""}${price}. L'atelier a été prévenu.`;
   };
   if (data.accepted) return shown(data.accepted);

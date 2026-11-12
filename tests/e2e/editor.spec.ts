@@ -393,7 +393,7 @@ test("tableau de bord : une cuisine créée de l'accueil, son devis calculé par
   await page.goto("/projects/");
   const row = page.locator("[data-project-row]", { hasText: "Cuisine Dupont" });
   await expect(row.locator('[data-status="draft"]')).toHaveText("Esquisse");
-  await expect(row.locator("[data-price]")).toContainText("€");
+  await expect(row.locator("[data-price]")).toContainText("MAD");
   await row.getByRole("link", { name: "Fiche" }).click();
   await page.fill("#id_client_name", "M. Dupont");
   await page.selectOption("#id_status", "quoted");

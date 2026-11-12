@@ -16,7 +16,7 @@
         <tr>
           <td class="px-4 py-2">{% if user.is_staff %}<a class="font-medium hover:underline" href="{% url 'catalog:hardware_edit' rule.pk %}">{{ rule.name }}</a>{% else %}<span class="font-medium">{{ rule.name }}</span>{% endif %}{% if rule.description %}<br><span class="text-gray-500 dark:text-gray-400">{{ rule.description }}</span>{% endif %}</td>
           <td class="px-4 py-2">{{ rule.get_auto_mode_display }}{% if rule.auto_mode %} · {{ rule.auto_per_unit|floatformat:"-1" }}{% else %} · {{ rule.default_quantity|floatformat:"-1" }} {{ rule.unit }}{% endif %}</td>
-          <td class="px-4 py-2 text-right font-mono">{{ rule.unit_price|floatformat:2 }} €/{{ rule.unit }}</td>
+          <td class="px-4 py-2 text-right font-mono">{{ rule.unit_price|floatformat:2 }} MAD/{{ rule.unit }}</td>
           <td class="px-4 py-2">
             {% if user.is_staff %}<div class="flex justify-end gap-1">
               <a class="border border-gray-300 px-3 py-1 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800" href="{% url 'catalog:hardware_edit' rule.pk %}">Modifier</a>

@@ -4,6 +4,7 @@
  * la marge, une remise par paliers de montant et la TVA. Les tarifs sont indicatifs et se règlent (ils sont retenus
  * par le navigateur). Un scénario remplace une matière par une autre pour comparer les prix ; les versions
  * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
+ * Les prix sont en dirhams marocains (MAD). Les tarifs d'origine, fixés en euros, sont convertis à 10,8 MAD l'euro.
  */
 import { csvText } from "./csv-text";
 import { formatLength } from "../measurements/units";
@@ -12,30 +13,41 @@ import type { CutTotals } from "./cut-list";
 import type { DisplayUnit } from "./types";
 
 export interface QuoteRates {
-  /** Price of the boards (€ HT per m², per metre for battens), by material name; `default` for the others. */
+  /** Price of the boards (MAD HT per m², per metre for battens), by material name; `default` for the others. */
   boards: Record<string, number>;
   /** Share of the sheets lost in offcuts (%). */
   waste: number;
-  /** Edge band, glued (€ HT per m). */
+  /** Edge band, glued (MAD HT per m). */
   band: number;
-  /** Sawing and drilling of one part (€ HT). */
+  /** Sawing and drilling of one part (MAD HT). */
   cutPerPart: number;
-  /** Assembly time per part (h) and hourly rate (€ HT). */
+  /** Assembly time per part (h) and hourly rate (MAD HT). */
   hoursPerPart: number;
   hourly: number;
-  /** Price of the hardware (€ HT each), by name. */
+  /** Price of the hardware (MAD HT each), by name. */
   hardware: Record<string, number>;
   /** Margin on the cost (%) and VAT (%). */
   margin: number;
   vat: number;
-  /** Price of one hole drilled (€ HT); 0: included in the cutting. */
+  /** Price of one hole drilled (MAD HT); 0: included in the cutting. */
   perHole?: number;
-  /** Discounts by amount: from this total HT (€), this discount (%) — the highest reached applies. */
+  /** Discounts by amount: from this total HT (MAD), this discount (%) — the highest reached applies. */
   tiers?: [number, number][];
 }
 
+/** The currency of every price: the Moroccan dirham. */
+export const CURRENCY = "MAD";
+
+/** Dirhams for one euro: the usual rates below were set in euros. */
+export const EURO_IN_MAD = 10.8;
+
+/** A price set in euros, in dirhams (to the centime). */
+export const mad = (euros: number): number => Math.round(euros * EURO_IN_MAD * 100) / 100;
+
+const inMad = (prices: Record<string, number>): Record<string, number> => Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, mad(v)]));
+
 export const DEFAULT_RATES: QuoteRates = {
-  boards: {
+  boards: inMad({
     default: 25,
     "Mélaminé blanc": 18,
     "Mélaminé chêne": 24,
@@ -48,13 +60,13 @@ export const DEFAULT_RATES: QuoteRates = {
     "Panneau de fond (HDF)": 6,
     "Tasseau sapin raboté": 3,
     "Tasseau chêne": 12,
-  },
+  }),
   waste: 15,
-  hardware: { "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 },
-  band: 1.5,
-  cutPerPart: 4,
+  hardware: inMad({ "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90 }),
+  band: mad(1.5),
+  cutPerPart: mad(4),
   hoursPerPart: 0.25,
-  hourly: 45,
+  hourly: mad(45),
   margin: 30,
   vat: 20,
 };
@@ -89,7 +101,7 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
     // Battens by the metre, the boards by the square metre.
     if (barLength(t.material) !== null) {
       const metres = cents((t.metres ?? 0) * (1 + rates.waste / 100));
-      const price = rates.boards[t.material] ?? DEFAULT_RATES.boards[t.material] ?? 3;
+      const price = rates.boards[t.material] ?? DEFAULT_RATES.boards[t.material] ?? mad(3);
       lines.push({ label: `${t.material} ${formatLength(t.thickness, unit)} (chutes ${rates.waste} % comprises)`, quantity: metres, unit: "m", unitPrice: price, total: cents(metres * price) });
       continue;
     }
@@ -122,16 +134,16 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
   return { lines, cost, margin, ...(discount ? { discount, discountRate } : {}), net, vat, gross: cents(net + vat) };
 }
 
-/** "1 234,50 €". */
-export function euros(value: number): string {
-  return `${value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+/** "1 234,50 MAD". */
+export function money(value: number): string {
+  return `${value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${CURRENCY}`;
 }
 
 /** The quote as CSV (semicolon separated, for a spreadsheet in French). */
 export function quoteCsv(quote: Quote): string {
   const n = (v: number) => String(v).replace(".", ",");
   const rows = [
-    ["Désignation", "Quantité", "Unité", "Prix unitaire HT", "Total HT"],
+    ["Désignation", "Quantité", "Unité", `Prix unitaire HT (${CURRENCY})`, `Total HT (${CURRENCY})`],
     ...quote.lines.map((l) => [l.label, n(l.quantity), l.unit, n(l.unitPrice), n(l.total)]),
     ["Coût", "", "", "", n(quote.cost)],
     ["Marge", "", "", "", n(quote.margin)],

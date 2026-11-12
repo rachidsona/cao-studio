@@ -58,7 +58,7 @@ describe("débit en barres", () => {
     expect(buy).toContainEqual(expect.objectContaining({ label: "Tasseau sapin raboté 45 × 45 mm", quantity: 2, unit: "barres" }));
     const doc = setBodyInfo(plate(), ["t"], { material: "pine-batten" });
     const quote = makeQuote(cutList(doc, [box("t", 2000, 45, 45)]).totals, { ...DEFAULT_RATES, waste: 10 });
-    expect(quote.lines[0]).toMatchObject({ quantity: 2.2, unit: "m", unitPrice: 3, total: 6.6 });
+    expect(quote.lines[0]).toMatchObject({ quantity: 2.2, unit: "m", unitPrice: 32.4, total: 71.28 }); // 3 € the metre, in dirhams
   });
 });
 

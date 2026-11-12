@@ -24,10 +24,18 @@ def test_api_gives_the_catalog_to_the_editor(client_logged):
     data = client_logged.get(URL).json()
     assert len(data["materials"]) == 23
     walnut = next(m for m in data["materials"] if m["name"] == "Noyer américain")
-    assert walnut == {"id": f"catalog-{Material.objects.get(name='Noyer américain').pk}", "name": "Noyer américain", "thickness": 19, "price": 210, "color": "#5a3a24", "category": "wood", "sheet": [2800, 2070], "default": False}
+    assert walnut == {"id": f"catalog-{Material.objects.get(name='Noyer américain').pk}", "name": "Noyer américain", "thickness": 19, "price": 2268.0, "color": "#5a3a24", "category": "wood", "sheet": [2800, 2070], "default": False}
     hinges = next(h for h in data["hardware"] if h["name"] == "Charnière à clip 35 mm")
-    assert hinges["mode"] == "door_hinge" and hinges["price"] == 1.2 and hinges["unit"] == "u"
+    assert hinges["mode"] == "door_hinge" and hinges["price"] == 12.96 and hinges["unit"] == "u"
     assert data["company"]["name"] == "Mon atelier" and data["company"]["logo"] == ""
+
+
+@pytest.mark.django_db
+def test_prices_are_in_dirhams():
+    # The seeds were in euros: in dirhams (MAD) at 10,8 the euro, the workshop's rates too.
+    assert Material.objects.get(name="Noyer américain").price_per_m2 == 2268
+    profile = CompanyProfile.load()
+    assert (profile.band, profile.cut_per_part, profile.hourly, profile.per_hole) == (16.2, 43.2, 486, 0)
 
 
 @pytest.mark.django_db

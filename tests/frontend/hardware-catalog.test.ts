@@ -26,14 +26,15 @@ describe("catalogue de quincaillerie", () => {
       { name: "Vis confirmat 7 × 50", quantity: 8 },
     ]);
     expect(items.map((i) => [i.name, i.price])).toEqual([
-      ["Blum CLIP top BLUMOTION 110° (réf. 71B3550)", 9],
-      ["Poignée barre entraxe 192 mm", 8],
+      // In dirhams: 9 € and 8 €.
+      ["Blum CLIP top BLUMOTION 110° (réf. 71B3550)", 97.2],
+      ["Poignée barre entraxe 192 mm", 86.4],
       ["Coulisse de tiroir (paire)", undefined],
       ["Vis confirmat 7 × 50", undefined],
     ]);
     const quote = makeQuote([], DEFAULT_RATES, items);
-    expect(quote.lines.find((l) => l.label.startsWith("Blum"))?.total).toBe(36);
-    expect(quote.lines.find((l) => l.label.startsWith("Coulisse"))?.unitPrice).toBe(18);
+    expect(quote.lines.find((l) => l.label.startsWith("Blum"))?.total).toBe(388.8);
+    expect(quote.lines.find((l) => l.label.startsWith("Coulisse"))?.unitPrice).toBe(194.4);
     const hand = makeQuote([], { ...DEFAULT_RATES, hardware: { ...DEFAULT_RATES.hardware, "Poignée barre entraxe 192 mm": 10 } }, items);
     expect(hand.lines.find((l) => l.label.startsWith("Poignée"))?.unitPrice).toBe(10);
     expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();

@@ -914,7 +914,7 @@ opération existante.
   - **Penderie** : une **tringle Ø25** (diamètre réglable de 10 à 50 mm) d'un côté à l'autre de la niche, à
     **mi-profondeur**, son axe à **6 cm sous le haut** (réglable), sur **deux supports** contre les côtés. Le panneau
     donne la longueur de la tringle et sa hauteur au-dessus du bas de la niche. Tringle et supports comptent au
-    **devis** (la tringle **au mètre**, 8 € HT/m, les supports à la pièce, 2,50 €, prix réglables) mais **ni au débit
+    **devis** (la tringle **au mètre**, 86,40 MAD HT/m, les supports à la pièce, 27 MAD, prix réglables) mais **ni au débit
     ni à l'export CNC**. Pour une double penderie, on divise d'abord la niche par une étagère, puis une tringle dans
     chaque niche.
   - **Tiroirs** : **1 à 8 tiroirs encastrés** qui se partagent la hauteur de la niche : façades au nu des panneaux,
@@ -1338,7 +1338,7 @@ opération existante.
       dans des barres du commerce de leur section, mis bout à bout, les plus longs d'abord, chacun dans la première
       barre où il tient (trait de scie 4 mm, 10 mm d'équerrage au début de la barre). Un schéma par barre avec les
       repères et longueurs des pièces, la chute hachurée au bout ; une pièce plus longue qu'une barre est signalée.
-      Au devis, les tasseaux se comptent **au mètre** (sapin 3 € HT/m, chêne 12 € HT/m, réglables)
+      Au devis, les tasseaux se comptent **au mètre** (sapin 32,40 MAD HT/m, chêne 129,60 MAD HT/m, réglables)
       (`document/bars.ts`).
   - *Fabrication groupée* (comme le mode catalogue de Polyboard) : plusieurs projets débités ensemble, chacun en
     quantité. « Ajouter ce projet au lot » y met sa liste de débit et sa quincaillerie du moment (l'ajouter de
@@ -1502,8 +1502,15 @@ opération existante.
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur ; au départ, le prix au m² des matières du catalogue de l'atelier) ; impression / PDF et CSV, avec
     l'en-tête de l'atelier (profil du catalogue).
+    - **En dirhams marocains (MAD)** : tous les prix (devis, prix TTC en bas de l'éditeur, quincaillerie, catalogue
+      de l'atelier, liste des projets, fiche et lien client) s'écrivent en MAD. Les tarifs d'origine, fixés en euros,
+      ont été convertis à **10,8 MAD l'euro** (`EURO_IN_MAD`, `mad()` dans `document/quote.ts`) : ceux de l'éditeur,
+      ceux du catalogue du serveur (migration `catalog/0004_prices_in_mad`, une fois) et ceux qu'un navigateur
+      gardait (convertis une fois à leur lecture, `savedRates`). Les montants déjà enregistrés dans un projet (son
+      prix dans la liste, les versions de devis, les variantes d'un lien client) ne sont pas réécrits : le prix d'un
+      projet se met à jour à sa prochaine ouverture dans l'éditeur.
     - **Perçages** au prix de l'unité si on le veut (le « Tooling Price » de Polyboard) et **remises par paliers**
-      (« 3000:5, 6000:8 » : 5 % dès 3000 € HT, 8 % dès 6000 €).
+      (« 30000:5, 60000:8 » : 5 % dès 30 000 MAD HT, 8 % dès 60 000 MAD).
     - Le prix **au mètre linéaire** du meuble, pour comparer avec les prix du marché.
     - **Scénario** (le « What if » de Mozaik) : une matière remplacée par une autre, le prix des deux et l'écart.
     - **Versions** : « Enregistrer comme devis initial » garde le devis dans le projet ; chaque version suivante est

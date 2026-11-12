@@ -4,9 +4,14 @@
  * charge et sortie des coulisses — et un prix indicatif. Le choix du projet (`doc.hardware`) donne leur nom et leur
  * prix aux listes de quincaillerie (devis, notice) et leurs cotes aux perçages des façades et des portes : il est
  * recopié dans les équipements et façades envoyés au noyau (`stampHardware`). Les cotes sont les valeurs courantes de
- * chaque gamme : à vérifier sur la fiche du fabricant avant d'usiner une série.
+ * chaque gamme : à vérifier sur la fiche du fabricant avant d'usiner une série. Les prix, notés en euros, sont donnés en
+ * dirhams (MAD, à 10,8 MAD l'euro, document/quote.ts).
  */
+import { mad } from "./quote";
 import type { CadDocument, Feature, HardwareSizes } from "./types";
+
+/** The prices below are noted in euros: in dirhams. */
+const inMad = <T extends { price: number }>(models: T[]): T[] => models.map((m) => ({ ...m, price: mad(m.price) }));
 
 export interface HingeModel {
   id: string;
@@ -42,7 +47,7 @@ export interface HandleModel {
   price: number;
 }
 
-export const HINGE_MODELS: HingeModel[] = [
+export const HINGE_MODELS: HingeModel[] = inMad([
   { id: "generic", label: "Charnière à boîtier Ø35", cup: { diameter: 35, depth: 13, edge: 22.5 }, opening: 110, softClose: false, price: 3.5 },
   { id: "blum-cliptop-blumotion", label: "Blum CLIP top BLUMOTION 110°", reference: "71B3550", cup: { diameter: 35, depth: 13, edge: 22.5 }, opening: 110, softClose: true, price: 9 },
   { id: "blum-cliptop-155", label: "Blum CLIP top 155° (grand angle)", cup: { diameter: 35, depth: 13, edge: 22.5 }, opening: 155, softClose: false, price: 12 },
@@ -50,9 +55,9 @@ export const HINGE_MODELS: HingeModel[] = [
   { id: "grass-tiomos", label: "Grass Tiomos 110° amortie", cup: { diameter: 35, depth: 13, edge: 22.5 }, opening: 110, softClose: true, price: 8 },
   { id: "hafele-metalla", label: "Häfele Metalla 510 110°", cup: { diameter: 35, depth: 12.5, edge: 22.5 }, opening: 110, softClose: false, price: 3 },
   { id: "small-26", label: "Charnière petit boîtier Ø26 (portes fines)", cup: { diameter: 26, depth: 11.5, edge: 18 }, opening: 95, softClose: false, price: 4 },
-];
+]);
 
-export const SLIDE_MODELS: SlideModel[] = [
+export const SLIDE_MODELS: SlideModel[] = inMad([
   { id: "generic", label: "Coulisse de tiroir (paire)", load: 25, full: true, softClose: false, price: 18 },
   { id: "blum-tandem", label: "Blum TANDEM plus BLUMOTION 550H (paire)", reference: "550H", load: 30, full: true, softClose: true, price: 42 },
   { id: "blum-movento", label: "Blum MOVENTO 760H (paire)", reference: "760H", load: 40, full: true, softClose: true, price: 58 },
@@ -60,16 +65,16 @@ export const SLIDE_MODELS: SlideModel[] = [
   { id: "hettich-quadro", label: "Hettich Quadro V6 (paire)", load: 30, full: false, softClose: true, price: 32 },
   { id: "grass-dynapro", label: "Grass Dynapro (paire)", load: 40, full: true, softClose: true, price: 50 },
   { id: "ball-45", label: "Coulisse à billes 45 mm, sortie totale (paire)", load: 45, full: true, softClose: false, price: 14 },
-];
+]);
 
-export const HANDLE_MODELS: HandleModel[] = [
+export const HANDLE_MODELS: HandleModel[] = inMad([
   { id: "generic", label: "Poignée entraxe 128 mm", spacing: 128, hole: 5, price: 6 },
   { id: "bar-96", label: "Poignée barre entraxe 96 mm", spacing: 96, hole: 5, price: 5 },
   { id: "bar-160", label: "Poignée barre entraxe 160 mm", spacing: 160, hole: 5, price: 7 },
   { id: "bar-192", label: "Poignée barre entraxe 192 mm", spacing: 192, hole: 5, price: 8 },
   { id: "bar-320", label: "Poignée barre entraxe 320 mm", spacing: 320, hole: 5, price: 12 },
   { id: "knob", label: "Bouton (un trou)", spacing: 0, hole: 5, price: 3 },
-];
+]);
 
 export interface HardwareChoice {
   hinge: HingeModel;
@@ -90,7 +95,7 @@ export const modelName = (m: { label: string; reference?: string }) => (m.refere
 /** Names used by the hardware lists for the generic parts. */
 export const GENERIC = { hinge: "Charnière à boîtier Ø35", slide: "Coulisse de tiroir (paire)", handle: "Poignée entraxe 128 mm" } as const;
 
-/** A hardware list with the chosen models' names and their prices (indicative, € HT each). */
+/** A hardware list with the chosen models' names and their prices (indicative, MAD HT each). */
 export function catalogItems<T extends { name: string; quantity: number; unit?: string }>(doc: Pick<CadDocument, "hardware">, items: readonly T[]): (T & { price?: number })[] {
   const choice = chosenHardware(doc);
   const byName: Record<string, HingeModel | SlideModel | HandleModel> = { [GENERIC.hinge]: choice.hinge, [GENERIC.slide]: choice.slide, [GENERIC.handle]: choice.handle };

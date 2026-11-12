@@ -16,7 +16,7 @@ test("besoins du client : modules posés d'un coup, prix en direct, portes couli
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await expect(zones(page)).toBeVisible();
   const price = tool.locator("[data-live-total]");
-  await expect(price).toContainText("€");
+  await expect(price).toContainText("MAD");
   const before = await price.innerText();
 
   await tool.getByRole("button", { name: "Remplir selon les besoins" }).click();

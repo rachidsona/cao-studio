@@ -3,7 +3,7 @@
  * de prix. On garde la version en cours sous un nom, on rouvre celle que le client préfère (Ctrl+Z revient en arrière),
  * ou on en supprime une (document/variants.ts).
  */
-import { euros } from "../../document/quote";
+import { money } from "../../document/quote";
 import { openedVariant, withoutVariant, withVariant } from "../../document/variants";
 import type { Variant } from "../../document/types";
 import { parseDocument } from "../../document/validate";
@@ -18,11 +18,11 @@ import { openModal } from "./workshop-ui";
 const SMALL = "h-8 flex-1 border border-gray-300 px-2 text-xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 const CARD = "flex w-52 shrink-0 flex-col gap-1.5 border border-gray-200 p-2 text-xs dark:border-gray-700";
 
-const price = (total: number | null) => (total === null ? "Pas de prix" : `${euros(total)} TTC`);
+const price = (total: number | null) => (total === null ? "Pas de prix" : `${money(total)} TTC`);
 const gap = (total: number | null, current: number | null) => {
   if (total === null || current === null) return "";
   const d = total - current;
-  return Math.abs(d) < 0.005 ? "même prix" : `${d > 0 ? "+" : "−"} ${euros(Math.abs(d))} par rapport au projet en cours`;
+  return Math.abs(d) < 0.005 ? "même prix" : `${d > 0 ? "+" : "−"} ${money(Math.abs(d))} par rapport au projet en cours`;
 };
 
 function picture(src: string | undefined): HTMLElement {

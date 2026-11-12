@@ -44,7 +44,7 @@
     <section class="border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-labelledby="quote-title">
       <h2 id="quote-title" class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Devis</h2>
       {% if project.price is not None %}
-        <p class="mt-1 font-mono text-2xl font-semibold" data-sheet-price>{{ project.price|floatformat:"2g" }} € TTC</p>
+        <p class="mt-1 font-mono text-2xl font-semibold" data-sheet-price>{{ project.price|floatformat:"2g" }} MAD TTC</p>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Calculé par l'éditeur aux tarifs de l'atelier, à la dernière modification.</p>
       {% else %}
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ouvrez le projet dans l'éditeur : son montant s'affiche ici.</p>

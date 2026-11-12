@@ -5,7 +5,7 @@ export interface CatalogMaterial {
   id: string;
   name: string;
   thickness: number;
-  /** € HT per m². */
+  /** MAD HT per m². */
   price: number;
   color: string;
   category: "melamine" | "wood" | "glass" | "marble" | "stone" | "metal" | "laminate" | "solid";

@@ -21,7 +21,7 @@ class Material(models.Model):
 
     name = models.CharField("nom", max_length=100, unique=True)
     thickness = models.FloatField("épaisseur (mm)", validators=[MinValueValidator(0.1)])
-    price_per_m2 = models.FloatField("prix au m² (€ HT)", validators=[MinValueValidator(0)], default=0)
+    price_per_m2 = models.FloatField("prix au m² (MAD HT)", validators=[MinValueValidator(0)], default=0)
     color = models.CharField("couleur d'affichage", max_length=20, default="#ffffff", help_text="Hexadécimal, par exemple #c89f6d.")
     category = models.CharField("famille", max_length=20, choices=CATEGORIES, default="solid")
     sheet_width = models.FloatField("largeur de plaque (mm)", validators=[MinValueValidator(100)], default=2800)
@@ -53,7 +53,7 @@ class HardwareRule(models.Model):
     name = models.CharField("nom", max_length=100, unique=True)
     description = models.TextField("description", blank=True)
     unit = models.CharField("unité", max_length=30, default="u")
-    unit_price = models.FloatField("prix unitaire (€ HT)", validators=[MinValueValidator(0)], default=0)
+    unit_price = models.FloatField("prix unitaire (MAD HT)", validators=[MinValueValidator(0)], default=0)
     default_quantity = models.FloatField("quantité par défaut", validators=[MinValueValidator(0)], default=1)
     auto_mode = models.CharField("quantité automatique", max_length=20, blank=True, default="", choices=AUTO_MODES)
     auto_per_unit = models.FloatField(
@@ -80,13 +80,13 @@ class CompanyProfile(models.Model):
     email = models.EmailField("e-mail", blank=True, default="")
     website = models.CharField("site web", max_length=150, blank=True, default="")
     logo = models.TextField("logo", blank=True, default="", help_text="Image PNG ou JPEG en data URL (200 ko au plus).")
-    # The rates of the quote, the same on every computer (the boards and the hardware: their own prices).
+    # The rates of the quote, the same on every computer (the boards and the hardware: their own prices), in dirhams (MAD).
     waste = models.FloatField("chutes (%)", default=15, validators=[MinValueValidator(0), MaxValueValidator(90)], help_text="Part des plaques perdue en chutes.")
-    band = models.FloatField("chant collé (€ HT le mètre)", default=1.5, validators=[MinValueValidator(0)])
-    cut_per_part = models.FloatField("découpe et perçage (€ HT la pièce)", default=4, validators=[MinValueValidator(0)])
+    band = models.FloatField("chant collé (MAD HT le mètre)", default=16.2, validators=[MinValueValidator(0)])
+    cut_per_part = models.FloatField("découpe et perçage (MAD HT la pièce)", default=43.2, validators=[MinValueValidator(0)])
     hours_per_part = models.FloatField("montage (heures par pièce)", default=0.25, validators=[MinValueValidator(0)])
-    hourly = models.FloatField("taux horaire (€ HT)", default=45, validators=[MinValueValidator(0)])
-    per_hole = models.FloatField("trou percé (€ HT, 0 : compris dans la découpe)", default=0, validators=[MinValueValidator(0)])
+    hourly = models.FloatField("taux horaire (MAD HT)", default=486, validators=[MinValueValidator(0)])
+    per_hole = models.FloatField("trou percé (MAD HT, 0 : compris dans la découpe)", default=0, validators=[MinValueValidator(0)])
     margin = models.FloatField("marge (%)", default=30, validators=[MinValueValidator(0), MaxValueValidator(500)])
     vat = models.FloatField("TVA (%)", default=20, validators=[MinValueValidator(0), MaxValueValidator(100)])
     updated_at = models.DateTimeField("mis à jour le", auto_now=True)

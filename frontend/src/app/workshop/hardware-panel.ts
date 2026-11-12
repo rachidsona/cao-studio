@@ -12,7 +12,7 @@ import type { Editor } from "../editor";
 import { floatingPanel } from "./workshop-ui";
 
 const SELECT = "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900";
-const euros = (v: number) => v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+const money = (v: number) => v.toLocaleString("fr-FR", { style: "currency", currency: "MAD" });
 
 export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const button = root.querySelector<HTMLButtonElement>('[data-workshop="hardware"]');
@@ -33,7 +33,7 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
         const m = list.find((x) => x.id === select.value);
         if (m) choose(kind, m.id, modelName(m));
       });
-      return el("div", { class: "space-y-1" }, el("h3", { class: "panel-title" }, title), select, el("p", { class: "text-gray-600 dark:text-gray-300" }, `${facts(current)} · ${euros(current.price)} HT`));
+      return el("div", { class: "space-y-1" }, el("h3", { class: "panel-title" }, title), select, el("p", { class: "text-gray-600 dark:text-gray-300" }, `${facts(current)} · ${money(current.price)} HT`));
     };
     const all = modelHardware(editor.doc);
     panel.body.replaceChildren(

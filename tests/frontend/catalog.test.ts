@@ -41,7 +41,7 @@ describe("matières du serveur", () => {
     expect(MATERIALS.length).toBe(before + 2);
     expect(materialById("catalog-7")?.name).toBe("Noyer américain");
     expect(DEFAULT_RATES.boards["Noyer américain"]).toBe(210);
-    expect(DEFAULT_RATES.boards["Mélaminé blanc"]).toBe(18);
+    expect(DEFAULT_RATES.boards["Mélaminé blanc"]).toBe(194.4); // 18 €, in dirhams
     expect(DEFAULT_RATES.hardware["Tige d'étagère"]).toBe(0.08);
   });
 });

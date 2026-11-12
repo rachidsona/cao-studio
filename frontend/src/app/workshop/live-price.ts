@@ -3,7 +3,7 @@
  * barre d'état et partout où une page l'affiche (`data-live-total`, comme le Plan de dressing). Un clic ouvre le devis.
  * Le montant va aussi au serveur, quand il change : le tableau de bord de l'accueil et la fiche du projet le montrent.
  */
-import { euros } from "../../document/quote";
+import { money } from "../../document/quote";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { quoteTotal } from "./workshop-documents";
@@ -44,7 +44,7 @@ export function bindLivePrice(root: HTMLElement, viewport: Viewport, editor: Edi
   let timer: ReturnType<typeof setTimeout> | undefined;
   const update = () => {
     const total = quoteTotal(viewport, editor);
-    shown = total === null ? "" : `${euros(total)} TTC`;
+    shown = total === null ? "" : `${money(total)} TTC`;
     paintPrice();
     if (apiUrl) sendPrice(apiUrl, total);
   };

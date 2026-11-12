@@ -17,7 +17,7 @@
           <td class="px-4 py-2"><span class="mr-1 inline-block size-3 border border-gray-300 align-middle" style="background: {{ material.color }};"></span> {% if user.is_staff %}<a class="font-medium hover:underline" href="{% url 'catalog:material_edit' material.pk %}">{{ material.name }}</a>{% else %}<span class="font-medium">{{ material.name }}</span>{% endif %}{% if material.is_default %} <span class="ml-1 border border-sky-300 px-1.5 text-xs text-sky-700 dark:border-sky-800 dark:text-sky-300">par défaut</span>{% endif %}</td>
           <td class="px-4 py-2">{{ material.get_category_display }}</td>
           <td class="px-4 py-2 text-right font-mono">{{ material.thickness|floatformat:"-1" }} mm</td>
-          <td class="px-4 py-2 text-right font-mono">{{ material.price_per_m2|floatformat:2 }} €/m²</td>
+          <td class="px-4 py-2 text-right font-mono">{{ material.price_per_m2|floatformat:2 }} MAD/m²</td>
           <td class="px-4 py-2 text-right font-mono">{{ material.sheet_width|floatformat:0 }} × {{ material.sheet_length|floatformat:0 }}</td>
           <td class="px-4 py-2">
             {% if user.is_staff %}<div class="flex justify-end gap-1">

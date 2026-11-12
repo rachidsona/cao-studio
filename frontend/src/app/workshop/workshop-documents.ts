@@ -6,7 +6,7 @@
  */
 import { cutList } from "../../document/cut-list";
 import { barLength } from "../../document/bars";
-import { DEFAULT_RATES, euros, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../../document/quote";
+import { CURRENCY, DEFAULT_RATES, EURO_IN_MAD, mad, money, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../../document/quote";
 import type { CadDocument } from "../../document/types";
 import { quoteExtras } from "./quote-versions";
 import type { GeometryClient } from "../../geometry/client";
@@ -30,18 +30,46 @@ const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs 
  * keeps (the prices of the boards and of the hardware changed in the quote), over the usual ones.
  */
 function loadRates(): QuoteRates {
-  let saved: Partial<QuoteRates> | null = null;
-  try {
-    saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
-  } catch {
-    // The usual ones.
-  }
+  const saved = savedRates();
   const base: QuoteRates = saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards }, hardware: { ...DEFAULT_RATES.hardware, ...saved.hardware } } : structuredClone(DEFAULT_RATES);
   return { ...base, ...workshopRates() };
 }
 
-/** The workshop's rates as the server first has them. */
-const FIRST_RATES = { waste: 15, band: 1.5, cutPerPart: 4, hoursPerPart: 0.25, hourly: 45, perHole: 0, margin: 30, vat: 20 };
+/** The workshop's rates as the server first has them (in dirhams). */
+const FIRST_RATES = { waste: 15, band: mad(1.5), cutPerPart: mad(4), hoursPerPart: 0.25, hourly: mad(45), perHole: 0, margin: 30, vat: 20 };
+
+/**
+ * The rates this browser keeps, in dirhams: those it kept in euros (before the quote was in MAD) are converted once,
+ * and kept so.
+ */
+export function savedRates(): Partial<QuoteRates> | null {
+  let saved: (Partial<QuoteRates> & { currency?: string }) | null = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as (Partial<QuoteRates> & { currency?: string }) | null;
+  } catch {
+    return null;
+  }
+  if (!saved || typeof saved !== "object" || saved.currency === CURRENCY) return saved;
+  const each = (prices: Record<string, number> | undefined) => (prices ? Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, typeof v === "number" ? mad(v) : v])) : prices);
+  const one = (v: number | undefined) => (typeof v === "number" ? mad(v) : v);
+  const converted = {
+    ...saved,
+    ...(saved.boards ? { boards: each(saved.boards) } : {}),
+    ...(saved.hardware ? { hardware: each(saved.hardware) } : {}),
+    ...(saved.band !== undefined ? { band: one(saved.band) } : {}),
+    ...(saved.cutPerPart !== undefined ? { cutPerPart: one(saved.cutPerPart) } : {}),
+    ...(saved.hourly !== undefined ? { hourly: one(saved.hourly) } : {}),
+    ...(saved.perHole !== undefined ? { perHole: one(saved.perHole) } : {}),
+    ...(Array.isArray(saved.tiers) ? { tiers: saved.tiers.map(([from, rate]) => [Math.round(from * EURO_IN_MAD), rate] as [number, number]) } : {}),
+    currency: CURRENCY,
+  };
+  try {
+    localStorage.setItem(RATES_KEY, JSON.stringify(converted));
+  } catch {
+    // Converted for this visit only.
+  }
+  return converted as Partial<QuoteRates>;
+}
 
 /**
  * Rates set in this browser before the server kept them: while the server still has its first ones, it takes this
@@ -51,12 +79,7 @@ export function adoptBrowserRates(): void {
   if (!canEditWorkshop()) return;
   const server = workshopRates();
   if (!Object.keys(server).length || Object.entries(FIRST_RATES).some(([k, v]) => server[k as keyof typeof FIRST_RATES] !== v)) return;
-  let saved: Partial<QuoteRates> | null = null;
-  try {
-    saved = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as Partial<QuoteRates> | null;
-  } catch {
-    return;
-  }
+  const saved = savedRates();
   if (!saved || !Object.keys(FIRST_RATES).some((k) => saved![k as keyof QuoteRates] !== undefined && saved![k as keyof QuoteRates] !== FIRST_RATES[k as keyof typeof FIRST_RATES])) return;
   saveRates({ ...DEFAULT_RATES, ...FIRST_RATES, ...saved } as QuoteRates);
 }
@@ -66,7 +89,8 @@ let ratesTimer: ReturnType<typeof setTimeout> | undefined;
 /** Kept by this browser, and the workshop's rates by the server (for every computer), a moment after the last change. */
 function saveRates(rates: QuoteRates): void {
   try {
-    localStorage.setItem(RATES_KEY, JSON.stringify(rates));
+    // In dirhams: never converted again.
+    localStorage.setItem(RATES_KEY, JSON.stringify({ ...rates, currency: CURRENCY }));
   } catch {
     // Not remembered: only this window.
   }
@@ -108,18 +132,18 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     });
     return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, label), el("span", { class: "flex items-center gap-1" }, input, el("span", { class: "w-10 text-gray-500" }, unit)));
   };
-  const boards = totals.map((t) => field(`${t.material}`, rates.boards[t.material] ?? rates.boards.default ?? 0, barLength(t.material) !== null ? "€/m" : "€/m²", (v) => (rates.boards[t.material] = v)));
+  const boards = totals.map((t) => field(`${t.material}`, rates.boards[t.material] ?? rates.boards.default ?? 0, barLength(t.material) !== null ? "MAD/m" : "MAD/m²", (v) => (rates.boards[t.material] = v)));
   const settings = el(
     "div",
     { class: "grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" },
     ...boards,
-    ...hardware.map((h) => field(h.name, rates.hardware[h.name] ?? 0, "€", (v) => (rates.hardware[h.name] = v))),
+    ...hardware.map((h) => field(h.name, rates.hardware[h.name] ?? 0, "MAD", (v) => (rates.hardware[h.name] = v))),
     field("Chutes", rates.waste, "%", (v) => (rates.waste = v), true),
-    field("Chant collé", rates.band, "€/m", (v) => (rates.band = v), true),
-    field("Découpe par pièce", rates.cutPerPart, "€", (v) => (rates.cutPerPart = v), true),
-    field("Perçage (usinage)", rates.perHole ?? 0, "€", (v) => (rates.perHole = v), true),
+    field("Chant collé", rates.band, "MAD/m", (v) => (rates.band = v), true),
+    field("Découpe par pièce", rates.cutPerPart, "MAD", (v) => (rates.cutPerPart = v), true),
+    field("Perçage (usinage)", rates.perHole ?? 0, "MAD", (v) => (rates.perHole = v), true),
     field("Montage par pièce", rates.hoursPerPart, "h", (v) => (rates.hoursPerPart = v), true),
-    field("Taux horaire", rates.hourly, "€/h", (v) => (rates.hourly = v), true),
+    field("Taux horaire", rates.hourly, "MAD/h", (v) => (rates.hourly = v), true),
     field("Marge", rates.margin, "%", (v) => (rates.margin = v), true),
     field("TVA", rates.vat, "%", (v) => (rates.vat = v), true),
     tiersField(),
@@ -132,7 +156,7 @@ function showQuote(viewport: Viewport, editor: Editor): void {
       saveRates(rates);
       refresh();
     });
-    return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, "Remises (dès € HT : %)"), input);
+    return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, "Remises (dès MAD HT : %)"), input);
   }
   const holes = holesOf(editor.doc);
   let quote = makeQuote(totals, rates, hardware, editor.unit, holes);

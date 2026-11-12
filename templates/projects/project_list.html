@@ -55,7 +55,7 @@
       {% for s in statuses %}
         <a href="?statut={{ s.key }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}" data-status-filter="{{ s.key }}" class="border px-3 py-2 {% if status == s.key %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if status == s.key %}aria-current="true"{% endif %}>
           <span class="block text-xs text-gray-500 dark:text-gray-400">{{ s.label }}</span><span class="block text-xl font-semibold">{{ s.count }}</span>
-          {% if s.key == "quoted" %}<span class="block font-mono text-xs text-amber-700 dark:text-amber-300" data-amount="quoted">{{ amounts.quoted|floatformat:"0g" }} €</span>{% elif s.key == "accepted" %}<span class="block font-mono text-xs text-emerald-700 dark:text-emerald-300" data-amount="accepted">{{ amounts.accepted|floatformat:"0g" }} €</span>{% elif s.key == "production" %}<span class="block font-mono text-xs text-sky-700 dark:text-sky-300">{{ amounts.production|floatformat:"0g" }} €</span>{% endif %}
+          {% if s.key == "quoted" %}<span class="block font-mono text-xs text-amber-700 dark:text-amber-300" data-amount="quoted">{{ amounts.quoted|floatformat:"0g" }} MAD</span>{% elif s.key == "accepted" %}<span class="block font-mono text-xs text-emerald-700 dark:text-emerald-300" data-amount="accepted">{{ amounts.accepted|floatformat:"0g" }} MAD</span>{% elif s.key == "production" %}<span class="block font-mono text-xs text-sky-700 dark:text-sky-300">{{ amounts.production|floatformat:"0g" }} MAD</span>{% endif %}
         </a>
       {% endfor %}
     </nav>
@@ -83,7 +83,7 @@
                   <span data-space="{{ project.space }}">{{ project.get_space_display }}</span> · {% if project.client_name %}{{ project.client_name }} · {% endif %}Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}
                 </p>
               </div>
-              {% if project.price is not None %}<span class="shrink-0 font-mono text-sm font-medium" data-price>{{ project.price|floatformat:"2g" }} €</span>{% endif %}
+              {% if project.price is not None %}<span class="shrink-0 font-mono text-sm font-medium" data-price>{{ project.price|floatformat:"2g" }} MAD</span>{% endif %}
             </a>
             <a href="{% url 'projects:sheet' project_id=project.id %}" class="mr-2 shrink-0 border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Fiche</a>
             <form method="post" action="{% url 'projects:delete' project_id=project.id %}" class="shrink-0 pr-4" data-delete="« {{ project.name }} » et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés.">
