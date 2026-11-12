@@ -13,7 +13,8 @@ import type { Vec3 } from "../sketcher/frame";
 import { axisParameter, rayPlanePoint } from "./axis-drag";
 import type { Viewport } from "./viewport";
 
-const SIZE_PX = 50;
+/** On screen (px); bigger under a finger. */
+const SIZE_PX = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? 72 : 50;
 /** X red, Y green, Z blue. */
 export const AXIS_COLORS = [0xef4444, 0x22c55e, 0x3b82f6] as const;
 export const AXIS_NAMES = ["X", "Y", "Z"] as const;

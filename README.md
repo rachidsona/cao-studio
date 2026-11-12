@@ -283,6 +283,9 @@ Principes :
   dessine à une netteté de 1,5 au plus. Les objets que le noyau crée pour lire une forme (arêtes, faces, points,
   sections) sont libérés aussitôt lus. À chaque recalcul, seuls les corps qui ont changé sont remaillés et envoyés
   à la vue ; les autres gardent leur maillage et leur géométrie (`geometry/worker.ts` `meshesOf`, `BodyLayer.replace`).
+  Au doigt, un geste annulé par la tablette rend la caméra (elle ne reste plus figée), un deuxième doigt posé pendant
+  qu'on tire une poignée ne la déplace pas, et la flèche et le manipulateur sont plus grands
+  (`viewport/pointer-input.ts`).
 
 ## Esquisses (phase 4)
 

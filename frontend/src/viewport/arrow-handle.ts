@@ -8,7 +8,8 @@ import type { Vec3 } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "./axis-drag";
 import type { Viewport } from "./viewport";
 
-const ARROW_PX = 70;
+/** On screen (px); bigger under a finger (an iPad, a phone), easier to take. */
+const ARROW_PX = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? 96 : 70;
 
 export class ArrowHandle {
   readonly object = new THREE.Group();

@@ -12,6 +12,8 @@ export interface PointerHandler {
   down(event: PointerEvent): boolean;
   move(event: PointerEvent): void;
   up(event: PointerEvent, isClick: boolean): boolean;
+  /** The gesture was taken away (a system gesture on a tablet, the capture lost): what it was doing is let go. */
+  cancel?(): void;
 }
 
 export interface PointerTarget {
@@ -73,6 +75,8 @@ export function bindPointerInput(t: PointerTarget): { windowDragging(): boolean 
     { capture: true },
   );
   canvas.addEventListener("pointermove", (event) => {
+    // A drag taken by a tool follows its own finger only: a second finger laid meanwhile does not move it.
+    if (exclusivePointer !== null && event.pointerId !== exclusivePointer) return;
     if (windowDrag?.pointerId === event.pointerId) {
       windowDrag.end = canvasPoint(event);
       if (far(windowDrag.start, windowDrag.end)) t.windowOverlay.show(windowDrag.start, windowDrag.end);
@@ -80,11 +84,24 @@ export function bindPointerInput(t: PointerTarget): { windowDragging(): boolean 
     }
     t.handler()?.move(event);
   });
-  canvas.addEventListener("pointercancel", () => {
+  // The gesture taken away (the tablet's own gesture, a call, the capture lost): nothing stays held — the camera turns
+  // again and the tool lets go (audit of 11/11/2026: the camera could stay frozen after a cancelled touch).
+  const letGo = (event: PointerEvent) => {
     windowDrag = null;
     t.windowOverlay.hide();
+    if (exclusivePointer === null || event.pointerId !== exclusivePointer) return;
+    exclusivePointer = null;
+    pointerDown = null;
+    controls.enabled = true;
+    t.handler()?.cancel?.();
+  };
+  canvas.addEventListener("pointercancel", letGo);
+  canvas.addEventListener("lostpointercapture", (event) => {
+    // Lost while still held (released normally, pointerup came first and cleared it).
+    if (exclusivePointer === event.pointerId) letGo(event);
   });
   canvas.addEventListener("pointerup", (event) => {
+    if (exclusivePointer !== null && event.pointerId !== exclusivePointer) return;
     const start = pointerDown;
     pointerDown = null;
     const drag = windowDrag?.pointerId === event.pointerId ? windowDrag : null;
