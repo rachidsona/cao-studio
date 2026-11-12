@@ -2,7 +2,7 @@
 {% load static assets %}
 {% block title %}Accueil · CAO Studio{% endblock %}
 {% block content %}
-{# The home page: a greeting and the three ways to begin (a 3D project, a kitchen, a dressing — drawn, not pictured), #}
+{# The home page: a greeting and the three ways to begin (a 3D project, a kitchen, a dressing — each with its picture), #}
 {# then « Mes projets »: where the jobs stand, the folders, a search, and every project as a card. #}
 <div class="space-y-10">
   <section class="relative overflow-hidden rounded-[18px] border border-gray-200 bg-gradient-to-br from-white via-slate-50 to-sky-50 px-6 py-7 shadow-sm sm:px-8 dark:border-gray-800 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900" aria-labelledby="welcome-title">
@@ -19,7 +19,9 @@
     </div>
 
     <div class="mt-6 grid gap-4 md:grid-cols-2">
-      <div class="rounded-[14px] border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-3d-title">
+      <div class="overflow-hidden rounded-[14px] border border-gray-200 bg-white/90 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-3d-title">
+        <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[16/9] w-full object-cover" loading="eager" data-home-picture>
+        <div class="p-5">
         <div class="flex items-center gap-3">
           <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">{% include "projects/_space_icon.html" with space="design" class="size-7" %}</span>
           <div>
@@ -32,9 +34,12 @@
           {% include "registration/_field.html" with field=form.name %}
           <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
         </form>
+        </div>
       </div>
 
-      <div class="rounded-[14px] border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-kitchen-title">
+      <div class="overflow-hidden rounded-[14px] border border-gray-200 bg-white/90 shadow-sm dark:border-gray-800 dark:bg-gray-900/80" aria-labelledby="design-kitchen-title">
+        <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[16/9] w-full object-cover" loading="eager" data-home-picture>
+        <div class="p-5">
         <div class="flex items-center gap-3">
           <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">{% include "projects/_space_icon.html" with space="kitchen" class="size-7" %}</span>
           <span class="-ml-5 flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 ring-4 ring-white dark:bg-sky-950 dark:text-sky-300 dark:ring-gray-900">{% include "projects/_space_icon.html" with space="dressing" class="size-7" %}</span>
@@ -55,6 +60,7 @@
             <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   </section>
