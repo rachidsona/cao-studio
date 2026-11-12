@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from . import quotas, services
 from .documents import example_document, project_document
 from .forms import ProjectCreateForm, ProjectInfoForm
-from .models import Project
+from .models import Project, ProjectFolder
 
 
 @login_required
@@ -53,10 +53,23 @@ def project_list(request):
         status = ""
     if query:
         projects = projects.filter(Q(name__icontains=query) | Q(client_name__icontains=query))
+    # The folders, to sort one's projects (folders.py): one shown alone, or those in none.
+    folders = ProjectFolder.objects.filter(owner=request.user).annotate(n=Count("projects"))
+    shown = request.GET.get("dossier", "")
+    folder = None
+    if shown == "aucun":
+        projects = projects.filter(folder__isnull=True)
+    elif shown.isdigit() and (folder := folders.filter(pk=int(shown)).first()):
+        projects = projects.filter(folder=folder)
+    else:
+        shown = ""
     return render(
         request,
         "projects/project_list.html",
-        {"projects": projects, "form": form, "statuses": statuses, "amounts": amounts, "status": status, "query": query, "total": mine.count()},
+        {
+            "projects": projects.select_related("folder"), "form": form, "statuses": statuses, "amounts": amounts, "status": status, "query": query,
+            "total": mine.count(), "folders": folders, "folder": folder, "shown": shown, "unfiled": mine.filter(folder__isnull=True).count(),
+        },
     )
 
 

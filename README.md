@@ -42,6 +42,11 @@ fiche du projet ; les projets d'avant les espaces ont été classés d'après le
 de l'électroménager ou « cuisine » : une cuisine ; un plan de dressing, des Répartitions, « dressing » ou « placard » :
 un dressing ; sinon un projet 3D).
 
+**Dossiers de projets** : sur « Mes projets », « + Nouveau dossier » en crée un (200 au plus par compte) ; on coche des
+projets, on choisit le dossier dans « Ranger dans… » puis « Ranger » (ou « Sans dossier » pour les en sortir). Un clic
+sur un dossier ne montre que ses projets, avec leur nombre ; « Sans dossier » ceux qui n'en ont pas. Le dossier montré
+se renomme ou se supprime : ses projets restent, sans dossier. Chaque compte n'a que les siens (`apps/projects/folders.py`).
+
 **Le suivi des affaires.** Chaque projet a sa **fiche** (bouton « Fiche » de la liste, ou « Fiche du projet » du menu
 du nom dans l'éditeur, `/projects/<id>/fiche/`) : le **client** (nom, téléphone, e-mail, adresse du chantier), le
 **statut** — Esquisse, Devis envoyé, Accepté, En fabrication, Posé, Sans suite —, la **date de pose prévue**, des

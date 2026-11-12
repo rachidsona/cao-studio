@@ -38,6 +38,7 @@ def _project(project: Project) -> dict:
         "nom": project.name,
         "espace": project.get_space_display(),
         "statut": project.get_status_display(),
+        "dossier": project.folder.name if project.folder else None,
         "créé le": _when(project.created_at),
         "modifié le": _when(project.updated_at),
         "montant TTC": str(project.price) if project.price is not None else None,
@@ -82,7 +83,7 @@ def account_zip(user):
     out = tempfile.TemporaryFile()
     # The history without its documents (up to 2 GB for an account): only the newest one is read, project by project.
     history = Prefetch("versions", queryset=ProjectVersion.objects.defer("document"))
-    projects = Project.objects.filter(owner=user).prefetch_related(history, "comments", "progress")
+    projects = Project.objects.filter(owner=user).select_related("folder").prefetch_related(history, "comments", "progress")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("compte.json", _json({
             "nom": user.get_username(), "inscrit le": _when(user.date_joined), "exporté le": _when(timezone.now()),

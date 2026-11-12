@@ -23,7 +23,11 @@
   }
 
   document.querySelectorAll('form[data-delete] button').forEach(function (button) {
-    button.addEventListener('click', function () { ask(button.form, button.form.dataset.delete, []); });
+    button.addEventListener('click', function () {
+      ask(button.form, button.form.dataset.delete, []);
+      // A folder rather than a project (its own title).
+      if (button.form.dataset.title) title.textContent = button.form.dataset.title;
+    });
   });
 
   document.querySelectorAll('form[data-many]').forEach(function (form) {
@@ -38,6 +42,9 @@
       all.indeterminate = count > 0 && count < boxes.length;
       remove.hidden = count === 0;
       remove.textContent = `Supprimer la sélection (${count})`;
+      // « Ranger dans… » the folder chosen, the projects ticked (folders.py).
+      const move = form.querySelector('[data-move-selected]');
+      if (move) move.hidden = count === 0;
     }
 
     boxes.forEach(function (box) { box.addEventListener('change', update); });

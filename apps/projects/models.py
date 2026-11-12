@@ -4,6 +4,28 @@ from django.conf import settings
 from django.db import models
 
 
+class ProjectFolder(models.Model):
+    """A folder of the home page, to sort one's projects (a client, a year, a kind of job): a project is in one or none."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_folders",
+        verbose_name="propriétaire",
+    )
+    name = models.CharField("nom", max_length=80)
+    created_at = models.DateTimeField("créé le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "dossier de projets"
+        verbose_name_plural = "dossiers de projets"
+        constraints = [models.UniqueConstraint(fields=["owner", "name"], name="unique_folder_name_per_owner")]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Project(models.Model):
     """A project of the editor, and its business: the client, where the job stands, its quote."""
 
@@ -41,6 +63,10 @@ class Project(models.Model):
     price = models.DecimalField("montant TTC", max_digits=12, decimal_places=2, null=True, blank=True)
     install_date = models.DateField("pose prévue", null=True, blank=True)
     notes = models.TextField("notes", blank=True)
+    # The folder of the home page it is sorted in; none by default, and none again when its folder is deleted.
+    folder = models.ForeignKey(
+        ProjectFolder, on_delete=models.SET_NULL, null=True, blank=True, related_name="projects", verbose_name="dossier"
+    )
 
     class Meta:
         ordering = ["-updated_at"]
