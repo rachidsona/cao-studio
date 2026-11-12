@@ -5,7 +5,7 @@
  * restent, même dans l'angle — s'effacent avec lui, le mur le plus en travers d'abord, jamais au point de ne plus
  * rien laisser à regarder (une cuisine sur un seul mur, ou en L vue de derrière son angle). Un mur de dressing (la
  * Répartition d'une zone) fait de même sans mur de pièce : l'œil passé derrière son dos, il s'efface, entier, jamais
- * tout le dressing (viewport/wall-cutaway.ts, piecesInTheWay). Deux cases du menu « Affichage » le règlent (activées d'office, retenues par le navigateur). La vue
+ * tout le dressing (viewport/wall-cutaway.ts, piecesInTheWay). Deux cases du menu « Affichage » le règlent (activées d'office, retenues par le navigateur), et le bouton « Cacher les murs qui gênent la vue » de la colonne de la vue. La vue
  * seulement : le document n'en change pas.
  */
 import { bodyFamily } from "../document/display-families";
@@ -168,12 +168,19 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     viewport.setSketchCutaway(new Set());
     if (canvas) canvas.dataset.wallsCut = canvas.dataset.furnitureCut = canvas.dataset.piecesCut = "0";
   };
-  box?.addEventListener("change", () => {
-    on = box.checked;
+  // The same choice by a button of the view's column (the « Affichage » menu is in the ribbon, hidden by default).
+  const toggle = root.querySelector<HTMLButtonElement>("[data-wall-cutaway-toggle]");
+  const choose = (value: boolean) => {
+    on = value;
+    if (box) box.checked = on;
     if (units) units.disabled = !on;
+    toggle?.setAttribute("aria-pressed", String(on));
     store(KEY, on);
     again();
-  });
+  };
+  toggle?.setAttribute("aria-pressed", String(on));
+  toggle?.addEventListener("click", () => choose(!on));
+  box?.addEventListener("change", () => choose(box.checked));
   units?.addEventListener("change", () => {
     withFurniture = units.checked;
     store(FURNITURE_KEY, withFurniture);

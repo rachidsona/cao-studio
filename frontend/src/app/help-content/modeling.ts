@@ -336,6 +336,15 @@ export const MODELING: HelpFamily[] = [
         tip: "L'arrêt au niveau des faces des autres corps ne joue qu'avec le repère « Global » de Déplacer, quand vous tirez une flèche.",
       },
       {
+        keys: [], selector: "[data-wall-cutaway-toggle]", name: "Cacher les murs qui gênent la vue",
+        what: "Un bouton de la colonne à droite de la vue : enfoncé, le mur entre vous et le meuble s'efface quand vous tournez la vue, avec les caissons adossés à lui ; relâché, tout reste affiché.",
+        steps: [
+          "Cliquez le bouton (un mur barré) dans la colonne à droite de la vue : relâché, murs et caissons restent tous visibles, quelle que soit la vue.",
+          "Cliquez-le de nouveau : le mur qui cache la vue s'efface de nouveau de lui-même.",
+        ],
+        tip: "C'est le même réglage que la case « Murs qui cachent la vue masqués » du menu Affichage ; il est retenu par ce navigateur. La vue seule change.",
+      },
+      {
         keys: [], selector: "[data-display-menu]", name: "Affichage par famille",
         what: "Cache ou montre des familles de corps : façades, carcasse, fonds, étagères, plinthes, murs, électroménager.",
         steps: [

@@ -137,3 +137,20 @@ test("dressing en L : le mur qui cache la vue s'efface avec sa zone, l'autre zon
   expect(Number(await view.getAttribute("data-furniture-cut"))).toBeLessThan(out);
   expect(errors).toEqual([]);
 });
+
+test("le bouton de la colonne de la vue garde les murs et les meubles affichés, puis les efface de nouveau", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Bouton murs e2e");
+  const toggle = page.locator("[data-wall-cutaway-toggle]");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("canvas.cad-view")).toHaveAttribute("data-walls-cut", "0");
+  // The menu's box says the same; the choice is kept by the browser.
+  await expect(page.locator("[data-wall-cutaway]")).not.toBeChecked();
+  expect(await page.evaluate(() => localStorage.getItem("cao.wall-cutaway"))).toBe("0");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});

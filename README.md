@@ -115,7 +115,8 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   aussi. Une barre en bas dit ce qui est isolé (« 3 éléments isolés ») ; « Tout montrer », ou I sans sélection, rend
   le reste. Tant que des éléments sont isolés, les murs ne sont plus masqués d'eux-mêmes. La vue seulement
   (`app/isolate-selection.ts`, `app/zone-view.ts`).
-- **Murs qui cachent la vue masqués** (case du menu Affichage, cochée d'office) : la vue tournée, le mur qui se
+- **Murs qui cachent la vue masqués** (case du menu Affichage, cochée d'office, ou bouton « Cacher les murs qui gênent
+  la vue » de la colonne à droite de la vue : relâché, murs et caissons restent tous affichés) : la vue tournée, le mur qui se
   trouve entre l'œil et la pièce n'est plus dessiné, et un clic le traverse ; il revient dès qu'on repasse devant
   lui. Un mur est reconnu à sa forme (une dalle verticale, mince et haute) parmi les corps de la pièce : ceux d'un
   plan de cuisine ou de dressing, ou d'une pièce relevée. Le sol reste.
