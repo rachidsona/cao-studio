@@ -763,8 +763,12 @@ opération existante.
   côté d'un caisson contre le côté du voisin, le dessous d'un haut sur le dessus d'un bas), des faces de même sens
   affleurent (deux façades) ; seule la distance entre les deux faces change, l'élément garde sa hauteur et son
   alignement (`features/face-glue.ts`). Un caisson bouge avec ses façades, ou la pièce seule (« Ce qui bouge ») ; deux
-  faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met en retrait). Les faces doivent être
-  parallèles ; pour tourner la pièce, Aligner › « Face sur face » (`app/face-glue-tool.ts`).
+  faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met en retrait). **Dans tous les sens** :
+  deux faces qui ne sont pas parallèles (le côté d'un haut contre le devant d'une colonne) se collent aussi — ce qui
+  bouge tourne d'abord autour de sa face pour qu'elle regarde l'autre (un caisson entier par quarts de tour autour de
+  la verticale ; une pièce seule de l'angle qu'il faut), puis vient la toucher (`glueTurned`). Un meuble entier se
+  colle par ses **faces extérieures** : la face cliquée ne dit que le côté, jamais il n'entre dans l'autre
+  (`app/face-glue-tool.ts`).
 - **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,

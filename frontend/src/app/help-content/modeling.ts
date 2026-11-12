@@ -313,7 +313,7 @@ export const MODELING: HelpFamily[] = [
           "Cliquez « Coller par face », dans le groupe Modifier.",
           "Cliquez la face d'un autre élément où le coller : il s'y colle aussitôt, en une annulation.",
         ],
-        tip: "Seule la distance entre les deux faces change : l'élément garde sa hauteur et son alignement. « Ce qui bouge » choisit le meuble entier ou la pièce seule ; « Jeu » laisse un écart (ou met en retrait des faces à fleur). Les deux faces doivent être parallèles.",
+        tip: "Seule la distance entre les deux faces change : l'élément garde sa hauteur et son alignement. « Ce qui bouge » choisit le meuble entier ou la pièce seule ; « Jeu » laisse un écart (ou met en retrait des faces à fleur). Des faces qui ne sont pas parallèles se collent aussi, dans tous les sens : ce qui bouge tourne d'abord pour que sa face regarde l'autre (un caisson par quarts de tour), puis vient la toucher.",
       },
       {
         keys: ["data-snap:geometry"],

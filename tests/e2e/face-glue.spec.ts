@@ -40,6 +40,48 @@ test("coller par face : un haut vient à fleur de la façade du bas, caisson et 
   expect(errors).toEqual([]);
 });
 
+test("coller par face dans tous les sens : le devant d'un haut contre le côté d'un bas, le haut tourne d'un quart puis s'y colle", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-coller-tous-sens");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-1-porte-600"]').click();
+  await expect(page.getByText(/Bas 1 porte 600 ajouté/).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Hauts" }).click();
+  await page.locator('[data-unit="wall-haut-1-porte-600"]').click();
+  await expect(page.getByText(/Haut 1 porte 600 ajouté/).first()).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.keyboard.press("Escape");
+  const steps = await page.locator("[data-op]").count();
+  await click(page, '[data-action="face-glue"]');
+  const tool = page.getByRole("dialog", { name: "Coller par face" });
+  const canvas = (await page.locator("canvas").first().boundingBox())!;
+  const at = (x: number, y: number) => page.mouse.click(canvas.x + canvas.width * x, canvas.y + canvas.height * y);
+  await page.waitForTimeout(800);
+  // The wall unit's door, from the front; then, seen from the right, the base unit's right side: square to it.
+  await at(0.505, 0.33);
+  await expect(tool).toContainText("Face qui bouge : « Façades Haut 1 porte 600");
+  await click(page, '[data-action="view"][data-view="right"]');
+  await page.waitForTimeout(1000);
+  for (const [x, y] of [[0.5, 0.75], [0.48, 0.72], [0.52, 0.78], [0.5, 0.68]] as [number, number][]) {
+    await at(x, y);
+    if (await tool.count() === 0) break;
+  }
+  await expect(page.getByText(/« Haut 1 porte 600 » collé contre \(tourné\) « .*Bas 1 porte 600/).first()).toBeVisible();
+  await expect(tool).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  // The cabinet turned and moved in place: no turn nor move of a piece in the history.
+  expect(await page.locator("[data-op]").count()).toBe(steps);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await page.waitForTimeout(800);
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/coller-tous-sens.png` });
+  expect(errors).toEqual([]);
+});
+
 test("aligner face sur face : la face d'une façade cliquée, c'est tout le meuble qui se pose, sans opération par pièce", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

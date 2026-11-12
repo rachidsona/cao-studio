@@ -7,8 +7,7 @@
  * seule annulation.
  */
 import { bodyLabel, findFeature } from "../document/operations";
-import { alignWhole, envelopeFace, wholeMate, type BoxFace } from "./align-whole";
-import { wholeBodies } from "./move-whole";
+import { alignWhole, elementEnvelope, wholeMate, type BoxFace } from "./align-whole";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
 import { faceOnFace, flushSlide } from "../features/face-mate";
 import type { FacePick } from "../viewport/viewport";
@@ -80,16 +79,8 @@ export class AlignFaces {
 
   /** The outer face, on the side clicked, of the cabinet or Répartition a face belongs to (its bodies as shown). */
   private envelopeOf(face: Picked): BoxFace | undefined {
-    const doc = this.ctx.doc();
-    const owner = alignWhole(doc, face.bodyId);
-    if (!owner) return undefined;
-    const boxes = wholeBodies(doc, owner.kind, owner.id, this.ctx.viewport.displayedBodies).flatMap((id) => {
-      const b = this.ctx.viewport.bodyMesh(id)?.metrics.bbox;
-      return b ? [b] : [];
-    });
-    if (!boxes.length) return undefined;
-    const box: [Vec3, Vec3] = [[0, 1, 2].map((i) => Math.min(...boxes.map((b) => b[0][i]!))) as Vec3, [0, 1, 2].map((i) => Math.max(...boxes.map((b) => b[1][i]!))) as Vec3];
-    return envelopeFace(box, face.normal, face.point) ?? undefined;
+    const box = (id: string) => (this.ctx.viewport.bodyMesh(id)?.metrics.bbox as [Vec3, Vec3] | undefined) ?? null;
+    return elementEnvelope(this.ctx.doc(), face.bodyId, face.normal, face.point, this.ctx.viewport.displayedBodies, box) ?? undefined;
   }
 
   /** The name of what moves: the cabinet or Répartition, or the piece. */

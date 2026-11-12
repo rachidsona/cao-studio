@@ -104,3 +104,19 @@ export function envelopeFace(box: [Vec3, Vec3], normal: Vec3, clicked: Vec3): Bo
   n[k] = high ? 1 : -1;
   return { center: at((min[a]! + max[a]!) / 2, (min[b]! + max[b]!) / 2), normal: n, corners, sides: corners.map((c, i) => [c, corners[(i + 1) % 4]!] as [Vec3, Vec3]) };
 }
+
+/**
+ * The outer face, on the side clicked, of the cabinet or Répartition a face belongs to — its bodies as shown, their
+ * boxes from `boxOf` — or null for a body that is part of no such whole.
+ */
+export function elementEnvelope(doc: CadDocument, bodyId: string, normal: Vec3, clicked: Vec3, displayed: readonly string[], boxOf: (id: string) => [Vec3, Vec3] | null): BoxFace | null {
+  const owner = alignWhole(doc, bodyId);
+  if (!owner) return null;
+  const boxes = wholeBodies(doc, owner.kind, owner.id, displayed).flatMap((id) => {
+    const b = boxOf(id);
+    return b ? [b] : [];
+  });
+  if (!boxes.length) return null;
+  const box: [Vec3, Vec3] = [[0, 1, 2].map((i) => Math.min(...boxes.map((b) => b[0][i]!))) as Vec3, [0, 1, 2].map((i) => Math.max(...boxes.map((b) => b[1][i]!))) as Vec3];
+  return envelopeFace(box, normal, clicked);
+}

@@ -9,8 +9,9 @@
 import { bodyLabel, findFeature } from "../document/operations";
 import { movesNeeded, spacingFeatures, type Moving } from "../document/spacing";
 import { elementKey } from "../document/swap";
-import type { Feature, Vec3 } from "../document/types";
-import { glueShift } from "../features/face-glue";
+import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
+import { glueShift, glueTurned, parallelFaces, type GlueFace } from "../features/face-glue";
+import { elementEnvelope, wholeMate } from "./align-whole";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
 import { freshFeatureIds } from "./curic-common";
@@ -34,6 +35,8 @@ export class FaceGlueTool extends PanelTool {
   private whole = lastWhole;
   private gap = lastGap;
   private slots: { id: string; name: string }[] = [];
+  /** A piece turned onto a face that is not parallel: its turn and its move. */
+  private turnSlots: { rotate: { id: string; name: string }; move: { id: string; name: string } } | null = null;
 
   constructor(ctx: ToolContext, faces: readonly FacePick[]) {
     super(ctx, "Coller par face", null);
@@ -64,7 +67,7 @@ export class FaceGlueTool extends PanelTool {
         return this.render();
       }
       const glue = glueShift(this.moving, face, this.gap);
-      const how = typeof glue !== "string" && glue.meet === "flush" ? "à fleur de" : "contre";
+      const how = typeof glue !== "string" && glue.meet === "flush" ? "à fleur de" : typeof glue === "string" ? "contre (tourné)" : "contre";
       this.ctx.notify(`« ${this.movingName()} » collé ${how} « ${bodyLabel(this.ctx.doc(), face.bodyId)} ».`, "success");
       this.finish();
     } catch (e) {
@@ -89,10 +92,14 @@ export class FaceGlueTool extends PanelTool {
   private made(): Feature[] | string {
     if (!this.moving) return "1. Cliquez la face de l'élément à déplacer (ou sélectionnez-la avant d'ouvrir l'outil).";
     if (!this.fixed) return "2. Cliquez la face où la coller, sur un autre élément.";
-    const glue = glueShift(this.moving, this.fixed, this.gap);
-    if (typeof glue === "string") return glue;
     const doc = this.ctx.doc();
     const whole = this.movesWhole();
+    // A whole element is glued by its outer faces: the face clicked only says the side (never into the other).
+    const [from, to] = whole ? [this.outer(this.moving), this.outer(this.fixed)] : [this.moving, this.fixed];
+    // In any direction: faces that are not parallel are glued after a turn.
+    if (!parallelFaces(from, to)) return this.turned(from, to, whole);
+    const glue = glueShift(from, to, this.gap);
+    if (typeof glue === "string") return glue;
     const key = whole ? elementKey(doc, this.moving.bodyId) : this.moving.bodyId;
     const bodies = whole ? this.ctx.viewport.displayedBodies.filter((id) => elementKey(doc, id) === key) : [this.moving.bodyId];
     const moving: Moving[] = [{ key, bodies, whole, shift: glue.shift }];
@@ -100,6 +107,39 @@ export class FaceGlueTool extends PanelTool {
     if (this.slots.length < needed) this.slots = freshFeatureIds(doc, "mv", "Déplacement", needed);
     const made = spacingFeatures(doc, moving, this.slots);
     return made.length ? made : "Ces deux faces se touchent déjà.";
+  }
+
+  /** The outer face of the element on the side of a face clicked (the face itself for a piece of no cabinet). */
+  private outer(face: Picked): GlueFace {
+    const box = (id: string) => (this.ctx.viewport.bodyMesh(id)?.metrics.bbox as [Vec3, Vec3] | undefined) ?? null;
+    const env = elementEnvelope(this.ctx.doc(), face.bodyId, face.normal, face.point, this.ctx.viewport.displayedBodies, box);
+    return env ? { point: env.center, normal: env.normal } : face;
+  }
+
+  /** Glued in any direction: turned about its face so that it looks against the other, then brought onto it. */
+  private turned(from: GlueFace, to: GlueFace, whole: boolean): Feature[] | string {
+    const doc = this.ctx.doc();
+    const mate = glueTurned(from, to, this.gap);
+    if (whole && this.moving) {
+      const made = wholeMate(doc, this.moving.bodyId, this.ctx.viewport.displayedBodies, mate, this.slots, (n) => freshFeatureIds(doc, "mv", "Déplacement", n));
+      if (made !== null) return made;
+    }
+    if (!this.moving) return "1. Cliquez la face de l'élément à déplacer.";
+    if (!this.turnSlots) {
+      const [rotate] = freshFeatureIds(doc, "ro", "Rotation", 1);
+      const [move] = freshFeatureIds({ ...doc, features: [...doc.features, { id: rotate!.id, name: rotate!.name } as Feature] }, "mv", "Déplacement", 1);
+      this.turnSlots = { rotate: rotate!, move: move! };
+    }
+    const out: Feature[] = [];
+    let target = this.moving.bodyId;
+    if (mate.rotation) {
+      const { dir, angle, center } = mate.rotation;
+      const axis = [0, 1, 2].reduce((m, i) => (Math.abs(dir[i]!) > Math.abs(dir[m]!) ? i : m), 0) as 0 | 1 | 2;
+      out.push({ ...this.turnSlots.rotate, type: "rotate", target, axis, angle: Number(angle.toFixed(6)), center: center.map((c) => Number(c.toFixed(6))) as Vec3, dir: dir.map((c) => Number(c.toFixed(9))) as Vec3 } satisfies RotateFeature);
+      target = this.turnSlots.rotate.id;
+    }
+    if (Math.hypot(...mate.translate) > 1e-6) out.push({ ...this.turnSlots.move, type: "move", target, translate: mate.translate } satisfies MoveFeature);
+    return out.length ? out : "Ces deux faces se touchent déjà.";
   }
 
   protected feature(): Feature | string {
