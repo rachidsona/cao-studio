@@ -1,17 +1,18 @@
 /**
  * Ce qu'un outil a déjà choisi, marqué tant qu'il est ouvert : la face (ou le corps) de départ en orange — ce qui
- * bouge, ce qui se prolonge, la cible —, celle d'arrivée en bleu — où il va, les corps outils. Le survol reste vert.
+ * bouge, ce qui se prolonge, la cible —, celle d'arrivée en bleu — où il va, les corps outils —, ce qui est enlevé en
+ * rouge (les corps outils d'une découpe). Le survol reste vert.
  * Chaque marque garde la forme qu'avait la face au clic : un aperçu qui refait les corps ne l'efface pas.
  */
 import * as THREE from "three";
 import type { BodyObject } from "./body-layer";
 import type { FacePick } from "./selection-layer";
 
-/** First chosen (what moves, what is extended, the target), or second (where it goes, the tools). */
-export type MarkRole = "first" | "second";
+/** First chosen (what moves, what is extended, the target), second (where it goes, the tools), or what is taken away (the tools of a cut). */
+export type MarkRole = "first" | "second" | "remove";
 export type ChosenMark = ({ face: FacePick } | { body: string }) & { role: MarkRole };
 
-const COLORS: Record<MarkRole, number> = { first: 0xf97316, second: 0x0ea5e9 };
+const COLORS: Record<MarkRole, number> = { first: 0xf97316, second: 0x0ea5e9, remove: 0xef4444 };
 
 /**
  * The edges of a set of triangles used by one triangle only: the outline of a face. Edges are matched by where their
@@ -41,7 +42,7 @@ function outlineOf(positions: THREE.BufferAttribute | THREE.InterleavedBufferAtt
   return out;
 }
 
-const keyOf = (mark: ChosenMark) => `${mark.role}:${"face" in mark ? `${mark.face.bodyId}/${mark.face.faceIndex}` : mark.body}`;
+const keyOf = (mark: ChosenMark) => ("face" in mark ? `${mark.face.bodyId}/${mark.face.faceIndex}` : mark.body);
 
 export class ChosenMarks {
   private readonly group = new THREE.Group();
@@ -53,8 +54,8 @@ export class ChosenMarks {
   constructor(scene: THREE.Scene) {
     const tint = (color: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, side: THREE.DoubleSide });
     const line = (color: number) => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.95 });
-    this.tints = { first: tint(COLORS.first), second: tint(COLORS.second) };
-    this.lines = { first: line(COLORS.first), second: line(COLORS.second) };
+    this.tints = { first: tint(COLORS.first), second: tint(COLORS.second), remove: tint(COLORS.remove) };
+    this.lines = { first: line(COLORS.first), second: line(COLORS.second), remove: line(COLORS.remove) };
     scene.add(this.group);
   }
 
@@ -78,7 +79,15 @@ export class ChosenMarks {
     }
     for (const mark of marks) {
       const key = keyOf(mark);
-      if (this.shown.has(key)) continue;
+      const shown = this.shown.get(key);
+      if (shown) {
+        // Still chosen, maybe in another role (the tools of a join become those of a cut): only its colour changes.
+        const [tint, outline] = shown as [THREE.Mesh, THREE.LineSegments];
+        tint.material = this.tints[mark.role];
+        outline.material = this.lines[mark.role];
+        tint.userData.chosen = outline.userData.chosen = mark.role;
+        continue;
+      }
       const objects = this.draw(mark, bodies);
       if (!objects) continue;
       this.shown.set(key, objects);

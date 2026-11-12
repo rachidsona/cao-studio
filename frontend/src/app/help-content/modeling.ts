@@ -231,12 +231,12 @@ export const MODELING: HelpFamily[] = [
         what: "Joint des corps, ou coupe l'un avec l'autre, ou garde ce qu'ils ont en commun.",
         steps: [
           "Cliquez « Combiner » (ou sélectionnez d'abord les corps : le premier sera la cible, les autres les outils).",
-          "Cliquez la cible dans la vue (bouton « Cible » enfoncé) : ensuite, chaque corps cliqué s'ajoute aux « Corps outils », et un autre clic l'en retire (ou ✕ dans la liste). « Cible » permet d'en choisir une autre.",
-          "Choisissez l'« Opération » : « Joindre », « Couper » ou « Intersection ». « Choisir dans la liste » déplie tous les corps, à cocher.",
+          "Cliquez le « Corps cible » dans la vue (son champ cerné de bleu) : ensuite, chaque corps cliqué s'ajoute aux « Corps outils », et un autre clic l'en retire (ou ✕ dans la liste). Cliquez un champ pour choisir ce qu'il contient, ✕ à côté le vide.",
+          "Choisissez l'opération : « Joindre », « Couper » ou « Intersection ». « Choisir dans la liste » déplie tous les corps, à cocher.",
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
-          "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
+          "L'aperçu montre le résultat ; OK (ou Entrée) le garde, en une annulation. Annuler (ou Échap, ou la croix) ne change rien.",
         ],
-        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange et les corps outils en bleu. Réunis en un seul (Union), le corps qu'ils font devient bleu (#2078CF, laque satinée), à changer ensuite dans Apparence.",
+        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange, les corps outils en bleu (en rouge pour Couper). Réunis en un seul (Union), le corps qu'ils font devient bleu (#2078CF, laque satinée), à changer ensuite dans Apparence.",
       },
       {
         keys: ["data-action:split"],

@@ -600,6 +600,11 @@ opération existante.
   choisi d'office (`app/combine-pick.ts`). Des corps **réunis en un seul** (Union, à la création) font un corps
   **bleu #2078CF** (une laque satinée), qui se lit d'un coup comme un seul ; sa couleur se change ensuite dans
   Apparence.
+  - **Comme le Combiner de Fusion 360** : deux champs de sélection, « Corps cible » et « Corps outils » (« 2
+    sélectionnés »), celui qui prend le prochain clic cerné de bleu, ✕ pour le vider ; l'opération en trois boutons
+    (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
+    Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Annuler** (Échap, la croix) laisse le modèle tel qu'il était
+    (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
 - **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
   bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en
   orange, la face d'arrivée en bleu), Scinder (les corps à couper en orange, la face de coupe en bleu), Coïncidence (le

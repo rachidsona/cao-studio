@@ -145,6 +145,8 @@ export class CombineTool extends PanelTool {
     this.operation = editing?.operation ?? "join";
     this.keepTools = editing?.keepTools ?? false;
     this.choosing = preselected.length || editing ? "tools" : "target";
+    // As Fusion's Combine: nothing is kept before OK, and Annuler leaves the model as it was.
+    this.storesLive = false;
     // Chosen in the view: nothing is taken for granted when nothing was picked first.
     if (!preselected.length && !editing) {
       this.target = undefined;
@@ -164,7 +166,9 @@ export class CombineTool extends PanelTool {
 
   /** The bodies chosen stay marked in the view: the target in orange, the tools in blue. */
   private markChosen(): void {
-    const tools = [...this.tools].filter((t) => t !== this.target).map((body) => ({ body, role: "second" as const }));
+    // The tools of a cut in red (what is taken away), the others in blue.
+    const role = this.operation === "cut" ? ("remove" as const) : ("second" as const);
+    const tools = [...this.tools].filter((t) => t !== this.target).map((body) => ({ body, role }));
     this.ctx.viewport.setChosen([...(this.target ? [{ body: this.target, role: "first" as const }] : []), ...tools]);
   }
 
@@ -174,7 +178,7 @@ export class CombineTool extends PanelTool {
     if (target?.kind !== "body") return;
     const next = pickBody({ target: this.target, tools: [...this.tools], choosing: this.choosing }, target.id, this.id);
     if (next.target === this.target && next.tools.length === this.tools.size && next.choosing === this.choosing && next.tools.every((t) => this.tools.has(t))) {
-      if (target.id === this.target || target.id === this.id) this.ctx.notify("C'est la cible : cliquez « Cible » pour en choisir une autre.", "info");
+      if (target.id === this.target || target.id === this.id) this.ctx.notify("C'est la cible : cliquez le champ « Corps cible » pour en choisir une autre.", "info");
       return;
     }
     this.target = next.target;
@@ -221,13 +225,17 @@ export class CombineTool extends PanelTool {
     };
     const bodies = this.bodies();
     const name = (id: string) => bodies.find((b) => b.id === id)?.name ?? bodyLabel(this.ctx.doc(), id);
-    // What a click in the view chooses: the target, or the tools.
-    const mode = (which: "target" | "tools", label: string) => {
-      const b = el("button", { type: "button", class: `h-8 flex-1 border font-medium ${this.choosing === which ? "border-sky-600 text-sky-700 dark:border-sky-400 dark:text-sky-300" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}`, "aria-pressed": String(this.choosing === which), "data-combine-pick": which }, label);
-      b.addEventListener("click", () => ((this.choosing = which), this.render()));
-      return b;
+    const tools = [...this.tools].filter((t) => t !== this.target);
+    // As Fusion's selection fields: the one that takes the next click is outlined in blue, ✕ empties it.
+    const field = (which: "target" | "tools", label: string, shown: string, empty: boolean, clear: () => void) => {
+      const on = this.choosing === which;
+      const pick = el("button", { type: "button", class: `flex h-8 min-w-0 flex-1 items-center gap-1.5 border px-2 text-left ${on ? "border-sky-600 bg-sky-50 dark:border-sky-400 dark:bg-sky-950" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}`, "aria-pressed": String(on), "data-combine-pick": which, "data-combine-value": which === "target" ? (this.target ?? "") : tools.join(" "), title: `Cliquer puis choisir ${which === "target" ? "le corps cible" : "les corps outils"} dans la vue` }, el("span", { class: `size-2.5 shrink-0 ${which === "target" ? "bg-orange-500" : this.operation === "cut" ? "bg-red-500" : "bg-sky-500"}` }), el("span", { class: `truncate ${empty ? "text-gray-500 dark:text-gray-400" : ""}` }, shown));
+      pick.addEventListener("click", () => ((this.choosing = which), this.render()));
+      const cross = el("button", { type: "button", class: "size-8 shrink-0 border border-gray-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:border-gray-600", disabled: empty, title: "Vider", "aria-label": `Vider : ${label}` }, "✕");
+      cross.addEventListener("click", () => (clear(), changed()));
+      return el("div", { class: "space-y-1" }, el("p", { class: "font-medium" }, label), el("div", { class: "flex gap-1" }, pick, cross));
     };
-    const chosen = [...this.tools].filter((t) => t !== this.target).map((id) => {
+    const chosen = tools.map((id) => {
       const drop = el("button", { type: "button", class: "size-6 shrink-0 border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Retirer ce corps outil", "aria-label": `Retirer ${name(id)}` }, "✕");
       drop.addEventListener("click", () => (this.tools.delete(id), changed()));
       return el("li", { class: "flex items-center gap-1.5", "data-combine-tool": id }, el("span", { class: "min-w-0 flex-1 truncate" }, name(id)), drop);
@@ -243,32 +251,46 @@ export class CombineTool extends PanelTool {
           }),
         ),
     );
+    // As Fusion: the three operations side by side.
+    const ops: [CombineFeature["operation"], string, string][] = [["join", "∪", "Joindre"], ["cut", "−", "Couper"], ["intersect", "∩", "Intersection"]];
+    const operation = el("div", { class: "grid grid-cols-3 gap-1", role: "group", "aria-label": "Opération" }, ...ops.map(([op, sign, label]) => {
+      const on = this.operation === op;
+      const b = el("button", { type: "button", "aria-pressed": String(on), "data-combine-op": op, class: `flex h-12 flex-col items-center justify-center border text-[11px] font-medium ${on ? "border-sky-600 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "text-lg leading-none" }, sign), label);
+      b.addEventListener("click", () => ((this.operation = op), changed()));
+      return b;
+    }));
+    const problem = this.blocker() ?? (typeof this.feature() === "string" ? (this.feature() as string) : null);
+    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null, "data-combine-ok": "" }, "OK");
+    ok.addEventListener("click", () => this.finish());
+    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
+    cancel.addEventListener("click", () => this.cancel());
     return [
-      this.info("Cliquez les corps dans la vue :"),
-      el("div", { class: "flex gap-1.5", role: "group", "aria-label": "Ce que choisit un clic dans la vue" }, mode("target", "Cible"), mode("tools", "Corps outils")),
-      this.info(this.choosing === "target" ? "Le corps cliqué devient la cible ; ensuite, les clics choisissent les corps outils." : "Un corps cliqué s'ajoute aux corps outils ; cliqué de nouveau, il en sort."),
-      this.selectRow("Cible", this.target ?? "", [["", "— cliquez-la dans la vue —"], ...bodies.map((b): [string, string] => [b.id, b.name])], (v) => {
-        this.target = v || undefined;
-        if (v) this.tools.delete(v);
-        changed();
-      }),
-      this.selectRow(
-        "Opération",
-        this.operation,
-        operationChoices("join", "cut", "intersect"),
-        (v) => {
-          this.operation = v as CombineFeature["operation"];
-          changed();
-        },
-      ),
-      this.info(`Corps outils (${chosen.length}) :`),
+      field("target", "Corps cible", this.target ? name(this.target) : "Sélectionner", !this.target, () => ((this.target = undefined), (this.choosing = "target"))),
+      field("tools", "Corps outils", tools.length ? `${tools.length} sélectionné${tools.length > 1 ? "s" : ""}` : "Sélectionner", !tools.length, () => (this.tools.clear(), (this.choosing = "tools"))),
       chosen.length ? el("ul", { class: "space-y-1", "aria-label": "Corps outils choisis" }, ...chosen) : null,
       list,
+      el("p", { class: "font-medium" }, "Opération"),
+      operation,
       this.checkRow("Conserver les corps outils", this.keepTools, (on) => {
         this.keepTools = on;
         changed();
       }),
+      this.info(this.choosing === "target" ? "Cliquez le corps cible dans la vue ; ensuite, les clics choisissent les corps outils." : "Un corps cliqué s'ajoute aux corps outils ; cliqué de nouveau, il en sort."),
+      el("div", { class: "flex gap-1.5" }, cancel, ok),
     ];
+  }
+
+  /** OK (or Entrée): the combination kept, in one undo step; nothing whole yet, it says what is missing. */
+  protected override finish(): void {
+    const built = this.feature();
+    if (typeof built === "string") return this.ctx.notify(built, "info");
+    super.finish();
+  }
+
+  /** The kernel cannot combine so (no overlap to cut or keep): OK waits. */
+  protected override blocker(): string | null {
+    const status = this.ctx.status(this.id);
+    return status && status.state !== "ok" ? (status.message ?? "Ces corps ne se combinent pas ainsi.") : null;
   }
 }
 

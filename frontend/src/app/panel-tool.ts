@@ -60,6 +60,11 @@ export abstract class PanelTool implements PointerHandler {
   /** What this use of the tool stored: the document before it, and the one it made (to set it again in place). */
   private stored: { base: CadDocument; doc: CadDocument; id: string } | null = null;
   private storeTimer: number | undefined;
+  /**
+   * Whether a valid setting is stored a moment after it is made (the default). False: nothing is stored before OK (or
+   * Entrée), and Annuler (Échap, the cross) leaves the document as it was — as Fusion's dialogs.
+   */
+  protected storesLive = true;
 
   constructor(
     protected readonly ctx: ToolContext,
@@ -201,7 +206,7 @@ export abstract class PanelTool implements PointerHandler {
   /** Stores the result when it is whole: valid, nothing in the way, its preview without error. */
   private storeNow(): void {
     this.storeTimer = undefined;
-    if (this.closedFlag || this.previewBusy) return;
+    if (this.closedFlag || this.previewBusy || !this.storesLive) return;
     const built = this.feature();
     if (typeof built === "string" || this.blocker() !== null) return;
     const status = this.ctx.status(built.id);
@@ -259,7 +264,7 @@ export abstract class PanelTool implements PointerHandler {
     const waiting = !this.closedFlag && (this.previewBusy || this.previewPending || this.storeTimer !== undefined);
     window.clearTimeout(this.storeTimer);
     this.storeTimer = undefined;
-    if (waiting) {
+    if (waiting && this.storesLive) {
       const built = this.feature();
       if (typeof built !== "string" && this.blocker() === null) this.confirm();
     }

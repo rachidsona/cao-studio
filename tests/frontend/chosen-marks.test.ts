@@ -51,6 +51,19 @@ describe("faces choisies marquées", () => {
     expect(lines[0]!.geometry.getAttribute("position").count).toBe(8);
   });
 
+  it("les corps outils passés de Joindre à Couper : les mêmes marques, en rouge, même si leurs corps ne sont plus montrés", () => {
+    const scene = new THREE.Scene();
+    const layer = new BodyLayer(scene);
+    layer.replace([body("a"), body("b")]);
+    const marks = new ChosenMarks(scene);
+    marks.set([{ body: "a", role: "first" }, { body: "b", role: "second" }], layer.bodies);
+    layer.replace([]);
+    marks.set([{ body: "a", role: "first" }, { body: "b", role: "remove" }], layer.bodies);
+    const roles: string[] = [];
+    scene.traverse((o) => o.userData.chosen && roles.push(o.userData.chosen));
+    expect(roles).toEqual(["first", "first", "remove", "remove"]);
+  });
+
   it("une marque gardée reste telle quelle quand le corps disparaît (l'aperçu), les autres s'en vont", () => {
     const scene = new THREE.Scene();
     const layer = new BodyLayer(scene);

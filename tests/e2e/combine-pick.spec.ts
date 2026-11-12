@@ -23,14 +23,15 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await expect(tool).toBeVisible();
   // Nothing taken for granted: the target is clicked first.
   await expect(tool.locator('[data-combine-pick="target"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(tool.getByLabel("Cible")).toHaveValue("");
+  const targetField = tool.locator('[data-combine-pick="target"]');
+  await expect(targetField).toHaveAttribute("data-combine-value", "");
   await expect(tool).toContainText("Cliquez dans la vue le corps cible");
 
   const view = (await canvas(page).boundingBox())!;
   const at = (fx: number, fy: number): [number, number] => [view.x + view.width * fx, view.y + view.height * fy];
   await page.mouse.click(...at(0.5, 0.5));
-  await expect(tool.getByLabel("Cible")).not.toHaveValue("");
-  const target = await tool.getByLabel("Cible").inputValue();
+  await expect(targetField).not.toHaveAttribute("data-combine-value", "");
+  const target = (await targetField.getAttribute("data-combine-value"))!;
   await expect(tool.locator('[data-combine-pick="tools"]')).toHaveAttribute("aria-pressed", "true");
 
   // Another body: a tool. Points across the unit until one is not the target.
@@ -47,9 +48,26 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await page.waitForTimeout(1500);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/combiner-bleu.png` });
 
+  // As Fusion: the operation in three buttons; the tools of a cut marked in red.
+  const view3d = canvas(page);
+  await expect(view3d).toHaveAttribute("data-chosen", "first second");
+  await tool.locator('[data-combine-op="cut"]').click();
+  await expect(tool.locator('[data-combine-op="cut"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(view3d).toHaveAttribute("data-chosen", "first remove");
+  await tool.locator('[data-combine-op="join"]').click();
+
   // Taken away with its ✕, then the list of every body stays folded.
   await tools.first().getByRole("button").click();
   await expect(tools).toHaveCount(0);
   await expect(tool.locator("details")).not.toHaveAttribute("open", "");
+
+  // Nothing kept before OK: Annuler leaves the model as it was.
+  const steps = await page.locator("[data-op]").count();
+  await page.mouse.click(...at(0.42, 0.5));
+  await tool.getByRole("button", { name: "Annuler", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  await page.waitForTimeout(800);
+  expect(await page.locator("[data-op]").count()).toBe(steps);
+  await expect(view3d).toHaveAttribute("data-chosen", "");
   expect(errors).toEqual([]);
 });
