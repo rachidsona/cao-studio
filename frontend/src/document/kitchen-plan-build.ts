@@ -14,11 +14,11 @@ import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } from "../features/kitchen-run-items";
 import type { RunInfo } from "../features/room-runs";
+import { WALL_THICKNESS } from "./joinery-defaults";
 
 /** The room's walls behind the runs, by run (spans along them from their left). */
 export type KitchenRoomInfo = Partial<Record<string, RunInfo>>;
 
-const WALL_THICKNESS = 100;
 const OVEN = 595;
 
 /**

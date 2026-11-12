@@ -14,6 +14,7 @@
 import type { Vec3 } from "../document/types";
 import { ergonomics, placeAppliances, type Slot } from "./kitchen-appliances";
 import { freeStretches, type RunInfo, type RunWall } from "./room-runs";
+import { CORNER_GAP, WALL_THICKNESS } from "../document/joinery-defaults";
 
 export interface KitchenSettings {
   layout: "I" | "L" | "U";
@@ -53,9 +54,7 @@ export const KITCHEN: KitchenSettings = {
 /** Commercial widths of the units (mm). */
 export const MODULES = [300, 400, 450, 500, 600, 800, 900];
 const PREFERRED = 600;
-const WALL_THICKNESS = 100;
 /** Gap left at the corner so the fronts of both runs open (mm). */
-const CORNER_GAP = 50;
 const CORNER_DOOR = 450;
 const OVERHANG = 20;
 export const WALL_UNIT = { height: 700, depth: 350, bottom: 1450 };

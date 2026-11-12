@@ -11,6 +11,7 @@
 import { cornerJoints, PLAN, planZones, rect, runPoint, type PlanZone, type Point } from "./plan-shapes";
 import type { DressingPlan, KitchenFloorPlan } from "./types";
 import { freeStretches, type RunInfo, type Span } from "../features/room-runs";
+import { CORNER_GAP } from "./joinery-defaults";
 
 export type KitchenModel = KitchenFloorPlan["model"];
 export type KitchenField = "lengthB" | "lengthC" | "lengthD" | "aisle";
@@ -39,7 +40,6 @@ export const FRONT = 19;
 export const WORKTOP = 38;
 const PLINTH = 150;
 const OVERHANG = 21;
-const CORNER_GAP = 50;
 export const CORNER_DOOR = 450;
 const WALL_GAP = 550;
 const WALL_HEIGHT = 700;

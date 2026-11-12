@@ -26,6 +26,7 @@ import { sketchFrame, nearestPlane } from "../sketcher/frame";
 import { nicheGeometry, nicheProblem } from "../features/niche-parts";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, idsFrom, partitionRecord, pathKey, rebuildChain, shelvesRecord } from "../sketcher/partition-history";
+import { DOOR_DEFAULTS, WALL_THICKNESS } from "./joinery-defaults";
 
 export type WallName = "A" | "B" | "C";
 
@@ -56,7 +57,7 @@ export interface DressingSettings {
   pullDown?: boolean;
 }
 
-export const WALL_THICKNESS = 100;
+export { WALL_THICKNESS } from "./joinery-defaults";
 const ROOM_LAYER = "Pièce";
 
 /** A program for a wall of this length: about one module per 80 cm, in a usual order. */
@@ -125,7 +126,7 @@ export function dressingProblem(s: DressingSettings): string | null {
 }
 
 /** The steps of a module in its case `i`: the divisions (by path of the niche), then the equipments of niches. */
-const DOORS = { gap: 3, thickness: 18, handles: true };
+const DOORS = { ...DOOR_DEFAULTS };
 
 export interface DressingResult {
   doc: CadDocument;

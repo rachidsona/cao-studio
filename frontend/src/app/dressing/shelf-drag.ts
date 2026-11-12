@@ -13,8 +13,8 @@ import { formatLength } from "../../measurements/units";
 import { frameOf, rayToSketch, toWorld } from "../../sketcher/frame";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
+import { PITCH } from "../../sketcher/partition-face-edit";
 
-const PITCH = 32;
 
 export function bindShelfDrag(viewport: Viewport, editor: Editor): void {
   const button = document.createElement("button");

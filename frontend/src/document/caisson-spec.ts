@@ -15,6 +15,7 @@ import { PART_SEPARATOR, type CadDocument, type PlaneFrame, type SketchFeature }
 import { nichePartsIn } from "../features/niche-parts";
 import { nearestPlane } from "../sketcher/frame";
 import { extrusionGroups, isPartition, leafNiches, partitionRecord, rebuildChain } from "../sketcher/partition-history";
+import { DOOR_DEFAULTS } from "./joinery-defaults";
 
 export interface CaissonSpec {
   /** Its construction, at the width and height it was made. */
@@ -50,7 +51,7 @@ export function caissonSpecOf(doc: CadDocument, sketchId: string, at?: number): 
     if (!boxes.length) return "Cette case n'est plus retrouvée.";
     const { widths: _shares, ...input } = structuredClone(step.input);
     const door = step.doors && caseHasDoor(doc, sketchId, record.id, at);
-    const { joined: _j, skipped: _s, hinges: _h, ...doors } = step.doors ?? { gap: 3, thickness: 18, handles: true };
+    const { joined: _j, skipped: _s, hinges: _h, ...doors } = step.doors ?? { ...DOOR_DEFAULTS };
     return {
       input: { ...input, cases: 2, dividers: ["none"], length: Math.max(...boxes.map((b) => b.x1)) - Math.min(...boxes.map((b) => b.x0)) + 2 * input.thickness },
       depth: step.depth, cases: [readRecipe(doc, { sketch: sketchId, partition: record.id, path: [at] })],

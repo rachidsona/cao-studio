@@ -24,6 +24,7 @@ import { regionAt } from "./region-pick";
 import { pointPos } from "./edit";
 import type { SketchExtrusion } from "./mode";
 import type { Preview } from "./tools";
+import { DOOR_DEFAULTS } from "../document/joinery-defaults";
 
 export interface PartitionHost {
   geometry(): SketchGeometry;
@@ -63,7 +64,7 @@ const last: PartitionInput = {
 };
 
 /** Kept for the session: the last doors asked for (mm). */
-const lastDoors: DoorSettings = { gap: 3, thickness: 18, handles: true };
+const lastDoors: DoorSettings = { ...DOOR_DEFAULTS };
 const lastBack: BackSettings = { thickness: 8, split: "whole" };
 
 /** The plinth height offered when the option is ticked (mm): 4 cm. */

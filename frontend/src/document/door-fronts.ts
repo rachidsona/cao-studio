@@ -8,8 +8,9 @@ import { syncPartitionDoors } from "./partition-doors";
 import type { DoorSettings, OffsetRecord } from "./sketch";
 import type { CadDocument, SketchFeature } from "./types";
 import { isPartition } from "../sketcher/partition-history";
+import { DOOR_DEFAULTS } from "./joinery-defaults";
 
-const DOORS: DoorSettings = { gap: 3, thickness: 18, handles: true };
+const DOORS: DoorSettings = { ...DOOR_DEFAULTS };
 
 export type DoorSwing = "pairs" | "left" | "right";
 
