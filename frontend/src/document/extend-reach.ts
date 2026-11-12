@@ -64,10 +64,12 @@ export interface Extended {
 
 /**
  * The element of `fromBody` extended from its face up to the face of `toBody` (the faces as the kernel finds them,
- * `refs` their persistent references), kept on it when `follow`; or why it cannot be.
+ * `refs` their persistent references), kept on it when `follow`; or why it cannot be. `piece`: the piece alone, as any
+ * other piece, the cabinet or Répartition it is part of staying as it is.
  */
-export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean): Extended | string {
-  const owner = extendable(doc, fromBody);
+export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean, piece = false): Extended | string {
+  // `piece`: only the piece clicked (a shelf, a cloison of a cabinet or a Répartition), not the whole element.
+  const owner = piece ? null : extendable(doc, fromBody);
   const reach = reachBy(from, to);
   if (typeof reach === "string") return `Impossible : ${reach}`;
   const name = owner?.name ?? bodyLabel(doc, fromBody);
@@ -132,4 +134,17 @@ export function withoutLinks(doc: CadDocument, ids: readonly string[]): CadDocum
   const kept = (doc.extendLinks ?? []).filter((l) => !ids.includes(l.id));
   const { extendLinks: _, ...rest } = doc;
   return kept.length ? { ...rest, extendLinks: kept } : rest;
+}
+
+/**
+ * Whether a face of a piece is on the outside of its element (the box around all its bodies): a side, the top, the
+ * front of a cabinet — the element is extended by default; a face inside it (the end or the top of a shelf, of a
+ * cloison) extends that piece alone by default.
+ */
+export function onEnvelope(face: Pick<FacePlane, "point" | "normal">, boxes: readonly [Vec3, Vec3][]): boolean {
+  const n = unit(face.normal);
+  const k = [0, 1, 2].reduce((m, i) => (Math.abs(n[i]!) > Math.abs(n[m]!) ? i : m), 0);
+  if (!boxes.length || Math.abs(n[k]!) < PARALLEL) return true;
+  const edge = n[k]! > 0 ? Math.max(...boxes.map((b) => b[1][k]!)) : Math.min(...boxes.map((b) => b[0][k]!));
+  return Math.abs(face.point[k]! - edge) < 0.5;
 }

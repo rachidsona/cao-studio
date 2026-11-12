@@ -46,3 +46,46 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-plinthe.png` });
   expect(errors).toEqual([]);
 });
+
+test("prolonger élément : l'étagère d'un caisson se prolonge seule par défaut, le caisson entier au choix", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-prolonger-etagere");
+  await click(page, '[data-action="cabinet"]');
+  await page.waitForTimeout(600);
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(600);
+  const close = page.getByRole("button", { name: "Fermer", exact: true }).first();
+  if (await close.isVisible()) await close.click();
+  await page.waitForTimeout(1200);
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(800);
+  await click(page, '[data-action="extend-element"]');
+  const tool = page.getByRole("dialog", { name: "Prolonger élément" });
+  await expect(tool).toContainText("1. Cliquez la face à prolonger");
+  // The front edge of its shelf: looked for up and down the middle of the view.
+  let found = false;
+  for (const dy of Array.from({ length: 61 }, (_, i) => (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 4)) {
+    // A piece clicked first takes the next click as the face to reach: started again each time.
+    const again = tool.getByRole("button", { name: "Recommencer" });
+    if (await again.count()) await again.click();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 + dy);
+    await page.waitForTimeout(200);
+    if (/À prolonger : « [^»]*Étagère/.test((await tool.textContent()) ?? "")) {
+      found = true;
+      break;
+    }
+  }
+  expect(found).toBe(true);
+  const what = tool.getByLabel("Prolonger", { exact: true });
+  await expect(what).toHaveValue("piece");
+  await expect(tool).toContainText(/À prolonger : « .*Étagère 1 »/);
+  await expect(tool.locator("[data-extend-ok]")).toBeDisabled();
+  // The whole cabinet, if asked.
+  await what.selectOption("whole");
+  await expect(tool).toContainText(/À prolonger : « Caisson 1 »/);
+  expect(errors).toEqual([]);
+});

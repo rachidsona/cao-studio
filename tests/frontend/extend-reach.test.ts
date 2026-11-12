@@ -4,7 +4,8 @@
  * refaite quand l'autre élément change.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { extendTo, followLink, reachBy, travelTo, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
+import { extendTo, followLink, onEnvelope, reachBy, travelTo, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
+import { bodyLabel } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type TrimFeature, type Vec3 } from "../../frontend/src/document/types";
 import { validateDocument } from "../../frontend/src/document/validate";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
@@ -71,6 +72,20 @@ describe("prolonger et garder", () => {
     expect(typeof slanted !== "string" && (slanted.doc.features.at(-1) as ExtrudeFeature).until).toBeTruthy();
   });
 
+  it("une étagère, une cloison seule : son caisson ne change pas, elle reçoit son opération ; par défaut pour une face à l'intérieur", () => {
+    const shelfEnd = face([600 - 18, 280, 360], [1, 0, 0], [[582, 20, 351], [582, 540, 369]]);
+    const made = extendTo(withCabinet(), "c1#5", "c2#0", shelfEnd, face([900, 0, 0], [-1, 0, 0]), { from: ref([582, 280, 360], [1, 0.5, 0.5], [1, 0, 0]), to: ref([900, 0, 0], [0, 0.5, 0.5], [-1, 0, 0]) }, true, true);
+    if (typeof made === "string") throw new Error(made);
+    expect(width(made.doc)).toBe(600);
+    expect(made.doc.features.at(-1)).toMatchObject({ type: "extrude", target: "c1#5", distance: 318, until: { body: "c2#0" } });
+    expect(made.message).toMatch(/^« Bas — .* » prolongé de 31,8 cm/);
+    // The box of the cabinet: its outer side is on it, the end of its shelf is not.
+    const boxes: [Vec3, Vec3][] = [[[0, 0, 0], [18, 560, 720]], [[582, 0, 0], [600, 560, 720]], [[18, 20, 351], [582, 540, 369]]];
+    expect(onEnvelope({ point: [600, 280, 360], normal: [1, 0, 0] }, boxes)).toBe(true);
+    expect(onEnvelope({ point: [582, 280, 360], normal: [1, 0, 0] }, boxes)).toBe(false);
+    expect(onEnvelope({ point: [300, 280, 369], normal: [0, 0, 1] }, boxes)).toBe(false);
+  });
+
   it("le document refuse une liaison ou une face d'arrivée mal formée", () => {
     const bad = { ...withCabinet(), extendLinks: [{ id: "pl1", from: { body: "c1#1" }, to: { body: "x" } }] } as unknown as CadDocument;
     expect(validateDocument(bad).join(" ")).toMatch(/extendLinks/);
@@ -103,6 +118,25 @@ describe("dans le noyau", () => {
     // Already on it: the body as it is.
     r.recompute(plate([pull(toB)], [[100, 60, 0], [150, 90, 20]]));
     expect(box(r, "ex1").volume).toBeCloseTo(100 * 50 * 20, 1);
+    r.dispose();
+  });
+
+  it("l'étagère d'un caisson, seule, jusqu'à la planche devant : le caisson reste, l'étagère s'allonge", () => {
+    const r = new Recomputer();
+    const base = (extra: object[]): CadDocument => ({ format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: [cabinet, board("b", [0, -400, 0], [600, -380, 720]), ...extra] }) as CadDocument;
+    const result = r.recompute(base([]));
+    const shelf = result.bodies.find((id) => bodyLabel(base([]), id).includes("Étagère"))!;
+    const out = r.output(shelf);
+    if (out?.kind !== "solid") throw new Error("étagère");
+    const front = out.shape.faces.map((f) => describeFace(out.shape, f)).reduce((a, f) => (f.normal[1] < a.normal[1] ? f : a));
+    const before = bodyMetrics(out.shape);
+    const toBoard = { body: "b#0", face: ref([300, -380, 360], [0.5, 1, 0.5], [0, 1, 0]) };
+    const op: ExtrudeFeature = { id: "ex1", type: "extrude", name: "Prolongement 1", faces: [front], target: shelf, distance: 1, operation: "join", until: toBoard };
+    const after = r.recompute(base([op]));
+    expect(after.statuses.every((s) => s.state === "ok")).toBe(true);
+    const m = box(r, "ex1");
+    expect(m.bbox[0][1]).toBeCloseTo(-380, 3);
+    expect(m.bbox[1][1]).toBeCloseTo(before.bbox[1][1], 3);
     r.dispose();
   });
 

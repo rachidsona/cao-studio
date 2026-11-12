@@ -698,6 +698,11 @@ opération existante.
     corps, comme « Tirer une face », qui se retouche ou se supprime dans l'historique. Exemple : le bout d'une plinthe
     de cuisine, puis le bout de la plinthe d'en face, pour fermer le vide sous un four. Sur une pièce du Plan de
     cuisine, l'opération est gardée quand la cuisine est refaite.
+  - **Une étagère ou une cloison seule** : la face d'une pièce à l'intérieur d'un caisson ou d'une Répartition (le bout,
+    le dessus ou le dessous d'une étagère, d'une cloison) prolonge cette pièce seule par défaut, comme toute autre pièce
+    (une opération « Prolongement » sur son corps), jusqu'à la face d'un autre élément ou d'une autre pièce du même
+    meuble ; une face sur le dehors du meuble (un côté, le dessus, une façade) le prolonge entier. « Prolonger » change
+    ce choix (`onEnvelope` de `document/extend-reach.ts`).
   - **Face d'arrivée inclinée** (un mur en biais, un rampant) : un caisson ou une Répartition s'allonge jusqu'à la
     toucher de son premier coin ; une autre pièce va jusqu'à son plan et son bout en prend la pente
     (`document/extend-reach.ts`, `features/face-until.ts`).

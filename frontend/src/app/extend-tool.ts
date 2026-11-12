@@ -8,11 +8,12 @@
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import { extendable } from "../document/extend-element";
-import { extendTo, linkBodies, withoutLinks, type Extended, type FacePlane } from "../document/extend-reach";
-import type { FaceRef, Feature } from "../document/types";
+import { extendTo, linkBodies, onEnvelope, withoutLinks, type Extended, type FacePlane } from "../document/extend-reach";
+import type { FaceRef, Feature, Vec3 } from "../document/types";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
 import { planeOf } from "./extend-follow";
+import { wholeBodies, wholeOwner } from "./move-whole";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 interface Side {
@@ -35,6 +36,8 @@ export class ExtendTool extends PanelTool {
   private follow = lastFollow;
   /** The result shown, or why it cannot be. */
   private made: Extended | string | null = null;
+  /** Only the piece clicked (a shelf, a cloison), not its cabinet or Répartition: by default for a face inside it. */
+  private piece = false;
 
   constructor(ctx: ToolContext, faces: readonly FacePick[]) {
     super(ctx, "Prolonger élément", null);
@@ -53,10 +56,12 @@ export class ExtendTool extends PanelTool {
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
       const ref = (await this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex)).face ?? undefined;
       const side: Side = { bodyId: pick.bodyId, plane: planeOf(outline), ...(ref ? { ref } : {}) };
-      // The element itself clicked again: another face of it to extend.
-      if (!this.moving || this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId)) {
+      // The element itself clicked again (the piece itself, when it alone is extended): another face of it to extend.
+      const again = this.moving && (this.piece ? pick.bodyId === this.moving.bodyId : this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId));
+      if (!this.moving || again) {
         this.moving = side;
         this.target = null;
+        this.piece = this.inside(side);
       } else this.target = side;
       this.refresh();
     } catch (e) {
@@ -64,9 +69,21 @@ export class ExtendTool extends PanelTool {
     }
   }
 
+  /** A face of a cabinet's or a Répartition's piece inside it (a shelf, a cloison): that piece alone, by default. */
+  private inside(side: Side): boolean {
+    const doc = this.ctx.doc();
+    const owner = extendable(doc, side.bodyId) && wholeOwner(doc, side.bodyId);
+    if (!owner) return false;
+    const boxes = wholeBodies(doc, owner.kind, owner.id, this.ctx.viewport.displayedBodies).flatMap((id) => {
+      const b = this.ctx.viewport.bodyMesh(id)?.metrics.bbox;
+      return b ? [[[...b[0]], [...b[1]]] as [Vec3, Vec3]] : [];
+    });
+    return !onEnvelope(side.plane, boxes);
+  }
+
   /** The result made again from the faces chosen, and shown. */
   private refresh(): void {
-    this.made = this.moving && this.target ? extendTo(this.ctx.doc(), this.moving.bodyId, this.target.bodyId, this.moving.plane, this.target.plane, { from: this.moving.ref, to: this.target.ref }, this.follow) : null;
+    this.made = this.moving && this.target ? extendTo(this.ctx.doc(), this.moving.bodyId, this.target.bodyId, this.moving.plane, this.target.plane, { from: this.moving.ref, to: this.target.ref }, this.follow, this.piece) : null;
     this.render();
     void this.ctx.preview(this.made && typeof this.made !== "string" ? this.made.doc : null).then(() => this.render());
   }
@@ -120,8 +137,13 @@ export class ExtendTool extends PanelTool {
     const restart = el("button", { type: "button", class: `${BUTTON} w-full` }, "Recommencer");
     restart.addEventListener("click", () => ((this.moving = this.target = null), this.refresh()));
     const links = this.linkRows();
+    const owner = this.moving ? extendable(doc, this.moving.bodyId) : null;
+    const what = owner && this.moving
+      ? this.selectRow("Prolonger", this.piece ? "piece" : "whole", [["whole", `Tout « ${owner.name} »`], ["piece", `Cette pièce seule (« ${bodyLabel(doc, this.moving.bodyId)} »)`]], (v) => ((this.piece = v === "piece"), this.refresh()))
+      : null;
     return [
-      this.info(this.moving ? `À prolonger : « ${name(this.moving)} », par la face cliquée.` : FIRST),
+      this.info(this.moving ? `À prolonger : « ${this.piece ? bodyLabel(doc, this.moving.bodyId) : name(this.moving)} », par la face cliquée.` : FIRST),
+      what,
       this.moving ? this.info(this.target ? `Jusqu'à : « ${name(this.target)} ».` : SECOND) : null,
       this.checkRow("Suivre l'autre élément", this.follow, (v) => ((this.follow = lastFollow = v), this.refresh())),
       this.made && typeof this.made !== "string" ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100", "data-extend-result": "" }, this.made.message) : null,
@@ -130,7 +152,7 @@ export class ExtendTool extends PanelTool {
       this.moving ? restart : null,
       links.length ? el("p", { class: "border-t border-gray-200 pt-2 font-medium dark:border-gray-700" }, "Éléments qui en suivent un autre") : null,
       ...links,
-      this.info("Un caisson s'allonge en largeur, profondeur ou hauteur, avec ses façades ; une Répartition en longueur ou en hauteur, avec ses cases ; une autre pièce par la face cliquée. Une face d'arrivée inclinée : un caisson va jusqu'à la toucher, une pièce en prend la pente."),
+      this.info("Un caisson s'allonge en largeur, profondeur ou hauteur, avec ses façades ; une Répartition en longueur ou en hauteur, avec ses cases ; une étagère, une cloison ou une autre pièce seule par la face cliquée (son bout, son dessus, son dessous). Une face d'arrivée inclinée : un caisson va jusqu'à la toucher, une pièce en prend la pente."),
     ];
   }
 
