@@ -6,7 +6,8 @@
  * (features/face-mate.ts). Le résultat est une rotation (autour d'un axe quelconque) suivie d'un déplacement : une
  * seule annulation.
  */
-import { bodyLabel } from "../document/operations";
+import { bodyLabel, findFeature } from "../document/operations";
+import { alignWhole, wholeMate } from "./align-whole";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
 import { faceOnFace, flushSlide } from "../features/face-mate";
 import type { FacePick } from "../viewport/viewport";
@@ -30,6 +31,9 @@ export class AlignFaces {
   /** Where it lands: its edges flush with the other's at the corner nearest the click (the default), its centre on the point clicked, or on the other's centre. */
   where: "corner" | "point" | "center" = "corner";
   gap = 0;
+  /** The whole cabinet or Répartition the face belongs to moves (the default), or the piece alone. */
+  whole = true;
+  private wholeSlots: { id: string; name: string }[] = [];
   spin = 0;
   /** Where the faces were clicked, to mark them in the view. */
   private picks: { moving?: FacePick; fixed?: FacePick } = {};
@@ -69,6 +73,23 @@ export class AlignFaces {
     }
   }
 
+  /** The name of what moves: the cabinet or Répartition, or the piece. */
+  movingName(): string {
+    const doc = this.ctx.doc();
+    if (!this.moving) return "";
+    const owner = this.movesWhole() ? alignWhole(doc, this.moving.bodyId) : null;
+    return (owner && findFeature(doc, owner.id)?.name) ?? bodyLabel(doc, this.moving.bodyId);
+  }
+
+  /** Whether the whole moves: asked, the face part of a whole, the other face not of the same one (a shelf on its side). */
+  movesWhole(): boolean {
+    if (!this.whole || !this.moving) return false;
+    const doc = this.ctx.doc();
+    const owner = alignWhole(doc, this.moving.bodyId);
+    const other = this.fixed ? alignWhole(doc, this.fixed.bodyId) : null;
+    return !!owner && !(other && other.kind === owner.kind && other.id === owner.id);
+  }
+
   restart(): void {
     this.moving = this.fixed = null;
     this.picks = {};
@@ -97,6 +118,12 @@ export class AlignFaces {
       const [rotate] = freshFeatureIds(doc, "ro", "Rotation", 1);
       const [move] = freshFeatureIds({ ...doc, features: [...doc.features, { id: rotate!.id, name: rotate!.name } as Feature] }, "mv", "Déplacement", 1);
       this.slots = { rotate: rotate!, move: move! };
+    }
+    // The whole cabinet (with its fronts and appliances) or Répartition, not a face of another piece of it.
+    if (this.movesWhole()) {
+      const doc = this.ctx.doc();
+      const made = wholeMate(doc, this.moving.bodyId, this.ctx.viewport.displayedBodies, mate, this.wholeSlots, (n) => freshFeatureIds(doc, "mv", "Déplacement", n));
+      if (made !== null) return made;
     }
     const out: Feature[] = [];
     let target = this.moving.bodyId;

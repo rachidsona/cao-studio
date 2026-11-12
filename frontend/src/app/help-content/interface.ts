@@ -40,14 +40,14 @@ export const CURIC: HelpFamily[] = [
       },
       {
         keys: ["data-action:align"], name: "Aligner",
-        what: "Accole ou aligne des corps et des esquisses sur un corps de référence, axe par axe.",
+        what: "Pose un caisson ou une Répartition contre un autre, face contre face, ou aligne des corps sur une référence.",
         steps: [
-          "Cliquez « Aligner », puis choisissez la « Référence » dans la liste.",
-          "Cliquez dans la vue les corps ou les esquisses à aligner dessus (un second clic les retire).",
-          "Pour chaque axe (« X largeur », « Y profond. », « Z hauteur »), choisissez « Côté − aligné », « Centré », « Côté + aligné », « Accolé après (+) » ou « Accolé avant (−) ». Réglez l'« écart » si besoin.",
+          "Cliquez « Aligner » : la méthode « Face sur face » est prise d'office.",
+          "Cliquez la face du caisson à déplacer (un côté, une façade) : c'est tout le meuble qui bougera, ses façades et son électroménager compris (« Ce qui bouge » permet de ne prendre que la pièce).",
+          "Cliquez la face où le poser, sur un autre élément : il s'y plaque, ses bords affleurant les siens au coin le plus proche du clic (« Où »). Réglez le « Jeu » ou un quart de tour si besoin.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
         ],
-        tip: "Au départ : accolé après en X, côté − en Y et Z, comme des caissons côte à côte. « Méthode » propose aussi « Face sur face » — la face se plaque sur l'autre, ses bords affleurant les siens au coin le plus proche du clic (« Où ») — et « Point sur point ». Un corps aligné suit sa référence quand elle change.",
+        tip: "« Méthode » propose aussi « Point sur point » et « Par axes (X, Y, Z) » : les corps cliqués s'y alignent sur une référence de la liste, axe par axe (accolé, aligné, centré), et suivent ensuite cette référence quand elle change.",
       },
       {
         keys: ["data-action:mate"], name: "Assemblage",

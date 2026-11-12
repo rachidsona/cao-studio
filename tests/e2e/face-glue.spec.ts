@@ -40,6 +40,46 @@ test("coller par face : un haut vient à fleur de la façade du bas, caisson et 
   expect(errors).toEqual([]);
 });
 
+test("aligner face sur face : la face d'une façade cliquée, c'est tout le meuble qui se pose, sans opération par pièce", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-aligner-meuble");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-1-porte-600"]').click();
+  await expect(page.getByText(/Bas 1 porte 600 ajouté/).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Hauts" }).click();
+  await page.locator('[data-unit="wall-haut-1-porte-600"]').click();
+  await expect(page.getByText(/Haut 1 porte 600 ajouté/).first()).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.keyboard.press("Escape");
+  const steps = await page.locator("[data-op]").count();
+  await click(page, '[data-action="align"]');
+  const tool = page.getByRole("dialog", { name: "Aligner" });
+  // « Face sur face » at first: a cabinet laid by two faces clicked.
+  await expect(tool.getByRole("combobox", { name: "Méthode" })).toHaveValue("faces");
+  const canvas = (await page.locator("canvas").first().boundingBox())!;
+  const at = (x: number, y: number) => page.mouse.click(canvas.x + canvas.width * x, canvas.y + canvas.height * y);
+  await page.waitForTimeout(800);
+  await at(0.505, 0.33);
+  await expect(tool).toContainText("Face qui bouge : « Façades Haut 1 porte 600");
+  await expect(tool.getByRole("combobox", { name: "Ce qui bouge" })).toHaveValue("whole");
+  await expect(tool).toContainText("Bouge : « Haut 1 porte 600 » tout entier.");
+  await at(0.505, 0.75);
+  await expect(tool.getByRole("combobox", { name: "Où" })).toHaveValue("corner");
+  await page.waitForTimeout(1500);
+  await page.keyboard.press("Enter");
+  await expect(tool).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  // The cabinet set again in place: no rotation nor move of a piece added to the history.
+  expect(await page.locator("[data-op]").count()).toBe(steps);
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Déplacement|^Rotation/)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("prolonger élément : un haut s'allonge en profondeur jusqu'au plan de la façade du bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

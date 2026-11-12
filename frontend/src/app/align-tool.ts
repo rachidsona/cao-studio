@@ -17,6 +17,7 @@ import { sketchBox } from "../sketcher/sketch-transform";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
 import { AlignFaces } from "./align-faces";
+import { alignWhole } from "./align-whole";
 import { AlignPoints, POINT_AXES, type PointAxes } from "./align-points";
 import { boxOfBodies, freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -33,7 +34,8 @@ const MODES: [AlignMode, string][] = [
 /** Last settings, kept for the next alignment of the session. */
 let lastModes: [AlignMode, AlignMode, AlignMode] = ["after", "min", "min"];
 type Method = "axes" | "faces" | "points";
-let lastMethod: Method = "axes";
+/** Kept for the session; « Face sur face » at first: a cabinet laid on another by two faces clicked. */
+let lastMethod: Method = "faces";
 
 export class AlignTool extends PanelTool {
   private targets: string[];
@@ -176,7 +178,7 @@ export class AlignTool extends PanelTool {
     ];
     const method = this.editing
       ? null
-      : this.selectRow("Méthode", this.method, [["axes", "Par axes (X, Y, Z)"], ["faces", "Face sur face"], ["points", "Point sur point"]], (v) => {
+      : this.selectRow("Méthode", this.method, [["faces", "Face sur face"], ["points", "Point sur point"], ["axes", "Par axes (X, Y, Z)"]], (v) => {
           this.method = v as Method;
           this.points.draw(null);
           // The faces marked belong to « Face sur face »: started again there.
@@ -216,6 +218,10 @@ export class AlignTool extends PanelTool {
     restart.addEventListener("click", () => f.restart());
     return [
       this.info(f.moving ? `Face qui bouge : « ${bodyLabel(doc, f.moving.bodyId)} »${f.fixed ? ` ; collée sur « ${bodyLabel(doc, f.fixed.bodyId)} »` : ""}.` : "1. Cliquez la face du corps à déplacer."),
+      f.moving && alignWhole(doc, f.moving.bodyId)
+        ? this.selectRow("Ce qui bouge", f.whole ? "whole" : "piece", [["whole", alignWhole(doc, f.moving.bodyId)!.kind === "cabinet" ? "Le meuble entier (caisson, façades)" : "La Répartition entière"], ["piece", "La pièce seule"]], (v) => ((f.whole = v === "whole"), changed()))
+        : null,
+      f.moving && f.movesWhole() ? this.info(`Bouge : « ${f.movingName()} » tout entier.`) : null,
       f.fixed
         ? null
         : this.info(f.moving ? "2. Cliquez la face où la coller, sur un autre corps — droite ou inclinée." : "2. Puis la face où la coller, sur un autre corps — droite ou inclinée."),

@@ -1111,7 +1111,11 @@ opération existante.
     l'autre, puis **ses bords affleurent ceux de l'autre au coin le plus proche du clic** (« Où » : « Bords affleurés
     au coin cliqué », par défaut) — deux faces de même taille se posent exactement l'une sur l'autre, une plus petite
     se cale dans ce coin ; ou bien le centre de sa face va au point cliqué, ou au centre de l'autre face. Les bords
-    sont pris d'équerre au plus long côté de l'autre face (`flushSlide`). On règle un **jeu** et un
+    sont pris d'équerre au plus long côté de l'autre face (`flushSlide`). **Le meuble entier** : la face d'une pièce
+    d'un caisson (un côté, une façade) ou d'une Répartition cliquée, c'est par défaut tout le meuble qui se pose
+    (« Ce qui bouge » : le meuble entier ou la pièce seule) — le caisson par son origine, avec ses façades et
+    l'électroménager posé dedans, tourné s'il le faut par quarts de tour autour de la verticale ; la Répartition par
+    son esquisse, sans tourner — comme Pousser, sans opération par pièce (`app/align-whole.ts`). On règle un **jeu** et un
     quart de tour sur la face (0°, 90°, 180°, 270°) ; « Recommencer » reprend les deux clics. Le résultat est une
     rotation autour d'un axe quelconque, puis un déplacement, en une annulation (`features/face-mate.ts`,
     `app/align-faces.ts`).
