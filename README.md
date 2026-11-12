@@ -1568,7 +1568,11 @@ opération existante.
     **mélaminés et panneaux** (blanc, gris perle, anthracite, noir, chêne, noyer, MDF, HDF, contreplaqué, OSB),
     **laques et peintures** (24 teintes RAL du mobilier, laques brillantes, laque satinée et peinture mate à la
     couleur choisie), **verres et miroirs** (clair, extra-clair, dépoli, fumé, bronze, vert, laqué, miroir), **marbres
-    et pierres** (Carrare, Calacatta, Marquina, vert, rose, travertin, granits, quartz, terrazzo, ardoise),
+    et pierres** (Carrare, Calacatta, Statuario et Calacatta Oro à grandes veines, Arabescato, Emperador foncé et
+    clair, Marquina, vert, rose, quartzite Taj Mahal, travertin, granits, quartz, terrazzo, ardoise), **Dekton et
+    céramiques frittées** pour plans de travail, crédences et façades (Aura, Entzo, Opera, Rem, Laurent veinés ;
+    Zenith, Danae, Kreta, Bergen, Keon, Kelya, Sirius, Trilium unis : motifs « veined » et « sintered » de
+    `appearance/textures.ts`, calculés et raccordés sans couture),
     **métaux** (inox et aluminium brossés, anodisé noir, chrome, laiton, or, cuivre, acier), **plastiques** (dont
     plexiglas transparent et opale), **tissus et cuirs** (lin, chiné, velours, cuirs cognac, noir, blanc), **bétons et
     sols** (béton ciré, brut, liège, enduit). Les textures sont calculées (veines du marbre, mouchetures du granit,

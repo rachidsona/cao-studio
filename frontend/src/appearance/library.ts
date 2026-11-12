@@ -1,14 +1,16 @@
 /**
  * Bibliothèque d'apparences (comme celle de Fusion) : bois de différentes essences, mélaminés, verres, marbres et
- * pierres, métaux, laques et peintures (teintes RAL), plastiques, tissus et cuirs, bétons. Chaque apparence décrit sa
+ * pierres (Statuario, Calacatta Oro, Arabescato, Emperador, quartzite Taj Mahal…), plans en pierre frittée (les teintes
+ * Dekton : Aura, Entzo, Laurent, Kelya, Sirius, Kreta…), métaux, laques et peintures (teintes RAL), plastiques, tissus et
+ * cuirs, bétons. Chaque apparence décrit sa
  * surface (couleurs, motif calculé, rugosité, métal, vernis, transparence) ; les textures sont calculées
  * (appearance/textures.ts), sauf les bois en photo (static/textures/bois, CC0) et les images qu'on importe soi-même
  * (« Mes motifs », gardées avec le projet : appearance/custom.ts). Chaque essence de bois tire son veinage d'une de ces
  * photos : le fil droit d'un noyer tranché sur quartier, raccordé sans couture, dans ses propres couleurs. Une matière de l'atelier a son apparence par défaut.
  */
 
-export type Pattern = "plain" | "wood" | "marble" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
-export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "metal" | "paint" | "plastic" | "light" | "textile" | "concrete" | "custom";
+export type Pattern = "plain" | "wood" | "marble" | "veined" | "sintered" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
+export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "sintered" | "metal" | "paint" | "plastic" | "light" | "textile" | "concrete" | "custom";
 
 export interface Appearance {
   id: string;
@@ -53,12 +55,30 @@ export interface Appearance {
   whole?: boolean;
 }
 
+/** The sintered stones (Dekton…): veined like a marble, or even like a cement; matt unless said polished. */
+const SINTERED: Appearance[] = [
+  { id: "dekton-aura", name: "Dekton Aura (blanc, veines grises)", category: "sintered", color: "#f2f1ee", color2: "#8a8d91", pattern: "veined", roughness: 0.4, tile: [1800, 1800] },
+  { id: "dekton-entzo", name: "Dekton Entzo (blanc, veines dorées)", category: "sintered", color: "#f4f1ea", color2: "#b48b4c", pattern: "veined", roughness: 0.3, clearcoat: 0.2, tile: [2000, 2000] },
+  { id: "dekton-opera", name: "Dekton Opera (blanc, veines ocre)", category: "sintered", color: "#efe9df", color2: "#a8875c", pattern: "veined", roughness: 0.4, tile: [1800, 1800] },
+  { id: "dekton-rem", name: "Dekton Rem (gris clair veiné)", category: "sintered", color: "#e8e6e2", color2: "#a7a7a6", pattern: "veined", roughness: 0.45, tile: [1600, 1600] },
+  { id: "dekton-laurent", name: "Dekton Laurent (noir, veines dorées)", category: "sintered", color: "#1b1a1a", color2: "#b8925a", pattern: "veined", roughness: 0.35, tile: [1800, 1800] },
+  { id: "dekton-zenith", name: "Dekton Zenith (blanc uni)", category: "sintered", color: "#f6f6f4", color2: "#e7e7e4", pattern: "sintered", roughness: 0.5, tile: [800, 800], relief: 0.04 },
+  { id: "dekton-danae", name: "Dekton Danae (beige ciment)", category: "sintered", color: "#cfc6b8", color2: "#b2a795", pattern: "sintered", roughness: 0.6, tile: [800, 800], relief: 0.05 },
+  { id: "dekton-kreta", name: "Dekton Kreta (gris béton)", category: "sintered", color: "#b5b3ae", color2: "#8f8c86", pattern: "sintered", roughness: 0.6, tile: [800, 800], relief: 0.05 },
+  { id: "dekton-bergen", name: "Dekton Bergen (gris chaud)", category: "sintered", color: "#9a948b", color2: "#74706a", pattern: "sintered", roughness: 0.55, tile: [800, 800], relief: 0.05 },
+  { id: "dekton-keon", name: "Dekton Keon (gris ciment foncé)", category: "sintered", color: "#8e8a84", color2: "#5f5c58", pattern: "sintered", roughness: 0.6, tile: [800, 800], relief: 0.05 },
+  { id: "dekton-kelya", name: "Dekton Kelya (gris anthracite)", category: "sintered", color: "#2e2d2c", color2: "#474542", pattern: "sintered", roughness: 0.55, tile: [800, 800], relief: 0.04 },
+  { id: "dekton-sirius", name: "Dekton Sirius (noir profond)", category: "sintered", color: "#121212", color2: "#2a2a2a", pattern: "sintered", roughness: 0.5, tile: [800, 800], relief: 0.04 },
+  { id: "dekton-trilium", name: "Dekton Trilium (oxyde rouille)", category: "sintered", color: "#6b5a4c", color2: "#a0552c", pattern: "sintered", roughness: 0.6, tile: [800, 800], relief: 0.12 },
+];
+
 export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "wood", name: "Bois" },
   { id: "melamine", name: "Mélaminés et panneaux" },
   { id: "paint", name: "Laques et peintures" },
   { id: "glass", name: "Verres et miroirs" },
   { id: "stone", name: "Marbres et pierres" },
+  { id: "sintered", name: "Dekton et céramiques frittées" },
   { id: "metal", name: "Métaux" },
   { id: "plastic", name: "Plastiques" },
   { id: "light", name: "Éclairage (LED)" },
@@ -201,12 +221,21 @@ export const APPEARANCES: Appearance[] = [
   { id: "marble-marquina", name: "Marbre noir Marquina", category: "stone", color: "#17171a", color2: "#d9d6cf", pattern: "marble", roughness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.04, tile: [1200, 1200] },
   { id: "marble-green", name: "Marbre vert", category: "stone", color: "#1f3a30", color2: "#a9c2b2", pattern: "marble", roughness: 0.12, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [1000, 1000] },
   { id: "marble-pink", name: "Marbre rose", category: "stone", color: "#d9b8aa", color2: "#f3e6df", pattern: "marble", roughness: 0.14, clearcoat: 0.4, clearcoatRoughness: 0.06, tile: [1200, 1200] },
+  { id: "marble-statuario", name: "Marbre Statuario (grandes veines grises)", category: "stone", color: "#f4f3f0", color2: "#6f7277", pattern: "veined", roughness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [1800, 1800] },
+  { id: "marble-calacatta-oro", name: "Marbre Calacatta Oro (veines dorées)", category: "stone", color: "#f5f1e9", color2: "#b08a4e", pattern: "veined", roughness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [2000, 2000] },
+  { id: "marble-arabescato", name: "Marbre Arabescato", category: "stone", color: "#f1f0ed", color2: "#4d4f53", pattern: "marble", roughness: 0.12, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [900, 900] },
+  { id: "marble-emperador-dark", name: "Marbre Emperador foncé", category: "stone", color: "#4a3427", color2: "#cdb08a", pattern: "marble", roughness: 0.12, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [900, 900] },
+  { id: "marble-emperador-light", name: "Marbre Emperador clair", category: "stone", color: "#b49a7c", color2: "#e8dcc6", pattern: "marble", roughness: 0.12, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [900, 900] },
+  { id: "quartzite-taj-mahal", name: "Quartzite Taj Mahal", category: "stone", color: "#e9e0d0", color2: "#c4a983", pattern: "veined", roughness: 0.15, clearcoat: 0.4, clearcoatRoughness: 0.06, tile: [2200, 2200] },
   { id: "travertine", name: "Travertin", category: "stone", color: "#d8c5a6", color2: "#b49b76", pattern: "marble", roughness: 0.5, tile: [900, 900], relief: 0.25 },
   { id: "granite-black", name: "Granit noir", category: "stone", color: "#1d1d1f", color2: "#6a6a6e", pattern: "granite", roughness: 0.15, clearcoat: 0.5, clearcoatRoughness: 0.05, tile: [300, 300] },
   { id: "granite-grey", name: "Granit gris moucheté", category: "stone", color: "#8f8f8f", color2: "#2b2b2d", pattern: "granite", roughness: 0.2, clearcoat: 0.3, tile: [300, 300] },
   { id: "quartz-white", name: "Quartz blanc", category: "stone", color: "#ecebe7", color2: "#b9b6ae", pattern: "granite", roughness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.04, tile: [200, 200] },
   { id: "terrazzo", name: "Terrazzo", category: "stone", color: "#e6e1d8", color2: "#7e7466", pattern: "terrazzo", roughness: 0.25, clearcoat: 0.3, tile: [500, 500] },
   { id: "slate", name: "Ardoise", category: "stone", color: "#3b4045", color2: "#2a2e32", pattern: "slate", roughness: 0.65, tile: [600, 600], relief: 0.45 },
+
+  // ---- Dekton et céramiques frittées (teintes de la gamme Dekton ; plans de travail, crédences, façades) ----
+  ...SINTERED,
 
   // ---- Métaux ----
   { id: "steel-brushed", name: "Inox brossé", category: "metal", color: "#c4c6c8", color2: "#a9abad", pattern: "brushed", roughness: 0.32, metalness: 1, tile: [200, 200], relief: 0.02 },

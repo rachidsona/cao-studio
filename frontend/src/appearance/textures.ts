@@ -108,6 +108,27 @@ export function sampleMotif(pattern: Pattern, u: number, v: number, seed = 1): [
       const cloud = fbm(u, v, 3, 4, seed + 9);
       return [Math.min(1, main + thin + 0.15 * cloud), 1 - main * 0.2, 0.04 * (cloud - 0.5)];
     }
+    case "veined": {
+      // A slab of Statuario or Calacatta (and the sintered stones that copy them): one broad vein across the tile, of
+      // uneven width, in a soft grey halo; thin veins branching off it in places; faint clouds in the white.
+      // A slow warp (few octaves): the vein flows rather than wriggles.
+      const warp = fbm(u, v, 2, 3, seed) * 1.0 + fbm(u, v, 4, 2, seed + 11) * 0.2;
+      // Its edge frayed by a fine noise, its width swelling and thinning along it.
+      const across = Math.abs(Math.sin((u + v + warp) * Math.PI)) + 0.03 * (fbm(u, v, 16, 3, seed + 13) - 0.5);
+      const width = 0.02 + 0.09 * Math.pow(fbm(u, v, 3, 2, seed + 2), 1.5);
+      const main = 1 - smooth(0, width, Math.max(0, across));
+      const halo = (1 - smooth(0, width * 8, Math.max(0, across))) * (0.5 + 0.5 * fbm(u, v, 6, 3, seed + 5));
+      const branch = Math.abs(Math.sin((2 * u - v + fbm(u, v, 2, 3, seed + 3) * 1.4) * Math.PI)) + 0.01 * (fbm(u, v, 24, 2, seed + 17) - 0.5);
+      const thin = (1 - smooth(0, 0.012, Math.max(0, branch))) * smooth(0.35, 0.55, fbm(u, v, 2, 2, seed + 7));
+      const cloud = fbm(u, v, 4, 4, seed + 9);
+      return [Math.min(1, main * 0.95 + thin * 0.75 + halo * 0.35 + 0.08 * cloud), 1 - main * 0.1, 0.03 * (cloud - 0.5)];
+    }
+    case "sintered": {
+      // A sintered stone or a porcelain slab (Dekton…): even, with a fine speckle and soft clouds, like a cement.
+      const speck = n(u, v, 256, 256, seed);
+      const cloud = fbm(u, v, 3, 5, seed + 4);
+      return [Math.min(1, 0.35 * cloud + 0.25 * smooth(0.7, 0.85, speck)), 0.5 + 0.2 * speck, 0.04 * (cloud - 0.5) + 0.03 * (speck - 0.5)];
+    }
     case "granite": {
       const big = n(u, v, 48, 48, seed);
       const small = n(u, v, 128, 128, seed + 3);

@@ -118,7 +118,7 @@ export const WORKSHOP: HelpFamily[] = [
       },
       {
         keys: ["data-workshop:appearance"], name: "Apparence",
-        what: "Donne aux corps un aspect de bois, verre, marbre, métal, laque, tissu ou béton, ou une couleur ou une photo de votre choix.",
+        what: "Donne aux corps un aspect de bois, verre, marbre (Statuario, Calacatta Oro, Arabescato, Emperador…), pierre frittée Dekton (Aura, Entzo, Laurent, Kelya, Sirius, Kreta…), métal, laque, tissu ou béton, ou une couleur ou une photo de votre choix.",
         steps: [
           "Sélectionnez les corps (dans le navigateur ou dans la vue, Ctrl pour plusieurs), puis cliquez « Apparence ».",
           "Cherchez dans « Bibliothèque » (recherche et « Catégorie ») et cliquez une vignette, ou glissez-la sur un corps de la vue.",
