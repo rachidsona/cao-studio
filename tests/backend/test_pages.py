@@ -44,11 +44,11 @@ def test_projects_list_renders(client_logged, project):
     response = client_logged.get("/projects/")
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Conception 3D" in content and "Conception Cuisine &amp; Dressing" in content
-    assert "Plaque" in content
+    assert "Conception 3D" in content and "Cuisine &amp; Dressing" in content
+    # Each project is a card that opens it; the home page has no pictures any more, its spaces are drawn.
+    assert "Plaque" in content and 'data-project-row="' in content
     assert f"/projects/{project.id}/editor/" in content
-    assert "/static/img/accueil/conception-3d.jpg" in content
-    assert "/static/img/accueil/cuisine-dressing.jpg" in content
+    assert "/static/img/accueil/" not in content
 
 
 def test_home_makes_a_kitchen_or_a_dressing_opened_on_its_tab(client_logged, user):

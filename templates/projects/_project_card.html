@@ -1,0 +1,27 @@
+{# A project of the home page as a card: its space drawn in its colour, its name, where it stands, its client and #}
+{# folder, its last change, its quote; a click opens it in the editor. The tick, the sheet and the bin sit above. #}
+<li class="group relative flex flex-col overflow-hidden rounded-[14px] border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md focus-within:border-sky-400 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-sky-700" data-project-row="{{ project.id }}">
+  <div class="relative flex h-24 items-center justify-center {% if project.space == 'kitchen' %}bg-gradient-to-br from-amber-50 to-orange-100 text-amber-700 dark:from-amber-950/60 dark:to-orange-950/40 dark:text-amber-300{% elif project.space == 'dressing' %}bg-gradient-to-br from-violet-50 to-fuchsia-100 text-violet-700 dark:from-violet-950/60 dark:to-fuchsia-950/40 dark:text-violet-300{% else %}bg-gradient-to-br from-sky-50 to-cyan-100 text-sky-700 dark:from-sky-950/60 dark:to-cyan-950/40 dark:text-sky-300{% endif %}">
+    {% include "projects/_space_icon.html" with space=project.space class="size-12 opacity-80 transition group-hover:scale-105" %}
+    <label class="absolute top-2 left-2 z-10 flex size-9 cursor-pointer items-center justify-center rounded-[8px] bg-white/80 backdrop-blur dark:bg-gray-900/70"><input type="checkbox" name="ids" value="{{ project.id }}" form="bulk-projects" data-name="{{ project.name }}" aria-label="Sélectionner {{ project.name }}"></label>
+    <span class="absolute top-2.5 right-2.5">{% include "projects/_status.html" with status=project.status label=project.get_status_display %}</span>
+    <span class="absolute bottom-2 left-3 text-xs font-medium tracking-wide uppercase" data-space="{{ project.space }}">{{ project.get_space_display }}</span>
+  </div>
+  <div class="flex flex-1 flex-col gap-1 p-4">
+    <a href="{% url 'projects:editor' project_id=project.id %}" class="truncate text-base font-semibold text-gray-900 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none dark:text-gray-50" title="Ouvrir {{ project.name }}">{{ project.name }}</a>
+    <p class="truncate text-sm text-gray-600 dark:text-gray-300">{% if project.client_name %}{{ project.client_name }}{% else %}<span class="text-gray-400 dark:text-gray-500">Sans client</span>{% endif %}{% if project.folder and not folder %} · <span data-in-folder>📁 {{ project.folder.name }}</span>{% endif %}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}</p>
+    <div class="mt-auto flex items-center justify-between gap-2 pt-3">
+      {% if project.price is not None %}<span class="font-mono text-sm font-semibold text-gray-900 dark:text-gray-50" data-price>{{ project.price|floatformat:"2g" }} MAD</span>{% else %}<span class="text-xs text-gray-400 dark:text-gray-500">Pas encore de devis</span>{% endif %}
+      <span class="relative z-10 flex items-center gap-1.5">
+        <a href="{% url 'projects:sheet' project_id=project.id %}" class="rounded-[8px] border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Fiche</a>
+        <form method="post" action="{% url 'projects:delete' project_id=project.id %}" data-delete="« {{ project.name }} » et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés.">
+          {% csrf_token %}
+          <button type="button" class="flex size-9 items-center justify-center rounded-[8px] border border-transparent text-gray-400 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:text-gray-500 dark:hover:border-red-900 dark:hover:bg-red-950 dark:hover:text-red-400" aria-label="Supprimer {{ project.name }}" title="Supprimer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+          </button>
+        </form>
+      </span>
+    </div>
+  </div>
+</li>

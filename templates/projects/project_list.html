@@ -2,58 +2,75 @@
 {% load static assets %}
 {% block title %}Accueil · CAO Studio{% endblock %}
 {% block content %}
-{# The home page: the two ways to design, each with its picture, its « new » form and its projects. On a phone, each #}
-{# card comes before its own list; side by side, the two cards then the two lists. #}
-<div class="grid gap-x-8 gap-y-6 lg:grid-cols-2">
-  <section class="order-1 overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-3d-title">
-    <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[5/4] w-full object-cover" loading="eager">
-    <div class="p-5">
-      <h1 id="design-3d-title" class="text-center text-2xl font-semibold tracking-tight">Conception 3D</h1>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Pièces et meubles modélisés en 3D : esquisses, volumes, assemblages, liste de débit et mise en plan.</p>
-      <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
+{# The home page: a greeting and the three ways to begin (a 3D project, a kitchen, a dressing — drawn, not pictured), #}
+{# then « Mes projets »: where the jobs stand, the folders, a search, and every project as a card. #}
+<div class="space-y-10">
+  <section class="relative overflow-hidden rounded-[18px] border border-gray-200 bg-gradient-to-br from-white via-sky-50 to-amber-50 px-6 py-7 shadow-sm sm:px-8 dark:border-gray-800 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900" aria-labelledby="welcome-title">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-medium text-sky-700 dark:text-sky-300">Bonjour {{ user.get_username }}</p>
+        <h1 id="welcome-title" class="mt-1 text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl dark:text-gray-50">Vos meubles sur mesure, du croquis à l'atelier</h1>
+        <p class="mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-300">Dessinez, chiffrez et préparez la fabrication : liste de débit, devis et mise en plan suivent le modèle.</p>
+      </div>
+      <form method="post" action="{% url 'projects:list' %}">
         {% csrf_token %}
-        {% include "registration/_field.html" with field=form.name %}
-        <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
+        <button type="submit" name="example" value="1" class="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-gray-300 bg-white/70 px-4 text-sm font-medium text-gray-800 backdrop-blur hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:hover:bg-gray-800">✨ Ouvrir le projet exemple</button>
       </form>
-      <form method="post" action="{% url 'projects:list' %}" class="mt-3">
-        {% csrf_token %}
-        <button type="submit" name="example" value="1" class="inline-flex min-h-11 w-full items-center justify-center border border-gray-300 px-4 text-base font-medium hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:border-gray-600 dark:hover:bg-gray-800">Ouvrir le projet exemple</button>
-      </form>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div class="rounded-[14px] border border-sky-200 bg-white/90 p-5 shadow-sm dark:border-sky-900/60 dark:bg-gray-900/80" aria-labelledby="design-3d-title">
+        <div class="flex items-center gap-3">
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">{% include "projects/_space_icon.html" with space="design" class="size-7" %}</span>
+          <div>
+            <h2 id="design-3d-title" class="text-lg font-semibold">Conception 3D</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-300">Pièces et meubles : esquisses, volumes, assemblages.</p>
+          </div>
+        </div>
+        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-3" novalidate>
+          {% csrf_token %}
+          {% include "registration/_field.html" with field=form.name %}
+          <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
+        </form>
+      </div>
+
+      <div class="rounded-[14px] border border-amber-200 bg-white/90 p-5 shadow-sm dark:border-amber-900/60 dark:bg-gray-900/80" aria-labelledby="design-kitchen-title">
+        <div class="flex items-center gap-3">
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">{% include "projects/_space_icon.html" with space="kitchen" class="size-7" %}</span>
+          <span class="-ml-5 flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-violet-100 text-violet-700 ring-4 ring-white dark:bg-violet-950 dark:text-violet-300 dark:ring-gray-900">{% include "projects/_space_icon.html" with space="dressing" class="size-7" %}</span>
+          <div>
+            <h2 id="design-kitchen-title" class="text-lg font-semibold">Cuisine &amp; Dressing</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-300">Posés dans leur pièce : plan, linéaires, électroménager.</p>
+          </div>
+        </div>
+        <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-3" novalidate>
+          {% csrf_token %}
+          <div class="space-y-1.5">
+            <label for="space-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
+            <input id="space-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
+                   class="block min-h-11 w-full rounded-[10px] border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
+            <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center rounded-[10px] btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
+          </div>
+        </form>
+      </div>
     </div>
   </section>
 
-  <section class="order-3 overflow-hidden border border-gray-200 bg-white shadow-sm lg:order-2 dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-kitchen-title">
-    <img src="{% static 'img/accueil/cuisine-dressing.jpg' %}" alt="Une cuisine noire avec un îlot et des niches murales éclairées" width="1074" height="859" class="block aspect-[5/4] w-full object-cover" loading="eager">
-    <div class="p-5">
-      <h2 id="design-kitchen-title" class="text-center text-2xl font-semibold tracking-tight">Conception Cuisine &amp; Dressing</h2>
-      <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Une cuisine ou un dressing posé dans sa pièce : plan vu de dessus, linéaires, meubles, électroménager, liste de débit, devis et mise en plan.</p>
-      <form method="post" action="{% url 'projects:list' %}" class="mt-4 space-y-4" novalidate>
-        {% csrf_token %}
-        <div class="space-y-1.5">
-          <label for="space-name" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
-          <input id="space-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
-                 class="block min-h-11 w-full border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
-          <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <section class="order-2 min-w-0 lg:order-3 lg:col-span-2" aria-labelledby="projects-title">
+  <section class="min-w-0" aria-labelledby="projects-title">
     <div class="flex items-baseline justify-between gap-4">
-      <h2 id="projects-title" class="text-lg font-semibold">Mes projets</h2>
+      <h2 id="projects-title" class="text-xl font-semibold tracking-tight">Mes projets</h2>
       <span class="text-sm text-gray-500 dark:text-gray-400">{{ total }} projet{{ total|pluralize }}</span>
     </div>
     {# Where the jobs stand: a tile per stage (a click shows only those), what the quotes sent and accepted are worth. #}
-    <nav class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" aria-label="Projets par statut" data-dashboard>
-      <a href="{% url 'projects:list' %}{% if query %}?q={{ query|urlencode }}{% endif %}" class="border px-3 py-2 {% if not status %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if not status %}aria-current="true"{% endif %}>
+    <nav class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" aria-label="Projets par statut" data-dashboard>
+      <a href="{% url 'projects:list' %}{% if query %}?q={{ query|urlencode }}{% endif %}" class="rounded-[14px] border px-3 py-2 shadow-sm {% if not status %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if not status %}aria-current="true"{% endif %}>
         <span class="block text-xs text-gray-500 dark:text-gray-400">Tous</span><span class="block text-xl font-semibold">{{ total }}</span>
       </a>
       {% for s in statuses %}
-        <a href="?statut={{ s.key }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}" data-status-filter="{{ s.key }}" class="border px-3 py-2 {% if status == s.key %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if status == s.key %}aria-current="true"{% endif %}>
+        <a href="?statut={{ s.key }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}" data-status-filter="{{ s.key }}" class="rounded-[14px] border px-3 py-2 shadow-sm {% if status == s.key %}border-sky-500 bg-sky-50 dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if status == s.key %}aria-current="true"{% endif %}>
           <span class="block text-xs text-gray-500 dark:text-gray-400">{{ s.label }}</span><span class="block text-xl font-semibold">{{ s.count }}</span>
           {% if s.key == "quoted" %}<span class="block font-mono text-xs text-amber-700 dark:text-amber-300" data-amount="quoted">{{ amounts.quoted|floatformat:"0g" }} MAD</span>{% elif s.key == "accepted" %}<span class="block font-mono text-xs text-emerald-700 dark:text-emerald-300" data-amount="accepted">{{ amounts.accepted|floatformat:"0g" }} MAD</span>{% elif s.key == "production" %}<span class="block font-mono text-xs text-sky-700 dark:text-sky-300">{{ amounts.production|floatformat:"0g" }} MAD</span>{% endif %}
         </a>
@@ -61,17 +78,17 @@
     </nav>
     {# The folders, to sort the projects (folders.py): all, one, those in none; a new one; the one shown renamed or deleted. #}
     <nav class="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Dossiers de projets" data-folders>
-      <a href="{% url 'projects:list' %}" class="inline-flex min-h-9 items-center gap-1.5 border px-3 text-sm {% if not shown %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if not shown %}aria-current="true"{% endif %}>Tous les dossiers</a>
+      <a href="{% url 'projects:list' %}" class="inline-flex min-h-9 items-center gap-1.5 rounded-[999px] border px-3.5 text-sm {% if not shown %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" {% if not shown %}aria-current="true"{% endif %}>Tous les dossiers</a>
       {% for f in folders %}
-        <a href="?dossier={{ f.pk }}" class="inline-flex min-h-9 items-center gap-1.5 border px-3 text-sm {% if folder.pk == f.pk %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" data-folder="{{ f.pk }}" {% if folder.pk == f.pk %}aria-current="true"{% endif %}><span aria-hidden="true">📁</span>{{ f.name }}<span class="text-xs text-gray-500 dark:text-gray-400">{{ f.n }}</span></a>
+        <a href="?dossier={{ f.pk }}" class="inline-flex min-h-9 items-center gap-1.5 rounded-[999px] border px-3.5 text-sm {% if folder.pk == f.pk %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" data-folder="{{ f.pk }}" {% if folder.pk == f.pk %}aria-current="true"{% endif %}><span aria-hidden="true">📁</span>{{ f.name }}<span class="text-xs text-gray-500 dark:text-gray-400">{{ f.n }}</span></a>
       {% endfor %}
-      {% if folders %}<a href="?dossier=aucun" class="inline-flex min-h-9 items-center gap-1.5 border px-3 text-sm {% if shown == "aucun" %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" data-folder="aucun">Sans dossier<span class="text-xs text-gray-500 dark:text-gray-400">{{ unfiled }}</span></a>{% endif %}
+      {% if folders %}<a href="?dossier=aucun" class="inline-flex min-h-9 items-center gap-1.5 rounded-[999px] border px-3.5 text-sm {% if shown == "aucun" %}border-sky-500 bg-sky-50 font-medium dark:bg-sky-950{% else %}border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800{% endif %}" data-folder="aucun">Sans dossier<span class="text-xs text-gray-500 dark:text-gray-400">{{ unfiled }}</span></a>{% endif %}
       <details class="relative">
-        <summary class="inline-flex min-h-9 items-center gap-1.5 border px-3 text-sm cursor-pointer list-none border-dashed border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">+ Nouveau dossier</summary>
-        <form method="post" action="{% url 'projects:folder_create' %}" class="absolute z-10 mt-1 flex gap-1 border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+        <summary class="inline-flex min-h-9 items-center gap-1.5 rounded-[999px] border px-3.5 text-sm cursor-pointer list-none border-dashed border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">+ Nouveau dossier</summary>
+        <form method="post" action="{% url 'projects:folder_create' %}" class="absolute z-20 mt-1 flex gap-1 rounded-[10px] border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
           {% csrf_token %}
-          <input name="name" maxlength="80" required placeholder="Nom du dossier" aria-label="Nom du nouveau dossier" class="h-9 w-48 border border-gray-300 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-950">
-          <button type="submit" class="h-9 bg-sky-700 px-3 text-sm font-medium text-white hover:bg-sky-800">Créer</button>
+          <input name="name" maxlength="80" required placeholder="Nom du dossier" aria-label="Nom du nouveau dossier" class="h-9 w-48 rounded-[8px] border border-gray-300 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-950">
+          <button type="submit" class="h-9 rounded-[8px] bg-sky-700 px-3 text-sm font-medium text-white hover:bg-sky-800">Créer</button>
         </form>
       </details>
     </nav>
@@ -92,8 +109,8 @@
       {% if status %}<input type="hidden" name="statut" value="{{ status }}">{% endif %}
       {% if shown %}<input type="hidden" name="dossier" value="{{ shown }}">{% endif %}
       <input type="search" name="q" value="{{ query }}" placeholder="Chercher un projet ou un client" aria-label="Chercher un projet ou un client"
-             class="block min-h-10 w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-      <button type="submit" class="border border-gray-300 px-4 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Chercher</button>
+             class="block min-h-10 w-full rounded-[10px] border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+      <button type="submit" class="rounded-[10px] border border-gray-300 px-4 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800">Chercher</button>
     </form>
     {% if projects %}
       <form id="bulk-projects" method="post" action="{% url 'projects:delete_many' %}" class="mt-2 flex min-h-9 items-center justify-between gap-3" data-one="Ce projet et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés." data-many="Ces {n} projets et toutes leurs versions seront supprimés définitivement, ainsi que leurs liens partagés.">
@@ -112,35 +129,18 @@
           <button type="button" hidden data-delete-selected class="border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">Supprimer la sélection</button>
         </span>
       </form>
-      <ul class="mt-1 divide-y divide-gray-200 overflow-hidden border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+      <ul class="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {% for project in projects %}
-          <li class="flex items-center" data-project-row="{{ project.id }}">
-            <label class="flex cursor-pointer items-center self-stretch pl-4"><input type="checkbox" name="ids" value="{{ project.id }}" form="bulk-projects" data-name="{{ project.name }}" aria-label="Sélectionner {{ project.name }}"></label>
-            <a href="{% url 'projects:editor' project_id=project.id %}"
-               class="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-4 py-3 pl-3 pr-2 hover:bg-gray-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:hover:bg-gray-800/60">
-              <div class="min-w-0">
-                <p class="flex min-w-0 items-center gap-2"><span class="truncate font-medium">{{ project.name }}</span>{% include "projects/_status.html" with status=project.status label=project.get_status_display %}</p>
-                <p class="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
-                  <span data-space="{{ project.space }}">{{ project.get_space_display }}</span> · {% if project.folder and not folder %}<span data-in-folder>📁 {{ project.folder.name }}</span> · {% endif %}{% if project.client_name %}{{ project.client_name }} · {% endif %}Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}
-                </p>
-              </div>
-              {% if project.price is not None %}<span class="shrink-0 font-mono text-sm font-medium" data-price>{{ project.price|floatformat:"2g" }} MAD</span>{% endif %}
-            </a>
-            <a href="{% url 'projects:sheet' project_id=project.id %}" class="mr-2 shrink-0 border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Fiche</a>
-            <form method="post" action="{% url 'projects:delete' project_id=project.id %}" class="shrink-0 pr-4" data-delete="« {{ project.name }} » et toutes ses versions seront supprimés définitivement, ainsi que ses liens partagés.">
-              {% csrf_token %}
-              <button type="button" class="border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" aria-label="Supprimer {{ project.name }}">Supprimer</button>
-            </form>
-          </li>
+          {% include "projects/_project_card.html" %}
         {% endfor %}
       </ul>
     {% elif total %}
-      <div class="mt-3 border border-dashed border-gray-300 bg-white px-6 py-8 text-center dark:border-gray-700 dark:bg-gray-900">
+      <div class="mt-3 rounded-[14px] border border-dashed border-gray-300 bg-white px-6 py-8 text-center dark:border-gray-700 dark:bg-gray-900">
         <p class="font-medium">Aucun projet ici</p>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400"><a class="underline" href="{% url 'projects:list' %}">Voir tous les projets</a></p>
       </div>
     {% else %}
-      <div class="mt-3 border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-gray-700 dark:bg-gray-900">
+      <div class="mt-3 rounded-[14px] border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-gray-700 dark:bg-gray-900">
         <p class="font-medium">Aucun projet pour le moment</p>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Créez votre premier projet : une pièce de départ (plaque percée) vous attend dans l'éditeur.</p>
       </div>
