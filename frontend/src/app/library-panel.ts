@@ -1,11 +1,19 @@
 /**
  * « Ma bibliothèque » (groupe Menuiserie) : enregistrer les corps choisis — un caisson, un tiroir, une colonne réglés —
  * comme un module de son compte (avec une vignette prise dans la vue), puis le remettre d'un clic dans n'importe quel
- * projet, à l'endroit où il était, ses pièces sélectionnées pour le déplacer. Les modules sont gardés par le serveur
- * (/api/library/) ; leur contenu et l'insertion : document/library.ts.
+ * projet, à l'endroit où il était, ses pièces sélectionnées pour le déplacer. Une face d'un meuble choisie avant
+ * « Insérer » : le module s'y colle, dehors, aligné en bas et au dos sur ce meuble (document/glue.ts), en une seule
+ * annulation avec l'insertion. Les modules sont gardés par le serveur (/api/library/) ; leur contenu et l'insertion :
+ * document/library.ts.
  */
+import { featureBacks } from "../document/furniture-facing";
+import { boxAround, faceOf, glueShift, type Box, type FaceBox } from "../document/glue";
 import { insertModule, moduleOf } from "../document/library";
-import { featureOfBody, type CadDocument } from "../document/types";
+import { bodyOrigin } from "../document/operations";
+import { spacingFeatures, movesNeeded, type Moving } from "../document/spacing";
+import { featureOfBody, type CadDocument, type Feature } from "../document/types";
+import { freshFeatureIds } from "./curic-common";
+import { wholeBodies, wholeOwner } from "./move-whole";
 import { el } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -62,17 +70,83 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
     }
   };
 
+  const boxesOf = (bodies: readonly string[]): Box[] => bodies.flatMap((id) => {
+    const b = viewport.bodyMesh(id)?.metrics.bbox;
+    return b ? [[[...b[0]], [...b[1]]] as Box] : [];
+  });
+
+  // The face under the last click in the view: a click on a cabinet may select it whole, the face clicked is kept.
+  let clicked: { bodyId: string; faceIndex: number } | null = null;
+  let down: { x: number; y: number } | null = null;
+  const canvas = viewport.renderer.domElement;
+  canvas.addEventListener("pointerdown", (event) => (down = event.button === 0 ? { x: event.clientX, y: event.clientY } : null));
+  canvas.addEventListener("pointerup", (event) => {
+    if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4 || viewport.inSketch) return;
+    const face = viewport.pickFace(event);
+    clicked = face ? { bodyId: face.bodyId, faceIndex: face.faceIndex } : null;
+  });
+
+  /**
+   * The face chosen before « Insérer » — picked as a face, or clicked on a body then selected (whole) — with the
+   * furniture it is part of (its box, its back): where to glue.
+   */
+  const target = (): { face: FaceBox; owner: Box; back: [number, number] | null } | null => {
+    const selection = editor.picked.selection;
+    const picked = selection.faces[0] ?? (clicked && selection.bodies.includes(clicked.bodyId) ? clicked : undefined);
+    const mesh = picked && viewport.bodyMesh(picked.bodyId);
+    const face = mesh ? faceOf(mesh, picked.faceIndex) : null;
+    if (!picked || !face) return null;
+    const doc = editor.doc;
+    const whole = wholeOwner(doc, picked.bodyId);
+    const bodies = whole ? wholeBodies(doc, whole.kind, whole.id, viewport.displayedBodies) : [picked.bodyId];
+    const owner = boxAround(boxesOf(bodies));
+    const back = featureBacks(doc).get(featureOfBody(bodyOrigin(doc, picked.bodyId)))?.back ?? null;
+    return owner ? { face, owner, back } : null;
+  };
+
+  /** The module just inserted, moved against the face: its cabinets and sketches moved in place, other bodies by a move. */
+  const glued = (doc: CadDocument, features: readonly string[], at: NonNullable<ReturnType<typeof target>>): CadDocument | null => {
+    const bodies = viewport.displayedBodies.filter((id) => features.includes(featureOfBody(id)));
+    const box = boxAround(boxesOf(bodies));
+    const shift = box && glueShift(box, at.face, at.owner, at.back);
+    if (!shift || Math.hypot(...shift) < 1e-6) return null;
+    const groups = new Map<string, Moving>();
+    for (const id of bodies) {
+      const whole = wholeOwner(doc, id);
+      const key = whole?.id ?? id;
+      const m = groups.get(key) ?? { key, whole: !!whole, shift, bodies: [] };
+      m.bodies.push(id);
+      groups.set(key, m);
+    }
+    const moving = [...groups.values()];
+    const made = spacingFeatures(doc, moving, freshFeatureIds(doc, "mv", "Collage", movesNeeded(doc, moving)));
+    // A cabinet or a sketch moved in place keeps its id; a move of a body is new.
+    const kept = doc.features.map((f) => made.find((m) => m.id === f.id) ?? f);
+    return { ...doc, features: [...kept, ...made.filter((m) => !doc.features.some((f) => f.id === m.id))] as Feature[] };
+  };
+
   const insert = async (row: ModuleRow) => {
     try {
+      const at = target();
       const { document } = await call<{ document: CadDocument }>(`${URL}${row.id}/`);
       const { doc, features } = insertModule(editor.doc, document);
       await editor.change(doc);
-      // The view takes in all the model (the module may stand away from what was in view); its pieces are selected,
-      // ready for Déplacer.
-      viewport.setView("iso");
+      // A face chosen: the module against it, the same undo step as the insertion.
+      const moved = at ? glued(editor.doc, features, at) : null;
+      if (moved) await editor.change(moved, true);
+      // Not glued: the view takes in all the model (the module may stand away from what was in view). Its pieces are
+      // selected, ready for Déplacer.
+      if (!moved) viewport.setView("iso");
       viewport.clearSelection();
       for (const id of viewport.displayedBodies) if (features.includes(featureOfBody(id))) viewport.toggleInSelection("body", id);
-      editor.notify(`« ${row.name} » inséré à l'endroit où il était enregistré ; ses pièces sont sélectionnées pour le déplacer.`, "success");
+      editor.notify(
+        moved
+          ? `« ${row.name} » inséré contre la face choisie ; ses pièces sont sélectionnées pour le déplacer.`
+          : at
+            ? `« ${row.name} » inséré à l'endroit où il était enregistré : la face choisie n'est pas droite (de face, de côté ou de dessus).`
+            : `« ${row.name} » inséré à l'endroit où il était enregistré ; ses pièces sont sélectionnées pour le déplacer. Choisissez d'abord une face d'un meuble pour l'y coller.`,
+        "success",
+      );
     } catch (error) {
       editor.notify(error instanceof Error ? error.message : String(error), "error");
     }

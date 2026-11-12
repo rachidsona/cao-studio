@@ -150,6 +150,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Cliquez « Ma bibliothèque ».",
           "Tapez un nom dans « Nom du module », puis cliquez « Enregistrer ».",
           "Dans un autre projet, ouvrez le panneau et cliquez « Insérer » : le module revient à sa place d'origine, ses pièces sélectionnées pour les déplacer.",
+          "Pour le coller contre un meuble, cliquez d'abord une face de ce meuble (son côté, son devant ou son dessus), puis « Insérer » : le module se pose contre elle, dehors, son bas sur le bas du meuble et son dos contre le même mur. Une seule annulation (Ctrl + Z) reprend l'insertion et le collage.",
           "Le bouton « ✕ » retire un module de la bibliothèque, après confirmation.",
         ],
         tip: "Retirer un module de la bibliothèque ne change pas les projets où il a déjà été inséré. À ne pas confondre avec « Mes modules » de l'outil Module, gardés dans ce navigateur.",

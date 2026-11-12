@@ -2192,6 +2192,12 @@ opération existante.
     suivent), à l'endroit où il était, en une seule annulation. La vue se recadre sur tout le modèle et les pièces
     insérées sont sélectionnées, prêtes pour Déplacer. Un nom déjà pris prend le numéro suivant ; un paramètre que
     le projet a déjà garde sa valeur.
+  - **Collé contre une face** : une face d'un meuble cliquée avant « Insérer » (son côté, son devant, son dessus), le
+    module se pose contre elle, dehors (à droite d'un côté droit, sur un dessus…), son bas sur le bas de ce meuble et,
+    à l'horizontale, son dos contre le même mur que lui (son bord le plus bas des coordonnées quand son dos n'est pas
+    connu). Ses caissons et sa Répartition se déplacent en place, ses autres corps par un déplacement ; l'insertion et
+    le collage font une seule annulation. Une face de biais ne colle rien : le module reste où il était
+    (`document/glue.ts`, `app/library-panel.ts`).
   - Supprimer un module ne change pas les projets où il a été inséré.
   Les modules sont gardés par le serveur, par compte (500 au plus) : API `/api/library/`, `document/library.ts`,
   `app/library-panel.ts`.
