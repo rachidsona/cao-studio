@@ -55,4 +55,16 @@ describe("usinage qui suit la planche", () => {
     const old = followed(hole(573), [made[0], undefined], [[118, 0, 0], [982, 560, 18]]);
     expect(old.kind === "hole" && old.at[0]).toBe(673);
   });
+
+  it("une rainure sur toute la longueur s'allonge avec la planche ; une mortaise courte se déplace seulement", async () => {
+    const { followed } = await import("../../frontend/src/features/machining");
+    const made: [[number, number, number], [number, number, number]] = [[18, 0, 0], [582, 560, 18]];
+    const now: [[number, number, number], [number, number, number]] = [[18, 0, 0], [882, 560, 18]]; // 300 mm longer
+    const groove = followed({ kind: "box", from: [28, 540, 10], to: [572, 548, 18], mode: "cut" }, made, now);
+    expect(groove.kind === "box" && [groove.from[0], groove.to[0]]).toEqual([28, 872]);
+    // Across, at the back: it stays where it was (the board did not change that way).
+    expect(groove.kind === "box" && [groove.from[1], groove.to[1]]).toEqual([540, 548]);
+    const mortise = followed({ kind: "box", from: [530, 200, 0], to: [560, 260, 18], mode: "cut" }, made, now);
+    expect(mortise.kind === "box" && [mortise.from[0], mortise.to[0]]).toEqual([830, 860]);
+  });
 });

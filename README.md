@@ -1584,7 +1584,9 @@ opération existante.
     **deux planches** : *tourillons* (Ø8 × 15, un tous les 96 mm), *confirmat* (Ø7 traversant, Ø5 en pilote),
     *mi-bois* (chaque planche perd la moitié de la hauteur commune), *tenon et mortaise* (tiers de l'épaisseur,
     épaulements de 10 mm). Un usinage qui ne touche pas le corps est une erreur, jamais un silence. Chaque trou suit
-    le bout de la planche dont il était le plus près : un dessous allongé emporte ses avant-trous de droite.
+    le bout de la planche dont il était le plus près : un dessous allongé emporte ses avant-trous de droite. Une
+    rainure qui court sur au moins 80 % de la planche s'allonge avec elle (chaque bout suit le sien) ; une mortaise
+    courte se déplace seulement (`features/machining-follow.ts`).
   - *Règles d'assemblage* : une règle (confirmat Ø7 tous les 128 mm, tourillons Ø8 tous les 96 mm, ou excentriques
     Minifix 15 tous les 256 mm, avec la marge aux bouts ; celle du standard de construction pour commencer)
     appliquée d'un coup à toutes les jonctions des planches choisies — la sélection, sinon tout ce qui est
