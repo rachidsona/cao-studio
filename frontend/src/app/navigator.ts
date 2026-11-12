@@ -175,6 +175,10 @@ export class Navigator {
     }));
   }
 
+  /** The steps marked in the history strip (Ctrl/⌘ + click), to delete together. */
+  private marked = new Set<string>();
+  private lastMarked: string | null = null;
+
   render(): void {
     const { sketches, operations, bodies } = this.items();
     const selectedId = this.host.selectedId();
@@ -203,7 +207,27 @@ export class Navigator {
         },
       },
     );
-    renderTimeline(ref(this.root, "timeline"), operations, selectedId, this.stepsPicked(), (id, anchor) => this.open(id, anchor));
+    for (const id of this.marked) if (!operations.some((o) => o.id === id)) this.marked.delete(id);
+    renderTimeline(ref(this.root, "timeline"), operations, selectedId, this.stepsPicked(), (id, anchor) => this.open(id, anchor), {
+      marked: this.marked,
+      onMark: (id, range) => {
+        const order = operations.map((o) => o.id);
+        if (range && this.lastMarked && order.includes(this.lastMarked)) {
+          const [a, b] = [order.indexOf(this.lastMarked), order.indexOf(id)].sort((x, y) => x - y);
+          for (const step of order.slice(a!, b! + 1)) this.marked.add(step);
+        } else if (this.marked.has(id)) this.marked.delete(id);
+        else this.marked.add(id);
+        this.lastMarked = id;
+        this.render();
+      },
+      // Deleted together: one undo step, and what goes with them is asked first (Editor.removeFeature).
+      onRemove: () => {
+        const ids = [...this.marked];
+        this.marked.clear();
+        this.host.remove(ids);
+      },
+      onClear: () => ((this.marked.clear(), this.render())),
+    });
     // Nothing picked in the model: say which sketch is selected (it is highlighted in the view).
     const sketch = sketches.find((s) => s.id === selectedId);
     if (!this.host.modelPicked()) ref(this.root, "status-selection").textContent = sketch ? `Esquisse « ${sketch.name} » sélectionnée` : "Aucune sélection";

@@ -165,8 +165,9 @@ export const SCREEN: HelpFamily[] = [
           "Survolez une icône pour lire le nom de l'opération.",
           "Cliquez-la : une petite fenêtre s'ouvre, avec le champ « Nom » pour la renommer.",
           "« Modifier » rouvre son outil, « Désactiver » la met de côté sans la perdre (« Réactiver » la remet), « Supprimer » l'efface.",
+          "Pour en supprimer plusieurs : Ctrl (⌘ sur Mac) + clic sur chacune, ou Maj + clic pour toutes celles entre deux ; elles s'entourent de rouge. Cliquez « Supprimer » dans la barre qui apparaît (ou la touche Suppr). Le ✕ ou Échap les dé-choisit.",
         ],
-        tip: "Si d'autres opérations dépendent de celle que vous supprimez, l'éditeur vous prévient. Ctrl+Z annule.",
+        tip: "Si d'autres opérations dépendent de celles que vous supprimez, l'éditeur vous prévient. Plusieurs étapes supprimées ensemble reviennent d'un seul Ctrl+Z.",
       },
       {
         keys: [], name: "Panneau Propriétés",

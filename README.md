@@ -264,6 +264,9 @@ Principes :
   du serveur, qui reste dans l'historique) ou recharger celle du serveur (la sienne est encore proposée à
   l'ouverture). Après un échec réseau, l'enregistrement **réessaie seul** (5 s, 10 s… jusqu'à une minute) et dès
   le retour du réseau ; une page revenue du cache du navigateur se recharge (`app/session.ts`).
+- **Plusieurs étapes supprimées d'un coup** dans l'Historique : Ctrl (⌘) + clic choisit une étape (encadrée de
+  rouge), Maj + clic toutes celles entre deux ; « Supprimer » (ou Suppr) les efface ensemble, en une seule
+  annulation, en prévenant si d'autres en dépendent ; ✕ ou Échap les dé-choisit (`ui/timeline.ts`).
 - Une opération en échec est signalée dans le navigateur et la ligne de temps, ses dépendantes sont marquées
   « bloquées », et le dernier corps valide reste affiché.
 - **Un projet s'ouvre toujours** (`document/validate.ts`, `openDocument`) : une opération que l'éditeur ne sait pas
