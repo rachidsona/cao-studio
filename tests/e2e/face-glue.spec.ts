@@ -40,7 +40,7 @@ test("coller par face : un haut vient à fleur de la façade du bas, caisson et 
   expect(errors).toEqual([]);
 });
 
-test("coller par face dans tous les sens : le devant d'un haut contre le côté d'un bas, le haut tourne d'un quart puis s'y colle", async ({ page }) => {
+test("coller par face dans tous les sens : le devant d'un haut sur le côté d'un bas, le haut tourne d'un quart puis s'y pose, bords affleurés", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -70,7 +70,7 @@ test("coller par face dans tous les sens : le devant d'un haut contre le côté 
     await at(x, y);
     if (await tool.count() === 0) break;
   }
-  await expect(page.getByText(/« Haut 1 porte 600 » collé contre \(tourné\) « .*Bas 1 porte 600/).first()).toBeVisible();
+  await expect(page.getByText(/« Haut 1 porte 600 » collé sur « .*Bas 1 porte 600/).first()).toBeVisible();
   await expect(tool).toHaveCount(0);
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");

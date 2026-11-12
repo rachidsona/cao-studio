@@ -1,16 +1,17 @@
 /**
  * « Coller par face » : on sélectionne une face de l'élément à déplacer (ou on la clique, l'outil ouvert), puis on clique
- * une face d'un autre élément, et le premier vient s'y coller, d'un coup. Des faces opposées se mettent en contact (le
- * côté d'un caisson contre le côté du voisin), des faces de même sens affleurent (deux façades, deux dessus) ; seul le
- * déplacement nécessaire est fait, le long de la face d'arrivée (features/face-glue.ts). Un caisson bouge avec ses
- * façades, une pièce seule si on le veut (ou si les deux faces sont du même caisson) — comme « Point sur point »
- * (document/spacing.ts). Un jeu les écarte, ou les met en retrait. Une seule annulation.
+ * une face d'un autre élément, et le premier vient s'y coller, d'un coup. Des faces qui se regardent, ou d'équerre :
+ * la face se pose sur l'autre — tournée d'abord s'il le faut —, ses bords affleurant ceux de l'autre au coin le plus
+ * proche du clic (features/face-mate.ts). Des faces de même sens (deux façades) affleurent seulement. Un caisson bouge
+ * avec ses façades, par ses faces extérieures, ou une pièce seule si on le veut (ou si les deux faces sont du même
+ * caisson). Un jeu les écarte, ou les met en retrait. Une seule annulation.
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import { movesNeeded, spacingFeatures, type Moving } from "../document/spacing";
 import { elementKey } from "../document/swap";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
-import { glueShift, glueTurned, parallelFaces, type GlueFace } from "../features/face-glue";
+import { glueShift, parallelFaces } from "../features/face-glue";
+import { faceOnFace, flushSlide, type FaceMate } from "../features/face-mate";
 import { elementEnvelope, wholeMate } from "./align-whole";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
@@ -18,11 +19,21 @@ import { freshFeatureIds } from "./curic-common";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** A planar face clicked: its body, a point of its plane, its outward normal. */
-interface Picked {
+interface Picked extends Laid {
   bodyId: string;
+  /** Where it was clicked: the corner nearest it is where the edges meet. */
+  clicked: Vec3;
+}
+
+/** A face laid on another: a point of it (its centre), its outward normal, its corners and straight sides. */
+interface Laid {
   point: Vec3;
   normal: Vec3;
+  corners: Vec3[];
+  sides: [Vec3, Vec3][];
 }
+
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /** Kept for the session: whether the whole cabinet moves, and the gap. */
 let lastWhole = true;
@@ -48,7 +59,9 @@ export class FaceGlueTool extends PanelTool {
     try {
       const outline = await this.ctx.geometry.faceOutline(pick.bodyId, pick.faceIndex);
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
-      const face: Picked = { bodyId: pick.bodyId, point: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3 };
+      const sides = outline.edges.flatMap((e) => (e.kind === "line" ? [[[...e.a], [...e.b]] as [Vec3, Vec3]] : []));
+      const corners = outline.edges.flatMap((e) => (e.kind === "line" ? [e.a, e.b] : e.kind === "arc" ? [e.a, e.b, e.mid] : [])).map((p) => [...p] as Vec3);
+      const face: Picked = { bodyId: pick.bodyId, point: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3, corners, sides, clicked: [pick.point.x, pick.point.y, pick.point.z] };
       if (!this.moving || pick.bodyId === this.moving.bodyId) {
         this.moving = face;
         this.movingPick = pick;
@@ -67,7 +80,7 @@ export class FaceGlueTool extends PanelTool {
         return this.render();
       }
       const glue = glueShift(this.moving, face, this.gap);
-      const how = typeof glue !== "string" && glue.meet === "flush" ? "à fleur de" : typeof glue === "string" ? "contre (tourné)" : "contre";
+      const how = typeof glue !== "string" && glue.meet === "flush" ? "à fleur de" : "sur";
       this.ctx.notify(`« ${this.movingName()} » collé ${how} « ${bodyLabel(this.ctx.doc(), face.bodyId)} ».`, "success");
       this.finish();
     } catch (e) {
@@ -96,13 +109,25 @@ export class FaceGlueTool extends PanelTool {
     const whole = this.movesWhole();
     // A whole element is glued by its outer faces: the face clicked only says the side (never into the other).
     const [from, to] = whole ? [this.outer(this.moving), this.outer(this.fixed)] : [this.moving, this.fixed];
-    // In any direction: faces that are not parallel are glued after a turn.
-    if (!parallelFaces(from, to)) return this.turned(from, to, whole);
-    const glue = glueShift(from, to, this.gap);
-    if (typeof glue === "string") return glue;
-    const key = whole ? elementKey(doc, this.moving.bodyId) : this.moving.bodyId;
-    const bodies = whole ? this.ctx.viewport.displayedBodies.filter((id) => elementKey(doc, id) === key) : [this.moving.bodyId];
-    const moving: Moving[] = [{ key, bodies, whole, shift: glue.shift }];
+    // Faces of one way (two fronts): only brought flush, along their normal.
+    if (parallelFaces(from, to) && dot(from.normal, to.normal) > 0) {
+      const glue = glueShift(from, to, this.gap);
+      return typeof glue === "string" ? glue : this.moved(glue.shift, whole);
+    }
+    // Onto the other, in any direction: turned so that its face looks against the other, laid on it, its edges flush
+    // with the other's at the corner nearest the click — glued on it, not only in its plane.
+    const mate = faceOnFace({ point: from.point, normal: from.normal }, { point: to.point, normal: to.normal }, this.gap);
+    const slide = flushSlide(mate, from.corners, { normal: to.normal, corners: to.corners, sides: to.sides, clicked: this.fixed.clicked });
+    mate.translate = mate.translate.map((c, i) => Number((c + slide[i]!).toFixed(6)) || 0) as Vec3;
+    return mate.rotation ? this.turned(mate, whole) : this.moved(mate.translate, whole);
+  }
+
+  /** Moved without turning: the cabinet in place (or its bodies), or the piece alone. */
+  private moved(shift: Vec3, whole: boolean): Feature[] | string {
+    const doc = this.ctx.doc();
+    const key = whole ? elementKey(doc, this.moving!.bodyId) : this.moving!.bodyId;
+    const bodies = whole ? this.ctx.viewport.displayedBodies.filter((id) => elementKey(doc, id) === key) : [this.moving!.bodyId];
+    const moving: Moving[] = [{ key, bodies, whole, shift }];
     const needed = movesNeeded(doc, moving);
     if (this.slots.length < needed) this.slots = freshFeatureIds(doc, "mv", "Déplacement", needed);
     const made = spacingFeatures(doc, moving, this.slots);
@@ -110,16 +135,15 @@ export class FaceGlueTool extends PanelTool {
   }
 
   /** The outer face of the element on the side of a face clicked (the face itself for a piece of no cabinet). */
-  private outer(face: Picked): GlueFace {
+  private outer(face: Picked): Laid {
     const box = (id: string) => (this.ctx.viewport.bodyMesh(id)?.metrics.bbox as [Vec3, Vec3] | undefined) ?? null;
-    const env = elementEnvelope(this.ctx.doc(), face.bodyId, face.normal, face.point, this.ctx.viewport.displayedBodies, box);
-    return env ? { point: env.center, normal: env.normal } : face;
+    const env = elementEnvelope(this.ctx.doc(), face.bodyId, face.normal, face.clicked, this.ctx.viewport.displayedBodies, box);
+    return env ? { point: env.center, normal: env.normal, corners: env.corners, sides: env.sides } : face;
   }
 
-  /** Glued in any direction: turned about its face so that it looks against the other, then brought onto it. */
-  private turned(from: GlueFace, to: GlueFace, whole: boolean): Feature[] | string {
+  /** Glued in any direction: turned about its face so that it looks against the other, then laid on it. */
+  private turned(mate: FaceMate, whole: boolean): Feature[] | string {
     const doc = this.ctx.doc();
-    const mate = glueTurned(from, to, this.gap);
     if (whole && this.moving) {
       const made = wholeMate(doc, this.moving.bodyId, this.ctx.viewport.displayedBodies, mate, this.slots, (n) => freshFeatureIds(doc, "mv", "Déplacement", n));
       if (made !== null) return made;
@@ -170,7 +194,7 @@ export class FaceGlueTool extends PanelTool {
         this.gap = lastGap = Math.max(0, v);
         this.render();
       }),
-      this.info("Faces opposées : elles se touchent. Faces de même sens : elles affleurent. Seule la distance entre les deux faces change."),
+      this.info("Faces qui se regardent, ou d'équerre : la face se colle sur l'autre, tournée s'il le faut, ses bords affleurant ceux de l'autre au coin le plus proche du clic. Faces de même sens (deux façades) : elles affleurent."),
       this.moving ? restart : null,
     ];
   }

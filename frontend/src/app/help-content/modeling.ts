@@ -307,13 +307,13 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:face-glue"],
         name: "Coller par face",
-        what: "Colle un caisson (avec ses façades) ou une pièce contre la face d'un autre élément : faces opposées en contact, faces de même sens à fleur.",
+        what: "Colle un caisson (avec ses façades) ou une pièce sur la face d'un autre élément, dans tous les sens : faces qui se regardent ou d'équerre posées l'une sur l'autre, faces de même sens à fleur.",
         steps: [
           "Sélectionnez une face de l'élément à déplacer (ou ouvrez l'outil et cliquez-la).",
           "Cliquez « Coller par face », dans le groupe Modifier.",
           "Cliquez la face d'un autre élément où le coller : il s'y colle aussitôt, en une annulation.",
         ],
-        tip: "Seule la distance entre les deux faces change : l'élément garde sa hauteur et son alignement. « Ce qui bouge » choisit le meuble entier ou la pièce seule ; « Jeu » laisse un écart (ou met en retrait des faces à fleur). Des faces qui ne sont pas parallèles se collent aussi, dans tous les sens : ce qui bouge tourne d'abord pour que sa face regarde l'autre (un caisson par quarts de tour), puis vient la toucher.",
+        tip: "Des faces qui se regardent, ou d'équerre : la face se colle sur l'autre, tournée s'il le faut (un caisson par quarts de tour), ses bords affleurant ceux de l'autre au coin le plus proche de votre clic. Des faces de même sens (deux façades) affleurent seulement. « Ce qui bouge » choisit le meuble entier ou la pièce seule ; « Jeu » laisse un écart (ou met en retrait des faces à fleur).",
       },
       {
         keys: ["data-snap:geometry"],

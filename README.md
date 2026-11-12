@@ -759,16 +759,15 @@ opération existante.
   l'appareil, le long du plan.
 - **Coller par face** (bouton du groupe **Modifier**, après « Coïncidence », sur les onglets Conception 3D, Dressing et
   Cuisine) : on sélectionne une face de l'élément à déplacer (ou on la clique, l'outil ouvert), puis on clique une face
-  d'un autre élément, et le premier s'y colle aussitôt, en une annulation. Des faces opposées se mettent en contact (le
-  côté d'un caisson contre le côté du voisin, le dessous d'un haut sur le dessus d'un bas), des faces de même sens
-  affleurent (deux façades) ; seule la distance entre les deux faces change, l'élément garde sa hauteur et son
-  alignement (`features/face-glue.ts`). Un caisson bouge avec ses façades, ou la pièce seule (« Ce qui bouge ») ; deux
-  faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met en retrait). **Dans tous les sens** :
-  deux faces qui ne sont pas parallèles (le côté d'un haut contre le devant d'une colonne) se collent aussi — ce qui
-  bouge tourne d'abord autour de sa face pour qu'elle regarde l'autre (un caisson entier par quarts de tour autour de
-  la verticale ; une pièce seule de l'angle qu'il faut), puis vient la toucher (`glueTurned`). Un meuble entier se
-  colle par ses **faces extérieures** : la face cliquée ne dit que le côté, jamais il n'entre dans l'autre
-  (`app/face-glue-tool.ts`).
+  d'un autre élément, et le premier **se colle sur l'autre** aussitôt, en une annulation. Des faces qui se regardent
+  (le côté d'un caisson et celui du voisin, le dessous d'un haut et le dessus d'une colonne), ou d'équerre (le côté
+  d'un haut et le devant d'une colonne) : la face se **pose sur l'autre** — tournée d'abord s'il le faut, un caisson
+  entier par quarts de tour autour de la verticale, une pièce seule de l'angle qu'il faut —, ses **bords affleurant
+  ceux de l'autre au coin le plus proche du clic** ; pas seulement mise dans son plan. Des faces de même sens (deux
+  façades, deux dessus) affleurent seulement, le long de leur normale (`features/face-glue.ts`). Un caisson bouge avec
+  ses façades, par ses **faces extérieures** (la face cliquée ne dit que le côté, jamais il n'entre dans l'autre), ou
+  la pièce seule (« Ce qui bouge ») ; deux faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met
+  en retrait) (`app/face-glue-tool.ts`).
 - **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
