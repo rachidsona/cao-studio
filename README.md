@@ -663,6 +663,20 @@ opération existante.
     « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
   - **Repère** : global, ou local (axes de la face plane choisie, ou de l'esquisse). Le déplacement est
     toujours enregistré dans le repère global.
+  - **Type de déplacement** (boutons, comme Fusion 360) : « Point à point », « Translation » (ΔX, ΔY, ΔZ), « Sur un
+    axe », « Position » (absolue, du centre). **Pivot** : boutons « Centre », « Bas », « Coin » (« Définir le pivot »
+    de Fusion, le pivot de 3ds Max) en plus du point cliqué (`app/move-panel.ts`).
+  - **À la façon de SketchUp** : le pivot pris, ce qu'on déplace **suit la souris** — jusqu'au point accroché (coin,
+    milieu, point d'esquisse), sinon jusqu'au point de la face visée, sinon sur le sol passant par le pivot (dans le
+    plan de l'écran quand on regarde de face) — et un clic le pose ; la cible est cherchée à travers ce qui bouge
+    (`app/move-follow.ts`). Au clavier, sans cliquer dans un champ (`app/move-keys.ts`) : une **distance** puis
+    Entrée (le long de la direction montrée, ou de l'axe bloqué), un **vecteur** « 10;20;0 », **« x5 »** (ou « *5 »,
+    « 5x ») cinq copies au même pas, **« /5 »** cinq copies réparties jusqu'au point visé ; les **flèches bloquent
+    un axe** — → X, ← Y, ↑ Z, ↓ (ou la même flèche) le libère — avec sa ligne dessinée ; **Alt** (⌥) allume ou
+    éteint la copie. La case du panneau montre ce qui est tapé, sinon la longueur du déplacement, l'axe bloqué et
+    les copies.
+  - **À la façon de 3ds Max** : **Maj + glisser** une flèche ou une tuile du manipulateur fait une copie (l'original
+    reste). Les copies se font sur un corps ; un meuble entier ou une esquisse le dit.
   - L'aperçu est calculé par le noyau dans le navigateur (aucune requête au serveur pendant le geste) ;
     OK reste désactivé tant qu'il échoue. Un déplacement se modifie, se supprime (les perçages, extrusions et
     déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres

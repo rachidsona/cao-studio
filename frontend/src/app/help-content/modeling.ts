@@ -257,8 +257,9 @@ export const MODELING: HelpFamily[] = [
         what: "Déplace un élément, le corps entier auquel il appartient, ou une esquisse, avec ou sans copie.",
         steps: [
           "Sélectionnez un corps, une face, une esquisse ou un point, puis cliquez « Déplacer ».",
-          "Avec « Saisie » sur « Pivot et cible », cliquez le point du corps où poser les flèches, puis le point ou la face où l'amener.",
-          "Sinon tirez une flèche (un axe) ou une tuile (un plan), ou choisissez une autre « Saisie » et tapez les valeurs : « Relatif (Δ) », « Distance sur un axe » ou « Position absolue ».",
+          "En « Point à point », cliquez le point du corps où poser les flèches (ou « Centre », « Bas », « Coin ») : il suit alors la souris ; cliquez le point ou la face où le poser.",
+          "Pendant qu'il suit : tapez une distance puis Entrée ; les flèches du clavier bloquent un axe (→ X, ← Y, ↑ Z, ↓ libère) ; « x5 » fait cinq copies, « /5 » cinq copies réparties ; Alt allume la copie.",
+          "Sinon tirez une flèche (un axe) ou une tuile (un plan) — Maj + glisser fait une copie —, ou choisissez « Translation », « Sur un axe » ou « Position » et tapez les valeurs.",
           "« Déplacer » choisit ce qui bouge : « L'élément sélectionné », ou « Le corps entier », tout le meuble ou toute la Répartition dont il est une pièce ; le corps entier aussi se déplace par « Pivot et cible » : cliquez le point du meuble où poser les flèches, puis le point où l'amener.",
           "« Copier » laisse l'original en place et fait des copies.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",

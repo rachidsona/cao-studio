@@ -420,10 +420,10 @@ export class Viewport {
     return { intersect: (objects, linePx) => this.intersect(event, objects, linePx), screenDistance: (p) => this.screenDistance(event, p) };
   }
 
-  /** Face of a displayed body under the pointer. */
-  pickFace(event: PointerEvent): FacePick | null {
+  /** Face of a displayed body under the pointer; `skip`: bodies looked through (what a tool is moving). */
+  pickFace(event: PointerEvent, skip?: (bodyId: string) => boolean): FacePick | null {
     this.rayFromEvent(event);
-    const hit = this.meshHits()[0];
+    const hit = this.meshHits().find((h) => !skip?.(h.object.userData.bodyId as string));
     if (!hit || hit.faceIndex === undefined || hit.faceIndex === null) return null;
     const bodyId = hit.object.userData.bodyId as string;
     const groups = this.bodies.get(bodyId)?.data.faceGroups ?? [];

@@ -510,7 +510,7 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   await expect(page.getByRole("combobox", { name: "Déplacer", exact: true })).toHaveValue("element");
   await page.getByRole("combobox", { name: "Déplacer", exact: true }).selectOption("whole");
   // The whole starts as a new move does: the manipulator goes on a point clicked, not in the middle.
-  await expect(page.getByRole("combobox", { name: "Saisie" })).toHaveValue("points");
+  await expect(page.locator('[data-move-mode="points"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/^Pivot : survolez une face du corps/)).toBeVisible();
   const view = (await canvas(page).boundingBox())!;
   await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
@@ -519,7 +519,7 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
 
   const tree = page.getByLabel(/^Navigateur : corps/);
   const before = await canvas(page).screenshot();
-  await page.getByRole("combobox", { name: "Saisie" }).selectOption("relative");
+  await page.locator('[data-move-mode="relative"]').click();
   // The panel is drawn again when the preview ends: the field is typed in after that.
   await page.waitForTimeout(600);
   await page.getByRole("textbox", { name: "ΔX" }).fill("50");
@@ -532,6 +532,47 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   // Le meuble reste un seul meuble, sans une opération par pièce.
   await expect(tree.getByText("Porte gauche", { exact: true })).toBeVisible();
   await expect(tree.getByText(/Déplacement/)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Déplacer à la façon de SketchUp : le meuble suit la souris, une flèche bloque un axe, une distance tapée puis Entrée", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Déplacer SketchUp e2e");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-2-portes-800"]').click();
+  await expect(page.getByText(/ajouté avec ses façades/)).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.waitForTimeout(500);
+  await click(page, '[data-action="move"]');
+  await page.getByRole("combobox", { name: "Déplacer", exact: true }).selectOption("whole");
+  await expect(page.getByText("Meuble : Bas 2 portes 800")).toBeVisible();
+  // The pivot put at the bottom (as Fusion's « Set pivot »): then it follows the pointer.
+  await page.locator('[data-pivot="Bas"]').click();
+  await expect(page.getByRole("button", { name: "Changer le pivot" })).toBeVisible();
+  const view = (await canvas(page).boundingBox())!;
+  await page.mouse.move(view.x + view.width / 2 + 40, view.y + view.height / 2 + 30);
+  await page.mouse.move(view.x + view.width / 2 + 120, view.y + view.height / 2 + 60, { steps: 4 });
+  const typed = page.locator("[data-move-typed]");
+  await expect(typed).not.toContainText("Déplacement : 0");
+  // → keeps X; 50 typed then Entrée: 50 along X.
+  await page.keyboard.press("ArrowRight");
+  await expect(typed).toContainText("bloqué sur X");
+  await page.keyboard.type("50");
+  await expect(typed).toContainText("Mesure : 50");
+  await page.keyboard.press("Enter");
+  await expect(typed).toContainText(/Déplacement : 50 ?cm|Déplacement : 500 ?mm|Déplacement : 0,5 ?m/);
+  await expect(page.getByRole("textbox", { name: "ΔY" })).toHaveValue(/^-?0$/);
+  // x3 on a whole cabinet: copies are made of a body only, it is said.
+  await page.keyboard.type("x3");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Les copies se font sur un corps/).first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "Fermer", exact: true }).last().click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
 
@@ -548,14 +589,14 @@ test("Déplacer une Répartition entière emporte toutes ses pièces", async ({ 
   await choice.selectOption("whole");
   await expect(page.getByText("Esquisse : Plan — mur a")).toBeVisible();
   // Its pivot: a corner of one of its panels, or a point of its sketch.
-  await expect(page.getByRole("combobox", { name: "Saisie" })).toHaveValue("points");
+  await expect(page.locator('[data-move-mode="points"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/^Pivot : cliquez un coin d'un de ses panneaux/)).toBeVisible();
   const view = (await canvas(page).boundingBox())!;
   await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
   await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2);
   await expect(page.getByRole("button", { name: "Changer le pivot" })).toBeVisible();
   const before = await canvas(page).screenshot();
-  await page.getByRole("combobox", { name: "Saisie" }).selectOption("relative");
+  await page.locator('[data-move-mode="relative"]').click();
   // The panel is drawn again when the preview ends: the field is typed in after that.
   await page.waitForTimeout(600);
   await page.getByRole("textbox", { name: "ΔX" }).fill("40");

@@ -32,6 +32,10 @@ import { cabinetBodies } from "./cabinet-drag";
 import { pointText } from "./model-selection";
 import { wholeBodies, wholeOf } from "./move-whole";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { MoveKeys, type Typed } from "./move-keys";
+import { followMove, movedBy } from "./move-follow";
+import { measureRows, modeButtons, pivotButtons, type InputMode } from "./move-panel";
+import { formatLength } from "../measurements/units";
 
 /** What is moved: a body of the model, or a sketch. */
 
@@ -43,7 +47,6 @@ export const COPIES: [string, string][] = [["0", "Non : déplacer"], ...Array.fr
 
 export type MoveSubject = { kind: "body" | "sketch" | "cabinet"; id: string };
 
-type InputMode = "relative" | "distance" | "absolute" | "points";
 type FrameMode = "global" | "local";
 
 export interface MoveToolOptions {
@@ -108,6 +111,12 @@ export class MoveTool extends PanelTool {
   /** The direction kept: horizontal (Ctrl), vertical (⌘). */
   private readonly lock = new AxisLock(this.ctx.viewport.renderer.domElement, () => this.relock());
   private readonly copy: { id: string; name: string };
+  /** SketchUp's way: the pivot taken, what is moved follows the pointer until a click. */
+  private following = false;
+  /** The axis kept by the arrow keys (→ X, ← Y, ↑ Z), in the frame in use. */
+  private axisLock: 0 | 1 | 2 | null = null;
+  /** What is typed during the move (a distance, x5, /5), applied by Entrée. */
+  private readonly keys: MoveKeys;
 
   constructor(ctx: ToolContext, editing: Feature | null, subject: MoveSubject, private readonly options: MoveToolOptions = {}) {
     super(ctx, subject.kind === "sketch" ? "Déplacer l'esquisse" : "Déplacer le corps", editing);
@@ -131,6 +140,7 @@ export class MoveTool extends PanelTool {
       this.localFrame = { x: f.u, y: f.v, z: f.normal };
     } else this.localFrame = options.faceNormal ? faceFrame(options.faceNormal) : null;
     this.gizmo = new MoveGizmo(ctx.viewport, { rotate: true });
+    this.keys = new MoveKeys({ typing: () => this.render(), apply: (t, text) => this.applyTyped(t, text), axis: (a) => this.lockAxis(a), toggleCopy: () => this.setCopies(this.copies ? 0 : 1, "Alt") }, () => this.ctx.unit());
     this.measure();
     // A new body move starts like Fusion's: hover a face to see its points, click one to put the manipulator there.
     // So does the whole of a cabinet or a Répartition: the manipulator goes on a point of it, not its middle.
@@ -318,14 +328,15 @@ export class MoveTool extends PanelTool {
                 : "Pivot : cliquez un point de l'esquisse (extrémité, centre ou milieu d'une ligne) où placer les flèches."
               : "Pivot : survolez une face du corps, ses coins et son centre apparaissent ; cliquez le point où placer les flèches.",
         ),
-        this.source ? this.linkButton("Changer le pivot", () => ((this.pickStep = "source"), (this.hover = null), this.sync())) : null,
+        this.source ? this.linkButton("Changer le pivot", () => ((this.pickStep = "source"), (this.hover = null), (this.following = false), this.sync())) : null,
+        this.pivotRow(),
         this.source && !this.reach
           ? this.info(
               `Cible : cliquez un point (coin ou milieu) d'une face ${this.sketch ? "d'un corps" : "d'un autre corps"} ou un point d'une autre esquisse, ou l'intérieur d'une face plane pour amener ${this.sketch ? "l'esquisse" : "le corps"} sur son plan — ou tirez les flèches.`,
             )
           : null,
         this.reach ? this.info(this.reachFace ? `Cible : plan de la face passant par ${pointText(this.reach, unit)}` : `Cible : ${pointText(this.reach, unit)}`) : null,
-        this.reach ? this.linkButton("Changer la cible", () => ((this.pickStep = "reach"), (this.hover = null), this.sync())) : null,
+        this.reach ? this.linkButton("Changer la cible", () => ((this.pickStep = "reach"), (this.hover = null), (this.following = true), this.sync())) : null,
         ...[0, 1, 2].map((i) => this.numberRow(`Δ${names[i]}`, local[i] as number, unit, (v) => this.setTranslate(toGlobal(frame, local.map((x, k) => (k === i ? v : x)) as Vec3)), true)),
       );
     } else {
@@ -363,22 +374,9 @@ export class MoveTool extends PanelTool {
         this.sync();
       }),
       this.localFrame ? null : this.info("Repère local : sélectionnez une face plane du corps avant « Déplacer »."),
-      this.selectRow(
-        "Saisie",
-        this.inputMode,
-        [
-          ["points", "Pivot et cible (points, faces)"],
-          ["relative", "Relatif (Δ)"],
-          ["distance", "Distance sur un axe"],
-          ["absolute", "Position absolue"],
-        ],
-        (v) => {
-          this.inputMode = v as InputMode;
-          this.pickStep = this.source ? "reach" : "source";
-          this.sync();
-        },
-      ),
+      this.modeRow(),
       ...fields,
+      ...this.keysRows(),
       this.info(
         this.sketch
           ? "Flèche : le long d'un axe (le long de la normale, le plan de l'esquisse change de décalage ; dans le plan, son origine se déplace avec toute la géométrie et ses contraintes). Tuile : dans un plan. Point central : libre."
@@ -406,6 +404,7 @@ export class MoveTool extends PanelTool {
     this.guides.clear();
     this.gizmo.dispose();
     this.lock.dispose();
+    this.keys.dispose();
   }
 
   /** The move from the pivot to the target (onto the plane of a face), in the direction kept. */
@@ -420,6 +419,98 @@ export class MoveTool extends PanelTool {
     const d = this.reachMove();
     if (d) this.setTranslate(d);
     else this.render();
+  }
+
+  // ---- SketchUp, 3ds Max ------------------------------------------------------------
+
+  /** The axis locked, as a unit vector of the frame in use. */
+  private axisDir(): Vec3 | null {
+    if (this.axisLock === null) return null;
+    const f = this.frame();
+    return [f.x, f.y, f.z][this.axisLock] as Vec3;
+  }
+
+  /** What is moved comes under the pointer (its pivot on the point caught), kept on the locked axis. */
+  private follow(event: PointerEvent): void {
+    if (!this.source || this.pickStep !== "reach" || this.gizmo.dragging) return;
+    const hover = this.hover;
+    const snap = hover && hover.index >= 0 ? (hover.points[hover.index] ?? null) : null;
+    const face = snap ? null : (this.ctx.viewport.pickFace(event, (id) => id === this.subject.id || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`))?.point.toArray() as Vec3 | undefined) ?? null;
+    const d = followMove({ source: this.source, ray: this.ctx.viewport.rayFromEvent(event), axis: this.axisDir(), snap, face, step: dragStep(this.ctx.viewport.worldPerPixel()) });
+    if (d) this.setTranslate(lockMove(d, this.lock.of(event)));
+    this.showAxis();
+  }
+
+  /** The line of the locked axis through the pivot, as SketchUp draws it. */
+  private showAxis(): void {
+    const axis = this.axisDir();
+    if (!axis) return;
+    const from = this.source ?? this.center;
+    const reach = 1e5;
+    this.guides.show([[from.map((c, i) => c - axis[i]! * reach) as Vec3, from.map((c, i) => c + axis[i]! * reach) as Vec3]], this.ctx.viewport);
+  }
+
+  /** An arrow key: that axis kept (the same again, or ↓, frees it); what is shown goes back onto it. */
+  private lockAxis(axis: 0 | 1 | 2 | null): void {
+    this.axisLock = axis === this.axisLock ? null : axis;
+    const dir = this.axisDir();
+    if (!dir) {
+      this.guides.clear();
+      return this.render();
+    }
+    const along = this.translate[0] * dir[0] + this.translate[1] * dir[1] + this.translate[2] * dir[2];
+    this.showAxis();
+    this.setTranslate(dir.map((c) => c * along) as Vec3);
+  }
+
+  /** Copies made instead of moving (Alt, Maj + drag, x5): for a body only. */
+  private setCopies(count: number, how: string): void {
+    if (this.subject.kind !== "body" || this.editing) return this.ctx.notify("Les copies se font sur un corps, à sa création (pas sur un meuble entier ni une esquisse).", "info");
+    this.copies = Math.max(0, Math.min(100, count));
+    this.ctx.notify(this.copies ? `${how} : ${this.copies} copie${this.copies > 1 ? "s" : ""}, l'original reste.` : `${how} : plus de copie, le corps est déplacé.`, "info");
+    this.sync();
+  }
+
+  /** Entrée after typing: a distance along the direction shown (or the axis), a vector, x5 or /5. */
+  private applyTyped(typed: Typed | null, text: string): void {
+    if (!typed) return (this.ctx.notify(`« ${text} » : tapez une distance (250), un vecteur (10;20;0), x5 ou /5.`, "error"), this.render());
+    if (typed.kind === "copies") return this.setCopies(typed.count, `« ${text} »`);
+    if (typed.kind === "divide") {
+      const step = this.translate.map((c) => c / typed.count) as Vec3;
+      this.translate = step;
+      return this.setCopies(typed.count, `« ${text} »`);
+    }
+    const d = typed.kind === "vector" ? typed.value : movedBy(typed.value, this.translate, this.axisDir());
+    if (!d) return (this.ctx.notify("Donnez d'abord une direction : bougez la souris, tirez une flèche ou bloquez un axe (→ X, ← Y, ↑ Z).", "info"), this.render());
+    this.following = false;
+    if (this.source) this.reach = [0, 1, 2].map((k) => this.source![k]! + d[k]!) as Vec3;
+    this.reachFace = false;
+    this.setTranslate(d);
+  }
+
+  /** As Fusion's « Set pivot » and 3ds Max's pivot: the pivot at the centre, the middle of the bottom, or a corner. */
+  private pivotRow(): HTMLElement | null {
+    if (this.inputMode !== "points" || !this.box) return null;
+    return pivotButtons(this.box, (p) => {
+      this.source = p;
+      this.pickStep = "reach";
+      this.reach = null;
+      this.following = true;
+      this.setTranslate([0, 0, 0]);
+    });
+  }
+
+  private modeRow(): HTMLElement {
+    return modeButtons(this.inputMode, (mode) => {
+      this.inputMode = mode;
+      this.pickStep = this.source ? "reach" : "source";
+      this.following = false;
+      this.sync();
+    });
+  }
+
+  private keysRows(): HTMLElement[] {
+    return measureRows({ typed: this.keys.text, length: formatLength(Math.hypot(...this.translate), this.ctx.unit()), axis: this.axisLock, copies: this.copies });
   }
 
   // ---- pointer -----------------------------------------------------------------------
@@ -440,6 +531,9 @@ export class MoveTool extends PanelTool {
     }
     if (this.onSnap() || !this.gizmo.dragStart(event)) return false;
     this.dragFrom = [...this.translate];
+    this.following = false;
+    // As in 3ds Max: Maj + drag makes a copy, the original staying.
+    if (event.shiftKey && this.copies === 0) this.setCopies(1, "Maj + glisser");
     return true;
   }
 
@@ -452,6 +546,7 @@ export class MoveTool extends PanelTool {
       return;
     }
     if (this.inputMode === "points") this.hoverSnaps(event);
+    if (this.following) this.follow(event);
     const onGizmo = !this.onSnap() && this.gizmo.hovered(event) !== null;
     this.ctx.viewport.renderer.domElement.style.cursor = this.onSnap() ? THIN_CROSSHAIR : onGizmo ? "grab" : "";
   }
@@ -502,13 +597,14 @@ export class MoveTool extends PanelTool {
     const owners: string[] = [];
     let face: FaceSnaps | null = null;
     let guides: Guide[] = [];
-    const pick = event ? this.ctx.viewport.pickFace(event) : null;
     const usable = (bodyId: string) => {
       const own = bodyId === this.subject.id || this.group.has(bodyId) || bodyId === this.id || bodyId.startsWith(`${this.copy.id}#`);
       // A sketch's pivot is one of its points, or a corner of the panels it makes (a whole Répartition).
       if (this.sketch) return this.pickStep === "reach" ? !this.group.has(bodyId) : this.group.has(bodyId);
       return this.pickStep === "source" ? !this.editing || own : !own;
     };
+    // The target is looked for through what is moved (it follows the pointer, it would hide it).
+    const pick = event ? this.ctx.viewport.pickFace(event, this.pickStep === "reach" ? (id) => !usable(id) : undefined) : null;
     // The corners and points are caught only with the geometry snapping.
     if (pick && bodySnap.geometry) {
       const mesh = usable(pick.bodyId) ? this.ctx.viewport.bodyMesh(pick.bodyId) : undefined;
@@ -587,6 +683,7 @@ export class MoveTool extends PanelTool {
       // A point of the body's preview is shown moved: take it back to where it was.
       this.source = this.group.has(owner) || (owner === this.id && !this.sketch) ? ([0, 1, 2].map((k) => point[k]! - this.translate[k]!) as Vec3) : point;
       this.pickStep = "reach";
+      this.following = true;
     } else if (point) {
       this.lock.take(event);
       this.reach = point;
@@ -596,10 +693,19 @@ export class MoveTool extends PanelTool {
       this.reach = hover.face.center;
       this.reachNormal = hover.face.normal;
       this.reachFace = true;
+    } else if (this.following && this.source) {
+      // Nothing caught: put down where it followed the pointer.
+      this.following = false;
+      this.reach = [0, 1, 2].map((k) => this.source![k]! + this.translate[k]!) as Vec3;
+      this.reachFace = false;
+      this.hover = null;
+      this.placeSnaps();
+      return this.sync();
     } else {
       this.ctx.notify("Cliquez un point affiché, ou l'intérieur d'une face plane.", "info");
       return;
     }
+    this.following = false;
     this.hover = null;
     this.placeSnaps();
     const d = this.reachMove();
