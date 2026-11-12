@@ -1,7 +1,8 @@
 /** Revolution, combination of bodies and hole-on-face tools (see panel-tool.ts). */
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import type { BooleanOperation, CombineFeature, FaceRef, HoleFeature, RevolveFeature, SketchFeature, Vec3 } from "../document/types";
+import type { BooleanOperation, CadDocument, CombineFeature, FaceRef, HoleFeature, RevolveFeature, SketchFeature, Vec3 } from "../document/types";
+import { setBodyAppearance } from "../appearance/assign";
 import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -117,6 +118,10 @@ export class RevolveTool extends PanelTool {
   }
 }
 
+/** The look of the body that bodies combined into one make: a satin lacquer of this blue. */
+export const JOINED_LOOK = "lacquer-satin";
+export const JOINED_COLOR = "#2078CF";
+
 export class CombineTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
@@ -182,6 +187,14 @@ export class CombineTool extends PanelTool {
 
   protected override dispose(): void {
     this.ctx.viewport.setHoverHighlight(null);
+  }
+
+  /**
+   * The bodies made one (an union, not when editing): the body they make is painted blue, so that it reads as one
+   * (as a satin lacquer, #2078CF, its colour then changed like any other in Apparence).
+   */
+  protected override decorate(doc: CadDocument): CadDocument {
+    return this.operation === "join" && !this.editing ? setBodyAppearance(doc, [this.id], JOINED_LOOK, JOINED_COLOR) : doc;
   }
 
   /** Bodies offered: the visible ones, plus those already used when editing. */

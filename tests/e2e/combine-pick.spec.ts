@@ -43,6 +43,9 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   const tool1 = (await tools.first().getAttribute("data-combine-tool"))!;
   expect(tool1).not.toBe(target);
   await tool.screenshot({ path: "test-results/combine-pick.png" });
+  // Made one (Union): the body they make is shown blue.
+  await page.waitForTimeout(1500);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/combiner-bleu.png` });
 
   // Taken away with its ✕, then the list of every body stays folded.
   await tools.first().getByRole("button").click();

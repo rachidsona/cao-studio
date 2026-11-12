@@ -236,7 +236,7 @@ export const MODELING: HelpFamily[] = [
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
         ],
-        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange et les corps outils en bleu.",
+        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange et les corps outils en bleu. Réunis en un seul (Union), le corps qu'ils font devient bleu (#2078CF, laque satinée), à changer ensuite dans Apparence.",
       },
       {
         keys: ["data-action:split"],

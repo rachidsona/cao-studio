@@ -597,7 +597,9 @@ opération existante.
   corps cliqué devient la cible, puis « Corps outils » s'enfonce et chaque corps cliqué s'ajoute aux outils (un autre
   clic, ou ✕, l'en retire) ; le résultat montré par l'aperçu tient lieu de la cible. Le panneau ne liste que les
   outils choisis ; « Choisir dans la liste » déplie tous les corps, à cocher. Sans sélection d'avance, rien n'est
-  choisi d'office (`app/combine-pick.ts`).
+  choisi d'office (`app/combine-pick.ts`). Des corps **réunis en un seul** (Union, à la création) font un corps
+  **bleu #2078CF** (une laque satinée), qui se lit d'un coup comme un seul ; sa couleur se change ensuite dans
+  Apparence.
 - **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
   bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en
   orange, la face d'arrivée en bleu), Scinder (les corps à couper en orange, la face de coupe en bleu), Coïncidence (le
@@ -661,8 +663,6 @@ opération existante.
     Rose = pivot, vert = cible ; « Changer le pivot » et « Changer la cible » recommencent un choix. Un
     pivot pris sur un autre corps fait de ce corps celui à déplacer. Raccourci : avec le filtre
     « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
-  - **Repère** : global, ou local (axes de la face plane choisie, ou de l'esquisse). Le déplacement est
-    toujours enregistré dans le repère global.
   - **Type de déplacement** (boutons, comme Fusion 360) : « Point à point », « Translation » (ΔX, ΔY, ΔZ), « Sur un
     axe », « Position » (absolue, du centre). **Pivot** : boutons « Centre », « Bas », « Coin » (« Définir le pivot »
     de Fusion, le pivot de 3ds Max) en plus du point cliqué (`app/move-panel.ts`).
@@ -677,6 +677,8 @@ opération existante.
     les copies.
   - **À la façon de 3ds Max** : **Maj + glisser** une flèche ou une tuile du manipulateur fait une copie (l'original
     reste). Les copies se font sur un corps ; un meuble entier ou une esquisse le dit.
+  - **Repère** : global, ou local (axes de la face plane choisie, ou de l'esquisse). Le déplacement est
+    toujours enregistré dans le repère global.
   - L'aperçu est calculé par le noyau dans le navigateur (aucune requête au serveur pendant le geste) ;
     OK reste désactivé tant qu'il échoue. Un déplacement se modifie, se supprime (les perçages, extrusions et
     déplacements qui le suivaient restent sur le corps d'origine), s'annule et se rétablit comme les autres
