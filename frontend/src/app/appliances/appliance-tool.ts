@@ -47,10 +47,8 @@ export class ApplianceTool extends PanelTool {
 
   protected override render(): void {
     super.render();
-    // Each placing is already kept: the panel only closes.
-    const buttons = this.panel.querySelectorAll<HTMLButtonElement>(":scope > div:last-child > button");
-    buttons[1]?.remove();
-    if (buttons[0]) buttons[0].textContent = "Fermer";
+    // Each placing is already kept: no OK, only « Terminer ».
+    this.panel.querySelector("[data-panel-ok]")?.remove();
   }
 
   protected rows(): (HTMLElement | null)[] {

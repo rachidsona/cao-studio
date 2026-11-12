@@ -65,6 +65,8 @@ export abstract class PanelTool implements PointerHandler {
    * Entrée), and Annuler (Échap, the cross) leaves the document as it was — as Fusion's dialogs.
    */
   protected storesLive = true;
+  /** The tool draws its own OK and Annuler (or Terminer): the panel adds none. */
+  protected ownButtons = false;
 
   constructor(
     protected readonly ctx: ToolContext,
@@ -113,10 +115,23 @@ export abstract class PanelTool implements PointerHandler {
       ...this.rows(),
       hint ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, hint) : null,
       problem ? el("p", { class: " bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,
+      this.ownButtons ? null : this.footer(hint !== null || problem !== undefined || this.blocker() !== null),
     ];
     const typing = this.typing();
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
     typing?.();
+  }
+
+  /**
+   * « Terminer » closes the tool (as Échap: what was set stays, or nothing is kept for a tool that waits for OK); « OK »
+   * keeps the result and closes (as Entrée), not while it is not whole.
+   */
+  private footer(blocked: boolean): HTMLElement {
+    const done = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-panel-done": "" }, "Terminer");
+    done.addEventListener("click", () => this.cancel());
+    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: blocked, "data-panel-ok": "" }, "OK");
+    ok.addEventListener("click", () => this.finish());
+    return el("div", { class: "flex gap-1.5 pt-1" }, done, ok);
   }
 
   /**

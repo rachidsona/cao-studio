@@ -43,6 +43,7 @@ export class ExtendTool extends PanelTool {
 
   constructor(ctx: ToolContext, faces: readonly FacePick[]) {
     super(ctx, "Prolonger élément", null);
+    this.ownButtons = true;
     if (faces[0]) void this.pick(faces[0]);
   }
 

@@ -147,6 +147,7 @@ export class CombineTool extends PanelTool {
     this.choosing = preselected.length || editing ? "tools" : "target";
     // As Fusion's Combine: nothing is kept before OK, and Annuler leaves the model as it was.
     this.storesLive = false;
+    this.ownButtons = true;
     // Chosen in the view: nothing is taken for granted when nothing was picked first.
     if (!preselected.length && !editing) {
       this.target = undefined;

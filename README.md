@@ -605,6 +605,10 @@ opération existante.
     (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
     Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Annuler** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
+- **« Terminer » et « OK » en bas de chaque outil** (sauf la Répartition, qui a son propre panneau) : OK garde le
+  réglage et ferme l'outil, comme Entrée — grisé tant que le réglage n'est pas complet ou que le noyau le refuse ;
+  Terminer ferme l'outil, comme Échap (un outil qui attend OK, comme Combiner, ne garde alors rien). Combiner et
+  Prolonger élément gardent leurs boutons OK et Annuler (`footer` de `app/panel-tool.ts`).
 - **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
   bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en
   orange, la face d'arrivée en bleu), Scinder (les corps à couper en orange, la face de coupe en bleu), Coïncidence (le
