@@ -33,6 +33,8 @@ test("la colonne Projets range les projets dans des dossiers et se replie", asyn
   await column.locator("[data-organizer-name]").press("Enter");
   const folder = column.locator("[data-folder-group]").filter({ hasText: "Clients 2026" });
   await expect(folder).toBeVisible();
+  // Its icon drawn in orange.
+  await expect(folder.locator("[data-folder-icon]")).toHaveCSS("color", /^(rgb\(25[0-5], 1[0-4]\d, \d+\)|oklch\(0\.7)/);
 
   // The other project dragged onto it; the server keeps it there.
   await unfiled.locator(`[data-organizer-project="${other}"]`).dragTo(folder.locator("[data-folder-head]"));

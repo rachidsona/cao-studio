@@ -12,6 +12,7 @@ import { clearRecovery } from "../persistence/recovery";
 import { askConfirm } from "../ui/confirm-dialog";
 import { el } from "../ui/dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "../ui/edge-tabs";
+import { fine, folderIcon } from "../ui/icons";
 import type { EditorConfig } from "./editor";
 import { MOST_TABS, pageTabs, type ProjectTabs } from "./project-tabs";
 
@@ -299,7 +300,7 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
       "button",
       { type: "button", class: "flex min-h-8 min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-gray-800 dark:text-gray-200", "aria-expanded": String(open), title: open ? `Plier « ${g.name} »` : `Déplier « ${g.name} »`, "data-folder-toggle": "" },
       el("span", { class: "w-3 shrink-0 text-gray-400", "aria-hidden": "true" }, open ? "▾" : "▸"),
-      el("span", { "aria-hidden": "true" }, g.id === null ? "🗂" : "📁"),
+      el("span", { class: `shrink-0 text-orange-500 dark:text-orange-400${g.id === null ? " opacity-60" : ""}`, "aria-hidden": "true", "data-folder-icon": "" }, fine(folderIcon(), 15)),
       el("span", { class: "truncate" }, g.name),
       el("span", { class: "ml-auto shrink-0 font-normal text-gray-400" }, String(g.projects.length)),
     );
