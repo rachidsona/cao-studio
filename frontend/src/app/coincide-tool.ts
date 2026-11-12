@@ -244,6 +244,8 @@ export class CoincideTool extends PanelTool {
     const move = this.delta();
     if (this.source && move) marks.push([0, 1, 2].map((i) => this.source![i]! + move[i]!) as Vec3), colors.push(HOVER_COLOR);
     this.markers.show(marks, colors);
+    // The body that moves stays marked in orange.
+    this.ctx.viewport.setChosen(this.subject?.kind === "body" ? [{ body: this.subject.id, role: "first" }] : []);
     this.render();
     this.schedulePreview();
   }

@@ -598,6 +598,11 @@ opération existante.
   clic, ou ✕, l'en retire) ; le résultat montré par l'aperçu tient lieu de la cible. Le panneau ne liste que les
   outils choisis ; « Choisir dans la liste » déplie tous les corps, à cocher. Sans sélection d'avance, rien n'est
   choisi d'office (`app/combine-pick.ts`).
+- **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
+  bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en
+  orange, la face d'arrivée en bleu), Scinder (les corps à couper en orange, la face de coupe en bleu), Coïncidence (le
+  corps qui bouge). Le survol reste vert. Chaque marque garde la forme qu'avait la face au clic : l'aperçu ne l'efface
+  pas ; elle s'en va quand l'outil se ferme (`viewport/chosen-marks.ts`).
 - **Perçage** : cliquez une face plane ; le trou est percé perpendiculairement à la face, traversant
   ou à une profondeur donnée.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.

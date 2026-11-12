@@ -31,13 +31,19 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   // The front of the plinth, under the doors; then the front of the worktop, 2,1 cm before it.
   await page.mouse.click(430, 735);
   await expect(tool).toContainText("À prolonger : « Plinthe A »");
+  // The face chosen stays marked (orange), then the face reached too (blue), until the tool closes.
+  const view = page.locator("canvas.cad-view");
+  await expect(view).toHaveAttribute("data-chosen", "first");
   await page.mouse.click(470, 596);
   // Shown first, kept by OK.
   await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
+  await expect(view).toHaveAttribute("data-chosen", "first second");
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-faces-marquees.png` });
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
   await expect(page.getByText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
   await expect(tool).toHaveCount(0);
+  await expect(view).toHaveAttribute("data-chosen", "");
   // An operation on the plinth, to change or take away like any other.
   await expect(page.getByRole("textbox", { name: "Nom", exact: true })).toHaveValue("Prolongement 1");
   await expect(page.getByLabel(/^Distance/).first()).toHaveValue("2,1");

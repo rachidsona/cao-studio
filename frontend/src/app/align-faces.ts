@@ -26,6 +26,8 @@ export class AlignFaces {
   where: "point" | "center" = "point";
   gap = 0;
   spin = 0;
+  /** Where the faces were clicked, to mark them in the view. */
+  private picks: { moving?: FacePick; fixed?: FacePick } = {};
   private slots: { rotate: { id: string; name: string }; move: { id: string; name: string } } | null = null;
 
   constructor(
@@ -48,7 +50,12 @@ export class AlignFaces {
       if (!this.moving || pick.bodyId === this.moving.bodyId) {
         this.moving = face;
         this.fixed = null;
-      } else this.fixed = face;
+        this.picks = { moving: pick };
+      } else {
+        this.fixed = face;
+        this.picks = { ...this.picks, fixed: pick };
+      }
+      this.mark();
       this.changed();
     } catch (e) {
       this.ctx.notify(e instanceof Error ? e.message : String(e), "error");
@@ -57,7 +64,15 @@ export class AlignFaces {
 
   restart(): void {
     this.moving = this.fixed = null;
+    this.picks = {};
+    this.mark();
     this.changed();
+  }
+
+  /** The faces clicked stay marked: the one that moves in orange, the one it goes on in blue. */
+  private mark(): void {
+    const { moving, fixed } = this.picks;
+    this.ctx.viewport.setChosen([...(moving ? [{ face: moving, role: "first" as const }] : []), ...(fixed ? [{ face: fixed, role: "second" as const }] : [])]);
   }
 
   /** The turn and the move, or what is still missing. */

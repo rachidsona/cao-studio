@@ -236,7 +236,7 @@ export const MODELING: HelpFamily[] = [
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
         ],
-        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic.",
+        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange et les corps outils en bleu.",
       },
       {
         keys: ["data-action:split"],
@@ -285,7 +285,7 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Sélectionnez la face à prolonger — d'un caisson, d'une pièce de la Répartition, ou d'une autre pièce comme le bout d'une plinthe —, ou ouvrez l'outil et cliquez-la.",
           "Cliquez « Prolonger élément », dans le groupe Modifier.",
-          "Cliquez la face d'un autre élément, parallèle ou inclinée : le résultat s'affiche.",
+          "Cliquez la face d'un autre élément, parallèle ou inclinée : le résultat s'affiche. La face à prolonger reste marquée en orange, la face d'arrivée en bleu.",
           "Laissez « Suivre l'autre élément » coché pour qu'il suive cet élément quand il change ensuite.",
           "Cliquez OK (ou Entrée) pour le garder, en une annulation ; Annuler (ou Échap) ne change rien.",
         ],

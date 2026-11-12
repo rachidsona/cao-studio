@@ -29,6 +29,7 @@ let lastGap = 0;
 
 export class FaceGlueTool extends PanelTool {
   private moving: Picked | null = null;
+  private movingPick: FacePick | null = null;
   private fixed: Picked | null = null;
   private whole = lastWhole;
   private gap = lastGap;
@@ -47,14 +48,19 @@ export class FaceGlueTool extends PanelTool {
       const face: Picked = { bodyId: pick.bodyId, point: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3 };
       if (!this.moving || pick.bodyId === this.moving.bodyId) {
         this.moving = face;
+        this.movingPick = pick;
         this.slots = [];
+        // The face that moves stays marked in orange; the one it goes on, in blue.
+        this.ctx.viewport.setChosen([{ face: pick, role: "first" }]);
         return this.render();
       }
       this.fixed = face;
+      this.ctx.viewport.setChosen([{ face: this.movingPick ?? pick, role: "first" }, { face: pick, role: "second" }]);
       const made = this.made();
       if (typeof made === "string") {
         this.ctx.notify(made, "error");
         this.fixed = null;
+        this.ctx.viewport.setChosen(this.movingPick ? [{ face: this.movingPick, role: "first" }] : []);
         return this.render();
       }
       const glue = glueShift(this.moving, face, this.gap);
@@ -110,6 +116,7 @@ export class FaceGlueTool extends PanelTool {
     const restart = el("button", { type: "button", class: "h-8 w-full border border-gray-300 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Recommencer");
     restart.addEventListener("click", () => {
       this.moving = this.fixed = null;
+      this.ctx.viewport.setChosen([]);
       this.render();
     });
     const doc = this.ctx.doc();

@@ -12,6 +12,7 @@ import { el } from "../ui/dom";
 import { freshFeatureIds } from "./curic-common";
 import { faceAt } from "./machining-tool";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import type { FacePick } from "../viewport/viewport";
 
 const AXES = ["X", "Y", "Z"];
 const KINDS: [AlignMode, string][] = [
@@ -42,6 +43,8 @@ export class MateTool extends PanelTool {
   private mates: Mate[] = [];
   /** The face of the moving part clicked, waiting for the face of the fixed one. */
   private pending: BoxFace | null = null;
+  /** The faces clicked, marked in the view: of the part that moves (orange), of the fixed one (blue). */
+  private picks: { moving?: FacePick; fixed?: FacePick } = {};
   private slot: { id: string; name: string } | null = null;
 
   constructor(ctx: ToolContext, selected: string[] = []) {
@@ -70,6 +73,8 @@ export class MateTool extends PanelTool {
   }
 
   private changed(): void {
+    const { moving, fixed } = this.picks;
+    this.ctx.viewport.setChosen([...(moving ? [{ face: moving, role: "first" as const }] : []), ...(fixed && !this.pending ? [{ face: fixed, role: "second" as const }] : [])]);
     this.render();
     this.schedulePreview();
   }
@@ -118,9 +123,11 @@ export class MateTool extends PanelTool {
         this.mates = [];
       }
       this.pending = face;
+      this.picks = { moving: picked };
     } else {
       if (id === this.moving) {
         this.pending = face;
+        this.picks = { moving: picked };
         return this.changed();
       }
       const mode = mateOf(this.pending, face);
@@ -132,6 +139,7 @@ export class MateTool extends PanelTool {
       const axis = face.axis;
       this.mates = [...this.mates.filter((m) => m.axis !== axis), { axis, mode, gap: 0 }];
       this.pending = null;
+      this.picks = { ...this.picks, fixed: picked };
     }
     this.changed();
   }

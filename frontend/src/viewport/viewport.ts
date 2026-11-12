@@ -21,6 +21,7 @@ import { clickCandidates } from "./click-candidates";
 import { edgeAtVertex, pixelDistanceToSegment } from "./edge-geometry";
 import { AdaptiveGrid, type GridArea } from "./grid";
 import { HoverHighlight } from "./hover-highlight";
+import { ChosenMarks, type ChosenMark } from "./chosen-marks";
 import { Preselection } from "./preselection";
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { setFatLineResolution } from "./fat-lines";
@@ -57,6 +58,7 @@ export class Viewport {
   private sketches: SketchLayer;
   private layer: BodyLayer;
   private hover: HoverHighlight;
+  private chosen: ChosenMarks;
   /** What a click would select, lit under the pointer (preselection.ts). */
   private preselection: Preselection;
   /** Sélection++ shows its own levels under the pointer: the pre-selection then gives way. */
@@ -142,6 +144,7 @@ export class Viewport {
     this.layer = new BodyLayer(this.scene, studio);
     pmrem.dispose();
     this.hover = new HoverHighlight(this.scene);
+    this.chosen = new ChosenMarks(this.scene);
     this.preselection = new Preselection(this.scene);
     // Bodies are lit by the studio too, with a clear key light and a softer fill from the other side: the faces of a
     // board, its edge and its neighbour differ in brightness, so the shapes (a niche, a shelf) read at once.
@@ -620,6 +623,9 @@ export class Viewport {
    */
   setHoverHighlight(target: { bodies: string[] } | { face: FacePick } | null): void { this.hover.set(target, this.bodies); }
 
+  /** What a tool has chosen, marked while it is open: the first choice in orange, the second in blue (none: cleared). */
+  setChosen(marks: readonly ChosenMark[]): void { this.chosen.set(marks, this.bodies); this.renderer.domElement.dataset.chosen = marks.map((m) => m.role).join(" "); this.redraw.invalidate(); }
+
   /**
    * Section of the view (as Curic Section): what lies beyond the plane perpendicular to `axis` at `position` is
    * hidden (with `flip`, what lies before it); null shows everything again. The view only: nothing is cut.
@@ -630,7 +636,7 @@ export class Viewport {
     const planes = section ? [new THREE.Plane(normal, section.flip ? -section.position : section.position)] : [];
     this.sectionPlane = planes[0] ?? null;
     this.renderer.localClippingEnabled = planes.length > 0;
-    for (const material of [...this.layer.materials(), ...this.hover.materials(), ...this.sketches.materials()]) {
+    for (const material of [...this.layer.materials(), ...this.hover.materials(), ...this.chosen.materials(), ...this.sketches.materials()]) {
       material.clippingPlanes = planes;
       material.needsUpdate = true;
     }

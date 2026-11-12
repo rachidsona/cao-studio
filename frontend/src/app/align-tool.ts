@@ -179,6 +179,8 @@ export class AlignTool extends PanelTool {
       : this.selectRow("Méthode", this.method, [["axes", "Par axes (X, Y, Z)"], ["faces", "Face sur face"], ["points", "Point sur point"]], (v) => {
           this.method = v as Method;
           this.points.draw(null);
+          // The faces marked belong to « Face sur face »: started again there.
+          if (this.method !== "faces") this.faces.restart();
           changed();
         });
     if (this.method === "faces") return [method, ...this.faceRows(changed)];

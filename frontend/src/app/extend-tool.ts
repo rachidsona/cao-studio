@@ -18,6 +18,8 @@ import { PanelTool, type ToolContext } from "./panel-tool";
 
 interface Side {
   bodyId: string;
+  /** Where it was clicked: marked in the view while the tool is open. */
+  pick: FacePick;
   plane: FacePlane;
   /** The face as the kernel describes it: found again at each regeneration. */
   ref?: FaceRef;
@@ -55,7 +57,7 @@ export class ExtendTool extends PanelTool {
       const outline = await this.ctx.geometry.faceOutline(pick.bodyId, pick.faceIndex);
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
       const ref = (await this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex)).face ?? undefined;
-      const side: Side = { bodyId: pick.bodyId, plane: planeOf(outline), ...(ref ? { ref } : {}) };
+      const side: Side = { bodyId: pick.bodyId, pick, plane: planeOf(outline), ...(ref ? { ref } : {}) };
       // The element itself clicked again (the piece itself, when it alone is extended): another face of it to extend.
       const again = this.moving && (this.piece ? pick.bodyId === this.moving.bodyId : this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId));
       if (!this.moving || again) {
@@ -83,6 +85,8 @@ export class ExtendTool extends PanelTool {
 
   /** The result made again from the faces chosen, and shown. */
   private refresh(): void {
+    // The faces chosen stay marked: the one extended in orange, the one reached in blue.
+    this.ctx.viewport.setChosen([...(this.moving ? [{ face: this.moving.pick, role: "first" as const }] : []), ...(this.target ? [{ face: this.target.pick, role: "second" as const }] : [])]);
     this.made = this.moving && this.target ? extendTo(this.ctx.doc(), this.moving.bodyId, this.target.bodyId, this.moving.plane, this.target.plane, { from: this.moving.ref, to: this.target.ref }, this.follow, this.piece) : null;
     this.render();
     void this.ctx.preview(this.made && typeof this.made !== "string" ? this.made.doc : null).then(() => this.render());

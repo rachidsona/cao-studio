@@ -274,6 +274,7 @@ export abstract class PanelTool implements PointerHandler {
     window.clearTimeout(this.previewTimer);
     window.clearTimeout(this.storeTimer);
     closeCalculator();
+    this.ctx.viewport.setChosen([]);
     this.dispose();
     this.ctx.viewport.setPointerHandler(null);
     this.panel.remove();

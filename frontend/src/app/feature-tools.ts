@@ -152,6 +152,17 @@ export class CombineTool extends PanelTool {
     this.ctx.viewport.setHoverHighlight(target?.kind === "body" ? { bodies: [target.id] } : null);
   }
 
+  override start(): void {
+    super.start();
+    this.markChosen();
+  }
+
+  /** The bodies chosen stay marked in the view: the target in orange, the tools in blue. */
+  private markChosen(): void {
+    const tools = [...this.tools].filter((t) => t !== this.target).map((body) => ({ body, role: "second" as const }));
+    this.ctx.viewport.setChosen([...(this.target ? [{ body: this.target, role: "first" as const }] : []), ...tools]);
+  }
+
   /** A body clicked in the view: the target, or a tool added or taken away. */
   protected override click(event: PointerEvent): void {
     const target = this.ctx.viewport.hoverTargetForTool(event);
@@ -164,6 +175,7 @@ export class CombineTool extends PanelTool {
     this.target = next.target;
     this.tools = new Set(next.tools);
     this.choosing = next.choosing;
+    this.markChosen();
     this.render();
     this.schedulePreview();
   }
@@ -190,6 +202,7 @@ export class CombineTool extends PanelTool {
 
   protected rows(): (HTMLElement | null)[] {
     const changed = () => {
+      this.markChosen();
       this.render();
       this.schedulePreview();
     };

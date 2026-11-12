@@ -51,6 +51,8 @@ export class SplitTool extends PanelTool {
   private plane: PlaneName = "XY";
   private offset = 0;
   private face: { body: string; ref: FaceRef; label: string } | null = null;
+  /** Where the cutting face was clicked: marked in blue while the tool is open. */
+  private facePick: FacePick | null = null;
   private keep: SplitKeep = "both";
   /** In "Face plane", clicks choose the cutting face until there is one, then the bodies to cut. */
   private pickingBody = false;
@@ -157,6 +159,7 @@ export class SplitTool extends PanelTool {
         this.ctx.notify("Choisissez une face plane : le moteur coupe un solide par des plans.", "error");
         return;
       }
+      this.facePick = pick;
       this.face = { body: pick.bodyId, ref: face, label: `Face plane de « ${bodyLabel(this.ctx.doc(), pick.bodyId)} » (normale ${directionText(face.normal)})` };
     } catch (error) {
       this.ctx.notify(error instanceof Error ? error.message : String(error), "error");
@@ -312,6 +315,9 @@ export class SplitTool extends PanelTool {
 
   /** Redraws the panel, the plane indicator and the arrow, and asks for a new preview. */
   private sync(): void {
+    // The bodies to cut stay marked in orange, the cutting face in blue.
+    const face = this.mode === "face" && this.face && this.facePick ? [{ face: this.facePick, role: "second" as const }] : [];
+    this.ctx.viewport.setChosen([...this.targets.map((body) => ({ body, role: "first" as const })), ...face]);
     this.render();
     this.placeIndicator();
     this.placeArrow();
