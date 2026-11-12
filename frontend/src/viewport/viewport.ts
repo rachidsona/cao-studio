@@ -7,6 +7,7 @@
  * window-pick, model-selector, hover-highlight.
  */
 import * as THREE from "three";
+import { Redraw, wakeOnInput } from "./redraw";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -29,6 +30,9 @@ import type { EdgePick, FacePick, ModelSelection, SelectionFilter, SketchPick, V
 import { SketchLayer, type PointerRays, type SketchDrawing } from "./sketch-layer";
 import { windowPick } from "./window-pick";
 import { WindowOverlay, type ScreenPoint } from "./window-select";
+
+/** A finger rather than a mouse (an iPad, a phone): lighter drawing. */
+const COARSE = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 export type { EdgePick, FacePick, ModelSelection, SelectionFilter, SketchPick, VertexPick } from "./selection-layer";
 export type { BodyAppearance } from "./body-layer";
@@ -63,6 +67,7 @@ export class Viewport {
   private timer = new THREE.Timer();
   private resizeObserver: ResizeObserver;
   private frame = 0;
+  private readonly redraw = new Redraw();
   private drawOverride: (() => void) | null = null;
   private filter: SelectionFilter = "auto";
   private windowOverlay: WindowOverlay;
@@ -100,11 +105,15 @@ export class Viewport {
   constructor(private readonly container: HTMLElement) {
     // Transparent: the view's background is a CSS gradient behind the canvas (applyTheme).
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // A finger's screen (an iPad, a phone) draws at 1.5 at most: the GPU's work grows with the square of it.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, COARSE ? 1.5 : 2));
     // Soft shadows of a fixed sun: a board throws its shadow on its neighbours (the inside of a niche is dark, the
-    // underside of a shelf too), which gives the depth the plain shading alone does not.
+    // underside of a shelf too), which gives the depth the plain shading alone does not. They change only with the
+    // bodies (the sun is fixed): computed again then, not at each frame (markShadows).
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    wakeOnInput(window, this.redraw);
     this.renderer.autoClear = false;
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.classList.add("block", "h-full", "w-full", "touch-none");
@@ -232,6 +241,7 @@ export class Viewport {
   setBodies(meshes: BodyMesh[]): void {
     this.setHoverHighlight(null);
     this.layer.replace(meshes);
+    this.markShadows();
     this.preselection.reset();
     this.aimSun();
     this.selection.bodiesChanged();
@@ -242,14 +252,18 @@ export class Viewport {
    * Shows a body moved (a door open, a drawer out) without changing the model: a rotation (row-major 3×3) and a
    * translation applied to its mesh and edges; null puts it back. Lost at the next regeneration.
    */
-  setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); }
-  setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); }
+  setBodyPose(bodyId: string, pose: { rotation: number[]; translation: Vec3 } | null): void { this.layer.setPose(bodyId, pose); this.markShadows(); }
+  setBodyVisible(bodyId: string, visible: boolean): void { this.layer.setVisible(bodyId, visible); this.markShadows(); }
+  /** The view changed (a tool, a panel): drawn again for a moment (redraw.ts). */
+  invalidate(ms?: number): void { this.redraw.invalidate(ms); }
+  /** The bodies changed (made again, moved, shown, hidden): their shadows are computed again, once. */
+  markShadows(): void { this.renderer.shadowMap.needsUpdate = true; this.redraw.invalidate(); }
 
   /** Takes these bodies (the walls in the way) out of the view and out of reach, the others back in. */
-  setCutaway(ids: ReadonlySet<string>): void { this.layer.setCut(ids); }
+  setCutaway(ids: ReadonlySet<string>): void { this.layer.setCut(ids); this.markShadows(); }
   isCutaway(bodyId: string): boolean { return this.layer.isCut(bodyId); }
   /** Draws these bodies (the walls of the room) behind what stands in their plane against them. */
-  setBehind(ids: ReadonlySet<string>): void { this.layer.setBehind(ids); }
+  setBehind(ids: ReadonlySet<string>): void { this.layer.setBehind(ids); this.markShadows(); }
   /** Whether a body is drawn: neither hidden nor taken out of the view. */
   bodyInView(bodyId: string): boolean { return this.layer.bodies.get(bodyId)?.mesh.visible === true && !this.layer.isCut(bodyId); }
   setSketchCutaway(ids: ReadonlySet<string>): void { this.sketches.setCut(ids); }
@@ -286,7 +300,7 @@ export class Viewport {
   private readonly sun = (() => {
     const light = new THREE.DirectionalLight(0xffffff, 0.9);
     light.castShadow = true;
-    light.shadow.mapSize.set(4096, 4096);
+    light.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048);
     light.shadow.radius = 3;
     return light;
   })();
@@ -454,10 +468,20 @@ export class Viewport {
     return this.sketches.pickItem(this.rays(event), kind, nearerThan);
   }
 
+  /**
+   * The camera and the bodies placed as they are now, before a ray is cast: no image may have been drawn since they
+   * changed (redraw.ts, the view draws on demand), and the renderer is what usually brings them up to date.
+   */
+  private freshMatrices(): void {
+    this.camera.updateMatrixWorld();
+    this.scene.updateMatrixWorld();
+  }
+
   /** Ray under the pointer, in world coordinates. */
   rayFromEvent(event: PointerEvent): { origin: Vec3; direction: Vec3 } {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    this.freshMatrices();
     this.raycaster.setFromCamera(ndc, this.camera);
     const { origin, direction } = this.raycaster.ray;
     return { origin: [origin.x, origin.y, origin.z], direction: [direction.x, direction.y, direction.z] };
@@ -546,6 +570,7 @@ export class Viewport {
       bodies: this.bodies,
       sketches: this.sketches.polylines(),
       bodyAt: (x, y) => {
+        this.freshMatrices();
         this.raycaster.setFromCamera(new THREE.Vector2((x / canvas.clientWidth) * 2 - 1, 1 - (y / canvas.clientHeight) * 2), this.camera);
         return (this.raycaster.intersectObjects(this.layer.shownMeshes(), false)[0]?.object.userData.bodyId as string | undefined) ?? null;
       },
@@ -596,6 +621,7 @@ export class Viewport {
   // ---- rendering --------------------------------------------------------------------
 
   private resize(): void {
+    this.redraw.invalidate();
     const { clientWidth, clientHeight } = this.container;
     if (clientWidth === 0 || clientHeight === 0) return;
     this.renderer.setSize(clientWidth, clientHeight, false);
@@ -624,11 +650,13 @@ export class Viewport {
     this.timer.update();
     const delta = this.timer.getDelta();
     if (this.viewHelper.animating) this.viewHelper.update(delta);
-    this.controls.update();
+    if (this.controls.update()) this.redraw.invalidate(500);
     const distance = this.camera.position.distanceTo(this.controls.target);
     this.fitClipping(distance);
     this.grid.update(distance, this.savedCamera ? null : this.gridArea);
     for (const listener of this.frameListeners) listener();
+    // Nothing changed for a while: the last image stays (redraw.ts); the render mode draws its passes always.
+    if (!this.redraw.due && !this.viewHelper.animating && !this.drawOverride) return;
     this.renderer.clear();
     if (this.drawOverride) this.drawOverride();
     else {

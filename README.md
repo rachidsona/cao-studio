@@ -274,6 +274,11 @@ Principes :
   est écrit une fois, dans `frontend/src/document/sketch-constraints.json`, lu par l'éditeur et par le serveur ;
   les documents de `tests/fixtures/documents/` sont vérifiés des deux côtés (vitest et pytest). Une esquisse a au
   plus 600 contraintes, sous le plafond où le solveur manque de mémoire.
+- **Léger sur iPad et portable** : la vue dessine à chaque image pendant un geste (souris, doigt, clavier) et
+  2 secondes après, puis 4 images par seconde au repos, au lieu de 60 (`viewport/redraw.ts`). Les ombres ne sont
+  recalculées que quand les corps changent (soleil fixe), sur une carte de 2048 (1024 au doigt) ; un écran tactile
+  dessine à une netteté de 1,5 au plus. Les objets que le noyau crée pour lire une forme (arêtes, faces, points,
+  sections) sont libérés aussitôt lus.
 
 ## Esquisses (phase 4)
 

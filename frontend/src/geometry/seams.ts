@@ -15,9 +15,19 @@ export function seamEdges(shape: Shape3D): number[] {
   const adjacent = edges.map(() => new Set<number>());
   const faces = shape.faces;
   faces.forEach((face, f) => {
-    for (const edge of face.edges) for (const i of byHash.get(edge.hashCode) ?? []) if (edges[i]!.isSame(edge)) adjacent[i]!.add(f);
+    const own = face.edges;
+    for (const edge of own) for (const i of byHash.get(edge.hashCode) ?? []) if (edges[i]!.isSame(edge)) adjacent[i]!.add(f);
+    for (const edge of own) edge.delete();
   });
-  const normals = faces.map((face) => (face.geomType === "PLANE" ? face.normalAt() : null));
+  const normals = faces.map((face) => {
+    if (face.geomType !== "PLANE") return null;
+    const n = face.normalAt();
+    const read = { x: n.x, y: n.y, z: n.z };
+    n.delete();
+    return read;
+  });
+  // The kernel's wrappers are released once read, not left to the garbage collector (audit of 11/11/2026).
+  for (const item of [...edges, ...faces]) item.delete();
   const seams: number[] = [];
   // Faceted (hundreds of flat faces): soft edges below 25°; else only faces of one plane.
   const limit = faces.length > 150 ? Math.cos((25 * Math.PI) / 180) : 1 - 1e-7;

@@ -56,6 +56,12 @@ export interface BodyMetrics {
   edgeCount: number;
 }
 
+/** How many wrappers the kernel made for this list, released as soon as counted (audit of 11/11/2026). */
+function count(items: readonly { delete(): void }[]): number {
+  for (const item of items) item.delete();
+  return items.length;
+}
+
 export function bodyMetrics(shape: Shape3D): BodyMetrics {
   const box = shape.boundingBox;
   try {
@@ -67,8 +73,8 @@ export function bodyMetrics(shape: Shape3D): BodyMetrics {
         [min[0], min[1], min[2]],
         [max[0], max[1], max[2]],
       ],
-      faceCount: shape.faces.length,
-      edgeCount: shape.edges.length,
+      faceCount: count(shape.faces),
+      edgeCount: count(shape.edges),
     };
   } finally {
     box.delete();

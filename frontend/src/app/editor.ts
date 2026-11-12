@@ -227,6 +227,7 @@ export class Editor {
   // ---- rendering ----------------------------------------------------------
 
   render(): void {
+    this.viewport.invalidate();
     this.sketchDisplay.sync(this.sketches.mode?.featureId ?? null);
     this.navigator.render();
     const feature = this.selectedFeature ? (findFeature(this.doc, this.selectedFeature) ?? null) : null;

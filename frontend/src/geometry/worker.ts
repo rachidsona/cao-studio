@@ -118,33 +118,58 @@ function outlineEdges(edge: Edge): OutlineEdge[] {
 }
 
 /** One edge of a body, exactly, with points along it (to project it into a sketch). */
-function edgeOutline(bodyId: string, edgeIndex: number): EdgeOutline {
-  const edge = solid(bodyId).edges[edgeIndex];
-  if (!edge) throw new GeometryError(`Arête ${edgeIndex} introuvable.`);
+/** An edge as lines and samples; the kernel's points read are released at once (audit of 11/11/2026). */
+function outlineOf(edge: Edge): EdgeOutline {
   const samples = Array.from({ length: 9 }, (_, i) => {
     const v = edge.pointAt(i / 8);
-    return [v.x, v.y, v.z] as [number, number, number];
+    const point = [v.x, v.y, v.z] as [number, number, number];
+    v.delete();
+    return point;
   });
   return { edges: outlineEdges(edge), samples };
 }
 
-/** Every edge of a body (« Projeter » with Maj: the whole body). */
+/** The kernel's wrappers of a list of edges or faces, released when read (they are not left to the garbage collector). */
+function release(items: readonly { delete(): void }[]): void {
+  for (const item of items) item.delete();
+}
+
+function edgeOutline(bodyId: string, edgeIndex: number): EdgeOutline {
+  const edges = solid(bodyId).edges;
+  try {
+    const edge = edges[edgeIndex];
+    if (!edge) throw new GeometryError(`Arête ${edgeIndex} introuvable.`);
+    return outlineOf(edge);
+  } finally {
+    release(edges);
+  }
+}
+
+/** Every edge of a body (« Projeter » with Maj: the whole body): its edges read once, not once per edge. */
 function bodyOutline(bodyId: string): EdgeOutline[] {
-  return solid(bodyId).edges.map((_, i) => edgeOutline(bodyId, i));
+  const edges = solid(bodyId).edges;
+  try {
+    return edges.map(outlineOf);
+  } finally {
+    release(edges);
+  }
 }
 
 /** Where a plane cuts a body (« Intersection »): the edges of the part of a large square of the plane inside it. */
 function sectionOutline(bodyId: string, origin: P3, u: P3, v: P3): EdgeOutline[] {
   const s = 1e5;
   const corner = (a: number, b: number): P3 => [0, 1, 2].map((i) => origin[i]! + u[i]! * a + v[i]! * b) as P3;
-  const cut = solid(bodyId).intersect(makePolygon([corner(-s, -s), corner(s, -s), corner(s, s), corner(-s, s)]));
-  return cut.edges.map((edge) => ({
-    edges: outlineEdges(edge),
-    samples: Array.from({ length: 9 }, (_, i) => {
-      const p = edge.pointAt(i / 8);
-      return [p.x, p.y, p.z] as P3;
-    }),
-  }));
+  const square = makePolygon([corner(-s, -s), corner(s, -s), corner(s, s), corner(-s, s)]);
+  const cut = solid(bodyId).intersect(square);
+  const edges = cut.edges;
+  try {
+    return edges.map(outlineOf);
+  } finally {
+    // The section and its square are the worker's own: released here, not kept until the garbage collector.
+    release(edges);
+    cut.delete();
+    square.delete();
+  }
 }
 
 function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
