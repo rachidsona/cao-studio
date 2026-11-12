@@ -219,7 +219,7 @@ export class AlignTool extends PanelTool {
       f.fixed
         ? null
         : this.info(f.moving ? "2. Cliquez la face où la coller, sur un autre corps — droite ou inclinée." : "2. Puis la face où la coller, sur un autre corps — droite ou inclinée."),
-      f.fixed ? this.selectRow("Où", f.where, [["point", "Au point cliqué"], ["center", "Au centre de la face"]], (v) => ((f.where = v as "point" | "center"), changed())) : null,
+      f.fixed ? this.selectRow("Où", f.where, [["corner", "Bords affleurés au coin cliqué"], ["point", "Centre au point cliqué"], ["center", "Centre sur le centre de la face"]], (v) => ((f.where = v as "corner" | "point" | "center"), changed())) : null,
       f.fixed ? this.numberRow("Jeu", f.gap, this.ctx.unit(), (v) => ((f.gap = v), changed()), true) : null,
       f.fixed ? this.selectRow("Tourner sur la face", String(f.spin), [["0", "0°"], ["90", "90°"], ["180", "180°"], ["270", "270°"]], (v) => ((f.spin = Number(v)), changed())) : null,
       typeof made === "string" && f.fixed ? this.info(made) : null,

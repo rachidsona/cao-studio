@@ -47,7 +47,7 @@ export const CURIC: HelpFamily[] = [
           "Pour chaque axe (« X largeur », « Y profond. », « Z hauteur »), choisissez « Côté − aligné », « Centré », « Côté + aligné », « Accolé après (+) » ou « Accolé avant (−) ». Réglez l'« écart » si besoin.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
         ],
-        tip: "Au départ : accolé après en X, côté − en Y et Z, comme des caissons côte à côte. « Méthode » propose aussi « Face sur face » et « Point sur point ». Un corps aligné suit sa référence quand elle change.",
+        tip: "Au départ : accolé après en X, côté − en Y et Z, comme des caissons côte à côte. « Méthode » propose aussi « Face sur face » — la face se plaque sur l'autre, ses bords affleurant les siens au coin le plus proche du clic (« Où ») — et « Point sur point ». Un corps aligné suit sa référence quand elle change.",
       },
       {
         keys: ["data-action:mate"], name: "Assemblage",

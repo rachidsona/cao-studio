@@ -1108,7 +1108,10 @@ opération existante.
   - **Face sur face** (méthode d'Aligner, gardée pour la session ; une face sélectionnée avant d'ouvrir l'outil la
     choisit) : on clique une face plane du corps à déplacer, puis la face où la coller, sur un autre corps — **droite
     ou inclinée**, comme le pan d'un toit. Le corps tourne du plus petit angle pour que sa face se plaque contre
-    l'autre, et le centre de sa face se pose au point cliqué (ou au centre de l'autre face). On règle un **jeu** et un
+    l'autre, puis **ses bords affleurent ceux de l'autre au coin le plus proche du clic** (« Où » : « Bords affleurés
+    au coin cliqué », par défaut) — deux faces de même taille se posent exactement l'une sur l'autre, une plus petite
+    se cale dans ce coin ; ou bien le centre de sa face va au point cliqué, ou au centre de l'autre face. Les bords
+    sont pris d'équerre au plus long côté de l'autre face (`flushSlide`). On règle un **jeu** et un
     quart de tour sur la face (0°, 90°, 180°, 270°) ; « Recommencer » reprend les deux clics. Le résultat est une
     rotation autour d'un axe quelconque, puis un déplacement, en une annulation (`features/face-mate.ts`,
     `app/align-faces.ts`).

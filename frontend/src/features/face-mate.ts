@@ -2,8 +2,8 @@
  * Face sur face (Aligner) : une face plane d'un corps se plaque sur une face d'un autre, même inclinée (le pan d'un
  * toit). Le corps tourne autour du centre de sa face, du plus petit angle qui la retourne contre l'autre (sa normale
  * opposée à celle de l'autre), puis tourne encore sur la face d'un quart si on le demande, et se pose : le centre de
- * sa face sur le point visé, à un jeu près le long de la normale. Une rotation (autour d'un axe quelconque) et un
- * déplacement. Pur.
+ * sa face sur le point visé, à un jeu près le long de la normale — ou ses bords affleurant ceux de l'autre au coin le
+ * plus proche du clic. Une rotation (autour d'un axe quelconque) et un déplacement. Pur.
  */
 import type { Vec3 } from "../document/types";
 
@@ -75,4 +75,43 @@ export function faceOnFace(moving: PlanarFace, fixed: PlanarFace, gap = 0, spin 
   const angle = (2 * Math.acos(w) * 180) / Math.PI;
   if (s < 1e-9 || angle < 1e-6) return { rotation: null, translate };
   return { rotation: { dir: [q[1] / s, q[2] / s, q[3] / s], angle, center: [...moving.point] as Vec3 }, translate };
+}
+
+/** The move of a point by a mate: turned about its centre, then moved. */
+export function matedPoint(mate: FaceMate, p: Vec3): Vec3 {
+  let q: Vec3 = p;
+  if (mate.rotation) {
+    const { dir, angle, center } = mate.rotation;
+    const turned = turn(quat(unit(dir), (angle * Math.PI) / 180), [p[0] - center[0], p[1] - center[1], p[2] - center[2]]);
+    q = [center[0] + turned[0], center[1] + turned[1], center[2] + turned[2]];
+  }
+  return [q[0] + mate.translate[0], q[1] + mate.translate[1], q[2] + mate.translate[2]];
+}
+
+/**
+ * Flush at the corner clicked: once laid, the moving face is slid in the plane of the other so that its edges meet the
+ * other's at the corner of it nearest the point clicked — two faces of one size then lie exactly one on the other, as
+ * a board put on another with its edges flush. The rectangles are taken square to the longest side of the other face.
+ * The slide to add to the mate's move; nothing when the other face has no straight side.
+ */
+export function flushSlide(mate: FaceMate, movingCorners: readonly Vec3[], fixed: { normal: Vec3; corners: readonly Vec3[]; sides: readonly [Vec3, Vec3][]; clicked: Vec3 }): Vec3 {
+  const n = unit(fixed.normal);
+  const longest = [...fixed.sides].sort((a, b) => Math.hypot(...b[1].map((c, i) => c - b[0][i]!)) - Math.hypot(...a[1].map((c, i) => c - a[0][i]!)))[0];
+  if (!longest || !movingCorners.length || !fixed.corners.length) return [0, 0, 0];
+  const along = longest[1].map((c, i) => c - longest[0][i]!) as Vec3;
+  const u = unit(along.map((c, i) => c - n[i]! * dot(along, n)) as Vec3);
+  const v = cross(n, u);
+  const range = (points: readonly Vec3[], axis: Vec3) => {
+    const t = points.map((p) => dot(p, axis));
+    return [Math.min(...t), Math.max(...t)] as const;
+  };
+  const moved = movingCorners.map((p) => matedPoint(mate, p));
+  const slide = (axis: Vec3) => {
+    const [tMin, tMax] = range(fixed.corners, axis);
+    const [mMin, mMax] = range(moved, axis);
+    // The side of the other face nearest the click: the moving face's same side comes onto it.
+    return dot(fixed.clicked, axis) > (tMin + tMax) / 2 ? tMax - mMax : tMin - mMin;
+  };
+  const [du, dv] = [slide(u), slide(v)];
+  return [u[0] * du + v[0] * dv, u[1] * du + v[1] * dv, u[2] * du + v[2] * dv];
 }

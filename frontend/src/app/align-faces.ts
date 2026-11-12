@@ -1,13 +1,14 @@
 /**
  * « Face sur face » d'Aligner : on clique une face plane du corps qui bouge, puis la face où la coller — d'un autre
  * corps, droite ou inclinée (le pan d'un toit). Le corps tourne pour que sa face se plaque contre l'autre et se pose
- * au point cliqué (ou au centre de la face), avec un jeu et un quart de tour sur la face si l'on veut
+ * bords affleurant ceux de l'autre au coin le plus proche du clic (ou son centre au point cliqué, ou au centre de la
+ * face), avec un jeu et un quart de tour sur la face si l'on veut
  * (features/face-mate.ts). Le résultat est une rotation (autour d'un axe quelconque) suivie d'un déplacement : une
  * seule annulation.
  */
 import { bodyLabel } from "../document/operations";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
-import { faceOnFace } from "../features/face-mate";
+import { faceOnFace, flushSlide } from "../features/face-mate";
 import type { FacePick } from "../viewport/viewport";
 import { freshFeatureIds } from "./curic-common";
 import type { ToolContext } from "./panel-tool";
@@ -18,12 +19,16 @@ interface Picked {
   point: Vec3;
   center: Vec3;
   normal: Vec3;
+  /** Its corners and straight sides (from its outline): to lay it flush at a corner. */
+  corners: Vec3[];
+  sides: [Vec3, Vec3][];
 }
 
 export class AlignFaces {
   moving: Picked | null = null;
   fixed: Picked | null = null;
-  where: "point" | "center" = "point";
+  /** Where it lands: its edges flush with the other's at the corner nearest the click (the default), its centre on the point clicked, or on the other's centre. */
+  where: "corner" | "point" | "center" = "corner";
   gap = 0;
   spin = 0;
   /** Where the faces were clicked, to mark them in the view. */
@@ -46,7 +51,9 @@ export class AlignFaces {
     try {
       const outline = await this.ctx.geometry.faceOutline(pick.bodyId, pick.faceIndex);
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
-      const face: Picked = { bodyId: pick.bodyId, point: [pick.point.x, pick.point.y, pick.point.z], center: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3 };
+      const sides = outline.edges.flatMap((e) => (e.kind === "line" ? [[[...e.a], [...e.b]] as [Vec3, Vec3]] : []));
+      const corners = outline.edges.flatMap((e) => (e.kind === "line" ? [e.a, e.b] : e.kind === "arc" ? [e.a, e.b, e.mid] : [])).map((p) => [...p] as Vec3);
+      const face: Picked = { bodyId: pick.bodyId, point: [pick.point.x, pick.point.y, pick.point.z], center: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3, corners, sides };
       if (!this.moving || pick.bodyId === this.moving.bodyId) {
         this.moving = face;
         this.fixed = null;
@@ -79,7 +86,12 @@ export class AlignFaces {
   features(): Feature[] | string {
     if (!this.moving) return "Cliquez la face du corps à déplacer.";
     if (!this.fixed) return `Cliquez maintenant la face où coller « ${bodyLabel(this.ctx.doc(), this.moving.bodyId)} » (même inclinée).`;
-    const mate = faceOnFace({ point: this.moving.center, normal: this.moving.normal }, { point: this.where === "center" ? this.fixed.center : this.fixed.point, normal: this.fixed.normal }, this.gap, this.spin);
+    const mate = faceOnFace({ point: this.moving.center, normal: this.moving.normal }, { point: this.where === "point" ? this.fixed.point : this.fixed.center, normal: this.fixed.normal }, this.gap, this.spin);
+    if (this.where === "corner") {
+      // Slid in the plane of the other face: its edges flush with the other's at the corner nearest the click.
+      const slide = flushSlide(mate, this.moving.corners, { normal: this.fixed.normal, corners: this.fixed.corners, sides: this.fixed.sides, clicked: this.fixed.point });
+      mate.translate = mate.translate.map((c, i) => c + slide[i]!) as Vec3;
+    }
     if (!this.slots) {
       const doc = this.ctx.doc();
       const [rotate] = freshFeatureIds(doc, "ro", "Rotation", 1);
