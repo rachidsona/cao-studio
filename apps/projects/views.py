@@ -130,6 +130,7 @@ def editor(request, project_id):
         "apiUrl": reverse("api-project", kwargs={"project_id": project.id}),
         "projectsUrl": reverse("projects:list"),
         "catalogUrl": reverse("api-catalog"),
+        "foldersUrl": reverse("api-folders"),
         "hasPreview": bool(project.thumbnail),
     }
     return render(

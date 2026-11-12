@@ -2,13 +2,15 @@ from django.urls import path, re_path
 
 from apps.catalog import api as catalog_api
 
-from . import api, assistant, library, monitoring, production, sharing, thumbnails, workshop
+from . import api, assistant, folders_api, library, monitoring, production, sharing, thumbnails, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
     path("catalog/", catalog_api.catalog, name="api-catalog"),
     path("catalog/rates/", catalog_api.rates, name="api-catalog-rates"),
     path("projects/", api.project_collection, name="api-projects"),
+    path("folders/", folders_api.folder_collection, name="api-folders"),
+    path("folders/<int:folder_id>/", folders_api.folder_detail, name="api-folder"),
     path("library/", library.library_collection, name="api-library"),
     path("library/<int:module_id>/", library.library_detail, name="api-library-module"),
     path("offcuts/", production.offcut_collection, name="api-offcuts"),
@@ -17,6 +19,7 @@ urlpatterns = [
     path("batch/<int:item_id>/", production.batch_detail, name="api-batch-item"),
     path("projects/<uuid:project_id>/", api.project_detail, name="api-project"),
     path("projects/<uuid:project_id>/price/", api.project_price, name="api-project-price"),
+    path("projects/<uuid:project_id>/folder/", folders_api.project_folder, name="api-project-folder"),
     path("projects/<uuid:project_id>/thumbnail/", thumbnails.project_thumbnail, name="api-project-thumbnail"),
     path("projects/<uuid:project_id>/versions/", api.version_list, name="api-project-versions"),
     path(

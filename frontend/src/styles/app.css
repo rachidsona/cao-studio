@@ -167,6 +167,7 @@
     #editor [data-ribbon],
     #editor [data-render-bar],
     #editor [data-ref="panel-tree"],
+    #editor [data-project-organizer],
     #editor [data-ref="panel-properties"],
     #editor [data-side-tools],
     #editor [data-ref="workspace"] {
@@ -176,6 +177,7 @@
       box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 6px 18px -4px rgb(15 23 42 / 0.16);
     }
     #editor [data-ref="panel-tree"],
+    #editor [data-project-organizer],
     #editor [data-ref="panel-properties"],
     #editor [data-ref="workspace"] {
       overflow: hidden;
@@ -201,6 +203,7 @@
         0 0 20px -4px rgb(var(--brand) / 0.45);
     }
     .dark #editor [data-ref="panel-tree"],
+    .dark #editor [data-project-organizer],
     .dark #editor [data-ref="panel-properties"],
     .dark #editor [data-side-tools] {
       border-color: rgb(var(--brand) / 0.18);
@@ -242,7 +245,8 @@
   }
   /* The Navigator folded away (ui/navigator-fold.ts): the view takes its room; on phones it stays the « Arbre » sheet. */
   @media (min-width: 1024px) {
-    [data-ref="panel-tree"][data-folded="true"] {
+    [data-ref="panel-tree"][data-folded="true"],
+    [data-project-organizer][data-folded="true"] {
       display: none !important;
     }
   }

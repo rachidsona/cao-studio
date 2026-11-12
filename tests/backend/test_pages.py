@@ -111,6 +111,7 @@ def test_editor_renders_config(client_logged, project):
         "apiUrl": f"/api/projects/{project.id}/",
         "projectsUrl": "/projects/",
         "catalogUrl": "/api/catalog/",
+        "foldersUrl": "/api/folders/",
         "hasPreview": False,
     }
     assert "csrftoken" in response.cookies

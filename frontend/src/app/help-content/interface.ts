@@ -141,7 +141,7 @@ export const CURIC: HelpFamily[] = [
 export const SCREEN: HelpFamily[] = [
   {
     title: "Se repérer à l'écran",
-    where: "Navigateur à gauche, sept colonnes d'outils à côté, vue au centre (onglets de projets au-dessus, Historique en dessous), panneau Propriétés à droite.",
+    where: "Colonne Projets tout à gauche, Navigateur à côté, sept colonnes d'outils à côté, vue au centre (onglets de projets au-dessus, Historique en dessous), panneau Propriétés à droite.",
     tools: [
       {
         keys: [], name: "Navigateur",
@@ -178,6 +178,18 @@ export const SCREEN: HelpFamily[] = [
           "« Tout désélectionner » vide la sélection.",
         ],
         tip: "La fenêtre d'un outil ouvert prend un onglet à côté de « Sélection ». Sur un écran étroit, ces fenêtres se posent sur la vue. Aucun outil n'a de bouton « OK » ni « Annuler » : chaque réglage valable est enregistré aussitôt (une étape d'historique par utilisation d'outil, reprise par Ctrl + Z), la croix ✕ ou Échap ferme la fenêtre, et l'opération se change ensuite par son étape dans l'Historique (« Modifier »). Le ruban et la barre des étapes du haut sont cachés d'office : la case « Ruban et étapes en haut » du menu ⋯ les remet.",
+      },
+      {
+        keys: [], name: "Colonne Projets",
+        what: "Tous vos projets, rangés dans vos dossiers, dans une colonne à gauche du Navigateur : pour ouvrir un autre projet et ranger vos projets sans quitter l'éditeur.",
+        steps: [
+          "Cliquez un projet pour l'ouvrir dans un onglet. Le projet de la page est en bleu ; un point bleu marque ceux déjà ouverts dans un onglet.",
+          "Pour ranger un projet, glissez-le sur un dossier, ou cliquez son « ⋯ » puis « Ranger dans « … » ». « Sortir du dossier » le remet dans « Sans dossier ».",
+          "Le « + » du titre crée un dossier : tapez son nom, puis Entrée (Échap annule). Le « ⋯ » d'un dossier le renomme ou le supprime ; ses projets restent, sans dossier.",
+          "Cliquez le nom d'un dossier pour le plier ou le déplier. Tapez dans « Chercher un projet » pour ne garder que les projets dont le nom contient ce texte.",
+          "La flèche ‹ à droite du titre « Projets » replie la colonne : la vue prend sa place. L'onglet « › Projets » en bas du bord gauche de la vue la rouvre.",
+        ],
+        tip: "Ce sont les mêmes dossiers que sur la page d'accueil (« Mes projets »). Ranger un projet ne change pas sa date de modification. La colonne repliée et les dossiers pliés sont retenus par le navigateur ; elle est cachée sur un écran étroit et pendant le rendu.",
       },
       {
         keys: [], name: "Onglets de projets",

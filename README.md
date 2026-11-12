@@ -1345,6 +1345,15 @@ opération existante.
 - **Navigateur replié** (grands écrans) : la flèche ‹ de son titre le fait disparaître et la vue prend sa place ; l'onglet
   « › Navigateur », en bas du bord gauche de la vue avec ceux des colonnes repliées, le rouvre. Retenu par le navigateur.
   Sur les petits écrans, le bouton « Arbre » l'ouvre toujours en feuille (`ui/navigator-fold.ts`, `ui/edge-tabs.ts`).
+- **Colonne « Projets »** (grands écrans), à gauche du Navigateur : les projets du compte rangés dans leurs dossiers, les
+  mêmes que sur « Mes projets » (« Sans dossier » en dernier). Un clic ouvre un projet dans son onglet ; le projet de la
+  page est en bleu, un point marque ceux ouverts dans un onglet. On range un projet en le **glissant** sur un dossier ou
+  par son « ⋯ » (« Ranger dans… », « Sortir du dossier ») ; le « + » du titre crée un dossier, le « ⋯ » d'un dossier le
+  renomme ou le supprime (ses projets restent, sans dossier) ; un clic sur un dossier le plie ; « Chercher un projet »
+  filtre par nom. La flèche ‹ la **replie** comme le Navigateur, l'onglet « › Projets » la rouvre ; replis retenus par le
+  navigateur. API : `GET/POST /api/folders/`, `PATCH/DELETE /api/folders/<id>/`, `PUT /api/projects/<uuid>/folder/`
+  `{folder}` — chaque compte n'a que les siens, ranger ne change pas « modifié le » (`app/project-organizer.ts`,
+  `apps/projects/folders_api.py`).
 - **Sept colonnes d'outils**, entre le Navigateur et la vue : sept colonnes d'icônes, **vides au départ**, que l'on
   garnit soi-même. Le **« + »** en bas d'une colonne ouvre la liste de tous les outils du ruban et de la colonne de
   sélection et de vue, rangés par groupe, avec une recherche ; un clic ajoute l'outil à la colonne, ou l'en retire s'il

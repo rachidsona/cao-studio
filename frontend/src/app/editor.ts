@@ -37,6 +37,7 @@ export interface EditorConfig {
   apiUrl: string;
   projectsUrl: string;
   catalogUrl?: string; // the workshop's catalogue (materials, hardware rules, letterhead); missing on an older server
+  foldersUrl?: string; // the folders of the projects, for the « Projets » column (app/project-organizer.ts)
   hasPreview?: boolean; // the project has its picture for the home page (app/project-preview.ts)
 }
 

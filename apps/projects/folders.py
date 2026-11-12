@@ -18,16 +18,23 @@ MAX_FOLDERS = 200
 NAME_MAX = ProjectFolder._meta.get_field("name").max_length
 
 
+def clean_name(raw: str) -> str:
+    """The name typed, trimmed; ValueError (with what to say) when it is empty or too long."""
+    name = " ".join(raw.split())
+    if not name:
+        raise ValueError("Donnez un nom au dossier.")
+    if len(name) > NAME_MAX:
+        raise ValueError(f"Un nom de dossier a {NAME_MAX} caractères au plus.")
+    return name
+
+
 def _name(request) -> str | None:
     """The name typed, trimmed; None (said) when it is empty or too long."""
-    name = " ".join(str(request.POST.get("name", "")).split())
-    if not name:
-        messages.error(request, "Donnez un nom au dossier.")
+    try:
+        return clean_name(str(request.POST.get("name", "")))
+    except ValueError as error:
+        messages.error(request, str(error))
         return None
-    if len(name) > NAME_MAX:
-        messages.error(request, f"Un nom de dossier a {NAME_MAX} caractères au plus.")
-        return None
-    return name
 
 
 def _in_folder(folder: ProjectFolder | None) -> str:

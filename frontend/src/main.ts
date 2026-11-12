@@ -11,6 +11,7 @@ import { bindPlanLayout } from "./app/dressing/plan-layout-tool";
 import { bindKitchenPlan } from "./app/kitchen/kitchen-plan-tool";
 import { bindProductionFolder } from "./app/workshop/production-folder";
 import { bindProjectTabs } from "./app/project-tabs";
+import { bindProjectOrganizer } from "./app/project-organizer";
 import { bindSelectionFilter } from "./app/selection-filter";
 import { bindSelectPlus } from "./app/select-plus";
 import { bindSection } from "./app/section-view";
@@ -233,6 +234,7 @@ async function start(): Promise<void> {
   bindToolColumns(root);
   bindProductionFolder(root, viewport, editor, geometry, notice);
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
+  bindProjectOrganizer(root, config, (message, kind) => editor.notify(message, kind));
   editor.render();
   loading.show("Calcul des corps…", 0.95);
   await editor.recompute(true);

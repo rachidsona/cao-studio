@@ -31,7 +31,7 @@ function csrfToken(): string {
   return match ? decodeURIComponent(match[1] as string) : "";
 }
 
-async function request(url: string, init: RequestInit = {}): Promise<Record<string, unknown>> {
+export async function request(url: string, init: RequestInit = {}): Promise<Record<string, unknown>> {
   const response = await fetch(url, {
     ...init,
     credentials: "same-origin",
@@ -103,4 +103,32 @@ export async function listProjects(url: string): Promise<{ id: string; name: str
 export async function createProject(url: string, name: string, space = "design"): Promise<{ id: string; name: string }> {
   const { id, name: kept } = await request(url, { method: "POST", body: JSON.stringify({ name, space }) });
   return { id: id as string, name: kept as string };
+}
+
+/** The folders of the account and its projects, each with its folder (null: none). */
+export interface FolderList {
+  folders: { id: number; name: string }[];
+  projects: { id: string; name: string; space: string; folder: number | null; updated_at: string }[];
+}
+
+export async function listFolders(url: string): Promise<FolderList> {
+  return (await request(url)) as unknown as FolderList;
+}
+
+export async function createFolder(url: string, name: string): Promise<{ id: number; name: string }> {
+  return (await request(url, { method: "POST", body: JSON.stringify({ name }) })) as unknown as { id: number; name: string };
+}
+
+export async function renameFolder(url: string, id: number, name: string): Promise<void> {
+  await request(`${url}${id}/`, { method: "PATCH", body: JSON.stringify({ name }) });
+}
+
+/** The folder deleted; its projects stay, out of any folder. */
+export async function deleteFolder(url: string, id: number): Promise<void> {
+  await request(`${url}${id}/`, { method: "DELETE", headers: { "X-CSRFToken": csrfToken() } });
+}
+
+/** A project put in a folder (null: out of any). `projects` is the collection's URL (/api/projects/). */
+export async function moveToFolder(projects: string, id: string, folder: number | null): Promise<void> {
+  await request(`${projects}${id}/folder/`, { method: "PUT", body: JSON.stringify({ folder }) });
 }
