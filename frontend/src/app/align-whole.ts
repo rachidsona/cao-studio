@@ -71,3 +71,36 @@ export function wholeMate(doc: CadDocument, bodyId: string, displayed: readonly 
   for (const f of base === doc ? [] : [cabinet!, ...appliances]) if (!made.some((m) => m.id === f.id)) made.push(findFeature(base, f.id)!);
   return made.length ? made : "Ces deux faces sont déjà l'une contre l'autre.";
 }
+
+/** A face of a box: its centre, outward normal, corners and sides. */
+export interface BoxFace {
+  center: Vec3;
+  normal: Vec3;
+  corners: Vec3[];
+  sides: [Vec3, Vec3][];
+}
+
+/**
+ * The outer face of an element's box on the side of a face clicked on it: on the axis of the face's normal, on the side
+ * of the box the point clicked is nearest — so the inside of a cabinet's left side (its normal toward the inside) still
+ * gives the outside of its left side. Null when the face is slanted (no side of the box).
+ */
+export function envelopeFace(box: [Vec3, Vec3], normal: Vec3, clicked: Vec3): BoxFace | null {
+  const k = [0, 1, 2].reduce((m, i) => (Math.abs(normal[i]!) > Math.abs(normal[m]!) ? i : m), 0);
+  if (Math.abs(normal[k]!) / (Math.hypot(...normal) || 1) < 0.98) return null;
+  const [min, max] = box;
+  const high = clicked[k]! > (min[k]! + max[k]!) / 2;
+  const level = high ? max[k]! : min[k]!;
+  const [a, b] = [0, 1, 2].filter((i) => i !== k) as [number, number];
+  const at = (u: number, v: number): Vec3 => {
+    const p: Vec3 = [0, 0, 0];
+    p[k] = level;
+    p[a] = u;
+    p[b] = v;
+    return p;
+  };
+  const corners = [at(min[a]!, min[b]!), at(max[a]!, min[b]!), at(max[a]!, max[b]!), at(min[a]!, max[b]!)];
+  const n: Vec3 = [0, 0, 0];
+  n[k] = high ? 1 : -1;
+  return { center: at((min[a]! + max[a]!) / 2, (min[b]! + max[b]!) / 2), normal: n, corners, sides: corners.map((c, i) => [c, corners[(i + 1) % 4]!] as [Vec3, Vec3]) };
+}

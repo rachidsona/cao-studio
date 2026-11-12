@@ -4,7 +4,7 @@
  * rotation qui n'en est pas une est refusée, une Répartition entière ne tourne pas.
  */
 import { describe, expect, it } from "vitest";
-import { quarterTurn, wholeMate } from "../../frontend/src/app/align-whole";
+import { envelopeFace, quarterTurn, wholeMate } from "../../frontend/src/app/align-whole";
 import { createReferencePlate, type CabinetFeature, type CadDocument } from "../../frontend/src/document/types";
 
 const cabinet: CabinetFeature = { id: "c1", type: "cabinet", name: "Bas C3", origin: [0, 0, 0], width: 600, height: 720, depth: 560, thickness: 18, back: "none", backThickness: 3, shelves: 1, plinth: 0, construction: "sides-through" };
@@ -30,5 +30,22 @@ describe("le meuble entier se pose face sur face", () => {
     expect(quarterTurn({ dir: [0, 0, -1], angle: 45, center: [0, 0, 0] })).toMatch(/quarts de tour/);
     expect(quarterTurn({ dir: [0, 0, -1], angle: 90, center: [0, 0, 0] })).toBe(-90);
     expect(wholeMate(createReferencePlate(), "h1", ["h1"], { rotation: null, translate: [1, 0, 0] }, [], fresh)).toBeNull();
+  });
+});
+
+describe("la face extérieure du meuble, du côté cliqué", () => {
+  const box: [[number, number, number], [number, number, number]] = [[0, 0, 0], [600, 560, 720]];
+
+  it("l'intérieur du côté gauche cliqué (sa normale vers l'intérieur) donne le dehors du côté gauche", () => {
+    const face = envelopeFace(box, [1, 0, 0], [18, 280, 360])!;
+    expect(face.normal).toEqual([-1, 0, 0]);
+    expect(face.center).toEqual([0, 280, 360]);
+    expect(face.corners).toHaveLength(4);
+    expect(face.corners.every((c) => c[0] === 0)).toBe(true);
+  });
+
+  it("une façade cliquée donne le devant du meuble ; une face en biais, rien", () => {
+    expect(envelopeFace(box, [0, -1, 0], [300, -20, 360])).toMatchObject({ normal: [0, -1, 0], center: [300, 0, 360] });
+    expect(envelopeFace(box, [Math.SQRT1_2, Math.SQRT1_2, 0], [300, 280, 360])).toBeNull();
   });
 });

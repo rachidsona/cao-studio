@@ -7,7 +7,8 @@
  * seule annulation.
  */
 import { bodyLabel, findFeature } from "../document/operations";
-import { alignWhole, wholeMate } from "./align-whole";
+import { alignWhole, envelopeFace, wholeMate, type BoxFace } from "./align-whole";
+import { wholeBodies } from "./move-whole";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
 import { faceOnFace, flushSlide } from "../features/face-mate";
 import type { FacePick } from "../viewport/viewport";
@@ -23,6 +24,8 @@ interface Picked {
   /** Its corners and straight sides (from its outline): to lay it flush at a corner. */
   corners: Vec3[];
   sides: [Vec3, Vec3][];
+  /** For a piece of a cabinet or a Répartition: the outer face of the whole element on that side (what lies against the other when it moves whole). */
+  envelope?: BoxFace;
 }
 
 export class AlignFaces {
@@ -58,6 +61,8 @@ export class AlignFaces {
       const sides = outline.edges.flatMap((e) => (e.kind === "line" ? [[[...e.a], [...e.b]] as [Vec3, Vec3]] : []));
       const corners = outline.edges.flatMap((e) => (e.kind === "line" ? [e.a, e.b] : e.kind === "arc" ? [e.a, e.b, e.mid] : [])).map((p) => [...p] as Vec3);
       const face: Picked = { bodyId: pick.bodyId, point: [pick.point.x, pick.point.y, pick.point.z], center: [...outline.center] as Vec3, normal: [...outline.normal] as Vec3, corners, sides };
+      const envelope = this.envelopeOf(face);
+      if (envelope) face.envelope = envelope;
       if (!this.moving || pick.bodyId === this.moving.bodyId) {
         this.moving = face;
         this.fixed = null;
@@ -71,6 +76,20 @@ export class AlignFaces {
     } catch (e) {
       this.ctx.notify(e instanceof Error ? e.message : String(e), "error");
     }
+  }
+
+  /** The outer face, on the side clicked, of the cabinet or Répartition a face belongs to (its bodies as shown). */
+  private envelopeOf(face: Picked): BoxFace | undefined {
+    const doc = this.ctx.doc();
+    const owner = alignWhole(doc, face.bodyId);
+    if (!owner) return undefined;
+    const boxes = wholeBodies(doc, owner.kind, owner.id, this.ctx.viewport.displayedBodies).flatMap((id) => {
+      const b = this.ctx.viewport.bodyMesh(id)?.metrics.bbox;
+      return b ? [b] : [];
+    });
+    if (!boxes.length) return undefined;
+    const box: [Vec3, Vec3] = [[0, 1, 2].map((i) => Math.min(...boxes.map((b) => b[0][i]!))) as Vec3, [0, 1, 2].map((i) => Math.max(...boxes.map((b) => b[1][i]!))) as Vec3];
+    return envelopeFace(box, face.normal, face.point) ?? undefined;
   }
 
   /** The name of what moves: the cabinet or Répartition, or the piece. */
@@ -107,10 +126,14 @@ export class AlignFaces {
   features(): Feature[] | string {
     if (!this.moving) return "Cliquez la face du corps à déplacer.";
     if (!this.fixed) return `Cliquez maintenant la face où coller « ${bodyLabel(this.ctx.doc(), this.moving.bodyId)} » (même inclinée).`;
-    const mate = faceOnFace({ point: this.moving.center, normal: this.moving.normal }, { point: this.where === "point" ? this.fixed.point : this.fixed.center, normal: this.fixed.normal }, this.gap, this.spin);
+    // A whole element lies by its outer faces: exactly face on face, the one against the other, never into it.
+    const whole = this.movesWhole();
+    const from = (whole && this.moving.envelope) || this.moving;
+    const to = (whole && this.fixed.envelope) || this.fixed;
+    const mate = faceOnFace({ point: from.center, normal: from.normal }, { point: this.where === "point" ? this.fixed.point : to.center, normal: to.normal }, this.gap, this.spin);
     if (this.where === "corner") {
       // Slid in the plane of the other face: its edges flush with the other's at the corner nearest the click.
-      const slide = flushSlide(mate, this.moving.corners, { normal: this.fixed.normal, corners: this.fixed.corners, sides: this.fixed.sides, clicked: this.fixed.point });
+      const slide = flushSlide(mate, from.corners, { normal: to.normal, corners: to.corners, sides: to.sides, clicked: this.fixed.point });
       mate.translate = mate.translate.map((c, i) => c + slide[i]!) as Vec3;
     }
     if (!this.slots) {

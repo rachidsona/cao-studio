@@ -76,6 +76,9 @@ test("aligner face sur face : la face d'une façade cliquée, c'est tout le meub
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   // The cabinet set again in place: no rotation nor move of a piece added to the history.
   expect(await page.locator("[data-op]").count()).toBe(steps);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await page.waitForTimeout(800);
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/aligner-meuble-entier.png` });
   await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Déplacement|^Rotation/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
