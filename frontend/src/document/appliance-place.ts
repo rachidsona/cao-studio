@@ -2,8 +2,10 @@
  * Un appareil de la bibliothèque posé par rapport au caisson cliqué (features/appliance-library.ts, sa place) : dans
  * sa caisse, centré, la face avant au nu du caisson (un four de colonne vers 85 cm du sol) ; sur le plan de travail
  * au-dessus (une plaque, un évier centrés dans sa profondeur ; un robinet au fond) — le plan découpé dessous ; une hotte
- * à 65 cm au-dessus du plan, contre le mur ; un groupe filtrant sous un meuble haut ; un réfrigérateur posable debout
- * à sa place, contre le mur. Tourné comme le caisson. Un four ou un micro-ondes encastré lui ôte ses façades, et tout
+ * à 65 cm au-dessus du plan, contre le mur (une hotte îlot au milieu) ; un groupe filtrant sous un meuble haut ; un
+ * réfrigérateur posable debout à sa place, contre le mur ; une cave à vin sous le plan posée au sol comme un
+ * lave-vaisselle, en colonne comme un réfrigérateur. Tourné comme le caisson. Un four, un micro-ondes encastré ou une
+ * cave à vin lui ôte ses façades, et tout
  * appareil dedans ses étagères. Ses pièces prennent leurs apparences, sur le calque « Électroménager », hors débit.
  * Une seule annulation. Pur.
  */
@@ -43,10 +45,12 @@ export function applianceSpot(def: ApplianceDef, size: [number, number, number],
   switch (def.place) {
     case "in": {
       if (w > W + 1) return `${def.name} : ${w} mm de large, le caisson n'en a que ${W}.`;
-      if (h > H - 2 * t + 1 && def.category !== "dishwasher") return `${def.name} : ${h} mm de haut, le caisson n'en a que ${H}.`;
       const tall = H > 1500;
-      if (def.category === "dishwasher") return [x, 0, Math.max(0, H - h - 5)];
-      if (def.category === "fridge") return [x, 0, c.plinth + t];
+      // Under the worktop on the floor, as a dishwasher: a wine cooler of a base cabinet.
+      const floor = def.category === "dishwasher" || (def.category === "wine" && !tall);
+      if (h > H - 2 * t + 1 && !floor) return `${def.name} : ${h} mm de haut, le caisson n'en a que ${H}.`;
+      if (floor) return [x, 0, Math.max(0, H - h - 5)];
+      if (def.category === "fridge" || def.category === "wine") return [x, 0, c.plinth + t];
       if (tall && def.category === "oven") return [x, 0, Math.min(H - h - t, Math.max(c.plinth + t, OVEN_IN_COLUMN))];
       if (tall && def.category === "microwave") return [x, 0, Math.min(H - h - t, OVEN_IN_COLUMN + 600)];
       return [x, 0, Math.max(c.plinth + t, H - h - t)];
@@ -58,7 +62,8 @@ export function applianceSpot(def: ApplianceDef, size: [number, number, number],
     case "tap":
       return [x, D - 60 - d + w / 2, top];
     case "hood":
-      return [x, D - d, top + HOOD_OVER];
+      // An island hood over the middle of its cabinet, a wall one against the wall.
+      return [x, def.id === "hood-island" ? (D - d) / 2 : D - d, top + HOOD_OVER];
     case "under":
       return [x, 0, -h];
     case "stand":

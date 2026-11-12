@@ -2,7 +2,7 @@
  * Bibliothèque d'apparences (comme celle de Fusion) : bois de différentes essences, mélaminés, verres, marbres et
  * pierres (Statuario, Calacatta Oro, Arabescato, Emperador, quartzite Taj Mahal…), plans en pierre frittée (les teintes
  * Dekton : Aura, Entzo, Laurent, Kelya, Sirius, Kreta…), métaux, laques et peintures (teintes RAL), plastiques, tissus et
- * cuirs, bétons. Chaque apparence décrit sa
+ * cuirs, bétons, électroménager (fonte, vitrocéramique, afficheurs). Chaque apparence décrit sa
  * surface (couleurs, motif calculé, rugosité, métal, vernis, transparence) ; les textures sont calculées
  * (appearance/textures.ts), sauf les bois en photo (static/textures/bois, CC0) et les images qu'on importe soi-même
  * (« Mes motifs », gardées avec le projet : appearance/custom.ts). Chaque essence de bois tire son veinage d'une de ces
@@ -10,7 +10,7 @@
  */
 
 export type Pattern = "plain" | "wood" | "marble" | "veined" | "sintered" | "granite" | "terrazzo" | "concrete" | "fabric" | "leather" | "brushed" | "slate" | "cork";
-export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "sintered" | "metal" | "paint" | "plastic" | "light" | "textile" | "concrete" | "custom";
+export type CategoryId = "wood" | "melamine" | "glass" | "stone" | "sintered" | "metal" | "paint" | "plastic" | "light" | "textile" | "concrete" | "appliance" | "custom";
 
 export interface Appearance {
   id: string;
@@ -84,6 +84,7 @@ export const CATEGORIES: { id: CategoryId; name: string }[] = [
   { id: "light", name: "Éclairage (LED)" },
   { id: "textile", name: "Tissus et cuirs" },
   { id: "concrete", name: "Bétons et sols" },
+  { id: "appliance", name: "Électroménager" },
   { id: "custom", name: "Mes motifs (images importées)" },
 ];
 
@@ -247,6 +248,14 @@ export const APPEARANCES: Appearance[] = [
   { id: "copper", name: "Cuivre", category: "metal", color: "#d08a63", pattern: "plain", roughness: 0.2, metalness: 1 },
   { id: "steel-black", name: "Acier noir mat", category: "metal", color: "#2b2b2c", pattern: "plain", roughness: 0.65, metalness: 0.8, paintable: true },
   { id: "steel-raw", name: "Acier brut", category: "metal", color: "#7d7f80", color2: "#5f6162", pattern: "concrete", roughness: 0.5, metalness: 1, tile: [300, 300], relief: 0.1 },
+
+  // ---- Électroménager : les pièces des appareils (features/appliance-parts.ts) ----
+  { id: "cast-iron", name: "Fonte noire (grilles de plaque gaz)", category: "appliance", color: "#252527", color2: "#18181a", pattern: "concrete", roughness: 0.72, metalness: 0.55, tile: [60, 60], relief: 0.3 },
+  { id: "glass-ceramic", name: "Vitrocéramique noire", category: "appliance", color: "#0b0b0d", pattern: "plain", roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02 },
+  { id: "glass-oven", name: "Verre de four teinté", category: "appliance", color: "#2c3034", pattern: "plain", roughness: 0.02, transmission: 0.4, ior: 1.52 },
+  { id: "enamel-black", name: "Émail noir (chapeaux de brûleurs, cavité)", category: "appliance", color: "#141416", pattern: "plain", roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.1 },
+  { id: "display-white", name: "Afficheur blanc", category: "appliance", color: "#dff1ff", pattern: "plain", roughness: 0.3, emissive: 2 },
+  { id: "display-red", name: "Afficheur rouge", category: "appliance", color: "#ff4b2b", pattern: "plain", roughness: 0.3, emissive: 2 },
 
   // ---- Plastiques ----
   { id: "plastic-white", name: "Plastique blanc", category: "plastic", color: "#f2f2f0", pattern: "plain", roughness: 0.35, paintable: true },

@@ -31,7 +31,7 @@ export function applianceDrawing(def: ApplianceDef, finish: string): string {
   let h = 70;
   switch (def.category) {
     case "oven":
-      h = def.id === "oven-pyro" ? 100 : 78;
+      h = def.id === "oven-pyro" ? 100 : def.id === "oven-90" ? 58 : 78;
       body = `<rect x="2" y="2" width="96" height="${h - 4}" rx="2" fill="${F}" ${edge}/>
         <rect x="2" y="2" width="96" height="16" fill="${finish === "inox" ? F : G}" ${edge}/>
         <rect x="38" y="6" width="24" height="8" rx="1" fill="${G}"/><text x="50" y="12.2" font-size="5" text-anchor="middle" fill="#7fd3ff" font-family="monospace">12:00</text>
@@ -66,8 +66,10 @@ export function applianceDrawing(def: ApplianceDef, finish: string): string {
     case "hood":
       h = 80;
       body =
-        def.id === "hood-builtin"
-          ? `<rect x="6" y="20" width="88" height="22" rx="1" fill="#2d3034" ${edge}/><rect x="6" y="38" width="88" height="8" rx="1" fill="${F}" ${edge}/>${[0, 1, 2].map((i) => `<circle cx="${78 - i * 7}" cy="42" r="1.5" fill="#cfd3d6"/>`).join("")}`
+        def.id === "hood-island"
+          ? `<rect x="40" y="0" width="20" height="44" fill="${F}" ${edge}/><rect x="32" y="44" width="36" height="10" fill="${F}" ${edge}/><rect x="4" y="54" width="92" height="10" rx="1" fill="${F}" ${edge}/>${[0, 1, 2, 3].map((i) => `<circle cx="${84 - i * 6}" cy="59" r="1.3" fill="#3d4044"/>`).join("")}`
+          : def.id === "hood-builtin"
+          ?`<rect x="6" y="20" width="88" height="22" rx="1" fill="#2d3034" ${edge}/><rect x="6" y="38" width="88" height="8" rx="1" fill="${F}" ${edge}/>${[0, 1, 2].map((i) => `<circle cx="${78 - i * 7}" cy="42" r="1.5" fill="#cfd3d6"/>`).join("")}`
           : def.id === "hood-glass"
             ? `<rect x="40" y="2" width="20" height="40" fill="${finish === "white" ? F : "#2b2d31"}" ${edge}/><path d="M6 46L22 40H78L94 46V60H6Z" fill="${finish === "white" ? "#f3f3f4" : G}" ${edge}/>${glare(10, 42, 80, 16)}<rect x="6" y="60" width="88" height="4" fill="#202226"/>`
             : `<rect x="38" y="2" width="24" height="44" fill="${F}" ${edge}/><path d="M28 46H72L94 62H6Z" fill="${F}" ${edge}/><rect x="6" y="62" width="88" height="6" fill="${F}" ${edge}/>${[0, 1, 2, 3].map((i) => `<circle cx="${84 - i * 6}" cy="65" r="1.3" fill="#3d4044"/>`).join("")}`;
@@ -81,6 +83,16 @@ export function applianceDrawing(def: ApplianceDef, finish: string): string {
             ? `<rect x="2" y="2" width="96" height="146" rx="3" fill="${F}" ${edge}/><line x1="50" y1="2" x2="50" y2="146" stroke="#4a4d52" stroke-width="1"/>${bar(45, 40, 45, 110)}${bar(55, 40, 55, 110)}<rect x="12" y="54" width="22" height="30" rx="2" fill="${G}"/>${glare(12, 54, 22, 30)}`
             : `<rect x="14" y="2" width="72" height="146" rx="3" fill="${F}" ${edge}/><line x1="14" y1="96" x2="86" y2="96" stroke="#4a4d52" stroke-width="1"/>${bar(80, 30, 80, 80)}${bar(80, 104, 80, 130)}`;
       break;
+    case "wine": {
+      const column = def.id === "wine-column";
+      h = column ? 150 : 92;
+      const rows = column ? 12 : 5;
+      body = `<rect x="14" y="2" width="72" height="${h - 4}" rx="2" fill="${F}" ${edge}/>
+        <rect x="20" y="8" width="60" height="${h - 24}" rx="1" fill="${G}"/>
+        ${Array.from({ length: rows }, (_, i) => `<line x1="22" y1="${14 + (i * (h - 36)) / rows}" x2="78" y2="${14 + (i * (h - 36)) / rows}" stroke="#a9825a" stroke-width="2"/>`).join("")}
+        ${glare(20, 8, 60, h - 24)}${bar(82, h * 0.3, 82, h * 0.7)}<rect x="14" y="${h - 12}" width="72" height="8" fill="#1d1f22"/>`;
+      break;
+    }
     case "dishwasher":
       h = 92;
       body =

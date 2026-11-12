@@ -2021,27 +2021,47 @@ opération existante.
   cuisine bâtie avant cette version, le Plan de cuisine qui l'a faite donne sa charnière (`madeDoor`), sans rien refaire. La vue seulement : le
   modèle ne change pas (`app/drawer-toggle.ts`).
 - **Électroménager** (groupe « Cuisine », après « Meubles de cuisine ») : la **bibliothèque d'appareils de cuisine**,
-  par familles — **Fours** (pyrolyse 60 cm, compact 45 cm, vapeur), **Plaques** (induction 60, 80 ou 90 cm, gaz,
-  domino), **Hottes** (murale cheminée, inclinée en verre, groupe filtrant), **Réfrigérateurs** (intégrable, combiné
-  posable, américain), **Lave-vaisselle** (tout intégrable, posable), **Micro-ondes** (encastrable, posable),
-  **Éviers** (inox 1 bac et égouttoir, inox 2 bacs, granit) et **Robinets** (col de cygne, douchette, semi-pro à
-  ressort) —, chacun **dessiné** dans sa carte (de face, de dessus ou de profil, dans sa finition) avec ses cotes, à ses
-  tailles du commerce et dans ses **finitions** (inox, noir, blanc ; chromé, noir mat, laiton). On en choisit un puis
+  par familles — **Fours** (pyrolyse 60 cm, 90 cm, compact 45 cm, vapeur), **Plaques** (induction 60, 80 ou 90 cm,
+  gaz 60, 75 ou 90 cm, domino), **Hottes** (murale cheminée, inclinée en verre, îlot, groupe filtrant intégré),
+  **Réfrigérateurs** (combiné intégrable, combiné posable, américain), **Caves à vin** (sous plan 60 ou 30 cm, en
+  colonne), **Lave-vaisselle** (tout intégrable à porte à habiller, posable), **Micro-ondes** (encastrable 38 ou 45 cm,
+  posable), **Éviers** (inox 1 bac et égouttoir, inox 2 bacs, granit) et **Robinets** (col de cygne, douchette,
+  semi-pro à ressort) —, des modèles **génériques, sans marque**, chacun **dessiné** dans sa carte (de face, de dessus ou
+  de profil, dans sa finition) avec ses cotes et son **prix indicatif en MAD** (TTC, par taille : pour information, le
+  devis ne compte pas l'électroménager), à ses tailles du commerce (four 595 × 595 × 548, lave-vaisselle
+  598 × 815 × 550…) et dans ses **finitions** (inox, noir, blanc ; chromé, noir mat, laiton). On en choisit un puis
   on **clique le caisson** où le poser (ou le plan de travail au-dessus, ou un appareil déjà dedans) : un four ou un
   micro-ondes va **dans** le caisson, centré, au nu de sa face (un four de colonne vers 85 cm du sol) — ses façades et
   ses étagères ôtées ; une plaque, un évier ou un micro-ondes posable **sur le plan de travail**, centrés, le plan
   **découpé** dessous ; un robinet au fond du plan, **percé** Ø35 ; une hotte murale **à 65 cm au-dessus** du plan, contre
-  le mur ; un groupe filtrant **sous** un meuble haut ; un réfrigérateur ou un lave-vaisselle posable **debout** à la place
-  du caisson, contre le mur. L'outil reste ouvert pour le suivant ; chaque pose est une annulation.
+  le mur (une hotte îlot au milieu du caisson) ; un groupe filtrant **sous** un meuble haut ; un réfrigérateur ou un
+  lave-vaisselle posable **debout** à la place du caisson, contre le mur ; une cave à vin sous plan au sol comme un
+  lave-vaisselle (ses façades ôtées), en colonne sur le socle. L'outil reste ouvert pour le suivant ; chaque pose est une annulation.
   Un second clic sur le même caisson ne pose pas un deuxième appareil du même genre par-dessus le premier : on
   le supprime d'abord. Un appareil **suit son caisson** : poussé, déplacé ou mis ailleurs quand la cuisine est refaite,
   le caisson emporte ce qui est dedans, dessus, dessous ou au-dessus de lui, et la découpe du plan de travail faite
   pour lui (`document/appliance-follow.ts`). Chaque appareil est
-  une opération « Électroménager » (`ApplianceFeature`) bâtie **pièce par pièce** par le noyau — un four : caisse, porte,
-  vitre fumée, bandeau, écran, manettes, poignée ; un robinet : embase, corps et col de cygne, manette —, chaque pièce
-  avec son **apparence réelle** (inox brossé, verre laqué noir, verre fumé, chrome, laiton, granit), visible dans la
-  vue réaliste et le rendu ; sur le calque « Électroménager », **hors liste de débit et devis**
-  (`features/appliance-library.ts`, `features/appliance-parts.ts`, `features/appliance.ts`,
+  une opération « Électroménager » (`ApplianceFeature`) bâtie **pièce par pièce** par le noyau, avec ses détails réels :
+  - un **four** : porte en verre noir et son hublot teinté, joint, bandeau de commande avec écran, afficheur et
+    manettes à jupe, poignée barre sur ses pieds ; un **micro-ondes** : porte vitrée, colonne de commandes, afficheur ;
+  - une **plaque induction** en vitrocéramique noire, ses foyers cerclés et ses commandes tactiles ; une **plaque gaz** :
+    brûleurs et chapeaux émaillés, **grilles en fonte** sur leurs pieds, manettes ;
+  - une **hotte** : casquette, corps au devant incliné, cheminée télescopique, filtres en cassettes et éclairage ; la
+    hotte en verre a sa façade vraiment inclinée ; la hotte îlot sa cheminée au milieu ;
+  - un **réfrigérateur** : portes de 55 mm, joint sombre entre elles, poignées, afficheur (l'américain son
+    distributeur) ; une **cave à vin** : porte vitrée dans son cadre et clayettes en bois derrière ; un
+    **lave-vaisselle** tout intégrable : porte à habiller, bandeau et touches sur la tranche ;
+  - un **évier** : plage, bacs, bonde, trop-plein, égouttoir ; un **mitigeur** : col de cygne, manette, mousseur.
+
+  Chaque pièce a son **apparence réelle** (inox brossé, verre laqué noir, verre de four teinté, vitrocéramique, fonte,
+  émail, caoutchouc des joints, afficheurs lumineux — catégorie « Électroménager » de la bibliothèque d'apparences),
+  visible dans la vue réaliste et le rendu, et tient dans l'encombrement de son appareil (sa boîte, plus sa porte et
+  ses poignées devant, les grilles d'une plaque gaz dessus). Pour qu'une cuisine en porte des dizaines, ce ne sont que
+  des pavés, des cylindres et des prismes **mis ensemble sans opération booléenne** (seuls les bacs d'un évier sont
+  creusés). Les premières pièces de chaque modèle gardent leur ordre : un projet enregistré avant s'ouvre avec ses
+  apparences, et les pièces ajoutées depuis prennent la leur à l'ouverture (`document/appliance-looks.ts`). Sur le
+  calque « Électroménager », **hors liste de débit et devis**
+  (`features/appliance-library.ts`, `features/appliance-parts*.ts`, `features/appliance-shapes.ts`, `features/appliance.ts`,
   `document/appliance-place.ts`, `app/appliances/appliance-tool.ts`, `app/appliances/appliance-drawings.ts`). Le **Plan de cuisine** et
   l'**Implantation** posent ces mêmes appareils à la place des anciens blocs : plaque induction, four encastrable (sous
   la plaque ou en colonne), hotte cheminée jusqu'au plafond, lave-vaisselle intégrable derrière sa façade, micro-ondes,

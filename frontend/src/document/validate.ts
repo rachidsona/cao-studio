@@ -5,6 +5,7 @@
  * Older schema versions are migrated by parseDocument before validation.
  */
 import { glassFieldsProblem } from "../features/glass-door";
+import { withAppliancePartLooks } from "./appliance-looks";
 import { nameProblem } from "./expressions";
 import { kitchenPlanProblem } from "./validate-kitchen";
 import { migrateDocument } from "./migrate";
@@ -474,5 +475,6 @@ export function parseDocument(input: unknown): CadDocument {
   const errors = validateDocument(upgraded);
   if (errors.length > 0) throw new Error(`Document invalide :\n- ${errors.join("\n- ")}`);
   const doc = upgraded as CadDocument;
-  return { ...doc, parameters: doc.parameters ?? {} };
+  // Its appliances' pieces added since it was saved, dressed as the others.
+  return withAppliancePartLooks({ ...doc, parameters: doc.parameters ?? {} });
 }

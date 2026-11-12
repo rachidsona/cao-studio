@@ -237,14 +237,14 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:appliances"],
         name: "Électroménager",
-        what: "La bibliothèque d'appareils de cuisine, dessinés et bâtis pièce par pièce : fours, plaques induction ou gaz, hottes, réfrigérateurs, lave-vaisselle, micro-ondes, éviers et robinets.",
+        what: "La bibliothèque d'appareils de cuisine, génériques et réalistes, à leurs cotes du commerce et bâtis pièce par pièce : fours 60 et 90 cm, plaques induction ou gaz jusqu'à 90 cm, hottes murale, en verre, îlot ou intégrée, réfrigérateurs, caves à vin, lave-vaisselle, micro-ondes, éviers et robinets.",
         steps: [
-          "Dans l'onglet Cuisine, cliquez « Électroménager » : la bibliothèque s'ouvre par familles (Fours, Plaques, Hottes…).",
-          "Cliquez un appareil, puis choisissez sa taille et sa finition (inox, noir, blanc ; chromé, noir mat ou laiton pour un robinet).",
-          "Cliquez le caisson où le poser, ou le plan de travail au-dessus : un four va dans le caisson (ses façades et étagères ôtées), une plaque ou un évier sur le plan (découpé dessous), un robinet au fond du plan (percé), une hotte à 65 cm au-dessus, un réfrigérateur posable debout à la place du caisson.",
+          "Dans l'onglet Cuisine, cliquez « Électroménager » : la bibliothèque s'ouvre par familles (Fours, Plaques, Hottes, Caves à vin…).",
+          "Cliquez un appareil, puis choisissez sa taille et sa finition (inox, noir, blanc ; chromé, noir mat ou laiton pour un robinet). Sa carte donne ses cotes et son prix indicatif en MAD.",
+          "Cliquez le caisson où le poser, ou le plan de travail au-dessus : un four ou une cave à vin va dans le caisson (ses façades et étagères ôtées), une plaque ou un évier sur le plan (découpé dessous), un robinet au fond du plan (percé), une hotte à 65 cm au-dessus (une hotte îlot au milieu), un réfrigérateur posable debout à la place du caisson.",
           "Posez-en d'autres de même ; « Fermer » quand vous avez fini. Chaque pose s'annule à part.",
         ],
-        tip: "Les appareils sont achetés : hors liste de débit et devis, sur le calque « Électroménager », avec leurs apparences réelles (inox brossé, verre noir, chrome…), visibles dans la vue réaliste et le rendu. Un second clic sur le même caisson ne pose pas un deuxième appareil du même genre par-dessus le premier. L'appareil suit son caisson poussé ou déplacé, avec la découpe de son plan de travail.",
+        tip: "Les appareils sont achetés : hors liste de débit et devis (le prix de la carte est pour information), sur le calque « Électroménager », avec leurs apparences réelles par pièce (inox brossé, verre noir, vitrocéramique, fonte des grilles, joints, afficheurs…), visibles dans la vue réaliste et le rendu ; une pièce se change comme tout corps (Apparence, catégorie « Électroménager »). Ils sont légers : une cuisine peut en porter des dizaines. Un second clic sur le même caisson ne pose pas un deuxième appareil du même genre par-dessus le premier. L'appareil suit son caisson poussé ou déplacé, avec la découpe de son plan de travail.",
       },
       {
         keys: ["data-workshop:doors-open"],

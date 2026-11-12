@@ -1,14 +1,14 @@
 /**
  * « Électroménager » : la bibliothèque d'appareils de cuisine (features/appliance-library.ts) — fours, plaques,
- * hottes, réfrigérateurs, lave-vaisselle, micro-ondes, éviers, robinets —, chacun dessiné, à ses tailles et dans ses
- * finitions. On en choisit un, puis on clique le caisson où le poser (ou le plan de travail au-dessus) : il s'y met à
+ * hottes, réfrigérateurs, caves à vin, lave-vaisselle, micro-ondes, éviers, robinets —, chacun dessiné, à ses tailles,
+ * dans ses finitions et avec son prix indicatif en MAD (pour information : le devis ne le compte pas). On en choisit un, puis on clique le caisson où le poser (ou le plan de travail au-dessus) : il s'y met à
  * sa place (document/appliance-place.ts), en une annulation, et l'outil reste ouvert pour le suivant.
  */
 import { withAppliance } from "../../document/appliance-place";
 import { cabinetBox } from "../../document/kitchen-catalog";
 import { findFeature } from "../../document/operations";
 import { featureOfBody, type CabinetFeature, type Feature, type Vec3 } from "../../document/types";
-import { APPLIANCE_LIBRARY, CATEGORIES, FINISH_LABELS, type ApplianceCategory } from "../../features/appliance-library";
+import { APPLIANCE_LIBRARY, CATEGORIES, FINISH_LABELS, appliancePrice, priceText, type ApplianceCategory } from "../../features/appliance-library";
 import { formatLength } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { applianceDrawing } from "./appliance-drawings";
@@ -70,7 +70,12 @@ export class ApplianceTool extends PanelTool {
       const size = def.sizes[lastSize[def.id] ?? 0] ?? def.sizes[0]!;
       const card = el("button", { type: "button", "aria-pressed": String(chosen), class: `block w-full border p-1.5 text-left ${chosen ? "border-sky-500 bg-sky-50/60 dark:bg-sky-950/40" : "border-gray-200 hover:border-gray-400 dark:border-gray-700"}`, "data-appliance": def.id });
       card.innerHTML = applianceDrawing(def, finish);
-      card.append(el("span", { class: "block font-medium" }, def.name), el("span", { class: "block text-[10px] text-gray-500 dark:text-gray-400" }, `${size.map((v) => formatLength(v, unit).replace(/\s?(mm|cm|m)$/, "")).join(" × ")} · ${def.note}`));
+      const price = appliancePrice(def, size);
+      card.append(
+        el("span", { class: "block font-medium" }, def.name),
+        el("span", { class: "block text-[10px] text-gray-500 dark:text-gray-400" }, `${size.map((v) => formatLength(v, unit).replace(/\s?(mm|cm|m)$/, "")).join(" × ")} · ${def.note}`),
+        ...(price ? [el("span", { class: "block text-[10px] text-gray-600 dark:text-gray-300", title: "Prix public indicatif TTC, non compté dans le devis", "data-appliance-price": String(price) }, `≈ ${priceText(price)}`)] : []),
+      );
       card.addEventListener("click", () => ((this.model = lastModel = def.id), this.render()));
       const extra = chosen
         ? el(
