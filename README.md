@@ -134,8 +134,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
     chaque Répartition du dressing fait office de mur : la vue tournée de façon à voir son dos (l'œil passé derrière
     sa face arrière, vu de dessus), elle s'efface entière, avec tout ce qu'elle porte, celle qu'on voit le plus de dos
     d'abord, jamais tout le dressing (`piecesInTheWay`, `piecesOut`) ; elle revient dès qu'on repasse devant.
-  - Il reste toujours quelque chose à regarder : derrière l'angle d'une cuisine en L, seule la rangée du mur le plus en
-    travers de la vue s'efface ; une cuisine sur un seul mur garde ses meubles (on voit leur dos).
+  - Les meubles d'un mur masqué s'effacent toujours avec lui, même s'il ne reste plus rien d'autre à regarder : un
+    dressing ou une cuisine sur un seul mur, vu de derrière ce mur, s'efface avec lui ; derrière l'angle d'une cuisine
+    en L, les rangées des deux murs masqués s'effacent.
   - Les cadres du contrôle en direct des pièces masquées s'effacent aussi. La vue seulement ; retenu par le navigateur
     (`viewport/wall-cutaway.ts`, `app/wall-cutaway.ts`).
 - **Un fond contre un mur ne le traverse plus par plaques** : un panneau de fond, un caisson ou un meuble posé contre

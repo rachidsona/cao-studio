@@ -2,8 +2,8 @@
  * Les murs qui cachent la pièce s'effacent d'eux-mêmes : la vue tournée, le mur entre l'œil et la pièce (l'œil passé
  * derrière lui) n'est plus dessiné et un clic le traverse ; il revient dès qu'on repasse devant. Les meubles de ce
  * mur — ceux qui lui tournent le dos (document/furniture-facing.ts), entiers, et eux seuls : ceux des autres murs
- * restent, même dans l'angle — s'effacent avec lui, le mur le plus en travers d'abord, jamais au point de ne plus
- * rien laisser à regarder (une cuisine sur un seul mur, ou en L vue de derrière son angle). Un mur de dressing (la
+ * restent, même dans l'angle — s'effacent toujours avec lui, même s'il ne reste plus rien d'autre à regarder (un
+ * dressing ou une cuisine sur un seul mur). Un mur de dressing (la
  * Répartition d'une zone) fait de même sans mur de pièce : l'œil passé derrière son dos, il s'efface, entier, jamais
  * tout le dressing (viewport/wall-cutaway.ts, piecesInTheWay). Deux cases du menu « Affichage » le règlent (activées d'office, retenues par le navigateur), et le bouton « Cacher les murs qui gênent la vue » de la colonne de la vue. La vue
  * seulement : le document n'en change pas.
@@ -139,8 +139,8 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     if (key === last) return;
     last = key;
     const cut = wallsBehind(walls, inside, eye);
-    // Their furniture shows its back only: out too, the most in the way first, never all there is to look at.
-    const hidden = withFurniture ? furnitureOut(cut, against, counts) : new Set<string>();
+    // Their furniture shows its back only: out too, always, even when nothing else is left to look at.
+    const hidden = withFurniture ? furnitureOut(cut, against) : new Set<string>();
     // A dressing's walls seen from behind, with or without the walls of a room: out too, never the whole dressing.
     const pieces = withFurniture ? piecesOut(piecesInTheWay(dressing, eye), dressingBodies, counts, hidden) : new Set<string>();
     for (const id of pieces) hidden.add(id);

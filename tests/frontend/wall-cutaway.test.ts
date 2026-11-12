@@ -101,16 +101,14 @@ describe("murs qui cachent la vue", () => {
     expect(featureBacks(createReferencePlate()).size).toBe(0);
   });
 
-  it("efface les meubles des murs masqués, le plus en travers d'abord, sans jamais tout effacer", () => {
+  it("efface toujours les meubles des murs masqués, même s'il ne reste rien d'autre", () => {
     const of = new Map([["A", ["a1", "a2"]], ["B", ["b1"]], ["C", []]]);
-    // A U kitchen with an island, from behind A and B: both runs out, the island left.
-    expect([...furnitureOut(["A", "B"], of, ["a1", "a2", "b1", "island"])].sort()).toEqual(["a1", "a2", "b1"]);
-    // An L kitchen from behind its corner: the run of the wall most in the way only.
-    expect([...furnitureOut(["A", "B"], of, ["a1", "a2", "b1"])].sort()).toEqual(["a1", "a2"]);
-    expect([...furnitureOut(["B", "A"], of, ["a1", "a2", "b1"])]).toEqual(["b1"]);
-    // One wall only: its units stay, their backs seen.
-    expect([...furnitureOut(["A"], of, ["a1", "a2"])]).toEqual([]);
-    expect([...furnitureOut(["C"], of, ["a1"])]).toEqual([]);
+    // A kitchen from behind A and B: both runs out, whatever stands elsewhere left.
+    expect([...furnitureOut(["A", "B"], of)].sort()).toEqual(["a1", "a2", "b1"]);
+    expect([...furnitureOut(["B"], of)]).toEqual(["b1"]);
+    // One wall only, all the furniture on it (a dressing on one wall seen from behind it): out with it all the same.
+    expect([...furnitureOut(["A"], of)].sort()).toEqual(["a1", "a2"]);
+    expect([...furnitureOut(["C"], of)]).toEqual([]);
   });
 
   it("sait à quel mur une zone de dressing tourne le dos, et y rattache ce qui l'équipe", () => {

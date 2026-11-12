@@ -137,19 +137,12 @@ export function wallsBehind(walls: ReadonlyMap<string, Slab>, inside: [number, n
 }
 
 /**
- * The furniture taken out with the walls in the way (`cut`, the one most in the way first; `of`: each wall's own
- * furniture): wall after wall, as long as some of what `counts` (the furniture worth looking at) is left in view —
- * never all of it, so that a kitchen on one wall, or seen from behind its corner, still shows.
+ * The furniture taken out with the walls in the way (`cut`; `of`: each wall's own furniture): all of it, always — a
+ * wall gone takes what stands against it, even when nothing else is left to look at (a dressing on one wall, a
+ * kitchen seen from behind its corner).
  */
-export function furnitureOut(cut: Iterable<string>, of: ReadonlyMap<string, readonly string[]>, counts: readonly string[]): Set<string> {
-  const out = new Set<string>();
-  for (const wall of cut) {
-    const own = of.get(wall) ?? [];
-    if (!own.length) continue;
-    const gone = new Set([...out, ...own]);
-    if (counts.some((id) => !gone.has(id))) for (const id of own) out.add(id);
-  }
-  return out;
+export function furnitureOut(cut: Iterable<string>, of: ReadonlyMap<string, readonly string[]>): Set<string> {
+  return new Set([...cut].flatMap((wall) => of.get(wall) ?? []));
 }
 
 /**
