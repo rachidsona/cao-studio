@@ -228,6 +228,14 @@ export abstract class PanelTool implements PointerHandler {
     this.stored = { base, doc: this.ctx.doc(), id: built.id };
   }
 
+  /**
+   * The document this tool stored was set again in place by something that follows it (an element kept by « Prolonger
+   * élément », app/extend-follow.ts): still the tool's own, so its next setting sets it again instead of adding to it.
+   */
+  adopt(prev: CadDocument, next: CadDocument): void {
+    if (this.stored && this.stored.doc === prev) this.stored = { ...this.stored, doc: next };
+  }
+
   /** The work is whole (Entrée, a last click): stored now, and the tool closes. Nothing whole yet: it stays. */
   protected finish(): void {
     const built = this.feature();

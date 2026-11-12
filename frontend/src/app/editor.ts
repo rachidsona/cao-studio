@@ -22,6 +22,7 @@ import { Navigator } from "./navigator";
 import type { StandardView, Viewport } from "../viewport/viewport";
 import type { DocumentSession, SaveState } from "./session";
 import { ExtrudeTool } from "./extrude-tool";
+import { ExtendFollower } from "./extend-follow";
 import { FileCommands } from "./file-commands";
 import { bindShortcuts } from "./keyboard";
 import { ModelSelectionController } from "./model-selection";
@@ -62,6 +63,7 @@ export class Editor {
   private tools: ToolLauncher;
   /** Provisional document shown while a tool previews its result (null: the real one); read by what acts on the 3D shown. */
   previewDoc: CadDocument | null = null;
+  /** Cabinets and Répartitions kept on the face of another element by « Prolonger élément », put back after each change. */ private readonly follower = new ExtendFollower({ doc: () => this.doc, previewing: () => !!this.previewDoc, geometry: () => this.geometry, amend: (d) => { const prev = this.doc, done = this.change(d, true); this.tools.active?.adopt(prev, this.doc); return done; }, notify: (m, k) => this.notify(m, k) });
 
   constructor(
     private readonly root: HTMLElement,
@@ -221,7 +223,7 @@ export class Editor {
     this.session[amend ? "replace" : "apply"](doc);
     this.sketches.followDocument();
     this.updateHistoryButtons();
-    return this.recompute();
+    return this.recompute().then(() => this.follower.after());
   }
 
   // ---- rendering ----------------------------------------------------------

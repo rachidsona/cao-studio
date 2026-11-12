@@ -1,0 +1,128 @@
+/**
+ * « Prolonger élément » jusqu'à une face inclinée, et gardé : un caisson va jusqu'à toucher un mur en biais ; une pièce
+ * reçoit une opération qui va jusqu'à la face à chaque recalcul et en prend la pente ; un caisson garde une liaison,
+ * refaite quand l'autre élément change.
+ */
+import { beforeAll, describe, expect, it } from "vitest";
+import { extendTo, followLink, reachBy, travelTo, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type TrimFeature, type Vec3 } from "../../frontend/src/document/types";
+import { validateDocument } from "../../frontend/src/document/validate";
+import { bodyMetrics } from "../../frontend/src/geometry/kernel";
+import { describeFace } from "../../frontend/src/geometry/references";
+import { Recomputer } from "../../frontend/src/history/recompute";
+import { setupKernel } from "./kernel-setup";
+
+beforeAll(setupKernel);
+
+const face = (point: Vec3, normal: Vec3, points: Vec3[] = []): FacePlane => ({ point, normal, points });
+const ref = (center: Vec3, rel: Vec3, normal: Vec3): FaceRef => ({ type: "PLANE", center, rel, normal, area: 0 });
+const cabinet: CabinetFeature = { id: "c1", type: "cabinet", name: "Bas", origin: [0, 0, 0], width: 600, height: 720, depth: 560, thickness: 18, back: "none", backThickness: 3, shelves: 1, plinth: 0, construction: "sides-through" };
+const withCabinet = (): CadDocument => ({ ...createReferencePlate(), features: [cabinet, { ...cabinet, id: "c2", name: "Colonne", origin: [900, 0, 0] }] });
+/** The right side of the cabinet: its four corners. */
+const right = face([600, 280, 360], [1, 0, 0], [[600, 0, 0], [600, 560, 0], [600, 560, 720], [600, 0, 720]]);
+const width = (doc: CadDocument) => (doc.features.find((f) => f.id === "c1") as CabinetFeature).width;
+
+describe("jusqu'où", () => {
+  it("parallèle : jusqu'au plan ; inclinée : jusqu'au premier coin qui la touche", () => {
+    expect(reachBy(right, face([900, 0, 0], [-1, 0, 0]))).toEqual({ by: 300, slanted: false });
+    // A wall at 45° in plan: x = 900 at the front (y = 0), x = 900 + 560 at the back… the front corner touches first.
+    const slant = face([900, 0, 0], [-Math.SQRT1_2, Math.SQRT1_2, 0]);
+    expect(reachBy(right, slant)).toEqual({ by: 300, slanted: true });
+    // Already past it: shortened until no corner is beyond it.
+    expect(reachBy(right, face([500, 0, 0], [-Math.SQRT1_2, Math.SQRT1_2, 0]))).toEqual({ by: -100, slanted: true });
+    expect(travelTo([[0, 0, 0]], [1, 0, 0], face([10, 0, 0], [0, 1, 0]))).toMatch(/atteint jamais/);
+  });
+});
+
+describe("prolonger et garder", () => {
+  it("un caisson s'allonge jusqu'au mur en biais et garde sa liaison", () => {
+    const made = extendTo(withCabinet(), "c1#1", "c2#0", right, face([900, 0, 0], [-Math.SQRT1_2, Math.SQRT1_2, 0]), { from: ref([600, 280, 360], [1, 0.5, 0.5], [1, 0, 0]), to: ref([900, 0, 0], [0, 0, 0.5], [-1, 0, 0]) }, true);
+    if (typeof made === "string") throw new Error(made);
+    expect(width(made.doc)).toBe(900);
+    expect(made.doc.extendLinks).toEqual([expect.objectContaining({ id: "pl1", from: expect.objectContaining({ body: "c1#1" }), to: expect.objectContaining({ body: "c2#0" }) })]);
+    expect(made.message).toMatch(/prolongé de 30 cm jusqu'à .*qu'il suivra/);
+    expect(validateDocument(made.doc)).toEqual([]);
+    // Without « Suivre », nothing kept.
+    const once = extendTo(withCabinet(), "c1#1", "c2#0", right, face([900, 0, 0], [-1, 0, 0]), {}, false);
+    expect(typeof once !== "string" && once.doc.extendLinks).toBeFalsy();
+  });
+
+  it("la liaison refaite : le mur s'éloigne, le caisson le suit ; il y est, rien ; retirée, plus rien", () => {
+    const made = extendTo(withCabinet(), "c1#1", "c2#0", right, face([900, 0, 0], [-1, 0, 0]), { from: ref([600, 280, 360], [1, 0.5, 0.5], [1, 0, 0]), to: ref([900, 0, 0], [0, 0, 0.5], [-1, 0, 0]) }, true);
+    if (typeof made === "string") throw new Error(made);
+    const link = made.doc.extendLinks![0]!;
+    const side = face([900, 280, 360], [1, 0, 0], [[900, 0, 0], [900, 560, 720]]);
+    const moved = followLink(made.doc, link, side, face([950, 0, 0], [-1, 0, 0]));
+    expect(moved && typeof moved !== "string" && [moved.by, width(moved.doc)]).toEqual([50, 950]);
+    expect(followLink(made.doc, link, side, face([900.02, 0, 0], [-1, 0, 0]))).toBeNull();
+    expect(withoutLinks(made.doc, [link.id]).extendLinks).toBeUndefined();
+  });
+
+  it("une pièce : une opération qui va jusqu'à la face (gardée, ou inclinée) ; sinon une distance", () => {
+    const doc = createReferencePlate();
+    const from = face([40, 0, 5], [1, 0, 0], [[40, -25, 0], [40, 25, 10]]);
+    const refs = { from: ref([40, 0, 5], [1, 0.5, 0.5], [1, 0, 0]), to: ref([100, 0, 5], [0, 0.5, 0.5], [-1, 0, 0]) };
+    const kept = extendTo(doc, "h1", "ex9", from, face([100, 0, 5], [-1, 0, 0]), refs, true);
+    if (typeof kept === "string") throw new Error(kept);
+    expect(kept.doc.features.at(-1)).toMatchObject({ type: "extrude", name: "Prolongement 1", target: "h1", distance: 60, operation: "join", until: { body: "ex9" } });
+    const plain = extendTo(doc, "h1", "ex9", from, face([100, 0, 5], [-1, 0, 0]), refs, false);
+    expect(typeof plain !== "string" && (plain.doc.features.at(-1) as ExtrudeFeature).until).toBeUndefined();
+    const slanted = extendTo(doc, "h1", "ex9", from, face([100, 0, 5], [-Math.SQRT1_2, Math.SQRT1_2, 0]), refs, false);
+    expect(typeof slanted !== "string" && (slanted.doc.features.at(-1) as ExtrudeFeature).until).toBeTruthy();
+  });
+
+  it("le document refuse une liaison ou une face d'arrivée mal formée", () => {
+    const bad = { ...withCabinet(), extendLinks: [{ id: "pl1", from: { body: "c1#1" }, to: { body: "x" } }] } as unknown as CadDocument;
+    expect(validateDocument(bad).join(" ")).toMatch(/extendLinks/);
+    const op = { id: "ex2", type: "extrude", name: "P", faces: [ref([0, 0, 0], [1, 0.5, 0.5], [1, 0, 0])], target: "c1#1", distance: 1, operation: "join", until: { body: 3 } };
+    expect(validateDocument({ ...withCabinet(), features: [cabinet, op] } as unknown as CadDocument).join(" ")).toMatch(/face d'arrivée invalide/);
+  });
+});
+
+describe("dans le noyau", () => {
+  const board = (id: string, from: Vec3, to: Vec3): TrimFeature => ({ id, type: "trim", name: id, parts: [{ name: id, from, to }] });
+  const plate = (extra: object[], b: [Vec3, Vec3] = [[300, 0, 0], [350, 50, 20]]): CadDocument =>
+    ({ format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: [board("a", [0, 0, 0], [100, 50, 20]), board("b", ...b), ...extra] }) as CadDocument;
+  const pull = (until: { body: string; face: FaceRef }): ExtrudeFeature => ({ id: "ex1", type: "extrude", name: "Prolongement 1", faces: [ref([100, 25, 10], [1, 0.5, 0.5], [1, 0, 0])], target: "a#0", distance: 200, operation: "join", until });
+  const toB = { body: "b#0", face: ref([300, 25, 10], [0, 0.5, 0.5], [-1, 0, 0]) };
+  const box = (r: Recomputer, id: string) => {
+    const out = r.output(id);
+    if (out?.kind !== "solid") throw new Error(`${id} : pas de solide`);
+    return bodyMetrics(out.shape);
+  };
+
+  it("la face va jusqu'à la face de l'autre corps, et la suit quand il bouge (plus loin, ou derrière : creusée)", () => {
+    const r = new Recomputer();
+    const result = r.recompute(plate([pull(toB)]));
+    expect(result.statuses.every((s) => s.state === "ok")).toBe(true);
+    expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(300, 3);
+    r.recompute(plate([pull(toB)], [[420, 0, 0], [470, 50, 20]]));
+    expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(420, 3);
+    r.recompute(plate([pull(toB)], [[60, 60, 0], [80, 90, 20]]));
+    expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(60, 3);
+    // Already on it: the body as it is.
+    r.recompute(plate([pull(toB)], [[100, 60, 0], [150, 90, 20]]));
+    expect(box(r, "ex1").volume).toBeCloseTo(100 * 50 * 20, 1);
+    r.dispose();
+  });
+
+  it("jusqu'à une face inclinée : le bout de la pièce en prend la pente", () => {
+    const r = new Recomputer();
+    const turn = { id: "rt1", type: "rotate", name: "Rotation", target: "b#0", axis: 2, angle: 30, center: [325, 25, 10] };
+    r.recompute(plate([turn]));
+    const out = r.output("rt1");
+    if (out?.kind !== "solid") throw new Error("rt1");
+    // The face of the turned board that looks back toward A.
+    const faces = out.shape.faces.map((f) => describeFace(out.shape, f));
+    const slant = faces.reduce((a, f) => (f.normal[0] < a.normal[0] ? f : a));
+    const m = slant.normal;
+    const t = (y: number) => ((slant.center[0] - 100) * m[0] + (slant.center[1] - y) * m[1] + (slant.center[2] - 10) * m[2]) / m[0];
+    const result = r.recompute(plate([turn, pull({ body: "rt1", face: slant })]));
+    expect(result.statuses.every((s) => s.state === "ok")).toBe(true);
+    const metrics = box(r, "ex1");
+    expect(metrics.bbox[1][0]).toBeCloseTo(100 + Math.max(t(0), t(50)), 2);
+    // The added part is a prism cut on the slant: its length on average is the length at mid-width.
+    expect(metrics.volume).toBeCloseTo(100 * 50 * 20 + 50 * 20 * t(25), 0);
+    r.dispose();
+  });
+});

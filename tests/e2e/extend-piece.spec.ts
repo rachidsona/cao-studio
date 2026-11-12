@@ -32,6 +32,10 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await page.mouse.click(430, 735);
   await expect(tool).toContainText("À prolonger : « Plinthe A »");
   await page.mouse.click(470, 596);
+  // Shown first, kept by OK.
+  await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
+  await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
+  await tool.locator("[data-extend-ok]").click();
   await expect(page.getByText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
   await expect(tool).toHaveCount(0);
   // An operation on the plinth, to change or take away like any other.

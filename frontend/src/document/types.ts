@@ -276,6 +276,12 @@ export interface ExtrudeFeature extends FeatureBase {
    * negative: the other side). Absent or 0: from the sketch plane. Sketch profiles only.
    */
   startOffset?: number;
+  /**
+   * « Prolonger élément » kept: the faces go up to the plane of this face of another body, found again at each
+   * regeneration (they follow it). `distance` is then only what it was when made; a slanted face is reached exactly
+   * (the end of the piece takes its slope), and the operation follows the way: join out, cut in. Faces only.
+   */
+  until?: { body: string; face: FaceRef };
   operation: BooleanOperation;
   /** Body consumed by "join" / "cut" operations. */
   target?: string;
@@ -873,6 +879,18 @@ export interface CadDocument {
   standards?: ConstructionStandard[];
   /** Versions of the quote kept in the project: the quote, then its amendments (document/quote.ts). */
   quotes?: SavedQuote[];
+  /** Cabinets and Répartitions kept against the face of another element by « Prolonger élément » (app/extend-follow.ts). */
+  extendLinks?: ExtendLink[];
+}
+
+/**
+ * A face of a cabinet or a Répartition (on one of its bodies, as first made) kept on a face of another body: when the
+ * other changes, the element is extended again up to it — to its plane, or until it touches it when slanted.
+ */
+export interface ExtendLink {
+  id: string;
+  from: { body: string; face: FaceRef };
+  to: { body: string; face: FaceRef };
 }
 
 /** An image of one's own as an appearance: the image (a data URL, kept with the project) and the size of one tile. */
@@ -980,7 +998,7 @@ export function featureInputs(feature: Feature): string[] {
     case "sketch":
       return [];
     case "extrude":
-      if (feature.faces) return feature.target ? [feature.target] : [];
+      if (feature.faces) return [...(feature.target ? [feature.target] : []), ...(feature.until ? [feature.until.body] : [])];
       return feature.target && feature.operation !== "new" ? [feature.sketch ?? "", feature.target] : [feature.sketch ?? ""];
     case "revolve":
       return feature.target && feature.operation !== "new" ? [feature.sketch, feature.target] : [feature.sketch];

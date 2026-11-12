@@ -2,7 +2,7 @@
  * Geometry worker: owns the OpenCascade kernel and the parametric history so
  * that B-rep computations never block the user interface.
  */
-import { makePolygon, measureArea, type Edge, type Shape3D } from "replicad";
+import { makePolygon, measureArea, type Edge, type Face, type Shape3D } from "replicad";
 import init from "replicad-opencascadejs";
 import wasmUrl from "replicad-opencascadejs/wasm?url";
 import gcsWasmUrl from "@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm?url";
@@ -15,7 +15,7 @@ import { loadTextFont, textFontReady } from "../features/text";
 import { GeometryError, bodyMetrics, initKernel, isKernelReady } from "./kernel";
 import { offsetPaths } from "./offset";
 import { seamEdges } from "./seams";
-import { describeEdge, describeFace } from "./references";
+import { describeEdge, describeFace, resolveFace } from "./references";
 import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type FaceInfo, type FaceOutline, type OutlineEdge, type P3, type WireMesh, type WorkerEnvelope, type WorkerResponse } from "./protocol";
 
 interface WorkerScope {
@@ -204,6 +204,10 @@ function sectionOutline(bodyId: string, origin: P3, u: P3, v: P3): EdgeOutline[]
 function faceOutline(bodyId: string, faceIndex: number): FaceOutline {
   const face = solid(bodyId).faces[faceIndex];
   if (!face) throw new GeometryError(`Face ${faceIndex} introuvable.`);
+  return outlineOfFace(face);
+}
+
+function outlineOfFace(face: Face): FaceOutline {
   const p = (v: { x: number; y: number; z: number }): [number, number, number] => [v.x, v.y, v.z];
   const c = face.center;
   // Read the centre before normalAt(), which releases the vector it is given.
@@ -272,6 +276,8 @@ async function handle(request: WorkerEnvelope): Promise<{ result: unknown; trans
       return { result: edgeInfo(request.bodyId, request.edgeIndex), transfer: [] };
     case "faceOutline":
       return { result: faceOutline(request.bodyId, request.faceIndex), transfer: [] };
+    case "refOutline":
+      return { result: outlineOfFace(resolveFace(solid(request.bodyId), request.ref)), transfer: [] };
     case "edgeOutline":
       return { result: edgeOutline(request.bodyId, request.edgeIndex), transfer: [] };
     case "bodyOutline":

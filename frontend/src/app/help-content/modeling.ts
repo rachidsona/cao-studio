@@ -285,9 +285,11 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Sélectionnez la face à prolonger — d'un caisson, d'une pièce de la Répartition, ou d'une autre pièce comme le bout d'une plinthe —, ou ouvrez l'outil et cliquez-la.",
           "Cliquez « Prolonger élément », dans le groupe Modifier.",
-          "Cliquez la face parallèle d'un autre élément : il s'allonge jusqu'à elle aussitôt, en une annulation.",
+          "Cliquez la face d'un autre élément, parallèle ou inclinée : le résultat s'affiche.",
+          "Laissez « Suivre l'autre élément » coché pour qu'il suive cet élément quand il change ensuite.",
+          "Cliquez OK (ou Entrée) pour le garder, en une annulation ; Annuler (ou Échap) ne change rien.",
         ],
-        tip: "Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Un meuble du Plan de cuisine fait suivre le plan. Une plinthe, un fileur ou une planche reçoit une opération « Prolongement », à retoucher ou supprimer dans l'historique ; pour fermer le vide sous un four, cliquez le bout d'une plinthe puis le bout de celle d'en face.",
+        tip: "Une face inclinée (un mur en biais, un rampant) : un caisson va jusqu'à la toucher, une plinthe ou un plan de travail en prend la pente. Le panneau liste les éléments qui en suivent un autre ; ✕ les libère. Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Un meuble du Plan de cuisine fait suivre le plan. Une plinthe, un fileur ou une planche reçoit une opération « Prolongement », à retoucher ou supprimer dans l'historique ; pour fermer le vide sous un four, cliquez le bout d'une plinthe puis le bout de celle d'en face.",
       },
       {
         keys: ["data-action:push"],

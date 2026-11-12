@@ -14,6 +14,8 @@ export type WorkerRequest =
   | { type: "edgeInfo"; bodyId: string; edgeIndex: number }
   /** Boundary of a face (outer and inner loops), to project it into a sketch. */
   | { type: "faceOutline"; bodyId: string; faceIndex: number }
+  /** The face of a body a persistent reference finds again (« Prolonger élément » kept: app/extend-follow.ts). */
+  | { type: "refOutline"; bodyId: string; ref: FaceRef }
   /** One edge of a body, exactly (line, circle, arc), to project it into a sketch. */
   | { type: "edgeOutline"; bodyId: string; edgeIndex: number }
   /** Every edge of a body (« Projeter » the whole body). */

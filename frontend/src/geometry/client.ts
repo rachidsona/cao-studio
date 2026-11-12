@@ -1,6 +1,6 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
 import { stampHardware } from "../document/hardware-catalog";
-import type { CadDocument } from "../document/types";
+import type { CadDocument, FaceRef } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
 import { BODY_QUESTIONS, type BodyMesh, type DescribeResponse, type EdgeInfo, type EdgeOutline, type ExportResponse, type P3, type FaceOutline, type FaceInfo, type RecomputeResponse, type WireMesh, type WorkerEnvelope, type WorkerRequest, type WorkerResponse } from "./protocol";
@@ -117,6 +117,11 @@ export class GeometryClient {
 
   faceOutline(bodyId: string, faceIndex: number): Promise<FaceOutline> {
     return this.call({ type: "faceOutline", bodyId, faceIndex });
+  }
+
+  /** The face a persistent reference finds again on a body of the last recompute. */
+  refOutline(bodyId: string, ref: FaceRef): Promise<FaceOutline> {
+    return this.call({ type: "refOutline", bodyId, ref });
   }
 
   edgeOutline(bodyId: string, edgeIndex: number): Promise<EdgeOutline> {

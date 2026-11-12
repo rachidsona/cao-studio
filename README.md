@@ -687,8 +687,8 @@ opération existante.
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
 - **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : on sélectionne (ou on clique,
   l'outil ouvert) la face d'un caisson, d'une pièce d'une Répartition ou de toute autre pièce, du côté à prolonger,
-  puis la face parallèle
-  d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit, d'un coup (`document/extend-element.ts`,
+  puis la face
+  d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit (`document/extend-element.ts`,
   `app/extend-tool.ts`). Un caisson change de largeur, de profondeur ou de hauteur avec ses façades — son origine recule
   quand c'est son côté gauche, son devant ou son dessous qui avance ; une Répartition de longueur ou de hauteur avec ses
   cases, son esquisse décalée de même. Un meuble du Plan de cuisine (un haut d'angle prolongé jusqu'au voisin) fait
@@ -698,6 +698,16 @@ opération existante.
     corps, comme « Tirer une face », qui se retouche ou se supprime dans l'historique. Exemple : le bout d'une plinthe
     de cuisine, puis le bout de la plinthe d'en face, pour fermer le vide sous un four. Sur une pièce du Plan de
     cuisine, l'opération est gardée quand la cuisine est refaite.
+  - **Face d'arrivée inclinée** (un mur en biais, un rampant) : un caisson ou une Répartition s'allonge jusqu'à la
+    toucher de son premier coin ; une autre pièce va jusqu'à son plan et son bout en prend la pente
+    (`document/extend-reach.ts`, `features/face-until.ts`).
+  - **Aperçu, OK** : le résultat se voit avant d'être gardé ; OK (ou Entrée) le garde en une annulation, Annuler (ou
+    Échap) ne change rien.
+  - **Suivre l'autre élément** (coché par défaut) : quand l'élément d'arrivée change ensuite (élargi, déplacé, une
+    cote), l'élément prolongé le suit. Une pièce reçoit une opération qui va jusqu'à la face à chaque recalcul ; un
+    caisson ou une Répartition garde une liaison (`extendLinks` du document), refaite après chaque modification dans la
+    même annulation (`app/extend-follow.ts`). Le panneau liste les éléments qui en suivent un autre ; ✕ retire une
+    liaison.
 - **Pousser** (bouton du groupe **Modifier**, après « Prolonger élément ») : les éléments sélectionnés — un caisson avec
   ses façades, une Répartition avec ses pièces, sinon le corps seul ; un clic dans la vue en choisit un, Maj + clic en
   ajoute — avancent d'un **pas** à chaque flèche du clavier. Le pas se tape au clavier, l'outil ouvert (les chiffres vont

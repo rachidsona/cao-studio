@@ -75,7 +75,7 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
 const CLIP_REACH = 20000;
 
 function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
-  if (!(Math.abs(feature.distance) >= MIN_LENGTH)) throw new GeometryError("La distance d'extrusion ne peut pas être nulle.");
+  if (!feature.until && !(Math.abs(feature.distance) >= MIN_LENGTH)) throw new GeometryError("La distance d'extrusion ne peut pas être nulle.");
   if (feature.faces) return buildFaceExtrude(feature, lookup);
   if (!feature.sketch) throw new GeometryError(`${feature.name} : choisissez une esquisse ou des faces à extruder.`);
   const profile = requireProfile(lookup, feature.sketch);

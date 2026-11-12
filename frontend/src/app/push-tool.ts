@@ -132,7 +132,8 @@ export class PushTool extends PanelTool {
   private made(): Feature[] | string {
     if (!this.elements.length) return "Cliquez un caisson, une Répartition ou un corps à pousser.";
     if (Math.hypot(...this.shift) < 1e-6) return "Poussez avec les flèches du clavier (ou les boutons) ; tapez d'abord le pas si besoin.";
-    const doc = this.ctx.doc();
+    // From the document before this push: once stored, the current one has it already (OK would push it twice).
+    const doc = this.docBefore();
     const moving = this.moving();
     const needed = movesNeeded(doc, moving);
     if (this.slots.length < needed) this.slots = freshFeatureIds(doc, "mv", "Poussée", needed);

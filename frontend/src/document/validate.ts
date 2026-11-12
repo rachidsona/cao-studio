@@ -116,6 +116,10 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : corps des faces invalide.`);
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
+      if (feature.until !== undefined) {
+        if (!isObject(feature.until) || typeof feature.until.body !== "string") errors.push(`${where} : face d'arrivée invalide.`);
+        else checkRefs(feature.until.face, "face", where, errors);
+      }
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (feature.strip !== undefined && (!isObject(feature.strip) || !isVec3(feature.strip.from) || !isVec3(feature.strip.to))) errors.push(`${where} : bande de face invalide.`);
       if (feature.door !== undefined && (!isObject(feature.door) || !isVec3(feature.door.hinge) || !isVec3(feature.door.out))) errors.push(`${where} : porte invalide.`);
@@ -401,6 +405,10 @@ export function validateDocument(input: unknown): string[] {
   }
   if (input.appearances !== undefined && (!Array.isArray(input.appearances) || !input.appearances.every((a) => isObject(a) && typeof a.id === "string" && typeof a.name === "string" && typeof a.image === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(a.image) && Array.isArray(a.tile) && a.tile.length === 2 && a.tile.every((t) => typeof t === "number" && t > 0)))) {
     errors.push("« appearances » doit être une liste d'images (id, name, image en data URL, tile).");
+  }
+  const faceOn = (x: unknown) => isObject(x) && typeof x.body === "string" && isObject(x.face) && typeof x.face.type === "string" && isVec3(x.face.rel) && isVec3(x.face.center) && isVec3(x.face.normal);
+  if (input.extendLinks !== undefined && (!Array.isArray(input.extendLinks) || !input.extendLinks.every((l) => isObject(l) && typeof l.id === "string" && faceOn(l.from) && faceOn(l.to)))) {
+    errors.push("« extendLinks » doit être une liste de liaisons (id, from, to : un corps et une face).");
   }
   if (input.removedBodies !== undefined && (!Array.isArray(input.removedBodies) || !input.removedBodies.every((k) => typeof k === "string"))) {
     errors.push("« removedBodies » doit être une liste de pièces.");

@@ -7,7 +7,8 @@ import { basicFaceExtrusion, drawRectangle, measureArea, Plane, Vector, type Cha
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
-import { resolveEdges, resolveFace } from "../geometry/references";
+import { resolveEdges, resolveFace, resolveFacePlane } from "../geometry/references";
+import { prismUntil } from "./face-until";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
@@ -150,17 +151,28 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
   if (faces.length === 0) throw new GeometryError(`${feature.name} : sélectionnez au moins une face.`);
   if (!feature.target) throw new GeometryError(`${feature.name} : corps des faces manquant.`);
   const target = requireSolid(lookup, feature.target).shape;
+  // « Prolonger élément » gardé: up to the face of another body, as it is now.
+  const until = feature.until ? resolveFacePlane(requireSolid(lookup, feature.until.body).shape, feature.until.face) : null;
+  let operation = feature.operation;
   let tool: Shape3D | null = null;
   try {
     for (const ref of faces) {
       const face = resolveFace(target, ref);
       if (face.geomType !== "PLANE") throw new GeometryError(`${feature.name} : seules les faces planes peuvent être extrudées.`);
-      const n = face.normalAt(face.center);
-      const length = Math.hypot(n.x, n.y, n.z) || 1;
-      const k = feature.distance / length;
-      const vector = new Vector([n.x * k, n.y * k, n.z * k]);
-      let prism = basicFaceExtrusion(face, vector) as Shape3D;
-      vector.delete();
+      let prism: Shape3D;
+      if (until) {
+        const made = prismUntil(face, until, feature.name);
+        if (!made) continue;
+        prism = made.prism;
+        operation = made.out ? "join" : "cut";
+      } else {
+        const n = face.normalAt(face.center);
+        const length = Math.hypot(n.x, n.y, n.z) || 1;
+        const k = feature.distance / length;
+        const vector = new Vector([n.x * k, n.y * k, n.z * k]);
+        prism = basicFaceExtrusion(face, vector) as Shape3D;
+        vector.delete();
+      }
       if (feature.strip) {
         const cut = stripSlab(feature.strip, feature.name);
         const kept: Shape3D = prism.intersect(cut);
@@ -180,5 +192,7 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
     tool?.delete();
     throw error;
   }
-  return applyOperation(feature.name, tool as Shape3D, feature.operation, feature.target, lookup);
+  // Every face already on the face to reach: the body as it is.
+  if (!tool) return { kind: "solid", shape: target.clone() as Shape3D };
+  return applyOperation(feature.name, tool, operation, feature.target, lookup);
 }
