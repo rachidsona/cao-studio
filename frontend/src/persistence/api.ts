@@ -132,3 +132,13 @@ export async function deleteFolder(url: string, id: number): Promise<void> {
 export async function moveToFolder(projects: string, id: string, folder: number | null): Promise<void> {
   await request(`${projects}${id}/folder/`, { method: "PUT", body: JSON.stringify({ folder }) });
 }
+
+/** The project deleted for good, with its versions and shared links. `projects` is the collection's URL. */
+export async function deleteProject(projects: string, id: string): Promise<void> {
+  await request(`${projects}${id}/`, { method: "DELETE", headers: { "X-CSRFToken": csrfToken() } });
+}
+
+/** The folder's projects deleted for good; the folder stays. Returns the ids deleted. */
+export async function emptyFolder(url: string, id: number): Promise<string[]> {
+  return ((await request(`${url}${id}/empty/`, { method: "POST", headers: { "X-CSRFToken": csrfToken() } })).deleted ?? []) as string[];
+}

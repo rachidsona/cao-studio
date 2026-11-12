@@ -89,3 +89,30 @@ def test_another_accounts_folders_and_projects_do_not_exist(client_logged, user,
 
 def test_anonymous_gets_401():
     assert Client().get(FOLDERS).status_code == 401
+
+
+def test_a_project_is_deleted_for_good_by_its_owner_only(client_logged, user, projects):
+    stranger = get_user_model().objects.create_user("voisine", password="Copeau-voisine-Chene-42")
+    theirs = create_project(stranger, "Le leur", default_document())[0]
+    assert client_logged.delete(f"/api/projects/{theirs.pk}/").status_code == 404
+    assert client_logged.delete(f"/api/projects/{projects[0].pk}/").status_code == 204
+    assert not Project.objects.filter(pk=projects[0].pk).exists() and Project.objects.filter(pk=theirs.pk).exists()
+    assert client_logged.get(f"/api/projects/{projects[0].pk}/").status_code == 404
+
+
+def test_emptying_a_folder_deletes_its_projects_and_keeps_the_folder(client_logged, user, projects):
+    folder = ProjectFolder.objects.create(owner=user, name="Vieux")
+    Project.objects.filter(pk=projects[0].pk).update(folder=folder)
+    response = client_logged.post(f"{FOLDERS}{folder.pk}/empty/")
+    assert response.json() == {"deleted": [str(projects[0].pk)]}
+    assert ProjectFolder.objects.filter(pk=folder.pk).exists()
+    assert list(Project.objects.values_list("name", flat=True)) == ["Cuisine Dupont"]
+
+
+def test_another_accounts_folder_cannot_be_emptied(client_logged, user):
+    stranger = get_user_model().objects.create_user("voisin2", password="Copeau-voisin-Chene-43")
+    theirs = ProjectFolder.objects.create(owner=stranger, name="Secret")
+    their_project = create_project(stranger, "Leur projet", default_document())[0]
+    Project.objects.filter(pk=their_project.pk).update(folder=theirs)
+    assert client_logged.post(f"{FOLDERS}{theirs.pk}/empty/").status_code == 404
+    assert Project.objects.filter(pk=their_project.pk).exists()

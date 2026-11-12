@@ -185,11 +185,12 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez un projet pour l'ouvrir dans un onglet. Le projet de la page est en bleu ; un point bleu marque ceux déjà ouverts dans un onglet.",
           "Pour ranger un projet, glissez-le sur un dossier, ou cliquez son « ⋯ » puis « Ranger dans « … » ». « Sortir du dossier » le remet dans « Sans dossier ».",
-          "Le « + » du titre crée un dossier : tapez son nom, puis Entrée (Échap annule). Le « ⋯ » d'un dossier le renomme ou le supprime ; ses projets restent, sans dossier.",
+          "Le « + » du titre crée un dossier : tapez son nom, puis Entrée (Échap annule). Le « ⋯ » d'un dossier le renomme, le vide (« Vider le dossier » supprime ses projets, le dossier reste) ou le supprime (« Supprimer le dossier » : ses projets restent, sans dossier).",
+          "Pour supprimer un projet : son « ⋯ » puis « Supprimer le projet… », ou amenez-y le focus avec Tab et appuyez sur Suppr. Suppr sur le nom d'un dossier supprime le dossier (ses projets restent). Chaque suppression demande une confirmation.",
           "Cliquez le nom d'un dossier pour le plier ou le déplier. Tapez dans « Chercher un projet » pour ne garder que les projets dont le nom contient ce texte.",
           "La flèche ‹ à droite du titre « Projets » replie la colonne : la vue prend sa place. L'onglet « › Projets » en bas du bord gauche de la vue la rouvre.",
         ],
-        tip: "Ce sont les mêmes dossiers que sur la page d'accueil (« Mes projets »). Ranger un projet ne change pas sa date de modification. La colonne repliée et les dossiers pliés sont retenus par le navigateur ; elle est cachée sur un écran étroit et pendant le rendu.",
+        tip: "Un projet supprimé l'est définitivement, avec ses versions et ses liens partagés : son onglet se ferme, et si c'est le projet de la page, l'éditeur revient à « Mes projets ». Ce sont les mêmes dossiers que sur la page d'accueil (« Mes projets »). Ranger un projet ne change pas sa date de modification. La colonne repliée et les dossiers pliés sont retenus par le navigateur ; elle est cachée sur un écran étroit et pendant le rendu.",
       },
       {
         keys: [], name: "Onglets de projets",

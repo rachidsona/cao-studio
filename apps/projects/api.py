@@ -5,6 +5,7 @@ Contract (all errors are ``{"error": str, "details"?: list[str], ...}``):
 - POST /api/projects/  {name, space?, …}  → 201 {id, name, space, version, document, checksum, updated_at}
 - GET  /api/projects/<uuid>/             → {id, name, version, document, checksum, updated_at}
 - PUT  /api/projects/<uuid>/             → same as GET (new version), 409 on stale base_version
+- DELETE /api/projects/<uuid>/           → 204: the project, its versions and shared links, deleted for good
 - GET  /api/projects/<uuid>/versions/    → {"versions": [{number, checksum, size_bytes, message, created_at}]}
 - GET  /api/projects/<uuid>/versions/<n>/ → {number, document, checksum}
 - POST /api/projects/<uuid>/price/       {price: number | null} → {price}: the quote's total, as the editor computes it
@@ -14,7 +15,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 
 from . import quotas, services
 from .documents import project_document
@@ -106,11 +107,15 @@ def project_collection(request):
     return JsonResponse(_project_payload(project, version), status=201)
 
 
-@api_view(("GET", "PUT"))
+@api_view(("GET", "PUT", "DELETE"))
 def project_detail(request, project_id):
     if request.method == "GET":
         project = _get_owned_project(request, project_id)
         return JsonResponse(_project_payload(project, services.get_current_version(project)))
+    if request.method == "DELETE":
+        # For good: its versions, its shared links and its comments go with it.
+        _get_owned_project(request, project_id).delete()
+        return HttpResponse(status=204)
 
     data = read_json_body(request)
     base_version = data.get("base_version")

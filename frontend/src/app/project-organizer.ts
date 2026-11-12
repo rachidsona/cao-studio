@@ -2,11 +2,13 @@
  * La colonne « Projets », à gauche du Navigateur (grands écrans) : les projets du compte rangés dans leurs dossiers, les
  * mêmes que ceux de la page d'accueil (apps/projects/folders_api.py). Un clic sur un projet l'ouvre dans son onglet
  * (app/project-tabs.ts). On le range en le glissant sur un dossier, ou par son ⋯ (« Ranger dans… »). Le + crée un
- * dossier ; le ⋯ d'un dossier le renomme ou le supprime (ses projets restent, sans dossier). Un dossier se plie d'un
+ * dossier ; le ⋯ d'un dossier le renomme, le vide (ses projets supprimés) ou le supprime (ses projets restent, sans
+ * dossier). Le ⋯ d'un projet, ou la touche Suppr sur lui, le supprime pour de bon. Un dossier se plie d'un
  * clic sur son nom. La flèche ‹ replie la colonne comme le Navigateur, et l'onglet « Projets » en bas du bord gauche de
  * la vue la rouvre. Ce qui est plié est retenu par le navigateur.
  */
-import { createFolder, deleteFolder, listFolders, moveToFolder, renameFolder, type FolderList } from "../persistence/api";
+import { createFolder, deleteFolder, deleteProject, emptyFolder, listFolders, moveToFolder, renameFolder, type FolderList } from "../persistence/api";
+import { clearRecovery } from "../persistence/recovery";
 import { askConfirm } from "../ui/confirm-dialog";
 import { el } from "../ui/dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "../ui/edge-tabs";
@@ -195,6 +197,47 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
     await act(() => deleteFolder(foldersUrl, group.id as number), "Ce dossier n'a pas pu être supprimé.");
   };
 
+  /** Projects deleted on the server: their tabs closed; the page's own project gone, back to « Mes projets ». */
+  const gone = (ids: string[]) => {
+    for (const id of ids) clearRecovery(id);
+    const pages = pageTabs();
+    const home = pages?.home ?? config.projectId;
+    if (ids.includes(home)) return void window.top?.location.assign(config.projectsUrl);
+    for (const id of ids) if (pages?.tabs.some((t) => t.id === id)) pages.close(id);
+  };
+
+  const removeProject = async (project: Project) => {
+    const open = pageTabs()?.tabs.some((t) => t.id === project.id) || project.id === config.projectId;
+    const question = `Supprimer « ${project.name} » ? Le projet, toutes ses versions et ses liens partagés seront supprimés définitivement.${open ? " Son onglet sera fermé, sans enregistrer." : ""}`;
+    if (!(await askConfirm(question, "Supprimer le projet"))) return;
+    try {
+      await deleteProject(projectsApi, project.id);
+    } catch (error) {
+      notify(said(error, "Ce projet n'a pas pu être supprimé."), "error");
+      return;
+    }
+    notify(`Projet « ${project.name} » supprimé.`, "success");
+    gone([project.id]);
+    await refresh();
+  };
+
+  const empty = async (group: ProjectGroup) => {
+    if (group.id === null) return;
+    const inside = list?.projects.filter((p) => p.folder === group.id) ?? [];
+    if (!inside.length) return notify(`Le dossier « ${group.name} » est déjà vide.`, "info");
+    const names = inside.slice(0, 5).map((p) => `« ${p.name} »`).join(", ") + (inside.length > 5 ? "…" : "");
+    const what = inside.length > 1 ? `ses ${inside.length} projets (${names})` : `son projet ${names}`;
+    if (!(await askConfirm(`Vider le dossier « ${group.name} » ? ${what[0]?.toUpperCase()}${what.slice(1)} seront supprimés définitivement, avec leurs versions et leurs liens partagés. Le dossier reste.`, "Vider le dossier"))) return;
+    try {
+      const deleted = await emptyFolder(foldersUrl, group.id);
+      notify(deleted.length > 1 ? `${deleted.length} projets supprimés.` : "Projet supprimé.", "success");
+      gone(deleted);
+    } catch (error) {
+      notify(said(error, "Ce dossier n'a pas pu être vidé."), "error");
+    }
+    await refresh();
+  };
+
   const dropOn = (target: HTMLElement, folder: number | null) => {
     target.addEventListener("dragover", (event) => {
       if (!event.dataTransfer?.types.includes(DRAG)) return;
@@ -232,12 +275,13 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
       if (!pages) return location.assign(`${config.projectsUrl}${project.id}/editor/`);
       if (!pages.open({ id: project.id, name: project.name })) notify(`${MOST_TABS} onglets au plus : fermez-en un pour en ouvrir un autre.`, "info");
     });
-    const more = el("button", { type: "button", class: "tool-btn min-h-7 min-w-7 shrink-0 px-0.5 text-xs opacity-60 hover:opacity-100", title: "Ranger ce projet dans un dossier", "aria-label": `Ranger ${project.name}`, "data-organizer-move": project.id }, "⋯");
+    const more = el("button", { type: "button", class: "tool-btn min-h-7 min-w-7 shrink-0 px-0.5 text-xs opacity-60 hover:opacity-100", title: "Ranger ou supprimer ce projet (Suppr : le supprimer)", "aria-label": `Ranger ou supprimer ${project.name}`, "data-organizer-move": project.id }, "⋯");
     more.addEventListener("click", () => {
       const folders = (list?.folders ?? []).filter((f) => f.id !== project.folder);
-      const items: { label: string; run: () => void }[] = folders.map((f) => ({ label: `Ranger dans « ${f.name} »`, run: () => void move(project.id, f.id) }));
+      const items: { label: string; run: () => void; danger?: boolean }[] = folders.map((f) => ({ label: `Ranger dans « ${f.name} »`, run: () => void move(project.id, f.id) }));
       if (project.folder !== null) items.push({ label: "Sortir du dossier", run: () => void move(project.id, null) });
-      if (!items.length) items.push({ label: "Créer un dossier d'abord (+)", run: () => newFolder.click() });
+      if (!items.length) items.push({ label: "Créer un dossier (+)", run: () => newFolder.click() });
+      items.push({ label: "Supprimer le projet…", danger: true, run: () => void removeProject(project) });
       popup(more, items);
     });
     const item = el("li", { class: "group flex items-center", draggable: "true", "data-organizer-project": project.id }, open, more);
@@ -267,11 +311,12 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
     });
     const head = el("div", { class: "flex items-center gap-0.5 px-1 data-[drop=on]:bg-sky-100 data-[drop=on]:outline-2 data-[drop=on]:outline-sky-500 dark:data-[drop=on]:bg-sky-950", "data-folder-head": key }, toggle);
     if (g.id !== null) {
-      const more = el("button", { type: "button", class: "tool-btn min-h-7 min-w-7 shrink-0 px-0.5 text-xs opacity-60 hover:opacity-100", title: "Renommer ou supprimer ce dossier", "aria-label": `Dossier ${g.name} : renommer ou supprimer`, "data-folder-more": "" }, "⋯");
+      const more = el("button", { type: "button", class: "tool-btn min-h-7 min-w-7 shrink-0 px-0.5 text-xs opacity-60 hover:opacity-100", title: "Renommer, vider ou supprimer ce dossier", "aria-label": `Dossier ${g.name} : renommer, vider ou supprimer`, "data-folder-more": "" }, "⋯");
       more.addEventListener("click", () =>
         popup(more, [
           { label: "Renommer", run: () => rename(g, head) },
-          { label: "Supprimer le dossier", danger: true, run: () => void remove(g) },
+          { label: "Vider le dossier (supprimer ses projets)…", danger: true, run: () => void empty(g) },
+          { label: "Supprimer le dossier (ses projets restent)…", danger: true, run: () => void remove(g) },
         ]),
       );
       head.append(more);
@@ -318,6 +363,20 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
     field.focus();
   });
   find.addEventListener("keydown", (event) => event.stopPropagation());
+  // Suppr (or ⌫) on a project deletes it, on a folder's name deletes the folder; never the editor's selection.
+  body.addEventListener("keydown", (event) => {
+    if (event.key !== "Delete" && event.key !== "Backspace") return;
+    const target = event.target as HTMLElement;
+    if (target.closest("input")) return;
+    event.stopPropagation();
+    event.preventDefault();
+    const id = target.closest<HTMLElement>("[data-organizer-project]")?.dataset.organizerProject;
+    const project = list?.projects.find((p) => p.id === id);
+    if (project) return void removeProject(project);
+    const key = target.closest<HTMLElement>("[data-folder-head]")?.dataset.folderHead;
+    const folder = list?.folders.find((f) => String(f.id) === key);
+    if (folder) void remove({ id: folder.id, name: folder.name, projects: [] });
+  });
   find.addEventListener("input", () => {
     search = find.value;
     draw();

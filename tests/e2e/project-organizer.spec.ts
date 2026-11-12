@@ -68,3 +68,53 @@ test("la colonne Projets range les projets dans des dossiers et se replie", asyn
   await expect(page.locator("[data-project-organizer]")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("la colonne Projets supprime un projet (⋯ ou Suppr), vide un dossier, et quitte la page dont le projet est supprimé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await newProject(page, "zz-page-supprimee");
+  const made = await page.evaluate(async () => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const send = (url: string, method: string, body: unknown) =>
+      fetch(url, { method, headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify(body) }).then((r) => r.json());
+    const ids: string[] = [];
+    for (const name of ["zz-a-vider-1", "zz-a-vider-2", "zz-par-menu", "zz-par-suppr"]) ids.push(((await send("/api/projects/", "POST", { name })) as { id: string }).id);
+    const folder = (await send("/api/folders/", "POST", { name: "Vieux" })) as { id: number };
+    for (const id of ids.slice(0, 2)) await send(`/api/projects/${id}/folder/`, "PUT", { folder: folder.id });
+    return ids;
+  });
+  await page.evaluate(() => localStorage.removeItem("cao.tool-columns-off"));
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const column = page.locator("[data-project-organizer]");
+  await expect(column.locator("[data-organizer-project]")).toHaveCount(5);
+  const confirm = (label: string) => page.getByRole("button", { name: label, exact: true }).click();
+
+  // Emptied: its two projects gone for good, the folder stays.
+  const old = column.locator("[data-folder-group]").filter({ hasText: "Vieux" });
+  await old.locator("[data-folder-more]").click();
+  await page.getByRole("menuitem", { name: /Vider le dossier/ }).click();
+  await confirm("Vider le dossier");
+  await expect(old.locator("[data-organizer-project]")).toHaveCount(0);
+  await expect(old).toBeVisible();
+
+  // One by its ⋯ menu, one by the Suppr key; the editor's own selection is not touched.
+  await column.locator(`[data-organizer-move="${made[2]}"]`).click();
+  await page.getByRole("menuitem", { name: "Supprimer le projet…" }).click();
+  await confirm("Supprimer le projet");
+  await expect(column.locator(`[data-organizer-project="${made[2]}"]`)).toHaveCount(0);
+  await column.locator(`[data-organizer-open="${made[3]}"]`).focus();
+  await page.keyboard.press("Delete");
+  await confirm("Supprimer le projet");
+  await expect(column.locator(`[data-organizer-project="${made[3]}"]`)).toHaveCount(0);
+  const left = await page.evaluate(async () => ((await (await fetch("/api/folders/")).json()) as { projects: { name: string }[] }).projects.map((p) => p.name));
+  expect(left).toEqual(["zz-page-supprimee"]);
+
+  // The page's own project: deleted, the editor goes back to « Mes projets ».
+  await column.locator('[aria-current="page"]').focus();
+  await page.keyboard.press("Delete");
+  await confirm("Supprimer le projet");
+  await page.waitForURL("**/projects/");
+  expect(errors).toEqual([]);
+});

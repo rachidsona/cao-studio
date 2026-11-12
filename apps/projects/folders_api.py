@@ -6,6 +6,7 @@ un projet d'un autre compte n'existe pas (404).
 - POST   /api/folders/             {name}       → 201 {id, name}
 - PATCH  /api/folders/<id>/        {name}       → {id, name}
 - DELETE /api/folders/<id>/                     → 204 (ses projets restent, sans dossier)
+- POST   /api/folders/<id>/empty/               → {deleted: [uuid…]} : ses projets supprimés pour de bon, le dossier reste
 - PUT    /api/projects/<uuid>/folder/ {folder: id | null} → {folder}
 """
 from __future__ import annotations
@@ -76,6 +77,16 @@ def folder_detail(request, folder_id: int):
         folder.name = name
         folder.save(update_fields=["name"])
     return JsonResponse(_payload(folder))
+
+
+@api_view(("POST",))
+def folder_empty(request, folder_id: int):
+    """Its projects deleted for good (versions, shared links); the folder stays, empty."""
+    folder = _owned_folder(request, folder_id)
+    projects = Project.objects.filter(owner=request.user, folder=folder)
+    deleted = [str(pk) for pk in projects.values_list("pk", flat=True)]
+    projects.delete()
+    return JsonResponse({"deleted": deleted})
 
 
 @api_view(("PUT",))

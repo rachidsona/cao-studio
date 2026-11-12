@@ -54,7 +54,8 @@ function keep(tabs: OpenProject[]): void {
 export class ProjectTabs {
   tabs: OpenProject[];
   active: string;
-  private readonly home: string;
+  /** The project of the page itself (the others are in frames over it). */
+  readonly home: string;
   private readonly frames = new Map<string, HTMLIFrameElement>();
   private readonly editors = new Map<string, OpenEditor>();
   private readonly listeners = new Set<() => void>();

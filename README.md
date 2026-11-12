@@ -1349,9 +1349,13 @@ opération existante.
   mêmes que sur « Mes projets » (« Sans dossier » en dernier). Un clic ouvre un projet dans son onglet ; le projet de la
   page est en bleu, un point marque ceux ouverts dans un onglet. On range un projet en le **glissant** sur un dossier ou
   par son « ⋯ » (« Ranger dans… », « Sortir du dossier ») ; le « + » du titre crée un dossier, le « ⋯ » d'un dossier le
-  renomme ou le supprime (ses projets restent, sans dossier) ; un clic sur un dossier le plie ; « Chercher un projet »
+  renomme, le **vide** (ses projets supprimés pour de bon, le dossier reste) ou le supprime (ses projets restent, sans
+  dossier). Un projet se **supprime** par son « ⋯ » ou la touche **Suppr** sur lui (Suppr sur un dossier : le dossier),
+  toujours après confirmation, définitivement avec ses versions et ses liens partagés : son onglet se ferme, et le
+  projet de la page supprimé ramène à « Mes projets » ; un clic sur un dossier le plie ; « Chercher un projet »
   filtre par nom. La flèche ‹ la **replie** comme le Navigateur, l'onglet « › Projets » la rouvre ; replis retenus par le
-  navigateur. API : `GET/POST /api/folders/`, `PATCH/DELETE /api/folders/<id>/`, `PUT /api/projects/<uuid>/folder/`
+  navigateur. API : `GET/POST /api/folders/`, `PATCH/DELETE /api/folders/<id>/`, `POST /api/folders/<id>/empty/`,
+  `DELETE /api/projects/<uuid>/`, `PUT /api/projects/<uuid>/folder/`
   `{folder}` — chaque compte n'a que les siens, ranger ne change pas « modifié le » (`app/project-organizer.ts`,
   `apps/projects/folders_api.py`).
 - **Sept colonnes d'outils**, entre le Navigateur et la vue : sept colonnes d'icônes, **vides au départ**, que l'on

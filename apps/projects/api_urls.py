@@ -11,6 +11,7 @@ urlpatterns = [
     path("projects/", api.project_collection, name="api-projects"),
     path("folders/", folders_api.folder_collection, name="api-folders"),
     path("folders/<int:folder_id>/", folders_api.folder_detail, name="api-folder"),
+    path("folders/<int:folder_id>/empty/", folders_api.folder_empty, name="api-folder-empty"),
     path("library/", library.library_collection, name="api-library"),
     path("library/<int:module_id>/", library.library_detail, name="api-library-module"),
     path("offcuts/", production.offcut_collection, name="api-offcuts"),

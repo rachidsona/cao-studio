@@ -63,7 +63,7 @@ def test_unknown_api_route_is_json_404(client_logged):
 
 
 def test_method_not_allowed_json(client_logged, project):
-    response = client_logged.delete(detail_url(project.id))
+    response = client_logged.patch(detail_url(project.id))
     assert response.status_code == 405
     assert "error" in response.json()
 
