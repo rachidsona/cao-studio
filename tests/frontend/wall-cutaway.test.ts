@@ -139,6 +139,29 @@ describe("murs qui cachent la vue", () => {
     expect(pieceOf(pieces, [[10, -900, 1200], [30, -870, 1250]])).toBe("B");
     expect(pieceOf(pieces, [[1800, -1700, 0], [2200, -1300, 450]])).toBeNull();
   });
+
+  it("le côté d'un angle (et sa porte, ses charnières) est de la Répartition de l'angle, à gauche comme à droite", () => {
+    const plan = { ...PLAN, model: "U-round" as const, lengthA: 3000, lengthB: 2000, lengthC: 2000, cornerDoor: true };
+    const made = withPlan({ ...createReferencePlate(), features: [] }, plan);
+    let doc = withPlanWalls(made.doc, made.id, true);
+    for (const zone of planZones(plan)) {
+      const next = withZonePartition(doc, made.id, zone);
+      if (typeof next === "string") throw new Error(next);
+      doc = next.doc;
+    }
+    const record = doc.features.find((f) => f.id === made.id);
+    const dressing = record?.type === "sketch" ? record.dressingPlan : undefined;
+    const backs = featureBacks(doc);
+    for (const corner of ["left", "right"]) {
+      const boards = dressing?.boards?.[corner] ?? [];
+      expect(boards.length).toBeGreaterThan(0);
+      for (const id of boards) expect(backs.get(id)?.group).toBe(dressing?.made?.[corner]);
+    }
+    // Without it, the side of the left corner, between its Répartition and the one of wall B, 9 mm from each: wall B's
+    // (the first one met), gone with it when the eye passes behind wall B — while the right one stayed.
+    const pieces = new Map<string, [[number, number, number], [number, number, number]]>([["B", [[0, -2000, 0], [600, -1000, 2500]]], ["left", [[0, -982, 0], [1000, 0, 2500]]]]);
+    expect(pieceOf(pieces, [[0, -1000, 0], [600, -982, 2500]])).toBe("B");
+  });
 });
 
 describe("murs d'un dressing sans pièce : la Répartition vue de dos s'efface", () => {

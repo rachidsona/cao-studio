@@ -1,7 +1,8 @@
 /**
  * À quel mur un meuble tourne le dos : un caisson de cuisine et ses façades (sa rotation), un appareil, un caisson de
  * dressing (une Répartition : le devant de son esquisse), tout ce qu'un linéaire du Plan de cuisine a fait avec ses
- * caissons (plan de travail, crédence, plinthe, fileurs), et les finitions d'un meuble ; chacun avec le meuble dont il
+ * caissons (plan de travail, crédence, plinthe, fileurs), ce qui ferme une zone d'un Plan de dressing autour de sa
+ * Répartition (le côté d'un angle, sa porte, un fileur), et les finitions d'un meuble ; chacun avec le meuble dont il
  * fait partie (une zone de dressing, un linéaire), pour y rattacher ce qui l'équipe sans rien dire de son sens
  * (charnières, portes coulissantes, accessoires). Sert à effacer, avec un mur
  * qui cache la vue, les meubles qui sont les siens, et eux seuls (app/wall-cutaway.ts). Pur.
@@ -34,6 +35,15 @@ export function featureBacks(doc: CadDocument): Map<string, Facing> {
   for (const f of doc.features) {
     const facing = f.type === "fronts" ? backs.get(f.cabinet) : (f.type === "extrude" || f.type === "niche") && f.sketch ? sketches.get(f.sketch) : undefined;
     if (facing) backs.set(f.id, facing);
+  }
+  // What closes a zone of a dressing plan around its Répartition (a corner's far side, its door, a filler): one piece
+  // with it, so it goes with it and with it only — not with the Répartition next to it, the nearer one by a hair.
+  for (const f of doc.features) {
+    const plan = f.type === "sketch" ? f.dressingPlan : undefined;
+    for (const [zone, ids] of Object.entries(plan?.boards ?? {})) {
+      const facing = plan?.made?.[zone] ? sketches.get(plan.made[zone]) : undefined;
+      if (facing) for (const id of ids) backs.set(id, facing);
+    }
   }
   // What a run of a kitchen plan made, with its units: turned as they are, one piece with them.
   for (const f of doc.features) {

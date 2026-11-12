@@ -126,6 +126,8 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
     meubles des autres murs restent entiers, même dans l'angle ; l'îlot aussi.
   - **Dans un dressing** de même : la zone du mur masqué (sa Répartition, ses étagères, cloisons, penderies, tiroirs,
     portes et fond) s'efface avec lui, le tracé de son esquisse aussi ; les zones des autres murs restent entières. Ce
+    qui ferme une zone autour de sa Répartition (le côté d'un angle, sa porte et ses charnières, un fileur) est de
+    cette zone : le côté de l'angle gauche reste avec l'angle quand la zone du mur B s'efface, comme celui de droite. Ce
     qui équipe une zone sans avoir de sens à soi — charnières, portes coulissantes, accessoires, lumières — va avec le
     meuble sur lequel il se trouve (`pieceOf` : à moins de 15 cm de sa boîte). **Sans pièce** (aucun mur dessiné),
     chaque Répartition du dressing fait office de mur : la vue tournée de façon à voir son dos (l'œil passé derrière
