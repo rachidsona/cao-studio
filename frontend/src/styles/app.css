@@ -455,6 +455,13 @@
     @apply border-sky-600 text-sky-800 dark:border-sky-400 dark:text-sky-200;
   }
   /* Every dimension of the view, on a piece (app/piece-dims.ts) or around a Répartition (app/plan-dims-view.ts): a small white pill. */
+  /* The name of a tool's icon, hovered: the same pastille as the dimensions of the pieces (ui/icon-titles.ts). */
+  .cad-icon-tip {
+    @apply pointer-events-none fixed z-[70] inline-flex min-h-5 items-center justify-center rounded-full border border-[#f8500a] bg-white px-2 font-mono text-[11px] leading-none font-semibold whitespace-nowrap text-[#f8500a] shadow-sm;
+  }
+  .cad-icon-tip[hidden] {
+    display: none;
+  }
   .cad-piece-dim,
   .cad-plan-dim {
     @apply pointer-events-none inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-[#f8500a] bg-white px-1 font-mono text-[10px] leading-none font-semibold whitespace-nowrap text-[#f8500a];

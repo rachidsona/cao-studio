@@ -35,7 +35,7 @@ function catalogue(root: HTMLElement): Tool[] {
     const key = toolKey(button);
     if (!key || seen.has(key)) return [];
     seen.add(key);
-    const label = button.getAttribute("aria-label") ?? button.title.split(" : ")[0] ?? key;
+    const label = button.getAttribute("aria-label") ?? button.dataset.tip ?? button.title.split(" : ")[0] ?? key;
     const group = button.closest(".ribbon-group")?.getAttribute("aria-label") ?? "Sélection et vue";
     return [{ key, label, group, button }];
   });

@@ -39,7 +39,7 @@ function commands(root: HTMLElement): { command: Command; button: HTMLElement }[
     if (ribbon && ribbon !== mode) return [];
     // What its tooltip explained (the tooltip of an icon now says its name only: ui/icon-titles.ts).
     const title = buttonHint(button);
-    const label = button.getAttribute("aria-label") ?? (button.textContent?.trim() || title.split(" : ")[0] || "");
+    const label = button.getAttribute("aria-label") ?? (button.textContent?.trim() || button.dataset.tip || title.split(" : ")[0] || "");
     if (!label) return [];
     seen.add(key);
     return [{ command: { key, label, group: button.closest(".ribbon-group")?.getAttribute("aria-label") ?? "", hint: title }, button }];

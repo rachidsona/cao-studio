@@ -190,7 +190,7 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     : null;
 
   let open: { caption: HTMLElement; close: () => void } | null = null;
-  const label = (button: HTMLElement) => button.getAttribute("aria-label") ?? button.title ?? "";
+  const label = (button: HTMLElement) => button.getAttribute("aria-label") ?? button.dataset.tip ?? button.title ?? "";
 
   const show = (g: (typeof groups)[number], caption: HTMLElement): void => {
     open?.close();
