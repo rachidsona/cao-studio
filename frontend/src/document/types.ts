@@ -693,9 +693,15 @@ export interface FrontsFeature extends FeatureBase {
   thickness: number;
   hinges: boolean;
   handles: boolean;
-  /** Doors: plain boards, or glazed (an aluminium frame `frameWidth` wide round tempered glass, features/glass-door.ts). */
-  style?: "flat" | "glass";
+  /**
+   * Doors: plain boards, framed (a frame `frameWidth` wide round a panel set back `frameDepth`, routed in one piece),
+   * fluted or slatted (grooves `pitch` apart, `frameDepth` deep, `frameWidth` from the top and bottom edges:
+   * features/door-decor.ts), or glazed (an aluminium frame `frameWidth` wide round tempered glass, features/glass-door.ts).
+   */
+  style?: "flat" | "frame" | "glass" | "fluted" | "slats";
   frameWidth?: number;
+  frameDepth?: number;
+  pitch?: number;
   glass?: GlassKind;
   profile?: ProfileFinish;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
@@ -756,9 +762,11 @@ export interface NicheFeature extends FeatureBase {
    * Doors: flat, a frame round a panel set back (routed in one piece), or glazed (an aluminium frame round tempered
    * glass, features/glass-door.ts); the frame's width and the panel's set-back (mm), the glass and the frame's finish.
    */
-  style?: "flat" | "frame" | "glass";
+  style?: "flat" | "frame" | "glass" | "fluted" | "slats";
   frameWidth?: number;
   frameDepth?: number;
+  /** Fluted or slatted doors: the spacing of their grooves (features/door-decor.ts). */
+  pitch?: number;
   glass?: GlassKind;
   profile?: ProfileFinish;
   /** Back: one panel for the whole cabinet, or one per case. */

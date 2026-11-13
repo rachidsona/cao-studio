@@ -12,6 +12,8 @@ import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { frontsParts, frontsProblem } from "./fronts-parts";
 import { drillings, shelvesOf } from "./fronts-drillings";
 import { glassFrame, glassOpening, glassPane, isGlass } from "./glass-door";
+import { cutGrooves } from "./decor-cut";
+import { decorClear, decorGrooves, isDecor } from "./door-decor";
 import type { OutputLookup } from "./common";
 import type { SolidsOutput } from "./outputs";
 import { turnedWith } from "./cabinet";
@@ -33,6 +35,23 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
         solid.delete();
         tool.delete();
         solid = cut;
+      }
+      const door = part.role?.kind === "door";
+      // A frame door: the panel set back inside the frame, routed from the front face (−Y).
+      if (door && feature.style === "frame") {
+        const [w, d] = [feature.frameWidth ?? 70, feature.frameDepth ?? 6];
+        const pocket = makeBox([part.from[0] + w, part.from[1] - 1, part.from[2] + w], [part.to[0] - w, part.from[1] + d, part.to[2] - w]) as unknown as Shape3D;
+        const cut = solid.cut(pocket) as Shape3D;
+        solid.delete();
+        pocket.delete();
+        solid = cut;
+      }
+      // A fluted or slatted door: its grooves in its front face, clear of the hinge cups behind when they would meet.
+      if (door && isDecor(feature)) {
+        const cups = feature.hinges ? (feature.hw?.cupDepth ?? 13) : 0;
+        const clear = decorClear(feature, feature.thickness, cups);
+        // The door's frame [across, up, through] is the world's [x, z, y].
+        solid = cutGrooves(solid, decorGrooves(feature, part.from[0], part.to[0], part.from[2], part.to[2], clear), part.from[1], 1, ([u, v, w]) => [u, w, v]);
       }
       for (const d of drillings(part, feature, shelves)) {
         // Drilled from the inside face towards the outside (−Y).

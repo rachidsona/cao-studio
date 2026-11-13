@@ -11,6 +11,8 @@ import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import type { SolidsOutput } from "./outputs";
 import { glassFrame, glassOpening, glassPane, handleInset, isGlass } from "./glass-door";
+import { cutGrooves } from "./decor-cut";
+import { decorGrooves, isDecor } from "./door-decor";
 import { nicheGeometry, nicheParts, nicheProblem, nicheWorld, worldBox, type NicheGeometry, type NichePart } from "./niche-parts";
 import { underCeiling } from "./sloped-ceiling";
 
@@ -59,6 +61,10 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     solid.delete();
     pocket.delete();
     solid = cut;
+  }
+  // A fluted or slatted door: its grooves in its front face.
+  if (part.role === "front" && part.handle && isDecor(f)) {
+    solid = cutGrooves(solid, decorGrooves(f, part.from[0], part.to[0], part.from[1], part.to[1]), part.to[2], -1, (p) => nicheWorld(n, p));
   }
   // A glass door: the opening through the aluminium frame, and the groove the glass sits in.
   if (part.role === "front" && part.handle && isGlass(f)) {

@@ -131,7 +131,7 @@ export function withDoorHandles(doc: CadDocument, bodyId: string): CadDocument |
 
 /**
  * Without `style`: a cabinet's doors made drawers (three), or a Répartition's doors flat or framed, the other way.
- * With it: the doors in that style — plain or glazed for a cabinet; flat, framed or glazed for a Répartition or a door
+ * With it: the doors in that style — flat, framed, fluted, slatted or glazed, for a cabinet, a Répartition or a door
  * over niches (a glazed one with an aluminium frame of 20 mm, clear glass and brushed aluminium unless chosen before).
  */
 export function withDoorStyle(doc: CadDocument, bodyId: string, style?: DoorStyle): CadDocument | string {
@@ -139,7 +139,6 @@ export function withDoorStyle(doc: CadDocument, bodyId: string, style?: DoorStyl
   const f = door && findFeature(doc, door.feature);
   if (f?.type === "fronts" && !style) return updateFeature(doc, f.id, () => ({ ...f, layout: "drawers" as const, drawers: f.drawers || 3 }));
   if (f?.type === "fronts") {
-    if (style === "frame") return "La porte d'un caisson est plate ou vitrée.";
     return updateFeature(doc, f.id, () => ({ ...f, ...styleChange(style!, f) }) as FrontsFeature);
   }
   const next = style ?? (f?.type === "niche" && f.style === "frame" ? "flat" : "frame");

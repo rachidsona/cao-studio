@@ -194,11 +194,13 @@ export interface DoorSettings {
   skipped?: number[];
   /**
    * A frame door (« shaker », routed in one piece): a frame `frameWidth` wide round a panel set back `frameDepth`; a
-   * glass door: an aluminium frame `frameWidth` wide (`profile`) round tempered glass (`glass`).
+   * glass door: an aluminium frame `frameWidth` wide (`profile`) round tempered glass (`glass`); a fluted or slatted
+   * door: grooves `pitch` apart, `frameDepth` deep, `frameWidth` from its top and bottom edges (features/door-decor.ts).
    */
-  style?: "flat" | "frame" | "glass";
+  style?: "flat" | "frame" | "glass" | "fluted" | "slats";
   frameWidth?: number;
   frameDepth?: number;
+  pitch?: number;
   glass?: GlassKind;
   profile?: ProfileFinish;
 }

@@ -6,9 +6,10 @@
  * dépoli, fumé, bronze, noir) et le cadre (aluminium brossé ou noir) prennent leur apparence de la bibliothèque. Pur.
  */
 import type { GlassKind, ProfileFinish, Vec3 } from "../document/types";
+import { decorChange } from "./door-decor";
 
 export type { GlassKind, ProfileFinish };
-export type DoorStyle = "flat" | "frame" | "glass";
+export type DoorStyle = "flat" | "frame" | "glass" | "fluted" | "slats";
 
 /** Width of the aluminium frame (mm) when none is set; the glass and how deep it sits in the profile's groove. */
 export const GLASS_FRAME = 20;
@@ -70,8 +71,10 @@ export const glassFrame = (f: Pick<GlassSettings, "frameWidth">) => f.frameWidth
  * What a change of style sets: a frame door its routed frame (70 mm, a panel 6 mm back), a glass door its aluminium
  * frame (20 mm), clear glass and brushed aluminium unless already chosen.
  */
-export function styleChange(style: DoorStyle, current: GlassSettings & { frameDepth?: number }): GlassSettings & { frameDepth?: number } {
-  if (style === "frame") return { style, frameWidth: current.style === "frame" ? (current.frameWidth ?? 70) : 70, frameDepth: current.frameDepth ?? 6 };
+export function styleChange(style: DoorStyle, current: GlassSettings & { frameDepth?: number; pitch?: number }): GlassSettings & { frameDepth?: number; pitch?: number } {
+  if (style === "fluted" || style === "slats") return decorChange(style, current);
+  // Each style its own frame and depth: a groove's depth is not a panel's set-back.
+  if (style === "frame") return { style, frameWidth: current.style === "frame" ? (current.frameWidth ?? 70) : 70, frameDepth: current.style === "frame" ? (current.frameDepth ?? 6) : 6 };
   if (style === "glass") return { style, frameWidth: current.style === "glass" ? glassFrame(current) : GLASS_FRAME, glass: current.glass ?? "clear", profile: current.profile ?? "brushed" };
   return { style };
 }
@@ -140,6 +143,7 @@ export function glassFieldsProblem(f: Record<string, unknown>, styles: readonly 
   if (f.style !== undefined && !styles.includes(f.style as string)) return "style de porte inconnu.";
   if (f.glass !== undefined && !GLASS_KINDS.some(([k]) => k === f.glass)) return "verre inconnu.";
   if (f.profile !== undefined && !PROFILE_FINISHES.some(([k]) => k === f.profile)) return "finition du cadre alu inconnue.";
-  if (f.frameWidth !== undefined && !(typeof f.frameWidth === "number" && Number.isFinite(f.frameWidth) && f.frameWidth > 0)) return "« frameWidth » doit être un nombre positif.";
+  if (f.frameWidth !== undefined && !(typeof f.frameWidth === "number" && Number.isFinite(f.frameWidth) && f.frameWidth >= 0)) return "« frameWidth » doit être un nombre positif ou nul.";
+  if (f.pitch !== undefined && !(typeof f.pitch === "number" && Number.isFinite(f.pitch) && f.pitch > 0)) return "« pitch » doit être un nombre positif.";
   return null;
 }

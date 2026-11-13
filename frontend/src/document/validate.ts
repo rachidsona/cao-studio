@@ -265,7 +265,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
       if (feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) errors.push(`${where} : côté des charnières inconnu.`);
       if (feature.grip !== undefined && feature.grip !== "gorge") errors.push(`${where} : prise de main inconnue.`);
-      if (glassFieldsProblem(feature, ["flat", "glass"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "glass"])}`);
+      if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);
+      if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       break;
     case "room": {
       const num = (v: unknown) => isFiniteNumber(v);
@@ -289,7 +290,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
       if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
       if (feature.skipped !== undefined && !(Array.isArray(feature.skipped) && feature.skipped.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : cases sans porte invalides.`);
-      if (glassFieldsProblem(feature, ["flat", "frame", "glass"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass"])}`);
+      if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);
       if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
       if (feature.mount !== undefined && feature.mount !== "overlay" && feature.mount !== "inset") errors.push(`${where} : pose des façades inconnue.`);

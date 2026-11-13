@@ -11,6 +11,8 @@ import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature, Vec3 } from
 import { uniqueId } from "../../document/operations";
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../../features/glass-door";
 import { accessoryModel, partBounds } from "../../features/accessory-parts";
+import { DECOR_LABELS } from "../../features/door-decor";
+import { decorRows } from "../../sketcher/partition-door-style";
 import { nicheGeometry, nicheParts, nicheProblem, worldBox, type NicheGeometry } from "../../features/niche-parts";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import type { Vec2 } from "../../sketcher/edit";
@@ -131,7 +133,7 @@ export class NicheTool {
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
     const { span: _span, accessory, ...all } = this.settings as Settings & { span?: number[][] };
     // Only a door has a style (and its glass), only an accessory its model.
-    const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, ...rest } = all;
+    const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, pitch: _pitch, ...rest } = all;
     const settings = this.fill === "door" ? all : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
     const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
     return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
@@ -234,7 +236,8 @@ export class NicheTool {
       return el("label", { class: ROW }, label, list);
     };
     const styles = [
-      pick("Style", this.settings.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ["glass", "Vitrée (cadre alu)"]], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      pick("Style", this.settings.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      ...decorRows(this.settings, (change) => (Object.assign(this.settings, change), this.recompute()), (label, mm, set) => number(label, mm, set, label.startsWith("Bordure"))),
       ...(this.settings.style === "glass"
         ? [
             number("Cadre alu", this.settings.frameWidth ?? GLASS_FRAME, (v) => ((this.settings.frameWidth = v), this.recompute())),

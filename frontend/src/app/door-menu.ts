@@ -23,6 +23,8 @@ const SIDE = { left: "à gauche", right: "à droite" } as const;
 const STYLES = [
   ["flat", "Portes plates"],
   ["frame", "Portes à cadre"],
+  ["fluted", "Portes cannelées"],
+  ["slats", "Portes à tasseaux"],
   ["glass", "Portes vitrées (cadre alu)"],
 ] as const;
 
@@ -87,10 +89,7 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
     ...(f?.type === "fronts" ? [{ label: "Isoler et aménager le caisson", run: () => void furnishCabinet(editor, f.cabinet) }] : []),
     ...(alone ? [{ label: alone[0], run: alone[1] }] : []),
     ...(door.kind === "fronts" ? [{ label: "Remplacer par des tiroirs", run: () => apply(withDoorStyle(doc, bodyId), "Les portes sont devenues des tiroirs.") }] : []),
-    ...(door.kind === "fronts" && f?.type === "fronts"
-      ? [f.style === "glass" ? { label: "Porte pleine", run: () => apply(withDoorStyle(doc, bodyId, "flat"), "Portes pleines.") } : { label: "Porte vitrée (cadre alu)", run: () => apply(withDoorStyle(doc, bodyId, "glass"), "Portes vitrées, cadre alu.") }]
-      : []),
-    ...((door.kind === "partition" || door.kind === "niche") && f?.type === "niche"
+    ...((door.kind === "partition" || door.kind === "niche" || door.kind === "fronts") && (f?.type === "niche" || f?.type === "fronts")
       ? STYLES.filter(([style]) => style !== (f.style ?? "flat")).map(([style, label]) => ({ label, run: () => apply(withDoorStyle(doc, bodyId, style), `${label}.`) }))
       : []),
     "separator",

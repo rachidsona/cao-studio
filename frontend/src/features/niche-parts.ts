@@ -13,6 +13,7 @@
  *   un côté extérieur ou un côté double (chaque case a le sien), elle le couvre en entier ; un côté simple, elle en
  *   couvre la moitié, l'autre moitié est à la porte voisine ; deux cases sans côté entre elles ont chacune leur porte,
  *   qui se rejoignent au milieu de la place du côté absent.
+ * - Porte cannelée ou à tasseaux (portes de case ou sur niches) : des rainures verticales dans sa face avant (door-decor.ts).
  * - Porte vitrée (portes de case ou sur niches) : la porte est le cadre en profilé alu ; son verre trempé vient après
  *   les poignées (« Vitre porte n »), au milieu de l'épaisseur, et pivote avec elle (glass-door.ts).
  * - Accessoire : une pièce achetée du catalogue (accessory-parts.ts), posée à une hauteur dans la niche.
@@ -32,6 +33,7 @@ import { isPartition, pathKey, rebuildChain, type NicheNode } from "../sketcher/
 import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
 import { accessoryHardware, accessoryParts, accessoryProblem } from "./accessory-parts";
+import { decorProblem } from "./door-decor";
 import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass } from "./glass-door";
 
 export interface NicheGeometry {
@@ -178,13 +180,13 @@ export function partitionBacks(input: PartitionParams, origin: [number, number],
 }
 
 /** Why doors of these sizes cannot have this style: a frame too wide or a panel too thin, a glass door impossible. */
-function styleProblem(f: Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "glass" | "profile" | "thickness">, doors: { width: number; height: number }[]): string | null {
+function styleProblem(f: Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "glass" | "profile" | "thickness" | "pitch">, doors: { width: number; height: number }[]): string | null {
   if (f.style === "frame") {
     const [w, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
     if (doors.some((door) => Math.min(door.width, door.height) - 2 * w < 40)) return "Le cadre est trop large pour ces portes.";
     if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
   }
-  return glassProblem(f, doors, f.thickness);
+  return decorProblem(f, doors, f.thickness) ?? glassProblem(f, doors, f.thickness);
 }
 
 /** Why these settings cannot equip this niche, or null. */

@@ -9,12 +9,15 @@
  *   ou abattant (charnières en bas, retenu par une paire de compas) : une porte seule, ses charnières le long du chant.
  * - Sans poignée (« gorge ») : chaque façade laisse 30 mm de prise de main au-dessus de son chant haut, devant un
  *   profilé alu en retrait, posé entre les côtés (sous le dessus pour la façade du haut) ; il s'achète au mètre.
+ * - Porte à cadre (panneau en retrait, usinée dans la masse), cannelée ou à tasseaux (rainures verticales dans sa face
+ *   avant, door-decor.ts) : une seule planche, débitée comme une porte plate.
  * - Porte vitrée : la porte est le cadre en profilé alu, son verre une pièce à part après les façades (« Vitre … »),
  *   au milieu de l'épaisseur, qui pivote avec elle ; charnières pour cadre alu (glass-door.ts).
  */
 import type { CabinetFeature, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "./cabinet-parts";
 import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass } from "./glass-door";
+import { decorProblem } from "./door-decor";
 
 export interface FrontPart {
   name: string;
@@ -63,7 +66,7 @@ export const SLIDE_PLAY = 12.5;
 export const DRAWER_SIDE = 16;
 export const DRAWER_BOTTOM = 8;
 
-export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "grip">>, cabinet: CabinetFeature | undefined): string | null {
+export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "frameDepth" | "pitch" | "grip" | "hinges" | "hw">>, cabinet: CabinetFeature | undefined): string | null {
   if (!cabinet || cabinet.type !== "cabinet") return "Choisissez le caisson à habiller.";
   const problem = cabinetProblem(cabinet);
   if (problem) return problem;
@@ -78,11 +81,19 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
     const high = cabinet.height - cabinet.plinth - cabinet.thickness - f.gap / 2 - levels * GORGE.space;
     if (high / levels < 80) return "Le caisson est trop bas pour des façades sans poignée (80 mm de façade au moins sous chaque gorge).";
   }
-  if (f.layout !== "drawers" && isGlass(f)) {
+  if (f.layout !== "drawers" && f.style && f.style !== "flat") {
     // The size of each door, as frontsParts lays them out.
     const { width: W, height: H, thickness: t, plinth: p } = cabinet;
     const [w, h] = f.mount === "inset" ? [W - 2 * t - 2 * f.gap, H - p - 2 * t - 2 * f.gap] : [W - f.gap, H - p - f.gap];
-    return glassProblem(f, [{ width: f.layout === "doors" ? (w - f.gap) / 2 : w, height: h }], f.thickness);
+    const doors = [{ width: f.layout === "doors" ? (w - f.gap) / 2 : w, height: h }];
+    if (f.style === "frame") {
+      const [fw, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
+      if (doors.some((door) => Math.min(door.width, door.height) - 2 * fw < 40)) return "Le cadre est trop large pour ces portes.";
+      if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
+      return null;
+    }
+    // Hinge cups behind: the grooves keep clear of them when they would meet.
+    return decorProblem(f, doors, f.thickness, f.hinges ? (f.hw?.cupDepth ?? 13) : 0) ?? glassProblem(f, doors, f.thickness);
   }
   return null;
 }

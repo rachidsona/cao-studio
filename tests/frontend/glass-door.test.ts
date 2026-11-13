@@ -162,7 +162,10 @@ describe("portes vitrées d'un caisson de cuisine", () => {
     const plain = withDoorStyle(glazed, "fr1#2", "flat");
     if (typeof plain === "string") throw new Error(plain);
     expect((plain.features[1] as FrontsFeature).style).toBe("flat");
-    expect(typeof withDoorStyle(glazed, "fr1#0", "frame")).toBe("string");
+    // A cabinet's door may be framed too (a panel set back in it).
+    const framed = withDoorStyle(glazed, "fr1#0", "frame");
+    if (typeof framed === "string") throw new Error(framed);
+    expect((framed.features[1] as FrontsFeature).style).toBe("frame");
   });
 });
 
@@ -185,7 +188,7 @@ describe("validation des portes vitrées", () => {
     expect(() => roundTrip(niche({ profile: "or" }))).toThrow(/cadre alu inconnue/);
     expect(() => roundTrip(niche({ style: "vitrail" }))).toThrow(/style de porte inconnu/);
     expect(() => roundTrip(niche({ frameWidth: -2 }))).toThrow(/frameWidth/);
-    expect(() => roundTrip(kitchen(fronts({ style: "frame" as unknown as "glass" })))).toThrow(/style de porte inconnu/);
+    expect(() => roundTrip(kitchen(fronts({ style: "vitrail" as unknown as "glass" })))).toThrow(/style de porte inconnu/);
     expect(() => roundTrip(kitchen(fronts({ glass: "rose" as unknown as "clear" })))).toThrow(/verre inconnu/);
   });
 });

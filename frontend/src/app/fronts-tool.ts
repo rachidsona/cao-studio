@@ -1,11 +1,13 @@
 /**
  * Outil « Façades » : habiller un caisson d'une porte, de deux portes ou de tiroirs (avec leurs caissons sur
  * coulisses), en applique ou encastrés, avec le jeu et l'épaisseur voulus ; charnières et poignées percées à la
- * demande. Les portes sont pleines ou vitrées (cadre en profilé alu autour d'un verre trempé, au choix du verre et du
- * cadre). Une porte seule s'ouvre à gauche, à droite, vers le haut (relevable, sur compas) ou vers le bas (abattant) ;
+ * demande. Les portes sont plates, à cadre (panneau en retrait), cannelées, à tasseaux (rainures dans leur face,
+ * features/door-decor.ts) ou vitrées (cadre en profilé alu autour d'un verre trempé, au choix du verre et du cadre). Une porte seule s'ouvre à gauche, à droite, vers le haut (relevable, sur compas) ou vers le bas (abattant) ;
  * « Sans poignée » remplace les poignées par une gorge en profilé alu derrière le chant haut de chaque façade. Aperçu du noyau, puis une opération « Façades » dans l'historique, liée au caisson (elle suit ses cotes).
  */
-import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange } from "../features/glass-door";
+import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../features/glass-door";
+import { DECOR_LABELS } from "../features/door-decor";
+import { decorRows } from "../sketcher/partition-door-style";
 import { bodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import { cabinetStandard, frontsTo } from "../document/standards";
@@ -96,7 +98,10 @@ export class FrontsTool extends PanelTool {
       this.numberRow("Jeu", s.gap, this.ctx.unit(), (v) => ((s.gap = Math.max(0, v)), this.schedulePreview())),
       this.numberRow("Épaisseur", s.thickness, this.ctx.unit(), (v) => ((s.thickness = Math.max(1, v)), this.schedulePreview())),
       // A door: plain, or glazed (an aluminium frame round tempered glass).
-      doors ? this.selectRow("Style des portes", s.style ?? "flat", [["flat", "Plate"], ["glass", "Vitrée (cadre alu)"]], (v) => (Object.assign(s, styleChange(v === "glass" ? "glass" : "flat", s)), changed())) : null,
+      doors ? this.selectRow("Style des portes", s.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre (panneau en retrait)"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => (Object.assign(s, styleChange(v as DoorStyle, s)), changed())) : null,
+      doors && s.style === "frame" ? this.numberRow("Largeur du cadre", s.frameWidth ?? 70, this.ctx.unit(), (v) => ((s.frameWidth = v), this.schedulePreview())) : null,
+      doors && s.style === "frame" ? this.numberRow("Retrait du panneau", s.frameDepth ?? 6, this.ctx.unit(), (v) => ((s.frameDepth = v), this.schedulePreview())) : null,
+      ...(doors ? decorRows(s, (change) => (Object.assign(s, change), this.schedulePreview()), (label, mm, set) => this.numberRow(label, mm, this.ctx.unit(), set, label.startsWith("Bordure"))) : []),
       glass ? this.numberRow("Largeur du cadre alu", s.frameWidth ?? GLASS_FRAME, this.ctx.unit(), (v) => ((s.frameWidth = Math.max(1, v)), this.schedulePreview())) : null,
       glass ? this.selectRow("Verre (trempé 4 mm)", s.glass ?? "clear", [...GLASS_KINDS], (v) => set("glass", v as FrontsFeature["glass"])) : null,
       glass ? this.selectRow("Cadre", s.profile ?? "brushed", [...PROFILE_FINISHES], (v) => set("profile", v as FrontsFeature["profile"])) : null,

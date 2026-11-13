@@ -9,6 +9,8 @@ import { caseHasDoor, casesJoined, doorSettings, withAllDoors, withCaseDoor, wit
 import { bodyOrigin, findFeature } from "../../document/operations";
 import type { DoorSettings } from "../../document/sketch";
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../../features/glass-door";
+import { DECOR_LABELS } from "../../features/door-decor";
+import { decorRows } from "../../sketcher/partition-door-style";
 import { featureOfBody, type CadDocument, type SketchFeature } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
@@ -119,7 +121,8 @@ class DoorFrontsTool implements PointerHandler {
       return el("label", { class: "block space-y-1" }, label, list);
     };
     const settings = (patch: Partial<DoorSettings>) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, patch));
-    const style = choice("Style des portes", doors.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ["glass", "Vitrée (cadre alu)"]], (v) => settings(styleChange(v as DoorStyle, doors)));
+    const style = choice("Style des portes", doors.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => settings(styleChange(v as DoorStyle, doors)));
+    const decor = decorRows(doors, (change) => settings(change), length);
     const glass = doors.style === "glass"
       ? [
           length("Largeur du cadre alu", doors.frameWidth ?? GLASS_FRAME, (frameWidth) => settings({ frameWidth })),
@@ -138,6 +141,7 @@ class DoorFrontsTool implements PointerHandler {
       length("Jeu", doors.gap, (gap) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { gap }))),
       length("Épaisseur", doors.thickness, (thickness) => this.apply(withDoorSettings(this.editor.doc, sketch, partition, { thickness }))),
       style,
+      ...decor,
       ...glass,
       el("label", { class: "flex items-center gap-1.5" }, handles, "Trous de poignée"),
       opening,

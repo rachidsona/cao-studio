@@ -2610,6 +2610,17 @@ opération existante.
     au moins sous chaque gorge.
   - Dans une **cuisine**, le Plan de cuisine garde la porte relevable et la gorge d'un meuble : la cuisine refaite
     les remet (`KitchenRunItem.side`, `grip`, `document/kitchen-sync.ts`).
+  - **Façades décor** (« Style des portes », pour un caisson, une Répartition, « Façades du dressing », « Porte sur
+    niches » et le menu d'une porte) : **à cadre** (un cadre de 70 mm autour d'un panneau en retrait de 6 mm, usiné
+    dans la masse — les portes de caisson l'ont aussi maintenant), **cannelée** (cannelures rondes de 28 mm à
+    l'entraxe de 30, 3 mm de profondeur, taillées à la fraise hémisphérique) ou **à tasseaux** (rainures droites de
+    10 mm à l'entraxe de 45, 4 mm de profondeur, qui laissent des lames en relief). Les rainures sont verticales,
+    centrées sur la largeur de la porte ; elles courent sur toute sa hauteur ou s'arrêtent à une **bordure** en haut
+    et en bas. Quand des boîtiers de charnière sont percés au dos et que la rainure les rejoindrait, elles restent à
+    45 mm des chants de côté. La porte reste une seule planche, débitée comme une porte plate. Le panneau refuse des
+    rainures trop profondes (3 mm de bois au moins), un entraxe impossible, une bordure trop large
+    (`features/door-decor.ts`, pur ; les rainures sont creusées d'un coup par `features/decor-cut.ts`).
+    Les façades de tiroir restent plates.
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.
