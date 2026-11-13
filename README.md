@@ -2295,6 +2295,12 @@ opération existante.
   `app/library-panel.ts`.
 - **Onglets du ruban** : au-dessus du ruban, comme dans Fusion, **Conception 3D**, **Dressing** et **Cuisine** montrent chacun les groupes de leur travail ; Modifier, Fabrication et Client sont dans les trois.
 - **Modules à glisser** (groupe « Dressing ») : une palette de modules ; on en glisse un dans une niche de la vue, la niche visée s'allume en orange, et il s'y pose à ses cotes usuelles, en une annulation. Une niche **vide** le prend même quand elle fait partie d'un module posé (la niche sous la seule étagère d'une colonne, le chapeau au-dessus d'une penderie) ; seule une niche qui a déjà une tringle ou des tiroirs le refuse.
+  **Ses réglages sont au bas du panneau** (`app/dressing/module-options.ts`, les mêmes lignes que l'outil Module) :
+  ceux du module cliqué dans la liste (étagères ou « Selon l'espacement », espacement, chapeau, zone et nombre de
+  tiroirs, jeux, tringle), qui servent au prochain module glissé ; puis, sitôt le module posé, « Module posé : … » —
+  les siens, relus dans le document, avec la hauteur de chaque niche et l'épaisseur des étagères : chaque réglage
+  changé refait le module sur place en une annulation (`withModuleChanged`), un Ctrl + Z les ramène, « Retirer ce
+  module » libère sa niche. La palette ouverte, un clic sur un module posé dans la vue le reprend.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.

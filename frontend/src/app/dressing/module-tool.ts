@@ -7,14 +7,11 @@
  * hauteur de chaque niche, tout se change, et OK le remplace en une annulation.
  */
 import {
-  DRAWERS,
   MODULES,
   moduleEquipment,
-  moduleHas,
   moduleLayout,
   moduleSizes,
   moduleWarnings,
-  ROD,
   withModules,
   type ModuleKind,
   type ModuleLayout,
@@ -23,7 +20,7 @@ import {
 import { moduleOfNiche, withModuleChanged, withoutModule, type PlacedModule } from "../../document/module-edit";
 import type { CadDocument, DisplayUnit, SketchFeature, Vec3 } from "../../document/types";
 import { nicheGeometry, worldBox } from "../../features/niche-parts";
-import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
+import { formatLength } from "../../measurements/units";
 import type { Vec2 } from "../../sketcher/edit";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import type { NicheBox } from "../../sketcher/shelves";
@@ -31,6 +28,7 @@ import { el } from "../../ui/dom";
 import { placePanel } from "../../ui/dock";
 import { panelHeader } from "../../ui/panel-close";
 import { moduleChoice, moduleList } from "./module-list";
+import { FIELD, moduleOptionRows, SMALL } from "./module-options";
 import { myModules, removeMyModule, saveMyModule } from "./my-modules";
 
 export interface ModuleToolHost {
@@ -49,11 +47,6 @@ type Chosen = { partition: string; path: number[]; box: NicheBox };
 
 /** Kept for the session: the last module (mm). */
 const LAST: { kind: ModuleKind; sizes: ModuleSizes; thickness: number } = { kind: "long", sizes: moduleSizes("long"), thickness: 18 };
-
-const FIELD =
-  "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
-const ROW = "grid grid-cols-[7rem_1fr] items-center gap-1.5";
-const SMALL = "h-8 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
 const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
 
@@ -222,29 +215,6 @@ export class ModuleTool {
     const active = document.activeElement;
     if (active instanceof HTMLInputElement && this.panel.contains(active)) return;
     const unit = this.host.unit();
-    const number = (label: string, mm: number, set: (mm: number) => void, allowZero = false): HTMLElement => {
-      const input = el("input", { type: "text", inputmode: "decimal", class: `${FIELD} text-right font-mono`, value: trim(toDisplay(mm, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
-      const apply = () => {
-        const parsed = parseNumber(input.value);
-        const ok = parsed !== null && (allowZero ? parsed >= 0 : parsed > 0);
-        input.setAttribute("aria-invalid", String(!ok));
-        if (ok) {
-          set(fromDisplay(parsed, unit));
-          this.mine = null;
-          this.recompute();
-        }
-      };
-      input.addEventListener("change", apply);
-      input.addEventListener("blur", () => this.draw());
-      input.addEventListener("keydown", (event) => {
-        event.stopPropagation();
-        if (event.key === "Enter") {
-          apply();
-          input.blur();
-        }
-      });
-      return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
-    };
     const mine = myModules();
     const list = moduleList(this.mine ? null : this.kind, (kind) => this.setKind(kind));
     const owned = mine.length
@@ -259,13 +229,6 @@ export class ModuleTool {
           ),
         )
       : null;
-    const has = moduleHas(this.kind);
-    const drawers = el("select", { class: FIELD, "aria-label": "Tiroirs" }, ...Array.from({ length: 8 }, (_, i) => el("option", { value: String(i + 1), selected: i + 1 === this.sizes.drawers }, String(i + 1))));
-    drawers.addEventListener("change", () => {
-      this.sizes.drawers = Number(drawers.value);
-      this.mine = null;
-      this.recompute();
-    });
     const name = el("input", { type: "text", class: `${FIELD} flex-1`, placeholder: "Nom du module", "aria-label": "Nom du module", value: this.mine ?? "" });
     name.addEventListener("keydown", (event) => event.stopPropagation());
     const keep = el("button", { type: "button", class: SMALL }, "Garder");
@@ -288,29 +251,19 @@ export class ModuleTool {
     const laid = this.laid();
     const problem = laid.find((l) => l.problem)?.problem ?? null;
     const first = laid[0];
-    const column = first?.layout?.steps.divisions.at(-1);
-    const count = el("select", { class: FIELD, "aria-label": "Étagères" }, ...Array.from({ length: 21 }, (_, i) => el("option", { value: String(i), selected: i === (this.sizes.shelves ?? column?.input.count ?? 0) }, String(i))));
-    count.addEventListener("change", () => {
-      this.sizes.shelves = Number(count.value);
-      delete this.sizes.heights;
-      this.mine = null;
-      this.recompute();
-    });
-    const rod = { ...ROD, ...this.sizes.rod };
-    const front = { gap: DRAWERS.gap, bottomGap: DRAWERS.gap, betweenGap: DRAWERS.gap, sideGap: DRAWERS.sideGap, thickness: DRAWERS.thickness, handles: DRAWERS.handles, ...this.sizes.front };
-    const handles = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: front.handles });
-    handles.addEventListener("change", () => {
-      this.sizes.front = { ...front, handles: handles.checked };
-      this.mine = null;
-      this.recompute();
-    });
-    const level = (key: string, mm: number) => (this.sizes.heights = { ...this.sizes.heights, [key]: mm });
-    const leaves = this.niches.length === 1 ? (first?.layout?.leaves ?? []) : [];
-    const equal = el("button", { type: "button", class: `${SMALL} w-full` }, "Égaliser les niches");
-    equal.addEventListener("click", () => {
-      delete this.sizes.heights;
-      this.mine = null;
-      this.recompute();
+    // Its settings (module-options.ts): each one changed is the module's own, no longer one of « Mes modules ».
+    const options = moduleOptionRows({
+      kind: this.kind,
+      sizes: this.sizes,
+      unit,
+      layout: first?.layout ?? null,
+      levels: this.niches.length === 1,
+      thickness: { value: this.thickness, set: (mm) => (this.thickness = mm) },
+      changed: () => {
+        this.mine = null;
+        this.recompute();
+      },
+      redraw: () => this.draw(),
     });
     const inside = el("button", { type: "button", class: `${SMALL} w-full` }, "Poser un module dans cette niche seule");
     inside.addEventListener("click", () => Object.assign(this, { editing: null, niches: this.clicked ? [this.clicked] : [] }) && this.recompute());
@@ -330,29 +283,7 @@ export class ModuleTool {
       list,
       owned ? el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, "Mes modules") : null,
       owned,
-      has.spacing ? el("label", { class: ROW }, "Étagères", count) : null,
-      has.spacing
-        ? number("Espacement des étagères", this.sizes.spacing, (v) => {
-            this.sizes.spacing = v;
-            delete this.sizes.shelves;
-            delete this.sizes.heights;
-          })
-        : null,
-      leaves.length > 1 ? el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, "Niches, du bas vers le haut") : null,
-      ...(leaves.length > 1 ? leaves.map((leaf, i) => number(`${leaf.fill === "drawers" ? "Tiroirs" : leaf.fill === "rod" ? "Penderie" : "Niche"} ${i + 1}`, leaf.box.y1 - leaf.box.y0, (v) => level(leaf.key, v))) : []),
-      this.sizes.heights ? equal : null,
-      has.hat ? number("Hauteur du chapeau", this.sizes.hat, (v) => (this.sizes.hat = v)) : null,
-      has.drawers ? number("Zone des tiroirs", this.sizes.drawerZone, (v) => (this.sizes.drawerZone = v)) : null,
-      has.drawers ? el("label", { class: ROW }, "Tiroirs", drawers) : null,
-      has.drawers ? number("Jeu en haut", front.gap, (v) => (this.sizes.front = { ...front, gap: v }), true) : null,
-      has.drawers && this.sizes.drawers > 1 ? number("Jeu entre façades", front.betweenGap, (v) => (this.sizes.front = { ...front, betweenGap: v }), true) : null,
-      has.drawers ? number("Jeu en bas", front.bottomGap, (v) => (this.sizes.front = { ...front, bottomGap: v }), true) : null,
-      has.drawers ? number("Jeu de côté", front.sideGap, (v) => (this.sizes.front = { ...front, sideGap: v }), true) : null,
-      has.drawers ? number("Épaisseur façades", front.thickness, (v) => (this.sizes.front = { ...front, thickness: v })) : null,
-      has.drawers ? el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée") : null,
-      has.rod ? number("Diamètre tringle", rod.diameter, (v) => (this.sizes.rod = { ...rod, diameter: v })) : null,
-      has.rod ? number("Tringle sous le haut", rod.drop, (v) => (this.sizes.rod = { ...rod, drop: v })) : null,
-      number("Épaisseur des étagères", this.thickness, (v) => (this.thickness = v)),
+      ...options,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, this.niches.length > 1 ? `Une niche choisie ne peut pas recevoir ce module : ${problem}` : problem) : null,
       ...this.warnings().map((w) => el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, w)),
       el("div", { class: "flex gap-1.5" }, name, keep, this.mine ? forget : null),

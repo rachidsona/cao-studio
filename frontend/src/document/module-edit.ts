@@ -35,7 +35,7 @@ const trousersIn = (doc: CadDocument, here: NicheBox, sketch: SketchFeature, par
 };
 
 /** The module filling exactly this niche, or null: nothing there, or something divided by hand. */
-function moduleAt(doc: CadDocument, sketch: SketchFeature, partition: string, path: number[]): PlacedModule | null {
+export function moduleAt(doc: CadDocument, sketch: SketchFeature, partition: string, path: number[]): PlacedModule | null {
   const rebuilt = rebuildChain(sketch, partition);
   if (typeof rebuilt === "string") return null;
   const steps = (sketch.offsets ?? []).filter((r): r is OffsetRecord & { step: Extract<OffsetRecord["step"], { kind: "shelves" }> } => isShelves(r) && r.step.of === partition && under([...r.step.niche, 0], path));
