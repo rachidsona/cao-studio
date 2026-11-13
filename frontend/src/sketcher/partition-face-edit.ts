@@ -60,10 +60,10 @@ export function workProblem(g: SketchGeometry, of: string, work: FaceWork, sketc
   if (!sketch) return null;
   const drawn = { ...sketch, offsets: work.offsets };
   for (const f of work.niches) {
-    if (f.partition !== of || (f.fill !== "rod" && f.fill !== "drawers")) continue;
+    if (f.partition !== of || (f.fill !== "rod" && f.fill !== "drawers" && f.fill !== "accessory")) continue;
     const n = nicheGeometry(f, drawn);
     const problem = typeof n === "string" ? n : nicheProblem(f, n);
-    if (problem) return `${f.fill === "rod" ? "Tringle" : "Tiroirs"} : ${problem}`;
+    if (problem) return `${f.fill === "rod" ? "Tringle" : f.fill === "accessory" ? f.name : "Tiroirs"} : ${problem}`;
   }
   return null;
 }

@@ -1,0 +1,88 @@
+/** « Accessoire intérieur » : un accessoire acheté posé dans une niche, par le clic droit, refusé s'il ne tient pas, au devis. */
+import { expect, test, type Page } from "@playwright/test";
+import { newProject } from "./helpers";
+
+const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
+const shot = async (page: Page, name: string) => {
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+};
+
+/** A wall of a dressing, seen from the front. */
+async function wall(page: Page) {
+  await click(page, '[data-workshop="dressing-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de dressing" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
+  const partition = page.getByRole("dialog", { name: "Répartition" });
+  await partition.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(partition).toHaveCount(0);
+  await page.waitForTimeout(1000);
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(800);
+}
+
+test("un accessoire se pose dans une niche par le clic droit, refuse une niche trop large, et va au devis", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-accessoires");
+  const saved = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string }[] } }).document.features.filter((f) => f.type === "niche" && f.fill === "accessory"), api);
+  };
+  await wall(page);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  const [x, y] = [view.x + view.width * 0.38, view.y + view.height * 0.55];
+  const tree = page.getByLabel(/^Navigateur : corps/);
+
+  // From the menu of the niche: the tool, its niche chosen.
+  await page.mouse.click(x, y, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Accessoire intérieur" }).click();
+  const tool = page.getByRole("dialog", { name: "Accessoire" });
+  await expect(tool).toContainText("Niche choisie");
+  const model = tool.getByRole("combobox", { name: "Accessoire", exact: true });
+  const ok = tool.getByRole("button", { name: "OK", exact: true });
+
+  // A bottle rack is for a narrow niche: refused here, with what it asks for.
+  await model.selectOption({ label: "Range-bouteilles coulissant" });
+  await expect(tool).toContainText("trop large pour « Range-bouteilles coulissant »");
+  await expect(ok).toBeDisabled();
+
+  // A trouser rack, 50 cm above the bottom of the niche (the project counts in cm).
+  await model.selectOption({ label: "Porte-pantalons coulissant" });
+  await expect(tool.locator("[data-accessory-needs]")).toContainText("de profondeur");
+  const lift = tool.getByRole("textbox", { name: /^Bas à/ });
+  await lift.fill("50");
+  await lift.press("Tab");
+  await expect(tool).toContainText("à 50 cm du bas de la niche");
+  await expect(tool).toContainText("Prix indicatif");
+  await expect(ok).toBeEnabled();
+  await page.waitForTimeout(600);
+  await shot(page, "accessoire-apercu");
+  await ok.click();
+  await expect(page.getByText("Niche équipée : accessoire.")).toBeVisible();
+  // The tool stays for other niches; Terminer closes it.
+  await expect(tool).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  await expect(tree.getByText("Porte-pantalons coulissant 1", { exact: true }).first()).toBeVisible();
+  await expect(page.locator('[data-ref="status-save"]')).not.toContainText("erreur");
+  await expect.poll(saved, { timeout: 30_000 }).toMatchObject([{ name: "Porte-pantalons coulissant 1", accessory: { model: "trousers", lift: 500 } }]);
+  await page.waitForTimeout(1500);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await page.waitForTimeout(900);
+  await shot(page, "accessoire-pose");
+
+  // Bought: in the quote, not in the cut list.
+  await click(page, '[data-workshop="quote"]');
+  const quote = page.getByRole("dialog", { name: "Devis" });
+  await expect(quote).toContainText("Porte-pantalons coulissant");
+  await quote.getByRole("button", { name: "Fermer", exact: true }).first().click();
+  await click(page, '[data-workshop="cutlist"]');
+  const list = page.getByRole("dialog", { name: "Liste de débit" });
+  await expect(list).toBeVisible();
+  await expect(list).not.toContainText("Barre 1");
+  expect(errors).toEqual([]);
+});

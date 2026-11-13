@@ -1045,6 +1045,22 @@ opération existante.
     répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le
     dit. La modifier depuis l'historique rouvre l'outil, sa niche choisie. Les calculs sont dans
     `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/dressing/niche-tool.ts`.
+  - **Accessoire intérieur** (bouton du ruban, clic droit dans une niche, ou la liste « Équipement » du même
+    outil) : un **accessoire acheté** posé dans la niche. Pour la **cuisine** : range-couverts à recouper, poubelle
+    coulissante à 2 ou 3 bacs, panier coulissant fil chromé, range-bouteilles coulissant, égouttoir de meuble haut.
+    Pour le **dressing** : porte-pantalons coulissant, panier, porte-chaussures, porte-cravates et ceintures, miroir
+    pivotant, penderie escamotable, et la **tablette coulissante** (une planche débitée sur une paire de coulisses).
+    - Chaque modèle dit la **largeur de niche** qu'il accepte, la **profondeur** qu'il lui faut (20 mm de retrait
+      derrière l'avant des panneaux) et la **hauteur** qu'il prend : le panneau l'écrit, et refuse une niche trop
+      étroite, trop large, pas assez profonde ou trop basse, en disant la cote qui manque.
+    - « **Bas à (du bas de la niche)** » le monte dans la niche ; la penderie escamotable se pend sous le haut. Dans
+      une niche à tiroirs, « **Dans le tiroir** » pose le range-couverts sur le fond du tiroir choisi.
+    - Il **suit sa niche**, reste **hors du débit** et va au **devis** à son prix indicatif (en MAD, qu'un tarif
+      réglé à la main remplace) ; il est chromé dans la vue, son miroir en miroir, ses bacs en plastique gris, tant
+      qu'on ne lui donne pas une apparence. Les cotes sont des repères du commerce : la fiche du fabricant fait foi.
+    - Dans un **meuble de cuisine**, faire d'abord clic droit sur le meuble, « Isoler et aménager » : ses niches
+      reçoivent alors les accessoires. Le catalogue et les pièces sont dans `features/accessory-parts.ts` (pur), les
+      lignes du panneau dans `app/dressing/accessory-rows.ts`.
 - **Panneaux** (groupe « Meuble », comme la conception de squelette de JoinerCAD) : on dessine le squelette
   du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
   étagère), puis chaque ligne devient une planche, un corps à part.

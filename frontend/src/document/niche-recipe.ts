@@ -92,7 +92,7 @@ export function withRecipe(base: CadDocument, place: NichePlace, recipe: NicheRe
   const features: NicheFeature[] = [];
   let probe = doc;
   for (const { at, feature, title } of recipe.equipment) {
-    const f = { ...feature, id: uniqueId(probe, feature.fill === "rod" ? "pd" : "td"), name: uniqueName(probe, title), sketch: place.sketch, partition: place.partition, niche: [...place.path, ...at] } as NicheFeature;
+    const f = { ...feature, id: uniqueId(probe, feature.fill === "rod" ? "pd" : feature.fill === "accessory" ? "ac" : "td"), name: uniqueName(probe, title), sketch: place.sketch, partition: place.partition, niche: [...place.path, ...at] } as NicheFeature;
     const here = nicheGeometry(f, sketch);
     if (typeof here === "string") return here;
     const problem = nicheProblem(f, here);

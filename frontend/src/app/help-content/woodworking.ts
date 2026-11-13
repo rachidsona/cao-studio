@@ -386,6 +386,19 @@ export const WOODWORKING: HelpFamily[] = [
         ],
         tip: "Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère. Les pièces vont au débit, coulisses et poignées au devis. Les tiroirs suivent leur niche.",
       },
+      {
+        keys: ["data-action:accessory"],
+        name: "Accessoire intérieur",
+        what: "Pose dans une niche un accessoire acheté, pour la cuisine ou le dressing, et le compte au devis.",
+        steps: [
+          "Cliquez « Accessoire intérieur » (ou clic droit dans une niche, « Accessoire intérieur »), puis la niche ; cliquez-en plusieurs pour y mettre le même.",
+          "Choisissez l'« Accessoire ». Cuisine : range-couverts, poubelle coulissante à 2 ou 3 bacs, panier fil, range-bouteilles, égouttoir. Dressing : porte-pantalons, panier, porte-chaussures, porte-cravates, miroir pivotant, penderie escamotable, tablette coulissante.",
+          "Réglez « Bas à (du bas de la niche) » pour le monter. Dans une niche à tiroirs, « Dans le tiroir » pose le range-couverts sur le fond du tiroir choisi.",
+          "Lisez la ligne grise : la largeur, la profondeur et la hauteur de niche que le modèle demande. Un message orange dit ce qui manque.",
+          "Cliquez « OK », puis une autre niche pour continuer, ou « Terminer ».",
+        ],
+        tip: "Dans un meuble de cuisine, faites d'abord clic droit sur le meuble, « Isoler et aménager » : ses niches reçoivent alors les accessoires. L'accessoire suit sa niche, reste hors du débit et va au devis à son prix indicatif, que le tarif du devis peut remplacer. La tablette coulissante est débitée, avec une paire de coulisses au devis. Les cotes sont des repères du commerce : la fiche du fabricant fait foi.",
+      },
     ],
   },
 ];

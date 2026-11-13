@@ -1,6 +1,6 @@
 /**
  * Quincaillerie du modèle, pour le devis : charnières, coulisses et poignées des façades, tringles et supports des
- * penderies, coulisses et poignées des tiroirs de niche, vis confirmat, tourillons et excentriques
+ * penderies, coulisses et poignées des tiroirs de niche, accessoires intérieurs à leur prix du catalogue, vis confirmat, tourillons et excentriques
  * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble) ; le verre trempé (au m²) et le
  * profilé alu (au mètre) des portes vitrées, qui s'achètent au lieu de se scier.
  */
@@ -14,9 +14,10 @@ export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
 export const DOWEL = "Tourillon Ø8 × 30";
 export const MINIFIX_SET = "Excentrique Minifix 15 + tige";
 
-export function modelHardware(doc: CadDocument): { name: string; quantity: number; unit?: string }[] {
+export function modelHardware(doc: CadDocument): { name: string; quantity: number; unit?: string; price?: number }[] {
   const counts = new Map<string, number>();
   const units = new Map<string, string>();
+  const prices = new Map<string, number>();
   const add = (name: string, quantity: number) => quantity > 0 && counts.set(name, Math.round(((counts.get(name) ?? 0) + quantity) * 100) / 100);
   let screwHoles = 0;
   let dowelHoles = 0;
@@ -33,6 +34,7 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
       for (const h of nicheHardware(doc.features, f)) {
         add(h.name, h.quantity);
         if (h.unit) units.set(h.name, h.unit);
+        if (h.price !== undefined) prices.set(h.name, h.price);
       }
     } else if (f.type === "trim") {
       for (const p of f.parts.filter((x) => x.hardware)) {
@@ -51,7 +53,7 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   add(CONFIRMAT_SCREW, Math.floor(screwHoles / 2));
   add(DOWEL, Math.floor(dowelHoles / 2));
   add(MINIFIX_SET, cams);
-  return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}) })));
+  return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}), ...(prices.has(name) ? { price: prices.get(name) } : {}) })));
 }
 
 /**

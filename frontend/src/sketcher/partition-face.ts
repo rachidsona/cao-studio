@@ -171,7 +171,8 @@ export function partitionFace(draft: FaceDraft, g: SketchGeometry, equipment: { 
   if (equipment && draft.depth) {
     const sketch = { ...equipment.sketch, offsets };
     for (const f of equipment.niches) {
-      if (f.partition !== id || f.fill === "back") continue;
+      // An accessory is not drawn on the face: it has no dimension to set there.
+      if (f.partition !== id || f.fill === "back" || f.fill === "accessory") continue;
       const n = nicheGeometry(f, sketch);
       if (typeof n === "string") continue;
       const of = f.fill === "rod" || f.fill === "drawers" ? f.id : undefined;

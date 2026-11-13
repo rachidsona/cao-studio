@@ -2,13 +2,15 @@
  * « Penderie » and « Tiroirs » worked in the 3D view, as Étagères (joinery-3d.ts): click one niche of a Répartition —
  * or several (a click on a chosen one releases it) — set the rod or the drawers, see the parts in orange, OK. Each
  * niche gets its own feature (« Penderie 1 », « Tiroirs 1 »), which follows the niche when the Répartition or its
- * divisions change; one OK is one undo step. « Porte sur niches » makes one door over all the niches chosen. The tool stays to equip other niches until Échap. The parts are in
+ * divisions change; one OK is one undo step. « Porte sur niches » makes one door over all the niches chosen. « Accessoire »
+ * puts a bought accessory of the catalogue (features/accessory-parts.ts) in each niche chosen. The tool stays to equip other niches until Échap. The parts are in
  * features/niche-parts.ts.
  */
 import type { SketchGeometry } from "../../document/sketch";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature, Vec3 } from "../../document/types";
 import { uniqueId } from "../../document/operations";
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../../features/glass-door";
+import { accessoryModel, partBounds } from "../../features/accessory-parts";
 import { nicheGeometry, nicheParts, nicheProblem, worldBox, type NicheGeometry } from "../../features/niche-parts";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import type { Vec2 } from "../../sketcher/edit";
@@ -17,6 +19,7 @@ import type { NicheBox } from "../../sketcher/shelves";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
+import { accessoryResult, accessoryRows } from "./accessory-rows";
 
 export type NicheFill = Exclude<NicheFeature["fill"], "doors" | "back">;
 type Chosen = { partition: string; path: number[]; box: NicheBox };
@@ -36,11 +39,12 @@ export interface NicheToolHost {
 }
 
 /** Kept for the session: the last values (mm). */
-const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 3, betweenGap: 3, sideGap: 3, thickness: 18, handles: true };
+const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 3, betweenGap: 3, sideGap: 3, thickness: 18, handles: true, accessory: { model: "cutlery", lift: 0 } };
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
   door: { title: "Porte sur niches", one: "porte", help: "Une porte sur les niches choisies, voisines et formant un rectangle. En applique, elle couvre la moitié des panneaux autour (le panneau entier au bord du meuble), comme la porte d'une case ; encastrée, elle est dans les niches, au nu des panneaux, un jeu tout autour." },
+  accessory: { title: "Accessoire", one: "accessoire", help: "Un accessoire acheté, posé dans la niche : il la suit, va au devis à son prix indicatif et reste hors du débit (sauf la tablette coulissante, débitée, avec sa paire de coulisses). Chaque modèle demande une largeur et une profondeur de niche : l'outil dit ce qui manque. Les cotes sont des repères du commerce, la fiche du fabricant fait foi. Dans un meuble de cuisine, faites d'abord clic droit sur le meuble, « Isoler et aménager »." },
   drawers: { title: "Tiroirs", one: "tiroirs", help: "Façades encastrées dans la niche (au nu des panneaux), ou en applique devant eux (elles couvrent la moitié des panneaux autour) ; chacune avec son caisson sur coulisses. Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère." },
 };
 
@@ -125,10 +129,10 @@ export class NicheTool {
 
   /** The feature this tool would make for a niche chosen. */
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
-    const { span: _span, ...all } = this.settings as Settings & { span?: number[][] };
-    // Only a door has a style (and its glass).
+    const { span: _span, accessory, ...all } = this.settings as Settings & { span?: number[][] };
+    // Only a door has a style (and its glass), only an accessory its model.
     const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, ...rest } = all;
-    const settings = this.fill === "door" ? all : rest;
+    const settings = this.fill === "door" ? all : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
     const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
     return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
   }
@@ -151,14 +155,21 @@ export class NicheTool {
     });
   }
 
+  /** The tops of the bottoms of the drawers that equip this niche, above its bottom, from the top drawer (mm). */
+  private drawersIn(niche: Chosen | undefined): number[] {
+    if (!niche) return [];
+    const drawers = this.host.doc().features.find((f): f is NicheFeature => f.type === "niche" && f.fill === "drawers" && f.sketch === this.host.sketchId() && f.partition === niche.partition && f.niche.join(".") === niche.path.join("."));
+    const n = drawers && nicheGeometry(drawers, this.sketch());
+    if (!drawers || !n || typeof n === "string") return [];
+    return nicheParts(drawers, n).filter((p) => p.name.endsWith("— fond")).map((p) => p.to[1] - niche.box.y0);
+  }
+
   /** The parts OK would make, as boxes of the world (the rod by its square): the orange preview. */
   solids(): [Vec3, Vec3][] {
     return this.checked().flatMap(({ niche, geometry, problem }) => {
       if (!geometry || problem) return [];
       return nicheParts(this.feature(niche, "preview", ""), geometry).map((part) => {
-        if (part.kind === "box") return worldBox(geometry, part);
-        const r = part.radius ?? 1;
-        return worldBox(geometry, { from: [part.from[0], part.from[1] - r, part.from[2] - r], to: [part.to[0], part.to[1] + r, part.to[2] + r] });
+        return worldBox(geometry, partBounds(part));
       });
     });
   }
@@ -201,6 +212,7 @@ export class NicheTool {
       el("option", { value: "rod", selected: this.fill === "rod" }, "Penderie (tringle)"),
       el("option", { value: "drawers", selected: this.fill === "drawers" }, "Tiroirs"),
       el("option", { value: "door", selected: this.fill === "door" }, "Porte sur niches"),
+      el("option", { value: "accessory", selected: this.fill === "accessory" }, "Accessoire intérieur"),
     );
     kind.addEventListener("change", () => {
       this.fill = kind.value as NicheFill;
@@ -249,6 +261,8 @@ export class NicheTool {
       if (this.fill === "door") {
         const door = parts.find((p) => p.role === "front");
         if (door) result = `Porte de ${formatLength(door.to[0] - door.from[0], unit)} × ${formatLength(door.to[1] - door.from[1], unit)} sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.`;
+      } else if (this.fill === "accessory") {
+        result = accessoryResult(this.settings, unit);
       } else if (this.fill === "rod") {
         const rod = parts.find((p) => p.kind === "rod");
         if (rod) result = `Tringle de ${formatLength(rod.to[0] - rod.from[0], unit)}, à ${formatLength(rod.from[1] - box.y0, unit)} du bas de la niche.`;
@@ -267,7 +281,7 @@ export class NicheTool {
         this.niches.length === 0
           ? this.fill === "door"
             ? "Cliquez les niches que la porte va occuper : voisines, elles doivent former un rectangle."
-            : `Cliquez la niche à équiper ; cliquez-en plusieurs pour y mettre la même ${this.fill === "rod" ? "penderie" : "série de tiroirs"}.`
+            : `Cliquez la niche à équiper ; cliquez-en plusieurs pour y mettre ${this.fill === "rod" ? "la même penderie" : this.fill === "accessory" ? "le même accessoire" : "la même série de tiroirs"}.`
           : this.niches.length === 1
             ? `Niche choisie : ${size}.${this.editing ? "" : " Cliquez-en d'autres pour les ajouter, ou la même pour la retirer."}`
             : `${this.niches.length} niches choisies.`,
@@ -282,6 +296,8 @@ export class NicheTool {
             el("label", { class: ROW }, "Charnières", hinge),
             el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
           ]
+        : this.fill === "accessory"
+        ? accessoryRows({ settings: this.settings, unit, number, changed: () => this.recompute(), drawers: this.drawersIn(first?.niche) })
         : this.fill === "rod"
         ? [number("Diamètre", this.settings.diameter, (v) => ((this.settings.diameter = v), this.recompute())), number("Axe sous le haut", this.settings.drop, (v) => ((this.settings.drop = v), this.recompute()))]
         : [
@@ -309,7 +325,7 @@ export class NicheTool {
     if (this.done) return;
     const problem = this.checked().find((c) => c.problem)?.problem;
     if (this.niches.length === 0 || problem) return this.host.notify(problem ?? "Cliquez d'abord la niche à équiper.", "error");
-    const title = this.fill === "door" ? "Porte" : WORDS[this.fill].title;
+    const title = this.fill === "door" ? "Porte" : this.fill === "accessory" ? (accessoryModel(this.settings.accessory?.model)?.label ?? "Accessoire") : WORDS[this.fill].title;
     if (this.editing) {
       const niche = this.niches[0];
       if (!niche || !this.host.apply([this.feature(niche, this.editing.id, this.editing.name)], `${this.editing.name} : modification faite.`)) return;
@@ -322,7 +338,7 @@ export class NicheTool {
     const order = [...this.niches].sort((a, b) => a.box.x0 - b.box.x0 || a.box.y0 - b.box.y0);
     if (this.fill === "door") order.splice(1);
     const features = order.map((n) => {
-      const id = uniqueId(doc, this.fill === "rod" ? "pd" : this.fill === "door" ? "pn" : "td");
+      const id = uniqueId(doc, this.fill === "rod" ? "pd" : this.fill === "door" ? "pn" : this.fill === "accessory" ? "ac" : "td");
       const f = this.feature(n, id, `${title} ${next++}`);
       doc = { ...doc, features: [...doc.features, f] };
       return f;

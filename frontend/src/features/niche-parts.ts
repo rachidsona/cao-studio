@@ -15,6 +15,7 @@
  *   qui se rejoignent au milieu de la place du côté absent.
  * - Porte vitrée (portes de case ou sur niches) : la porte est le cadre en profilé alu ; son verre trempé vient après
  *   les poignées (« Vitre porte n »), au milieu de l'épaisseur, et pivote avec elle (glass-door.ts).
+ * - Accessoire : une pièce achetée du catalogue (accessory-parts.ts), posée à une hauteur dans la niche.
  * - Fond (de toute la répartition) : en applique derrière les panneaux, sur le dessus, le dessous et les côtés ; un seul
  *   pour tout le placard, ou un par case (coupé au milieu d'un côté simple, comme les portes ; un seul pour des cases
  *   sans côté entre elles).
@@ -30,6 +31,7 @@ import { frameOf, toWorld, type SketchFrame } from "../sketcher/frame";
 import { isPartition, pathKey, rebuildChain, type NicheNode } from "../sketcher/partition-history";
 import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
+import { accessoryHardware, accessoryParts, accessoryProblem } from "./accessory-parts";
 import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass } from "./glass-door";
 
 export interface NicheGeometry {
@@ -189,6 +191,7 @@ function styleProblem(f: Pick<NicheFeature, "style" | "frameWidth" | "frameDepth
 export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "sketch" | "partition" | "niche">, n: NicheGeometry): string | null {
   if (n.cut && f.fill === "drawers") return "Pas de tiroirs dans un angle coupé : ils sortiraient par le pan coupé.";
   if (n.cut && (f.fill === "doors" || f.fill === "door")) return "Un angle coupé n'a pas ces portes : cochez « Porte sur le pan coupé » dans le Plan de dressing.";
+  if (f.fill === "accessory") return accessoryProblem(f, n);
   const width = n.box.x1 - n.box.x0;
   const height = n.box.y1 - n.box.y0;
   if (f.fill === "rod") {
@@ -233,6 +236,7 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
 /** Every part, in body order; none when the settings are impossible. */
 export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
   if (nicheProblem(f, n)) return [];
+  if (f.fill === "accessory") return accessoryParts(f, n);
   const { x0, x1, y0, y1 } = n.box;
   const D = n.depth;
   if (f.fill === "back") {
@@ -366,6 +370,8 @@ export function nichePartNames(features: readonly { id: string; type: string }[]
  */
 export function nicheMaterials(features: readonly { id: string; type: string }[], f: NicheFeature): (string | null)[] {
   if (f.fill === "back") return nichePartsIn(features, f).map(() => (f.thickness <= 10 ? "hdf" : null));
+  // A pull-out shelf is a board like the panels.
+  if (f.fill === "accessory") return nichePartsIn(features, f).map(() => null);
   return nichePartsIn(features, f).map((p) => (p.role ? null : p.name.endsWith("fond") ? "hdf" : "birch-plywood"));
 }
 
@@ -373,9 +379,10 @@ export const ROD = "Tringle de penderie Ø25 (m)";
 export const ROD_SUPPORT = "Support de tringle";
 
 /** Hardware of the equipment (to buy, and in the quote): the rod by the metre and its supports, or slides and handles. */
-export function nicheHardware(features: readonly { id: string; type: string }[], f: NicheFeature): { name: string; quantity: number; unit?: string }[] {
+export function nicheHardware(features: readonly { id: string; type: string }[], f: NicheFeature): { name: string; quantity: number; unit?: string; price?: number }[] {
   const parts = nichePartsIn(features, f);
   if (!parts.length || f.fill === "back") return [];
+  if (f.fill === "accessory") return accessoryHardware(f, parts);
   if (f.fill === "rod") {
     const rod = parts.find((p) => p.kind === "rod");
     const metres = rod ? Math.round((rod.to[0] - rod.from[0]) / 10) / 100 : 0;

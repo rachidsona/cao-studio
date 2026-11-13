@@ -706,8 +706,8 @@ export interface HardwareSizes {
 }
 
 /**
- * Equipment of a niche of a « Répartition »: a hanging rail (rod and its two end supports) or drawers inset in the
- * opening (fronts and their boxes on slides). It follows its niche: the sketch holding the partition, the partition
+ * Equipment of a niche of a « Répartition »: a hanging rail (rod and its two end supports), drawers inset in the
+ * opening (fronts and their boxes on slides), or a bought accessory (features/accessory-parts.ts). It follows its niche: the sketch holding the partition, the partition
  * step, and the niche's path (as the Étagères steps name it). Each part is a body ("<id>#n").
  */
 export interface NicheFeature extends FeatureBase {
@@ -719,7 +719,9 @@ export interface NicheFeature extends FeatureBase {
    * « doors »: a door in front of every case of the partition; « back »: its back panel (their `niche` is empty);
    * « door »: one door over the niche and those of `span` (neighbours making a rectangle with it).
    */
-  fill: "rod" | "drawers" | "doors" | "back" | "door";
+  fill: "rod" | "drawers" | "doors" | "back" | "door" | "accessory";
+  /** Accessory: its model in the catalogue, and the height of its bottom above the bottom of the niche (mm). */
+  accessory?: { model: string; lift: number };
   /** Door: the other niches it covers. */
   span?: number[][];
   /** Rod: its diameter, and the distance from the top of the niche to its axis (mm). */

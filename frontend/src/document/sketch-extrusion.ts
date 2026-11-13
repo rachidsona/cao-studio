@@ -16,7 +16,7 @@ function withNiches(doc: CadDocument, sketchId: string, niches: readonly NicheFe
   for (const f of niches) {
     if (f.sketch !== sketchId) continue;
     if (findFeature(next, f.id)?.type === "niche") next = { ...next, features: next.features.map((g) => (g.id === f.id ? structuredClone(f) : g)) };
-    else next = { ...next, features: [...next.features, { ...structuredClone(f), id: uniqueId(next, f.fill === "rod" ? "pd" : "td"), name: uniqueName(next, f.name.replace(/ \d+$/, "")) }] };
+    else next = { ...next, features: [...next.features, { ...structuredClone(f), id: uniqueId(next, f.fill === "rod" ? "pd" : f.fill === "accessory" ? "ac" : "td"), name: uniqueName(next, f.name.replace(/ \d+$/, "")) }] };
   }
   return next;
 }

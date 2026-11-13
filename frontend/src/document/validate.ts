@@ -280,7 +280,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);
       if (!Array.isArray(feature.niche) || !feature.niche.every((n) => Number.isInteger(n) && (n as number) >= 0)) errors.push(`${where} : niche invalide.`);
-      if (!["rod", "drawers", "doors", "back", "door"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      if (!["rod", "drawers", "doors", "back", "door", "accessory"].includes(feature.fill as string)) errors.push(`${where} : équipement inconnu.`);
+      if (feature.fill === "accessory" && !(isObject(feature.accessory) && typeof feature.accessory.model === "string" && isFiniteNumber(feature.accessory.lift))) errors.push(`${where} : accessoire invalide.`);
       if (feature.span !== undefined && (!Array.isArray(feature.span) || !feature.span.every((p) => Array.isArray(p) && p.every((k) => Number.isInteger(k))))) errors.push(`${where} : niches de la porte invalides.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
       if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);

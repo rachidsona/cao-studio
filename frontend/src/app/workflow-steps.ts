@@ -41,7 +41,7 @@ export const STEPS: Record<string, Step[]> = {
   dressing: [
     room,
     { id: "plan", label: "Plan", tools: ["data-workshop:dressing-plan", "data-action:dressing"], done: (d) => d.features.some((f) => f.type === "sketch" && !!f.dressingPlan), open: '[data-workshop="dressing-plan"]' },
-    { id: "layout", label: "Aménagement", tools: ["data-action:partition", "data-action:shelves", "data-action:cloisons", "data-action:niche", "data-action:penderie", "data-action:tiroirs", "data-action:module", "data-workshop:module-palette"], done: (d) => has(d, "niche") },
+    { id: "layout", label: "Aménagement", tools: ["data-action:partition", "data-action:shelves", "data-action:cloisons", "data-action:niche", "data-action:penderie", "data-action:tiroirs", "data-action:accessory", "data-action:module", "data-workshop:module-palette"], done: (d) => has(d, "niche") },
     { id: "fronts", label: "Façades", tools: ["data-action:fronts", "data-workshop:dressing-style", "data-workshop:doors-open", "data-workshop:drawers-open", "data-action:push"], done: (d) => d.features.some((f) => f.type === "fronts" || (f.type === "niche" && (f.fill === "doors" || f.fill === "door"))) },
     { id: "finish", label: "Finitions", tools: ["data-workshop:material", "data-workshop:appearance", "data-workshop:replace", "data-action:trim", "data-action:lighting", "data-workshop:hardware"], done: (d) => has(d, "trim") },
     check,

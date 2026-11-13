@@ -44,7 +44,7 @@ export function bodyFamily(doc: CadDocument, bodyId: string): Family {
   if (info.layer && layersOf(doc).find((l) => l.id === info.layer)?.name === "Électroménager") return "appliances";
   const feature = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));
   if (feature?.type === "fronts") return "fronts";
-  if (feature?.type === "niche") return feature.fill === "back" ? "backs" : feature.fill === "rod" ? "other" : "fronts";
+  if (feature?.type === "niche") return feature.fill === "back" ? "backs" : feature.fill === "rod" || feature.fill === "accessory" ? "other" : "fronts";
   // « Caisson 1 — Côté gauche », « Finitions — Plinthe » : the piece's own name, after its feature's.
   const label = bodyLabel(doc, bodyId).trim();
   const part = label.includes(" — ") ? label.slice(label.lastIndexOf(" — ") + 3) : label;
