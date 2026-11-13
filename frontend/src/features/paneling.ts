@@ -48,38 +48,51 @@ function swap(shape: Shape3D, make: (s: Shape3D) => Shape3D): Shape3D {
   return next;
 }
 
-export function buildPaneling(feature: PanelingFeature, lookup: OutputLookup): SolidsOutput {
-  requirePositive(feature.thickness, `${feature.name} : l'épaisseur`);
-  if (!feature.faces.length) throw new GeometryError(`${feature.name} : choisissez au moins une face.`);
-  const target = requireSolid(lookup, feature.target).shape;
-  const faces = feature.faces.map((ref) => resolveFace(target, ref));
-  if (faces.some((f) => f.geomType !== "PLANE")) throw new GeometryError(`${feature.name} : seules des faces planes deviennent des panneaux.`);
-  const planes = feature.faces.map((ref) => resolveFacePlane(target, ref));
+/** The board of a flat face: the face drawn in by the thickness, kept inside the body. */
+export function faceSlab(face: Face, normal: Vec3, thickness: number): Shape3D {
+  return basicFaceExtrusion(face, new Vector(normal.map((c) => -c * thickness) as Vec3)) as Shape3D;
+}
+
+/**
+ * The boards of these flat faces of `target` (`normals`: their outward unit normals), `thickness` thick, taken inside
+ * it: mitred where two of them share an edge, or butted — the first one runs through. `name`: whose they are, for
+ * what goes wrong.
+ */
+export function facePanels(name: string, target: Shape3D, faces: readonly Face[], normals: readonly Vec3[], thickness: number, joint: PanelingFeature["joint"]): Shape3D[] {
   const middles = faces.map(edgeMiddles);
   const box = target.boundingBox;
-  const size = 4 * Math.max(box.width, box.height, box.depth, feature.thickness);
+  const size = 4 * Math.max(box.width, box.height, box.depth, thickness);
   const shapes: Shape3D[] = [];
   try {
     faces.forEach((face, i) => {
-      const n = planes[i]!.normal;
-      const prism = basicFaceExtrusion(face, new Vector(n.map((c) => -c * feature.thickness) as Vec3)) as Shape3D;
-      let piece = swap(prism, (s) => s.intersect(target) as Shape3D);
-      if (feature.joint === "miter") {
+      const n = normals[i]!;
+      let piece = swap(faceSlab(face, n, thickness), (s) => s.intersect(target) as Shape3D);
+      if (joint === "miter") {
         faces.forEach((_, j) => {
           const edge = j !== i ? sharedEdge(middles[i]!, middles[j]!) : null;
-          const m = planes[j]!.normal.map((c, k) => c - n[k]!) as Vec3;
+          const m = normals[j]!.map((c, k) => c - n[k]!) as Vec3;
           if (!edge || length(m) < 1e-6) return;
           const cut = halfSpace(m, edge, size);
           piece = swap(piece, (s) => s.intersect(cut) as Shape3D);
           cut.delete();
         });
       } else for (const before of shapes) piece = swap(piece, (s) => s.cut(before) as Shape3D);
-      shapes.push(requireSingleValidSolid(piece, `${feature.name} : le panneau ${i + 1}`));
+      shapes.push(requireSingleValidSolid(piece, `${name} : le panneau ${i + 1}`));
     });
   } catch (error) {
     for (const s of shapes) s.delete();
     if (error instanceof GeometryError) throw error;
-    throw new GeometryError(`${feature.name} : les panneaux ne se font pas ; essayez une épaisseur plus fine.`);
+    throw new GeometryError(`${name} : les panneaux ne se font pas ; essayez une épaisseur plus fine.`);
   }
-  return { kind: "solids", shapes };
+  return shapes;
+}
+
+export function buildPaneling(feature: PanelingFeature, lookup: OutputLookup): SolidsOutput {
+  requirePositive(feature.thickness, `${feature.name} : l'épaisseur`);
+  if (!feature.faces.length) throw new GeometryError(`${feature.name} : choisissez au moins une face.`);
+  const target = requireSolid(lookup, feature.target).shape;
+  const faces = feature.faces.map((ref) => resolveFace(target, ref));
+  if (faces.some((f) => f.geomType !== "PLANE")) throw new GeometryError(`${feature.name} : seules des faces planes deviennent des panneaux.`);
+  const normals = feature.faces.map((ref) => resolveFacePlane(target, ref).normal);
+  return { kind: "solids", shapes: facePanels(feature.name, target, faces, normals, feature.thickness, feature.joint) };
 }

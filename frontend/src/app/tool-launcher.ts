@@ -49,7 +49,7 @@ import { LayoutCopyTool } from "./dressing/layout-copy-tool";
 import { KitchenTool } from "./kitchen/kitchen-tool";
 import { DressingTool } from "./dressing/dressing-tool";
 
-export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances";
+export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -85,9 +85,9 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels" || kind === "gable")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer" || kind === "pullFace" || kind === "moveEdge") && edges.length ? { edges } : {}),
-    ...((kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting" || kind === "push") && bodies.length ? { bodies } : {}),
+    ...((kind === "hollow" || kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting" || kind === "push") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "extrudePath" || kind === "rectArray" || kind === "coincide" || kind === "spacing" ? curicSketches(selected, picked.selection.sketches) : {}),
-    ...((kind === "split" || kind === "move" || kind === "shell" || kind === "paneling" || kind === "intersect" || kind === "align" || kind === "ffd" || kind === "faceGlue" || kind === "extend" || kind === "push") && faces.length ? { faces } : {}),
+    ...((kind === "split" || kind === "move" || kind === "shell" || kind === "hollow" || kind === "paneling" || kind === "intersect" || kind === "align" || kind === "ffd" || kind === "faceGlue" || kind === "extend" || kind === "push") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...(kind === "move" ? { ...(edges.length ? { edges } : {}), ...(vertices.length ? { vertices } : {}) } : {}),
   };
@@ -156,10 +156,13 @@ export class ToolLauncher {
         void tool.open(options.faces ?? []);
         return;
       }
-      case "shell": {
-        const tool = new ShellTool(ctx, editing?.type === "shell" ? editing : null);
+      case "shell":
+      case "hollow": {
+        // « Vider un corps » makes a Coque that says what its sides are: reopened, it is that tool again.
+        const tool = new ShellTool(ctx, editing?.type === "shell" ? editing : null, kind === "hollow");
         this.active = tool;
-        void tool.open(options.faces ?? []);
+        // A body selected is the one to empty (no face of it: none is opened).
+        void tool.open(options.faces ?? (kind === "hollow" ? (options.bodies ?? []).slice(0, 1).map((bodyId) => ({ bodyId, faceIndex: -1 })) : []));
         return;
       }
       case "fronts":

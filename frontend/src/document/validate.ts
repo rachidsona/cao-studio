@@ -249,6 +249,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.target !== "string") errors.push(`${where} : corps à creuser manquant.`);
       checkRefs(feature.faces, "faces", where, errors);
       checkNumbers(feature, ["thickness"], where, errors);
+      if (feature.sides !== undefined && !["joined", "separate"].includes(feature.sides as string)) errors.push(`${where} : côtés du corps vidé invalides.`);
+      if (feature.joint !== undefined && !["miter", "butt"].includes(feature.joint as string)) errors.push(`${where} : assemblage des côtés invalide.`);
       break;
     case "fronts":
       if (typeof feature.cabinet !== "string") errors.push(`${where} : caisson manquant.`);

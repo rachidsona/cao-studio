@@ -72,6 +72,13 @@ def shell(i):
     i.box(5.1, -6, 0, 0.9, 12, 8).box(-6, 5.1, 0, 11.1, 0.9, 8)
 
 
+def hollow(i):
+    """A body emptied: its walls kept, the inside dark, an arrow taking what was inside out."""
+    i.box(-6, -6, 0, 12, 0.9, 8).box(-6, -6, 0, 0.9, 12, 8).box(-5.1, -5.1, 0, 10.2, 10.2, 0.9, "dark")
+    i.box(5.1, -6, 0, 0.9, 12, 8).box(-6, 5.1, 0, 11.1, 0.9, 8)
+    i.arrow((0, 0, 2.5), (0, 0, 13))
+
+
 def loft(i):
     i.box(-7, -7, 0, 14, 14, 1, "blue")
     i.path([(-7, 7, 1), (-3, 3, 10)], "#94a3b8", 0.3).path([(7, 7, 1), (3, 3, 10)], "#94a3b8", 0.3).path([(7, -7, 1), (3, -3, 10)], "#94a3b8", 0.3)
@@ -461,7 +468,7 @@ ICONS = {
     **MEUBLES,
     **VUE,
     "extrude": extrude, "revolve": revolve, "plate": plate_icon, "offset-edge": offset_edge, "hole": hole, "fillet": fillet,
-    "chamfer": chamfer, "combine": combine, "split": split, "move": move, "move-3d": move_3d, "shell": shell, "loft": loft,
+    "chamfer": chamfer, "combine": combine, "split": split, "move": move, "move-3d": move_3d, "shell": shell, "hollow": hollow, "loft": loft,
     "layers": layers, "modifier": modifier, "linked-copy": linked_copy,
     "select-plus": select_plus, "mirror": mirror, "mate": mate, "align": align, "stretch": stretch,
     "array": array, "rotate": rotate, "section": section, "machining": machining, "cutout": cutout, "assembly": assembly,

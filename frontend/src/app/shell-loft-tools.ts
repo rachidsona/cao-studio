@@ -1,21 +1,35 @@
 /**
- * Outils Coque et Lissage (comme Fusion).
+ * Outils Coque, Vider un corps et Lissage (comme Fusion).
  * - Coque : cliquez les faces à laisser ouvertes (recliquez pour retirer), réglez l'épaisseur des parois ; les faces
  *   sont prises sur une copie du corps d'avant l'opération, l'aperçu ne change pas ce qu'on peut cliquer.
+ * - Vider un corps : la même opération, prise par le corps — un clic le vide, quelle que soit sa forme, sans rien
+ *   ouvrir ; on saisit l'épaisseur de ses côtés et on choisit s'ils restent joints (un seul corps creux) ou si chacun
+ *   devient un corps (un panneau par côté plat, en onglet ou bout à bout ; la paroi d'un côté courbe). Une face
+ *   cliquée ensuite s'ouvre : elle n'a pas de côté.
  * - Lissage : cochez les esquisses à relier (dans l'ordre de l'historique), droit ou courbe entre elles.
  */
 import * as THREE from "three";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, FaceRef, LoftFeature, ShellFeature, SketchFeature } from "../document/types";
+import { formatLength } from "../measurements/units";
 import type { BodyMesh } from "../geometry/protocol";
 import { operationChoices } from "../ui/feature-meta";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
+const SIDES: [NonNullable<ShellFeature["sides"]>, string][] = [["joined", "Joints (un seul corps creux)"], ["separate", "Chaque côté seul (un corps par côté)"]];
+const JOINTS: [NonNullable<ShellFeature["joint"]>, string][] = [["miter", "En onglet (tout angle)"], ["butt", "Bout à bout"]];
+/** Kept for the session: how the last body was emptied. */
+const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]> } = { thickness: 18, sides: "joined", joint: "miter" };
+
 export class ShellTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
   private thickness: number;
+  /** « Vider un corps »: the body is taken whole, and its sides are joined or apart. */
+  private readonly hollow: boolean;
+  private sides: NonNullable<ShellFeature["sides"]>;
+  private joint: NonNullable<ShellFeature["joint"]>;
   private target: string | null = null;
   private selected: number[] = [];
   private refs: FaceRef[] = [];
@@ -23,12 +37,17 @@ export class ShellTool extends PanelTool {
   private group = new THREE.Group();
   private describing = 0;
 
-  constructor(ctx: ToolContext, editing: ShellFeature | null) {
-    super(ctx, "Coque", editing);
+  constructor(ctx: ToolContext, editing: ShellFeature | null, hollow = false) {
+    // A body emptied says what its sides are: reopened, it is « Vider un corps » again.
+    const emptying = editing ? editing.sides !== undefined : hollow;
+    super(ctx, emptying ? "Vider un corps" : "Coque", editing);
     const doc = ctx.doc();
+    this.hollow = emptying;
     this.id = editing?.id ?? uniqueId(doc, "sh");
-    this.name = editing?.name ?? uniqueName(doc, "Coque");
-    this.thickness = editing?.thickness ?? 3;
+    this.name = editing?.name ?? uniqueName(doc, emptying ? "Corps vidé" : "Coque");
+    this.thickness = editing?.thickness ?? (emptying ? LAST.thickness : 3);
+    this.sides = editing?.sides ?? LAST.sides;
+    this.joint = editing?.joint ?? LAST.joint;
     ctx.viewport.scene.add(this.group);
   }
 
@@ -47,7 +66,7 @@ export class ShellTool extends PanelTool {
     if (editing) {
       this.refs = editing.faces;
       this.selected = this.mesh ? editing.faces.flatMap((ref) => this.faceNear(ref.center)) : [];
-    } else if (first) {
+    } else if (first && !this.hollow) {
       this.selected = preselected.filter((f) => f.bodyId === first.bodyId).map((f) => f.faceIndex);
       void this.describe();
     }
@@ -72,11 +91,51 @@ export class ShellTool extends PanelTool {
   }
 
   protected feature(): ShellFeature | string {
-    if (!this.target) return "Cliquez une face du corps à creuser (elle restera ouverte).";
-    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: this.refs, thickness: this.thickness };
+    if (!this.target) return this.hollow ? "Cliquez le corps à vider." : "Cliquez une face du corps à creuser (elle restera ouverte).";
+    const shell: ShellFeature = { id: this.id, type: "shell", name: this.name, target: this.target, faces: this.refs, thickness: this.thickness };
+    return this.hollow ? { ...shell, sides: this.sides, ...(this.sides === "separate" ? { joint: this.joint } : {}) } : shell;
+  }
+
+  /** « Vider un corps »: the thickness of its sides, and whether they are joined or each one a body. */
+  private hollowRows(): (HTMLElement | null)[] {
+    const changed = () => {
+      Object.assign(LAST, { thickness: this.thickness, sides: this.sides, joint: this.joint });
+      this.render();
+      this.schedulePreview();
+    };
+    const open = this.selected.length;
+    return [
+      this.info(
+        this.target
+          ? open
+            ? `${open} face(s) ouverte(s), sans côté — recliquez une face pour la refermer.`
+            : "Le corps est vidé, tous ses côtés gardés. Cliquez une face pour l'ouvrir (elle n'aura pas de côté)."
+          : "Cliquez le corps à vider : sa base peut être un triangle, un carré, un cercle, ses côtés de biais.",
+      ),
+      this.numberRow("Épaisseur des côtés", this.thickness, this.ctx.unit(), (v) => {
+        this.thickness = Math.abs(v);
+        changed();
+      }),
+      this.selectRow("Côtés", this.sides, SIDES, (v) => {
+        this.sides = v as typeof this.sides;
+        changed();
+      }),
+      this.sides === "separate"
+        ? this.selectRow("Assemblage", this.joint, JOINTS, (v) => {
+            this.joint = v as typeof this.joint;
+            changed();
+          })
+        : null,
+      this.info(
+        this.sides === "separate"
+          ? `Chaque côté plat devient un panneau de ${formatLength(this.thickness, this.ctx.unit())}, pris vers l'intérieur ; un côté courbe (le tour d'un cylindre) garde sa paroi d'un seul corps.`
+          : "Les côtés restent d'un seul corps, creux ; sans face ouverte, il est fermé.",
+      ),
+    ];
   }
 
   protected rows(): (HTMLElement | null)[] {
+    if (this.hollow) return this.hollowRows();
     return [
       this.info(this.target ? `${this.selected.length} face(s) ouverte(s) — cliquez d'autres faces, recliquez pour retirer` : "Cliquez une face du corps : elle restera ouverte."),
       this.numberRow("Épaisseur", this.thickness, this.ctx.unit(), (v) => {

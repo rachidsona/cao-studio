@@ -134,7 +134,21 @@ export const MODELING: HelpFamily[] = [
           "Réglez l'« Épaisseur » de la paroi.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
         ],
-        tip: "Sans face ouverte, le corps devient creux et fermé. L'épaisseur est de 3 mm au départ.",
+        tip: "Sans face ouverte, le corps devient creux et fermé. L'épaisseur est de 3 mm au départ. Pour vider un corps sans rien ouvrir, ou en faire un panneau par côté, prenez « Vider un corps ».",
+      },
+      {
+        keys: ["data-action:hollow"],
+        name: "Vider un corps",
+        what: "Vide un corps à l'intérieur, quelle que soit sa forme (base en triangle, en carré, en cercle, côtés de biais), en gardant des côtés de l'épaisseur saisie — joints, ou chacun à part.",
+        steps: [
+          "Cliquez « Vider un corps », puis le corps dans la vue (ou sélectionnez-le d'abord) : il est vidé aussitôt, tous ses côtés gardés.",
+          "Saisissez l'« Épaisseur des côtés ».",
+          "« Côtés » : « Joints (un seul corps creux) », ou « Chaque côté seul (un corps par côté) » — chaque côté plat devient alors un panneau, pour la liste de débit.",
+          "Côtés seuls : choisissez l'« Assemblage », « En onglet (tout angle) » ou « Bout à bout » (le premier côté passe).",
+          "Pour ouvrir le corps, cliquez une face : elle passe en orange et n'a pas de côté ; recliquez-la pour la refermer.",
+          "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule) ; la croix ✕ ferme le panneau.",
+        ],
+        tip: "Un côté courbe (le tour d'un cylindre) garde sa paroi d'un seul corps, entre ses deux fonds. L'épaisseur doit rester plus fine que la plus petite épaisseur du corps. Un clic sur l'opération dans l'historique la rouvre.",
       },
       {
         keys: ["data-action:paneling"],

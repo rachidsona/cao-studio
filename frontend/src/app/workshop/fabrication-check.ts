@@ -94,7 +94,7 @@ export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
     const size = [0, 1, 2].map((k) => p.bbox[1][k]! - p.bbox[0][k]!);
     const boxLike = Math.abs(p.volume - size[0]! * size[1]! * size[2]!) <= 1e-3 * size[0]! * size[1]! * size[2]!;
     const owner = findFeature(doc, featureOfBody(bodyOrigin(doc, p.id)));
-    return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike, ...(owner?.type === "paneling" ? { together: owner.id } : {}) };
+    return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike, ...(owner?.type === "paneling" || owner?.type === "shell" ? { together: owner.id } : {}) };
   });
   const sheets = new Map(MATERIALS.map((m) => [m.name, m.sheet]));
   return [

@@ -591,13 +591,21 @@ export interface SweepFeature extends FeatureBase {
   section?: { width: number; height: number; align: "center" | "left" | "right"; fromEnd?: boolean };
 }
 
-/** Shell (as in Fusion): the body hollowed to walls of `thickness` mm, the chosen faces left open. */
+/**
+ * Shell (as in Fusion): the body hollowed to walls of `thickness` mm, the chosen faces left open. « Vider un corps »
+ * makes the same and says what its sides are (`sides`): joined, one hollow body; or separate, each side a body of its
+ * own ("<id>#n") — the flat ones boards, mitred or butted (`joint`, as Panneaux sur faces), a curved one its wall.
+ */
 export interface ShellFeature extends FeatureBase {
   type: "shell";
   target: string;
   /** Faces removed (the openings); none: a closed hollow body. */
   faces: FaceRef[];
   thickness: number;
+  /** Missing: joined (a Coque). */
+  sides?: "joined" | "separate";
+  /** Separate flat sides meeting: mitred (missing) or butted. */
+  joint?: "miter" | "butt";
 }
 
 /**
