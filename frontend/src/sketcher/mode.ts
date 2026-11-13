@@ -526,6 +526,11 @@ export class SketchMode implements PointerHandler {
 
   // ---- pointer (see sketch-pointer) ------------------------------------------------
 
+  /** A key while a shape is drawn: a dimension typed, as in Fusion (typed-dims.ts). False: not for it. */
+  typeDimension(event: KeyboardEvent): boolean {
+    return this.pointer.entry.key(event);
+  }
+
   toSketch(event: PointerEvent): Vec2 | null {
     const { origin, direction } = this.viewport.rayFromEvent(event);
     return rayToSketch(this.frame, origin, direction);
@@ -579,7 +584,7 @@ export class SketchMode implements PointerHandler {
       flagged,
       annotations: [
         ...this.annotations,
-        ...(this.panelToolActive || curveTool ? [] : previewAnnotations(this.preview, unit)),
+        ...(this.panelToolActive || curveTool ? [] : this.pointer.entry.fields(previewAnnotations(this.preview, unit))),
         ...(this.arrayTool?.annotations ?? []),
       ],
       showGlyphs: this.showGlyphs,

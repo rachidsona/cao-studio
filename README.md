@@ -1845,6 +1845,14 @@ opération existante.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Cotes tapées pendant le tracé, comme Fusion 360** (esquisse : Ligne, Rectangle, Cercle ;
+  `sketcher/typed-dims.ts`, `sketcher/shape-entry.ts`) : le premier point cliqué, les mesures en direct de la forme
+  sont des **cases** (`[data-dim-field]`). On tape une valeur, dans l'unité du projet : elle s'écrit dans la case en
+  bleu et la forme la prend aussitôt ; **Tab** la garde (cadenas) et passe à la suivante ; **Entrée** — ou un clic —
+  pose la forme ; Retour arrière efface, puis libère la valeur gardée. Rectangle : largeur puis hauteur ; ligne :
+  longueur puis angle sur l'horizontale ; cercle : diamètre. La souris donne le sens et tout ce qui n'est pas tapé.
+  Chaque valeur tapée devient une **cote de l'esquisse** (longueur, diamètre), sauf si l'esquisse ne peut pas la
+  prendre ; l'angle oriente le trait sans poser de cote. Sur un clavier AZERTY, les chiffres se tapent sans Maj.
 - **Vider un corps** (groupe Modifier, après Coque ; `data-action="hollow"`) : un clic sur un corps le vide à
   l'intérieur, **quelle que soit sa forme** — prisme à base de triangle, de carré, de cercle, côtés de biais, sphère,
   plaque percée. La face par laquelle on le prend est son **devant** ; **« Ouvertures »** dit ce qui s'ouvre :

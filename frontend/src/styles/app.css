@@ -420,6 +420,18 @@
   .cad-dim.cad-flagged {
     @apply text-red-500;
   }
+  /* A measurement typed while the shape is drawn (as Fusion's): a field; the one in blue takes the keys. */
+  .cad-dim-field {
+    @apply border border-sky-500 bg-white px-1.5 py-1 text-gray-900 shadow-sm dark:bg-gray-900 dark:text-gray-100;
+    text-shadow: none;
+    cursor: default;
+  }
+  .cad-dim-field-active {
+    @apply border-sky-300 bg-sky-600 text-white dark:bg-sky-600 dark:text-white;
+  }
+  .cad-dim-field-locked::before {
+    content: "🔒 ";
+  }
   .cad-measure {
  @apply cursor-pointer bg-gray-800/85 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-white shadow-sm
       hover:bg-gray-700 dark:bg-gray-100/90 dark:text-gray-900;

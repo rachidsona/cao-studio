@@ -37,9 +37,9 @@ function resolve(g: SketchGeometry, s: Snap): string {
 }
 
 export const TOOL_STEPS: Record<Exclude<ToolName, "select">, string[]> = {
-  line: ["Cliquez le premier point", "Cliquez le point suivant (Échap pour terminer)"],
-  rectangle: ["Cliquez un coin", "Cliquez le coin opposé"],
-  circle: ["Cliquez le centre", "Cliquez un point du cercle"],
+  line: ["Cliquez le premier point", "Cliquez le point suivant — ou tapez la longueur, Tab, l'angle, puis Entrée (Échap pour terminer)"],
+  rectangle: ["Cliquez un coin", "Cliquez le coin opposé — ou tapez la largeur, Tab, la hauteur, puis Entrée"],
+  circle: ["Cliquez le centre", "Cliquez un point du cercle — ou tapez le diamètre, puis Entrée"],
   arc: ["Cliquez le centre", "Cliquez le point de départ", "Cliquez la fin (sens antihoraire)"],
   polygon: ["Cliquez le centre du polygone (chiffre 3 à 9 : nombre de côtés)", "Cliquez un sommet"],
   slot: ["Cliquez le premier centre de l'oblong", "Cliquez le second centre", "Cliquez pour la largeur"],
@@ -113,6 +113,12 @@ export class DrawingTool {
   reset(): void {
     this.clicks = [];
     this.chainStart = null;
+  }
+
+  /** Where the shape being drawn starts, once its first point is clicked and before the next one; else null. */
+  anchor(g: SketchGeometry): Vec2 | null {
+    const [first] = this.clicks;
+    return first && this.clicks.length === 1 ? (first.pointId ? pointPos(g, first.pointId) : first.pos) : null;
   }
 
   move(g: SketchGeometry, cursor: Snap): Preview {

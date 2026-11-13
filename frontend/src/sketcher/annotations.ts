@@ -36,6 +36,8 @@ export interface Annotation {
   dimensionId?: string;
   /** For measurements: the dimension to create. */
   spec?: DimensionSpec;
+  /** A live measurement one can type (sketcher/typed-dims.ts): its field takes the keys, keeps a value, or follows the pointer. */
+  field?: { id: string; state: "active" | "locked" | "idle"; name: string };
 }
 
 const unitText = (unit: DisplayUnit) => UNIT_LABELS[unit];

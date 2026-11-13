@@ -48,6 +48,7 @@ export const SKETCH: HelpFamily[] = [
         steps: [
           "Cliquez le premier point.",
           "Cliquez le point suivant : un trait est posé, et le suivant part de là.",
+          "Ou tapez sa longueur : elle s'écrit dans la case en bleu et le trait la prend, dans le sens de la souris. Tab passe à l'angle (sur l'horizontale), Entrée pose le trait.",
           "Continuez ainsi, puis appuyez sur Échap pour terminer.",
           "Pour fermer la forme, cliquez à nouveau le tout premier point.",
         ],
@@ -57,17 +58,17 @@ export const SKETCH: HelpFamily[] = [
         what: "Trace un rectangle à partir de deux coins opposés.",
         steps: [
           "Cliquez un coin.",
-          "Cliquez le coin opposé.",
+          "Cliquez le coin opposé — ou tapez ses cotes : la largeur s'écrit dans la case en bleu, Tab la garde (un cadenas) et passe à la hauteur, Entrée pose le rectangle.",
         ],
-        tip: "Les côtés sont déjà horizontaux et verticaux. Il faut une largeur et une hauteur non nulles. L'outil repasse sur « Sélection » après chaque rectangle.",
+        tip: "Chaque cote tapée reste une cote de l'esquisse, que vous changez ensuite d'un clic. La souris donne le côté (à droite ou à gauche, en haut ou en bas) ; ce qui n'est pas tapé la suit. Retour arrière efface. Les côtés sont déjà horizontaux et verticaux. L'outil repasse sur « Sélection » après chaque rectangle.",
       }, {
         keys: ["data-sketch-tool:circle"], name: "Cercle",
         what: "Trace un cercle à partir de son centre.",
         steps: [
           "Cliquez le centre.",
-          "Cliquez un point du cercle : la distance donne le rayon.",
+          "Cliquez un point du cercle : la distance donne le rayon — ou tapez son diamètre, puis Entrée.",
         ],
-        tip: "Pour donner un diamètre précis, cotez ensuite le cercle avec l'outil « Cote ».",
+        tip: "Le diamètre tapé reste une cote du cercle ; un cercle posé à la souris se cote ensuite avec l'outil « Cote ».",
       }, {
         keys: ["data-sketch-tool:arc"], name: "Arc",
         what: "Trace un arc de cercle défini par son centre.",

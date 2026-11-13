@@ -25,6 +25,7 @@ import type { EdgeOutline } from "../geometry/protocol";
 import { projectEdgeOnce, projectFace } from "./offset-edge";
 import { openTextDialog } from "./text-dialog";
 import { textBox } from "./text-outline";
+import { ShapeEntry } from "./shape-entry";
 
 /** Hover preview and click result of Prolonger, Ajuster and Couper on the curve under the pointer. */
 function curveEdit(mode: SketchMode, kind: "extend" | "trim" | "break", p: Vec2) {
@@ -59,8 +60,13 @@ export class SketchPointer {
   /** The last click that chose a line, to pick the next one when the same spot is clicked again (lines on top of each other). */
   private lastPick: { x: number; y: number; index: number } | null = null;
   private drag: { point: string; moved: boolean; base: SketchGeometry } | null = null;
+  /** The shape being drawn, its points laid and its dimensions typed (as Fusion's). */
+  readonly entry: ShapeEntry;
 
-  constructor(private readonly mode: SketchMode) {}
+  constructor(private readonly mode: SketchMode) {
+    // A point clicked but not drawn yet (the start of a line…) is aligned with too, until the shape is drawn.
+    this.entry = new ShapeEntry(mode, (p) => this.snapAt(p), (at) => (this.anchors = at ? [...this.anchors, at] : []));
+  }
 
   /** A tool was chosen: the marks of the previous one go. */
   reset(): void {
@@ -68,6 +74,7 @@ export class SketchPointer {
     this.guides = [];
     this.anchors = [];
     this.cutMarks = [];
+    this.entry.typed.reset();
   }
 
   private get canvas(): HTMLCanvasElement {
@@ -119,7 +126,7 @@ export class SketchPointer {
       return mode.render();
     }
     if (mode.tool) {
-      const s = this.snapAt(p);
+      const s = this.entry.landing(p);
       this.hover = s.pointId ?? s.curveId ?? null;
       mode.preview = mode.tool.move(mode.geometry, s);
       // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
@@ -171,25 +178,7 @@ export class SketchPointer {
     const p = mode.toSketch(event);
     if (!p) return true;
     if (mode.tool) {
-      try {
-        const at = this.snapAt(p);
-        const result = mode.tool.click(mode.geometry, at);
-        // A point clicked but not drawn yet (the start of a line…) is aligned with too, until the shape is drawn.
-        this.anchors = result.kind === "commit" ? [] : [...this.anchors, at.pos];
-        if (result.kind === "commit") {
-          // A finished shape (rectangle, circle, arc, closed polyline) hands back to the selection tool.
-          if (mode.apply(result.geometry)) {
-            if (result.done) mode.setTool("select");
-            else mode.preview = null;
-          }
-        } else mode.preview = result.preview;
-      } catch (error) {
-        mode.host.notify(error instanceof Error ? error.message : String(error), "error");
-        mode.tool.reset();
-        this.anchors = [];
-      }
-      mode.render();
-      mode.host.changed();
+      this.entry.lay(this.entry.landing(p));
       return true;
     }
     if (mode.offset) {

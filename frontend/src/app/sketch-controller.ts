@@ -450,6 +450,8 @@ export class SketchController {
       else this.finish();
       return true;
     }
+    // A shape being drawn: its dimensions typed, as in Fusion — digits, Tab to the next one, Entrée lays the shape.
+    if (mode.typeDimension(event)) return true;
     if (event.key === "Delete" || event.key === "Backspace") {
       mode.deleteSelection();
       return true;
