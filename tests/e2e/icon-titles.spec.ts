@@ -31,6 +31,22 @@ test("la bulle d'une icône d'outil dit son nom seulement", async ({ page }) => 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/bulle-icone.png`, clip: { x: 0, y: 0, width: 1000, height: 260 } });
   await page.mouse.move(700, 600);
   await expect(tip).toBeHidden();
+  // In a sketch, the drawing tools too.
+  await page.locator('details:not([data-bodies]) [data-menu="sk1"]').click();
+  await page.getByRole("button", { name: /^Modifier/ }).first().click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
+  const rectangle = page.locator('[data-ribbon="sketch"] [data-sketch-tool="rectangle"]');
+  await expect(rectangle).toHaveAttribute("data-tip", "Rectangle");
+  await rectangle.hover();
+  await expect(tip).toBeVisible();
+  await expect(tip).toHaveText("Rectangle");
+  await page.locator('[data-ribbon="sketch"] [data-sketch-tool="line"]').hover();
+  await expect(tip).toHaveText("Ligne");
+  await page.mouse.move(700, 600);
+  await expect(tip).toBeHidden();
+  await page.getByRole("button", { name: "Terminer l'esquisse" }).click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "model");
+
   // The tool search still finds a tool by what it does.
   await page.keyboard.press("Control+k");
   const search = page.getByRole("textbox", { name: "Rechercher un outil" });

@@ -143,6 +143,8 @@ function typeIn(wrap: HTMLElement, text: SVGTextElement, host: StripHost, k: num
     type: "text",
     inputmode: "decimal",
     "data-face-entry": "",
+    // Typed in place, gone when it loses the focus: no keypad beside it (ui/field-keypads.ts).
+    "data-no-keypad": "",
     "aria-label": "Nouvelle cote",
     class: "absolute z-10 w-20 border border-amber-500 bg-white px-1 py-0.5 text-right text-xs text-gray-900 shadow dark:bg-gray-900 dark:text-gray-100",
     style: `left:${Math.max(0, Math.min(at.left - room.left + at.width / 2 - 40, room.width - 80))}px;top:${Math.max(0, at.top - room.top + at.height / 2 - 12)}px`,

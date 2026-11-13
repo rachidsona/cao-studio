@@ -8,6 +8,7 @@ import { bindLiveCheck } from "./app/workshop/live-check";
 import { bindVariants } from "./app/workshop/variants-tool";
 import { bindModulePalette } from "./app/dressing/module-palette";
 import { bindIconTitles } from "./ui/icon-titles";
+import { bindFieldKeypads } from "./ui/field-keypads";
 import { bindPlanLayout } from "./app/dressing/plan-layout-tool";
 import { bindKitchenPlan } from "./app/kitchen/kitchen-plan-tool";
 import { bindProductionFolder } from "./app/workshop/production-folder";
@@ -225,6 +226,8 @@ async function start(): Promise<void> {
   bindModulePalette(root, viewport, editor);
   // The tooltip of a tool's icon says its name only (its description is in the Help, and in the tool search).
   bindIconTitles(document.body);
+  // A calculator beside every number field (tools, panels, drawing), those without one of their own.
+  bindFieldKeypads(document.body);
   bindContextBar(root, viewport, editor);
   bindLiveCheck(root, viewport, editor);
   bindVariants(root, viewport, editor);

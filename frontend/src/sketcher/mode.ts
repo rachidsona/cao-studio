@@ -162,7 +162,8 @@ export class SketchMode implements PointerHandler {
     this.values = new SketchValues(this);
     this.pointer = new SketchPointer(this);
     this.overlay = new SketchOverlay(viewport.scene, this.frame, () => viewport.worldPerPixel());
-    this.overlay.onAnnotationPointerDown = (annotation, event) => this.values.pointerDown(annotation, event);
+    // A field of the shape being drawn opens the calculator on it; a dimension, its own editing.
+    this.overlay.onAnnotationPointerDown = (annotation, event) => (annotation.field ? this.pointer.entry.openField(annotation, event) : this.values.pointerDown(annotation, event));
     this.overlay.onGlyphClick = (id) => this.toggleSelected(id);
     viewport.enterSketch(this.frame, this);
     onTextFont(() => this.render());

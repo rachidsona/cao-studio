@@ -4,12 +4,13 @@
  * et le point posé, par un clic ou par Entrée : la forme continue, ou elle est faite, avec une cote pour chaque
  * valeur tapée.
  */
+import { openCalculator } from "../ui/calculator";
 import type { Annotation } from "./annotations";
 import { typedDigit } from "./edge-offset-tool";
 import type { Vec2 } from "./edit";
 import type { SketchMode } from "./mode";
 import type { PointerSnap } from "./smart-snap";
-import { TypedDims, typedFields, withTypedDimensions } from "./typed-dims";
+import { TypedDims, typedFields, withTypedDimensions, type DimField } from "./typed-dims";
 
 export class ShapeEntry {
   /** The dimensions typed while a shape is drawn (as Fusion's). */
@@ -42,6 +43,33 @@ export class ShapeEntry {
     if (!mode.tool?.anchor(mode.geometry)) return annotations;
     const line = mode.preview?.lines.length === 1 ? (mode.preview.lines[0] as [Vec2, Vec2]) : null;
     return this.typed.decorate(mode.tool.name, mode.host.unit(), annotations, line, mode.viewport.worldPerPixel());
+  }
+
+  /** A field of the shape clicked: the calculator on its value; ✓ keeps it (as Tab), and the shape takes it. */
+  openField(a: Annotation, event: PointerEvent): void {
+    const { mode } = this;
+    const tool = mode.tool;
+    if (!tool || !a.field) return;
+    const field = a.field.id as DimField;
+    const angle = field === "a";
+    const r = (event.currentTarget as HTMLElement | null)?.getBoundingClientRect();
+    openCalculator({
+      container: mode.host.calculatorContainer(),
+      anchor: r ? { x: r.right + 8, y: r.top + r.height / 2 } : { x: event.clientX + 12, y: event.clientY },
+      value: a.value,
+      unit: angle ? "deg" : mode.host.unit(),
+      title: a.field.name,
+      locked: true,
+      noLock: true,
+      allowNegative: angle,
+      onSubmit: (value) => {
+        this.typed.set(tool.name, field, value);
+        if (this.cursor) mode.preview = tool.move(mode.geometry, this.landing(this.cursor));
+        mode.showShape(mode.preview);
+        mode.render();
+        return true;
+      },
+    });
   }
 
   /**

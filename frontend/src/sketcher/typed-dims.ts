@@ -63,6 +63,16 @@ export class TypedDims {
     return true;
   }
 
+  /** A value given to a field (by the calculator): kept, and the next field takes the keys. */
+  set(tool: string, field: DimField, value: number): void {
+    const fields = typedFields(tool);
+    const at = fields.indexOf(field);
+    if (at < 0) return;
+    this.locked.set(field, value);
+    this.text = "";
+    this.active = (at + 1) % fields.length;
+  }
+
   /** Tab: what is typed is kept, the next field takes the keys. False: the tool has no fields. */
   next(tool: string, unit: DisplayUnit): boolean {
     const fields = typedFields(tool);

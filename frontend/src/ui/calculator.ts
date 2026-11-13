@@ -23,6 +23,8 @@ export interface CalculatorOptions {
   /** On its field, besides its name (`data-dim-editor`…). */
   inputAttrs?: Record<string, string>;
   allowNegative?: boolean;
+  /** A number with no unit (a count, a percentage…): « deg » arithmetic, no unit shown nor offered. */
+  plain?: boolean;
   /** Receives the value (mm or degrees); returns false (or why) when it was refused (popup stays open). */
   onSubmit(value: number, locked: boolean): boolean | string;
   /**
@@ -48,7 +50,7 @@ const KEY = "flex h-11 items-center justify-center bg-gray-700/80 text-base font
 export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   current?.close();
   let locked = o.locked;
-  const unitLabel = o.unit === "deg" ? "°" : UNIT_LABELS[o.unit as DisplayUnit];
+  const unitLabel = o.plain ? "" : o.unit === "deg" ? "°" : UNIT_LABELS[o.unit as DisplayUnit];
   const shown = o.unit === "deg" ? o.value : toDisplay(o.value, o.unit as DisplayUnit);
   const input = el("input", {
     type: "text",
@@ -120,7 +122,7 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     b.addEventListener("click", action);
     return b;
   };
-  const units = o.unit === "deg" ? ["deg"] : ["mm", "cm", "m"];
+  const units = o.plain ? [] : o.unit === "deg" ? ["deg"] : ["mm", "cm", "m"];
   const ok = key("✓", () => submit(), "row-span-2 h-auto bg-rose-500 text-xl hover:bg-rose-400 active:bg-rose-600", "Valider");
 
   const popup = el(

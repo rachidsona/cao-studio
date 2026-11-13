@@ -71,6 +71,8 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
       const input = document.createElement("input");
       input.type = "number";
       input.step = "any";
+      // Typed in place, gone when it loses the focus: no keypad beside it (ui/field-keypads.ts).
+      input.dataset.noKeypad = "";
       input.className = "w-20 bg-white px-1 text-right text-xs text-gray-900";
       input.value = String(key === "shelves" ? value : Number(toDisplay(value, editor.unit).toFixed(3)));
       span.replaceChildren(`${LABELS[key]} `, input);

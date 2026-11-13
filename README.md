@@ -617,6 +617,15 @@ opération existante.
     (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
     Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Terminer** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
+- **Une calculatrice à chaque champ d'un nombre** (`ui/field-keypads.ts`) : tout champ numérique de l'éditeur qui
+  n'avait pas la sienne — réglages de « Modules à glisser » et de l'outil Module, Répartition, Étagères, Niche, Réseau,
+  panneaux de la cuisine… — reçoit un bouton « ⌨ » à sa droite : la calculatrice (`ui/calculator.ts`) s'ouvre sur sa
+  valeur, un calcul ou des unités (« 60 cm − 2*18 mm »), et ✓ écrit le résultat dans le champ comme s'il était tapé
+  (évènements `input` et `change`). Une longueur (son nom dit son unité : « Hauteur (cm) ») se calcule en unités, un
+  nombre sans unité tel quel (`plain`). Les champs qui avaient déjà leur « ⌨ » (outils à panneau) n'en ont pas un
+  second ; un champ tapé sur place (`data-no-keypad`) non plus. **Dans l'esquisse**, un clic sur une case de cote
+  d'une forme en train d'être tracée (largeur, hauteur, longueur, angle, diamètre) ouvre la calculatrice : ✓ garde la
+  valeur, comme Tab. Les icônes des outils de dessin disent aussi leur nom au survol.
 - **Les messages de l'éditeur** (« Version 4 enregistrée », « Niche équipée », une modification refusée…)
   s'affichent **en bas de la colonne de gauche, en petit** (11 px), le plus récent en bas, au-dessus de la barre
   d'état — jamais par-dessus la vue, où ils cachaient ce qu'on voulait cliquer (`data-ref="toasts"` de

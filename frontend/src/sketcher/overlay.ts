@@ -328,12 +328,20 @@ export class SketchOverlay {
     inner.style.display = "inline-block";
     inner.style.transform = `rotate(${-angleDeg}deg)`;
     if (a.field) {
-      // A measurement one types (as Fusion's): a field, upright; the one in blue takes the keys, a kept one has its lock.
+      // A measurement one types (as Fusion's): a field, upright; the one in blue takes the keys, a kept one has its
+      // lock; a click opens the calculator on it.
       node.className = `cad-dim cad-dim-field cad-dim-field-${a.field.state}`;
       node.dataset.dimField = a.field.id;
       node.dataset.state = a.field.state;
-      node.title = `${a.field.name} : tapez une valeur, Tab pour la garder et passer à la suivante, Entrée pour poser la forme`;
+      node.title = `${a.field.name} : tapez une valeur (ou cliquez pour la calculatrice), Tab pour la garder et passer à la suivante, Entrée pour poser la forme`;
       inner.style.transform = "";
+      node.style.pointerEvents = "auto";
+      node.style.cursor = "pointer";
+      node.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        this.onAnnotationPointerDown(a, event);
+      });
     }
     node.append(inner);
     if (a.role !== "preview") {
