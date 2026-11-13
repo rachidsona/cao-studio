@@ -3,7 +3,7 @@
  * panneau de verre trempé de 4 mm, au milieu de l'épaisseur, engagé de 5 mm dans la rainure du profilé. Le cadre
  * pivote comme une porte et le verre avec lui. Ni l'un ni l'autre ne se scie à l'atelier : ils sortent de la liste de
  * débit et vont au devis, le verre au m², le profilé au mètre (tour de chaque porte). Le verre (clair, extra-clair,
- * dépoli, fumé, bronze) et le cadre (aluminium brossé ou noir) prennent leur apparence de la bibliothèque. Pur.
+ * dépoli, fumé, bronze, noir) et le cadre (aluminium brossé ou noir) prennent leur apparence de la bibliothèque. Pur.
  */
 import type { GlassKind, ProfileFinish, Vec3 } from "../document/types";
 
@@ -25,6 +25,7 @@ export const GLASS_KINDS: readonly [GlassKind, string][] = [
   ["frosted", "Dépoli (satiné)"],
   ["smoked", "Fumé gris"],
   ["bronze", "Bronze"],
+  ["black", "Noir"],
 ];
 export const PROFILE_FINISHES: readonly [ProfileFinish, string][] = [
   ["brushed", "Aluminium brossé"],
@@ -32,11 +33,11 @@ export const PROFILE_FINISHES: readonly [ProfileFinish, string][] = [
 ];
 
 /** The appearance (appearance/library.ts) of each glass and of each frame. */
-export const GLASS_APPEARANCE: Record<GlassKind, string> = { clear: "glass-clear", "extra-clear": "glass-extra-clear", frosted: "glass-frosted", smoked: "glass-smoked", bronze: "glass-bronze" };
+export const GLASS_APPEARANCE: Record<GlassKind, string> = { clear: "glass-clear", "extra-clear": "glass-extra-clear", frosted: "glass-frosted", smoked: "glass-smoked", bronze: "glass-bronze", black: "glass-black" };
 export const PROFILE_APPEARANCE: Record<ProfileFinish, string> = { brushed: "aluminium-brushed", black: "aluminium-black" };
 
 /** Names of the bought items, in the quote and the buying list. */
-const GLASS_WORDS: Record<GlassKind, string> = { clear: "clair", "extra-clear": "extra-clair", frosted: "dépoli", smoked: "fumé", bronze: "bronze" };
+const GLASS_WORDS: Record<GlassKind, string> = { clear: "clair", "extra-clear": "extra-clair", frosted: "dépoli", smoked: "fumé", bronze: "bronze", black: "noir" };
 export const glassItem = (kind: GlassKind = "clear") => `Verre trempé 4 mm ${GLASS_WORDS[kind]} (m²)`;
 export const profileItem = (finish: ProfileFinish = "brushed") => `Profilé alu de porte ${finish === "black" ? "noir" : "brossé"} (m)`;
 export const ALU_HINGE = "Charnière pour cadre alu";
@@ -48,6 +49,7 @@ export const GLASS_RATES: Record<string, number> = {
   [glassItem("frosted")]: 420,
   [glassItem("smoked")]: 400,
   [glassItem("bronze")]: 400,
+  [glassItem("black")]: 450,
   [profileItem("brushed")]: 75,
   [profileItem("black")]: 90,
   [ALU_HINGE]: 45,

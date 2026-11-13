@@ -143,6 +143,18 @@ describe("portes vitrées d'un caisson de cuisine", () => {
     expect(frontsProblem(fronts({ layout: "drawers", frameWidth: 190 }), cabinet)).toBeNull();
   });
 
+  it("des portes en verre noir : le verre au devis à son prix, son apparence de la bibliothèque", () => {
+    const black = fronts({ glass: "black", profile: "black" });
+    const doc = kitchen(black);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();
+    expect(frontsHardware(black, cabinet).find((h) => h.name === glassItem("black"))?.unit).toBe("m²");
+    expect(glassItem("black")).toBe("Verre trempé 4 mm noir (m²)");
+    expect(DEFAULT_RATES.hardware[glassItem("black")]).toBeGreaterThan(0);
+    expect(glassDoorLook(doc, "fr1#2")).toBe("glass-black");
+    expect(bodyAppearance(doc, "fr1#2", undefined)?.appearance.name).toBe("Verre noir");
+    expect(glassDoorLook(doc, "fr1#0")).toBe("aluminium-black");
+  });
+
   it("une porte pleine devient vitrée, puis pleine, par le menu", () => {
     const glazed = withDoorStyle(kitchen(fronts({ style: undefined, glass: undefined, profile: undefined })), "fr1#0", "glass");
     if (typeof glazed === "string") throw new Error(glazed);

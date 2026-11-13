@@ -211,6 +211,7 @@ export const APPEARANCES: Appearance[] = [
   { id: "glass-frosted", name: "Verre dépoli (satiné)", category: "glass", color: "#eef3f2", pattern: "plain", roughness: 0.35, transmission: 1, ior: 1.52 },
   { id: "glass-smoked", name: "Verre fumé gris", category: "glass", color: "#7a7f82", pattern: "plain", roughness: 0, transmission: 0.9, ior: 1.52 },
   { id: "glass-bronze", name: "Verre bronze", category: "glass", color: "#a9865e", pattern: "plain", roughness: 0, transmission: 0.9, ior: 1.52 },
+  { id: "glass-black", name: "Verre noir", category: "glass", color: "#0c0c0e", pattern: "plain", roughness: 0, transmission: 0.2, ior: 1.52 },
   { id: "glass-green", name: "Verre teinté vert", category: "glass", color: "#9fc5ad", pattern: "plain", roughness: 0, transmission: 0.95, ior: 1.52 },
   { id: "glass-lacquered-white", name: "Verre laqué blanc", category: "glass", color: "#f2f2ef", pattern: "plain", roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0, paintable: true },
   { id: "glass-lacquered-black", name: "Verre laqué noir", category: "glass", color: "#101012", pattern: "plain", roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0, paintable: true },

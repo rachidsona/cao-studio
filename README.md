@@ -783,7 +783,13 @@ opération existante.
 - **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un
   corps nommé (« Caisson 1 — Côté gauche », « — Dessus », « — Fond », « — Étagère 2 »…).
   - *Modèles* pour démarrer : bas de cuisine 600 × 870 (socle 150), haut de cuisine 600 × 700, colonne 600 × 2200,
-    penderie 1000 × 2400, placard 800 × 2000 ; tout reste modifiable.
+    penderie 1000 × 2400, placard 800 × 2000, **vitrine à portes en verre noir 800 × 2000**, haut vitré en verre noir
+    600 × 700 ; tout reste modifiable.
+  - *Portes* (à la création) : sans portes, pleines, ou **vitrées (cadre alu)** avec le verre (clair… **noir**) et le
+    cadre (brossé ou noir) — les Façades du caisson sont faites avec lui, dans la même annulation : une porte jusqu'à
+    600 mm de large, deux au-delà, à la pose, au jeu et à l'épaisseur de son standard ; avec « Remplir une largeur »,
+    chaque caisson a les siennes. Elles se règlent ensuite avec l'outil Façades ; le choix est retenu pour le caisson
+    suivant de la séance.
   - *Largeur, hauteur, profondeur, épaisseur* ; *socle* (le dessous est relevé, les côtés descendent au sol) ;
     *étagères* (0 à 10, réparties également) ; *fond* vissé derrière (taille extérieure, le caisson est moins
     profond d'autant), encastré entre les côtés, ou sans fond ; *construction* côtés toute hauteur ou dessus et
@@ -950,7 +956,7 @@ opération existante.
   d'ouverture ne changent pas. Un cadre trop large pour la porte, ou un panneau de moins de 3 mm, sont refusés.
 - **Portes vitrées (cadre alu)** (« Style des portes » de la Répartition et de Façades sur une Répartition, Porte sur
   niches, Façades d'un caisson de cuisine, clic droit sur une porte) : un cadre en profilé aluminium (20 mm de large
-  par défaut, réglable ; brossé ou noir) autour d'un verre trempé de 4 mm (clair, extra-clair, dépoli, fumé ou bronze),
+  par défaut, réglable ; brossé ou noir) autour d'un verre trempé de 4 mm (clair, extra-clair, dépoli, fumé, bronze ou noir),
   au milieu de l'épaisseur, engagé de 5 mm dans la rainure du profilé. Le verre est un corps à part (« Vitre porte n »)
   qui pivote avec sa porte ; cadre et verre prennent l'apparence de l'aluminium et du verre choisis (tant qu'on ne
   leur en donne pas une autre). Ni l'un ni l'autre ne se scie : ils sortent de la liste de débit et vont au devis et
@@ -1666,7 +1672,7 @@ opération existante.
     brut, noyer, noyer américain, hêtre, frêne, érable, merisier, pin, teck, wengé, acajou, bouleau, bambou, zebrano),
     **mélaminés et panneaux** (blanc, gris perle, anthracite, noir, chêne, noyer, MDF, HDF, contreplaqué, OSB),
     **laques et peintures** (24 teintes RAL du mobilier, laques brillantes, laque satinée et peinture mate à la
-    couleur choisie), **verres et miroirs** (clair, extra-clair, dépoli, fumé, bronze, vert, laqué, miroir), **marbres
+    couleur choisie), **verres et miroirs** (clair, extra-clair, dépoli, fumé, bronze, noir, vert, laqué, miroir), **marbres
     et pierres** (Carrare, Calacatta, Statuario et Calacatta Oro à grandes veines, Arabescato, Emperador foncé et
     clair, Marquina, vert, rose, quartzite Taj Mahal, travertin, granits, quartz, terrazzo, ardoise), **Dekton et
     céramiques frittées** pour plans de travail, crédences et façades (Aura, Entzo, Opera, Rem, Laurent veinés ;

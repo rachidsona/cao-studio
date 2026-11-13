@@ -680,7 +680,7 @@ export interface FrontsFeature extends FeatureBase {
 }
 
 /** The glass of a glazed door, and the finish of its aluminium frame. */
-export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze";
+export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze" | "black";
 export type ProfileFinish = "brushed" | "black";
 
 /** Drilling sizes of the hardware chosen for the project: handle holes and hinge cups (mm). */
