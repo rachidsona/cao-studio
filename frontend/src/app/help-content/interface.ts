@@ -9,10 +9,10 @@ export const CURIC: HelpFamily[] = [
         keys: ["data-action:face-strip"], name: "Truelle (tracé et extrusion)",
         what: "Trace un trait sur une face depuis une arête ou un coin, puis ajoute ou creuse de la matière dans la bande tracée.",
         steps: [
-          "Cliquez « Truelle » et survolez le corps : une arête orange donne un trait parallèle, un coin un trait en travers, l'intérieur d'une face se tire ou se pousse tel quel.",
+          "Cliquez « Truelle » et choisissez le « Départ » : « Sur un trait (parallèle) » prend les arêtes, « Sur un point (en travers) » prend les coins. L'intérieur d'une face se tire ou se pousse tel quel.",
           "Cliquez l'arête ou le coin de départ : le trait suit le pointeur, avec les distances aux bords. Ctrl bascule entre « Une ligne » et « Double trait ».",
-          "Réglez « Distance » (ou « Retrait » et « Largeur »), puis cliquez pour poser le trait.",
-          "Tirez pour ajouter, poussez pour creuser, ou saisissez la « Hauteur ». Tab inverse. Cliquez pour terminer.",
+          "Tapez la distance au clavier, sans cliquer de champ (retrait;largeur pour un double trait) : elle s'écrit dans la case des mesures en bas de la vue, et Entrée pose le trait. Ou cliquez pour le poser où est le pointeur.",
+          "Tirez pour ajouter, poussez pour creuser — ou tapez la hauteur (− pour creuser) puis Entrée. Tab inverse. Cochez « Nouveau corps » pour que ce qui est extrudé soit un corps à part, le corps cliqué restant tel quel. Cliquez pour terminer.",
         ],
         tip: "La croix ✕ avant de tirer garde le tracé seul, en esquisse. Visez un coin ou une arête d'un corps pour vous arrêter à son niveau. Échap revient d'une étape. Seules les faces planes se tirent.",
       },

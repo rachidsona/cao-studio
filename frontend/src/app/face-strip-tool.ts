@@ -2,7 +2,8 @@
  * "Truelle" — tracé et extrusion sur face (like Curic DIO 2's Trowel and
  * Chalkline), in three steps:
  *
- * 1. Hover: a corner of the face under the pointer (orange dot), an edge (orange), or the inside of the face.
+ * 1. Hover: a corner of the face under the pointer (orange dot), an edge (orange), or the inside of the face —
+ *    « Départ » says which: on a line (an edge: a line parallel to it) or on a point (a corner: a line across).
  * 2. After clicking an edge or a corner, the line follows the pointer: a copy
  *    of the edge, parallel to it — on its own face or on any other face it is
  *    carried to — or a line across the face from the corner. The distances to
@@ -10,14 +11,17 @@
  *    width starts as the thickness of the board); Tab: the pointer is on the
  *    first line, the second, or the centre. Click to lay the line(s).
  * 3. Then pull or push the band (or the face clicked in step 1): pulling adds (union), pushing digs
- *    (subtraction), Tab reverses; aiming at a corner or an edge of a body stops at its level.
+ *    (subtraction), Tab reverses; aiming at a corner or an edge of a body stops at its level. « Nouveau corps »
+ *    makes what is pulled or pushed a body of its own instead, the body clicked left as it is.
  *
  * The result is a sketch on the face ("Tracé n") and an extrusion of its band
- * on the body, in one undo step; OK while laying the line makes the sketch alone.
+ * on the body, in one undo step; OK while laying the line makes the sketch alone. The distance (retrait;largeur of a
+ * double line) and the height are typed on the keyboard as the pointer moves, as « Dessiner sur le corps »: they go
+ * to the value box at the bottom of the view, and Entrée lays the line, or ends the pull (ui/typed-values.ts).
  */
 import { uniqueId, uniqueName } from "../document/operations";
 import type { ExtrudeFeature, FaceRef, Feature, SketchFeature, Vec3 } from "../document/types";
-import { formatLength } from "../measurements/units";
+import { formatLength, fromDisplay } from "../measurements/units";
 import type { Vec2 } from "../sketcher/edit";
 import {
   bandRange,
@@ -37,6 +41,7 @@ import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, loadFace, regionUnder, StripMarks, type LevelTargets, type LoadedFace, type SketchArea } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { TypedValues } from "../ui/typed-values";
 
 /** Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. */
 type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3 } | { kind: "corner"; face: string; index: number; at3: Vec3 };
@@ -46,8 +51,10 @@ type Hover = { kind: "edge"; edge: FaceEdge } | { kind: "corner"; index: number 
 /** Pointer distance (pixels) within which a corner or an edge is hovered. */
 const SNAP_PX = 12;
 
+/** What the line starts from: a line (an edge, the line parallel to it) or a point (a corner, the line across). */
+type Start = "edge" | "corner";
 /** Last settings, kept for the next use in the session. */
-let last = { mode: "line" as "line" | "groove", anchor: "start" as GrooveAnchor };
+let last = { mode: "line" as "line" | "groove", anchor: "start" as GrooveAnchor, start: "edge" as Start, newBody: false };
 
 const dot3 = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
@@ -67,6 +74,11 @@ export class FaceStripTool extends PanelTool {
   private pointer: Vec2 | null = null;
   private mode = last.mode;
   private anchor = last.anchor;
+  private departure = last.start;
+  /** What is pulled or pushed made a body of its own, the body left as it is. */
+  private newBody = last.newBody;
+  /** The distance and the height typed on the keyboard, in the value box at the bottom of the view. */
+  private readonly typed: TypedValues;
   private distance = 0;
   private width = 18;
   private widthTyped = false;
@@ -95,10 +107,45 @@ export class FaceStripTool extends PanelTool {
     this.extrudeId = uniqueId(doc, "ex");
     this.extrudeName = uniqueName(doc, "Extrusion");
     this.marks = new StripMarks(ctx.viewport.scene);
+    this.typed = new TypedValues(ctx.container, () => this.phase !== "pick", (values, text) => this.applyTyped(values, text), () => this.showValues());
+  }
+
+  /** The value box: the distance of the line (retrait ; largeur), or the height pulled; what to type. */
+  private showValues(): void {
+    const fmt = (v: number) => formatLength(v, this.ctx.unit());
+    if (this.phase === "pick") {
+      // What a click would start from, under the pointer.
+      const kind = this.hover?.kind;
+      const hint = kind === "edge" ? "Cliquez : le trait part de cette arête." : kind === "corner" ? "Cliquez : le trait part de ce coin." : kind === "face" || kind === "region" ? "Cliquez : tirer ou pousser toute la face." : this.departure === "edge" ? "Survolez une arête : le trait lui sera parallèle." : "Survolez un coin : le trait partira en travers.";
+      this.typed.box.show("Départ", this.departure === "edge" ? "sur un trait" : "sur un point", hint);
+    }
+    else if (this.phase === "place") {
+      if (this.mode === "line") this.typed.box.show("Distance", fmt(this.distance), "Tapez la distance puis Entrée : le trait est posé.");
+      else this.typed.box.show("Retrait ; largeur", `${fmt(this.distance)} ; ${fmt(this.width)}`, "Tapez retrait;largeur puis Entrée.");
+    } else this.typed.box.show("Hauteur", `${this.height < 0 ? "−" : ""}${fmt(Math.abs(this.height))}`, "Tapez la hauteur (− : creuser) puis Entrée.");
+    this.typed.refresh();
+  }
+
+  /** What was typed, Entrée pressed: the line laid at that distance, or the pull ended at that height. */
+  private applyTyped(values: (number | null)[], text: string): void {
+    const unit = this.ctx.unit();
+    const [a, b] = values;
+    if (a === null || a === undefined || (b === null && values.length > 1)) return this.ctx.notify(`« ${text} » n'est pas une mesure.`, "error");
+    if (this.phase === "pull") {
+      [this.height, this.frozenHeight] = [fromDisplay(a, unit), true];
+      this.render();
+      return this.finish();
+    }
+    if (a < 0 || (a === 0 && this.mode === "line")) return this.ctx.notify("La distance doit être positive.", "error");
+    [this.distance, this.frozen] = [fromDisplay(a, unit), true];
+    if (this.mode === "groove" && typeof b === "number" && b > 0) [this.width, this.widthTyped] = [fromDisplay(b, unit), true];
+    if (this.lastEvent) this.move(this.lastEvent);
+    this.lay();
   }
 
   async open(_pick?: FacePick): Promise<void> {
     this.start();
+    this.showValues();
   }
 
   // ---- faces -------------------------------------------------------------------------
@@ -180,11 +227,13 @@ export class FaceStripTool extends PanelTool {
 
   private extrusion(face: LoadedFace): ExtrudeFeature {
     const area = this.area;
-    if (area) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: area.sketchId, regions: [area.probe], distance: this.height, operation: area.support ? this.operation() : "new", ...(area.support ? { target: area.support } : {}) };
-    if (this.faceRef) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, faces: [this.faceRef], target: face.pick.bodyId, distance: this.height, operation: this.operation() };
+    const fresh = this.newBody;
+    if (area) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: area.sketchId, regions: [area.probe], distance: this.height, operation: area.support && !fresh ? this.operation() : "new", ...(area.support && !fresh ? { target: area.support } : {}) };
+    // A face pulled into a body of its own still reads the body it is on.
+    if (this.faceRef) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, faces: [this.faceRef], target: face.pick.bodyId, distance: this.height, operation: fresh ? "new" : this.operation() };
     // Along the sketch normal, which may point into the body.
     const sign = dot3(face.outline.normal, face.frame.normal) >= 0 ? 1 : -1;
-    return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: this.sketchId, distance: this.height * sign, operation: this.operation(), target: face.pick.bodyId };
+    return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: this.sketchId, distance: this.height * sign, operation: fresh ? "new" : this.operation(), ...(fresh ? {} : { target: face.pick.bodyId }) };
   }
 
   protected feature(): Feature | string {
@@ -210,11 +259,11 @@ export class FaceStripTool extends PanelTool {
 
   override confirm(): void {
     const built = this.feature();
-    if (typeof built !== "string") last = { mode: this.mode, anchor: this.anchor };
+    if (typeof built !== "string") last = { mode: this.mode, anchor: this.anchor, start: this.departure, newBody: this.newBody };
     const extruded = this.phase === "pull" && Math.abs(this.height) >= 1e-3;
     const joined = this.operation() === "join";
     super.confirm();
-    if (typeof built !== "string") this.ctx.notify(extruded ? (joined ? "Matière ajoutée." : "Matière enlevée (creusée).") : "Tracé créé : avec « Extrusion », creusez la bande ou ajoutez-la.", "success");
+    if (typeof built !== "string") this.ctx.notify(extruded ? (this.newBody ? "Nouveau corps créé." : joined ? "Matière ajoutée." : "Matière enlevée (creusée).") : "Tracé créé : avec « Extrusion », creusez la bande ou ajoutez-la.", "success");
   }
 
   // ---- panel -------------------------------------------------------------------------
@@ -228,81 +277,34 @@ export class FaceStripTool extends PanelTool {
     };
     if (this.phase === "pick") {
       return [
-        this.info("1. Survolez : une arête (orange) → trait parallèle, copiable sur une autre face ; un coin → trait en travers ; l'intérieur d'une face → la tirer ou la pousser."),
+        this.selectRow("Départ", this.departure, [["edge", "Sur un trait (parallèle)"], ["corner", "Sur un point (en travers)"]], (v) => {
+          this.departure = last.start = v as Start;
+          this.hover = null;
+          changed();
+        }),
+        this.info(this.departure === "edge" ? "1. Survolez une arête (orange) : le trait lui sera parallèle, copiable sur une autre face ; l'intérieur d'une face se tire ou se pousse." : "1. Survolez un coin (point orange) : le trait partira en travers ; l'intérieur d'une face se tire ou se pousse."),
         this.info(this.mode === "line" ? "Une ligne (Ctrl : double trait)." : "Double trait (Ctrl : une ligne)."),
       ];
     }
     if (this.phase === "place") {
       const sides = this.sidesAtLine();
       return [
-        this.selectRow(
-          "Tracé",
-          this.mode,
-          [
-            ["line", "Une ligne"],
-            ["groove", "Double trait (Ctrl)"],
-          ],
-          (v) => {
-            this.mode = v as "line" | "groove";
-            changed();
-          },
-        ),
-        this.numberRow(
-          this.mode === "line" ? "Distance" : "Retrait",
-          this.distance,
-          unit,
-          (v) => {
-            if (v < 0 || (v === 0 && this.mode === "line")) return;
-            this.distance = v;
-            this.frozen = true;
-            changed();
-          },
-          this.mode === "groove",
-        ),
+        this.selectRow("Tracé", this.mode, [["line", "Une ligne"], ["groove", "Double trait (Ctrl)"]], (v) => ((this.mode = v as "line" | "groove"), changed())),
+        this.numberRow(this.mode === "line" ? "Distance" : "Retrait", this.distance, unit, (v) => (v < 0 || (v === 0 && this.mode === "line") ? undefined : ((this.distance = v), (this.frozen = true), changed())), this.mode === "groove"),
+        this.mode === "groove" ? this.numberRow("Largeur", this.width, unit, (v) => ((this.width = v), (this.widthTyped = true), changed())) : null,
         this.mode === "groove"
-          ? this.numberRow("Largeur", this.width, unit, (v) => {
-              this.width = v;
-              this.widthTyped = true;
-              changed();
-            })
-          : null,
-        this.mode === "groove"
-          ? this.selectRow(
-              "Pointeur",
-              this.anchor,
-              [
-                ["start", "Sur le 1er trait"],
-                ["end", "Sur le 2e trait"],
-                ["center", "Au centre"],
-              ],
-              (v) => {
-                this.anchor = v as GrooveAnchor;
-                changed();
-              },
-            )
+          ? this.selectRow("Pointeur", this.anchor, [["start", "Sur le 1er trait"], ["end", "Sur le 2e trait"], ["center", "Au centre"]], (v) => ((this.anchor = v as GrooveAnchor), changed()))
           : null,
         sides ? this.info(`Bords : ← ${sides.back === null ? "—" : formatLength(sides.back, unit)} · ${sides.ahead === null ? "—" : formatLength(sides.ahead, unit)} →`) : null,
-        this.info("2. Clic : poser le trait, puis tirer/pousser. Tab : côté du double trait. ✕ : tracé seul. Échap : autre départ."),
+        this.info("2. Clic (ou la distance tapée, puis Entrée) : poser le trait, puis tirer/pousser. Tab : côté du double trait. ✕ : tracé seul. Échap : autre départ."),
       ];
     }
     const op = this.operation();
     return [
-      this.numberRow(
-        "Hauteur",
-        this.height,
-        unit,
-        (v) => {
-          this.height = v;
-          this.frozenHeight = true;
-          changed();
-        },
-        true,
-      ),
-      this.info(Math.abs(this.height) < 1e-3 ? "Tirez pour ajouter, poussez pour creuser." : this.area && !this.area.support ? "Crée un nouveau corps." : op === "join" ? "Ajoute de la matière (Joindre)." : "Creuse le corps (Couper)."),
-      this.checkRow("Inverser tirer/pousser (Tab)", this.reversed, (v) => {
-        this.reversed = v;
-        changed();
-      }),
+      this.numberRow("Hauteur", this.height, unit, (v) => ((this.height = v), (this.frozenHeight = true), changed()), true),
+      this.info(Math.abs(this.height) < 1e-3 ? (this.newBody ? "Tirez ou poussez : ce qui est extrudé sera un nouveau corps." : "Tirez pour ajouter, poussez pour creuser.") : this.newBody || (this.area && !this.area.support) ? "Crée un nouveau corps (le corps cliqué reste tel quel)." : op === "join" ? "Ajoute de la matière (Joindre)." : "Creuse le corps (Couper)."),
+      this.checkRow("Nouveau corps", this.newBody, (v) => ((this.newBody = last.newBody = v), changed())),
+      this.newBody ? null : this.checkRow("Inverser tirer/pousser (Tab)", this.reversed, (v) => ((this.reversed = v), changed())),
       this.info(`${this.target ? "Niveau visé (point vert)." : "Visez un coin ou un trait d'un corps pour vous arrêter à son niveau."} 3. Clic ou Entrée : terminer. Échap : revenir au tracé.`),
     ];
   }
@@ -319,6 +321,7 @@ export class FaceStripTool extends PanelTool {
   // ---- view --------------------------------------------------------------------------
 
   private redraw(): void {
+    this.showValues();
     const face = this.face;
     if (!face) {
       this.marks.clear();
@@ -362,6 +365,7 @@ export class FaceStripTool extends PanelTool {
   }
 
   protected override dispose(): void {
+    this.typed.dispose();
     this.marks.dispose();
     this.ctx.viewport.setHoverHighlight(null);
   }
@@ -394,7 +398,10 @@ export class FaceStripTool extends PanelTool {
         const snap = SNAP_PX * this.ctx.viewport.worldPerPixel();
         const corner = face.polygon.findIndex((v) => Math.hypot(p[0] - v[0], p[1] - v[1]) <= snap);
         const near = nearestEdge(face.polygon, p);
-        this.hover = this.area ? { kind: "region" } : corner >= 0 ? { kind: "corner", index: corner } : near && near.d <= snap ? { kind: "edge", edge: near.edge } : { kind: "face" };
+        // « Départ »: a point takes the corners only, a line the edges only (an edge near a corner too).
+        const onCorner = this.departure === "corner" && corner >= 0;
+        const onEdge = this.departure === "edge" && near && near.d <= snap;
+        this.hover = this.area ? { kind: "region" } : onCorner ? { kind: "corner", index: corner } : onEdge ? { kind: "edge", edge: near.edge } : { kind: "face" };
         // The double line's width starts as the board's thickness under the pointer.
         const n = face.outline.normal;
         const depth = pick && !this.widthTyped ? this.ctx.viewport.depthAt(face.pick.bodyId, pick.point.toArray() as Vec3, [-n[0], -n[1], -n[2]]) : null;
@@ -411,15 +418,7 @@ export class FaceStripTool extends PanelTool {
       this.finish();
       return;
     }
-    if (this.phase === "place") {
-      const band = this.currentBand();
-      if (!band || !this.face) return;
-      [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [band, null, 0, false, null];
-      this.targets = captureTargets(this.ctx.viewport);
-      this.phase = "pull";
-      this.move(event);
-      return;
-    }
+    if (this.phase === "place") return this.lay(event);
     const face = this.face;
     if (!face || !this.hover) {
       if (this.ctx.viewport.pickFace(event)) this.ctx.notify("Face non plane ou encore en lecture : choisissez une face plane bordée d'arêtes droites.", "info");
@@ -451,6 +450,18 @@ export class FaceStripTool extends PanelTool {
     this.distance = 0;
     this.phase = "place";
     this.move(event);
+  }
+
+  /** The line laid where it is (a click, or the distance typed): then pull or push its band. */
+  private lay(event?: PointerEvent): void {
+    const band = this.currentBand();
+    if (!band || !this.face) return this.ctx.notify("Le trait sort de la face : rapprochez-le.", "info");
+    [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [band, null, 0, false, null];
+    this.targets = captureTargets(this.ctx.viewport);
+    this.phase = "pull";
+    this.typed.clear();
+    if (event ?? this.lastEvent) this.move((event ?? this.lastEvent)!);
+    else (this.redraw(), this.render());
   }
 
   override handleKey(event: KeyboardEvent): boolean {

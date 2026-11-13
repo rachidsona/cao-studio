@@ -617,6 +617,10 @@ opération existante.
     (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
     Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Terminer** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
+- **Les messages de l'éditeur** (« Version 4 enregistrée », « Niche équipée », une modification refusée…)
+  s'affichent **en bas de la colonne de gauche, en petit** (11 px), le plus récent en bas, au-dessus de la barre
+  d'état — jamais par-dessus la vue, où ils cachaient ce qu'on voulait cliquer (`data-ref="toasts"` de
+  `templates/editor/editor.html`, `toast` de `ui/dom.ts`).
 - **Survolée, une icône d'outil dit son nom seulement** (« Coque », « Vider un corps »), dans une **pastille au style
   des cotes des pièces** (contour et texte orange #f8500a sur blanc, `.cad-icon-tip`), sous l'icône — au-dessus près
   du bas de la fenêtre. `ui/icon-titles.ts` ôte le `title` de chaque bouton-icône (une image, pas de texte) : son nom
@@ -1851,6 +1855,15 @@ opération existante.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Truelle : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où
+  part le trait — *sur un trait* (les arêtes seules, même près d'un coin : un trait parallèle) ou *sur un point* (les
+  coins seuls : un trait en travers). Pendant le tracé, la **distance** (retrait;largeur d'un double trait) puis la
+  **hauteur** (− : creuser) se tapent au clavier sans cliquer de champ, comme dans « Dessiner sur le corps » : elles
+  s'écrivent dans la case des mesures en bas de la vue, et **Entrée** pose le trait, puis termine la poussée ;
+  Retour arrière efface, Échap vide la saisie. La case dit aussi, au survol, de quoi partirait un clic (cette arête,
+  ce coin, toute la face). **« Nouveau corps »** (étape tirer/pousser, retenu pour la séance) fait de ce qui est
+  extrudé un corps à part — la bande, la face ou la zone d'esquisse —, le corps cliqué restant tel quel
+  (`operation: "new"`).
 - **Les outils de dessin de l'esquisse restent actifs** (Ligne, Rectangle, Cercle, Arc, Polygone, Oblong, Ovale,
   Courbe ; `lay` de `sketcher/shape-entry.ts`) : une forme posée, l'outil attend la suivante — plusieurs formes à la
   suite, chacune son étape d'annulation. **Échap** (ou l'outil Sélection) le quitte ; un second Échap, sans outil ni
