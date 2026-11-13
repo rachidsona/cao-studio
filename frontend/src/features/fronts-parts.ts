@@ -8,13 +8,14 @@
  * - Porte relevable (charnières en haut, tenue ouverte par une paire de compas choisie selon son poids et sa hauteur)
  *   ou abattant (charnières en bas, retenu par une paire de compas) : une porte seule, ses charnières le long du chant.
  * - Sans poignée (« gorge ») : chaque façade laisse 30 mm de prise de main au-dessus de son chant haut, devant un
- *   profilé alu en retrait, posé entre les côtés (sous le dessus pour la façade du haut) ; il s'achète au mètre.
+ *   profilé alu en retrait, sur toute la largeur du caisson (sous le dessus pour la façade du haut) : les côtés sont
+ *   entaillés à l'avant pour le recevoir (gorgeNotches, que le noyau creuse : features/cabinet.ts). Il s'achète au mètre.
  * - Porte à cadre (panneau en retrait, usinée dans la masse), cannelée ou à tasseaux (rainures verticales dans sa face
  *   avant, door-decor.ts) : une seule planche, débitée comme une porte plate.
  * - Porte vitrée : la porte est le cadre en profilé alu, son verre une pièce à part après les façades (« Vitre … »),
  *   au milieu de l'épaisseur, qui pivote avec elle ; charnières pour cadre alu (glass-door.ts).
  */
-import type { CabinetFeature, FrontsFeature, Vec3 } from "../document/types";
+import type { CabinetFeature, CabinetNotch, CadDocument, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "./cabinet-parts";
 import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass } from "./glass-door";
 import { decorProblem } from "./door-decor";
@@ -195,9 +196,34 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
       box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
     }
   }
-  // The profiles last (the other bodies keep their numbers): between the sides, recessed, behind each finger space.
-  gorges.forEach((top, i) => parts.push({ name: `Profil gorge ${i + 1}`, from: [ox + t, oy, oz + top + GORGE.space - GORGE.height], to: [ox + W - t, oy + GORGE.depth, oz + top + GORGE.space], gorge: true }));
+  // The profiles last (the other bodies keep their numbers): the whole width, in the notches of the sides, recessed
+  // behind each finger space.
+  gorges.forEach((top, i) => parts.push({ name: `Profil gorge ${i + 1}`, from: [ox, oy, oz + top + GORGE.space - GORGE.height], to: [ox + W, oy + GORGE.depth, oz + top + GORGE.space], gorge: true }));
   return parts;
+}
+
+/**
+ * The notches a cabinet's sides need for the gorge profiles of its fronts: from `z0` to `z1` above its origin, `depth`
+ * back from its front. None without handleless fronts (or when they cannot be made).
+ */
+export function gorgeNotches(f: FrontsFeature, cabinet: CabinetFeature): CabinetNotch[] {
+  if (f.grip !== "gorge" || f.suppressed) return [];
+  const oz = cabinet.origin[2];
+  return frontsParts(f, cabinet).filter((p) => p.gorge).map((p) => ({ z0: p.from[2] - oz, z1: p.to[2] - oz, depth: p.to[1] - p.from[1] }));
+}
+
+/** The document with each cabinet carrying the notches of its gorge profiles, for the kernel only. */
+export function stampGorges(doc: CadDocument): CadDocument {
+  let changed = false;
+  const features = doc.features.map((c) => {
+    if (c.type !== "cabinet") return c;
+    const notches = doc.features.flatMap((f) => (f.type === "fronts" && f.cabinet === c.id ? gorgeNotches(f, c) : []));
+    if (!notches.length && !c.notches) return c;
+    changed = true;
+    const { notches: _old, ...rest } = c;
+    return notches.length ? { ...rest, notches } : rest;
+  });
+  return changed ? { ...doc, features } : doc;
 }
 
 export function frontsPartNames(f: FrontsFeature, cabinet: CabinetFeature | undefined): string[] {

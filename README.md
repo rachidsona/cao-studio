@@ -2604,8 +2604,11 @@ opération existante.
     repères : la fiche du fabricant fait foi (`liftStay`, `LIFT_CLASSES` dans `features/fronts-parts.ts`).
   - **Sans poignée (gorge)** (case du même outil, `FrontsFeature.grip`) : pas de trous de poignée ; chaque façade
     laisse **30 mm de prise de main** au-dessus de son chant haut — sous le dessus du caisson pour la façade du haut,
-    entre deux façades de tiroir — devant un **profilé alu** de 57 mm posé entre les côtés, en retrait de 26 mm. Les
-    caissons de tiroir passent sous les profilés. Le profilé s'achète au mètre : il va au devis (« Profil gorge alu
+    entre deux façades de tiroir — devant un **profilé alu** de 57 mm, en retrait de 26 mm, qui court sur **toute la
+    largeur** du caisson : les **côtés sont entaillés** à l'avant (57 × 26 mm, une entaille par profilé) pour le
+    recevoir. Les entailles viennent des façades (`gorgeNotches`) et ne sont recopiées dans le caisson que pour le
+    noyau (`stampGorges`, comme les cotes de la quincaillerie) ; redonner des poignées les referme. Les caissons de
+    tiroir passent sous les profilés. Le profilé s'achète au mètre : il va au devis (« Profil gorge alu
     (m) ») et reste hors du débit. La gorge demande des façades en applique et des portes pleines, et 80 mm de façade
     au moins sous chaque gorge.
   - Dans une **cuisine**, le Plan de cuisine garde la porte relevable et la gorge d'un meuble : la cuisine refaite

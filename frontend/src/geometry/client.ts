@@ -1,5 +1,6 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
 import { stampHardware } from "../document/hardware-catalog";
+import { stampGorges } from "../features/fronts-parts";
 import type { CadDocument, FaceRef } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
 import type { OffsetJoin, OffsetOutcome, OffsetPath } from "./offset";
@@ -91,11 +92,11 @@ export class GeometryClient {
   }
 
   async recompute(doc: CadDocument): Promise<RecomputeResponse> {
-    // The chosen hardware's sizes go into the fronts and doors it drills.
+    // The chosen hardware's sizes go into the fronts and doors it drills; the gorge profiles' notches into the sides.
     const generation = ++this.sent;
     // The meshes held: the worker sends again only those of bodies that changed (worker.ts meshesOf).
     const known = Object.fromEntries([...this.meshes].map(([id, mesh]) => [id, mesh.meshId ?? 0]));
-    const wire = await this.call<Omit<RecomputeResponse, "bodies"> & { bodies: WireMesh[] }>({ type: "recompute", doc: stampHardware(doc), known }, generation);
+    const wire = await this.call<Omit<RecomputeResponse, "bodies"> & { bodies: WireMesh[] }>({ type: "recompute", doc: stampGorges(stampHardware(doc)), known }, generation);
     const bodies = wire.bodies.map((m) => ("same" in m ? this.meshes.get(m.bodyId) : m)).filter((m): m is BodyMesh => !!m);
     this.meshes = new Map(bodies.map((m) => [m.bodyId, m]));
     this.shown = Math.max(this.shown, generation);

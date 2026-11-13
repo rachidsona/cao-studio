@@ -439,6 +439,15 @@ export interface CabinetFeature extends FeatureBase {
   rotation?: 0 | 90 | 180 | 270;
   /** Construction standard it follows (document/standards.ts): missing, the project's; « none », set by hand. */
   standard?: string;
+  /** The notches its sides take for the gorge profiles of its fronts: copied in for the kernel only (stampGorges). */
+  notches?: CabinetNotch[];
+}
+
+/** A notch in the front edge of a cabinet's sides: from `z0` to `z1` above its origin, `depth` back from its front. */
+export interface CabinetNotch {
+  z0: number;
+  z1: number;
+  depth: number;
 }
 
 /** Principal axis: 0 = X, 1 = Y, 2 = Z. */

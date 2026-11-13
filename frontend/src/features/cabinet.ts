@@ -13,7 +13,8 @@
  * and the sides fit between them. The back is screwed on (full outer size,
  * the carcass is shallower by its thickness) or inset (inner size, the
  * horizontal boards stop in front of it). A plinth raises the bottom: the
- * sides go down to the floor.
+ * sides go down to the floor. Handleless fronts notch the front edge of the sides where their gorge profiles run
+ * (`notches`, stamped from the fronts: features/fronts-parts.ts stampGorges).
  */
 import { makeBox, type Shape3D } from "replicad";
 import type { CabinetFeature, Vec3 } from "../document/types";
@@ -28,6 +29,20 @@ export function turnedWith(shape: Shape3D, cabinet: { origin: Vec3; rotation?: n
   return cabinet.rotation ? (shape.rotate(cabinet.rotation, cabinet.origin, [0, 0, 1]) as Shape3D) : shape;
 }
 
+/** A side with the notches of the gorge profiles cut in its front edge (the shape is consumed). */
+function notched(solid: Shape3D, part: { from: Vec3; to: Vec3 }, feature: CabinetFeature): Shape3D {
+  const [, oy, oz] = feature.origin;
+  for (const n of feature.notches ?? []) {
+    // Over the side's thickness and a little out of its front face, for a clean cut.
+    const tool = makeBox([part.from[0] - 1, oy - 1, oz + n.z0], [part.to[0] + 1, oy + n.depth, oz + n.z1]) as unknown as Shape3D;
+    const cut = solid.cut(tool) as Shape3D;
+    solid.delete();
+    tool.delete();
+    solid = cut;
+  }
+  return solid;
+}
+
 export function buildCabinet(feature: CabinetFeature): SolidsOutput {
   const problem = cabinetProblem(feature);
   if (problem) throw new GeometryError(`${feature.name} : ${problem}`);
@@ -35,7 +50,8 @@ export function buildCabinet(feature: CabinetFeature): SolidsOutput {
   const shapes: Shape3D[] = [];
   try {
     for (const part of parts) {
-      const solid = makeBox(part.from, part.to) as unknown as Shape3D;
+      let solid = makeBox(part.from, part.to) as unknown as Shape3D;
+      if (part.name.startsWith("Côté")) solid = notched(solid, part, feature);
       if (!isShapeValid(solid)) {
         solid.delete();
         throw new GeometryError(`${feature.name} : la pièce « ${part.name} » est invalide.`);

@@ -108,15 +108,15 @@ describe("porte relevable et abattant", () => {
 });
 
 describe("façades sans poignée (gorge)", () => {
-  it("la porte s'arrête sous le dessus, 30 mm de prise de main au-dessus d'elle, devant un profilé entre les côtés", () => {
+  it("la porte s'arrête sous le dessus, 30 mm de prise de main au-dessus d'elle, devant un profilé sur toute la largeur", () => {
     const f = fronts({ grip: "gorge" });
     const [door, profile] = frontsParts(f, wall);
     const top = 1400 + 360 - 18 - GORGE.space;
     expect(door!.to[2]).toBeCloseTo(top);
-    expect(profile).toMatchObject({ name: "Profil gorge 1", gorge: true, from: [18, 0, top + GORGE.space - GORGE.height], to: [582, GORGE.depth, top + GORGE.space] });
+    expect(profile).toMatchObject({ name: "Profil gorge 1", gorge: true, from: [0, 0, top + GORGE.space - GORGE.height], to: [600, GORGE.depth, top + GORGE.space] });
     // No handle: its hinge cups only, the profile by the metre.
     expect(frontsHoleCount(f, wall)).toBe(2);
-    expect(frontsHardware(f, wall)).toEqual([{ name: "Charnière à boîtier Ø35", quantity: 2 }, { name: GORGE_PROFILE, quantity: 0.56, unit: "m" }]);
+    expect(frontsHardware(f, wall)).toEqual([{ name: "Charnière à boîtier Ø35", quantity: 2 }, { name: GORGE_PROFILE, quantity: 0.6, unit: "m" }]);
     const d = docOf(wall, f);
     expect(isHardwareBody(d, "fr1#0")).toBe(false);
     expect(isHardwareBody(d, "fr1#1")).toBe(true);
@@ -138,7 +138,7 @@ describe("façades sans poignée (gorge)", () => {
       const side = parts.find((p) => p.name === `Tiroir ${i + 1} — côté gauche`)!;
       expect(side.to[2]).toBeLessThanOrEqual(profiles[i]!.from[2] - 5 + 1e-6);
     }
-    expect(frontsHardware(f, base)).toEqual([{ name: "Coulisse de tiroir (paire)", quantity: 3 }, { name: GORGE_PROFILE, quantity: 1.69, unit: "m" }]);
+    expect(frontsHardware(f, base)).toEqual([{ name: "Coulisse de tiroir (paire)", quantity: 3 }, { name: GORGE_PROFILE, quantity: 1.8, unit: "m" }]);
     expect(frontsHoleCount(f, base)).toBe(0);
   });
 
