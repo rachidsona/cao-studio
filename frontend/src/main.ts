@@ -25,6 +25,7 @@ import { bindEdgePaint } from "./app/edge-paint-tool";
 import { bindLivePrice } from "./app/workshop/live-price";
 import { bindNicheCopy } from "./app/dressing/niche-copy-tool";
 import { bindFurnitureTool } from "./app/furniture-tool";
+import { bindWalk } from "./app/walk-tool";
 import { bindNicheMenu } from "./app/dressing/niche-menu";
 import { bindShelfDrag } from "./app/dressing/shelf-drag";
 import { bindStylePanel } from "./app/dressing/style-panel";
@@ -226,6 +227,7 @@ async function start(): Promise<void> {
   bindLivePrice(root, viewport, editor, config.apiUrl);
   bindNicheCopy(root, viewport, editor);
   bindFurnitureTool(root, viewport, editor);
+  bindWalk(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);
   bindModulePalette(root, viewport, editor);
   // The tooltip of a tool's icon says its name only (its description is in the Help, and in the tool search).

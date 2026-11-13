@@ -1702,6 +1702,13 @@ opération existante.
     navigateur et la liste de débit. Supprimer un calque rend ses corps (sans calque).
   - *Rapporteur* : troisième mode du mètre (« Angle ») : le sommet puis un point de chaque côté ; l'angle s'affiche.
   - *Scènes* : des vues de la caméra nommées, enregistrées dans le document ; un clic y emmène la caméra.
+  - *Visite à pied* (groupe « Client ») : se promener dans la pièce à hauteur d'yeux (1,60 m, de 0,90 à 2 m à la
+    molette ou au champ du panneau). On regarde en glissant dans la vue, on marche avec les flèches ou Z Q S D (la
+    touche à la place de W A S D, quelle que soit la disposition du clavier), Maj pour aller plus vite, ou avec le
+    joystick en bas à gauche de la vue sur une tablette. Un clic sur une porte ou un tiroir l'ouvre, un clic au sol y
+    emmène. La visite part du milieu de la pièce relevée, sinon à 2,50 m devant le meuble ; les murs et les meubles
+    arrêtent le visiteur (un cercle de 25 cm qui glisse le long d'eux), pas une plinthe basse ni le plafond. Échap ou
+    « Terminer » rendent la vue d'avant ; le modèle ne change pas (`viewport/walk.ts`, pur ; `app/walk-tool.ts`).
   - *Mètre et guides* (comme le mètre de SketchUp) : deux clics, accrochés aux coins, arêtes et guides, donnent la
     distance et ΔX, ΔY, ΔZ ; en mode « Guide » le second clic pose une ligne de guide enregistrée. « Mesurer entre »
     choisit ce que les deux clics désignent : **points**, **traits** (arêtes), **faces** ou **corps** — la plus courte

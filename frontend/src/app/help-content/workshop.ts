@@ -1,4 +1,5 @@
 import { ORDERS_HELP } from "./orders";
+import { WALK_HELP } from "./walk";
 import type { HelpFamily } from "./types";
 
 const MENU = "Le nom d'un groupe ouvre un menu qui liste tous ses outils : plusieurs n'y sont rangés que dans ce menu, un clic les lance.";
@@ -219,6 +220,7 @@ export const WORKSHOP: HelpFamily[] = [
         ],
         tip: "Les points s'accrochent aux coins, aux arêtes et aux guides. Les mesures disparaissent à la fermeture du panneau, les guides restent. Après une mesure entre deux corps, « Changer cet espace… » ouvre l'outil Espacement.",
       },
+      WALK_HELP,
       {
         keys: ["data-workshop:scenes"], name: "Scènes",
         what: "Garde des vues de la caméra sous un nom et y retourne d'un clic.",
