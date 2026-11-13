@@ -21,7 +21,7 @@ export function bindShortcuts(target: ShortcutTarget): void {
     const mod = event.metaKey || event.ctrlKey;
     const key = event.key.toLowerCase();
     const tool = target.activeTool();
-    // Ctrl and Tab also go to the tool (Truelle: double line, side of the double line, reverse push/pull).
+    // Ctrl and Tab also go to the tool (Magie extrude: double line, side of the double line, reverse push/pull).
     if (tool && (event.key === "Escape" || (!typing && (event.key === "Enter" || event.key === "Tab" || (event.key === "Control" && !event.repeat))))) {
       if (tool.handleKey(event)) event.preventDefault();
     } else if (mod && key === "s") {

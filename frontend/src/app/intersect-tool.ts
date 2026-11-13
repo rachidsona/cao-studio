@@ -4,7 +4,7 @@
  * à cette distance — la coupe du corps par ce plan, posée en esquisse (« Intersection 1 ») : le corps reste entier.
  * « Nombre » la répète au même pas (le « *n » de Curic) ; « Répartir » partage l'épaisseur du corps en parts égales
  * (son « /n »). « Tous les corps traversés » trace aussi la ligne sur les autres corps que le plan coupe (son « Ctrl :
- * prendre un objet »). Une esquisse fermée se tire ensuite comme une autre (Extruder, Truelle).
+ * prendre un objet »). Une esquisse fermée se tire ensuite comme une autre (Extruder, Magie extrude).
  */
 import { uniqueId } from "../document/operations";
 import type { Feature, PlaneName, SketchFeature, Vec3 } from "../document/types";

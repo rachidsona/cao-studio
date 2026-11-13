@@ -1,5 +1,5 @@
 /**
- * "Truelle" — tracé et extrusion sur face (like Curic DIO 2's Trowel and
+ * "Magie extrude" — tracé et extrusion sur face (like Curic DIO 2's Trowel and
  * Chalkline), in three steps:
  *
  * 1. Hover: a corner of the face under the pointer (orange dot), an edge (orange), or the inside of the face —
@@ -100,7 +100,7 @@ export class FaceStripTool extends PanelTool {
   private readonly marks: StripMarks;
 
   constructor(ctx: ToolContext) {
-    super(ctx, "Truelle — tracé et extrusion", null);
+    super(ctx, "Magie extrude — tracé et extrusion", null);
     const doc = ctx.doc();
     this.sketchId = uniqueId(doc, "sk");
     this.sketchName = uniqueName(doc, "Tracé");

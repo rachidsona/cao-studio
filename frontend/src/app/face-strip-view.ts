@@ -1,5 +1,5 @@
 /**
- * What the "Truelle" tool draws in the view, right away (before the kernel's
+ * What the "Magie extrude" tool draws in the view, right away (before the kernel's
  * preview): the start in orange (an edge, or a dot on a corner), the band's
  * lines in red as in Curic DIO, the distances from the line to the face's
  * boundary on both sides, and the level aimed at in green. Also what it aims
@@ -23,7 +23,7 @@ import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
 import { planeForFace } from "../sketcher/projection";
 
-/** A planar face the Truelle works on (or a closed area of a sketch, seen the same way). */
+/** A planar face Magie extrude works on (or a closed area of a sketch, seen the same way). */
 export interface LoadedFace {
   key: string;
   pick: FacePick;
@@ -59,7 +59,7 @@ export async function loadFace(geometry: GeometryClient, key: string, pick: Face
   }
 }
 
-/** A closed area of a sketch under the pointer, which the Truelle pulls into a body (or into the body the sketch lies on). */
+/** A closed area of a sketch under the pointer, which Magie extrude pulls into a body (or into the body the sketch lies on). */
 export interface SketchArea {
   sketchId: string;
   /** A point inside the area (sketch plane): how the extrusion names it. */

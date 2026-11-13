@@ -1112,7 +1112,7 @@ opération existante.
       relief.
     - C'est une coupe dessinée sur le pignon et extrudée le long du faîtage (`features/roof-offset.ts`). L'autre
       égout est pris au bord du corps, à la hauteur du premier, comme les toits de l'outil Toit.
-- **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
+- **Magie extrude — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (en vert #63df0f, épaissie) ou l'intérieur de la face
      (teintée). **Ctrl** passe d'une ligne au double trait.
@@ -1243,10 +1243,10 @@ opération existante.
 - **Lignes tout autour** (menu du groupe « Curic », comme l'outil Intersect de Curic OI) : on clique une face plane
   d'un corps, puis on tire la flèche plantée dedans ou on tape la distance : une ligne fait le tour du corps,
   parallèle à la face, à cette distance. C'est la coupe du corps par ce plan, posée en esquisse (« Intersection 1 »,
-  un profil fermé qui se tire ensuite avec Extruder ou la Truelle) ; le corps reste entier. « Nombre de lignes » les
+  un profil fermé qui se tire ensuite avec Extruder ou Magie extrude) ; le corps reste entier. « Nombre de lignes » les
   répète au même pas (le « *n » de Curic), « Répartir dans l'épaisseur » partage l'épaisseur du corps en parts égales
   (son « /n »), « Tous les corps traversés » trace aussi la ligne sur les autres corps que le plan coupe (son « Ctrl :
-  prendre un objet »). Les deux autres outils de Curic OI sont déjà là : le *ChalkLine* est la **Truelle** (trait
+  prendre un objet »). Les deux autres outils de Curic OI sont déjà là : le *ChalkLine* est **Magie extrude** (trait
   simple ou double depuis une arête), son *Offset* le décalage de **Dessiner sur le corps** (`app/intersect-tool.ts`).
 - **Barre d'outils** (comme Fusion) : les outils sont rangés en groupes ; chaque groupe montre ceux dont on se sert le
   plus et son nom (« CRÉER ▾ », « ATELIER ▾ »…) ouvre la liste de **tous** ses outils. Un clic lance l'outil ;
@@ -1864,7 +1864,7 @@ opération existante.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
-- **Truelle : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où
+- **Magie extrude : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où
   part le trait — *sur un trait* (les arêtes seules, même près d'un coin : un trait parallèle) ou *sur un point* (les
   coins seuls : un trait en travers). Pendant le tracé, la **distance** (retrait;largeur d'un double trait) puis la
   **hauteur** (− : creuser) se tapent au clavier sans cliquer de champ, comme dans « Dessiner sur le corps » : elles

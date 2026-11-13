@@ -123,7 +123,7 @@ describe("feuillure par extrusion de la bande", () => {
   });
 });
 
-describe("Truelle (comme Curic DIO 2)", () => {
+describe("Magie extrude (comme Curic DIO 2)", () => {
   it("cotes vers les deux bords depuis le trait, et place du double trait par rapport au pointeur", () => {
     const poly = facePolygon(top(), frame)!;
     expect(sideDistances(poly, [30, 20], [1, 0])).toEqual({ back: 30, ahead: 70 });

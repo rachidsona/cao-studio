@@ -1,10 +1,10 @@
-/** Truelle : le départ sur un trait ou sur un point, et la distance et la hauteur tapées au clavier. */
+/** Magie extrude : le départ sur un trait ou sur un point, et la distance et la hauteur tapées au clavier. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 
-test("Truelle : départ sur un trait, distance tapée puis Entrée, hauteur tapée puis Entrée, et un nouveau corps", async ({ page }) => {
+test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteur tapée puis Entrée, et un nouveau corps", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -22,7 +22,7 @@ test("Truelle : départ sur un trait, distance tapée puis Entrée, hauteur tap�
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1200);
   await click(page, '[data-action="face-strip"]');
-  const tool = page.getByRole("dialog", { name: /Truelle/ });
+  const tool = page.getByRole("dialog", { name: /Magie extrude/ });
   await expect(tool).toBeVisible();
   // Two ways to start: on a line (an edge, the line parallel to it) or on a point (a corner, the line across).
   const start = tool.getByRole("combobox", { name: "Départ" });
