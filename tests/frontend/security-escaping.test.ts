@@ -145,7 +145,7 @@ describe("exports CSV : une cellule ne devient jamais une formule (audit du 10/1
     expect(quote).toContain(`"'+33 6 00"`);
     expect(quote).toMatch(/;-12,5(\r\n|$)/);
     expect(quote).not.toMatch(/(^|;)"[=+\-@]/m);
-    const buy = purchaseCsv([{ label: formula, quantity: 3, unit: "-u" }, { label: "Vis", quantity: 4, unit: "pièce" }]);
+    const buy = purchaseCsv([{ label: formula, quantity: 3, unit: "-u", family: "hardware" }, { label: "Vis", quantity: 4, unit: "pièce", family: "hardware" }]);
     expect(buy).toContain(`"'=HYPERLINK(""http://x.example"";""x"")";3;"'-u"`);
     expect(buy).toContain("Vis;4;pièce;");
   });

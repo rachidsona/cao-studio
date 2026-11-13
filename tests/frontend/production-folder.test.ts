@@ -27,9 +27,9 @@ describe("page de garde du dossier", () => {
 describe("liste d'achat en tableur", () => {
   it("met une ligne par article, en décimales françaises, et protège les points-virgules", () => {
     const csv = purchaseCsv([
-      { label: "Mélaminé blanc 18 mm", quantity: 3, unit: "panneaux" },
-      { label: "Chant ; 1 mm", quantity: 12.5, unit: "m", detail: 'dit "fin"' },
-    ] as Parameters<typeof purchaseCsv>[0]);
+      { label: "Mélaminé blanc 18 mm", quantity: 3, unit: "panneaux", family: "board" },
+      { label: "Chant ; 1 mm", quantity: 12.5, unit: "m", detail: 'dit "fin"', family: "band" },
+    ]);
     expect(csv.split("\n")).toEqual(["Article;Quantité;Unité;Détail", "Mélaminé blanc 18 mm;3;panneaux;", '"Chant ; 1 mm";12,5;m;"dit ""fin"""']);
   });
 });

@@ -7,7 +7,7 @@ export type FolderItem = "cutlist" | "layout" | "sheets" | "labels" | "cnc" | "n
 /** What the folder can hold, in the order of the work; `off`: left out unless asked (not for the workshop). */
 export const FOLDER_ITEMS: { key: FolderItem; label: string; off?: true }[] = [
   { key: "cutlist", label: "Liste de débit" },
-  { key: "layout", label: "Calepinage et liste d'achat" },
+  { key: "layout", label: "Calepinage, liste d'achat et bons de commande" },
   { key: "sheets", label: "Fiches de fabrication" },
   { key: "labels", label: "Étiquettes à QR code" },
   { key: "cnc", label: "Fichiers machine (DXF et G-code)" },

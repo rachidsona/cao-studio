@@ -14,6 +14,7 @@ import type { AssemblyNotice } from "./assembly-guide";
 import type { Editor } from "../editor";
 import { checkModel, showCheck } from "./fabrication-check";
 import { layoutFiles } from "./production";
+import { orderFiles } from "./purchase-orders-tool";
 import { cutListPage, partsOf } from "./workshop";
 import { flatParts, labelsPage, savedDxf, savedGcode } from "./workshop-cnc";
 import { savedQuoteHtml } from "./workshop-documents";
@@ -39,6 +40,8 @@ async function folderFiles(viewport: Viewport, editor: Editor, geometry: Geometr
     const layout = await layoutFiles(rows, modelHardware(editor.doc), editor.unit);
     page("02-calepinage.html", layout.page, "Calepinage");
     files.set("02-liste-d-achat.csv", `${BOM}${layout.purchase}`);
+    // The purchase orders, by supplier (those of this browser): one page, a CSV each.
+    for (const [name, text] of orderFiles(layout.lines, projectName())) files.set(`02-${name}`, text);
   }
   // Without the layout of the page: each sheet has its own, and a label sheet has no room for it.
   if (wanted.has("sheets")) page("03-fiches-de-fabrication.html", await partSheetsPage(viewport, editor, geometry), "Fiches de fabrication", false);

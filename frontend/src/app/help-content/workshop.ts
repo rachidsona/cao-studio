@@ -1,3 +1,4 @@
+import { ORDERS_HELP } from "./orders";
 import type { HelpFamily } from "./types";
 
 const MENU = "Le nom d'un groupe ouvre un menu qui liste tous ses outils : plusieurs n'y sont rangés que dans ce menu, un clic les lance.";
@@ -257,6 +258,7 @@ export const WORKSHOP: HelpFamily[] = [
     title: "Fabrication : découpe et commande numérique",
     where: MAKING,
     tools: [
+      ORDERS_HELP,
       {
         keys: ["data-workshop:cutlist"], name: "Liste de débit",
         what: "Liste toutes les pièces du meuble avec leurs cotes, leur matière, leurs chants et leur quantité.",

@@ -13,12 +13,13 @@ import { cutList, type CutRow } from "../../document/cut-list";
 import { modelHardware } from "../../document/hardware";
 import { MATERIALS } from "../../document/materials";
 import { layoutSheets, type Sheet, type StockPiece } from "../../document/nesting";
-import { combineHardware, combineRows, purchaseCsv, purchaseList } from "../../document/purchase";
+import { combineHardware, combineRows, purchaseCsv, purchaseList, type PurchaseLine } from "../../document/purchase";
 import type { DisplayUnit } from "../../document/types";
 import { toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
+import { openPurchaseOrders } from "./purchase-orders-tool";
 import { call } from "./sharing";
 import { partsOf } from "./workshop";
 import { downloadText, escapeHtml, openModal, printHtml, type PrintPage } from "./workshop-ui";
@@ -73,8 +74,14 @@ const purchaseHtml = (sheets: Sheet[], rows: CutRow[], hardware: { name: string;
     .map((l) => `<tr><td>${escapeHtml(l.label)}</td><td>${l.quantity.toLocaleString("fr-FR")} ${escapeHtml(l.unit)}</td><td>${escapeHtml(l.detail ?? "")}</td></tr>`)
     .join("")}</tbody></table>`;
 
+/** What to buy for these rows and this hardware: the sheets laid out on the stock first, when it can be read. */
+export async function purchaseLines(rows: CutRow[], hardware: { name: string; quantity: number; unit?: string; price?: number }[]): Promise<PurchaseLine[]> {
+  const pieces = await stock().catch((): StockPiece[] => []);
+  return purchaseList(layoutSheets(rows, undefined, pieces).sheets, rows, hardware, layoutBars(rows).bars);
+}
+
 /** The sheets of a project and what to buy, using the stock of offcuts when it can be read. */
-export async function layoutFiles(rows: CutRow[], hardware: { name: string; quantity: number; unit?: string }[], unit: DisplayUnit): Promise<{ page: PrintPage; purchase: string; sheets: number }> {
+export async function layoutFiles(rows: CutRow[], hardware: { name: string; quantity: number; unit?: string; price?: number }[], unit: DisplayUnit): Promise<{ page: PrintPage; purchase: string; lines: PurchaseLine[]; sheets: number }> {
   const pieces = await stock().catch((): StockPiece[] => []);
   const { sheets, tooBig, brokenRuns } = layoutSheets(rows, undefined, pieces);
   const { bars, tooLong } = layoutBars(rows);
@@ -85,6 +92,7 @@ export async function layoutFiles(rows: CutRow[], hardware: { name: string; quan
       html: `<h1>Calepinage</h1>${sheets.map((s, i) => sheetSvg(s, i, unit)).join("")}${bars.map((b, i) => barSvg(b, i, unit)).join("")}${brokenRuns.length ? `<p>Fil continu impossible, rangée trop grande pour son panneau : ${escapeHtml(brokenRuns.join(" ; "))}.</p>` : ""}${out.length ? `<p>À revoir, trop grandes pour leur panneau ou leur barre : ${escapeHtml(out.join(", "))}.</p>` : ""}<h2>Liste d'achat</h2>${purchaseHtml(sheets, rows, hardware, bars)}`,
     },
     purchase: purchaseCsv(purchaseList(sheets, rows, hardware, bars)),
+    lines: purchaseList(sheets, rows, hardware, bars),
     sheets: sheets.length,
   };
 }
@@ -161,6 +169,7 @@ async function showLayout(editor: Editor, title: string, rows: CutRow[], hardwar
     }
   };
   const close = openModal(`${title} — ${result.sheets.length} panneau${result.sheets.length > 1 ? "x" : ""}${cut.bars.length ? `, ${cut.bars.length} barre${cut.bars.length > 1 ? "s" : ""}` : ""}`, holder, [
+    { label: "Bons de commande", run: () => openPurchaseOrders(editor, purchaseList(result.sheets, rows, hardware, cut.bars), title) },
     { label: "Garder les chutes", run: () => void keep() },
     { label: "Sortir les chutes utilisées", run: () => void takeOut() },
     { label: "Exporter en SVG", run: () => downloadText("decoupe.svg", result.sheets.length ? sheetSvg(result.sheets[0]!, 0, unit).replace(/^.*?(<svg)/s, "$1").replace(/<\/div>$/, "") : "", "image/svg+xml") },

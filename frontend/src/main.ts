@@ -38,6 +38,7 @@ import { bindLibrary } from "./app/library-panel";
 import { bindHardwarePanel } from "./app/workshop/hardware-panel";
 import { bindStandardsPanel } from "./app/workshop/standards-panel";
 import { bindProduction } from "./app/workshop/production";
+import { bindPurchaseOrders } from "./app/workshop/purchase-orders-tool";
 import { bindReplace } from "./app/replace-panel";
 import { bindDrivers } from "./app/drivers-3d";
 import { bindCabinetDrag } from "./app/cabinet-drag";
@@ -214,6 +215,7 @@ async function start(): Promise<void> {
   bindLinkedCopy(root, viewport, editor);
   bindSharing(root, viewport, editor, config.apiUrl, config.projectName);
   bindProduction(root, viewport, editor, config.apiUrl, config.projectName);
+  bindPurchaseOrders(root, viewport, editor);
   bindAssistant(root, viewport, editor, config.apiUrl);
   bindZoneView(viewport, editor);
   bindPlanLayout(root, viewport, editor);

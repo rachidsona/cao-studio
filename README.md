@@ -2587,6 +2587,19 @@ opération existante.
     modules et accessoires s'y retouchent ensuite comme dans un dressing ; ses planches libres (plateau, pied, voile,
     panneau, tablette) sont des extrusions. Tout est nommé d'après lui (« Bureau 1 — Plateau »). Posé par
     `document/furniture-build.ts`, l'assistant est `app/furniture-tool.ts`.
+- **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
+  découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
+  pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).
+  - Chaque fournisseur a un nom, des coordonnées et ce qu'il vend : panneaux, tasseaux, chants, quincaillerie. Un
+    article va au premier fournisseur qui vend sa famille, ou à celui qu'on choisit dans sa ligne ; ce qu'aucun ne
+    vend forme un bon « à attribuer ». Les chutes du stock ne sont pas commandées. Les fournisseurs sont gardés par
+    ce navigateur, comme les tarifs du devis.
+  - Chaque ligne a un prix unitaire **indicatif** HT tiré des tarifs du devis — le panneau au m² de sa surface, le
+    tasseau et le chant au mètre, la quincaillerie à la pièce ou à la boîte (le prix du catalogue pour un modèle
+    choisi) —, le bon son total ; une ligne sans tarif est comptée « sans prix ».
+  - « Imprimer les bons » donne une page par fournisseur (numéro, projet, date, coordonnées, lignes, total) ;
+    « Télécharger (.zip) » la page et un CSV par fournisseur. Le **Dossier de production** les contient aussi
+    (`02-bons-de-commande.html`, `02-bon-<fournisseur>.csv`).
 - **Façades** (groupe « Meuble », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
   tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
   voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du

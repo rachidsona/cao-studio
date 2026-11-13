@@ -30,7 +30,7 @@ const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs 
  * The quote's rates: the workshop's (the server's, Paramètres de l'atelier → Tarifs du devis) over what this browser
  * keeps (the prices of the boards and of the hardware changed in the quote), over the usual ones.
  */
-function loadRates(): QuoteRates {
+export function loadRates(): QuoteRates {
   const saved = savedRates();
   const base: QuoteRates = saved ? { ...DEFAULT_RATES, ...saved, boards: { ...DEFAULT_RATES.boards, ...saved.boards }, hardware: { ...DEFAULT_RATES.hardware, ...saved.hardware } } : structuredClone(DEFAULT_RATES);
   return { ...base, ...workshopRates() };
