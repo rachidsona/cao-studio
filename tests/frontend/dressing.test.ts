@@ -15,6 +15,27 @@ describe("assistant Dressing", () => {
     expect(defaultProgram(500)).toHaveLength(1);
   });
 
+  it("un style de façades pour les portes battantes et les tiroirs ; les portes coulissantes restent plates", () => {
+    const facade = { style: "fluted" as const, pitch: 30, frameDepth: 3, frameWidth: 0 };
+    const s = settings({ programs: { A: ["long", "drawers"], B: [], C: [] }, doors: "hinged", facade });
+    const { doc, problems } = dressingDocument(empty(), s);
+    expect(problems).toEqual([]);
+    const equipment = doc.features.filter((f): f is NicheFeature => f.type === "niche");
+    expect(equipment.find((f) => f.fill === "doors")).toMatchObject(facade);
+    expect(equipment.find((f) => f.fill === "drawers")).toMatchObject(facade);
+    expect(equipment.find((f) => f.fill === "rod")?.style).toBeUndefined();
+    // Each door and drawer front can take its grooves.
+    const sketch = doc.features.find((f): f is SketchFeature => f.type === "sketch" && f.name === "Dressing — mur A")!;
+    for (const f of equipment.filter((x) => x.fill !== "rod")) {
+      const n = nicheGeometry(f, sketch);
+      expect(typeof n !== "string" && nicheParts(f, n).length > 0, f.name).toBe(true);
+    }
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();
+    // Without a style: plain, as before.
+    const plain = dressingDocument(empty(), settings({ programs: { A: ["drawers"], B: [], C: [] }, doors: "hinged" })).doc;
+    expect(plain.features.filter((f): f is NicheFeature => f.type === "niche").every((f) => f.style === undefined)).toBe(true);
+  });
+
   it("un mur : une répartition toute hauteur, une case par module, ses étagères, penderies et tiroirs", () => {
     const s = settings({ programs: { A: ["long", "double", "drawers"], B: [], C: [] } });
     const { doc, problems } = dressingDocument(empty(), s);

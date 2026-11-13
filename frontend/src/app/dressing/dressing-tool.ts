@@ -10,7 +10,11 @@
  */
 import { DRESSING, MODULES, defaultProgram, dressingDocument, dressingProblem, partitionInput, wallRun, wallsOf, type DressingResult, type DressingSettings, type ModuleKind, type WallName } from "../../document/dressing-plan";
 import type { CadDocument, Feature, RoomFeature } from "../../document/types";
+import type { FrontLook } from "../../document/dressing-modules";
+import { DECOR_LABELS } from "../../features/door-decor";
+import { styleChange, type DoorStyle } from "../../features/glass-door";
 import { wallName } from "../../features/room-plan";
+import { decorRows } from "../../sketcher/partition-door-style";
 import { freeStretches, roomRuns, type Placement } from "../../features/room-runs";
 import { formatLength } from "../../measurements/units";
 import { partitionLayout } from "../../sketcher/partition";
@@ -289,6 +293,17 @@ export class DressingTool extends PanelTool {
       fromRoom ? null : this.checkRow("Dessiner les murs", s.walls, (v) => ((s.walls = v), this.changed())),
       this.selectRow("Portes", s.doors ?? "none", [["none", "Aucune"], ["hinged", "Battantes (une par case)"], ["sliding", "Coulissantes (deux voies)"]], (v) => ((s.doors = v as DressingSettings["doors"]), this.changed())),
       this.checkRow("Penderie escamotable si la tringle est trop haute", !!s.pullDown, (v) => ((s.pullDown = v), this.changed())),
+      // The style of the hinged doors and of the drawers.
+      this.selectRow("Style des façades", s.facade?.style ?? "flat", [["flat", "Plates"], ["frame", "À cadre"], ...DECOR_LABELS], (v) => {
+        const style = styleChange(v as DoorStyle, s.facade ?? {}) as FrontLook;
+        if (v === "flat") delete s.facade;
+        else s.facade = style;
+        this.changed();
+      }),
+      ...(s.facade?.style === "frame"
+        ? [this.numberRow("Largeur du cadre", s.facade.frameWidth ?? 70, unit, (v) => ((s.facade = { ...s.facade, frameWidth: v }), this.changed())), this.numberRow("Retrait du panneau", s.facade.frameDepth ?? 6, unit, (v) => ((s.facade = { ...s.facade, frameDepth: v }), this.changed()))]
+        : []),
+      ...(s.facade ? decorRows(s.facade, (change) => ((s.facade = { ...s.facade, ...change }), this.changed()), (label, mm, set) => this.numberRow(label, mm, unit, set, label.startsWith("Bordure"))) : []),
       ...programRows,
       button,
       problem ? null : this.info(wallsOf(s).map((w) => this.summary(w)).join(" ")),

@@ -20,7 +20,7 @@ import { rectangleAt } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, NicheFeature, PlaneFrame, PlaneName, SketchFeature, TrimFeature } from "./types";
 import { accessory, REACH_ROD, REACH_SHELF, slidingDoors, wallBand } from "./dressing-extras";
-import { DRAWERS, HAT, MODULES, moduleSteps, ROD, type ModuleKind } from "./dressing-modules";
+import { DRAWERS, HAT, MODULES, moduleSteps, ROD, type FrontLook, type ModuleKind } from "./dressing-modules";
 import { placeBox, placeFrame, type Placement } from "../features/room-runs";
 import { sketchFrame, nearestPlane } from "../sketcher/frame";
 import { nicheGeometry, nicheProblem } from "../features/niche-parts";
@@ -55,6 +55,11 @@ export interface DressingSettings {
   doors?: "none" | "hinged" | "sliding";
   /** A pull-down rod where a rod is out of reach. */
   pullDown?: boolean;
+  /**
+   * The style of its fronts — the hinged doors and the drawers: framed, fluted or slatted, with its sizes
+   * (features/door-decor.ts); missing, plain. Sliding doors stay plain.
+   */
+  facade?: FrontLook;
 }
 
 export { WALL_THICKNESS } from "./joinery-defaults";
@@ -179,7 +184,7 @@ export function dressingDocument(base: CadDocument, s: DressingSettings, place?:
     const ids = idsFrom(uniqueOffsetId(doc), 1 + divisions.length);
     const partitionId = ids[0] as string;
     const record = partitionRecord(partitionId, `Dressing — mur ${wall}`, input, [run.start, 0], s.depth);
-    if (s.doors === "hinged" && record.step?.kind === "partition") record.step.doors = { ...DOORS };
+    if (s.doors === "hinged" && record.step?.kind === "partition") record.step.doors = { ...DOORS, ...s.facade };
     const records = [
       record,
       ...divisions.map((d, k) => shelvesRecord(ids[k + 1] as string, `Étagères ${k + 1}`, partitionId, d.niche, d.input, s.depth)),
@@ -210,7 +215,7 @@ export function dressingDocument(base: CadDocument, s: DressingSettings, place?:
       const title = e.fill === "rod" ? "Penderie" : "Tiroirs";
       const f: NicheFeature = {
         id: uniqueId(probe, e.fill === "rod" ? "pd" : "td"), type: "niche", name: uniqueName(probe, title), sketch: sketchId, partition: partitionId,
-        niche: e.niche, fill: e.fill, ...ROD, ...DRAWERS,
+        niche: e.niche, fill: e.fill, ...ROD, ...DRAWERS, ...(e.fill === "drawers" ? s.facade : {}),
       };
       const geometry = nicheGeometry(f, placed);
       const problem = typeof geometry === "string" ? geometry : nicheProblem(f, geometry);

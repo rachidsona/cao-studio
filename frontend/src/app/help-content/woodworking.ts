@@ -217,7 +217,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Cliquez « Assistant Dressing » et choisissez la « Disposition » : un mur (I), deux murs en angle (L) ou trois murs (U).",
           "Tapez « Mur A » (et « Mur B (gauche) », « Mur C (droite) »), « Hauteur », « Profondeur », « Épaisseur » et « Socle ». Avec une pièce relevée, la liste « Murs » reprend ses murs.",
           "Dans « Programme », dépliez un mur, choisissez la sorte de chaque module ; « + » en ajoute un, la corbeille le retire. « Proposer un programme selon les longueurs » met environ un module par 80 cm.",
-          "Choisissez les « Portes » (aucune, battantes, coulissantes) et lisez les remarques en bas du panneau, par exemple une tringle de plus de 1,20 m.",
+          "Choisissez les « Portes » (aucune, battantes, coulissantes) et lisez les remarques en bas du panneau, par exemple une tringle de plus de 1,20 m. Le « Style des façades » (plates, à cadre, cannelées, à tasseaux) habille les portes battantes et les tiroirs ; les portes coulissantes restent plates.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
         tip: "Chaque mur devient une Répartition, nommée d'après son mur, que vous retouchez ensuite niche par niche avec Étagères, Niche, Module, Penderie et Tiroirs. Plan de dressing part du schéma, l'Assistant part des nombres.",
