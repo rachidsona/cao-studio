@@ -207,6 +207,20 @@ export class SketchMode implements PointerHandler {
     if (force || (grew && !this.viewport.boxVisible(box, 0.8))) this.viewport.fitBox(box, 1.35);
   }
 
+  /**
+   * The shape being drawn, its dimensions typed (sketch-pointer, shape-entry.ts), kept whole on screen with its
+   * dimension fields: when it goes beyond the screen, the view frames it with the sketch, the margin for its fields.
+   */
+  showShape(preview: { lines: Vec2[][]; circles: { center: Vec2; radius: number }[]; arcs: { center: Vec2; radius: number }[] } | null): void {
+    if (!preview) return;
+    const box = this.bounds();
+    const add = (x: number, y: number) => box.expandByPoint(new THREE.Vector3(...toWorld(this.frame, x, y)));
+    for (const line of preview.lines) for (const [x, y] of line) add(x!, y!);
+    for (const c of [...preview.circles, ...preview.arcs]) add(c.center[0] - c.radius, c.center[1] - c.radius), add(c.center[0] + c.radius, c.center[1] + c.radius);
+    if (box.isEmpty() || this.viewport.boxVisible(box, 0.8)) return;
+    this.viewport.fitBox(box, 1.35);
+  }
+
   /** Reloads the geometry after an external change (undo/redo, properties panel). */
   sync(feature: SketchFeature): void {
     this.geometry = this.withBodies(feature);

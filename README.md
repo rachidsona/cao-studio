@@ -1853,6 +1853,8 @@ opération existante.
   longueur puis angle sur l'horizontale ; cercle : diamètre. La souris donne le sens et tout ce qui n'est pas tapé.
   Chaque valeur tapée devient une **cote de l'esquisse** (longueur, diamètre), sauf si l'esquisse ne peut pas la
   prendre ; l'angle oriente le trait sans poser de cote. Sur un clavier AZERTY, les chiffres se tapent sans Maj.
+  Une valeur tapée qui fait sortir la forme de l'écran fait **reculer la vue** pour la montrer entière, avec ses
+  cases (`showShape` de `sketcher/mode.ts`).
 - **Vider un corps** (groupe Modifier, après Coque ; `data-action="hollow"`) : un clic sur un corps le vide à
   l'intérieur, **quelle que soit sa forme** — prisme à base de triangle, de carré, de cercle, côtés de biais, sphère,
   plaque percée. La face par laquelle on le prend est son **devant** ; **« Ouvertures »** dit ce qui s'ouvre :

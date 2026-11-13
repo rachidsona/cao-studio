@@ -45,6 +45,22 @@ test("un rectangle, une ligne et un cercle tracés en tapant leurs cotes : Tab p
   await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
   await expect(field("w")).toHaveCount(0);
 
+  // A rectangle far bigger than the screen (2 m by 1 m): the view steps back to show it whole, its fields too.
+  await page.locator('[data-sketch-tool="rectangle"]').click();
+  await page.mouse.click(...at(0.15, 0.6));
+  await page.mouse.move(...at(0.3, 0.5));
+  await page.keyboard.type("200");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("100");
+  const inView = async (id: string) => {
+    const r = (await field(id).boundingBox())!;
+    return r.x >= box.x && r.y >= box.y && r.x + r.width <= box.x + box.width && r.y + r.height <= box.y + box.height;
+  };
+  await expect.poll(() => inView("w")).toBe(true);
+  await expect.poll(() => inView("h")).toBe(true);
+  await shot(page, "cotes-tapees-grand");
+  await page.keyboard.press("Enter");
+
   // A circle by its diameter, laid by a click: the pointer only says where.
   await page.locator('[data-sketch-tool="circle"]').click();
   await page.mouse.click(...at(0.8, 0.2));
@@ -66,10 +82,10 @@ test("un rectangle, une ligne et un cercle tracés en tapant leurs cotes : Tab p
   await page.getByRole("button", { name: "Terminer l'esquisse" }).click();
   await expect(page.locator("#editor")).toHaveAttribute("data-mode", "model");
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 15_000 });
-  await expect.poll(async () => (await sketch()).curves.length).toBe(before.curves.length + 6);
+  await expect.poll(async () => (await sketch()).curves.length).toBe(before.curves.length + 10);
   const after = await sketch();
   const added = after.constraints.filter((c) => c.value !== undefined && !before.constraints.some((b) => JSON.stringify(b) === JSON.stringify(c)));
-  // Each value typed is a dimension of the sketch, in mm: 30 × 15, Ø 20, 40 long.
-  expect(added.map((c) => [c.kind, c.value]).sort()).toEqual([["diameter", 20], ["length", 15], ["length", 30], ["length", 40]]);
+  // Each value typed is a dimension of the sketch, in mm: 30 × 15, 2000 × 1000, Ø 20, 40 long.
+  expect(added.map((c) => [c.kind, c.value]).sort()).toEqual([["diameter", 20], ["length", 1000], ["length", 15], ["length", 2000], ["length", 30], ["length", 40]]);
   expect(errors).toEqual([]);
 });

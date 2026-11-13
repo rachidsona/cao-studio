@@ -60,6 +60,8 @@ export class ShapeEntry {
     } else if (event.key === "Enter" && !this.typed.empty && this.cursor) return this.lay(this.landing(this.cursor)), true;
     else return false;
     if (this.cursor) mode.preview = tool.move(mode.geometry, this.landing(this.cursor));
+    // A value typed that takes the shape beyond the screen: the view steps back to show it whole, with its fields.
+    mode.showShape(mode.preview);
     mode.render();
     return true;
   }
