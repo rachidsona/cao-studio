@@ -3,6 +3,7 @@
  * toolbar, keyboard shortcuts, and synchronisation with the document
  * (undo/redo, properties panel).
  */
+import { keyChar } from "../ui/digit-keys";
 import { importDxf } from "./sketch-import";
 import { openUnderlay } from "./sketch-underlay";
 import { autoDimensions } from "../sketcher/auto-dimensions";
@@ -464,8 +465,9 @@ export class SketchController {
     const typed = typedDigit(event) ?? (/^[.,\-(]$/.test(event.key) ? event.key : null);
     if (mode.edgeOffset && typed !== null && mode.edgeOffset.typeValue(typed)) return true;
     // Polygon tool: a digit sets its number of sides.
-    if (mode.tool?.name === "polygon" && /^[3-9]$/.test(key)) {
-      mode.tool.sides = Number(key);
+    const sides = keyChar(event);
+    if (mode.tool?.name === "polygon" && /^[3-9]$/.test(sides)) {
+      mode.tool.sides = Number(sides);
       this.refresh();
       return true;
     }

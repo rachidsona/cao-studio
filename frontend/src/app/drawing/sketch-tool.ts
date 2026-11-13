@@ -3,6 +3,7 @@
  * feuille (une feuille sans vue est alors un plan 2D). Accroché aux bouts des traits, Maj pour rester d'équerre, la
  * longueur (ou le rayon, la largeur) tapée au clavier puis Entrée ; une ligne continue depuis son bout.
  */
+import { keyChar } from "../../ui/digit-keys";
 import { freshId, sheetIds, type Sketch2D, type Vec2 } from "../../drawing/model";
 import { GHOST, dot, ghostLine, ghostRect, type DrawingTool, type ToolHost } from "./tools";
 
@@ -64,7 +65,9 @@ export class SketchTool implements DrawingTool {
   }
   key(event: KeyboardEvent): boolean {
     if (!this.start) return false;
-    if (/^[\d.,]$/.test(event.key)) this.typed += event.key === "," ? "." : event.key;
+    // The digit row without Maj (AZERTY) types its digits too.
+    const typed = keyChar(event);
+    if (/^[\d.,]$/.test(typed)) this.typed += typed === "," ? "." : typed;
     else if (event.key === "Backspace") this.typed = this.typed.slice(0, -1);
     else if (event.key === "Enter" && this.typed) {
       const length = Number(this.typed);

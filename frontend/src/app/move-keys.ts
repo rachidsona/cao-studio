@@ -5,6 +5,7 @@
  * jusqu'au point visé. Les flèches bloquent un axe (→ X rouge, ← Y vert, ↑ Z bleu ; ↓ ou la même flèche le libère) ;
  * Alt (⌥) allume ou éteint la copie. Rien n'est pris quand on tape dans un champ du panneau.
  */
+import { keyChar } from "../ui/digit-keys";
 import type { Vec3 } from "../document/types";
 import { fromDisplay, parseNumber } from "../measurements/units";
 import type { DisplayUnit } from "../document/types";
@@ -81,8 +82,9 @@ export class MoveKeys {
     const axis = arrowAxis(event.key);
     if (axis !== undefined) {
       this.handlers.axis(axis);
-    } else if (TYPABLE.test(event.key) && !event.altKey) {
-      this.text += event.key;
+    } else if (TYPABLE.test(keyChar(event)) && !event.altKey) {
+      // The digit row without Maj (AZERTY) types its digits too.
+      this.text += keyChar(event);
       this.handlers.typing(this.text);
     } else if (event.key === "Backspace" && this.text) {
       this.text = this.text.slice(0, -1);

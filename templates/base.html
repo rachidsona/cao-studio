@@ -97,6 +97,23 @@
       });
     });
     showPalette();
+    /* Digits typed without Maj, on every page (the same rule as frontend/src/ui/digit-keys.ts): on a French keyboard
+       the keys of the digit row give & é " ' ( § è ! ç à without Maj or Verr. Maj; in a number field they type their
+       digit. « - » stays a minus, and in a field that takes a calculation (data-expression) its signs stay too. */
+    document.documentElement.dataset.digitKeys = "page";
+    document.addEventListener("keydown", function (event) {
+      var input = event.target;
+      if (!(input instanceof HTMLInputElement) || input.readOnly || input.disabled || event.isComposing) return;
+      if (!(input.type === "number" || input.inputMode === "decimal" || input.inputMode === "numeric")) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      var digit = (/^Digit([0-9])$/.exec(event.code) || [])[1];
+      if (!digit || event.key.length !== 1 || /^[0-9]$/.test(event.key) || event.key === "-") return;
+      if (input.dataset.expression !== undefined && /^[()+*\/.,]$/.test(event.key)) return;
+      event.preventDefault();
+      if (input.selectionStart !== null && input.type !== "number") input.setRangeText(digit, input.selectionStart, input.selectionEnd === null ? input.selectionStart : input.selectionEnd, "end");
+      else input.value += digit;
+      input.dispatchEvent(new InputEvent("input", { bubbles: true, data: digit, inputType: "insertText" }));
+    }, true);
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
       button.addEventListener("click", function () {
         var dark = document.documentElement.classList.toggle("dark");

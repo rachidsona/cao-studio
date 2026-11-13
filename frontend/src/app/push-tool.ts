@@ -9,6 +9,7 @@
  * Un caisson emporte son électroménager (un four dedans, une plaque dessus…) ; un four ou un micro-ondes encastré
  * cliqué pousse son caisson ; un autre appareil (une plaque, une hotte…) se pousse entier, sa découpe le suit.
  */
+import { keyChar } from "../ui/digit-keys";
 import * as THREE from "three";
 import { cabinetOfAppliance, shownCabinets } from "../document/appliance-follow";
 import { bodyLabel, findFeature } from "../document/operations";
@@ -199,8 +200,9 @@ export class PushTool extends PanelTool {
     if (arrow) {
       if (field) this.typed = (field as HTMLInputElement).value;
       this.push(event.shiftKey && arrow === "away" ? "up" : event.shiftKey && arrow === "near" ? "down" : arrow);
-    } else if (!field && /^[0-9.,]$/.test(event.key)) {
-      this.typed += event.key;
+    } else if (!field && /^[0-9.,]$/.test(keyChar(event))) {
+      // The digit row without Maj (AZERTY) types its digits too.
+      this.typed += keyChar(event);
       this.render();
     } else if (!field && event.key === "Backspace" && this.typed) {
       this.typed = this.typed.slice(0, -1);

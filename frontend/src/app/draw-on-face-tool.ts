@@ -10,6 +10,7 @@
  * shape goes on with the push/pull. The maths are in sketcher/face-draw.ts. Before the first point, the face under
  * the pointer is the one drawn on (Curic's "Get Object").
  */
+import { keyChar } from "../ui/digit-keys";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { Feature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, trim, UNIT_LABELS } from "../measurements/units";
@@ -280,9 +281,11 @@ export class DrawOnFaceTool extends PanelTool {
       event.stopImmediatePropagation();
       this.showValues();
     };
-    if (TYPING.test(event.key)) {
-      if (event.key === " " && this.buffer === null) return;
-      this.buffer = (this.buffer ?? "") + event.key;
+    // The digit row without Maj (AZERTY) types its digits too.
+    const key = keyChar(event);
+    if (TYPING.test(key)) {
+      if (key === " " && this.buffer === null) return;
+      this.buffer = (this.buffer ?? "") + key;
       return consume();
     }
     if (this.buffer === null) return;

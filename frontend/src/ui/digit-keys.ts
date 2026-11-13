@@ -15,6 +15,14 @@ export function digitOfKey(event: Pick<KeyboardEvent, "code" | "key" | "ctrlKey"
   return digit;
 }
 
+/**
+ * What a key types where a tool takes numbers without a field (the value box, a distance typed on the view): its
+ * digit for a key of the digit row without Maj (AZERTY), else what it shows — « - », « ; », « , » stay themselves.
+ */
+export function keyChar(event: Pick<KeyboardEvent, "code" | "key" | "ctrlKey" | "metaKey" | "altKey">): string {
+  return digitOfKey(event, false) ?? event.key;
+}
+
 /** A field of numbers: decimal keypad on phones, or a number input. */
 function numberInput(target: EventTarget | null): HTMLInputElement | null {
   if (!(target instanceof HTMLInputElement) || target.readOnly || target.disabled) return null;
@@ -29,8 +37,13 @@ function insert(input: HTMLInputElement, text: string): void {
   input.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }));
 }
 
-/** Number fields of the page take the digits of the digit row without Maj. */
+/**
+ * Number fields of the page take the digits of the digit row without Maj. Every page binds it from its base
+ * (templates/base.html, the same rule): the editor only when the page has not.
+ */
 export function bindDigitKeys(root: Document = document): void {
+  if (document.documentElement.dataset.digitKeys) return;
+  document.documentElement.dataset.digitKeys = "editor";
   root.addEventListener(
     "keydown",
     (event) => {

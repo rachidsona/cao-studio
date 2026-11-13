@@ -4,6 +4,7 @@
  * deux valeurs (retrait;largeur), Retour arrière efface, Échap vide la saisie, Entrée l'applique — l'outil dit ce
  * qu'elle veut dire. Rien n'est pris quand on tape dans un champ, ni avec Ctrl, ⌘ ou Alt.
  */
+import { keyChar } from "./digit-keys";
 import { parseNumber } from "../measurements/units";
 import { ValueBox } from "./value-box";
 
@@ -52,9 +53,11 @@ export class TypedValues {
       this.refresh();
       this.changed();
     };
-    if (TYPING.test(event.key)) {
-      if (event.key === " " && this.buffer === null) return;
-      this.buffer = (this.buffer ?? "") + event.key;
+    // The digit row without Maj (AZERTY) types its digits too.
+    const key = keyChar(event);
+    if (TYPING.test(key)) {
+      if (key === " " && this.buffer === null) return;
+      this.buffer = (this.buffer ?? "") + key;
       return consume();
     }
     if (this.buffer === null) return;

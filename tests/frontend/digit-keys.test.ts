@@ -1,6 +1,6 @@
 /** Chiffres sans Maj dans les champs de nombres : la rangée des chiffres d'un clavier AZERTY. */
 import { describe, expect, it } from "vitest";
-import { digitOfKey } from "../../frontend/src/ui/digit-keys";
+import { digitOfKey, keyChar } from "../../frontend/src/ui/digit-keys";
 
 const key = (code: string, k: string, mods: Partial<Record<"ctrlKey" | "metaKey" | "altKey", boolean>> = {}) => ({ code, key: k, ctrlKey: false, metaKey: false, altKey: false, ...mods });
 
@@ -31,5 +31,18 @@ describe("chiffre d'une touche de la rangée des chiffres", () => {
     expect(digitOfKey(key("Digit1", "&", { altKey: true }), false)).toBeNull();
     expect(digitOfKey(key("KeyA", "a"), false)).toBeNull();
     expect(digitOfKey(key("Numpad3", "3"), false)).toBeNull();
+  });
+});
+
+describe("touche tapée hors d'un champ (case des mesures, distance tapée sur la vue)", () => {
+  it("la rangée des chiffres sans Maj donne ses chiffres ; « - », « ; », « , » et les lettres restent elles-mêmes", () => {
+    const row = ["&", "é", '"', "'", "(", "§", "è", "!", "ç", "à"];
+    expect(row.map((k, i) => keyChar(key(`Digit${(i + 1) % 10}`, k))).join("")).toBe("1234567890");
+    expect(keyChar(key("Digit6", "-"))).toBe("-");
+    expect(keyChar(key("Comma", ";"))).toBe(";");
+    expect(keyChar(key("Semicolon", ","))).toBe(",");
+    expect(keyChar(key("Digit3", "3"))).toBe("3");
+    expect(keyChar(key("KeyA", "a"))).toBe("a");
+    expect(keyChar(key("Digit1", "&", { ctrlKey: true }))).toBe("&");
   });
 });
