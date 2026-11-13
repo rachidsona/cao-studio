@@ -30,10 +30,12 @@ export const WOODWORKING: HelpFamily[] = [
           "Cliquez « Façades », choisissez le « Caisson » (le dernier créé est proposé) puis la « Disposition » : une porte, deux portes ou tiroirs (1 à 8).",
           "Choisissez la « Pose » : en applique (devant) ou encastrées (dans l'ouverture), puis le « Jeu » et l'« Épaisseur ».",
           "Pour des portes vitrées, choisissez « Style des portes » → « Vitrée (cadre alu) », puis la « Largeur du cadre alu » (20 mm par défaut), le « Verre » (clair, extra-clair, dépoli, fumé, bronze, noir) et le « Cadre » (aluminium brossé ou noir).",
+          "Pour une porte seule, choisissez l'« Ouverture » : charnières à gauche, à droite, « Relevable (charnières en haut) » ou « Abattant (charnières en bas) ». Pour une relevable, une ligne donne son poids, sa hauteur et le facteur qui choisit ses compas.",
           "Cochez « Percer les charnières (boîtiers Ø35) » (portes seulement) et « Percer les poignées (entraxe 128) ».",
+          "Pour des façades sans poignée, cochez « Sans poignée (gorge en profilé alu) » : chaque façade laisse 3 cm de prise de main au-dessus de son chant haut, devant un profilé posé entre les côtés.",
           "Lisez la ligne « Quincaillerie » en bas du panneau : c'est enregistré aussitôt.",
         ],
-        tip: "Les façades sont liées à leur caisson : si vous changez ses cotes, elles sont refaites. La quincaillerie est comptée au devis. Une porte vitrée n'est pas sciée : son cadre alu et son verre sortent de la liste de débit et vont au devis, le verre trempé 4 mm au m² et le profilé au mètre, en MAD ; le verre s'ouvre avec sa porte.",
+        tip: "Les façades sont liées à leur caisson : si vous changez ses cotes, elles sont refaites. La quincaillerie est comptée au devis. Une porte vitrée n'est pas sciée : son cadre alu et son verre sortent de la liste de débit et vont au devis, le verre trempé 4 mm au m² et le profilé au mètre, en MAD ; le verre s'ouvre avec sa porte. Une porte relevable s'ouvre vers le haut d'un clic, un abattant vers le bas ; leurs compas vont au devis, et « Contrôle avant fabrication » signale une relevable trop lourde ou trop haute pour une paire de compas. Le profil gorge va au devis au mètre et reste hors du débit ; la gorge demande des façades en applique et des portes pleines. Dans une cuisine, le Plan de cuisine garde la porte relevable et la gorge quand il refait le meuble. Les forces des compas sont des repères : la fiche du fabricant fait foi.",
       },
       {
         keys: ["data-workshop:kitchen-plan"],

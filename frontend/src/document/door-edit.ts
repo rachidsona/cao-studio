@@ -58,7 +58,8 @@ export function doorOf(doc: CadDocument, bodyId: string): DoorInfo | null {
     // The glass of a glazed door is that door.
     const index = frontsParts(f, findFeature(doc, f.cabinet) as CabinetFeature | undefined)[partNumber(id)]?.of ?? partNumber(id);
     if (index > (f.layout === "doors" ? 1 : 0)) return null;
-    return { kind: "fronts", feature: f.id, index, hinge: f.layout === "door" ? (f.side ?? "left") : null, handles: f.handles };
+    // A lift-up door or a flap has no side: it turns the other way up.
+    return { kind: "fronts", feature: f.id, index, hinge: f.layout === "door" && f.side !== "top" && f.side !== "bottom" ? (f.side ?? "left") : null, handles: f.grip === "gorge" ? null : f.handles };
   }
   if (f?.type === "niche" && (f.fill === "doors" || f.fill === "door")) {
     const count = f.fill === "door" ? 1 : nicheDoors(f, doc);
@@ -79,7 +80,8 @@ export function withDoorFlipped(doc: CadDocument, bodyId: string): CadDocument |
   const f = findFeature(doc, door.feature);
   if (door.kind === "fronts" && f?.type === "fronts") {
     if (f.layout === "doors") return "Les deux portes de ce caisson s'ouvrent déjà du milieu.";
-    return updateFeature(doc, f.id, () => ({ ...f, side: other(f.side ?? "left") }) satisfies FrontsFeature);
+    const side = f.side === "top" ? "bottom" : f.side === "bottom" ? "top" : other(f.side ?? "left");
+    return updateFeature(doc, f.id, () => ({ ...f, side }) satisfies FrontsFeature);
   }
   if (door.kind === "partition" && f?.type === "niche") {
     const hinges = Array.from({ length: nicheDoors(f, doc) }, (_, i) => f.hinges?.[i] ?? inTurn(nicheDoors(f, doc))[i]!);

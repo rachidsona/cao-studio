@@ -3,13 +3,14 @@
  * scan des connecteurs d'imos), en calcul pur :
  * - deux planches qui se touchent (le chant de l'une contre la face de l'autre) sans vis, tourillon ni excentrique ;
  * - une porte trop lourde pour ses charnières (le nombre qu'il faudrait, d'après son poids et sa hauteur) ;
+ * - une porte relevable trop lourde ou trop haute pour une paire de compas ;
  * - une charnière dont l'embase tomberait sur une étagère du caisson (les perçages des façades l'évitent déjà en
  *   décalant la charnière de 32 mm, features/fronts.ts ; reste ce qu'on ne peut pas décaler).
  * Les charges sont des repères courants : la fiche du fabricant fait foi.
  */
 import { junctions, type Board } from "../features/assembly-rules";
 import { cabinetParts } from "../features/cabinet-parts";
-import { frontsParts, hingeCount, hingeHeights } from "../features/fronts-parts";
+import { frontsParts, hingeCount, hingeHeights, LIFT_CLASSES, liftStay, swingsUp } from "../features/fronts-parts";
 import { nichePartsIn } from "../features/niche-parts";
 import { partMass } from "../features/stability";
 import type { Problem } from "./fabrication-check";
@@ -77,6 +78,13 @@ export function doorProblems(doc: CadDocument): Problem[] {
         if (p.role?.kind !== "door") return;
         const id = `${f.id}${PART_SEPARATOR}${i}`;
         const size = [0, 1, 2].map((k) => Math.abs(p.to[k]! - p.from[k]!));
+        if (swingsUp(f)) {
+          // Hinged along its top or its bottom: its hinges by its width; a lift-up door, its stays by weight × height.
+          check(id, size, size[0]!, hingeCount(size[0]!));
+          const mass = partMass(size[0]! * size[1]! * size[2]!, bodyInfo(doc, id).material);
+          if (f.side === "top" && !liftStay(size[2]!, mass)) problems.push({ kind: "hardware", severity: "warning", message: `${bodyLabel(doc, id)} pèse ${mass.toFixed(1)} kg pour ${Math.round(size[2]!)} mm de haut : c'est plus qu'une paire de compas ne tient (facteur ${Math.round(size[2]! * mass)}, ${LIFT_CLASSES.at(-1)!.upTo} au plus). Allégez la porte, réduisez sa hauteur ou voyez la fiche du fabricant.`, bodies: [id] });
+          return;
+        }
         const n = hingeCount(size[2]!);
         check(id, size, size[2]!, n);
         const { blocked } = hingeHeights(p.from[2], p.to[2], n, shelves);

@@ -2,14 +2,17 @@
  * Outil « Façades » : habiller un caisson d'une porte, de deux portes ou de tiroirs (avec leurs caissons sur
  * coulisses), en applique ou encastrés, avec le jeu et l'épaisseur voulus ; charnières et poignées percées à la
  * demande. Les portes sont pleines ou vitrées (cadre en profilé alu autour d'un verre trempé, au choix du verre et du
- * cadre). Aperçu du noyau, puis une opération « Façades » dans l'historique, liée au caisson (elle suit ses cotes).
+ * cadre). Une porte seule s'ouvre à gauche, à droite, vers le haut (relevable, sur compas) ou vers le bas (abattant) ;
+ * « Sans poignée » remplace les poignées par une gorge en profilé alu derrière le chant haut de chaque façade. Aperçu du noyau, puis une opération « Façades » dans l'historique, liée au caisson (elle suit ses cotes).
  */
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange } from "../features/glass-door";
 import { bodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import { cabinetStandard, frontsTo } from "../document/standards";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "../document/types";
-import { frontsHardware, frontsMaterials } from "../features/fronts-parts";
+import { frontMass } from "../document/hardware";
+import { frontsHardware, frontsMaterials, frontsParts, GORGE, liftStay } from "../features/fronts-parts";
+import { formatLength } from "../measurements/units";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { workshopStandards } from "./workshop/standards-panel";
 
@@ -73,12 +76,21 @@ export class FrontsTool extends PanelTool {
       changed();
     };
     const cabinet = this.cabinets().find((c) => c.id === s.cabinet);
-    const hardware = frontsHardware({ id: this.id, type: "fronts", name: this.name, ...s }, cabinet);
+    const made: FrontsFeature = { id: this.id, type: "fronts", name: this.name, ...s };
+    const doc = this.ctx.doc();
+    const hardware = frontsHardware(made, cabinet, (part) => frontMass(doc, made, part));
     const doors = s.layout !== "drawers";
     const glass = doors && s.style === "glass";
+    const gorge = s.grip === "gorge";
+    // A lift-up door: what its stays are chosen from.
+    const door = s.layout === "door" && s.side === "top" ? frontsParts(made, cabinet)[0] : undefined;
+    const [high, mass] = door ? [door.to[2] - door.from[2], frontMass(doc, made, 0)] : [0, 0];
+    const stay = door ? liftStay(high, mass) : null;
+    const lift = door ? `Porte relevable de ${mass.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} kg, haute de ${formatLength(high, this.ctx.unit())} : facteur ${Math.round(high * mass)}${stay ? "" : " — plus qu'une paire de compas ne tient, voyez la fiche du fabricant"}.` : null;
     return [
       this.selectRow("Caisson", s.cabinet, this.cabinets().map((c): [string, string] => [c.id, c.name]), (v) => set("cabinet", v)),
       this.selectRow("Disposition", s.layout, [["door", "Une porte"], ["doors", "Deux portes"], ["drawers", "Tiroirs"]], (v) => set("layout", v as FrontsFeature["layout"])),
+      s.layout === "door" ? this.selectRow("Ouverture", s.side ?? "left", [["left", "Charnières à gauche"], ["right", "Charnières à droite"], ["top", "Relevable (charnières en haut)"], ["bottom", "Abattant (charnières en bas)"]], (v) => set("side", v as FrontsFeature["side"])) : null,
       s.layout === "drawers" ? this.numberRow("Tiroirs", s.drawers, "plain", (v) => set("drawers", Math.max(1, Math.min(8, Math.round(v))))) : null,
       this.selectRow("Pose", s.mount, [["overlay", "En applique (devant)"], ["inset", "Encastrées (dans l'ouverture)"]], (v) => set("mount", v as FrontsFeature["mount"])),
       this.numberRow("Jeu", s.gap, this.ctx.unit(), (v) => ((s.gap = Math.max(0, v)), this.schedulePreview())),
@@ -89,7 +101,9 @@ export class FrontsTool extends PanelTool {
       glass ? this.selectRow("Verre (trempé 4 mm)", s.glass ?? "clear", [...GLASS_KINDS], (v) => set("glass", v as FrontsFeature["glass"])) : null,
       glass ? this.selectRow("Cadre", s.profile ?? "brushed", [...PROFILE_FINISHES], (v) => set("profile", v as FrontsFeature["profile"])) : null,
       s.layout === "drawers" ? null : this.checkRow(glass ? "Charnières (pour cadre alu)" : "Percer les charnières (boîtiers Ø35)", s.hinges, (v) => set("hinges", v)),
-      this.checkRow("Percer les poignées (entraxe 128)", s.handles, (v) => set("handles", v)),
+      this.checkRow("Sans poignée (gorge en profilé alu)", gorge, (v) => (v ? (s.grip = "gorge") : delete s.grip, changed())),
+      gorge ? this.info(`Chaque façade laisse ${formatLength(GORGE.space, this.ctx.unit())} de prise de main au-dessus de son chant haut ; le profilé se pose entre les côtés, en retrait de ${formatLength(GORGE.depth, this.ctx.unit())}.`) : this.checkRow("Percer les poignées (entraxe 128)", s.handles, (v) => set("handles", v)),
+      lift ? this.info(lift) : null,
       this.info(hardware.length ? `Quincaillerie : ${hardware.map((h) => `${h.quantity} × ${h.name.toLowerCase()}`).join(", ")}.` : "Pas de quincaillerie."),
     ];
   }

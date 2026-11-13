@@ -2,13 +2,16 @@
  * Quincaillerie du modèle, pour le devis : charnières, coulisses et poignées des façades, tringles et supports des
  * penderies, coulisses et poignées des tiroirs de niche, accessoires intérieurs à leur prix du catalogue, vis confirmat, tourillons et excentriques
  * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble) ; le verre trempé (au m²) et le
- * profilé alu (au mètre) des portes vitrées, qui s'achètent au lieu de se scier.
+ * profilé alu (au mètre) des portes vitrées, qui s'achètent au lieu de se scier ; les compas d'une porte relevable
+ * (choisis d'après son poids et sa hauteur) ou d'un abattant, et le profil gorge des façades sans poignée.
  */
 import { frontsHardware, frontsParts } from "../features/fronts-parts";
 import { isGlass } from "../features/glass-door";
 import { nicheHardware, nichePartsIn } from "../features/niche-parts";
+import { partMass } from "../features/stability";
 import { catalogItems } from "./hardware-catalog";
-import type { CadDocument } from "./types";
+import { bodyInfo } from "./materials";
+import type { CadDocument, FrontsFeature } from "./types";
 
 export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
 export const DOWEL = "Tourillon Ø8 × 30";
@@ -26,7 +29,7 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
     if (f.suppressed) continue;
     if (f.type === "fronts") {
       const cabinet = doc.features.find((c) => c.id === f.cabinet);
-      for (const h of frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined)) {
+      for (const h of frontsHardware(f, cabinet?.type === "cabinet" ? cabinet : undefined, (part) => frontMass(doc, f, part))) {
         add(h.name, h.quantity);
         if (h.unit) units.set(h.name, h.unit);
       }
@@ -56,6 +59,13 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}), ...(prices.has(name) ? { price: prices.get(name) } : {}) })));
 }
 
+/** The weight of a part of some fronts (kg), from its size and its material. */
+export function frontMass(doc: CadDocument, f: FrontsFeature, part: number): number {
+  const cabinet = doc.features.find((c) => c.id === f.cabinet);
+  const p = frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined)[part];
+  return p ? partMass([0, 1, 2].reduce((v, i) => v * Math.abs(p.to[i]! - p.from[i]!), 1), bodyInfo(doc, `${f.id}#${part}`).material) : 0;
+}
+
 /**
  * Bodies that are bought, not cut (the rods of the penderies and their supports, handles, the aluminium frame and the
  * glass of a glazed door): out of the cut list.
@@ -66,10 +76,11 @@ export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   if (index === undefined) return false;
   if (f?.type === "trim") return !!f.parts[Number(index)]?.hardware;
   if (f?.type === "fronts") {
-    if (!isGlass(f) || f.layout === "drawers") return false;
+    if (f.grip !== "gorge" && (!isGlass(f) || f.layout === "drawers")) return false;
     const cabinet = doc.features.find((c) => c.id === f.cabinet);
     const part = frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined)[Number(index)];
-    return part?.role?.kind === "door" || part?.of !== undefined;
+    // A gorge profile; the aluminium frame and the glass of a glazed door.
+    return !!part?.gorge || (isGlass(f) && f.layout !== "drawers" && (part?.role?.kind === "door" || part?.of !== undefined));
   }
   if (f?.type !== "niche") return false;
   const role = nichePartsIn(doc.features, f)[Number(index)]?.role;

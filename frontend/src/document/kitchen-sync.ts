@@ -49,6 +49,12 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (side === "left" ? (({ side: _gone, ...rest }) => rest)(it) : { ...it, side }) : it));
           changed = true;
         }
+        // Its fronts made handleless, or given their handles back (the Façades tool): the plan keeps it too.
+        const grip = fronts?.type === "fronts" ? fronts.grip : undefined;
+        if (fronts && k0 >= 0 && runs[run.id]![k0]!.grip !== grip) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (grip ? { ...it, grip } : (({ grip: _gone, ...rest }) => rest)(it)) : it));
+          changed = true;
+        }
         // Only a change made since: the plan's own rebuilds are what it builds.
         const before = findFeature(prev, c.id);
         if (before?.type === "cabinet" && !differs(before.width, c.width) && !differs(before.depth, c.depth) && !differs(before.height, c.height)) return;

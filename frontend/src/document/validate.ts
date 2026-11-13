@@ -263,7 +263,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["overlay", "inset"].includes(feature.mount as string)) errors.push(`${where} : pose des façades inconnue.`);
       checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
-      if (feature.side !== undefined && feature.side !== "left" && feature.side !== "right") errors.push(`${where} : côté des charnières inconnu.`);
+      if (feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) errors.push(`${where} : côté des charnières inconnu.`);
+      if (feature.grip !== undefined && feature.grip !== "gorge") errors.push(`${where} : prise de main inconnue.`);
       if (glassFieldsProblem(feature, ["flat", "glass"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "glass"])}`);
       break;
     case "room": {

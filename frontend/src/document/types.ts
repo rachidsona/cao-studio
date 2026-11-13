@@ -116,8 +116,10 @@ export interface KitchenRunItem {
   /** Sizes set for this unit (mm), over those of its model and the plan: a wall or tall unit's height, any depth. */
   height?: number;
   depth?: number;
-  /** One door: the side of its hinges, chosen (missing: left). */
-  side?: "left" | "right";
+  /** One door: the side of its hinges, chosen (missing: left; « top »: a lift-up door, « bottom »: a flap). */
+  side?: FrontsFeature["side"];
+  /** Its fronts without handles, on gorge profiles. */
+  grip?: FrontsFeature["grip"];
   /** Room kept for a caisson furnished by hand (its sketch, document/caisson-follow.ts): it goes where this room goes. */
   furnished?: string;
 }
@@ -675,8 +677,16 @@ export interface FrontsFeature extends FeatureBase {
   type: "fronts";
   cabinet: string;
   layout: "door" | "doors" | "drawers";
-  /** One door: the side of its hinges, as one faces it (missing: left). */
-  side?: "left" | "right";
+  /**
+   * One door: the side of its hinges, as one faces it (missing: left). « top »: a lift-up door, hinged along its top
+   * edge and held by a pair of stays; « bottom »: a drop-down flap, hinged along its bottom edge.
+   */
+  side?: "left" | "right" | "top" | "bottom";
+  /**
+   * « gorge »: no handles. Each front leaves a finger space above its top edge, in front of a recessed aluminium
+   * profile fitted between the sides (features/fronts-parts.ts).
+   */
+  grip?: "gorge";
   drawers: number;
   mount: "overlay" | "inset";
   gap: number;

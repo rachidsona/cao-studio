@@ -75,8 +75,10 @@ export interface KitchenUnit {
   /** The fronts it gets (none: an appliance or panels in front). */
   layout: "door" | "doors" | "drawers" | "none";
   drawers?: number;
-  /** One door: the side of its hinges (missing: left). */
-  side?: "left" | "right";
+  /** One door: the side of its hinges (missing: left; « top »: a lift-up door, « bottom »: a flap). */
+  side?: "left" | "right" | "top" | "bottom";
+  /** Its fronts without handles, on gorge profiles. */
+  grip?: "gorge";
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
   /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */

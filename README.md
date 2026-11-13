@@ -2568,6 +2568,22 @@ opération existante.
   porte) et poignées entraxe 128 mm percées à la demande. L'opération suit les cotes du caisson ; les façades prennent
   sa matière, les tiroirs du contreplaqué bouleau (fonds en HDF), et la quincaillerie s'ajoute au **devis** (prix
   unitaires réglables avec les autres tarifs).
+  - **Porte relevable et abattant** (liste « Ouverture » d'une porte seule) : charnières à gauche, à droite, **en
+    haut** (relevable) ou **en bas** (abattant). Les boîtiers de charnière se percent alors le long du chant haut ou
+    bas (2 à 4 selon la largeur), les trous de poignée au milieu du chant qui s'ouvre. Une relevable tient sur une
+    **paire de compas** choisie d'après son **facteur** — sa hauteur (mm) × son poids (kg, d'après sa matière) :
+    force 1 jusqu'à 1600, force 2 jusqu'à 2800, force 3 jusqu'à 5200, force 4 jusqu'à 9000 ; le panneau l'écrit, et
+    « Contrôle avant fabrication » signale une porte au-delà. Un abattant a ses compas d'abattant. Un clic dans la vue
+    l'ouvre vers le haut (ou vers le bas, à l'horizontale) ; le menu de la porte la retourne. Ces forces sont des
+    repères : la fiche du fabricant fait foi (`liftStay`, `LIFT_CLASSES` dans `features/fronts-parts.ts`).
+  - **Sans poignée (gorge)** (case du même outil, `FrontsFeature.grip`) : pas de trous de poignée ; chaque façade
+    laisse **30 mm de prise de main** au-dessus de son chant haut — sous le dessus du caisson pour la façade du haut,
+    entre deux façades de tiroir — devant un **profilé alu** de 57 mm posé entre les côtés, en retrait de 26 mm. Les
+    caissons de tiroir passent sous les profilés. Le profilé s'achète au mètre : il va au devis (« Profil gorge alu
+    (m) ») et reste hors du débit. La gorge demande des façades en applique et des portes pleines, et 80 mm de façade
+    au moins sous chaque gorge.
+  - Dans une **cuisine**, le Plan de cuisine garde la porte relevable et la gorge d'un meuble : la cuisine refaite
+    les remet (`KitchenRunItem.side`, `grip`, `document/kitchen-sync.ts`).
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.

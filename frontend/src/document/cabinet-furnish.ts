@@ -86,6 +86,8 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
   const notes: string[] = [];
   const made = spec ?? cabinetSpec(doc, c, fronts[0]);
   if (!spec && fronts[0]?.layout === "drawers" && c.shelves > 0) notes.push("Ses tiroirs sont à reposer (Tiroirs).");
+  if (!spec && (fronts[0]?.side === "top" || fronts[0]?.side === "bottom")) notes.push("Sa porte relevable devient une porte battante.");
+  if (!spec && fronts[0]?.grip === "gorge") notes.push("Ses façades sans poignée reprennent des poignées.");
   if (!spec && c.top === "rails") notes.push("Son dessus est maintenant un panneau plein : pour un évier, découpez-le ou ôtez-le.");
   const freed = freedFromPlan(doc, c);
   if (typeof freed === "string") return freed;

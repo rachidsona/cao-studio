@@ -28,6 +28,8 @@ interface Open {
 
 const DURATION = 250;
 const DOOR_ANGLE = 100;
+/** A flap comes down to the horizontal. */
+const FLAP_ANGLE = 90;
 
 type Swing = { axis: Axis; pivot: Vec3; angle: number };
 
@@ -35,12 +37,12 @@ type Swing = { axis: Axis; pivot: Vec3; angle: number };
 const partNumber = (bodyId: string) => (bodyId.includes("#") ? Number(bodyId.slice(bodyId.indexOf("#") + 1)) : 0);
 
 /** The sense that brings the free edge out, in front of the panels. */
-function outwards(axis: Axis, pivot: Vec3, free: Vec3, normal: Vec3): Swing {
-  const r = rotationMatrix(axis, DOOR_ANGLE);
+function outwards(axis: Axis, pivot: Vec3, free: Vec3, normal: Vec3, angle = DOOR_ANGLE): Swing {
+  const r = rotationMatrix(axis, angle);
   const d = [0, 1, 2].map((i) => free[i]! - pivot[i]!);
   const moved = [0, 1, 2].map((i) => r[i * 3]! * d[0]! + r[i * 3 + 1]! * d[1]! + r[i * 3 + 2]! * d[2]! - d[i]!);
   const out = moved[0]! * normal[0] + moved[1]! * normal[1] + moved[2]! * normal[2];
-  return { axis, pivot, angle: out >= 0 ? DOOR_ANGLE : -DOOR_ANGLE };
+  return { axis, pivot, angle: out >= 0 ? angle : -angle };
 }
 
 /** A door of a cabinet's fronts: they face −Y, then turn with the cabinet about the vertical through its origin. */
@@ -56,9 +58,19 @@ function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0],
     const [dx, dy] = [x - cabinet.origin[0], y - cabinet.origin[1]];
     return [cabinet.origin[0] + r[0]! * dx + r[1]! * dy, cabinet.origin[1] + r[3]! * dx + r[4]! * dy, z];
   };
+  const out: Vec3 = [-r[1]!, -r[4]!, 0];
+  if (part.role.hinge === "top" || part.role.hinge === "bottom") {
+    // A lift-up door or a flap: about the horizontal line of its top or bottom edge, along the cabinet's width.
+    const x = (part.from[0] + part.to[0]) / 2;
+    const [hingeZ, freeZ] = part.role.hinge === "top" ? [part.to[2], part.from[2]] : [part.from[2], part.to[2]];
+    const across = (Math.abs(r[0]!) > 0.5 ? 0 : 1) as Axis;
+    const [px, py] = turned(x, part.from[1], hingeZ);
+    const [fx, fy] = turned(x, part.from[1], freeZ);
+    return outwards(across, [px, py, hingeZ], [fx, fy, freeZ], out, part.role.hinge === "top" ? DOOR_ANGLE : FLAP_ANGLE);
+  }
   const [hingeX, freeX] = part.role.hinge === "left" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
   const z = (part.from[2] + part.to[2]) / 2;
-  return outwards(2, turned(hingeX, part.from[1], z), turned(freeX, part.from[1], z), [-r[1]!, -r[4]!, 0]);
+  return outwards(2, turned(hingeX, part.from[1], z), turned(freeX, part.from[1], z), out);
 }
 
 /**

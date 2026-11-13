@@ -77,7 +77,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       }
       const role = applianceOf(pl.item)?.role;
       const name = `${entry.name}${entry.custom ? "" : ` ${w}`} (${run.id}${++n})`;
-      const look = { item: pl.item.id, shelves: entry.shelves, layout: entry.layout, ...(pl.item.side ? { side: pl.item.side } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
+      const look = { item: pl.item.id, shelves: entry.shelves, layout: entry.layout, ...(pl.item.side ? { side: pl.item.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
       const plinth = entry.plinth ?? s.plinth;
       if (pl.row === "wall") {
         const { height, z, depth } = itemSize(p, pl.item, entry);
