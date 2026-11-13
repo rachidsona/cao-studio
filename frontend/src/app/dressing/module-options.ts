@@ -2,12 +2,16 @@
  * Les réglages d'un module de dressing, en lignes d'un panneau : ses étagères et leur espacement, la hauteur de chaque
  * niche, son chapeau, ses tiroirs et leurs jeux, sa tringle, l'épaisseur de ses étagères — ceux que le module a
  * (document/dressing-modules.ts, moduleHas). Les mêmes dans l'outil Module (module-tool.ts) et au bas de « Modules à
- * glisser » (module-palette.ts). Les cotes se changent sur place dans `sizes` ; `changed` dit qu'une a changé.
+ * glisser » (module-palette.ts). Le style des façades de ses tiroirs — plate, à cadre, cannelée ou à tasseaux — et ses
+ * cotes s'y choisissent aussi. Les cotes se changent sur place dans `sizes` ; `changed` dit qu'une a changé.
  */
 import { DRAWERS, moduleHas, ROD, type ModuleKind, type ModuleLayout, type ModuleSizes } from "../../document/dressing-modules";
 import type { DisplayUnit } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
+import { DECOR_LABELS } from "../../features/door-decor";
+import { styleChange, type DoorStyle } from "../../features/glass-door";
+import { decorRows } from "../../sketcher/partition-door-style";
 
 export const FIELD =
   "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -91,6 +95,21 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
     o.changed();
   });
   const thickness = o.thickness;
+  // The style of the drawer fronts, and its sizes.
+  const look = (change: Partial<NonNullable<ModuleSizes["front"]>>) => (sizes.front = { ...front, ...change });
+  const style = el("select", { class: FIELD, "aria-label": "Style des façades" }, ...([["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS] as [string, string][]).map(([v, text]) => el("option", { value: v, selected: v === (front.style ?? "flat") }, text)));
+  style.addEventListener("change", () => {
+    look(styleChange(style.value as DoorStyle, front) as Partial<NonNullable<ModuleSizes["front"]>>);
+    o.changed();
+    o.redraw();
+  });
+  const styleRows: HTMLElement[] = !has.drawers
+    ? []
+    : [
+        el("label", { class: ROW }, "Style des façades", style),
+        ...(front.style === "frame" ? [number("Largeur du cadre", front.frameWidth ?? 70, (v) => look({ frameWidth: v })), number("Retrait du panneau", front.frameDepth ?? 6, (v) => look({ frameDepth: v }))] : []),
+        ...decorRows(front, (change) => look(change), (label, mm, set) => number(label, mm, set, label.startsWith("Bordure"))),
+      ];
   return [
     has.spacing ? el("label", { class: ROW }, "Étagères", count) : null,
     has.spacing
@@ -112,6 +131,7 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
     has.drawers ? number("Jeu de côté", front.sideGap, (v) => (sizes.front = { ...front, sideGap: v }), true) : null,
     has.drawers ? number("Épaisseur façades", front.thickness, (v) => (sizes.front = { ...front, thickness: v })) : null,
     has.drawers ? el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée") : null,
+    ...styleRows,
     has.rod ? number("Diamètre tringle", rod.diameter, (v) => (sizes.rod = { ...rod, diameter: v })) : null,
     has.rod ? number("Tringle sous le haut", rod.drop, (v) => (sizes.rod = { ...rod, drop: v })) : null,
     thickness ? number("Épaisseur des étagères", thickness.value, (v) => thickness.set(v)) : null,

@@ -64,8 +64,15 @@ export interface ModuleSizes {
   /** Niches of a set height: by their path from the niche of the module (« 1.2 »). */
   heights?: Record<string, number>;
   rod?: { diameter: number; drop: number };
-  front?: { gap: number; bottomGap: number; betweenGap: number; sideGap: number; thickness: number; handles: boolean };
+  /**
+   * The drawer fronts: their gaps, thickness and handles, and their style — plain, framed, fluted or slatted, with its
+   * sizes (features/door-decor.ts) — given to the drawers of the module.
+   */
+  front?: { gap: number; bottomGap: number; betweenGap: number; sideGap: number; thickness: number; handles: boolean } & FrontLook;
 }
+
+/** How the drawer fronts of a module look (missing: plain). */
+export type FrontLook = Partial<Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "pitch">>;
 
 export const moduleSizes = (kind: ModuleKind): ModuleSizes => ({ hat: HAT, drawerZone: DRAWER_ZONE, spacing: kind === "shoes" ? SHOE_SPACING : SHELF_SPACING, drawers: DRAWERS.drawers });
 

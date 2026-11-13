@@ -2630,7 +2630,12 @@ opération existante.
   - Les **façades de tiroir** prennent les mêmes styles (à cadre, cannelée, à tasseaux), pas le vitré : celles d'un
     caisson (« Style des façades » de l'outil Façades) et celles d'une niche (outil Tiroirs). Chaque façade a ses
     rainures sur sa propre hauteur ; sans boîtier de charnière derrière, elles courent jusqu'aux chants. Un style
-    vitré resté d'une porte changée en tiroirs les laisse plates. Les tiroirs des modules de dressing restent plats.
+    vitré resté d'une porte changée en tiroirs les laisse plates.
+  - Les **modules de dressing** (Module, « Modules à glisser ») choisissent le style des façades de leurs tiroirs dans
+    leurs réglages (« Style des façades », avec l'entraxe, la profondeur et la bordure, ou le cadre) : avant d'être
+    glissés, ou une fois posés, où le module est refait sur place ; un module posé relit son style
+    (`ModuleSizes.front`, `document/module-edit.ts`). « Mes modules » le garde avec le reste. L'Assistant Dressing
+    pose encore des tiroirs plats.
   - Le **Plan de cuisine** garde le style des façades d'un meuble (`KitchenRunItem.facade`, avec la porte relevable
     et la gorge) : la cuisine refaite le remet ; des façades redevenues plates le lui font oublier.
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes

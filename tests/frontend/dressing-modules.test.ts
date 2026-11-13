@@ -157,6 +157,19 @@ describe("modules de dressing", () => {
       expect(() => parseDocument(JSON.parse(JSON.stringify(after)))).not.toThrow();
     });
 
+    it("les façades des tiroirs d'un module prennent un style, que le module relit et qu'on change", () => {
+      const doc = cabinet();
+      const sizes = { ...moduleSizes("drawers"), front: { gap: 3, bottomGap: 3, betweenGap: 3, sideGap: 3, thickness: 18, handles: true, style: "fluted" as const, pitch: 30, frameDepth: 3, frameWidth: 0 } };
+      const result = withModules(doc, "sk1", picks(doc, 0), "drawers", 18, sizes);
+      if (typeof result === "string") throw new Error(result);
+      expect(niches(result).find((f) => f.fill === "drawers")).toMatchObject({ style: "fluted", pitch: 30, frameDepth: 3 });
+      const placed = read(result, leaf(result, 0)[2]!.path)!;
+      expect(placed.sizes.front).toMatchObject({ style: "fluted", pitch: 30, frameDepth: 3, frameWidth: 0 });
+      const slats = withModuleChanged(result, "sk1", placed, "drawers", 18, { ...placed.sizes, front: { ...placed.sizes.front!, style: "slats", pitch: 45, frameDepth: 4 } }) as CadDocument;
+      expect(niches(slats).find((f) => f.fill === "drawers")).toMatchObject({ style: "slats", pitch: 45 });
+      expect(() => parseDocument(JSON.parse(JSON.stringify(slats)))).not.toThrow();
+    });
+
     it("changent de type, et le porte-pantalons quitte le devis", () => {
       const doc = cabinet();
       const next = made(doc, picks(doc, 0), "trousers");

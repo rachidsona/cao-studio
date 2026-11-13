@@ -77,3 +77,42 @@ test("le module glissé se règle au bas du panneau : avant de le glisser, puis 
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
+
+test("les façades des tiroirs d'un module se choisissent cannelées avant de le glisser, puis à tasseaux une fois posé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-modules-decor");
+  await wall(page);
+  const view = page.locator("canvas.cad-view");
+  const box = (await view.boundingBox())!;
+  const niche = { x: box.width * 0.33, y: box.height * 0.5 };
+  const drawers = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string; style?: string; pitch?: number }[] } }).document.features.find((f) => f.type === "niche" && f.fill === "drawers"), api);
+  };
+
+  await click(page, '[data-workshop="module-palette"]');
+  const panel = page.getByRole("dialog", { name: "Modules à glisser" });
+  const options = panel.getByRole("group", { name: "Réglages du module" });
+  await panel.locator('[data-module="drawers"]').click();
+  await options.getByRole("combobox", { name: "Style des façades" }).selectOption("fluted");
+  await expect(options.getByRole("textbox", { name: /^Entraxe des cannelures/ })).toBeVisible();
+  await panel.locator('[data-module="drawers"]').dragTo(view, { targetPosition: niche });
+  await expect(page.getByText(/Niche équipée/)).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect.poll(drawers, { timeout: 30_000 }).toMatchObject({ style: "fluted", pitch: 30 });
+
+  // Laid: its settings show the style, and change it where it is.
+  await expect(options).toHaveAttribute("data-module-options", "placed");
+  await expect(options.getByRole("combobox", { name: "Style des façades" })).toHaveValue("fluted");
+  await options.getByRole("combobox", { name: "Style des façades" }).selectOption("slats");
+  await expect(page.getByText(/Module modifié/)).toBeVisible();
+  await expect(options.getByRole("textbox", { name: /^Entraxe des tasseaux/ })).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect.poll(drawers, { timeout: 30_000 }).toMatchObject({ style: "slats", pitch: 45 });
+  await page.waitForTimeout(1200);
+  await shot(page, "module-tiroirs-a-tasseaux");
+  expect(errors).toEqual([]);
+});

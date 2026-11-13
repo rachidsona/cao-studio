@@ -96,7 +96,9 @@ export function moduleAt(doc: CadDocument, sketch: SketchFeature, partition: str
   const front = fill(low);
   if (front?.fill === "drawers") {
     sizes.drawers = front.drawers;
-    sizes.front = { gap: front.gap, bottomGap: front.bottomGap ?? front.gap, betweenGap: front.betweenGap ?? front.gap, sideGap: front.sideGap ?? front.gap, thickness: front.thickness, handles: front.handles };
+    // Their style too, as set: the module's settings show it, and change it.
+    const look = Object.fromEntries((["style", "frameWidth", "frameDepth", "pitch"] as const).filter((k) => front[k] !== undefined).map((k) => [k, front[k]]));
+    sizes.front = { gap: front.gap, bottomGap: front.bottomGap ?? front.gap, betweenGap: front.betweenGap ?? front.gap, sideGap: front.sideGap ?? front.gap, thickness: front.thickness, handles: front.handles, ...look };
   }
   return { kind, partition, path, box, thickness: first.step.input.thickness, sizes: { ...moduleSizes(kind), ...sizes }, step: first.id };
 }

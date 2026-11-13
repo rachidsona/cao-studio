@@ -190,7 +190,7 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Une palette de modules à déposer dans les niches de la vue, avec leurs réglages au bas du panneau.",
         steps: [
           "Cliquez « Modules à glisser » : la liste s'ouvre dans le panneau de droite.",
-          "Cliquez un module de la liste : ses réglages s'affichent en bas (étagères, espacement, chapeau, tiroirs, tringle). Changez-les si vous voulez : ils servent au prochain module glissé.",
+          "Cliquez un module de la liste : ses réglages s'affichent en bas (étagères, espacement, chapeau, tiroirs, tringle, et le « Style des façades » des tiroirs : plate, à cadre, cannelée ou à tasseaux). Changez-les si vous voulez : ils servent au prochain module glissé.",
           "Glissez le module (penderie, tiroirs, étagères…) vers une niche de la vue : la niche visée s'allume en orange.",
           "Lâchez : le module se pose. Ctrl+Z l'enlève d'un coup. Ce qui ne rentre pas le dit, et rien ne change.",
           "Une fois posé, le bas du panneau montre « Module posé » : chaque réglage changé (nombre de tiroirs, hauteur d'une niche, épaisseur des étagères…) refait le module sur place ; « Retirer ce module » libère sa niche.",
