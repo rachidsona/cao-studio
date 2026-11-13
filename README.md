@@ -2324,6 +2324,10 @@ opération existante.
   les siens, relus dans le document, avec la hauteur de chaque niche et l'épaisseur des étagères : chaque réglage
   changé refait le module sur place en une annulation (`withModuleChanged`), un Ctrl + Z les ramène, « Retirer ce
   module » libère sa niche. La palette ouverte, un clic sur un module posé dans la vue le reprend.
+  Les étapes d'un module ont toujours des identifiants à elles : `uniqueOffsetId` (`document/operations.ts`) donne
+  celui qui suit le plus grand en usage, jamais un identifiant libéré par une étape retirée — reprendre « of4 » quand
+  « of5 » servait encore donnait à la seconde étape du module l'identifiant d'une autre (des Cloisons voisines), et
+  chaque réglage changé ensuite laissait derrière lui des étagères orphelines qui remplissaient des niches entières.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.

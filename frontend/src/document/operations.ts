@@ -237,12 +237,16 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
   return n > 0 ? `Corps ${n}` : (findFeature(doc, origin)?.name ?? origin);
 }
 
-/** "ofN": an id for a new offset, unused by any feature or by the offsets of the sketches. */
+/**
+ * "ofN": an id for a new offset, unused by any feature or by the offsets of the sketches — the one after the highest
+ * in use, never one left free by a step taken away: the ids that follow it are free too, for the steps made together
+ * with it (idsFrom, sketcher/partition-history.ts). Taking « of4 » back when « of5 » was still in use gave the second
+ * step of a module the id of another step, and what was changed next changed the wrong one.
+ */
 export function uniqueOffsetId(doc: CadDocument): string {
-  const used = new Set<string>(doc.features.flatMap((f) => [f.id, ...(f.type === "sketch" ? (f.offsets ?? []).map((o) => o.id) : [])]));
-  let n = 1;
-  while (used.has(`of${n}`)) n++;
-  return `of${n}`;
+  const used = doc.features.flatMap((f) => [f.id, ...(f.type === "sketch" ? (f.offsets ?? []).map((o) => o.id) : [])]);
+  const highest = Math.max(0, ...used.map((id) => Number(/^of(\d+)$/.exec(id)?.[1] ?? 0)));
+  return `of${highest + 1}`;
 }
 
 /** Gives a body its own name (kept with the feature that created it). */

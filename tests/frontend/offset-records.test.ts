@@ -63,6 +63,9 @@ describe("décalages enregistrés", () => {
     const doc: CadDocument = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: [sketch] };
     expect(uniqueOffsetId(doc)).toBe("of2");
     expect(uniqueOffsetId({ ...doc, features: [] })).toBe("of1");
+    // After the highest in use, never one left free below it: the ids that follow are free too (steps made together).
+    const gap = { ...sketch, offsets: [{ ...sketch.offsets![0]! }, { ...sketch.offsets![0]!, id: "of3" }, { ...sketch.offsets![0]!, id: "of5" }] };
+    expect(uniqueOffsetId({ ...doc, features: [gap] })).toBe("of6");
   });
 
   it("renommer un décalage ne recalcule ni l'esquisse ni l'extrusion", () => {

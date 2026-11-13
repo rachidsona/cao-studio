@@ -396,6 +396,51 @@ const sketchShelves = (doc: CadDocument, offset: string): number => {
   return r && isShelves(r) ? r.step.input.count : 0;
 };
 
+describe("les étapes d'un module ont des identifiants à elles", () => {
+  /** Every board made on the sketch belongs to one step, and one only; no step shares its id with another. */
+  const sound = (doc: CadDocument) => {
+    const records = sketchOf(doc).offsets ?? [];
+    const ids = records.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const owned = records.flatMap((r) => r.bodies ?? []);
+    expect(new Set(owned).size).toBe(owned.length);
+    const boards = doc.features.filter((f) => f.type === "extrude" && f.sketch === "sk1").map((f) => f.id);
+    expect([...boards].sort()).toEqual([...owned].sort());
+  };
+  const read = (doc: CadDocument, column: number) => moduleOfNiche(doc, sketchOf(doc), "of1", [...leafNiches(sketchOf(doc)).find((n) => n.path[0] === column)!.path]);
+
+  it("un identifiant libéré par une étape retirée n'est pas repris : le module à deux étapes posé ensuite ne prend pas celui d'une étape voisine", () => {
+    // A rod in the first two cases, the first one taken away: its id is free, the next one still in use.
+    let doc = made(cabinet(), picks(cabinet(), 0), "long");
+    doc = made(doc, picks(doc, 1), "long");
+    doc = withoutModule(doc, "sk1", read(doc, 0)!);
+    sound(doc);
+    const kept = read(doc, 1)!;
+    const boardsBefore = doc.features.filter((f) => f.type === "extrude").length;
+    // Drawers and shelves in the third case: two steps, made together.
+    doc = made(doc, picks(doc, 2), "drawers");
+    sound(doc);
+    expect(read(doc, 1)).toMatchObject({ kind: "long", step: kept.step });
+    // Changed, as its settings do at the bottom of « Modules à glisser »: it alone is made again, nothing left behind.
+    const placed = read(doc, 2)!;
+    expect(placed.kind).toBe("drawers");
+    const before = doc.features.filter((f) => f.type === "extrude").length;
+    const changed = withModuleChanged(doc, "sk1", placed, "drawers", 18, { ...placed.sizes, shelves: (placed.sizes.shelves ?? 0) + 2 });
+    if (typeof changed === "string") throw new Error(changed);
+    sound(changed);
+    expect(changed.features.filter((f) => f.type === "extrude").length).toBe(before + 2);
+    expect(read(changed, 1)).toMatchObject({ kind: "long", step: kept.step });
+    expect(() => parseDocument(JSON.parse(JSON.stringify(changed)))).not.toThrow();
+    // And again, and taken away: the cabinet as it was before it.
+    const again = withModuleChanged(changed, "sk1", read(changed, 2)!, "drawers", 18, { ...placed.sizes, shelves: 1 });
+    if (typeof again === "string") throw new Error(again);
+    sound(again);
+    const bare = withoutModule(again, "sk1", read(again, 2)!);
+    sound(bare);
+    expect(bare.features.filter((f) => f.type === "extrude").length).toBe(boardsBefore);
+  });
+});
+
 describe("un module dans une niche vide d'un module posé", () => {
   it("une colonne d'une seule étagère : la niche du dessous, vide, reçoit des tiroirs et étagères", () => {
     const one = withModules(cabinet(), "sk1", picks(cabinet(), 1), "shelves", 18, { ...moduleSizes("shelves"), shelves: 1 });
