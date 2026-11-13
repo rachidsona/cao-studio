@@ -12,7 +12,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez « Terminer l'esquisse », ou appuyez sur Entrée.",
           "L'esquisse reste dans l'historique et se retrouve sélectionnée.",
         ],
-        tip: "Chaque trait est enregistré au moment où vous le tracez, et s'annule un par un. Échap quitte aussi l'esquisse quand aucun outil ni aucune sélection n'est actif.",
+        tip: "Chaque trait est enregistré au moment où vous le tracez, et s'annule un par un. Un outil de dessin (ligne, rectangle, cercle, arc…) reste actif après chaque forme, pour en tracer d'autres : Échap le quitte et revient à la sélection ; un second Échap, sans outil ni sélection, quitte l'esquisse.",
       }, {
         keys: ["data-sketch-command:extrude"], name: "Extrusion",
         what: "Termine l'esquisse et donne de l'épaisseur à une zone fermée du dessin.",
@@ -60,7 +60,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez un coin.",
           "Cliquez le coin opposé — ou tapez ses cotes : la largeur s'écrit dans la case en bleu, Tab la garde (un cadenas) et passe à la hauteur, Entrée pose le rectangle.",
         ],
-        tip: "Chaque cote tapée reste une cote de l'esquisse, que vous changez ensuite d'un clic. La souris donne le côté (à droite ou à gauche, en haut ou en bas) ; ce qui n'est pas tapé la suit. Retour arrière efface. Si la forme tapée sort de l'écran, la vue recule pour la montrer entière. Les côtés sont déjà horizontaux et verticaux. L'outil repasse sur « Sélection » après chaque rectangle.",
+        tip: "Chaque cote tapée reste une cote de l'esquisse, que vous changez ensuite d'un clic. La souris donne le côté (à droite ou à gauche, en haut ou en bas) ; ce qui n'est pas tapé la suit. Retour arrière efface. Si la forme tapée sort de l'écran, la vue recule pour la montrer entière. Les côtés sont déjà horizontaux et verticaux. L'outil reste actif pour le rectangle suivant : Échap (ou l'outil « Sélection ») le quitte.",
       }, {
         keys: ["data-sketch-tool:circle"], name: "Cercle",
         what: "Trace un cercle à partir de son centre.",

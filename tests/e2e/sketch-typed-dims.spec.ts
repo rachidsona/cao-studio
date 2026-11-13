@@ -41,12 +41,12 @@ test("un rectangle, une ligne et un cercle tracés en tapant leurs cotes : Tab p
   await expect(field("h")).toHaveText("1,5");
   await shot(page, "cotes-tapees-rectangle");
   await page.keyboard.press("Enter");
-  // Laid: still in the sketch (Entrée did not leave it), the fields gone.
+  // Laid: still in the sketch (Entrée did not leave it), the fields gone, the tool still on for the next one.
   await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
   await expect(field("w")).toHaveCount(0);
+  await expect(page.locator('[data-sketch-tool="rectangle"]')).toHaveAttribute("aria-pressed", "true");
 
-  // A rectangle far bigger than the screen (2 m by 1 m): the view steps back to show it whole, its fields too.
-  await page.locator('[data-sketch-tool="rectangle"]').click();
+  // A rectangle far bigger than the screen (2 m by 1 m), with the same tool: the view steps back to show it whole.
   await page.mouse.click(...at(0.15, 0.6));
   await page.mouse.move(...at(0.3, 0.5));
   await page.keyboard.type("200");
@@ -60,6 +60,10 @@ test("un rectangle, une ligne et un cercle tracés en tapant leurs cotes : Tab p
   await expect.poll(() => inView("h")).toBe(true);
   await shot(page, "cotes-tapees-grand");
   await page.keyboard.press("Enter");
+  // Échap leaves the tool: back to the selection, still in the sketch.
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-sketch-tool="rectangle"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
 
   // A circle by its diameter, laid by a click: the pointer only says where.
   await page.locator('[data-sketch-tool="circle"]').click();

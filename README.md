@@ -1845,6 +1845,10 @@ opération existante.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Les outils de dessin de l'esquisse restent actifs** (Ligne, Rectangle, Cercle, Arc, Polygone, Oblong, Ovale,
+  Courbe ; `lay` de `sketcher/shape-entry.ts`) : une forme posée, l'outil attend la suivante — plusieurs formes à la
+  suite, chacune son étape d'annulation. **Échap** (ou l'outil Sélection) le quitte ; un second Échap, sans outil ni
+  sélection, quitte l'esquisse, comme « Terminer l'esquisse ».
 - **Cotes tapées pendant le tracé, comme Fusion 360** (esquisse : Ligne, Rectangle, Cercle ;
   `sketcher/typed-dims.ts`, `sketcher/shape-entry.ts`) : le premier point cliqué, les mesures en direct de la forme
   sont des **cases** (`[data-dim-field]`). On tape une valeur, dans l'unité du projet : elle s'écrit dans la case en

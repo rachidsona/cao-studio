@@ -77,11 +77,9 @@ export class ShapeEntry {
       this.aligned(result.kind === "commit" ? null : at.pos);
       if (result.kind === "commit") {
         this.typed.reset();
-        // A finished shape (rectangle, circle, arc, closed polyline) hands back to the selection tool.
-        if (mode.apply(withTypedDimensions(result.geometry, result.created, tool.name, values))) {
-          if (result.done) mode.setTool("select");
-          else mode.preview = null;
-        }
+        // A finished shape (rectangle, circle, arc, closed polyline): the tool stays for the next one, until Échap
+        // or « Terminer ».
+        if (mode.apply(withTypedDimensions(result.geometry, result.created, tool.name, values))) mode.preview = null;
       } else mode.preview = result.preview;
     } catch (error) {
       mode.host.notify(error instanceof Error ? error.message : String(error), "error");
