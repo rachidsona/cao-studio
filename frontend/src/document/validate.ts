@@ -277,6 +277,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     }
     case "trim":
       if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))) && (p.radius === undefined || (isFiniteNumber(p.radius) && (p.radius as number) > 0)) && (p.hardware === undefined || typeof p.hardware === "boolean") && (p.item === undefined || typeof p.item === "string") && (p.per === undefined || p.per === "m"))) errors.push(`${where} : planches de finition invalides.`);
+      else if (!feature.parts.every((p) => p.outline === undefined || (isObject(p.outline) && (p.outline.axis === 0 || p.outline.axis === 1) && Array.isArray(p.outline.points) && p.outline.points.length >= 3 && p.outline.points.every((q: unknown) => Array.isArray(q) && q.length === 2 && q.every((c) => isFiniteNumber(c)))))) errors.push(`${where} : contour d'une planche recoupée invalide.`);
       break;
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);

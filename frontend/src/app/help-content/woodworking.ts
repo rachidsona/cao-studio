@@ -115,9 +115,10 @@ export const WOODWORKING: HelpFamily[] = [
           "Cliquez « Finitions » et indiquez sa « Face avant ».",
           "Réglez l'« Épaisseur des planches » et cochez « Joue gauche » et « Joue droite » (vues de devant).",
           "Cochez « Fileurs jusqu'aux murs », « Bandeau haut », « Plinthe (sous un socle) » et « Pieds réglables (sous le socle) », puis réglez leurs cotes.",
-          "Lisez les remarques sous les champs : c'est enregistré aussitôt.",
+          "Pour un mur qui n'est pas d'aplomb ou pas d'équerre, cochez « Relevé de chantier » : tapez de combien le mur avance vers le meuble « en bas », « à mi-hauteur » et « en haut », et « au fond (hors d'équerre) » ; pour le plafond, de combien il descend « à gauche », « au milieu » et « à droite ». Une valeur négative : le mur s'écarte, le plafond remonte.",
+          "Lisez les remarques sous les champs : les largeurs auxquelles recouper le fileur ou le bandeau, et, sur fond orange, un meuble qui ne rentre pas avec ce qu'il manque. C'est enregistré aussitôt.",
         ],
-        tip: "Pour que fileurs et bandeau rejoignent les murs et le plafond, faites d'abord la Pièce, l'Implantation de cuisine ou l'Assistant Dressing. Les planches prennent la matière du meuble.",
+        tip: "Pour que fileurs et bandeau rejoignent les murs et le plafond, faites d'abord la Pièce, l'Implantation de cuisine ou l'Assistant Dressing. Les planches prennent la matière du meuble. Avec un relevé, le fileur suit le mur : il est dessiné à ses trois largeurs et compté au débit dans le rectangle de la plus grande. Les mesures se prennent en bas, à mi-hauteur et en haut du meuble, par rapport au mur tel qu'il est dessiné.",
       },
       {
         keys: ["data-action:room"],

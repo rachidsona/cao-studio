@@ -2357,6 +2357,17 @@ opération existante.
   - Fileurs en façade, qui comblent le jour jusqu'au mur voisin, de chaque côté, jusqu'à un écart maximal
     (150 mm par défaut). Un mur plus loin est signalé.
   - Bandeau haut en façade : jusqu'au plafond quand il y en a un, sinon de la hauteur choisie.
+  - **Relevé de chantier** (case du même panneau) : ce qu'on a mesuré sur place, par rapport aux murs dessinés. Pour
+    chaque mur de côté, de combien il **avance vers le meuble en bas, à mi-hauteur et en haut** (faux aplomb, ventre)
+    et **au fond** du meuble (hors d'équerre) ; pour le plafond, de combien il **descend à gauche, au milieu et à
+    droite**. Une valeur négative : le mur s'écarte, le plafond remonte.
+    - Le fileur est alors **recoupé à la demande** : son contour suit le mur (un point par mesure), le panneau donne
+      ses trois largeurs (« Fileur droit à recouper : 60 mm en bas, 52 à mi-hauteur, 40 en haut »), et il va au débit
+      dans le rectangle de la plus grande. Le bandeau haut suit de même un plafond qui n'est pas de niveau.
+    - Un mur qui avance plus que le jour, ou qui se resserre au fond, est **signalé sur fond orange** avec ce qu'il
+      manque (« le meuble ne rentre pas, il manque 15 mm ») ; de même un plafond trop bas. Le fileur n'est pas fait.
+    - Le calcul est dans `features/wall-survey.ts` (pur) ; une planche recoupée garde son contour dans
+      `TrimFeature.parts[].outline`, que le noyau pousse de l'épaisseur de la planche (`features/trim.ts`).
   - Pieds réglables (Ø30) sous le dessous relevé d'un socle, de la hauteur du socle : près de chaque angle, à
     50 mm des bords, et tous les 800 mm au plus. Ce sont de la quincaillerie (hors liste de débit, comptés au
     devis et dans la notice) ; un meuble posé au sol sur toute sa surface n'en a pas, et l'outil le dit.

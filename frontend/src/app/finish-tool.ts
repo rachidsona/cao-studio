@@ -2,13 +2,18 @@
  * « Finitions » (groupe Menuiserie) : habiller un meuble — les corps choisis, sinon tout le meuble affiché — de joues,
  * de fileurs jusqu'aux murs, d'un bandeau jusqu'au plafond et d'une plinthe sous son socle, ajustés à sa taille et à
  * la pièce (features/finish-parts.ts). Une opération « Finitions » dont chaque planche est un corps, de la matière du
- * meuble ; l'aperçu est en direct, OK la met dans l'historique, et elle se rouvre pour être retouchée.
+ * meuble ; l'aperçu est en direct, OK la met dans l'historique, et elle se rouvre pour être retouchée. « Relevé de
+ * chantier » prend ce qu'on a mesuré sur place (features/wall-survey.ts) : de combien chaque mur avance en bas, à
+ * mi-hauteur et en haut, et au fond ; de combien le plafond descend à gauche, au milieu et à droite. Le fileur et le
+ * bandeau sont alors recoupés à la demande, et le panneau dit quand le meuble ne rentre pas.
  */
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import { isHardwareBody } from "../document/hardware";
 import { uniqueId, uniqueName } from "../document/operations";
 import { featureOfBody, type CadDocument, type Feature, type TrimFeature } from "../document/types";
 import { FINISH_DEFAULTS, finishParts, type Box, type FinishOptions } from "../features/finish-parts";
+import { NO_CEILING, NO_WALL, type CeilingSurvey, type WallSurvey } from "../features/wall-survey";
+import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 const FRONTS: [string, string][] = [
@@ -68,6 +73,33 @@ export class FinishTool extends PanelTool {
     this.schedulePreview();
   }
 
+  /** The rows of what was measured on site: each wall at three heights and at the back, the ceiling at three places. */
+  private surveyRows(): HTMLElement[] {
+    const unit = this.ctx.unit();
+    const s = this.o.survey;
+    if (!s) return [];
+    const wall = (side: "left" | "right", name: string): HTMLElement[] => {
+      const w = s[side] ?? NO_WALL;
+      const row = (label: string, key: keyof WallSurvey) => this.numberRow(`${name} — ${label}`, w[key], unit, (v) => this.set((x) => (x.survey = { ...x.survey, [side]: { ...NO_WALL, ...x.survey?.[side], [key]: v } })), true);
+      return [row("en bas", "low"), row("à mi-hauteur", "mid"), row("en haut", "high"), row("au fond (hors d'équerre)", "back")];
+    };
+    const c = s.ceiling ?? NO_CEILING;
+    const top = (label: string, key: keyof CeilingSurvey) => this.numberRow(`Plafond — ${label}`, c[key], unit, (v) => this.set((x) => (x.survey = { ...x.survey, ceiling: { ...NO_CEILING, ...x.survey?.ceiling, [key]: v } })), true);
+    return [
+      this.info("De combien le mur avance vers le meuble, par rapport au mur dessiné (négatif : il s'écarte) ; de combien le plafond descend (négatif : il remonte)."),
+      ...wall("left", "Mur gauche"),
+      ...wall("right", "Mur droit"),
+      top("à gauche", "left"),
+      top("au milieu", "mid"),
+      top("à droite", "right"),
+    ];
+  }
+
+  /** A line of the panel: what does not fit stands out. */
+  private note(text: string): HTMLElement {
+    return /ne rentre pas|ne passe pas/.test(text) ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100", "data-survey-problem": "" }, text) : this.info(text);
+  }
+
   protected rows(): (HTMLElement | null)[] {
     const unit = this.ctx.unit();
     const o = this.o;
@@ -85,13 +117,15 @@ export class FinishTool extends PanelTool {
       o.ends.left || o.ends.right ? this.numberRow("Dépassement des joues en haut", o.ends.above, unit, (v) => v >= 0 && this.set((x) => (x.ends.above = v))) : null,
       this.checkRow("Fileurs jusqu'aux murs", o.fillers.on, (v) => this.set((x) => (x.fillers.on = v))),
       o.fillers.on ? this.numberRow("Écart maximal d'un fileur", o.fillers.max, unit, (v) => v > 0 && this.set((x) => (x.fillers.max = v))) : null,
+      this.checkRow("Relevé de chantier (faux aplomb, hors d'équerre, plafond)", !!o.survey, (v) => this.set((x) => (v ? (x.survey = {}) : delete x.survey))),
+      ...this.surveyRows(),
       this.checkRow("Bandeau haut (jusqu'au plafond s'il y en a un)", o.cornice.on, (v) => this.set((x) => (x.cornice.on = v))),
       o.cornice.on ? this.numberRow("Hauteur du bandeau sans plafond", o.cornice.height, unit, (v) => v > 0 && this.set((x) => (x.cornice.height = v))) : null,
       this.checkRow("Plinthe (sous un socle)", o.plinth.on, (v) => this.set((x) => (x.plinth.on = v))),
       o.plinth.on ? this.numberRow("Hauteur de plinthe", o.plinth.height, unit, (v) => v > 0 && this.set((x) => (x.plinth.height = v))) : null,
       o.plinth.on ? this.numberRow("Retrait de la plinthe", o.plinth.recess, unit, (v) => v >= 0 && this.set((x) => (x.plinth.recess = v))) : null,
       this.checkRow("Pieds réglables (sous le socle)", !!o.feet?.on, (v) => this.set((x) => (x.feet = { on: v }))),
-      ...this.notes.map((n) => this.info(n)),
+      ...this.notes.map((n) => this.note(n)),
       this.info("Les murs et le plafond sont ceux de la Pièce relevée, de l'Implantation de cuisine ou de l'Assistant Dressing. Gauche et droite sont vus de devant."),
     ];
   }

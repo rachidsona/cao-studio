@@ -4,10 +4,14 @@
  * - les fileurs, en façade, qui comblent le jour jusqu'au mur voisin (jusqu'à un écart maximal) ;
  * - le bandeau haut, en façade, jusqu'au plafond quand il y en a un (sinon de la hauteur choisie) ;
  * - la plinthe, en retrait sous la façade, là où le bas du meuble est libre (sous un socle), de la hauteur libre.
+ * Avec un relevé de chantier (wall-survey.ts : faux aplomb et hors d'équerre des murs, plafond pas de niveau), le
+ * fileur et le bandeau suivent le mur réel — leur contour est à recouper aux largeurs données — et un mur qui avance
+ * trop dit que le meuble ne rentre pas, et de combien.
  * Les murs sont les corps « pièce » du modèle. La face avant est choisie (−Y par défaut : le meuble regarde vers −Y,
  * comme une Répartition dessinée de face) ; « gauche » et « droite » sont vus de devant.
  */
 import type { Vec3 } from "../document/types";
+import { ACROSS, HEIGHTS, NO_CEILING, NO_WALL, scribe, scribedOutline, widthsText, type Survey } from "./wall-survey";
 
 export type Box = [Vec3, Vec3];
 
@@ -21,6 +25,8 @@ export interface FinishOptions {
   fillers: { on: boolean; max: number };
   cornice: { on: boolean; height: number; max: number };
   plinth: { on: boolean; height: number; recess: number };
+  /** What was measured on site: how the walls beside the furniture and the ceiling above it really are. */
+  survey?: Survey;
 }
 
 export interface FinishPart {
@@ -29,6 +35,11 @@ export interface FinishPart {
   to: Vec3;
   radius?: number;
   hardware?: boolean;
+  /**
+   * A board cut to follow a wall or the ceiling: its outline in the plane of the front, as [across, up] (`axis`: the
+   * one across); `from` and `to` are the box around it.
+   */
+  outline?: { axis: 0 | 1; points: [number, number][] };
 }
 
 /** Feet: Ø30, 50 mm in from the edges of the bottom board, at most 800 mm apart. */
@@ -99,20 +110,50 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
         .map((w) => (atMax ? w[0][lat]! - edge : edge - w[1][lat]!))
         .filter((g) => g > -0.5);
       if (!gaps.length) continue;
-      const gap = Math.min(...gaps);
-      if (gap <= 0.5) continue;
-      if (gap > o.fillers.max) {
-        notes.push(`Mur ${side === "droit" ? "de droite" : "de gauche"} à ${Math.round(gap)} mm : plus que l'écart maximal d'un fileur (${o.fillers.max} mm).`);
+      const wall = `Mur ${side === "droit" ? "de droite" : "de gauche"}`;
+      // The wall as measured: its gap at the bottom, the middle and the top of the furniture, and at its back.
+      const s = o.survey?.[side === "droit" ? "right" : "left"] ?? NO_WALL;
+      const real = scribe(Math.min(...gaps), [s.low, s.mid, s.high], s.back);
+      if (real.short > 0) {
+        notes.push(`${wall} : il avance trop ${HEIGHTS[real.at]} — le meuble ne rentre pas, il manque ${Math.ceil(real.short)} mm.`);
         continue;
       }
-      add(`Fileur ${side}`, box(span(edge, edge + (atMax ? gap : -gap)), faceBoard, [z0, z1]));
+      if (real.shortBack > 0) {
+        notes.push(`${wall} hors d'équerre : au fond du meuble il manque ${Math.ceil(real.shortBack)} mm — le meuble ne rentre pas.`);
+        continue;
+      }
+      const gap = Math.max(...real.gaps);
+      if (gap <= 0.5) continue;
+      if (gap > o.fillers.max) {
+        notes.push(`${wall} à ${Math.round(gap)} mm : plus que l'écart maximal d'un fileur (${o.fillers.max} mm).`);
+        continue;
+      }
+      const [from, to] = box(span(edge, edge + (atMax ? gap : -gap)), faceBoard, [z0, z1]);
+      if (real.tapered) {
+        parts.push({ name: `Fileur ${side}`, from: from!, to: to!, outline: { axis: lat, points: scribedOutline(edge, atMax ? 1 : -1, [z0, (z0 + z1) / 2, z1], real.gaps) } });
+        notes.push(`Fileur ${side} à recouper : ${widthsText(real.gaps, HEIGHTS)}.`);
+      } else add(`Fileur ${side}`, [from!, to!]);
     }
   }
   const across: [number, number] = o.ends.above > 0 ? range(m, lat) : [ends.min, ends.max];
   const ceilings = walls.filter((w) => w[0][2]! >= z1 - 0.5 && overlaps(range(w, lat), across) && overlaps(range(w, dep), depth, -1)).map((w) => w[0][2]! - z1);
-  const ceiling = ceilings.length ? Math.min(...ceilings) : null;
-  if (ceiling !== null && ceiling > 0.5 && ceiling <= o.cornice.max && (o.cornice.on || o.fillers.on)) add("Bandeau haut", box(across, faceBoard, [z1, z1 + ceiling]));
-  else if (o.cornice.on) {
+  const drawn = ceilings.length ? Math.min(...ceilings) : null;
+  // The ceiling as measured: how far it is above the furniture on the left, in the middle and on the right.
+  const c = o.survey?.ceiling ?? NO_CEILING;
+  const above = drawn === null ? null : scribe(drawn, [c.left, c.mid, c.right]);
+  if (above && above.short > 0) notes.push(`Plafond : il descend trop ${ACROSS[above.at]} — le meuble ne passe pas en hauteur, il manque ${Math.ceil(above.short)} mm.`);
+  const ceiling = above ? (above.short > 0 ? 0 : Math.max(...above.gaps)) : null;
+  if (above && above.tapered && above.short === 0 && ceiling! > 0.5 && ceiling! <= o.cornice.max && (o.cornice.on || o.fillers.on)) {
+    // Along the top of the furniture, from its left to its right as seen from the front.
+    const [a, b] = across;
+    const gaps = (rightIsMax ? above.gaps : [...above.gaps].reverse()) as [number, number, number];
+    const [from, to] = box(across, faceBoard, [z1, z1 + ceiling!]);
+    // Its outline is drawn across the top, then turned: [across, up].
+    const points = scribedOutline(z1, 1, [a, (a + b) / 2, b], gaps).map(([up, along]): [number, number] => [along, up]);
+    parts.push({ name: "Bandeau haut", from: from!, to: to!, outline: { axis: lat, points } });
+    notes.push(`Bandeau haut à recouper : ${widthsText(above.gaps, ACROSS)}.`);
+  } else if (ceiling !== null && ceiling > 0.5 && ceiling <= o.cornice.max && (o.cornice.on || o.fillers.on)) add("Bandeau haut", box(across, faceBoard, [z1, z1 + ceiling]));
+  else if (o.cornice.on && !(above && above.short > 0)) {
     if (ceiling !== null && ceiling > o.cornice.max) notes.push(`Plafond à ${Math.round(ceiling)} mm au-dessus : bandeau de ${o.cornice.height} mm seulement.`);
     if (ceiling === null || ceiling > 0.5) add("Bandeau haut", box(across, faceBoard, [z1, z1 + Math.min(o.cornice.height, ceiling ?? Infinity)]));
   }

@@ -783,8 +783,10 @@ export interface TrimFeature extends FeatureBase {
   /**
    * A board (a box between two corners), or a foot (`radius`: a cylinder from `from` up to `to`, bought: hardware).
    * Bought parts are quoted as `item` (an adjustable foot when missing), by the piece or by the metre (`per`).
+   * `outline`: a board cut to follow a wall or the ceiling as surveyed (features/wall-survey.ts) — its outline in the
+   * plane of the front, as [across, up] along `axis` and Z; `from` and `to` are then the box around it.
    */
-  parts: { name: string; from: Vec3; to: Vec3; radius?: number; hardware?: boolean; item?: string; per?: "m" }[];
+  parts: { name: string; from: Vec3; to: Vec3; radius?: number; hardware?: boolean; item?: string; per?: "m"; outline?: { axis: 0 | 1; points: [number, number][] } }[];
   /** What the tool was given, to reopen it: the bodies of the furniture and its settings. */
   source?: string[];
   settings?: FinishOptions;
