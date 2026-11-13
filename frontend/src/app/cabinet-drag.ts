@@ -2,7 +2,9 @@
  * Déplacer un caisson d'un geste : quand les pièces d'un seul caisson sont sélectionnées, deux poignées s'affichent
  * dans la barre du bas de la vue, avec ses cotes (app/cabinet-bar.ts). « ✥ » se tire : le caisson glisse le long de son mur (Maj : librement sur le sol), avec ses façades,
  * et s'arrête au ras des autres corps — contre le côté d'un voisin, dans l'alignement de son fond ou de sa façade,
- * au bout du plan de travail, contre un mur (Alt : sans aimant). Un clic sur « ✥ » sans tirer le colle à une face ou
+ * au bout du plan de travail, contre un mur. Il n'entre jamais dans un autre meuble : amené dedans, il est posé à côté
+ * de lui, au ras, du côté le plus proche (features/box-clear.ts) — ce qu'il touchait déjà (la plinthe sous lui, la
+ * crédence derrière) ne le gêne pas (Alt : sans aimant ni arrêt, pour le poser où l'on veut). Un clic sur « ✥ » sans tirer le colle à une face ou
  * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
  * (Ctrl + D) en met une copie à côté — sur son linéaire quand le Plan de cuisine l'a fait
  * (document/unit-duplicate.ts) — et « ✕ » le supprime avec ses façades.
@@ -14,6 +16,7 @@ import { cabinetAxes, slideCabinet, turnCabinet } from "../document/kitchen-cata
 import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../document/operations";
 import { withCabinetDuplicated } from "../document/unit-duplicate";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
+import { clearOf } from "../features/box-clear";
 import { alignBox, type Box } from "../features/smart-align";
 import { formatLength } from "../measurements/units";
 import { SnapGuides } from "../viewport/snap-guides";
@@ -102,6 +105,10 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     let lines: [Vec3, Vec3][] = [];
     if (!event.altKey) ({ translate: delta, guides: lines } = alignBox(drag.box, drag.others, delta, axes, STICK_PX * viewport.worldPerPixel()));
     delta = delta.map(Math.round) as Vec3;
+    // Never into another piece of furniture: beside it, flush (no place clear on its path: where it was).
+    const clear = event.altKey ? delta : clearOf(drag.box, drag.others, delta, axes);
+    if (clear && clear !== delta) lines = [];
+    delta = clear ?? [0, 0, 0];
     drag.delta = delta;
     pose(drag, delta);
     guides.show(lines, viewport);
@@ -168,7 +175,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (stamp === shown && !force) return;
     clear();
     shown = stamp;
-    const slide = grip("✥ Déplacer", "Tirez pour faire glisser le caisson le long de son mur (Maj : librement sur le sol, Alt : sans aimant, Échap : annuler) ; cliquez, puis cliquez une face ou un coin d'un autre meuble pour l'y coller", "Déplacer le caisson");
+    const slide = grip("✥ Déplacer", "Tirez pour faire glisser le caisson le long de son mur : il s'arrête à côté des autres meubles, jamais dedans (Maj : librement sur le sol, Alt : sans aimant ni arrêt, Échap : annuler) ; cliquez, puis cliquez une face ou un coin d'un autre meuble pour l'y coller", "Déplacer le caisson");
     slide.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       event.stopPropagation();
