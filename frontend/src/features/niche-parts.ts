@@ -3,7 +3,7 @@
  * la quincaillerie et à montrer l'aperçu).
  * - Penderie : une tringle ronde d'un côté à l'autre de la niche, à mi-profondeur, son axe à `drop` mm sous le haut,
  *   tenue par deux supports (disques de 3 mm contre les côtés).
- * - Tiroirs : n façades encastrées dans l'ouverture (un jeu en haut, un en bas, un entre elles, un de côté), chacune avec son caisson
+ * - Tiroirs : leurs façades plates, à cadre, cannelées ou à tasseaux comme les portes (pas vitrées) ; n façades encastrées dans l'ouverture (un jeu en haut, un en bas, un entre elles, un de côté), chacune avec son caisson
  *   (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du commerce qui tient dans la profondeur. En
  *   applique (`mount`), les façades passent devant les panneaux et couvrent la moitié de ceux autour de la niche (le
  *   panneau entier au bord du meuble), comme une porte ; leurs jeux de bord sont alors partagés avec la voisine (moitié).
@@ -232,6 +232,8 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
   if (width < 2 * (SLIDE_PLAY + DRAWER_SIDE) + 60) return "La niche est trop étroite pour des tiroirs.";
   if (fronts.h < 80) return "La niche est trop basse pour autant de tiroirs (80 mm de façade au moins).";
   if (n.depth - (n.outer ? 0 : f.thickness) < 150) return "La niche n'est pas assez profonde pour des tiroirs.";
+  // Framed, fluted or slatted: the style's own limits, on each front.
+  if (f.style && f.style !== "flat" && !isGlass(f)) return styleProblem(f, Array.from({ length: f.drawers }, () => ({ width: fronts.x1 - fronts.x0, height: fronts.h })));
   return null;
 }
 

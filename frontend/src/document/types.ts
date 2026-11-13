@@ -120,6 +120,8 @@ export interface KitchenRunItem {
   side?: FrontsFeature["side"];
   /** Its fronts without handles, on gorge profiles. */
   grip?: FrontsFeature["grip"];
+  /** The style of its fronts, chosen in the Façades tool (missing: plain). */
+  facade?: FrontStyle;
   /** Room kept for a caisson furnished by hand (its sketch, document/caisson-follow.ts): it goes where this room goes. */
   furnished?: string;
 }
@@ -707,6 +709,9 @@ export interface FrontsFeature extends FeatureBase {
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
   hw?: HardwareSizes;
 }
+
+/** How the fronts of a cabinet look: framed, fluted, slatted or glazed, with their sizes (features/door-decor.ts). */
+export type FrontStyle = Pick<FrontsFeature, "style" | "frameWidth" | "frameDepth" | "pitch" | "glass" | "profile">;
 
 /** The glass of a glazed door, and the finish of its aluminium frame. */
 export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze" | "black";

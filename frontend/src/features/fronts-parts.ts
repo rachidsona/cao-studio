@@ -81,21 +81,38 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
     const high = cabinet.height - cabinet.plinth - cabinet.thickness - f.gap / 2 - levels * GORGE.space;
     if (high / levels < 80) return "Le caisson est trop bas pour des façades sans poignée (80 mm de façade au moins sous chaque gorge).";
   }
-  if (f.layout !== "drawers" && f.style && f.style !== "flat") {
-    // The size of each door, as frontsParts lays them out.
-    const { width: W, height: H, thickness: t, plinth: p } = cabinet;
-    const [w, h] = f.mount === "inset" ? [W - 2 * t - 2 * f.gap, H - p - 2 * t - 2 * f.gap] : [W - f.gap, H - p - f.gap];
-    const doors = [{ width: f.layout === "doors" ? (w - f.gap) / 2 : w, height: h }];
+  // Drawer fronts are never glazed: a glass style left from doors made drawers leaves them plain.
+  if (f.style && f.style !== "flat" && !(f.layout === "drawers" && isGlass(f))) {
+    // The size of each front, as frontsParts lays them out.
+    const a = frontArea(f, cabinet);
+    const fronts = f.layout === "drawers" ? [{ width: a.x1 - a.x0, height: a.h }] : [{ width: f.layout === "doors" ? (a.x1 - a.x0 - f.gap) / 2 : a.x1 - a.x0, height: a.z1 - a.z0 }];
+    const what = f.layout === "drawers" ? "ces façades de tiroir" : "ces portes";
     if (f.style === "frame") {
       const [fw, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
-      if (doors.some((door) => Math.min(door.width, door.height) - 2 * fw < 40)) return "Le cadre est trop large pour ces portes.";
+      if (fronts.some((front) => Math.min(front.width, front.height) - 2 * fw < 40)) return `Le cadre est trop large pour ${what}.`;
       if (!(d < f.thickness - 3)) return "Le panneau doit rester épais d'au moins 3 mm : réduisez le retrait.";
       return null;
     }
-    // Hinge cups behind: the grooves keep clear of them when they would meet.
-    return decorProblem(f, doors, f.thickness, f.hinges ? (f.hw?.cupDepth ?? 13) : 0) ?? glassProblem(f, doors, f.thickness);
+    // Hinge cups behind a door: the grooves keep clear of them when they would meet.
+    const cups = f.layout !== "drawers" && f.hinges ? (f.hw?.cupDepth ?? 13) : 0;
+    return decorProblem(f, fronts, f.thickness, cups) ?? glassProblem(f, fronts, f.thickness);
   }
   return null;
+}
+
+/**
+ * Where the fronts of a cabinet go, relative to its origin: the area they cover across (x) and up (z), the height of
+ * each drawer front and what lies between two of them (the gap, or a handleless front's finger space).
+ */
+export function frontArea(f: Pick<FrontsFeature, "layout" | "drawers" | "gap"> & Partial<Pick<FrontsFeature, "mount" | "grip">>, cabinet: CabinetFeature): { x0: number; x1: number; z0: number; z1: number; h: number; between: number } {
+  const { width: W, height: H, thickness: t, plinth: p } = cabinet;
+  const g = f.gap;
+  const gorge = f.grip === "gorge";
+  // Handleless: the fronts stop under the top board, a finger space under it.
+  const [x0, x1, z0, z1] = f.mount === "inset" ? [t + g, W - t - g, p + t + g, H - t - g] : [g / 2, W - g / 2, p + g / 2, gorge ? H - t - GORGE.space : H - g / 2];
+  const between = gorge ? GORGE.space : g;
+  const n = f.layout === "drawers" ? f.drawers : 1;
+  return { x0, x1, z0, z1, h: (z1 - z0 - (n - 1) * between) / n, between };
 }
 
 /** Hinges a door of this height needs. */
@@ -131,10 +148,9 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   const g = f.gap;
   const T = f.thickness;
   const inset = f.mount === "inset";
-  // The area the fronts cover, and where they sit in depth.
   const gorge = f.grip === "gorge";
-  // Handleless: the fronts stop under the top board, a finger space under it.
-  const [x0, x1, z0, z1] = inset ? [t + g, W - t - g, p + t + g, H - t - g] : [g / 2, W - g / 2, p + g / 2, gorge ? H - t - GORGE.space : H - g / 2];
+  // The area the fronts cover, and where they sit in depth.
+  const { x0, x1, z0, z1, h, between } = frontArea(f, cabinet);
   const [y0, y1] = inset ? [0, T] : [-T, 0];
   /** The tops of the fronts that have a gorge behind them, from the top one. */
   const gorges: number[] = gorge ? [z1] : [];
@@ -156,9 +172,6 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
     });
   } else {
     const n = f.drawers;
-    // Handleless: a finger space between two fronts in place of the gap.
-    const between = gorge ? GORGE.space : g;
-    const h = (z1 - z0 - (n - 1) * between) / n;
     const bt = cabinet.back === "none" ? 0 : cabinet.backThickness;
     const room = D - bt - (inset ? T : 0) - 10;
     const length = [...SLIDES].reverse().find((l) => l <= room) ?? Math.max(100, Math.floor(room / 10) * 10);

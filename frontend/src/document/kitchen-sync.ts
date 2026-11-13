@@ -14,12 +14,19 @@ import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { itemsMoved, unitsMoved } from "./kitchen-moves";
 import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
-import type { CabinetFeature, CadDocument, KitchenRunItem } from "./types";
+import type { CabinetFeature, CadDocument, FrontStyle, FrontsFeature, KitchenRunItem } from "./types";
 import { itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
 
 const NEAR = 0.05;
 const differs = (a: number, b: number) => Math.abs(a - b) > NEAR;
 const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, Math.round(v * 10) / 10));
+
+/** The style of some fronts as the plan keeps it: only what is set, nothing for plain fronts. */
+function frontStyle(f: FrontsFeature): FrontStyle | undefined {
+  if (!f.style || f.style === "flat") return undefined;
+  const keys = ["style", "frameWidth", "frameDepth", "pitch", "glass", "profile"] as const;
+  return Object.fromEntries(keys.filter((k) => f[k] !== undefined).map((k) => [k, f[k]])) as FrontStyle;
+}
 
 /** `next` with every kitchen plan following the units of it changed in the 3D (none: `next` itself). */
 export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocument {
@@ -53,6 +60,12 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         const grip = fronts?.type === "fronts" ? fronts.grip : undefined;
         if (fronts && k0 >= 0 && runs[run.id]![k0]!.grip !== grip) {
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (grip ? { ...it, grip } : (({ grip: _gone, ...rest }) => rest)(it)) : it));
+          changed = true;
+        }
+        // Its fronts' style (the Façades tool, the menu of a door): the plan keeps it.
+        const facade = fronts?.type === "fronts" ? frontStyle(fronts) : undefined;
+        if (fronts && k0 >= 0 && JSON.stringify(runs[run.id]![k0]!.facade) !== JSON.stringify(facade)) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade ? { ...it, facade } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
         // Only a change made since: the plan's own rebuilds are what it builds.

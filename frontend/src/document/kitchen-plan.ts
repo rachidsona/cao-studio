@@ -76,7 +76,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     cabinetPartNames(cabinet).forEach((name, i) => (plan.info[`${cabinet.id}${PART_SEPARATOR}${i}`] = { material: name === "Fond" ? "hdf" : "melamine-white" }));
     if (u.layout === "none") continue;
     const fronts: FrontsFeature = {
-      id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), drawers: u.drawers ?? 3,
+      id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3,
       mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: true,
     };
     push(fronts);

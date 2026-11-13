@@ -132,9 +132,11 @@ export class NicheTool {
   /** The feature this tool would make for a niche chosen. */
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
     const { span: _span, accessory, ...all } = this.settings as Settings & { span?: number[][] };
-    // Only a door has a style (and its glass), only an accessory its model.
+    // A door has a style (and its glass), drawers too but glass, only an accessory its model.
     const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, pitch: _pitch, ...rest } = all;
-    const settings = this.fill === "door" ? all : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
+    const { glass: _glass, profile: _profile, ...unglazed } = all;
+    const drawers = all.style === "glass" ? rest : unglazed;
+    const settings = this.fill === "door" ? all : this.fill === "drawers" ? drawers : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
     const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
     return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
   }
@@ -235,10 +237,16 @@ export class NicheTool {
       list.addEventListener("change", () => (set(list.value), this.recompute()));
       return el("label", { class: ROW }, label, list);
     };
+    // Drawer fronts are not glazed: a glass style shows as plain for them.
+    const drawerStyle = this.fill === "drawers";
+    const shown = drawerStyle && this.settings.style === "glass" ? "flat" : (this.settings.style ?? "flat");
     const styles = [
-      pick("Style", this.settings.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      pick(drawerStyle ? "Style des façades" : "Style", shown, [["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS, ...(drawerStyle ? [] : [["glass", "Vitrée (cadre alu)"] as [string, string]])], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      ...(shown === "frame"
+        ? [number("Largeur du cadre", this.settings.frameWidth ?? 70, (v) => ((this.settings.frameWidth = v), this.recompute())), number("Retrait du panneau", this.settings.frameDepth ?? 6, (v) => ((this.settings.frameDepth = v), this.recompute()))]
+        : []),
       ...decorRows(this.settings, (change) => (Object.assign(this.settings, change), this.recompute()), (label, mm, set) => number(label, mm, set, label.startsWith("Bordure"))),
-      ...(this.settings.style === "glass"
+      ...(this.settings.style === "glass" && !drawerStyle
         ? [
             number("Cadre alu", this.settings.frameWidth ?? GLASS_FRAME, (v) => ((this.settings.frameWidth = v), this.recompute())),
             pick("Verre", this.settings.glass ?? "clear", GLASS_KINDS, (v) => (this.settings.glass = v as NicheFeature["glass"])),
@@ -311,6 +319,7 @@ export class NicheTool {
             number("Jeu en bas", this.settings.bottomGap ?? this.settings.gap, (v) => ((this.settings.bottomGap = v), this.recompute()), true),
             number("Jeu de côté", this.settings.sideGap ?? this.settings.gap, (v) => ((this.settings.sideGap = v), this.recompute()), true),
             number("Épaisseur façades", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
+            ...styles,
             el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
           ]),
       result ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,

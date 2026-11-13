@@ -2620,7 +2620,12 @@ opération existante.
     45 mm des chants de côté. La porte reste une seule planche, débitée comme une porte plate. Le panneau refuse des
     rainures trop profondes (3 mm de bois au moins), un entraxe impossible, une bordure trop large
     (`features/door-decor.ts`, pur ; les rainures sont creusées d'un coup par `features/decor-cut.ts`).
-    Les façades de tiroir restent plates.
+  - Les **façades de tiroir** prennent les mêmes styles (à cadre, cannelée, à tasseaux), pas le vitré : celles d'un
+    caisson (« Style des façades » de l'outil Façades) et celles d'une niche (outil Tiroirs). Chaque façade a ses
+    rainures sur sa propre hauteur ; sans boîtier de charnière derrière, elles courent jusqu'aux chants. Un style
+    vitré resté d'une porte changée en tiroirs les laisse plates. Les tiroirs des modules de dressing restent plats.
+  - Le **Plan de cuisine** garde le style des façades d'un meuble (`KitchenRunItem.facade`, avec la porte relevable
+    et la gorge) : la cuisine refaite le remet ; des façades redevenues plates le lui font oublier.
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.

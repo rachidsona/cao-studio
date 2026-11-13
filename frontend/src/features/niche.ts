@@ -52,8 +52,9 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   }
   const [a, b] = worldBox(n, part);
   let solid = makeBox(a, b) as unknown as Shape3D;
-  // A frame door: the panel set back inside the frame, routed from the front face.
-  if (part.role === "front" && part.handle && f.style === "frame") {
+  // A frame door or drawer front: the panel set back inside the frame, routed from the front face.
+  const front = part.role === "front" && (!!part.handle || f.fill === "drawers");
+  if (front && f.style === "frame") {
     const [w, d] = [f.frameWidth ?? 70, f.frameDepth ?? 6];
     const [p, q] = worldBox(n, { from: [part.from[0] + w, part.from[1] + w, part.to[2] - d], to: [part.to[0] - w, part.to[1] - w, part.to[2] + 1] });
     const pocket = makeBox(p, q) as unknown as Shape3D;
@@ -63,7 +64,7 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     solid = cut;
   }
   // A fluted or slatted door: its grooves in its front face.
-  if (part.role === "front" && part.handle && isDecor(f)) {
+  if (front && isDecor(f)) {
     solid = cutGrooves(solid, decorGrooves(f, part.from[0], part.to[0], part.from[1], part.to[1]), part.to[2], -1, (p) => nicheWorld(n, p));
   }
   // A glass door: the opening through the aluminium frame, and the groove the glass sits in.

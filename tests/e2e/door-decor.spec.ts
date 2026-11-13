@@ -63,3 +63,36 @@ test("la porte d'un caisson se fait cannelée, à tasseaux ou à cadre, sans err
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   expect(errors).toEqual([]);
 });
+
+test("les façades de tiroir d'un caisson se font à tasseaux, sans style vitré proposé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-tiroirs-decor");
+  const saved = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; layout?: string; style?: string }[] } }).document.features.find((f) => f.type === "fronts"), api);
+  };
+  const status = page.locator('[data-ref="status-recompute"]');
+  await click(page, '[data-action="cabinet"]');
+  const cabinet = page.getByRole("dialog", { name: "Caisson" });
+  await cabinet.getByRole("combobox", { name: "Portes" }).selectOption("none");
+  await page.waitForTimeout(800);
+  await cabinet.getByRole("button", { name: "Fermer", exact: true }).click();
+  await click(page, '[data-action="fronts"]');
+  const tool = page.getByRole("dialog", { name: "Façades" });
+  await tool.getByRole("combobox", { name: "Disposition" }).selectOption("drawers");
+  const style = tool.getByRole("combobox", { name: "Style des façades" });
+  await expect(style.locator("option")).toHaveText(["Plate", "À cadre (panneau en retrait)", "Cannelée (cannelures rondes)", "À tasseaux (rainures droites)"]);
+  await style.selectOption("slats");
+  await page.waitForTimeout(1500);
+  await expect(status).not.toContainText("erreur");
+  await expect.poll(saved, { timeout: 30_000 }).toMatchObject({ layout: "drawers", style: "slats" });
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1000);
+  await shot(page, "tiroirs-a-tasseaux");
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  expect(errors).toEqual([]);
+});
