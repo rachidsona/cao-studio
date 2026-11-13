@@ -7,6 +7,7 @@
 import { cutList, edgeText, grainText, type CutRow } from "../../document/cut-list";
 import { holeGroups, holeText, partSheetSvg } from "../../document/part-sheet";
 import { edgeHoles, edgeHolesText } from "../../document/face-ops";
+import { notchText, sideNotches } from "../../document/side-notches";
 import { bodyLabel } from "../../document/operations";
 import type { GeometryClient } from "../../geometry/client";
 import { qrSvg } from "../../io/qr";
@@ -52,6 +53,12 @@ export async function partSheetsPage(viewport: Viewport, editor: Editor, geometr
       })(),
       ...(row.names.some((n) => flip.includes(n)) ? [["Attention", "perçages borgnes aussi sur l'autre face : retourner la pièce"] as [string, string]] : []),
       ...(row.approximate ? [["Forme", "pas un simple panneau : cotes de son encombrement"] as [string, string]] : []),
+      // The notches for the gorge profiles, from the bottom of the side, in the unit of the sheet.
+      ...((): [string, string][] => {
+        const p = input.get(row.names[0] ?? "");
+        const text = p ? notchText(sideNotches(editor.doc, p.id), num, UNIT_LABELS[unit]) : "";
+        return text ? [["Entailles", text]] : [];
+      })(),
     ];
     // The QR code opens the piece's page in the workshop tracking.
     const qr = qrSvg(pieceUrl(row.names[0] ?? ""));

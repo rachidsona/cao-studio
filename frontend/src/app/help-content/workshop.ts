@@ -266,7 +266,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Cliquez une ligne pour sélectionner ces pièces dans le modèle.",
           "Cliquez « Exporter en CSV » pour le tableur, ou « Imprimer / PDF » : ils suivent la liste choisie.",
         ],
-        tip: "Chaque ligne porte un repère (lettre) qu'on retrouve sur le calepinage. Le massif est donné avec sa surcote de débit brut. Les murs de la pièce et la quincaillerie ne sont pas listés.",
+        tip: "Chaque ligne porte un repère (lettre) qu'on retrouve sur le calepinage. Le massif est donné avec sa surcote de débit brut. Les murs de la pièce et la quincaillerie ne sont pas listés. Un côté de caisson entaillé pour une gorge est marqué « entaillé » : le survol de la marque donne ses entailles, leur taille et leur hauteur depuis le bas du côté.",
       },
       {
         keys: ["data-workshop:import-parts"], name: "Importer une liste de pièces",
@@ -421,7 +421,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Cliquez « Fiches de fabrication ».",
           "Dans la fenêtre d'impression, imprimez ou choisissez « Enregistrer en PDF ».",
         ],
-        tip: "Les pièces identiques tiennent sur une seule fiche, avec leur quantité. Chaque fiche donne cotes finies et de coupe, matière, chants, fil, perçages cotés depuis les bords et un QR code. Une pièce sans face plane n'a pas de fiche.",
+        tip: "Les pièces identiques tiennent sur une seule fiche, avec leur quantité. Chaque fiche donne cotes finies et de coupe, matière, chants, fil, perçages cotés depuis les bords et un QR code. Une pièce sans face plane n'a pas de fiche. Un côté entaillé pour une gorge a une ligne « Entailles » (combien, leur taille, leur hauteur depuis le bas du côté) ; le dessin, le DXF et le G-code suivent son contour entaillé.",
       },
       {
         keys: ["data-workshop:labels"], name: "Étiquettes à QR code",

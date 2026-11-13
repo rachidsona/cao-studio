@@ -7,6 +7,7 @@
 import { barLength } from "../../document/bars";
 import { cutGroups, type CutGroup, type CutGrouping } from "../../document/cut-groups";
 import { edgeText, grainText, type CutRow, type CutTotals } from "../../document/cut-list";
+import { notchText } from "../../document/side-notches";
 import type { DisplayUnit } from "../../document/types";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { escapeHtml } from "./workshop-ui";
@@ -67,7 +68,7 @@ function groupHtml(group: CutGroup, own: (readonly [CutRow, number])[], unit: Di
   const thick: Column[] = group.thickness !== undefined ? [] : [["Ép.", "cut-num", (r) => num(r.thickness, unit)]];
   const columns: Column[] = [
     ["Repère", "cut-tag-cell", (r) => `<span class="cut-tag">${escapeHtml(r.tag ?? "")}</span>`],
-    ["Pièce", "cut-name", (r) => `${escapeHtml(compactNames(r.names))}${r.approximate ? ` <span class="cut-none" title="Forme non rectangulaire : cotes de son encombrement">≈</span>` : ""}`],
+    ["Pièce", "cut-name", (r) => `${escapeHtml(compactNames(r.names))}${r.approximate ? ` <span class="cut-none" title="Forme non rectangulaire : cotes de son encombrement">≈</span>` : ""}${r.notches ? ` <span class="cut-none" data-cut-notches title="${escapeHtml(notchText(r.notches, (mm) => num(mm, unit), UNIT_LABELS[unit]))}">entaillé</span>` : ""}`],
     ["Qté", "cut-num cut-qty", (r) => (r.quantity > 1 ? `<b>${r.quantity}</b>` : String(r.quantity))],
     ["Longueur", "cut-num", (r) => num(r.length, unit)],
     ["Largeur", "cut-num", (r) => num(r.width, unit)],

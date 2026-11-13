@@ -2608,7 +2608,11 @@ opération existante.
     largeur** du caisson : les **côtés sont entaillés** à l'avant (57 × 26 mm, une entaille par profilé) pour le
     recevoir. Les entailles viennent des façades (`gorgeNotches`) et ne sont recopiées dans le caisson que pour le
     noyau (`stampGorges`, comme les cotes de la quincaillerie) ; redonner des poignées les referme. Les caissons de
-    tiroir passent sous les profilés. Le profilé s'achète au mètre : il va au devis (« Profil gorge alu
+    tiroir passent sous les profilés.
+    En **fabrication** : la liste de débit range les côtés entaillés à part, marqués « entaillé » (leurs entailles au
+    survol, et dans le CSV), sans les dire approximatifs ; les fiches de fabrication ont une ligne « Entailles »
+    (combien, leur taille, la hauteur de leur bas depuis le bas du côté) ; la face mise à plat, donc le dessin des
+    fiches, le DXF et le G-code, suit le contour entaillé du côté (`document/side-notches.ts`). Le profilé s'achète au mètre : il va au devis (« Profil gorge alu
     (m) ») et reste hors du débit. La gorge demande des façades en applique et des portes pleines, et 80 mm de façade
     au moins sous chaque gorge.
   - Dans une **cuisine**, le Plan de cuisine garde la porte relevable et la gorge d'un meuble : la cuisine refaite

@@ -3,15 +3,17 @@
  * (length ≥ width, thickness the smallest), its material, grain and edge
  * bands, the size to cut (finished size less the bands), grouped when
  * identical with a quantity. Totals per material: area and length of edge
- * band. Bodies that are not boxes are listed by their bounding box (marked).
+ * band. Bodies that are not boxes are listed by their bounding box (marked); a cabinet side notched for gorge
+ * profiles says its notches.
  * Each row gets a mark (A, B, C… as OpenCutList's part numbers), written on the sheet layout and in the view.
  */
 import { csvText } from "./csv-text";
 import { rowKinds } from "./cut-groups";
 import { bodyLabel } from "./operations";
+import { notchText, sideNotches } from "./side-notches";
 import { bodyInfo, materialById } from "./materials";
 import { bandTrimOf } from "./standards";
-import type { BodyInfo, CadDocument } from "./types";
+import type { BodyInfo, CabinetNotch, CadDocument } from "./types";
 import { toDisplay, UNIT_LABELS } from "../measurements/units";
 import type { DisplayUnit } from "./types";
 
@@ -44,6 +46,8 @@ export interface CutRow {
   roughWidth?: number;
   /** Not a plain box: listed by its bounding box. */
   approximate: boolean;
+  /** A cabinet side notched for gorge profiles: its notches, from the bottom of the side (document/side-notches.ts). */
+  notches?: CabinetNotch[];
 }
 
 export interface CutTotals {
@@ -74,19 +78,22 @@ export function cutList(doc: CadDocument, parts: PartInput[]): { rows: CutRow[];
     const material = known?.name ?? "Non défini";
     const [plusL, plusW] = known?.oversize ?? [0, 0];
     const grain = info.grain ?? "length";
-    const approximate = Math.abs(part.volume - size[0] * size[1] * size[2]) > 1e-3 * size[0] * size[1] * size[2];
+    // A side notched for gorge profiles is a board cut to its box, then notched: not « approximate ».
+    const notched = sideNotches(doc, part.id);
+    const notches = notched.length ? notched : undefined;
+    const approximate = !notches && Math.abs(part.volume - size[0] * size[1] * size[2]) > 1e-3 * size[0] * size[1] * size[2];
     // A band thinner than the standard's threshold is not taken off (it is lost in the trimming).
     const off = band >= trim ? band : 0;
     const cutLength = round(length - off * (Number(edges.width1) + Number(edges.width2)));
     const cutWidth = round(width - off * (Number(edges.length1) + Number(edges.length2)));
-    const key = JSON.stringify([material, length, width, thickness, grain, edges, band, approximate]);
+    const key = JSON.stringify([material, length, width, thickness, grain, edges, band, approximate, notches]);
     const row = rows.get(key);
     if (row) {
       row.quantity++;
       row.names.push(bodyLabel(doc, part.id));
       row.ids?.push(part.id);
       row.runs?.push(info.grainRun ?? null);
-    } else rows.set(key, { names: [bodyLabel(doc, part.id)], ids: [part.id], runs: [info.grainRun ?? null], quantity: 1, length, width, thickness, material, grain, edges, band, cutLength, cutWidth, roughLength: round(cutLength + plusL), roughWidth: round(cutWidth + plusW), approximate });
+    } else rows.set(key, { names: [bodyLabel(doc, part.id)], ids: [part.id], runs: [info.grainRun ?? null], quantity: 1, length, width, thickness, material, grain, edges, band, cutLength, cutWidth, ...(notches ? { notches } : {}), roughLength: round(cutLength + plusL), roughWidth: round(cutWidth + plusW), approximate });
   }
   const list = [...rows.values()].sort((a, b) => a.material.localeCompare(b.material) || b.thickness - a.thickness || b.length - a.length || b.width - a.width);
   list.forEach((r, i) => (r.tag = partTag(i)));
@@ -132,7 +139,7 @@ export function cutListCsv(rows: CutRow[], unit: DisplayUnit = "mm"): string {
   const head = ["Repère", "Pièce", "Qté", `Longueur (${u})`, `Largeur (${u})`, `Épaisseur (${u})`, "Matière", "Fil", "Chants", "Chant (mm)", `Longueur de coupe (${u})`, `Largeur de coupe (${u})`, `Débit brut L (${u})`, `Débit brut l (${u})`, "Type"];
   const cell = (v: string | number) => (typeof v === "number" ? String(v).replace(".", ",") : csvText(v));
   const len = (mm: number) => Number(toDisplay(mm, unit).toFixed(4));
-  const lines = rows.map((r) => [r.tag ?? "", r.names.join(", ") + (r.approximate ? " (≈)" : ""), r.quantity, len(r.length), len(r.width), len(r.thickness), r.material, GRAIN[r.grain], edgeText(r.edges), r.band, len(r.cutLength), len(r.cutWidth), len(r.roughLength ?? r.cutLength), len(r.roughWidth ?? r.cutWidth), rowKinds(r)].map(cell).join(";"));
+  const lines = rows.map((r) => [r.tag ?? "", r.names.join(", ") + (r.approximate ? " (≈)" : "") + (r.notches ? ` (${notchText(r.notches, (mm) => String(len(mm)).replace(".", ","), u)})` : ""), r.quantity, len(r.length), len(r.width), len(r.thickness), r.material, GRAIN[r.grain], edgeText(r.edges), r.band, len(r.cutLength), len(r.cutWidth), len(r.roughLength ?? r.cutLength), len(r.roughWidth ?? r.cutWidth), rowKinds(r)].map(cell).join(";"));
   return [head.map(cell).join(";"), ...lines].join("\r\n");
 }
 
