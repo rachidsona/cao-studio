@@ -3,6 +3,7 @@
  * ceux rangés dans les menus compris : tout outil ajouté au ruban s'y trouve sans rien de plus, et seuls ceux du mode en
  * cours sont proposés (esquisse ou modèle). Les derniers utilisés reviennent en tête, gardés dans ce navigateur.
  */
+import { buttonHint } from "../ui/icon-titles";
 import { searchCommands, type Command } from "../ui/command-search";
 import { el } from "../ui/dom";
 import { keyOf } from "../ui/ribbon-layout";
@@ -36,7 +37,8 @@ function commands(root: HTMLElement): { command: Command; button: HTMLElement }[
     if (!key || seen.has(key) || button.disabled) return [];
     const ribbon = button.closest<HTMLElement>("[data-ribbon]")?.dataset.ribbon;
     if (ribbon && ribbon !== mode) return [];
-    const title = button.getAttribute("title") ?? "";
+    // What its tooltip explained (the tooltip of an icon now says its name only: ui/icon-titles.ts).
+    const title = buttonHint(button);
     const label = button.getAttribute("aria-label") ?? (button.textContent?.trim() || title.split(" : ")[0] || "");
     if (!label) return [];
     seen.add(key);

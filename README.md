@@ -617,6 +617,10 @@ opération existante.
     (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
     Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Terminer** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
+- **La bulle d'une icône d'outil dit son nom seulement** (« Coque », « Vider un corps ») : `ui/icon-titles.ts` réduit
+  le `title` de chaque bouton-icône (une image, pas de texte) à son nom — son `aria-label`, ou ce que disait la bulle
+  avant « : » — et garde l'explication dans `data-hint`, que « Outils » (Ctrl + K) cherche encore ; ce qui s'ajoute
+  ensuite (colonnes d'outils, barres) est traité de même. Les boutons à texte gardent leur bulle.
 - **« Terminer » et « OK » en bas de chaque outil** (`panelFooter` de `ui/panel-close.ts`) : **OK** (ou Entrée) garde
   l'opération — grisé tant que le réglage n'est pas complet ou que le noyau le refuse — **et l'outil reste ouvert pour
   la suivante** : le même outil, à neuf, chaque opération son étape d'historique (`finish` et `again` de

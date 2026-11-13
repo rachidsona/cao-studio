@@ -7,6 +7,7 @@ import { bindContextBar } from "./app/context-bar";
 import { bindLiveCheck } from "./app/workshop/live-check";
 import { bindVariants } from "./app/workshop/variants-tool";
 import { bindModulePalette } from "./app/dressing/module-palette";
+import { bindIconTitles } from "./ui/icon-titles";
 import { bindPlanLayout } from "./app/dressing/plan-layout-tool";
 import { bindKitchenPlan } from "./app/kitchen/kitchen-plan-tool";
 import { bindProductionFolder } from "./app/workshop/production-folder";
@@ -222,6 +223,8 @@ async function start(): Promise<void> {
   bindNicheCopy(root, viewport, editor);
   bindNicheMenu(root, viewport, editor);
   bindModulePalette(root, viewport, editor);
+  // The tooltip of a tool's icon says its name only (its description is in the Help, and in the tool search).
+  bindIconTitles(document.body);
   bindContextBar(root, viewport, editor);
   bindLiveCheck(root, viewport, editor);
   bindVariants(root, viewport, editor);
