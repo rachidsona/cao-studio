@@ -9,11 +9,11 @@
  * - le lissage relie les profils fermés de plusieurs esquisses, dans l'ordre (courbe ou droit entre eux) : un pied
  *   galbé, une moulure qui change de section, une trémie.
  */
-import { makeOffset, makeSolid, type Face, type Shape3D, type Sketch } from "replicad";
+import { makeOffset, makeSolid, measureArea, type Face, type Shape3D, type Sketch } from "replicad";
 import type { LoftFeature, ShellFeature, Vec3 } from "../document/types";
-import { GeometryError, isShapeValid, requireSingleValidSolid } from "../geometry/kernel";
+import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { resolveFace } from "../geometry/references";
-import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, solidsResult, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
 import { facePanels, faceSlab } from "./paneling";
 
@@ -33,31 +33,78 @@ function normalOf(face: Face): Vec3 {
   return [n.x / length, n.y / length, n.z / length];
 }
 
+/** The body drawn in by the thickness, a solid: what is taken out of it to leave its walls. */
+function drawnIn(target: Shape3D, thickness: number): Shape3D {
+  const drawn = makeOffset(target as unknown as Face, -thickness) as Shape3D;
+  if (drawn.solids.length) return drawn;
+  // A body with a hole through it comes back as its skin only: closed into a solid.
+  const solid = makeSolid([drawn as unknown as Face]) as unknown as Shape3D;
+  drawn.delete();
+  return solid;
+}
+
 /**
- * The body hollowed, its walls one solid. Faces open: the kernel's own shell (a positive thickness hollows inwards,
- * the walls stay inside the body's outline). None: the body less itself drawn in by the thickness — the kernel's shell
- * does not make a closed one.
+ * The body hollowed by its own shape drawn in, the open faces cut through: for each one, the face of the hollow that
+ * lies behind it is drawn out through the wall. What the kernel's shell does not make: a closed hollow body, a body
+ * with a hole through an open face.
+ */
+function carved(target: Shape3D, open: readonly Face[], thickness: number): Shape3D {
+  const inner = drawnIn(target, thickness);
+  let made: Shape3D | null = null;
+  try {
+    made = target.cut(inner) as Shape3D;
+    for (const face of open) {
+      const n = normalOf(face);
+      const c = centreOf(face);
+      for (const behind of inner.faces) {
+        if (behind.geomType !== "PLANE") continue;
+        const m = normalOf(behind);
+        const b = centreOf(behind);
+        const depth = (c[0] - b[0]) * n[0] + (c[1] - b[1]) * n[1] + (c[2] - b[2]) * n[2];
+        if (m[0] * n[0] + m[1] * n[1] + m[2] * n[2] < 0.999 || Math.abs(depth - thickness) > 1e-3) continue;
+        // A little beyond the outer face: a clean cut.
+        const plug = faceSlab(behind, [-n[0], -n[1], -n[2]], thickness + 1);
+        const next = made.cut(plug) as Shape3D;
+        plug.delete();
+        made.delete();
+        made = next;
+      }
+    }
+    return made;
+  } catch (error) {
+    made?.delete();
+    throw error;
+  } finally {
+    inner.delete();
+  }
+}
+
+/**
+ * The body hollowed: its walls, one solid — or more, when what is open leaves them apart (the wall of a hole through
+ * an open face, no longer held by it). Faces open: the kernel's own shell (a positive thickness hollows inwards,
+ * the walls stay inside the body's outline), and when it does not give one solid — a hole through an open face —
+ * the body carved by its own shape drawn in. None open: carved too, the kernel's shell does not make a closed one.
  */
 function hollowed(name: string, target: Shape3D, open: readonly Face[], thickness: number): Shape3D {
   const points = open.map(centreOf);
-  let made: Shape3D | null = null;
-  try {
-    if (points.length) made = target.clone().shell(thickness, (f) => f.either(points.map((p) => (g: typeof f) => g.containsPoint(p))));
-    else {
-      const drawn = makeOffset(target as unknown as Face, -thickness) as Shape3D;
-      // A body with a hole through it comes back as its skin only: closed into a solid.
-      const inner = drawn.solids.length ? drawn : (makeSolid([drawn as unknown as Face]) as unknown as Shape3D);
-      try {
-        made = target.cut(inner) as Shape3D;
-      } finally {
-        inner.delete();
-        if (inner !== drawn) drawn.delete();
-      }
+  if (points.length) {
+    try {
+      const made = target.clone().shell(thickness, (f) => f.either(points.map((p) => (g: typeof f) => g.containsPoint(p))));
+      if (made.solids.length >= 1 && isShapeValid(made)) return made;
+      made.delete();
+    } catch {
+      // Carved instead.
     }
+  }
+  let made: Shape3D;
+  try {
+    made = carved(target, open, thickness);
   } catch {
     throw new GeometryError(`${name} : le corps ne se vide pas à cette épaisseur ; essayez une paroi plus fine que sa plus petite épaisseur (et que ses arrondis).`);
   }
-  return requireSingleValidSolid(made, name);
+  if (made.solids.length >= 1 && isShapeValid(made)) return made;
+  made.delete();
+  throw new GeometryError(`${name} : le corps ne se vide pas ainsi ; essayez une paroi plus fine, ou refermez une face.`);
 }
 
 /** Each side of the body a solid of its own: the flat ones boards, what is left of the wall (the curved sides) after them. */
@@ -68,8 +115,13 @@ function separateSides(feature: ShellFeature, target: Shape3D, open: readonly Fa
     const c = centreOf(f);
     return !gone.some((p) => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) < SAME_FACE);
   });
-  const flat = kept.filter((f) => f.geomType === "PLANE");
-  const normals = flat.map(normalOf);
+  // Butted, the first sides run through: the largest ones first, the two of a pair together (a caisson's uprights
+  // run its whole height, its top and bottom stand between them), whatever order the kernel lists the faces in.
+  const axis = (n: Vec3) => n.reduce((best, c, i) => (Math.abs(c) > Math.abs(n[best]!) + 1e-9 ? i : best), 0);
+  const ranked = kept.filter((f) => f.geomType === "PLANE").map((face) => ({ face, normal: normalOf(face), area: Math.round(measureArea(face)) }));
+  if (feature.joint === "butt") ranked.sort((a, b) => b.area - a.area || axis(a.normal) - axis(b.normal));
+  const flat = ranked.map((r) => r.face);
+  const normals = ranked.map((r) => r.normal);
   const shapes = flat.length ? facePanels(feature.name, target, flat, normals, thickness, feature.joint ?? "miter") : [];
   if (kept.length > flat.length) {
     // The curved sides: the hollow body less the boards of its flat ones.
@@ -115,7 +167,7 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
   const open = feature.faces.map((ref) => resolveFace(target, ref));
   if (open.some((f) => f.geomType !== "PLANE")) throw new GeometryError(`${feature.name} : seules des faces planes peuvent rester ouvertes.`);
   if (feature.sides === "separate") return { kind: "solids", shapes: separateSides(feature, target, open) };
-  return { kind: "solid", shape: hollowed(feature.name, target, open, Math.abs(feature.thickness)) };
+  return solidsResult(hollowed(feature.name, target, open, Math.abs(feature.thickness)), feature.name);
 }
 
 export function buildLoft(feature: LoftFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {

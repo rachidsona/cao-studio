@@ -1846,16 +1846,21 @@ opération existante.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
 - **Vider un corps** (groupe Modifier, après Coque ; `data-action="hollow"`) : un clic sur un corps le vide à
-  l'intérieur, **quelle que soit sa forme** — prisme à base de triangle, de carré, de cercle, côtés de biais, sphère —,
-  sans rien ouvrir. On saisit l'**épaisseur des côtés** et on choisit les **côtés** : *joints* (un seul corps creux,
-  fermé) ou *chaque côté seul* (un corps par côté, « Corps vidé 1 — côté n ») : chaque côté plat devient un panneau
-  pris vers l'intérieur, **en onglet** à tout angle ou **bout à bout** (le premier passe), comme Panneaux sur faces ;
-  un côté courbe garde sa paroi d'un seul corps (un cylindre : ses deux fonds entiers et le tube entre eux). Une face
-  cliquée ensuite s'ouvre (orange) et n'a pas de côté. C'est une Coque qui dit ce que sont ses côtés
-  (`ShellFeature.sides`, `joint`) : elle se rouvre depuis l'historique avec le même outil. Dans le noyau
-  (`features/shell-loft.ts`), le corps fermé est le corps moins lui-même rentré de l'épaisseur (`makeOffset`), ce que
-  la coque du noyau ne savait pas faire sans face ouverte — la Coque en profite aussi ; les côtés plats viennent de
-  `facePanels` (`features/paneling.ts`), les côtés courbes de ce qui reste de la paroi une fois ôtés les panneaux.
+  l'intérieur, **quelle que soit sa forme** — prisme à base de triangle, de carré, de cercle, côtés de biais, sphère,
+  plaque percée. La face par laquelle on le prend est son **devant** ; **« Ouvertures »** dit ce qui s'ouvre :
+  *devant et derrière* (au départ : un **caisson**, les côtés autour **tous de la même épaisseur**), *le devant seul*,
+  ou *aucune* (corps creux fermé). On saisit l'**épaisseur des côtés** et on choisit les **côtés** : *chaque côté seul*
+  (au départ : un corps par côté, « Corps vidé 1 — côté n », chaque côté plat un panneau pris vers l'intérieur) ou
+  *joints* (un seul corps creux) ; l'**assemblage** des panneaux : **bout à bout** (au départ : les plus grands côtés
+  passent, les deux d'une paire ensemble — les montants d'un caisson vont sur toute sa hauteur, dessus et dessous
+  entre eux) ou **en onglet** à tout angle. Un côté courbe garde sa paroi d'un seul corps (un cylindre : ses deux fonds
+  et le tube entre eux). Une face cliquée ensuite s'ouvre (orange) ou se referme. Un côté d'un corps déjà vidé ne se
+  vide pas à son tour : l'outil le dit et renvoie à son étape de l'Historique. C'est une Coque qui dit ce que sont ses
+  côtés (`ShellFeature.sides`, `joint`) : elle se rouvre depuis l'historique avec le même outil. Dans le noyau
+  (`features/shell-loft.ts`), le corps est creusé par lui-même rentré de l'épaisseur (`makeOffset`, `carved`) quand
+  la coque du noyau ne donne rien — un corps fermé, un trou à travers une face ouverte —, la Coque en profite aussi ;
+  des parois que plus rien ne tient ensemble font plusieurs corps ; les côtés plats viennent de `facePanels`
+  (`features/paneling.ts`), les côtés courbes de ce qui reste de la paroi une fois ôtés les panneaux.
 - **Panneaux sur faces** (groupe Modifier, après Coque), dans l'historique : les faces planes cliquées d'un volume
   deviennent des panneaux de l'épaisseur voulue, pris dans le volume ; un clic prend aussi les **faces pareilles**
   (même aire, même périmètre, à plat : les côtés d'un seau à pans, les deux côtés d'un caisson, `app/face-twins.ts`),

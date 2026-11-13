@@ -129,6 +129,47 @@ describe("vider un corps", () => {
     expect(() => emptied(all, { sides: "separate", faces: all.faces.map((f) => describeFace(all, f)) })).toThrow(/aucun côté/);
   });
 
+  it("devant et derrière ouverts : un caisson, ses quatre côtés de la même épaisseur", () => {
+    const box = makeBaseBox(100, 100, 100) as Shape3D;
+    const ends = box.faces.filter((f) => Math.abs(f.normalAt(f.center).y) > 0.9).map((f) => describeFace(box, f));
+    expect(ends).toHaveLength(2);
+    for (const joint of ["butt", "miter"] as const) {
+      const made = emptied(box, { sides: "separate", joint, faces: ends });
+      expect(made).toHaveLength(4);
+      expect(total(made)).toBeCloseTo((100 ** 2 - 80 ** 2) * 100, 0);
+      // Each side a board 10 thick, as long as the body is deep.
+      for (const side of made) {
+        const [lo, hi] = bodyMetrics(side).bbox;
+        const size = [0, 1, 2].map((i) => hi[i]! - lo[i]!).sort((a, b) => a - b);
+        expect(size[0]).toBeCloseTo(T, 3);
+        expect(size[2]).toBeCloseTo(100, 3);
+      }
+    }
+    // Bout à bout : deux côtés passent entiers, les deux autres tiennent entre eux.
+    const butted = volumes(emptied(box, { sides: "separate", joint: "butt", faces: ends })).sort((a, b) => a - b);
+    expect(butted.map((v) => Math.round(v))).toEqual([80000, 80000, 100000, 100000]);
+    // Un caisson plus haut que large : ses montants, les plus grands, passent sur toute la hauteur.
+    const tall = makeBaseBox(600, 400, 900) as Shape3D;
+    const open = tall.faces.filter((f) => Math.abs(f.normalAt(f.center).y) > 0.9).map((f) => describeFace(tall, f));
+    const boards = emptied(tall, { sides: "separate", joint: "butt", faces: open, thickness: 18 }).map((b) => bodyMetrics(b).bbox).map(([lo, hi]) => [0, 1, 2].map((i) => Math.round(hi[i]! - lo[i]!)));
+    expect(boards.filter((b) => b[2] === 900)).toEqual([[18, 400, 900], [18, 400, 900]]);
+    expect(boards.filter((b) => b[2] === 18)).toEqual([[564, 400, 18], [564, 400, 18]]);
+    // Une plaque percée ouverte dessus et dessous : ses quatre côtés, et la paroi de son trou.
+    const plate = (makeBaseBox(80, 50, 10) as Shape3D).cut(drawCircle(5).sketchOnPlane("XY").extrude(10) as Shape3D) as Shape3D;
+    const faces = plate.faces.filter((f) => f.geomType === "PLANE" && Math.abs(f.normalAt(f.center).z) > 0.9).map((f) => describeFace(plate, f));
+    expect(faces).toHaveLength(2);
+    const pierced = volumes(emptied(plate, { sides: "separate", joint: "butt", faces, thickness: 2 })).sort((a, b) => a - b);
+    expect(pierced).toHaveLength(5);
+    expect(pierced[0]).toBeCloseTo(Math.PI * (7 ** 2 - 5 ** 2) * 10, 0);
+    // Côtés joints : le tour d'un corps, la paroi du trou d'un autre — plus rien ne les tient ensemble.
+    const joined = emptied(plate, { faces, thickness: 2 });
+    expect(joined).toHaveLength(2);
+    expect(total(joined)).toBeCloseTo((80 * 50 - 76 * 46) * 10 + Math.PI * (7 ** 2 - 5 ** 2) * 10, 0);
+    // Côtés joints : le même tour, d'un seul corps.
+    const [frame] = emptied(box, { faces: ends });
+    expect(bodyMetrics(frame!).volume).toBeCloseTo((100 ** 2 - 80 ** 2) * 100, 0);
+  });
+
   it("refuse une paroi plus épaisse que le corps, et des côtés ou un assemblage inconnus", () => {
     expect(() => emptied(makeBaseBox(100, 100, 100) as Shape3D, { thickness: 60 })).toThrow(/ne se vide pas|aucun solide|invalide/);
     const doc = block();

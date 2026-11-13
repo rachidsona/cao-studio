@@ -4,13 +4,15 @@
  *   sont prises sur une copie du corps d'avant l'opération, l'aperçu ne change pas ce qu'on peut cliquer.
  * - Vider un corps : la même opération, prise par le corps — un clic le vide, quelle que soit sa forme, sans rien
  *   ouvrir ; on saisit l'épaisseur de ses côtés et on choisit s'ils restent joints (un seul corps creux) ou si chacun
- *   devient un corps (un panneau par côté plat, en onglet ou bout à bout ; la paroi d'un côté courbe). Une face
- *   cliquée ensuite s'ouvre : elle n'a pas de côté.
+ *   devient un corps (un panneau par côté plat, en onglet ou bout à bout ; la paroi d'un côté courbe). La face par
+ *   laquelle on prend le corps est son devant : « Ouvertures » l'ouvre avec celle d'en face — un caisson, ses côtés
+ *   autour, tous de la même épaisseur —, seule, ou laisse le corps fermé. Une face cliquée ensuite s'ouvre ou se
+ *   referme. Un côté d'un corps déjà vidé ne se vide pas à son tour : son étape de l'historique le reprend.
  * - Lissage : cochez les esquisses à relier (dans l'ordre de l'historique), droit ou courbe entre elles.
  */
 import * as THREE from "three";
-import { uniqueId, uniqueName } from "../document/operations";
-import type { BooleanOperation, FaceRef, LoftFeature, ShellFeature, SketchFeature } from "../document/types";
+import { bodyLabel, bodyOrigin, findFeature, uniqueId, uniqueName } from "../document/operations";
+import { featureOfBody, type BooleanOperation, type FaceRef, type LoftFeature, type ShellFeature, type SketchFeature } from "../document/types";
 import { formatLength } from "../measurements/units";
 import type { BodyMesh } from "../geometry/protocol";
 import { operationChoices } from "../ui/feature-meta";
@@ -19,8 +21,11 @@ import { PanelTool, type ToolContext } from "./panel-tool";
 
 const SIDES: [NonNullable<ShellFeature["sides"]>, string][] = [["joined", "Joints (un seul corps creux)"], ["separate", "Chaque côté seul (un corps par côté)"]];
 const JOINTS: [NonNullable<ShellFeature["joint"]>, string][] = [["miter", "En onglet (tout angle)"], ["butt", "Bout à bout"]];
+/** What is left open of a body taken by one of its faces (its front): it and the one behind, it alone, nothing. */
+type Opening = "through" | "face" | "none";
+const OPENINGS: [Opening, string][] = [["through", "Devant et derrière (caisson)"], ["face", "Le devant seul"], ["none", "Aucune (corps fermé)"]];
 /** Kept for the session: how the last body was emptied. */
-const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]> } = { thickness: 18, sides: "joined", joint: "miter" };
+const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]>; opening: Opening } = { thickness: 18, sides: "separate", joint: "butt", opening: "through" };
 
 export class ShellTool extends PanelTool {
   private readonly id: string;
@@ -30,6 +35,9 @@ export class ShellTool extends PanelTool {
   private readonly hollow: boolean;
   private sides: NonNullable<ShellFeature["sides"]>;
   private joint: NonNullable<ShellFeature["joint"]>;
+  /** « Vider un corps »: what is opened, and the face the body was taken by (its front). */
+  private opening: Opening = LAST.opening;
+  private front: number | null = null;
   private target: string | null = null;
   private selected: number[] = [];
   private refs: FaceRef[] = [];
@@ -66,12 +74,61 @@ export class ShellTool extends PanelTool {
     if (editing) {
       this.refs = editing.faces;
       this.selected = this.mesh ? editing.faces.flatMap((ref) => this.faceNear(ref.center)) : [];
-    } else if (first && !this.hollow) {
+    } else if (first && this.hollow) {
+      // A side of a body already emptied is not emptied in its turn.
+      const made = this.sideOf(first.bodyId);
+      if (made) {
+        this.ctx.notify(`« ${bodyLabel(this.ctx.doc(), first.bodyId)} » est un côté de « ${made} », déjà vidé : pour l'ouvrir ou le régler, cliquez son étape dans l'Historique, puis « Modifier ».`, "info");
+        this.target = this.mesh = null;
+      } else if (first.faceIndex >= 0) {
+        // Taken by a face: its front, opened as « Ouvertures » says.
+        this.front = first.faceIndex;
+        this.selected = this.opened();
+        void this.describe();
+      }
+    } else if (first) {
       this.selected = preselected.filter((f) => f.bodyId === first.bodyId).map((f) => f.faceIndex);
       void this.describe();
     }
     this.redraw();
     this.start();
+  }
+
+  /** The emptied body this one is a side of, by its name; null for any other body. */
+  private sideOf(bodyId: string): string | null {
+    const doc = this.ctx.doc();
+    const made = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));
+    return made?.type === "shell" && made.sides !== undefined ? made.name : null;
+  }
+
+  /** The outward normal of a flat face of the snapshot, and how far out it lies along it; null for a curved one. */
+  private flat(face: number): { normal: THREE.Vector3; at: number } | null {
+    const mesh = this.mesh;
+    const group = mesh?.faceGroups[face];
+    if (!mesh || !group) return null;
+    let normal: THREE.Vector3 | null = null;
+    let at = 0;
+    for (let k = group.start; k < group.start + group.count; k++) {
+      const i = mesh.indices[k]! * 3;
+      const n = new THREE.Vector3(mesh.normals[i]!, mesh.normals[i + 1]!, mesh.normals[i + 2]!).normalize();
+      if (!normal) [normal, at] = [n, n.x * mesh.vertices[i]! + n.y * mesh.vertices[i + 1]! + n.z * mesh.vertices[i + 2]!];
+      else if (n.dot(normal) < 0.999) return null;
+    }
+    return normal ? { normal, at } : null;
+  }
+
+  /** The faces open for the front the body was taken by: it and the flat face behind it, it alone, or none. */
+  private opened(): number[] {
+    const front = this.front === null ? null : this.flat(this.front);
+    if (this.front === null || !front || this.opening === "none") return [];
+    if (this.opening === "face") return [this.front];
+    // Behind it: the flat face turned the other way, the furthest one.
+    let behind: { face: number; at: number } | null = null;
+    this.mesh?.faceGroups.forEach((_, face) => {
+      const other = face === this.front ? null : this.flat(face);
+      if (other && other.normal.dot(front.normal) < -0.999 && (!behind || other.at > behind.at)) behind = { face, at: other.at };
+    });
+    return behind ? [this.front, (behind as { face: number }).face] : [this.front];
   }
 
   /** The face of the snapshot whose triangles pass nearest a point (to find saved faces again). */
@@ -99,7 +156,7 @@ export class ShellTool extends PanelTool {
   /** « Vider un corps »: the thickness of its sides, and whether they are joined or each one a body. */
   private hollowRows(): (HTMLElement | null)[] {
     const changed = () => {
-      Object.assign(LAST, { thickness: this.thickness, sides: this.sides, joint: this.joint });
+      Object.assign(LAST, { thickness: this.thickness, sides: this.sides, joint: this.joint, opening: this.opening });
       this.render();
       this.schedulePreview();
     };
@@ -108,10 +165,24 @@ export class ShellTool extends PanelTool {
       this.info(
         this.target
           ? open
-            ? `${open} face(s) ouverte(s), sans côté — recliquez une face pour la refermer.`
-            : "Le corps est vidé, tous ses côtés gardés. Cliquez une face pour l'ouvrir (elle n'aura pas de côté)."
-          : "Cliquez le corps à vider : sa base peut être un triangle, un carré, un cercle, ses côtés de biais.",
+            ? `${open} face(s) ouverte(s), sans côté : il reste les côtés autour, tous de la même épaisseur. Cliquez une face pour l'ouvrir ou la refermer.`
+            : this.front === null && !this.editing && this.opening !== "none"
+              ? "Cliquez la face de devant du corps : elle s'ouvre comme « Ouvertures » le dit."
+              : "Le corps est vidé, tous ses côtés gardés. Cliquez une face pour l'ouvrir (elle n'aura pas de côté)."
+          : "Cliquez le corps à vider par sa face de devant : sa base peut être un triangle, un carré, un cercle, ses côtés de biais.",
       ),
+      // What the face it is taken by opens: with the one behind it, a caisson — the sides around, front and back open.
+      this.editing
+        ? null
+        : this.selectRow("Ouvertures", this.opening, OPENINGS, (v) => {
+            this.opening = v as Opening;
+            if (this.front !== null) {
+              this.selected = this.opened();
+              this.redraw();
+              void this.describe();
+            }
+            changed();
+          }),
       this.numberRow("Épaisseur des côtés", this.thickness, this.ctx.unit(), (v) => {
         this.thickness = Math.abs(v);
         changed();
@@ -183,7 +254,11 @@ export class ShellTool extends PanelTool {
     const offset = hit.faceIndex * 3;
     const face = this.mesh.faceGroups.findIndex((g) => offset >= g.start && offset < g.start + g.count);
     if (face < 0) return;
-    this.selected = this.selected.includes(face) ? this.selected.filter((f) => f !== face) : [...this.selected, face];
+    // « Vider un corps », the body chosen without a face (selected beforehand): the first face clicked is its front.
+    if (this.hollow && !this.editing && this.front === null && !this.selected.length && this.opening !== "none") {
+      this.front = face;
+      this.selected = this.opened();
+    } else this.selected = this.selected.includes(face) ? this.selected.filter((f) => f !== face) : [...this.selected, face];
     this.redraw();
     void this.describe();
   }
