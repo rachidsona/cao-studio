@@ -1105,7 +1105,7 @@ opération existante.
       égout est pris au bord du corps, à la hauteur du premier, comme les toits de l'outil Toit.
 - **Truelle — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
-  1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (orange) ou l'intérieur de la face
+  1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (en vert #63df0f, épaissie) ou l'intérieur de la face
      (teintée). **Ctrl** passe d'une ligne au double trait.
   2. **Après un clic sur une arête**, sa copie parallèle suit le pointeur — sur sa face, ou **sur une autre face**
      où on l'amène (arête du haut d'une cloison copiée sur le sol…). **Après un clic sur un coin**, le trait traverse la

@@ -5,6 +5,8 @@
  * boundary on both sides, and the level aimed at in green. Also what it aims
  * at while pulling: a corner or an edge of a body, whose level stops the pull.
  */
+import type { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { disposeFat, fatSegments } from "../viewport/fat-lines";
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import type { Vec3 } from "../document/types";
@@ -125,6 +127,10 @@ export function aimAt(viewport: Viewport, event: PointerEvent, px: number, targe
   return best?.point ?? null;
 }
 
+/** The edge the line starts from (hovered, then chosen): the colour of what is chosen, a few pixels wide. */
+const EDGE_COLOR = 0x63df0f;
+const EDGE_WIDTH = 4;
+
 export class StripMarks {
   private readonly group = new THREE.Group();
 
@@ -141,7 +147,12 @@ export class StripMarks {
       dot.renderOrder = 48;
       this.group.add(dot);
     }
-    if (marks.edge) this.line(marks.edge, 0xf97316, false);
+    // The edge hovered or started from: green #63df0f, a few pixels wide, readable on any body.
+    if (marks.edge) {
+      const edge = fatSegments(marks.edge.map((p) => new THREE.Vector3(...p)), EDGE_COLOR, EDGE_WIDTH);
+      edge.renderOrder = 47;
+      this.group.add(edge);
+    }
     if (marks.corner) {
       const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...marks.corner)]), new THREE.PointsMaterial({ color: 0xf97316, size: 14, sizeAttenuation: false, depthTest: false }));
       dot.renderOrder = 47;
@@ -170,6 +181,7 @@ export class StripMarks {
     for (const child of [...this.group.children]) {
       this.group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
+      else if (child.userData.fat) disposeFat(child as LineSegments2);
       else if (child instanceof THREE.Line || child instanceof THREE.Points) {
         child.geometry.dispose();
         (child.material as THREE.Material).dispose();

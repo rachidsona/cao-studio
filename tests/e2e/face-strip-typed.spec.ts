@@ -48,6 +48,7 @@ test("Truelle : départ sur un trait, distance tapée puis Entrée, hauteur tap�
       await page.waitForTimeout(400);
       await page.mouse.move(plate.x + plate.w * fx + 1, plate.y + plate.h * 0.42);
       if ((await values.textContent())?.includes("part de cette arête")) {
+        if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/truelle-arete-${Math.round(near * 100)}.png` });
         await page.mouse.click(plate.x + plate.w * fx + 1, plate.y + plate.h * 0.42);
         await expect(tool.getByRole("textbox", { name: "Distance" })).toBeVisible();
         return;
