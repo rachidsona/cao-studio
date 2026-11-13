@@ -94,7 +94,9 @@ export class JoineryView {
     this.clear();
     this.nicheMeshes = niches.map(({ box, state }, index) => {
       const mesh = boxMesh(frame, depth, box, 0.6, STYLE[state]);
-      mesh.userData.niche = index;
+      // Its edges too: the ray meets the outline's lines as well as the box, and either names the niche (a click
+      // near an edge found no niche, about one time in three: « Cliquez dans une niche »).
+      mesh.traverse((o) => (o.userData.niche = index));
       return mesh;
     });
     const slabs = [...pieces.map((outline) => prismMesh(frame, depth, outline, STYLE.piece)), ...solids.map(([a, b]) => worldBoxMesh(a, b, STYLE.piece))];
