@@ -608,7 +608,10 @@ test("plan de cuisine : un meuble haut poussé dans la 3D reste où il est, le l
   await page.keyboard.type(unit === "mm" ? "300" : unit === "m" ? "0,3" : "30");
   await page.keyboard.press("ArrowRight");
   await expect(push.locator("[data-push-total]")).toContainText(/X 30/);
+  // Entrée, as « OK », keeps it and the tool stays for the next one; Échap, as « Terminer », closes it.
   await page.keyboard.press("Enter");
+  await expect(push).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(push).toHaveCount(0);
   // Its run has the room it left, before it, and what is left after it.
   await page.getByRole("tab", { name: "Plan de cuisine" }).click();
