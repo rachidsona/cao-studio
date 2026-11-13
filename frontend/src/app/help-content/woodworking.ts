@@ -197,6 +197,18 @@ export const WOODWORKING: HelpFamily[] = [
         tip: "Pour reprendre un module déjà posé, cliquez-le dans la vue, la palette ouverte : ses réglages reviennent en bas. Une niche déjà équipée refuse un second module.",
       },
       {
+        keys: ["data-workshop:furniture"],
+        name: "Assistant meuble",
+        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, banc d'entrée ou tête de lit.",
+        steps: [
+          "Cliquez « Assistant meuble » et choisissez le « Meuble » : il part de ses cotes usuelles, et une ligne dit comment il est fait.",
+          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, cases d'un banc, chevets d'une tête de lit.",
+          "Choisissez l'« Épaisseur des panneaux » et la « Matière ».",
+          "Cliquez « OK » : le meuble est posé à droite de ce qui est déjà là, son dos contre le plan Y = 0. Posez-en un autre, ou cliquez « Terminer ».",
+        ],
+        tip: "Le nombre de cases et d'étagères suit les cotes (une case tous les 60 cm d'un meuble TV, une colonne tous les 80 cm d'une bibliothèque, une étagère tous les 35 cm). Ses caissons sont des Répartitions : clic droit dans une niche pour changer étagères, tiroirs, portes ou module ; Déplacer le met à sa place. Une seule annulation (Ctrl + Z) l'ôte.",
+      },
+      {
         keys: ["data-action:dressing"],
         name: "Assistant Dressing",
         what: "Pose un dressing entier en nombres, le long d'un, deux ou trois murs, avec un programme de modules pour chaque mur.",

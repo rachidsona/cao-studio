@@ -2572,6 +2572,21 @@ opération existante.
   bas de la vue, juste au-dessus de l'historique, avec ses poignées ✥ et ↻ (`app/cabinet-bar.ts`). Un clic en fait
   un champ, Entrée reconstruit le caisson. Une cote liée à un paramètre (« largeur ») change le paramètre, et tout ce
   qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`).
+- **Assistant meuble** (bouton du ruban, masqué d'office) : un meuble entier en quelques choix, à la largeur, la
+  hauteur et la profondeur voulues, dans la matière et l'épaisseur voulues (`document/furniture-models.ts`, pur).
+  - **Meuble TV** : une case tous les 60 cm environ, les extrémités à portes, à tiroirs ou ouvertes, le milieu
+    ouvert avec une étagère. **Bibliothèque** : une colonne tous les 80 cm, une étagère tous les 35 cm, ouverte, à
+    tiroirs en bas ou à portes. **Bureau** : un plateau de 25 mm sur un caisson de trois tiroirs (à gauche ou à
+    droite) et un pied plein, avec un voile de fond. **Banc d'entrée** : une case tous les 40 cm, ouverte avec une
+    étagère à chaussures, à tiroirs ou à portes. **Tête de lit** : un panneau coiffé d'une tablette, avec ou sans
+    deux chevets à un tiroir.
+  - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
+    qui est déjà là, son dos sur le plan Y = 0, en une seule annulation, et l'assistant reste ouvert ; « Terminer »
+    le ferme.
+  - Ses caissons sont des **Répartitions** (`withCaissonPlaced`), avec leur fond en HDF : étagères, tiroirs, portes,
+    modules et accessoires s'y retouchent ensuite comme dans un dressing ; ses planches libres (plateau, pied, voile,
+    panneau, tablette) sont des extrusions. Tout est nommé d'après lui (« Bureau 1 — Plateau »). Posé par
+    `document/furniture-build.ts`, l'assistant est `app/furniture-tool.ts`.
 - **Façades** (groupe « Meuble », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
   tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
   voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du
