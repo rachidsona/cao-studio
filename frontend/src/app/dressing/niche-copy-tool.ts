@@ -7,7 +7,7 @@ import { columnOf, emptyRecipe, mirrored, readRecipe, withAlignedShelves, withRe
 import { findFeature } from "../../document/operations";
 import type { SketchFeature } from "../../document/types";
 import { el } from "../../ui/dom";
-import { panelHeader } from "../../ui/panel-close";
+import { panelFooter, panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
 import { frameOf } from "../../sketcher/frame";
 import { leafNiches, pathKey } from "../../sketcher/partition-history";
@@ -48,7 +48,7 @@ export class NicheCopyTool implements PointerHandler {
     choice.addEventListener("change", () => {
       this.mode = choice.value as CopyMode;
     });
-    this.panel.append(panelHeader("Copier une niche", () => this.close()), this.text, choice);
+    this.panel.append(panelHeader("Copier une niche", () => this.close()), this.text, choice, panelFooter(() => this.close(), null));
     placePanel(container, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

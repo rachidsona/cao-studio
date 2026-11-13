@@ -163,6 +163,7 @@ export class Editor {
         this.root.dataset.tool = "";
         this.render();
       },
+      reopened: (kind) => (this.root.dataset.tool = kind),
     });
     this.bindActions();
     this.bindKeyboard();

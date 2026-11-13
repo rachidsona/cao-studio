@@ -102,7 +102,7 @@ function curicSketches(selected: Feature | undefined, picked: string[]): { sketc
 export class ToolLauncher {
   active: PanelTool | null = null;
 
-  constructor(private readonly context: Omit<ToolContext, "closed"> & { closed(): void }) {}
+  constructor(private readonly context: Omit<ToolContext, "closed" | "again"> & { closed(): void; /** A tool is put back afresh after « OK ». */ reopened?(kind: PanelToolKind): void }) {}
 
   open(kind: PanelToolKind, options: ToolOptions = {}): void {
     this.active?.cancel();
@@ -118,6 +118,12 @@ export class ToolLauncher {
       closed: () => {
         this.active = null;
         this.context.closed();
+      },
+      // After « OK »: the same tool afresh, for the next operation; it stores nothing before it is touched.
+      again: () => {
+        this.context.reopened?.(kind);
+        this.open(kind);
+        this.active?.rest();
       },
     };
     switch (kind) {

@@ -13,7 +13,7 @@ import { featureOfBody, type CadDocument, type SketchFeature } from "../../docum
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import { el } from "../../ui/dom";
-import { panelHeader } from "../../ui/panel-close";
+import { panelFooter, panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
 import type { PointerHandler } from "../../viewport/pointer-input";
 import type { Viewport } from "../../viewport/viewport";
@@ -62,7 +62,7 @@ class DoorFrontsTool implements PointerHandler {
       this.close();
       editor.sketches.startEquip("door", sketch);
     });
-    this.panel.append(panelHeader(title, () => this.close()), this.text, this.settings, byNiches);
+    this.panel.append(panelHeader(title, () => this.close()), this.text, this.settings, byNiches, panelFooter(() => this.close(), null));
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     viewport.setPointerHandler(this);

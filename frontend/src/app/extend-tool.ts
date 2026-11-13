@@ -3,7 +3,7 @@
  * Répartition ou de toute autre pièce (une plinthe, un fileur, un plan de travail), du côté à prolonger, puis la face
  * d'un autre élément : l'élément s'allonge jusqu'à elle, ou se raccourcit (document/extend-reach.ts). Inclinée (un mur
  * en biais, un rampant), un caisson ou une Répartition va jusqu'à la toucher, une autre pièce en prend la pente. Le
- * résultat se voit avant d'être gardé : OK (ou Entrée) le garde en une annulation, Annuler (ou Échap) ne change rien.
+ * résultat se voit avant d'être gardé : OK (ou Entrée) le garde en une annulation, l'outil restant pour un autre élément ; Terminer (ou Échap) ferme sans rien changer de plus.
  * « Suivre l'autre élément » : quand l'autre élément change ensuite, l'élément prolongé le suit (app/extend-follow.ts).
  */
 import { bodyLabel, findFeature } from "../document/operations";
@@ -107,6 +107,8 @@ export class ExtendTool extends PanelTool {
     this.close();
     this.ctx.notify(made.message, "success");
     this.ctx.commit(made.doc, made.id);
+    // Kept: the tool afresh, for another element to extend; « Terminer » closes it.
+    this.ctx.again?.();
   }
 
   /** Nothing is stored until OK: the panel says what is missing. */
@@ -137,7 +139,7 @@ export class ExtendTool extends PanelTool {
     const problem = this.problem();
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null, "data-extend-ok": "" }, "OK");
     ok.addEventListener("click", () => this.ok());
-    const cancel = el("button", { type: "button", class: BUTTON }, "Annuler");
+    const cancel = el("button", { type: "button", class: BUTTON, title: "Fermer l'outil ; ce qui n'a pas eu son OK n'est pas gardé (Échap)", "data-panel-done": "" }, "Terminer");
     cancel.addEventListener("click", () => this.cancel());
     const restart = el("button", { type: "button", class: `${BUTTON} w-full` }, "Recommencer");
     restart.addEventListener("click", () => ((this.moving = this.target = null), this.refresh()));

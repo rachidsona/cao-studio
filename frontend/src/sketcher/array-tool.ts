@@ -9,7 +9,7 @@ import { RESERVED_IDS } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
-import { panelHeader } from "../ui/panel-close";
+import { panelFooter, panelHeader } from "../ui/panel-close";
 import type { Vec2 } from "./edit";
 import { hitTest, toggleTarget } from "./hit";
 import { pointPos } from "./edit";
@@ -260,6 +260,7 @@ export class SketchArrayTool {
       ]),
       this.outcome?.ok ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `${this.outcome.copies} copie${this.outcome.copies > 1 ? "s" : ""}.`) : null,
       message ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, message) : null,
+      panelFooter(() => this.cancel(), () => this.confirm(), !this.outcome?.ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
@@ -358,11 +359,11 @@ export class SketchArrayTool {
 
   // ---- end --------------------------------------------------------------------------
 
-  /** Entrée: stored now, and the tool ends. */
+  /** « OK » or Entrée: stored now, the tool staying (« Terminer » closes it). */
   confirm(): void {
     window.clearTimeout(this.storeTimer);
     this.storeTimer = undefined;
-    if (this.store(true)) this.finish();
+    this.store(true);
   }
 
   /** The copies stored (one undo step), the tool staying open: set otherwise, they are made again from the sketch before them. */

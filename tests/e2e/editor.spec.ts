@@ -229,7 +229,10 @@ test("Répartition : les cotes de plan s'affichent pendant l'outil et suivent se
   await expect(dims.filter({ hasText: /^180$/ })).toHaveCount(1);
   await expect(dims.filter({ hasText: /^250$/ })).toHaveCount(1);
   await expect(dims.filter({ hasText: /^57$/ })).toHaveCount(3);
+  // Entrée (as « OK ») stores it, the tool staying; « Terminer » (Échap) closes it.
   await page.keyboard.press("Enter");
+  await expect(dims.filter({ hasText: /^180$/ })).toHaveCount(1);
+  await page.keyboard.press("Escape");
   await expect(dims).toHaveCount(0);
   await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
   await page.waitForTimeout(1500);

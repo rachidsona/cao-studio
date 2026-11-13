@@ -9,7 +9,7 @@ import type { BackSettings, DoorSettings, OffsetRecord, SketchGeometry } from ".
 import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
-import { panelHeader } from "../ui/panel-close";
+import { panelFooter, panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
@@ -400,6 +400,7 @@ export class SketchPartitionTool {
           )
         : null,
       typeof layout === "string" ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, layout) : null,
+      panelFooter(() => this.cancel(), () => this.confirm(), typeof layout === "string"),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }
@@ -407,11 +408,11 @@ export class SketchPartitionTool {
   // ---- end --------------------------------------------------------------------------
 
   /**
-   * Entrée: stored now, and the tool ends. The partition is a step of the sketch's history, its lines made from it;
-   * the niches are then divided with « Étagères ». Changing a step made before makes it, and what follows it, again.
+   * « OK » or Entrée: stored now, the tool staying (« Terminer » closes it). The partition is a step of the sketch's
+   * history, its lines made from it; the niches are then divided with « Étagères ».
    */
   confirm(): void {
-    if (this.store()) this.cancel();
+    this.store();
   }
 
   /**

@@ -145,7 +145,7 @@ export class CombineTool extends PanelTool {
     this.operation = editing?.operation ?? "join";
     this.keepTools = editing?.keepTools ?? false;
     this.choosing = preselected.length || editing ? "tools" : "target";
-    // As Fusion's Combine: nothing is kept before OK, and Annuler leaves the model as it was.
+    // As Fusion's Combine: nothing is kept before OK (the tool then stays for another); « Terminer » leaves the model as it is.
     this.storesLive = false;
     this.ownButtons = true;
     // Chosen in the view: nothing is taken for granted when nothing was picked first.
@@ -263,7 +263,7 @@ export class CombineTool extends PanelTool {
     const problem = this.blocker() ?? (typeof this.feature() === "string" ? (this.feature() as string) : null);
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: problem !== null, "data-combine-ok": "" }, "OK");
     ok.addEventListener("click", () => this.finish());
-    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
+    const cancel = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "Fermer l'outil ; ce qui n'a pas eu son OK n'est pas gardé (Échap)", "data-panel-done": "" }, "Terminer");
     cancel.addEventListener("click", () => this.cancel());
     return [
       field("target", "Corps cible", this.target ? name(this.target) : "Sélectionner", !this.target, () => ((this.target = undefined), (this.choosing = "target"))),

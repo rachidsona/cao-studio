@@ -615,12 +615,19 @@ opération existante.
   - **Comme le Combiner de Fusion 360** : deux champs de sélection, « Corps cible » et « Corps outils » (« 2
     sélectionnés »), celui qui prend le prochain clic cerné de bleu, ✕ pour le vider ; l'opération en trois boutons
     (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
-    Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Annuler** (Échap, la croix) laisse le modèle tel qu'il était
+    Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Terminer** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
-- **« Terminer » et « OK » en bas de chaque outil** (sauf la Répartition, qui a son propre panneau) : OK garde le
-  réglage et ferme l'outil, comme Entrée — grisé tant que le réglage n'est pas complet ou que le noyau le refuse ;
-  Terminer ferme l'outil, comme Échap (un outil qui attend OK, comme Combiner, ne garde alors rien). Combiner et
-  Prolonger élément gardent leurs boutons OK et Annuler (`footer` de `app/panel-tool.ts`).
+- **« Terminer » et « OK » en bas de chaque outil** (`panelFooter` de `ui/panel-close.ts`) : **OK** (ou Entrée) garde
+  l'opération — grisé tant que le réglage n'est pas complet ou que le noyau le refuse — **et l'outil reste ouvert pour
+  la suivante** : le même outil, à neuf, chaque opération son étape d'historique (`finish` et `again` de
+  `app/panel-tool.ts`, `again` du contexte dans `app/tool-launcher.ts`). Ce que l'outil remis à neuf propose aussitôt
+  (le caisson suivant, à côté du dernier) n'est qu'une proposition : rien n'est enregistré tant qu'on n'a rien réglé
+  ni cliqué (`rest`, `touched`), ou redit OK. **Seul « Terminer »** (la croix ✕, Échap) ferme l'outil, en gardant ce
+  qui est fait (un outil qui attend OK, comme Combiner, ne garde alors rien de plus). Une opération reprise depuis
+  l'Historique garde son outil ouvert après OK. Combiner et Prolonger élément ont « OK » et « Terminer » (au lieu
+  d'« Annuler ») et restent ouverts de même ; la Répartition, le Module, la hauteur de Niche et le Réseau d'esquisse
+  ont les deux boutons (OK enregistre tout de suite, l'outil reste) ; Copier une niche, Façades du dressing et
+  l'Électroménager, où chaque clic est gardé aussitôt, n'ont que « Terminer ».
 - **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
   bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en
   orange, la face d'arrivée en bleu), Scinder (les corps à couper en orange, la face de coupe en bleu), Coïncidence (le
@@ -2247,6 +2254,11 @@ opération existante.
     suit la souris comme si on l'avait pris par son dessus, et la poignée dit la distance parcourue.
   - Il s'aimante au ras des autres corps : contre le côté d'un voisin, dans l'alignement d'un fond ou d'une façade,
     au bout du plan de travail, contre un mur (Alt : sans aimant ; Échap : annuler).
+  - **Il n'entre jamais dans un autre meuble** (`features/box-clear.ts`, `clearOf`) : amené dans un voisin, sous des
+    meubles hauts ou à travers un plan de travail, il est posé **à côté, au ras**, du côté d'où il vient ; il ne passe
+    au-delà d'un meuble que s'il l'a déjà dépassé de plus de la moitié de sa largeur, et ne va jamais plus loin que sa
+    place de départ (serré entre ses voisins et le mur du bout, il y reste). Ce qu'il touchait déjà — la plinthe qui
+    passe sous lui, la crédence derrière — ne le gêne pas. Alt le laisse où on le pose.
   - **Coller** : un clic sur ✥ sans tirer, puis un clic sur une face debout ou un coin d'un autre meuble (ou d'un
     mur). Au survol, un fantôme orange montre où il ira.
     - Sur le côté d'un voisin : son côté contre lui, les fonds alignés.

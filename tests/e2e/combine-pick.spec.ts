@@ -61,10 +61,10 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await expect(tools).toHaveCount(0);
   await expect(tool.locator("details")).not.toHaveAttribute("open", "");
 
-  // Nothing kept before OK: Annuler leaves the model as it was.
+  // Nothing kept before OK: « Terminer » leaves the model as it was.
   const steps = await page.locator("[data-op]").count();
   await page.mouse.click(...at(0.42, 0.5));
-  await tool.getByRole("button", { name: "Annuler", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await page.waitForTimeout(800);
   expect(await page.locator("[data-op]").count()).toBe(steps);

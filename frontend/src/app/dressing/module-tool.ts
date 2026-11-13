@@ -26,7 +26,7 @@ import { isPartition, leafNiches } from "../../sketcher/partition-history";
 import type { NicheBox } from "../../sketcher/shelves";
 import { el } from "../../ui/dom";
 import { placePanel } from "../../ui/dock";
-import { panelHeader } from "../../ui/panel-close";
+import { panelFooter, panelHeader } from "../../ui/panel-close";
 import { moduleChoice, moduleList } from "./module-list";
 import { FIELD, moduleOptionRows, SMALL } from "./module-options";
 import { myModules, removeMyModule, saveMyModule } from "./my-modules";
@@ -289,6 +289,8 @@ export class ModuleTool {
       el("div", { class: "flex gap-1.5" }, name, keep, this.mine ? forget : null),
       this.editing ? inside : null,
       this.editing ? remove : null,
+      // OK keeps the module now, the tool staying for other niches; « Terminer » closes it.
+      panelFooter(() => this.cancel(), () => this.confirm(), this.niches.length === 0 || problem !== null),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   }

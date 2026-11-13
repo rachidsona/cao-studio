@@ -42,6 +42,9 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
   await expect(page.getByText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
+  // Kept: the tool is there afresh for another element; « Terminer » closes it.
+  await expect(tool).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(view).toHaveAttribute("data-chosen", "");
   // An operation on the plinth, to change or take away like any other.

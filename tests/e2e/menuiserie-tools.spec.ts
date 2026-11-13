@@ -570,10 +570,12 @@ test("Déplacer à la façon de SketchUp : le meuble suit la souris, une flèche
   await page.keyboard.press("Enter");
   await expect(page.getByText(/Les copies se font sur un corps/).first()).toBeVisible();
   await page.waitForTimeout(1000);
-  // Every tool ends with « Terminer » and « OK »: OK keeps it and closes.
+  // Every tool ends with « Terminer » and « OK »: OK keeps it, the tool staying for the next one; « Terminer » closes.
   const panel = page.getByRole("dialog", { name: /Déplacer/ });
   await expect(panel.locator("[data-panel-done]")).toHaveText("Terminer");
   await panel.locator("[data-panel-ok]").click();
+  await expect(panel).toBeVisible();
+  await panel.locator("[data-panel-done]").click();
   await expect(panel).toHaveCount(0);
   await page.waitForTimeout(800);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");

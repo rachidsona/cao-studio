@@ -4,10 +4,11 @@
  * view, and a live preview computed by the real kernel. The provisional
  * feature is inserted in a copy of the document that is regenerated (cached
  * features are reused, so only the new operation is computed); the document
- * itself changes as soon as the result is valid: no « OK », no « Annuler ». Each valid setting is stored at once,
- * the tool staying open; while it is, the next settings replace what it stored (one undo step for the whole use of
- * the tool). The cross, or Échap, closes it and keeps what is done; Ctrl + Z takes it back; its step in the history
- * changes it later.
+ * itself changes as soon as the result is valid. Each valid setting is stored at once, the tool staying open; while
+ * it is, the next settings replace what it stored (one undo step for each operation). « OK » (or Entrée) keeps the
+ * operation and the tool stays, afresh, for the next one — several operations in a row, each its own undo step;
+ * only « Terminer » (the cross, Échap) closes it, keeping what is done; Ctrl + Z takes it back; its step in the
+ * history changes it later.
  */
 import type { Axis, CadDocument, DisplayUnit, Feature } from "../document/types";
 import { updateFeature } from "../document/operations";
@@ -18,7 +19,7 @@ import { closeCalculator, openCalculator } from "../ui/calculator";
 import { el } from "../ui/dom";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { placePanel } from "../ui/dock";
-import { panelHeader } from "../ui/panel-close";
+import { panelFooter, panelHeader } from "../ui/panel-close";
 
 export interface ToolContext {
   viewport: Viewport;
@@ -42,8 +43,10 @@ export interface ToolContext {
   /** Opens the rotation tool on a body or a sketch, around this axis (a curved arrow of the Move manipulator was taken). */
   turn?(axis: Axis, subject: { kind: "body" | "sketch"; id: string }, event: PointerEvent): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
-  /** Selects what the tool made, once it closes (its fields shown in the properties, as after « OK »). */
+  /** Selects what the tool made, once it closes (its fields shown in the properties). */
   select?(id: string): void;
+  /** The same tool afresh, for another operation (after « OK »): it stores nothing before it is touched. */
+  again?(): void;
   closed(): void;
 }
 
@@ -65,8 +68,15 @@ export abstract class PanelTool implements PointerHandler {
    * Entrée), and Annuler (Échap, the cross) leaves the document as it was — as Fusion's dialogs.
    */
   protected storesLive = true;
-  /** The tool draws its own OK and Annuler (or Terminer): the panel adds none. */
+  /** The tool draws its own OK and Terminer: the panel adds none. */
   protected ownButtons = false;
+  /**
+   * Whether the user has done anything in this use of the tool. A tool put back afresh after « OK » has not: what it
+   * shows at once (the next caisson, beside the last) is a proposal, stored only once something is set or clicked —
+   * or OK said again —, and gone with « Terminer ».
+   */
+  private touched = true;
+  private readonly touch = () => (this.touched = true);
 
   constructor(
     protected readonly ctx: ToolContext,
@@ -82,7 +92,13 @@ export abstract class PanelTool implements PointerHandler {
       "aria-label": title,
     });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
+    for (const type of ["input", "change"]) this.panel.addEventListener(type, this.touch, true);
     placePanel(ctx.container, this.panel);
+  }
+
+  /** Put back afresh after « OK »: nothing is stored before the user sets or clicks something (or says OK). */
+  rest(): void {
+    this.touched = false;
   }
 
   /** The provisional feature, or a message explaining what is still missing. */
@@ -100,6 +116,7 @@ export abstract class PanelTool implements PointerHandler {
 
   start(): void {
     this.ctx.viewport.setPointerHandler(this);
+    this.ctx.viewport.renderer.domElement.addEventListener("pointerdown", this.touch, true);
     this.render();
     this.schedulePreview();
   }
@@ -124,14 +141,10 @@ export abstract class PanelTool implements PointerHandler {
 
   /**
    * « Terminer » closes the tool (as Échap: what was set stays, or nothing is kept for a tool that waits for OK); « OK »
-   * keeps the result and closes (as Entrée), not while it is not whole.
+   * keeps the operation (as Entrée), not while it is not whole, and the tool stays for the next one.
    */
   private footer(blocked: boolean): HTMLElement {
-    const done = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-panel-done": "" }, "Terminer");
-    done.addEventListener("click", () => this.cancel());
-    const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: blocked, "data-panel-ok": "" }, "OK");
-    ok.addEventListener("click", () => this.finish());
-    return el("div", { class: "flex gap-1.5 pt-1" }, done, ok);
+    return panelFooter(() => this.cancel(), () => this.finish(), blocked);
   }
 
   /**
@@ -221,7 +234,7 @@ export abstract class PanelTool implements PointerHandler {
   /** Stores the result when it is whole: valid, nothing in the way, its preview without error. */
   private storeNow(): void {
     this.storeTimer = undefined;
-    if (this.closedFlag || this.previewBusy || !this.storesLive) return;
+    if (this.closedFlag || this.previewBusy || !this.storesLive || !this.touched) return;
     const built = this.feature();
     if (typeof built === "string" || this.blocker() !== null) return;
     const status = this.ctx.status(built.id);
@@ -256,16 +269,27 @@ export abstract class PanelTool implements PointerHandler {
     if (this.stored && this.stored.doc === prev) this.stored = { ...this.stored, doc: next };
   }
 
-  /** The work is whole (Entrée, a last click): stored now, and the tool closes. Nothing whole yet: it stays. */
+  /**
+   * The work is whole (« OK », Entrée, a last click): stored now, and the tool stays for the next operation — the same
+   * tool afresh, a new undo step; an operation being changed stays as it is, set again. Only « Terminer » closes.
+   * Nothing whole yet: nothing happens.
+   */
   protected finish(): void {
     const built = this.feature();
     if (typeof built === "string" || this.blocker() !== null) return;
     window.clearTimeout(this.storeTimer);
     this.storeTimer = undefined;
+    this.touched = true;
     this.confirm();
+    this.again();
+  }
+
+  /** After an operation kept: the same tool afresh for another one; changing one, or no way to start again, it stays. */
+  protected again(): void {
+    if (this.editing || !this.ctx.again) return this.render();
     this.close();
     void this.ctx.preview(null);
-    this.selectStored();
+    this.ctx.again();
   }
 
   /** What this use of the tool made, selected once it closes. */
@@ -279,7 +303,7 @@ export abstract class PanelTool implements PointerHandler {
     const waiting = !this.closedFlag && (this.previewBusy || this.previewPending || this.storeTimer !== undefined);
     window.clearTimeout(this.storeTimer);
     this.storeTimer = undefined;
-    if (waiting && this.storesLive) {
+    if (waiting && this.storesLive && this.touched) {
       const built = this.feature();
       if (typeof built !== "string" && this.blocker() === null) this.confirm();
     }
@@ -294,6 +318,7 @@ export abstract class PanelTool implements PointerHandler {
     window.clearTimeout(this.previewTimer);
     window.clearTimeout(this.storeTimer);
     closeCalculator();
+    this.ctx.viewport.renderer.domElement.removeEventListener("pointerdown", this.touch, true);
     this.ctx.viewport.setChosen([]);
     this.dispose();
     this.ctx.viewport.setPointerHandler(null);
@@ -309,7 +334,7 @@ export abstract class PanelTool implements PointerHandler {
       this.cancel();
       return true;
     }
-    // Entrée: stored now, and the tool closes (as « OK » did).
+    // Entrée, as « OK »: stored now, the tool stays for the next operation.
     if (event.key === "Enter") {
       this.finish();
       return true;

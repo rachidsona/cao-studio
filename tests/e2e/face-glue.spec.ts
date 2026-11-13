@@ -32,6 +32,9 @@ test("coller par face : un haut vient à fleur de la façade du bas, caisson et 
   await expect(tool).toContainText("Face qui bouge : « Façades Haut 1 porte 600");
   await at(0.505, 0.75);
   await expect(page.getByText(/« Haut 1 porte 600 » collé à fleur de « Façades Bas 1 porte 600/).first()).toBeVisible();
+  // Glued: the tool is there afresh for another one; « Terminer » closes it.
+  await expect(tool).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   // From the right, the two doors in one plane.
   await click(page, '[data-action="view"][data-view="right"]');
@@ -68,9 +71,11 @@ test("coller par face dans tous les sens : le devant d'un haut sur le côté d'u
   await page.waitForTimeout(1000);
   for (const [x, y] of [[0.5, 0.75], [0.48, 0.72], [0.52, 0.78], [0.5, 0.68]] as [number, number][]) {
     await at(x, y);
-    if (await tool.count() === 0) break;
+    await page.waitForTimeout(700);
+    if (await page.getByText(/« Haut 1 porte 600 » collé sur « .*Bas 1 porte 600/).count()) break;
   }
   await expect(page.getByText(/« Haut 1 porte 600 » collé sur « .*Bas 1 porte 600/).first()).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
@@ -113,6 +118,9 @@ test("aligner face sur face : la face d'une façade cliquée, c'est tout le meub
   await expect(tool.getByRole("combobox", { name: "Où" })).toHaveValue("corner");
   await page.waitForTimeout(1500);
   await page.keyboard.press("Enter");
+  // Entrée, as « OK », keeps it and the tool stays for the next one; Échap, as « Terminer », closes it.
+  await expect(tool).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(tool).toHaveCount(0);
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
@@ -208,6 +216,9 @@ test("pousser : le pas tapé au clavier, puis les flèches poussent le caisson e
   await expect(total).toContainText(/X 25(0)? ?(mm|cm)/);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/19-pousser.png` });
   await page.keyboard.press("Enter");
+  // Entrée, as « OK », keeps it and the tool stays for the next one; Échap, as « Terminer », closes it.
+  await expect(tool).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(tool).toHaveCount(0);
   // Kept as one step of the history.
   await expect(page.locator('[data-action="undo"], [data-ref="undo"]').first()).toBeEnabled();
@@ -353,6 +364,9 @@ test("électroménager : un caisson poussé emporte le four posé dedans", async
   await page.keyboard.type(unit === "mm" ? "250" : unit === "m" ? "0,25" : "25");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
+  // Entrée, as « OK », keeps it and the tool stays for the next one; Échap, as « Terminer », closes it.
+  await expect(push).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(push).toHaveCount(0);
   // Saved: the oven stands in its cabinet where it went.
   await page.getByRole("button", { name: /Enregistrer/ }).first().click();
