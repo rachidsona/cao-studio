@@ -146,6 +146,7 @@ export const MODELING: HelpFamily[] = [
           "« Ouvertures » : « Devant et derrière (caisson) », « Le devant seul », ou « Aucune (corps fermé) ».",
           "« Côtés » : « Chaque côté seul (un corps par côté) » — chaque côté plat est un panneau, pour la liste de débit —, ou « Joints (un seul corps creux) ».",
           "Côtés seuls : choisissez l'« Assemblage », « Bout à bout » (les plus grands côtés passent : les montants d'un caisson vont sur toute sa hauteur) ou « En onglet (tout angle) ».",
+          "« Fond » : « Encastré entre les côtés » ou « Vissé derrière (les côtés s'arrêtent avant) » ferme l'ouverture de derrière d'un panneau à lui (HDF au départ), de l'« Épaisseur du fond » voulue — un vrai caisson.",
           "Pour ouvrir ou refermer une autre face, cliquez-la : ouverte, elle passe en orange et n'a pas de côté.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],

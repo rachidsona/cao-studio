@@ -161,13 +161,67 @@ function separateSides(feature: ShellFeature, target: Shape3D, open: readonly Fa
   return shapes;
 }
 
+/**
+ * The back closing an open face of the body: « inset », the opening of the hollow behind that face, `back.thickness`
+ * deep from the body's outside — between the sides; « applied », the whole face, as deep — the sides then stop before
+ * it (`walls` cut by it).
+ */
+function backPanel(feature: ShellFeature, target: Shape3D, walls: Shape3D[]): { back: Shape3D; walls: Shape3D[] } {
+  const back = feature.back!;
+  requirePositive(back.thickness, `${feature.name} : l'épaisseur du fond`);
+  const face = resolveFace(target, back.face);
+  if (face.geomType !== "PLANE") throw new GeometryError(`${feature.name} : le fond ferme une face plane.`);
+  if (!feature.faces.some((ref) => resolveFace(target, ref).isSame(face))) throw new GeometryError(`${feature.name} : le fond ferme une face ouverte ; ouvrez-la d'abord.`);
+  const n = normalOf(face);
+  const c = centreOf(face);
+  const wall = Math.abs(feature.thickness);
+  if (back.mount === "applied") {
+    const panel = faceSlab(face, n, back.thickness);
+    const cut = walls.flatMap((w) => {
+      const next = w.cut(panel) as Shape3D;
+      w.delete();
+      return next.solids.length ? [next] : (next.delete(), []);
+    });
+    return { back: panel, walls: cut };
+  }
+  // Inset: the face of the hollow behind the opening, brought out to the body's outside.
+  const inner = drawnIn(target, wall);
+  try {
+    const behind = inner.faces.find((f) => {
+      if (f.geomType !== "PLANE") return false;
+      const m = normalOf(f);
+      const b = centreOf(f);
+      const depth = (c[0] - b[0]) * n[0] + (c[1] - b[1]) * n[1] + (c[2] - b[2]) * n[2];
+      return m[0] * n[0] + m[1] * n[1] + m[2] * n[2] > 0.999 && Math.abs(depth - wall) < 1e-3;
+    });
+    if (!behind) throw new GeometryError(`${feature.name} : le fond ne trouve pas l'ouverture qu'il ferme.`);
+    const out = behind.clone().translate([n[0] * wall, n[1] * wall, n[2] * wall]) as unknown as Face;
+    return { back: faceSlab(out, n, back.thickness), walls };
+  } finally {
+    inner.delete();
+  }
+}
+
 export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   requirePositive(Math.abs(feature.thickness), `${feature.name} : l'épaisseur`);
   const target = requireSolid(lookup, feature.target).shape;
   const open = feature.faces.map((ref) => resolveFace(target, ref));
   if (open.some((f) => f.geomType !== "PLANE")) throw new GeometryError(`${feature.name} : seules des faces planes peuvent rester ouvertes.`);
-  if (feature.sides === "separate") return { kind: "solids", shapes: separateSides(feature, target, open) };
-  return solidsResult(hollowed(feature.name, target, open, Math.abs(feature.thickness)), feature.name);
+  if (!feature.back) {
+    if (feature.sides === "separate") return { kind: "solids", shapes: separateSides(feature, target, open) };
+    return solidsResult(hollowed(feature.name, target, open, Math.abs(feature.thickness)), feature.name);
+  }
+  // With its back: a body of its own, first; the sides (or the walls joined) after it.
+  const walls = feature.sides === "separate" ? separateSides(feature, target, open) : [hollowed(feature.name, target, open, Math.abs(feature.thickness))];
+  try {
+    const made = backPanel(feature, target, walls);
+    if (!isShapeValid(made.back)) throw new GeometryError(`${feature.name} : le fond obtenu est invalide.`);
+    const parts = made.walls.flatMap((w) => (w.solids.length > 1 ? w.solids.map((s) => s.clone() as Shape3D) : [w]));
+    return { kind: "solids", shapes: [made.back, ...parts] };
+  } catch (error) {
+    if (error instanceof GeometryError) throw error;
+    throw new GeometryError(`${feature.name} : le fond ne se fait pas ; essayez une épaisseur plus fine.`);
+  }
 }
 
 export function buildLoft(feature: LoftFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {

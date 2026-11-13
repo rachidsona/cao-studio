@@ -1864,7 +1864,10 @@ opération existante.
   *joints* (un seul corps creux) ; l'**assemblage** des panneaux : **bout à bout** (au départ : les plus grands côtés
   passent, les deux d'une paire ensemble — les montants d'un caisson vont sur toute sa hauteur, dessus et dessous
   entre eux) ou **en onglet** à tout angle. Un côté courbe garde sa paroi d'un seul corps (un cylindre : ses deux fonds
-  et le tube entre eux). Une face cliquée ensuite s'ouvre (orange) ou se referme. Un côté d'un corps déjà vidé ne se
+  et le tube entre eux). **« Fond »** ferme l'ouverture de derrière d'un panneau à lui (« Corps vidé 1 — fond »,
+  premier corps, HDF au départ), de l'épaisseur voulue (8 mm au départ) : *encastré entre les côtés*, au ras du
+  dehors, ou *vissé derrière*, toute la face, les côtés s'arrêtant avant lui (`ShellFeature.back`, `backPanel`) —
+  un vrai caisson. Une face cliquée ensuite s'ouvre (orange) ou se referme. Un côté d'un corps déjà vidé ne se
   vide pas à son tour : l'outil le dit et renvoie à son étape de l'Historique. C'est une Coque qui dit ce que sont ses
   côtés (`ShellFeature.sides`, `joint`) : elle se rouvre depuis l'historique avec le même outil. Dans le noyau
   (`features/shell-loft.ts`), le corps est creusé par lui-même rentré de l'épaisseur (`makeOffset`, `carved`) quand

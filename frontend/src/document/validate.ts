@@ -251,6 +251,11 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["thickness"], where, errors);
       if (feature.sides !== undefined && !["joined", "separate"].includes(feature.sides as string)) errors.push(`${where} : côtés du corps vidé invalides.`);
       if (feature.joint !== undefined && !["miter", "butt"].includes(feature.joint as string)) errors.push(`${where} : assemblage des côtés invalide.`);
+      if (feature.back !== undefined) {
+        const back = feature.back;
+        if (!isObject(back) || !["inset", "applied"].includes(back.mount as string) || !isFiniteNumber(back.thickness) || !((back.thickness as number) > 0)) errors.push(`${where} : fond invalide (pose « inset » ou « applied », épaisseur positive).`);
+        else checkRefs(back.face, "face", `${where} (fond)`, errors);
+      }
       break;
     case "fronts":
       if (typeof feature.cabinet !== "string") errors.push(`${where} : caisson manquant.`);

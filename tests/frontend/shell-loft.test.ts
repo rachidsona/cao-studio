@@ -170,6 +170,34 @@ describe("vider un corps", () => {
     expect(bodyMetrics(frame!).volume).toBeCloseTo((100 ** 2 - 80 ** 2) * 100, 0);
   });
 
+  it("avec un fond : encastré entre les côtés, ou vissé derrière (les côtés s'arrêtent avant lui) — un vrai caisson", () => {
+    const box = makeBaseBox(600, 400, 900) as Shape3D;
+    const [front, back] = [-1, 1].map((sign) => box.faces.find((f) => f.normalAt(f.center).y * sign > 0.9)!);
+    const faces = [describeFace(box, front!), describeFace(box, back!)];
+    const size = (s: Shape3D) => {
+      const [lo, hi] = bodyMetrics(s).bbox;
+      return [0, 1, 2].map((i) => Math.round(hi[i]! - lo[i]!));
+    };
+    const at = (s: Shape3D) => bodyMetrics(s).bbox.map((p) => p.map((v) => Math.round(v)));
+    // Inset: the opening of the back, 8 deep, flush with the outside; the four sides untouched.
+    const inset = emptied(box, { sides: "separate", joint: "butt", faces, thickness: 18, back: { face: faces[1]!, thickness: 8, mount: "inset" } });
+    expect(inset).toHaveLength(5);
+    expect(size(inset[0]!)).toEqual([564, 8, 864]);
+    expect(at(inset[0]!)[1]![1]).toBe(Math.round(bodyMetrics(box).bbox[1][1]));
+    expect(inset.slice(1).map(size).filter((s) => s[1] === 400)).toHaveLength(4);
+    // Applied: the whole back face, 8 deep; the sides 8 shorter.
+    const applied = emptied(box, { sides: "separate", joint: "butt", faces, thickness: 18, back: { face: faces[1]!, thickness: 8, mount: "applied" } });
+    expect(applied).toHaveLength(5);
+    expect(size(applied[0]!)).toEqual([600, 8, 900]);
+    expect(applied.slice(1).map(size).every((s) => s[1] === 392)).toBe(true);
+    // Joined sides: the frame one body, the back another.
+    const joined = emptied(box, { faces, thickness: 18, back: { face: faces[1]!, thickness: 8, mount: "inset" } });
+    expect(joined).toHaveLength(2);
+    expect(size(joined[0]!)).toEqual([564, 8, 864]);
+    // A back on a face that is not open: refused.
+    expect(() => emptied(box, { sides: "separate", faces: [faces[0]!], thickness: 18, back: { face: faces[1]!, thickness: 8, mount: "inset" } })).toThrow(/face ouverte/);
+  });
+
   it("refuse une paroi plus épaisse que le corps, et des côtés ou un assemblage inconnus", () => {
     expect(() => emptied(makeBaseBox(100, 100, 100) as Shape3D, { thickness: 60 })).toThrow(/ne se vide pas|aucun solide|invalide/);
     const doc = block();
@@ -178,6 +206,10 @@ describe("vider un corps", () => {
     expect(() => parseDocument(JSON.parse(JSON.stringify(shell({}))))).not.toThrow();
     expect(() => parseDocument(JSON.parse(JSON.stringify(shell({ sides: "apart" }))))).toThrow(/côtés/);
     expect(() => parseDocument(JSON.parse(JSON.stringify(shell({ joint: "glued" }))))).toThrow(/assemblage/);
+    const face = { type: "PLANE", center: [0, 0, 40], rel: [0.5, 0.5, 1], normal: [0, 0, 1], area: 0 };
+    expect(() => parseDocument(JSON.parse(JSON.stringify(shell({ faces: [face], back: { face, thickness: 8, mount: "inset" } }))))).not.toThrow();
+    expect(() => parseDocument(JSON.parse(JSON.stringify(shell({ back: { face, thickness: 0, mount: "inset" } }))))).toThrow(/fond/);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(shell({ back: { face, thickness: 8, mount: "glued" } }))))).toThrow(/fond/);
   });
 
   it("dans l'historique : le corps vidé remplace le corps, ses côtés sont des corps « sh1#n »", () => {

@@ -606,6 +606,11 @@ export interface ShellFeature extends FeatureBase {
   sides?: "joined" | "separate";
   /** Separate flat sides meeting: mitred (missing) or butted. */
   joint?: "miter" | "butt";
+  /**
+   * A back closing an open face (`face`, one of `faces`), `thickness` mm: « inset », between the sides, flush with
+   * the body's outside; « applied », the whole face, the sides stopping before it. A body of its own, first ("<id>#0").
+   */
+  back?: { face: FaceRef; thickness: number; mount: "inset" | "applied" };
 }
 
 /**

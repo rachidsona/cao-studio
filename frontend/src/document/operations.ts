@@ -214,7 +214,7 @@ export function bodyLabel(doc: CadDocument, bodyId: string): string {
     const split = findFeature(doc, featureOfBody(origin));
     const n = Number(origin.slice(featureOfBody(origin).length + PART_SEPARATOR.length)) + 1;
     if (split?.type === "panels" || split?.type === "paneling") return `${split.name} — panneau ${n}`;
-    if (split?.type === "shell") return `${split.name} — côté ${n}`;
+    if (split?.type === "shell") return split.back ? (n === 1 ? `${split.name} — fond` : `${split.name} — côté ${n - 1}`) : `${split.name} — côté ${n}`;
     if (split?.type === "array") {
       const per = arrayOffsets(split).length;
       return `${bodyLabel(doc, split.targets[Math.floor((n - 1) / per)] ?? "")} — ${split.name} (${((n - 1) % per) + 1})`;

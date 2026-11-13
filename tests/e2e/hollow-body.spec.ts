@@ -67,9 +67,21 @@ test("un corps se vide à l'épaisseur saisie, côtés joints puis chaque côté
   await expect(tool).toContainText("2 face(s) ouverte(s)");
   await expect(tree.getByText("côté 6", { exact: true })).toHaveCount(0);
   await expect(status).not.toContainText("erreur");
+  // « Fond »: a back of its own closes the opening behind — inset between the sides, then screwed on behind.
+  await tool.getByRole("combobox", { name: "Fond" }).selectOption("inset");
+  await expect(tool.getByRole("textbox", { name: "Épaisseur du fond" })).toHaveValue("0,8");
+  await expect(tree.getByText("fond", { exact: true }).first()).toBeVisible();
+  await expect(status).not.toContainText("erreur");
+  await expect.poll(async () => ((await shell()) as { back?: { mount: string; thickness: number } } | undefined)?.back, { timeout: 30_000 }).toMatchObject({ mount: "inset", thickness: 8 });
+  await tool.getByRole("combobox", { name: "Fond" }).selectOption("applied");
+  await expect.poll(async () => ((await shell()) as { back?: { mount: string } } | undefined)?.back?.mount, { timeout: 30_000 }).toBe("applied");
+  await expect(status).not.toContainText("erreur");
   await click(page, '[data-action="view"][data-view="iso"]');
   await page.waitForTimeout(900);
   await shot(page, "vider-un-corps");
+  // Without it again, for what follows.
+  await tool.getByRole("combobox", { name: "Fond" }).selectOption("none");
+  await expect(tree.getByText("fond", { exact: true })).toHaveCount(0);
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(tool).toHaveCount(0);
 

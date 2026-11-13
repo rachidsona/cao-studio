@@ -6,13 +6,15 @@
  *   ouvrir ; on saisit l'épaisseur de ses côtés et on choisit s'ils restent joints (un seul corps creux) ou si chacun
  *   devient un corps (un panneau par côté plat, en onglet ou bout à bout ; la paroi d'un côté courbe). La face par
  *   laquelle on prend le corps est son devant : « Ouvertures » l'ouvre avec celle d'en face — un caisson, ses côtés
- *   autour, tous de la même épaisseur —, seule, ou laisse le corps fermé. Une face cliquée ensuite s'ouvre ou se
+ *   autour, tous de la même épaisseur —, seule, ou laisse le corps fermé. « Fond » ferme l'ouverture de derrière d'un
+ *   panneau à lui (encastré entre les côtés, ou vissé derrière, les côtés s'arrêtant avant) : un vrai caisson. Une face cliquée ensuite s'ouvre ou se
  *   referme. Un côté d'un corps déjà vidé ne se vide pas à son tour : son étape de l'historique le reprend.
  * - Lissage : cochez les esquisses à relier (dans l'ordre de l'historique), droit ou courbe entre elles.
  */
 import * as THREE from "three";
 import { bodyLabel, bodyOrigin, findFeature, uniqueId, uniqueName } from "../document/operations";
-import { featureOfBody, type BooleanOperation, type FaceRef, type LoftFeature, type ShellFeature, type SketchFeature } from "../document/types";
+import { bodyInfo, setBodyInfo } from "../document/materials";
+import { featureOfBody, PART_SEPARATOR, type BooleanOperation, type CadDocument, type FaceRef, type LoftFeature, type ShellFeature, type SketchFeature } from "../document/types";
 import { formatLength } from "../measurements/units";
 import type { BodyMesh } from "../geometry/protocol";
 import { operationChoices } from "../ui/feature-meta";
@@ -24,8 +26,11 @@ const JOINTS: [NonNullable<ShellFeature["joint"]>, string][] = [["miter", "En on
 /** What is left open of a body taken by one of its faces (its front): it and the one behind, it alone, nothing. */
 type Opening = "through" | "face" | "none";
 const OPENINGS: [Opening, string][] = [["through", "Devant et derrière (caisson)"], ["face", "Le devant seul"], ["none", "Aucune (corps fermé)"]];
+/** The back closing the opening behind: none, between the sides, or over the whole back (the sides shorter). */
+type BackMount = "none" | NonNullable<ShellFeature["back"]>["mount"];
+const BACKS: [BackMount, string][] = [["none", "Sans fond"], ["inset", "Encastré entre les côtés"], ["applied", "Vissé derrière (les côtés s'arrêtent avant)"]];
 /** Kept for the session: how the last body was emptied. */
-const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]>; opening: Opening } = { thickness: 18, sides: "separate", joint: "butt", opening: "through" };
+const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]>; opening: Opening; back: BackMount; backThickness: number } = { thickness: 18, sides: "separate", joint: "butt", opening: "through", back: "none", backThickness: 8 };
 
 export class ShellTool extends PanelTool {
   private readonly id: string;
@@ -38,6 +43,10 @@ export class ShellTool extends PanelTool {
   /** « Vider un corps »: what is opened, and the face the body was taken by (its front). */
   private opening: Opening = LAST.opening;
   private front: number | null = null;
+  /** The back: how it is put, how thick (mm), and the face it closes (the one behind the front). */
+  private back: BackMount;
+  private backThickness: number;
+  private backFace: number | null = null;
   private target: string | null = null;
   private selected: number[] = [];
   private refs: FaceRef[] = [];
@@ -56,6 +65,8 @@ export class ShellTool extends PanelTool {
     this.thickness = editing?.thickness ?? (emptying ? LAST.thickness : 3);
     this.sides = editing?.sides ?? LAST.sides;
     this.joint = editing?.joint ?? LAST.joint;
+    this.back = editing ? (editing.back?.mount ?? "none") : LAST.back;
+    this.backThickness = editing?.back?.thickness ?? LAST.backThickness;
     ctx.viewport.scene.add(this.group);
   }
 
@@ -74,6 +85,9 @@ export class ShellTool extends PanelTool {
     if (editing) {
       this.refs = editing.faces;
       this.selected = this.mesh ? editing.faces.flatMap((ref) => this.faceNear(ref.center)) : [];
+      // The face its back closes; without one yet, the open face turned away from the first one.
+      this.backFace = editing.back && this.mesh ? (this.faceNear(editing.back.face.center)[0] ?? null) : null;
+      if (this.backFace === null && this.selected.length >= 2) this.backFace = this.selected[1] ?? null;
     } else if (first && this.hollow) {
       // A side of a body already emptied is not emptied in its turn.
       const made = this.sideOf(first.bodyId);
@@ -120,6 +134,7 @@ export class ShellTool extends PanelTool {
   /** The faces open for the front the body was taken by: it and the flat face behind it, it alone, or none. */
   private opened(): number[] {
     const front = this.front === null ? null : this.flat(this.front);
+    this.backFace = null;
     if (this.front === null || !front || this.opening === "none") return [];
     if (this.opening === "face") return [this.front];
     // Behind it: the flat face turned the other way, the furthest one.
@@ -128,7 +143,9 @@ export class ShellTool extends PanelTool {
       const other = face === this.front ? null : this.flat(face);
       if (other && other.normal.dot(front.normal) < -0.999 && (!behind || other.at > behind.at)) behind = { face, at: other.at };
     });
-    return behind ? [this.front, (behind as { face: number }).face] : [this.front];
+    if (!behind) return [this.front];
+    this.backFace = (behind as { face: number }).face;
+    return [this.front, this.backFace];
   }
 
   /** The face of the snapshot whose triangles pass nearest a point (to find saved faces again). */
@@ -150,13 +167,25 @@ export class ShellTool extends PanelTool {
   protected feature(): ShellFeature | string {
     if (!this.target) return this.hollow ? "Cliquez le corps à vider." : "Cliquez une face du corps à creuser (elle restera ouverte).";
     const shell: ShellFeature = { id: this.id, type: "shell", name: this.name, target: this.target, faces: this.refs, thickness: this.thickness };
-    return this.hollow ? { ...shell, sides: this.sides, ...(this.sides === "separate" ? { joint: this.joint } : {}) } : shell;
+    if (!this.hollow) return shell;
+    // The back closes the face behind, while it is open.
+    const at = this.backFace === null ? -1 : this.selected.indexOf(this.backFace);
+    const face = this.back !== "none" && at >= 0 ? this.refs[at] : undefined;
+    return { ...shell, sides: this.sides, ...(this.sides === "separate" ? { joint: this.joint } : {}), ...(face && this.back !== "none" ? { back: { face, thickness: this.backThickness, mount: this.back } } : {}) };
+  }
+
+  /** The back's body made of HDF, as a caisson's, unless given a material. */
+  protected override decorate(doc: CadDocument): CadDocument {
+    const made = this.feature();
+    if (typeof made === "string" || !made.back) return doc;
+    const id = `${made.id}${PART_SEPARATOR}0`;
+    return bodyInfo(doc, id).material ? doc : setBodyInfo(doc, [id], { material: "hdf" });
   }
 
   /** « Vider un corps »: the thickness of its sides, and whether they are joined or each one a body. */
   private hollowRows(): (HTMLElement | null)[] {
     const changed = () => {
-      Object.assign(LAST, { thickness: this.thickness, sides: this.sides, joint: this.joint, opening: this.opening });
+      Object.assign(LAST, { thickness: this.thickness, sides: this.sides, joint: this.joint, opening: this.opening, back: this.back, backThickness: this.backThickness });
       this.render();
       this.schedulePreview();
     };
@@ -196,6 +225,20 @@ export class ShellTool extends PanelTool {
             this.joint = v as typeof this.joint;
             changed();
           })
+        : null,
+      // A back of its own closing the opening behind: a real caisson.
+      this.selectRow("Fond", this.back, BACKS, (v) => {
+        this.back = v as BackMount;
+        changed();
+      }),
+      this.back === "none"
+        ? null
+        : this.numberRow("Épaisseur du fond", this.backThickness, this.ctx.unit(), (v) => {
+            this.backThickness = Math.abs(v);
+            changed();
+          }),
+      this.back !== "none" && (this.backFace === null || !this.selected.includes(this.backFace))
+        ? this.info("Le fond ferme l'ouverture de derrière : choisissez « Devant et derrière (caisson) » dans « Ouvertures », ou cliquez le corps par sa face de devant.")
         : null,
       this.info(
         this.sides === "separate"
