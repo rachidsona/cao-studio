@@ -178,3 +178,29 @@ describe("bureau d'angle, lit, pose contre un mur, meuble refait", () => {
     expect(() => parseDocument(JSON.parse(JSON.stringify(again.doc)))).not.toThrow();
   });
 });
+
+describe("sous-escalier", () => {
+  it("des caissons de hauteurs décroissantes sous la pente, chacun coiffé d'un habillage en biais, construits par le noyau", () => {
+    const a = ask("stairs", { width: 2400, height: 2200, low: 400, option: "right-doors" });
+    const l = furnitureLayout(a);
+    if (typeof l === "string") throw new Error(l);
+    // Rising to the right: each unit higher than the one on its left, under the slope by 2 cm at least.
+    const heights = l.pieces.map((p) => p.height);
+    expect(heights).toEqual([...heights].sort((x, y) => x - y));
+    for (const p of l.pieces) expect(p.height).toBeLessThanOrEqual(400 + (1800 * p.at[0]) / 2400 - 20 + 1e-6);
+    expect(l.boards.every((b) => b.outline && b.outline.length === 4)).toBe(true);
+    // Rising to the left: the other way round.
+    const left = furnitureLayout(ask("stairs", { low: 400, option: "left-drawers" }));
+    if (typeof left === "string") throw new Error(left);
+    expect(left.pieces[0]!.height).toBeGreaterThan(left.pieces.at(-1)!.height);
+    expect(furnitureProblem(ask("stairs", { height: 1500, low: 1400 }))).toMatch(/hauteur basse/);
+    const made = withFurniture(empty(), a, [0, -600, 0], "melamine-oak");
+    if (typeof made === "string") throw new Error(made);
+    const trim = made.doc.features.find((f) => f.type === "trim");
+    expect(trim?.name).toBe("Sous-escalier 1 — habillage");
+    const { ok, failed, boxes } = built(made.doc);
+    expect(failed).toEqual([]);
+    expect(ok).toBe(true);
+    expect(Math.max(...boxes.map((b) => b[1][2]!))).toBeCloseTo(2200, 3);
+  });
+});

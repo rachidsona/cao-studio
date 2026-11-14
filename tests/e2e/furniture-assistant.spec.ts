@@ -113,3 +113,27 @@ test("un lit contre le mur B de la Pièce, puis repris et refait plus large à s
   await expect.poll(furniture, { timeout: 30_000 }).toEqual([expect.objectContaining({ name: "Lit 1", ask: expect.objectContaining({ width: 1800 }), corner: [3000, -200, 0] })]);
   expect(errors).toEqual([]);
 });
+
+test("un placard sous escalier : caissons sous la pente et habillage en biais, sans erreur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-sous-escalier");
+  await click(page, '[data-workshop="furniture"]');
+  const tool = page.getByRole("dialog", { name: "Assistant meuble" });
+  await tool.getByRole("combobox", { name: "Meuble" }).selectOption("stairs");
+  await expect(tool.locator("[data-furniture-what]")).toContainText("sous la pente");
+  const low = tool.getByRole("textbox", { name: /^Hauteur basse/ });
+  await low.fill("40");
+  await low.press("Enter");
+  await tool.getByRole("combobox", { name: "Pente et façades" }).selectOption("left-doors");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("« Sous-escalier 1 » posé")).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  await shot(page, "sous-escalier");
+  expect(errors).toEqual([]);
+});

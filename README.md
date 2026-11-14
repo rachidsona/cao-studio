@@ -2674,6 +2674,10 @@ opération existante.
     deux chevets à un tiroir. **Bureau d'angle** : un plateau en L (la profondeur est la longueur du retour, à droite
     ou à gauche), un caisson de trois tiroirs au bout du retour, un pied plein et un voile. **Lit** : un cadre (deux
     côtés, traverses de tête et de pied) et un fond de sommier 6 cm sous son haut, ou des tiroirs au pied sous le fond.
+    **Sous-escalier** : sous une volée de marches qui monte vers la droite ou la gauche, de la « hauteur basse » à la
+    hauteur haute, des caissons de hauteurs décroissantes (une case tous les 60 cm environ, 2 cm sous la pente, à
+    portes ou à tiroirs), chacun coiffé d'un **habillage en biais** qui suit la pente (un contour dans le plan de la
+    façade : une Finitions « … — habillage » ; de travers sur un mur qui n'est pas d'équerre avec les axes, en boîtes).
   - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
     qui est déjà là, son dos sur le plan Y = 0, ou **contre un mur d'une Pièce** (« Où le poser », « Depuis le début
     du mur » : il tourne avec le mur, son dos contre sa face ; refusé s'il en dépasse), en une seule annulation, et

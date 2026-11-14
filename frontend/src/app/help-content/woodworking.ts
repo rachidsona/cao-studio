@@ -208,10 +208,10 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-workshop:furniture"],
         name: "Assistant meuble",
-        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, bureau d'angle, banc d'entrée, tête de lit ou lit.",
+        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, bureau d'angle, banc d'entrée, tête de lit, lit ou placard sous escalier.",
         steps: [
           "Cliquez « Assistant meuble » et choisissez le « Meuble » : il part de ses cotes usuelles, et une ligne dit comment il est fait.",
-          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, retour d'un bureau d'angle, cases d'un banc, chevets d'une tête de lit, tiroirs d'un lit.",
+          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, retour d'un bureau d'angle, cases d'un banc, chevets d'une tête de lit, tiroirs d'un lit, sens de la pente d'un sous-escalier (avec sa « Hauteur basse » au pied des marches).",
           "Choisissez l'« Épaisseur des panneaux » et la « Matière ».",
           "Avec une Pièce, « Où le poser » le met contre un de ses murs, à la distance voulue de son début ; sinon il va à droite de ce qui est déjà là, son dos contre le plan Y = 0.",
           "Cliquez « OK », puis posez-en un autre, ou cliquez « Terminer ».",

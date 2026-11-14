@@ -11,7 +11,7 @@ import { BACK, furnitureLayout, furnitureModel, furnitureSize, type FurnitureAsk
 import { setBodyInfo } from "./materials";
 import { deleteFeatures, uniqueId, uniqueName } from "./operations";
 import { rectangleAt, type SketchGeometry } from "./sketch";
-import type { CadDocument, Feature, FurnitureRecord, Vec3 } from "./types";
+import type { CadDocument, Feature, FurnitureRecord, TrimFeature, Vec3 } from "./types";
 
 /** A closed outline as a sketch: its points and lines (a board turned with a wall). */
 function outlineSketch(points: [number, number][]): SketchGeometry {
@@ -55,7 +55,25 @@ export function withFurniture(base: CadDocument, ask: FurnitureAsk, place: Vec3,
     doc = made.doc;
   }
   const boards: string[] = [];
-  for (const board of layout.boards) {
+  // Boards cut on the bias (under a staircase): one Finitions of outlines in the plane of the front, when the
+  // furniture stands square with the axes; turned otherwise, they are made as their box.
+  const lat = Math.abs(u[1]) < 1e-9 ? 0 : Math.abs(u[0]) < 1e-9 ? 1 : null;
+  const cut = lat === null ? [] : layout.boards.filter((b) => b.outline);
+  if (cut.length && lat !== null) {
+    const id = uniqueId(doc, "fi");
+    const parts = cut.map((b) => {
+      const corners = [at(b.from[0], b.from[1], b.from[2]), at(b.to[0], b.to[1], b.to[2])];
+      const from = [0, 1, 2].map((k) => Math.min(corners[0]![k]!, corners[1]![k]!)) as Vec3;
+      const to = [0, 1, 2].map((k) => Math.max(corners[0]![k]!, corners[1]![k]!)) as Vec3;
+      const pts = b.outline!.map(([x, z]): [number, number] => [corner[lat] + u[lat]! * x, corner[2] + z]);
+      // No point twice in a row (a slope coming down to the floor).
+      const points = pts.filter((p, i) => Math.hypot(p[0] - pts[(i + pts.length - 1) % pts.length]![0], p[1] - pts[(i + pts.length - 1) % pts.length]![1]) > 0.5);
+      return { name: b.name, from, to, outline: { axis: lat as 0 | 1, points } };
+    });
+    doc = { ...doc, features: [...doc.features, { id, type: "trim", name: `${name} — habillage`, parts } satisfies TrimFeature] };
+    doc = setBodyInfo(doc, parts.map((_, i) => `${id}#${i}`), { material });
+  }
+  for (const board of layout.boards.filter((b) => !cut.includes(b))) {
     const [z0, z1] = [corner[2] + board.from[2], corner[2] + board.to[2]];
     const ends = [at(board.from[0], board.from[1], 0), at(board.to[0], board.from[1], 0), at(board.to[0], board.to[1], 0), at(board.from[0], board.to[1], 0)];
     const xs = ends.map((p) => p[0]);
