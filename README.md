@@ -31,7 +31,8 @@ recherche, et **chaque projet en carte** — l'image de son modèle (prise par l
 `app/project-preview.ts`), ou le dessin de son espace tant qu'il n'en a pas, son statut, son client, son dossier, sa dernière version,
 son devis ; un clic sur la carte l'ouvre, « Fiche » et la corbeille sont dessus (`templates/projects/_project_card.html`). Chaque
 nouveau projet contient la plaque de référence ; « Ouvrir le projet exemple » crée un caisson de cuisine (mélaminé
-chêne, fond HDF) pour découvrir la liste de débit, le calepinage, la mise en plan, l'export DXF et le devis. Dans
+chêne, fond HDF, côtés percés en système 32 pour les taquets) pour découvrir la liste de débit, le calepinage, la
+mise en plan, l'export DXF, les gabarits de perçage et le devis. Dans
 l'éditeur, le bouton **Aide** à côté d'Enregistrer (ou touche **?**) ouvre la prise en main, tous les raccourcis
 clavier et une fiche par outil, avec une recherche : à quoi il sert, comment s'en servir, où le trouver.
 

@@ -81,11 +81,42 @@ def project_document(space: str) -> dict[str, Any]:
     return default_document() if space == "design" else empty_document()
 
 
+def _shelf_pin_rows() -> list[dict[str, Any]]:
+    """The 32 mm system on the inner face of both sides of the example cabinet, between its bottom and its top.
+
+    As the « Perçage système 32 » tool does it (frontend/src/features/joinery.ts, drilling32): two rows of Ø5 holes,
+    12 mm deep, 37 mm from the front and the back edges, every 32 mm, centred on the 584 mm between the boards.
+    The sides are 557 mm deep (behind them, the 3 mm back), 720 mm high; the inside runs from 118 to 702 mm.
+    """
+    low, high, depth = 118, 702, 557
+    count = int((high - low - 2 * 32) // 32) + 1
+    first = low + (high - low - (count - 1) * 32) / 2
+    sides = (("cb1#0", "gauche", 18, -1, [0, 0, 0], [18, depth, 720]), ("cb1#1", "droit", 582, 1, [582, 0, 0], [600, depth, 720]))
+    return [
+        {
+            "id": f"mc{i + 1}",
+            "type": "machining",
+            "name": f"Perçage système 32 (côté {side})",
+            "target": target,
+            "kind": "drilling32",
+            "ops": [
+                {"kind": "hole", "at": [x, y, first + k * 32], "dir": [inward, 0, 0], "diameter": 5, "depth": 12}
+                for y in (37, depth - 37)
+                for k in range(count)
+            ],
+            "anchor": anchor,
+            "anchorHigh": anchor_high,
+        }
+        for i, (target, side, x, inward, anchor, anchor_high) in enumerate(sides)
+    ]
+
+
 def example_document() -> dict[str, Any]:
     """Return the example project offered to new users: a base cabinet (caisson de cuisine).
 
-    600 × 720 × 560 mm on a 100 mm plinth, 18 mm boards, a 3 mm back screwed on, one shelf: every board is
-    a body of its own, ready for the cut list, the cutting layout and the drawings.
+    600 × 720 × 560 mm on a 100 mm plinth, 18 mm boards, a 3 mm back screwed on, one shelf, the sides drilled for
+    shelf pins: every board is a body of its own, ready for the cut list, the cutting layout, the drawings and the
+    drilling templates.
     """
     return {
         "format": "cao-studio",
@@ -108,6 +139,7 @@ def example_document() -> dict[str, Any]:
                 "plinth": 100,
                 "construction": "sides-through",
             },
+            *_shelf_pin_rows(),
         ],
         # Oak-look melamine with a 1 mm band on the front edge; an HDF back (pieces: sides, bottom, top, back, shelf).
         "bodyInfo": {

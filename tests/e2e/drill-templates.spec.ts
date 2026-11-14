@@ -27,3 +27,25 @@ test("le gabarit de perçage de la plaque, en PDF A4 à l'échelle 1", async ({ 
   if (process.env.SHOTS) await download.saveAs(`${process.env.SHOTS}/gabarits.pdf`);
   expect(errors).toEqual([]);
 });
+
+test("le caisson exemple, percé en système 32, donne le gabarit de ses côtés", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-gabarits-exemple");
+  await page.goto("/projects/");
+  await page.getByRole("button", { name: "Ouvrir le projet exemple" }).click();
+  await page.waitForURL("**/editor/");
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).toContainText("Recalcul", { timeout: 60_000 });
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 60_000 }),
+    page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="drill-templates"]')?.click()),
+  ]);
+  const pdf = readFileSync((await download.path())!, "latin1");
+  // The two sides drilled alike, mirrored: one or two templates of a 720 × 557 side, 34 holes of Ø5 each.
+  expect((pdf.match(/\(\\3305\b[^)]*\) Tj/g) ?? []).length).toBeGreaterThanOrEqual(34);
+  await expect(page.getByText(/Gabarits de perçage : [12] pièces?, \d+ pages A4/)).toBeVisible();
+  if (process.env.SHOTS) await download.saveAs(`${process.env.SHOTS}/gabarits-exemple.pdf`);
+  expect(errors).toEqual([]);
+});
