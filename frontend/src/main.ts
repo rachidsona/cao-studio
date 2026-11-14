@@ -1,4 +1,5 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
+import { bindTechPlan } from "./app/kitchen/tech-plan-tool";
 import { startKeptData } from "./persistence/kept-data";
 import { Editor, type EditorConfig } from "./app/editor";
 import { bindCommandPalette } from "./app/command-palette";
@@ -205,6 +206,7 @@ async function start(): Promise<void> {
   bindGridToggle(root, viewport);
   bindDisplayToggles(root, viewport, editor);
   bindRibbonToggle(root);
+  bindTechPlan(root, editor);
   bindWallCutaway(root, viewport, editor);
   bindIsolateSelection(root, viewport, editor);
   bindOrbit(root, viewport, (message) => editor.notify(message, "info"));

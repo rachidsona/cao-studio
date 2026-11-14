@@ -2684,6 +2684,20 @@ opération existante.
     modules et accessoires s'y retouchent ensuite comme dans un dressing ; ses planches libres (plateau, pied, voile,
     panneau, tablette) sont des extrusions. Tout est nommé d'après lui (« Bureau 1 — Plateau »). Posé par
     `document/furniture-build.ts`, l'assistant est `app/furniture-tool.ts`.
+- **Plan technique** (groupe « Cuisine », masqué d'office) : ce que le plombier et l'électricien doivent amener au
+  mur avant la pose, d'après la cuisine posée (`document/tech-plan.ts`, pur).
+  - Les **murs** sont ceux des plans de travail (« Plan de travail A » : mur A, l'îlot à part) ; chaque point est sur
+    la face du mur, coté depuis le début du mur (à gauche, vu de la pièce) et depuis le sol.
+  - **Évier** (appareil, ou découpe du plan de travail) : eau chaude à gauche et eau froide à droite à 50 cm,
+    évacuation Ø40 entre elles à 40 cm. **Lave-vaisselle** : prise 16 A sur son circuit et, loin d'un évier, son eau
+    et son évacuation, dans le meuble voisin. **Plaque** : sortie de câble 32 A ; **four** : prise 20 A (sous le plan,
+    ou sous lui en colonne) ; **réfrigérateur**, **micro-ondes**, **cave à vin** : prise 16 A ; **hotte** : prise et
+    sortie d'air Ø150 dans sa cheminée. Deux boîtes au même endroit se rangent côte à côte.
+  - **Prises du plan de travail** à 10 cm au-dessus, une tous les 1,2 m environ, jamais à moins de 60 cm de l'évier
+    ou de la plaque ; le plan dit quand il y en a moins de 4 (NF C 15-100) et quand il n'y a pas d'évier.
+  - Une fenêtre montre chaque mur vu de face, ses points numérotés et leur liste ; **« Fichier PDF »** télécharge une
+    page A4 paysage par mur (`document/tech-plan-sheets.ts`, `app/kitchen/tech-plan-tool.ts`). Les hauteurs sont
+    des repères d'usage, à faire valider par les artisans.
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).
