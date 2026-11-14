@@ -8,10 +8,11 @@ import { probeSketch } from "../constraints/solver";
 import type { SketchConstraint, SketchGeometry } from "../document/sketch";
 import { filletCorner } from "./corner";
 import { addCircle, addConstraint, addLine, addRectangle, findCurve, measure, pointPos, type Vec2 } from "./edit";
+import { addMouldingProfile, type MouldingProfile } from "./moulding-profiles";
 import { addSlot } from "./shapes";
 import type { Preview } from "./tools";
 
-export type JoineryShape = "sink" | "hob" | "notch" | "dovetail" | "row32" | "cupHandle";
+export type JoineryShape = "sink" | "hob" | "notch" | "dovetail" | "row32" | "cupHandle" | MouldingProfile;
 
 export interface ShapeField {
   key: string;
@@ -65,6 +66,11 @@ export const JOINERY_SHAPES: Record<JoineryShape, { label: string; at: string; f
       { key: "p", label: "Entraxe", value: 32, kind: "length" },
     ],
   },
+  quarterRound: { label: "Profil : quart-de-rond", at: "son coin", fields: [{ key: "r", label: "Rayon", value: 15, kind: "length" }] },
+  cove: { label: "Profil : congé (creux)", at: "son coin", fields: [{ key: "r", label: "Rayon", value: 15, kind: "length" }] },
+  halfRound: { label: "Profil : demi-rond (baguette)", at: "le milieu de sa base", fields: [{ key: "r", label: "Rayon", value: 10, kind: "length" }] },
+  chamfer: { label: "Profil : chanfrein", at: "son coin", fields: [{ key: "r", label: "Côté", value: 15, kind: "length" }] },
+  ogee: { label: "Profil : doucine", at: "son coin", fields: [{ key: "r", label: "Côté", value: 30, kind: "length" }] },
   cupHandle: {
     label: "Poignée cuvette",
     at: "son centre",
@@ -118,7 +124,11 @@ export function placeJoineryShape(g: SketchGeometry, kind: JoineryShape, v: Shap
   const wanted: NewConstraint[] = [];
   const rule = (c: object) => (work = addConstraint(work, c as NewConstraint).geometry);
   const dim = (c: object) => wanted.push(c as NewConstraint);
-  if (kind === "sink" || kind === "hob" || kind === "notch") {
+  if (kind === "quarterRound" || kind === "cove" || kind === "halfRound" || kind === "chamfer" || kind === "ogee") {
+    const added = addMouldingProfile(work, kind, v.r!, at);
+    keep(added);
+    for (const d of added.size) dim(d);
+  } else if (kind === "sink" || kind === "hob" || kind === "notch") {
     const [w, h] = [v.w!, kind === "notch" ? v.d! : v.h!];
     const [from, to]: [Vec2, Vec2] = kind === "notch" ? [[x - w / 2, y], [x + w / 2, y - h]] : [[x - w / 2, y - h / 2], [x + w / 2, y + h / 2]];
     const [first, second] = keep(addRectangle(work, { at: from }, { at: to }));

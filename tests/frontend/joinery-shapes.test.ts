@@ -63,3 +63,19 @@ describe("formes de menuiserie prêtes", () => {
     expect(() => place("hob", { w: -1, h: 10 })).toThrow(/positive/);
   });
 });
+
+describe("profils de moulure", () => {
+  it("chacun est un contour fermé, prêt à balayer le long d'une arête", async () => {
+    const { extractLoops, regions: regionsOf } = await import("../../frontend/src/sketcher/loops");
+    for (const kind of ["quarterRound", "cove", "halfRound", "chamfer", "ogee"] as JoineryShape[]) {
+      const { geometry } = place(kind);
+      expect(regionsOf(extractLoops(geometry)), kind).toHaveLength(1);
+    }
+  });
+
+  it("la doucine : un S de deux quarts de cercle de même rayon, tangents au milieu", () => {
+    const { geometry } = place("ogee");
+    const arcs = geometry.curves.filter((c) => c.kind === "arc");
+    expect(arcs.map((a) => (a.kind === "arc" ? a.radius : 0))).toEqual([15, 15]);
+  });
+});

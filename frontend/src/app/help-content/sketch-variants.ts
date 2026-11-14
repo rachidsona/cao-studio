@@ -4,13 +4,13 @@ import type { ToolHelp } from "./types";
 export const DRAW_VARIANTS: ToolHelp[] = [
   {
     keys: ["data-sketch-command:joineryshapes"], name: "Formes de menuiserie",
-    what: "Pose d'un clic une forme courante de l'atelier, déjà contrainte et cotée : découpe d'évier (angles arrondis) ou de plaque de cuisson, encoche au bord, queue d'aronde, rangée de trous système 32, poignée cuvette.",
+    what: "Pose d'un clic une forme courante de l'atelier, déjà contrainte et cotée : découpe d'évier (angles arrondis) ou de plaque de cuisson, encoche au bord, queue d'aronde, rangée de trous système 32, poignée cuvette, et les profils de moulure à balayer.",
     steps: [
       "Cliquez « Formes de menuiserie », choisissez la forme et tapez ses cotes (largeur, profondeur, rayon, nombre de trous, entraxe, pente…).",
       "Cliquez « Poser dans l'esquisse », puis cliquez à l'endroit voulu : le centre de la découpe, le milieu du bord pour une encoche, le premier trou pour une rangée. La forme suit la souris avant d'être posée.",
       "Chaque clic en pose une autre ; Échap arrête. Changez ensuite une de ses cotes pour la régler, et cotez sa place depuis un bord.",
     ],
-    tip: "Les cotes tapées sont gardées pour la fois suivante. Une rangée système 32 garde ses trous égaux et alignés : changer l'entraxe ou le diamètre d'une cote les règle tous.",
+    tip: "Les profils de moulure (quart-de-rond, congé, demi-rond, chanfrein, doucine) sont des contours fermés : posez-en un au bout d'une arête, dans une esquisse perpendiculaire, puis balayez-le avec « Suivre-moi » pour une plinthe, une corniche ou une baguette. Les cotes tapées sont gardées pour la fois suivante. Une rangée système 32 garde ses trous égaux et alignés : changer l'entraxe ou le diamètre d'une cote les règle tous.",
   },
   {
     keys: [], name: "Coordonnées au clavier",

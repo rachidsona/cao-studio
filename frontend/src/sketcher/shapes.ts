@@ -8,7 +8,7 @@ import { cloneGeometry, nextId, type Vec2 } from "./edit";
 
 const round = (v: number) => Number(v.toFixed(9));
 
-function builder(g: SketchGeometry, construction: boolean) {
+export function builder(g: SketchGeometry, construction: boolean) {
   const next = cloneGeometry(g);
   const created: string[] = [];
   const flag = construction ? { construction: true } : {};

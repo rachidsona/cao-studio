@@ -327,7 +327,9 @@ serveur accepte les deux versions.
 - **Formes de menuiserie** (cachées par défaut) : une fenêtre choisit la forme et ses cotes, puis chaque clic la pose,
   contrainte et cotée comme un bloc réglable — découpe d'évier (angles arrondis), découpe de plaque de cuisson,
   encoche au bord, queue d'aronde (base, longueur, pente 1:n), rangée de trous système 32 (trous égaux et alignés,
-  entraxe en chaîne), poignée cuvette (oblong). Seule sa place reste libre, à coter depuis un bord ; une cote que
+  entraxe en chaîne), poignée cuvette (oblong), et des **profils de moulure** — quart-de-rond, congé, demi-rond,
+  chanfrein, doucine (deux quarts de cercle tangents) — contours fermés à balayer avec « Suivre-moi »
+  (`sketcher/moulding-profiles.ts`). Seule sa place reste libre, à coter depuis un bord ; une cote que
   l'esquisse refuserait n'est pas posée (`sketcher/joinery-shapes.ts`).
 - **Copies au déplacement** : dans le panneau « Déplacer » de l'esquisse, « Copies » prend « x5 » (ou 5) — cinq copies
   à la suite, chacune d'un déplacement plus loin — ou « /5 » — cinq copies réparties jusqu'au point visé ; la

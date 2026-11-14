@@ -57,3 +57,29 @@ test("une rangée système 32 et une découpe de plaque posées d'un clic, coté
   expect(added.filter((c) => c.kind === "length").map((c) => c.value).sort()).toEqual([30, 60]);
   expect(errors).toEqual([]);
 });
+
+test("un profil de doucine posé d'un clic : un contour fermé de deux arcs", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-profil-doucine");
+  await page.locator('details:not([data-bodies]) [data-menu="sk1"]').click();
+  await page.getByRole("button", { name: /^Modifier/ }).first().click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
+  const box = (await page.locator('[data-ref="viewport"] canvas').boundingBox())!;
+  await click(page, '[data-sketch-command="joineryshapes"]');
+  const dialog = page.getByRole("dialog", { name: "Formes de menuiserie" });
+  await dialog.getByRole("combobox", { name: "Forme" }).selectOption("ogee");
+  await dialog.getByRole("textbox", { name: "Côté" }).fill("2");
+  await dialog.getByRole("button", { name: "Poser dans l'esquisse" }).click();
+  await page.mouse.click(box.x + box.width * 0.15, box.y + box.height * 0.2);
+  await page.keyboard.press("Escape");
+  await shot(page, "profil-doucine");
+  await click(page, '[data-sketch-command="finish"]');
+  await page.keyboard.press("Control+s");
+  await page.waitForTimeout(600);
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  const sk = (project.document.features as Sketch[]).find((f) => f.id === "sk1")!;
+  expect(sk.curves.filter((c) => c.kind === "arc").map((c) => c.radius)).toEqual([10, 10]);
+  expect(errors).toEqual([]);
+});
