@@ -6,8 +6,9 @@
  * in one click. The maths is in document/expressions.ts.
  */
 import {
-  applyExpressions, evaluate, nameProblem, namesIn, numericFields, parameterUsage, resolveParameters,
+  applyExpressions, DIMENSION_PATH, evaluate, nameProblem, namesIn, numericFields, parameterUsage, resolveParameters,
 } from "../document/expressions";
+import { CONSTRAINT_LABELS } from "../constraints/catalog";
 import { activeConfiguration, applyConfiguration, configurationsOf, removeConfiguration, saveConfiguration, updateConfiguration } from "../document/configurations";
 import { findFeature, updateFeature } from "../document/operations";
 import type { CadDocument, Feature, Parameter } from "../document/types";
@@ -27,7 +28,12 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /** "Largeur", or "Déplacement Y" for the second coordinate of a vector. */
-export function fieldLabel(path: string): string {
+export function fieldLabel(path: string, feature?: Feature): string {
+  if (path.startsWith(DIMENSION_PATH)) {
+    const id = path.slice(DIMENSION_PATH.length);
+    const c = feature?.type === "sketch" ? feature.constraints.find((k) => k.id === id) : undefined;
+    return c && "value" in c ? (c.label ?? `${CONSTRAINT_LABELS[c.kind] ?? c.kind} ${c.id}`) : `Cote ${id}`;
+  }
   const [key, index] = path.split(".") as [string, string | undefined];
   return `${FIELD_LABELS[key] ?? key}${index === undefined ? "" : ` ${"XYZ"[Number(index)]}`}`;
 }
@@ -136,13 +142,13 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
 
   const linkSection = (values: Record<string, number>): HTMLElement[] => {
     const doc = editor.doc;
-    const candidates = doc.features.filter((f) => f.type !== "sketch" && numericFields(f).length > 0);
+    const candidates = doc.features.filter((f) => numericFields(f).length > 0);
     const links = doc.features.flatMap((f) => Object.entries(f.expressions ?? {}).map(([path, text]) => ({ f, path, text })));
     const feature = candidates.find((f) => f.id === draft.feature) ?? candidates[0];
     const fields = feature ? numericFields(feature) : [];
     const path = fields.find((x) => x.path === draft.path)?.path ?? fields[0]?.path ?? "";
     const rows = links.map(({ f, path: p, text }) => {
-      const drop = el("button", { type: "button", class: `${BUTTON} w-8`, "aria-label": `Délier ${f.name} ${fieldLabel(p)}` }, "✕");
+      const drop = el("button", { type: "button", class: `${BUTTON} w-8`, "aria-label": `Délier ${f.name} ${fieldLabel(p, f)}` }, "✕");
       drop.addEventListener("click", () => void editor.change(updateFeature(doc, f.id, (x) => unlink(x, p))));
       let shown = "";
       try {
@@ -150,7 +156,7 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
       } catch {
         shown = " (erreur)";
       }
-      return el("div", { class: "grid grid-cols-[1fr_auto] items-center gap-1.5" }, el("span", { class: "break-words" }, `${f.name} · ${fieldLabel(p)} : `, el("span", { class: "font-mono" }, text), shown), drop);
+      return el("div", { class: "grid grid-cols-[1fr_auto] items-center gap-1.5" }, el("span", { class: "break-words" }, `${f.name} · ${fieldLabel(p, f)} : `, el("span", { class: "font-mono" }, text), shown), drop);
     });
     if (!feature) return [el("p", { class: "text-gray-500" }, "Aucune fonction avec des cotes à lier.")];
     const pick = el("select", { class: `${INPUT} w-full`, "aria-label": "Fonction à lier" }, ...candidates.map((f) => el("option", { value: f.id, selected: f.id === feature.id }, f.name)));
@@ -159,7 +165,7 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
       draft.path = "";
       render();
     });
-    const field = el("select", { class: `${INPUT} w-full`, "aria-label": "Cote à lier" }, ...fields.map((x) => el("option", { value: x.path, selected: x.path === path }, `${fieldLabel(x.path)} (${Number(x.value.toFixed(3))})`)));
+    const field = el("select", { class: `${INPUT} w-full`, "aria-label": "Cote à lier" }, ...fields.map((x) => el("option", { value: x.path, selected: x.path === path }, `${fieldLabel(x.path, feature)} (${Number(x.value.toFixed(3))})`)));
     field.addEventListener("change", () => {
       draft.path = field.value;
     });

@@ -72,7 +72,8 @@ export function sketchSections(
   const dimensionList = dimensions.length
     ? dimensions.map((d) =>
         numberField({
-          label: dimensionLabel(d),
+          // A dimension a parameter drives says so (document/expressions.ts).
+          label: feature.expressions?.[`cote:${d.id}`] ? `${dimensionLabel(d)} = ${feature.expressions[`cote:${d.id}`]}` : dimensionLabel(d),
           value: d.value,
           unit: d.kind === "angle" ? "deg" : unit,
           signed: d.kind === "angle" || d.kind === "distanceX" || d.kind === "distanceY",

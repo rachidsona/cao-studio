@@ -1724,7 +1724,8 @@ opération existante.
     **liens** entre une cote d'une fonction (largeur du caisson, déplacement, distance…) et une formule
     (`largeur - 2 * ep`). Changer un paramètre réécrit toutes les cotes liées, en une seule annulation. Formules :
     `+ − * / ^ ( )`, `pi`, `min(a; b)`, `max`, `abs`, `round`, `floor`, `ceil`, `sqrt` (analyseur sûr, sans `eval`) ;
-    cycles et noms inconnus signalés.
+    cycles et noms inconnus signalés. Les **cotes d'une esquisse** se lient aussi (chemin `cote:<id>`) : l'esquisse
+    est résolue à nouveau et ses traits suivent ; le panneau de l'esquisse montre la formule à côté de la cote.
   - *Configurations* (dans le panneau Paramètres) : des variantes nommées du meuble (« Petit 600 », « Grand 900 »),
     chacune un jeu de valeurs des paramètres. Un clic applique la variante (les formules et les cotes liées suivent,
     en une annulation) ; la variante active est en surbrillance ; ↻ la remplace par les valeurs du moment.

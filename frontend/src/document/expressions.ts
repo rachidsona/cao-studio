@@ -8,7 +8,9 @@
  * names, + - * / ^, parentheses, pi and min, max, abs, round, floor, ceil,
  * sqrt with arguments separated by « ; ».
  */
-import type { CadDocument, Feature, Parameter } from "./types";
+import { solveSketch } from "../constraints/solver";
+import { isDimension, type SketchConstraint } from "./sketch";
+import type { CadDocument, Feature, Parameter, SketchFeature } from "./types";
 
 export class ExpressionError extends Error {}
 
@@ -166,11 +168,28 @@ const INTEGER_PATHS = new Set(["shelves", "count"]);
 const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 export const drivablePath = (path: string) => path.split(".").every((k) => k !== "" && !FORBIDDEN_KEYS.has(k));
 
+/** A sketch's dimension driven by a formula: « cote:<id of the dimension> ». */
+export const DIMENSION_PATH = "cote:";
+
+/** The driving dimension of a sketch a path names. */
+function dimensionAt(feature: Feature, path: string): (SketchConstraint & { value: number }) | undefined {
+  if (feature.type !== "sketch" || !path.startsWith(DIMENSION_PATH)) return undefined;
+  const id = path.slice(DIMENSION_PATH.length);
+  return feature.constraints.find((c): c is SketchConstraint & { value: number } => c.id === id && isDimension(c));
+}
+
 function getAt(feature: Feature, path: string): unknown {
+  if (path.startsWith(DIMENSION_PATH)) return dimensionAt(feature, path)?.value;
   return path.split(".").reduce<unknown>((o, k) => (o !== null && typeof o === "object" && Object.hasOwn(o, k) ? (o as Record<string, unknown>)[k] : undefined), feature);
 }
 
 function setAt<T extends Feature>(feature: T, path: string, value: number): T {
+  if (path.startsWith(DIMENSION_PATH)) {
+    const dim = dimensionAt(feature, path);
+    if (!dim) throw new ExpressionError("Cette cote n'est plus dans l'esquisse.");
+    const sketch = feature as unknown as SketchFeature;
+    return { ...sketch, constraints: sketch.constraints.map((c) => (c.id === dim.id ? ({ ...c, value } as SketchConstraint) : c)) } as unknown as T;
+  }
   const copy = structuredClone(feature) as unknown as Record<string, unknown>;
   const keys = path.split(".");
   let node = copy;
@@ -186,6 +205,11 @@ function setAt<T extends Feature>(feature: T, path: string, value: number): T {
 /** The numbers of a feature a formula may drive: top-level numbers and the three coordinates of vectors ("translate.0"). */
 export function numericFields(feature: Feature): { path: string; value: number }[] {
   const out: { path: string; value: number }[] = [];
+  // A sketch: its driving dimensions.
+  if (feature.type === "sketch") {
+    for (const c of feature.constraints) if (isDimension(c) && c.driving !== false) out.push({ path: `${DIMENSION_PATH}${c.id}`, value: c.value });
+    return out;
+  }
   for (const [key, v] of Object.entries(feature)) {
     if (typeof v === "number") out.push({ path: key, value: v });
     else if (Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === "number")) v.forEach((x, k) => out.push({ path: `${key}.${k}`, value: x as number }));
@@ -227,6 +251,16 @@ export function applyExpressions(doc: CadDocument): { doc: CadDocument; errors: 
         }
       } catch (error) {
         errors.push({ featureId: feature.id, path, message: error instanceof ExpressionError ? error.message : String(error) });
+      }
+    }
+    // A sketch whose dimensions changed: solved again, its points where the dimensions put them.
+    if (next !== feature && next.type === "sketch") {
+      try {
+        const solved = solveSketch(next);
+        if (solved.state === "conflicting" || solved.state === "failed") errors.push({ featureId: feature.id, path: Object.keys(links)[0] ?? "", message: "L'esquisse ne peut pas prendre ces cotes : contraintes en conflit." });
+        else next = { ...next, points: solved.geometry.points, curves: solved.geometry.curves };
+      } catch {
+        // The solver is not loaded: the build solves the sketch.
       }
     }
     return next;

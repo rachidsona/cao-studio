@@ -200,7 +200,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Changez ensuite la valeur du paramètre : toutes les cotes liées suivent.",
           "Dans « Configurations », nommez les valeurs actuelles et cliquez « Enregistrer » pour retrouver cette variante d'un clic.",
         ],
-        tip: "Tout est en millimètres (1 cm = 10). Une formule fausse est refusée et rien ne change. Supprimer un paramètre utilisé demande confirmation.",
+        tip: "Tout est en millimètres (1 cm = 10). Les cotes d'une esquisse se lient aussi : choisissez l'esquisse dans « Fonction à lier », le dessin suit. Une formule fausse est refusée et rien ne change. Supprimer un paramètre utilisé demande confirmation.",
       },
     ],
   },
