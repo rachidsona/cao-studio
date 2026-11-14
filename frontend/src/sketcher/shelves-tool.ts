@@ -437,7 +437,7 @@ export class ShelvesTool {
     this.recompute();
   }
 
-  /** OK on a division being changed: its step takes the new values, and the partition is made again from its steps. */
+  /** OK on a division being changed: its step takes the new values, the partition is made again from its steps; the tool stays on it. */
   private confirmEdit(): void {
     const rec = this.editing;
     if (!rec || !isShelves(rec)) return;
@@ -449,7 +449,8 @@ export class ShelvesTool {
     const groups = extrusionGroups(g.offsets ?? [], rebuilt);
     const n = this.input.count;
     if (!this.host.apply(rebuilt.geometry, `${rec.name} : ${n} ${this.words.one}${n > 1 ? "s" : ""}${rebuilt.dropped.length ? ` — ${rebuilt.problems.join(" ")}` : ""}.`, groups.length ? { groups } : undefined)) return;
-    this.cancel();
+    // The tool stays on the division changed, to set it again; « Terminer » closes.
+    this.recompute();
   }
 
   /** Échap or « Terminer ». */

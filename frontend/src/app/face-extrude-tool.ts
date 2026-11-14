@@ -83,6 +83,13 @@ export class FaceExtrudeTool extends PanelTool {
 
   /** Describes the picked faces (kernel references), then shows the arrow on the first one. */
   async open(picks: FacePick[]): Promise<void> {
+    await this.take(picks);
+    this.placeArrow();
+    this.start();
+  }
+
+  /** The faces to pull (those of the body of the first one): read from the kernel. */
+  private async take(picks: FacePick[]): Promise<void> {
     this.reference.capture();
     const [first] = picks;
     if (!this.editing && first) {
@@ -97,8 +104,6 @@ export class FaceExtrudeTool extends PanelTool {
         this.ctx.notify(error instanceof Error ? error.message : String(error), "error");
       }
     }
-    this.placeArrow();
-    this.start();
   }
 
   /** The faces along an edge (planar ones, the smaller first): the first is pulled, the other one a choice away. */
@@ -150,7 +155,17 @@ export class FaceExtrudeTool extends PanelTool {
   /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
   protected override click(event: PointerEvent): void {
     const face = this.faces[0];
-    if (!face) return;
+    // No face yet (the tool afresh after « OK »): the click takes the face to pull.
+    if (!face) {
+      const pick = this.editing ? null : this.ctx.viewport.pickFace(event, (id) => id === this.id || id.startsWith(`${this.id}#`));
+      if (!pick) return;
+      void this.take([pick]).then(() => {
+        this.placeArrow();
+        this.render();
+        this.schedulePreview();
+      });
+      return;
+    }
     // The faces and edges of the tool's own preview are not references.
     const reference = this.reference.find(event, (id) => id === this.id || id.startsWith(`${this.id}#`));
     if (!reference) return;
@@ -161,7 +176,7 @@ export class FaceExtrudeTool extends PanelTool {
   }
 
   protected feature(): ExtrudeFeature | string {
-    if (!this.target || this.faces.length === 0) return "Sélectionnez une ou plusieurs faces planes du corps, puis Extrusion.";
+    if (!this.target || this.faces.length === 0) return "Cliquez une face plane d'un corps à tirer ou pousser.";
     return {
       id: this.id,
       type: "extrude",

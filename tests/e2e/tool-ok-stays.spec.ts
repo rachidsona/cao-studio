@@ -83,3 +83,35 @@ test("Extrusion : OK (ou Entrée) garde l'extrusion, l'outil reste pour la suiva
   expect(kept[1]).toBe(20);
   expect(errors).toEqual([]);
 });
+
+test("Extrusion de faces : après OK, l'outil prend d'un clic la face suivante", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-ok-faces");
+  await expect(page.locator('[data-ref="status-recompute"]')).toContainText("Recalcul", { timeout: 60_000 });
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  const at = (x: number, y: number) => [box.x + box.width * x, box.y + box.height * y] as const;
+  await click(page, '[data-select-filter="face"]');
+  await page.mouse.click(...at(0.5, 0.5));
+  await expect(page.locator('[data-ref="status-selection"]')).toHaveText("0 arête(s), 1 face(s) sélectionnée(s)");
+  await click(page, '[data-action="extrude"]');
+  const pull = page.getByRole("dialog", { name: "Extrusion de faces" });
+  await expect(pull).toContainText("1 face(s)");
+  const distance = pull.getByRole("textbox", { name: "Distance" });
+  await distance.fill("1");
+  await page.waitForTimeout(1500);
+  await pull.getByRole("button", { name: "OK", exact: true }).click();
+  // Afresh: no face yet, the click on the plate takes one.
+  await expect(pull).toContainText("Cliquez une face plane d'un corps à tirer ou pousser.");
+  await page.mouse.click(...at(0.5, 0.5));
+  await expect(pull).toContainText("1 face(s)");
+  await page.waitForTimeout(1500);
+  await pull.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(pull).toHaveCount(0);
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  expect((project.document.features as { type: string; faces?: unknown[] }[]).filter((f) => f.type === "extrude" && f.faces)).toHaveLength(2);
+  expect(errors).toEqual([]);
+});

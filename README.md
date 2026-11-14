@@ -681,9 +681,11 @@ opération existante.
   la suivante** : le même outil, à neuf, chaque opération son étape d'historique (`finish` et `again` de
   `app/panel-tool.ts`, `again` du contexte dans `app/tool-launcher.ts`). Ce que l'outil remis à neuf propose aussitôt
   (le caisson suivant, à côté du dernier) n'est qu'une proposition : rien n'est enregistré tant qu'on n'a rien réglé
-  ni cliqué (`rest`, `touched`), ou redit OK. **Seul « Terminer »** (la croix ✕, Échap) ferme l'outil, en gardant ce
-  qui est fait (un outil qui attend OK, comme Combiner, ne garde alors rien de plus). Une opération reprise depuis
-  l'Historique garde son outil ouvert après OK. Combiner et Prolonger élément ont « OK » et « Terminer » (au lieu
+  ni cliqué (`rest`, `touched`), ou redit OK. Un outil ouvert sur une sélection (Extrusion de faces, Tirer une face,
+  Déplacer ce trait) revient sans elle : un clic dans la vue prend la face ou le trait suivant. **Seul « Terminer »**
+  (la croix ✕, Échap) ferme l'outil, en gardant ce qui est fait (un outil qui attend OK, comme Combiner, ne garde alors rien de plus). Une opération reprise depuis
+  l'Historique garde son outil ouvert après OK, Étagères, Cloisons et équipements de niche compris (l'outil reste
+  sur elle pour la régler encore). Combiner et Prolonger élément ont « OK » et « Terminer » (au lieu
   d'« Annuler ») et restent ouverts de même ; la Répartition, le Module, la hauteur de Niche et le Réseau d'esquisse
   ont les deux boutons (OK enregistre tout de suite, l'outil reste), comme l'**Extrusion** (après OK, elle attend un
   nouveau profil ; une extrusion reprise reste ouverte sur elle) et le **Déplacer / Étirer d'esquisse** (la sélection

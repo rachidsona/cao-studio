@@ -332,7 +332,7 @@ export class NicheTool {
 
   // ---- end --------------------------------------------------------------------------
 
-  /** OK: one feature per niche chosen (or the one changed), as one undo step; the tool stays for other niches. */
+  /** OK: one feature per niche chosen (or the one changed), as one undo step; the tool stays (for other niches, or on the one changed). */
   confirm(): void {
     if (this.done) return;
     const problem = this.checked().find((c) => c.problem)?.problem;
@@ -341,7 +341,8 @@ export class NicheTool {
     if (this.editing) {
       const niche = this.niches[0];
       if (!niche || !this.host.apply([this.feature(niche, this.editing.id, this.editing.name)], `${this.editing.name} : modification faite.`)) return;
-      return this.cancel();
+      // The tool stays on it, to set it again; « Terminer » closes.
+      return this.recompute();
     }
     let doc = this.host.doc();
     const used = doc.features.map((f) => new RegExp(`^${title} (\\d+)$`).exec(f.name)?.[1]).filter((n): n is string => n !== undefined).map(Number);

@@ -44,6 +44,10 @@ test("Module posé : une étagère sélectionnée mène à ses hauteurs, 40 cm e
   // The dimensions in the view already say it, as the orange preview does.
   await expect(page.locator(".cad-plan-dim").filter({ hasText: /^40$/ }).first()).toBeVisible();
   await shelves.getByRole("button", { name: "OK", exact: true }).click();
+  // Kept, and the tool stays on the shelves changed (to set them again); « Terminer » closes it.
+  await expect(page.getByText(/^Étagères 2 : /).first()).toBeVisible();
+  await expect(shelves).toContainText("Modifier : Étagères 2");
+  await shelves.getByRole("button", { name: "Terminer", exact: true }).click();
   await expect(shelves).toHaveCount(0);
   await expect(tree.getByText("Tiroirs 1", { exact: true }).first()).toBeVisible();
   await expect(tree.getByText("Étagère 5", { exact: true }).first()).toBeVisible();

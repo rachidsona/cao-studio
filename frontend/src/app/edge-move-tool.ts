@@ -23,8 +23,8 @@ const add = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 export class EdgeMoveTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
-  private readonly target: string | undefined;
-  private readonly ends: [Vec3, Vec3] | null;
+  private target: string | undefined;
+  private ends: [Vec3, Vec3] | null;
   private shift: Vec3;
   /** Stuck on a face: the plane each end goes to (along its normal), instead of one shift for both. */
   private onto: { point: Vec3; normal: Vec3 } | null = null;
@@ -83,7 +83,7 @@ export class EdgeMoveTool extends PanelTool {
   }
 
   protected feature(): ModifierFeature | string {
-    if (!this.target || !this.ends) return "Sélectionnez un trait (une arête) d'un corps, puis « Déplacer ce trait ».";
+    if (!this.target || !this.ends) return "Cliquez un trait (une arête) d'un corps à déplacer.";
     const moved = this.moved()!;
     const far = (i: number) => Math.hypot(...[0, 1, 2].map((k) => moved[i]![k]! - this.ends![i]![k]!));
     if (far(0) < 1e-6 && far(1) < 1e-6) return this.onto ? "Le trait est déjà sur cette face." : "Tirez une flèche, tapez le déplacement, ou cliquez un coin ou une face où amener le trait.";
@@ -145,9 +145,26 @@ export class EdgeMoveTool extends PanelTool {
     return super.up(event, isClick);
   }
 
+  /** No edge yet (the tool afresh after « OK »): the click takes the edge to move, its two ends. */
+  private takeEdge(event: PointerEvent): void {
+    if (this.editing) return;
+    const edge = this.ctx.viewport.pickEdge(event);
+    const mesh = edge ? this.ctx.viewport.bodyMesh(edge.bodyId) : undefined;
+    const group = edge && mesh ? mesh.edgeGroups[edge.edgeIndex] : undefined;
+    if (!edge || !mesh || !group || group.count <= 0) return;
+    const at = (i: number): Vec3 => [mesh.edges[i * 3]!, mesh.edges[i * 3 + 1]!, mesh.edges[i * 3 + 2]!];
+    this.target = edge.bodyId;
+    this.ends = [at(group.start), at(group.start + group.count - 1)];
+    this.shift = [0, 0, 0];
+    this.onto = null;
+    this.reference.capture();
+    this.render();
+    this.schedulePreview();
+  }
+
   /** A click on a corner (or an edge) of a body: the nearer end of the edge goes there; on a flat face: onto it. */
   protected override click(event: PointerEvent): void {
-    if (!this.ends) return;
+    if (!this.ends) return this.takeEdge(event);
     const ref = this.referenceAt(event);
     if (!ref) return;
     if (ref.kind === "face") {

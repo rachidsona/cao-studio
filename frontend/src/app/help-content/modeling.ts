@@ -28,7 +28,7 @@ export const MODELING: HelpFamily[] = [
           "Choisissez l'« Opération » : « Nouveau corps », « Joindre », « Couper » ou « Intersection ». Pour les trois dernières, choisissez la « Cible ».",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
-        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée (« Extrusion de faces »), même sur une étagère d'un coin de dressing isolé : l'étagère reste en vue pendant qu'on règle la distance, la distance tapée reste même quand l'aperçu se termine pendant la frappe, et un nouveau corps tiré d'une face reste avec elle. Si la face ne peut pas être tirée ainsi, le panneau dit pourquoi et rien n'est enregistré. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
+        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée (« Extrusion de faces »), même sur une étagère d'un coin de dressing isolé : l'étagère reste en vue pendant qu'on règle la distance, la distance tapée reste même quand l'aperçu se termine pendant la frappe, et un nouveau corps tiré d'une face reste avec elle. Si la face ne peut pas être tirée ainsi, le panneau dit pourquoi et rien n'est enregistré. Après « OK », l'outil reste : cliquez la face suivante. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
       },
       {
         keys: ["data-action:gable"],
