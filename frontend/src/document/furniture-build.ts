@@ -48,8 +48,11 @@ export function withFurniture(base: CadDocument, ask: FurnitureAsk, place: Vec3,
   const known = new Set(base.features.map((x) => x.id));
   let doc = base;
   for (const piece of layout.pieces) {
-    // The panels' back, the back board behind them.
-    const frame = { origin: at(piece.at[0], piece.at[1] + BACK, piece.at[2]), xDir: [u[0], u[1], 0] as Vec3, normal: [f[0], f[1], 0] as Vec3 };
+    // The panels' back, the back board behind them; one facing the back turned round, its left at the right.
+    const depth = piece.spec.depth + BACK;
+    const frame = piece.backward
+      ? { origin: at(piece.at[0] + piece.width, piece.at[1] + depth - BACK, piece.at[2]), xDir: [-u[0], -u[1], 0] as Vec3, normal: [-f[0], -f[1], 0] as Vec3 }
+      : { origin: at(piece.at[0], piece.at[1] + BACK, piece.at[2]), xDir: [u[0], u[1], 0] as Vec3, normal: [f[0], f[1], 0] as Vec3 };
     const made = withCaissonPlaced(doc, { ...piece.spec, carcass: material, facing: material }, { frame, width: piece.width, height: piece.height, name: layout.pieces.length > 1 || layout.boards.length ? `${name} — ${piece.name}` : name });
     if (typeof made === "string") return `${piece.name} : ${made}`;
     doc = made.doc;

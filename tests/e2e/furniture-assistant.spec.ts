@@ -137,3 +137,49 @@ test("un placard sous escalier : caissons sous la pente et habillage en biais, s
   await shot(page, "sous-escalier");
   expect(errors).toEqual([]);
 });
+
+test("un îlot de dressing au milieu de la Pièce : le passage trop étroit est dit, puis posé à sa place", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-ilot-dressing");
+  type Record = { name: string; corner: number[]; along: number[] };
+  const furniture = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { furniture?: Record[] } }).document.furniture ?? [], api);
+  };
+  const status = page.locator('[data-ref="status-recompute"]');
+  // The Pièce as it comes: 3 m × 2,5 m, from (0, 0) along +X, then along −Y.
+  await click(page, '[data-action="room"]');
+  const room = page.getByRole("dialog", { name: "Pièce" });
+  await expect(room).toBeVisible();
+  await page.waitForTimeout(1500);
+  await room.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+
+  await click(page, '[data-workshop="furniture"]');
+  const tool = page.getByRole("dialog", { name: "Assistant meuble" });
+  await tool.getByRole("combobox", { name: "Meuble" }).selectOption("island");
+  await expect(tool.getByRole("combobox", { name: "Où le poser" })).toHaveValue(/^mid:/);
+  // 2,40 m wide in a 3 m room: 30 cm each side, said before it is set.
+  const width = tool.getByRole("textbox", { name: "Largeur" });
+  await width.fill("240");
+  await width.press("Enter");
+  await expect(tool.locator("[data-furniture-passage]")).toContainText("30 cm à gauche");
+  await width.fill("120");
+  await width.press("Enter");
+  await expect(tool.locator("[data-furniture-passage]")).toHaveCount(0);
+  await tool.getByRole("combobox", { name: "Des deux côtés" }).selectOption("drawers-shelves");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("« Îlot de dressing 1 » posé")).toBeVisible();
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  // Centred: 1,20 m × 90 cm in the middle of the room, its back left corner at (900, −800).
+  await expect.poll(furniture, { timeout: 30_000 }).toEqual([expect.objectContaining({ name: "Îlot de dressing 1", corner: [900, -800, 0], along: [1, 0] })]);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  await shot(page, "ilot-dressing");
+  expect(errors).toEqual([]);
+});

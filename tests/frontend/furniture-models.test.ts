@@ -204,3 +204,30 @@ describe("sous-escalier", () => {
     expect(Math.max(...boxes.map((b) => b[1][2]!))).toBeCloseTo(2200, 3);
   });
 });
+
+describe("îlot de dressing", () => {
+  it("deux caissons dos à dos, l'un vers l'avant, l'autre vers l'arrière, sous le dessus ; le passage autour se mesure", async () => {
+    const { passageProblem, passages } = await import("../../frontend/src/document/passage");
+    const l = furnitureLayout(ask("island", { option: "drawers-shelves" }));
+    if (typeof l === "string") throw new Error(l);
+    expect(l.pieces.map((p) => !!p.backward)).toEqual([false, true]);
+    const made = withFurniture(empty(), ask("island"), [0, -900, 0], "melamine-oak");
+    if (typeof made === "string") throw new Error(made);
+    const { ok, failed, boxes } = built(made.doc);
+    expect(failed).toEqual([]);
+    expect(ok).toBe(true);
+    // Its fronts and handles under the top, on both sides.
+    expect(Math.min(...boxes.map((b) => b[0][1]!))).toBeGreaterThanOrEqual(-900 - 1e-6);
+    expect(Math.max(...boxes.map((b) => b[1][1]!))).toBeLessThanOrEqual(0 + 1e-6);
+    const island: [number[], number[]] = [[0, -900, 0], [1200, 0, 900]];
+    const wall: [number[], number[]] = [[-2000, 450, 0], [3000, 550, 2500]];
+    const cabinet: [number[], number[]] = [[1600, -900, 0], [2200, 0, 2000]];
+    expect(passages(island as never, [wall, cabinet] as never)).toEqual([
+      { side: "à gauche (−X)", gap: null },
+      { side: "à droite (+X)", gap: 400 },
+      { side: "devant (−Y)", gap: null },
+      { side: "derrière (+Y)", gap: 450 },
+    ]);
+    expect(passageProblem(island as never, [wall, cabinet] as never, (mm) => `${mm / 10} cm`)).toBe("Passage trop étroit autour : 40 cm à droite (+X), 45 cm derrière (+Y) (60 cm au moins).");
+  });
+});

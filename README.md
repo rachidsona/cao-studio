@@ -2678,6 +2678,11 @@ opération existante.
     hauteur haute, des caissons de hauteurs décroissantes (une case tous les 60 cm environ, 2 cm sous la pente, à
     portes ou à tiroirs), chacun coiffé d'un **habillage en biais** qui suit la pente (un contour dans le plan de la
     façade : une Finitions « … — habillage » ; de travers sur un mur qui n'est pas d'équerre avec les axes, en boîtes).
+    **Îlot de dressing** : deux caissons dos à dos (une case tous les 60 cm environ), l'un tourné vers l'avant, l'autre
+    vers l'arrière, en retrait de 45 mm sous un dessus qui déborde, à tiroirs des deux côtés ou à tiroirs d'un côté et
+    étagères de l'autre ; posé « Au milieu de la pièce » (le centre entre les murs d'une Pièce), le panneau mesure le
+    passage de chacun de ses côtés jusqu'au mur ou au meuble en face et dit ceux de moins de 60 cm
+    (`document/passage.ts`, pur), avant OK et après.
   - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
     qui est déjà là, son dos sur le plan Y = 0, ou **contre un mur d'une Pièce** (« Où le poser », « Depuis le début
     du mur » : il tourne avec le mur, son dos contre sa face ; refusé s'il en dépasse), en une seule annulation, et
