@@ -2436,8 +2436,18 @@ opération existante.
     - Le fileur est alors **recoupé à la demande** : son contour suit le mur (un point par mesure), le panneau donne
       ses trois largeurs (« Fileur droit à recouper : 60 mm en bas, 52 à mi-hauteur, 40 en haut »), et il va au débit
       dans le rectangle de la plus grande. Le bandeau haut suit de même un plafond qui n'est pas de niveau.
+    - Une **joue** contre un mur qui avance un peu est **recoupée** à sa place (en hauteur pour un faux aplomb, au
+      fond pour un hors d'équerre : `outline.plane: "top"`), tant qu'il lui reste 6 mm (`joueCut`, `JOUE_MIN`).
+    - Le **sol** (de combien il monte à gauche, au milieu et à droite) : la plinthe le suit (`riseAt`) ; le **mur du
+      fond** (de combien il avance) : un ventre qui touche le meuble est signalé.
     - Un mur qui avance plus que le jour, ou qui se resserre au fond, est **signalé sur fond orange** avec ce qu'il
-      manque (« le meuble ne rentre pas, il manque 15 mm ») ; de même un plafond trop bas. Le fileur n'est pas fait.
+      manque (« le meuble ne rentre pas, il manque 15 mm ») ; de même un plafond trop bas. Le fileur n'est pas fait
+      (celui fait avant part aussi) ; ce qui manque est gardé avec l'opération (`TrimFeature.issues`) et repris en
+      erreur par **Contrôle avant fabrication**.
+    - Le **faux aplomb se relève aussi dans la Pièce** (« Murs pas d'aplomb » : de combien chaque mur avance à
+      mi-hauteur et en haut, `RoomWall.plumb`) : le mur penche dans la vue (un coin ajouté ou ôté le long de sa face,
+      `leanWedges`), le Contrôle signale le meuble qu'il heurte, et les Finitions de tout meuble contre lui s'y
+      recoupent sans relevé à elles (`wallLean`, `FinishWall`).
     - Le calcul est dans `features/wall-survey.ts` (pur) ; une planche recoupée garde son contour dans
       `TrimFeature.parts[].outline`, que le noyau pousse de l'épaisseur de la planche (`features/trim.ts`).
   - Pieds réglables (Ø30) sous le dessous relevé d'un socle, de la hauteur du socle : près de chaque angle, à

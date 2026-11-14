@@ -14,6 +14,7 @@ type Part = TrimFeature["parts"][number];
 function scribed(p: Part & { outline: NonNullable<Part["outline"]> }, lo: number[], hi: number[], name: string): Shape3D {
   const { axis, points } = p.outline;
   if (points.length < 3) throw new GeometryError(`${name} : le contour de « ${p.name} » n'a pas trois points.`);
+  if (p.outline.plane === "top") return checked(flat(axis, points, lo, hi), p.name, name);
   const depth = 1 - axis;
   // The plane's own Y is up: its normal is across × up (−Y across X, +X across Y), and the board is pushed along it.
   const origin: [number, number, number] = [0, 0, 0];
@@ -22,16 +23,30 @@ function scribed(p: Part & { outline: NonNullable<Part["outline"]> }, lo: number
   const normal: [number, number, number] = axis === 0 ? [0, -1, 0] : [1, 0, 0];
   let d = draw(points[0]!);
   for (const q of points.slice(1)) d = d.lineTo(q);
-  const shape = d.close().sketchOnPlane(new Plane(origin, across, normal)).extrude(hi[depth]! - lo[depth]!) as Shape3D;
+  return checked(d.close().sketchOnPlane(new Plane(origin, across, normal)).extrude(hi[depth]! - lo[depth]!) as Shape3D, p.name, name);
+}
+
+/** The outline in the plane of the floor, [across, depth] (an end panel cut at its back), pushed up over the box's height. */
+function flat(axis: 0 | 1, points: [number, number][], lo: number[], hi: number[]): Shape3D {
+  // The plane's own Y is up × across: +Y across X, −X across Y.
+  const plane = new Plane([0, 0, lo[2]!], axis === 0 ? [1, 0, 0] : [0, 1, 0], [0, 0, 1]);
+  const at = ([u, v]: [number, number]): [number, number] => [u, axis === 0 ? v : -v];
+  let d = draw(at(points[0]!));
+  for (const q of points.slice(1)) d = d.lineTo(at(q));
+  return d.close().sketchOnPlane(plane).extrude(hi[2]! - lo[2]!) as Shape3D;
+}
+
+function checked(shape: Shape3D, part: string, name: string): Shape3D {
   if (!isShapeValid(shape)) {
     shape.delete();
-    throw new GeometryError(`${name} : le contour de « ${p.name} » est invalide.`);
+    throw new GeometryError(`${name} : le contour de « ${part} » est invalide.`);
   }
   return shape;
 }
 
 export function buildTrim(feature: TrimFeature): SolidsOutput {
-  if (!feature.parts.length) throw new GeometryError(`${feature.name} : aucune planche de finition.`);
+  // No board (the furniture does not go in, by the survey): nothing to show, the check says why.
+  if (!feature.parts.length && !feature.issues?.length) throw new GeometryError(`${feature.name} : aucune planche de finition.`);
   const shapes: Shape3D[] = [];
   try {
     for (const p of feature.parts) {

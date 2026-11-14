@@ -4,14 +4,16 @@
  * la pièce (features/finish-parts.ts). Une opération « Finitions » dont chaque planche est un corps, de la matière du
  * meuble ; l'aperçu est en direct, OK la met dans l'historique, et elle se rouvre pour être retouchée. « Relevé de
  * chantier » prend ce qu'on a mesuré sur place (features/wall-survey.ts) : de combien chaque mur avance en bas, à
- * mi-hauteur et en haut, et au fond ; de combien le plafond descend à gauche, au milieu et à droite. Le fileur et le
- * bandeau sont alors recoupés à la demande, et le panneau dit quand le meuble ne rentre pas.
+ * mi-hauteur et en haut, et au fond ; de combien le plafond descend, le sol monte et le mur du fond avance, à gauche, au
+ * milieu et à droite. Le fileur, le bandeau, la joue contre un mur et la plinthe sont alors recoupés à la demande ; ce
+ * qui ne rentre pas est dit dans le panneau, gardé avec l'opération et repris par « Contrôle avant fabrication ».
  */
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import { isHardwareBody } from "../document/hardware";
 import { uniqueId, uniqueName } from "../document/operations";
-import { featureOfBody, type CadDocument, type Feature, type TrimFeature } from "../document/types";
-import { FINISH_DEFAULTS, finishParts, type Box, type FinishOptions } from "../features/finish-parts";
+import { featureOfBody, type CadDocument, type Feature, type RoomFeature, type TrimFeature } from "../document/types";
+import { FINISH_DEFAULTS, finishParts, type Box, type FinishOptions, type FinishWall } from "../features/finish-parts";
+import { wallFrames, wallLean } from "../features/room-plan";
 import { NO_CEILING, NO_WALL, type CeilingSurvey, type WallSurvey } from "../features/wall-survey";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -46,16 +48,36 @@ export class FinishTool extends PanelTool {
     return b ? [[...b[0]], [...b[1]]] : null;
   }
 
+  /**
+   * A wall of a Pièce as drawn — its box without what it leans — and how far it comes in at each height (its survey);
+   * null: not a wall of a Pièce (its box as it shows).
+   */
+  private wallOf(doc: CadDocument, id: string): FinishWall | null {
+    const room = doc.features.find((f): f is RoomFeature => f.type === "room" && f.id === featureOfBody(id));
+    const i = Number(id.slice(id.indexOf("#") + 1));
+    const frame = room ? wallFrames(room)[i] : undefined;
+    if (!room || !frame) return null;
+    const xs = frame.outline.map((p) => p[0]);
+    const ys = frame.outline.map((p) => p[1]);
+    const box: Box = [[Math.min(...xs), Math.min(...ys), 0], [Math.max(...xs), Math.max(...ys), room.height]];
+    const wall = room.walls[i]!;
+    return { box, ...(wall.plumb ? { lean: (z: number) => wallLean(wall, room.height, z) } : {}) };
+  }
+
   protected feature(): Feature | string {
     const doc = this.ctx.doc();
     const boxes = (ids: string[]) => ids.map((id) => this.boxOf(id)).filter((b): b is Box => b !== null);
     const furniture = boxes(this.source);
-    const walls = boxes(this.ctx.viewport.displayedBodies.filter((id) => bodyInfo(doc, id).room && !bodyInfo(doc, id).light));
+    const walls = this.ctx.viewport.displayedBodies.filter((id) => bodyInfo(doc, id).room && !bodyInfo(doc, id).light).flatMap((id): (Box | FinishWall)[] => {
+      const wall = this.wallOf(doc, id);
+      return wall ? [wall] : boxes([id]);
+    });
     if (!furniture.length) return "Aucun meuble affiché à habiller : sélectionnez ses corps.";
-    const { parts, notes } = finishParts(furniture, walls, this.o);
+    const { parts, notes, problems } = finishParts(furniture, walls, this.o);
     this.notes = notes;
-    if (!parts.length) return notes[0] ?? "Rien à ajouter avec ces réglages.";
-    return { id: this.id, type: "trim", name: this.name, parts, source: this.source, settings: structuredClone(this.o) } satisfies TrimFeature;
+    // Not a board, but the furniture does not go in: kept all the same (the boards made before go), for the check.
+    if (!parts.length && !problems.length) return notes[0] ?? "Rien à ajouter avec ces réglages.";
+    return { id: this.id, type: "trim", name: this.name, parts, source: this.source, settings: structuredClone(this.o), ...(problems.length ? { issues: problems } : {}) } satisfies TrimFeature;
   }
 
   /** The boards are of the furniture's material (its first body that has one), unless given one already. */
@@ -83,15 +105,19 @@ export class FinishTool extends PanelTool {
       const row = (label: string, key: keyof WallSurvey) => this.numberRow(`${name} — ${label}`, w[key], unit, (v) => this.set((x) => (x.survey = { ...x.survey, [side]: { ...NO_WALL, ...x.survey?.[side], [key]: v } })), true);
       return [row("en bas", "low"), row("à mi-hauteur", "mid"), row("en haut", "high"), row("au fond (hors d'équerre)", "back")];
     };
-    const c = s.ceiling ?? NO_CEILING;
-    const top = (label: string, key: keyof CeilingSurvey) => this.numberRow(`Plafond — ${label}`, c[key], unit, (v) => this.set((x) => (x.survey = { ...x.survey, ceiling: { ...NO_CEILING, ...x.survey?.ceiling, [key]: v } })), true);
+    /** Three measures across the furniture: the ceiling, the floor, the back wall. */
+    const across = (what: "ceiling" | "floor" | "back", name: string) => {
+      const c = s[what] ?? NO_CEILING;
+      const row = (label: string, key: keyof CeilingSurvey) => this.numberRow(`${name} — ${label}`, c[key], unit, (v) => this.set((x) => (x.survey = { ...x.survey, [what]: { ...NO_CEILING, ...x.survey?.[what], [key]: v } })), true);
+      return [row("à gauche", "left"), row("au milieu", "mid"), row("à droite", "right")];
+    };
     return [
-      this.info("De combien le mur avance vers le meuble, par rapport au mur dessiné (négatif : il s'écarte) ; de combien le plafond descend (négatif : il remonte)."),
+      this.info("De combien chaque mur avance vers le meuble, par rapport au mur dessiné (négatif : il s'écarte) ; de combien le plafond descend et le sol monte (négatif : l'inverse)."),
       ...wall("left", "Mur gauche"),
       ...wall("right", "Mur droit"),
-      top("à gauche", "left"),
-      top("au milieu", "mid"),
-      top("à droite", "right"),
+      ...across("ceiling", "Plafond"),
+      ...across("floor", "Sol (de combien il monte)"),
+      ...across("back", "Mur du fond"),
     ];
   }
 

@@ -70,5 +70,51 @@ test("relevé de chantier : le fileur suit le mur en faux aplomb ; un mur qui av
   await field("Mur droit — en haut").press("Tab");
   await expect(tool.locator("[data-survey-problem]")).toContainText("Mur de droite : il avance trop en haut — le meuble ne rentre pas, il manque 15 mm.");
   await shot(page, "releve-ne-rentre-pas");
+  // The filler made before goes: it would not go in either. What is missing is kept with the Finitions.
+  await expect
+    .poll(async () => {
+      const trim = (await saved()) as { parts?: { name: string }[]; issues?: string[] } | undefined;
+      return { fillers: trim?.parts?.filter((p) => p.name === "Fileur droit").length, issues: trim?.issues };
+    }, { timeout: 30_000 })
+    .toEqual({ fillers: 0, issues: ["Mur de droite : il avance trop en haut — le meuble ne rentre pas, il manque 15 mm."] });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  // The check before making says it too.
+  await click(page, '[data-workshop="check"]');
+  const check = page.getByRole("dialog", { name: "Contrôle avant fabrication" });
+  await expect(check).toContainText("Finitions 1 — Mur de droite : il avance trop en haut — le meuble ne rentre pas, il manque 15 mm.", { timeout: 60_000 });
+  await shot(page, "releve-controle");
+  expect(errors).toEqual([]);
+});
+
+test("faux aplomb relevé dans la Pièce : le mur penche, les Finitions recoupent le fileur sans relevé à elles", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-releve-piece");
+  const features = [{ ...FEATURES[0], walls: [{ length: 3000, angle: 90 }, { length: 2000, angle: 90, plumb: { mid: 8, high: 20 } }] }, FEATURES[1]];
+  await page.evaluate(
+    async ({ url, features }) => {
+      const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+      const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: { features: unknown[] } };
+      const put = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, bodyInfo: { "rm1#0": { room: true }, "rm1#1": { room: true } } }, base_version: now.version, message: "Pièce et caisson" }) });
+      if (!put.ok) throw new Error(`Enregistrement refusé : ${put.status} ${await put.text()}`);
+    },
+    { url: api, features },
+  );
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await page.waitForTimeout(1500);
+  await click(page, '[data-action="trim"]');
+  const tool = page.getByRole("dialog", { name: "Finitions" });
+  await tool.getByRole("checkbox", { name: "Joue gauche" }).uncheck();
+  await tool.getByRole("checkbox", { name: "Joue droite" }).uncheck();
+  // The wall comes in 8 mm at mid-height of the room (1250) and 20 at its top (2500): 6,4 and 15,2 over the caisson.
+  await expect(tool).toContainText("Fileur droit à recouper : 60 mm en bas, 53,6 à mi-hauteur, 44,8 en haut.");
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1000);
+  await shot(page, "piece-faux-aplomb");
   expect(errors).toEqual([]);
 });

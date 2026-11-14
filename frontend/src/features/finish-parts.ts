@@ -5,15 +5,22 @@
  * - le bandeau haut, en façade, jusqu'au plafond quand il y en a un (sinon de la hauteur choisie) ;
  * - la plinthe, en retrait sous la façade, là où le bas du meuble est libre (sous un socle), de la hauteur libre.
  * Avec un relevé de chantier (wall-survey.ts : faux aplomb et hors d'équerre des murs, plafond pas de niveau), le
- * fileur et le bandeau suivent le mur réel — leur contour est à recouper aux largeurs données — et un mur qui avance
- * trop dit que le meuble ne rentre pas, et de combien.
+ * fileur et le bandeau suivent le mur réel — leur contour est à recouper aux largeurs données —, une joue contre un mur
+ * qui avance un peu est recoupée, la plinthe suit le sol ; un mur (de côté ou du fond) qui avance trop dit que le meuble
+ * ne rentre pas, et de combien : ce sont les `problems`, que le contrôle avant fabrication reprend.
  * Les murs sont les corps « pièce » du modèle. La face avant est choisie (−Y par défaut : le meuble regarde vers −Y,
  * comme une Répartition dessinée de face) ; « gauche » et « droite » sont vus de devant.
  */
 import type { Vec3 } from "../document/types";
-import { ACROSS, HEIGHTS, NO_CEILING, NO_WALL, scribe, scribedOutline, widthsText, type Survey } from "./wall-survey";
+import { ACROSS, HEIGHTS, joueCut, NO_CEILING, NO_WALL, riseAt, scribe, scribedOutline, widthsText, type Survey } from "./wall-survey";
 
 export type Box = [Vec3, Vec3];
+
+/** A wall of the room as drawn (its box), and how far its face comes in at a height when it is out of plumb (the Pièce's survey). */
+export interface FinishWall {
+  box: Box;
+  lean?: (z: number) => number;
+}
 
 export interface FinishOptions {
   /** Adjustable feet under the bottom board (when it is raised above the floor). */
@@ -37,9 +44,10 @@ export interface FinishPart {
   hardware?: boolean;
   /**
    * A board cut to follow a wall or the ceiling: its outline in the plane of the front, as [across, up] (`axis`: the
-   * one across); `from` and `to` are the box around it.
+   * one across); `plane` "top": in the plane of the floor, as [across, depth] (an end panel cut at its back). `from` and
+   * `to` are the box around it.
    */
-  outline?: { axis: 0 | 1; points: [number, number][] };
+  outline?: { axis: 0 | 1; points: [number, number][]; plane?: "top" };
 }
 
 /** Feet: Ø30, 50 mm in from the edges of the bottom board, at most 800 mm apart. */
@@ -62,8 +70,10 @@ export function unionBox(boxes: readonly Box[]): Box {
 }
 
 /** The finishing boards of this furniture (its bodies' boxes), with what could not be made and why. */
-export function finishParts(furniture: readonly Box[], walls: readonly Box[], o: FinishOptions): { parts: FinishPart[]; notes: string[] } {
-  if (!furniture.length) return { parts: [], notes: ["Aucun meuble à habiller."] };
+export function finishParts(furniture: readonly Box[], given: readonly (Box | FinishWall)[], o: FinishOptions): { parts: FinishPart[]; notes: string[]; problems: string[] } {
+  if (!furniture.length) return { parts: [], notes: ["Aucun meuble à habiller."], problems: [] };
+  const rooms = given.map((w): FinishWall => (Array.isArray(w) ? { box: w as Box } : (w as FinishWall)));
+  const walls = rooms.map((w) => w.box);
   const dep = o.front.axis;
   const lat = (1 - dep) as 0 | 1;
   const inward = -o.front.sign;
@@ -86,16 +96,52 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
   };
   const parts: FinishPart[] = [];
   const notes: string[] = [];
+  /** What keeps the furniture from going in: said in the panel and in the check before making. */
+  const problems: string[] = [];
+  const problem = (text: string) => (notes.push(text), problems.push(text));
   const add = (name: string, [from, to]: Vec3[]) => parts.push({ name, from: from!, to: to! });
   const faceBoard = span(front, front + inward * t);
+  const back = o.front.sign < 0 ? depth[1] : depth[0];
+  /** The gap from `edge` to the nearest wall on that side, as drawn (null: no wall there), and that wall. */
+  const nearWall = (atMax: boolean, edge: number): { gap: number; wall: FinishWall } | null => {
+    const near = rooms
+      .filter(({ box: w }) => overlaps(range(w, 2), [z0, z1]) && overlaps(range(w, dep), depth, -1))
+      .map((wall) => ({ gap: atMax ? wall.box[0][lat]! - edge : edge - wall.box[1][lat]!, wall }))
+      .filter((g) => g.gap > -0.5)
+      .sort((a, b) => a.gap - b.gap);
+    return near[0] ?? null;
+  };
+  /** What was measured of the wall on a side: by the Finitions, else by the Pièce (a wall drawn out of plumb). */
+  const surveyed = (key: "left" | "right", wall: FinishWall | undefined) => {
+    const lean = wall?.lean;
+    return o.survey?.[key] ?? (lean ? { low: lean(z0), mid: lean((z0 + z1) / 2), high: lean(z1), back: 0 } : undefined);
+  };
+  const mm = (v: number) => String(Math.round(v * 10) / 10).replace(".", ",");
 
-  // End panels, against the sides, the whole depth.
+  // End panels, against the sides, the whole depth; against a wall out of plumb or out of square, cut to follow it.
   const ends = { min: range(m, lat)[0], max: range(m, lat)[1] };
+  /** The sides where an end panel takes the wall: no filler there. */
+  const scribedEnds = new Set<boolean>();
   for (const side of ["gauche", "droite"] as const) {
     if (!o.ends[side === "gauche" ? "left" : "right"]) continue;
     const atMax = side === "droite" ? rightIsMax : !rightIsMax;
     const edge = atMax ? ends.max : ends.min;
-    add(`Joue ${side}`, box(span(edge, edge + (atMax ? t : -t)), depth, [z0, z1 + o.ends.above]));
+    const sign = atMax ? 1 : -1;
+    const name = `Joue ${side}`;
+    const [from, to] = box(span(edge, edge + sign * t), depth, [z0, z1 + o.ends.above]);
+    const near = nearWall(atMax, edge);
+    const s = surveyed(side === "droite" ? "right" : "left", near?.wall);
+    const cut = s && near ? joueCut(scribe(near.gap - t, [s.low, s.mid, s.high], s.back), s.back, t) : null;
+    if (cut && "heights" in cut) {
+      const thick = cut.heights.map((r) => t - r) as [number, number, number];
+      parts.push({ name, from: from!, to: to!, outline: { axis: lat, points: scribedOutline(edge, sign, [z0, (z0 + z1) / 2, z1 + o.ends.above], thick) } });
+      notes.push(`${name} à recouper contre le mur : ${widthsText(thick, HEIGHTS)} d'épaisseur.`);
+    } else if (cut) {
+      const points: [number, number][] = [[edge, front], [edge + sign * t, front], [edge + sign * (t - cut.back), back], [edge, back]];
+      parts.push({ name, from: from!, to: to!, outline: { axis: lat, points, plane: "top" } });
+      notes.push(`${name} à recouper au fond (mur hors d'équerre) : ${mm(t)} mm devant, ${mm(t - cut.back)} au fond.`);
+    } else add(name, [from!, to!]);
+    if (cut) scribedEnds.add(atMax);
     if (atMax) ends.max += t;
     else ends.min -= t;
   }
@@ -105,21 +151,18 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
     for (const side of ["gauche", "droit"] as const) {
       const atMax = side === "droit" ? rightIsMax : !rightIsMax;
       const edge = atMax ? ends.max : ends.min;
-      const gaps = walls
-        .filter((w) => overlaps(range(w, 2), [z0, z1]) && overlaps(range(w, dep), depth, -1))
-        .map((w) => (atMax ? w[0][lat]! - edge : edge - w[1][lat]!))
-        .filter((g) => g > -0.5);
-      if (!gaps.length) continue;
+      const near = scribedEnds.has(atMax) ? null : nearWall(atMax, edge);
+      if (!near) continue;
       const wall = `Mur ${side === "droit" ? "de droite" : "de gauche"}`;
       // The wall as measured: its gap at the bottom, the middle and the top of the furniture, and at its back.
-      const s = o.survey?.[side === "droit" ? "right" : "left"] ?? NO_WALL;
-      const real = scribe(Math.min(...gaps), [s.low, s.mid, s.high], s.back);
+      const s = surveyed(side === "droit" ? "right" : "left", near.wall) ?? NO_WALL;
+      const real = scribe(near.gap, [s.low, s.mid, s.high], s.back);
       if (real.short > 0) {
-        notes.push(`${wall} : il avance trop ${HEIGHTS[real.at]} — le meuble ne rentre pas, il manque ${Math.ceil(real.short)} mm.`);
+        problem(`${wall} : il avance trop ${HEIGHTS[real.at]} — le meuble ne rentre pas, il manque ${Math.ceil(real.short)} mm.`);
         continue;
       }
       if (real.shortBack > 0) {
-        notes.push(`${wall} hors d'équerre : au fond du meuble il manque ${Math.ceil(real.shortBack)} mm — le meuble ne rentre pas.`);
+        problem(`${wall} hors d'équerre : au fond du meuble il manque ${Math.ceil(real.shortBack)} mm — le meuble ne rentre pas.`);
         continue;
       }
       const gap = Math.max(...real.gaps);
@@ -141,7 +184,18 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
   // The ceiling as measured: how far it is above the furniture on the left, in the middle and on the right.
   const c = o.survey?.ceiling ?? NO_CEILING;
   const above = drawn === null ? null : scribe(drawn, [c.left, c.mid, c.right]);
-  if (above && above.short > 0) notes.push(`Plafond : il descend trop ${ACROSS[above.at]} — le meuble ne passe pas en hauteur, il manque ${Math.ceil(above.short)} mm.`);
+  if (above && above.short > 0) problem(`Plafond : il descend trop ${ACROSS[above.at]} — le meuble ne passe pas en hauteur, il manque ${Math.ceil(above.short)} mm.`);
+  // The back wall as measured: a bulge that comes to the furniture's back.
+  const behind = walls
+    .filter((w) => overlaps(range(w, 2), [z0, z1]) && overlaps(range(w, lat), range(m, lat)))
+    .map((w) => (inward > 0 ? w[0][dep]! - back : back - w[1][dep]!))
+    .filter((g) => g > -0.5);
+  const bw = o.survey?.back;
+  if (bw && behind.length) {
+    const real = scribe(Math.min(...behind), rightIsMax ? [bw.left, bw.mid, bw.right] : [bw.right, bw.mid, bw.left]);
+    const at = rightIsMax ? real.at : ((2 - real.at) as 0 | 1 | 2);
+    if (real.short > 0) problem(`Mur du fond : il avance trop ${ACROSS[at]} — le meuble ne rentre pas en profondeur, il manque ${Math.ceil(real.short)} mm.`);
+  }
   const ceiling = above ? (above.short > 0 ? 0 : Math.max(...above.gaps)) : null;
   if (above && above.tapered && above.short === 0 && ceiling! > 0.5 && ceiling! <= o.cornice.max && (o.cornice.on || o.fillers.on)) {
     // Along the top of the furniture, from its left to its right as seen from the front.
@@ -178,7 +232,28 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
       })
       .filter((p) => p.height >= 20);
     if (!pieces.length) notes.push("Le meuble descend jusqu'au sol sur toute sa façade : pas de place pour une plinthe (faites un socle dans la Répartition).");
-    pieces.forEach((p, i) => add(pieces.length > 1 ? `Plinthe ${i + 1}` : "Plinthe", box(p.interval, zone, [z0, z0 + p.height])));
+    // The floor as measured: the plinth's bottom follows it, from the left to the right of the furniture.
+    const f = o.survey?.floor;
+    const [a0, b0] = range(m, lat);
+    const rise = (x: number) => (f ? riseAt(f, a0, b0, rightIsMax ? x : a0 + b0 - x) : 0);
+    pieces.forEach((p, i) => {
+      const name = pieces.length > 1 ? `Plinthe ${i + 1}` : "Plinthe";
+      const [a, b] = p.interval;
+      const top = z0 + p.height;
+      const xs = [a, ...((a0 + b0) / 2 > a && (a0 + b0) / 2 < b ? [(a0 + b0) / 2] : []), b];
+      const low = xs.map((x) => z0 + rise(x));
+      if (!f || low.every((z) => Math.abs(z - z0) < 0.05)) return add(name, box(p.interval, zone, [z0, top]));
+      if (Math.max(...low) > top - 20) return problem(`Sol : il monte trop sous ${name.toLowerCase()} — il ne lui reste pas 20 mm de haut.`);
+      const [from, to] = box(p.interval, zone, [Math.min(...low), top]);
+      const points: [number, number][] = [...xs.map((x, k): [number, number] => [x, low[k]!]), [b, top], [a, top]];
+      parts.push({ name, from: from!, to: to!, outline: { axis: lat, points } });
+      const heights = xs.map((_, k) => `${mm(top - low[k]!)} mm`);
+      notes.push(`${name} à recouper sur le sol : ${(rightIsMax ? heights : heights.reverse()).join(", ")} de haut, de gauche à droite.`);
+    });
+  } else if (o.survey?.floor) {
+    const f = o.survey.floor;
+    const spread = Math.max(f.left, f.mid, f.right) - Math.min(f.left, f.mid, f.right);
+    if (spread > 2) notes.push(`Sol pas de niveau (${mm(spread)} mm d'écart) : calez le meuble, ou mettez une plinthe ou des pieds réglables.`);
   }
   // Adjustable feet under the lowest board above the floor (the bottom of a socle), as high as the room under it.
   if (o.feet?.on) {
@@ -199,5 +274,5 @@ export function finishParts(furniture: readonly Box[], walls: readonly Box[], o:
     }
   }
   if (!parts.length && !notes.length) notes.push("Rien à ajouter avec ces réglages.");
-  return { parts, notes };
+  return { parts, notes, problems };
 }

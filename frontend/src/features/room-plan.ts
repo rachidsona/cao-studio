@@ -4,7 +4,9 @@
  * meuble : fenêtres et portes (des ouvertures dans le mur), prises, retombées de plafond (une poutre ou un soffite le
  * long d'un mur) et rampants (une sous-pente qui descend vers un mur). Le premier mur part de l'origine vers +X, la
  * pièce à sa droite (vers −Y, là où se posent les meubles), les suivants en tournant à droite. Donne les pièces que le
- * noyau construit (des prismes droits) et les heurts d'un meuble avec elles.
+ * noyau construit (des prismes droits) et les heurts d'un meuble avec elles. Un mur en faux aplomb (relevé : de combien
+ * il avance à mi-hauteur et en haut) reçoit un coin le long de sa face, ajouté ou ôté : il penche dans la vue, et les
+ * Finitions en recoupent fileurs et joues (wallLean).
  */
 import type { Vec3 } from "../document/types";
 
@@ -14,6 +16,11 @@ export interface RoomWall {
   length: number;
   /** Angle inside the room at the end of this wall, with the next one (degrees). */
   angle: number;
+  /**
+   * Out of plumb, as measured on site: how far its room face comes into the room (mm) at mid-height and at the top,
+   * from where it stands at the floor (negative: it leans away). The wall is drawn so.
+   */
+  plumb?: { mid: number; high: number };
 }
 
 export type Obstacle =
@@ -97,14 +104,40 @@ export function wallFrames(room: Pick<RoomInput, "walls" | "thickness">): WallFr
 
 const v3 = (p: P2, z = 0): Vec3 => [p[0], p[1], z];
 
-/** The bodies of the room: its walls, then the sockets, drops and slopes; and the openings cut in each wall. */
-export function roomPieces(room: RoomInput): { pieces: RoomPiece[]; openings: { wall: number; prism: Prism }[] } {
+/** How far a wall's room face comes in at height z (mm), between the floor (0), mid-height and the top. */
+export function wallLean(wall: RoomWall, height: number, z: number): number {
+  const p = wall.plumb;
+  if (!p) return 0;
+  const h = Math.max(0, Math.min(height, z));
+  return h <= height / 2 ? (p.mid * h) / (height / 2) : p.mid + ((p.high - p.mid) * (h - height / 2)) / (height / 2);
+}
+
+/**
+ * The wedges a wall out of plumb gets along its room face, in the plane across it (x into the room, y up), pushed along
+ * the wall: what comes into the room is added, what leans away is cut.
+ */
+function leanWedges(f: WallFrame, wall: RoomWall, height: number): { mode: "join" | "cut"; prism: Prism }[] {
+  if (!wall.plumb) return [];
+  const out: { mode: "join" | "cut"; prism: Prism }[] = [];
+  for (const sign of [1, -1] as const) {
+    const [m, h] = [Math.max(0, sign * wall.plumb.mid), Math.max(0, sign * wall.plumb.high)];
+    if (m < 0.05 && h < 0.05) continue;
+    const points: P2[] = [[0, 0], ...(m >= 0.05 ? [[sign * m, height / 2] as P2] : []), ...(h >= 0.05 ? [[sign * h, height] as P2] : []), [0, height]];
+    // As the drops: from the wall's end, pushed back along it (the plane's y is then up).
+    out.push({ mode: sign > 0 ? "join" : "cut", prism: { origin: v3(f.end), xDir: [-f.n[0], -f.n[1], 0], normal: [-f.u[0], -f.u[1], 0], points, length: f.length } });
+  }
+  return out;
+}
+
+/** The bodies of the room: its walls, then the sockets, drops and slopes; the openings cut in each wall, its leans. */
+export function roomPieces(room: RoomInput): { pieces: RoomPiece[]; openings: { wall: number; prism: Prism }[]; leans: { wall: number; mode: "join" | "cut"; prism: Prism }[] } {
   const frames = wallFrames(room);
   const H = room.height;
   const t = room.thickness;
   const up: Vec3 = [0, 0, 1];
   const pieces: RoomPiece[] = frames.map((f, i) => ({ name: `Mur ${WALL_NAMES[i] ?? i + 1}`, kind: "wall", prism: { origin: [0, 0, 0], xDir: [1, 0, 0], normal: up, points: f.outline, length: H } }));
   const openings: { wall: number; prism: Prism }[] = [];
+  const leans = frames.flatMap((f, i) => leanWedges(f, room.walls[i]!, H).map((w) => ({ wall: i, ...w })));
   const count = { socket: 0, beam: 0, slope: 0 };
   for (const o of room.obstacles) {
     const f = frames[o.wall];
@@ -126,7 +159,7 @@ export function roomPieces(room: RoomInput): { pieces: RoomPiece[]; openings: { 
       pieces.push({ name: `${o.kind === "beam" ? "Retombée" : "Rampant"} ${count[o.kind]} (${wallName(o.wall)})`, kind: o.kind, prism: { origin: v3(f.end), xDir: inward, normal: back, points: profile, length: f.length } });
     }
   }
-  return { pieces, openings };
+  return { pieces, openings, leans };
 }
 
 /** The gap between the end of the last wall and the start of the first (a closed survey that does not close). */
@@ -162,10 +195,14 @@ export function roomClashes(room: RoomInput, box: Box): { hits: string[]; hidden
   const [z0, z1] = [box[0][2], box[1][2]];
   const hits: string[] = [];
   const hidden: string[] = [];
-  frames.forEach((f, i) => {
-    if (z1 > 0.5 && z0 < H - 0.5 && overlap2d(f.outline, lo, hi)) hits.push(`le ${wallName(i)}`);
-  });
   const strip = (f: WallFrame, depth: number): P2[] => [f.start, f.end, add(f.end, f.n, -depth), add(f.start, f.n, -depth)];
+  frames.forEach((f, i) => {
+    // Out of plumb: as far into the room as it comes over the furniture's height.
+    const w = room.walls[i]!;
+    const lean = Math.max(0, ...[z0, (z0 + z1) / 2, z1].map((z) => wallLean(w, H, z)));
+    if (z1 > 0.5 && z0 < H - 0.5 && overlap2d(f.outline, lo, hi)) hits.push(`le ${wallName(i)}`);
+    else if (lean > 0.5 && z1 > 0.5 && overlap2d(strip(f, lean), lo, hi)) hits.push(`le ${wallName(i)} (faux aplomb)`);
+  });
   const corners: P2[] = [lo, [hi[0], lo[1]], hi, [lo[0], hi[1]]];
   for (const o of room.obstacles) {
     const f = frames[o.wall];

@@ -72,3 +72,21 @@ describe("relevé de pièce", () => {
     expect(() => parseDocument({ ...doc, features: [{ ...doc.features[0], walls: [{ length: -1, angle: 90 }] }] })).toThrow();
   });
 });
+
+describe("mur en faux aplomb", () => {
+  it("son avancée entre le sol, la mi-hauteur et le haut ; un meuble contre lui le heurte en haut", async () => {
+    const { wallLean } = await import("../../frontend/src/features/room-plan");
+    const wall = { length: 3000, angle: 90, plumb: { mid: 8, high: 20 } };
+    expect(wallLean(wall, 2500, 0)).toBe(0);
+    expect(wallLean(wall, 2500, 625)).toBeCloseTo(4);
+    expect(wallLean(wall, 2500, 1250)).toBeCloseTo(8);
+    expect(wallLean(wall, 2500, 2500)).toBeCloseTo(20);
+    // Wall A along +X at y = 0, the room on −Y: a cabinet 10 mm from it, 2 m high, runs into its top.
+    const leaning: RoomInput = { ...ROOM, walls: ROOM.walls.map((w, i) => (i === 0 ? wall : w)) };
+    expect(roomClashes(leaning, [[500, -600, 0], [1100, -10, 2000]]).hits).toEqual(["le mur A (faux aplomb)"]);
+    expect(roomClashes(ROOM, [[500, -600, 0], [1100, -10, 2000]]).hits).toEqual([]);
+    expect(roomPieces(leaning).leans.map((l) => l.mode)).toEqual(["join"]);
+    expect(() => parseDocument({ ...createReferencePlate(), features: [{ id: "rm1", type: "room", name: "Pièce", ...leaning }] })).not.toThrow();
+    expect(() => parseDocument({ ...createReferencePlate(), features: [{ id: "rm1", type: "room", name: "Pièce", ...ROOM, walls: [{ length: 3000, angle: 90, plumb: { mid: "8" } }] }] })).toThrow(/murs invalides/);
+  });
+});

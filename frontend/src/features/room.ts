@@ -13,11 +13,19 @@ function prismShape(p: Prism): Shape3D {
 
 export function buildRoom(feature: RoomFeature): SolidsOutput {
   if (!feature.walls.length) throw new GeometryError(`${feature.name} : aucun mur.`);
-  const { pieces, openings } = roomPieces(feature);
+  const { pieces, openings, leans } = roomPieces(feature);
   const shapes: Shape3D[] = [];
   try {
     pieces.forEach((piece, i) => {
       let shape = prismShape(piece.prism);
+      // Out of plumb: the wedge along its room face, added or cut, before its openings.
+      for (const lean of leans.filter((x) => piece.kind === "wall" && x.wall === i)) {
+        const tool = prismShape(lean.prism);
+        const made = (lean.mode === "join" ? shape.fuse(tool) : shape.cut(tool)) as Shape3D;
+        shape.delete();
+        tool.delete();
+        shape = made;
+      }
       for (const o of openings.filter((x) => piece.kind === "wall" && x.wall === i)) {
         const tool = prismShape(o.prism);
         const cut = shape.cut(tool) as Shape3D;

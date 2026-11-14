@@ -270,7 +270,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       break;
     case "room": {
       const num = (v: unknown) => isFiniteNumber(v);
-      if (!Array.isArray(feature.walls) || !feature.walls.length || !feature.walls.every((w) => isObject(w) && num(w.length) && (w.length as number) > 0 && num(w.angle) && (w.angle as number) > 0 && (w.angle as number) < 360)) errors.push(`${where} : murs invalides (longueur positive, angle entre 0 et 360°).`);
+      if (!Array.isArray(feature.walls) || !feature.walls.length || !feature.walls.every((w) => isObject(w) && num(w.length) && (w.length as number) > 0 && num(w.angle) && (w.angle as number) > 0 && (w.angle as number) < 360 && (w.plumb === undefined || (isObject(w.plumb) && num(w.plumb.mid) && num(w.plumb.high))))) errors.push(`${where} : murs invalides (longueur positive, angle entre 0 et 360°).`);
       if (!num(feature.height) || (feature.height as number) <= 0 || !num(feature.thickness) || (feature.thickness as number) <= 0) errors.push(`${where} : hauteur et épaisseur des murs positives.`);
       const kinds = ["window", "door", "socket", "beam", "slope"];
       if (!Array.isArray(feature.obstacles) || !feature.obstacles.every((o) => isObject(o) && kinds.includes(o.kind as string) && Number.isInteger(o.wall) && Object.entries(o).every(([k, v]) => k === "kind" || num(v)))) errors.push(`${where} : obstacles invalides.`);
@@ -278,7 +278,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
     }
     case "trim":
       if (!Array.isArray(feature.parts) || !feature.parts.every((p) => isObject(p) && typeof p.name === "string" && [p.from, p.to].every((v) => Array.isArray(v) && v.length === 3 && v.every((c) => isFiniteNumber(c))) && (p.radius === undefined || (isFiniteNumber(p.radius) && (p.radius as number) > 0)) && (p.hardware === undefined || typeof p.hardware === "boolean") && (p.item === undefined || typeof p.item === "string") && (p.per === undefined || p.per === "m"))) errors.push(`${where} : planches de finition invalides.`);
-      else if (!feature.parts.every((p) => p.outline === undefined || (isObject(p.outline) && (p.outline.axis === 0 || p.outline.axis === 1) && Array.isArray(p.outline.points) && p.outline.points.length >= 3 && p.outline.points.every((q: unknown) => Array.isArray(q) && q.length === 2 && q.every((c) => isFiniteNumber(c)))))) errors.push(`${where} : contour d'une planche recoupée invalide.`);
+      else if (!feature.parts.every((p) => p.outline === undefined || (isObject(p.outline) && (p.outline.axis === 0 || p.outline.axis === 1) && (p.outline.plane === undefined || p.outline.plane === "top") && Array.isArray(p.outline.points) && p.outline.points.length >= 3 && p.outline.points.every((q: unknown) => Array.isArray(q) && q.length === 2 && q.every((c) => isFiniteNumber(c)))))) errors.push(`${where} : contour d'une planche recoupée invalide.`);
+      if (feature.issues !== undefined && !(Array.isArray(feature.issues) && feature.issues.every((i) => typeof i === "string"))) errors.push(`${where} : problèmes du relevé invalides.`);
       break;
     case "niche":
       if (typeof feature.sketch !== "string" || typeof feature.partition !== "string") errors.push(`${where} : répartition manquante.`);

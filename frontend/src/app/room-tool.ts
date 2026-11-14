@@ -3,7 +3,9 @@
  * pièce pas d'équerre se relève telle qu'elle est), la hauteur sous plafond, l'épaisseur des murs — puis ce qui gêne :
  * fenêtres et portes percées dans les murs, prises, retombées de plafond et rampants. Une opération « Pièce » dont
  * chaque mur et chaque obstacle est un corps « pièce » (hors liste de débit) ; les Finitions s'ajustent à ses murs et
- * à son plafond, et le Contrôle signale le meuble qui la heurte ou cache une prise (features/room-plan.ts).
+ * à son plafond, et le Contrôle signale le meuble qui la heurte ou cache une prise (features/room-plan.ts). « Murs pas
+ * d'aplomb » prend le relevé de chantier de chaque mur — de combien sa face avance à mi-hauteur et en haut — : le mur
+ * penche dans la vue, et les Finitions de tout meuble contre lui en recoupent le fileur ou la joue.
  */
 import { setBodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
@@ -45,6 +47,8 @@ export class RoomTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
   private room: RoomInput;
+  /** « Murs pas d'aplomb »: the rows of each wall's out of plumb are shown. */
+  private plumb: boolean;
 
   constructor(ctx: ToolContext, editing: RoomFeature | null) {
     super(ctx, "Pièce", editing);
@@ -52,6 +56,7 @@ export class RoomTool extends PanelTool {
     this.id = editing?.id ?? uniqueId(doc, "pc");
     this.name = editing?.name ?? uniqueName(doc, "Pièce");
     this.room = structuredClone(editing ? { walls: editing.walls, height: editing.height, thickness: editing.thickness, obstacles: editing.obstacles } : DEFAULT_ROOM);
+    this.plumb = this.room.walls.some((w) => w.plumb);
   }
 
   protected feature(): Feature | string {
@@ -79,11 +84,24 @@ export class RoomTool extends PanelTool {
       b.addEventListener("click", run);
       return b;
     };
+    // Out of plumb: how far its face comes into the room at mid-height and at the top (0 and 0: none kept).
+    const lean = (w: RoomInput["walls"][number], key: "mid" | "high", v: number) => {
+      const next = { mid: 0, high: 0, ...w.plumb, [key]: v };
+      if (Math.abs(next.mid) < 1e-9 && Math.abs(next.high) < 1e-9) delete w.plumb;
+      else w.plumb = next;
+      this.changed();
+    };
     const walls = r.walls.flatMap((w, i) => [
       this.numberRow(`Mur ${WALL_NAMES[i] ?? i + 1} : longueur`, w.length, unit, (v) => v > 0 && ((w.length = v), this.changed())),
       i < r.walls.length - 1 || r.walls.length >= 3
         ? this.numberRow(`Angle ${WALL_NAMES[i] ?? i + 1}/${WALL_NAMES[(i + 1) % r.walls.length] ?? i + 2} (90 : d'équerre)`, w.angle, "deg", (v) => v > 0 && v < 360 && ((w.angle = v), this.changed()))
         : null,
+      ...(this.plumb
+        ? [
+            this.numberRow(`Mur ${WALL_NAMES[i] ?? i + 1} : avance à mi-hauteur`, w.plumb?.mid ?? 0, unit, (v) => lean(w, "mid", v), true),
+            this.numberRow(`Mur ${WALL_NAMES[i] ?? i + 1} : avance en haut`, w.plumb?.high ?? 0, unit, (v) => lean(w, "high", v), true),
+          ]
+        : []),
     ]);
     const gap = r.walls.length >= 3 ? closingGap(r) : 0;
     const wallOptions: [string, string][] = r.walls.map((_, i) => [String(i), `Mur ${WALL_NAMES[i] ?? i + 1}`]);
@@ -96,6 +114,12 @@ export class RoomTool extends PanelTool {
       this.info("Le mur A part de l'origine vers +X, la pièce à sa droite (vers −Y) ; les murs suivants tournent à droite de l'angle relevé."),
       this.numberRow("Hauteur sous plafond", r.height, unit, (v) => v > 0 && ((r.height = v), this.changed())),
       this.numberRow("Épaisseur des murs", r.thickness, unit, (v) => v > 0 && ((r.thickness = v), this.changed())),
+      this.checkRow("Murs pas d'aplomb (relevé de chantier)", this.plumb, (v) => {
+        this.plumb = v;
+        if (!v) for (const w of r.walls) delete w.plumb;
+        this.changed();
+      }),
+      this.plumb ? this.info("De combien la face de chaque mur avance dans la pièce, à mi-hauteur et en haut, par rapport au pied du mur (négatif : il penche en arrière). Les Finitions recoupent fileurs et joues contre lui.") : null,
       ...walls,
       el("div", { class: "flex gap-1" }, button("+ Mur", () => ((r.walls = [...r.walls, { length: 2000, angle: 90 }]), this.changed())), r.walls.length > 1 ? button("− Dernier mur", () => ((r.walls = r.walls.slice(0, -1)), (r.obstacles = r.obstacles.filter((o) => o.wall < r.walls.length)), this.changed())) : null),
       gap > 1 ? this.info(`La pièce ne se ferme pas : ${Math.round(gap)} mm entre la fin du dernier mur et le début du premier. Vérifiez les longueurs et les angles relevés.`) : null,

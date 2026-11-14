@@ -4,7 +4,11 @@
  * bas, à mi-hauteur et en haut du meuble (le faux aplomb, un ventre) — et de combien il se resserre au fond du meuble
  * (le hors d'équerre) ; pour le plafond, de combien il descend à gauche, au milieu et à droite. Une valeur négative :
  * le mur s'écarte, le plafond remonte. De là, le jour réel entre le meuble et le mur à chaque hauteur : le fileur se
- * recoupe à ces largeurs (son contour suit le mur), et un jour négatif dit que le meuble ne rentre pas, et de combien.
+ * recoupe à ces largeurs (son contour suit le mur), et un jour négatif dit que le meuble ne rentre pas, et de combien —
+ * sauf si une joue de finition contre ce mur peut prendre l'écart : elle est alors recoupée (en hauteur pour un faux
+ * aplomb, en profondeur pour un hors d'équerre), sans descendre sous JOUE_MIN. Le sol se relève aussi (de combien il
+ * monte à gauche, au milieu et à droite : la plinthe suit le sol), et le mur du fond (de combien il avance vers le
+ * meuble à gauche, au milieu et à droite : un mur bombé qui touche le meuble est signalé).
  */
 
 /** How far a wall comes towards the furniture (mm), from where it is drawn: at the bottom, mid-height and top of the
@@ -27,7 +31,14 @@ export interface Survey {
   left?: WallSurvey;
   right?: WallSurvey;
   ceiling?: CeilingSurvey;
+  /** How far the floor rises (mm) under the furniture, on the left, in the middle and on the right (negative: it drops). */
+  floor?: CeilingSurvey;
+  /** How far the back wall comes towards the furniture (mm), on the left, in the middle and on the right (a bulge). */
+  back?: CeilingSurvey;
 }
+
+/** What is left of an end panel cut to follow a wall, at the least (mm). */
+export const JOUE_MIN = 6;
 
 export const NO_WALL: WallSurvey = { low: 0, mid: 0, high: 0, back: 0 };
 export const NO_CEILING: CeilingSurvey = { left: 0, mid: 0, right: 0 };
@@ -78,3 +89,24 @@ export function widthsText(gaps: readonly [number, number, number], where: reado
 
 export const HEIGHTS = ["en bas", "à mi-hauteur", "en haut"] as const;
 export const ACROSS = ["à gauche", "au milieu", "à droite"] as const;
+
+/**
+ * How much an end panel `t` thick against a wall must lose to let the furniture in (null: nothing, or more than it can
+ * lose). `real`: the gaps after the panel (scribe). In height (a wall out of plumb): what it loses at each of the three
+ * heights, the same over its depth; at the back only (out of square, the front fits): what it loses at its back.
+ */
+export function joueCut(real: Scribe, back: number, t: number): { heights: [number, number, number] } | { back: number } | null {
+  const front = real.gaps.map((g) => Math.max(0, -g));
+  const atBack = real.gaps.map((g) => Math.max(0, back - g));
+  const need = Math.max(...front, ...atBack);
+  if (need <= 0.5 || need > t - JOUE_MIN) return null;
+  if (Math.max(...front) <= 0.5) return { back: Math.max(...atBack) };
+  return { heights: front.map((f, i) => Math.max(f, atBack[i]!)) as [number, number, number] };
+}
+
+/** The floor's rise at a point `x` across the furniture (from `a` on the left to `b` on the right), between its three measures. */
+export function riseAt(floor: CeilingSurvey, a: number, b: number, x: number): number {
+  const mid = (a + b) / 2;
+  if (b - a < 1e-9) return floor.mid;
+  return x <= mid ? floor.left + ((floor.mid - floor.left) * (x - a)) / (mid - a) : floor.mid + ((floor.right - floor.mid) * (x - mid)) / (b - mid);
+}

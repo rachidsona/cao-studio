@@ -104,6 +104,8 @@ export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
     ...dressingChecks(doc).map((message): Problem => ({ kind: "layout", severity: "warning", message, bodies: [] })),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...doorProblems(doc),
+    // What the site survey of a Finitions says does not go in (a wall or the ceiling in the way).
+    ...doc.features.flatMap((f) => (f.type === "trim" && !f.suppressed ? (f.issues ?? []).map((message): Problem => ({ kind: "layout", severity: "error", message: `${f.name} — ${message}`, bodies: f.source ?? [] })) : [])),
   ];
 }
 
