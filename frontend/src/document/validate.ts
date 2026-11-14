@@ -269,11 +269,10 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       break;
     case "room": {
-      const num = (v: unknown) => isFiniteNumber(v);
-      if (!Array.isArray(feature.walls) || !feature.walls.length || !feature.walls.every((w) => isObject(w) && num(w.length) && (w.length as number) > 0 && num(w.angle) && (w.angle as number) > 0 && (w.angle as number) < 360 && (w.plumb === undefined || (isObject(w.plumb) && num(w.plumb.mid) && num(w.plumb.high))))) errors.push(`${where} : murs invalides (longueur positive, angle entre 0 et 360°).`);
-      if (!num(feature.height) || (feature.height as number) <= 0 || !num(feature.thickness) || (feature.thickness as number) <= 0) errors.push(`${where} : hauteur et épaisseur des murs positives.`);
+      if (!Array.isArray(feature.walls) || !feature.walls.length || !feature.walls.every((w) => isObject(w) && isFiniteNumber(w.length) && (w.length as number) > 0 && isFiniteNumber(w.angle) && (w.angle as number) > 0 && (w.angle as number) < 360 && (w.plumb === undefined || (isObject(w.plumb) && isFiniteNumber(w.plumb.mid) && isFiniteNumber(w.plumb.high))))) errors.push(`${where} : murs invalides (longueur positive, angle entre 0 et 360°).`);
+      if (!isFiniteNumber(feature.height) || (feature.height as number) <= 0 || !isFiniteNumber(feature.thickness) || (feature.thickness as number) <= 0) errors.push(`${where} : hauteur et épaisseur des murs positives.`);
       const kinds = ["window", "door", "socket", "beam", "slope"];
-      if (!Array.isArray(feature.obstacles) || !feature.obstacles.every((o) => isObject(o) && kinds.includes(o.kind as string) && Number.isInteger(o.wall) && Object.entries(o).every(([k, v]) => k === "kind" || num(v)))) errors.push(`${where} : obstacles invalides.`);
+      if (!Array.isArray(feature.obstacles) || !feature.obstacles.every((o) => isObject(o) && kinds.includes(o.kind as string) && Number.isInteger(o.wall) && Object.entries(o).every(([k, v]) => k === "kind" || isFiniteNumber(v)))) errors.push(`${where} : obstacles invalides.`);
       break;
     }
     case "trim":
@@ -408,9 +407,7 @@ export function validateDocument(input: unknown): string[] {
   }
   if (input.standard !== undefined && typeof input.standard !== "string") errors.push("« standard » doit être l'identifiant d'un standard de construction.");
   if (input.standards !== undefined && (!Array.isArray(input.standards) || input.standards.length > 50 || !input.standards.every(standardOk))) errors.push("« standards » doit être une liste de standards de construction valides.");
-  if (input.furniture !== undefined && (!Array.isArray(input.furniture) || input.furniture.length > 500 || !input.furniture.every((r) => isObject(r) && typeof r.name === "string" && isObject(r.ask) && typeof r.ask.kind === "string" && typeof r.ask.option === "string" && ["width", "height", "depth", "thickness"].every((k) => isFiniteNumber((r.ask as Record<string, unknown>)[k])) && typeof r.material === "string" && Array.isArray(r.corner) && r.corner.length === 3 && r.corner.every((c) => isFiniteNumber(c)) && Array.isArray(r.along) && r.along.length === 2 && r.along.every((c) => isFiniteNumber(c)) && Array.isArray(r.features) && r.features.every((f) => typeof f === "string")))) {
-    errors.push("« furniture » doit être une liste de meubles de l'assistant (nom, demande, matière, coin, sens, opérations).");
-  }
+  if (input.furniture !== undefined && (!Array.isArray(input.furniture) || input.furniture.length > 500 || !input.furniture.every((r) => isObject(r) && typeof r.name === "string" && isObject(r.ask) && typeof r.ask.kind === "string" && typeof r.ask.option === "string" && ["width", "height", "depth", "thickness"].every((k) => isFiniteNumber((r.ask as Record<string, unknown>)[k])) && typeof r.material === "string" && Array.isArray(r.corner) && r.corner.length === 3 && r.corner.every((c) => isFiniteNumber(c)) && Array.isArray(r.along) && r.along.length === 2 && r.along.every((c) => isFiniteNumber(c)) && Array.isArray(r.features) && r.features.every((f) => typeof f === "string")))) errors.push("« furniture » doit être une liste de meubles de l'assistant (nom, demande, matière, coin, sens, opérations).");
   if (input.quotes !== undefined && (!Array.isArray(input.quotes) || input.quotes.length > 100 || !input.quotes.every((q) => isObject(q) && typeof q.id === "string" && typeof q.label === "string" && typeof q.date === "string" && isFiniteNumber(q.net) && isFiniteNumber(q.gross) && Array.isArray(q.lines) && q.lines.length <= 500 && q.lines.every((l) => isObject(l) && typeof l.label === "string" && isFiniteNumber(l.quantity) && typeof l.unit === "string" && isFiniteNumber(l.unitPrice) && isFiniteNumber(l.total))))) {
     errors.push("« quotes » doit être une liste de versions du devis (id, label, date, lignes, totaux).");
   }
