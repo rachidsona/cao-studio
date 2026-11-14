@@ -408,6 +408,9 @@ export function validateDocument(input: unknown): string[] {
   }
   if (input.standard !== undefined && typeof input.standard !== "string") errors.push("« standard » doit être l'identifiant d'un standard de construction.");
   if (input.standards !== undefined && (!Array.isArray(input.standards) || input.standards.length > 50 || !input.standards.every(standardOk))) errors.push("« standards » doit être une liste de standards de construction valides.");
+  if (input.furniture !== undefined && (!Array.isArray(input.furniture) || input.furniture.length > 500 || !input.furniture.every((r) => isObject(r) && typeof r.name === "string" && isObject(r.ask) && typeof r.ask.kind === "string" && typeof r.ask.option === "string" && ["width", "height", "depth", "thickness"].every((k) => isFiniteNumber((r.ask as Record<string, unknown>)[k])) && typeof r.material === "string" && Array.isArray(r.corner) && r.corner.length === 3 && r.corner.every((c) => isFiniteNumber(c)) && Array.isArray(r.along) && r.along.length === 2 && r.along.every((c) => isFiniteNumber(c)) && Array.isArray(r.features) && r.features.every((f) => typeof f === "string")))) {
+    errors.push("« furniture » doit être une liste de meubles de l'assistant (nom, demande, matière, coin, sens, opérations).");
+  }
   if (input.quotes !== undefined && (!Array.isArray(input.quotes) || input.quotes.length > 100 || !input.quotes.every((q) => isObject(q) && typeof q.id === "string" && typeof q.label === "string" && typeof q.date === "string" && isFiniteNumber(q.net) && isFiniteNumber(q.gross) && Array.isArray(q.lines) && q.lines.length <= 500 && q.lines.every((l) => isObject(l) && typeof l.label === "string" && isFiniteNumber(l.quantity) && typeof l.unit === "string" && isFiniteNumber(l.unitPrice) && isFiniteNumber(l.total))))) {
     errors.push("« quotes » doit être une liste de versions du devis (id, label, date, lignes, totaux).");
   }

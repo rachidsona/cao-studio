@@ -1,6 +1,6 @@
 /**
- * Les meubles de l'« Assistant meuble », en calcul pur : meuble TV, bibliothèque, bureau, banc d'entrée et tête de
- * lit. Chacun, à la largeur, la hauteur et la profondeur demandées, est fait de caissons — des Répartitions, avec
+ * Les meubles de l'« Assistant meuble », en calcul pur : meuble TV, bibliothèque, bureau, bureau d'angle, banc
+ * d'entrée, tête de lit et lit. Chacun, à la largeur, la hauteur et la profondeur demandées, est fait de caissons — des Répartitions, avec
  * leurs étagères, leurs tiroirs et leurs portes (document/caisson-spec.ts), qui se retouchent ensuite avec les outils
  * du dressing — et de planches libres (le plateau d'un bureau, le panneau d'une tête de lit). Le nombre de cases et
  * d'étagères suit les cotes. Tout est dit dans le repère du meuble : x en largeur depuis sa gauche, y en profondeur
@@ -12,7 +12,7 @@ import type { NicheRecipe } from "./niche-recipe";
 import type { DividerKind, PartitionParams, ShelfParams } from "./sketch";
 import type { Vec3 } from "./types";
 
-export type FurnitureKind = "tv" | "bookcase" | "desk" | "bench" | "headboard";
+export type FurnitureKind = "tv" | "bookcase" | "desk" | "corner" | "bench" | "headboard" | "bed";
 
 export interface FurnitureAsk {
   kind: FurnitureKind;
@@ -41,8 +41,10 @@ export const FURNITURE: FurnitureModel[] = [
   { kind: "tv", label: "Meuble TV", size: { width: 1800, height: 450, depth: 400 }, limits: { width: [900, 3000], height: [300, 700], depth: [300, 600] }, choice: "Extrémités", options: [["doors", "Portes"], ["drawers", "Tiroirs"], ["open", "Ouvertes"]], what: "Un meuble bas : une case tous les 60 cm environ, celles des extrémités fermées, celles du milieu ouvertes avec une étagère." },
   { kind: "bookcase", label: "Bibliothèque", size: { width: 1600, height: 2000, depth: 300 }, limits: { width: [400, 3600], height: [700, 2700], depth: [200, 500] }, choice: "Bas du meuble", options: [["open", "Ouvert"], ["drawers", "Tiroirs en bas"], ["doors", "Portes sur tout"]], what: "Une colonne tous les 80 cm environ, une étagère tous les 35 cm environ." },
   { kind: "desk", label: "Bureau", size: { width: 1400, height: 750, depth: 600 }, limits: { width: [900, 2400], height: [650, 800], depth: [450, 900] }, choice: "Caisson à tiroirs", options: [["left", "À gauche"], ["right", "À droite"]], what: "Un plateau sur un caisson de trois tiroirs et un pied plein, avec un voile de fond." },
+  { kind: "corner", label: "Bureau d'angle", size: { width: 1600, height: 750, depth: 1400 }, limits: { width: [1200, 2400], height: [650, 800], depth: [1000, 2000] }, choice: "Retour", options: [["right", "À droite"], ["left", "À gauche"]], what: "Un plateau en L contre deux murs (la profondeur est la longueur du retour) : un caisson de trois tiroirs au bout du retour, un pied plein à l'autre bout, un voile de fond." },
   { kind: "bench", label: "Banc d'entrée", size: { width: 1000, height: 450, depth: 380 }, limits: { width: [600, 2000], height: [380, 550], depth: [300, 500] }, choice: "Cases", options: [["open", "Ouvertes (chaussures)"], ["drawers", "Tiroirs"], ["doors", "Portes"]], what: "Un banc où s'asseoir : une case tous les 40 cm environ, avec une étagère pour les chaussures." },
   { kind: "headboard", label: "Tête de lit", size: { width: 2400, height: 1100, depth: 350 }, limits: { width: [900, 3200], height: [800, 1500], depth: [250, 500] }, choice: "Chevets", options: [["with", "Deux chevets"], ["without", "Sans chevet"]], what: "Un panneau derrière le lit, coiffé d'une tablette, et deux chevets à un tiroir à ses extrémités (la profondeur est celle des chevets)." },
+  { kind: "bed", label: "Lit", size: { width: 1640, height: 400, depth: 2040 }, limits: { width: [900, 2000], height: [300, 550], depth: [1900, 2250] }, choice: "Dessous", options: [["plain", "Simple"], ["drawers", "Tiroirs au pied"]], what: "Un cadre de lit (deux côtés, une traverse de tête et une de pied) et un fond pour le sommier, 6 cm sous le haut du cadre ; ou des tiroirs au pied, sous le fond (la largeur et la longueur sont celles du cadre)." },
 ];
 
 export const furnitureModel = (kind: FurnitureKind): FurnitureModel => FURNITURE.find((m) => m.kind === kind)!;
@@ -74,6 +76,12 @@ export const BACK = 8;
 const DESK_TOP = 25;
 const PEDESTAL = 420;
 const BEDSIDE = { width: 450, height: 450, drawer: 150 };
+/** A corner desk's tops (mm deep); the drawers' caisson stands this deep under the end of its return. */
+const CORNER_TOP = 600;
+const PEDESTAL_DEPTH = 470;
+/** The bed's base sits this far under the top of its frame (the mattress in it); its drawers this deep. */
+const SINK = 60;
+const BED_DRAWERS = 600;
 const SHELF = 150;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -150,6 +158,42 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
           { name: "Voile de fond", from: [vx0, 0, under - Math.min(350, under / 2)], to: [vx1, t, under] },
         ],
       };
+    }
+    case "corner": {
+      const top = Math.max(t, DESK_TOP);
+      const under = H - top;
+      const T = CORNER_TOP;
+      const right = option !== "left";
+      const wide = Math.min(PEDESTAL, T - 2 * 20);
+      // The return along the side wall, out to the depth asked; its drawers at its far end, facing the front.
+      const [rx0, rx1] = right ? [W - T, W] : [0, T];
+      const px = rx0 + (T - wide) / 2;
+      const lx = right ? 0 : W - t;
+      const [vx0, vx1] = right ? [t, W - T] : [T, W - t];
+      return {
+        pieces: [{ name: "Caisson du bureau", at: [px, D - 20 - PEDESTAL_DEPTH, 0], width: wide, height: under, spec: spec(carcass(wide, under, t, 1, 0), [{ steps: [], equipment: [{ at: [], title: "Tiroirs", feature: drawers(3, t) }] }], {}, PEDESTAL_DEPTH) }],
+        boards: [
+          { name: "Plateau", from: [0, 0, under], to: [W, T, H] },
+          { name: "Retour", from: [rx0, T, under], to: [rx1, D, H] },
+          { name: "Pied", from: [lx, 0, 0], to: [lx + t, T - 20, under] },
+          { name: "Voile de fond", from: [vx0, 0, under - Math.min(350, under / 2)], to: [vx1, t, under] },
+        ],
+      };
+    }
+    case "bed": {
+      const base = H - SINK;
+      const boards: FurnitureBoard[] = [
+        { name: "Côté gauche", from: [0, 0, 0], to: [t, D, H] },
+        { name: "Côté droit", from: [W - t, 0, 0], to: [W, D, H] },
+        { name: "Traverse de tête", from: [t, 0, 0], to: [W - t, t, H] },
+        ...(option === "drawers" ? [] : [{ name: "Traverse de pied", from: [t, D - t, 0] as Vec3, to: [W - t, D, H] as Vec3 }]),
+        { name: "Fond du sommier", from: [t, t, base - t], to: [W - t, option === "drawers" ? D : D - t, base] },
+      ];
+      if (option !== "drawers") return { pieces: [], boards };
+      // Under the base at the foot, their fronts flush with it.
+      const n = clamp(Math.round((W - 2 * t) / 800), 1, 3);
+      const inside: NicheRecipe = { steps: [], equipment: [{ at: [], title: "Tiroirs", feature: drawers(1, t) }] };
+      return { pieces: [{ name: "Tiroirs du lit", at: [t, D - BED_DRAWERS, 0], width: W - 2 * t, height: base - t, spec: spec(carcass(W - 2 * t, base - t, t, n, 0), Array.from({ length: n }, () => structuredClone(inside)), {}, BED_DRAWERS) }], boards };
     }
     case "bench": {
       const n = clamp(Math.round(W / 400), 2, 5);

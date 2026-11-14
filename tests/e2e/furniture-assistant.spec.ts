@@ -58,3 +58,58 @@ test("l'assistant pose un bureau puis une bibliothèque, refuse une cote hors li
   await shot(page, "assistant-meuble");
   expect(errors).toEqual([]);
 });
+
+test("un lit contre le mur B de la Pièce, puis repris et refait plus large à sa place", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-assistant-mur");
+  type Record = { name: string; ask: { width: number }; corner: number[]; along: number[] };
+  const furniture = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { furniture?: Record[] } }).document.furniture ?? [], api);
+  };
+  const status = page.locator('[data-ref="status-recompute"]');
+  // The Pièce as it comes: four walls, 3 m × 2,5 m.
+  await click(page, '[data-action="room"]');
+  const room = page.getByRole("dialog", { name: "Pièce" });
+  await expect(room).toBeVisible();
+  await page.waitForTimeout(1500);
+  await room.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+
+  await click(page, '[data-workshop="furniture"]');
+  const tool = page.getByRole("dialog", { name: "Assistant meuble" });
+  await tool.getByRole("combobox", { name: "Meuble" }).selectOption("bed");
+  await tool.getByRole("combobox", { name: "Où le poser" }).selectOption({ label: "Contre le mur B (Pièce 1)" });
+  const from = tool.getByRole("textbox", { name: /^Depuis le début du mur/ });
+  await from.fill("20");
+  await from.press("Enter");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("« Lit 1 » posé")).toBeVisible();
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  // Wall B runs from (3000, 0) along −Y: the bed's back against it, 20 cm from its start.
+  await expect.poll(furniture, { timeout: 30_000 }).toEqual([expect.objectContaining({ name: "Lit 1", corner: [3000, -200, 0], along: [expect.closeTo(0, 6), -1] })]);
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1000);
+  await shot(page, "assistant-lit-mur");
+
+  // One of its boards selected, the assistant takes it back: 180 cm wide, made again where it stands.
+  // Seen from above, the bed against wall B: a click on it (its base) selects one of its boards.
+  await page.mouse.click(700, 480);
+  await expect(page.locator('[data-ref="status-selection"]')).not.toHaveText("Aucune sélection");
+  await click(page, '[data-workshop="furniture"]');
+  await expect(tool).toContainText("Modifier : Lit 1");
+  const width = tool.getByRole("textbox", { name: "Largeur" });
+  await width.fill("180");
+  await width.press("Enter");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("« Lit 1 » refait à ces cotes.")).toBeVisible();
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect.poll(furniture, { timeout: 30_000 }).toEqual([expect.objectContaining({ name: "Lit 1", ask: expect.objectContaining({ width: 1800 }), corner: [3000, -200, 0] })]);
+  expect(errors).toEqual([]);
+});

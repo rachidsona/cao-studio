@@ -1,6 +1,6 @@
 /** Assistant meuble : meuble TV, bibliothèque, bureau, banc et tête de lit, aux cotes demandées, posés dans le document. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { withFurniture } from "../../frontend/src/document/furniture-build";
+import { furnitureOf, withFurniture, withFurnitureRemade } from "../../frontend/src/document/furniture-build";
 import { FURNITURE, furnitureLayout, furnitureModel, furnitureProblem, furnitureSize, type FurnitureAsk, type FurnitureKind } from "../../frontend/src/document/furniture-models";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
@@ -115,5 +115,66 @@ describe("les modèles de meubles", () => {
     if (typeof drawers === "string") throw new Error(drawers);
     expect(drawers.pieces[0]!.spec.cases.map((c) => c.equipment.length)).toEqual([1, 0, 1]);
     expect(drawers.pieces[0]!.spec.doors).toBeUndefined();
+  });
+});
+
+describe("bureau d'angle, lit, pose contre un mur, meuble refait", () => {
+  it("le bureau d'angle : plateau et retour en L, caisson au bout du retour, du côté choisi", () => {
+    for (const side of ["right", "left"] as const) {
+      const l = furnitureLayout(ask("corner", { option: side }));
+      if (typeof l === "string") throw new Error(l);
+      const ret = l.boards.find((b) => b.name === "Retour")!;
+      expect(side === "right" ? ret.to[0] : ret.from[0]).toBe(side === "right" ? 1600 : 0);
+      expect(ret.to[1]).toBe(1400);
+      const pedestal = l.pieces[0]!;
+      expect(pedestal.at[0]).toBeGreaterThanOrEqual(side === "right" ? 1000 : 0);
+      expect(pedestal.at[1] + 470).toBeCloseTo(1400 - 20);
+    }
+  });
+
+  it("le lit : un cadre et un fond 6 cm sous son haut ; avec tiroirs, un caisson au pied, sous le fond", () => {
+    const plain = furnitureLayout(ask("bed"));
+    if (typeof plain === "string") throw new Error(plain);
+    expect(plain.pieces).toEqual([]);
+    expect(plain.boards.find((b) => b.name === "Fond du sommier")!.to[2]).toBe(400 - 60);
+    const drawers = furnitureLayout(ask("bed", { option: "drawers" }));
+    if (typeof drawers === "string") throw new Error(drawers);
+    expect(drawers.boards.some((b) => b.name === "Traverse de pied")).toBe(false);
+    expect(drawers.pieces[0]!.height).toBe(400 - 60 - 18);
+    expect(drawers.pieces[0]!.at[1] + 600).toBe(2040);
+  });
+
+  it("contre un mur qui court vers −Y : le meuble tourné avec lui, son dos contre le mur, et le noyau le construit", () => {
+    // A wall running along −Y at x = 0, the room on −X: the furniture's width along −Y, its front towards −X.
+    const made = withFurniture(empty(), ask("desk"), [0, 0, 0], "melamine-oak", { corner: [0, -500, 0], along: [0, -1] });
+    if (typeof made === "string") throw new Error(made);
+    const { ok, boxes, failed } = built(made.doc);
+    expect(failed).toEqual([]);
+    expect(ok).toBe(true);
+    const lo = [0, 1, 2].map((k) => Math.min(...boxes.map((b) => b[0][k]!)));
+    const hi = [0, 1, 2].map((k) => Math.max(...boxes.map((b) => b[1][k]!)));
+    expect(hi[0]).toBeCloseTo(0, 3);
+    expect(lo[0]).toBeGreaterThan(-600 - 60);
+    expect(hi[1]).toBeCloseTo(-500, 3);
+    expect(lo[1]).toBeCloseTo(-500 - 1400, 3);
+    expect(made.doc.furniture?.[0]).toMatchObject({ name: "Bureau 1", corner: [0, -500, 0], along: [0, -1] });
+  });
+
+  it("refait à une autre largeur : ses cases recomptées, à sa place, sous son nom, en remplaçant l'ancien", () => {
+    const first = withFurniture(empty(), ask("tv", { width: 1800 }), [100, -400, 0], "melamine-oak");
+    if (typeof first === "string") throw new Error(first);
+    const record = first.doc.furniture![0]!;
+    expect(furnitureOf(first.doc, record.features[0]!)?.name).toBe("Meuble TV 1");
+    const again = withFurnitureRemade(first.doc, record, ask("tv", { width: 2400 }), "melamine-oak");
+    if (typeof again === "string") throw new Error(again);
+    expect(again.name).toBe("Meuble TV 1");
+    expect(again.doc.furniture).toHaveLength(1);
+    expect(again.doc.features.filter((f) => f.type === "sketch" && f.name === "Meuble TV 1")).toHaveLength(1);
+    const sketch = again.doc.features.find((f): f is SketchFeature => f.type === "sketch" && f.name === "Meuble TV 1")!;
+    expect(sketch.frame!.origin[0]).toBeCloseTo(100);
+    const { ok, boxes } = built(again.doc);
+    expect(ok).toBe(true);
+    expect(Math.max(...boxes.map((b) => b[1][0]!))).toBeCloseTo(100 + 2400, 3);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(again.doc)))).not.toThrow();
   });
 });

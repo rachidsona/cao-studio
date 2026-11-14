@@ -201,12 +201,14 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-workshop:furniture"],
         name: "Assistant meuble",
-        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, banc d'entrée ou tête de lit.",
+        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, bureau d'angle, banc d'entrée, tête de lit ou lit.",
         steps: [
           "Cliquez « Assistant meuble » et choisissez le « Meuble » : il part de ses cotes usuelles, et une ligne dit comment il est fait.",
-          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, cases d'un banc, chevets d'une tête de lit.",
+          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, retour d'un bureau d'angle, cases d'un banc, chevets d'une tête de lit, tiroirs d'un lit.",
           "Choisissez l'« Épaisseur des panneaux » et la « Matière ».",
-          "Cliquez « OK » : le meuble est posé à droite de ce qui est déjà là, son dos contre le plan Y = 0. Posez-en un autre, ou cliquez « Terminer ».",
+          "Avec une Pièce, « Où le poser » le met contre un de ses murs, à la distance voulue de son début ; sinon il va à droite de ce qui est déjà là, son dos contre le plan Y = 0.",
+          "Cliquez « OK », puis posez-en un autre, ou cliquez « Terminer ».",
+          "Pour le changer : sélectionnez une de ses pièces et rouvrez l'assistant (« Modifier : … ») ; OK le refait à neuf aux nouvelles cotes, à sa place, ses cases recomptées.",
         ],
         tip: "Le nombre de cases et d'étagères suit les cotes (une case tous les 60 cm d'un meuble TV, une colonne tous les 80 cm d'une bibliothèque, une étagère tous les 35 cm). Ses caissons sont des Répartitions : clic droit dans une niche pour changer étagères, tiroirs, portes ou module ; Déplacer le met à sa place. Une seule annulation (Ctrl + Z) l'ôte.",
       },

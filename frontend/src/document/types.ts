@@ -933,6 +933,22 @@ export interface CadDocument {
   quotes?: SavedQuote[];
   /** Cabinets and Répartitions kept against the face of another element by « Prolonger élément » (app/extend-follow.ts). */
   extendLinks?: ExtendLink[];
+  /** The furniture placed by the « Assistant meuble », to make it again at other sizes (document/furniture-build.ts). */
+  furniture?: FurnitureRecord[];
+}
+
+/**
+ * A piece of furniture of the « Assistant meuble »: what was asked (document/furniture-models.ts), its material, where
+ * it stands — the back left corner of its foot, and the way its width runs (a unit vector in the floor plane; it faces
+ * that way turned a quarter clockwise) — and the features it made.
+ */
+export interface FurnitureRecord {
+  name: string;
+  ask: { kind: string; width: number; height: number; depth: number; thickness: number; option: string };
+  material: string;
+  corner: Vec3;
+  along: [number, number];
+  features: string[];
 }
 
 /**

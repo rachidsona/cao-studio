@@ -1,14 +1,18 @@
 /**
  * « Assistant meuble » : un meuble entier en quelques choix — meuble TV, bibliothèque, bureau, banc d'entrée ou tête
  * de lit —, à la largeur, la hauteur et la profondeur voulues, dans la matière voulue (document/furniture-models.ts).
- * OK le pose à droite de ce qui est déjà là, son dos sur le plan Y = 0 ; l'assistant reste ouvert pour en poser un
- * autre, « Terminer » le ferme. Ses caissons sont des Répartitions : étagères, tiroirs, portes et modules s'y
- * retouchent ensuite comme dans un dressing.
+ * OK le pose à droite de ce qui est déjà là, son dos sur le plan Y = 0, ou contre un mur d'une Pièce (« Où le poser »,
+ * à la distance voulue du début du mur) ; l'assistant reste ouvert pour en poser un autre, « Terminer » le ferme. Ses
+ * caissons sont des Répartitions : étagères, tiroirs, portes et modules s'y retouchent ensuite comme dans un dressing.
+ * Ouvert avec un de ses meubles sélectionné, il le reprend : OK le refait à neuf aux nouvelles cotes (ses cases
+ * recomptées), à sa place.
  */
-import { withFurniture } from "../document/furniture-build";
+import { furnitureOf, withFurniture, withFurnitureRemade } from "../document/furniture-build";
 import { FURNITURE, furnitureModel, furnitureProblem, type FurnitureAsk, type FurnitureKind } from "../document/furniture-models";
 import { bodyInfo, MATERIALS } from "../document/materials";
-import type { Vec3 } from "../document/types";
+import { bodyOrigin } from "../document/operations";
+import { featureOfBody, type FurnitureRecord, type RoomFeature, type Vec3 } from "../document/types";
+import { wallFrames, WALL_NAMES } from "../features/room-plan";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
@@ -23,6 +27,9 @@ const SPACING = 300;
 /** Kept for the session: the last furniture asked for, and its material. */
 let last: FurnitureAsk = { kind: "tv", ...furnitureModel("tv").size, thickness: 18, option: furnitureModel("tv").options[0]![0] };
 let lastMaterial = "melamine-white";
+/** Where it goes: « right » of what is there, or against a wall of a Pièce (« roomId:index »), this far from its start. */
+let lastWhere = "right";
+let lastFrom = 0;
 
 class FurnitureTool {
   private readonly panel: HTMLElement;
@@ -32,16 +39,42 @@ class FurnitureTool {
     this.close();
   };
 
+  /** The furniture of the assistant being made again (one of its bodies was selected when it opened). */
+  private editing: FurnitureRecord | null = null;
+
   constructor(
     private readonly viewport: Viewport,
     private readonly editor: Editor,
     private readonly closed: () => void,
   ) {
+    const doc = editor.doc;
+    const picked = [...editor.picked.selection.bodies].map((id) => furnitureOf(doc, featureOfBody(bodyOrigin(doc, id)))).find(Boolean);
+    if (picked) {
+      this.editing = picked;
+      last = { ...picked.ask, kind: picked.ask.kind as FurnitureKind };
+      lastMaterial = picked.material;
+    }
     this.panel = el("div", { class: "absolute top-2 right-2 z-30 w-72 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Assistant meuble" });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
     this.draw();
+  }
+
+  /** The walls of the Pièces, to set furniture against: their id, name, start (room side), way and length. */
+  private walls(): { id: string; name: string; start: [number, number]; along: [number, number]; length: number }[] {
+    return this.editor.doc.features
+      .filter((f): f is RoomFeature => f.type === "room" && !f.suppressed)
+      .flatMap((room) => wallFrames(room).map((w, i) => ({ id: `${room.id}:${i}`, name: `Contre le mur ${WALL_NAMES[i] ?? i + 1} (${room.name})`, start: w.start, along: w.u, length: w.length })));
+  }
+
+  /** Against a wall: the back left corner of the foot and the way of its width; or why it does not go there. */
+  private wallFrame(): { corner: Vec3; along: [number, number] } | string | null {
+    if (lastWhere === "right") return null;
+    const wall = this.walls().find((w) => w.id === lastWhere);
+    if (!wall) return null;
+    if (lastFrom < 0 || lastFrom + last.width > wall.length + 0.5) return `Le meuble dépasse du mur : ${formatLength(wall.length, this.editor.unit)} de long, il en faut ${formatLength(lastFrom + last.width, this.editor.unit)} depuis son début.`;
+    return { corner: [wall.start[0] + wall.along[0] * lastFrom, wall.start[1] + wall.along[1] * lastFrom, 0], along: wall.along };
   }
 
   /** Where the new furniture goes: its front left corner, right of every body but the room's, its back at Y = 0. */
@@ -59,11 +92,11 @@ class FurnitureTool {
   private draw(): void {
     const unit = this.editor.unit;
     const model = furnitureModel(last.kind);
-    const number = (label: string, mm: number, set: (mm: number) => void): HTMLElement => {
+    const number = (label: string, mm: number, set: (mm: number) => void, zero = false): HTMLElement => {
       const input = el("input", { type: "text", inputmode: "decimal", class: `${FIELD} text-right font-mono`, value: trim(toDisplay(mm, unit), 4), "aria-label": label });
       const apply = () => {
         const parsed = parseNumber(input.value);
-        const ok = parsed !== null && parsed > 0;
+        const ok = parsed !== null && (zero ? parsed >= 0 : parsed > 0);
         input.setAttribute("aria-invalid", String(!ok));
         if (!ok) return;
         set(fromDisplay(parsed, unit));
@@ -84,10 +117,13 @@ class FurnitureTool {
       });
       return el("label", { class: ROW }, label, list);
     };
-    const problem = furnitureProblem(last);
+    const wall = this.editing ? null : this.wallFrame();
+    const problem = furnitureProblem(last) ?? (typeof wall === "string" ? wall : null);
+    const walls = this.walls();
     const range = (key: "width" | "height" | "depth") => model.limits[key].map((v) => formatLength(v, unit)).join(" à ");
     const rows: (HTMLElement | null)[] = [
-      panelHeader("Assistant meuble", () => this.close()),
+      panelHeader(this.editing ? `Modifier : ${this.editing.name}` : "Assistant meuble", () => this.close()),
+      this.editing ? el("p", { class: "text-[11px] text-gray-500" }, "OK le refait à neuf à ces cotes, à sa place : ses cases sont recomptées, ce qui y a été retouché à la main est refait.") : null,
       select("Meuble", last.kind, FURNITURE.map((m): [string, string] => [m.kind, m.label]), (v) => {
         const m = furnitureModel(v as FurnitureKind);
         // Another furniture starts at its usual size.
@@ -101,6 +137,8 @@ class FurnitureTool {
       select(model.choice, last.option, model.options, (v) => (last = { ...last, option: v })),
       number("Épaisseur des panneaux", last.thickness, (v) => (last = { ...last, thickness: v })),
       select("Matière", lastMaterial, MATERIALS.filter((m) => m.kind === "panel").map((m): [string, string] => [m.id, m.name]), (v) => (lastMaterial = v)),
+      !this.editing && walls.length ? select("Où le poser", walls.some((w) => w.id === lastWhere) ? lastWhere : "right", [["right", "À droite de ce qui est là"], ...walls.map((w): [string, string] => [w.id, w.name])], (v) => (lastWhere = v)) : null,
+      !this.editing && lastWhere !== "right" && walls.some((w) => w.id === lastWhere) ? number("Depuis le début du mur", lastFrom, (v) => (lastFrom = v), true) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       el("p", { class: "text-[11px] text-gray-500" }, "Ses caissons sont des Répartitions : étagères, tiroirs, portes et modules s'y retouchent ensuite (clic droit dans une niche)."),
       panelFooter(() => this.close(), () => this.confirm(), problem !== null),
@@ -110,10 +148,15 @@ class FurnitureTool {
 
   /** OK: the furniture added (one undo step), the view on it; the assistant stays for another. */
   private confirm(): void {
-    const made = withFurniture(this.editor.doc, last, this.place(), lastMaterial);
+    const wall = this.editing ? null : this.wallFrame();
+    if (typeof wall === "string") return this.editor.notify(wall, "error");
+    const made = this.editing ? withFurnitureRemade(this.editor.doc, this.editing, last, lastMaterial) : withFurniture(this.editor.doc, last, this.place(), lastMaterial, wall ?? undefined);
     if (typeof made === "string") return this.editor.notify(made, "error");
+    // Made again: it stays the one being changed.
+    if (this.editing) this.editing = made.doc.furniture?.find((r) => r.name === made.name) ?? null;
     void this.editor.change(made.doc).then(() => this.viewport.fit());
-    this.editor.notify(`« ${made.name} » posé : clic droit dans une de ses niches pour l'aménager.`, "success");
+    this.editor.notify(this.editing ? `« ${made.name} » refait à ces cotes.` : `« ${made.name} » posé : clic droit dans une de ses niches pour l'aménager.`, "success");
+    this.draw();
   }
 
   close(): void {

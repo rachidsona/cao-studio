@@ -2661,10 +2661,17 @@ opération existante.
     tiroirs en bas ou à portes. **Bureau** : un plateau de 25 mm sur un caisson de trois tiroirs (à gauche ou à
     droite) et un pied plein, avec un voile de fond. **Banc d'entrée** : une case tous les 40 cm, ouverte avec une
     étagère à chaussures, à tiroirs ou à portes. **Tête de lit** : un panneau coiffé d'une tablette, avec ou sans
-    deux chevets à un tiroir.
+    deux chevets à un tiroir. **Bureau d'angle** : un plateau en L (la profondeur est la longueur du retour, à droite
+    ou à gauche), un caisson de trois tiroirs au bout du retour, un pied plein et un voile. **Lit** : un cadre (deux
+    côtés, traverses de tête et de pied) et un fond de sommier 6 cm sous son haut, ou des tiroirs au pied sous le fond.
   - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
-    qui est déjà là, son dos sur le plan Y = 0, en une seule annulation, et l'assistant reste ouvert ; « Terminer »
-    le ferme.
+    qui est déjà là, son dos sur le plan Y = 0, ou **contre un mur d'une Pièce** (« Où le poser », « Depuis le début
+    du mur » : il tourne avec le mur, son dos contre sa face ; refusé s'il en dépasse), en une seule annulation, et
+    l'assistant reste ouvert ; « Terminer » le ferme.
+  - Le document garde chaque meuble posé (`furniture` : ce qui a été demandé, sa matière, son coin arrière gauche et
+    son sens). Ouvert avec un de ses corps sélectionné, l'assistant le **reprend** (« Modifier : Bureau 1 ») : OK le
+    refait à neuf aux nouvelles cotes, à sa place et sous son nom, ses cases recomptées (`withFurnitureRemade`) ; ce
+    qui y avait été retouché à la main est refait.
   - Ses caissons sont des **Répartitions** (`withCaissonPlaced`), avec leur fond en HDF : étagères, tiroirs, portes,
     modules et accessoires s'y retouchent ensuite comme dans un dressing ; ses planches libres (plateau, pied, voile,
     panneau, tablette) sont des extrusions. Tout est nommé d'après lui (« Bureau 1 — Plateau »). Posé par
