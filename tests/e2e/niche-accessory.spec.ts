@@ -86,3 +86,27 @@ test("un accessoire se pose dans une niche par le clic droit, refuse une niche t
   await expect(list).not.toContainText("Barre 1");
   expect(errors).toEqual([]);
 });
+
+test("les accessoires d'angle sont au catalogue de la cuisine ; celui qui tient dans la niche se pose, les autres sont refusés", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-accessoires-angle");
+  await wall(page);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  await page.mouse.click(view.x + view.width * 0.38, view.y + view.height * 0.55, { button: "right" });
+  await page.getByRole("menu", { name: "Menu de la niche" }).getByRole("menuitem", { name: "Accessoire intérieur" }).click();
+  const tool = page.getByRole("dialog", { name: "Accessoire" });
+  const model = tool.getByRole("combobox", { name: "Accessoire", exact: true });
+  const kitchen = model.locator('optgroup[label="Cuisine"] option');
+  await expect(kitchen).toContainText(["Plateaux tournants d'angle (2 niveaux)", "Demi-lunes pivotantes (2 plateaux)", "Magic corner (paniers d'angle coulissants)"]);
+  // The niche's width (in cm): the trays turn in 70 to 100 cm, the half-moons and the magic corner go behind a door of 40 to 60.
+  const width = Number(/Niche choisie : ([\d,]+) cm/.exec((await tool.innerText()).replace(/\s+/g, " "))![1]!.replace(",", "."));
+  const ok = tool.getByRole("button", { name: "OK", exact: true });
+  for (const [label, fits] of [["Plateaux tournants d'angle (2 niveaux)", width >= 70 && width <= 100], ["Demi-lunes pivotantes (2 plateaux)", width >= 40 && width <= 60]] as const) {
+    await model.selectOption({ label });
+    if (fits) await expect(ok).toBeEnabled();
+    else await expect(tool).toContainText(`« ${label} »`);
+  }
+  expect(errors).toEqual([]);
+});

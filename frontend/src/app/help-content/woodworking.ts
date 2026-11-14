@@ -417,7 +417,7 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Pose dans une niche un accessoire acheté, pour la cuisine ou le dressing, et le compte au devis.",
         steps: [
           "Cliquez « Accessoire intérieur » (ou clic droit dans une niche, « Accessoire intérieur »), puis la niche ; cliquez-en plusieurs pour y mettre le même.",
-          "Choisissez l'« Accessoire ». Cuisine : range-couverts, poubelle coulissante à 2 ou 3 bacs, panier fil, range-bouteilles, égouttoir. Dressing : porte-pantalons, panier, porte-chaussures, porte-cravates, miroir pivotant, penderie escamotable, tablette coulissante.",
+          "Choisissez l'« Accessoire ». Cuisine : range-couverts, poubelle coulissante à 2 ou 3 bacs, panier fil, range-bouteilles, égouttoir, et pour un meuble d'angle plateaux tournants, demi-lunes pivotantes ou magic corner. Dressing : porte-pantalons, panier, porte-chaussures, porte-cravates, miroir pivotant, penderie escamotable, tablette coulissante.",
           "Réglez « Bas à (du bas de la niche) » pour le monter. Dans une niche à tiroirs, « Dans le tiroir » pose le range-couverts sur le fond du tiroir choisi : il sort avec lui quand on ouvre le tiroir.",
           "Lisez la ligne grise : la largeur, la profondeur et la hauteur de niche que le modèle demande. Un message orange dit ce qui manque.",
           "Cliquez « OK », puis une autre niche pour continuer, ou « Terminer ».",

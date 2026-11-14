@@ -1,6 +1,7 @@
 /**
  * Accessoires intérieurs achetés, posés dans une niche de « Répartition » : pour la cuisine (range-couverts, poubelle
- * coulissante, panier fil, range-bouteilles, égouttoir) et pour le dressing (porte-pantalons, panier, porte-chaussures,
+ * coulissante, panier fil, range-bouteilles, égouttoir, et pour un meuble d'angle : plateaux tournants, demi-lunes
+ * pivotantes, « magic corner ») et pour le dressing (porte-pantalons, panier, porte-chaussures,
  * porte-cravates, miroir pivotant, penderie escamotable), et la tablette coulissante (une planche débitée sur une
  * paire de coulisses). Chaque modèle dit la largeur de niche qu'il accepte, la profondeur qu'il lui faut et la hauteur
  * qu'il prend : l'outil refuse une niche où il ne tient pas. Les pièces sont dessinées simplement, dans le repère de
@@ -12,7 +13,7 @@ import { mad } from "../document/quote";
 import type { NicheFeature, Vec3 } from "../document/types";
 import type { NicheGeometry, NichePart } from "./niche-parts";
 
-type Shape = "tray" | "basket" | "bins" | "bottles" | "drainer" | "trousers" | "shoes" | "ties" | "mirror" | "pulldown" | "shelf";
+type Shape = "tray" | "basket" | "bins" | "bottles" | "drainer" | "carousel" | "halfmoon" | "magic" | "trousers" | "shoes" | "ties" | "mirror" | "pulldown" | "shelf";
 
 export interface AccessoryModel {
   id: string;
@@ -45,6 +46,10 @@ export const ACCESSORIES: AccessoryModel[] = [
   model({ id: "basket-kitchen", label: "Panier coulissant fil chromé", room: "kitchen", shape: "basket", width: [260, 870], depth: 450, height: 150, euros: 32 }),
   model({ id: "bottles", label: "Range-bouteilles coulissant", room: "kitchen", shape: "bottles", width: [110, 270], depth: 450, height: 480, count: 2, euros: 60 }),
   model({ id: "drainer", label: "Égouttoir de meuble haut", room: "kitchen", shape: "drainer", width: [360, 870], depth: 250, height: 300, euros: 28 }),
+  // For a corner base unit: round trays turning on a pole, half-moons swinging out, baskets pulled from the blind corner.
+  model({ id: "carousel", label: "Plateaux tournants d'angle (2 niveaux)", room: "kitchen", shape: "carousel", width: [700, 1000], depth: 480, height: 600, count: 2, euros: 95 }),
+  model({ id: "halfmoon", label: "Demi-lunes pivotantes (2 plateaux)", room: "kitchen", shape: "halfmoon", width: [400, 600], depth: 450, height: 600, count: 2, euros: 120 }),
+  model({ id: "magic-corner", label: "Magic corner (paniers d'angle coulissants)", room: "kitchen", shape: "magic", width: [450, 600], depth: 480, height: 650, count: 2, euros: 380 }),
   model({ id: "trousers", label: "Porte-pantalons coulissant", room: "dressing", shape: "trousers", width: [400, 1000], depth: 450, height: 100, euros: 45 }),
   model({ id: "basket-wardrobe", label: "Panier coulissant de dressing", room: "dressing", shape: "basket", width: [360, 970], depth: 400, height: 180, euros: 38 }),
   model({ id: "shoes", label: "Porte-chaussures coulissant", room: "dressing", shape: "shoes", width: [460, 970], depth: 400, height: 160, euros: 42 }),
@@ -145,6 +150,41 @@ export function accessoryParts(f: Settings, n: Pick<NicheGeometry, "box" | "dept
       box("Égouttoir à assiettes", [a, z + 40, bw], [b, z + 55, fw]);
       box("Égouttoir à verres", [a, z + h - 15, bw], [b, z + h, fw]);
       break;
+    case "carousel": {
+      // Round trays on a pole in the middle of the niche, the biggest that turns in it.
+      const r = Math.min(b - a, m.depth) / 2 - 15;
+      const w = bw + m.depth / 2;
+      bar("Axe", [mid, z, w], [mid, z + h, w], 12);
+      const levels = m.count ?? 2;
+      for (let i = 0; i < levels; i++) {
+        const at = z + 20 + (i * (h - 60)) / Math.max(1, levels - 1);
+        bar(`Plateau ${i + 1}`, [mid, at, w], [mid, at + 8, w], r);
+        bar(`Rebord ${i + 1}`, [mid, at + 8, w], [mid, at + 40, w], r - 2);
+      }
+      break;
+    }
+    case "halfmoon": {
+      // Trays as wide as the niche, swung on a post at the hinge side: drawn closed.
+      box("Montant pivot", [a + 10, z, fw - 60], [a + 40, z + h, fw - 30]);
+      const levels = m.count ?? 2;
+      for (let i = 0; i < levels; i++) {
+        const at = z + 30 + (i * (h - 90)) / Math.max(1, levels - 1);
+        basket(`Plateau demi-lune ${i + 1}`, a + 40, b - 10, at, 50, bw + 20, fw - 10, 5);
+      }
+      break;
+    }
+    case "magic": {
+      // A frame pulled out with the door, and baskets behind it fetched from the blind corner.
+      box("Châssis coulissant", [a + 10, z, bw], [a + 30, z + h, fw]);
+      slides(z);
+      const levels = m.count ?? 2;
+      for (let i = 0; i < levels; i++) {
+        const at = z + 40 + (i * (h - 200)) / Math.max(1, levels - 1);
+        basket(`Panier avant ${i + 1}`, a + 30, b - SLIDE - 5, at, 110, fw - m.depth / 2 + 5, fw - 5);
+        basket(`Panier arrière ${i + 1}`, a + 30, b - SLIDE - 5, at, 110, bw + 5, fw - m.depth / 2 - 5);
+      }
+      break;
+    }
     case "trousers": {
       slides(z + h - SLIDE_HEIGHT);
       box("Traverse avant", [a + SLIDE, z + h - 60, fw - 20], [b - SLIDE, z + h - 40, fw]);
@@ -208,7 +248,7 @@ export function accessoryHardware(f: Settings, parts: readonly NichePart[]): { n
 export function accessoryLook(part: Pick<NichePart, "name" | "role">): string | undefined {
   if (part.role !== "hardware") return undefined;
   if (part.name === "Miroir") return "mirror";
-  return /^(Bac|Range-couverts|Séparation)/.test(part.name) ? "plastic-grey" : "chrome";
+  return /^(Bac|Range-couverts|Séparation|Plateau [0-9]|Rebord)/.test(part.name) ? "plastic-grey" : "chrome";
 }
 
 /** A part as a box of the niche's frame: a bar by the square around it. */

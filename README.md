@@ -1099,7 +1099,9 @@ opération existante.
     `features/niche-parts.ts` (pur), la construction dans `features/niche.ts`, l'outil dans `app/dressing/niche-tool.ts`.
   - **Accessoire intérieur** (bouton du ruban, clic droit dans une niche, ou la liste « Équipement » du même
     outil) : un **accessoire acheté** posé dans la niche. Pour la **cuisine** : range-couverts à recouper, poubelle
-    coulissante à 2 ou 3 bacs, panier coulissant fil chromé, range-bouteilles coulissant, égouttoir de meuble haut.
+    coulissante à 2 ou 3 bacs, panier coulissant fil chromé, range-bouteilles coulissant, égouttoir de meuble haut ;
+      pour un **meuble d'angle** : plateaux tournants (2 niveaux sur un axe, niche de 70 à 100 cm), demi-lunes
+      pivotantes et « magic corner » (paniers d'angle coulissants), derrière une porte de 40 à 60 cm.
     Pour le **dressing** : porte-pantalons coulissant, panier, porte-chaussures, porte-cravates et ceintures, miroir
     pivotant, penderie escamotable, et la **tablette coulissante** (une planche débitée sur une paire de coulisses).
     - Chaque modèle dit la **largeur de niche** qu'il accepte, la **profondeur** qu'il lui faut (20 mm de retrait
