@@ -55,7 +55,7 @@ function applianceItem(a: ApplianceFeature): Item {
 }
 
 /** The worktops of a kitchen plan: their name and box, from their rectangle sketch and their thickness. */
-function worktops(doc: CadDocument): { id: string; name: string; box: Box }[] {
+export function worktops(doc: CadDocument): { id: string; name: string; box: Box }[] {
   return doc.features.flatMap((f) => {
     if (f.type !== "extrude" || f.suppressed || !/^Plan de travail/.test(f.name)) return [];
     const s = doc.features.find((x): x is SketchFeature => x.id === f.sketch && x.type === "sketch");

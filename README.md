@@ -2698,6 +2698,17 @@ opération existante.
   - Une fenêtre montre chaque mur vu de face, ses points numérotés et leur liste ; **« Fichier PDF »** télécharge une
     page A4 paysage par mur (`document/tech-plan-sheets.ts`, `app/kitchen/tech-plan-tool.ts`). Les hauteurs sont
     des repères d'usage, à faire valider par les artisans.
+- **Plan de travail en barres** (groupe « Cuisine », masqué d'office) : chaque plan de travail coupé en longueurs du
+  commerce (`document/worktop-bars.ts`, pur ; la fenêtre est `app/kitchen/worktop-bars-tool.ts`).
+  - **Barres vendues** de 3 m, 3,05 m, 4,10 m ou 4,20 m ; un plan plus long est coupé, chaque **joint** posé sur le
+    côté d'un meuble (pour être porté) et à 10 cm au moins d'une découpe d'évier ou de plaque, à 30 cm au moins
+    d'un bout ; sans place, le panneau le dit.
+  - **À l'angle** de deux plans : **joint droit** (l'un passe, l'autre vient contre) ou **coupe d'onglet** (le plan
+    qui vient contre s'allonge de la profondeur de l'autre).
+  - Les morceaux (2 cm de plus pour la scie) sont rangés dans le moins de barres possible, par matière, épaisseur
+    et largeur de barre (60, 65, 90 ou 120 cm) ; deux **ferrures de jonction** par joint.
+  - Le **devis** compte ces barres au prix du m² de leur matière, au lieu de la surface du plan de travail
+    (`withWorktopBars`), et les ferrures dans la quincaillerie. Le réglage est gardé avec le compte.
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).

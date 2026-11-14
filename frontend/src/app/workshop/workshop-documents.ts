@@ -4,8 +4,9 @@
  * comparer) et ses versions gardées dans le projet (le devis initial, puis les avenants : quote-versions.ts) ; la
  * commande numérique et les étiquettes sont dans workshop-cnc.ts.
  */
-import { cutList } from "../../document/cut-list";
+import { cutList, type CutTotals } from "../../document/cut-list";
 import { decorMetres } from "../../features/decor-length";
+import { withWorktopBars, worktopBars } from "../../document/worktop-bars";
 import { barLength } from "../../document/bars";
 import { CURRENCY, DEFAULT_RATES, EURO_IN_MAD, mad, money, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../../document/quote";
 import type { CabinetFeature, CadDocument } from "../../document/types";
@@ -124,12 +125,20 @@ export function holesOf(doc: CadDocument): number {
   }, 0);
 }
 
+/**
+ * What the quote prices: the cut list's totals, the worktops counted as the bars bought for them (at the price of a
+ * m² of their material, document/worktop-bars.ts), the hardware of the model and what the workshop's rules add.
+ */
+function priced(viewport: Viewport, editor: Editor, rates: QuoteRates): { totals: CutTotals[]; hardware: { name: string; quantity: number; unit?: string; price?: number }[] } {
+  const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
+  const bars = withWorktopBars(rows, totals, worktopBars(editor.doc).bars, (m) => rates.boards[m] ?? rates.boards.default ?? 0);
+  return { totals: bars.totals, hardware: [...modelHardware(editor.doc), ...autoHardware(editor.doc), ...bars.items] };
+}
+
 function showQuote(viewport: Viewport, editor: Editor): void {
-  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  // The hardware of the model, then what the workshop's rules add (counted from the furniture).
-  const hardware = [...modelHardware(editor.doc), ...autoHardware(editor.doc)];
-  if (!totals.length) return editor.notify("Aucune pièce à chiffrer.", "info");
   const rates = loadRates();
+  let { totals, hardware } = priced(viewport, editor, rates);
+  if (!totals.length && !hardware.length) return editor.notify("Aucune pièce à chiffrer.", "info");
   const table = el("div", {
     class: "text-xs [&_table]:mb-3 [&_table]:w-full [&_td]:border-b [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border-b [&_th]:border-gray-300 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left dark:[&_td]:border-gray-700 dark:[&_th]:border-gray-600 [&_td:not(:first-child)]:text-right",
   });
@@ -146,7 +155,9 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     });
     return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, label), el("span", { class: "flex items-center gap-1" }, input, el("span", { class: "w-10 text-gray-500" }, unit)));
   };
-  const boards = totals.map((t) => field(`${t.material}`, rates.boards[t.material] ?? rates.boards.default ?? 0, barLength(t.material) !== null ? "MAD/m" : "MAD/m²", (v) => (rates.boards[t.material] = v)));
+  // Every material priced, the worktops' too (counted as bars, at the price of a m² of it).
+  const materials = [...new Set([...totals.map((t) => t.material), ...worktopBars(editor.doc).bars.map((b) => b.material)])];
+  const boards = materials.map((m) => field(m, rates.boards[m] ?? rates.boards.default ?? 0, barLength(m) !== null ? "MAD/m" : "MAD/m²", (v) => (rates.boards[m] = v)));
   const settings = el(
     "div",
     { class: "grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" },
@@ -178,6 +189,8 @@ function showQuote(viewport: Viewport, editor: Editor): void {
   let quote = makeQuote(totals, rates, hardware, editor.unit, holes, grooves);
   const extras = el("div", { class: "space-y-3" });
   const refresh = () => {
+    // A board's price changed: the worktop bars follow it.
+    ({ totals, hardware } = priced(viewport, editor, rates));
     quote = makeQuote(totals, rates, hardware, editor.unit, holes, grooves);
     table.innerHTML = quoteHtml(quote);
     quoteExtras(extras, viewport, editor, totals, rates, hardware, holes, quote, quoteHtml);
@@ -199,14 +212,16 @@ function showQuote(viewport: Viewport, editor: Editor): void {
 
 /** The quote of the displayed parts at the saved rates, as a printable table, or null when there is nothing to price. */
 export function savedQuoteHtml(viewport: Viewport, editor: Editor): string | null {
-  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc), decorMetres(editor.doc))) : null;
+  const rates = loadRates();
+  const { totals, hardware } = priced(viewport, editor, rates);
+  return totals.length || hardware.length ? quoteHtml(makeQuote(totals, rates, hardware, editor.unit, holesOf(editor.doc), decorMetres(editor.doc))) : null;
 }
 
 /** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
 export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
-  const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc), decorMetres(editor.doc)).gross : null;
+  const rates = loadRates();
+  const { totals, hardware } = priced(viewport, editor, rates);
+  return totals.length || hardware.length ? makeQuote(totals, rates, hardware, editor.unit, holesOf(editor.doc), decorMetres(editor.doc)).gross : null;
 }
 
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {

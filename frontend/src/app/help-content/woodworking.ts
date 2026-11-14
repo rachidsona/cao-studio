@@ -1,4 +1,4 @@
-import { TECH_PLAN_HELP } from "./kitchen-more";
+import { TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
 import type { HelpFamily } from "./types";
 
 export const WOODWORKING: HelpFamily[] = [
@@ -8,6 +8,7 @@ export const WOODWORKING: HelpFamily[] = [
       "Ruban du haut, onglet « Cuisine » : groupes « Pièce », « Cuisine » et « Meuble ». Pour une cuisine, l'ordre habituel est : Pièce (les murs), puis Implantation de cuisine, ou Caisson et Meubles de cuisine un par un, puis Façades, Finitions et Éclairage.",
     tools: [
       TECH_PLAN_HELP,
+      WORKTOP_BARS_HELP,
       {
         keys: ["data-action:cabinet"],
         name: "Caisson",

@@ -3,7 +3,8 @@
  * penderies, coulisses et poignées des tiroirs de niche, accessoires intérieurs à leur prix du catalogue, vis confirmat, tourillons et excentriques
  * des usinages (chacun fait un trou dans chacune des deux planches qu'il assemble) ; le verre trempé (au m²) et le
  * profilé alu (au mètre) des portes vitrées, qui s'achètent au lieu de se scier ; les compas d'une porte relevable
- * (choisis d'après son poids et sa hauteur) ou d'un abattant, et le profil gorge des façades sans poignée.
+ * (choisis d'après son poids et sa hauteur) ou d'un abattant, le profil gorge des façades sans poignée, et les ferrures
+ * de jonction des plans de travail (deux par joint, document/worktop-bars.ts).
  */
 import { frontsHardware, frontsParts } from "../features/fronts-parts";
 import { isGlass } from "../features/glass-door";
@@ -12,6 +13,7 @@ import { partMass } from "../features/stability";
 import { catalogItems } from "./hardware-catalog";
 import { bodyInfo } from "./materials";
 import type { CadDocument, FrontsFeature } from "./types";
+import { WORKTOP_FITTING, worktopBars } from "./worktop-bars";
 
 export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
 export const DOWEL = "Tourillon Ø8 × 30";
@@ -56,6 +58,8 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
   add(CONFIRMAT_SCREW, Math.floor(screwHoles / 2));
   add(DOWEL, Math.floor(dowelHoles / 2));
   add(MINIFIX_SET, cams);
+  // The worktops' joints: two fittings each.
+  add(WORKTOP_FITTING, worktopBars(doc).fittings);
   return catalogItems(doc, [...counts].map(([name, quantity]) => ({ name, quantity, ...(units.has(name) ? { unit: units.get(name) } : {}), ...(prices.has(name) ? { price: prices.get(name) } : {}) })));
 }
 

@@ -29,6 +29,7 @@ KEYS = frozenset({
     "cao.dxf-layers",
     "cao.part-tags",
     "cao.render-materials",
+    "cao.worktop-bars",
 })
 VALUE_MAX = 2_000_000
 

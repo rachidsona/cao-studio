@@ -21,6 +21,7 @@ export const KEPT_KEYS = new Set([
   "cao.dxf-layers",
   "cao.part-tags",
   "cao.render-materials",
+  "cao.worktop-bars",
 ]);
 
 const URL = "/api/kept/";
