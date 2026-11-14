@@ -1,7 +1,9 @@
 /**
  * « Isoler et aménager » un caisson de cuisine (clic droit sur lui ou sur sa porte) : il devient un caisson du dressing
  * à sa place (document/cabinet-furnish.ts) et la vue ne montre que lui, de face. Étagères, Cloisons, Niche, Tiroirs,
- * Penderie et Portes y marchent par le clic droit dans une niche ou le ruban ; « Tout montrer » rend la cuisine.
+ * Penderie et Portes y marchent par le clic droit dans une niche ou le ruban ; « Tout montrer » rend la cuisine. Le menu
+ * du meuble propose aussi l'outil tout de suite (un accessoire, des étagères, des tiroirs) : le meuble est isolé et
+ * aménagé, et l'outil s'ouvre sur la niche cliquée.
  * « Mes caissons » : un caisson gardé (clic droit dans une de ses niches), avec son intérieur, pour tous les projets ;
  * il se pose dans un linéaire de cuisine (onglet « Mes meubles ») ou dans une case d'un dressing.
  */
@@ -10,18 +12,34 @@ import { caissonEntry, withCaissonInCase } from "../document/caisson-spec";
 import type { CatalogEntry } from "../document/kitchen-catalog";
 import { findFeature } from "../document/operations";
 import { askName } from "./door-menu";
-import type { PickedNiche } from "./dressing/niche-pick";
+import { nicheAt, type PickedNiche } from "./dressing/niche-pick";
+import { Joinery3D } from "./joinery-3d";
 import type { Editor } from "./editor";
 import { addMyUnit } from "./kitchen/my-units";
 import { isolateSketch } from "./zone-view";
 
-export async function furnishCabinet(editor: Editor, cabinetId: string): Promise<void> {
+/** The cabinet made a caisson to furnish, alone in the view; its Répartition (null: it could not be). `quiet`: a tool opens next, it says the rest. */
+export async function furnishCabinet(editor: Editor, cabinetId: string, quiet = false): Promise<string | null> {
   const name = findFeature(editor.doc, cabinetId)?.name ?? "Caisson";
   const made = withCabinetFurnished(editor.doc, cabinetId);
-  if (typeof made === "string") return editor.notify(made, "info");
+  if (typeof made === "string") return (editor.notify(made, "info"), null);
   await editor.change(made.doc);
   isolateSketch(made.sketch, name);
-  editor.notify([`« ${name} » est prêt à aménager : clic droit dans une niche pour Étagères, Cloisons, Niche, Tiroirs, Penderie ou Porte.`, ...made.notes].join(" "), "success");
+  if (!quiet || made.notes.length) editor.notify([...(quiet ? [] : [`« ${name} » est prêt à aménager : clic droit dans une niche pour Étagères, Cloisons, Niche, Tiroirs, Penderie ou Porte.`]), ...made.notes].join(" "), "success");
+  return made.sketch;
+}
+
+/** What the cabinet's menu opens straight away, on the niche clicked. */
+export const STRAIGHT_TOOLS: ["accessory" | "shelves" | "drawers", string][] = [["accessory", "Accessoire intérieur…"], ["shelves", "Étagères…"], ["drawers", "Tiroirs…"]];
+
+/** The cabinet isolated and furnished, then a tool opened on its niche at `at` (a point of the model clicked on it). */
+export async function openInCabinet(editor: Editor, cabinetId: string, at: [number, number, number], tool: "accessory" | "shelves" | "drawers"): Promise<void> {
+  const sketch = await furnishCabinet(editor, cabinetId, true);
+  const niche = sketch ? nicheAt(editor.doc, sketch, at) : null;
+  if (!niche) return;
+  Joinery3D.pick = niche.middle;
+  if (tool === "shelves") editor.sketches.startJoinery(tool, niche.sketch);
+  else editor.sketches.startEquip(tool, niche.sketch);
 }
 
 /** The caisson of this niche kept in « Mes caissons » (of a dressing's wall, its case only), under the name typed. */

@@ -11,7 +11,7 @@ import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
 import { cabinetOfBody } from "../../document/cabinet-furnish";
 import { findFeature } from "../../document/operations";
-import { furnishCabinet, keepCaisson, putCaisson } from "../cabinet-furnish";
+import { furnishCabinet, keepCaisson, openInCabinet, putCaisson, STRAIGHT_TOOLS } from "../cabinet-furnish";
 import { myUnits } from "../kitchen/my-units";
 import { isolatedSketch, isolateSketch } from "../zone-view";
 import { shownDoc } from "../kitchen/kitchen-run-preview";
@@ -76,8 +76,14 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     const cabinet = !niche && face ? cabinetOfBody(editor.doc, face.bodyId) : null;
     // The elements selected: alone in the view, to work on them (app/isolate-selection.ts).
     const alone = isolateMenuItem(editor);
-    if (cabinet) {
-      menu = popup(event, "Menu du caisson", cabinet.name, [["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)], ...(alone ? [alone] : [])]);
+    if (cabinet && face) {
+      // Straight to a tool: the cabinet isolated and furnished, the tool opened on the niche clicked.
+      const at = face.point.toArray() as [number, number, number];
+      menu = popup(event, "Menu du caisson", cabinet.name, [
+        ["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)],
+        ...STRAIGHT_TOOLS.map(([tool, label]): [string, () => void] => [label, () => void openInCabinet(editor, cabinet.id, at, tool)]),
+        ...(alone ? [alone] : []),
+      ]);
       return;
     }
     if (!niche) {

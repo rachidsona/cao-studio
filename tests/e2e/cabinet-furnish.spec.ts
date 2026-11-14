@@ -155,3 +155,29 @@ test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une aut
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
+
+test("caisson de cuisine : « Accessoire intérieur… » sur sa porte ouvre l'outil sur la niche, le caisson isolé et aménagé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-accessoire-cuisine");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await tool.locator("[data-run-close]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(1500);
+  await page.mouse.click(500, 610, { button: "right" });
+  await page.locator("[data-tree-menu]").getByText("Accessoire intérieur…").click();
+  await expect(page.locator("[data-zone-isolated]")).toContainText("Bas 2 portes 1000");
+  const accessory = page.getByRole("dialog", { name: "Accessoire" });
+  await expect(accessory).toContainText("Niche choisie");
+  await shot(page, "caisson-accessoire");
+  expect(errors).toEqual([]);
+});

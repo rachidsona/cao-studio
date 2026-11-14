@@ -38,3 +38,16 @@ export function nicheUnderPointer(viewport: Viewport, doc: CadDocument, event: P
   }
   return best?.niche ?? null;
 }
+
+/** The niche of a Répartition at a point of the model (projected on its plane), else its biggest niche. */
+export function nicheAt(doc: CadDocument, sketchId: string, at: Vec3): PickedNiche | null {
+  const sketch = doc.features.find((f): f is SketchFeature => f.id === sketchId && f.type === "sketch");
+  if (!sketch) return null;
+  const { origin, u, v } = frameOf(sketch);
+  const rel = [0, 1, 2].map((k) => at[k]! - origin[k]!);
+  const p = [rel[0]! * u[0] + rel[1]! * u[1] + rel[2]! * u[2], rel[0]! * v[0] + rel[1]! * v[1] + rel[2]! * v[2]] as const;
+  const leaves = leafNiches(sketch);
+  const area = (b: NicheBox) => (b.x1 - b.x0) * (b.y1 - b.y0);
+  const leaf = leaves.find((l) => p[0] > l.box.x0 && p[0] < l.box.x1 && p[1] > l.box.y0 && p[1] < l.box.y1) ?? [...leaves].sort((a, b) => area(b.box) - area(a.box))[0];
+  return leaf ? { sketch: sketch.id, partition: leaf.partition, path: leaf.path, box: leaf.box, middle: [(leaf.box.x0 + leaf.box.x1) / 2, (leaf.box.y0 + leaf.box.y1) / 2] } : null;
+}

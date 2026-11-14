@@ -1102,8 +1102,9 @@ opération existante.
     - Il **suit sa niche**, reste **hors du débit** et va au **devis** à son prix indicatif (en MAD, qu'un tarif
       réglé à la main remplace) ; il est chromé dans la vue, son miroir en miroir, ses bacs en plastique gris, tant
       qu'on ne lui donne pas une apparence. Les cotes sont des repères du commerce : la fiche du fabricant fait foi.
-    - Dans un **meuble de cuisine**, faire d'abord clic droit sur le meuble, « Isoler et aménager » : ses niches
-      reçoivent alors les accessoires. Le catalogue et les pièces sont dans `features/accessory-parts.ts` (pur), les
+    - Dans un **meuble de cuisine**, clic droit sur le meuble ou sur sa porte, « Accessoire intérieur… » (ou
+      « Étagères… », « Tiroirs… ») : le meuble est isolé et aménagé, et l'outil s'ouvre sur la niche cliquée
+      (`openInCabinet` de `app/cabinet-furnish.ts`, `nicheAt` de `app/dressing/niche-pick.ts`). Le catalogue et les pièces sont dans `features/accessory-parts.ts` (pur), les
       lignes du panneau dans `app/dressing/accessory-rows.ts`.
 - **Panneaux** (groupe « Meuble », comme la conception de squelette de JoinerCAD) : on dessine le squelette
   du meuble dans une esquisse (par exemple sur le plan de face : le contour du caisson et une ligne par
