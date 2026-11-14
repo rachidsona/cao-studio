@@ -331,6 +331,9 @@ serveur accepte les deux versions.
   chanfrein, doucine (deux quarts de cercle tangents) — contours fermés à balayer avec « Suivre-moi »
   (`sketcher/moulding-profiles.ts`). Seule sa place reste libre, à coter depuis un bord ; une cote que
   l'esquisse refuserait n'est pas posée (`sketcher/joinery-shapes.ts`).
+- **Sélections intelligentes** : Ctrl ou ⌘ + A choisit tout le dessin ; « Sélectionner les semblables » (caché par
+  défaut) tous les éléments de même sorte et de même taille que ceux choisis (tous les trous de Ø 5) ; « Sélectionner
+  la chaîne » le contour entier des traits choisis (`sketcher/smart-select.ts`).
 - **Copies au déplacement** : dans le panneau « Déplacer » de l'esquisse, « Copies » prend « x5 » (ou 5) — cinq copies
   à la suite, chacune d'un déplacement plus loin — ou « /5 » — cinq copies réparties jusqu'au point visé ; la
   sélection reste en place (`sketcher/move.ts`, `parseCopies`).

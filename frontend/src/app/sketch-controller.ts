@@ -9,6 +9,7 @@ import { openUnderlay } from "./sketch-underlay";
 import { autoDimensions } from "../sketcher/auto-dimensions";
 import { fullyDefine } from "../constraints/constraint-state";
 import { openJoineryShapes } from "./joinery-shapes-dialog";
+import { allCurves, chainCurves, similarCurves } from "../sketcher/smart-select";
 import { openSketchTransform } from "./sketch-transform-dialog";
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
@@ -379,6 +380,11 @@ export class SketchController {
       mode.apply(geometry, `Cotation automatique : ${count} cote${count > 1 ? "s" : ""} de référence.`);
       return;
     }
+    if (id === "skselectsimilar" || id === "skselectchain") {
+      const found = id === "skselectsimilar" ? similarCurves(mode.geometry, mode.selection) : chainCurves(mode.geometry, mode.selection);
+      if (!found.length) return this.host.notify("Choisissez d'abord un trait, un cercle ou un arc.", "info");
+      return this.selectInSketch(found, id === "skselectsimilar" ? "semblable" : "de la chaîne");
+    }
     if (id === "joineryshapes") return openJoineryShapes(this.host.unit(), () => mode.setTool("joinery"));
     if (id === "fullydefine") {
       const { geometry, count, dof } = fullyDefine(mode.geometry);
@@ -397,6 +403,17 @@ export class SketchController {
     const created = mode.runCommand(id);
     const dimension = created.find((c) => mode.geometry.constraints.some((k) => k.id === c && "value" in k));
     if (dimension) this.focusDimension(dimension);
+  }
+
+  /** Chooses these curves in the sketch, and says how many. */
+  private selectInSketch(ids: string[], what: string): void {
+    const mode = this.mode;
+    if (!mode) return;
+    mode.selection.clear();
+    for (const id of ids) mode.selection.add(id);
+    mode.render();
+    this.host.notify(`${ids.length} élément${ids.length > 1 ? "s" : ""}${what ? ` ${what}${ids.length > 1 && what === "semblable" ? "s" : ""}` : ""} sélectionné${ids.length > 1 ? "s" : ""}.`, "info");
+    this.refresh();
   }
 
   focusDimension(id: string): void {
@@ -451,6 +468,11 @@ export class SketchController {
     // Coordinates typed for the next point (« @ » is AltGr + à on a PC keyboard): before the shortcuts and Échap.
     const altGr = event.getModifierState?.("AltGraph") === true;
     if (mode && !event.metaKey && (altGr || (!event.ctrlKey && !event.altKey)) && mode.typeCoordinate(event)) return true;
+    // Ctrl or ⌘ + A: the whole drawing chosen.
+    if (mode && (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "a" && !mode.toolActive) {
+      this.selectInSketch(allCurves(mode.geometry), "");
+      return true;
+    }
     if (!mode || event.metaKey || event.ctrlKey || event.altKey) return false;
     const key = event.key.toLowerCase();
     if (mode.panelToolActive && (event.key === "Escape" || event.key === "Enter")) {

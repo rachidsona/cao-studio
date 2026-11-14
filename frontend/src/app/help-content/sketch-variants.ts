@@ -105,3 +105,18 @@ export const STRETCH: ToolHelp = {
   ],
   tip: "Les autres contraintes sont gardées : un côté vertical reste vertical. Un étirement qui les contredirait est refusé, avec les contraintes en cause. Un nouveau cadre remplace les points pris.",
 };
+
+/** Les fiches des sélections intelligentes de l'esquisse (sketcher/smart-select.ts). */
+export const SMART_SELECT: ToolHelp[] = [
+  {
+    keys: ["data-sketch-command:skselectsimilar"], name: "Sélectionner les semblables",
+    what: "Choisit d'un coup tous les éléments de même sorte et de même taille que ceux choisis : tous les trous de Ø 5, toutes les étagères de 564, tous les arcs de rayon 10.",
+    steps: ["Cliquez un élément (ou plusieurs de tailles différentes).", "Cliquez « Sélectionner les semblables » : le message dit combien sont choisis.", "Appliquez ensuite une contrainte, une cote, Déplacer ou Suppr à tous."],
+    tip: "Ctrl ou ⌘ + A choisit tout le dessin. Les traits de construction ne vont qu'avec les traits de construction ; la géométrie projetée d'un corps n'est jamais prise.",
+  },
+  {
+    keys: ["data-sketch-command:skselectchain"], name: "Sélectionner la chaîne",
+    what: "Étend la sélection au contour entier des traits choisis : un côté cliqué, tout le rectangle ou tout le profil.",
+    steps: ["Cliquez un trait du contour.", "Cliquez « Sélectionner la chaîne »."],
+  },
+];

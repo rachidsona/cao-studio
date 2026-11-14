@@ -1,4 +1,4 @@
-import { DRAW_VARIANTS, MORE_DIMENSIONS, STRETCH } from "./sketch-variants";
+import { DRAW_VARIANTS, MORE_DIMENSIONS, SMART_SELECT, STRETCH } from "./sketch-variants";
 import type { HelpFamily } from "./types";
 
 export const SKETCH: HelpFamily[] = [
@@ -248,6 +248,7 @@ export const SKETCH: HelpFamily[] = [
         tip: "Copies au lieu d'un déplacement : tapez « x5 » (ou 5) dans « Copies » pour cinq copies à la suite, chacune d'un déplacement plus loin, ou « /5 » pour cinq copies réparties jusqu'au point visé. L'origine et les axes ne bougent pas. Le panneau indique s'il manque encore des cotes après le déplacement.",
       },
       STRETCH,
+      ...SMART_SELECT,
       {
         keys: ["data-sketch-command:skmirror"], name: "Symétrie dans l'esquisse",
         what: "Copie des traits en miroir autour d'une ligne ou d'un axe.",
