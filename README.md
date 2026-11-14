@@ -1941,6 +1941,11 @@ opération existante.
   cliquée passe, les suivantes s'arrêtent contre les panneaux déjà faits). Les faces non choisies restent ouvertes ;
   les faces se prennent sur le volume d'avant l'opération, comme pour la Coque ; l'opération se rouvre pour la
   reprendre (`features/paneling.ts`, `app/paneling-tool.ts`).
+  - **Faces cylindriques** : l'extérieur d'un fût ou d'un anneau, son intérieur, un angle arrondi, une façade cintrée
+    deviennent une **planche cintrée** de l'épaisseur voulue, prise dans le volume — sous la face pour un volume
+    plein, au-delà pour l'intérieur d'un anneau —, dans le seul secteur qu'occupe la face quand elle ne fait pas le
+    tour (`features/curved-panel.ts` : l'axe et le rayon lus à trois points de la face). Une face courbe et sa voisine
+    se joignent **bout à bout**, même en onglet : celle prise d'abord passe. Une sphère ou une forme libre est refusée.
 - **Lissage** (groupe Modifier, comme Fusion) : un solide passant par les profils fermés de plusieurs esquisses, dans
   l'ordre de l'historique, courbe ou droit entre eux (pied galbé, trémie, moulure qui change de section) ; nouveau
   corps, joindre ou couper. Chaque profil doit être un seul contour fermé, sans trou, dans des plans séparés.

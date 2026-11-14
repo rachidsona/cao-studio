@@ -155,15 +155,15 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:paneling"],
         name: "Panneaux sur faces",
-        what: "Transforme les faces planes d'un volume en panneaux d'une épaisseur donnée, assemblés en onglet à tout angle ou bout à bout : un seau à pans, une boîte, un caisson biais.",
+        what: "Transforme les faces planes ou cylindriques d'un volume en panneaux d'une épaisseur donnée, assemblés en onglet à tout angle ou bout à bout : un seau à pans, une boîte, un caisson biais, un anneau, un angle arrondi.",
         steps: [
           "Dessinez le volume, par exemple un polygone extrudé, évasé avec « Déformer ».",
           "Cliquez « Panneaux sur faces », puis une face du volume : elle passe en orange, et les faces pareilles avec elle.",
-          "Cliquez d'autres faces, recliquez pour en retirer ; ou « Toutes les faces planes », puis retirez celles à laisser ouvertes.",
+          "Cliquez d'autres faces, recliquez pour en retirer ; ou « Toutes les faces », puis retirez celles à laisser ouvertes. Une face cylindrique (l'extérieur ou l'intérieur d'un anneau, un arrondi) devient une planche cintrée.",
           "Réglez l'« Épaisseur » et l'« Assemblage » : « En onglet (tout angle) » ou « Bout à bout ».",
           "C'est enregistré dès que c'est valable : chaque face devient un panneau, prêt pour la liste de débit.",
         ],
-        tip: "Décochez « Faces pareilles ensemble » pour prendre une seule face. En bout à bout, la première face cliquée passe et les autres s'arrêtent contre elle.",
+        tip: "Décochez « Faces pareilles ensemble » pour prendre une seule face. En bout à bout, la première face cliquée passe et les autres s'arrêtent contre elle. Une face courbe et sa voisine se joignent toujours bout à bout, même en onglet : cliquez d'abord celle qui doit passer. Une sphère ou une forme libre ne devient pas un panneau.",
       },
       {
         keys: ["data-action:loft"],

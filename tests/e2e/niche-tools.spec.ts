@@ -477,15 +477,17 @@ test("Panneaux sur faces : les faces d'un volume deviennent des panneaux", async
   await expect(tool).toContainText("Cliquez une face du volume");
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.55);
   await expect(tool).toContainText("1 face(s) en panneaux");
-  await tool.getByRole("button", { name: "Toutes les faces planes" }).click();
-  await expect(tool).toContainText("6 face(s) en panneaux");
-  await tool.getByRole("textbox", { name: "Épaisseur" }).fill("0,5");
+  // Every face: the six flat ones and the wall of the hole (curved), which becomes a curved board.
+  await tool.getByRole("button", { name: "Toutes les faces" }).click();
+  await expect(tool).toContainText("7 face(s) en panneaux");
+  // Thinner than half the plate (1 cm): the wall of the hole keeps room between the panels of both faces.
+  await tool.getByRole("textbox", { name: "Épaisseur" }).fill("0,2");
   await tool.getByRole("textbox", { name: "Épaisseur" }).press("Enter");
   await page.waitForTimeout(1500);
   await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(tool).toHaveCount(0);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
-  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/panneau 6/i).first()).toBeVisible();
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/panneau 7/i).first()).toBeVisible();
   // Les panneaux en onglet ne sont pas pris pour des pièces qui se chevauchent (rien à vérifier : le bouton reste caché).
   const problems = page.locator("[data-live-problems]");
   if (await problems.isVisible()) await problems.click();

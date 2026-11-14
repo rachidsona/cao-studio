@@ -1,5 +1,6 @@
 /**
- * « Panneaux sur faces » (groupe Modifier) : cliquez les faces planes d'un volume qui deviennent des panneaux — un clic
+ * « Panneaux sur faces » (groupe Modifier) : cliquez les faces planes ou cylindriques d'un volume qui deviennent des
+ * panneaux (une face cylindrique : une planche cintrée) — un clic
  * prend aussi les faces pareilles (les côtés d'un seau à pans), recliquez pour les retirer — et réglez l'épaisseur et
  * l'assemblage : en onglet, à tout angle, ou bout à bout (la première face cliquée passe). Les faces non choisies
  * restent ouvertes (features/paneling.ts). OK ajoute l'opération à l'historique ; elle se rouvre pour la reprendre.
@@ -10,7 +11,7 @@ import { uniqueId, uniqueName } from "../document/operations";
 import type { FaceRef, PanelingFeature } from "../document/types";
 import type { BodyMesh } from "../geometry/protocol";
 import { el } from "../ui/dom";
-import { faceMeasure, faceTwins } from "./face-twins";
+import { faceTwins } from "./face-twins";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 const JOINTS: [PanelingFeature["joint"], string][] = [["miter", "En onglet (tout angle)"], ["butt", "Bout à bout"]];
@@ -54,13 +55,36 @@ export class PanelingTool extends PanelTool {
     }
     if (editing) {
       this.refs = editing.faces;
-      this.selected = editing.faces.flatMap((ref) => this.faceNear(ref.center));
+      this.selected = await this.facesOf(editing.faces);
     } else if (first) {
       for (const f of preselected) if (f.bodyId === first.bodyId) this.toggle(f.faceIndex, false);
       void this.describe();
     }
     this.redraw();
     this.start();
+  }
+
+  /**
+   * The faces of the snapshot the saved references name: a flat one by the triangles nearest its centre; a curved one
+   * by asking the kernel (the centre of a drum is on its axis, as near the inside of a ring as its outside).
+   */
+  private async facesOf(refs: readonly FaceRef[]): Promise<number[]> {
+    const target = this.target;
+    const mesh = this.mesh;
+    if (!target || !mesh) return [];
+    let described: (FaceRef | null)[] | null = null;
+    const out: number[] = [];
+    for (const ref of refs) {
+      if (ref.type === "PLANE") {
+        out.push(...this.faceNear(ref.center));
+        continue;
+      }
+      described ??= await Promise.all(mesh.faceGroups.map(async (_, f) => ((await this.ctx.geometry.describe(target, [], f).catch(() => null))?.face as FaceRef | undefined) ?? null));
+      const same = (a: FaceRef) => a.type === ref.type && Math.hypot(...a.center.map((c, i) => c - ref.center[i]!)) < 0.5 && a.normal.reduce((s, c, i) => s + c * ref.normal[i]!, 0) > 0.999;
+      const found = described.findIndex((d) => d !== null && same(d));
+      if (found >= 0) out.push(found);
+    }
+    return out;
   }
 
   /** The face of the snapshot whose triangles pass nearest a point (to find saved faces again). */
@@ -97,11 +121,11 @@ export class PanelingTool extends PanelTool {
   }
 
   protected rows(): (HTMLElement | null)[] {
-    const all = el("button", { type: "button", class: BUTTON }, "Toutes les faces planes");
+    const all = el("button", { type: "button", class: BUTTON }, "Toutes les faces");
     all.addEventListener("click", () => {
       const mesh = this.mesh;
       if (!mesh) return;
-      this.selected = mesh.faceGroups.flatMap((_, f) => (faceMeasure(mesh, f).flat ? [f] : []));
+      this.selected = mesh.faceGroups.map((_, f) => f);
       this.redraw();
       void this.describe();
     });
@@ -125,7 +149,7 @@ export class PanelingTool extends PanelTool {
       this.checkRow("Faces pareilles ensemble", this.twins, (v) => ((this.twins = v), this.render())),
       this.target ? el("div", { class: "flex gap-1.5" }, all, none) : null,
       this.info(this.joint === "miter" ? "En onglet : deux panneaux voisins se coupent à mi-angle, quel que soit l'angle." : "Bout à bout : la première face cliquée passe, les autres s'arrêtent contre elle."),
-      this.info("Les panneaux sont pris dans le volume, vers l'intérieur ; les faces non choisies restent ouvertes."),
+      this.info("Les panneaux sont pris dans le volume, vers l'intérieur ; les faces non choisies restent ouvertes. Une face cylindrique devient une planche cintrée, qui passe : sa voisine s'arrête contre elle si elle est prise après."),
     ];
   }
 
@@ -164,7 +188,6 @@ export class PanelingTool extends PanelTool {
     const offset = hit.faceIndex * 3;
     const face = this.mesh.faceGroups.findIndex((g) => offset >= g.start && offset < g.start + g.count);
     if (face < 0) return;
-    if (!faceMeasure(this.mesh, face).flat) return this.ctx.notify("Seules les faces planes deviennent des panneaux.", "info");
     this.toggle(face);
     this.redraw();
     void this.describe();

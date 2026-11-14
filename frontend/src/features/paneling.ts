@@ -1,9 +1,11 @@
 /**
- * Panneaux sur faces : les faces planes choisies d'un volume deviennent des panneaux de l'épaisseur voulue, pris dans
- * le volume (vers l'intérieur) ; les faces non choisies restent ouvertes. Deux assemblages :
+ * Panneaux sur faces : les faces choisies d'un volume — planes, ou cylindriques (une planche cintrée, curved-panel.ts) —
+ * deviennent des panneaux de l'épaisseur voulue, pris dans le volume (vers l'intérieur) ; les faces non choisies restent
+ * ouvertes. Deux assemblages :
  * - en onglet, à tout angle : deux panneaux voisins se partagent leur coin par le plan bissecteur de leurs faces
  *   (chaque point va au panneau dont la face est la plus proche) — le seau à 8 pans, la boîte en onglets ;
- * - bout à bout : la première face choisie passe, les suivantes s'arrêtent contre les panneaux déjà faits.
+ * - bout à bout : la première face choisie passe, les suivantes s'arrêtent contre les panneaux déjà faits ;
+ *   c'est aussi ainsi que se joignent une face courbe et sa voisine, même « en onglet ».
  * Chaque panneau est un corps, pour la liste de débit. Le volume de départ disparaît.
  */
 import { basicFaceExtrusion, makeBox, Vector, type Face, type Shape3D } from "replicad";
@@ -12,6 +14,10 @@ import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveFace, resolveFacePlane } from "../geometry/references";
 import { requirePositive, requireSolid, type OutputLookup } from "./common";
 import type { SolidsOutput } from "./outputs";
+import { curvedSlab } from "./curved-panel";
+
+/** The kinds of faces that become panels. */
+export const PANEL_FACES = new Set(["PLANE", "CYLINDRE"]);
 
 /** Two edges are the same when their middles are this close (mm). */
 const SAME_EDGE = 1e-3;
@@ -64,19 +70,32 @@ export function facePanels(name: string, target: Shape3D, faces: readonly Face[]
   const size = 4 * Math.max(box.width, box.height, box.depth, thickness);
   const shapes: Shape3D[] = [];
   try {
+    const flat = faces.map((f) => f.geomType === "PLANE");
     faces.forEach((face, i) => {
       const n = normals[i]!;
-      let piece = swap(faceSlab(face, n, thickness), (s) => s.intersect(target) as Shape3D);
+      let piece = flat[i] ? swap(faceSlab(face, n, thickness), (s) => s.intersect(target) as Shape3D) : curvedSlab(target, face, thickness);
       if (joint === "miter") {
         faces.forEach((_, j) => {
           const edge = j !== i ? sharedEdge(middles[i]!, middles[j]!) : null;
+          if (!edge) return;
+          // A curved face and its neighbour: butted, the one taken first runs through.
+          if (!flat[i] || !flat[j]) {
+            if (j < i) piece = swap(piece, (s) => s.cut(shapes[j]!) as Shape3D);
+            return;
+          }
           const m = normals[j]!.map((c, k) => c - n[k]!) as Vec3;
-          if (!edge || length(m) < 1e-6) return;
+          if (length(m) < 1e-6) return;
           const cut = halfSpace(m, edge, size);
           piece = swap(piece, (s) => s.intersect(cut) as Shape3D);
           cut.delete();
         });
       } else for (const before of shapes) piece = swap(piece, (s) => s.cut(before) as Shape3D);
+      // Nothing left of it: the panels taken before fill its place (a hole's wall in a thin board, between the panels of
+      // both faces).
+      if (!piece.solids?.length) {
+        piece.delete();
+        throw new GeometryError(`${name} : il ne reste rien du panneau ${i + 1}, les panneaux voisins prennent toute sa place ; prenez une épaisseur plus fine, ou cette face avant eux.`);
+      }
       shapes.push(requireSingleValidSolid(piece, `${name} : le panneau ${i + 1}`));
     });
   } catch (error) {
@@ -92,7 +111,8 @@ export function buildPaneling(feature: PanelingFeature, lookup: OutputLookup): S
   if (!feature.faces.length) throw new GeometryError(`${feature.name} : choisissez au moins une face.`);
   const target = requireSolid(lookup, feature.target).shape;
   const faces = feature.faces.map((ref) => resolveFace(target, ref));
-  if (faces.some((f) => f.geomType !== "PLANE")) throw new GeometryError(`${feature.name} : seules des faces planes deviennent des panneaux.`);
-  const normals = feature.faces.map((ref) => resolveFacePlane(target, ref).normal);
+  if (faces.some((f) => !PANEL_FACES.has(f.geomType))) throw new GeometryError(`${feature.name} : seules des faces planes ou cylindriques deviennent des panneaux (pas une sphère ni une forme libre).`);
+  // A curved face has no single normal: it is not used for it.
+  const normals = feature.faces.map((ref, i): Vec3 => (faces[i]!.geomType === "PLANE" ? resolveFacePlane(target, ref).normal : [0, 0, 1]));
   return { kind: "solids", shapes: facePanels(feature.name, target, faces, normals, feature.thickness, feature.joint) };
 }
