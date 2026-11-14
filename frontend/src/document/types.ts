@@ -821,6 +821,8 @@ export interface TrimFeature extends FeatureBase {
   settings?: FinishOptions;
   /** Made by « Snack et comptoir » (features/snack-parts.ts): reopened in that tool, with these settings. */
   snack?: import("../features/snack-parts").SnackSettings;
+  /** Made by « Plinthe technique » (features/plinth-tech.ts): grilles and plinth drawers, made again by that tool. */
+  plinthTech?: import("../features/plinth-tech").PlinthTechSettings;
 }
 
 /** The room as surveyed (features/room-plan.ts): walls, their openings and what is in the way. Its bodies are "room". */

@@ -68,7 +68,7 @@ export const DEFAULT_RATES: QuoteRates = {
   }),
   waste: 15,
   hardware: {
-    ...inMad({ "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90, "Compas de porte relevable force 1 (paire)": 35, "Compas de porte relevable force 2 (paire)": 45, "Compas de porte relevable force 3 (paire)": 60, "Compas de porte relevable force 4 (paire)": 80, "Compas d'abattant (paire)": 15, "Profil gorge alu (m)": 12, "Ferrure de jonction de plan de travail": 4, "Console de snack": 12 }),
+    ...inMad({ "Charnière à boîtier Ø35": 3.5, "Coulisse de tiroir (paire)": 18, "Poignée entraxe 128 mm": 6, "Vis confirmat 7 × 50": 0.15, "Tourillon Ø8 × 30": 0.05, "Excentrique Minifix 15 + tige": 0.6, "Tringle de penderie Ø25 (m)": 8, "Support de tringle": 2.5, "Pied réglable": 2.5, "Rail de porte coulissante": 25, "Porte-pantalons coulissant": 45, "Penderie escamotable": 90, "Compas de porte relevable force 1 (paire)": 35, "Compas de porte relevable force 2 (paire)": 45, "Compas de porte relevable force 3 (paire)": 60, "Compas de porte relevable force 4 (paire)": 80, "Compas d'abattant (paire)": 15, "Profil gorge alu (m)": 12, "Ferrure de jonction de plan de travail": 4, "Console de snack": 12, "Grille d'aération de plinthe": 8, "Coulisses de tiroir de plinthe (paire)": 15 }),
     // Glazed doors, in MAD already.
     ...GLASS_RATES,
   },

@@ -1,4 +1,4 @@
-import { SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
+import { PLINTH_TECH_HELP, SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
 import type { HelpFamily } from "./types";
 
 export const WOODWORKING: HelpFamily[] = [
@@ -10,6 +10,7 @@ export const WOODWORKING: HelpFamily[] = [
       TECH_PLAN_HELP,
       WORKTOP_BARS_HELP,
       SNACK_HELP,
+      PLINTH_TECH_HELP,
       {
         keys: ["data-action:cabinet"],
         name: "Caisson",

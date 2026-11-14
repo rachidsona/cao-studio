@@ -2719,6 +2719,14 @@ opération existante.
     plan de travail. Le panneau dit les **tabourets** qui tiennent (60 cm chacun, assise 65 cm au comptoir, 75 au
     bar), et ce qui gêne : moins de 25 cm de débord (les genoux), plus de 40 cm (des pieds plutôt).
   - Une opération « Finitions » marquée `snack`, qui se rouvre dans son outil depuis l'historique.
+- **Plinthe technique** (groupe « Cuisine », masqué d'office) : sur les plinthes de la cuisine
+  (`features/plinth-tech.ts`, pur ; la fenêtre est `app/kitchen/plinth-tech-tool.ts`).
+  - **Grilles d'aération** (au devis) dans la plinthe devant chaque réfrigérateur et chaque four encastrés.
+  - **Tiroirs de plinthe** sous les meubles bas de 40 cm et plus, ni sous l'évier ni sous un appareil : façade à la
+    place de la plinthe, fond et côtés sous le meuble (au débit), coulisses (au devis). Une plinthe qui reçoit des
+    tiroirs est mise de côté (suspendue) et refaite en morceaux entre eux, de sa matière.
+  - « Appliquer » refait la plinthe technique en une étape ; tout décoché, elle est retirée et les plinthes rendues.
+    Une cuisine refaite par le Plan de cuisine demande de l'appliquer de nouveau.
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).

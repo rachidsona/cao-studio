@@ -42,3 +42,16 @@ export const SNACK_HELP: ToolHelp = {
   ],
   tip: "Une console porte le débord tous les 60 cm environ ; elles vont au devis, le plan de snack et la rehausse au débit, dans la matière du plan de travail. Moins de 25 cm de débord ne laisse pas la place des genoux ; au-delà de 40 cm, mettez des pieds. Comptez 60 cm par tabouret, d'assise 65 cm au comptoir et 75 cm au bar. L'opération se rouvre ici depuis l'historique.",
 };
+
+/** « Plinthe technique » (app/kitchen/plinth-tech-tool.ts). */
+export const PLINTH_TECH_HELP: ToolHelp = {
+  keys: ["data-workshop:plinth-tech"],
+  name: "Plinthe technique",
+  what: "Met des grilles d'aération dans la plinthe devant le réfrigérateur et les fours, et des tiroirs de plinthe sous les meubles bas.",
+  steps: [
+    "Posez la cuisine avec ses plinthes (Plan de cuisine), puis cliquez « Plinthe technique ».",
+    "Cochez « Grilles d'aération », « Tiroirs de plinthe », ou les deux.",
+    "Cliquez « Appliquer » : la plinthe technique est faite en une étape (Ctrl + Z la retire). Décochez tout et appliquez pour la retirer.",
+  ],
+  tip: "Une grille va devant chaque réfrigérateur et chaque four encastrés. Un tiroir de plinthe va sous chaque meuble bas de 40 cm et plus, ni sous l'évier ni sous un appareil ; sa plinthe est mise de côté et refaite en morceaux entre les tiroirs, de sa matière. Grilles et coulisses vont au devis, façades, fonds et côtés au débit. Si la cuisine est refaite, appliquez de nouveau.",
+};
