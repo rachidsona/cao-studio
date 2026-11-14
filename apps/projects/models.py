@@ -298,3 +298,27 @@ class ShareVariant(models.Model):
 
     def __str__(self) -> str:
         return f"{self.link} — {self.name}"
+
+
+class KeptData(models.Model):
+    """What one keeps for all one's projects (« Mes caissons », suppliers, rates…): kept by the server rather than
+    by one browser only, so it follows the account to another computer (apps/projects/kept.py)."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="cad_kept_data",
+        verbose_name="propriétaire",
+    )
+    key = models.CharField("clé", max_length=60)
+    value = models.TextField("valeur")
+    updated_at = models.DateTimeField("modifiée le", auto_now=True)
+
+    class Meta:
+        ordering = ["key"]
+        constraints = [models.UniqueConstraint(fields=["owner", "key"], name="kept_data_owner_key")]
+        verbose_name = "donnée gardée"
+        verbose_name_plural = "données gardées"
+
+    def __str__(self) -> str:
+        return f"{self.owner} — {self.key}"

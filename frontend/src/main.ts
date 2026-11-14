@@ -1,4 +1,5 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
+import { startKeptData } from "./persistence/kept-data";
 import { Editor, type EditorConfig } from "./app/editor";
 import { bindCommandPalette } from "./app/command-palette";
 import { bindToolColumns } from "./ui/tool-columns";
@@ -129,6 +130,8 @@ async function start(): Promise<void> {
       kernelStatus.dataset.state = "ready";
     }).catch(() => undefined);
   };
+  // What one keeps for all one's projects (« Mes caissons », suppliers, rates…): the server's copy, while the rest loads.
+  const kept = startKeptData();
   const [snapshot, catalog] = await Promise.all([
     loadProject(config.apiUrl),
     // The workshop's catalogue: its materials and hardware join the built-in ones, its profile heads the documents.
@@ -141,6 +144,8 @@ async function start(): Promise<void> {
       loading.show("Préparation du projet…", 0.9);
     }),
   ]);
+  // The libraries in place before the tools read them (a moment at most: the server is near).
+  await kept;
 
   if (catalog) {
     registerCatalog(catalog);

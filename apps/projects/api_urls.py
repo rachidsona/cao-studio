@@ -2,7 +2,7 @@ from django.urls import path, re_path
 
 from apps.catalog import api as catalog_api
 
-from . import api, assistant, folders_api, library, monitoring, production, sharing, thumbnails, workshop
+from . import api, assistant, folders_api, kept, library, monitoring, production, sharing, thumbnails, workshop
 
 urlpatterns = [
     path("client-errors/", monitoring.client_error, name="api-client-errors"),
@@ -13,6 +13,8 @@ urlpatterns = [
     path("folders/<int:folder_id>/", folders_api.folder_detail, name="api-folder"),
     path("folders/<int:folder_id>/empty/", folders_api.folder_empty, name="api-folder-empty"),
     path("library/", library.library_collection, name="api-library"),
+    path("kept/", kept.kept_collection, name="api-kept"),
+    path("kept/<str:key>/", kept.kept_detail, name="api-kept-key"),
     path("library/<int:module_id>/", library.library_detail, name="api-library-module"),
     path("offcuts/", production.offcut_collection, name="api-offcuts"),
     path("offcuts/<int:offcut_id>/", production.offcut_detail, name="api-offcut"),

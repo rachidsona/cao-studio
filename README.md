@@ -666,6 +666,13 @@ opération existante.
   second ; un champ tapé sur place (`data-no-keypad`) non plus. **Dans l'esquisse**, un clic sur une case de cote
   d'une forme en train d'être tracée (largeur, hauteur, longueur, angle, diamètre) ouvre la calculatrice : ✓ garde la
   valeur, comme Tab. Les icônes des outils de dessin disent aussi leur nom au survol.
+- **Ce qu'on garde pour tous ses projets suit le compte** : « Mes caissons », « Mes modules », « Mes découpes »,
+  « Mes murs », les styles de dressing, les fournisseurs des bons de commande, les tarifs du devis, les standards de
+  l'atelier, l'étiquette, les réglages G-code et DXF, les étiquettes de pièces et les matières du rendu sont gardés
+  par le serveur (`/api/kept/`, `apps/projects/kept.py`, modèle `KeptData`), plus seulement par le navigateur : ils
+  reviennent sur un autre ordinateur ou après avoir vidé le navigateur. À l'ouverture de l'éditeur, la copie du
+  serveur remplace celle du navigateur ; ce qu'il n'avait pas encore lui est envoyé ; chaque changement lui est
+  envoyé un instant après, un à la fois (`persistence/kept-data.ts`). Hors ligne, tout reste dans le navigateur.
 - **Les messages de l'éditeur** (« Version 4 enregistrée », « Niche équipée », une modification refusée…)
   s'affichent **en bas à droite, en petit** (11 px), le plus récent en bas, au-dessus de la barre d'état — jamais
   par-dessus la vue, où ils cachaient ce qu'on voulait cliquer ; les clics passent à travers eux (un bouton OK ou
@@ -1564,7 +1571,7 @@ opération existante.
     foret maximal, écarts. Les perçages borgnes de l'autre face sont signalés (pièce à retourner).
   - *Étiquettes* : une par pièce, avec un **QR code**, à imprimer et coller à la sortie de la machine. Un éditeur règle
     ce qu'elle dit et dans quel ordre, la place du QR code, le logo et le format de la planche A4 (3 × 8, 3 × 7, 2 × 4),
-    avec son aperçu ; le modèle est gardé par le navigateur et repris par le dossier de production. Le QR code ouvre la
+    avec son aperçu ; le modèle est gardé par le serveur avec le compte et repris par le dossier de production. Le QR code ouvre la
     page de la pièce du Suivi d'atelier.
   - *Peindre les chants* : les chants posés se voient en vert sur les pièces, un clic sur un bord pose ou retire son
     chant, ou les 4 ; une pipette reporte ceux d'une pièce sur d'autres.
@@ -1644,7 +1651,7 @@ opération existante.
       trou rond dans chaque angle : pas d'usinage nouveau.
     - **Mes découpes** : « Garder dans Mes découpes… » garde ces cotes sous un nom (celui de l'évier ou de la plaque),
       pour tous les projets ; elles s'ajoutent d'un clic depuis « + Ajouter une découpe… » et s'oublient par ✕
-      (`app/kitchen/my-cutouts.ts`, gardées par le navigateur).
+      (`app/kitchen/my-cutouts.ts`, gardées par le serveur avec le compte).
     - **Dans un Plan de cuisine**, un meuble d'évier découpe le plan de travail tout seul : l'« Évier » de l'onglet
       Électro., et aussi le « Bas évier » de l'onglet Bas (ou un meuble à soi sur deux traverses), sauf sous un évier
       de la bibliothèque posé à la main, qui a sa propre découpe. Une découpe ajoutée ou retouchée à la main dans les
