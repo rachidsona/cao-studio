@@ -129,3 +129,22 @@ describe("accessoires intérieurs", () => {
     expect(() => parseDocument({ ...d, features: [sketch(), bare] })).toThrow(/accessoire invalide/);
   });
 });
+
+describe("accessoire dans un tiroir", () => {
+  it("le range-couverts posé sur le fond du tiroir 2 sort avec lui, pas avec le tiroir 1", async () => {
+    const { drawerBodies } = await import("../../frontend/src/app/drawer-toggle");
+    const drawers: NicheFeature = { ...accessory("cutlery"), id: "td1", name: "Tiroirs 1", fill: "drawers", accessory: undefined };
+    const n = geometry();
+    const bottoms = nicheParts(drawers, n).filter((p) => /^Tiroir \d+ — fond$/.test(p.name));
+    const lift = bottoms[1]!.to[1] - n.box.y0;
+    const tray = accessory("cutlery", lift);
+    const d = doc(drawers, tray);
+    const ids = (f: NicheFeature) => nicheParts(f, n).map((_, i) => `${f.id}#${i}`);
+    const bodies = [...ids(drawers), ...ids(tray)];
+    const front = (k: number) => `td1#${nicheParts(drawers, n).findIndex((p) => p.name.startsWith(`Façade tiroir ${k}`) || new RegExp(`tiroir ${k}\\b`, "i").test(p.name))}`;
+    const second = drawerBodies(d, bodies, front(2))!;
+    expect(second.bodies.filter((id) => id.startsWith("ac1#"))).toHaveLength(ids(tray).length);
+    const first = drawerBodies(d, bodies, front(1))!;
+    expect(first.bodies.some((id) => id.startsWith("ac1#"))).toBe(false);
+  });
+});

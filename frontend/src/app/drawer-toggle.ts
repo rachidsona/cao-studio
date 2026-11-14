@@ -138,7 +138,21 @@ export function drawerBodies(doc: CadDocument, bodies: string[], bodyId: string)
   const drawers = (feature?.type === "niche" && feature.fill === "drawers") || (feature?.type === "fronts" && feature.layout === "drawers");
   const k = drawers ? drawerNumber(bodyLabel(doc, bodyId)) : null;
   if (k === null) return null;
-  return { key: `${featureId}:${k}`, bodies: bodies.filter((id) => id.startsWith(`${featureId}#`) && drawerNumber(bodyLabel(doc, id)) === k) };
+  const own = bodies.filter((id) => id.startsWith(`${featureId}#`) && drawerNumber(bodyLabel(doc, id)) === k);
+  // What is put in that drawer (a cutlery tray « Dans le tiroir »: its bottom on the drawer's) slides out with it.
+  const inside = feature?.type === "niche" ? accessoriesIn(doc, feature, k) : [];
+  return { key: `${featureId}:${k}`, bodies: [...own, ...bodies.filter((id) => inside.includes(featureOfBody(id)))] };
+}
+
+/** The accessories of the niche of these drawers standing on the bottom of drawer `k` (their feature ids). */
+function accessoriesIn(doc: CadDocument, drawers: NicheFeature, k: number): string[] {
+  const n = nicheGeometry(drawers, findFeature(doc, drawers.sketch) as SketchFeature | undefined);
+  if (typeof n === "string") return [];
+  const bottom = nicheParts(drawers, n).find((p) => p.name === `Tiroir ${k} — fond`);
+  if (!bottom) return [];
+  const lift = bottom.to[1] - n.box.y0;
+  const same = (f: NicheFeature) => f.sketch === drawers.sketch && f.partition === drawers.partition && f.niche.join(".") === drawers.niche.join(".");
+  return doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.fill === "accessory" && !f.suppressed && same(f) && Math.abs((f.accessory?.lift ?? -1) - lift) < 0.5).map((f) => f.id);
 }
 
 export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Editor): void {

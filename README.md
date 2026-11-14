@@ -1098,7 +1098,8 @@ opération existante.
       derrière l'avant des panneaux) et la **hauteur** qu'il prend : le panneau l'écrit, et refuse une niche trop
       étroite, trop large, pas assez profonde ou trop basse, en disant la cote qui manque.
     - « **Bas à (du bas de la niche)** » le monte dans la niche ; la penderie escamotable se pend sous le haut. Dans
-      une niche à tiroirs, « **Dans le tiroir** » pose le range-couverts sur le fond du tiroir choisi.
+      une niche à tiroirs, « **Dans le tiroir** » pose le range-couverts sur le fond du tiroir choisi ; il sort
+      avec ce tiroir quand on l'ouvre dans la vue (`drawerBodies` de `app/drawer-toggle.ts`).
     - Il **suit sa niche**, reste **hors du débit** et va au **devis** à son prix indicatif (en MAD, qu'un tarif
       réglé à la main remplace) ; il est chromé dans la vue, son miroir en miroir, ses bacs en plastique gris, tant
       qu'on ne lui donne pas une apparence. Les cotes sont des repères du commerce : la fiche du fabricant fait foi.
