@@ -1,3 +1,4 @@
+import { DRAW_VARIANTS } from "./sketch-variants";
 import type { HelpFamily } from "./types";
 
 export const SKETCH: HelpFamily[] = [
@@ -77,7 +78,9 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez le point de départ : la distance donne le rayon.",
           "Cliquez la fin de l'arc. L'arc tourne dans le sens antihoraire, du départ vers la fin.",
         ],
-      }, {
+      },
+      ...DRAW_VARIANTS,
+      {
         keys: ["data-sketch-tool:polygon"], name: "Polygone",
         what: "Trace un polygone régulier, de 3 à 9 côtés.",
         steps: [

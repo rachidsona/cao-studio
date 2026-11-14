@@ -9,8 +9,9 @@ import { addArc, addCircle, addConstraint, addLine, addRectangle, cloneGeometry,
 import type { Snap } from "./hit";
 import { addPolygon, addSlot } from "./shapes";
 import { addPieces, ovalPieces, smoothPieces, type Piece } from "./curves";
+import { addCenterRectangle, addCircleThrough, addTangentArc, addThreePointArc, addThreePointRectangle, circleThrough, curvesEndingAt, passesCcw, tangentCircle, tangentOut, threePointCorners } from "./draw-variants";
 
-export type ToolName = "select" | "line" | "rectangle" | "circle" | "arc" | "polygon" | "slot" | "oval" | "curve";
+export type ToolName = "select" | "line" | "rectangle" | "circle" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt" | "arc-tangent";
 
 export interface Preview {
   lines: [Vec2, Vec2][];
@@ -45,7 +46,22 @@ export const TOOL_STEPS: Record<Exclude<ToolName, "select">, string[]> = {
   slot: ["Cliquez le premier centre de l'oblong", "Cliquez le second centre", "Cliquez pour la largeur"],
   oval: ["Cliquez le centre de l'ovale", "Cliquez un coin du rectangle qui l'entoure"],
   curve: ["Cliquez le premier point de la courbe", "Cliquez les points suivants ; recliquez le dernier pour finir, le premier pour fermer"],
+  "rectangle-center": ["Cliquez le centre du rectangle (Échap pour quitter l'outil)", "Cliquez un coin — ou tapez la largeur, Tab, la hauteur, puis Entrée"],
+  "rectangle-3pt": ["Cliquez le début du premier côté", "Cliquez la fin du premier côté (à n'importe quel angle)", "Cliquez pour la largeur, d'un côté ou de l'autre"],
+  "circle-2pt": ["Cliquez un bout du diamètre (Échap pour quitter l'outil)", "Cliquez l'autre bout — ou tapez le diamètre, puis Entrée"],
+  "circle-3pt": ["Cliquez un premier point du cercle", "Cliquez un deuxième point", "Cliquez un troisième point"],
+  "arc-3pt": ["Cliquez le départ de l'arc", "Cliquez la fin de l'arc", "Cliquez un point par où il passe"],
+  "arc-tangent": ["Cliquez le bout d'un trait ou d'un arc à prolonger", "Cliquez la fin de l'arc : il part tangent"],
 };
+
+/** An arc for the preview, from `a` to `b` about `center`, turning the way given. */
+function previewArc(center: Vec2, a: Vec2, b: Vec2, ccw: boolean): Preview["arcs"][number] {
+  const [s, e] = ccw ? [a, b] : [b, a];
+  const start = Math.atan2(s[1] - center[1], s[0] - center[0]);
+  let end = Math.atan2(e[1] - center[1], e[0] - center[0]);
+  if (end <= start) end += 2 * Math.PI;
+  return { center, radius: Math.hypot(a[0] - center[0], a[1] - center[1]), start, end };
+}
 
 /** Pieces of a smooth curve shown as a preview. */
 function piecesPreview(preview: Preview, pieces: Piece[]): void {
@@ -166,6 +182,49 @@ export class DrawingTool {
       case "curve":
         piecesPreview(preview, smoothPieces([...this.clicks.map(pos), b]));
         break;
+      case "rectangle-center": {
+        const n: Vec2 = [2 * a[0] - b[0], 2 * a[1] - b[1]];
+        preview.lines.push([n, [b[0], n[1]]], [[b[0], n[1]], b], [b, [n[0], b[1]]], [[n[0], b[1]], n]);
+        break;
+      }
+      case "rectangle-3pt": {
+        if (!second) {
+          preview.lines.push([a, b]);
+          break;
+        }
+        const corners = threePointCorners(a, pos(second), b);
+        if (corners) corners.forEach((p, i) => preview.lines.push([p, corners[(i + 1) % 4]!]));
+        else preview.lines.push([a, pos(second)]);
+        break;
+      }
+      case "circle-2pt":
+        preview.circles.push({ center: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], radius: Math.hypot(b[0] - a[0], b[1] - a[1]) / 2 });
+        break;
+      case "circle-3pt": {
+        const c = second ? circleThrough(a, pos(second), b) : null;
+        if (c) preview.circles.push(c);
+        else preview.lines.push([a, second ? pos(second) : b], ...(second ? [[pos(second), b] as [Vec2, Vec2]] : []));
+        break;
+      }
+      case "arc-3pt": {
+        if (!second) {
+          preview.lines.push([a, b]);
+          break;
+        }
+        const e = pos(second);
+        const c = circleThrough(a, e, b);
+        if (c) preview.arcs.push(previewArc(c.center, a, e, passesCcw(c.center, a, e, b)));
+        else preview.lines.push([a, e]);
+        break;
+      }
+      case "arc-tangent": {
+        const curve = first.pointId ? curvesEndingAt(g, first.pointId).at(-1) : undefined;
+        const direction = curve && first.pointId ? tangentOut(g, curve, first.pointId) : null;
+        const c = direction ? tangentCircle(a, direction, b) : null;
+        if (c) preview.arcs.push(previewArc(c.center, a, b, c.ccw));
+        else preview.lines.push([a, b]);
+        break;
+      }
       case "arc": {
         if (!second) {
           preview.lines.push([a, b]);
@@ -185,8 +244,10 @@ export class DrawingTool {
 
   click(g: SketchGeometry, at: Snap): ToolResult {
     if (this.name === "curve") return this.curveClick(g, at);
+    // A tangent arc starts at the end of a line or an arc.
+    if (this.name === "arc-tangent" && !this.clicks.length && !(at.pointId && curvesEndingAt(g, at.pointId).length)) throw new Error("Cliquez le bout d'un trait ou d'un arc : l'arc tangent le prolonge.");
     this.clicks.push(at);
-    const needed = this.name === "arc" || this.name === "slot" ? 3 : 2;
+    const needed = ["arc", "slot", "rectangle-3pt", "circle-3pt", "arc-3pt"].includes(this.name) ? 3 : 2;
     if (this.clicks.length < needed) return { kind: "preview", preview: this.move(g, at) };
     const work = cloneGeometry(g);
     const [s1, s2, s3] = this.clicks as [Snap, Snap, Snap?];
@@ -241,6 +302,40 @@ export class DrawingTool {
         if (s2.pointId) geometry = addConstraint(geometry, { kind: "pointOnCurve", point: s2.pointId, curve: created[0] } as never).geometry;
         this.reset();
         return { kind: "commit", geometry, created, done: true };
+      }
+      case "rectangle-center": {
+        const center = resolve(work, s1);
+        const added = addCenterRectangle(work, center, s2.pos, c);
+        this.reset();
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: true };
+      }
+      case "rectangle-3pt": {
+        const [a, b] = [resolve(work, s1), resolve(work, s2)];
+        const added = addThreePointRectangle(work, a, b, (s3 as Snap).pos, c);
+        this.reset();
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: true };
+      }
+      case "circle-2pt":
+      case "circle-3pt": {
+        const through = [s1, s2, ...(s3 ? [s3] : [])].map((s) => resolve(work, s));
+        this.reset();
+        const added = addCircleThrough(work, through, c);
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: true };
+      }
+      case "arc-3pt": {
+        const [a, b] = [resolve(work, s1), resolve(work, s2)];
+        this.reset();
+        const added = addThreePointArc(work, a, b, (s3 as Snap).pos, c);
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: true };
+      }
+      case "arc-tangent": {
+        const from = s1.pointId as string;
+        const curve = curvesEndingAt(work, from).at(-1) as string;
+        const end = resolve(work, s2);
+        this.reset();
+        const added = addTangentArc(work, from, curve, end, c);
+        // The arc's end: where a next tangent arc may go on from.
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: true };
       }
       case "arc": {
         const center = resolve(work, s1);

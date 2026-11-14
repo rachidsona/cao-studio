@@ -324,6 +324,11 @@ serveur accepte les deux versions.
     change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+- **Variantes de tracé** (cachées par défaut, à ajouter au ruban) : *rectangle par le centre* (centre puis un coin,
+  symétrique autour du centre ; largeur et hauteur au clavier), *rectangle par trois points* (un côté puis la
+  largeur, à n'importe quel angle : côtés perpendiculaires et parallèles), *cercle par deux points* (les bouts d'un
+  diamètre ; diamètre au clavier), *cercle par trois points*, *arc par trois points* (début, fin, un point de
+  l'arc), *arc tangent* (depuis le bout d'un trait ou d'un arc, il en garde la tangente).
 - **Polygone et oblong** (comme Fusion) : *polygone régulier* (centre puis un sommet ; chiffres 3 à 9 pour le
   nombre de côtés), côtés égaux et sommets sur un cercle de construction, libre en centre, taille et orientation ;
   *oblong* de centre à centre (deux centres puis la largeur), deux demi-cercles de même rayon.

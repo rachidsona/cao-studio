@@ -21,7 +21,7 @@ import { addConstraint, findCurve, pointPos, type Vec2 } from "./edit";
 export type DimField = "w" | "h" | "l" | "a" | "c";
 export type TypedValues = Partial<Record<DimField, number>>;
 
-const FIELDS: Record<string, readonly DimField[]> = { rectangle: ["w", "h"], line: ["l", "a"], circle: ["c"] };
+const FIELDS: Record<string, readonly DimField[]> = { rectangle: ["w", "h"], "rectangle-center": ["w", "h"], line: ["l", "a"], circle: ["c"], "circle-2pt": ["c"] };
 const NAMES: Record<DimField, string> = { w: "Largeur", h: "Hauteur", l: "Longueur", a: "Angle", c: "Diamètre" };
 
 /** The dimensions one can type for a tool (none: the tool has none). */
@@ -138,10 +138,17 @@ export class TypedDims {
 /** The end of the shape started at `anchor`: with the values typed, the rest and the side from `cursor`. */
 export function constrained(tool: string, values: TypedValues, anchor: Vec2, cursor: Vec2): Vec2 {
   const [dx, dy] = [cursor[0] - anchor[0], cursor[1] - anchor[1]];
-  if (tool === "rectangle") {
-    return [values.w === undefined ? cursor[0] : anchor[0] + (dx < 0 ? -values.w : values.w), values.h === undefined ? cursor[1] : anchor[1] + (dy < 0 ? -values.h : values.h)];
+  if (tool === "rectangle" || tool === "rectangle-center") {
+    // From its centre, a corner is half the width away.
+    const k = tool === "rectangle" ? 1 : 0.5;
+    return [values.w === undefined ? cursor[0] : anchor[0] + (dx < 0 ? -values.w : values.w) * k, values.h === undefined ? cursor[1] : anchor[1] + (dy < 0 ? -values.h : values.h) * k];
   }
   const far = Math.hypot(dx, dy);
+  if (tool === "circle-2pt") {
+    // The other end of the diameter, the diameter away, towards the pointer.
+    if (values.c === undefined) return cursor;
+    return far < 1e-9 ? [anchor[0] + values.c, anchor[1]] : [anchor[0] + (dx / far) * values.c, anchor[1] + (dy / far) * values.c];
+  }
   if (tool === "circle") {
     if (values.c === undefined) return cursor;
     const r = values.c / 2;
@@ -170,12 +177,12 @@ export function withTypedDimensions(base: SketchGeometry, created: readonly stri
   const along = (axis: 0 | 1) => lines.find((l) => Math.abs(pointPos(base, l.p1)[1 - axis]! - pointPos(base, l.p2)[1 - axis]!) < 1e-9)?.id;
   const wanted: Omit<SketchConstraint, "id">[] = [];
   const add = (constraint: object) => wanted.push(constraint as Omit<SketchConstraint, "id">);
-  if (tool === "rectangle") {
+  if (tool === "rectangle" || tool === "rectangle-center") {
     const [across, up] = [along(0), along(1)];
     if (values.w !== undefined && across) add({ kind: "length", line: across, value: values.w });
     if (values.h !== undefined && up) add({ kind: "length", line: up, value: values.h });
   } else if (tool === "line" && values.l !== undefined && lines[0]) add({ kind: "length", line: lines[0].id, value: values.l });
-  else if (tool === "circle" && values.c !== undefined && created[0]) add({ kind: "diameter", curve: created[0], value: values.c });
+  else if ((tool === "circle" || tool === "circle-2pt") && values.c !== undefined && created[0]) add({ kind: "diameter", curve: created[0], value: values.c });
   let geometry = base;
   for (const constraint of wanted) {
     const added = addConstraint(geometry, constraint).geometry;
