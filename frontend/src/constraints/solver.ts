@@ -366,3 +366,22 @@ export function solveSketch(geometry: SketchGeometry, options: SolveOptions = {}
   else if (pass.redundant.length) state = "redundant";
   return { state, dof: pass.dof, conflicting, redundant: pass.redundant, geometry: solved };
 }
+
+/**
+ * A quick look at a sketch: its degrees of freedom, whether its rules conflict or the solve fails — without reading
+ * the solver's lists of constraints (constraint-state.ts runs it once per point).
+ */
+export function probeSketch(geometry: SketchGeometry): { dof: number; ok: boolean } {
+  checkDimensions(geometry);
+  if (!solverModule) throw new SketchError("Le solveur de contraintes n'est pas initialisé.");
+  const wrapper = new GcsWrapper(new solverModule.GcsSystem());
+  wrapper.debug_mode = DebugMode.NoDebug;
+  try {
+    wrapper.push_primitives_and_params(toPrimitives(geometry));
+    const status = wrapper.solve();
+    const failed = status === SolveStatus.Failed || status === SolveStatus.SuccessfulSolutionInvalid;
+    return { dof: wrapper.gcs.dof(), ok: !failed && !wrapper.has_gcs_conflicting_constraints() };
+  } finally {
+    wrapper.destroy_gcs_module();
+  }
+}

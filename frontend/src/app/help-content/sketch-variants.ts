@@ -62,4 +62,14 @@ export const MORE_DIMENSIONS: ToolHelp[] = [
     ],
     tip: "Les cotes figent le dessin ; celle qu'un total déjà coté impose est posée en cote de référence, entre parenthèses, et suit sans contredire.",
   },
+  {
+    keys: ["data-sketch-command:fullydefine"], name: "Contraindre tout",
+    what: "Fige d'un coup l'esquisse : pose les cotes qui manquent, à leur mesure actuelle, sans bouger le dessin. Les traits figés passent du bleu au blanc.",
+    steps: [
+      "Regardez le compteur « … à fixer » et la couleur des traits : en bleu, ils peuvent encore bouger ; en blanc, ils sont figés.",
+      "Cliquez « Contraindre tout » : les longueurs, diamètres et rayons d'abord, puis les angles des traits penchés, enfin la place des points depuis l'origine.",
+      "Changez ensuite les cotes posées pour régler les mesures.",
+    ],
+    tip: "Une cote qui contredirait les autres n'est pas posée. Avec des contraintes en conflit, réglez-les d'abord.",
+  },
 ];

@@ -538,6 +538,11 @@ serveur accepte les deux versions.
   aboutissent) cotés d'un bout à l'autre — ou sur trois éléments choisis ou plus (points, bouts de traits, centres de
   cercles) le long de l'axe où ils s'étalent. Ces cotes figent le dessin ; celle qu'un total déjà coté impose est
   posée en cote de référence (`sketcher/chain-dims.ts`).
+- **État des contraintes** : les traits que les cotes et contraintes figent entièrement sont dessinés en blanc, ceux
+  qui peuvent encore bouger en bleu (un essai du solveur par point, jusqu'à 150 points ;
+  `constraints/constraint-state.ts`) ; le compteur « … à fixer » dit combien il en manque. **Contraindre tout**
+  (menu « Cotes ▾ », caché par défaut) pose les cotes qui manquent, à leur mesure actuelle, sans bouger le dessin :
+  longueurs, diamètres et rayons, puis angles des traits penchés, puis place des points depuis l'origine.
 - **Cotation automatique** (menu « Cotes ▾ » de l'esquisse) : d'un coup, les cotes des traits sélectionnés, sinon de
   tout le dessin hors construction :
   - les cotes de chaîne, d'un niveau de points au suivant, en X sous le dessin et en Y à sa gauche ;

@@ -21,7 +21,12 @@ import type { Preview } from "./tools";
 const WIDTH = { curve: 1.6, active: 2.4, preview: 1.4, helper: 1.2, axis: 1 };
 
 const COLORS = {
+  /**
+   * A line that can still move (blue), one the constraints hold entirely: near white on the dark blue view (the
+   * view is dark in both themes), as Fusion's dark theme draws it.
+   */
   line: 0x1d4ed8,
+  fixed: 0xf1f5f9,
   construction: 0xf59e0b,
   projected: 0xa855f7,
   /** The chosen lines and points. */
@@ -63,6 +68,8 @@ export interface OverlayState {
   hoverRegion?: Region | null;
   /** Where "Couper" will cut the curve under the pointer: red crosses, as in Fusion. */
   cutMarks?: Vec2[];
+  /** The curves the constraints hold entirely, drawn black (constraints/constraint-state.ts); null: not known. */
+  fixed?: ReadonlySet<string> | null;
   /** Outlines of the sketch's texts (the one under the pointer stronger). */
   texts?: { outlines: Vec2[][]; hovered: boolean }[];
 }
@@ -229,7 +236,9 @@ export class SketchOverlay {
             ? COLORS.projected
             : construction
               ? COLORS.construction
-              : COLORS.line;
+              : state.fixed?.has(id)
+                ? COLORS.fixed
+                : COLORS.line;
     for (const curve of g.curves) {
       const color = colorOf(curve.id, curve.construction, curve.projected);
       // Projected body edges are reference lines: solid, not dashed.

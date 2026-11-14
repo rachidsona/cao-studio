@@ -10,6 +10,7 @@
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { classify, COMMANDS, describeConstraints } from "../constraints/catalog";
+import { fixedCurvesOf } from "../constraints/constraint-state";
 import { solveSketch, SketchError, type SolveResult } from "../constraints/solver";
 import { ORIGIN, type OffsetRecord, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
@@ -610,6 +611,7 @@ export class SketchMode implements PointerHandler {
       cutMarks: this.kind === "break" ? this.pointer.cutMarks : [],
       resolution: [this.viewport.renderer.domElement.clientWidth, this.viewport.renderer.domElement.clientHeight],
       hoverRegion: this.pointer.hoverRegion,
+      fixed: fixedCurvesOf(this.lastSolve),
       texts: (this.geometry.texts ?? []).map((t) => ({ outlines: textOutlines(t), hovered: this.pointer.hover === `text:${t.id}` })),
     });
   }

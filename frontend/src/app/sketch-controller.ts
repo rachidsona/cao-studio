@@ -7,6 +7,7 @@ import { keyChar } from "../ui/digit-keys";
 import { importDxf } from "./sketch-import";
 import { openUnderlay } from "./sketch-underlay";
 import { autoDimensions } from "../sketcher/auto-dimensions";
+import { fullyDefine } from "../constraints/constraint-state";
 import { openSketchTransform } from "./sketch-transform-dialog";
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
@@ -375,6 +376,13 @@ export class SketchController {
       const { geometry, count } = autoDimensions(mode.geometry, mode.selection);
       if (!count) return this.host.notify("Rien à coter : sélectionnez des traits, ou dessinez d'abord.", "info");
       mode.apply(geometry, `Cotation automatique : ${count} cote${count > 1 ? "s" : ""} de référence.`);
+      return;
+    }
+    if (id === "fullydefine") {
+      const { geometry, count, dof } = fullyDefine(mode.geometry);
+      if (mode.lastSolve.dof === 0) return this.host.notify("L'esquisse est déjà entièrement contrainte.", "info");
+      if (!count) return this.host.notify("Aucune cote ne peut être ajoutée : réglez d'abord les contraintes en conflit.", "info");
+      mode.apply(geometry, dof === 0 ? `Esquisse entièrement contrainte : ${count} cote${count > 1 ? "s" : ""} ajoutée${count > 1 ? "s" : ""}.` : `${count} cote${count > 1 ? "s" : ""} ajoutée${count > 1 ? "s" : ""} ; ${dof} degré(s) de liberté restent.`);
       return;
     }
     if (id === "skmirror" || id === "skrotate" || id === "skscale" || id === "skpolar") return openSketchTransform(id === "skmirror" ? "mirror" : id === "skrotate" ? "rotate" : id === "skscale" ? "scale" : "polar", mode, (m, k) => this.host.notify(m, k));
