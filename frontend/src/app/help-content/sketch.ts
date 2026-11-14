@@ -243,7 +243,7 @@ export const SKETCH: HelpFamily[] = [
           "Cliquez « Déplacer » (ou M), puis cliquez les éléments dans l'esquisse. « Étendre aux contours » ajoute les contours entiers.",
           "Tirez la sélection ou ses flèches, ou choisissez la « Saisie » : Relatif (ΔX, ΔY), Distance et angle, ou Position absolue.",
           "Contrôlez l'aperçu en pointillés, qui tient compte des contraintes.",
-          "C'est enregistré dès que c'est prêt ; la croix ✕ (ou Échap) ferme.",
+          "C'est enregistré dès que c'est prêt, ou tout de suite avec « OK » (Entrée) : l'outil reste pour un autre déplacement ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
         tip: "Copies au lieu d'un déplacement : tapez « x5 » (ou 5) dans « Copies » pour cinq copies à la suite, chacune d'un déplacement plus loin, ou « /5 » pour cinq copies réparties jusqu'au point visé. L'origine et les axes ne bougent pas. Le panneau indique s'il manque encore des cotes après le déplacement.",
       },
