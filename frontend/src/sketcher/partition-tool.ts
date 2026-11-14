@@ -11,6 +11,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { el } from "../ui/dom";
 import { panelFooter, panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
+import { fixedPlanClass, fixedPlanToggle } from "../ui/fixed-plan";
 import type { Vec2 } from "./edit";
 import type { PartitionPlan } from "../features/partition-dims";
 import { extrusionOption } from "./extrusion-option";
@@ -303,12 +304,14 @@ export class SketchPartitionTool {
       return el("label", { class: ROW }, `Case ${i + 1} (parts)${width}`, field);
     };
     const rows: (HTMLElement | null)[] = [
-      // The title, the walls and the face stay in sight while the settings under them scroll.
+      // The title, the walls and the face stay in sight while the settings under them scroll (« Plan fixe »).
       el(
         "div",
-        { class: "sticky top-0 z-10 -mx-2.5 -mt-2.5 space-y-2 border-b border-gray-200 bg-white px-2.5 pt-2.5 pb-2 dark:border-gray-700 dark:bg-gray-900", "data-ref": "partition-top" },
+        { class: `${fixedPlanClass()} -mx-2.5 -mt-2.5 space-y-2 border-b border-gray-200 bg-white px-2.5 pt-2.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-ref": "partition-top" },
         ...[
           panelHeader(this.editing ? `Modifier : ${this.editing.name}` : "Répartition", () => this.cancel()),
+          // Fixed at the top while the settings scroll, or scrolling with them (kept for the kitchen too).
+          fixedPlanToggle(() => this.draw()),
           this.host.header?.(() => this.draw()) ?? null,
           // A new one says where it goes; one made says nothing more (its face shows it).
           this.editing ? null : info("Un rectangle réparti en cases égales, une par porte, avec ses côtés à leur épaisseur. Cliquez dans la vue pour poser son coin bas-gauche."),

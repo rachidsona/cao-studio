@@ -2869,7 +2869,9 @@ voisine où tomberait son ancien point ; si son contour a changé, l'extrusion d
   La case « Ruban et étapes en haut » du menu ⋯ (Réglages) les remet ; le choix est gardé par le navigateur, et ils
   restent montrés si les colonnes d'outils sont fermées (`app/ribbon-toggle.ts`).
 - **Le haut du panneau Répartition reste en vue** : son titre (avec ✕), les boutons des murs, « Voir mur … isolé » et
-  la face du mur restent en haut quand on fait défiler les réglages dessous.
+  la face du mur restent en haut quand on fait défiler les réglages dessous ; de même les murs et la bande d'un
+  linéaire du Plan de cuisine. La case **« Plan fixe »**, en haut de ce plan, le laisse défiler avec les réglages
+  une fois décochée ; le choix vaut pour le dressing et la cuisine, et le navigateur le garde (`ui/fixed-plan.ts`).
 
 - **Pas de « OK » ni d'« Annuler »** (dans tout le projet) : chaque outil enregistre son résultat **dès que le
   réglage est valable** et que l'aperçu du noyau est sans erreur, un instant après le dernier geste

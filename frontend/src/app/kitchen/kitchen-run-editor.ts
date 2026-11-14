@@ -6,6 +6,7 @@
  * Chaque changement se voit aussitôt dans la 3D, en aperçu (app/kitchen-plan-tool.ts) ; rien ne change dans le projet avant
  * OK, qui le garde en refaisant toute la cuisine en une seule annulation (document/kitchen-floor.ts) ; Annuler revient.
  */
+import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
@@ -242,8 +243,10 @@ export class RunEditor {
     const chosen = fill.placed.find((p) => p.item.id === this.chosen)?.item ?? this.items.find((i) => i.id === this.chosen);
     const rows: (HTMLElement | null)[] = [
       this.header(`Linéaire — ${run.label.toLowerCase()}`),
-      // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan.
-      el("div", { class: "sticky top-0 z-10 -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900", "data-run-fixed": "" },
+      // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan (« Plan fixe »).
+      el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
+        // Fixed at the top while the panel scrolls, or scrolling with it (kept for the dressing too).
+        fixedPlanToggle(() => this.host.redraw()),
         this.walls(),
         el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
       ),
