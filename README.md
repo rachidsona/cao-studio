@@ -324,6 +324,11 @@ serveur accepte les deux versions.
     change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+- **Formes de menuiserie** (cachées par défaut) : une fenêtre choisit la forme et ses cotes, puis chaque clic la pose,
+  contrainte et cotée comme un bloc réglable — découpe d'évier (angles arrondis), découpe de plaque de cuisson,
+  encoche au bord, queue d'aronde (base, longueur, pente 1:n), rangée de trous système 32 (trous égaux et alignés,
+  entraxe en chaîne), poignée cuvette (oblong). Seule sa place reste libre, à coter depuis un bord ; une cote que
+  l'esquisse refuserait n'est pas posée (`sketcher/joinery-shapes.ts`).
 - **Étirer** (caché par défaut) : on glisse un cadre sur un vide autour d'une partie du dessin (le côté d'un caisson et
   les étagères qui y aboutissent), puis on la tire ou on saisit le déplacement ; les points pris bougent, les autres
   restent, les traits entre eux s'allongent et les cotes qui traversent le cadre prennent la nouvelle mesure. Les

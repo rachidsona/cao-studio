@@ -8,6 +8,7 @@ import { importDxf } from "./sketch-import";
 import { openUnderlay } from "./sketch-underlay";
 import { autoDimensions } from "../sketcher/auto-dimensions";
 import { fullyDefine } from "../constraints/constraint-state";
+import { openJoineryShapes } from "./joinery-shapes-dialog";
 import { openSketchTransform } from "./sketch-transform-dialog";
 import type { SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
@@ -378,6 +379,7 @@ export class SketchController {
       mode.apply(geometry, `Cotation automatique : ${count} cote${count > 1 ? "s" : ""} de référence.`);
       return;
     }
+    if (id === "joineryshapes") return openJoineryShapes(this.host.unit(), () => mode.setTool("joinery"));
     if (id === "fullydefine") {
       const { geometry, count, dof } = fullyDefine(mode.geometry);
       if (mode.lastSolve.dof === 0) return this.host.notify("L'esquisse est déjà entièrement contrainte.", "info");

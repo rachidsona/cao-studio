@@ -10,8 +10,9 @@ import type { Snap } from "./hit";
 import { addPolygon, addSlot } from "./shapes";
 import { addPieces, ovalPieces, smoothPieces, type Piece } from "./curves";
 import { addCenterRectangle, addCircleThrough, addTangentArc, addThreePointArc, addThreePointRectangle, circleThrough, curvesEndingAt, passesCcw, tangentCircle, tangentOut, threePointCorners } from "./draw-variants";
+import { currentStamp, JOINERY_SHAPES, placeJoineryShape, shapePreview } from "./joinery-shapes";
 
-export type ToolName = "select" | "line" | "rectangle" | "circle" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt" | "arc-tangent";
+export type ToolName = "select" | "line" | "rectangle" | "circle" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt" | "arc-tangent" | "joinery";
 
 export interface Preview {
   lines: [Vec2, Vec2][];
@@ -52,6 +53,7 @@ export const TOOL_STEPS: Record<Exclude<ToolName, "select">, string[]> = {
   "circle-3pt": ["Cliquez un premier point du cercle", "Cliquez un deuxième point", "Cliquez un troisième point"],
   "arc-3pt": ["Cliquez le départ de l'arc", "Cliquez la fin de l'arc", "Cliquez un point par où il passe"],
   "arc-tangent": ["Cliquez le bout d'un trait ou d'un arc à prolonger", "Cliquez la fin de l'arc : il part tangent"],
+  joinery: ["Cliquez où poser la forme"],
 };
 
 /** An arc for the preview, from `a` to `b` about `center`, turning the way given. */
@@ -105,6 +107,10 @@ export class DrawingTool {
   get step(): string {
     const steps = TOOL_STEPS[this.name];
     const step = steps[Math.min(this.clicks.length, steps.length - 1)] as string;
+    if (this.name === "joinery") {
+      const { kind } = currentStamp();
+      return `${JOINERY_SHAPES[kind].label} : cliquez ${JOINERY_SHAPES[kind].at} pour la poser — l'outil reste pour la suivante, Échap arrête`;
+    }
     return this.name === "polygon" ? `${step} — ${this.sides} côtés` : step;
   }
 
@@ -140,6 +146,7 @@ export class DrawingTool {
   move(g: SketchGeometry, cursor: Snap): Preview {
     const preview = emptyPreview();
     const pos = (s: Snap): Vec2 => (s.pointId ? pointPos(g, s.pointId) : s.pos);
+    if (this.name === "joinery") return shapePreview(g, cursor.pos);
     const [first, second] = this.clicks;
     if (!first) return preview;
     const a = pos(first);
@@ -244,6 +251,11 @@ export class DrawingTool {
 
   click(g: SketchGeometry, at: Snap): ToolResult {
     if (this.name === "curve") return this.curveClick(g, at);
+    if (this.name === "joinery") {
+      const { kind, values } = currentStamp();
+      const placed = placeJoineryShape(g, kind, values, at.pointId ? pointPos(g, at.pointId) : at.pos);
+      return { kind: "commit", geometry: placed.geometry, created: placed.created, done: true };
+    }
     // A tangent arc starts at the end of a line or an arc.
     if (this.name === "arc-tangent" && !this.clicks.length && !(at.pointId && curvesEndingAt(g, at.pointId).length)) throw new Error("Cliquez le bout d'un trait ou d'un arc : l'arc tangent le prolonge.");
     this.clicks.push(at);
