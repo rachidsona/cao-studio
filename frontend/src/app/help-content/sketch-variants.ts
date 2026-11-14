@@ -3,6 +3,16 @@ import type { ToolHelp } from "./types";
 
 export const DRAW_VARIANTS: ToolHelp[] = [
   {
+    keys: [], name: "Coordonnées au clavier",
+    what: "Pose le prochain point d'un tracé à des coordonnées tapées, comme en DAO, avec n'importe quel outil de dessin.",
+    steps: [
+      "Un outil de dessin ouvert (ligne, rectangle, cercle…), tapez « @ » pour des coordonnées relatives (depuis le dernier point posé ; l'origine pour le premier), ou « # » pour des coordonnées absolues (depuis l'origine).",
+      "Tapez « x;y » — par exemple @60;0 — ou « distance<angle » en polaire — par exemple @80<45, l'angle en degrés depuis l'horizontale.",
+      "Entrée pose le point ; le tracé continue au point suivant. Retour arrière efface, Échap annule la saisie.",
+    ],
+    tip: "Les longueurs sont dans l'unité du projet. « 600,0 » se lit x = 600, y = 0 ; pour un nombre à virgule, séparez par « ; » (12,5;30). Le point visé se voit pendant la frappe, et la barre d'état rappelle ce qui est tapé. Sur un clavier de PC, « @ » se tape avec AltGr + à.",
+  },
+  {
     keys: ["data-sketch-tool:rectangle-center"], name: "Rectangle par le centre",
     what: "Trace un rectangle autour d'un centre : un panneau centré sur un axe, une découpe centrée sur une plaque.",
     steps: ["Cliquez le centre (un point, l'origine, le milieu d'un trait).", "Cliquez un coin — ou tapez la largeur, Tab, la hauteur, puis Entrée."],

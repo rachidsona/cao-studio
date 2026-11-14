@@ -324,6 +324,10 @@ serveur accepte les deux versions.
     change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+- **Coordonnées au clavier** (comme en DAO) : un outil de dessin ouvert, « @ » ouvre une saisie relative (depuis le
+  dernier point posé, l'origine pour le premier), « # » une saisie absolue ; on tape « x;y » ou « distance<angle »
+  (degrés depuis l'horizontale), dans l'unité du projet, et Entrée pose le point. Le point visé se voit pendant la
+  frappe, la barre d'état rappelle la saisie (`sketcher/coord-entry.ts`).
 - **Variantes de tracé** (cachées par défaut, à ajouter au ruban) : *rectangle par le centre* (centre puis un coin,
   symétrique autour du centre ; largeur et hauteur au clavier), *rectangle par trois points* (un côté puis la
   largeur, à n'importe quel angle : côtés perpendiculaires et parallèles), *cercle par deux points* (les bouts d'un

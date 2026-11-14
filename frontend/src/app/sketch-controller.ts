@@ -446,6 +446,9 @@ export class SketchController {
   handleKey(event: KeyboardEvent): boolean {
     if (this.joinery && !event.metaKey && !event.ctrlKey && !event.altKey) return this.joinery.handleKey(event);
     const mode = this.mode;
+    // Coordinates typed for the next point (« @ » is AltGr + à on a PC keyboard): before the shortcuts and Échap.
+    const altGr = event.getModifierState?.("AltGraph") === true;
+    if (mode && !event.metaKey && (altGr || (!event.ctrlKey && !event.altKey)) && mode.typeCoordinate(event)) return true;
     if (!mode || event.metaKey || event.ctrlKey || event.altKey) return false;
     const key = event.key.toLowerCase();
     if (mode.panelToolActive && (event.key === "Escape" || event.key === "Enter")) {

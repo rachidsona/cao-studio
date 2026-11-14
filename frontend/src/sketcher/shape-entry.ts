@@ -6,6 +6,7 @@
  */
 import { openCalculator } from "../ui/calculator";
 import type { Annotation } from "./annotations";
+import { CoordEntry } from "./coord-entry";
 import { typedDigit } from "./edge-offset-tool";
 import type { Vec2 } from "./edit";
 import type { SketchMode } from "./mode";
@@ -15,6 +16,8 @@ import { TypedDims, typedFields, withTypedDimensions, type DimField } from "./ty
 export class ShapeEntry {
   /** The dimensions typed while a shape is drawn (as Fusion's). */
   readonly typed = new TypedDims();
+  /** A point's coordinates typed (« @x;y », « #x;y », « d<a »), as in a drafting program. */
+  readonly coords = new CoordEntry();
   /** Where the pointer was last, in the sketch. */
   private cursor: Vec2 | null = null;
 
@@ -91,6 +94,36 @@ export class ShapeEntry {
     // A value typed that takes the shape beyond the screen: the view steps back to show it whole, with its fields.
     mode.showShape(mode.preview);
     mode.render();
+    return true;
+  }
+
+  /**
+   * A key for the coordinates of the next point (coord-entry.ts): « @ » or « # » opens the entry, Entrée lays the
+   * point there. The point aimed at shows while typing. False: not for it (no drawing tool, or no entry open).
+   */
+  coordKey(event: KeyboardEvent): boolean {
+    const { mode } = this;
+    const tool = mode.tool;
+    if (!tool) return this.coords.clear(), false;
+    const result = this.coords.key(event.key);
+    if (!result) return false;
+    const unit = mode.host.unit();
+    const from = tool.anchor(mode.geometry);
+    if (result === "enter") {
+      const pos = this.coords.target(from, unit);
+      if (!pos) {
+        mode.host.notify("Coordonnées incomplètes : tapez x;y, ou distance<angle.", "error");
+        return true;
+      }
+      this.coords.clear();
+      this.lay({ pos, guides: [] });
+      return true;
+    }
+    const pos = this.coords.target(from, unit);
+    const at = pos ? { pos, guides: [] } : this.cursor ? this.landing(this.cursor) : null;
+    if (at) mode.preview = tool.move(mode.geometry, at);
+    mode.render();
+    mode.host.changed();
     return true;
   }
 

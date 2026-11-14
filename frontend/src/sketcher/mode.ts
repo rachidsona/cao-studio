@@ -280,6 +280,8 @@ export class SketchMode implements PointerHandler {
   }
 
   get hint(): string {
+    const coords = this.tool ? this.pointer.entry.coords.hint() : null;
+    if (coords) return coords;
     if (this.edgeOffset) return "Décaler l'arête : cliquez un trait, une arête ou une face d'un corps, puis tirez la flèche (ou tapez la distance) ; cliquez-en un autre pour continuer — Échap termine";
     if (this.offset) return "Décalage : cliquez les éléments à décaler, réglez la distance : enregistré dès qu'il est prêt — ✕ ou Échap ferme";
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
@@ -545,6 +547,11 @@ export class SketchMode implements PointerHandler {
   /** A key while a shape is drawn: a dimension typed, as in Fusion (typed-dims.ts). False: not for it. */
   typeDimension(event: KeyboardEvent): boolean {
     return this.pointer.entry.key(event);
+  }
+
+  /** A key for the coordinates of the next point (« @x;y », « #x;y », « d<a »): coord-entry.ts. */
+  typeCoordinate(event: KeyboardEvent): boolean {
+    return this.pointer.entry.coordKey(event);
   }
 
   toSketch(event: PointerEvent): Vec2 | null {
