@@ -1,9 +1,10 @@
 /**
  * Le style des portes d'une Répartition, dans son panneau : plate, à cadre (panneau en retrait, usinée dans la masse),
- * cannelée ou à tasseaux (rainures verticales dans la face, features/door-decor.ts) ou vitrée (cadre en profilé alu autour d'un verre trempé), avec la largeur du cadre et, pour une porte vitrée, le
+ * cannelée ou à tasseaux (rainures verticales ou horizontales dans la face, features/door-decor.ts) ou vitrée (cadre en profilé alu autour d'un verre trempé), avec la largeur du cadre et, pour une porte vitrée, le
  * verre et la finition du cadre (features/glass-door.ts).
  */
 import type { DoorSettings } from "../document/sketch";
+import { el } from "../ui/dom";
 import { DECOR_DEFAULTS, DECOR_LABELS, isDecor, type DecorSettings } from "../features/door-decor";
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../features/glass-door";
 
@@ -21,13 +22,18 @@ export const DOOR_STYLES: [DoorStyle, string][] = [
 ];
 
 /** The rows of a fluted or slatted door: the spacing of its grooves, their depth, the plain border top and bottom. */
-export function decorRows(s: DecorSettings, set: (change: Pick<DecorSettings, "pitch" | "frameDepth" | "frameWidth">) => void, number: StyleFields["number"]): HTMLElement[] {
+export function decorRows(s: DecorSettings, set: (change: Pick<DecorSettings, "pitch" | "frameDepth" | "frameWidth" | "grooves">) => void, number: StyleFields["number"]): HTMLElement[] {
   if (!isDecor(s)) return [];
   const d = DECOR_DEFAULTS[s.style];
+  const across = s.grooves === "horizontal";
+  // Across the door or up and down: the border is then at its sides, or at its top and bottom.
+  const box = el("input", { type: "checkbox", checked: across, "aria-label": "Rainures horizontales", "data-decor-across": "" });
+  box.addEventListener("change", () => set({ grooves: box.checked ? "horizontal" : undefined }));
   return [
     number(s.style === "slats" ? "Entraxe des tasseaux" : "Entraxe des cannelures", s.pitch ?? d.pitch, (v) => set({ pitch: v })),
     number("Profondeur des rainures", s.frameDepth ?? d.frameDepth, (v) => set({ frameDepth: v })),
-    number("Bordure en haut et en bas", s.frameWidth ?? d.frameWidth, (v) => set({ frameWidth: v })),
+    el("label", { class: "flex items-center gap-2" }, box, "Rainures horizontales"),
+    number(across ? "Bordure à gauche et à droite" : "Bordure en haut et en bas", s.frameWidth ?? d.frameWidth, (v) => set({ frameWidth: v })),
   ];
 }
 

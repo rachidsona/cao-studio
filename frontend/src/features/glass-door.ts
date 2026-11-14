@@ -71,7 +71,7 @@ export const glassFrame = (f: Pick<GlassSettings, "frameWidth">) => f.frameWidth
  * What a change of style sets: a frame door its routed frame (70 mm, a panel 6 mm back), a glass door its aluminium
  * frame (20 mm), clear glass and brushed aluminium unless already chosen.
  */
-export function styleChange(style: DoorStyle, current: GlassSettings & { frameDepth?: number; pitch?: number }): GlassSettings & { frameDepth?: number; pitch?: number } {
+export function styleChange(style: DoorStyle, current: GlassSettings & { frameDepth?: number; pitch?: number; grooves?: "horizontal" }): GlassSettings & { frameDepth?: number; pitch?: number; grooves?: "horizontal" } {
   if (style === "fluted" || style === "slats") return decorChange(style, current);
   // Each style its own frame and depth: a groove's depth is not a panel's set-back.
   if (style === "frame") return { style, frameWidth: current.style === "frame" ? (current.frameWidth ?? 70) : 70, frameDepth: current.style === "frame" ? (current.frameDepth ?? 6) : 6 };
@@ -145,5 +145,6 @@ export function glassFieldsProblem(f: Record<string, unknown>, styles: readonly 
   if (f.profile !== undefined && !PROFILE_FINISHES.some(([k]) => k === f.profile)) return "finition du cadre alu inconnue.";
   if (f.frameWidth !== undefined && !(typeof f.frameWidth === "number" && Number.isFinite(f.frameWidth) && f.frameWidth >= 0)) return "« frameWidth » doit être un nombre positif ou nul.";
   if (f.pitch !== undefined && !(typeof f.pitch === "number" && Number.isFinite(f.pitch) && f.pitch > 0)) return "« pitch » doit être un nombre positif.";
+  if (f.grooves !== undefined && f.grooves !== "horizontal") return "sens des rainures inconnu.";
   return null;
 }

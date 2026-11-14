@@ -1,6 +1,7 @@
 /**
  * Devis d'un meuble à partir de sa liste de débit : les panneaux au m² par matière (chutes comprises), les chants
- * au mètre, la découpe par pièce, les perçages (le « Tooling Price » de Polyboard) et la main-d'œuvre de montage, puis
+ * au mètre, la découpe par pièce, les perçages (le « Tooling Price » de Polyboard), les rainures des façades décor au
+ * mètre et la main-d'œuvre de montage, puis
  * la marge, une remise par paliers de montant et la TVA. Les tarifs sont indicatifs et se règlent (ils sont retenus
  * par le navigateur). Un scénario remplace une matière par une autre pour comparer les prix ; les versions
  * enregistrées dans le projet (le devis initial, puis les avenants) gardent chacune ses lignes et son total.
@@ -33,6 +34,8 @@ export interface QuoteRates {
   vat: number;
   /** Price of one hole drilled (MAD HT); 0: included in the cutting. */
   perHole?: number;
+  /** Routing of the grooves of fluted or slatted fronts (MAD HT per metre of groove). */
+  perGrooveMetre?: number;
   /** Discounts by amount: from this total HT (MAD), this discount (%) — the highest reached applies. */
   tiers?: [number, number][];
 }
@@ -71,6 +74,7 @@ export const DEFAULT_RATES: QuoteRates = {
   },
   band: mad(1.5),
   cutPerPart: mad(4),
+  perGrooveMetre: mad(2.5),
   hoursPerPart: 0.25,
   hourly: mad(45),
   margin: 30,
@@ -101,7 +105,7 @@ export interface Quote {
 
 const cents = (v: number) => Math.round(v * 100) / 100;
 
-export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm", holes = 0): Quote {
+export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { name: string; quantity: number; unit?: string; price?: number }[] = [], unit: DisplayUnit = "mm", holes = 0, grooves = 0): Quote {
   const lines: QuoteLine[] = [];
   for (const t of totals) {
     // Battens by the metre, the boards by the square metre.
@@ -121,6 +125,9 @@ export function makeQuote(totals: CutTotals[], rates: QuoteRates, hardware: { na
   if (parts > 0) {
     lines.push({ label: "Découpe et perçage", quantity: parts, unit: "pièce", unitPrice: rates.cutPerPart, total: cents(parts * rates.cutPerPart) });
     if ((rates.perHole ?? 0) > 0 && holes > 0) lines.push({ label: "Perçages (usinage)", quantity: holes, unit: "perçage", unitPrice: rates.perHole!, total: cents(holes * rates.perHole!) });
+    // Fluted or slatted fronts: their grooves routed, by the metre (features/decor-length.ts).
+    const perGroove = rates.perGrooveMetre ?? DEFAULT_RATES.perGrooveMetre ?? 0;
+    if (perGroove > 0 && grooves > 0) lines.push({ label: "Rainures décor (usinage)", quantity: cents(grooves), unit: "m", unitPrice: perGroove, total: cents(grooves * perGroove) });
     const hours = cents(parts * rates.hoursPerPart);
     lines.push({ label: "Montage", quantity: hours, unit: "h", unitPrice: rates.hourly, total: cents(hours * rates.hourly) });
   }

@@ -49,6 +49,13 @@ test("la porte d'un caisson se fait cannelée, à tasseaux ou à cadre, sans err
   await click(page, '[data-action="view"][data-view="iso"]');
   await page.waitForTimeout(1000);
   await shot(page, "porte-a-tasseaux");
+  // Across the door: the border is then at its sides.
+  await tool.getByRole("checkbox", { name: "Rainures horizontales" }).check();
+  await expect(tool.getByRole("textbox", { name: "Bordure à gauche et à droite" })).toBeVisible();
+  await page.waitForTimeout(1200);
+  await expect(status).not.toContainText("erreur");
+  await expect.poll(saved, { timeout: 30_000 }).toMatchObject({ style: "slats", grooves: "horizontal" });
+  await shot(page, "porte-a-tasseaux-horizontaux");
   const depth = tool.getByRole("textbox", { name: "Profondeur des rainures" });
   await depth.fill("1,7");
   await depth.press("Tab");
@@ -60,6 +67,10 @@ test("la porte d'un caisson se fait cannelée, à tasseaux ou à cadre, sans err
   await page.waitForTimeout(1200);
   await expect(status).not.toContainText("erreur");
   await expect.poll(saved, { timeout: 30_000 }).toMatchObject({ style: "frame" });
+  // A glazed style left from the door, then drawers: they are not glazed, and the panel says so.
+  await style.selectOption("glass");
+  await tool.getByRole("combobox", { name: "Disposition" }).selectOption("drawers");
+  await expect(page.getByText(/Le style vitré ne se fait pas sur des tiroirs/).first()).toBeVisible();
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   expect(errors).toEqual([]);
 });

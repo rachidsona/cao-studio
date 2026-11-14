@@ -72,7 +72,7 @@ export interface ModuleSizes {
 }
 
 /** How the drawer fronts of a module look (missing: plain). */
-export type FrontLook = Partial<Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "pitch">>;
+export type FrontLook = Partial<Pick<NicheFeature, "style" | "frameWidth" | "frameDepth" | "pitch" | "grooves">>;
 
 export const moduleSizes = (kind: ModuleKind): ModuleSizes => ({ hat: HAT, drawerZone: DRAWER_ZONE, spacing: kind === "shoes" ? SHOE_SPACING : SHELF_SPACING, drawers: DRAWERS.drawers });
 

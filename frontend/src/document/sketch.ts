@@ -201,6 +201,8 @@ export interface DoorSettings {
   frameWidth?: number;
   frameDepth?: number;
   pitch?: number;
+  /** Fluted or slatted: the grooves run across the door (absent: up and down). */
+  grooves?: "horizontal";
   glass?: GlassKind;
   profile?: ProfileFinish;
 }

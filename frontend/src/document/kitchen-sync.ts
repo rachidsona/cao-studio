@@ -24,7 +24,7 @@ const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(l
 /** The style of some fronts as the plan keeps it: only what is set, nothing for plain fronts. */
 function frontStyle(f: FrontsFeature): FrontStyle | undefined {
   if (!f.style || f.style === "flat") return undefined;
-  const keys = ["style", "frameWidth", "frameDepth", "pitch", "glass", "profile"] as const;
+  const keys = ["style", "frameWidth", "frameDepth", "pitch", "grooves", "glass", "profile"] as const;
   return Object.fromEntries(keys.filter((k) => f[k] !== undefined).map((k) => [k, f[k]])) as FrontStyle;
 }
 

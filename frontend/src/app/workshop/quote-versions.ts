@@ -3,6 +3,7 @@
  * « What if » de Mozaik : le prix des deux, et l'écart) et les versions du devis gardées dans le projet — le devis
  * initial, puis les avenants, chacun avec ce qui a changé depuis le précédent, imprimable.
  */
+import { decorMetres } from "../../features/decor-length";
 import type { CutTotals } from "../../document/cut-list";
 import { MATERIALS } from "../../document/materials";
 import { money, makeQuote, quoteChanges, scenarioTotals, withSavedQuote, type Quote, type QuoteRates, type SavedQuote } from "../../document/quote";
@@ -52,7 +53,7 @@ export function quoteExtras(
   const to = el("select", { class: SELECT, "aria-label": "Matière de remplacement" }, ...MATERIALS.map((m) => el("option", { value: m.name }, m.name)));
   const result = el("p", { class: "text-xs" });
   const compare = () => {
-    const other = makeQuote(scenarioTotals(totals, from.value, to.value), rates, hardware, editor.unit, holes);
+    const other = makeQuote(scenarioTotals(totals, from.value, to.value), rates, hardware, editor.unit, holes, decorMetres(editor.doc));
     result.textContent = `${from.value} → ${to.value} : ${money(other.gross)} TTC au lieu de ${money(quote.gross)} (${signed(other.gross - quote.gross)}).`;
   };
   from.addEventListener("change", compare);

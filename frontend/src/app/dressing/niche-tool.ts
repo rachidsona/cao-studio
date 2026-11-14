@@ -133,7 +133,7 @@ export class NicheTool {
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
     const { span: _span, accessory, ...all } = this.settings as Settings & { span?: number[][] };
     // A door has a style (and its glass), drawers too but glass, only an accessory its model.
-    const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, pitch: _pitch, ...rest } = all;
+    const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, pitch: _pitch, grooves: _grooves, ...rest } = all;
     const { glass: _glass, profile: _profile, ...unglazed } = all;
     const drawers = all.style === "glass" ? rest : unglazed;
     const settings = this.fill === "door" ? all : this.fill === "drawers" ? drawers : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
@@ -242,6 +242,7 @@ export class NicheTool {
     const shown = drawerStyle && this.settings.style === "glass" ? "flat" : (this.settings.style ?? "flat");
     const styles = [
       pick(drawerStyle ? "Style des façades" : "Style", shown, [["flat", "Plate"], ["frame", "À cadre"], ...DECOR_LABELS, ...(drawerStyle ? [] : [["glass", "Vitrée (cadre alu)"] as [string, string]])], (v) => Object.assign(this.settings, styleChange(v as DoorStyle, this.settings))),
+      drawerStyle && this.settings.style === "glass" ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100", "data-glass-drawers": "" }, "Le style vitré ne se fait pas sur des tiroirs : leurs façades restent plates. Choisissez un autre style pour les habiller.") : null,
       ...(shown === "frame"
         ? [number("Largeur du cadre", this.settings.frameWidth ?? 70, (v) => ((this.settings.frameWidth = v), this.recompute())), number("Retrait du panneau", this.settings.frameDepth ?? 6, (v) => ((this.settings.frameDepth = v), this.recompute()))]
         : []),

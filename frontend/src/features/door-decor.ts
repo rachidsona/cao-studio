@@ -3,8 +3,9 @@
  * hémisphérique) ou à tasseaux (des rainures droites qui laissent des lames en relief), sur sa face avant. Les
  * rainures sont verticales, toutes à l'entraxe `pitch`, centrées sur la largeur de la porte ; elles courent sur toute
  * sa hauteur ou s'arrêtent à `frameWidth` de ses chants haut et bas (une bordure lisse), à `frameDepth` de profondeur.
- * Quand des boîtiers de charnière sont percés au dos, les rainures s'écartent des chants de côté pour que la fraise ne
- * les rejoigne pas. La façade reste une seule planche, débitée comme une porte plate. Pur.
+ * Horizontales (`grooves: "horizontal"`), elles sont réparties sur la hauteur et courent sur la largeur, la bordure
+ * étant alors à gauche et à droite. Quand des boîtiers de charnière sont percés au dos, les rainures verticales
+ * s'écartent des chants de côté, les horizontales s'y arrêtent avant, pour que la fraise ne les rejoigne pas. La façade reste une seule planche, débitée comme une porte plate. Pur.
  */
 import type { Vec3 } from "../document/types";
 
@@ -31,6 +32,8 @@ export interface DecorSettings {
   pitch?: number;
   frameWidth?: number;
   frameDepth?: number;
+  /** The grooves run across the door (absent: up and down). */
+  grooves?: "horizontal";
 }
 
 /** A groove across the face: its middle and width along the door's width, its ends along its height, its depth. */
@@ -43,6 +46,8 @@ export interface Groove {
   round: boolean;
   /** It runs out of the top and bottom edges (no border). */
   through: boolean;
+  /** Across the door: `u` is then its height, `v0` and `v1` its ends across. */
+  horizontal?: true;
 }
 
 const pitchOf = (f: DecorSettings & { style: DecorStyle }) => f.pitch ?? DECOR_DEFAULTS[f.style].pitch;
@@ -62,7 +67,7 @@ export function decorProblem(f: DecorSettings, doors: readonly { width: number; 
   if (thickness - depth < MIN_LEFT) return `Les rainures sont trop profondes : il reste moins de ${MIN_LEFT} mm de bois.`;
   if (f.style === "fluted" && depth > grooveWidth(f) / 2) return "Une cannelure n'est pas plus profonde que la moitié de sa largeur : augmentez l'entraxe ou réduisez la profondeur.";
   if (!(border >= 0)) return "La bordure ne peut pas être négative.";
-  if (doors.some((d) => d.height - 2 * border < 50)) return "La bordure est trop large pour ces portes.";
+  if (doors.some((d) => (f.grooves === "horizontal" ? d.width : d.height) - 2 * border < 50)) return "La bordure est trop large pour ces portes.";
   if (doors.some((d) => !decorGrooves(f, 0, d.width, 0, d.height, decorClear(f, thickness, cups)).length)) return "Ces portes sont trop étroites pour une rainure.";
   return null;
 }
@@ -75,6 +80,11 @@ export function decorGrooves(f: DecorSettings, u0: number, u1: number, v0: numbe
   if (!isDecor(f)) return [];
   const [pitch, depth, border] = [pitchOf(f), depthOf(f), borderOf(f)];
   const width = grooveWidth(f);
+  if (f.grooves === "horizontal") {
+    // Spread over the height, running across: they stop before the hinge cups at the side edges.
+    const ends = Math.max(border, clear ? HINGE_CLEAR : 0);
+    return decorGrooves({ ...f, grooves: undefined, frameWidth: ends }, v0, v1, u0, u1).map((g) => ({ ...g, horizontal: true as const }));
+  }
   const margin = Math.max(clear ? HINGE_CLEAR : 0, f.style === "slats" ? pitch - SLAT_GAP : CREST / 2);
   // Where the middles of the grooves may go.
   const span = u1 - u0 - 2 * margin - width;
@@ -89,6 +99,12 @@ export function decorGrooves(f: DecorSettings, u0: number, u1: number, v0: numbe
  * a rod (its axis and radius) — in the door's frame [across, up, through].
  */
 export function grooveTool(g: Groove, face: number, into: -1 | 1): { box: [Vec3, Vec3] } | { from: Vec3; to: Vec3; radius: number } {
+  if (g.horizontal) {
+    // Worked out as an upright one, then turned: its first two coordinates swapped.
+    const swap = ([a, b, c]: Vec3): Vec3 => [b, a, c];
+    const t = grooveTool({ ...g, horizontal: undefined }, face, into);
+    return "box" in t ? { box: [swap(t.box[0]), swap(t.box[1])] } : { from: swap(t.from), to: swap(t.to), radius: t.radius };
+  }
   // The tool overshoots the face (and the edges it runs out of) by 1 mm, for clean cuts.
   const [v0, v1] = g.through ? [g.v0 - 1, g.v1 + 1] : [g.v0, g.v1];
   const bottom = face + into * g.depth;
@@ -102,7 +118,8 @@ export function grooveTool(g: Groove, face: number, into: -1 | 1): { box: [Vec3,
 /** What a change to a decor style sets: its usual pitch, depth and border unless already that style. */
 export function decorChange(style: DecorStyle, current: DecorSettings): DecorSettings & { style: DecorStyle } {
   const d = DECOR_DEFAULTS[style];
-  return current.style === style ? { style, pitch: current.pitch ?? d.pitch, frameDepth: current.frameDepth ?? d.frameDepth, frameWidth: current.frameWidth ?? d.frameWidth } : { style, ...d };
+  const across = current.grooves === "horizontal" ? { grooves: "horizontal" as const } : {};
+  return current.style === style ? { style, pitch: current.pitch ?? d.pitch, frameDepth: current.frameDepth ?? d.frameDepth, frameWidth: current.frameWidth ?? d.frameWidth, ...across } : { style, ...d, ...across };
 }
 
 export const DECOR_LABELS: [DecorStyle, string][] = [

@@ -2725,14 +2725,17 @@ opération existante.
     l'entraxe de 30, 3 mm de profondeur, taillées à la fraise hémisphérique) ou **à tasseaux** (rainures droites de
     10 mm à l'entraxe de 45, 4 mm de profondeur, qui laissent des lames en relief). Les rainures sont verticales,
     centrées sur la largeur de la porte ; elles courent sur toute sa hauteur ou s'arrêtent à une **bordure** en haut
-    et en bas. Quand des boîtiers de charnière sont percés au dos et que la rainure les rejoindrait, elles restent à
-    45 mm des chants de côté. La porte reste une seule planche, débitée comme une porte plate. Le panneau refuse des
+    et en bas. Avec « **Rainures horizontales** » (`grooves: "horizontal"`), elles sont réparties sur la hauteur et
+    courent sur la largeur, la bordure étant à gauche et à droite. Quand des boîtiers de charnière sont percés au dos
+    et que la rainure les rejoindrait, les verticales restent à 45 mm des chants de côté, les horizontales s'y
+    arrêtent à 45 mm. Le **devis** compte l'usinage des rainures au mètre (« Rainures décor (usinage) », tarif
+    « Rainure décor » réglable ; `features/decor-length.ts`). La porte reste une seule planche, débitée comme une porte plate. Le panneau refuse des
     rainures trop profondes (3 mm de bois au moins), un entraxe impossible, une bordure trop large
     (`features/door-decor.ts`, pur ; les rainures sont creusées d'un coup par `features/decor-cut.ts`).
   - Les **façades de tiroir** prennent les mêmes styles (à cadre, cannelée, à tasseaux), pas le vitré : celles d'un
     caisson (« Style des façades » de l'outil Façades) et celles d'une niche (outil Tiroirs). Chaque façade a ses
     rainures sur sa propre hauteur ; sans boîtier de charnière derrière, elles courent jusqu'aux chants. Un style
-    vitré resté d'une porte changée en tiroirs les laisse plates.
+    vitré resté d'une porte changée en tiroirs les laisse plates, et le panneau le dit.
   - Les **modules de dressing** (Module, « Modules à glisser ») choisissent le style des façades de leurs tiroirs dans
     leurs réglages (« Style des façades », avec l'entraxe, la profondeur et la bordure, ou le cadre) : avant d'être
     glissés, ou une fois posés, où le module est refait sur place ; un module posé relit son style

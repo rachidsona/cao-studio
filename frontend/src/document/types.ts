@@ -713,6 +713,8 @@ export interface FrontsFeature extends FeatureBase {
   frameWidth?: number;
   frameDepth?: number;
   pitch?: number;
+  /** Fluted or slatted: the grooves run across the door (absent: up and down). */
+  grooves?: "horizontal";
   glass?: GlassKind;
   profile?: ProfileFinish;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
@@ -720,7 +722,7 @@ export interface FrontsFeature extends FeatureBase {
 }
 
 /** How the fronts of a cabinet look: framed, fluted, slatted or glazed, with their sizes (features/door-decor.ts). */
-export type FrontStyle = Pick<FrontsFeature, "style" | "frameWidth" | "frameDepth" | "pitch" | "glass" | "profile">;
+export type FrontStyle = Pick<FrontsFeature, "style" | "frameWidth" | "frameDepth" | "pitch" | "grooves" | "glass" | "profile">;
 
 /** The glass of a glazed door, and the finish of its aluminium frame. */
 export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze" | "black";
@@ -781,6 +783,8 @@ export interface NicheFeature extends FeatureBase {
   frameDepth?: number;
   /** Fluted or slatted doors: the spacing of their grooves (features/door-decor.ts). */
   pitch?: number;
+  /** Fluted or slatted: the grooves run across the door (absent: up and down). */
+  grooves?: "horizontal";
   glass?: GlassKind;
   profile?: ProfileFinish;
   /** Back: one panel for the whole cabinet, or one per case. */

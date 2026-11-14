@@ -122,3 +122,45 @@ describe("portes de Répartition et de caisson", () => {
     expect(() => parseDocument({ ...fluted, features: [cabinet, { ...fronts(), style: "carved" }] })).toThrow(/style de porte inconnu/);
   });
 });
+
+describe("rainures horizontales, usinage au devis", () => {
+  it("horizontales : réparties sur la hauteur, courant sur la largeur, la bordure à gauche et à droite, avant les boîtiers", () => {
+    const f = { style: "slats", pitch: 45, frameDepth: 4, frameWidth: 0, grooves: "horizontal" as const };
+    const g = decorGrooves(f, 0, 300, 0, 700);
+    // As upright ones on a door turned a quarter: their middles up the height, from side to side.
+    expect(g.length).toBe(decorGrooves({ ...f, grooves: undefined }, 0, 700, 0, 300).length);
+    expect(g.every((x) => x.horizontal && x.v0 === 0 && x.v1 === 300 && x.through)).toBe(true);
+    expect(decorGrooves({ ...f, frameWidth: 40 }, 0, 300, 0, 700)[0]).toMatchObject({ v0: 40, v1: 260, through: false });
+    expect(decorGrooves(f, 0, 300, 0, 700, true)[0]).toMatchObject({ v0: HINGE_CLEAR, v1: 300 - HINGE_CLEAR });
+    // The tool turned: along the width (first coordinate), at the groove's height.
+    const t = grooveTool(g[0]!, 19, -1);
+    if (!("box" in t)) throw new Error("un cylindre");
+    expect(t.box[0][0]).toBe(-1);
+    expect(t.box[1][0]).toBe(301);
+    expect(t.box[1][1] - t.box[0][1]).toBeCloseTo(SLAT_GAP);
+    // The border is then at the sides: too wide for a narrow door.
+    expect(decorProblem({ ...f, frameWidth: 140 }, [{ width: 300, height: 700 }], 19)).toMatch(/bordure est trop large/);
+    expect(decorChange("fluted", f)).toMatchObject({ style: "fluted", grooves: "horizontal" });
+  });
+
+  it("le noyau creuse les rainures horizontales d'une porte de caisson ; le devis compte leurs mètres", async () => {
+    const { decorMetres } = await import("../../frontend/src/features/decor-length");
+    const { DEFAULT_RATES, makeQuote } = await import("../../frontend/src/document/quote");
+    const across = fronts({ style: "slats", pitch: 45, frameDepth: 4, frameWidth: 0, grooves: "horizontal" });
+    const [plain, slatted] = [buildFronts(fronts(), () => undefined as never, cabinet), buildFronts(across, () => undefined as never, cabinet)];
+    const [door] = frontsParts(across, cabinet);
+    const grooves = decorGrooves(across, door!.from[0], door!.to[0], door!.from[2], door!.to[2]);
+    const width = door!.to[0] - door!.from[0];
+    expect(measureVolume(plain.shapes[0]!) - measureVolume(slatted.shapes[0]!)).toBeCloseTo(grooves.length * SLAT_GAP * 4 * width, -1);
+    for (const s of [...plain.shapes, ...slatted.shapes]) s.delete();
+    const doc: CadDocument = { ...createReferencePlate(), features: [cabinet, across] };
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();
+    expect(decorMetres(doc)).toBeCloseTo((grooves.length * width) / 1000, 3);
+    const totals = [{ material: "Mélaminé blanc", thickness: 19, area: 1, parts: 1, bandLength: 0 }] as never;
+    const line = makeQuote(totals, DEFAULT_RATES, [], "mm", 0, decorMetres(doc)).lines.find((l) => l.label === "Rainures décor (usinage)");
+    expect(line).toMatchObject({ unit: "m", unitPrice: DEFAULT_RATES.perGrooveMetre });
+    expect(line!.quantity).toBeCloseTo(decorMetres(doc), 2);
+    expect(decorMetres({ ...doc, features: [cabinet, fronts()] })).toBe(0);
+    expect(() => parseDocument({ ...doc, features: [cabinet, { ...across, grooves: "diagonal" }] })).toThrow(/sens des rainures/);
+  });
+});

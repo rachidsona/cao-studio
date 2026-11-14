@@ -5,6 +5,7 @@
  * commande numérique et les étiquettes sont dans workshop-cnc.ts.
  */
 import { cutList } from "../../document/cut-list";
+import { decorMetres } from "../../features/decor-length";
 import { barLength } from "../../document/bars";
 import { CURRENCY, DEFAULT_RATES, EURO_IN_MAD, mad, money, makeQuote, quoteCsv, type Quote, type QuoteRates } from "../../document/quote";
 import type { CabinetFeature, CadDocument } from "../../document/types";
@@ -155,6 +156,7 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     field("Chant collé", rates.band, "MAD/m", (v) => (rates.band = v), true),
     field("Découpe par pièce", rates.cutPerPart, "MAD", (v) => (rates.cutPerPart = v), true),
     field("Perçage (usinage)", rates.perHole ?? 0, "MAD", (v) => (rates.perHole = v), true),
+    field("Rainure décor (usinage)", rates.perGrooveMetre ?? 0, "MAD/m", (v) => (rates.perGrooveMetre = v), true),
     field("Montage par pièce", rates.hoursPerPart, "h", (v) => (rates.hoursPerPart = v), true),
     field("Taux horaire", rates.hourly, "MAD/h", (v) => (rates.hourly = v), true),
     field("Marge", rates.margin, "%", (v) => (rates.margin = v), true),
@@ -172,10 +174,11 @@ function showQuote(viewport: Viewport, editor: Editor): void {
     return el("label", { class: "flex items-center justify-between gap-2" }, el("span", {}, "Remises (dès MAD HT : %)"), input);
   }
   const holes = holesOf(editor.doc);
-  let quote = makeQuote(totals, rates, hardware, editor.unit, holes);
+  const grooves = decorMetres(editor.doc);
+  let quote = makeQuote(totals, rates, hardware, editor.unit, holes, grooves);
   const extras = el("div", { class: "space-y-3" });
   const refresh = () => {
-    quote = makeQuote(totals, rates, hardware, editor.unit, holes);
+    quote = makeQuote(totals, rates, hardware, editor.unit, holes, grooves);
     table.innerHTML = quoteHtml(quote);
     quoteExtras(extras, viewport, editor, totals, rates, hardware, holes, quote, quoteHtml);
   };
@@ -197,13 +200,13 @@ function showQuote(viewport: Viewport, editor: Editor): void {
 /** The quote of the displayed parts at the saved rates, as a printable table, or null when there is nothing to price. */
 export function savedQuoteHtml(viewport: Viewport, editor: Editor): string | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc))) : null;
+  return totals.length ? quoteHtml(makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc), decorMetres(editor.doc))) : null;
 }
 
 /** The total (TTC) of the quote of the displayed parts at the saved rates, or null when there is nothing to price. */
 export function quoteTotal(viewport: Viewport, editor: Editor): number | null {
   const { totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
-  return totals.length ? makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc)).gross : null;
+  return totals.length ? makeQuote(totals, loadRates(), [...modelHardware(editor.doc), ...autoHardware(editor.doc)], editor.unit, holesOf(editor.doc), decorMetres(editor.doc)).gross : null;
 }
 
 export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, editor: Editor, geometry: GeometryClient): void {
