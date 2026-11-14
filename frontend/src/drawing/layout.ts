@@ -5,6 +5,7 @@
  * bout d'arête le plus proche. Pur ; le dessin des vues est mis en cache par la clé du modèle.
  */
 import { cross, type DrawingSheet, type DrawingView, type V3, type Vec2, type ViewAnchor, type ViewSpec } from "./model";
+import { explodeMeshes } from "./explode";
 import { cropCircle, projectSpec, type Cut, type MeshInput, type ViewGeometry } from "./projection";
 
 const norm = (v: V3): V3 => {
@@ -47,11 +48,14 @@ export class SheetLayout {
     // The pieces hidden on the sheet or in this view (a detail shows what its parent shows).
     const hiddenOf = (v: DrawingView) => [...(sheet.hiddenBodies ?? []), ...(v.hiddenBodies ?? [])].sort();
     const hidden = hiddenOf(view.kind === "detail" && parent ? parent : view);
-    const key = JSON.stringify([view.kind, view.spec, view.hidden, view.cut, view.detail, parent?.spec, parent?.hidden, hidden]);
+    const key = JSON.stringify([view.kind, view.spec, view.hidden, view.cut, view.detail, view.explode, parent?.spec, parent?.hidden, hidden]);
     const known = this.cache.get(key);
     if (known) return known;
     let made: ViewGeometry;
-    const meshes = () => this.meshes().filter((m) => !hidden.includes(m.id));
+    const meshes = () => {
+      const shown = this.meshes().filter((m) => !hidden.includes(m.id));
+      return view.explode ? explodeMeshes(shown, view.explode, view.spec.toViewer) : shown;
+    };
     if (view.kind === "detail" && parent && view.detail) made = cropCircle(this.geometry(sheet, parent), view.detail.center, view.detail.radius);
     else if (view.kind === "section" && parent && view.cut) made = projectSpec(meshes(), view.spec, false, sectionOf(parent.spec, view.cut.a, view.cut.b, view.cut.flip).cut);
     else made = projectSpec(meshes(), view.spec, view.hidden);

@@ -1881,6 +1881,9 @@ opération existante.
       le plan, les faces coupées hachurées (une pièce sur deux dans l'autre sens). Le trait de coupe porte ses flèches
       et ses lettres (A-A, B-B…), et le sens s'inverse dans les réglages.
     - **Détail** : un cercle sur une vue, puis la place du détail, agrandi deux fois et demie.
+    - **Vue éclatée** : dans le panneau d'une vue de base ou projetée, « Éclatée » (10 à 80 %) écarte ses pièces, chacune
+      le long de l'axe où elle dépasse le plus (vers l'œil pour une pièce du milieu), comme la notice de montage
+      (`drawing/explode.ts`).
     - **Cotes** : *Cote* (un trait, ou deux points accrochés aux coins et aux centres, puis tirer : horizontale au-dessus ou
       dessous, verticale à côté, alignée avec Maj), *Diamètre* et *Rayon* (un cercle vu de face), *Angle* (deux
       traits). La valeur est mesurée sur le modèle et le suit (un caisson élargi, sa cote change) ; on peut imposer

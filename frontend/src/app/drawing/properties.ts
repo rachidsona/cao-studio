@@ -88,6 +88,10 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
     if (view.kind === "base" && view.orientation) {
       parts.push(row("Orientation", select(view.orientation, (Object.keys(ORIENTATIONS) as Orientation[]).map((o) => [o, ORIENTATIONS[o].label]), (v) => set({ orientation: v as Orientation, spec: ORIENTATIONS[v as Orientation].spec }), "Orientation de la vue")));
     }
+    if (view.kind === "base" || view.kind === "projected") {
+      const shares: [string, string][] = [["0", "Non"], ["0.1", "10 %"], ["0.2", "20 %"], ["0.3", "30 %"], ["0.5", "50 %"], ["0.8", "80 %"]];
+      parts.push(row("Éclatée", select(String(view.explode ?? 0), shares, (v) => set({ explode: Number(v) || undefined }), "Vue éclatée : écart des pièces")));
+    }
     if (view.kind !== "section") {
       const box = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: view.hidden });
       box.addEventListener("change", () => set({ hidden: box.checked }));

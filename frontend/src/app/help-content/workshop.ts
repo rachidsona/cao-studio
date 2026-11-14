@@ -247,7 +247,7 @@ export const WORKSHOP: HelpFamily[] = [
         what: "Ouvre l'écran de dessin de plans : vues cotées du meuble sur des feuilles A4 à A0 avec cartouche, à imprimer ou exporter.",
         steps: [
           "Cliquez « Mise en plan » : une première feuille s'ouvre avec la vue de face, la vue de dessus, la vue de côté et une vue isométrique.",
-          "Ajoutez ce qu'il faut avec le ruban : « Vue de base », « Projetée », « Coupe », « Détail », « Plan de pose ».",
+          "Ajoutez ce qu'il faut avec le ruban : « Vue de base », « Projetée », « Coupe », « Détail », « Plan de pose ». Une vue choisie peut être « Éclatée » (10 à 80 %) dans son panneau : ses pièces s'écartent.",
           "Cotez avec « Cote » ou « Cotes auto », puis « Réorganiser » pour ranger les cotes. Ajoutez « Texte », « Note », « Repère » ou « Nomenclature ».",
           "Réglez format, projection et cartouche dans le panneau « Feuille » à droite ; « + Feuille » en bas en crée une autre.",
           "Exportez avec « Fichier PDF » (téléchargé directement, à l'échelle exacte, une page par feuille avec son cartouche), « Imprimer », « Dossier client », « DXF » ou « SVG », puis « Fermer la mise en plan ».",

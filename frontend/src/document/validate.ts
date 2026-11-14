@@ -379,7 +379,7 @@ export function validateDocument(input: unknown): string[] {
     const sheets = input.drawings;
     const sheetOk = (d: unknown) =>
       isObject(d) && typeof d.id === "string" && typeof d.name === "string" && Array.isArray(d.views) && Array.isArray(d.annotations) && isObject(d.sketch) && Array.isArray(d.sketch.items) && isObject(d.title) &&
-      d.views.every((v) => isObject(v) && typeof v.id === "string" && isFiniteNumber(v.scale) && (v.scale as number) > 0 && Array.isArray(v.at) && isObject(v.spec)) &&
+      d.views.every((v) => isObject(v) && typeof v.id === "string" && isFiniteNumber(v.scale) && (v.scale as number) > 0 && Array.isArray(v.at) && isObject(v.spec) && (v.explode === undefined || (isFiniteNumber(v.explode) && (v.explode as number) >= 0 && (v.explode as number) <= 2))) &&
       d.annotations.every(
         (a) =>
           isObject(a) &&

@@ -76,6 +76,8 @@ export interface DrawingView {
   hidden: boolean;
   /** Pieces left out of this view (body ids), from the navigator. */
   hiddenBodies?: string[];
+  /** Exploded: the pieces moved apart by this share of the furniture's biggest size (drawing/explode.ts). */
+  explode?: number;
   /** The view it comes from (projected, section, detail): projected views stay aligned with it. */
   parent?: string;
   /** Section: the cutting line on the parent view (model mm in the parent's 2D frame) and its letter. */
