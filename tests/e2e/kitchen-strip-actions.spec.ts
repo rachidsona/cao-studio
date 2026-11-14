@@ -160,3 +160,41 @@ test("sur la bande : un meuble haut s'aligne sur le meuble bas qui est sous lui"
   await expect(bar.locator("[data-strip-align]")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("la bande du linéaire et ses murs restent en haut du panneau quand on le fait défiler", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-bande-fixe");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const fixed = tool.locator("[data-run-fixed]");
+  await expect(fixed.locator('[data-run-strip="A"]')).toBeVisible();
+  await expect(fixed.getByRole("group", { name: "Voir un autre linéaire" })).toBeVisible();
+  // The sentence of the run's lengths is gone.
+  await expect(tool).not.toContainText("Glissez un meuble pour le changer de place");
+  // The settings opened and the panel scrolled to its end: the walls and the strip still at its top.
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  const scroller = await fixed.evaluateHandle((node) => {
+    let p = node.parentElement;
+    while (p && !(p.scrollHeight > p.clientHeight + 10 && /auto|scroll/.test(getComputedStyle(p).overflowY))) p = p.parentElement;
+    return p;
+  });
+  const before = (await fixed.boundingBox())!;
+  await page.evaluate((s) => s && s.scrollTo({ top: s.scrollHeight }), scroller);
+  await page.waitForTimeout(300);
+  const scrolled = await page.evaluate((s) => (s ? s.scrollTop : 0), scroller);
+  expect(scrolled).toBeGreaterThan(100);
+  const after = (await fixed.boundingBox())!;
+  const top = await page.evaluate((s) => (s ? s.getBoundingClientRect().top : 0), scroller);
+  expect(after.y).toBeLessThanOrEqual(Math.max(top, before.y) + 1);
+  expect(after.y).toBeGreaterThanOrEqual(top - 1);
+  await expect(tool.locator('[data-run-strip="A"]')).toBeInViewport();
+  await shot(page, "bande-fixe");
+  expect(errors).toEqual([]);
+});

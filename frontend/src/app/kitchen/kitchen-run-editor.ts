@@ -238,15 +238,16 @@ export class RunEditor {
       }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label) });
     const clear = el("button", { type: "button", class: WIDE, disabled: !this.items.length }, "Vider le linéaire");
     clear.addEventListener("click", () => this.change([], null));
-    const used = fill.placed.filter((p) => p.row === "base").reduce((sum, p) => sum + p.item.width, 0);
     const f = this.folds;
     const chosen = fill.placed.find((p) => p.item.id === this.chosen)?.item ?? this.items.find((i) => i.id === this.chosen);
     const rows: (HTMLElement | null)[] = [
       this.header(`Linéaire — ${run.label.toLowerCase()}`),
-      this.walls(),
+      // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan.
+      el("div", { class: "sticky top-0 z-10 -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900", "data-run-fixed": "" },
+        this.walls(),
+        el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
+      ),
       this.seeButton(),
-      el("p", { class: "text-gray-600 dark:text-gray-300" }, `${formatLength(run.length, unit)} de mur, ${formatLength(Math.max(0, g.base[1] - g.base[0]), unit)} pour les meubles bas, ${formatLength(used, unit)} pris. Glissez un meuble pour le changer de place.`),
-      el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
       actions.bar,
       this.dirty ? null : this.keepMoves(),
       // Every titled part folds; one open at a time, all closed at first.
@@ -370,8 +371,8 @@ export class RunEditor {
     if (runs.length < 2) return null;
     return el(
       "div",
-      // Kept in sight while the panel scrolls.
-      { class: "sticky top-0 z-10 -mx-2.5 flex flex-wrap gap-1 border-b border-gray-200 bg-white px-2.5 py-1.5 dark:border-gray-700 dark:bg-gray-900", role: "group", "aria-label": "Voir un autre linéaire" },
+      // Kept in sight with the strip while the panel scrolls (rows()).
+      { class: "flex flex-wrap gap-1", role: "group", "aria-label": "Voir un autre linéaire" },
       ...runs.map((r) => {
         const here = r.id === run.id;
         const b = el("button", { type: "button", "aria-pressed": String(here), "data-go-run": r.id, title: here ? `${r.label} est ouvert` : `Voir ${r.label.charAt(0).toLowerCase()}${r.label.slice(1)}`, class: `h-7 flex-1 border px-2 font-medium whitespace-nowrap ${here ? "border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, r.label);
