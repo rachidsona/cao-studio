@@ -55,3 +55,17 @@ export const PLINTH_TECH_HELP: ToolHelp = {
   ],
   tip: "Une grille va devant chaque réfrigérateur et chaque four encastrés. Un tiroir de plinthe va sous chaque meuble bas de 40 cm et plus, ni sous l'évier ni sous un appareil ; sa plinthe est mise de côté et refaite en morceaux entre les tiroirs, de sa matière. Grilles et coulisses vont au devis, façades, fonds et côtés au débit. Si la cuisine est refaite, appliquez de nouveau.",
 };
+
+/** « Inventaire du client » (app/dressing/inventory-tool.ts). */
+export const INVENTORY_HELP: ToolHelp = {
+  keys: ["data-workshop:inventory"],
+  name: "Inventaire du client",
+  what: "Transforme ce que le client doit ranger en mètres de penderie, tablettes et tiroirs, le compare au dressing dessiné et propose les modules qui manquent.",
+  steps: [
+    "Cliquez « Inventaire du client » et tapez combien de chemises, vestes, pantalons, robes longues, manteaux, pulls pliés, paires de chaussures et tiroirs voulus.",
+    "Lisez le tableau : ce qu'il faut (avec 10 % de marge), ce que le dressing dessiné offre déjà, ce qui manque.",
+    "Sous « À ajouter », les modules qui le donnent et leur largeur : posez-les avec « Modules à glisser » ou « Module ».",
+    "Ou reportez les valeurs de la dernière ligne dans « Remplir selon les besoins » du Plan de dressing, qui pose les modules d'un coup.",
+  ],
+  tip: "Repères : 3 cm de tringle par chemise ou pantalon pendu, 6 par veste, 4 par robe longue, 8 par manteau ; 35 cm de tablette pour une pile de 6 pulls, 20 cm par paire de chaussures. Une tringle dans une niche de 1,30 m de haut ou plus compte en penderie longue. L'inventaire est gardé par ce navigateur, pour ce projet.",
+};

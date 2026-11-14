@@ -1,4 +1,5 @@
 /** Entry point of the editor page rendered by Django (templates/editor/editor.html). */
+import { bindInventory } from "./app/dressing/inventory-tool";
 import { bindPlinthTech } from "./app/kitchen/plinth-tech-tool";
 import { bindWorktopBars } from "./app/kitchen/worktop-bars-tool";
 import { bindTechPlan } from "./app/kitchen/tech-plan-tool";
@@ -211,6 +212,7 @@ async function start(): Promise<void> {
   bindTechPlan(root, editor);
   bindWorktopBars(root, editor);
   bindPlinthTech(root, editor);
+  bindInventory(root, editor);
   bindWallCutaway(root, viewport, editor);
   bindIsolateSelection(root, viewport, editor);
   bindOrbit(root, viewport, (message) => editor.notify(message, "info"));

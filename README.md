@@ -2727,6 +2727,13 @@ opération existante.
     tiroirs est mise de côté (suspendue) et refaite en morceaux entre eux, de sa matière.
   - « Appliquer » refait la plinthe technique en une étape ; tout décoché, elle est retirée et les plinthes rendues.
     Une cuisine refaite par le Plan de cuisine demande de l'appliquer de nouveau.
+- **Inventaire du client** (groupe « Dressing », masqué d'office) : ce que le client doit ranger — chemises, vestes,
+  pantalons, robes longues, manteaux, pulls pliés, paires de chaussures, tiroirs voulus — devient des mètres de
+  penderie courte et longue, de tablettes et un nombre de tiroirs (repères : 3 cm de tringle par chemise, 6 par
+  veste, 4 par robe, 8 par manteau ; 35 cm de tablette pour 6 pulls, 20 cm par paire), comparés avec 10 % de marge
+  à ce que le dressing dessiné offre (tringles, étagères des Répartitions, tiroirs) ; ce qui manque donne les modules
+  à ajouter et leur largeur, et une ligne donne les valeurs à reporter dans « Remplir selon les besoins »
+  (`document/wardrobe-inventory.ts`, `document/wardrobe-have.ts`, `app/dressing/inventory-tool.ts`).
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).
