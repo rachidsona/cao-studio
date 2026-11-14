@@ -1,4 +1,4 @@
-import { DRAW_VARIANTS } from "./sketch-variants";
+import { DRAW_VARIANTS, MORE_DIMENSIONS } from "./sketch-variants";
 import type { HelpFamily } from "./types";
 
 export const SKETCH: HelpFamily[] = [
@@ -330,6 +330,7 @@ export const SKETCH: HelpFamily[] = [
         ],
         tip: "Sans bonne sélection, le bouton reste enfoncé et attend vos clics : cliquez deux points ou une ligne. Échap arrête.",
       },
+      ...MORE_DIMENSIONS,
     ],
   },
   {

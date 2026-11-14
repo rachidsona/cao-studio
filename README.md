@@ -532,6 +532,12 @@ serveur accepte les deux versions.
   - les cotes posées restent toujours affichées ; un clic sur la valeur ouvre la calculatrice, un
     glisser déplace la cote (sa position est enregistrée) ;
   - pendant le tracé, les dimensions de la forme s'affichent en direct.
+- **Cote de rayon, de diamètre, d'angle et chaîne de cotes** (menu « Cotes ▾ », cachées par défaut) : un cercle ou
+  un arc coté au choix par son rayon ou son diamètre ; l'angle entre deux lignes (l'axe X pour l'horizontale) ; la
+  **chaîne de cotes** d'un clic sur un côté — tous les points posés dessus (ses bouts, les étagères qui y
+  aboutissent) cotés d'un bout à l'autre — ou sur trois éléments choisis ou plus (points, bouts de traits, centres de
+  cercles) le long de l'axe où ils s'étalent. Ces cotes figent le dessin ; celle qu'un total déjà coté impose est
+  posée en cote de référence (`sketcher/chain-dims.ts`).
 - **Cotation automatique** (menu « Cotes ▾ » de l'esquisse) : d'un coup, les cotes des traits sélectionnés, sinon de
   tout le dessin hors construction :
   - les cotes de chaîne, d'un niveau de points au suivant, en X sous le dessin et en Y à sa gauche ;

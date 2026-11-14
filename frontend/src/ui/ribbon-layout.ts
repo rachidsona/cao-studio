@@ -35,7 +35,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
   sketch: [
     "data-sketch-tool:rectangle-center", "data-sketch-tool:rectangle-3pt", "data-sketch-tool:circle-2pt", "data-sketch-tool:circle-3pt", "data-sketch-tool:arc-3pt", "data-sketch-tool:arc-tangent",
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
-    "data-sketch-command:importdxf", "data-sketch-command:underlay", "data-sketch-command:skmirror", "data-sketch-command:skrotate", "data-sketch-command:skscale", "data-sketch-command:skpolar", "data-sketch-command:autodim", "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:intersect", "data-sketch-tool:break", "data-sketch-tool:array",
+    "data-sketch-command:importdxf", "data-sketch-command:underlay", "data-sketch-command:skmirror", "data-sketch-command:skrotate", "data-sketch-command:skscale", "data-sketch-command:skpolar", "data-sketch-command:autodim", "data-sketch-command:dimRadius", "data-sketch-command:dimDiameter", "data-sketch-command:dimAngle", "data-sketch-command:dimChain", "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:intersect", "data-sketch-tool:break", "data-sketch-tool:array",
     "data-sketch-command:symmetric", "data-sketch-command:concentric", "data-sketch-command:fix", "data-sketch-command:pointOnCurve", "data-sketch-command:midpoint",
   ],
 };

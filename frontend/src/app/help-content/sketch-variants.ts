@@ -38,3 +38,28 @@ export const DRAW_VARIANTS: ToolHelp[] = [
     tip: "L'arc reste tangent à ce qu'il prolonge. Une fin droit devant serait un trait : l'outil le dit.",
   },
 ];
+
+/** Les fiches des cotes de rayon, de diamètre, d'angle et en chaîne (sketcher/chain-dims.ts). */
+export const MORE_DIMENSIONS: ToolHelp[] = [
+  {
+    keys: ["data-sketch-command:dimRadius", "data-sketch-command:dimDiameter"], name: "Cote de rayon et Cote de diamètre",
+    what: "Cote un cercle par son rayon, ou un arc par son diamètre — au choix, quand la « Cote » donne l'autre.",
+    steps: ["Sélectionnez un cercle ou un arc (ou cliquez d'abord le bouton, puis l'élément).", "Cliquez « Cote de rayon » ou « Cote de diamètre ».", "Tapez la valeur dans le panneau des propriétés."],
+    tip: "Une poignée cuvette se cote volontiers au diamètre, un angle arrondi au rayon.",
+  },
+  {
+    keys: ["data-sketch-command:dimAngle"], name: "Cote d'angle",
+    what: "Impose l'angle entre deux lignes : une coupe d'onglet, un pan coupé, un dessus incliné.",
+    steps: ["Cliquez le bouton, puis deux lignes non parallèles — l'axe X pour l'angle sur l'horizontale.", "Tapez l'angle en degrés dans le panneau des propriétés."],
+    tip: "Deux lignes parallèles n'ont pas d'angle : leur écart se cote avec « Cote ».",
+  },
+  {
+    keys: ["data-sketch-command:dimChain"], name: "Chaîne de cotes",
+    what: "Pose d'un coup une rangée de cotes d'un point au suivant : les étagères le long d'un côté, une ligne de perçages.",
+    steps: [
+      "Cliquez le bouton, puis un côté : tous les points posés dessus (ses bouts, les traits qui y aboutissent) sont cotés d'un bout à l'autre.",
+      "Ou sélectionnez d'abord trois éléments ou plus (points, traits, cercles) : leurs points, ou les centres des cercles, sont cotés le long de l'axe où ils s'étalent.",
+    ],
+    tip: "Les cotes figent le dessin ; celle qu'un total déjà coté impose est posée en cote de référence, entre parenthèses, et suit sans contredire.",
+  },
+];

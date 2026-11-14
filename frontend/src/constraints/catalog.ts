@@ -4,6 +4,7 @@
  */
 import { AXIS_X, AXIS_Y, curvePoints, ORIGIN, type DimensionConstraint, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import { pairSpec } from "../sketcher/annotations";
+import { chainDimensions } from "../sketcher/chain-dims";
 import { findCurve, measure } from "../sketcher/edit";
 
 export type EntityKind = "point" | "line" | "circle" | "arc";
@@ -223,6 +224,55 @@ export const COMMANDS: Command[] = [
         dimension({ kind: "distanceX", a: ORIGIN, b: s.points[0] } as never, g),
         dimension({ kind: "distanceY", a: ORIGIN, b: s.points[0] } as never, g),
       ];
+    },
+  },
+  {
+    id: "dimRadius",
+    label: "Cote de rayon",
+    glyph: "R",
+    dimension: true,
+    accepts: ["circle", "arc"],
+    pick: "cliquez un cercle ou un arc",
+    applies: (s) => only(s, 0, 0, 1),
+    build: (s, g) => [dimension({ kind: "radius", curve: roundCurves(s)[0] } as never, g)],
+  },
+  {
+    id: "dimDiameter",
+    label: "Cote de diamètre",
+    glyph: "Ø",
+    dimension: true,
+    accepts: ["circle", "arc"],
+    pick: "cliquez un cercle ou un arc",
+    applies: (s) => only(s, 0, 0, 1),
+    build: (s, g) => [dimension({ kind: "diameter", curve: roundCurves(s)[0] } as never, g)],
+  },
+  {
+    id: "dimAngle",
+    label: "Cote d'angle",
+    glyph: "∠",
+    dimension: true,
+    accepts: ["line"],
+    pick: "cliquez deux lignes (l'axe X pour l'angle sur l'horizontale)",
+    applies: (s) => only(s, 0, 2, 0),
+    build: (s, g) => {
+      if (pairSpec(g, s.lines)?.kind !== "angle") throw new Error("Ces deux lignes sont parallèles : leur écart se cote avec « Cote ».");
+      return [dimension({ kind: "angle", a: s.lines[0], b: s.lines[1] } as never, g)];
+    },
+  },
+  {
+    id: "dimChain",
+    label: "Chaîne de cotes",
+    glyph: "⇹",
+    dimension: true,
+    accepts: ["point", "line", "circle", "arc"],
+    pick: "cliquez un côté (ses points sont cotés d'un bout à l'autre), ou choisissez d'abord trois points ou plus",
+    // A side alone, or three elements and more (two when one is a line: three points at least).
+    applies: (s) =>
+      !s.lines.some((l) => l === AXIS_X || l === AXIS_Y) && ((s.order.length === 1 && s.lines.length === 1) || s.order.length >= 3 || (s.order.length === 2 && s.lines.length > 0)),
+    build: (s, g) => {
+      const made = chainDimensions(g, s);
+      if (!made.length) throw new Error("Rien à coter en chaîne : il faut au moins deux points distincts.");
+      return made;
     },
   },
   {
