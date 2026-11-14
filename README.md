@@ -667,8 +667,9 @@ opération existante.
   d'une forme en train d'être tracée (largeur, hauteur, longueur, angle, diamètre) ouvre la calculatrice : ✓ garde la
   valeur, comme Tab. Les icônes des outils de dessin disent aussi leur nom au survol.
 - **Les messages de l'éditeur** (« Version 4 enregistrée », « Niche équipée », une modification refusée…)
-  s'affichent **en bas de la colonne de gauche, en petit** (11 px), le plus récent en bas, au-dessus de la barre
-  d'état — jamais par-dessus la vue, où ils cachaient ce qu'on voulait cliquer (`data-ref="toasts"` de
+  s'affichent **en bas à droite, en petit** (11 px), le plus récent en bas, au-dessus de la barre d'état — jamais
+  par-dessus la vue, où ils cachaient ce qu'on voulait cliquer ; les clics passent à travers eux (un bouton OK ou
+  Terminer dessous reste cliquable) (`data-ref="toasts"` de
   `templates/editor/editor.html`, `toast` de `ui/dom.ts`).
 - **Survolée, une icône d'outil dit son nom seulement** (« Coque », « Vider un corps »), dans une **pastille au style
   des cotes des pièces** (contour et texte orange #f8500a sur blanc, `.cad-icon-tip`), sous l'icône — au-dessus près

@@ -46,7 +46,7 @@ const TOAST_STYLES: Record<ToastKind, string> = {
 export function toast(region: HTMLElement, message: string, kind: ToastKind = "info", timeoutMs = 4000): void {
   const node = el(
     "div",
-    { class: `pointer-events-auto max-w-full whitespace-pre-line border px-2 py-1 text-[11px] leading-snug shadow-sm ${TOAST_STYLES[kind]}`, role: kind === "error" ? "alert" : "status", "data-toast": "" },
+    { class: `pointer-events-none max-w-full whitespace-pre-line border px-2 py-1 text-[11px] leading-snug shadow-sm ${TOAST_STYLES[kind]}`, role: kind === "error" ? "alert" : "status", "data-toast": "" },
     message,
   );
   region.append(node);

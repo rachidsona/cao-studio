@@ -525,8 +525,8 @@
   </div>
 
   {# ---- Status bar ---- #}
-  {# The messages (saved, done, refused…): down in the left column, small, the newest at the bottom — never over the view. #}
-  <div data-ref="toasts" class="pointer-events-none fixed bottom-8 left-3 z-[60] flex w-[min(15rem,calc(100%-1.5rem))] flex-col items-start gap-1" aria-live="polite"></div>
+  {# The messages (saved, done, refused…): down at the right, small, the newest at the bottom — never over the view; clicks go through them. #}
+  <div data-ref="toasts" class="pointer-events-none fixed right-3 bottom-8 z-[60] flex w-[min(15rem,calc(100%-1.5rem))] flex-col items-end gap-1" aria-live="polite"></div>
   <footer class="flex items-center gap-4 overflow-x-auto border-t border-gray-200 bg-white px-3 py-1 text-xs whitespace-nowrap text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
     <span data-ref="status-kernel" class="data-[state=error]:text-red-600 data-[state=ready]:text-emerald-700 dark:data-[state=ready]:text-emerald-400">Initialisation…</span>
     <span data-ref="status-recompute"></span>
