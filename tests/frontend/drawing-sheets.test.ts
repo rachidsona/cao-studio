@@ -329,3 +329,19 @@ describe("côté et lignes d'attache des cotes", () => {
     expect(-dimensionFrame(moved, layout, moved.annotations[0] as never)!.line - hi[0]).toBeCloseTo(11, 6);
   });
 });
+
+describe("cartouche", () => {
+  it("écrit le client du projet dans une nouvelle feuille, et dans une ancienne qui n'avait pas la case", async () => {
+    const { setSheetClient } = await import("../../frontend/src/drawing/model");
+    setSheetClient("  Mme Benali ");
+    const layout = new SheetLayout(() => CABINET);
+    const fresh = newSheet([], "Caisson");
+    expect(fresh.title.client).toBe("Mme Benali");
+    expect(renderSheet(fresh, layout, { format: String, bom: [], page: [1, 1] })).toContain("Mme Benali");
+    const { client: _, ...old } = fresh.title;
+    expect(renderSheet({ ...fresh, title: old }, layout, { format: String, bom: [], page: [1, 1] })).toContain("Mme Benali");
+    // Changed by hand: the sheet keeps its own.
+    expect(renderSheet({ ...fresh, title: { ...fresh.title, client: "M. Alaoui" } }, layout, { format: String, bom: [], page: [1, 1] })).toContain("M. Alaoui");
+    setSheetClient("");
+  });
+});

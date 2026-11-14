@@ -1857,7 +1857,7 @@ opération existante.
       finitions, ou une Répartition avec ses étagères, ses cloisons et l'équipement de ses niches, comme dans le
       navigateur. Rouverte, la même feuille est mise à jour et garde ses cotes et ses textes (`document/cabinet-of.ts`,
       `app/drawing/standard-views.ts`, `app/project-menu.ts`).
-    - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, dessiné par, société, date, matière ;
+    - **Feuilles** : A4 à A0 paysage, cartouche à remplir (titre, n° de plan, client — repris de la fiche du projet —, dessiné par, société, date, matière ;
       échelle, format et « feuille n / N » remplis seuls), projection européenne ou américaine. « + Feuille » en
       ajoute une. La première s'ouvre avec les vues standard (face, dessus, gauche, isométrique) à une échelle
       normalisée qui tient sur la feuille. Comme dans Fusion, le **cadre** et le **cartouche** se sélectionnent d'un clic

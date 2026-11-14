@@ -3,7 +3,7 @@
  * ses lignes cachées, le sens d'une coupe ; une cote : son type, son texte ; un texte ; un trait du dessin 2D : son
  * style), sinon la feuille (format, projection, cartouche, échelle du dessin 2D) — et les réglages de l'outil en cours.
  */
-import { DIMENSION_KINDS, FORMATS, FRAME_ID, ORIENTATIONS, SCALES, TITLE_ID, removeView, scaleText, shown, toggled, type DimStyle, type DrawingSheet, type Format, type LineStyle, type Orientation } from "../../drawing/model";
+import { DIMENSION_KINDS, FORMATS, clientOf, FRAME_ID, ORIENTATIONS, SCALES, TITLE_ID, removeView, scaleText, shown, toggled, type DimStyle, type DrawingSheet, type Format, type LineStyle, type Orientation } from "../../drawing/model";
 import { el } from "../../ui/dom";
 
 export interface PanelHost {
@@ -126,7 +126,7 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
     parts.push(el("p", { class: "text-gray-600 dark:text-gray-300" }, size));
   } else if (!tool || tool === "select") {
     const set = (change: Partial<DrawingSheet>) => host.update((s) => ({ ...s, ...change }));
-    const title = (key: keyof DrawingSheet["title"], label: string) => row(label, input(sheet.title[key], (v) => host.update((s) => ({ ...s, title: { ...s.title, [key]: v } })), label));
+    const title = (key: keyof DrawingSheet["title"], label: string) => row(label, input(key === "client" ? clientOf(sheet.title) : (sheet.title[key] ?? ""), (v) => host.update((s) => ({ ...s, title: { ...s.title, [key]: v } })), label));
     const standard = el("button", { type: "button", class: BUTTON }, "Poser les vues standard (face, dessus, gauche, iso)");
     standard.addEventListener("click", () => host.standardViews());
     // The frame and the title block, taken off with Suppr as in Fusion, put back here (or in the navigator).
@@ -144,7 +144,7 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
       row("Format", select(sheet.format, (Object.keys(FORMATS) as Format[]).map((k) => [k, `${k} paysage (${FORMATS[k][0]} × ${FORMATS[k][1]})`]), (v) => set({ format: v as Format }), "Format")),
       row("Projection", select(sheet.projection, [["first", "Européenne"], ["third", "Américaine"]], (v) => set({ projection: v as "first" | "third" }), "Projection")),
       el("div", { class: "flex gap-4" }, showing(FRAME_ID, "Cadre"), showing(TITLE_ID, "Cartouche")),
-      heading("Cartouche"), title("title", "Titre"), title("number", "N° de plan"), title("author", "Dessiné par"), title("company", "Société"), title("date", "Date"), title("material", "Matière"),
+      heading("Cartouche"), title("title", "Titre"), title("number", "N° de plan"), title("client", "Client"), title("author", "Dessiné par"), title("company", "Société"), title("date", "Date"), title("material", "Matière"),
       heading("Traits des cotes"),
       ...dimStyleRows(sheet.dimStyle ?? { weight: "thin", dashed: false }, (dimStyle) => set({ dimStyle }), true),
       heading("Dessin 2D libre"),

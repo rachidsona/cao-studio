@@ -5,7 +5,7 @@
  */
 import { drawAnnotation, TEXT_SIZE, type Drawn } from "./annotations";
 import type { SheetLayout } from "./layout";
-import { FORMATS, FRAME_ID, FRAME_MARGIN, TITLE_ID, scaleText, titleBox, type DrawingSheet, type LineStyle, type Sketch2D, type Vec2 } from "./model";
+import { FORMATS, FRAME_ID, clientOf, FRAME_MARGIN, TITLE_ID, scaleText, titleBox, type DrawingSheet, type LineStyle, type Sketch2D, type Vec2 } from "./model";
 
 /** A row of the parts list. */
 export interface BomRow {
@@ -114,9 +114,10 @@ function titleBlock(sheet: DrawingSheet, options: RenderOptions): string {
   return [
     `<g data-id="${TITLE_ID}">`,
     cell(x, y, bw, 12, "Titre", t.title, true),
-    cell(x, y + 12, 60, 10, "Société", t.company),
-    cell(x + 60, y + 12, 60, 10, "Dessiné par", t.author),
-    cell(x + 120, y + 12, 60, 10, "Date", t.date),
+    cell(x, y + 12, 45, 10, "Client", clientOf(t)),
+    cell(x + 45, y + 12, 45, 10, "Société", t.company),
+    cell(x + 90, y + 12, 45, 10, "Dessiné par", t.author),
+    cell(x + 135, y + 12, 45, 10, "Date", t.date),
     cell(x, y + 22, 50, 10, "Matière", t.material),
     cell(x + 50, y + 22, 30, 10, "Échelle", scale),
     cell(x + 80, y + 22, 30, 10, "Format", sheet.format),

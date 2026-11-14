@@ -10,7 +10,7 @@ import { sheetDxf } from "../../drawing/dxf";
 import { sheetsPdf } from "../../drawing/svg-pdf";
 import { SheetLayout } from "../../drawing/layout";
 import {
-  FIXED_ITEMS, FORMATS, freshId, newSheet, removeView, sheetIds, toggled, updateSheet, withoutDimensions,
+  FIXED_ITEMS, FORMATS, freshId, newSheet, removeView, setSheetClient, sheetIds, toggled, updateSheet, withoutDimensions,
   type DrawingSheet, type DrawingView, type LineStyle, type Orientation, type Vec2,
 } from "../../drawing/model";
 import type { MeshInput } from "../../drawing/projection";
@@ -61,6 +61,7 @@ export class DrawingWorkspace {
     private readonly onClose: () => void,
     focus: CabinetFocus | null = null,
   ) {
+    setSheetClient(document.getElementById("editor")?.dataset.client ?? "");
     this.layout = new SheetLayout(() => this.meshes());
     this.layout.setModel(this.modelKey());
     this.stage = el("div", { class: "relative min-h-0 flex-1 overflow-hidden bg-gray-300 select-none dark:bg-gray-700", "data-drawing-stage": "" });

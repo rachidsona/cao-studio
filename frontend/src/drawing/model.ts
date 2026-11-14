@@ -55,6 +55,8 @@ export interface TitleBlock {
   title: string;
   /** Drawing number, author, company, date, material, comment. */
   number: string;
+  /** Who the furniture is for (older drawings have none). */
+  client?: string;
   author: string;
   company: string;
   date: string;
@@ -168,6 +170,14 @@ export function titleBox(sheet: DrawingSheet): [Vec2, Vec2] {
   return [[w - FRAME_MARGIN - bw, h - FRAME_MARGIN - bh], [w - FRAME_MARGIN, h - FRAME_MARGIN]];
 }
 
+/** The client of the project, written in the title block of each new sheet (from the project's sheet). */
+let sheetClient = "";
+export const setSheetClient = (name: string) => {
+  sheetClient = name.trim();
+};
+/** The client of a title block: its own, or for a sheet drawn before the field existed, the project's. */
+export const clientOf = (title: TitleBlock) => title.client ?? sheetClient;
+
 export function newSheet(sheets: readonly DrawingSheet[], title: string, format: Format = "A3"): DrawingSheet {
   const h = FORMATS[format][1];
   return {
@@ -175,7 +185,7 @@ export function newSheet(sheets: readonly DrawingSheet[], title: string, format:
     name: `Feuille ${sheets.length + 1}`,
     format,
     projection: "first",
-    title: { title, number: `${sheets.length + 1}`, author: "", company: "", date: new Date().toLocaleDateString("fr-FR"), material: "" },
+    title: { title, number: `${sheets.length + 1}`, client: sheetClient, author: "", company: "", date: new Date().toLocaleDateString("fr-FR"), material: "" },
     views: [],
     annotations: [],
     sketch: { scale: 10, origin: [FRAME_MARGIN + 20, h - FRAME_MARGIN - 20], items: [] },
