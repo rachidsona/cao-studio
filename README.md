@@ -329,6 +329,9 @@ serveur accepte les deux versions.
   encoche au bord, queue d'aronde (base, longueur, pente 1:n), rangée de trous système 32 (trous égaux et alignés,
   entraxe en chaîne), poignée cuvette (oblong). Seule sa place reste libre, à coter depuis un bord ; une cote que
   l'esquisse refuserait n'est pas posée (`sketcher/joinery-shapes.ts`).
+- **Copies au déplacement** : dans le panneau « Déplacer » de l'esquisse, « Copies » prend « x5 » (ou 5) — cinq copies
+  à la suite, chacune d'un déplacement plus loin — ou « /5 » — cinq copies réparties jusqu'au point visé ; la
+  sélection reste en place (`sketcher/move.ts`, `parseCopies`).
 - **Étirer** (caché par défaut) : on glisse un cadre sur un vide autour d'une partie du dessin (le côté d'un caisson et
   les étagères qui y aboutissent), puis on la tire ou on saisit le déplacement ; les points pris bougent, les autres
   restent, les traits entre eux s'allongent et les cotes qui traversent le cadre prennent la nouvelle mesure. Les

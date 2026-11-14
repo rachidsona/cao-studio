@@ -18,7 +18,8 @@ import { el } from "../ui/dom";
 import { renderMovePanel, type MoveMode } from "../ui/move-panel";
 import type { Vec2 } from "./edit";
 import { hitTest, toggleTarget } from "./hit";
-import { basePoint, immovable, movablePoints, moveGeometry, movePreview, stretchGeometry, withContours, type MoveOutcome } from "./move";
+import { basePoint, copyOffsets, immovable, movablePoints, moveGeometry, movePreview, parseCopies, stretchGeometry, withContours, type MoveOutcome } from "./move";
+import { copyAtOffsets } from "./sketch-array";
 import type { Preview } from "./tools";
 import { placePanel } from "../ui/dock";
 import { dragStep, roundTo } from "../viewport/axis-drag";
@@ -63,6 +64,8 @@ export class SketchMoveTool {
   private delta: Vec2 = [0, 0];
   private outcome: MoveOutcome | null = null;
   private drag: { start: Vec2; moved: boolean } | null = null;
+  /** « Copies » typed (« x5 », « /5 »): the selection copied along the displacement instead of moved. */
+  private copies = "";
   /** « Étirer »: the frame being drawn from an empty spot, to take the points inside it. */
   private box: { start: Vec2; end: Vec2 } | null = null;
   /** The arrow manipulator, and the displacement when it was taken. */
@@ -122,8 +125,16 @@ export class SketchMoveTool {
   private recompute(): void {
     const g = this.host.geometry();
     const ids = this.pointIds();
-    this.outcome = ids.length === 0 ? null : (this.stretch ? stretchGeometry : moveGeometry)(g, ids, this.delta);
-    this.preview = this.outcome?.ok && !this.outcome.unchanged ? movePreview(g, this.outcome.geometry) : null;
+    const copies = this.stretch ? { count: 0, spread: false } : parseCopies(this.copies);
+    if (copies && copies.count > 0 && ids.length && Math.hypot(...this.delta) > 1e-9) {
+      // Copied, not moved: the selection stays, its copies go along the displacement.
+      const made = copyAtOffsets(g, this.host.selection, copyOffsets(this.delta, copies.count, copies.spread));
+      this.outcome = made.ok ? { ok: true, geometry: made.geometry, unchanged: false, dof: 0 } : { ok: false, reason: made.reason };
+      this.preview = made.ok ? made.preview : null;
+    } else {
+      this.outcome = ids.length === 0 ? null : copies === null ? { ok: false, reason: "Copies : tapez un nombre (5 ou x5 : à la suite ; /5 : réparties sur le déplacement)." } : (this.stretch ? stretchGeometry : moveGeometry)(g, ids, this.delta);
+      this.preview = this.outcome?.ok && !this.outcome.unchanged ? movePreview(g, this.outcome.geometry) : null;
+    }
     this.placeGizmo();
     this.draw();
     this.host.changed();
@@ -182,6 +193,7 @@ export class SketchMoveTool {
         dof: this.outcome?.ok ? this.outcome.dof : null,
         ready: this.ready,
         stretch: this.stretch,
+        copies: this.copies,
       },
       {
         container: this.host.container(),
@@ -190,6 +202,10 @@ export class SketchMoveTool {
           this.draw();
         },
         setDelta: (delta) => this.setDelta(delta),
+        setCopies: (text) => {
+          this.copies = text;
+          this.recompute();
+        },
         selectContours: () => {
           for (const id of withContours(this.host.geometry(), this.host.selection)) this.host.selection.add(id);
           this.recompute();
@@ -318,7 +334,9 @@ export class SketchMoveTool {
       return false;
     }
     const count = this.pointIds().length;
-    if (!this.host.apply(this.outcome.geometry, `${this.stretch ? "Étirement" : "Déplacement"} appliqué (${count} point${count > 1 ? "s" : ""}).`)) return false;
+    const copies = this.stretch ? null : parseCopies(this.copies);
+    const done = copies?.count ? `${copies.count} copie${copies.count > 1 ? "s" : ""} posée${copies.count > 1 ? "s" : ""}${copies.spread ? ", réparties sur le déplacement" : ""}.` : `${this.stretch ? "Étirement" : "Déplacement"} appliqué (${count} point${count > 1 ? "s" : ""}).`;
+    if (!this.host.apply(this.outcome.geometry, done)) return false;
     this.delta = [0, 0];
     this.recompute();
     return true;

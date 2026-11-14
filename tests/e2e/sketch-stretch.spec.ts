@@ -58,3 +58,39 @@ test("un côté encadré et tiré de 5 cm : la largeur cotée suit", async ({ pa
   expect(was.some((v) => Math.abs(v + 50 - grown[0]!) < 1e-6)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("Déplacer avec « Copies » : un cercle copié trois fois de 2 cm", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-copies");
+  const sketch = async () => {
+    await page.keyboard.press("Control+s");
+    await page.waitForTimeout(600);
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return (project.document.features as (Sketch & { curves: { kind: string }[] })[]).find((f) => f.id === "sk1")!;
+  };
+  await page.locator('details:not([data-bodies]) [data-menu="sk1"]').click();
+  await page.getByRole("button", { name: /^Modifier/ }).first().click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
+  const box = (await page.locator('[data-ref="viewport"] canvas').boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + box.width * x, box.y + box.height * y];
+  await click(page, '[data-sketch-tool="circle"]');
+  await page.mouse.click(...at(0.15, 0.2));
+  await page.mouse.click(...at(0.17, 0.2));
+  await page.keyboard.press("Escape");
+  await click(page, '[data-sketch-tool="move"]');
+  await page.mouse.click(...at(0.17, 0.2));
+  const panel = page.getByRole("dialog", { name: "Déplacer" });
+  await expect(panel).toContainText("1 élément");
+  await panel.getByRole("textbox", { name: "Copies" }).fill("x3");
+  await panel.getByRole("textbox", { name: "Copies" }).press("Enter");
+  await panel.getByRole("textbox", { name: "ΔX" }).fill("2");
+  await panel.getByRole("textbox", { name: "ΔX" }).press("Enter");
+  await expect(page.getByText("3 copies posées.")).toBeVisible();
+  await shot(page, "copies");
+  await page.keyboard.press("Escape");
+  const sk = await sketch();
+  expect(sk.curves.filter((c) => c.kind === "circle")).toHaveLength(4);
+  expect(errors).toEqual([]);
+});

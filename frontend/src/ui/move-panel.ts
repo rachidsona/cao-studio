@@ -31,6 +31,8 @@ export interface MovePanelState {
   ready: boolean;
   /** « Étirer »: the points framed move, the dimensions across follow. */
   stretch?: boolean;
+  /** « Copies » as typed (« x5 », « /5 »; empty: a move). */
+  copies?: string;
 }
 
 export interface MovePanelActions {
@@ -38,6 +40,8 @@ export interface MovePanelActions {
   setMode(mode: MoveMode): void;
   /** New displacement (mm). */
   setDelta(delta: [number, number]): void;
+  /** « Copies » typed. */
+  setCopies(text: string): void;
   selectContours(): void;
   clearSelection(): void;
   confirm(): void;
@@ -121,6 +125,17 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
   }
   if (state.mode === "absolute" && base) rows.push(el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, `Position du ${base.label}.`));
 
+  if (!state.stretch) {
+    // Copies instead of a move: « 5 » or « x5 » one after the other, « /5 » spread over the displacement.
+    const copies = el("input", { type: "text", class: `${FIELD} text-right font-mono`, value: state.copies ?? "", placeholder: "x5 ou /5", "aria-label": "Copies" });
+    copies.addEventListener("change", () => actions.setCopies(copies.value));
+    copies.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      // Entrée takes it (the field let go, as the others).
+      if (event.key === "Enter") copies.blur();
+    });
+    rows.push(row("Copies", copies));
+  }
   const hasSelection = state.selected > 0;
   const count = el(
     "button",

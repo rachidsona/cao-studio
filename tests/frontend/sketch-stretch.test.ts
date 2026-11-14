@@ -41,3 +41,17 @@ describe("étirer", () => {
     expect(out.ok).toBe(false);
   });
 });
+
+describe("copies au déplacement", () => {
+  it("« 5 », « x5 », « *5 » : à la suite ; « /5 » : réparties ; le reste n'est pas compris", async () => {
+    const { parseCopies, copyOffsets } = await import("../../frontend/src/sketcher/move");
+    expect(parseCopies("x5")).toEqual({ count: 5, spread: false });
+    expect(parseCopies("5")).toEqual({ count: 5, spread: false });
+    expect(parseCopies("*3")).toEqual({ count: 3, spread: false });
+    expect(parseCopies(" / 4 ")).toEqual({ count: 4, spread: true });
+    expect(parseCopies("")).toEqual({ count: 0, spread: false });
+    expect(parseCopies("abc")).toBeNull();
+    expect(copyOffsets([100, 0], 3, false)).toEqual([[100, 0], [200, 0], [300, 0]]);
+    expect(copyOffsets([100, 0], 4, true)).toEqual([[25, 0], [50, 0], [75, 0], [100, 0]]);
+  });
+});

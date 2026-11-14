@@ -210,3 +210,24 @@ export function moveSketchPlane(sketch: SketchFeature, delta: Vec3): SketchFeatu
     : { offset: round(sketch.offset + along) };
   return { ...rest, ...placed, ...(shift[0] !== 0 || shift[1] !== 0 ? { shift } : {}) };
 }
+
+/**
+ * « Copies » typed in « Déplacer » : « 5 », « x5 » or « *5 » — five copies, each a displacement further; « /5 » — five
+ * copies spread over the displacement (the last where it lands). Empty or 0: a plain move. Null: not understood.
+ */
+export function parseCopies(text: string): { count: number; spread: boolean } | null {
+  const t = text.trim().replace(/\s+/g, "");
+  if (t === "" || t === "0") return { count: 0, spread: false };
+  const spread = /^\/(\d+)$/.exec(t);
+  if (spread) return { count: Number(spread[1]), spread: true };
+  const repeat = /^(?:[x*×](\d+)|(\d+)[x×]?)$/i.exec(t);
+  return repeat ? { count: Number(repeat[1] ?? repeat[2]), spread: false } : null;
+}
+
+/** Where the copies go: `count` of them along `delta`, each a full step further or spread over it. */
+export function copyOffsets(delta: Vec2, count: number, spread: boolean): Vec2[] {
+  return Array.from({ length: count }, (_, i) => {
+    const k = spread ? (i + 1) / count : i + 1;
+    return [delta[0] * k, delta[1] * k] as Vec2;
+  });
+}
