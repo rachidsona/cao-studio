@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptySketchGeometry, type PartitionParams } from "../../frontend/src/document/sketch";
 import { createReferencePlate, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
-import { nicheGeometry, nicheParts, nicheProblem } from "../../frontend/src/features/niche-parts";
+import { INNER_SET_BACK, INNER_SPACER, INNER_SPACERS, nicheGeometry, nicheHardware, nicheParts, nicheProblem } from "../../frontend/src/features/niche-parts";
 import { partitionRecord, rebuildChain } from "../../frontend/src/sketcher/partition-history";
 
 const INPUT: PartitionParams = { length: 1000, height: 2000, thickness: 18, cases: 2, dividers: ["single"], boards: true, plinth: 0, outer: "board", single: "board", double: "board" };
@@ -58,6 +58,33 @@ describe("pose des façades", () => {
     // Encastrées (as before): in the niche, flush with the panels.
     const inset = partsOf(equip({})).filter((p) => p.role === "front");
     expect(inset[0]).toMatchObject({ from: [512, expect.any(Number), 382], to: [979, 1979, 400] });
+  });
+
+  it("des tiroirs à l'anglaise : devants en retrait derrière la porte, caissons sur cales passé les platines, sans poignée", () => {
+    const f = equip({ inner: true, mount: "inset", handles: true });
+    const parts = partsOf(f);
+    const fronts = parts.filter((p) => p.role === "front");
+    expect(fronts).toHaveLength(3);
+    // In the niche (509…982), within the spacers and the side gap; set back behind the face of the panels (w = 400).
+    for (const front of fronts) expect(front).toMatchObject({ from: [509 + INNER_SPACER + 3, expect.any(Number), 400 - INNER_SET_BACK - 18], to: [982 - INNER_SPACER - 3, expect.any(Number), 400 - INNER_SET_BACK] });
+    const spacers = parts.filter((p) => p.name.startsWith("Cale "));
+    expect(spacers).toHaveLength(6);
+    expect(spacers.every((p) => p.role === "hardware")).toBe(true);
+    expect(spacers[0]!.from[0]).toBe(509);
+    expect(spacers[0]!.to[0]).toBe(509 + INNER_SPACER);
+    // The boxes clear the spacers, and no handle: a notch.
+    const left = parts.find((p) => p.name === "Tiroir 1 — côté gauche")!;
+    expect(left.from[0]).toBeGreaterThanOrEqual(509 + INNER_SPACER);
+    expect(left.to[2]).toBeLessThan(400 - INNER_SET_BACK - 18);
+    expect(parts.some((p) => p.kind === "handle")).toBe(false);
+    // The quote: slides and spacers, no handles.
+    const doc = [sketch(), { ...f, id: "n1" }];
+    expect(nicheHardware(doc, f)).toEqual([{ name: "Coulisse de tiroir (paire)", quantity: 3 }, { name: INNER_SPACERS, quantity: 3 }]);
+    // Too shallow once set back.
+    const n = nicheGeometry(f, sketch());
+    if (typeof n === "string") throw new Error(n);
+    expect(nicheProblem(f, { ...n, depth: 180 })).toBe("La niche n'est pas assez profonde pour des tiroirs.");
+    expect(nicheProblem({ ...f, inner: undefined }, { ...n, depth: 180 })).toBeNull();
   });
 
   it("le document garde la pose, et refuse une pose inconnue", () => {

@@ -679,3 +679,44 @@ test("un bouton sort et rentre tous les tiroirs", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+
+test("des tiroirs à l'anglaise derrière une porte : en retrait, sur cales, sans poignée, et la porte devant", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-tiroirs-anglaise");
+  type Niche = { type: string; fill?: string; inner?: boolean; mount?: string; handles?: boolean };
+  const niches = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: Niche[] } }).document.features.filter((f) => f.type === "niche"), api);
+  };
+  await wall(page);
+  await click(page, '[data-action="tiroirs"]');
+  const tool = page.getByRole("dialog", { name: "Tiroirs" });
+  await expect(tool).toBeVisible();
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await tool.getByRole("combobox", { name: "Façades", exact: true }).selectOption("inner");
+  // Behind a door: what it asks of the hinges, and no handle holes.
+  await expect(tool).toContainText("Derrière une porte : les charnières du projet ouvrent à 110°");
+  await expect(tool.getByText("Trous de poignée (entraxe 128)")).toHaveCount(0);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Niche équipée : tiroirs.")).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText("Cale gauche 1", { exact: true }).first()).toBeAttached();
+
+  // The door over the same niche, in front of the drawers.
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const door = page.getByRole("dialog", { name: "Porte sur niches" });
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await expect(door).toContainText("sur 1 niche.");
+  await door.getByRole("button", { name: "OK", exact: true }).click();
+  await door.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await expect.poll(async () => (await niches()).map((f) => [f.fill, f.inner ?? false]), { timeout: 30_000 }).toEqual(expect.arrayContaining([["drawers", true], ["door", false]]));
+  expect(errors).toEqual([]);
+});

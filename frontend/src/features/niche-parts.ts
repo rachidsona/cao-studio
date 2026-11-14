@@ -67,6 +67,13 @@ export interface NichePart {
 
 export const SUPPORT = 3;
 export const MAX_DRAWERS = 8;
+/**
+ * Drawers « à l'anglaise », behind a door: their fronts this far behind the face of the panels (an inset door and its
+ * play in front of them), their slides on spacers this thick, past the hinge plates (mm, usual marks).
+ */
+export const INNER_SET_BACK = 25;
+export const INNER_SPACER = 15;
+export const INNER_SPACERS = "Cales de coulisse à l'anglaise (paire)";
 
 /** The niche the feature equips, with the frame of its sketch and the depth of the partition's panels. */
 export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][]; mount?: NicheFeature["mount"] }, sketch: SketchFeature | undefined): NicheGeometry | string {
@@ -228,10 +235,11 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
   if ([f.gap, f.bottomGap ?? f.gap, f.sideGap ?? f.gap, f.betweenGap ?? f.gap].some((v) => !(v >= 0))) return "Le jeu ne peut pas être négatif.";
   const fronts = drawerFronts(f, n);
+  const spacer = f.inner ? INNER_SPACER : 0;
   if (fronts.x1 - fronts.x0 < 60) return "Le jeu de côté est trop grand pour la largeur de la niche.";
-  if (width < 2 * (SLIDE_PLAY + DRAWER_SIDE) + 60) return "La niche est trop étroite pour des tiroirs.";
+  if (width < 2 * (SLIDE_PLAY + DRAWER_SIDE + spacer) + 60) return "La niche est trop étroite pour des tiroirs.";
   if (fronts.h < 80) return "La niche est trop basse pour autant de tiroirs (80 mm de façade au moins).";
-  if (n.depth - (n.outer ? 0 : f.thickness) < 150) return "La niche n'est pas assez profonde pour des tiroirs.";
+  if (n.depth - (n.outer ? 0 : f.thickness) - (f.inner ? INNER_SET_BACK : 0) < 150) return "La niche n'est pas assez profonde pour des tiroirs.";
   // Framed, fluted or slatted: the style's own limits, on each front.
   if (f.style && f.style !== "flat" && !isGlass(f)) return styleProblem(f, Array.from({ length: f.drawers }, () => ({ width: fronts.x1 - fronts.x0, height: fronts.h })));
   return null;
@@ -293,12 +301,14 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
   const count = f.drawers;
   const fronts = drawerFronts(f, n);
   const h = fronts.h;
-  // Inset fronts: their outer face flush with the front of the panels (w = D); overlaid ones in front of the panels.
-  const overlay = !!n.outer;
-  const [f0, f1] = overlay ? [D, D + T] : [D - T, D];
+  // Inset fronts: their outer face flush with the front of the panels (w = D); overlaid ones in front of the panels;
+  // « à l'anglaise », set back behind the door, the box narrower by the spacers its slides are screwed on.
+  const overlay = !!n.outer && !f.inner;
+  const spacer = f.inner ? INNER_SPACER : 0;
+  const [f0, f1] = overlay ? [D, D + T] : f.inner ? [D - INNER_SET_BACK - T, D - INNER_SET_BACK] : [D - T, D];
   const room = f0 - 10;
   const length = [...SLIDES].reverse().find((l) => l <= room) ?? Math.max(100, Math.floor(room / 10) * 10);
-  const [bx0, bx1] = [x0 + SLIDE_PLAY, x1 - SLIDE_PLAY];
+  const [bx0, bx1] = [x0 + spacer + SLIDE_PLAY, x1 - spacer - SLIDE_PLAY];
   const [wa, wb] = [f0 - 2, f0 - 2 - length];
   const parts: NichePart[] = [];
   const box = (name: string, from: Vec3, to: Vec3, role?: NichePart["role"]) => parts.push({ name, kind: "box", from, to, ...(role ? { role } : {}) });
@@ -317,9 +327,14 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + height, wa]);
     box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wb], [bx1 - DRAWER_SIDE, vb + height, wb + DRAWER_SIDE]);
     box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, vb, wb + DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE]);
+    // Its slides' spacers against the sides, bought, fixed (not named as the drawer: they do not slide out with it).
+    if (spacer) {
+      box(`Cale gauche ${k}`, [x0, vb, wb], [x0 + spacer, vb + 40, wa], "hardware");
+      box(`Cale droite ${k}`, [x1 - spacer, vb, wb], [x1, vb + 40, wa], "hardware");
+    }
   }
-  // The handles of the drawers, after every other part: across the middle of each front.
-  if (f.handles) {
+  // The handles of the drawers, after every other part: across the middle of each front (none behind a door: a notch).
+  if (f.handles && !f.inner) {
     parts.forEach((front, i) => {
       if (front.role !== "front") return;
       const [u, v] = [(front.from[0] + front.to[0]) / 2, (front.from[1] + front.to[1]) / 2];
@@ -333,10 +348,12 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
  * Where the drawer fronts lie across the niche (x0, x1), the top of the first (y1), and each one's height: in the niche
  * less its gaps; overlaid, over half the panels around it, half the gaps at its edges (the other half is the neighbour's).
  */
-function drawerFronts(f: Pick<NicheFeature, "drawers" | "gap" | "bottomGap" | "betweenGap" | "sideGap">, n: Pick<NicheGeometry, "box" | "outer">): { x0: number; x1: number; y1: number; h: number } {
-  const r = n.outer ?? n.box;
-  const k = n.outer ? 0.5 : 1;
-  const [top, bottom, side] = [f.gap * k, (f.bottomGap ?? f.gap) * k, (f.sideGap ?? f.gap) * k];
+function drawerFronts(f: Pick<NicheFeature, "drawers" | "gap" | "bottomGap" | "betweenGap" | "sideGap" | "inner">, n: Pick<NicheGeometry, "box" | "outer">): { x0: number; x1: number; y1: number; h: number } {
+  const outer = f.inner ? undefined : n.outer;
+  const r = outer ?? n.box;
+  const k = outer ? 0.5 : 1;
+  // Behind a door, within the spacers too.
+  const [top, bottom, side] = [f.gap * k, (f.bottomGap ?? f.gap) * k, (f.sideGap ?? f.gap) * k + (f.inner ? INNER_SPACER : 0)];
   return { x0: r.x0 + side, x1: r.x1 - side, y1: r.y1 - top, h: (r.y1 - r.y0 - top - bottom - (f.drawers - 1) * (f.betweenGap ?? f.gap)) / f.drawers };
 }
 
@@ -403,5 +420,6 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
     const glass = glassHardware(f, doors.map((p) => ({ from: p.from, to: p.to, depth: 2 as const })));
     return [{ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []), ...glass];
   }
+  if (f.inner) return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, { name: INNER_SPACERS, quantity: fronts }];
   return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
 }

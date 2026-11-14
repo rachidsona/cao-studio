@@ -18,6 +18,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import type { Vec2 } from "../../sketcher/edit";
 import { leafNiches } from "../../sketcher/partition-history";
 import type { NicheBox } from "../../sketcher/shelves";
+import { chosenHardware } from "../../document/hardware-catalog";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
@@ -131,11 +132,12 @@ export class NicheTool {
 
   /** The feature this tool would make for a niche chosen. */
   private feature(n: { partition: string; path: number[] }, id: string, name: string): NicheFeature {
-    const { span: _span, accessory, ...all } = this.settings as Settings & { span?: number[][] };
+    const { span: _span, accessory, inner, ...all } = this.settings as Settings & { span?: number[][] };
     // A door has a style (and its glass), drawers too but glass, only an accessory its model.
     const { style: _style, frameWidth: _w, frameDepth: _d, glass: _g, profile: _p, pitch: _pitch, grooves: _grooves, ...rest } = all;
     const { glass: _glass, profile: _profile, ...unglazed } = all;
-    const drawers = all.style === "glass" ? rest : unglazed;
+    // Drawers only may be « à l'anglaise ».
+    const drawers = { ...(all.style === "glass" ? rest : unglazed), ...(inner ? { inner: true, mount: "inset" as const } : {}) };
     const settings = this.fill === "door" ? all : this.fill === "drawers" ? drawers : this.fill === "accessory" ? { ...rest, accessory: { ...(accessory ?? LAST.accessory!) } } : rest;
     const span = this.fill === "door" ? this.niches.filter((o) => o.path.join(".") !== n.path.join(".")).map((o) => [...o.path]) : [];
     return { id, type: "niche", name, sketch: this.host.sketchId(), partition: n.partition, niche: [...n.path], fill: this.fill, ...settings, ...(span.length ? { span } : {}) };
@@ -231,6 +233,15 @@ export class NicheTool {
     const mounted = this.settings.mount ?? (this.fill === "door" ? "overlay" : "inset");
     const mount = el("select", { class: FIELD, "aria-label": "Pose" }, el("option", { value: "overlay", selected: mounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: mounted === "inset" }, "Encastrée (dans la niche)"));
     mount.addEventListener("change", () => ((this.settings.mount = mount.value as "overlay" | "inset"), this.recompute()));
+    // Drawer fronts may also be « à l'anglaise »: inset, set back behind a door.
+    const drawerMounted = this.settings.inner ? "inner" : mounted;
+    const drawerMount = el("select", { class: FIELD, "aria-label": "Façades" }, el("option", { value: "overlay", selected: drawerMounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: drawerMounted === "inset" }, "Encastrée (dans la niche)"), el("option", { value: "inner", selected: drawerMounted === "inner" }, "À l'anglaise (derrière une porte)"));
+    drawerMount.addEventListener("change", () => {
+      const inner = drawerMount.value === "inner";
+      this.settings.inner = inner || undefined;
+      this.settings.mount = inner ? "inset" : (drawerMount.value as "overlay" | "inset");
+      this.recompute();
+    });
     // A door's style: flat, framed, or glazed (an aluminium frame round tempered glass, its glass and finish).
     const pick = (label: string, value: string, options: readonly (readonly [string, string])[], set: (v: string) => void) => {
       const list = el("select", { class: FIELD, "aria-label": label }, ...options.map(([v, text]) => el("option", { value: v, selected: v === value }, text)));
@@ -282,6 +293,11 @@ export class NicheTool {
         const front = parts.find((p) => p.role === "front");
         const side = parts.find((p) => p.name.endsWith("côté gauche"));
         if (front && side) result = `${this.settings.drawers} façade${this.settings.drawers > 1 ? "s" : ""} de ${formatLength(front.to[1] - front.from[1], unit)} de haut, coulisses de ${formatLength(side.to[2] - side.from[2], unit)}.`;
+        // Behind a door: what it asks of the door.
+        if (result && this.settings.inner) {
+          const opening = chosenHardware(this.host.doc()).hinge.opening;
+          result += ` Derrière une porte : ${opening >= 110 ? `les charnières du projet ouvrent à ${opening}°, assez pour sortir le tiroir` : `les charnières du projet n'ouvrent qu'à ${opening}°, la porte gênerait le tiroir : il en faut de 110° au moins (Quincaillerie)`} ; une entaille pour tirer chaque devant.`;
+        }
       }
       if (result && this.niches.length > 1 && this.fill !== "door") result += ` (${this.niches.length} niches)`;
     }
@@ -314,14 +330,14 @@ export class NicheTool {
         ? [number("Diamètre", this.settings.diameter, (v) => ((this.settings.diameter = v), this.recompute())), number("Axe sous le haut", this.settings.drop, (v) => ((this.settings.drop = v), this.recompute()))]
         : [
             el("label", { class: ROW }, "Tiroirs", count),
-            el("label", { class: ROW }, "Façades", mount),
+            el("label", { class: ROW }, "Façades", drawerMount),
             number("Jeu en haut", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
             this.settings.drawers > 1 ? number("Jeu entre façades", this.settings.betweenGap ?? this.settings.gap, (v) => ((this.settings.betweenGap = v), this.recompute()), true) : null,
             number("Jeu en bas", this.settings.bottomGap ?? this.settings.gap, (v) => ((this.settings.bottomGap = v), this.recompute()), true),
             number("Jeu de côté", this.settings.sideGap ?? this.settings.gap, (v) => ((this.settings.sideGap = v), this.recompute()), true),
             number("Épaisseur façades", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
             ...styles,
-            el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
+            this.settings.inner ? null : el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée (entraxe 128)"),
           ]),
       result ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,

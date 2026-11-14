@@ -794,6 +794,11 @@ export interface NicheFeature extends FeatureBase {
    * door), or « inset », in the niche, its face flush with the panels'. Missing: a door overlaid, drawers inset.
    */
   mount?: "overlay" | "inset";
+  /**
+   * Drawers « à l'anglaise »: behind a door, their fronts set back in the niche (features/niche-parts.ts INNER_*),
+   * their slides on spacers past the hinge plates, no handle (a notch).
+   */
+  inner?: boolean;
   thickness: number;
   handles: boolean;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */

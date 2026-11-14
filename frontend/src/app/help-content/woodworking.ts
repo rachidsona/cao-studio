@@ -407,11 +407,11 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Remplit une ou plusieurs niches de 1 à 8 tiroirs, chacun avec sa façade (encastrée ou en applique) et son caisson sur coulisses.",
         steps: [
           "Cliquez « Tiroirs », puis une niche de la Répartition ; cliquez-en plusieurs pour y mettre la même série.",
-          "Choisissez le nombre de « Tiroirs », et la pose des « Façades » : « Encastrée (dans la niche) », au nu des panneaux, ou « En applique (devant) », sur la moitié des panneaux autour de la niche.",
+          "Choisissez le nombre de « Tiroirs », et la pose des « Façades » : « Encastrée (dans la niche) », au nu des panneaux, « En applique (devant) », sur la moitié des panneaux autour de la niche, ou « À l'anglaise (derrière une porte) » : des tiroirs intérieurs en retrait, sur des cales qui passent les platines des charnières, sans poignée.",
           "Réglez « Jeu en haut », « Jeu entre façades », « Jeu en bas », « Jeu de côté » et l'« Épaisseur façades », et cochez « Trous de poignée (entraxe 128) ».",
           "Lisez la ligne du panneau (hauteur des façades, longueur des coulisses), puis cliquez « OK ». « Terminer » ferme l'outil.",
         ],
-        tip: "Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère. Les pièces vont au débit, coulisses et poignées au devis. Les tiroirs suivent leur niche.",
+        tip: "Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère. Les pièces vont au débit, coulisses, cales et poignées au devis. Les tiroirs suivent leur niche. À l'anglaise, posez ensuite la porte par « Porte sur niches » sur la même niche, avec des charnières qui ouvrent à 110° au moins (le panneau dit si celles du projet suffisent).",
       },
       {
         keys: ["data-action:accessory"],

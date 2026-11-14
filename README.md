@@ -1092,6 +1092,13 @@ opération existante.
     leurs jeux de bord (haut, bas, côtés) sont alors partagés avec la façade voisine (la moitié de chaque côté), et
     leurs caissons restent dans la niche. Une porte sur niches en applique d'office, encastrée au choix : un jeu tout
     autour dans ses niches (`NicheFeature.mount`, `drawerFronts` et `doorBox` dans `features/niche-parts.ts`).
+  - **Tiroirs à l'anglaise** (« À l'anglaise (derrière une porte) » dans la liste « Façades ») : des tiroirs intérieurs
+    derrière une porte. Leurs devants sont encastrés 25 mm en retrait de la face des panneaux (une porte encastrée et
+    son jeu passent devant), leurs coulisses vissées sur des **cales** de 15 mm (« Cale gauche 1 »… : achetées, au
+    devis par paire, fixes quand le tiroir sort) pour passer les platines des charnières, leurs caissons rétrécis
+    d'autant ; pas de poignée (une entaille). Le panneau dit si les charnières choisies pour le projet ouvrent assez
+    (110° au moins, sinon la porte gêne le tiroir). La porte se pose ensuite par « Porte sur niches » sur la même niche
+    (`NicheFeature.inner`, `INNER_SET_BACK` et `INNER_SPACER` dans `features/niche-parts.ts`).
   - Chaque niche équipée est une opération de l'historique (« **Penderie 1** », « **Tiroirs 1** »), dont les pièces
     sont des corps (« Penderie 1 — Tringle », « Tiroirs 1 — Façade tiroir 1 »…). Elle **suit sa niche** : changer la
     répartition, ses étagères ou ses cloisons la refait à la nouvelle taille ; si la niche disparaît, l'opération le
