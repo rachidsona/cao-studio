@@ -28,3 +28,17 @@ export const WORKTOP_BARS_HELP: ToolHelp = {
   ],
   tip: "Les joints tombent sur le côté d'un meuble pour être portés, à 10 cm au moins d'une découpe d'évier ou de plaque. En onglet, le plan qui vient contre s'allonge de la profondeur de l'autre. Les morceaux courts se rangent dans les chutes d'une barre déjà comptée. Le devis compte ces barres au prix du m² de leur matière, au lieu de la surface du plan, et deux ferrures par joint. Le réglage est gardé avec votre compte.",
 };
+
+/** « Snack et comptoir » (app/kitchen/snack-tool.ts). */
+export const SNACK_HELP: ToolHelp = {
+  keys: ["data-action:snack"],
+  name: "Snack et comptoir",
+  what: "Pose un plan pour s'asseoir qui déborde d'un plan de travail, au dos d'un îlot ou au bout d'un plan, à sa hauteur ou en bar.",
+  steps: [
+    "Cliquez « Snack et comptoir » et choisissez le « Plan de travail » (l'îlot d'abord, s'il y en a un).",
+    "Choisissez « Où » : au dos (le côté opposé aux façades) ou au bout du plan ; et la « Hauteur » : comptoir (à la hauteur du plan) ou bar (105 cm, sur une rehausse).",
+    "Réglez le « Débord » (30 cm d'habitude) et la longueur, 0 pour tout le plan.",
+    "Lisez combien de tabourets tiennent et leur hauteur d'assise. C'est enregistré aussitôt ; « Terminer » ferme.",
+  ],
+  tip: "Une console porte le débord tous les 60 cm environ ; elles vont au devis, le plan de snack et la rehausse au débit, dans la matière du plan de travail. Moins de 25 cm de débord ne laisse pas la place des genoux ; au-delà de 40 cm, mettez des pieds. Comptez 60 cm par tabouret, d'assise 65 cm au comptoir et 75 cm au bar. L'opération se rouvre ici depuis l'historique.",
+};

@@ -42,6 +42,8 @@ export interface FinishPart {
   to: Vec3;
   radius?: number;
   hardware?: boolean;
+  /** What a bought part is called in the quote (a foot when missing). */
+  item?: string;
   /**
    * A board cut to follow a wall or the ceiling: its outline in the plane of the front, as [across, up] (`axis`: the
    * one across); `plane` "top": in the plane of the floor, as [across, depth] (an end panel cut at its back). `from` and

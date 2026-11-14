@@ -2709,6 +2709,14 @@ opération existante.
     et largeur de barre (60, 65, 90 ou 120 cm) ; deux **ferrures de jonction** par joint.
   - Le **devis** compte ces barres au prix du m² de leur matière, au lieu de la surface du plan de travail
     (`withWorktopBars`), et les ferrures dans la quincaillerie. Le réglage est gardé avec le compte.
+- **Snack et comptoir** (groupe « Cuisine », masqué d'office) : un plan pour s'asseoir qui déborde d'un plan de
+  travail (`features/snack-parts.ts`, pur ; l'outil est `app/kitchen/snack-tool.ts`).
+  - **Au dos** (le côté opposé aux façades, celui d'un îlot), centré sur la longueur voulue, ou **au bout** du plan ;
+    à la **hauteur du plan** (comptoir) ou en **bar à 105 cm** sur une rehausse posée sur le plan.
+  - Une **console** sous le débord tous les 60 cm environ (au devis) ; plan et rehausse au débit, dans la matière du
+    plan de travail. Le panneau dit les **tabourets** qui tiennent (60 cm chacun, assise 65 cm au comptoir, 75 au
+    bar), et ce qui gêne : moins de 25 cm de débord (les genoux), plus de 40 cm (des pieds plutôt).
+  - Une opération « Finitions » marquée `snack`, qui se rouvre dans son outil depuis l'historique.
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).

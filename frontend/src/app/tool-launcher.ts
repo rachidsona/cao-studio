@@ -1,4 +1,5 @@
 /** Opens the panel tools (revolution, fillet, chamfer, combination, hole) on new or existing features. */
+import { SnackTool } from "./kitchen/snack-tool";
 import * as THREE from "three";
 import { findFeature } from "../document/operations";
 import type { Axis, CadDocument, Feature, Vec3 } from "../document/types";
@@ -49,7 +50,7 @@ import { LayoutCopyTool } from "./dressing/layout-copy-tool";
 import { KitchenTool } from "./kitchen/kitchen-tool";
 import { DressingTool } from "./dressing/dressing-tool";
 
-export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances";
+export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances" | "snack";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -241,7 +242,15 @@ export class ToolLauncher {
         tool.open();
         return;
       }
+      case "snack": {
+        const tool = new SnackTool(ctx, editing?.type === "trim" && editing.snack ? editing : null);
+        this.active = tool;
+        tool.open();
+        return;
+      }
       case "trim": {
+        // A snack reopens in its own tool.
+        if (editing?.type === "trim" && editing.snack) return this.open("snack", options);
         const tool = new FinishTool(ctx, editing?.type === "trim" ? editing : null, options.bodies ?? []);
         this.active = tool;
         tool.open();

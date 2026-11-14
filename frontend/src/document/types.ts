@@ -819,6 +819,8 @@ export interface TrimFeature extends FeatureBase {
   /** What the tool was given, to reopen it: the bodies of the furniture and its settings. */
   source?: string[];
   settings?: FinishOptions;
+  /** Made by « Snack et comptoir » (features/snack-parts.ts): reopened in that tool, with these settings. */
+  snack?: import("../features/snack-parts").SnackSettings;
 }
 
 /** The room as surveyed (features/room-plan.ts): walls, their openings and what is in the way. Its bodies are "room". */
