@@ -1,4 +1,4 @@
-import { DRAW_VARIANTS, MORE_DIMENSIONS } from "./sketch-variants";
+import { DRAW_VARIANTS, MORE_DIMENSIONS, STRETCH } from "./sketch-variants";
 import type { HelpFamily } from "./types";
 
 export const SKETCH: HelpFamily[] = [
@@ -246,7 +246,9 @@ export const SKETCH: HelpFamily[] = [
           "C'est enregistré dès que c'est prêt ; la croix ✕ (ou Échap) ferme.",
         ],
         tip: "L'origine et les axes ne bougent pas. Le panneau indique s'il manque encore des cotes après le déplacement.",
-      }, {
+      },
+      STRETCH,
+      {
         keys: ["data-sketch-command:skmirror"], name: "Symétrie dans l'esquisse",
         what: "Copie des traits en miroir autour d'une ligne ou d'un axe.",
         steps: [

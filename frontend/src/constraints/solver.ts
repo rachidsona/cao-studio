@@ -285,6 +285,9 @@ function fromPrimitives(geometry: SketchGeometry, prims: Prim[]): SketchGeometry
   };
 }
 
+/** A constraint the solver reports but could not name (see runPass). */
+export const UNNAMED = "(non identifiée)";
+
 const sourceId = (gcsId: string) => gcsId.split(PART)[0] as string;
 const unique = (ids: string[]) => [...new Set(ids.map(sourceId))].filter((id) => id !== "drag");
 
@@ -312,11 +315,21 @@ function runPass(prims: Prim[]): Pass {
       throw new SketchError(`Esquisse trop grande pour le solveur de contraintes (${prims.length} éléments) : partagez-la en plusieurs esquisses, puis rechargez la page.`);
     }
     wrapper.apply_solution();
+    // Reading the solver's lists can be refused by the page's security policy (the solver's WebAssembly then builds
+    // a function from text, which « unsafe-eval » forbids): the state is kept, the constraints are left unnamed.
+    const listed = (has: boolean, read: () => string[]): string[] => {
+      if (!has) return [];
+      try {
+        return unique(read());
+      } catch {
+        return [UNNAMED];
+      }
+    };
     return {
       status,
       dof: wrapper.gcs.dof(),
-      conflicting: unique(wrapper.get_gcs_conflicting_constraints()),
-      redundant: unique([...wrapper.get_gcs_redundant_constraints(), ...wrapper.get_gcs_partially_redundant_constraints()]),
+      conflicting: listed(wrapper.has_gcs_conflicting_constraints(), () => wrapper.get_gcs_conflicting_constraints()),
+      redundant: listed(wrapper.has_gcs_redundant_constraints() || wrapper.has_gcs_partially_redundant_constraints(), () => [...wrapper.get_gcs_redundant_constraints(), ...wrapper.get_gcs_partially_redundant_constraints()]),
       prims: structuredClone(wrapper.sketch_index.get_primitives()) as Prim[],
     };
   } finally {

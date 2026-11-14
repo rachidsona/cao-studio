@@ -42,7 +42,7 @@ import { DrawingTool, type Preview, type ToolName } from "./tools";
 /** Pick tolerance in screen pixels (larger on touch screens). */
 const PICK_PX = matchMedia("(pointer: coarse)").matches ? 16 : 8;
 
-export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "intersect" | "text" | "array" | "offsetEdge" | "shelves" | "cloisons" | "partition";
+export type SketchToolName = ToolName | "dimension" | "offset" | "move" | "stretch" | "extend" | "trim" | "break" | "fillet" | "chamfer" | "project" | "intersect" | "text" | "array" | "offsetEdge" | "shelves" | "cloisons" | "partition";
 
 /**
  * What a click does when no drawing or panel tool is open: select ("select"), measure ("dimension" — the
@@ -271,7 +271,7 @@ export class SketchMode implements PointerHandler {
     if (this.kind !== "select" && this.kind !== "dimension") return this.kind;
     if (this.offset) return "offset";
     if (this.edgeOffset) return "offsetEdge";
-    if (this.moveTool) return "move";
+    if (this.moveTool) return this.moveTool.stretch ? "stretch" : "move";
     if (this.arrayTool) return "array";
     if (this.shelves) return this.shelves.kind;
     if (this.partition) return "partition";
@@ -287,6 +287,7 @@ export class SketchMode implements PointerHandler {
     const waiting = this.pendingCommand ? COMMANDS.find((c) => c.id === this.pendingCommand) : undefined;
     if (waiting) return `${waiting.label} : ${waiting.pick} — Échap pour arrêter`;
     if (this.kind !== "select" && this.kind !== "dimension") return HINTS[this.kind];
+    if (this.moveTool?.stretch) return "Étirer : encadrez les points à tirer (glissez sur un vide), puis tirez-les ou saisissez le déplacement : les cotes qui traversent suivent — ✕ ou Échap ferme";
     if (this.moveTool) return "Déplacer : cliquez les éléments, tirez-les ou saisissez le déplacement : appliqué aussitôt — ✕ ou Échap ferme";
     if (this.partition) return "Répartition : réglez la hauteur, la longueur et les cases ; cliquez dans la vue pour poser le coin bas-gauche : chaque réglage est enregistré — ✕ ou Échap ferme";
     if (this.shelves?.kind === "cloisons") return "Cloisons : cliquez une niche, réglez les cloisons, puis OK (Entrée) ; cliquez une niche obtenue pour la diviser à son tour — Terminer ou Échap ferme";
@@ -395,8 +396,8 @@ export class SketchMode implements PointerHandler {
       this.offset = new OffsetTool(offsetHost(this), editing ?? null);
       this.offset.start();
     }
-    if (name === "move") {
-      this.moveTool = new SketchMoveTool(moveHost(this));
+    if (name === "move" || name === "stretch") {
+      this.moveTool = new SketchMoveTool(moveHost(this), name === "stretch");
       this.moveTool.start();
     }
     if (name === "array") {
@@ -413,7 +414,7 @@ export class SketchMode implements PointerHandler {
       this.partition = new SketchPartitionTool(partitionHost(this), editing?.step?.kind === "partition" ? editing : null);
       this.partition.start();
     }
-    const drawing = name !== "select" && name !== "offset" && name !== "offsetEdge" && name !== "move" && name !== "array" && name !== "shelves" && name !== "cloisons" && name !== "partition" && this.kind === "select";
+    const drawing = name !== "select" && name !== "offset" && name !== "offsetEdge" && name !== "move" && name !== "stretch" && name !== "array" && name !== "shelves" && name !== "cloisons" && name !== "partition" && this.kind === "select";
     this.tool = drawing ? new DrawingTool(name as Exclude<ToolName, "select">, this.construction) : null;
     // A drawing tool (line, rectangle, circle, arc) has the cross cursor.
     if (this.tool) this.viewport.renderer.domElement.style.cursor = THIN_CROSSHAIR;

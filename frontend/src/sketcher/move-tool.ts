@@ -18,7 +18,7 @@ import { el } from "../ui/dom";
 import { renderMovePanel, type MoveMode } from "../ui/move-panel";
 import type { Vec2 } from "./edit";
 import { hitTest, toggleTarget } from "./hit";
-import { basePoint, immovable, movablePoints, moveGeometry, movePreview, withContours, type MoveOutcome } from "./move";
+import { basePoint, immovable, movablePoints, moveGeometry, movePreview, stretchGeometry, withContours, type MoveOutcome } from "./move";
 import type { Preview } from "./tools";
 import { placePanel } from "../ui/dock";
 import { dragStep, roundTo } from "../viewport/axis-drag";
@@ -63,6 +63,8 @@ export class SketchMoveTool {
   private delta: Vec2 = [0, 0];
   private outcome: MoveOutcome | null = null;
   private drag: { start: Vec2; moved: boolean } | null = null;
+  /** « Étirer »: the frame being drawn from an empty spot, to take the points inside it. */
+  private box: { start: Vec2; end: Vec2 } | null = null;
   /** The arrow manipulator, and the displacement when it was taken. */
   private readonly gizmo: MoveGizmo;
   private gizmoFrom: Vec2 = [0, 0];
@@ -72,11 +74,15 @@ export class SketchMoveTool {
   private redrawPending = false;
   private readonly panel: HTMLElement;
 
-  constructor(private readonly host: MoveHost) {
+  constructor(
+    private readonly host: MoveHost,
+    /** « Étirer »: the points framed move, the others stay, the dimensions across take their new measure (move.ts). */
+    readonly stretch = false,
+  ) {
     this.panel = el("div", {
       class: "absolute top-2 right-2 z-30 w-72 max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:w-auto",
       role: "dialog",
-      "aria-label": "Déplacer",
+      "aria-label": stretch ? "Étirer" : "Déplacer",
     });
     // The panel must not start a sketch gesture when it is clicked.
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -116,7 +122,7 @@ export class SketchMoveTool {
   private recompute(): void {
     const g = this.host.geometry();
     const ids = this.pointIds();
-    this.outcome = ids.length === 0 ? null : moveGeometry(g, ids, this.delta);
+    this.outcome = ids.length === 0 ? null : (this.stretch ? stretchGeometry : moveGeometry)(g, ids, this.delta);
     this.preview = this.outcome?.ok && !this.outcome.unchanged ? movePreview(g, this.outcome.geometry) : null;
     this.placeGizmo();
     this.draw();
@@ -175,6 +181,7 @@ export class SketchMoveTool {
         problem,
         dof: this.outcome?.ok ? this.outcome.dof : null,
         ready: this.ready,
+        stretch: this.stretch,
       },
       {
         container: this.host.container(),
@@ -219,6 +226,8 @@ export class SketchMoveTool {
     const p = this.host.toSketch(event);
     if (!p) return false;
     const hit = hitTest(this.host.geometry(), p, this.host.tolerance()).find((h) => !RESERVED.has(h.id));
+    // « Étirer »: from an empty spot, a frame takes the points inside it.
+    if (!hit && this.stretch) return (this.box = { start: p, end: p }), true;
     if (!hit) return false;
     if (this.host.selection.size === 0) {
       this.host.selection.add(hit.id);
@@ -242,6 +251,15 @@ export class SketchMoveTool {
       this.setDelta([roundTo(this.gizmoFrom[0] + along(u), step), roundTo(this.gizmoFrom[1] + along(v), step)]);
       return true;
     }
+    if (this.box) {
+      const p = this.host.toSketch(event);
+      if (p) this.box.end = p;
+      const [a, b] = [this.box.start, this.box.end];
+      const corners: Vec2[] = [a, [b[0], a[1]], b, [a[0], b[1]]];
+      this.preview = { lines: corners.map((c, i) => [c, corners[(i + 1) % 4]!] as [Vec2, Vec2]), circles: [], arcs: [] };
+      this.host.changed();
+      return true;
+    }
     if (!this.drag) {
       // Over the manipulator: a hand, and the handle lights up.
       const over = this.gizmo.hovered(event) !== null;
@@ -263,6 +281,19 @@ export class SketchMoveTool {
   up(): boolean {
     // Let go: the displacement is applied a moment later.
     if (this.gizmo.dragEnd()) return (this.recompute(), true);
+    if (this.box) {
+      const [a, b] = [this.box.start, this.box.end];
+      this.box = null;
+      const inside = (x: number, y: number) => x >= Math.min(a[0], b[0]) && x <= Math.max(a[0], b[0]) && y >= Math.min(a[1], b[1]) && y <= Math.max(a[1], b[1]);
+      // A frame drawn again replaces the points taken; a click on an empty spot keeps them.
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) > this.host.tolerance()) {
+        this.host.selection.clear();
+        for (const q of this.host.geometry().points) if (!q.fixed && inside(q.x, q.y)) this.host.selection.add(q.id);
+        this.delta = [0, 0];
+      }
+      this.recompute();
+      return true;
+    }
     const was = this.drag !== null;
     this.drag = null;
     if (was) this.recompute();
@@ -283,11 +314,11 @@ export class SketchMoveTool {
   private store(loud = false): boolean {
     if (this.done) return false;
     if (!this.outcome || !this.outcome.ok || this.outcome.unchanged) {
-      if (loud) this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : "Tirez la sélection ou saisissez un déplacement.", "error");
+      if (loud) this.host.notify(this.outcome && !this.outcome.ok ? this.outcome.reason : this.stretch ? "Encadrez des points, puis tirez-les ou saisissez le déplacement." : "Tirez la sélection ou saisissez un déplacement.", "error");
       return false;
     }
     const count = this.pointIds().length;
-    if (!this.host.apply(this.outcome.geometry, `Déplacement appliqué (${count} point${count > 1 ? "s" : ""}).`)) return false;
+    if (!this.host.apply(this.outcome.geometry, `${this.stretch ? "Étirement" : "Déplacement"} appliqué (${count} point${count > 1 ? "s" : ""}).`)) return false;
     this.delta = [0, 0];
     this.recompute();
     return true;
@@ -316,6 +347,7 @@ export class SketchMoveTool {
     this.gizmo.dispose();
     this.preview = null;
     this.drag = null;
+    this.box = null;
     this.panel.remove();
   }
 }

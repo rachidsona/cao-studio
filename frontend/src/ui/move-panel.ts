@@ -29,6 +29,8 @@ export interface MovePanelState {
   dof: number | null;
   /** The move can be confirmed. */
   ready: boolean;
+  /** « Étirer »: the points framed move, the dimensions across follow. */
+  stretch?: boolean;
 }
 
 export interface MovePanelActions {
@@ -134,16 +136,20 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
   const contour = el("button", { type: "button", class: `${BUTTON} w-full`, disabled: !hasSelection, title: "Ajoute à la sélection tout le contour des courbes choisies (rectangle, polygone…)" }, "Étendre aux contours");
   contour.addEventListener("click", actions.selectContours);
 
-  const hint = hasSelection
-    ? "Tirez la sélection à la souris, ou saisissez le déplacement. L'aperçu (pointillés) montre le résultat avec les contraintes."
-    : "Cliquez des points, lignes, cercles ou arcs — plusieurs si besoin — puis tirez-les ou saisissez le déplacement.";
-  const dof = state.dof === null ? null : state.dof === 0 ? "Esquisse entièrement contrainte après le déplacement." : `${state.dof} cote(s) ou contrainte(s) manquante(s) après le déplacement.`;
+  const hint = state.stretch
+    ? hasSelection
+      ? "Tirez les points pris, ou saisissez le déplacement : les traits qui les relient au reste s'allongent, et leurs cotes prennent la nouvelle mesure."
+      : "Glissez un cadre sur un vide autour des points à tirer (un côté, une partie du meuble), ou cliquez-les ; puis tirez-les ou saisissez le déplacement."
+    : hasSelection
+      ? "Tirez la sélection à la souris, ou saisissez le déplacement. L'aperçu (pointillés) montre le résultat avec les contraintes."
+      : "Cliquez des points, lignes, cercles ou arcs — plusieurs si besoin — puis tirez-les ou saisissez le déplacement.";
+  const dof = state.dof === null ? null : state.dof === 0 ? `Esquisse entièrement contrainte après ${state.stretch ? "l'étirement" : "le déplacement"}.` : `${state.dof} cote(s) ou contrainte(s) manquante(s) après ${state.stretch ? "l'étirement" : "le déplacement"}.`;
   const cross = el("button", { type: "button", class: "ml-auto flex size-6 items-center justify-center text-sm normal-case hover:bg-gray-300 dark:hover:bg-neutral-600", title: CLOSE_TITLE, "aria-label": "Fermer", "data-panel-close": "" }, "✕");
   cross.addEventListener("click", actions.cancel);
 
   const body = [
     row("Éléments", count),
-    row("Contours", contour),
+    state.stretch ? null : row("Contours", contour),
     ...rows,
     el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, hint),
     state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
@@ -153,7 +159,7 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
     el(
       "div",
       { class: BOX, role: "group" },
-      el("div", { class: TITLE }, el("h2", {}, "Déplacer"), cross),
+      el("div", { class: TITLE }, el("h2", {}, state.stretch ? "Étirer" : "Déplacer"), cross),
       el("div", { class: BODY }, ...body.filter((n): n is HTMLElement => n !== null)),
     ),
   );

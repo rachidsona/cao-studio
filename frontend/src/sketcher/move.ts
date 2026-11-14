@@ -15,9 +15,9 @@
  */
 import { solveSketch, SketchError } from "../constraints/solver";
 import { describeConstraints } from "../constraints/catalog";
-import { curvePoints, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
+import { curvePoints, isDimension, ORIGIN, type SketchConstraint, type SketchGeometry } from "../document/sketch";
 import type { SketchFeature, Vec3 } from "../document/types";
-import { cloneGeometry, pointPos, type Vec2 } from "./edit";
+import { cloneGeometry, measure, pointPos, type Vec2 } from "./edit";
 import { frameOf, toWorld } from "./frame";
 import { connectedChain } from "./offset";
 import type { Preview } from "./tools";
@@ -117,6 +117,34 @@ export function moveGeometry(g: SketchGeometry, pointIds: string[], delta: Vec2)
   if (result.state === "failed") return { ok: false, reason: "Déplacement refusé : les contraintes de l'esquisse l'empêchent." };
   const geometry: SketchGeometry = { ...result.geometry, constraints: g.constraints };
   return { ok: true, geometry, unchanged: false, dof: solveDof(geometry) };
+}
+
+/**
+ * « Étirer » : the points taken (those framed) move by `delta`, the others stay; the lines between are stretched.
+ * The dimensions that span the frame — between a point taken and one left — take their new measure, as when one
+ * stretches a cabinet by its side: its width becomes the new one. The other constraints are kept.
+ */
+export function stretchGeometry(g: SketchGeometry, pointIds: string[], delta: Vec2): MoveOutcome {
+  if (pointIds.length === 0) return { ok: false, reason: "Encadrez les points à tirer (glissez un cadre sur un vide), ou cliquez-les." };
+  if (!(Number.isFinite(delta[0]) && Number.isFinite(delta[1])) || Math.hypot(...delta) < 1e-9) return moveGeometry(g, pointIds, delta);
+  const moved = new Set(pointIds);
+  const target = cloneGeometry(g);
+  for (const p of target.points) {
+    if (!moved.has(p.id)) continue;
+    p.x += delta[0];
+    p.y += delta[1];
+  }
+  const constraints = g.constraints.map((c) => {
+    if (!isDimension(c) || c.driving === false) return c;
+    let value: number;
+    try {
+      value = Number(measure(target, c).toFixed(6));
+    } catch {
+      return c;
+    }
+    return Math.abs(value - c.value) > 1e-9 ? ({ ...c, value } as SketchConstraint) : c;
+  });
+  return moveGeometry({ ...g, constraints }, pointIds, delta);
 }
 
 function solveDof(g: SketchGeometry): number {

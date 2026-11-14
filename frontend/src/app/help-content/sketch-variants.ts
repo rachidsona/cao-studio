@@ -83,3 +83,15 @@ export const MORE_DIMENSIONS: ToolHelp[] = [
     tip: "Une cote qui contredirait les autres n'est pas posée. Avec des contraintes en conflit, réglez-les d'abord.",
   },
 ];
+
+/** La fiche de l'étirement dans l'esquisse (sketcher/move.ts, stretchGeometry). */
+export const STRETCH: ToolHelp = {
+  keys: ["data-sketch-tool:stretch"], name: "Étirer",
+  what: "Allonge ou raccourcit une partie du dessin : un caisson élargi par son côté, une niche rehaussée. Les traits qui relient la partie tirée au reste s'allongent, et leurs cotes prennent la nouvelle mesure.",
+  steps: [
+    "Cliquez « Étirer ».",
+    "Glissez un cadre sur un vide autour des points à tirer — par exemple le côté droit d'un caisson et ses étagères qui y aboutissent. Vous pouvez aussi cliquer les points un à un.",
+    "Tirez-les à la souris, ou saisissez le déplacement dans le panneau (ΔX ΔY, distance et angle, ou position). Il est appliqué aussitôt ; Échap ferme.",
+  ],
+  tip: "Les autres contraintes sont gardées : un côté vertical reste vertical. Un étirement qui les contredirait est refusé, avec les contraintes en cause. Un nouveau cadre remplace les points pris.",
+};

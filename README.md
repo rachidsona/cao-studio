@@ -324,6 +324,12 @@ serveur accepte les deux versions.
     change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
   décalage (O), construction (X).
+- **Étirer** (caché par défaut) : on glisse un cadre sur un vide autour d'une partie du dessin (le côté d'un caisson et
+  les étagères qui y aboutissent), puis on la tire ou on saisit le déplacement ; les points pris bougent, les autres
+  restent, les traits entre eux s'allongent et les cotes qui traversent le cadre prennent la nouvelle mesure. Les
+  autres contraintes sont gardées ; un étirement qui les contredirait est refusé (`sketcher/move.ts`,
+  `stretchGeometry`). Si la politique de sécurité de la page empêche le solveur de nommer des contraintes redondantes
+  ou en conflit, l'état est gardé et elles sont dites « non identifiées » au lieu de faire échouer l'opération.
 - **Coordonnées au clavier** (comme en DAO) : un outil de dessin ouvert, « @ » ouvre une saisie relative (depuis le
   dernier point posé, l'origine pour le premier), « # » une saisie absolue ; on tape « x;y » ou « distance<angle »
   (degrés depuis l'horizontale), dans l'unité du projet, et Entrée pose le point. Le point visé se voit pendant la
