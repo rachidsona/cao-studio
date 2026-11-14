@@ -1912,9 +1912,11 @@ opération existante.
       (1:10 par défaut). Ils s'accrochent aux bouts des traits, Maj les garde d'équerre, et la longueur (ou la largeur,
       le rayon) se tape au clavier puis Entrée. Le style du trait se choisit : continu fort ou fin, interrompu, mixte
       (axe). Une feuille sans vue fait ainsi un plan 2D.
-    - **Exporter** : *PDF* (impression de toutes les feuilles), *DXF* de la feuille par calques (CADRE, CONTOUR,
-      CACHE, COUPE, COTES, DESSIN), *SVG*.
-    Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF), l'écran dans `app/drawing/`.
+    - **Exporter** : *Fichier PDF* (téléchargé directement, sans boîte d'impression : une page par feuille à sa
+      taille, A4 à A0, à l'échelle exacte, traits, pointillés, hachures, cotes et cartouche en vectoriel, polices
+      Helvetica standard ; `drawing/pdf-writer.ts`, `drawing/svg-pdf.ts`), *Imprimer* (toutes les feuilles), *DXF* de
+      la feuille par calques (CADRE, CONTOUR, CACHE, COUPE, COTES, DESSIN), *SVG*.
+    Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF, PDF), l'écran dans `app/drawing/`.
 - **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
 - **Magie extrude : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où

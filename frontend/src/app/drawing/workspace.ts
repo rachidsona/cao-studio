@@ -7,6 +7,7 @@
  */
 import { bodyLabel } from "../../document/operations";
 import { sheetDxf } from "../../drawing/dxf";
+import { sheetsPdf } from "../../drawing/svg-pdf";
 import { SheetLayout } from "../../drawing/layout";
 import {
   FIXED_ITEMS, FORMATS, freshId, newSheet, removeView, sheetIds, toggled, updateSheet, withoutDimensions,
@@ -244,6 +245,7 @@ export class DrawingWorkspace {
       zoomWindow: () => this.setTool(new ZoomWindowTool(this.toolHost())),
       fit: () => this.fitPage(),
       exportPdf: () => this.exportPdf(),
+      downloadPdf: () => downloadText(`${this.title()} - plans.pdf`.replace(/[\\/:*?"<>|]/g, "-"), sheetsPdf(this.sheets.map((s) => this.sheetSvg(s)), this.title()), "application/pdf"),
       pose: () => addPoseSheets(this.viewport, this.editor, this.layout, this.sheets, (all, id) => (this.commit(all), (this.sheetId = id), (this.selection = []), this.render())),
       clientFile: () => printClientFile(this.viewport, this.editor, this.sheets.map((s) => this.sheetSvg(s)), this.title(), this.sheet().format),
       exportDxf: () => downloadText(`${this.fileName()}.dxf`, sheetDxf(this.sheet(), this.layout, (mm) => formatLength(mm, this.editor.unit), this.bom()), "application/dxf"),

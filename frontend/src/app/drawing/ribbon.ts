@@ -21,6 +21,7 @@ export interface RibbonActions {
   zoomWindow(): void;
   fit(): void;
   exportPdf(): void;
+  downloadPdf(): void;
   pose(): void;
   clientFile(): void;
   exportDxf(): void;
@@ -67,7 +68,8 @@ export function drawingRibbon(api: RibbonActions): HTMLElement {
       button("Zoom fenêtre", "⬚", () => api.zoomWindow(), "zoom-window", "Zoom fenêtre : tracez la zone de la feuille à agrandir (glisser, ou deux coins)"),
       button("Ajuster", "⤢", () => api.fit(), undefined, "Ajuster : toute la feuille à l'écran (F)")),
     group("Exporter",
-      button("PDF", "⎙", () => api.exportPdf(), undefined, "Imprimer ou enregistrer en PDF (toutes les feuilles)"),
+      button("Fichier PDF", "⬇", () => api.downloadPdf(), undefined, "Fichier PDF téléchargé directement : toutes les feuilles, une page chacune à sa taille (A4 à A0), à l'échelle exacte, avec leur cartouche"),
+      button("Imprimer", "⎙", () => api.exportPdf(), undefined, "Imprimer toutes les feuilles (ou les enregistrer en PDF par la boîte d'impression)"),
       button("Dossier client", "▤", () => api.clientFile(), undefined, "Dossier client en un PDF : la vue 3D du projet, toutes les feuilles et le devis"),
       button("DXF", "⬇", () => api.exportDxf(), undefined, "Feuille en DXF, par calques"),
       button("SVG", "⬇", () => api.exportSvg())),

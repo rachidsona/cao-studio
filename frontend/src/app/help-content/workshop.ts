@@ -250,7 +250,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Ajoutez ce qu'il faut avec le ruban : « Vue de base », « Projetée », « Coupe », « Détail », « Plan de pose ».",
           "Cotez avec « Cote » ou « Cotes auto », puis « Réorganiser » pour ranger les cotes. Ajoutez « Texte », « Note », « Repère » ou « Nomenclature ».",
           "Réglez format, projection et cartouche dans le panneau « Feuille » à droite ; « + Feuille » en bas en crée une autre.",
-          "Exportez avec « PDF », « Dossier client », « DXF » ou « SVG », puis « Fermer la mise en plan ».",
+          "Exportez avec « Fichier PDF » (téléchargé directement, à l'échelle exacte, une page par feuille avec son cartouche), « Imprimer », « Dossier client », « DXF » ou « SVG », puis « Fermer la mise en plan ».",
         ],
         tip: "Sans rien sélectionner, « Cotes auto » et « Effacer » agissent sur toutes les vues de la feuille. Ctrl+Z annule. « Plan de pose » demande les murs de la pièce avec des meubles contre eux.",
       },
