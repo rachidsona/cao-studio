@@ -1,4 +1,7 @@
-/** Sélections intelligentes : « semblables » sans rien de choisi le dit ; Ctrl + A choisit tout le dessin. */
+/**
+ * Sélections intelligentes : « semblables » sans rien de choisi le dit ; un trou choisi, ses semblables sont les trous
+ * du même diamètre (pas le grand) ; Ctrl + A choisit tout le dessin.
+ */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
 
@@ -28,6 +31,11 @@ test("les semblables d'un trou, puis tout le dessin", async ({ page }) => {
   // Nothing chosen: the command says what to do.
   await click(page, '[data-sketch-command="skselectsimilar"]');
   await expect(page.getByText("Choisissez d'abord un trait")).toBeVisible();
+  // One small hole (clicked at its middle, near its outline): the three small ones, not the big one.
+  await page.mouse.click(...at(0.15, 0.2));
+  await click(page, '[data-sketch-command="skselectsimilar"]');
+  await expect(page.getByText("3 éléments semblables sélectionnés.")).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.keyboard.press("ControlOrMeta+a");
   await expect(page.getByText(/éléments sélectionnés\./)).toBeVisible();
   const all = Number((await page.getByText(/éléments sélectionnés\./).last().innerText()).split(" ")[0]);
