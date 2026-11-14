@@ -2076,6 +2076,14 @@ opération existante.
   une seule annulation ; une action impossible est refusée avec sa raison. L'assistant reçoit un résumé du modèle
   (opérations, cotes des caissons, paramètres, matières), jamais la géométrie. 40 demandes par utilisateur et par
   heure ; en cas de refus de sécurité, la demande est reprise par le modèle de repli recommandé (`fallbacks`).
+- **Planche de présentation** (groupe « Client », masqué d'office) : une seule page en paysage (A3 ou A4) pour montrer
+  le projet au client — la vue 3D telle qu'elle est cadrée en grand, sa vue de face et de dessus (prises sur fond blanc,
+  les corps seuls, puis la vue remise comme elle était), le titre, le client, la date, un mot pour lui, les dimensions
+  hors tout, les matières (une pastille de leur couleur, les plus employées d'abord), ce qu'il range (mètres de
+  penderie et d'étagères, tiroirs, accessoires), sa composition (meubles de l'Assistant, Répartitions, caissons) et,
+  si on le coche, le prix TTC du devis aux tarifs enregistrés ; imprimée, ou enregistrée en PDF. Le client et le mot
+  sont gardés par ce navigateur, pour ce projet (`document/presentation-board.ts`, pur ;
+  `app/workshop/presentation-board-tool.ts`).
 - **Lien client et commentaires** (groupe « Atelier ») : *Lien client* fige le meuble affiché (sans les murs) en un
   modèle GLB en mètres, posé au sol, avec un résumé (dimensions, nombre de pièces, prix TTC du devis si on le veut),
   et donne une adresse publique `/s/<jeton>/` à envoyer au client (copiée, avec son QR code), révocable d'un clic.

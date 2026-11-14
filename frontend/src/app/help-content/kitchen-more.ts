@@ -82,3 +82,16 @@ export const HIGH_STORAGE_HELP: ToolHelp = {
   ],
   tip: "Repères : on attrape sans escabeau jusqu'à 2 m environ ; une tringle se pose entre 1,70 m et 1,90 m. La penderie escamotable tient dans une niche de 45 à 115 cm de large, 90 cm de haut et 47 cm de profondeur au moins ; elle va au devis. Seules les Répartitions dessinées debout sont lues.",
 };
+
+/** « Planche de présentation » (app/workshop/presentation-board-tool.ts). */
+export const BOARD_HELP: ToolHelp = {
+  keys: ["data-workshop:board"],
+  name: "Planche de présentation",
+  what: "Met le projet sur une seule page pour le client : la vue 3D en grand, la face et le dessus, les dimensions, les matières, les rangements, la composition et le prix.",
+  steps: [
+    "Cadrez la vue 3D comme vous voulez la montrer (Rendu des matières allumé pour les couleurs du bois).",
+    "Cliquez « Planche de présentation », tapez le nom du « Client » et un « Mot pour le client » ; cochez ou non « Afficher le prix TTC », choisissez le « Format » (A3 ou A4 paysage).",
+    "Relisez le résumé (hors tout, matières, rangements, composition), puis cliquez « Imprimer / PDF » ; dans la fenêtre d'impression, « Enregistrer en PDF » pour l'envoyer.",
+  ],
+  tip: "Les vues de face et de dessus sont prises sur fond blanc, sans la grille, puis la vue revient comme elle était. Le prix est celui du devis aux tarifs enregistrés. Le client et le mot sont gardés par ce navigateur, pour ce projet.",
+};

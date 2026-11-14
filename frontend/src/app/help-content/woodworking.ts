@@ -1,4 +1,4 @@
-import { HIGH_STORAGE_HELP, INVENTORY_HELP, PLINTH_TECH_HELP, SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
+import { BOARD_HELP, HIGH_STORAGE_HELP, INVENTORY_HELP, PLINTH_TECH_HELP, SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
 import type { HelpFamily } from "./types";
 
 export const WOODWORKING: HelpFamily[] = [
@@ -176,6 +176,7 @@ export const WOODWORKING: HelpFamily[] = [
     tools: [
       INVENTORY_HELP,
       HIGH_STORAGE_HELP,
+      BOARD_HELP,
       {
         keys: ["data-workshop:dressing-plan"],
         name: "Plan de dressing",

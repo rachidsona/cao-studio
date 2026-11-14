@@ -71,6 +71,7 @@ import { bindWorkflowSteps } from "./app/workflow-steps";
 import { bindParameters } from "./app/parameters";
 import { bindScenes } from "./app/workshop/scenes";
 import { bindWorkshop } from "./app/workshop/workshop";
+import { bindPresentationBoard } from "./app/workshop/presentation-board-tool";
 import { adoptBrowserRates, bindWorkshopDocuments } from "./app/workshop/workshop-documents";
 import { bindSharing } from "./app/workshop/sharing";
 import { bindAssistant } from "./app/assistant-panel";
@@ -193,6 +194,7 @@ async function start(): Promise<void> {
   bindRenderWorkspace(root, viewport, editor);
   bindAppearance(root, viewport, editor);
   bindWorkshopDocuments(root, viewport, editor, geometry);
+  bindPresentationBoard(root, viewport, editor);
   bindParameters(root, viewport, editor);
   bindScenes(root, viewport, editor);
   bindMeasure(root, viewport, editor);
