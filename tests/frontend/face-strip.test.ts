@@ -5,7 +5,7 @@ import type { CadDocument, Feature, SketchFeature } from "../../frontend/src/doc
 import type { FaceOutline } from "../../frontend/src/geometry/protocol";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
-import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
+import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, traceReference, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
 import { sketchFrame } from "../../frontend/src/sketcher/frame";
 import { sketchRegions } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
@@ -170,5 +170,21 @@ describe("Magie extrude (comme Curic DIO 2)", () => {
     if (out?.kind !== "solid") throw new Error("solid expected");
     expect(bodyMetrics(out.shape).bbox[0][2]).toBeCloseTo(-20, 6);
     r.dispose();
+  });
+});
+
+describe("départ sur un tracé", () => {
+  it("mesure depuis le trait tracé, du côté du pointeur", () => {
+    // A trace across a face, x = 30 from y = 0 to y = 50: a line 10 to its right, or 10 to its left.
+    const edge = { a: [30, 0] as [number, number], b: [30, 50] as [number, number] };
+    const right = traceReference(edge, [45, 20]);
+    expect(right.origin).toEqual([30, 0]);
+    expect(right.normal[0]).toBeCloseTo(1);
+    expect(right.normal[1]).toBeCloseTo(0);
+    const left = traceReference(edge, [12, 20]);
+    expect(left.normal[0]).toBeCloseTo(-1);
+    // The band 10 from it, towards the pointer.
+    const band = stripPolygon([[0, 0], [80, 0], [80, 50], [0, 50]], right, 0, 10);
+    expect(band?.some(([x]) => Math.abs(x - 40) < 1e-9)).toBe(true);
   });
 });

@@ -142,6 +142,15 @@ export function edgeReference(poly: Vec2[], edge: FaceEdge): StripReference {
   return { origin: edge.a, normal: inwardNormal(poly, edge) };
 }
 
+/** Reference of a line drawn inside the face (a trace made before): its own line, distances measured towards `pointer`. */
+export function traceReference(edge: FaceEdge, pointer: Vec2): StripReference {
+  const { a, b } = edge;
+  const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const n: Vec2 = [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
+  const side = (pointer[0] - a[0]) * n[0] + (pointer[1] - a[1]) * n[1] < 0 ? -1 : 1;
+  return { origin: a, normal: [n[0] * side, n[1] * side] };
+}
+
 /**
  * Reference of a corner of the face (as DIO starting from a point): the line through the corner across the face,
  * distances measured along the side the pointer goes along from the corner (of the two sides meeting there, the

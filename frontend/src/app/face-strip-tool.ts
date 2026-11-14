@@ -28,7 +28,7 @@ import {
   bandSketch,
   cornerReference,
   edgeReference,
-  nearestEdge,
+  traceReference,
   referenceDistance,
   sideDistances,
   stripPolygon,
@@ -39,20 +39,19 @@ import {
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
-import { aimAt, captureTargets, loadFace, regionUnder, StripMarks, type LevelTargets, type LoadedFace, type SketchArea } from "./face-strip-view";
+import { aimAt, captureTargets, loadFace, regionUnder, startOnFace, StripMarks, type Hover, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { TypedValues } from "../ui/typed-values";
 
-/** Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. */
-type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3 } | { kind: "corner"; face: string; index: number; at3: Vec3 };
-
-type Hover = { kind: "edge"; edge: FaceEdge } | { kind: "corner"; index: number } | { kind: "face" } | { kind: "region" };
+/**
+ * Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. `trace`: the
+ * edge is a line of a sketch drawn on the face (a trace made before), the new line measured from it, on the pointer's side.
+ */
+type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3; trace?: true } | { kind: "corner"; face: string; index: number; at3: Vec3 };
 
 /** Pointer distance (pixels) within which a corner or an edge is hovered. */
 const SNAP_PX = 12;
 
-/** What the line starts from: a line (an edge, the line parallel to it) or a point (a corner, the line across). */
-type Start = "edge" | "corner";
 /** Last settings, kept for the next use in the session. */
 let last = { mode: "line" as "line" | "groove", anchor: "start" as GrooveAnchor, start: "edge" as Start, newBody: false };
 
@@ -116,7 +115,7 @@ export class FaceStripTool extends PanelTool {
     if (this.phase === "pick") {
       // What a click would start from, under the pointer.
       const kind = this.hover?.kind;
-      const hint = kind === "edge" ? "Cliquez : le trait part de cette arête." : kind === "corner" ? "Cliquez : le trait part de ce coin." : kind === "face" || kind === "region" ? "Cliquez : tirer ou pousser toute la face." : this.departure === "edge" ? "Survolez une arête : le trait lui sera parallèle." : "Survolez un coin : le trait partira en travers.";
+      const hint = kind === "edge" ? (this.hover?.kind === "edge" && this.hover.trace ? "Cliquez : le trait part de ce tracé." : "Cliquez : le trait part de cette arête.") : kind === "corner" ? "Cliquez : le trait part de ce coin." : kind === "face" || kind === "region" ? "Cliquez : tirer ou pousser toute la face." : this.departure === "edge" ? "Survolez une arête : le trait lui sera parallèle." : "Survolez un coin : le trait partira en travers.";
       this.typed.box.show("Départ", this.departure === "edge" ? "sur un trait" : "sur un point", hint);
     }
     else if (this.phase === "place") {
@@ -180,6 +179,8 @@ export class FaceStripTool extends PanelTool {
     const origin = this.origin;
     if (!origin) return null;
     if (origin.kind === "corner") return origin.face === face.key ? cornerReference(face.polygon, origin.index, p) : null;
+    // From a trace inside the face: its own line, distances measured towards the pointer.
+    if (origin.face === face.key && origin.trace) return traceReference(origin.edge, p);
     if (origin.face === face.key) return edgeReference(face.polygon, origin.edge);
     // The edge carried to another face: parallel to it, measured from the boundary behind the pointer.
     const d: Vec3 = [origin.b3[0] - origin.a3[0], origin.b3[1] - origin.a3[1], origin.b3[2] - origin.a3[2]];
@@ -387,21 +388,19 @@ export class FaceStripTool extends PanelTool {
       const pick = this.ctx.viewport.pickFace(event);
       // A sketch area in front of the body faces is pulled like a face (as DIO's trowel on a face).
       const under = this.phase === "pick" ? regionUnder(this.ctx.viewport, this.ctx.doc(), event, pick ? pick.point.distanceTo(this.ctx.viewport.camera.position) : null) : null;
-      this.area = under?.area ?? null;
-      this.face = under?.face ?? (pick ? this.faceOf(pick) : null);
+      const body = pick ? this.faceOf(pick) : null;
+      // Picking, an edge or a corner of the body comes first, then a line of a trace drawn on the face, then the
+      // trace's area (a band pulled before stays in front of the face it hollowed: its edges must still be taken).
+      const start = this.phase === "pick" && body ? startOnFace(this.ctx.viewport, body, event, this.departure, SNAP_PX) : null;
+      this.area = start ? null : (under?.area ?? null);
+      this.face = start ? body : (under?.face ?? body);
       const face = this.face;
       const p = face ? this.onFace(face, event) : null;
       if (!face || !p) {
         this.hover = null;
         this.strip = null;
       } else if (this.phase === "pick") {
-        const snap = SNAP_PX * this.ctx.viewport.worldPerPixel();
-        const corner = face.polygon.findIndex((v) => Math.hypot(p[0] - v[0], p[1] - v[1]) <= snap);
-        const near = nearestEdge(face.polygon, p);
-        // « Départ »: a point takes the corners only, a line the edges only (an edge near a corner too).
-        const onCorner = this.departure === "corner" && corner >= 0;
-        const onEdge = this.departure === "edge" && near && near.d <= snap;
-        this.hover = this.area ? { kind: "region" } : onCorner ? { kind: "corner", index: corner } : onEdge ? { kind: "edge", edge: near.edge } : { kind: "face" };
+        this.hover = start ?? (this.area ? { kind: "region" } : { kind: "face" });
         // The double line's width starts as the board's thickness under the pointer.
         const n = face.outline.normal;
         const depth = pick && !this.widthTyped ? this.ctx.viewport.depthAt(face.pick.bodyId, pick.point.toArray() as Vec3, [-n[0], -n[1], -n[2]]) : null;
@@ -444,7 +443,7 @@ export class FaceStripTool extends PanelTool {
     }
     this.origin =
       this.hover.kind === "edge"
-        ? { kind: "edge", face: face.key, edge: this.hover.edge, a3: this.world(face, this.hover.edge.a), b3: this.world(face, this.hover.edge.b) }
+        ? { kind: "edge", face: face.key, edge: this.hover.edge, a3: this.world(face, this.hover.edge.a), b3: this.world(face, this.hover.edge.b), ...(this.hover.trace ? { trace: true as const } : {}) }
         : { kind: "corner", face: face.key, index: this.hover.index, at3: this.world(face, face.polygon[this.hover.index] as Vec2) };
     this.frozen = false;
     this.distance = 0;

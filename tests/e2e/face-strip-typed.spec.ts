@@ -76,9 +76,9 @@ test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteu
 
   // Again, from the same edge, pulled into a body of its own: « Nouveau corps », the plate left as it is.
   const bodies = await page.locator('[data-select^="body:"]').count();
-  // Its right edge this time, away from the groove.
-  await startOnEdge(0.954);
-  await page.mouse.move(view.x + view.width * 0.6, view.y + view.height * 0.45);
+  // The left edge again, the groove's floor: the trace of the groove, left in front of it, does not hide the edge.
+  await startOnEdge(0.066);
+  await page.mouse.move(view.x + view.width * 0.4, view.y + view.height * 0.45);
   await page.keyboard.type("3");
   await page.keyboard.press("Enter");
   await tool.getByRole("checkbox", { name: "Nouveau corps" }).check();

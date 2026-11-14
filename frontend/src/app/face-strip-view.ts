@@ -17,11 +17,45 @@ import type { CadDocument, PlaneFrame, SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline } from "../geometry/protocol";
 import type { Vec2 } from "../sketcher/edit";
-import { facePolygon } from "../sketcher/face-strip";
-import { frameOf, nearestPlane, planeFrame, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
+import { facePolygon, nearestEdge, type FaceEdge } from "../sketcher/face-strip";
+import { frameOf, nearestPlane, planeFrame, rayToSketch, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
 import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
 import { planeForFace } from "../sketcher/projection";
+
+/** What the line starts from: a line (an edge, the line parallel to it) or a point (a corner, the line across). */
+export type Start = "edge" | "corner";
+
+/** What a click would take, picking: an edge (`trace`: a line of a sketch drawn on the face), a corner, the face, a sketch area. */
+export type Hover = { kind: "edge"; edge: FaceEdge; trace?: true } | { kind: "corner"; index: number } | { kind: "face" } | { kind: "region" };
+
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/**
+ * What a click on a body face starts from, if not the whole face (null): « Départ » a point takes its corners only
+ * (within `px`), a line its edges (an edge near a corner too), else a line of a sketch drawn on that face (a trace).
+ */
+export function startOnFace(viewport: Viewport, face: LoadedFace, event: PointerEvent, start: Start, px: number): Hover | null {
+  const { origin, direction } = viewport.rayFromEvent(event);
+  const p = rayToSketch(face.frame, origin, direction);
+  if (!p) return null;
+  const snap = px * viewport.worldPerPixel();
+  if (start === "corner") {
+    const corner = face.polygon.findIndex((v) => Math.hypot(p[0] - v[0], p[1] - v[1]) <= snap);
+    return corner >= 0 ? { kind: "corner", index: corner } : null;
+  }
+  const near = nearestEdge(face.polygon, p);
+  if (near && near.d <= snap) return { kind: "edge", edge: near.edge };
+  const line = viewport.pickSketchItem(event, "curve");
+  if (!line || line.points.length !== 2) return null;
+  const f = face.frame;
+  const rel = (q: Vec3): Vec3 => [q[0] - f.origin[0], q[1] - f.origin[1], q[2] - f.origin[2]];
+  const [a, b] = line.points as [Vec3, Vec3];
+  // Only a line lying on the face.
+  if (Math.abs(dot(rel(a), f.normal)) > 0.05 || Math.abs(dot(rel(b), f.normal)) > 0.05) return null;
+  const flat = (q: Vec3): Vec2 => [dot(rel(q), f.u), dot(rel(q), f.v)];
+  return { kind: "edge", edge: { a: flat(a), b: flat(b) }, trace: true };
+}
 
 /** A planar face Magie extrude works on (or a closed area of a sketch, seen the same way). */
 export interface LoadedFace {

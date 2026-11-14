@@ -1947,7 +1947,11 @@ opération existante.
   cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
 - **Magie extrude : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où
   part le trait — *sur un trait* (les arêtes seules, même près d'un coin : un trait parallèle) ou *sur un point* (les
-  coins seuls : un trait en travers). Pendant le tracé, la **distance** (retrait;largeur d'un double trait) puis la
+  coins seuls : un trait en travers). *Sur un trait* prend aussi un **tracé** fait avant sur la face (une ligne
+  d'esquisse posée sur elle) : le nouveau trait lui est parallèle, mesuré depuis lui du côté du pointeur
+  (`traceReference`). Les arêtes et les coins du corps passent avant la zone d'un tracé restée devant la face (la
+  bande d'une rainure creusée cache le fond de la rainure, dont les arêtes se prennent quand même : `startOnFace` de
+  `app/face-strip-view.ts`). Pendant le tracé, la **distance** (retrait;largeur d'un double trait) puis la
   **hauteur** (− : creuser) se tapent au clavier sans cliquer de champ, comme dans « Dessiner sur le corps » : elles
   s'écrivent dans la case des mesures en bas de la vue, et **Entrée** pose le trait, puis termine la poussée ;
   Retour arrière efface, Échap vide la saisie. La case dit aussi, au survol, de quoi partirait un clic (cette arête,
