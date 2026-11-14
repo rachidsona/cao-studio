@@ -89,7 +89,16 @@ test("Déplacer avec « Copies » : un cercle copié trois fois de 2 cm", async 
   await panel.getByRole("textbox", { name: "ΔX" }).press("Enter");
   await expect(page.getByText("3 copies posées.")).toBeVisible();
   await shot(page, "copies");
-  await page.keyboard.press("Escape");
+  // « OK » applies the displacement typed, and the tool stays; « Terminer » closes it.
+  await panel.getByRole("textbox", { name: "Copies" }).fill("");
+  await panel.getByRole("textbox", { name: "Copies" }).press("Enter");
+  await panel.getByRole("textbox", { name: "ΔY" }).fill("1");
+  await panel.getByRole("textbox", { name: "ΔY" }).press("Tab");
+  await panel.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Déplacement appliqué (1 point).")).toBeVisible();
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(panel).toHaveCount(0);
   const sk = await sketch();
   expect(sk.curves.filter((c) => c.kind === "circle")).toHaveLength(4);
   expect(errors).toEqual([]);

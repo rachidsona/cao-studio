@@ -3,8 +3,8 @@
  * (several if needed, or whole contours), then drags them with the mouse or
  * types the displacement (relative, distance and angle, or the absolute
  * position of the base point). The result is solved with the constraints of
- * the sketch and shown dashed before it is confirmed; nothing is stored until
- * OK, and confirming is one undo step.
+ * the sketch and shown dashed; each displacement is applied a moment after it is given (one undo step), or at
+ * once with « OK » (Entrée). The tool stays for the next one; « Terminer » (the cross, Échap) closes it.
  *
  * Besides dragging the elements themselves, the selection has the arrow manipulator of the 3D Move tool (Shapr3D
  * style): an arrow along each axis of the sketch and a ball to move freely in its plane.
@@ -318,12 +318,12 @@ export class SketchMoveTool {
 
   // ---- end --------------------------------------------------------------------------
 
-  /** Entrée: applied now, and the tool ends. */
+  /** « OK » or Entrée: applied now; the tool stays, the selection ready to be moved again (« Terminer » closes it). */
   confirm(): void {
     window.clearTimeout(this.storeTimer);
     this.storeTimer = undefined;
-    if (this.outcome?.ok && this.outcome.unchanged) return this.finish();
-    if (this.store(true)) this.finish();
+    if (this.outcome?.ok && this.outcome.unchanged) return;
+    this.store(true);
   }
 
   /** The displacement applied (one undo step); the selection stays, ready to be moved again from where it is. */

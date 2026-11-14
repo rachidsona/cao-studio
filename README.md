@@ -685,7 +685,9 @@ opération existante.
   qui est fait (un outil qui attend OK, comme Combiner, ne garde alors rien de plus). Une opération reprise depuis
   l'Historique garde son outil ouvert après OK. Combiner et Prolonger élément ont « OK » et « Terminer » (au lieu
   d'« Annuler ») et restent ouverts de même ; la Répartition, le Module, la hauteur de Niche et le Réseau d'esquisse
-  ont les deux boutons (OK enregistre tout de suite, l'outil reste) ; Copier une niche, Façades du dressing et
+  ont les deux boutons (OK enregistre tout de suite, l'outil reste), comme l'**Extrusion** (après OK, elle attend un
+  nouveau profil ; une extrusion reprise reste ouverte sur elle) et le **Déplacer / Étirer d'esquisse** (la sélection
+  reste prête pour un autre déplacement) ; Copier une niche, Façades du dressing et
   l'Électroménager, où chaque clic est gardé aussitôt, n'ont que « Terminer ».
 - **Ce qu'un outil a choisi reste marqué** tant qu'il est ouvert : Combiner (la cible en orange, les corps outils en
   bleu), Coller par face, Prolonger élément, Assemblage, Aligner face sur face (la face qui bouge ou se prolonge en

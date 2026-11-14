@@ -2,7 +2,8 @@
  * Interactive extrusion, in the manner of desktop CAD tools: the sketch
  * profiles are highlighted, the user clicks one, then drags an arrow along the
  * sketch normal (or types the distance) while a translucent preview follows;
- * OK creates or updates the extrusion feature in the history.
+ * each whole setting is stored in the history. « OK » (or Entrée) keeps the extrusion and the tool stays for the
+ * next one (changing an extrusion, it stays on it); « Terminer » (the cross, Échap) closes it.
  *
  * The preview is a Three.js extrusion of the profile polygons (instant); the
  * exact B-rep is computed by the kernel only when the feature is committed.
@@ -24,7 +25,7 @@ import { ReferenceMarker } from "./reference-marker";
 import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { operationChoices } from "../ui/feature-meta";
 import { placePanel } from "../ui/dock";
-import { CLOSE_TITLE } from "../ui/panel-close";
+import { CLOSE_TITLE, panelFooter } from "../ui/panel-close";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
@@ -390,10 +391,9 @@ export class ExtrudeTool implements PointerHandler {
       this.cancel();
       return true;
     }
-    // Entrée: stored now, and the tool closes.
+    // Entrée, as « OK »: stored now, the tool stays for the next extrusion.
     if (event.key === "Enter") {
-      this.confirm();
-      if (this.whole()) this.cancel();
+      this.ok();
       return true;
     }
     return false;
@@ -444,8 +444,7 @@ export class ExtrudeTool implements PointerHandler {
       if (event.key === "Enter") {
         event.preventDefault();
         commitDistance();
-        this.confirm();
-        if (this.whole()) this.cancel();
+        this.ok();
       }
     });
     const flip = el(
@@ -539,6 +538,7 @@ export class ExtrudeTool implements PointerHandler {
       this.selected ? el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Arête", edgeTake) : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Opération", operation),
       target,
+      panelFooter(() => this.cancel(), () => this.ok(), !this.whole()),
     ];
     this.dialog.replaceChildren(...children.filter((c): c is HTMLElement => c !== null));
   }
@@ -548,6 +548,34 @@ export class ExtrudeTool implements PointerHandler {
   /** Stores it now (Entrée, or a moment after each whole setting), the tool staying open. */
   confirm(): void {
     this.store(true);
+  }
+
+  /** The extrusions kept with « OK » in this use of the tool: the last one is selected when it closes. */
+  private kept: string | null = null;
+
+  /**
+   * « OK » (or Entrée): the extrusion stored now; the tool stays, afresh, for the next one (a new undo step), waiting
+   * for a profile click. Changing an extrusion, it stays on it. Nothing whole yet: it says what is missing.
+   */
+  private ok(): void {
+    window.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
+    this.store(true);
+    if (!this.whole() || this.editing) return this.renderDialog();
+    this.kept = this.stored?.id ?? this.kept;
+    this.stored = null;
+    this.selected = null;
+    this.chosen = new Set();
+    this.explicit = false;
+    this.operation = "new";
+    this.operationChosen = false;
+    this.target = undefined;
+    this.startOffset = null;
+    this.reference.capture();
+    this.paintProfiles();
+    this.updatePreview();
+    this.renderDialog();
+    this.host.notify("Extrusion gardée : cliquez un profil pour la suivante, ou « Terminer ».", "success");
   }
 
   private store(loud = false): void {
@@ -600,7 +628,7 @@ export class ExtrudeTool implements PointerHandler {
       this.store();
     }
     this.close();
-    this.host.closed(this.stored?.id ?? null);
+    this.host.closed(this.stored?.id ?? this.kept);
   }
 
   private close(): void {

@@ -53,3 +53,33 @@ test("Caisson : OK garde le caisson, l'outil reste pour le suivant ; Terminer fe
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
+
+test("Extrusion : OK (ou Entrée) garde l'extrusion, l'outil reste pour la suivante ; Terminer le ferme", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-ok-extrusion");
+  await expect(page.locator('[data-ref="status-recompute"]')).toContainText("Recalcul", { timeout: 60_000 });
+  const extrusions = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return (project.document.features as { type: string; distance?: number }[]).filter((f) => f.type === "extrude").map((f) => f.distance);
+  };
+  const tool = page.getByRole("dialog", { name: "Extrusion", exact: true });
+  await click(page, '[data-action="extrude"]');
+  await expect(tool).toBeVisible();
+  // The plate's sketch is the only profile: taken at once. 2 cm typed, Entrée: kept, and the tool waits for another profile.
+  const distance = tool.getByRole("textbox", { name: /^Distance/ });
+  await distance.fill("2");
+  await distance.press("Enter");
+  await expect(tool).toBeVisible();
+  await expect(tool.getByText("Cliquez un profil", { exact: true })).toBeVisible();
+  await expect(tool.getByRole("button", { name: "OK", exact: true })).toBeDisabled();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(tool).toHaveCount(0);
+  const kept = await extrusions();
+  expect(kept).toHaveLength(2);
+  expect(kept[1]).toBe(20);
+  expect(errors).toEqual([]);
+});

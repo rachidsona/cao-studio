@@ -10,7 +10,7 @@ import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measu
 import { BODY, BOX, BUTTON, FIELD, row, TITLE } from "./offset-panel";
 import { openCalculator } from "./calculator";
 import { el } from "./dom";
-import { CLOSE_TITLE } from "./panel-close";
+import { CLOSE_TITLE, panelFooter } from "./panel-close";
 
 export type MoveMode = "relative" | "polar" | "absolute";
 
@@ -169,6 +169,7 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
     el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, hint),
     state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
     !state.problem && dof && state.ready ? el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, dof) : null,
+    panelFooter(actions.cancel, actions.confirm, !state.ready),
   ];
   panel.replaceChildren(
     el(
