@@ -97,7 +97,9 @@ export function bindWorkflowSteps(root: HTMLElement, editor: Editor): void {
     const steps = STEPS[t];
     // Conception 3D: the ribbon only.
     bar.hidden = !steps;
-    ribbon.hidden = !!steps && !showAll;
+    // The steps' bar hidden (menu ⋯): the ribbon shows every tool of the tab.
+    const stepsShown = root.dataset.stepsBar !== "off";
+    ribbon.hidden = !!steps && !showAll && stepsShown;
     if (!steps) return;
     const current = stepOf(steps, t);
     const doc = editor.doc;
@@ -162,6 +164,7 @@ export function bindWorkflowSteps(root: HTMLElement, editor: Editor): void {
   };
 
   // The tab changes (a click, or the page opening on the one kept): the bar follows.
+  document.addEventListener("cad:top-bars", render);
   const observer = new MutationObserver(render);
   for (const t of tabs) observer.observe(t, { attributes: true, attributeFilter: ["aria-selected"] });
   editor.afterRender(() => {

@@ -24,5 +24,16 @@ test("ruban et étapes cachés d'office, remis par le menu ⋯ ; le choix est ga
   await page.reload();
   await expect(page.locator("#editor")).toHaveAttribute("data-ribbon", "on");
   await expect(page.locator('[data-ribbon="model"]')).toBeVisible();
+  // The steps' bar on its own: never chosen, it followed the ribbon; unticked, it goes and the ribbon shows every tool.
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await expect(page.locator("[data-steps]")).toBeVisible();
+  await page.getByLabel("Fichier et réglages").click();
+  await page.locator('[data-ref="steps-shown"]').uncheck();
+  await expect(page.locator("[data-steps]")).toBeHidden();
+  await expect(page.locator('[data-ribbon="model"]')).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#editor")).toHaveAttribute("data-steps-bar", "off");
+  await expect(page.locator("#editor")).toHaveAttribute("data-ribbon", "on");
+  await expect(page.locator('[data-ribbon="model"]')).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -2866,8 +2866,10 @@ voisine où tomberait son ancien point ; si son contour a changé, l'extrusion d
 
 - **Ruban et barre des étapes cachés d'office** : la barre des étapes (Pièce, Plan, Aménagement… Tous les outils) et
   le ruban d'outils ne s'affichent plus en haut ; les outils restent dans les colonnes à gauche et dans « Outils ».
-  La case « Ruban et étapes en haut » du menu ⋯ (Réglages) les remet ; le choix est gardé par le navigateur, et ils
-  restent montrés si les colonnes d'outils sont fermées (`app/ribbon-toggle.ts`).
+  Deux cases du menu ⋯ (Réglages) les remettent chacun : « Ruban d'outils en haut » et « Barre des étapes » (la
+  barre cachée, le ruban montre tous les outils de l'onglet) ; chaque choix est gardé par le navigateur, la barre des
+  étapes jamais choisie suit le ruban, et ils restent montrés si les colonnes d'outils sont fermées
+  (`app/ribbon-toggle.ts`).
 - **Le haut du panneau Répartition reste en vue** : son titre (avec ✕), les boutons des murs, « Voir mur … isolé » et
   la face du mur restent en haut quand on fait défiler les réglages dessous ; de même les murs et la bande d'un
   linéaire du Plan de cuisine. La case **« Plan fixe »**, en haut de ce plan, le laisse défiler avec les réglages
