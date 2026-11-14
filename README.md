@@ -1689,6 +1689,10 @@ opération existante.
       page de la pièce dans le Suivi d'atelier) ;
     - un avertissement quand la pièce doit être retournée (perçages borgnes sur l'autre face).
     Impression ou PDF (`document/part-sheet.ts`, `app/workshop/workshop-sheets.ts`).
+  - *Gabarits de perçage 1:1* (caché par défaut) : un PDF téléchargé des pièces percées en vraie grandeur, en pages A4
+    à coller (10 mm de recouvrement en pointillés, colonne et rangée écrites sur chaque page), chaque trou avec sa
+    croix de centrage et son diamètre, une barre de 100 mm pour vérifier l'impression à 100 % ; les pièces identiques
+    n'ont qu'un gabarit (`document/drill-template.ts`, `app/workshop/drill-templates.ts`).
   - *Devis* : d'après la liste de débit, les panneaux au m² par matière (chutes comprises), les chants au mètre, la
     découpe par pièce et le montage à l'heure, puis la marge et la TVA. Tarifs indicatifs réglables (retenus par le
     navigateur ; au départ, le prix au m² des matières du catalogue de l'atelier) ; impression / PDF et CSV, avec

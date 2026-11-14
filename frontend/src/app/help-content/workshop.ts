@@ -1,4 +1,4 @@
-import { ORDERS_HELP } from "./orders";
+import { DRILL_TEMPLATES_HELP, ORDERS_HELP } from "./orders";
 import { WALK_HELP } from "./walk";
 import type { HelpFamily } from "./types";
 
@@ -261,6 +261,7 @@ export const WORKSHOP: HelpFamily[] = [
     where: MAKING,
     tools: [
       ORDERS_HELP,
+      DRILL_TEMPLATES_HELP,
       {
         keys: ["data-workshop:cutlist"], name: "Liste de débit",
         what: "Liste toutes les pièces du meuble avec leurs cotes, leur matière, leurs chants et leur quantité.",

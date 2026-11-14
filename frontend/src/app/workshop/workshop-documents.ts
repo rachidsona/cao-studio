@@ -18,6 +18,7 @@ import type { Editor } from "../editor";
 import { partsOf } from "./workshop";
 import { bindCnc } from "./workshop-cnc";
 import { printPartSheets } from "./workshop-sheets";
+import { downloadDrillTemplates } from "./drill-templates";
 import { showCheck } from "./fabrication-check";
 import { downloadText, escapeHtml, openModal, printHtml } from "./workshop-ui";
 import { quoteHtml } from "./quote-html";
@@ -209,5 +210,6 @@ export function bindWorkshopDocuments(root: HTMLElement, viewport: Viewport, edi
   bindCnc(root, viewport, editor, geometry);
   root.querySelector('[data-workshop="check"]')?.addEventListener("click", () => void showCheck(viewport, editor, geometry));
   root.querySelector('[data-workshop="sheets"]')?.addEventListener("click", () => void printPartSheets(viewport, editor, geometry));
+  root.querySelector('[data-workshop="drill-templates"]')?.addEventListener("click", () => void downloadDrillTemplates(viewport, editor, geometry));
   root.querySelector('[data-workshop="quote"]')?.addEventListener("click", () => showQuote(viewport, editor));
 }
