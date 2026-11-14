@@ -25,7 +25,7 @@ const KEY_ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command"
 /** Tools put away (in their group's menu only) until the user pins them. */
 const DEFAULT_HIDDEN: Record<string, string[]> = {
   model: [
-    "data-action:revolve", "data-action:rect-array", "data-workshop:tech-plan", "data-workshop:worktop-bars", "data-action:snack", "data-workshop:plinth-tech", "data-workshop:inventory",
+    "data-action:revolve", "data-action:rect-array", "data-workshop:tech-plan", "data-workshop:worktop-bars", "data-action:snack", "data-workshop:plinth-tech", "data-workshop:inventory", "data-workshop:high-storage",
     "data-action:shell", "data-action:hollow", "data-action:accessory", "data-workshop:furniture", "data-workshop:purchase-orders", "data-action:paneling", "data-action:loft", "data-action:modifier", "data-action:ffd", "data-action:swap", "data-action:spacing", "data-action:combine",
     "data-action:draw-on-face", "data-action:stretch", "data-action:rotate",
     "data-action:sweep", "data-action:extrude-path", "data-action:assembly", "data-action:overlap", "data-action:layout-copy", "data-workshop:replace", "data-workshop:standard", "data-action:cutout", "data-action:mate", "data-workshop:render", "data-workshop:scenes", "data-workshop:motion",

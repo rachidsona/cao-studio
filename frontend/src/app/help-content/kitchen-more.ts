@@ -69,3 +69,16 @@ export const INVENTORY_HELP: ToolHelp = {
   ],
   tip: "Repères : 3 cm de tringle par chemise ou pantalon pendu, 6 par veste, 4 par robe longue, 8 par manteau ; 35 cm de tablette pour une pile de 6 pulls, 20 cm par paire de chaussures. Une tringle dans une niche de 1,30 m de haut ou plus compte en penderie longue. L'inventaire est gardé par ce navigateur, pour ce projet.",
 };
+
+/** « Rangement en hauteur » (app/dressing/high-storage-tool.ts). */
+export const HIGH_STORAGE_HELP: ToolHelp = {
+  keys: ["data-workshop:high-storage"],
+  name: "Rangement en hauteur",
+  what: "Dresse le tableau des niches hors de portée de main et pose une penderie escamotable (pantographe) là où elle tient.",
+  steps: [
+    "Cliquez « Rangement en hauteur » : le tableau donne chaque niche dont le bas est à 2 m du sol ou plus, et chaque tringle posée plus haut que 1,90 m, avec sa hauteur, sa taille et ce qu'elle contient.",
+    "Lisez le conseil de chaque ligne : boîtes de rangement saisonnier dans une niche vide, portes plutôt que tiroirs là-haut, tringle à baisser.",
+    "Là où elle tient, « Poser une penderie escamotable » remplace la tringle (ou garnit la niche vide) par une penderie qui descend à hauteur de main ; Ctrl + Z la retire.",
+  ],
+  tip: "Repères : on attrape sans escabeau jusqu'à 2 m environ ; une tringle se pose entre 1,70 m et 1,90 m. La penderie escamotable tient dans une niche de 45 à 115 cm de large, 90 cm de haut et 47 cm de profondeur au moins ; elle va au devis. Seules les Répartitions dessinées debout sont lues.",
+};

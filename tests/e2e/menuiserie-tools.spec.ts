@@ -720,3 +720,40 @@ test("des tiroirs à l'anglaise derrière une porte : en retrait, sur cales, san
   await expect.poll(async () => (await niches()).map((f) => [f.fill, f.inner ?? false]), { timeout: 30_000 }).toEqual(expect.arrayContaining([["drawers", true], ["door", false]]));
   expect(errors).toEqual([]);
 });
+
+test("rangement en hauteur : une tringle trop haute signalée, puis une penderie escamotable à sa place", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-rangement-hauteur");
+  // Nothing drawn: nothing out of reach (the button is hidden in the ribbon until shown: clicked by script).
+  await click(page, '[data-workshop="high-storage"]');
+  const modal = page.getByRole("dialog", { name: "Rangement en hauteur" });
+  await expect(modal).toContainText("Rien n'est hors de portée");
+  await modal.getByRole("button", { name: "Fermer", exact: true }).last().click();
+
+  // A wall of the dressing, a rod in one of its full-height niches: 6 cm under its top, far above 1,90 m.
+  await wall(page);
+  await click(page, '[data-action="penderie"]');
+  const rod = page.getByRole("dialog", { name: "Penderie" });
+  await expect(rod).toBeVisible();
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await rod.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText(/Niche équipée/)).toBeVisible();
+  await rod.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+
+  await click(page, '[data-workshop="high-storage"]');
+  const line = modal.locator("[data-high-niche]").filter({ hasText: "Penderie 1" });
+  await expect(line).toContainText("hors de portée : une penderie escamotable la descend à hauteur de main");
+  await line.getByRole("button", { name: "Poser une penderie escamotable" }).click();
+  await expect(page.getByText(/« Penderie escamotable 1 » posée/)).toBeVisible();
+  // Within reach now: its line goes, and no more button.
+  await expect(modal.locator("[data-high-niche]").filter({ hasText: "Penderie 1" })).toHaveCount(0);
+  await expect(modal.getByRole("button", { name: "Poser une penderie escamotable" })).toHaveCount(0);
+  await modal.getByRole("button", { name: "Fermer", exact: true }).last().click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText("Penderie escamotable 1", { exact: true }).first()).toBeAttached();
+  expect(errors).toEqual([]);
+});

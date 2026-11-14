@@ -2750,6 +2750,13 @@ opération existante.
   à ce que le dressing dessiné offre (tringles, étagères des Répartitions, tiroirs) ; ce qui manque donne les modules
   à ajouter et leur largeur, et une ligne donne les valeurs à reporter dans « Remplir selon les besoins »
   (`document/wardrobe-inventory.ts`, `document/wardrobe-have.ts`, `app/dressing/inventory-tool.ts`).
+- **Rangement en hauteur** (groupe « Dressing », masqué d'office) : le tableau des niches hors de portée de main dans
+  les Répartitions dessinées debout — leur bas à 2 m du sol ou plus (`REACH`), ou une tringle plus haute que 1,90 m
+  (`ROD_TOP`) — avec leur hauteur, leur taille, ce qu'elles portent et un conseil : boîtes de rangement saisonnier
+  dans une niche vide, portes ou abattant plutôt que tiroirs là-haut, tringle à baisser. Là où elle tient (45 à 115 cm
+  de large, 90 cm de haut, 47 cm de profondeur), « Poser une penderie escamotable » remplace la tringle (ou garnit la
+  niche vide) par l'accessoire « Penderie escamotable » (pantographe), au devis, en une annulation
+  (`document/high-storage.ts`, pur ; `app/dressing/high-storage-tool.ts`).
 - **Bons de commande** (groupe « Fabrication », masqué d'office ; aussi un bouton de la fenêtre de l'Optimisation de
   découpe) : la liste d'achat du projet partagée entre les fournisseurs de l'atelier (`document/purchase-orders.ts`,
   pur ; le panneau est `app/workshop/purchase-orders-tool.ts`).

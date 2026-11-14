@@ -1,4 +1,4 @@
-import { INVENTORY_HELP, PLINTH_TECH_HELP, SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
+import { HIGH_STORAGE_HELP, INVENTORY_HELP, PLINTH_TECH_HELP, SNACK_HELP, TECH_PLAN_HELP, WORKTOP_BARS_HELP } from "./kitchen-more";
 import type { HelpFamily } from "./types";
 
 export const WOODWORKING: HelpFamily[] = [
@@ -175,6 +175,7 @@ export const WOODWORKING: HelpFamily[] = [
       "Ruban du haut, onglet « Dressing » : groupe « Dressing ». Ces outils s'enchaînent du général au détail. 1) Plan de dressing (schéma vu de dessus) ou Assistant Dressing (en nombres), ou une Répartition seule pour un placard. 2) Chaque zone ou mur est une Répartition : cases, côtés, dessus, dessous, portes, fond. 3) Étagères et Cloisons divisent les niches. 4) Niche règle la hauteur d'une niche. 5) Module, Penderie ou Tiroirs équipent les niches. Les outils des étapes 3 à 5 demandent une Répartition : sans elle, ils vous le disent.",
     tools: [
       INVENTORY_HELP,
+      HIGH_STORAGE_HELP,
       {
         keys: ["data-workshop:dressing-plan"],
         name: "Plan de dressing",
