@@ -20,7 +20,7 @@ function looksOf(doc: CadDocument, f: Feature): (string | undefined)[] {
   let looks: (string | undefined)[] = [];
   if (f.type === "niche" && f.fill === "accessory") {
     looks = nichePartsIn(doc.features, f).map(accessoryLook);
-  } else if (f.type === "niche" && (f.fill === "doors" || f.fill === "door") && isGlass(f)) {
+  } else if (f.type === "niche" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f)) {
     looks = nichePartsIn(doc.features, f).map((p) => (p.role === "front" ? PROFILE_APPEARANCE[f.profile ?? "brushed"] : p.kind === "box" && p.of !== undefined ? GLASS_APPEARANCE[f.glass ?? "clear"] : undefined));
   } else if (f.type === "fronts" && ((f.layout !== "drawers" && isGlass(f)) || f.grip === "gorge")) {
     const cabinet = doc.features.find((c): c is CabinetFeature => c.id === f.cabinet && c.type === "cabinet");

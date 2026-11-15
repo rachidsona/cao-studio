@@ -88,5 +88,5 @@ export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   }
   if (f?.type !== "niche") return false;
   const role = nichePartsIn(doc.features, f)[Number(index)]?.role;
-  return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door") && isGlass(f));
+  return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f));
 }

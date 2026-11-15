@@ -257,8 +257,12 @@ export function nicheProblem(f: Omit<NicheFeature, "id" | "type" | "name" | "ske
   if (fronts.h < 80) return "La niche est trop basse pour autant de tiroirs (80 mm de façade au moins).";
   if (n.depth - (n.outer ? 0 : f.thickness) - (f.inner ? INNER_SET_BACK : 0) < 150) return "La niche n'est pas assez profonde pour des tiroirs.";
   // Framed, fluted or slatted: the style's own limits, on each front.
-  if (f.style && f.style !== "flat" && !isGlass(f)) return styleProblem(f, Array.from({ length: f.drawers }, () => ({ width: fronts.x1 - fronts.x0, height: fronts.h })));
-  return null;
+  const sizes = Array.from({ length: f.drawers }, () => ({ width: fronts.x1 - fronts.x0, height: fronts.h }));
+  if (f.style && f.style !== "flat" && !isGlass(f)) return styleProblem(f, sizes);
+  // Glazed: an aluminium frame round its glass, as a glazed door's; not « à l'anglaise » (behind a door, unseen).
+  if (isGlass(f) && f.inner) return "Des tiroirs à l'anglaise restent derrière la porte : choisissez des façades pleines.";
+  // Said of drawer fronts, not of doors.
+  return glassProblem(f, sizes, f.thickness)?.replace("Une porte vitrée", "Une façade de tiroir vitrée").replace("ces portes", "ces façades") ?? null;
 }
 
 /** Every part, in body order; none when the settings are impossible. */
@@ -353,8 +357,17 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
   if (f.handles && !f.inner) {
     parts.forEach((front, i) => {
       if (front.role !== "front") return;
-      const [u, v] = [(front.from[0] + front.to[0]) / 2, (front.from[1] + front.to[1]) / 2];
+      // On a glazed front, in the middle of the frame's top rail, not through the glass.
+      const [u, v] = [(front.from[0] + front.to[0]) / 2, isGlass(f) ? front.to[1] - glassFrame(f) / 2 : (front.from[1] + front.to[1]) / 2];
       parts.push({ name: `Poignée ${front.name.replace(/^Façade /, "")}`, kind: "handle", from: [u - half(f), v, front.to[2]], to: [u + half(f), v, front.to[2]], role: "hardware", of: i });
+    });
+  }
+  // The glass of each glazed front, last (the numbers of the other parts stay): bought, it slides out with its drawer.
+  if (isGlass(f) && !f.inner) {
+    parts.slice().forEach((front, i) => {
+      if (front.role !== "front") return;
+      const [from, to] = glassPane(front.from, front.to, 2, glassFrame(f));
+      parts.push({ name: `Vitre ${front.name.replace(/^Façade /, "")}`, kind: "box", from, to, role: "hardware", of: i });
     });
   }
   return parts;
@@ -449,5 +462,7 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
     return [{ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []), ...glass];
   }
   if (f.inner) return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, { name: INNER_SPACERS, quantity: fronts }];
-  return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : [])];
+  // Glazed fronts: their glass and their aluminium frame bought, as a glazed door's.
+  const glazed = glassHardware(f, parts.filter((p) => p.role === "front").map((p) => ({ from: p.from, to: p.to, depth: 2 as const })));
+  return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []), ...glazed];
 }

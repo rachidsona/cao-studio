@@ -96,9 +96,9 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   if (front && isDecor(f)) {
     solid = cutGrooves(solid, decorGrooves(f, part.from[0], part.to[0], part.from[1], part.to[1]), part.to[2], -1, (p) => nicheWorld(n, p));
   }
-  // A glass door: the opening through the aluminium frame, and the groove the glass sits in (one after the other: they
+  // A glass door, or a glazed drawer front: the opening through the aluminium frame, and the groove the glass sits in (one after the other: they
   // overlap, and overlapping tools cut at once give a wrong solid).
-  if (part.role === "front" && part.handle && isGlass(f)) {
+  if (part.role === "front" && (part.handle || f.fill === "drawers") && isGlass(f)) {
     for (const [from, to] of [glassOpening(part.from, part.to, 2, glassFrame(f)), glassPane(part.from, part.to, 2, glassFrame(f))]) {
       const [p, q] = worldBox(n, { from, to });
       const tool = makeBox(p, q) as unknown as Shape3D;
@@ -117,7 +117,9 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     const [u1, v1, w1] = part.to;
     // A door: along its edge, 40 mm in (on the frame of a glass door), at mid-height.
     const inset = handleInset(f);
-    const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + inset : u1 - inset, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, (v0 + v1) / 2]);
+    // A drawer front across its middle; a glazed one in the middle of its frame's top rail, not through the glass.
+    const drawerV = isGlass(f) ? v1 - glassFrame(f) / 2 : (v0 + v1) / 2;
+    const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + inset : u1 - inset, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, drawerV]);
     const spacing = f.hw?.handleSpacing ?? 128;
     for (const du of spacing > 0 ? [-spacing / 2, spacing / 2] : [0]) {
       const start = nicheWorld(n, [...at(du), w1 + 0.005]);

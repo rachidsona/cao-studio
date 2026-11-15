@@ -2950,10 +2950,17 @@ opération existante.
     « Rainure décor » réglable ; `features/decor-length.ts`). La porte reste une seule planche, débitée comme une porte plate. Le panneau refuse des
     rainures trop profondes (3 mm de bois au moins), un entraxe impossible, une bordure trop large
     (`features/door-decor.ts`, pur ; les rainures sont creusées d'un coup par `features/decor-cut.ts`).
-  - Les **façades de tiroir** prennent les mêmes styles (à cadre, cannelée, à tasseaux), pas le vitré : celles d'un
+  - Les **façades de tiroir** prennent les mêmes styles (à cadre, cannelée, à tasseaux) : celles d'un
     caisson (« Style des façades » de l'outil Façades) et celles d'une niche (outil Tiroirs). Chaque façade a ses
     rainures sur sa propre hauteur ; sans boîtier de charnière derrière, elles courent jusqu'aux chants. Un style
-    vitré resté d'une porte changée en tiroirs les laisse plates, et le panneau le dit.
+    vitré resté d'une porte changée en tiroirs de caisson les laisse plates, et le panneau le dit.
+  - **Tiroirs vitrés** (niche d'une Répartition, outil Tiroirs, « Style des façades » : « Vitrée (cadre alu) ») : chaque
+    façade est un cadre en profilé alu ouvert sur un verre trempé de 4 mm, comme une porte vitrée — largeur du cadre,
+    verre (clair, extra-clair, dépoli, fumé, bronze, noir) et cadre (alu brossé ou noir) au choix. Le verre de chaque
+    tiroir (« Vitre tiroir 1 »…) sort avec lui ; sa poignée se perce au milieu de la traverse du haut du cadre, pas
+    dans le verre. Cadre et verre ne sont pas sciés : ils sortent du débit et vont au devis, le verre au m², le profilé
+    au mètre. Pas pour des tiroirs à l'anglaise (derrière une porte), ni sous 8 mm d'épaisseur ou avec un cadre trop
+    large pour la façade.
   - Les **modules de dressing** (Module, « Modules à glisser ») choisissent le style des façades de leurs tiroirs dans
     leurs réglages (« Style des façades », avec l'entraxe, la profondeur et la bordure, ou le cadre) : avant d'être
     glissés, ou une fois posés, où le module est refait sur place ; un module posé relit son style
