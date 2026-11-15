@@ -626,7 +626,7 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
   await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
   const tool = page.getByRole("dialog", { name: "Porte sur niches" });
-  await expect(tool).toContainText("Cliquez les niches que la porte va occuper");
+  await expect(tool).toContainText("Cliquez les niches à fermer");
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
@@ -644,6 +644,36 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   await page.waitForTimeout(800);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   await expect(page.getByLabel(/^Navigateur : corps/).getByText("Porte 1", { exact: true }).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("des niches qui ne forment pas un rectangle : une porte chacune (ou par rectangle), sans refus", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Portes sans condition e2e");
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const tool = page.getByRole("dialog", { name: "Porte sur niches" });
+  const box = (await canvas(page).boundingBox())!;
+  // Two cases with another between them: two doors, not « they must form a rectangle ».
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await page.mouse.click(box.x + box.width * 0.75, box.y + box.height * 0.5);
+  await expect(tool).toContainText("2 niches choisies");
+  await expect(tool).toContainText("2 portes sur 2 niches");
+  await expect(tool).not.toContainText("doivent former un rectangle");
+  // A case next to the first: those two make a rectangle, one door over them — never three doors.
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(tool).toContainText(/Porte de .* sur 3 niches|2 portes sur 3 niches/);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("2 portes posées sur 2 niches.")).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(800);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText("Porte 2", { exact: true }).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
