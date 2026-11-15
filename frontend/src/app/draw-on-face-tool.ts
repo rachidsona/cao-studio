@@ -10,7 +10,8 @@
  * shape goes on with the push/pull. The maths are in sketcher/face-draw.ts. Before the first point, the face under
  * the pointer is the one drawn on (Curic's "Get Object").
  */
-import { keyChar } from "../ui/digit-keys";
+import { expressionKey } from "../ui/digit-keys";
+import { evaluateTyped, repairBrackets } from "../measurements/typed-expression";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { Feature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, trim, UNIT_LABELS } from "../measurements/units";
@@ -53,7 +54,7 @@ type Typed = { x: number | null; y: number | null; length: number | null; angle:
 const NOTHING: Typed = { x: null, y: null, length: null, angle: null };
 
 /** Keys the value box takes while the tool is active: digits, decimal separators, minus, separators. */
-const TYPING = /^[0-9.,;\- ]$/;
+const TYPING = /^[0-9.,;\- +*/()×÷]$/;
 
 export class DrawOnFaceTool extends PanelTool {
   private shape: Shape = last.shape;
@@ -282,10 +283,10 @@ export class DrawOnFaceTool extends PanelTool {
       this.showValues();
     };
     // The digit row without Maj (AZERTY) types its digits too.
-    const key = keyChar(event);
+    const key = expressionKey(event) ?? event.key;
     if (TYPING.test(key)) {
       if (key === " " && this.buffer === null) return;
-      this.buffer = (this.buffer ?? "") + key;
+      this.buffer = key === ")" ? repairBrackets(`${this.buffer ?? ""})`) : (this.buffer ?? "") + key;
       return consume();
     }
     if (this.buffer === null) return;
@@ -308,7 +309,7 @@ export class DrawOnFaceTool extends PanelTool {
     const text = this.buffer ?? "";
     this.buffer = null;
     const unit = this.ctx.unit();
-    const values = parseTyped(text, parseNumber);
+    const values = parseTyped(text, (p) => evaluateTyped(p));
     if (values.length === 0) return;
     if (values.some((v, i) => v === null && text.split(/\s*;\s*|\s+/)[i] !== "")) return this.ctx.notify(`« ${text} » n'est pas une mesure.`, "error");
     const length = (v: number | null | undefined) => (v === null || v === undefined ? null : fromDisplay(v, unit));

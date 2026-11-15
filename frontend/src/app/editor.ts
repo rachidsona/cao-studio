@@ -507,6 +507,9 @@ export class Editor {
     });
   }
 
+  /** Whether a tool is open (its window takes a value typed without a field, ui/direct-entry.ts). */
+  get toolOpen(): boolean { return !!(this.extrudeTool ?? this.tools.active); }
+
   private bindKeyboard(): void {
     bindShortcuts({
       activeTool: () => this.extrudeTool ?? this.tools.active,

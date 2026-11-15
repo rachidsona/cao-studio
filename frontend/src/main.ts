@@ -18,6 +18,7 @@ import { bindVariants } from "./app/workshop/variants-tool";
 import { bindModulePalette } from "./app/dressing/module-palette";
 import { bindIconTitles } from "./ui/icon-titles";
 import { bindFieldKeypads } from "./ui/field-keypads";
+import { bindDirectEntry } from "./ui/direct-entry";
 import { bindPlanLayout } from "./app/dressing/plan-layout-tool";
 import { bindKitchenPlan } from "./app/kitchen/kitchen-plan-tool";
 import { bindProductionFolder } from "./app/workshop/production-folder";
@@ -264,6 +265,8 @@ async function start(): Promise<void> {
   bindIconTitles(document.body);
   // A calculator beside every number field (tools, panels, drawing), those without one of their own.
   bindFieldKeypads(document.body);
+  // A value (or a calculation) typed with a tool open goes to its window's first number field, without a click.
+  bindDirectEntry(root, () => editor.toolOpen);
   bindContextBar(root, viewport, editor);
   bindLiveCheck(root, viewport, editor);
   bindVariants(root, viewport, editor);

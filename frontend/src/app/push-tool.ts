@@ -9,7 +9,8 @@
  * Un caisson emporte son électroménager (un four dedans, une plaque dessus…) ; un four ou un micro-ondes encastré
  * cliqué pousse son caisson ; un autre appareil (une plaque, une hotte…) se pousse entier, sa découpe le suit.
  */
-import { keyChar } from "../ui/digit-keys";
+import { expressionKey } from "../ui/digit-keys";
+import { evaluateTyped, repairBrackets } from "../measurements/typed-expression";
 import * as THREE from "three";
 import { cabinetOfAppliance, shownCabinets } from "../document/appliance-follow";
 import { bodyLabel, findFeature } from "../document/operations";
@@ -154,7 +155,7 @@ export class PushTool extends PanelTool {
   /** The step typed, taken (in mm), if any and valid. */
   private takeTyped(): void {
     if (!this.typed) return;
-    const parsed = parseNumber(this.typed);
+    const parsed = evaluateTyped(this.typed);
     this.typed = "";
     if (parsed !== null && parsed > 0) this.step = lastStep = Number(fromDisplay(parsed, this.ctx.unit()).toFixed(3));
     else this.ctx.notify("Tapez un pas plus grand que zéro.", "error");
@@ -200,9 +201,10 @@ export class PushTool extends PanelTool {
     if (arrow) {
       if (field) this.typed = (field as HTMLInputElement).value;
       this.push(event.shiftKey && arrow === "away" ? "up" : event.shiftKey && arrow === "near" ? "down" : arrow);
-    } else if (!field && /^[0-9.,]$/.test(keyChar(event))) {
-      // The digit row without Maj (AZERTY) types its digits too.
-      this.typed += keyChar(event);
+    } else if (!field && /^[0-9.,+\-*/()×÷]$/.test(expressionKey(event) ?? "")) {
+      // The digit row without Maj (AZERTY) types its digits too; a calculation too ((190+100)/2).
+      const key = expressionKey(event)!;
+      this.typed = key === ")" ? repairBrackets(`${this.typed})`) : this.typed + key;
       this.render();
     } else if (!field && event.key === "Backspace" && this.typed) {
       this.typed = this.typed.slice(0, -1);

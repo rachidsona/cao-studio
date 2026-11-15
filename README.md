@@ -2076,6 +2076,15 @@ opération existante.
   Courbe ; `lay` de `sketcher/shape-entry.ts`) : une forme posée, l'outil attend la suivante — plusieurs formes à la
   suite, chacune son étape d'annulation. **Échap** (ou l'outil Sélection) le quitte ; un second Échap, sans outil ni
   sélection, quitte l'esquisse, comme « Terminer l'esquisse ».
+- **Saisie directe dans les outils** (`ui/direct-entry.ts`, `measurements/typed-expression.ts`) : un outil ouvert,
+  ce qu'on tape sans cliquer de champ va dans le premier champ de nombre de sa fenêtre (entouré de bleu) ; Entrée
+  l'applique — comme si on l'avait tapé dans le champ —, Retour arrière efface, Échap abandonne, un clic ailleurs
+  aussi. Ce peut être un **calcul** : `(190+100)/2`, `2*70`, `80-2,5` ; et tout champ de nombre tapé à la main prend un
+  calcul de même, son résultat écrit à Entrée ou en quittant le champ, avant que l'outil le lise (les nombres tels
+  quels dans l'unité du champ ; des unités tapées, « 1 m + 20 cm », dans celle que son nom dit). Les outils qui ont leur
+  case des mesures — Magie extrude, Dessiner sur le corps, Déplacer (ses copies « x5 », « /5 » gardées), Pousser — la
+  gardent et y prennent les calculs aussi. Sur un clavier AZERTY, la touche 5 sans Maj donne 5, qu'une « ) » refait
+  parenthèse (`repairBrackets`). Rien n'est pris dans l'esquisse (ses cotes ont leurs cases), ni avec Ctrl, ⌘ ou Alt.
 - **Cotes tapées pendant le tracé, comme Fusion 360** (esquisse : Ligne, Rectangle, Cercle ;
   `sketcher/typed-dims.ts`, `sketcher/shape-entry.ts`) : le premier point cliqué, les mesures en direct de la forme
   sont des **cases** (`[data-dim-field]`). On tape une valeur, dans l'unité du projet : elle s'écrit dans la case en

@@ -1,15 +1,15 @@
 /**
  * Les mesures tapées au clavier pendant qu'un outil suit le pointeur (comme dans « Dessiner sur le corps ») : les
- * chiffres vont dans la case des mesures en bas de la vue (ui/value-box.ts), sans cliquer un champ ; « ; » sépare
+ * chiffres — ou un calcul, (190+100)/2 — vont dans la case des mesures en bas de la vue (ui/value-box.ts), sans cliquer un champ ; « ; » sépare
  * deux valeurs (retrait;largeur), Retour arrière efface, Échap vide la saisie, Entrée l'applique — l'outil dit ce
  * qu'elle veut dire. Rien n'est pris quand on tape dans un champ, ni avec Ctrl, ⌘ ou Alt.
  */
-import { keyChar } from "./digit-keys";
-import { parseNumber } from "../measurements/units";
+import { expressionKey } from "./digit-keys";
+import { evaluateTyped, repairBrackets } from "../measurements/typed-expression";
 import { ValueBox } from "./value-box";
 
-/** Keys taken: digits, decimal separators, minus, the separators of two values. */
-const TYPING = /^[0-9.,;\- ]$/;
+/** Keys taken: digits, decimal separators, the signs of a calculation, the separators of two values. */
+const TYPING = /^[0-9.,;\- +*/()×÷]$/;
 
 export class TypedValues {
   readonly box: ValueBox;
@@ -54,10 +54,10 @@ export class TypedValues {
       this.changed();
     };
     // The digit row without Maj (AZERTY) types its digits too.
-    const key = keyChar(event);
+    const key = expressionKey(event) ?? event.key;
     if (TYPING.test(key)) {
       if (key === " " && this.buffer === null) return;
-      this.buffer = (this.buffer ?? "") + key;
+      this.buffer = key === ")" ? repairBrackets(`${this.buffer ?? ""})`) : (this.buffer ?? "") + key;
       return consume();
     }
     if (this.buffer === null) return;
@@ -72,7 +72,9 @@ export class TypedValues {
     if (event.key === "Enter") {
       const text = this.buffer;
       this.buffer = null;
-      const values = text.trim() === "" ? [] : text.trim().split(/\s*;\s*|\s+/).map((p) => (p === "" ? null : parseNumber(p)));
+      // Each one a number or a calculation ((190+100)/2): a calculation keeps its spaces, only « ; » parts it then.
+      const t = text.trim();
+      const values = t === "" ? [] : t.split(/[-+*/×÷(]/.test(t.replace(/^-/, "")) ? /\s*;\s*/ : /\s*;\s*|\s+/).map((p) => (p === "" ? null : evaluateTyped(p)));
       consume();
       if (values.length) this.apply(values, text);
     }

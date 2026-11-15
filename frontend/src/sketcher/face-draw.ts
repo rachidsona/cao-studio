@@ -110,12 +110,14 @@ export function pointAtLength(from: Vec2, toward: Vec2, length: number, angle?: 
 
 /**
  * What was typed in the value box: numbers separated by « ; » or spaces, an empty one left to the pointer
- * ("120;" sets the first, ";45" the second). Decimal comma or point; null for what is not a number.
+ * ("120;" sets the first, ";45" the second), each one a number or a calculation ((190+100)/2). Decimal comma or point;
+ * null for what is not a value.
  */
 export function parseTyped(text: string, parse: (s: string) => number | null): (number | null)[] {
   const t = text.trim();
   if (t === "") return [];
-  return t.split(/\s*;\s*|\s+/).map((p) => (p === "" ? null : parse(p)));
+  // A calculation (190 + 100) keeps its spaces: only « ; » parts it then.
+  return t.split(/[-+*/×÷(]/.test(t.replace(/^-/, "")) ? /\s*;\s*/ : /\s*;\s*|\s+/).map((p) => (p === "" ? null : parse(p)));
 }
 
 // ---- offset of a contour ----------------------------------------------------------------------
