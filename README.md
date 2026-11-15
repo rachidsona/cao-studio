@@ -835,9 +835,15 @@ opération existante.
   puis la face
   d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit (`document/extend-element.ts`,
   `app/extend-tool.ts`). Un caisson change de largeur, de profondeur ou de hauteur avec ses façades — son origine recule
-  quand c'est son côté gauche, son devant ou son dessous qui avance ; une Répartition de longueur ou de hauteur avec ses
-  cases, son esquisse décalée de même. Un meuble du Plan de cuisine (un haut d'angle prolongé jusqu'au voisin) fait
-  suivre le plan.
+  quand c'est son côté gauche, son devant ou son dessous qui avance ; une Répartition **entière** de longueur, de hauteur
+  ou de **profondeur** — toutes ses étapes (cloisons, étagères, une moins profonde gardant son écart) et ses
+  équipements suivent ; par son fond, son côté gauche ou son dessous, son esquisse est décalée d'autant
+  (`withPartitionDepth`, `document/niche-size.ts`). Un meuble du Plan de cuisine (un haut d'angle prolongé jusqu'au
+  voisin) fait suivre le plan.
+  - **Par la mesure** : la face à prolonger cliquée, au lieu d'une face d'arrivée on tape **« De »** — de combien la
+    face avance (négatif : elle recule) — ou la **« Cote finale »** de l'élément dans le sens de la face (mesurée sur
+    ses corps : aujourd'hui, et ce qu'on veut). Le résultat s'affiche, OK le garde (`extendBy`,
+    `document/extend-reach.ts`). La face avant ou le fond d'une Répartition la prolonge entière, par défaut.
   - **Toute autre pièce** — une plinthe, un fileur, un plan de travail, une crédence, une planche — se prolonge de
     même : sa face cliquée est tirée jusqu'au plan de l'autre (ou rentrée), par une opération « Prolongement » sur le
     corps, comme « Tirer une face », qui se retouche ou se supprime dans l'historique. Exemple : le bout d'une plinthe

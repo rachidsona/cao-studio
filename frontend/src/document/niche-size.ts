@@ -56,6 +56,33 @@ export function withPartitionSize(doc: CadDocument, sketchId: string, axis: "x" 
   return remade(doc, g, record.id, withInput(g, record, { ...record.step.input, [key]: value }));
 }
 
+/**
+ * The whole Répartition `by` mm deeper (negative: shallower): every step that has a depth (the partition, its shelves
+ * and cloisons, a shallower one keeping its difference), each partition of the sketch made again.
+ */
+export function withPartitionDepth(doc: CadDocument, sketchId: string, by: number): CadDocument | string {
+  const g = findFeature(doc, sketchId);
+  if (g?.type !== "sketch") return "Cette répartition n'existe plus.";
+  const deep = (g.offsets ?? []).filter((r) => r.step?.depth !== undefined);
+  if (!deep.length) return "Les panneaux de cette Répartition ne sont pas extrudés : elle n'a pas de profondeur.";
+  const least = Math.min(...deep.map((r) => r.step!.depth!));
+  if (least + by < MIN_DEPTH) return `La Répartition ne serait plus profonde que de ${Number(((least + by) / 10).toFixed(1)).toLocaleString("fr-FR")} cm.`;
+  const offsets = (g.offsets ?? []).map((r) => (r.step?.depth !== undefined ? ({ ...r, step: { ...r.step, depth: Number((r.step.depth + by).toFixed(1)) } } as OffsetRecord) : r));
+  let next: CadDocument = doc;
+  for (const partition of offsets.filter(isPartition).map((r) => r.id)) {
+    const now = findFeature(next, sketchId);
+    if (now?.type !== "sketch") return "Cette répartition n'existe plus.";
+    // The depths of this chain set; the others' already, or still to come.
+    const made = remade(next, now, partition, (now.offsets ?? []).map((r) => offsets.find((o) => o.id === r.id) ?? r));
+    if (typeof made === "string") return made;
+    next = made;
+  }
+  return next;
+}
+
+/** A Répartition no shallower than this (mm). */
+const MIN_DEPTH = 50;
+
 /** The niche that spans from `span[0]` to `span[1]` along x or y (a dimension of the view) set to `value` mm. */
 export function withNicheSize(doc: CadDocument, sketchId: string, axis: "x" | "y", span: [number, number], value: number): CadDocument | string {
   const g = findFeature(doc, sketchId);

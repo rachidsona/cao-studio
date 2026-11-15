@@ -2,13 +2,14 @@
  * « Prolonger élément », en nombres : une face plane d'un caisson (ou d'une de ses façades) ou d'une pièce d'une
  * Répartition, et une face d'un autre élément, parallèle. L'élément s'allonge (ou se raccourcit) du côté de sa face
  * jusqu'au plan de l'autre : un caisson change de largeur, de profondeur ou de hauteur — son origine recule quand c'est
- * son côté gauche, son devant ou son dessous qui avance —, une Répartition de longueur ou de hauteur, son esquisse se
- * décalant de même. Ses pièces, façades et cases suivent. Un caisson fait par le Plan de cuisine le fait suivre
+ * son côté gauche, son devant ou son dessous qui avance —, une Répartition de longueur, de hauteur ou de profondeur
+ * (toutes ses étapes : ses cloisons, étagères et équipements suivent), son esquisse se décalant de même quand c'est son
+ * côté gauche, son dessous ou son fond qui avance. Ses pièces, façades et cases suivent. Un caisson fait par le Plan de cuisine le fait suivre
  * (document/kitchen-sync.ts). Toute autre pièce — une plinthe, un fileur, un plan de travail, une planche — voit sa
  * face tirée jusqu'à ce plan (une opération sur le corps, comme « Tirer une face »). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
-import { withPartitionSize } from "./niche-size";
+import { withPartitionDepth, withPartitionSize } from "./niche-size";
 import { bodyOrigin, findFeature, latestBody, uniqueId, uniqueName, updateFeature } from "./operations";
 import { isPartition } from "../sketcher/partition-history";
 import { frameOf } from "../sketcher/frame";
@@ -83,7 +84,16 @@ export function extendElement(doc: CadDocument, bodyId: string, from: ExtendFace
   if (!record || !isPartition(record)) return "Cette Répartition n'existe plus.";
   const onU = Math.abs(dot(n, frame.u)) > 0.9998;
   const onV = Math.abs(dot(n, frame.v)) > 0.9998;
-  if (!onU && !onV) return "Une Répartition se prolonge par un côté, le dessus ou le dessous, pas par sa profondeur.";
+  if (Math.abs(dot(n, frame.normal)) > 0.9998) {
+    // Its depth: its panels go from the sketch's plane (the back) forwards; by its back, the plane moves back.
+    const deeper = withPartitionDepth(doc, sketch.id, by);
+    if (typeof deeper === "string") return deeper;
+    if (dot(n, frame.normal) > 0) return { doc: deeper, by };
+    const moved = findFeature(deeper, sketch.id);
+    if (moved?.type !== "sketch") return { doc: deeper, by };
+    return { doc: updateFeature(deeper, sketch.id, () => moveSketchPlane(moved, n.map((c) => c * by) as Vec3)), by };
+  }
+  if (!onU && !onV) return "Choisissez une face droite de la Répartition (un côté, le dessus, le dessous, le devant ou le fond).";
   const axis = onU ? frame.u : frame.v;
   const was = onU ? record.step.input.length : record.step.input.height;
   if (was + by < MIN) return `La Répartition ne ferait plus que ${cm(was + by)}.`;

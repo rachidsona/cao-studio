@@ -3,7 +3,8 @@
  * Inclinée (un mur en biais, un rampant) : un caisson ou une Répartition, des boîtes, s'allongent jusqu'à la toucher
  * de leur premier coin ; une autre pièce va jusqu'à son plan et en prend la pente (features/face-until.ts). Gardé :
  * une pièce reçoit une opération qui va jusqu'à la face à chaque recalcul ; un caisson ou une Répartition, une
- * liaison (`extendLinks`) que l'éditeur refait quand l'autre élément change (app/extend-follow.ts). Pur.
+ * liaison (`extendLinks`) que l'éditeur refait quand l'autre élément change (app/extend-follow.ts). Ou de combien on
+ * le tape (extendBy) : la face avance (ou recule) d'autant, sans autre élément. Pur.
  */
 import { extendable, extendElement } from "./extend-element";
 import { bodyLabel, bodyOrigin, latestBody, uniqueId, uniqueName } from "./operations";
@@ -99,6 +100,25 @@ export function extendTo(doc: CadDocument, fromBody: string, toBody: string, fro
     next = { ...next, extendLinks: [...(next.extendLinks ?? []), link] };
   }
   return { doc: next, by: reach.by, id: owner.id, message: say(reach.by, follow) };
+}
+
+/**
+ * The element of `fromBody` extended from its face by `by` mm, typed (negative: shortened); or why it cannot be.
+ * `ref`: the face as the kernel describes it, for a piece alone (its face pulled). `piece`: as in extendTo.
+ */
+export function extendBy(doc: CadDocument, fromBody: string, from: FacePlane, by: number, ref: FaceRef | undefined, piece = false): Extended | string {
+  const owner = piece ? null : extendable(doc, fromBody);
+  const d = Math.round(by * 10) / 10;
+  if (!Number.isFinite(d) || Math.abs(d) < 0.1) return "Tapez de combien prolonger (négatif : raccourcir), ou la cote voulue.";
+  const message = `« ${owner?.name ?? bodyLabel(doc, fromBody)} » ${d > 0 ? "prolongé" : "raccourci"} de ${cm(Math.abs(d))}.`;
+  if (!owner) {
+    if (!ref) return "Cette face ne peut pas être prolongée.";
+    const id = uniqueId(doc, "ex");
+    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, d > 0 ? "Prolongement" : "Raccourci"), faces: [ref], target: latestBody(doc, fromBody), distance: d, operation: d > 0 ? "join" : "cut" };
+    return { doc: { ...doc, features: [...doc.features, feature] }, by: d, id, message };
+  }
+  const made = extendElement(doc, fromBody, from, planeAt(from, d));
+  return typeof made === "string" ? made : { doc: made.doc, by: d, id: owner.id, message };
 }
 
 const cm = (mm: number) => `${Number((mm / 10).toFixed(1)).toLocaleString("fr-FR")} cm`;

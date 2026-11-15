@@ -298,15 +298,16 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:extend-element"],
         name: "Prolonger élément",
-        what: "Allonge un caisson, une Répartition, une étagère, une cloison ou une pièce (plinthe, fileur, plan de travail, planche) jusqu'à la face d'un autre élément.",
+        what: "Allonge un caisson, une Répartition entière (en largeur, en hauteur ou en profondeur), une étagère, une cloison ou une pièce (plinthe, fileur, plan de travail, planche) jusqu'à la face d'un autre élément, ou de la mesure tapée.",
         steps: [
           "Sélectionnez la face à prolonger — d'un caisson, d'une pièce de la Répartition, ou d'une autre pièce comme le bout d'une plinthe —, ou ouvrez l'outil et cliquez-la.",
           "Cliquez « Prolonger élément », dans le groupe Modifier.",
           "Cliquez la face d'un autre élément, parallèle ou inclinée : le résultat s'affiche. La face à prolonger reste marquée en orange, la face d'arrivée en bleu.",
+          "Ou, sans autre élément, tapez la mesure : « De » (de combien la face avance, négatif pour raccourcir) ou « Cote finale » (la taille voulue dans le sens de la face ; le panneau donne celle d'aujourd'hui).",
           "Laissez « Suivre l'autre élément » coché pour qu'il suive cet élément quand il change ensuite.",
           "Cliquez OK (ou Entrée) pour le garder, en une annulation ; Annuler (ou Échap) ne change rien.",
         ],
-        tip: "Le bout, le dessus ou le dessous d'une étagère ou d'une cloison prolonge cette pièce seule (le caisson ou la Répartition reste), jusqu'à un autre élément ou une autre pièce du même meuble ; « Prolonger » permet de choisir le meuble entier. Une face inclinée (un mur en biais, un rampant) : un caisson va jusqu'à la toucher, une plinthe ou un plan de travail en prend la pente. Le panneau liste les éléments qui en suivent un autre ; ✕ les libère. Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Un meuble du Plan de cuisine fait suivre le plan. Une plinthe, un fileur ou une planche reçoit une opération « Prolongement », à retoucher ou supprimer dans l'historique ; pour fermer le vide sous un four, cliquez le bout d'une plinthe puis le bout de celle d'en face.",
+        tip: "Le bout, le dessus ou le dessous d'une étagère ou d'une cloison prolonge cette pièce seule (le caisson ou la Répartition reste), jusqu'à un autre élément ou une autre pièce du même meuble ; « Prolonger » permet de choisir le meuble entier. Une face inclinée (un mur en biais, un rampant) : un caisson va jusqu'à la toucher, une plinthe ou un plan de travail en prend la pente. Le panneau liste les éléments qui en suivent un autre ; ✕ les libère. Une face d'arrivée en deçà le raccourcit. Le côté gauche, le devant ou le dessous d'un caisson avance avec son origine. Le devant ou le fond d'une Répartition la rend plus profonde tout entière, cloisons, étagères et équipements compris. Un meuble du Plan de cuisine fait suivre le plan. Une plinthe, un fileur ou une planche reçoit une opération « Prolongement », à retoucher ou supprimer dans l'historique ; pour fermer le vide sous un four, cliquez le bout d'une plinthe puis le bout de celle d'en face.",
       },
       {
         keys: ["data-action:push"],
