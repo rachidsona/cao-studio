@@ -186,9 +186,9 @@ export const WORKSHOP: HelpFamily[] = [
         steps: [
           "Cliquez « Quincaillerie ».",
           "Choisissez un modèle dans « Charnières », « Coulisses » et « Poignées » ; le panneau donne ses cotes et son prix HT.",
-          "Lisez en bas « Quincaillerie du projet » : tout ce qui est compté, avec les quantités.",
+          "Lisez « Règles des fabricants » : une porte trop fine pour la cuvette, une porte battante de plus de 600 mm, une poignée trop longue pour sa façade, un tiroir plein trop lourd pour ses coulisses ; « Voir » sélectionne la pièce. En bas, « Quincaillerie du projet » compte tout.",
         ],
-        tip: "Les façades, portes et tiroirs neufs sont percés aux cotes du modèle choisi. Un usinage « Charnières » déjà fait garde ses cotes. Vérifiez la fiche du fabricant avant une série.",
+        tip: "Les façades, portes et tiroirs neufs sont percés aux cotes du modèle choisi. Le Contrôle ouvre chaque porte jusqu'à l'angle de la charnière choisie : contre un mur, un fileur ou un limiteur d'ouverture. Repères courants : la fiche du fabricant fait foi.",
       },
       {
         keys: ["data-workshop:parameters"], name: "Paramètres",

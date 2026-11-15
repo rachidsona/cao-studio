@@ -2,13 +2,16 @@
  * « Contrôle » de l'Atelier : avant de lancer la découpe, la liste de ce qui gâcherait du panneau ou bloquerait le
  * montage (document/fabrication-check.ts), rangée par sorte, chaque ligne avec « Voir » qui sélectionne les pièces en
  * cause. Les portes et les tiroirs sont ouverts (en calcul seulement : à 30 %, 60 % et en entier, comme un clic les
- * ouvre) et testés contre les autres corps, murs compris.
+ * ouvre) et testés contre les autres corps, murs compris — une porte jusqu'à l'angle de la charnière choisie (110°,
+ * 155°…). La quincaillerie choisie est vérifiée selon les règles de ses fabricants (document/maker-rules.ts).
  */
 import { cutList } from "../../document/cut-list";
 import { dressingChecks } from "../../document/dressing-check";
 import { holeProblems, overlapProblems, PROBLEM_TITLES, roomProblems, rowProblems, type Problem, type ProblemKind } from "../../document/fabrication-check";
 import { isHardwareBody } from "../../document/hardware";
 import { doorProblems, jointProblems } from "../../document/hardware-rules";
+import { chosenHardware } from "../../document/hardware-catalog";
+import { projectMakerProblems } from "../../document/maker-rules";
 import { layoutProblems } from "../../document/layout-check";
 import { layoutOf } from "./layout-check";
 import { carcassBoards } from "../assembly-tool";
@@ -46,6 +49,9 @@ export function openingProblems(viewport: Viewport, doc: CadDocument): Problem[]
     if (hits.size) problems.push({ kind: "opening", severity: "error", message: `${what} heurte ${[...hits].map((h) => bodyLabel(doc, h)).join(", ")} en s'ouvrant.`, bodies: [...moving, ...hits] });
   };
   const drawers = new Set<string>();
+  // A side-hung door opens as far as the chosen hinge lets it (the view's swing is 100°).
+  const opening = chosenHardware(doc).hinge.opening;
+  const wall = (id: string) => findFeature(doc, featureOfBody(bodyOrigin(doc, id)))?.type === "room";
   for (const id of all) {
     const box = boxOf(id);
     if (!box) continue;
@@ -54,8 +60,11 @@ export function openingProblems(viewport: Viewport, doc: CadDocument): Problem[]
       // The view swings a door about its front edge: near the hinge it sweeps through its own thickness, which a
       // real hinge does not; only a deeper overlap is a hit.
       const thickness = Math.min(...[0, 1, 2].map((k) => box[1][k]! - box[0][k]!));
-      const hits = new Set(STEPS.flatMap((s) => collisions(box, { kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s }, others([id]), thickness + 0.5)));
+      const angle = Math.abs(Math.abs(swing.angle) - 100) < 1e-6 ? Math.sign(swing.angle) * opening : swing.angle;
+      const hits = new Set(STEPS.flatMap((s) => collisions(box, { kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: angle * s }, others([id]), thickness + 0.5)));
       hitBy([id], hits, `La porte ${bodyLabel(doc, id)}`);
+      // Against a wall: the makers' answer is a filler on the hinge side, or a stop that limits the opening.
+      if ([...hits].some(wall)) problems.at(-1)!.message += ` Ouverte à ${Math.abs(angle)}°, elle bute contre le mur : un fileur côté charnière, ou un limiteur d'angle d'ouverture sur la charnière, l'en garde.`;
       continue;
     }
     const drawer = drawerBodies(doc, all, id);
@@ -104,6 +113,7 @@ export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
     ...dressingChecks(doc).map((message): Problem => ({ kind: "layout", severity: "warning", message, bodies: [] })),
     ...rowProblems(rows.map((r) => ({ ...r, ids: r.names.flatMap((n) => idByName.get(n) ?? []) })), (m) => sheets.get(m) ?? null),
     ...doorProblems(doc),
+    ...projectMakerProblems(doc),
     // What the site survey of a Finitions says does not go in (a wall or the ceiling in the way).
     ...doc.features.flatMap((f) => (f.type === "trim" && !f.suppressed ? (f.issues ?? []).map((message): Problem => ({ kind: "layout", severity: "error", message: `${f.name} — ${message}`, bodies: f.source ?? [] })) : [])),
   ];

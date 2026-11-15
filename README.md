@@ -1673,6 +1673,16 @@ opération existante.
       l'emporte.
     Le panneau compte aussi toute la quincaillerie du projet. Les cotes sont les valeurs courantes de chaque gamme :
     à vérifier sur la fiche du fabricant avant une série (`document/hardware-catalog.ts`, `app/workshop/hardware-panel.ts`).
+    - **Règles des fabricants** : le panneau dit aussitôt, et le Contrôle avant fabrication avec lui (« Quincaillerie
+      choisie »), ce qui ne va pas avec ce choix, chaque ligne avec « Voir » : une porte **trop fine pour la cuvette**
+      (il faut 3 mm de porte sous elle : 16 mm au moins pour une cuvette de 13 — erreur, avec l'épaisseur qu'il faut ou
+      le petit boîtier) ; une **porte battante de plus de 600 mm** de large (elle se voile : la partager en deux) ; une
+      **poignée dont l'entraxe ne tient pas** sur sa façade (20 mm de marge à chaque bout, avec l'entraxe qui irait) ;
+      un **tiroir plein plus lourd que ses coulisses** — son poids plus 60 kg de contenu par m² de fond, contre la charge
+      du modèle, avec le premier modèle du catalogue qui suffit. Le Contrôle ouvre aussi chaque porte jusqu'à
+      **l'angle de la charnière choisie** (110°, 155°…) : une porte qui bute contre un mur se voit proposer un fileur
+      côté charnière ou un limiteur d'angle d'ouverture. Ce sont des repères courants : la fiche du fabricant fait foi
+      (`document/maker-rules.ts`).
     - **Règles de quincaillerie de l'atelier** : les articles du catalogue de l'atelier
       (pages `/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
       portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent
