@@ -376,9 +376,21 @@ export function worldBox(n: Pick<NicheGeometry, "frame">, part: Pick<NichePart, 
 const sketchOf = (features: readonly { id: string; type: string }[], id: string) => features.find((x) => x.id === id) as SketchFeature | undefined;
 
 /** The parts of the feature in this document (none when its niche is gone or the settings impossible). */
+/**
+ * The parts of a niche feature among these features, kept while the features stay the same: a body's name asks for
+ * them again and again (each body of the niche, at every click of the view). Read them, never change them.
+ */
+const partsCache = new WeakMap<readonly unknown[], WeakMap<NicheFeature, NichePart[]>>();
+
 export function nichePartsIn(features: readonly { id: string; type: string }[], f: NicheFeature): NichePart[] {
+  let byFeature = partsCache.get(features);
+  if (!byFeature) partsCache.set(features, (byFeature = new WeakMap()));
+  const kept = byFeature.get(f);
+  if (kept) return kept;
   const n = nicheGeometry(f, sketchOf(features, f.sketch));
-  return typeof n === "string" ? [] : nicheParts(f, n);
+  const parts = typeof n === "string" ? [] : nicheParts(f, n);
+  byFeature.set(f, parts);
+  return parts;
 }
 
 export function nichePartNames(features: readonly { id: string; type: string }[], f: NicheFeature): string[] {

@@ -108,7 +108,7 @@ export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): S
   if (feature?.type !== "niche" || (feature.fill !== "doors" && feature.fill !== "door")) return null;
   const n = nicheGeometry(feature as NicheFeature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
   if (typeof n === "string") return null;
-  const parts = nicheParts(feature, n);
+  const parts = nichePartsIn(doc.features, feature as NicheFeature);
   const own = parts[partNumber(bodyId)];
   // A handle, or the glass of a glazed door, swings with its door.
   const part = own?.of !== undefined ? parts[own.of] : own;
@@ -157,7 +157,7 @@ function drawerOf(doc: CadDocument, bodies: string[], featureId: string, k: numb
 function accessoriesIn(doc: CadDocument, drawers: NicheFeature, k: number): string[] {
   const n = nicheGeometry(drawers, findFeature(doc, drawers.sketch) as SketchFeature | undefined);
   if (typeof n === "string") return [];
-  const bottom = nicheParts(drawers, n).find((p) => p.name === `Tiroir ${k} — fond`);
+  const bottom = nichePartsIn(doc.features, drawers).find((p) => p.name === `Tiroir ${k} — fond`);
   if (!bottom) return [];
   const lift = bottom.to[1] - n.box.y0;
   const same = (f: NicheFeature) => f.sketch === drawers.sketch && f.partition === drawers.partition && f.niche.join(".") === drawers.niche.join(".");
@@ -184,7 +184,7 @@ export function accessoryOpening(doc: CadDocument, bodies: string[], bodyId: str
   if (drawer) return drawer;
   const n = nicheGeometry(feature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
   if (typeof n === "string") return null;
-  const moves = accessoryMoves(feature.accessory?.model, nicheParts(feature, n), n);
+  const moves = accessoryMoves(feature.accessory?.model, nichePartsIn(doc.features, feature), n);
   const origin = nicheWorld(n, [0, 0, 0]);
   const poses = new Map<string, (s: number) => { rotation: number[]; translation: Vec3 }>();
   for (const move of moves) {
@@ -297,6 +297,8 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
     { buttons: [...root.querySelectorAll<HTMLButtonElement>('[data-workshop="drawers-open"]')], list: drawers, none: "Il n'y a aucun tiroir dans ce modèle." },
   ];
   const showButtons = () => {
+    // Made again since they were opened: closed already, forgotten (else every click would look at every door).
+    for (const [key, was] of open) if (!isOpen(key, was.bodies)) open.delete(key);
     for (const kind of kinds) {
       const all = open.size > 0 ? kind.list() : [];
       const down = all.length > 0 && all.every((item) => isOpen(item.key, item.bodies));
