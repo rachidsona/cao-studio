@@ -16,6 +16,7 @@ import { resolveFace } from "../geometry/references";
 import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, solidsResult, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
 import { facePanels, faceSlab } from "./paneling";
+import { splitRing } from "./ring-sides";
 
 /** Two faces are the same one when their centres are this close (mm). */
 const SAME_FACE = 1e-4;
@@ -203,6 +204,10 @@ function backPanel(feature: ShellFeature, target: Shape3D, walls: Shape3D[]): { 
 }
 
 export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
+  // « Séparer les côtés » (no thickness): a body already hollow, a frame, cut into its sides (features/ring-sides.ts).
+  if (feature.thickness === 0 && feature.sides === "separate" && !feature.back && !feature.faces.length) {
+    return { kind: "solids", shapes: splitRing(feature.name, requireSolid(lookup, feature.target).shape, feature.joint ?? "miter") };
+  }
   requirePositive(Math.abs(feature.thickness), `${feature.name} : l'épaisseur`);
   const target = requireSolid(lookup, feature.target).shape;
   const open = feature.faces.map((ref) => resolveFace(target, ref));

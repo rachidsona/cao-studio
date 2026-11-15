@@ -153,6 +153,17 @@ export const MODELING: HelpFamily[] = [
         tip: "Un côté d'un corps déjà vidé ne se vide pas à son tour : pour le régler ou l'ouvrir, cliquez son étape dans l'Historique, puis « Modifier ». Un côté courbe (le tour d'un cylindre) garde sa paroi d'un seul corps. L'épaisseur doit rester plus fine que la plus petite épaisseur du corps.",
       },
       {
+        keys: ["data-action:split-sides"],
+        name: "Séparer les côtés",
+        what: "Sépare un corps déjà creux — un cadre, un caisson sans fond, un contour fermé à trou extrudé — en ses côtés : un panneau par côté, 4 pour un carré, 3 pour un triangle, autant que de côtés pour un polygone.",
+        steps: [
+          "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps creux dans la vue (ou sélectionnez-le avant).",
+          "Choisissez les « Joints » : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou « Bout à bout » : les côtés les plus longs traversent, les autres s'arrêtent contre eux.",
+          "Le résultat s'affiche ; « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
+        ],
+        tip: "Les côtés doivent être droits, ceux du trou parallèles à ceux du contour (une épaisseur de paroi régulière). Un corps plein se vide d'abord avec « Vider un corps », qui peut aussi donner un panneau par côté. Pour régler les joints ensuite, cliquez l'étape dans l'Historique, puis « Modifier ».",
+      },
+      {
         keys: ["data-action:paneling"],
         name: "Panneaux sur faces",
         what: "Transforme les faces planes ou cylindriques d'un volume en panneaux d'une épaisseur donnée, assemblés en onglet à tout angle ou bout à bout : un seau à pans, une boîte, un caisson biais, un anneau, un angle arrondi.",
