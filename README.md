@@ -2647,6 +2647,16 @@ opération existante.
   **Supprimer la porte**. Chaque choix est une
   annulation. Une porte de caisson (`FrontsFeature.side`), une porte de case de Répartition (son sens seul, dans
   `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte d'angle bâtie en panneau.
+- **Menu des tiroirs** : un **clic droit sur un tiroir** (sa façade, une pièce de son caisson ou sa poignée) ouvre son menu.
+  **Modifier les tiroirs…** ouvre, pour ceux d'un caisson, un petit panneau au pointeur — nombre (1 à 8), pose en
+  applique ou encastrés, jeu, épaisseur, poignées —, chaque changement fait aussitôt et annulable ; pour ceux d'une niche
+  de Répartition, l'outil Tiroirs réglé comme ils sont. Aussi : Sélectionner le meuble entier, **Remplacer par une
+  porte** (deux au-delà de 60 cm), **Supprimer les tiroirs** (`document/drawer-edit.ts`, `app/drawer-menu.ts`).
+- **Étagères derrière une porte encastrée** : une porte encastrée entre dans le meuble de toute son épaisseur ; les
+  étagères qu'elle ferme reculent donc d'autant à l'avant — celles d'un caisson aux façades encastrées, comme les
+  étagères et cloisons d'une case de Répartition fermée par une porte encastrée. C'est calculé pour le noyau seulement,
+  comme les gorges : le projet garde ses cotes, et tout suit quand la porte passe en applique, change d'épaisseur ou
+  s'en va ; le débit donne les étagères à leur vraie profondeur (`features/inset-setback.ts`).
   Dans une cuisine du Plan de cuisine, le sens choisi passe au meuble du linéaire (`KitchenRunItem.side`) et reste quand
   la cuisine est refaite (`document/door-edit.ts`, `app/door-menu.ts`). Les deux portes d'un caisson s'ouvrent déjà du
   milieu : leur sens ne change pas, et une seule se retire comme une pièce.

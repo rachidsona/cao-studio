@@ -1,6 +1,6 @@
 /**
  * Le menu d'une niche : un clic droit sur une niche, sans outil en cours, propose ce qu'on peut y faire (sur une porte :
- * le menu de la porte, app/door-menu.ts ; sur un caisson de cuisine : l'isoler et l'aménager, app/cabinet-furnish.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
+ * le menu de la porte, app/door-menu.ts ; sur un tiroir : le menu des tiroirs, app/drawer-menu.ts ; sur un caisson de cuisine : l'isoler et l'aménager, app/cabinet-furnish.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
  * garder (OK) ou de l'annuler : ses pièces ne sont pas encore dans le projet. L'outil choisi
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
@@ -9,6 +9,7 @@ import { isolateMenuItem } from "../isolate-selection";
 import { keyOf } from "../../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
+import { openDrawerMenu } from "../drawer-menu";
 import { cabinetOfBody } from "../../document/cabinet-furnish";
 import { findFeature } from "../../document/operations";
 import { furnishCabinet, keepCaisson, openInCabinet, putCaisson, STRAIGHT_TOOLS } from "../cabinet-furnish";
@@ -71,6 +72,8 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     }
     // A door (or its handle) under the pointer: its own menu.
     if (face && openDoorMenu(event, viewport, editor, face.bodyId)) return;
+    // Drawers (a front, a box, a handle): their own menu, to change them.
+    if (face && openDrawerMenu(event, viewport, editor, face.bodyId)) return;
     const niche = nicheUnderPointer(viewport, editor.doc, event);
     // A kitchen cabinet: made a caisson of the dressing, alone in the view, to furnish.
     const cabinet = !niche && face ? cabinetOfBody(editor.doc, face.bodyId) : null;

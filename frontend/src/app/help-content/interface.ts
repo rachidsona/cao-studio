@@ -150,7 +150,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez un nom pour le sélectionner dans la vue ; Ctrl, ⌘ ou Maj + clic en ajoute d'autres. Le triangle déplie un corps et montre les opérations qui l'ont fait.",
           "Double-cliquez une pièce (une étagère, une porte, un côté), ici ou dans la vue : tout le caisson est sélectionné, façades comprises, ou toute la Répartition.",
-          "Clic droit sur une porte dans la vue : l'ouvrir ou la fermer, l'ouvrir de l'autre côté, ôter ses poignées, la renommer, sélectionner tout le meuble, la changer en tiroirs, en porte plate, à cadre ou vitrée (cadre alu), ou la supprimer.",
+          "Clic droit sur une porte dans la vue : l'ouvrir ou la fermer, l'ouvrir de l'autre côté, ôter ses poignées, la renommer, sélectionner tout le meuble, la changer en tiroirs, en porte plate, à cadre ou vitrée (cadre alu), ou la supprimer. Clic droit sur un tiroir (sa façade, son caisson ou sa poignée) : « Modifier les tiroirs… » règle ceux d'un caisson sur place — nombre, pose en applique ou encastrés, jeu, épaisseur, poignées — ou rouvre l'outil Tiroirs pour ceux d'une niche ; on peut aussi sélectionner tout le meuble, les changer en porte ou les supprimer.",
           "L'œil montre ou cache la ligne. Le bouton « ⋯ » ouvre la fenêtre pour modifier, renommer ou supprimer. Le clic droit donne le même choix en menu.",
           "Pour un dossier : sélectionnez des corps, cliquez « Nouveau dossier » dans l'en-tête « Corps », puis double-cliquez son nom pour le renommer.",
           "Glissez un corps sur un dossier pour l'y ranger, ou sur l'en-tête « Corps » pour l'en sortir.",

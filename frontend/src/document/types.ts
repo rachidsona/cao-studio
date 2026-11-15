@@ -441,6 +441,8 @@ export interface CabinetFeature extends FeatureBase {
   standard?: string;
   /** The notches its sides take for the gorge profiles of its fronts: copied in for the kernel only (stampGorges). */
   notches?: CabinetNotch[];
+  /** Its shelves this far back from its front, behind inset fronts: copied in for the kernel only (features/inset-setback.ts). */
+  shelfSetback?: number;
 }
 
 /** A notch in the front edge of a cabinet's sides: from `z0` to `z1` above its origin, `depth` back from its front. */

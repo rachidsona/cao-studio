@@ -57,12 +57,13 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
   else box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
   if (f.back === "applied") box("Fond", 0, W, D - bt, D, p, H);
   else if (f.back === "inset") box("Fond", t, W - t, D - bt, D, p + t, H - t);
-  // Shelves evenly spaced in the inner height.
+  // Shelves evenly spaced in the inner height; behind inset fronts, set back by their thickness.
   const z0 = p + t;
+  const front = Math.min(Math.max(0, f.shelfSetback ?? 0), boardDepth / 2);
   const gap = (H - t - z0 - f.shelves * t) / (f.shelves + 1);
   for (let i = 0; i < f.shelves; i++) {
     const z = z0 + gap * (i + 1) + t * i;
-    box(`Étagère ${i + 1}`, t, W - t, 0, boardDepth, z, z + t);
+    box(`Étagère ${i + 1}`, t, W - t, front, boardDepth, z, z + t);
   }
   if (rails) box("Traverse arrière", hx0, hx1, boardDepth - rail, boardDepth, H - t, H);
   return parts;
