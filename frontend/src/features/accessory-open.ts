@@ -4,8 +4,8 @@
  * porte-chaussures, tablettes, poubelles, range-bouteilles, porte-cravates et miroirs glissent vers l'avant sur leurs
  * coulisses (les coulisses restent) ; le magic corner sort ses paniers avant, et les paniers arrière prennent leur
  * place ; les demi-lunes pivotent autour de leur montant ; la penderie escamotable descend devant la niche ;
- * l'égouttoir sort son bac de récupération ; un range-couverts posé dans un tiroir sort avec lui (app/drawer-toggle.ts).
- * Les plateaux tournants tournent sur eux-mêmes : rien ne se voit, ils ne bougent pas. Pur.
+ * l'égouttoir sort son bac de récupération ; un range-couverts posé dans un tiroir sort avec lui (app/drawer-toggle.ts) ;
+ * les plateaux tournants font un tiers de tour sur leur axe, leurs poignées avec eux. Pur.
  */
 import type { Vec3 } from "../document/types";
 import { accessoryModel, SET_BACK } from "./accessory-parts";
@@ -36,8 +36,11 @@ export function accessoryMoves(model: string | undefined, parts: readonly NicheP
   switch (m.shape) {
     case "drainer":
       return [{ parts: only(/^Bac de récupération$/), slide: out(m.depth * 0.6) }];
-    case "carousel":
-      return [];
+    case "carousel": {
+      // Turned a third of a round on their pole: their grips go round with them.
+      const pivot = parts.find((p) => p.name === "Axe")?.from;
+      return pivot ? [{ parts: but(/^Axe$/), turn: { pivot, free: pivot, angle: 120 } }] : [];
+    }
     case "halfmoon": {
       const post = parts.find((p) => p.name === "Montant pivot");
       if (!post) return [];

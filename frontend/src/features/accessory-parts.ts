@@ -161,6 +161,11 @@ export function accessoryParts(f: Settings, n: Pick<NicheGeometry, "box" | "dept
         bar(`Plateau ${i + 1}`, [mid, at, w], [mid, at + 8, w], r);
         bar(`Rebord ${i + 1}`, [mid, at + 8, w], [mid, at + 40, w], r - 2);
       }
+      // A grip on the rim of each tray, at the front: it shows them turning (after the rest, the bodies keep their order).
+      for (let i = 0; i < levels; i++) {
+        const at = z + 20 + (i * (h - 60)) / Math.max(1, levels - 1);
+        box(`Poignée ${i + 1}`, [mid - 50, at + 14, w + r - 4], [mid + 50, at + 36, w + r + 8]);
+      }
       break;
     }
     case "halfmoon": {

@@ -1121,8 +1121,8 @@ opération existante.
       porte-chaussures, tablette, poubelle, range-bouteilles, porte-cravates et miroir glissent vers l'avant (les
       coulisses restent) ; le magic corner sort ses paniers avant et avance ses paniers arrière ; les demi-lunes
       pivotent de 90° autour de leur montant ; la penderie escamotable descend devant la niche ; l'égouttoir sort son
-      bac ; un range-couverts posé dans un tiroir ouvre son tiroir. Les plateaux tournants, qui tournent sur
-      eux-mêmes, ne bougent pas. La vue seulement (`features/accessory-open.ts`, `accessoryOpening` de
+      bac ; les plateaux tournants font un tiers de tour sur leur axe (une poignée chromée au bord de chacun le
+      montre) ; un range-couverts posé dans un tiroir ouvre son tiroir. La vue seulement (`features/accessory-open.ts`, `accessoryOpening` de
       `app/drawer-toggle.ts`).
     - Il **suit sa niche**, reste **hors du débit** et va au **devis** à son prix indicatif (en MAD, qu'un tarif
       réglé à la main remplace) ; il est chromé dans la vue, son miroir en miroir, ses bacs en plastique gris, tant

@@ -13,15 +13,11 @@ const niche = (m: (typeof ACCESSORIES)[number]) => {
 };
 
 describe("accessoires sortis au clic", () => {
-  it("tous les modèles bougent, sauf les plateaux tournants ; chaque pièce une seule fois", () => {
+  it("tous les modèles bougent ; chaque pièce une seule fois", () => {
     for (const m of ACCESSORIES) {
       const n = niche(m);
       const parts = accessoryParts({ accessory: { model: m.id, lift: m.hung ? 0 : 100 }, thickness: 18 }, n);
       const moves = accessoryMoves(m.id, parts, n);
-      if (m.id === "carousel") {
-        expect(moves).toEqual([]);
-        continue;
-      }
       const moved = moves.flatMap((x) => x.parts);
       expect(moved.length, m.id).toBeGreaterThan(0);
       expect(new Set(moved).size, m.id).toBe(moved.length);
@@ -51,6 +47,14 @@ describe("accessoires sortis au clic", () => {
     const [turn] = accessoryMoves(hm.id, parts, h);
     expect(turn!.turn!.angle).toBe(90);
     expect(turn!.parts.map((i) => parts[i]!.name)).not.toContain("Montant pivot");
+    // The carousel's trays turn on their pole, with a grip each.
+    const cr = ACCESSORIES.find((x) => x.id === "carousel")!;
+    const c = niche(cr);
+    const tray = accessoryParts({ accessory: { model: cr.id, lift: 0 }, thickness: 18 }, c);
+    const [spin] = accessoryMoves(cr.id, tray, c);
+    expect(spin!.turn!.angle).toBe(120);
+    expect(spin!.parts.map((i) => tray[i]!.name)).toEqual(expect.arrayContaining(["Plateau 1", "Poignée 1", "Poignée 2"]));
+    expect(spin!.parts.map((i) => tray[i]!.name)).not.toContain("Axe");
   });
 
   it("dans le document : les corps et leur pose ; un range-couverts dans un tiroir ouvre son tiroir", () => {

@@ -107,7 +107,7 @@ test("les accessoires d'angle sont au catalogue de la cuisine ; celui qui tient 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
-  await newProject(page, "zz-accessoires-angle");
+  const api = await newProject(page, "zz-accessoires-angle");
   await wall(page);
   const view = (await page.locator("canvas.cad-view").boundingBox())!;
   await page.mouse.click(view.x + view.width * 0.38, view.y + view.height * 0.55, { button: "right" });
@@ -124,5 +124,27 @@ test("les accessoires d'angle sont au catalogue de la cuisine ; celui qui tient 
     if (fits) await expect(ok).toBeEnabled();
     else await expect(tool).toContainText(`« ${label} »`);
   }
+
+  // The trays fit here (72,75 cm): set, then turned a third of a round by a click on them, and back.
+  await model.selectOption({ label: "Plateaux tournants d'angle (2 niveaux)" });
+  await ok.click();
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const carousel = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { id: string; fill?: string }[] } }).document.features.find((f) => f.fill === "accessory")!.id, api);
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(1500);
+  const view3d = page.locator("canvas.cad-view");
+  const look = async () => (await view3d.screenshot()).toString("base64");
+  const still = await look();
+  const flip = () => page.evaluate((id) => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: `${id}#1` })), carousel);
+  await flip();
+  await page.waitForTimeout(700);
+  expect(await look()).not.toBe(still);
+  await shot(page, "plateaux-tournes");
+  await flip();
+  await page.waitForTimeout(700);
+  expect(await look()).toBe(still);
   expect(errors).toEqual([]);
 });
