@@ -76,7 +76,23 @@ export const INNER_SPACER = 15;
 export const INNER_SPACERS = "Cales de coulisse à l'anglaise (paire)";
 
 /** The niche the feature equips, with the frame of its sketch and the depth of the partition's panels. */
-export function nicheGeometry(f: Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][]; mount?: NicheFeature["mount"] }, sketch: SketchFeature | undefined): NicheGeometry | string {
+type NicheAsk = Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][]; mount?: NicheFeature["mount"] };
+
+/** The geometry of a niche, kept while the feature and its sketch stay the same objects (read it, never change it). */
+const geometryCache = new WeakMap<SketchFeature, WeakMap<NicheAsk, NicheGeometry | string>>();
+
+export function nicheGeometry(f: NicheAsk, sketch: SketchFeature | undefined): NicheGeometry | string {
+  if (!sketch || typeof sketch !== "object") return computeNicheGeometry(f, sketch);
+  let byFeature = geometryCache.get(sketch);
+  if (!byFeature) geometryCache.set(sketch, (byFeature = new WeakMap()));
+  const kept = byFeature.get(f);
+  if (kept !== undefined) return kept;
+  const made = computeNicheGeometry(f, sketch);
+  byFeature.set(f, made);
+  return made;
+}
+
+function computeNicheGeometry(f: NicheAsk, sketch: SketchFeature | undefined): NicheGeometry | string {
   if (!sketch || sketch.type !== "sketch") return "L'esquisse de la répartition n'existe plus.";
   const frame = frameOf(sketch);
   // The parts are boxes along the axes: the sketch must lie in a main plane (or a parallel one).

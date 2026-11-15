@@ -150,7 +150,61 @@ function drawerOf(doc: CadDocument, bodies: string[], featureId: string, k: numb
   const own = bodies.filter((id) => id.startsWith(`${featureId}#`) && drawerNumber(bodyLabel(doc, id)) === k);
   // What is put in that drawer (a cutlery tray « Dans le tiroir »: its bottom on the drawer's) slides out with it.
   const inside = feature?.type === "niche" ? accessoriesIn(doc, feature, k) : [];
-  return { key: `${featureId}:${k}`, bodies: [...own, ...bodies.filter((id) => inside.includes(featureOfBody(id)))] };
+  return { key: `${featureId}:${k}`, bodies: [...own, ...(inside.length ? bodies.filter((id) => inside.includes(featureOfBody(id))) : [])] };
+}
+
+/** These bodies by the feature they come from. */
+function byFeature(bodies: readonly string[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const id of bodies) {
+    if (!id.includes("#")) continue;
+    const f = featureOfBody(id);
+    const list = out.get(f);
+    if (list) list.push(id);
+    else out.set(f, [id]);
+  }
+  return out;
+}
+
+/**
+ * Every drawer among these bodies, once each: its key, its bodies and what stands in it. In one pass over them (a
+ * dressing has thousands of bodies: looking at all of them for each one froze the view).
+ */
+export function drawersAmong(doc: CadDocument, bodies: readonly string[]): { key: string; bodies: string[] }[] {
+  const grouped = byFeature(bodies);
+  const out: { key: string; bodies: string[] }[] = [];
+  for (const [featureId, ids] of grouped) {
+    const feature = findFeature(doc, featureId);
+    if (!((feature?.type === "niche" && feature.fill === "drawers") || (feature?.type === "fronts" && feature.layout === "drawers"))) continue;
+    const byNumber = new Map<number, string[]>();
+    for (const id of ids) {
+      const k = drawerNumber(bodyLabel(doc, id));
+      if (k === null) continue;
+      const list = byNumber.get(k);
+      if (list) list.push(id);
+      else byNumber.set(k, [id]);
+    }
+    for (const [k, own] of byNumber) {
+      const inside = feature.type === "niche" ? accessoriesIn(doc, feature, k) : [];
+      out.push({ key: `${featureId}:${k}`, bodies: [...own, ...inside.flatMap((a) => grouped.get(a) ?? [])] });
+    }
+  }
+  return out;
+}
+
+/** Every door among these bodies, once each, with its handle and glass, and how it turns (`box`: where a body stands). */
+export function doorsAmong(doc: CadDocument, bodies: readonly string[], box: (id: string) => Box | null = () => null): { door: string[]; swing: Swing }[] {
+  const covered = new Set<string>();
+  const out: { door: string[]; swing: Swing }[] = [];
+  for (const id of bodies) {
+    if (covered.has(id)) continue;
+    const swing = doorSwing(doc, id, box(id));
+    if (!swing) continue;
+    const door = doorWithHandle(doc, id);
+    for (const b of door) covered.add(b);
+    out.push({ door, swing });
+  }
+  return out;
 }
 
 /** The accessories of the niche of these drawers standing on the bottom of drawer `k` (their feature ids). */
@@ -273,23 +327,13 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   /** Every door shown, each with its handle; every drawer shown. */
   const doors = (): Item[] => {
     const found = new Map<string, Item>();
-    for (const id of viewport.displayedBodies) {
-      const swing = doorSwing(shown(), id, boxOf(id));
-      if (swing) {
-        const item = doorItem(doorWithHandle(shown(), id), swing);
-        found.set(item.key, item);
-      }
+    for (const { door, swing } of doorsAmong(shown(), viewport.displayedBodies, boxOf)) {
+      const item = doorItem(door, swing);
+      found.set(item.key, item);
     }
     return [...found.values()];
   };
-  const drawers = (): Item[] => {
-    const found = new Map<string, Item>();
-    for (const id of viewport.displayedBodies) {
-      const drawer = drawerBodies(shown(), viewport.displayedBodies, id);
-      if (drawer && !found.has(drawer.key)) found.set(drawer.key, drawerItem(drawer));
-    }
-    return [...found.values()];
-  };
+  const drawers = (): Item[] => drawersAmong(shown(), viewport.displayedBodies).map(drawerItem);
 
   // A button is down while all its doors, or all its drawers, are open.
   const kinds = [

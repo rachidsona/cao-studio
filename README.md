@@ -242,6 +242,12 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
 - `GET /healthz` répond `{"status": "ok"}` (503 si la base ne répond pas) pour la surveillance de l'hébergeur.
 - Les erreurs de l'éditeur dans le navigateur des utilisateurs sont envoyées au journal du serveur
   (`POST /api/client-errors/`, journal `apps.client`), chaque erreur une seule fois et dix au plus par page.
+- Ses **blocages** aussi : quand la page cesse de répondre plus d'une seconde alors qu'elle est affichée, le journal
+  reçoit « Blocage de l'éditeur après : <le dernier geste> » et la durée (le bouton cliqué, un clic dans la vue 3D,
+  une touche ; cinq au plus par page, `persistence/freeze-report.ts`). Un test garde la vue rapide sur un gros
+  dressing : 2 000 corps, leurs noms, portes, tiroirs et accessoires examinés en moins d'une demi-seconde
+  (`tests/frontend/freeze-report.test.ts`) ; les pièces et la géométrie d'une niche sont gardées tant que le document
+  ne change pas (`nichePartsIn`, `nicheGeometry`).
 - Au chargement, un écran suit le téléchargement du noyau 3D (barre de progression), puis le calcul du projet.
 
 Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une plaque de

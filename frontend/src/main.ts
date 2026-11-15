@@ -86,6 +86,7 @@ import { loadCatalog } from "./persistence/catalog";
 import { companyHeaderHtml, registerCatalog } from "./document/catalog";
 import { setLetterhead } from "./app/workshop/workshop-ui";
 import { describeError, installErrorReporting, sendReport } from "./persistence/error-report";
+import { installFreezeReporting } from "./persistence/freeze-report";
 import { clearRecovery, readRecovery } from "./persistence/recovery";
 import { ref } from "./ui/dom";
 import { LoadingScreen } from "./ui/loading";
@@ -116,6 +117,7 @@ async function start(): Promise<void> {
   const root = document.getElementById("editor");
   if (!root) return;
   installErrorReporting();
+  installFreezeReporting();
   bindDigitKeys();
   // The font of sketch texts, for their outline on screen.
   void fontBytes().then(setTextFont).catch(() => undefined);
