@@ -49,7 +49,7 @@ export const SKETCH: HelpFamily[] = [
         steps: [
           "Cliquez le premier point.",
           "Cliquez le point suivant : un trait est posé, et le suivant part de là.",
-          "Ou tapez sa longueur : elle s'écrit dans la case en bleu et le trait la prend, dans le sens de la souris. Tab passe à l'angle (sur l'horizontale), Entrée pose le trait.",
+          "Ou tapez sa longueur — ou un calcul, (190+100)/2 — : elle s'écrit dans la case en bleu et le trait la prend, dans le sens de la souris. Tab passe à l'angle (sur l'horizontale), Entrée pose le trait.",
           "Continuez ainsi, puis appuyez sur Échap pour terminer.",
           "Pour fermer la forme, cliquez à nouveau le tout premier point.",
         ],
@@ -59,7 +59,7 @@ export const SKETCH: HelpFamily[] = [
         what: "Trace un rectangle à partir de deux coins opposés.",
         steps: [
           "Cliquez un coin.",
-          "Cliquez le coin opposé — ou tapez ses cotes : la largeur s'écrit dans la case en bleu, Tab la garde (un cadenas) et passe à la hauteur, Entrée pose le rectangle.",
+          "Cliquez le coin opposé — ou tapez ses cotes : la largeur s'écrit dans la case en bleu, Tab la garde (un cadenas) et passe à la hauteur, Entrée pose le rectangle. Une case prend aussi un calcul : (190+100)/2, 2*70, 80-2,5 — son résultat s'affiche à côté (« = 145 »).",
         ],
         tip: "Chaque cote tapée reste une cote de l'esquisse, que vous changez ensuite d'un clic. Un clic sur une case ouvre la calculatrice sur sa valeur : ✓ la garde, comme Tab. La souris donne le côté (à droite ou à gauche, en haut ou en bas) ; ce qui n'est pas tapé la suit. Retour arrière efface. Si la forme tapée sort de l'écran, la vue recule pour la montrer entière. Les côtés sont déjà horizontaux et verticaux. L'outil reste actif pour le rectangle suivant : Échap (ou l'outil « Sélection ») le quitte.",
       }, {

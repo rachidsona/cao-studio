@@ -76,14 +76,15 @@ export class ShapeEntry {
   }
 
   /**
-   * A key while a shape is drawn (its first point clicked): a digit goes into the field in blue, Tab keeps the value
+   * A key while a shape is drawn (its first point clicked): a digit (or a sign of a calculation) goes into the field in blue, Tab keeps the value
    * and takes the next field, Retour arrière erases, Entrée lays the shape with what is typed. False: not for it.
    */
   key(event: KeyboardEvent): boolean {
     const { mode } = this;
     const tool = mode.tool;
     if (!tool || !tool.anchor(mode.geometry) || !typedFields(tool.name).length) return false;
-    const digit = typedDigit(event) ?? (/^[.,]$/.test(event.key) ? event.key : null);
+    // A digit, or a sign of a calculation: (190+100)/2.
+    const digit = typedDigit(event) ?? (/^[.,+\-*/()×÷]$/.test(event.key) ? event.key : null);
     if (digit !== null) this.typed.type(tool.name, digit);
     else if (event.key === "Tab") this.typed.next(tool.name, mode.host.unit());
     else if (event.key === "Backspace") {

@@ -38,6 +38,9 @@ test("une rainure qui coupait un côté du cadre coupe les deux qu'elle traverse
   await page.locator('[data-op="ex2"]').click();
   await page.getByRole("button", { name: "Modifier", exact: true }).click();
   const target = page.getByRole("combobox", { name: "Corps cible" });
+  // The body it cuts is used up by it: still shown as its target, not « every body » by default.
+  await expect(target).toHaveValue("sh1#0");
+  await expect(page.locator("[data-extrude-touched]")).toHaveCount(0);
   await target.selectOption("*touched");
   await expect(page.locator("[data-extrude-touched]")).toContainText("Elle coupe 2 corps");
   await page.getByRole("button", { name: "OK", exact: true }).click();

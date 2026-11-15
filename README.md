@@ -666,7 +666,9 @@ serveur accepte les deux versions.
   - pour une coupe, la cible « Tous les corps qu'elle touche » coupe chaque corps que la forme traverse — une rainure
     tracée à travers plusieurs panneaux les rainure tous : le panneau dit combien et lesquels, et « OK » garde une
     extrusion qui coupe par corps (une étape chacune dans l'historique, en une annulation). Un corps simplement posé
-    contre la forme n'est pas compté ; les corps cachés non plus (`app/extrude-touched.ts`).
+    contre la forme n'est pas compté ; les corps cachés non plus (`app/extrude-touched.ts`). Pour une extrusion qu'on
+    modifie, sa cible (le corps qu'elle a consommé) reste dans la liste et choisie ; sans cible, la liste dit
+    « — choisir — » plutôt que de montrer le premier choix comme pris.
 
 ## Opérations solides (phase 5)
 
@@ -2082,6 +2084,9 @@ opération existante.
   longueur puis angle sur l'horizontale ; cercle : diamètre. La souris donne le sens et tout ce qui n'est pas tapé.
   Chaque valeur tapée devient une **cote de l'esquisse** (longueur, diamètre), sauf si l'esquisse ne peut pas la
   prendre ; l'angle oriente le trait sans poser de cote. Sur un clavier AZERTY, les chiffres se tapent sans Maj.
+  Une case prend aussi un **calcul**, comme la calculatrice : `(190+100)/2`, `2*70`, `80-2,5` (+ − × ÷ et
+  parenthèses, `measurements/expression.ts`) ; son résultat s'écrit à côté (« (190+100)/2 = 145 ») et la forme le
+  prend dès que le calcul est complet.
   Une valeur tapée qui fait sortir la forme de l'écran fait **reculer la vue** pour la montrer entière, avec ses
   cases (`showShape` de `sketcher/mode.ts`).
 - **Vider un corps** (groupe Modifier, après Coque ; `data-action="hollow"`) : un clic sur un corps le vide à

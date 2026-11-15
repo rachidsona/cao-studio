@@ -11,7 +11,7 @@
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import * as THREE from "three";
 import { closeCalculator, openCalculator } from "../ui/calculator";
-import { addExtrude, findFeature, latestBody, updateFeature } from "../document/operations";
+import { addExtrude, bodyLabel, findFeature, latestBody, updateFeature } from "../document/operations";
 import type { BooleanOperation, CadDocument, DisplayUnit, ExtrudeFeature, SketchFeature } from "../document/types";
 import { UNIT_LABELS, formatLength, fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
 import { frameOf, toWorld, type SketchFrame, type Vec3 } from "../sketcher/frame";
@@ -500,6 +500,8 @@ export class ExtrudeTool implements PointerHandler {
     edgeTake.addEventListener("change", () => setEdgeTake(edgeTake.value as EdgeTake));
 
     const bodies = this.host.bodies().filter((b) => b.id !== this.editing);
+    // The body an extrusion being changed cuts is used up by it, so not shown: listed all the same, as chosen.
+    if (this.target && this.target !== TOUCHED && !bodies.some((b) => b.id === this.target)) bodies.unshift({ id: this.target, name: bodyLabel(this.host.doc(), this.target) });
     const target =
       this.operation === "new"
         ? null
@@ -511,6 +513,8 @@ export class ExtrudeTool implements PointerHandler {
               const select = el(
                 "select",
                 { class: COMPACT_INPUT, "aria-label": "Corps cible" },
+                // Nothing chosen yet: said so, rather than the first choice shown as if it were taken.
+                ...(this.target ? [] : [el("option", { value: "", selected: true, disabled: true }, "— choisir —")]),
                 ...(this.operation === "cut" ? [el("option", { value: TOUCHED, selected: this.target === TOUCHED }, "Tous les corps qu'elle touche")] : []),
                 ...bodies.map((b) => el("option", { value: b.id, selected: b.id === this.target }, b.name)),
               );

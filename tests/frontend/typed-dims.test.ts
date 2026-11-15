@@ -24,6 +24,23 @@ describe("cotes tapées pendant le tracé", () => {
     expect(typedFields(undefined)).toEqual([]);
   });
 
+  it("une case prend un calcul : (190+100)/2 cm, 2×60 — son résultat s'affiche à côté ; pas fini, il n'est pas pris", () => {
+    const typed = new TypedDims();
+    type(typed, "rectangle", "(190+100)/");
+    expect(typed.values("rectangle", "cm")).toEqual({});
+    type(typed, "rectangle", "2");
+    expect(typed.values("rectangle", "cm")).toEqual({ w: 1450 });
+    const shown = typed.decorate("rectangle", "cm", [{ key: "preview:w", role: "preview", shape: { kind: "label", at: [0, 0] }, value: 0, text: "0" } as never], null, 1);
+    expect(shown[0]!.text).toBe("(190+100)/2 = 145");
+    typed.next("rectangle", "cm");
+    type(typed, "rectangle", "2×60,5");
+    expect(typed.values("rectangle", "cm")).toEqual({ w: 1450, h: 1210 });
+    // A decimal sign in each number, not two in one.
+    const other = new TypedDims();
+    type(other, "line", "1,5+2,,5");
+    expect(other.values("line", "mm")).toEqual({ l: 4 });
+  });
+
   it("rectangle : la largeur tapée, Tab, la hauteur — le pointeur donne le côté", () => {
     const typed = new TypedDims();
     expect(typed.empty).toBe(true);

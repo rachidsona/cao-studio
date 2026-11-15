@@ -93,3 +93,35 @@ test("un rectangle, une ligne et un cercle tracés en tapant leurs cotes : Tab p
   expect(added.map((c) => [c.kind, c.value]).sort()).toEqual([["diameter", 20], ["length", 1000], ["length", 15], ["length", 2000], ["length", 30], ["length", 40]]);
   expect(errors).toEqual([]);
 });
+
+test("une cote se tape en calcul : (190+100)/2 donne 145, que le rectangle prend", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-cotes-calcul");
+  const sketch = async () => {
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return (project.document.features as Sketch[]).find((f) => f.id === "sk1")!;
+  };
+  await page.locator('details:not([data-bodies]) [data-menu="sk1"]').click();
+  await page.getByRole("button", { name: /^Modifier/ }).first().click();
+  await expect(page.locator("#editor")).toHaveAttribute("data-mode", "sketch");
+  const canvas = page.locator('[data-ref="viewport"] canvas');
+  const box = (await canvas.boundingBox())!;
+  const at = (x: number, y: number): [number, number] => [box.x + box.width * x, box.y + box.height * y];
+  const field = (id: string) => page.locator(`[data-dim-field="${id}"]`);
+  await page.locator('[data-sketch-tool="rectangle"]').click();
+  await page.mouse.click(...at(0.15, 0.2));
+  await page.mouse.move(...at(0.3, 0.1));
+  // The project counts in cm: (190+100)/2 is 145 cm, its result shown beside it.
+  await page.keyboard.type("(190+100)/2");
+  await expect(field("w")).toHaveText("(190+100)/2 = 145");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("2*70");
+  await expect(field("h")).toHaveText("2*70 = 140");
+  await page.keyboard.press("Enter");
+  await expect(field("w")).toHaveCount(0);
+  await page.keyboard.press("Control+s");
+  await expect.poll(async () => (await sketch()).constraints.filter((c) => c.kind === "length").map((c) => c.value), { timeout: 30_000 }).toEqual(expect.arrayContaining([1450, 1400]));
+  expect(errors).toEqual([]);
+});

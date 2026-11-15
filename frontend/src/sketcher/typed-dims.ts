@@ -6,6 +6,8 @@
  *  - rectangle : largeur, puis hauteur ;
  *  - ligne : longueur, puis angle sur l'horizontale ;
  *  - cercle : diamètre.
+ * Une case prend aussi un calcul, comme la calculatrice : (190+100)/2, 2×120, 80-2,5 — son résultat s'affiche à côté et
+ * la forme le prend dès qu'il est complet.
  * Chaque valeur tapée devient une cote de l'esquisse (longueur, diamètre), comme dans Fusion : la forme garde sa
  * mesure. L'angle d'une ligne oriente le trait sans poser de cote. État et géométrie purs : le pointeur
  * (sketch-pointer.ts) s'en sert pour placer le curseur, l'esquisse pour dessiner les cases (overlay.ts).
@@ -13,7 +15,8 @@
 import { solveSketch } from "../constraints/solver";
 import type { SketchConstraint, SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
-import { fromDisplay, parseNumber, toDisplay, trim } from "../measurements/units";
+import { evaluateExpression } from "../measurements/expression";
+import { toDisplay, trim } from "../measurements/units";
 import type { Annotation } from "./annotations";
 import { addConstraint, findCurve, pointPos, type Vec2 } from "./edit";
 
@@ -45,11 +48,11 @@ export class TypedDims {
     return this.text === "" && this.locked.size === 0;
   }
 
-  /** A digit, a point or a comma typed: into the active field. False: not a key of a number. */
+  /** A digit, a point, a comma or a sign of a calculation typed: into the active field. False: not a key of a value. */
   type(tool: string, key: string): boolean {
-    if (!typedFields(tool).length || !/^[0-9.,]$/.test(key)) return false;
-    // One decimal sign.
-    if (/[.,]/.test(key) && /[.,]/.test(this.text)) return true;
+    if (!typedFields(tool).length || !/^[0-9.,+\-*/()×÷]$/.test(key)) return false;
+    // One decimal sign in a number.
+    if (/[.,]/.test(key) && /[.,]/.test(/[0-9.,]*$/.exec(this.text)![0])) return true;
     this.text += key;
     return true;
   }
@@ -86,9 +89,17 @@ export class TypedDims {
 
   /** The number being typed in a field, in mm (degrees for the angle); null: nothing whole yet. */
   private typed(field: DimField, unit: DisplayUnit): number | null {
-    const n = this.text ? parseNumber(this.text) : null;
-    if (n === null || !(field === "a" ? n >= 0 && n <= 360 : n > 0)) return null;
-    return field === "a" ? n : fromDisplay(n, unit);
+    if (!this.text) return null;
+    let n: number;
+    try {
+      // A calculation, in the unit of the project (mm out), or degrees for the angle.
+      n = evaluateExpression(this.text, field === "a" ? "deg" : unit);
+    } catch {
+      // Not whole yet: « (190+ ».
+      return null;
+    }
+    if (!Number.isFinite(n) || !(field === "a" ? n >= 0 && n <= 360 : n > 0)) return null;
+    return n;
   }
 
   /** The values in force: those kept, and the one being typed. */
@@ -115,7 +126,12 @@ export class TypedDims {
     if (!fields.length) return annotations;
     const state = (field: DimField): NonNullable<Annotation["field"]>["state"] => (fields[this.active] === field ? "active" : this.locked.has(field) ? "locked" : "idle");
     const shown = (field: DimField, measured: string) => {
-      if (fields[this.active] === field && this.text) return this.text;
+      if (fields[this.active] === field && this.text) {
+        // A calculation shows its result beside it.
+        if (!/[-+*/()×÷]/.test(this.text)) return this.text;
+        const v = this.typed(field, unit);
+        return v === null ? this.text : `${this.text} = ${field === "a" ? `${trim(v, 2)}°` : trim(toDisplay(v, unit), 3)}`;
+      }
       const kept = this.locked.get(field);
       return kept === undefined ? measured : field === "a" ? `${trim(kept, 2)}°` : trim(toDisplay(kept, unit), 3);
     };
