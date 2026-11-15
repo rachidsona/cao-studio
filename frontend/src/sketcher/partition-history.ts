@@ -60,7 +60,7 @@ export function rebuildChain(g: SketchGeometry, partitionId: string): Rebuilt | 
 
   geometry = addPartition(geometry, partitionGeometry(input, layout), origin);
   const owned = new Map<string, string[]>([[partition.id, made()]]);
-  const elements = new Map<string, ExtrudedElement[]>([[partition.id, partitionElements(layout, origin)]]);
+  const elements = new Map<string, ExtrudedElement[]>([[partition.id, partitionElements(layout, origin, input.inside)]]);
   const niches = new Map<string, NicheNode>();
   layout.caseSpans.forEach(([x0, x1], i) => niches.set(pathKey([i]), { path: [i], box: { x0: x0 + origin[0], x1: x1 + origin[0], y0: layout.inner[0] + origin[1], y1: layout.inner[1] + origin[1] } }));
 

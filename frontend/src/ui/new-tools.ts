@@ -8,6 +8,7 @@ import { toolKey } from "./tool-catalogue";
 
 /** The tools added lately, by key: the newest first. */
 export const NEW_TOOLS: readonly string[] = [
+  "data-action:copy-ops",
   "data-action:split-sides",
   "data-open-all:",
   "data-select-all:",

@@ -158,6 +158,11 @@ export interface PartitionParams {
   outer: OuterPass;
   single: Pass;
   double: Pass;
+  /**
+   * Laid in the opening of a body (« Aménager ce corps ») : its outer sides, top and bottom are the body's walls — laid
+   * out (the niches inside them), not made.
+   */
+  inside?: boolean;
 }
 
 /** What a division of a niche by shelves is made from (see sketcher/shelves.ts). */

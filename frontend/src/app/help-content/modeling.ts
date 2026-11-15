@@ -165,6 +165,18 @@ export const MODELING: HelpFamily[] = [
         tip: "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone ; un coin arrondi est un côté courbe à lui, joint droit vers son centre. La paroi peut être d'épaisseur inégale : chaque coin du contour va avec le coin du trou le plus proche. Le trou doit avoir autant de coins que le contour. Pour régler les joints ensuite, cliquez l'étape dans l'Historique, puis « Modifier ».",
       },
       {
+        keys: ["data-action:copy-ops"],
+        name: "Copier les opérations",
+        what: "Refait sur d'autres corps ce qu'on a fait sur un corps — une découpe, une poche, un perçage, des côtés séparés, un congé, un chanfrein, un usinage —, à la même place par rapport à chacun.",
+        steps: [
+          "Cliquez « Copier les opérations » (menu du groupe Modifier), puis le corps qui a les opérations (ou sélectionnez-le avant).",
+          "Cochez celles à recopier : celles qui ont fait ce corps le sont d'avance ; celles faites ensuite sur ses autres pièces sont proposées aussi.",
+          "Cliquez le corps où les refaire, ou plusieurs ; recliquez-en un pour le retirer. L'aperçu les montre.",
+          "Si la copie n'est pas dans le bon sens, « Autre orientation » la tourne. « OK » (ou Entrée) la garde ; « Terminer » (Échap) ferme l'outil.",
+        ],
+        tip: "La copie est centrée comme l'original sur son corps, et tournée d'un quart de tour quand le corps cible est en travers. Chaque opération recopiée est une étape de l'Historique (une découpe avec son esquisse) : elle se modifie ensuite comme les autres. Un déplacement du corps d'origine n'est pas recopié.",
+      },
+      {
         keys: ["data-action:paneling"],
         name: "Panneaux sur faces",
         what: "Transforme les faces planes ou cylindriques d'un volume en panneaux d'une épaisseur donnée, assemblés en onglet à tout angle ou bout à bout : un seau à pans, une boîte, un caisson biais, un anneau, un angle arrondi.",

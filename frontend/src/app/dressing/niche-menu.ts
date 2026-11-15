@@ -1,6 +1,6 @@
 /**
  * Le menu d'une niche : un clic droit sur une niche, sans outil en cours, propose ce qu'on peut y faire (sur une porte :
- * le menu de la porte, app/door-menu.ts ; sur un tiroir : le menu des tiroirs, app/drawer-menu.ts ; sur un caisson de cuisine : l'isoler et l'aménager, app/cabinet-furnish.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
+ * le menu de la porte, app/door-menu.ts ; sur un tiroir : le menu des tiroirs, app/drawer-menu.ts ; sur un caisson de cuisine : l'isoler et l'aménager, app/cabinet-furnish.ts ; sur un corps creux à soi : aménager son ouverture, app/body-furnish.ts). Sur l'aperçu d'un linéaire de cuisine pas encore gardé, il propose de le
  * garder (OK) ou de l'annuler : ses pièces ne sont pas encore dans le projet. L'outil choisi
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
@@ -20,6 +20,7 @@ import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { Joinery3D } from "../joinery-3d";
+import { canFurnishBody, furnishBody, openInBody } from "../body-furnish";
 import { openNicheCopy } from "./niche-copy-tool";
 import { nicheUnderPointer, type PickedNiche } from "./niche-pick";
 
@@ -90,6 +91,20 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       return;
     }
     if (!niche) {
+      // A body of one's own, hollow: its opening furnished like a caisson (app/body-furnish.ts).
+      if (face && canFurnishBody(editor, face.bodyId)) {
+        const at = face.point.toArray() as [number, number, number];
+        const go = (action: NicheAction) => () => void openInBody(editor, viewport, face.bodyId, at, (n) => runNiche(editor, action, n));
+        menu = popup(event, "Menu du corps", "Son ouverture reçoit étagères, cloisons, tiroirs et portes ; ses parois en sont les côtés.", [
+          ["Aménager ce corps", () => void furnishBody(editor, viewport, face.bodyId)],
+          ["Étagères…", go("shelves")],
+          ["Cloisons…", go("cloisons")],
+          ["Tiroirs…", go("drawers")],
+          ["Porte…", go("door")],
+          ...(alone ? [alone] : []),
+        ]);
+        return;
+      }
       if (alone) menu = popup(event, "Menu de la sélection", null, [alone]);
       return;
     }
@@ -125,6 +140,18 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
   };
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeMenu();
+  });
+
+  // A niche tool with no Répartition to work in, or clicked on a body: a hollow body (the one clicked, else the one
+  // selected) furnished, the tool opened in it.
+  document.addEventListener("cad:niche-body", (event) => {
+    const { action, bodyId, at } = (event as CustomEvent<{ action: NicheAction; bodyId?: string; at?: [number, number, number] }>).detail;
+    const body = bodyId ?? editor.picked.selection.bodies[0] ?? editor.picked.selection.faces[0]?.bodyId;
+    if (!body || !canFurnishBody(editor, body)) return;
+    event.preventDefault();
+    const box = viewport.bodyMesh(body)?.metrics.bbox;
+    const point = at ?? (box ? ([0, 1, 2].map((i) => (box[0][i]! + box[1][i]!) / 2) as [number, number, number]) : [0, 0, 0]);
+    void openInBody(editor, viewport, body, point, (n) => runNiche(editor, action, n));
   });
 
   // A tool clicked in a niche of another wall than its own.

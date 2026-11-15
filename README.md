@@ -2118,6 +2118,29 @@ opération existante.
   « Vider un corps » marquée `frame` (`ShellFeature.frame`) ; son étape de l'Historique rouvre cet outil.
   `features/ring-sides.ts` (`ringWalls`, le calcul pur dans le plan ; `splitRing`, `frameEnds`),
   `app/split-sides-tool.ts`.
+- **Copier les opérations** (groupe Modifier, rangé dans son menu ; `data-action="copy-ops"`) : un clic sur un corps —
+  découpé, percé, aux côtés séparés, arrondi, usiné — puis sur un ou plusieurs autres corps, et ce qu'on a fait au
+  premier est refait sur chacun, à la même place par rapport à lui. Le corps d'origine est celui d'avant ces
+  opérations (une pièce d'un corps séparé, ou un corps fait tel quel) ; celles qui ont fait le corps cliqué sont
+  cochées, celles faites ensuite sur ses autres pièces proposées. La copie passe de la boîte de l'original à celle de
+  la cible : centre sur centre, tournée par quarts de tour pour que leurs côtés se répondent (un côté en travers d'un
+  cadre reçoit la poche du côté long, tournée) ; « Autre orientation » essaie les autres sens qui vont aussi bien.
+  Chaque opération recopiée est une étape de l'Historique — une découpe avec sa propre esquisse, un perçage, une
+  coque, un congé, un chanfrein, des panneaux sur faces, un usinage —, ses références de faces et d'arêtes déplacées
+  avec elle ; un déplacement du corps n'est pas recopié, une opération qui ne se recopie pas (une découpe de plan de
+  travail) est laissée et la suite faite sans elle. `document/copy-operations.ts` (`operationsOf`, `turnsBetween`,
+  `placing`, `withOperationsCopied`), `app/copy-ops-tool.ts`.
+- **Aménager ce corps** (clic droit sur un corps creux qui n'est pas déjà un meuble : un cadre fait avec Séparer les
+  côtés, un caisson monté à la main, un corps vidé) : son ouverture reçoit une Répartition marquée `inside`, dont les
+  côtés, le dessus et le dessous sont ses parois — tracés, pas faits : rien en double, ses découpes et ses onglets
+  restent. Étagères, Cloisons, Niche, Tiroirs, Penderie et Porte y marchent alors comme dans un dressing (clic droit
+  dans l'ouverture) ; « Étagères… », « Cloisons… », « Tiroirs… » et « Porte… » du même menu font les deux d'un coup, et
+  les outils du ruban font de même sur un corps creux sélectionné (s'il n'y a pas de Répartition) ou cliqué. L'ouverture
+  se trouve d'un rayon depuis le milieu du corps dans chaque sens jusqu'à la première paroi ; elle se voit par son
+  côté ouvert le plus tourné vers l'œil, le haut en haut ; ses parois donnent l'épaisseur des côtés tracés. Un corps
+  plein est refusé (le vider d'abord). Les corps aménagés ensemble sont ceux tirés du même corps séparé, ou ceux
+  sélectionnés. `document/body-opening.ts` (`openingOf`, `withBodyFurnished`, `furnishedBodies`),
+  `app/body-furnish.ts`, `PartitionParams.inside`.
 - **Outils nouveaux** : un petit **point orange** marque un outil nouveau — sur son icône (ruban, colonne de droite,
   sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,
   jusqu'à ce qu'on s'en serve une fois ; le navigateur retient ceux qu'on a utilisés. La liste est dans

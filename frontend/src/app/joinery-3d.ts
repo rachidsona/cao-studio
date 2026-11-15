@@ -331,7 +331,10 @@ export class Joinery3D implements PointerHandler {
       if (!niche) {
         const elsewhere = this.action ? nicheUnderPointer(this.viewport, this.host.doc(), event) : null;
         // A niche of another wall: the same tool opens there.
+        const face = !elsewhere && this.action ? this.viewport.pickFace(event) : null;
         if (elsewhere && elsewhere.sketch !== this.sketchId) document.dispatchEvent(new CustomEvent("cad:niche-elsewhere", { detail: { action: this.action, niche: elsewhere } }));
+        // A hollow body of one's own clicked: furnished, the tool opened in it (app/body-furnish.ts).
+        else if (face && !document.dispatchEvent(new CustomEvent("cad:niche-body", { cancelable: true, detail: { action: this.action, bodyId: face.bodyId, at: face.point.toArray() } }))) return true;
         else this.host.notify("Cliquez dans une niche (les volumes bleus entre les panneaux).", "info");
         return true;
       }

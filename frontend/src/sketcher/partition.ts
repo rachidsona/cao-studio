@@ -150,8 +150,10 @@ function caseShares(input: PartitionInput): number[] | string {
  * The elements to extrude, each its own body: the bottom, the top (numbered when the sides cut them in pieces), then
  * the sides left to right (« Côté », numbered when added). `origin` moves their points like the partition.
  */
-export function partitionElements(layout: PartitionLayout, origin: [number, number] = [0, 0]): { probe: [number, number]; name: string; numbered?: boolean }[] {
-  const items = layout.panels.map((rect, i) => ({ rect, kind: layout.kinds[i]! }));
+export function partitionElements(layout: PartitionLayout, origin: [number, number] = [0, 0], inside = false): { probe: [number, number]; name: string; numbered?: boolean }[] {
+  // In a body: its walls stand for the outer sides, the top and the bottom.
+  const outer = (i: number) => layout.kinds[i] !== "side" || i === 0 || i === layout.kinds.lastIndexOf("side");
+  const items = layout.panels.map((rect, i) => ({ rect, kind: layout.kinds[i]!, i })).filter((it) => !inside || !outer(it.i));
   const probe = (r: [number, number, number, number]): [number, number] => [(r[0] + r[2]) / 2 + origin[0], (r[1] + r[3]) / 2 + origin[1]];
   const out: { probe: [number, number]; name: string; numbered?: boolean }[] = [];
   for (const [kind, label] of [["bottom", "Dessous"], ["top", "Dessus"]] as const) {

@@ -344,15 +344,15 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:shelves"],
         name: "Étagères",
-        what: "Divise une ou plusieurs niches d'une Répartition par des étagères, chacune un corps.",
+        what: "Divise une ou plusieurs niches d'une Répartition — ou l'ouverture de n'importe quel corps creux : un cadre, un caisson fait à la main — par des étagères, chacune un corps.",
         steps: [
-          "Faites d'abord une Répartition et sélectionnez-la ; sinon l'outil travaille sur la dernière.",
+          "Faites d'abord une Répartition et sélectionnez-la ; sinon l'outil travaille sur la dernière. Pour un corps à vous (un cadre fait avec « Séparer les côtés », un corps vidé), sélectionnez-le, ou cliquez-le l'outil ouvert : il est aménagé d'abord.",
           "Cliquez « Étagères » : les niches libres sont des volumes bleus. Cliquez-en une, ou plusieurs pour leur donner les mêmes étagères (un second clic retire).",
           "Choisissez le nombre d'étagères (1 à 20), l'« Épaisseur » et le partage « Niches » : « Égales », « Celle du bas fixe » ou « Celle du haut fixe » avec sa « Hauteur fixe ».",
           "Plus vite, dans « Saisie rapide » : *3 fait 3 étagères, /4 fait 4 niches égales, 30;40;50 donne ces hauteurs de niches depuis le bas, dans l'unité du projet, et le reste à la dernière. Entrée applique.",
           "Cliquez « OK ». L'outil reste actif : cliquez une niche obtenue pour la diviser à son tour. « Terminer » (ou Échap) le ferme.",
         ],
-        tip: "Les étagères sont extrudées à la profondeur des panneaux (« Extruder les étagères »). Supprimer une étagère réunit ses deux niches ; ce qu'elles contenaient part avec, après confirmation.",
+        tip: "Les étagères sont extrudées à la profondeur des panneaux (« Extruder les étagères »). Supprimer une étagère réunit ses deux niches ; ce qu'elles contenaient part avec, après confirmation. Un clic droit sur un corps creux qui n'est pas déjà un meuble propose « Aménager ce corps » : son ouverture devient une niche dont les parois sont les côtés (rien n'est fait en double, ses découpes restent), et Étagères, Cloisons, Niche, Tiroirs, Penderie et Porte y marchent comme dans un dressing ; « Étagères… », « Cloisons… », « Tiroirs… » et « Porte… » du même menu font les deux d'un coup. L'ouverture se voit par son côté ouvert tourné vers vous ; un corps plein est refusé : videz-le d'abord.",
       },
       {
         keys: ["data-action:cloisons"],

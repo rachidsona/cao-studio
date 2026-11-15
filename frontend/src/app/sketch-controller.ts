@@ -214,7 +214,9 @@ export class SketchController {
     }
     const sketch = partitionHolder(this.host.doc(), selected);
     if (!sketch) {
-      this.host.notify(`${tool === "cloisons" ? "Cloisons" : "Étagères"} divise les niches d'une répartition : faites d'abord une Répartition.`, "error");
+      // A hollow body selected: furnished, the tool opened in it (app/body-furnish.ts).
+      if (!document.dispatchEvent(new CustomEvent("cad:niche-body", { cancelable: true, detail: { action: tool } }))) return;
+      this.host.notify(`${tool === "cloisons" ? "Cloisons" : "Étagères"} divise les niches d'une répartition : faites d'abord une Répartition, ou sélectionnez un corps creux à aménager.`, "error");
       return;
     }
     // The shelves (or cloisons) are bodies too, as deep as the panels of the répartition.
@@ -233,7 +235,8 @@ export class SketchController {
     this.joinery?.cancel();
     const sketch = partitionHolder(this.host.doc(), editing?.sketch ?? selected);
     if (!sketch) {
-      this.host.notify(`${fill === "niche" ? "Niche règle" : fill === "module" ? "Module équipe" : fill === "rod" ? "Penderie équipe" : fill === "accessory" ? "Accessoire intérieur équipe" : fill === "door" ? "Porte sur niches occupe" : "Tiroirs équipe"} les niches d'une répartition : faites d'abord une Répartition.`, "error");
+      if (!editing && !document.dispatchEvent(new CustomEvent("cad:niche-body", { cancelable: true, detail: { action: fill } }))) return;
+      this.host.notify(`${fill === "niche" ? "Niche règle" : fill === "module" ? "Module équipe" : fill === "rod" ? "Penderie équipe" : fill === "accessory" ? "Accessoire intérieur équipe" : fill === "door" ? "Porte sur niches occupe" : "Tiroirs équipe"} les niches d'une répartition : faites d'abord une Répartition, ou sélectionnez un corps creux à aménager.`, "error");
       return;
     }
     this.joinery = fill === "niche" ? Joinery3D.height(this.viewport, this.joineryHost(), sketch) : fill === "module" ? Joinery3D.module(this.viewport, this.joineryHost(), sketch) : Joinery3D.equip(this.viewport, this.joineryHost(), sketch, fill, editing);
