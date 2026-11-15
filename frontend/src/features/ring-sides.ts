@@ -71,7 +71,7 @@ type Split = { at: P2; on: "corner" | "previous" | "next"; seg: number };
  * string: why the ring cannot be split so. `widen`: each wall pushed out of the ring by that much — along its joints
  * at the ends, square to its faces elsewhere —, so a boolean meets none of the body's faces edge-on.
  */
-export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | readonly P2[], joint: "miter" | "butt", widen = 0): P2[][] | string {
+export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | readonly P2[], joint: "miter" | "butt", widen = 0, pass?: { mode: "sides" | "boards"; up: P2 }): P2[][] | string {
   const outer = ccw("corners" in outerIn ? outerIn : polygon(outerIn));
   const inner0 = ccw("corners" in innerIn ? innerIn : polygon(innerIn));
   const n = outer.corners.length;
@@ -85,10 +85,16 @@ export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | r
   const O = (k: number) => outer.corners[((k % n) + n) % n]!;
   const I = (k: number) => inner.corners[((k % n) + n) % n]!;
   const side = (o: Outline, k: number) => o.sides[((k % n) + n) % n]!;
-  // Butted: the longest sides run through, never two neighbours.
+  // Butted: the longest sides run through, never two neighbours — or first those chosen: upright (the sides) or across
+  // (the top and the bottom), as the walls stand.
   const through = new Set<number>();
+  const upright = (sd: P2[]) => {
+    const up = pass ? unit(pass.up) : null;
+    return !!up && Math.abs(dot(unit(sub(sd[sd.length - 1]!, sd[0]!)), up)) > Math.SQRT1_2;
+  };
+  const chosen = (sd: P2[]) => (!pass ? 0 : upright(sd) === (pass.mode === "sides") ? 0 : 1);
   if (joint === "butt") {
-    for (const i of outer.sides.map((sd, i) => ({ l: lengthOf(sd), i })).sort((a, b) => b.l - a.l || a.i - b.i).map((x) => x.i)) {
+    for (const i of outer.sides.map((sd, i) => ({ l: lengthOf(sd), c: chosen(sd), i })).sort((a, b) => a.c - b.c || b.l - a.l || a.i - b.i).map((x) => x.i)) {
       if (!through.has((i + n - 1) % n) && !through.has((i + 1) % n)) through.add(i);
     }
   }
@@ -208,7 +214,7 @@ function outlines(face: Face): P3[][][] | null {
 }
 
 /** The body's sides, each a solid: the ring read on its top face, cut into its sides through its whole height. */
-export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt"): Shape3D[] {
+export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt", pass?: "sides" | "boards"): Shape3D[] {
   // The top: the largest flat face with a hole, and the one facing the other way at the bottom.
   const caps = target.faces
     .filter((f) => f.geomType === "PLANE" && f.wires.length === 2)
@@ -239,7 +245,10 @@ export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt"
   const [a, b] = rings.map((r): Outline => ({ corners: r.map((e) => flat(e[0]!)), sides: r.map((e) => e.map(flat)) })) as [Outline, Outline];
   const size = (x: Outline) => Math.abs(area(x.sides.flatMap((sd) => sd.slice(0, -1))));
   const [outer, inner] = size(a) >= size(b) ? [a, b] : [b, a];
-  const walls = ringWalls(outer, inner, joint, 1);
+  // Up, as the frame stands: the world's up, or for a frame lying flat (its axis up) the depth (y), as seen from above.
+  const up3: P3 = Math.abs(n[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
+  const up: P2 = [up3[0] * u[0] + up3[1] * u[1] + up3[2] * u[2], up3[0] * v[0] + up3[1] * v[1] + up3[2] * v[2]];
+  const walls = ringWalls(outer, inner, joint, 1, pass ? { mode: pass, up } : undefined);
   if (typeof walls === "string") throw new GeometryError(`${name} : ${walls}`);
   const shapes: Shape3D[] = [];
   try {

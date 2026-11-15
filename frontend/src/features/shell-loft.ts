@@ -209,13 +209,13 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
   if (feature.sides === "separate" && !feature.back && !feature.faces.length && (feature.frame || feature.thickness === 0)) {
     const target = requireSolid(lookup, feature.target).shape;
     const joint = feature.joint ?? "miter";
-    if (isFrame(target)) return { kind: "solids", shapes: splitRing(feature.name, target, joint) };
+    if (isFrame(target)) return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };
     if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps est plein ; saisissez l'épaisseur de ses côtés pour le vider.`);
     const ends = frameEnds(target);
     if (!ends) throw new GeometryError(`${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
     const frame = hollowed(feature.name, target, ends, feature.thickness);
     try {
-      return { kind: "solids", shapes: splitRing(feature.name, frame, joint) };
+      return { kind: "solids", shapes: splitRing(feature.name, frame, joint, feature.pass) };
     } finally {
       frame.delete();
     }

@@ -44,6 +44,48 @@ describe("séparer les côtés d'un cadre", () => {
     expect(ringWalls(outer, [[18, 18], [582, 18], [300, 382]], "miter")).toMatch(/même nombre de côtés/);
   });
 
+  it("bout à bout, on choisit qui passe : les côtés (debout) ou le dessus et le dessous, comme dans une Répartition", () => {
+    const outer: P2[] = [[0, 0], [600, 0], [600, 400], [0, 400]];
+    const inner: P2[] = [[18, 18], [582, 18], [582, 382], [18, 382]];
+    const height = (w: P2[]) => Math.round(Math.max(...w.map((p) => p[1])) - Math.min(...w.map((p) => p[1])));
+    const width = (w: P2[]) => Math.round(Math.max(...w.map((p) => p[0])) - Math.min(...w.map((p) => p[0])));
+    // Up is y: the sides (18 wide) go the whole 400; the top and the bottom stop between them (564).
+    const sides = ringWalls(outer, inner, "butt", 0, { mode: "sides", up: [0, 1] }) as P2[][];
+    expect(sides.filter((w) => width(w) === 18).map(height)).toEqual([400, 400]);
+    expect(sides.filter((w) => height(w) === 18).map(width)).toEqual([564, 564]);
+    // The top and the bottom pass: 600 long, the sides 364 between them — here as the longest ones would.
+    const boards = ringWalls(outer, inner, "butt", 0, { mode: "boards", up: [0, 1] }) as P2[][];
+    expect(boards.filter((w) => height(w) === 18).map(width)).toEqual([600, 600]);
+    expect(boards.filter((w) => width(w) === 18).map(height)).toEqual([364, 364]);
+    // Nothing lost either way.
+    for (const walls of [sides, boards]) expect(walls.reduce((s, w) => s + area(w), 0)).toBeCloseTo(area(outer) - area(inner), 6);
+  });
+
+  it("dans le noyau, un cadre debout (vu de face) : les côtés passent sur toute la hauteur", () => {
+    // Its axis along y: a frame 600 wide, 720 high, 400 deep, standing.
+    const outer: P2[] = [[0, 0], [600, 0], [600, 720], [0, 720]];
+    const inner: P2[] = [[18, 18], [582, 18], [582, 702], [18, 702]];
+    const flat = ring(outer, inner, 400);
+    const standing = flat.rotate(90, [0, 0, 0], [1, 0, 0]) as Shape3D;
+    const parts = splitRing("Côtés", standing, "butt", "sides");
+    const heights = parts.map((p) => {
+      const b = p.boundingBox.bounds;
+      return [Math.round(b[1][0] - b[0][0]), Math.round(b[1][2] - b[0][2])];
+    });
+    // The two sides 18 wide go the whole 720 up; the top and the bottom fit between them (564).
+    expect(heights.filter(([w]) => w === 18).map(([, h]) => h)).toEqual([720, 720]);
+    expect(heights.filter(([, h]) => h === 18).map(([w]) => w)).toEqual([564, 564]);
+    for (const p of parts) p.delete();
+    // The top and the bottom passing instead, though the sides are the longer: 600 across, the sides 684 between.
+    const across = splitRing("Côtés", standing, "butt", "boards").map((p) => {
+      const b = p.boundingBox.bounds;
+      p.delete();
+      return [Math.round(b[1][0] - b[0][0]), Math.round(b[1][2] - b[0][2])];
+    });
+    expect(across.filter(([, h]) => h === 18).map(([w]) => w)).toEqual([600, 600]);
+    expect(across.filter(([w]) => w === 18).map(([, h]) => h)).toEqual([684, 684]);
+  }, 120_000);
+
   it("un cadre de bois de 4 côtés, un triangle et un hexagone deviennent 4, 3 et 6 corps qui font le cadre entier", () => {
     const cases: [P2[], P2[]][] = [
       [[[0, 0], [600, 0], [600, 400], [0, 400]], [[18, 18], [582, 18], [582, 382], [18, 382]]],

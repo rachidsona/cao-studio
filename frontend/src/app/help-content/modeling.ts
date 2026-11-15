@@ -159,7 +159,7 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps dans la vue (ou sélectionnez-le avant).",
           "Un corps plein est d'abord vidé : réglez l'« Épaisseur des côtés » ; il s'ouvre dessus et dessous, comme un caisson sans fond. Un corps déjà creux garde ses côtés tels qu'ils sont.",
-          "Choisissez les « Joints » : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou « Bout à bout » : les côtés les plus longs traversent, les autres s'arrêtent contre eux.",
+          "Choisissez les « Joints » : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou bout à bout en choisissant qui passe aux angles, comme dans une Répartition : « les côtés passent » (ils vont de bout en bout, le dessus et le dessous s'arrêtent entre eux), « le dessus et le dessous passent », ou « les plus longs passent ».",
           "Le résultat s'affiche ; « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
         ],
         tip: "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone ; un coin arrondi est un côté courbe à lui, joint droit vers son centre. La paroi peut être d'épaisseur inégale : chaque coin du contour va avec le coin du trou le plus proche. Le trou doit avoir autant de coins que le contour. Pour régler les joints ensuite, cliquez l'étape dans l'Historique, puis « Modifier ».",

@@ -2114,8 +2114,10 @@ opération existante.
   polygone ; un coin arrondi est un côté courbe à lui). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
   côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
   qui se font face, toutes les autres d'équerre) ; **déjà creux**, il garde ses côtés tels qu'ils sont. **Joints** :
-  « En onglet (tout angle) », le joint du coin intérieur au coin extérieur, ou « Bout à bout » : les côtés les plus
-  longs traversent (deux voisins jamais tous les deux), les autres s'arrêtent contre la face intérieure du côté qui
+  « En onglet (tout angle) », le joint du coin intérieur au coin extérieur, ou bout à bout, en choisissant **qui passe
+  aux angles** comme dans une Répartition (`ShellFeature.pass`) : « les côtés passent » (debout : d'aplomb pour un
+  cadre debout, le long de y pour un cadre couché vu de dessus), « le dessus et le dessous passent », ou « les plus
+  longs passent » (deux voisins jamais tous les deux) ; les autres s'arrêtent contre la face intérieure du côté qui
   traverse ; là où deux côtés se rejoignent en tangence (un coin arrondi), le joint reste droit. Le contour se lit sur
   la face du dessus du corps : son contour et son trou, autant de coins l'un que l'autre, chaque coin du contour avec
   le coin du trou le plus proche — la paroi peut être d'épaisseur inégale ; un côté courbe est suivi de près (un point
