@@ -2732,7 +2732,8 @@ opération existante.
   apparence, et « Retirer ce module » libère sa niche (`document/module-edit.ts`). Dans l'assistant, le « + » d'un mur
   ouvre la même liste de modules pour choisir celui à ajouter.
   - **Modules programmables** (section « Formules » du panneau, `app/dressing/module-formulas.ts`) : un module dont les
-    cotes se calculent sur la niche où on le pose. Des **paramètres** (« pas » : 350), des **conditions** qui changent de
+    cotes se calculent sur la niche où on le pose. La section est une **carte à part** (filet violet à gauche, fond
+    teinté, marque « ƒx »), fermée comme ouverte, pour la distinguer des autres réglages du module. Des **paramètres** (« pas » : 350), des **conditions** qui changent de
     module selon la niche (« Si largeur > 45 cm alors Tiroirs et étagères ») et une **formule** par cote : nombre
     d'étagères, espacement, chapeau, zone et nombre de tiroirs, tringle sous le haut, épaisseur des étagères — « une
     étagère tous les 35 cm » s'écrit `plancher(hauteur / pas) - 1`. Les formules lisent la largeur et la hauteur libres

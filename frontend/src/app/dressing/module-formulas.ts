@@ -45,6 +45,17 @@ export interface FormulaSection {
   redraw(): void;
 }
 
+/** The section in a card of its own: told apart from the module's other settings at a glance. */
+const CARD = "space-y-1.5 border border-l-4 border-violet-300 border-l-violet-500 bg-violet-50/70 p-2 dark:border-violet-800 dark:border-l-violet-400 dark:bg-violet-950/40";
+
+/** The card's title: a « ƒx » mark and « Formules », with what goes on its right. */
+function cardTitle(...right: HTMLElement[]): HTMLElement {
+  const mark = el("span", { class: "grid size-6 shrink-0 place-items-center bg-violet-600 font-mono text-xs font-bold text-white dark:bg-violet-500", "aria-hidden": "true" }, "ƒx");
+  return el("div", { class: "flex items-center gap-1.5" }, mark, el("p", { class: "flex-1 font-semibold text-violet-900 dark:text-violet-100" }, "Formules"), ...right);
+}
+
+const card = (...children: HTMLElement[]): HTMLElement => el("section", { class: CARD, "aria-label": "Formules", "data-formula-card": "" }, ...children);
+
 const ERROR = "bg-red-50 px-2 py-1.5 text-red-900 dark:bg-red-950 dark:text-red-100";
 const OK = "bg-sky-50 px-2 py-1.5 text-sky-950 dark:bg-sky-950 dark:text-sky-50";
 
@@ -76,9 +87,10 @@ function textField(label: string, value: string, o: { placeholder?: string; inva
 export function formulaRows(o: FormulaSection): HTMLElement[] {
   const program = o.program;
   if (!program) {
-    const open = el("button", { type: "button", class: `${SMALL} w-full`, "aria-expanded": "false" }, "Formules : calculer ce module sur la niche");
+    const open = el("button", { type: "button", class: `${SMALL} w-full bg-white dark:bg-gray-900`, "aria-expanded": "false" }, "Formules : calculer ce module sur la niche");
     open.addEventListener("click", () => o.open());
-    return [open];
+    const what = el("p", { class: "text-gray-600 dark:text-gray-300" }, "Un module qui se calcule sur chaque niche : étagères, tiroirs, chapeau… selon sa largeur et sa hauteur.");
+    return [card(cardTitle(), what, open)];
   }
   const names = programNames(program);
   const preview = el("p", { class: OK, "aria-live": "polite", "data-formula-preview": "" });
@@ -171,24 +183,26 @@ export function formulaRows(o: FormulaSection): HTMLElement[] {
     return el("label", { class: "block space-y-0.5" }, el("span", { class: "text-gray-700 dark:text-gray-200" }, TARGETS[target].label), input);
   });
 
-  const close = el("button", { type: "button", class: SMALL }, "Sans formules");
+  const close = el("button", { type: "button", class: `${SMALL} bg-white dark:bg-gray-900` }, "Sans formules");
   close.addEventListener("click", () => o.close());
   const heading = (text: string) => el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, text);
   return [
-    el("div", { class: "flex items-center justify-between gap-1.5" }, heading("Formules"), close),
-    el(
-      "p",
-      { class: "text-gray-600 dark:text-gray-300" },
-      `Variables de la niche (mm) : ${VARIABLES.map((v) => v.name.replace("epaisseur", "épaisseur")).join(", ")}, et les paramètres. Fonctions : ${FORMULA_FUNCTIONS.join(", ")} ; séparez les valeurs par « ; ». Vide : la cote fixe.`,
+    card(
+      cardTitle(close),
+      el(
+        "p",
+        { class: "text-gray-600 dark:text-gray-300" },
+        `Variables de la niche (mm) : ${VARIABLES.map((v) => v.name.replace("epaisseur", "épaisseur")).join(", ")}, et les paramètres. Fonctions : ${FORMULA_FUNCTIONS.join(", ")} ; séparez les valeurs par « ; ». Vide : la cote fixe.`,
+      ),
+      heading("Paramètres"),
+      ...params,
+      addParam,
+      heading("Selon la niche"),
+      ...rules,
+      addRule,
+      heading("Cotes calculées"),
+      ...formulas,
+      preview,
     ),
-    heading("Paramètres"),
-    ...params,
-    addParam,
-    heading("Selon la niche"),
-    ...rules,
-    addRule,
-    heading("Cotes calculées"),
-    ...formulas,
-    preview,
   ];
 }

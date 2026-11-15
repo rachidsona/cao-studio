@@ -59,8 +59,12 @@ test("Module à formules : créé, gardé, posé dans des niches de tailles diff
 
   // The module with formulas: a parameter, a formula wrong then right; the result is told before any niche.
   await action("module");
-  await panel.getByRole("button", { name: "Formules : calculer ce module sur la niche" }).click();
-  const preview = panel.locator("[data-formula-preview]");
+  // In a card of their own, closed as open: told apart from the module's other settings.
+  const card = panel.locator("[data-formula-card]");
+  await expect(card).toHaveCount(1);
+  await card.getByRole("button", { name: "Formules : calculer ce module sur la niche" }).click();
+  await expect(card.getByRole("button", { name: "Sans formules" })).toBeVisible();
+  const preview = card.locator("[data-formula-preview]");
   await expect(preview).toHaveText("Choisissez une niche : le résultat des formules s'y affiche.");
   await panel.getByRole("button", { name: "Ajouter un paramètre" }).click();
   await expect(panel.getByLabel("Nom du paramètre 1")).toHaveValue("pas");
