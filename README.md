@@ -116,6 +116,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   étagères, plinthes et socles, pièce (murs), électroménager, autres —, **Vue de travail** (façades, murs et
   électroménager cachés d'un clic) et **Tout afficher**. La vue seulement : le document, le débit et le devis ne
   changent pas ; retenu par le navigateur (`document/display-families.ts`).
+- **Tout sélectionner** (bouton de la colonne Vue, ou **Ctrl / ⌘ + A** hors d'une esquisse) : tous les corps et
+  toutes les esquisses montrés dans la vue d'un coup, comme une fenêtre qui couvrirait tout le modèle ; ce qui est
+  caché (calques, coupe, isolement) n'est pas pris. Un message dit combien ; Échap vide la sélection
+  (`app/select-all.ts`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble

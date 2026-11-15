@@ -175,6 +175,11 @@ export class SketchLayer {
     };
   }
 
+  /** The sketches shown in the view. */
+  shown(): string[] {
+    return this.group.children.filter((g) => g.visible).map((g) => g.userData.sketchId as string);
+  }
+
   /** Each sketch as world polylines (its curves, and its points as one-point lines), for a selection window. */
   polylines(): { id: string; lines: THREE.Vector3[][] }[] {
     this.group.updateMatrixWorld(true);

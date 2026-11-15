@@ -1,3 +1,4 @@
+import { SELECT_ALL_HELP } from "./select-all";
 import type { HelpFamily } from "./types";
 
 export const CURIC: HelpFamily[] = [
@@ -358,6 +359,7 @@ export const SCREEN: HelpFamily[] = [
           "Cachée, elle garde son pas : le dessin s'y accroche toujours.",
         ],
       },
+      SELECT_ALL_HELP,
       {
         keys: [], selector: "[data-xray]", name: "Rayons X",
         what: "Rend les corps translucides pour voir l'intérieur d'un meuble sans rien cacher.",

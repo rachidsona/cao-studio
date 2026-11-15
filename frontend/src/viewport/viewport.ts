@@ -609,6 +609,14 @@ export class Viewport {
   /** Selects one whole body (from the browser), replacing the current selection. */
   selectBody(bodyId: string): void { this.selection.selectBody(bodyId); }
 
+  /** Selects every body and sketch shown in the view (« Tout sélectionner », Ctrl + A). */
+  selectAll(): { bodies: number; sketches: number } {
+    const bodies = [...this.bodies.values()].filter((b) => b.mesh.visible).map((b) => b.data.bodyId);
+    const sketches = this.sketches.shown();
+    this.selection.all(bodies, sketches);
+    return { bodies: bodies.length, sketches: sketches.length };
+  }
+
   clearSelection(): void { this.selection.clear(); }
 
   /** Dimension text displayed next to a selected edge. */

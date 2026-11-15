@@ -118,6 +118,14 @@ export class ModelSelector {
     this.host.sketchPicked(null);
   }
 
+  /** Everything shown, instead of the selection. */
+  all(bodies: string[], sketches: string[]): void {
+    this.layer.clear();
+    this.layer.add(bodies, sketches);
+    this.emit();
+    this.host.sketchPicked(null);
+  }
+
   /**
    * Sélection++: selects what a level holds (whole bodies, or one face), instead of the selection (or in
    * addition to it with `adding`); a level already wholly selected is removed when adding.
