@@ -82,7 +82,7 @@ export class FrontsTool extends PanelTool {
     const doc = this.ctx.doc();
     const hardware = frontsHardware(made, cabinet, (part) => frontMass(doc, made, part));
     const doors = s.layout !== "drawers";
-    const glass = doors && s.style === "glass";
+    const glass = s.style === "glass";
     const gorge = s.grip === "gorge";
     // A lift-up door: what its stays are chosen from.
     const door = s.layout === "door" && s.side === "top" ? frontsParts(made, cabinet)[0] : undefined;
@@ -91,14 +91,9 @@ export class FrontsTool extends PanelTool {
     const lift = door ? `Porte relevable de ${mass.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} kg, haute de ${formatLength(high, this.ctx.unit())} : facteur ${Math.round(high * mass)}${stay ? "" : " — plus qu'une paire de compas ne tient, voyez la fiche du fabricant"}.` : null;
     return [
       this.selectRow("Caisson", s.cabinet, this.cabinets().map((c): [string, string] => [c.id, c.name]), (v) => set("cabinet", v)),
-      // Drawers are not glazed: a glass door made drawers becomes plain.
+      // Doors and drawers alike may be glazed: the style stays when one becomes the other.
       this.selectRow("Disposition", s.layout, [["door", "Une porte"], ["doors", "Deux portes"], ["drawers", "Tiroirs"]], (v) => {
         s.layout = v as FrontsFeature["layout"];
-        // Drawers are not glazed: back to plain, and said.
-        if (s.layout === "drawers" && s.style === "glass") {
-          Object.assign(s, styleChange("flat", s));
-          this.ctx.notify("Le style vitré ne se fait pas sur des tiroirs : leurs façades sont plates. Choisissez un autre style pour les habiller.", "info");
-        }
         changed();
       }),
       s.layout === "door" ? this.selectRow("Ouverture", s.side ?? "left", [["left", "Charnières à gauche"], ["right", "Charnières à droite"], ["top", "Relevable (charnières en haut)"], ["bottom", "Abattant (charnières en bas)"]], (v) => set("side", v as FrontsFeature["side"])) : null,
@@ -106,9 +101,8 @@ export class FrontsTool extends PanelTool {
       this.selectRow("Pose", s.mount, [["overlay", "En applique (devant)"], ["inset", "Encastrées (dans l'ouverture)"]], (v) => set("mount", v as FrontsFeature["mount"])),
       this.numberRow("Jeu", s.gap, this.ctx.unit(), (v) => ((s.gap = Math.max(0, v)), this.schedulePreview())),
       this.numberRow("Épaisseur", s.thickness, this.ctx.unit(), (v) => ((s.thickness = Math.max(1, v)), this.schedulePreview())),
-      // A door: plain, or glazed (an aluminium frame round tempered glass).
-      // Plain, framed, fluted, slatted — or, a door, glazed (an aluminium frame round tempered glass).
-      this.selectRow(doors ? "Style des portes" : "Style des façades", s.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre (panneau en retrait)"], ...DECOR_LABELS, ...(doors ? [["glass", "Vitrée (cadre alu)"] as [string, string]] : [])], (v) => (Object.assign(s, styleChange(v as DoorStyle, s)), changed())),
+      // Plain, framed, fluted, slatted — or glazed (an aluminium frame round tempered glass), doors and drawers alike.
+      this.selectRow(doors ? "Style des portes" : "Style des façades", s.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre (panneau en retrait)"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => (Object.assign(s, styleChange(v as DoorStyle, s)), changed())),
       s.style === "frame" ? this.numberRow("Largeur du cadre", s.frameWidth ?? 70, this.ctx.unit(), (v) => ((s.frameWidth = v), this.schedulePreview())) : null,
       s.style === "frame" ? this.numberRow("Retrait du panneau", s.frameDepth ?? 6, this.ctx.unit(), (v) => ((s.frameDepth = v), this.schedulePreview())) : null,
       ...decorRows(s, (change) => (Object.assign(s, change), changed()), (label, mm, set) => this.numberRow(label, mm, this.ctx.unit(), set, label.startsWith("Bordure"))),

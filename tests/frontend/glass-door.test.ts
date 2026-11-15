@@ -140,7 +140,8 @@ describe("portes vitrées d'un caisson de cuisine", () => {
     expect(hardware.find((h) => h.name === glassItem("frosted"))?.unit).toBe("m²");
     expect(hardware.find((h) => h.name === profileItem("brushed"))?.unit).toBe("m");
     expect(frontsProblem(fronts({ frameWidth: 190 }), cabinet)).toContain("trop large");
-    expect(frontsProblem(fronts({ layout: "drawers", frameWidth: 190 }), cabinet)).toBeNull();
+    // Drawers glazed too: the frame too wide for their fronts is said of them.
+    expect(frontsProblem(fronts({ layout: "drawers", frameWidth: 190 }), cabinet)).toMatch(/trop large pour ces façades/);
   });
 
   it("des portes en verre noir : le verre au devis à son prix, son apparence de la bibliothèque", () => {

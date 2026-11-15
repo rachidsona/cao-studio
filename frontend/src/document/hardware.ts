@@ -80,11 +80,11 @@ export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   if (index === undefined) return false;
   if (f?.type === "trim") return !!f.parts[Number(index)]?.hardware;
   if (f?.type === "fronts") {
-    if (f.grip !== "gorge" && (!isGlass(f) || f.layout === "drawers")) return false;
+    if (f.grip !== "gorge" && !isGlass(f)) return false;
     const cabinet = doc.features.find((c) => c.id === f.cabinet);
     const part = frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined)[Number(index)];
     // A gorge profile; the aluminium frame and the glass of a glazed door.
-    return !!part?.gorge || (isGlass(f) && f.layout !== "drawers" && (part?.role?.kind === "door" || part?.of !== undefined));
+    return !!part?.gorge || (isGlass(f) && (part?.role?.kind === "door" || part?.role?.kind === "drawer" || part?.of !== undefined));
   }
   if (f?.type !== "niche") return false;
   const role = nichePartsIn(doc.features, f)[Number(index)]?.role;

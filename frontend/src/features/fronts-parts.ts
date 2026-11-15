@@ -76,14 +76,14 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
   if (f.layout === "drawers" && (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > 8)) return "De 1 à 8 tiroirs.";
   if (f.grip === "gorge") {
     if (f.mount === "inset") return "Sans poignée, les façades sont en applique : la gorge est derrière leur chant haut.";
-    if (f.layout !== "drawers" && isGlass(f)) return "Une porte vitrée garde sa poignée : la gorge est pour les portes pleines.";
+    if (isGlass(f)) return f.layout === "drawers" ? "Un tiroir vitré garde sa poignée : la gorge est pour les façades pleines." : "Une porte vitrée garde sa poignée : la gorge est pour les portes pleines.";
     // Every front keeps 80 mm under its finger space.
     const levels = f.layout === "drawers" ? f.drawers : 1;
     const high = cabinet.height - cabinet.plinth - cabinet.thickness - f.gap / 2 - levels * GORGE.space;
     if (high / levels < 80) return "Le caisson est trop bas pour des façades sans poignée (80 mm de façade au moins sous chaque gorge).";
   }
-  // Drawer fronts are never glazed: a glass style left from doors made drawers leaves them plain.
-  if (f.style && f.style !== "flat" && !(f.layout === "drawers" && isGlass(f))) {
+  // Framed, fluted, slatted or glazed: the style's own limits, on each front.
+  if (f.style && f.style !== "flat") {
     // The size of each front, as frontsParts lays them out.
     const a = frontArea(f, cabinet);
     const fronts = f.layout === "drawers" ? [{ width: a.x1 - a.x0, height: a.h }] : [{ width: f.layout === "doors" ? (a.x1 - a.x0 - f.gap) / 2 : a.x1 - a.x0, height: a.z1 - a.z0 }];
@@ -96,7 +96,8 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
     }
     // Hinge cups behind a door: the grooves keep clear of them when they would meet.
     const cups = f.layout !== "drawers" && f.hinges ? (f.hw?.cupDepth ?? 13) : 0;
-    return decorProblem(f, fronts, f.thickness, cups) ?? glassProblem(f, fronts, f.thickness);
+    const glass = glassProblem(f, fronts, f.thickness);
+    return decorProblem(f, fronts, f.thickness, cups) ?? (f.layout === "drawers" ? (glass?.replace("Une porte vitrée", "Une façade de tiroir vitrée").replace("ces portes", "ces façades") ?? null) : glass);
   }
   return null;
 }
@@ -199,6 +200,12 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   // The profiles last (the other bodies keep their numbers): the whole width, in the notches of the sides, recessed
   // behind each finger space.
   gorges.forEach((top, i) => parts.push({ name: `Profil gorge ${i + 1}`, from: [ox, oy, oz + top + GORGE.space - GORGE.height], to: [ox + W, oy + GORGE.depth, oz + top + GORGE.space], gorge: true }));
+  // The glass of each glazed drawer front, at the very end: in the middle of its thickness, it slides out with its drawer.
+  if (f.layout === "drawers" && isGlass(f)) parts.slice().forEach((front, i) => {
+    if (front.role?.kind !== "drawer") return;
+    const [from, to] = glassPane(front.from, front.to, 1, glassFrame(f));
+    parts.push({ name: `Vitre ${front.name.replace(/^Façade /, "")}`, from, to, of: i });
+  });
   return parts;
 }
 
@@ -262,6 +269,7 @@ export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undef
   if (f.handles && f.grip !== "gorge" && doors.length + drawers.length) out.push({ name: "Poignée entraxe 128 mm", quantity: doors.length + drawers.length });
   const profiles = parts.filter((p) => p.gorge);
   if (profiles.length) out.push({ name: GORGE_PROFILE, quantity: Math.round(profiles.reduce((m, p) => m + (p.to[0] - p.from[0]), 0) / 10) / 100, unit: "m" });
-  out.push(...glassHardware(f, doors.map((d) => ({ from: d.from, to: d.to, depth: 1 as const }))));
+  // The glass and the aluminium frame of glazed doors, or of glazed drawer fronts.
+  out.push(...glassHardware(f, [...doors, ...drawers].map((d) => ({ from: d.from, to: d.to, depth: 1 as const }))));
   return out;
 }

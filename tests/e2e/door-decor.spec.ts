@@ -67,15 +67,16 @@ test("la porte d'un caisson se fait cannelée, à tasseaux ou à cadre, sans err
   await page.waitForTimeout(1200);
   await expect(status).not.toContainText("erreur");
   await expect.poll(saved, { timeout: 30_000 }).toMatchObject({ style: "frame" });
-  // A glazed style left from the door, then drawers: they are not glazed, and the panel says so.
+  // A glazed door made drawers: they stay glazed, their glass and frame still to choose.
   await style.selectOption("glass");
   await tool.getByRole("combobox", { name: "Disposition" }).selectOption("drawers");
-  await expect(page.getByText(/Le style vitré ne se fait pas sur des tiroirs/).first()).toBeVisible();
+  await expect(tool.getByRole("combobox", { name: "Style des façades" })).toHaveValue("glass");
+  await expect(tool.getByRole("combobox", { name: "Verre (trempé 4 mm)" })).toBeVisible();
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   expect(errors).toEqual([]);
 });
 
-test("les façades de tiroir d'un caisson se font à tasseaux, sans style vitré proposé", async ({ page }) => {
+test("les façades de tiroir d'un caisson se font à tasseaux, ou vitrées", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -95,7 +96,7 @@ test("les façades de tiroir d'un caisson se font à tasseaux, sans style vitré
   const tool = page.getByRole("dialog", { name: "Façades" });
   await tool.getByRole("combobox", { name: "Disposition" }).selectOption("drawers");
   const style = tool.getByRole("combobox", { name: "Style des façades" });
-  await expect(style.locator("option")).toHaveText(["Plate", "À cadre (panneau en retrait)", "Cannelée (cannelures rondes)", "À tasseaux (rainures droites)"]);
+  await expect(style.locator("option")).toHaveText(["Plate", "À cadre (panneau en retrait)", "Cannelée (cannelures rondes)", "À tasseaux (rainures droites)", "Vitrée (cadre alu)"]);
   await style.selectOption("slats");
   await page.waitForTimeout(1500);
   await expect(status).not.toContainText("erreur");
@@ -104,6 +105,14 @@ test("les façades de tiroir d'un caisson se font à tasseaux, sans style vitré
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1000);
   await shot(page, "tiroirs-a-tasseaux");
+  // Glazed: an aluminium frame round smoked glass.
+  await style.selectOption("glass");
+  await tool.getByRole("combobox", { name: "Verre (trempé 4 mm)" }).selectOption("smoked");
+  await page.waitForTimeout(1500);
+  await expect(status).not.toContainText("erreur");
+  await expect.poll(saved, { timeout: 30_000 }).toMatchObject({ layout: "drawers", style: "glass" });
+  await page.waitForTimeout(800);
+  await shot(page, "tiroirs-caisson-vitres");
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   expect(errors).toEqual([]);
 });

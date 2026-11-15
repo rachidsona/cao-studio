@@ -45,9 +45,9 @@ describe("tiroirs d'un caisson", () => {
     expect(frontsProblem(fronts({ ...styleChange("frame", {}), drawers: 4 }), cabinet)).toBe("Le cadre est trop large pour ces façades de tiroir.");
     // No hinge cups behind a drawer front: the grooves run to the side edges.
     expect(frontsProblem(fronts({ style: "slats", frameDepth: 8 }), cabinet)).toBeNull();
-    // A glass style left from doors: the drawer fronts stay plain.
+    // Glazed: each drawer front an aluminium frame open on its glass (tests/frontend/glass-cabinet-drawers.test.ts).
     expect(frontsProblem(fronts({ ...styleChange("glass", {}) }), cabinet)).toBeNull();
-    expect(frontVolumes(fronts({ ...styleChange("glass", {}) }))).toEqual(plain);
+    frontVolumes(fronts({ ...styleChange("glass", {}) })).forEach((v, i) => expect(v).toBeLessThan(plain[i]!));
   });
 });
 

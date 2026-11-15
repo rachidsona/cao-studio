@@ -27,8 +27,8 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
   try {
     for (const part of frontsParts(feature, cabinet)) {
       let solid = makeBox(part.from, part.to) as unknown as Shape3D;
-      // A glass door: the opening through its aluminium frame, and the groove the glass sits in.
-      const glass = part.role?.kind === "door" && isGlass(feature) ? [glassOpening(part.from, part.to, 1, glassFrame(feature)), glassPane(part.from, part.to, 1, glassFrame(feature))] : [];
+      // A glass door or drawer front: the opening through its aluminium frame, and the groove the glass sits in.
+      const glass = (part.role?.kind === "door" || part.role?.kind === "drawer") && isGlass(feature) ? [glassOpening(part.from, part.to, 1, glassFrame(feature)), glassPane(part.from, part.to, 1, glassFrame(feature))] : [];
       for (const [a, b] of glass) {
         const tool = makeBox(a, b) as unknown as Shape3D;
         const cut = solid.cut(tool) as Shape3D;

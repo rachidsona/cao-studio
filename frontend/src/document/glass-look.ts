@@ -22,11 +22,11 @@ function looksOf(doc: CadDocument, f: Feature): (string | undefined)[] {
     looks = nichePartsIn(doc.features, f).map(accessoryLook);
   } else if (f.type === "niche" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f)) {
     looks = nichePartsIn(doc.features, f).map((p) => (p.role === "front" ? PROFILE_APPEARANCE[f.profile ?? "brushed"] : p.kind === "box" && p.of !== undefined ? GLASS_APPEARANCE[f.glass ?? "clear"] : undefined));
-  } else if (f.type === "fronts" && ((f.layout !== "drawers" && isGlass(f)) || f.grip === "gorge")) {
+  } else if (f.type === "fronts" && (isGlass(f) || f.grip === "gorge")) {
     const cabinet = doc.features.find((c): c is CabinetFeature => c.id === f.cabinet && c.type === "cabinet");
-    const glazed = f.layout !== "drawers" && isGlass(f);
-    // A gorge profile is brushed aluminium.
-    looks = frontsParts(f, cabinet).map((p) => (p.gorge ? PROFILE_APPEARANCE.brushed : !glazed ? undefined : p.role?.kind === "door" ? PROFILE_APPEARANCE[f.profile ?? "brushed"] : p.of !== undefined ? GLASS_APPEARANCE[f.glass ?? "clear"] : undefined));
+    const glazed = isGlass(f);
+    // A gorge profile is brushed aluminium; a glazed door's or drawer front's frame its profile's, its glass its glass's.
+    looks = frontsParts(f, cabinet).map((p) => (p.gorge ? PROFILE_APPEARANCE.brushed : !glazed ? undefined : p.role?.kind === "door" || p.role?.kind === "drawer" ? PROFILE_APPEARANCE[f.profile ?? "brushed"] : p.of !== undefined ? GLASS_APPEARANCE[f.glass ?? "clear"] : undefined));
   }
   cache.set(f, { features: doc.features, looks });
   return looks;

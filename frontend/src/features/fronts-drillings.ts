@@ -6,7 +6,7 @@
 import type { CabinetFeature, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetParts } from "./cabinet-parts";
 import { frontsParts, frontsProblem, hingeCount, hingeHeights, type FrontPart } from "./fronts-parts";
-import { handleInset, isGlass } from "./glass-door";
+import { glassFrame, handleInset, isGlass } from "./glass-door";
 
 /** The shelves of the cabinet (their bottom and top), which the hinges keep clear of. */
 export function shelvesOf(cabinet: CabinetFeature | undefined): [number, number][] {
@@ -49,8 +49,8 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
       const zc = Math.max(z0 + 100, z1 - 150);
       for (const dz of pair) out.push({ at: [x, inside, zc + dz], radius, depth: y1 - y0 });
     } else {
-      // Horizontal pair in the middle of the drawer front.
-      const [xc, zc] = [(x0 + x1) / 2, (z0 + z1) / 2];
+      // Horizontal pair in the middle of the drawer front; a glazed one's in the middle of its frame's top rail.
+      const [xc, zc] = [(x0 + x1) / 2, isGlass(f) ? z1 - glassFrame(f) / 2 : (z0 + z1) / 2];
       for (const dx of pair) out.push({ at: [xc + dx, inside, zc], radius, depth: y1 - y0 });
     }
   }
