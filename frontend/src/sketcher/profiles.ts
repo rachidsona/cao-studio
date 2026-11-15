@@ -19,10 +19,29 @@ function buildLoop(loop: Loop): Drawing {
   return pen.close();
 }
 
+/**
+ * What a sketch's geometry gives, worked out once: its loops, the faces they bound and their keys. Every board of a
+ * Répartition is an extrusion of one area of the same sketch: without this, each of them found all the loops again.
+ * The geometry of a solved sketch is not changed afterwards (a change makes a new one).
+ */
+const analysed = new WeakMap<object, { loops: Loop[]; faces?: ReturnType<typeof sketchFaces>; keys?: string[] }>();
+
+function analysis(geometry: SketchGeometry) {
+  let found = analysed.get(geometry);
+  if (!found) analysed.set(geometry, (found = { loops: extractLoops(geometry) }));
+  return found;
+}
+
+/** The closed loops of a sketch's geometry (worked out once for it). */
+export function sketchLoops(geometry: SketchGeometry): Loop[] {
+  return analysis(geometry).loops;
+}
+
 /** The loop of a chosen area: by its key when it has one (loopKey), else the smallest loop around its inside point. */
 export function chosenLoop(loops: Loop[], geometry: Pick<SketchGeometry, "points">, point: [number, number], key: string | undefined): number {
   if (key) {
-    const keys = loops.map((loop) => loopKey(loop, geometry));
+    const kept = analysed.get(geometry);
+    const keys = kept?.loops === loops ? (kept.keys ??= loops.map((loop) => loopKey(loop, geometry))) : loops.map((loop) => loopKey(loop, geometry));
     const named = keys.indexOf(key);
     if (named >= 0) return named;
     // Its corners are no longer a loop (a line added across it, a point removed): the point says where it was, but
@@ -36,7 +55,8 @@ export function chosenLoop(loops: Loop[], geometry: Pick<SketchGeometry, "points
 
 /** The chosen areas: each is a loop minus the loops directly inside it; touching areas merge. */
 function buildAreas(loops: Loop[], geometry: SketchGeometry, inside: [number, number][], keys?: string[]): Drawing {
-  const faces = sketchFaces(loops);
+  const kept = analysed.get(geometry);
+  const faces = kept?.loops === loops ? (kept.faces ??= sketchFaces(loops)) : sketchFaces(loops);
   const chosen = new Set<number>();
   for (const [i, point] of inside.entries()) {
     const index = chosenLoop(loops, geometry, point, keys?.[i] || undefined);
@@ -58,7 +78,7 @@ function buildAreas(loops: Loop[], geometry: SketchGeometry, inside: [number, nu
  * none. With `areas` (points inside the wanted areas) only those areas are built.
  */
 export function buildProfile(geometry: SketchGeometry, areas?: [number, number][], keys?: string[]): Drawing | null {
-  const loops = extractLoops(geometry);
+  const { loops } = analysis(geometry);
   if (loops.length === 0) return null;
   if (areas) return buildAreas(loops, geometry, areas, keys);
   const depth = loopDepths(loops);

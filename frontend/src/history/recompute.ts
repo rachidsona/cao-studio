@@ -70,7 +70,7 @@ function describe(output: FeatureOutput): Pick<FeatureStatus, "detail" | "sketch
   if (output.openReason) parts.push(output.openReason);
   return {
     detail: parts.join(" — "),
-    sketch: { dof: output.dof, redundant: output.redundant, closed: output.drawing !== null },
+    sketch: { dof: output.dof, redundant: output.redundant, closed: output.closed },
   };
 }
 

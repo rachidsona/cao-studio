@@ -14,8 +14,13 @@ export interface ProfileOutput {
   shift?: [number, number];
   /** Construction plane of any position, replacing `plane` and `offset`. */
   frame?: PlaneFrame;
-  /** Region bounded by the closed loops, or null when the sketch has none. */
-  drawing: Drawing | null;
+  /**
+   * Region bounded by the closed loops, or null when the sketch has none: made when first read (a Répartition's
+   * boards extrude their own areas and never need the whole region — 60 ms or more for a wall).
+   */
+  readonly drawing: Drawing | null;
+  /** Whether it has a closed profile (or text): known without making the region. */
+  closed: boolean;
   /** Why no region could be built (open or branched profile). */
   openReason: string | null;
   /** Remaining degrees of freedom of the solved sketch. */

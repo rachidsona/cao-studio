@@ -6,7 +6,7 @@
  * creusée pour le verre ; ni boîtier de charnière (sa charnière se fixe dans le profilé), ses trous de poignée sur le
  * cadre.
  */
-import { makeBox, makeCylinder, type Shape3D } from "replicad";
+import { makeBox, makeCompound, makeCylinder, type Shape3D } from "replicad";
 import type { CabinetFeature, FrontsFeature } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { frontsParts, frontsProblem } from "./fronts-parts";
@@ -36,6 +36,9 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
         tool.delete();
         solid = cut;
       }
+      // The hinge cups and handle holes, cut at once: one boolean, not one each. They never meet one another (tools that
+      // overlap, as the glass opening and its groove, would give a wrong solid in one cut).
+      const tools: Shape3D[] = [];
       const door = part.role?.kind === "door";
       const front = !!part.role;
       // A frame door or drawer front: the panel set back inside the frame, routed from the front face (−Y).
@@ -56,7 +59,11 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
       }
       for (const d of drillings(part, feature, shelves)) {
         // Drilled from the inside face towards the outside (−Y).
-        const tool = makeCylinder(d.radius, d.depth + 0.01, [d.at[0], d.at[1] + 0.005, d.at[2]], [0, -1, 0]) as unknown as Shape3D;
+        tools.push(makeCylinder(d.radius, d.depth + 0.01, [d.at[0], d.at[1] + 0.005, d.at[2]], [0, -1, 0]) as unknown as Shape3D);
+      }
+      if (tools.length) {
+        // makeCompound takes the tools in: deleting the compound releases them.
+        const tool = (tools.length === 1 ? tools[0]! : makeCompound(tools)) as Shape3D;
         const cut = solid.cut(tool) as Shape3D;
         solid.delete();
         tool.delete();

@@ -248,6 +248,12 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   dressing : 2 000 corps, leurs noms, portes, tiroirs et accessoires examinés en moins d'une demi-seconde
   (`tests/frontend/freeze-report.test.ts`) ; les pièces et la géométrie d'une niche sont gardées tant que le document
   ne change pas (`nichePartsIn`, `nicheGeometry`).
+- Le **calcul du modèle** évite le travail répété : une poignée n'est fusionnée qu'une fois par longueur puis copiée à
+  sa place (`features/niche.ts`), les trous d'une façade (poignée, boîtiers de charnière) sont découpés d'un seul coup
+  (`niche.ts`, `fronts.ts` ; pas l'ouverture du verre et sa rainure, qui se chevauchent), les boucles d'une esquisse
+  sont trouvées une fois pour toutes les planches qui en sortent, et la région entière d'une esquisse n'est faite que
+  si on la demande (`sketcher/profiles.ts`, `features/builders.ts`). Sur un dressing de 120 corps, le calcul passe de
+  1,25 s à 0,85 s.
 - Au chargement, un écran suit le téléchargement du noyau 3D (barre de progression), puis le calcul du projet.
 
 Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une plaque de

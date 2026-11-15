@@ -12,7 +12,7 @@ import { draw, makeCylinder, measureVolume, type Drawing, type Shape3D } from "r
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
 import { frameOf } from "../sketcher/frame";
-import { buildProfile, ProfileError } from "../sketcher/profiles";
+import { buildProfile, ProfileError, sketchLoops } from "../sketcher/profiles";
 import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveFace } from "../geometry/references";
 import { applyOperation, MIN_LENGTH, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
@@ -61,14 +61,29 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
   };
   // The texts of the sketch are written with its profile (or alone when it has no closed loop).
   const letters = textDrawing(feature.texts);
+  let loops = 0;
   try {
-    const drawing = buildProfile(solved.geometry);
-    return { ...base, drawing: drawing && letters ? drawing.fuse(letters) : (drawing ?? letters), openReason: null };
+    loops = sketchLoops(solved.geometry).length;
   } catch (error) {
-    if (letters && error instanceof ProfileError) return { ...base, drawing: letters, openReason: null };
-    if (error instanceof ProfileError) return { ...base, drawing: null, openReason: error.message };
+    if (letters && error instanceof ProfileError) return { ...base, drawing: letters, closed: true, openReason: null };
+    if (error instanceof ProfileError) return { ...base, drawing: null, closed: false, openReason: error.message };
     throw error;
   }
+  // The region itself, the first time it is asked for.
+  let made: Drawing | null | undefined;
+  const geometry = solved.geometry;
+  return {
+    ...base,
+    closed: loops > 0 || !!letters,
+    openReason: null,
+    get drawing() {
+      if (made === undefined) {
+        const drawing = loops > 0 ? buildProfile(geometry) : null;
+        made = drawing && letters ? drawing.fuse(letters) : (drawing ?? letters);
+      }
+      return made;
+    },
+  };
 }
 
 /** Above and below any piece of furniture (mm). */

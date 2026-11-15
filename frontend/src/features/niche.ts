@@ -6,7 +6,7 @@
  * devant ses trous (deux pieds et une barre, ou un bouton). Une porte vitrée est un cadre en profilé alu : l'ouverture
  * du verre traverse la porte, et la rainure où il s'engage est creusée dans le cadre ; le verre est une pièce à part.
  */
-import { makeBox, makeCylinder, type Shape3D } from "replicad";
+import { cast, makeBox, makeCompound, makeCylinder, Transformation, type Shape3D } from "replicad";
 import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import type { SolidsOutput } from "./outputs";
@@ -21,25 +21,54 @@ const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 /** How far a handle stands out of its front, its bar and post radii, a knob's radius (mm). */
 const HANDLE = { stand: 25, bar: 6, post: 4, overhang: 15, knob: 15 };
 
-/** A bar handle (two posts and a bar beyond them) or a knob, standing out of the front. */
+const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/**
+ * The handles made once for each length (a knob: 0), along +X with their posts towards +Y from the origin: fusing three
+ * cylinders that cross costs some 45 ms, and every handle of a project is the same — a copy put in place costs nothing.
+ */
+const handles = new Map<string, Shape3D>();
+
+function handleModel(length: number): Shape3D {
+  const key = length.toFixed(3);
+  const kept = handles.get(key);
+  if (kept) return kept;
+  let shape: Shape3D;
+  if (length < 0.5) shape = makeCylinder(HANDLE.knob, HANDLE.stand, [0, 0, 0], [0, 1, 0]) as unknown as Shape3D;
+  else {
+    const pieces = [
+      makeCylinder(HANDLE.post, HANDLE.stand, [0, 0, 0], [0, 1, 0]),
+      makeCylinder(HANDLE.post, HANDLE.stand, [length, 0, 0], [0, 1, 0]),
+      makeCylinder(HANDLE.bar, length + 2 * HANDLE.overhang, [-HANDLE.overhang, HANDLE.stand, 0], [1, 0, 0]),
+    ] as unknown as Shape3D[];
+    shape = pieces[0]!;
+    for (const piece of pieces.slice(1)) {
+      const fused = shape.fuse(piece) as Shape3D;
+      shape.delete();
+      piece.delete();
+      shape = fused;
+    }
+  }
+  handles.set(key, shape);
+  return shape;
+}
+
+/** A bar handle (two posts and a bar beyond them) or a knob, standing out of the front: the model, put in place. */
 function handleShape(part: NichePart, n: NicheGeometry): Shape3D {
   const a = nicheWorld(n, part.from);
   const b = nicheWorld(n, part.to);
   const out = sub(nicheWorld(n, [0, 0, 1]), nicheWorld(n, [0, 0, 0]));
   const along = sub(b, a);
   const length = Math.hypot(...along);
-  if (length < 0.5) return makeCylinder(HANDLE.knob, HANDLE.stand, a, out) as unknown as Shape3D;
-  const dir = along.map((c) => c / length) as Vec3;
-  const start = [0, 1, 2].map((i) => a[i]! + out[i]! * HANDLE.stand - dir[i]! * HANDLE.overhang) as Vec3;
-  const pieces = [makeCylinder(HANDLE.post, HANDLE.stand, a, out), makeCylinder(HANDLE.post, HANDLE.stand, b, out), makeCylinder(HANDLE.bar, length + 2 * HANDLE.overhang, start, dir)] as unknown as Shape3D[];
-  let shape = pieces[0]!;
-  for (const piece of pieces.slice(1)) {
-    const fused = shape.fuse(piece) as Shape3D;
-    shape.delete();
-    piece.delete();
-    shape = fused;
+  // Its +X along the handle (any way square to `out` for a knob), its +Y out of the front.
+  const dir: Vec3 = length < 0.5 ? (Math.abs(out[2]) > 0.5 ? [1, 0, 0] : [0, 0, 1]) : (along.map((c) => c / length) as Vec3);
+  const place = new Transformation();
+  place.coordSystemChange({ origin: a, zDir: cross(dir, out), xDir: dir }, "reference");
+  try {
+    return cast(place.transform(handleModel(length).wrapped)) as Shape3D;
+  } finally {
+    place.delete();
   }
-  return shape;
 }
 
 function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D {
@@ -67,7 +96,8 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   if (front && isDecor(f)) {
     solid = cutGrooves(solid, decorGrooves(f, part.from[0], part.to[0], part.from[1], part.to[1]), part.to[2], -1, (p) => nicheWorld(n, p));
   }
-  // A glass door: the opening through the aluminium frame, and the groove the glass sits in.
+  // A glass door: the opening through the aluminium frame, and the groove the glass sits in (one after the other: they
+  // overlap, and overlapping tools cut at once give a wrong solid).
   if (part.role === "front" && part.handle && isGlass(f)) {
     for (const [from, to] of [glassOpening(part.from, part.to, 2, glassFrame(f)), glassPane(part.from, part.to, 2, glassFrame(f))]) {
       const [p, q] = worldBox(n, { from, to });
@@ -78,6 +108,8 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
       solid = cut;
     }
   }
+  // The handle holes, apart from each other, cut at once (one boolean instead of one each: a third of the time).
+  const tools: Shape3D[] = [];
   if (part.role === "front" && f.handles) {
     // Two holes through the front, the handle's spacing apart across its middle (one for a knob), drilled from the
     // front face backwards.
@@ -90,12 +122,16 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     for (const du of spacing > 0 ? [-spacing / 2, spacing / 2] : [0]) {
       const start = nicheWorld(n, [...at(du), w1 + 0.005]);
       const back = sub(nicheWorld(n, [0, 0, -1]), nicheWorld(n, [0, 0, 0]));
-      const tool = makeCylinder((f.hw?.handleHole ?? 5) / 2, w1 - w0 + 0.01, start, back) as unknown as Shape3D;
-      const cut = solid.cut(tool) as Shape3D;
-      solid.delete();
-      tool.delete();
-      solid = cut;
+      tools.push(makeCylinder((f.hw?.handleHole ?? 5) / 2, w1 - w0 + 0.01, start, back) as unknown as Shape3D);
     }
+  }
+  if (tools.length) {
+    // makeCompound takes the tools in: deleting the compound releases them.
+    const tool = (tools.length === 1 ? tools[0]! : makeCompound(tools)) as Shape3D;
+    const cut = solid.cut(tool) as Shape3D;
+    solid.delete();
+    tool.delete();
+    solid = cut;
   }
   return solid;
 }
