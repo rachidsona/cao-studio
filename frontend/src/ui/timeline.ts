@@ -1,7 +1,7 @@
 /**
  * Timeline (bottom strip), like the history bar of desktop CAD tools: the
  * operations of the document in order (extrusion, hole, revolution…), each as the
- * icon of its tool (the name is its tooltip). A click on one opens the dialog to
+ * icon of its tool (the name is its tooltip). A click on one selects what it made in the view and opens the dialog to
  * edit, rename or delete it. Ctrl/⌘ + click marks one step (again: unmarks it), Maj + click every step from the last
  * one marked; the marked steps are deleted together (one undo step) by the bar that appears, or the Suppr key.
  */

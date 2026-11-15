@@ -2640,7 +2640,11 @@ opération existante.
   bloc « À vérifier » signale passages étroits, portes et tiroirs bloqués, ouvertures cachées et plafonds bas.
   « Éviter portes, fenêtres et plafonds bas » cale les murs sur ce que la pièce laisse libre, « Dessiner les murs » les pose
   sans Pièce, et le bouton « Penderies escamotables » équipe les tringles trop hautes.
-- **Menu d'une porte** : un **clic droit sur une porte** (ou sa poignée) dans la vue ouvre son menu — Ouvrir / fermer la
+- **Menu d'une porte** : un **clic droit sur une porte** (ou sa poignée) dans la vue ouvre son menu — **Modifier les
+  portes…** (celles d'un caisson dans un petit panneau au pointeur, comme les tiroirs : une ou deux portes, pose en
+  applique ou encastrée, jeu, épaisseur, style, charnières, poignées, chaque changement fait aussitôt et annulable ;
+  celles d'une Répartition ou posées sur des niches rouvrent leur outil, réglé comme elles sont ; `app/door-panel.ts`,
+  `withDoorsChanged`) ; Ouvrir / fermer la
   porte ; **Ouvrir de l'autre côté** (ses charnières passent à gauche ou à droite) ; Ôter ou mettre les poignées ;
   **Renommer…** (un champ au pointeur, Entrée garde) ; Sélectionner le meuble entier ; **Remplacer par des tiroirs**
   ou Porte vitrée / pleine (porte d'un caisson), Portes plates / à cadre / vitrées (Répartition, porte sur niches) ;
@@ -3136,7 +3140,8 @@ voisine où tomberait son ancien point ; si son contour a changé, l'extrusion d
 - **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
   chanfrein, combinaison, et les décalages, placés où est leur esquisse), chacune par l'**icône de son outil** (le
   nom, le type et l'état sont dans l'info-bulle ; une opération en erreur ou désactivée porte un point de couleur,
-  et la désactivée est grisée). Un clic ouvre une fenêtre pour
+  et la désactivée est grisée). Un clic **sélectionne dans la vue ce que l'opération a fait** (les corps qu'elle a
+  faits ou changés, ceux d'une étape de Répartition) et ouvre une fenêtre pour
   **renommer**, **modifier** (rouvre l'outil de l'opération : flèche de l'extrusion, panneau de l'outil,
   esquisse et outil Décalage), **désactiver** ou **supprimer** l'opération. Supprimer un perçage relie
   les perçages suivants au corps précédent. Cette fenêtre s'ouvre dans le panneau de l'élément cliqué : sous la ligne

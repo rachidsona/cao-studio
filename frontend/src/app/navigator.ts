@@ -37,6 +37,8 @@ export interface NavigatorHost {
   toggleInSelection(kind: "body" | "sketch", id: string): void;
   selectFeature(id: string): void;
   selectBody(bodyId: string): void;
+  /** These whole bodies selected in the view, instead of what was (none: nothing selected). */
+  selectBodies(bodyIds: string[]): void;
   /** Shows or hides a sketch, or the body created by this feature. */
   toggleHidden(id: string): void;
   /** Shows or hides all these sketches or bodies at once. */
@@ -110,11 +112,22 @@ export class Navigator {
   }
 
   /** Opens the window of a feature (or of a body) next to `anchor`; it is selected too. */
-  private open(id: string, anchor: DOMRect, body = false): void {
+  private open(id: string, anchor: DOMRect, body = false, inView = false): void {
     const item = this.find(id, body);
     if (body) this.host.selectBody(id);
     else this.host.selectFeature(item?.offset?.sketchId ?? id);
+    // From the history: what the step made is selected in the view too.
+    if (inView) this.host.selectBodies(this.bodiesOf(id));
     if (item) this.dialog.open(item, anchor);
+  }
+
+  /** The bodies a step made, or changed (a machining, a Répartition's step): those it lights in the history, the other way. */
+  private bodiesOf(step: string): string[] {
+    const doc = this.host.doc();
+    return this.host.bodyIds().filter((body) => {
+      const origin = bodyOrigin(doc, body);
+      return featureOfBody(body) === step || (stepOfBody(doc, origin)?.offset ?? featureOfBody(origin)) === step;
+    });
   }
 
   private find(id: string, body: boolean): NavItem | undefined {
@@ -208,7 +221,7 @@ export class Navigator {
       },
     );
     for (const id of this.marked) if (!operations.some((o) => o.id === id)) this.marked.delete(id);
-    renderTimeline(ref(this.root, "timeline"), operations, selectedId, this.stepsPicked(), (id, anchor) => this.open(id, anchor), {
+    renderTimeline(ref(this.root, "timeline"), operations, selectedId, this.stepsPicked(), (id, anchor) => this.open(id, anchor, false, true), {
       marked: this.marked,
       onMark: (id, range) => {
         const order = operations.map((o) => o.id);

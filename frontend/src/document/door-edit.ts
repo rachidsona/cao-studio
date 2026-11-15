@@ -5,7 +5,7 @@
  * poignée s'ôte ou revient, elle se retire ; celle d'un caisson se change en tiroirs ou en porte vitrée, celle d'une
  * Répartition ou sur niches en porte plate, à cadre ou vitrée (cadre alu). Pur.
  */
-import { frontsParts } from "../features/fronts-parts";
+import { frontsParts, frontsProblem } from "../features/fronts-parts";
 import { styleChange, type DoorStyle } from "../features/glass-door";
 import { nichePartsIn } from "../features/niche-parts";
 import { withCaseDoor, withDoorSettings } from "./door-fronts";
@@ -145,4 +145,17 @@ export function withDoorStyle(doc: CadDocument, bodyId: string, style?: DoorStyl
   if (f?.type === "niche" && door?.kind === "partition") return withDoorSettings(doc, f.sketch, f.partition, styleChange(next, f));
   if (f?.type === "niche" && door?.kind === "niche" && style) return updateFeature(doc, f.id, () => ({ ...f, ...styleChange(style, f) }));
   return "Rien d'autre à proposer pour cette porte.";
+}
+
+export type DoorsPatch = Partial<Pick<FrontsFeature, "layout" | "mount" | "gap" | "thickness" | "handles" | "hinges">>;
+
+/** A cabinet's doors changed (one or two, inset or overlay, gap, thickness, handles, hinges); a string: why they cannot be. */
+export function withDoorsChanged(doc: CadDocument, featureId: string, patch: DoorsPatch): CadDocument | string {
+  const f = findFeature(doc, featureId);
+  if (f?.type !== "fronts" || f.layout === "drawers") return "Ces portes n'existent plus.";
+  const next: FrontsFeature = { ...f, ...patch };
+  // Two doors open from their middle: no side to keep; one door gets back the side it had, or the left.
+  if (next.layout === "doors" && next.side !== "top" && next.side !== "bottom") delete next.side;
+  const problem = frontsProblem(next, findFeature(doc, f.cabinet) as CabinetFeature | undefined);
+  return problem ?? updateFeature(doc, f.id, () => next);
 }

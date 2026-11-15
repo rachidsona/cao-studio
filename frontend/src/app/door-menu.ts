@@ -1,5 +1,7 @@
 /**
- * Le menu d'une porte : un clic droit sur une porte (ou sa poignée) dans la vue, sans outil en cours. On l'ouvre ou la
+ * Le menu d'une porte : un clic droit sur une porte (ou sa poignée) dans la vue, sans outil en cours. « Modifier les
+ * portes… » règle celles d'un caisson dans un petit panneau au pointeur (app/door-panel.ts), comme les tiroirs, et
+ * rouvre l'outil de celles d'une Répartition ou posées sur des niches, réglé comme elles sont. On l'ouvre ou la
  * ferme, on inverse son sens d'ouverture, on ôte ou remet ses poignées, on la renomme, on sélectionne le meuble entier,
  * on la change (en tiroirs ou en porte vitrée pour un caisson, en porte plate, à cadre ou vitrée pour une Répartition ou
  * une porte sur niches), on la supprime ; le caisson
@@ -16,6 +18,7 @@ import type { Editor } from "./editor";
 import { wholeOf } from "./move-whole";
 import { furnishCabinet, openInCabinet, STRAIGHT_TOOLS } from "./cabinet-furnish";
 import { isolateMenuItem } from "./isolate-selection";
+import { openDoorsPanel } from "./door-panel";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
 
@@ -74,8 +77,17 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
   const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
   // The elements selected, alone in the view (app/isolate-selection.ts).
   const alone = isolateMenuItem(editor);
+  // Their settings: a cabinet's in a small panel at the pointer; a Répartition's or over niches in their tool.
+  const modify = f?.type === "fronts"
+    ? () => openDoorsPanel(event.clientX, event.clientY, editor, f.id, bodyId)
+    : f?.type === "niche" && door.kind === "partition"
+      ? () => void editor.sketches.editOffset(f.sketch, f.partition)
+      : f?.type === "niche" && door.kind === "niche"
+        ? () => editor.sketches.startEquip("door", f.sketch, f)
+        : null;
   const items: TreeMenuItem[] = [
     { heading: name },
+    ...(modify ? [{ label: "Modifier les portes…", run: modify }] : []),
     { label: "Ouvrir / fermer la porte", run: () => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: bodyId })) },
     {
       label: door.hinge ? `Ouvrir de l'autre côté (charnières ${SIDE[door.hinge === "left" ? "right" : "left"]})` : "Ouvrir de l'autre côté",

@@ -150,7 +150,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez un nom pour le sélectionner dans la vue ; Ctrl, ⌘ ou Maj + clic en ajoute d'autres. Le triangle déplie un corps et montre les opérations qui l'ont fait.",
           "Double-cliquez une pièce (une étagère, une porte, un côté), ici ou dans la vue : tout le caisson est sélectionné, façades comprises, ou toute la Répartition.",
-          "Clic droit sur une porte dans la vue : l'ouvrir ou la fermer, l'ouvrir de l'autre côté, ôter ses poignées, la renommer, sélectionner tout le meuble, la changer en tiroirs, en porte plate, à cadre ou vitrée (cadre alu), ou la supprimer. Clic droit sur un tiroir (sa façade, son caisson ou sa poignée) : « Modifier les tiroirs… » règle ceux d'un caisson sur place — nombre, pose en applique ou encastrés, jeu, épaisseur, poignées — ou rouvre l'outil Tiroirs pour ceux d'une niche ; on peut aussi sélectionner tout le meuble, les changer en porte ou les supprimer.",
+          "Clic droit sur une porte dans la vue : « Modifier les portes… » règle celles d'un caisson sur place — une ou deux, pose en applique ou encastrée, jeu, épaisseur, style, charnières, poignées — ou rouvre l'outil de celles d'une Répartition ; aussi l'ouvrir ou la fermer, l'ouvrir de l'autre côté, ôter ses poignées, la renommer, sélectionner tout le meuble, la changer en tiroirs, en porte plate, à cadre ou vitrée (cadre alu), ou la supprimer. Clic droit sur un tiroir (sa façade, son caisson ou sa poignée) : « Modifier les tiroirs… » règle ceux d'un caisson sur place — nombre, pose en applique ou encastrés, jeu, épaisseur, poignées — ou rouvre l'outil Tiroirs pour ceux d'une niche ; on peut aussi sélectionner tout le meuble, les changer en porte ou les supprimer.",
           "L'œil montre ou cache la ligne. Le bouton « ⋯ » ouvre la fenêtre pour modifier, renommer ou supprimer. Le clic droit donne le même choix en menu.",
           "Pour un dossier : sélectionnez des corps, cliquez « Nouveau dossier » dans l'en-tête « Corps », puis double-cliquez son nom pour le renommer.",
           "Glissez un corps sur un dossier pour l'y ranger, ou sur l'en-tête « Corps » pour l'en sortir.",
@@ -164,7 +164,7 @@ export const SCREEN: HelpFamily[] = [
         what: "Montre sous la vue les opérations du projet, dans l'ordre où elles ont été faites.",
         steps: [
           "Survolez une icône pour lire le nom de l'opération.",
-          "Cliquez-la : une petite fenêtre s'ouvre, avec le champ « Nom » pour la renommer.",
+          "Cliquez-la : ce qu'elle a fait est sélectionné dans la vue, et une petite fenêtre s'ouvre, avec le champ « Nom » pour la renommer.",
           "« Modifier » rouvre son outil, « Désactiver » la met de côté sans la perdre (« Réactiver » la remet), « Supprimer » l'efface.",
           "Pour en supprimer plusieurs : Ctrl (⌘ sur Mac) + clic sur chacune, ou Maj + clic pour toutes celles entre deux ; elles s'entourent de rouge. Cliquez « Supprimer » dans la barre qui apparaît (ou la touche Suppr). Le ✕ ou Échap les dé-choisit.",
         ],

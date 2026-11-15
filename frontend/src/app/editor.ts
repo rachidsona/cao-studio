@@ -126,6 +126,7 @@ export class Editor {
       pickedIds: () => this.picked.selection, toggleInSelection: (kind, id) => this.viewport.toggleInSelection(kind, id),
       selectFeature: (id) => this.selectFeature(id),
       selectBody: (id) => ((this.selectedFeature = id), this.viewport.selectBody(id), this.render()),
+      selectBodies: (ids) => this.viewport.selectLevel({ bodies: ids }, false),
       toggleHidden: (id) => void this.change(toggleHidden(this.doc, id)),
       setHidden: (ids, hidden) => void this.change(setHidden(this.doc, ids, hidden)),
       rename: (id, name) => void this.change(updateFeature(this.doc, id, (f) => ({ ...f, name }))),
