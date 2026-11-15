@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 db.sqlite3
+# The copies of the database (apps/projects/backup.py)
+backups/
 .pytest_cache/
 staticfiles/
 media/

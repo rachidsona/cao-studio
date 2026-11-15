@@ -9,3 +9,6 @@ import os
 os.environ.setdefault("DJANGO_DEBUG", "1")
 
 from .settings import *  # noqa: E402,F403
+
+# No copy of the database behind the tests' back (tests/backend/test_backup.py makes its own).
+BACKUP_AUTO = False

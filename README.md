@@ -86,7 +86,16 @@ standards de construction se règlent dans l'éditeur. Ces paramètres sont comm
 personnel de l'atelier** les modifie (pages, `POST /api/catalog/rates/` : 403 sinon) ; les autres comptes les lisent,
 sans boutons pour les changer, et dans le devis de l'éditeur les tarifs de l'atelier sont grisés (`GET /api/catalog/`
 dit `canEdit`). Un compte entre dans le personnel par `python manage.py personnel <nom>` (`personnel` seul : la
-liste ; `--retirer` : l'en sort). Les suppressions
+liste ; `--retirer` : l'en sort).
+
+**Sauvegarde de la base.** Tout est dans la base — projets, versions, images et modèles 3D, comptes, catalogue — et le
+serveur en fait **une copie par jour**, en arrière-plan, à la première visite après 24 heures
+(`apps/projects/backup.py`) : `backups/auto/cao-AAAA-MM-JJ-HHMMSS.sqlite3`, faite par l'API de sauvegarde de SQLite
+(cohérente même pendant un enregistrement ; `pg_dump` sous PostgreSQL), les **14 dernières** gardées.
+`python manage.py sauvegarde` en fait une tout de suite, `--liste` montre celles qui sont gardées. Pour qu'elles
+soient **hors de cet ordinateur**, mettez `DJANGO_BACKUP_DIR` sur un dossier synchronisé (iCloud Drive, par exemple) ;
+`DJANGO_BACKUP_KEEP` change le nombre gardé, `DJANGO_BACKUP_AUTO=0` arrête la copie du jour. Pour revenir à une
+copie : serveur arrêté, remplacez `db.sqlite3` par elle. Les suppressions
 demandent confirmation dans la page (`static/home/confirm.js`). Il est garni au premier `migrate` ; l'administration
 Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 
@@ -250,7 +259,7 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 |---|---|
 | `config/` | Réglages Django (variables d'environnement, SQLite par défaut, PostgreSQL via `POSTGRES_*`) |
 | `apps/accounts/` | Connexion, déconnexion, inscription (fermée par défaut), « Mon compte » (mot de passe, export, suppression), commandes `compte` et `personnel` |
-| `apps/projects/` | Projets, versions immuables avec checksum, API JSON, validation des documents |
+| `apps/projects/` | Projets, versions immuables avec checksum, API JSON, validation des documents, sauvegarde de la base (commande `sauvegarde`) |
 | `templates/` | Pages Django + Tailwind ; `editor/editor.html` charge l'éditeur |
 | `frontend/src/document/` | Format natif `cao-studio` v1, validation, éditions pures (annulables) |
 | `frontend/src/geometry/` | Adaptateur du noyau, worker, protocole worker ↔ interface |

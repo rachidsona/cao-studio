@@ -76,6 +76,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # The day's copy of the database, in the background (apps/projects/backup.py).
+    "apps.projects.backup.DailyBackupMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -122,6 +124,13 @@ else:
     }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# A copy of the database a day, made by the server in the background (apps/projects/backup.py), the last 14 kept;
+# `python manage.py sauvegarde` makes one now. DJANGO_BACKUP_DIR: a synchronised folder puts them off this computer.
+# Not for the end-to-end tests' database, nor with DJANGO_BACKUP_AUTO=0.
+BACKUP_DIR = Path(os.environ.get("DJANGO_BACKUP_DIR") or BASE_DIR / "backups" / "auto")
+BACKUP_KEEP = int(os.environ.get("DJANGO_BACKUP_KEEP", "14"))
+BACKUP_AUTO = os.environ.get("DJANGO_BACKUP_AUTO", "1") != "0" and not os.environ.get("DJANGO_SQLITE_PATH")
 
 # Django's authentication, with the attempts limited (apps/accounts/throttle.py: 5 failures for a name, 30 from an
 # address, in 15 minutes), on the login page and the admin's.
