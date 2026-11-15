@@ -1522,6 +1522,14 @@ opération existante.
   quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Cachées en
   esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,
   `ui/tool-columns-store.ts`).
+- **Glisser les icônes d'une barre à l'autre**, la même chose dans toutes les barres — le ruban du haut, Mes outils,
+  les sept colonnes et la colonne de sélection et de vue : une icône **glissée hors des barres** (sur la vue, le
+  panneau…) devient rouge et, lâchée, **quitte sa barre** — du ruban, elle se range dans le menu de son groupe, comme
+  par son épingle. **Glissée sur une autre barre**, elle s'y ajoute à la place marquée d'un trait bleu : venue du
+  ruban, elle y reste aussi ; venue d'ailleurs, elle change de barre. Une barre ne prend que ce qu'elle sait lancer
+  (le ruban du modèle, ses propres outils), sinon l'icône reste où elle était ; Échap annule. La colonne de sélection
+  et de vue garde ainsi ses outils cachés et ceux ajoutés d'autres barres, en bas ; son **« + »** liste tous les outils
+  pour en remettre ou en ajouter un. Retenu par le navigateur (`ui/tool-drag.ts`, `ui/side-tools.ts`).
 - **Colonne de sélection et de vue**, à droite de la vue 3D (contre le panneau Mesures) : les cinq filtres
   (Auto, Faces, Arêtes, Points, Corps) et la sélection par fenêtre, puis « Ajuster » (Échap désélectionne). Elle reste
   en mode modèle (l'esquisse a ses propres outils). Les vues isométrique, de face, de dessus et de droite sont dans le
@@ -2323,6 +2331,10 @@ opération existante.
   - Le **prix TTC** du devis et l'**ergonomie** (triangle d'activité, passage devant l'îlot) s'affichent dans le panneau.
     Cliquer l'esquisse « Plan de la cuisine », ou un meuble fait par le plan, dans le navigateur ou la vue, rouvre l'outil
     sur son linéaire (`app/kitchen/kitchen-plan-tool.ts`).
+- **Tout ouvrir** (colonne de sélection et de vue, à droite de la vue) : un clic ouvre toutes les portes, sort tous
+  les tiroirs et tous les accessoires intérieurs (paniers, porte-pantalons, plateaux tournants, demi-lunes, penderie
+  escamotable…) d'un coup, et le bouton reste enfoncé ; un second clic referme tout. Un range-couverts dans un tiroir
+  sort avec son tiroir. La vue seulement (`accessoriesAmong`, `app/drawer-toggle.ts`).
 - **Ouvrir / fermer les portes** et **Ouvrir / fermer les tiroirs** (onglets Dressing et Cuisine, à côté l'un de
   l'autre) : un clic ouvre toutes les portes du modèle autour de leurs charnières, ou sort tous les tiroirs avec leurs
   caissons, et le bouton reste enfoncé ; un second clic les referme ou les rentre. Si certains sont déjà ouverts, le

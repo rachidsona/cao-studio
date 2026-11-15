@@ -255,18 +255,30 @@
     writing-mode: vertical-rl;
     @apply py-1 text-[10px] tracking-wider uppercase;
   }
-  /* Where a dragged icon will land: a line above or below an icon, or at the end of the column. */
-  [data-tool-columns] [data-drop="before"] {
+  /* Where a dragged icon will land, in any bar (ui/tool-drag.ts): a line above, below or beside an icon, or the bar. */
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="before"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-drop="before"] {
     box-shadow: inset 0 3px 0 var(--color-sky-600);
   }
-  [data-tool-columns] [data-drop="after"] {
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="after"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-drop="after"] {
     box-shadow: inset 0 -3px 0 var(--color-sky-600);
   }
-  [data-tool-columns] [data-drop="end"] {
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="left"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-drop="left"] {
+    box-shadow: inset 3px 0 0 var(--color-sky-600);
+  }
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="right"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-drop="right"] {
+    box-shadow: inset -3px 0 0 var(--color-sky-600);
+  }
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="end"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-drop="end"] {
     @apply bg-sky-50 dark:bg-sky-950;
   }
-  /* Dragged out of the columns: let go, it is taken out. */
-  [data-tool-columns] [data-remove="true"] {
+  /* Dragged out of the bars: let go, it is taken out. */
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-remove="true"],
+  :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-remove="true"] {
     @apply bg-red-100 outline outline-2 outline-red-500 dark:bg-red-950;
   }
   /* The column of selection and view tools beside the viewport: compact, scrolling only on very short screens. */

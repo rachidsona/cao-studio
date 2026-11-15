@@ -8,12 +8,15 @@
  * menu), the groups of FOLD_ORDER first — the documents first of all, the furniture last — each from its last icon.
  *
  * The star ★ of a menu puts the tool in "Mes outils", the favourites bar at the left of the view (favorites.ts).
- * Groups change places by dragging their name; the order is remembered per toolbar.
+ * Groups change places by dragging their name; the order is remembered per toolbar. An icon dragged out of the bar is
+ * put away in its group's menu, as by its pin; dragged into another bar, it is put there too (ui/tool-drag.ts).
  *
  * Above the model's bar, the tabs of TABS, as Fusion's: each shows the groups of its work, has its own bar of
  * favourites and, clicked, its plan at the right (Plan de dressing, Plan de cuisine); the choice is remembered.
  */
 import { bindFavorites } from "./favorites";
+import { catalogue } from "./tool-catalogue";
+import { draggableTool, registerBar } from "./tool-drag";
 
 const HIDDEN = "cao.ribbon-hidden.";
 const ORDER = "cao.ribbon-order.";
@@ -187,11 +190,30 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
 
   const host = document.querySelector<HTMLElement>("#main");
   const favorites = host
-    ? bindFavorites(host, name, new Map(groups.flatMap((g) => g.tools.map((t): [string, HTMLElement] => [t.key, t.button]))), name === "sketch" ? "hidden group-data-[mode=sketch]/editor:flex" : "flex group-data-[mode=sketch]/editor:hidden")
+    ? bindFavorites(host, name, new Map([
+        ...groups.flatMap((g) => g.tools.map((t): [string, HTMLElement] => [t.key, t.button])),
+        // The model's favourites may hold the tools of the column beside the view too.
+        ...(name === "model" ? catalogue(document.body).map((t): [string, HTMLElement] => [t.key, t.button]) : []),
+      ]), name === "sketch" ? "hidden group-data-[mode=sketch]/editor:flex" : "flex group-data-[mode=sketch]/editor:hidden")
     : null;
 
   let open: { caption: HTMLElement; close: () => void } | null = null;
   const label = (button: HTMLElement) => button.getAttribute("aria-label") ?? button.dataset.tip ?? button.title ?? "";
+
+  // Dragged out of the bar, an icon is put away in its group's menu; dragged back onto it, it is shown again.
+  const own = new Set(groups.flatMap((g) => g.tools.map((t) => t.key)));
+  for (const t of groups.flatMap((g) => g.tools)) {
+    draggableTool(t.button, () => ({ key: t.key, label: label(t.button), bar: toolbar, keep: true, remove: () => (hidden.add(t.key), save()) }));
+  }
+  registerBar({
+    element: toolbar,
+    accepts: (key) => own.has(key),
+    mark: (event) => (event ? (toolbar.dataset.drop = "end") : delete toolbar.dataset.drop),
+    drop: (key) => {
+      hidden.delete(key);
+      save();
+    },
+  });
 
   const show = (g: (typeof groups)[number], caption: HTMLElement): void => {
     open?.close();

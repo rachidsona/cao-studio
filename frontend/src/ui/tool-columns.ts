@@ -12,34 +12,10 @@
  */
 import { el } from "./dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
-import { keyOf } from "./ribbon-layout";
+import { catalogue } from "./tool-catalogue";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
-import { addSeparator, COLUMN_COUNT, moveTool, readColumns, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
-
-/** The view tools beside the viewport have no ribbon key: their first data attribute names them. */
-function toolKey(button: HTMLElement): string | null {
-  const key = keyOf(button);
-  if (key) return key;
-  const attribute = [...button.attributes].find((a) => a.name.startsWith("data-") && a.name !== "data-ref");
-  return attribute ? `${attribute.name}:${attribute.value}` : null;
-}
-
-/** Every tool one may put in a column: the model's ribbon, then the selection and view column; each once. */
-function catalogue(root: HTMLElement): Tool[] {
-  const seen = new Set<string>();
-  const buttons = [
-    ...root.querySelectorAll<HTMLElement>('[data-ribbon="model"] .ribbon-row > button'),
-    ...[...root.querySelectorAll<HTMLElement>("[data-side-tools] button")].filter((b) => !b.closest("[data-orbit-options]")),
-  ];
-  return buttons.flatMap((button) => {
-    const key = toolKey(button);
-    if (!key || seen.has(key)) return [];
-    seen.add(key);
-    const label = button.getAttribute("aria-label") ?? button.dataset.tip ?? button.title.split(" : ")[0] ?? key;
-    const group = button.closest(".ribbon-group")?.getAttribute("aria-label") ?? "Sélection et vue";
-    return [{ key, label, group, button }];
-  });
-}
+import { addSeparator, COLUMN_COUNT, insertTool, isSeparator, moveTool, readColumns, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
+import { draggableTool, draggedTool, registerBar } from "./tool-drag";
 
 export function bindToolColumns(root: HTMLElement): void {
   const tree = root.querySelector<HTMLElement>('[data-ref="panel-tree"]');
@@ -83,24 +59,15 @@ export function bindToolColumns(root: HTMLElement): void {
   const iconAt = (column: number, key: string) =>
     [...bar.querySelectorAll<HTMLElement>(`[data-tool-column="${column}"] [data-tool-column-tool]`)].find((b) => b.dataset.toolColumnTool === key);
 
-  /** Right-click takes it out; it is dragged to another place (or out of the columns), Alt + ↑ / ↓ moves it. */
+  /** Right-click takes it out; it is dragged to another place (another bar, or out of the bars), Alt + ↑ / ↓ moves it. */
   const movable = (item: HTMLElement, column: number, key: string, label: string) => {
     item.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       save(toggleTool(state, column, key));
     });
-    item.addEventListener("dragstart", (event) => {
-      dragging = { column, key };
-      event.dataTransfer?.setData("text/plain", label);
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-      requestAnimationFrame(() => item.classList.add("opacity-40"));
-    });
-    item.addEventListener("dragend", () => {
-      dragging = null;
-      item.classList.remove("opacity-40");
-      delete item.dataset.remove;
-      for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
-    });
+    draggableTool(item, () => ({ key, label, bar, remove: () => save(toggleTool(state, column, key)) }));
+    item.addEventListener("dragstart", () => (dragging = { column, key }));
+    item.addEventListener("dragend", () => (dragging = null));
     // Alt + ↑ / ↓: one place up or down in the column.
     item.addEventListener("keydown", (event) => {
       if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
@@ -190,7 +157,6 @@ export function bindToolColumns(root: HTMLElement): void {
       "aria-label": `Colonne ${number}`,
       "data-tool-column": String(index),
     }, fold);
-    bindDrop(section, index);
     const list = el("div", { class: "cad-no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto py-1" });
     list.append(...(state.columns[index] ?? []).flatMap((key) => {
       const kind = separatorKind(key);
@@ -221,59 +187,41 @@ export function bindToolColumns(root: HTMLElement): void {
    * Returns the place among the column's tools without the dragged one, and the icon to mark.
    */
   const dropPlace = (column: number, event: DragEvent): { index: number; over: HTMLElement | null; side: "before" | "after" } => {
-    const keys = (state.columns[column] ?? []).filter((k) => k !== dragging?.key);
+    const moving = dragging?.key ?? draggedTool()?.key;
+    const keys = (state.columns[column] ?? []).filter((k) => k !== moving);
     const over = (event.target as HTMLElement).closest<HTMLElement>("[data-tool-column-tool]");
     const key = over?.dataset.toolColumnTool;
-    if (!over || !key || key === dragging?.key) return { index: keys.length, over: null, side: "after" };
+    if (!over || !key || key === moving) return { index: keys.length, over: null, side: "after" };
     const box = over.getBoundingClientRect();
     const side = event.clientY < box.top + box.height / 2 ? "before" : "after";
     return { index: keys.indexOf(key) + (side === "after" ? 1 : 0), over, side };
   };
-  const bindDrop = (section: HTMLElement, column: number) => {
-    section.addEventListener("dragover", (event) => {
-      if (!dragging) return;
-      event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-      const { over, side } = dropPlace(column, event);
-      for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) if (marked !== over && marked !== section) delete marked.dataset.drop;
-      if (over) {
-        over.dataset.drop = side;
-        delete section.dataset.drop;
-      } else section.dataset.drop = "end";
-    });
-    section.addEventListener("dragleave", (event) => {
-      if (!section.contains(event.relatedTarget as Node)) for (const marked of section.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
-      if (!section.contains(event.relatedTarget as Node)) delete section.dataset.drop;
-    });
-    section.addEventListener("drop", (event) => {
-      if (!dragging) return;
-      event.preventDefault();
+  // Dropped on a column: moved there from its own, or put there from another bar (ui/tool-drag.ts).
+  const columnAt = (target: EventTarget | null) => (target instanceof Element ? target.closest<HTMLElement>("[data-tool-column]") : null);
+  const unmarkAll = () => {
+    for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+  };
+  registerBar({
+    element: bar,
+    accepts: (key) => known(key) || (isSeparator(key) && !!dragging),
+    mark: (event) => {
+      unmarkAll();
+      const section = event && columnAt(event.target);
+      if (!event || !section) return;
+      const { over, side } = dropPlace(Number(section.dataset.toolColumn), event);
+      if (over) over.dataset.drop = side;
+      else section.dataset.drop = "end";
+    },
+    drop: (key, event) => {
+      const section = columnAt(event.target);
+      if (!section) return;
+      const column = Number(section.dataset.toolColumn);
       const { index } = dropPlace(column, event);
       const moved = dragging;
       dragging = null;
-      save(moveTool(state, moved.column, moved.key, column, index));
-    });
-  };
-
-  // Dragged out of the columns and let go anywhere else: the icon leaves its column (Escape cancels the drag).
-  const outside = (event: DragEvent) => !!dragging && !bar.contains(event.target as Node);
-  document.addEventListener("dragover", (event) => {
-    if (!dragging) return;
-    const away = outside(event);
-    const icon = iconAt(dragging.column, dragging.key);
-    if (icon) icon.dataset.remove = String(away);
-    if (!away) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-    for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
-  }, true);
-  document.addEventListener("drop", (event) => {
-    if (!outside(event) || !dragging) return;
-    event.preventDefault();
-    const removed = dragging;
-    dragging = null;
-    save(toggleTool(state, removed.column, removed.key));
-  }, true);
+      save(moved ? moveTool(state, moved.column, moved.key, column, index) : insertTool(state, column, key, index));
+    },
+  });
 
   const render = () => {
     for (const w of watchers.splice(0)) w.disconnect();

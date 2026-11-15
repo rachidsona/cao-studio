@@ -1,4 +1,4 @@
-import { SELECT_ALL_HELP } from "./select-all";
+import { DRAG_HELP, SIDE_HELP } from "./bars";
 import type { HelpFamily } from "./types";
 
 export const CURIC: HelpFamily[] = [
@@ -208,7 +208,7 @@ export const SCREEN: HelpFamily[] = [
         what: "Une barre à vous, posée en haut à gauche de la vue, avec les outils que vous utilisez le plus.",
         steps: [
           "Dans le menu d'un groupe du ruban, cliquez l'étoile d'un outil pour l'ajouter.",
-          "Cliquez une icône de la barre pour lancer l'outil, même rangé ou replié dans le ruban. Clic droit sur une icône : elle quitte la barre.",
+          "Cliquez une icône de la barre pour lancer l'outil, même rangé ou replié dans le ruban. Glissez-y une icône d'une autre barre pour l'ajouter ; glissez-en une hors des barres, ou clic droit : elle la quitte.",
           "Glissez la poignée à points pour déplacer la barre (double-clic : elle revient). « ⇄ » ou « ⇅ » la met à l'horizontale ou à la verticale.",
           "Cliquez « – » pour cacher la barre : seule une étoile ★ reste à sa place ; cliquez-la pour la faire réapparaître.",
         ],
@@ -216,7 +216,7 @@ export const SCREEN: HelpFamily[] = [
       },
       {
         keys: [], name: "Sept colonnes d'outils",
-        what: "Sept colonnes d'icônes entre le Navigateur et la vue, vides au départ, que vous garnissez vous-même avec les outils du ruban.",
+        what: "Sept colonnes d'icônes entre le Navigateur et la vue, vides au départ, que vous garnissez vous-même avec les outils du ruban (par leur « + », ou en les y glissant).",
         steps: [
           "Cliquez le « + » en bas d'une colonne : la liste de tous les outils s'ouvre, rangés par groupe. Tapez un nom pour le trouver, cliquez-le pour l'ajouter (cliqué à nouveau, il est retiré). Échap ou « Fermer » referme la liste.",
           "Cliquez une icône d'une colonne pour lancer l'outil, le même que dans le ruban. Pour la retirer, glissez-la hors des colonnes (elle devient rouge) et lâchez-la, ou faites un clic droit dessus.",
@@ -231,11 +231,11 @@ export const SCREEN: HelpFamily[] = [
         what: "Choisit les outils qui restent dans la barre du haut et l'ordre des groupes.",
         steps: [
           "Cliquez le nom d'un groupe (« Créer ▾ ») : le menu liste tous ses outils, et un clic sur un nom lance l'outil.",
-          "À droite d'un outil, l'épingle le met dans la barre ou le range dans le menu ; l'étoile l'ajoute à « Mes outils ».",
-          "« Par défaut » remet le groupe comme à l'origine. Glissez le nom d'un groupe pour le déplacer : l'ordre est retenu.",
+          "À droite d'un outil, l'épingle le met dans la barre ou le range dans le menu ; l'étoile l'ajoute à « Mes outils ». « Par défaut » remet le groupe comme à l'origine. Glissez le nom d'un groupe pour le déplacer : l'ordre est retenu.",
         ],
         tip: "Quand la fenêtre est trop étroite, des icônes se replient d'elles-mêmes (Client et Fabrication d'abord, Dressing et Cuisine en dernier) mais restent dans le menu de leur groupe.",
       },
+      DRAG_HELP,
     ],
   },
   {
@@ -359,7 +359,7 @@ export const SCREEN: HelpFamily[] = [
           "Cachée, elle garde son pas : le dessin s'y accroche toujours.",
         ],
       },
-      SELECT_ALL_HELP,
+      ...SIDE_HELP,
       {
         keys: [], selector: "[data-xray]", name: "Rayons X",
         what: "Rend les corps translucides pour voir l'intérieur d'un meuble sans rien cacher.",

@@ -91,3 +91,13 @@ export function moveTool(state: ColumnsState, from: number, key: string, to: num
   target.splice(Math.max(0, Math.min(index, target.length)), 0, key);
   return { ...state, columns };
 }
+
+/** Puts a tool from another bar at `index` of a column (not doubled if it is there). */
+export function insertTool(state: ColumnsState, column: number, key: string, index: number): ColumnsState {
+  if (!state.columns[column]) return state;
+  const columns = state.columns.map((keys) => [...keys]);
+  const target = (columns[column] as string[]).filter((k) => k !== key);
+  target.splice(Math.max(0, Math.min(index, target.length)), 0, key);
+  columns[column] = target;
+  return { ...state, columns };
+}

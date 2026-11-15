@@ -1,13 +1,16 @@
 /**
  * Ma barre d'outils (comme le grand jeu d'outils de SketchUp) : une barre verticale à gauche de la vue, avec les
  * outils qu'on utilise souvent, choisis par l'étoile ★ des menus de groupe (« CRÉER ▾ »…). Chaque icône lance l'outil
- * de la barre du haut (même caché ou replié) et en reprend l'état (enfoncé, grisé) ; un clic droit la retire.
+ * de la barre du haut (même caché ou replié) et en reprend l'état (enfoncé, grisé) ; un clic droit la retire, ou la
+ * glisser hors des barres. Une icône d'une autre barre (le ruban, les colonnes, la colonne Sélection et vue) s'y glisse
+ * à la place marquée, et une des siennes plus loin dans la barre (ui/tool-drag.ts).
  * Une barre par mode (modèle, esquisse), et dans le modèle une par onglet du ruban (Conception 3D, Dressing, Cuisine :
  * use), retenue par le navigateur ; celles du Dressing et de la Cuisine commencent avec leurs outils de tous les jours. On la déplace où l'on veut par sa poignée ⠿, et on
  * la met à l'horizontale ou à la verticale (ui/movable.ts). Son « – » la cache : il n'en reste qu'une étoile ★, à sa
  * place, qui la fait réapparaître ; cachée ou non, c'est retenu par le navigateur, pour toutes les barres.
  */
 import { makeMovable } from "./movable";
+import { draggableTool, registerBar } from "./tool-drag";
 
 const STORAGE = "cao.favorites.";
 const HIDDEN = `${STORAGE}hidden`;
@@ -132,7 +135,7 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
       const hint = document.createElement("span");
       hint.className = "flex size-9 items-center justify-center text-lg text-gray-400";
       hint.textContent = "☆";
-      hint.title = "Mes outils : ajoutez ceux que vous utilisez souvent avec l'étoile ★ des menus de groupe (CRÉER ▾, MODIFIER ▾…).";
+      hint.title = "Mes outils : ajoutez ceux que vous utilisez souvent avec l'étoile ★ des menus de groupe (CRÉER ▾, MODIFIER ▾…), ou glissez-les ici d'une autre barre.";
       list.replaceChildren(hint);
       return;
     }
@@ -143,7 +146,7 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
         const button = document.createElement("button");
         button.type = "button";
         button.className = "tool-btn icon-btn";
-        button.title = `${source.title || label} — clic droit : retirer de ma barre`;
+        button.title = `${source.title || label} — glisser pour changer sa place ; glisser hors des barres ou clic droit : retirer de ma barre`;
         button.setAttribute("aria-label", label);
         const icon = source.querySelector("svg")?.cloneNode(true);
         if (icon) button.append(icon);
@@ -159,6 +162,8 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
         watcher.observe(source, { attributes: true, attributeFilter: ["aria-pressed", "disabled"] });
         watchers.push(watcher);
         button.addEventListener("click", () => source.click());
+        button.dataset.favoriteTool = key;
+        draggableTool(button, () => ({ key, label, bar, remove: () => toggle(key) }));
         button.addEventListener("contextmenu", (event) => {
           event.preventDefault();
           toggle(key);
@@ -173,6 +178,36 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
     write(name, keys);
     render();
   };
+  // An icon dropped on the bar goes before or after the one under the pointer (by its half), or at the end.
+  const place = (event: DragEvent, key: string): { index: number; over: HTMLElement | null; side: "before" | "after" | "left" | "right" } => {
+    const others = keys.filter((k) => k !== key);
+    const over = (event.target as Element).closest<HTMLElement>("[data-favorite-tool]");
+    const at = over?.dataset.favoriteTool;
+    if (!over || !at || at === key) return { index: others.length, over: null, side: "after" };
+    const box = over.getBoundingClientRect();
+    const horizontal = bar.classList.contains("flex-row");
+    const first = horizontal ? event.clientX < box.left + box.width / 2 : event.clientY < box.top + box.height / 2;
+    return { index: others.indexOf(at) + (first ? 0 : 1), over, side: horizontal ? (first ? "left" : "right") : first ? "before" : "after" };
+  };
+  registerBar({
+    element: bar,
+    accepts: (key) => tools.has(key) && bar.dataset.hidden !== "true",
+    mark: (event, key) => {
+      for (const marked of bar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+      delete bar.dataset.drop;
+      if (!event) return;
+      const { over, side } = place(event, key);
+      if (over) over.dataset.drop = side;
+      else bar.dataset.drop = "end";
+    },
+    drop: (key, event) => {
+      const others = keys.filter((k) => k !== key);
+      others.splice(place(event, key).index, 0, key);
+      keys = others;
+      write(name, keys);
+      render();
+    },
+  });
   bar.addEventListener("pointerdown", (event) => event.stopPropagation());
   render();
   const use = (next: string, seed: readonly string[] = []) => {

@@ -16,11 +16,13 @@ export interface Tool {
 export interface PickerOptions {
   /** The column, counted from 1, in the title. */
   column: number;
+  /** Its title instead of the column's (another bar). */
+  title?: string;
   tools: readonly Tool[];
   chosen: (key: string) => boolean;
   toggle: (key: string) => void;
-  /** Adds a separator at the end of the column: a line, or an empty place. */
-  separate: (kind: "line" | "space") => void;
+  /** Adds a separator at the end of the column: a line, or an empty place (none: no separators offered). */
+  separate?: (kind: "line" | "space") => void;
 }
 
 let closeOpen: (() => void) | null = null;
@@ -36,7 +38,7 @@ export function iconOf(button: HTMLElement): Node | null {
 function separators(options: PickerOptions): HTMLElement {
   const add = (kind: "line" | "space", text: string, title: string) => {
     const b = el("button", { type: "button", class: "h-8 flex-1 border border-gray-300 text-xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title, "data-add-separator": kind }, text);
-    b.addEventListener("click", () => options.separate(kind));
+    b.addEventListener("click", () => options.separate?.(kind));
     return b;
   };
   return el(
@@ -56,9 +58,9 @@ export function openPicker(anchor: HTMLElement, options: PickerOptions): void {
   const close = el("button", { type: "button", class: "ribbon-menu-reset" }, "Fermer");
   const panel = el(
     "div",
-    { class: "ribbon-menu flex w-72 flex-col", role: "dialog", "aria-label": `Outils de la colonne ${options.column}`, "data-tool-picker": String(options.column - 1) },
-    el("p", { class: "panel-title px-1 pb-1" }, `Colonne ${options.column} : choisir les outils`),
-    separators(options),
+    { class: "ribbon-menu flex w-72 flex-col", role: "dialog", "aria-label": options.title ?? `Outils de la colonne ${options.column}`, "data-tool-picker": String(options.column - 1) },
+    el("p", { class: "panel-title px-1 pb-1" }, options.title ?? `Colonne ${options.column} : choisir les outils`),
+    options.separate ? separators(options) : null,
     input,
     list,
     el("div", { class: "ribbon-menu-footer" }, el("span", { class: "ribbon-menu-hint" }, "Clic : ajouter ou retirer"), close),
@@ -117,10 +119,11 @@ export function openPicker(anchor: HTMLElement, options: PickerOptions): void {
 
   draw();
   document.body.append(panel);
-  // Beside the column, kept inside the window.
+  // Beside the column (on its left when there is no room on its right), kept inside the window.
   const box = anchor.getBoundingClientRect();
   const height = Math.min(window.innerHeight * 0.7, 480);
-  panel.style.left = `${Math.min(box.right + 4, window.innerWidth - panel.offsetWidth - 8)}px`;
+  const right = box.right + 4 + panel.offsetWidth <= window.innerWidth - 8;
+  panel.style.left = `${Math.max(8, right ? box.right + 4 : box.left - 4 - panel.offsetWidth)}px`;
   panel.style.top = `${Math.max(8, Math.min(box.top, window.innerHeight - height - 8))}px`;
   panel.style.height = `${height}px`;
   anchor.setAttribute("aria-expanded", "true");

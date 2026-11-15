@@ -10,7 +10,7 @@
  * about their post, the pull-down rail down in front; a cutlery tray in a drawer opens its drawer.
  *
  * « Ouvrir / fermer les portes » and « Ouvrir / fermer les tiroirs » (Dressing, Cuisine) do it for every door, or every
- * drawer, of the model at once.
+ * drawer, of the model at once; « Tout ouvrir » (the column beside the view) for every door, drawer and accessory.
  */
 import { madeDoor } from "../document/kitchen-floor";
 import { bodyLabel, findFeature } from "../document/operations";
@@ -207,6 +207,18 @@ export function doorsAmong(doc: CadDocument, bodies: readonly string[], box: (id
   return out;
 }
 
+/** Every accessory among these bodies that comes out, once each (one in a drawer: its drawer). */
+export function accessoriesAmong(doc: CadDocument, bodies: string[]): { key: string; bodies: string[]; pose?: Open["pose"] }[] {
+  const out = new Map<string, { key: string; bodies: string[]; pose?: Open["pose"] }>();
+  for (const [featureId, ids] of byFeature(bodies)) {
+    const feature = findFeature(doc, featureId);
+    if (feature?.type !== "niche" || feature.fill !== "accessory") continue;
+    const opening = accessoryOpening(doc, bodies, ids[0]!);
+    if (opening && !out.has(opening.key)) out.set(opening.key, opening);
+  }
+  return [...out.values()];
+}
+
 /** The accessories of the niche of these drawers standing on the bottom of drawer `k` (their feature ids). */
 function accessoriesIn(doc: CadDocument, drawers: NicheFeature, k: number): string[] {
   const n = nicheGeometry(drawers, findFeature(doc, drawers.sketch) as SketchFeature | undefined);
@@ -334,11 +346,17 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
     return [...found.values()];
   };
   const drawers = (): Item[] => drawersAmong(shown(), viewport.displayedBodies).map(drawerItem);
+  /** Every door, drawer and accessory shown, once each (a tray in a drawer is its drawer). */
+  const everything = (): Item[] => {
+    const accessories = accessoriesAmong(shown(), viewport.displayedBodies).map((a): Item => (a.pose ? { key: a.key, bodies: a.bodies, pose: () => a.pose! } : drawerItem(a)));
+    return [...new Map([...doors(), ...drawers(), ...accessories].map((item) => [item.key, item])).values()];
+  };
 
   // A button is down while all its doors, or all its drawers, are open.
   const kinds = [
     { buttons: [...root.querySelectorAll<HTMLButtonElement>('[data-workshop="doors-open"]')], list: doors, none: "Il n'y a aucune porte dans ce modèle." },
     { buttons: [...root.querySelectorAll<HTMLButtonElement>('[data-workshop="drawers-open"]')], list: drawers, none: "Il n'y a aucun tiroir dans ce modèle." },
+    { buttons: [...root.querySelectorAll<HTMLButtonElement>("[data-open-all]")], list: everything, none: "Il n'y a ni porte, ni tiroir, ni accessoire à ouvrir dans ce modèle." },
   ];
   const showButtons = () => {
     // Made again since they were opened: closed already, forgotten (else every click would look at every door).
