@@ -4,7 +4,8 @@
  * tout arrive en une seule annulation, en étapes ordinaires de l'historique qu'on retouche ensuite niche par niche. Un
  * module réglé à sa façon se garde dans « Mes modules » (my-modules.ts). L'outil reste pour équiper d'autres niches
  * jusqu'à Échap. Un clic dans un module déjà posé le rouvre (document/module-edit.ts) : ses étagères, ses tiroirs, la
- * hauteur de chaque niche, tout se change, et OK le remplace en une annulation.
+ * hauteur de chaque niche, tout se change, et OK le remplace en une annulation. Des formules (module-formulas.ts)
+ * calculent le module sur chaque niche où on le pose, et il se recalcule quand sa niche change (document/module-follow.ts).
  */
 import {
   MODULES,
@@ -18,6 +19,8 @@ import {
   type ModuleSizes,
 } from "../../document/dressing-modules";
 import { moduleOfNiche, withModuleChanged, withoutModule, type PlacedModule } from "../../document/module-edit";
+import { nicheVariables, withProgramModules } from "../../document/module-follow";
+import { isProgrammed, resolveProgram, type ModuleProgram, type NicheVariables } from "../../document/module-program";
 import type { CadDocument, DisplayUnit, SketchFeature, Vec3 } from "../../document/types";
 import { nicheGeometry, worldBox } from "../../features/niche-parts";
 import { formatLength } from "../../measurements/units";
@@ -28,6 +31,7 @@ import { el } from "../../ui/dom";
 import { placePanel } from "../../ui/dock";
 import { panelFooter, panelHeader } from "../../ui/panel-close";
 import { moduleChoice, moduleList } from "./module-list";
+import { emptyProgram, formulaRows, type ProgramPart } from "./module-formulas";
 import { FIELD, moduleOptionRows, SMALL } from "./module-options";
 import { myModules, removeMyModule, saveMyModule } from "./my-modules";
 
@@ -45,8 +49,10 @@ export interface ModuleToolHost {
 
 type Chosen = { partition: string; path: number[]; box: NicheBox };
 
-/** Kept for the session: the last module (mm). */
-const LAST: { kind: ModuleKind; sizes: ModuleSizes; thickness: number } = { kind: "long", sizes: moduleSizes("long"), thickness: 18 };
+type Spec = { kind: ModuleKind; sizes: ModuleSizes; thickness: number };
+
+/** Kept for the session: the last module (mm), and its formulas. */
+const LAST: Spec & { program: ProgramPart | null } = { kind: "long", sizes: moduleSizes("long"), thickness: 18, program: null };
 
 const same = (a: NicheBox, b: NicheBox) => (["x0", "y0", "x1", "y1"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
 
@@ -54,6 +60,8 @@ export class ModuleTool {
   private kind = LAST.kind;
   private sizes = { ...LAST.sizes };
   private thickness = LAST.thickness;
+  /** Its formulas: none, a module the same in every niche. */
+  private program: ProgramPart | null = LAST.program ? structuredClone(LAST.program) : null;
   /** The name of the module of « Mes modules » in use. */
   private mine: string | null = null;
   private niches: Chosen[] = [];
@@ -100,12 +108,37 @@ export class ModuleTool {
 
   /** The module placed, as it is now, is the one changed. */
   private follow(placed: PlacedModule): void {
-    Object.assign(this, { editing: placed, kind: placed.kind, sizes: { ...placed.sizes }, thickness: placed.thickness, niches: [{ partition: placed.partition, path: placed.path, box: placed.box }] });
+    // A module programmed comes back as its program: the module when no condition holds, and its formulas.
+    const f = placed.formula?.program;
+    const program = f ? structuredClone({ params: f.params, rules: f.rules, formulas: f.formulas }) : null;
+    const spec = f ? { kind: f.kind, sizes: structuredClone(f.sizes), thickness: f.thickness } : { kind: placed.kind, sizes: { ...placed.sizes }, thickness: placed.thickness };
+    Object.assign(this, { editing: placed, ...spec, program, niches: [{ partition: placed.partition, path: placed.path, box: placed.box }] });
+  }
+
+  /** The program as it would be laid now (its formulas may be none yet). */
+  private whole(): ModuleProgram | null {
+    return this.program ? { kind: this.kind, sizes: this.sizes, thickness: this.thickness, ...this.program } : null;
+  }
+
+  /** The program, if there is something to work out. */
+  private programmed(): ModuleProgram | null {
+    const whole = this.whole();
+    return whole && isProgrammed(whole) ? whole : null;
+  }
+
+  private variables(n: Chosen): NicheVariables {
+    return nicheVariables(this.sketch(), n.partition, n.box);
+  }
+
+  /** What this niche gets: the module set, or what its formulas make of it (a string: why they cannot). */
+  private spec(n: Chosen): Spec | string {
+    const programmed = this.programmed();
+    return programmed ? resolveProgram(programmed, this.variables(n)) : { kind: this.kind, sizes: this.sizes, thickness: this.thickness };
   }
 
   /** What would be stored: the module, its sizes, its niches. */
   private key(): string {
-    return JSON.stringify([this.kind, this.sizes, this.thickness, this.niches.map((n) => n.path), this.editing?.step ?? null]);
+    return JSON.stringify([this.kind, this.sizes, this.thickness, this.program, this.niches.map((n) => n.path), this.editing?.step ?? null]);
   }
 
   /** A whole setting (a niche chosen, nothing wrong) is stored a moment later. */
@@ -149,14 +182,16 @@ export class ModuleTool {
   }
 
   /** Each niche chosen with its module, or why it does not fit. */
-  private laid(): { niche: Chosen; layout: ModuleLayout | null; problem: string | null }[] {
+  private laid(): { niche: Chosen; spec: Spec; layout: ModuleLayout | null; problem: string | null }[] {
     const sketch = this.sketch();
     return this.niches.map((niche) => {
-      const layout = moduleLayout(niche.box, niche.path, this.kind, this.thickness, this.sizes);
-      if (typeof layout === "string") return { niche, layout: null, problem: layout };
+      const spec = this.spec(niche);
+      if (typeof spec === "string") return { niche, spec: { kind: this.kind, sizes: this.sizes, thickness: this.thickness }, layout: null, problem: spec };
+      const layout = moduleLayout(niche.box, niche.path, spec.kind, spec.thickness, spec.sizes);
+      if (typeof layout === "string") return { niche, spec, layout: null, problem: layout };
       const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path }, sketch);
-      if (typeof geometry === "string") return { niche, layout: null, problem: geometry };
-      return { niche, layout, problem: moduleEquipment(geometry, layout, this.sizes).problem };
+      if (typeof geometry === "string") return { niche, spec, layout: null, problem: geometry };
+      return { niche, spec, layout, problem: moduleEquipment(geometry, layout, spec.sizes).problem };
     });
   }
 
@@ -168,10 +203,10 @@ export class ModuleTool {
   /** The rods and drawers OK would make, as boxes of the world. */
   solids(): [Vec3, Vec3][] {
     const sketch = this.sketch();
-    return this.laid().flatMap(({ niche, layout, problem }) => {
+    return this.laid().flatMap(({ niche, spec, layout, problem }) => {
       const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path }, sketch);
       if (!layout || problem || typeof geometry === "string") return [];
-      return moduleEquipment(geometry, layout, this.sizes).parts.map(({ geometry: here, part }) => {
+      return moduleEquipment(geometry, layout, spec.sizes).parts.map(({ geometry: here, part }) => {
         if (part.kind === "box") return worldBox(here, part);
         const r = part.radius ?? 1;
         return worldBox(here, { from: [part.from[0], part.from[1] - r, part.from[2] - r], to: [part.to[0], part.to[1] + r, part.to[2] + r] });
@@ -187,7 +222,7 @@ export class ModuleTool {
   // ---- panel ------------------------------------------------------------------------
 
   private recompute(): void {
-    if (!this.editing) Object.assign(LAST, { kind: this.kind, sizes: { ...this.sizes }, thickness: this.thickness });
+    if (!this.editing) Object.assign(LAST, { kind: this.kind, sizes: { ...this.sizes }, thickness: this.thickness, program: this.program ? structuredClone(this.program) : null });
     this.draw();
     this.host.changed();
     this.schedule();
@@ -202,10 +237,10 @@ export class ModuleTool {
 
   private warnings(): string[] {
     const partition = (id: string) => this.sketch()?.offsets?.find((r) => r.id === id);
-    const all = this.laid().flatMap(({ niche, layout, problem }) => {
+    const all = this.laid().flatMap(({ niche, spec, layout, problem }) => {
       const record = partition(niche.partition);
       if (!layout || problem || !record || !isPartition(record)) return [];
-      return moduleWarnings(layout, record.step.origin[1], record.step.depth ?? 0, this.thickness);
+      return moduleWarnings(layout, record.step.origin[1], record.step.depth ?? 0, spec.thickness);
     });
     return [...new Set(all)];
   }
@@ -223,9 +258,9 @@ export class ModuleTool {
           { class: "divide-y divide-gray-200 border border-gray-200 dark:divide-gray-700 dark:border-gray-700", "aria-label": "Mes modules" },
           ...mine.map((m) =>
             moduleChoice(m.name, m.kind, this.mine === m.name, () => {
-              Object.assign(this, { kind: m.kind, sizes: { ...m.sizes }, thickness: m.thickness, mine: m.name });
+              Object.assign(this, { kind: m.kind, sizes: { ...m.sizes }, thickness: m.thickness, mine: m.name, program: m.program ? structuredClone(m.program) : null });
               this.recompute();
-            }, MODULES[m.kind].label),
+            }, `${MODULES[m.kind].label}${m.program ? " · à formules" : ""}`),
           ),
         )
       : null;
@@ -235,7 +270,8 @@ export class ModuleTool {
     keep.addEventListener("click", () => {
       const text = name.value.trim();
       if (!text) return this.host.notify("Donnez un nom à ce module.", "info");
-      if (!saveMyModule({ name: text, kind: this.kind, sizes: { ...this.sizes }, thickness: this.thickness })) return this.host.notify("Ce navigateur ne peut pas garder ce module.", "error");
+      const program = this.program ? { program: structuredClone(this.program) } : {};
+      if (!saveMyModule({ name: text, kind: this.kind, sizes: { ...this.sizes }, thickness: this.thickness, ...program })) return this.host.notify("Ce navigateur ne peut pas garder ce module.", "error");
       this.mine = text;
       name.blur();
       this.host.notify(`Module « ${text} » gardé dans Mes modules.`, "success");
@@ -257,12 +293,27 @@ export class ModuleTool {
       sizes: this.sizes,
       unit,
       layout: first?.layout ?? null,
-      levels: this.niches.length === 1,
+      levels: this.niches.length === 1 && !this.programmed(),
+      ruled: new Set(Object.keys(this.program?.formulas ?? {})),
       thickness: { value: this.thickness, set: (mm) => (this.thickness = mm) },
       changed: () => {
         this.mine = null;
         this.recompute();
       },
+      redraw: () => this.draw(),
+    });
+    // Its formulas (module-formulas.ts), the result shown on the first niche chosen.
+    const edited = (program: ProgramPart | null) => {
+      Object.assign(this, { program, mine: null });
+      this.recompute();
+    };
+    const formulas = formulaRows({
+      program: this.whole(),
+      niche: first ? this.variables(first.niche) : null,
+      unit,
+      open: () => edited(emptyProgram()),
+      close: () => edited(null),
+      changed: () => edited(this.program),
       redraw: () => this.draw(),
     });
     const inside = el("button", { type: "button", class: `${SMALL} w-full` }, "Poser un module dans cette niche seule");
@@ -284,6 +335,7 @@ export class ModuleTool {
       owned ? el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, "Mes modules") : null,
       owned,
       ...options,
+      ...formulas,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, this.niches.length > 1 ? `Une niche choisie ne peut pas recevoir ce module : ${problem}` : problem) : null,
       ...this.warnings().map((w) => el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, w)),
       el("div", { class: "flex gap-1.5" }, name, keep, this.mine ? forget : null),
@@ -313,20 +365,29 @@ export class ModuleTool {
     const problem = this.laid().find((l) => l.problem)?.problem;
     if (this.niches.length === 0 || problem) return this.host.notify(problem ?? "Cliquez d'abord la niche à équiper.", "error");
     const editing = this.editing;
-    const made = editing
-      ? withModuleChanged(this.host.doc(), this.host.sketchId(), editing, this.kind, this.thickness, this.sizes)
-      : withModules(this.host.doc(), this.host.sketchId(), this.niches, this.kind, this.thickness, this.sizes);
+    const programmed = this.programmed();
+    const made = editing ? this.changedModule(editing, programmed) : programmed ? withProgramModules(this.host.doc(), this.host.sketchId(), this.niches, structuredClone(programmed)) : withModules(this.host.doc(), this.host.sketchId(), this.niches, this.kind, this.thickness, this.sizes);
     if (typeof made === "string") return this.host.notify(made, "error");
     const n = this.niches.length;
     const one = this.niches.length === 1 ? this.niches[0]! : editing ? { partition: editing.partition, path: editing.path, box: editing.box } : null;
     this.niches = [];
     this.editing = null;
-    this.host.apply(made, editing ? `Module modifié : ${MODULES[this.kind].label.toLowerCase()}.` : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${MODULES[this.kind].label.toLowerCase()}.`);
+    const label = `${MODULES[this.kind].label.toLowerCase()}${programmed ? " à formules" : ""}`;
+    this.host.apply(made, editing ? `Module modifié : ${label}.` : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${label}.`);
     const sketch = this.sketch();
     const placed = one && sketch ? moduleOfNiche(this.host.doc(), sketch, one.partition, [...one.path, 0]) : null;
     if (placed) this.follow(placed);
     this.storedKey = this.key();
     this.recompute();
+  }
+
+  /** The module placed, changed: worked out on its niche when it has formulas, and keeping them. */
+  private changedModule(editing: PlacedModule, programmed: ModuleProgram | null): CadDocument | string {
+    const niche = { partition: editing.partition, path: editing.path, box: editing.box };
+    const spec = this.spec(niche);
+    if (typeof spec === "string") return spec;
+    const formula = programmed ? { program: structuredClone(programmed), at: this.variables(niche) } : undefined;
+    return withModuleChanged(this.host.doc(), this.host.sketchId(), editing, spec.kind, spec.thickness, spec.sizes, formula);
   }
 
   /** The module placed taken away: its niche is free again, as one undo step. */

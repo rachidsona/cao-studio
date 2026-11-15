@@ -1,0 +1,194 @@
+/**
+ * La section « Formules » de l'outil Module (module-tool.ts) : les paramètres du module, les conditions qui choisissent
+ * un autre module selon la niche, une formule pour chaque cote qu'on veut calculée (document/module-program.ts), et
+ * l'aperçu du résultat sur la niche choisie, refait à chaque lettre tapée ; une formule qui ne se lit pas est dite en
+ * français, citée. Une formule laissée vide garde la cote du panneau.
+ */
+import { MODULES, type ModuleKind } from "../../document/dressing-modules";
+import { FORMULA_FUNCTIONS, parseFormula } from "../../document/module-formula";
+import {
+  formulasOf,
+  nicheMeasures,
+  paramProblem,
+  programNames,
+  programProblem,
+  resolveProgram,
+  TARGETS,
+  VARIABLES,
+  type FormulaTarget,
+  type ModuleProgram,
+  type NicheVariables,
+} from "../../document/module-program";
+import type { DisplayUnit } from "../../document/types";
+import { formatLength, parseNumber } from "../../measurements/units";
+import { el } from "../../ui/dom";
+import { FIELD, ROW, SMALL } from "./module-options";
+
+/** What the formulas add to a module: changed in place by the section. */
+export type ProgramPart = Pick<ModuleProgram, "params" | "rules" | "formulas">;
+
+export const emptyProgram = (): ProgramPart => ({ params: [], rules: [], formulas: {} });
+
+export interface FormulaSection {
+  /** The program as it would be laid now; none: the module is fixed. */
+  program: ModuleProgram | null;
+  /** The niche the result is shown on. */
+  niche: NicheVariables | null;
+  unit: DisplayUnit;
+  /** Formulas given to a module that had none. */
+  open(): void;
+  /** Back to a fixed module. */
+  close(): void;
+  /** The program changed (in place). */
+  changed(): void;
+  /** A field left: the panel drawn again. */
+  redraw(): void;
+}
+
+const ERROR = "bg-red-50 px-2 py-1.5 text-red-900 dark:bg-red-950 dark:text-red-100";
+const OK = "bg-sky-50 px-2 py-1.5 text-sky-950 dark:bg-sky-950 dark:text-sky-50";
+
+/** What the program makes of this niche, in words: the module and what each formula gave; or what is wrong. */
+export function programPreview(program: ModuleProgram, niche: NicheVariables | null, unit: DisplayUnit): { text: string; ok: boolean } {
+  if (!niche) {
+    const wrong = programProblem(program);
+    return wrong ? { text: wrong, ok: false } : { text: "Choisissez une niche : le résultat des formules s'y affiche.", ok: true };
+  }
+  const resolved = resolveProgram(program, niche);
+  if (typeof resolved === "string") return { text: resolved, ok: false };
+  const said = (Object.entries(resolved.values) as [FormulaTarget, number][]).map(([target, v]) => `${TARGETS[target].label.toLowerCase()} ${TARGETS[target].count ? v : formatLength(v, unit)}`);
+  return { text: `Sur la niche de ${nicheMeasures(niche)} : ${MODULES[resolved.kind].label}${said.length ? ` — ${said.join(", ")}` : ""}.`, ok: true };
+}
+
+/** A text field: the preview follows each letter, the program takes it when it is left (or Entrée). */
+function textField(label: string, value: string, o: { placeholder?: string; invalid?: boolean; typed(text: string): void; set(text: string): void; redraw(): void }): HTMLInputElement {
+  const input = el("input", { type: "text", class: `${FIELD} font-mono`, value, "aria-label": label, ...(o.placeholder ? { placeholder: o.placeholder } : {}), "aria-invalid": String(o.invalid ?? false), spellcheck: "false", autocomplete: "off" });
+  input.addEventListener("input", () => o.typed(input.value));
+  input.addEventListener("change", () => o.set(input.value));
+  input.addEventListener("blur", () => o.redraw());
+  input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Enter") input.blur();
+  });
+  return input;
+}
+
+export function formulaRows(o: FormulaSection): HTMLElement[] {
+  const program = o.program;
+  if (!program) {
+    const open = el("button", { type: "button", class: `${SMALL} w-full`, "aria-expanded": "false" }, "Formules : calculer ce module sur la niche");
+    open.addEventListener("click", () => o.open());
+    return [open];
+  }
+  const names = programNames(program);
+  const preview = el("p", { class: OK, "aria-live": "polite", "data-formula-preview": "" });
+  const show = (candidate: ModuleProgram) => {
+    const { text, ok } = programPreview(candidate, o.niche, o.unit);
+    preview.textContent = text;
+    preview.className = ok ? OK : ERROR;
+  };
+  show(program);
+  // A field typed in: the preview of the program as it would be with it.
+  const trying = (change: (copy: ModuleProgram, text: string) => void) => (text: string) => {
+    const copy = structuredClone(program);
+    change(copy, text);
+    show(copy);
+  };
+  const commit = (change: () => void) => {
+    change();
+    o.changed();
+  };
+  const remove = (label: string, act: () => void) => {
+    const button = el("button", { type: "button", class: `${SMALL} px-1.5`, "aria-label": label, title: label }, "×");
+    button.addEventListener("click", () => commit(act));
+    return button;
+  };
+
+  const params = program.params.map((param, i) => {
+    const name = textField(`Nom du paramètre ${i + 1}`, param.name, {
+      invalid: paramProblem(program, i) !== null,
+      typed: trying((copy, text) => ((copy.params[i] as { name: string }).name = text.trim())),
+      set: (text) => commit(() => (param.name = text.trim())),
+      redraw: o.redraw,
+    });
+    const value = textField(`Valeur du paramètre ${i + 1}`, String(param.value).replace(".", ","), {
+      typed: () => {},
+      set: (text) => {
+        const v = parseNumber(text);
+        value.setAttribute("aria-invalid", String(v === null));
+        if (v !== null) commit(() => (param.value = v));
+      },
+      redraw: o.redraw,
+    });
+    value.classList.add("text-right");
+    return el("div", { class: "grid grid-cols-[1fr_5rem_auto] gap-1" }, name, value, remove(`Retirer le paramètre ${i + 1}`, () => program.params.splice(i, 1)));
+  });
+  const addParam = el("button", { type: "button", class: `${SMALL} w-full` }, "Ajouter un paramètre");
+  addParam.addEventListener("click", () => {
+    const taken = new Set(names);
+    const name = ["pas", "jeu", "marge"].find((n) => !taken.has(n)) ?? `p${program.params.length + 1}`;
+    commit(() => program.params.push({ name, value: name === "pas" ? 350 : 0 }));
+  });
+
+  const kinds = Object.keys(MODULES) as ModuleKind[];
+  const rules = program.rules.map((rule, i) => {
+    const when = textField(`Condition ${i + 1}`, rule.when, {
+      invalid: typeof parseFormula(rule.when, names) === "string",
+      placeholder: "largeur > 45 cm",
+      typed: trying((copy, text) => ((copy.rules[i] as { when: string }).when = text)),
+      set: (text) => commit(() => (rule.when = text)),
+      redraw: o.redraw,
+    });
+    const kind = el("select", { class: FIELD, "aria-label": `Module si la condition ${i + 1}` }, ...kinds.map((k) => el("option", { value: k, selected: k === rule.kind }, MODULES[k].label)));
+    kind.addEventListener("change", () => commit(() => (rule.kind = kind.value as ModuleKind)));
+    return el("div", { class: "space-y-1" }, el("div", { class: "grid grid-cols-[auto_1fr_auto] items-center gap-1" }, "Si", when, remove(`Retirer la condition ${i + 1}`, () => program.rules.splice(i, 1))), el("label", { class: ROW }, "alors", kind));
+  });
+  const addRule = el("button", { type: "button", class: `${SMALL} w-full` }, "Ajouter une condition");
+  addRule.addEventListener("click", () => commit(() => program.rules.push({ when: "largeur > 45 cm", kind: program.kind === "drawers" ? "shelves" : "drawers" })));
+
+  // A formula for each size of the modules it may make.
+  const possible = [program.kind, ...program.rules.map((r) => r.kind)];
+  const set = new Map(formulasOf(program));
+  const targets = (Object.keys(TARGETS) as FormulaTarget[]).filter((t) => possible.some((k) => TARGETS[t].applies(k)) || set.has(t));
+  const fixed: Record<FormulaTarget, string> = {
+    shelves: program.sizes.shelves !== undefined ? String(program.sizes.shelves) : "selon l'espacement",
+    spacing: formatLength(program.sizes.spacing, o.unit),
+    hat: formatLength(program.sizes.hat, o.unit),
+    drawerZone: formatLength(program.sizes.drawerZone, o.unit),
+    drawers: String(program.sizes.drawers),
+    rodDrop: formatLength(program.sizes.rod?.drop ?? 60, o.unit),
+    thickness: formatLength(program.thickness, o.unit),
+  };
+  const formulas = targets.map((target) => {
+    const text = program.formulas[target] ?? "";
+    const input = textField(`Formule : ${TARGETS[target].label}`, text, {
+      invalid: text.trim() !== "" && typeof parseFormula(text, names) === "string",
+      placeholder: fixed[target],
+      typed: trying((copy, text) => (copy.formulas[target] = text)),
+      set: (value) => commit(() => (value.trim() ? (program.formulas[target] = value) : delete program.formulas[target])),
+      redraw: o.redraw,
+    });
+    return el("label", { class: "block space-y-0.5" }, el("span", { class: "text-gray-700 dark:text-gray-200" }, TARGETS[target].label), input);
+  });
+
+  const close = el("button", { type: "button", class: SMALL }, "Sans formules");
+  close.addEventListener("click", () => o.close());
+  const heading = (text: string) => el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, text);
+  return [
+    el("div", { class: "flex items-center justify-between gap-1.5" }, heading("Formules"), close),
+    el(
+      "p",
+      { class: "text-gray-600 dark:text-gray-300" },
+      `Variables de la niche (mm) : ${VARIABLES.map((v) => v.name.replace("epaisseur", "épaisseur")).join(", ")}, et les paramètres. Fonctions : ${FORMULA_FUNCTIONS.join(", ")} ; séparez les valeurs par « ; ». Vide : la cote fixe.`,
+    ),
+    heading("Paramètres"),
+    ...params,
+    addParam,
+    heading("Selon la niche"),
+    ...rules,
+    addRule,
+    heading("Cotes calculées"),
+    ...formulas,
+    preview,
+  ];
+}

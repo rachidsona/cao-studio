@@ -2719,6 +2719,24 @@ opération existante.
   chapeau, zone des tiroirs, épaisseur, type de module ; OK le remplace en une annulation, ses pièces gardant matière et
   apparence, et « Retirer ce module » libère sa niche (`document/module-edit.ts`). Dans l'assistant, le « + » d'un mur
   ouvre la même liste de modules pour choisir celui à ajouter.
+  - **Modules programmables** (section « Formules » du panneau, `app/dressing/module-formulas.ts`) : un module dont les
+    cotes se calculent sur la niche où on le pose. Des **paramètres** (« pas » : 350), des **conditions** qui changent de
+    module selon la niche (« Si largeur > 45 cm alors Tiroirs et étagères ») et une **formule** par cote : nombre
+    d'étagères, espacement, chapeau, zone et nombre de tiroirs, tringle sous le haut, épaisseur des étagères — « une
+    étagère tous les 35 cm » s'écrit `plancher(hauteur / pas) - 1`. Les formules lisent la largeur et la hauteur libres
+    de la niche, la profondeur et l'épaisseur des panneaux de la Répartition (mm) ; elles connaissent les unités mm, cm,
+    m, la virgule décimale, + − × ÷ ^, les comparaisons, et `min`, `max`, `arrondi`, `plancher`, `plafond` (avec un pas),
+    `si`, `abs`, `et`, `ou`, `non`, les valeurs séparées par « ; ». Elles sont lues et calculées par un petit analyseur
+    à elles, sans `eval` ni code exécuté, et donnent toujours le même résultat pour la même niche
+    (`document/module-formula.ts`, `document/module-program.ts`, purs et testés). Un nombre de pièces est arrondi et
+    borné (0 à 20 étagères, 1 à 8 tiroirs), une longueur arrondie au dixième de mm ; une cote sans formule garde sa
+    valeur du panneau. L'aperçu, refait à chaque lettre tapée, donne le résultat sur la niche choisie ; une erreur se dit
+    en français avec la formule en cause (« Nombre d'étagères — formule « plancher(hauteur / 350 » : une parenthèse
+    fermante manque… »). Posé dans plusieurs niches, le module est calculé pour chacune ; sa première étape garde son
+    programme et les mesures de sa niche (`OffsetRecord.formula`), et **il se recalcule quand sa niche change** — la
+    Répartition élargie ou haussée, une niche retouchée — dans la même annulation (`document/module-follow.ts`, appelé
+    par `withSketchExtrusion`). Cliqué, il rouvre ses formules ; changé sans formules, il redevient fixe. « Mes
+    modules » garde le programme avec le reste.
 - **Grille** (bouton de la colonne Vue, sous « Cotes des pièces ») : affiche ou cache la grille de la vue 3D ; cachée,
   le dessin s'accroche toujours à son pas. Le choix est gardé dans ce navigateur (`app/grid-toggle.ts`).
 - **Rayons X** et **Affichage** (colonne Vue, sous « Grille ») : les corps translucides d'un clic ;
