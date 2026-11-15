@@ -11,7 +11,7 @@ import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
 import { openDrawerMenu } from "../drawer-menu";
 import { cabinetOfBody } from "../../document/cabinet-furnish";
-import { findFeature } from "../../document/operations";
+import { bodyLabel, findFeature } from "../../document/operations";
 import { furnishCabinet, keepCaisson, openInCabinet, putCaisson, STRAIGHT_TOOLS } from "../cabinet-furnish";
 import { myUnits } from "../kitchen/my-units";
 import { isolatedSketch, isolateSketch } from "../zone-view";
@@ -20,7 +20,7 @@ import { el } from "../../ui/dom";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { Joinery3D } from "../joinery-3d";
-import { canFurnishBody, furnishBody, openInBody } from "../body-furnish";
+import { canFurnishBody, furnishBody, furnishChoices, openInBody } from "../body-furnish";
 import { openNicheCopy } from "./niche-copy-tool";
 import { nicheUnderPointer, type PickedNiche } from "./niche-pick";
 
@@ -95,8 +95,12 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
       if (face && canFurnishBody(editor, face.bodyId)) {
         const at = face.point.toArray() as [number, number, number];
         const go = (action: NicheAction) => () => void openInBody(editor, viewport, face.bodyId, at, (n) => runNiche(editor, action, n));
+        // A side that was itself made a frame: its own opening, or the whole one it is part of.
+        const whole = furnishChoices(editor, face.bodyId)?.all;
+        const wholeName = whole ? bodyLabel(editor.doc, whole[0]!).replace(/\s+—\s+côté \d+$/, "") : "";
         menu = popup(event, "Menu du corps", "Son ouverture reçoit étagères, cloisons, tiroirs et portes ; ses parois en sont les côtés.", [
-          ["Aménager ce corps", () => void furnishBody(editor, viewport, face.bodyId)],
+          [whole ? "Aménager ce cadre" : "Aménager ce corps", () => void furnishBody(editor, viewport, face.bodyId)],
+          ...(whole ? [[`Aménager tout « ${wholeName} »`, () => void furnishBody(editor, viewport, face.bodyId, false, "all")] as [string, () => void]] : []),
           ["Étagères…", go("shelves")],
           ["Cloisons…", go("cloisons")],
           ["Tiroirs…", go("drawers")],

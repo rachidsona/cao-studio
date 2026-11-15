@@ -2143,8 +2143,9 @@ opération existante.
   les outils du ruban font de même sur un corps creux sélectionné (s'il n'y a pas de Répartition) ou cliqué. L'ouverture
   se trouve d'un rayon depuis le milieu du corps dans chaque sens jusqu'à la première paroi ; elle se voit par son
   côté ouvert le plus tourné vers l'œil, le haut en haut ; ses parois donnent l'épaisseur des côtés tracés. Un corps
-  plein est refusé (le vider d'abord). Les corps aménagés ensemble sont ceux tirés du même corps séparé, ou ceux
-  sélectionnés. `document/body-opening.ts` (`openingOf`, `withBodyFurnished`, `furnishedBodies`),
+  plein est refusé (le vider d'abord) ; une ouverture compte dès 1 mm (un petit modèle d'un centimètre d'épaisseur).
+  Les corps aménagés ensemble sont ceux tirés du même corps séparé, ou ceux sélectionnés ; un côté devenu lui-même un
+  cadre propose « Aménager ce cadre » (le plus proche) et « Aménager tout « … » » (le cadre d'origine). `document/body-opening.ts` (`openingOf`, `withBodyFurnished`, `furnishedBodies`),
   `app/body-furnish.ts`, `PartitionParams.inside`.
 - **Outils nouveaux** : un petit **point orange** marque un outil nouveau — sur son icône (ruban, colonne de droite,
   sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,

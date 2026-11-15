@@ -1,6 +1,6 @@
 /** « Aménager ce corps » : l'ouverture d'un cadre reçoit une Répartition dont les côtés sont les parois du cadre. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { openingOf, withBodyFurnished, type BodyMesh } from "../../frontend/src/document/body-opening";
+import { furnishedBodies, openingOf, withBodyFurnished, type BodyMesh } from "../../frontend/src/document/body-opening";
 import { withRecipe } from "../../frontend/src/document/niche-recipe";
 import { createReferencePlate, type CadDocument, type SketchFeature, type Vec3 } from "../../frontend/src/document/types";
 import { isPartition, leafNiches } from "../../frontend/src/sketcher/partition-history";
@@ -34,6 +34,31 @@ describe("l'ouverture d'un corps", () => {
     const lying = frame.map((m) => ({ ...m, vertices: Array.from(m.vertices, (_, i) => { const k = i - (i % 3); const [x, y, z] = [m.vertices[k]!, m.vertices[k + 1]!, m.vertices[k + 2]!]; return [x, z - 360, y][i % 3]!; }) }));
     const o = openingOf(lying, [[-300, -360, -200], [300, 360, 200]], [0, 1, 0], [0, 0, 1]);
     expect(o).toMatchObject({ frame: { xDir: [1, 0, 0], normal: [0, -1, 0] }, width: 564, height: 364, depth: 720, wall: 18 });
+  });
+
+  it("un petit cadre de 8 × 5 cm, 1 cm d'épaisseur, s'aménage aussi : 44 × 14 mm, 10 de profondeur", () => {
+    const small: BodyMesh[] = [
+      boxMesh([-40, -7, 0], [-22, 7, 10]),
+      boxMesh([-40, -25, 0], [40, -7, 10]),
+      boxMesh([-40, 7, 0], [40, 25, 10]),
+      boxMesh([22, -7, 0], [40, 7, 10]),
+    ];
+    expect(openingOf(small, [[-40, -25, 0], [40, 25, 10]], [0, 0, -1], [0, 1, 0])).toMatchObject({ width: 44, height: 14, depth: 10, wall: 18 });
+  });
+
+  it("un côté fait cadre à son tour : ce cadre-là, ou tout le cadre d'origine", () => {
+    // A frame split into its sides; side 1 pocketed, the pocket made a frame (sh2); side 3 drilled.
+    const doc = { features: [
+      { id: "ex1", type: "extrude", name: "Plein", sketch: "sk1", distance: 10, operation: "new" },
+      { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "ex1", faces: [], thickness: 18, sides: "separate", frame: true },
+      { id: "ex2", type: "extrude", name: "Poche", sketch: "sk2", distance: -9, operation: "cut", target: "sh1#1" },
+      { id: "sh2", type: "shell", name: "Côtés séparés 2", target: "ex2", faces: [], thickness: 2, sides: "separate", frame: true },
+      { id: "h1", type: "hole", name: "Perçage", target: "sh1#3", x: 0, y: 0, diameter: 5, depth: 5 },
+    ] } as unknown as CadDocument;
+    const shown = ["sh1#0", "sh2#0", "sh2#1", "sh2#2", "sh2#3", "sh1#2", "h1"];
+    expect(furnishedBodies(doc, "sh2#1", shown)).toEqual(["sh2#0", "sh2#1", "sh2#2", "sh2#3"]);
+    expect(furnishedBodies(doc, "sh2#1", shown, "all")).toEqual(shown);
+    expect(furnishedBodies(doc, "h1", shown)).toEqual(shown);
   });
 
   it("un corps plein, ou sans place dedans, est refusé", () => {

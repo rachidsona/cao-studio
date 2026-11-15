@@ -81,7 +81,8 @@ export function openingOf(meshes: readonly BodyMesh[], outer: readonly [Vec3, Ve
     }
   }
   const size = [0, 1, 2].map((i) => inner[1][i]! - inner[0][i]!);
-  if (size.some((s) => s < 20)) return "Ce corps n'a pas d'ouverture où poser des étagères.";
+  // However small the piece (a model a few centimetres across, a frame 1 cm thick): an opening is one.
+  if (size.some((s) => s < 1)) return "Ce corps n'a pas d'ouverture où poser des étagères.";
   // The front: an open side facing the eye best (else, closed all round, the side facing it); the top between equals.
   const sides = [0, 1, 2].flatMap((axis) => [-1, 1].map((sign) => ({ axis, sign, open: walls[axis * 2 + (sign < 0 ? 0 : 1)] === null, facing: -sign * eye[axis]! + (axis === 2 && sign > 0 ? 1e-3 : 0) })));
   const open = sides.filter((s) => s.open);
@@ -130,17 +131,17 @@ function ancestry(doc: CadDocument, bodyId: string): string[] {
 
 /**
  * The bodies furnished together with this one: those cut from the same body as it (the sides of a frame, whatever
- * was done to them since), or it alone. Not a body that is already furniture (a Répartition's panels, fronts, a
- * cabinet): null.
+ * was done to them since), or it alone. « near »: the frame it is a side of; « all »: the outermost one, when a side
+ * was itself made a frame. Not a body that is already furniture (a Répartition's panels, fronts, a cabinet): null.
  */
-export function furnishedBodies(doc: CadDocument, bodyId: string, shown: readonly string[]): string[] | null {
+export function furnishedBodies(doc: CadDocument, bodyId: string, shown: readonly string[], level: "near" | "all" = "near"): string[] | null {
   const line = ancestry(doc, bodyId);
   const made = findFeature(doc, featureOfBody(line[line.length - 1]!));
   if (!made || ["cabinet", "fronts", "niche", "trim", "room", "appliance", "panels"].includes(made.type)) return null;
   const sketch = made.type === "extrude" && made.sketch ? findFeature(doc, made.sketch) : undefined;
   if (sketch?.type === "sketch" && sketch.offsets?.some((r) => r.step)) return null;
   // The last body cut apart on the way back: its pieces, and what became of them.
-  const piece = [...line].reverse().find((id) => id.includes(PART_SEPARATOR));
+  const piece = (level === "near" ? line : [...line].reverse()).find((id) => id.includes(PART_SEPARATOR));
   if (!piece) return [bodyId];
   const from = featureOfBody(piece);
   return shown.filter((id) => ancestry(doc, id).some((a) => a.includes(PART_SEPARATOR) && featureOfBody(a) === from));

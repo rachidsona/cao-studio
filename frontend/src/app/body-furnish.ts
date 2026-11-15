@@ -16,12 +16,21 @@ import type { Editor } from "./editor";
 export const canFurnishBody = (editor: Editor, bodyId: string): boolean => furnishedBodies(editor.doc, bodyId, [bodyId]) !== null;
 
 /** The opening of this body (and of those made with it) furnished; the Répartition's sketch, or null (said why). */
-export async function furnishBody(editor: Editor, viewport: Viewport, bodyId: string, quiet = false): Promise<string | null> {
+/** The bodies furnished from this one: the frame it is a side of, and the outermost one when that is another. */
+export function furnishChoices(editor: Editor, bodyId: string): { near: string[]; all: string[] | null } | null {
+  const shown = (editor.result?.bodies ?? []).map((b) => b.bodyId);
+  const near = furnishedBodies(editor.doc, bodyId, shown, "near");
+  if (!near) return null;
+  const all = furnishedBodies(editor.doc, bodyId, shown, "all");
+  return { near, all: all && all.length > near.length ? all : null };
+}
+
+export async function furnishBody(editor: Editor, viewport: Viewport, bodyId: string, quiet = false, level: "near" | "all" = "near"): Promise<string | null> {
   // Hidden ones are skipped by the meshes below (none shown).
   const shown = (editor.result?.bodies ?? []).map((b) => b.bodyId);
   const picked = editor.picked.selection.bodies;
   // Several bodies selected with it: those; else the ones made with it.
-  const ids = picked.length > 1 && picked.includes(bodyId) ? [...picked] : furnishedBodies(editor.doc, bodyId, shown);
+  const ids = picked.length > 1 && picked.includes(bodyId) ? [...picked] : furnishedBodies(editor.doc, bodyId, shown, level);
   if (!ids?.length) return (editor.notify("Ce corps est déjà un meuble : clic droit dans une de ses niches pour l'aménager.", "info"), null);
   const meshes: BodyMesh[] = [];
   const boxes: [Vec3, Vec3][] = [];
@@ -47,8 +56,8 @@ export async function furnishBody(editor: Editor, viewport: Viewport, bodyId: st
 }
 
 /** The body furnished, then `run` on its niche at `at` (a point of the model clicked). */
-export async function openInBody(editor: Editor, viewport: Viewport, bodyId: string, at: Vec3, run: (niche: PickedNiche) => void): Promise<void> {
-  const sketch = await furnishBody(editor, viewport, bodyId, true);
+export async function openInBody(editor: Editor, viewport: Viewport, bodyId: string, at: Vec3, run: (niche: PickedNiche) => void, level: "near" | "all" = "near"): Promise<void> {
+  const sketch = await furnishBody(editor, viewport, bodyId, true, level);
   const niche = sketch ? nicheAt(editor.doc, sketch, at) : null;
   if (niche) run(niche);
 }

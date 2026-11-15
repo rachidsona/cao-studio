@@ -93,3 +93,53 @@ test("sans Répartition, Cloisons sur un cadre sélectionné l'aménage d'abord,
   await expect(tool).toContainText("Niche choisie");
   expect(errors).toEqual([]);
 });
+
+test("un petit cadre de 8 × 5 × 1 cm dont un côté est lui-même un cadre : ce cadre, ou tout le cadre", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-amenager-petit-cadre");
+  const pocket = centeredRectangle(75, 13);
+  pocket.points.forEach((p) => (p.y -= 16));
+  pocket.constraints = [];
+  const features = [
+    { id: "sk1", type: "sketch", name: "Contour", plane: "XY", offset: 0, ...centeredRectangle(80, 50) },
+    { id: "ex1", type: "extrude", name: "Plein", sketch: "sk1", distance: 10, operation: "new" },
+    { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "ex1", faces: [], thickness: 18, sides: "separate", joint: "butt", frame: true },
+    { id: "sk2", type: "sketch", name: "Tracé 1", plane: "XY", offset: 10, ...pocket },
+    { id: "ex2", type: "extrude", name: "Poche", sketch: "sk2", distance: -100, operation: "cut", target: "sh1#1" },
+    { id: "sh2", type: "shell", name: "Côtés séparés 2", target: "ex2", faces: [], thickness: 18, sides: "separate", joint: "miter", frame: true },
+  ];
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features }, base_version: now.version, message: "Cadre" }) });
+  }, { url: api, features });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  const [cx, cy] = [view.x + view.width / 2, view.y + view.height / 2];
+  // A side of the small frame (the pocketed side, down from the middle).
+  const bodyMenu = page.getByRole("menu", { name: "Menu du corps" });
+  for (let k = 6; k < 150 && !(await bodyMenu.isVisible()); k++) {
+    await page.keyboard.press("Escape");
+    await page.mouse.click(cx, cy + k * 3, { button: "right" });
+    await page.waitForTimeout(80);
+  }
+  await expect(bodyMenu.getByRole("menuitem", { name: "Aménager ce cadre" })).toBeVisible();
+  await bodyMenu.getByRole("menuitem", { name: "Aménager tout « Côtés séparés 1 »" }).click();
+  type F = { type: string; offsets?: { step?: { kind: string; input?: { inside?: boolean; length?: number; height?: number }; depth?: number } }[] };
+  const partition = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    const all = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: F[] } }).document.features, api);
+    return all.flatMap((f) => f.offsets ?? []).find((r) => r.step?.kind === "partition")?.step ?? null;
+  };
+  // The whole frame's opening: 44 × 14 mm (plus its walls), 10 deep.
+  await expect.poll(partition, { timeout: 30_000 }).toMatchObject({ input: { inside: true, length: 80, height: 50 }, depth: 10 });
+  expect(errors).toEqual([]);
+});
