@@ -10,7 +10,8 @@ import { bodyLabel } from "../../document/operations";
 import { isFabricated } from "../../document/fabrication-parts";
 import { opsOf } from "../../document/hardware-rules";
 import type { GeometryClient } from "../../geometry/client";
-import { boardFaces, documentedHoleDepth, flattenOutline, holeDepth, loopDepthOf, partsDxf, type FlatPart } from "../../io/dxf";
+import { boardFaces, documentedHoleDepth, holeDepth, partsDxf, type FlatPart } from "../../io/dxf";
+import { flatBoard } from "../../io/board-flat";
 import { layersPanel, loadLayers, saveLayers } from "./dxf-machines";
 import { edgeHoles } from "../../document/face-ops";
 import { GCODE, partsGcode, type GcodeOptions } from "../../io/gcode";
@@ -29,8 +30,9 @@ const GCODE_KEY = "cao.gcode";
 const INPUT = "h-8 w-24 border border-gray-300 bg-white px-2 text-right text-xs dark:border-gray-600 dark:bg-gray-900";
 
 /**
- * Every displayed board of the furniture laid flat, with its material, on the face with the more holes (a door
- * shows its hinge cups); the bodies without a flat face apart, and the boards with blind holes on the other face.
+ * Every displayed board of the furniture laid flat, with its material, on the side with the more machining (a door
+ * shows its hinge cups, a side its back groove), at its true size even when a groove runs through it from end to end
+ * (io/board-flat.ts); the bodies without a flat face apart, and the boards with blind holes or grooves on the other side.
  */
 export async function flatParts(viewport: Viewport, editor: Editor, geometry: GeometryClient): Promise<{ parts: (FlatPart & { material: string })[]; skipped: string[]; flip: string[]; edges: string[] }> {
   const parts: (FlatPart & { material: string })[] = [];
@@ -54,22 +56,20 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
     const thickness = Math.min(...[0, 1, 2].map((i) => box[1][i]! - box[0][i]!));
     const drilled = opsOf(editor.doc, id).flatMap((op) => (op.kind === "hole" ? [op] : []));
     try {
-      const flats = await Promise.all(
-        faces.map(async (face) => {
-          const outline = await geometry.faceOutline(id, face);
-          // The depth the document drills first; the mesh only for a hole it does not describe (a hinge cup).
-          return flattenOutline(
-            outline, name, thickness,
-            (center, radius) => documentedHoleDepth(drilled, center, radius, thickness) ?? holeDepth(mesh.vertices, center, outline.normal, radius, thickness),
-            // An inner outline: a cut-out goes through, a groove or a pocket stops at its bottom.
-            (points) => loopDepthOf(mesh.vertices, outline.normal, points, thickness),
-          );
-        }),
+      // Its outline cut where no groove reaches, laid on the side with the more machining (io/board-flat.ts).
+      const made = await flatBoard(
+        { mesh, faceOutline: (face) => geometry.faceOutline(id, face), section: (origin, u, v) => geometry.sectionOutline(id, origin, u, v) },
+        name,
+        thickness,
+        // The depth the document drills first; the mesh only for a hole it does not describe (a hinge cup).
+        (center, radius, normal) => documentedHoleDepth(drilled, center, radius, thickness) ?? holeDepth(mesh.vertices, center, normal, radius, thickness),
       );
-      const holes = (p: FlatPart) => p.edges.filter((e) => e.kind === "circle").length;
-      const [best, other] = flats.length === 2 && holes(flats[1]!) > holes(flats[0]!) ? [flats[1]!, flats[0]!] : [flats[0]!, flats[1]];
-      if (other?.edges.some((e) => e.kind === "circle" && (e.depth ?? thickness) < thickness - 0.01)) flip.push(name);
-      parts.push({ ...best, material: materialById(info.material)?.name ?? "Non défini" });
+      if (!made) {
+        skipped.push(name);
+        continue;
+      }
+      if (made.otherSide) flip.push(name);
+      parts.push({ ...made.part, material: materialById(info.material)?.name ?? "Non défini" });
     } catch {
       skipped.push(name);
     }
@@ -135,7 +135,7 @@ async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryC
   const refresh = () => {
     const { sheets, skipped: left } = partsGcode(groups(), o);
     const out = [...skipped.map((n) => `${n} (sans face plane)`), ...left];
-    summary.textContent = `${parts.length} pièce(s) sur ${sheets} panneau(x) brut(s).${out.length ? ` Non usinées : ${out.join(" ; ")}.` : ""}${flip.length ? ` Perçages borgnes sur l'autre face, à faire en retournant la pièce : ${flip.join(", ")}.` : ""}${edges.length ? ` Perçages sur chant, à faire à part (cotés sur les fiches) : ${edges.join(", ")}.` : ""}`;
+    summary.textContent = `${parts.length} pièce(s) sur ${sheets} panneau(x) brut(s).${out.length ? ` Non usinées : ${out.join(" ; ")}.` : ""}${flip.length ? ` Perçages borgnes ou rainures sur l'autre face, à faire en retournant la pièce : ${flip.join(", ")}.` : ""}${edges.length ? ` Perçages sur chant, à faire à part (cotés sur les fiches) : ${edges.join(", ")}.` : ""}`;
   };
   const field = (label: string, key: keyof GcodeOptions, unit: string) => {
     const input = el("input", { type: "number", step: "any", min: "0", class: INPUT, value: String(o[key]), "aria-label": label });

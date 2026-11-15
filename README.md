@@ -1634,6 +1634,13 @@ opération existante.
       bien qu'une compensation à droite met la fraise dans la chute — dehors pour le tour de la pièce, dedans pour
       une découpe intérieure. Un réglage s'**enregistre sous le nom de la machine** (« Weeke de l'atelier »), à
       reprendre d'un clic ; le dernier choix et les machines sont gardés avec le compte (`app/workshop/dxf-machines.ts`).
+    - **Rainures qui traversent la pièce** (une rainure de fond sur toute la longueur d'un côté) : elles coupent sa
+      face en morceaux, dont aucun n'est le contour de la pièce — elle sortait plus courte, sans sa rainure. Le
+      contour vient alors d'une **coupe au milieu de ce qu'aucune rainure n'atteint** (la vraie taille, et les découpes
+      qui traversent) ; chaque côté est lu — ses perçages, même sur une face en morceaux, et le **fond de ses rainures
+      et poches**, à leur profondeur, dans le calque des poches ; le côté qui porte le plus d'usinages est mis
+      dessus, l'autre dit « à retourner » s'il a des perçages borgnes ou des rainures. Une planche sans rainure garde
+      le contour de sa face, lu tel quel (la coupe coûte 3 ms de plus par planche) (`io/board-flat.ts`).
     - **Poches et rainures** : un contour intérieur de la face qui ne traverse pas (une rainure, une poche) est
       mesuré sur le maillage et part dans le calque des poches à sa profondeur, au lieu d'être découpé de part en
       part ; une découpe intérieure qui traverse reste un contour (`loopDepthOf`, `io/dxf.ts`). Le G-code ne les

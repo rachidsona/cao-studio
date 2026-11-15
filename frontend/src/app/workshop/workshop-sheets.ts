@@ -51,7 +51,7 @@ export async function partSheetsPage(viewport: Viewport, editor: Editor, geometr
         const lines = p ? edgeHolesText(edgeHoles(editor.doc, p.id, p.bbox), num) : [];
         return lines.length ? [["Sur chant", lines.join(" ; ")]] : [];
       })(),
-      ...(row.names.some((n) => flip.includes(n)) ? [["Attention", "perçages borgnes aussi sur l'autre face : retourner la pièce"] as [string, string]] : []),
+      ...(row.names.some((n) => flip.includes(n)) ? [["Attention", "perçages borgnes ou rainures aussi sur l'autre face : retourner la pièce"] as [string, string]] : []),
       ...(row.approximate ? [["Forme", "pas un simple panneau : cotes de son encombrement"] as [string, string]] : []),
       // The notches for the gorge profiles, from the bottom of the side, in the unit of the sheet.
       ...((): [string, string][] => {

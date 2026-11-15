@@ -40,24 +40,26 @@ const unit = (a: P3): P3 => {
 };
 
 /** The flat faces of a body, from its mesh (face groups whose triangles all share one normal), largest first. */
-export function flatFaces(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): { face: number; area: number; normal: P3 }[] {
-  const out: { face: number; area: number; normal: P3 }[] = [];
+export function flatFaces(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGroups">): { face: number; area: number; normal: P3; center: P3 }[] {
+  const out: { face: number; area: number; normal: P3; center: P3 }[] = [];
   const v = (i: number): P3 => [mesh.vertices[3 * i]!, mesh.vertices[3 * i + 1]!, mesh.vertices[3 * i + 2]!];
   mesh.faceGroups.forEach((group, face) => {
     let area = 0;
     let normal: P3 | null = null;
     let flat = true;
+    const sum: P3 = [0, 0, 0];
     for (let k = group.start; k + 2 < group.start + group.count; k += 3) {
       const [a, b, c] = [v(mesh.indices[k]!), v(mesh.indices[k + 1]!), v(mesh.indices[k + 2]!)];
       const n = cross(sub(b, a), sub(c, a));
       const twice = Math.hypot(...n);
       if (twice < 1e-9) continue;
       area += twice / 2;
+      for (let i = 0; i < 3; i++) sum[i] = sum[i]! + ((a[i]! + b[i]! + c[i]!) / 3) * (twice / 2);
       const u = unit(n);
       if (!normal) normal = u;
       else if (Math.abs(dot(normal, u)) < 0.9999) flat = false;
     }
-    if (flat && normal && area > 0) out.push({ face, area, normal });
+    if (flat && normal && area > 0) out.push({ face, area, normal, center: [sum[0] / area, sum[1] / area, sum[2] / area] });
   });
   return out.sort((a, b) => b.area - a.area);
 }
@@ -83,7 +85,7 @@ export function boardFaces(mesh: Pick<BodyMesh, "vertices" | "indices" | "faceGr
  * The outline of a flat face in its own plane, seen from outside: the x axis along its longest straight edge
  * (a board lies along its length), the lowest corner at (0, 0).
  */
-export function flattenOutline(outline: FaceOutline, name: string, thickness: number, depthOf?: (center: P3, radius: number) => number, loopDepth?: (points: P3[]) => number): FlatPart {
+export function flattenOutline(outline: FaceOutline, name: string, thickness: number, depthOf?: (center: P3, radius: number) => number, loopDepth?: (points: P3[]) => number, pockets: readonly { edges: readonly OutlineEdge[]; depth: number }[] = []): FlatPart {
   const n = unit(outline.normal);
   const lines = outline.edges.filter((e): e is Extract<OutlineEdge, { kind: "line" }> => e.kind === "line");
   const longest = lines.reduce<Extract<OutlineEdge, { kind: "line" }> | null>((best, e) => (!best || Math.hypot(...sub(e.b, e.a)) > Math.hypot(...sub(best.b, best.a)) ? e : best), null);
@@ -93,7 +95,7 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
   const o = outline.center;
   const flat = (p: P3): P2 => [dot(sub(p, o), u), dot(sub(p, o), w)];
   const angle = (c: P2, p: P2) => Math.atan2(p[1] - c[1], p[0] - c[0]);
-  const edges: FlatEdge[] = outline.edges.map((e): FlatEdge => {
+  const flatEdge = (e: OutlineEdge): FlatEdge => {
     if (e.kind === "line") return { kind: "line", a: flat(e.a), b: flat(e.b) };
     const center = flat(e.center);
     if (e.kind === "circle") return { kind: "circle", center, radius: e.radius, ...(depthOf ? { depth: depthOf(e.center, e.radius) } : {}) };
@@ -101,7 +103,8 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
     const ccw = (from: number, to: number) => (((to - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     // DXF arcs turn counter-clockwise: start at the end that reaches the middle point that way.
     return ccw(a, m) < ccw(a, b) ? { kind: "arc", center, radius: e.radius, start: a, end: b } : { kind: "arc", center, radius: e.radius, start: b, end: a };
-  });
+  };
+  const edges: FlatEdge[] = outline.edges.map(flatEdge);
   // The inner outlines (the largest is the part's own): a groove or a pocket is as deep as the mesh says.
   if (loopDepth) {
     const loops = edgeLoops(edges);
@@ -118,6 +121,14 @@ export function flattenOutline(outline: FaceOutline, name: string, thickness: nu
       });
       const depth = Math.min(loopDepth(points), thickness);
       if (depth < thickness - 0.01) for (const i of loop) (edges[i] as Exclude<FlatEdge, { kind: "circle" }>).depth = depth;
+    }
+  }
+  // The bottoms of the grooves and pockets read on the board (board-flat.ts): their outlines at their depth.
+  for (const pocket of pockets) {
+    for (const e of pocket.edges) {
+      if (e.kind === "circle") continue;
+      const made = flatEdge(e);
+      if (made.kind !== "circle") edges.push({ ...made, depth: Math.min(pocket.depth, thickness) });
     }
   }
   const xs: number[] = [];

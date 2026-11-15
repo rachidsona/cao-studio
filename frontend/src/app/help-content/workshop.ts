@@ -324,7 +324,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Laissez « Contours enchaînés » coché si la machine compense la fraise : chaque contour tourne dans le sens des aiguilles d'une montre, la compensation à droite met la fraise dans la chute.",
           "Tapez le nom de la machine et cliquez « Enregistrer la machine » pour la reprendre d'un clic la prochaine fois. Cliquez « Exporter ».",
         ],
-        tip: "Dans un nom de calque, {d} donne le diamètre, {z} la profondeur et {t} l'épaisseur du panneau. Une rainure ou une poche part dans son calque à sa profondeur, sans être découpée. Essayez le premier fichier sur la machine avant une série. Une pièce sans face plane est laissée de côté, les perçages sur chant sont à faire à part.",
+        tip: "Dans un nom de calque, {d} donne le diamètre, {z} la profondeur et {t} l'épaisseur du panneau. Une rainure ou une poche part dans son calque à sa profondeur, sans être découpée, même une rainure de fond qui traverse toute la pièce : la pièce garde sa vraie taille, posée sur le côté le plus usiné. Essayez le premier fichier sur la machine avant une série. Une pièce sans face plane est laissée de côté, les perçages sur chant sont à faire à part.",
       },
       {
         keys: ["data-workshop:gcode"], name: "G-code",

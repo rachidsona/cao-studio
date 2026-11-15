@@ -53,7 +53,7 @@ async function folderFiles(viewport: Viewport, editor: Editor, geometry: Geometr
       files.set("05-pieces.nc", savedGcode(parts));
     } else notes.push("Fichiers machine : aucune pièce à plat.");
     if (skipped.length) notes.push(`Sans face plane, donc hors des fichiers machine : ${skipped.join(", ")}.`);
-    if (flip.length) notes.push(`Perçages sur l'autre face, à retourner : ${flip.join(", ")}.`);
+    if (flip.length) notes.push(`Perçages ou rainures sur l'autre face, à retourner : ${flip.join(", ")}.`);
     if (edges.length) notes.push(`Perçages sur chant, à faire à part : ${edges.join(", ")}.`);
   }
   if (wanted.has("notice")) page("06-notice-de-montage.html", notice(), "Notice de montage", false);
