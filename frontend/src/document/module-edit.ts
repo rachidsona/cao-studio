@@ -8,6 +8,7 @@ import { nicheGeometry } from "../features/niche-parts";
 import { isShelves, pathKey, rebuildChain } from "../sketcher/partition-history";
 import { heldHeights, type NicheBox } from "../sketcher/shelves";
 import { moduleSizes, TROUSERS, trousersBox, withModules, type ModuleKind, type ModuleSizes } from "./dressing-modules";
+import type { ModuleFormula } from "./module-program";
 import { findFeature } from "./operations";
 import type { OffsetRecord } from "./sketch";
 import { removeStep } from "./shelf-removal";
@@ -23,6 +24,8 @@ export interface PlacedModule {
   sizes: ModuleSizes;
   /** The first division of the module: taking it away takes the module away. */
   step: string;
+  /** A module programmed: its program, and the niche it was worked out for (module-program.ts). */
+  formula?: ModuleFormula;
 }
 
 const under = (path: number[], root: number[]) => path.length > root.length && pathKey(path.slice(0, root.length)) === pathKey(root);
@@ -100,7 +103,8 @@ export function moduleAt(doc: CadDocument, sketch: SketchFeature, partition: str
     const look = Object.fromEntries((["style", "frameWidth", "frameDepth", "pitch", "grooves"] as const).filter((k) => front[k] !== undefined).map((k) => [k, front[k]]));
     sizes.front = { gap: front.gap, bottomGap: front.bottomGap ?? front.gap, betweenGap: front.betweenGap ?? front.gap, sideGap: front.sideGap ?? front.gap, thickness: front.thickness, handles: front.handles, ...look };
   }
-  return { kind, partition, path, box, thickness: first.step.input.thickness, sizes: { ...moduleSizes(kind), ...sizes }, step: first.id };
+  const formula = first.formula ? { formula: first.formula } : {};
+  return { kind, partition, path, box, thickness: first.step.input.thickness, sizes: { ...moduleSizes(kind), ...sizes }, step: first.id, ...formula };
 }
 
 /** The module this niche belongs to: the largest one around it. */
@@ -129,10 +133,13 @@ export function withoutModule(base: CadDocument, sketchId: string, placed: Place
   return { ...doc, features: doc.features.map((f) => (f.type === "trim" ? { ...f, parts: f.parts.filter((p) => !same(p)) } : f)).filter((f) => f.type !== "trim" || f.parts.length > 0) };
 }
 
-/** A module changed: taken away, and laid again with these sizes, as one change. A string: why it cannot be. */
-export function withModuleChanged(base: CadDocument, sketchId: string, placed: PlacedModule, kind: ModuleKind, thickness: number, sizes: ModuleSizes): CadDocument | string {
+/**
+ * A module changed: taken away, and laid again with these sizes, as one change; a program with it keeps the module
+ * programmed, none makes it fixed. A string: why it cannot be.
+ */
+export function withModuleChanged(base: CadDocument, sketchId: string, placed: PlacedModule, kind: ModuleKind, thickness: number, sizes: ModuleSizes, formula?: ModuleFormula): CadDocument | string {
   const kept: BodyInfo[] = moduleBodies(findFeature(base, sketchId) as SketchFeature, placed.partition, placed.path).map((id) => base.bodyInfo?.[id] ?? {});
-  const made = withModules(withoutModule(base, sketchId, placed), sketchId, [{ partition: placed.partition, path: placed.path, box: placed.box }], kind, thickness, sizes);
+  const made = withModules(withoutModule(base, sketchId, placed), sketchId, [{ partition: placed.partition, path: placed.path, box: placed.box }], kind, thickness, sizes, formula);
   if (typeof made === "string") return made;
   const info = { ...made.bodyInfo };
   moduleBodies(findFeature(made, sketchId) as SketchFeature, placed.partition, placed.path).forEach((id, i) => {

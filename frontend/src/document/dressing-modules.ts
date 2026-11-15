@@ -15,6 +15,7 @@ import { withEquipment } from "./equipment";
 import { findFeature, uniqueId, uniqueName, uniqueOffsetId } from "./operations";
 import type { ShelfParams } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
+import type { ModuleFormula } from "./module-program";
 import type { CadDocument, NicheFeature, SketchFeature, TrimFeature, Vec3 } from "./types";
 
 export type ModuleKind = "long" | "double" | "shelves" | "drawers" | "rod-drawers" | "shoes" | "trousers";
@@ -213,7 +214,7 @@ export interface ModulePick {
  * These modules in the niches of this sketch, as one change: their Étagères in the history of the Répartition, their
  * Penderies and Tiroirs, and the accessory of a porte-pantalons. A string: why it is impossible.
  */
-export function withModules(base: CadDocument, sketchId: string, picks: ModulePick[], kind: ModuleKind, thickness: number, sizes: ModuleSizes): CadDocument | string {
+export function withModules(base: CadDocument, sketchId: string, picks: ModulePick[], kind: ModuleKind, thickness: number, sizes: ModuleSizes, formula?: ModuleFormula): CadDocument | string {
   const g = findFeature(base, sketchId);
   if (g?.type !== "sketch") return "L'esquisse de la répartition n'existe plus.";
   // Left to right, bottom to top: the pieces are numbered in that order.
@@ -228,9 +229,11 @@ export function withModules(base: CadDocument, sketchId: string, picks: ModulePi
   const number = () => Math.max(0, ...offsets.map((r) => /^Étagères (\d+)$/.exec(r.name)?.[1]).filter((n): n is string => n !== undefined).map(Number)) + 1;
   for (const { pick, layout } of laid) {
     const depth = offsets.find((r) => r.id === pick.partition)?.step;
-    for (const d of (layout as ModuleLayout).steps.divisions) {
+    for (const [k, d] of (layout as ModuleLayout).steps.divisions.entries()) {
       const id = ids[added.size] as string;
-      offsets.push(shelvesRecord(id, `Étagères ${number()}`, pick.partition, d.niche, d.input, depth?.kind === "partition" ? depth.depth : undefined));
+      const record = shelvesRecord(id, `Étagères ${number()}`, pick.partition, d.niche, d.input, depth?.kind === "partition" ? depth.depth : undefined);
+      // A module programmed: its first division keeps the program (module-program.ts).
+      offsets.push(k === 0 && formula ? { ...record, formula: structuredClone(formula) } : record);
       added.add(id);
     }
   }

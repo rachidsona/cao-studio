@@ -29,6 +29,8 @@ export interface ModuleOptions {
   levels: boolean;
   /** The thickness of its shelves (mm) and how it is set; none: not offered (it is the Répartition's). */
   thickness?: { value: number; set(mm: number): void };
+  /** The sizes a formula works out (module-program.ts, FormulaTarget): not offered here. */
+  ruled?: ReadonlySet<string>;
   /** A setting changed. */
   changed(): void;
   /** A field left: the panel drawn again, the value as it is kept. */
@@ -59,6 +61,7 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
     });
     return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
   };
+  const free = (target: string) => !o.ruled?.has(target);
   const has = moduleHas(o.kind);
   const drawers = el("select", { class: FIELD, "aria-label": "Tiroirs" }, ...Array.from({ length: 8 }, (_, i) => el("option", { value: String(i + 1), selected: i + 1 === sizes.drawers }, String(i + 1))));
   drawers.addEventListener("change", () => {
@@ -111,8 +114,8 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
         ...decorRows(front, (change) => look(change), (label, mm, set) => number(label, mm, set, label.startsWith("Bordure"))),
       ];
   return [
-    has.spacing ? el("label", { class: ROW }, "Étagères", count) : null,
-    has.spacing
+    has.spacing && free("shelves") ? el("label", { class: ROW }, "Étagères", count) : null,
+    has.spacing && free("spacing")
       ? number("Espacement des étagères", sizes.spacing, (v) => {
           sizes.spacing = v;
           delete sizes.shelves;
@@ -122,9 +125,9 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
     leaves.length > 1 ? el("p", { class: "font-semibold text-gray-700 dark:text-gray-200" }, "Niches, du bas vers le haut") : null,
     ...(leaves.length > 1 ? leaves.map((leaf, i) => number(`${leaf.fill === "drawers" ? "Tiroirs" : leaf.fill === "rod" ? "Penderie" : "Niche"} ${i + 1}`, leaf.box.y1 - leaf.box.y0, (v) => level(leaf.key, v))) : []),
     sizes.heights ? equal : null,
-    has.hat ? number("Hauteur du chapeau", sizes.hat, (v) => (sizes.hat = v)) : null,
-    has.drawers ? number("Zone des tiroirs", sizes.drawerZone, (v) => (sizes.drawerZone = v)) : null,
-    has.drawers ? el("label", { class: ROW }, "Tiroirs", drawers) : null,
+    has.hat && free("hat") ? number("Hauteur du chapeau", sizes.hat, (v) => (sizes.hat = v)) : null,
+    has.drawers && free("drawerZone") ? number("Zone des tiroirs", sizes.drawerZone, (v) => (sizes.drawerZone = v)) : null,
+    has.drawers && free("drawers") ? el("label", { class: ROW }, "Tiroirs", drawers) : null,
     has.drawers ? number("Jeu en haut", front.gap, (v) => (sizes.front = { ...front, gap: v }), true) : null,
     has.drawers && sizes.drawers > 1 ? number("Jeu entre façades", front.betweenGap, (v) => (sizes.front = { ...front, betweenGap: v }), true) : null,
     has.drawers ? number("Jeu en bas", front.bottomGap, (v) => (sizes.front = { ...front, bottomGap: v }), true) : null,
@@ -133,7 +136,7 @@ export function moduleOptionRows(o: ModuleOptions): (HTMLElement | null)[] {
     has.drawers ? el("label", { class: "flex min-h-8 items-center gap-2" }, handles, "Trous de poignée") : null,
     ...styleRows,
     has.rod ? number("Diamètre tringle", rod.diameter, (v) => (sizes.rod = { ...rod, diameter: v })) : null,
-    has.rod ? number("Tringle sous le haut", rod.drop, (v) => (sizes.rod = { ...rod, drop: v })) : null,
-    thickness ? number("Épaisseur des étagères", thickness.value, (v) => thickness.set(v)) : null,
+    has.rod && free("rodDrop") ? number("Tringle sous le haut", rod.drop, (v) => (sizes.rod = { ...rod, drop: v })) : null,
+    thickness && free("thickness") ? number("Épaisseur des étagères", thickness.value, (v) => thickness.set(v)) : null,
   ];
 }

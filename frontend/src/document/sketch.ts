@@ -6,6 +6,7 @@
  * solver's starting guess, which keeps solutions stable from one edit to the
  * next. Coordinates are in millimetres in the sketch plane; angles in degrees.
  */
+import type { ModuleFormula } from "./module-program";
 import type { GlassKind, ProfileFinish } from "./types";
 
 /** Implicit, fixed references available in every sketch. */
@@ -260,6 +261,8 @@ export interface OffsetRecord {
   step?: PartitionStep;
   /** The extrusions made with it (feature ids), one body per element. */
   bodies?: string[];
+  /** The first division of a module programmed: its program, worked out again when its niche changes (document/module-follow.ts). */
+  formula?: ModuleFormula;
 }
 
 /** A text of a sketch: its baseline starts at (x, y), letters `height` mm high, turned by `angle` degrees. */
