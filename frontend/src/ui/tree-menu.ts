@@ -1,7 +1,9 @@
 /**
  * Menu of a right click in the navigator (as in Fusion): on a body, a folder, several selected bodies or a sketch —
- * show or hide, put in a folder, rename, delete. A floating list at the pointer; a click beside it, Échap, a scroll
- * or another right click closes it.
+ * show or hide, put in a folder, rename, delete. A floating list at the pointer; a click beside it, Échap, the wheel
+ * turned beside it or another right click closes it. A scroll made by the page itself (the history strip brought to its
+ * lit step at each refresh) does not: it closed the menu as soon as it opened. Nor does the window losing the focus
+ * in the half-second after the click (the right button's own press).
  */
 import { el } from "./dom";
 
@@ -11,6 +13,8 @@ export type TreeMenuItem =
   | "separator";
 
 let close: (() => void) | null = null;
+/** The window losing the focus this soon after the menu opened is the right click's own doing (ms). */
+const BLUR_GRACE = 500;
 
 export function closeTreeMenu(): void {
   close?.();
@@ -46,6 +50,8 @@ export function openTreeMenu(x: number, y: number, items: TreeMenuItem[]): void 
   menu.style.left = `${Math.max(4, Math.min(x, innerWidth - box.width - 4))}px`;
   menu.style.top = `${Math.max(4, Math.min(y, innerHeight - box.height - 4))}px`;
   const outside = (event: Event) => !menu.contains(event.target as Node) && closeTreeMenu();
+  const opened = performance.now();
+  const blur = () => performance.now() - opened > BLUR_GRACE && closeTreeMenu();
   const key = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.stopImmediatePropagation();
@@ -53,18 +59,18 @@ export function openTreeMenu(x: number, y: number, items: TreeMenuItem[]): void 
   };
   const timer = setTimeout(() => {
     document.addEventListener("pointerdown", outside, true);
-    document.addEventListener("scroll", outside, true);
-    window.addEventListener("blur", closeTreeMenu);
+    document.addEventListener("wheel", outside, { capture: true, passive: true });
+    window.addEventListener("blur", blur);
   });
   window.addEventListener("keydown", key, true);
   close = () => {
     clearTimeout(timer);
     document.removeEventListener("pointerdown", outside, true);
-    document.removeEventListener("scroll", outside, true);
-    window.removeEventListener("blur", closeTreeMenu);
+    document.removeEventListener("wheel", outside, true);
+    window.removeEventListener("blur", blur);
     window.removeEventListener("keydown", key, true);
     menu.remove();
     close = null;
   };
-  (menu.querySelector("button:not(:disabled)") as HTMLElement | null)?.focus();
+  (menu.querySelector("button:not(:disabled)") as HTMLElement | null)?.focus({ preventScroll: true });
 }

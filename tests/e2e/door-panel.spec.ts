@@ -48,3 +48,41 @@ test("les portes d'un caisson passent à deux et encastrées par leur clic droit
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/portes-modifiees.png` });
   expect(errors).toEqual([]);
 });
+
+test("le menu du clic droit reste ouvert quand la page défile d'elle-même ou perd le focus aussitôt ; la molette le ferme", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-menu-reste");
+  await page.evaluate(async (url) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    const cabinet = { id: "cb1", type: "cabinet", name: "Bas", origin: [0, 0, 0], width: 800, height: 720, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 100, construction: "sides-through" };
+    const fronts = { id: "fr1", type: "fronts", name: "Façades", cabinet: "cb1", layout: "door", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features: [cabinet, fronts] }, base_version: now.version, message: "Caisson" }) });
+  }, api);
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2, { button: "right" });
+  const menu = page.locator("[data-tree-menu]");
+  await expect(menu).toBeVisible();
+  // What the page does by itself after the click: the history strip scrolled to its step, the window's focus lost.
+  await page.waitForTimeout(100);
+  await page.evaluate(() => {
+    const strip = document.querySelector('[aria-label="Historique des opérations"]');
+    strip?.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new Event("blur"));
+  });
+  await page.waitForTimeout(300);
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Modifier les portes…" })).toBeVisible();
+  // The wheel turned beside it: closed.
+  await page.mouse.move(view.x + 40, view.y + 40);
+  await page.mouse.wheel(0, 100);
+  await expect(menu).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
