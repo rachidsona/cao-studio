@@ -663,6 +663,10 @@ serveur accepte les deux versions.
     le corps cible ;
   - Entrée valide, Échap annule ;
   - « Modifier avec la flèche » rouvre une extrusion existante.
+  - pour une coupe, la cible « Tous les corps qu'elle touche » coupe chaque corps que la forme traverse — une rainure
+    tracée à travers plusieurs panneaux les rainure tous : le panneau dit combien et lesquels, et « OK » garde une
+    extrusion qui coupe par corps (une étape chacune dans l'historique, en une annulation). Un corps simplement posé
+    contre la forme n'est pas compté ; les corps cachés non plus (`app/extrude-touched.ts`).
 
 ## Opérations solides (phase 5)
 

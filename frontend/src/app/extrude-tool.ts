@@ -26,6 +26,7 @@ import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { operationChoices } from "../ui/feature-meta";
 import { placePanel } from "../ui/dock";
 import { CLOSE_TITLE, panelFooter } from "../ui/panel-close";
+import { cutsOnEach, TOUCHED, touchedBodies } from "./extrude-touched";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
@@ -418,7 +419,8 @@ export class ExtrudeTool implements PointerHandler {
   private renderDialog(): void {
     // Each setting, once whole, is stored a moment later (no « OK »): the tool stays open.
     window.clearTimeout(this.storeTimer);
-    if (this.whole()) this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400);
+    // Cutting every body it goes into: stored by « OK » only (what it goes into is read on the bodies as they were).
+    if (this.whole() && this.target !== TOUCHED) this.storeTimer = window.setTimeout(() => ((this.storeTimer = undefined), this.store()), 400);
     const unit = this.host.unit();
     const count = this.chosen.size;
     const profileText = this.selected ? `${this.selected.sketch.name}${this.explicit ? ` — ${count} zone${count > 1 ? "s" : ""}` : ""}` : "Cliquez un profil dans la vue";
@@ -483,6 +485,7 @@ export class ExtrudeTool implements PointerHandler {
     operation.addEventListener("change", () => {
       this.operation = operation.value as BooleanOperation;
       this.operationChosen = true;
+      if (this.operation !== "cut" && this.target === TOUCHED) this.target = undefined;
       if (this.operation !== "new" && !this.target) this.target = this.host.bodies().at(-1)?.id;
       this.updatePreview();
       this.renderDialog();
@@ -508,9 +511,18 @@ export class ExtrudeTool implements PointerHandler {
               const select = el(
                 "select",
                 { class: COMPACT_INPUT, "aria-label": "Corps cible" },
+                ...(this.operation === "cut" ? [el("option", { value: TOUCHED, selected: this.target === TOUCHED }, "Tous les corps qu'elle touche")] : []),
                 ...bodies.map((b) => el("option", { value: b.id, selected: b.id === this.target }, b.name)),
               );
-              select.addEventListener("change", () => (this.target = select.value));
+              select.addEventListener("change", () => {
+                this.target = select.value;
+                // Every body it touches: what was stored for one body taken back, the bodies read as they were.
+                if (this.target === TOUCHED && this.stored && this.host.doc() === this.stored.doc) {
+                  this.host.change(this.stored.base, true);
+                  this.stored = null;
+                }
+                this.renderDialog();
+              });
               return select;
             })(),
           );
@@ -538,6 +550,9 @@ export class ExtrudeTool implements PointerHandler {
       this.selected ? el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Arête", edgeTake) : null,
       el("label", { class: "grid grid-cols-[4.5rem_1fr] items-center gap-1.5" }, "Opération", operation),
       target,
+      this.target === TOUCHED && this.operation === "cut"
+        ? el("p", { class: "text-gray-600 dark:text-gray-300", "data-extrude-touched": "" }, this.touchedText())
+        : null,
       panelFooter(() => this.cancel(), () => this.ok(), !this.whole()),
     ];
     this.dialog.replaceChildren(...children.filter((c): c is HTMLElement => c !== null));
@@ -604,7 +619,14 @@ export class ExtrudeTool implements PointerHandler {
     };
     let next: CadDocument;
     let id: string;
-    if (this.editing) {
+    if (this.target === TOUCHED && this.operation === "cut") {
+      const targets = this.touched();
+      if (!targets.length) {
+        if (loud) this.host.notify("Cette extrusion ne touche aucun corps : allongez-la ou choisissez une autre zone.", "error");
+        return;
+      }
+      ({ doc: next, id } = cutsOnEach(doc, values, targets, this.editing ?? null));
+    } else if (this.editing) {
       id = this.editing;
       next = updateFeature(doc, id, (f) => (f.type === "extrude" ? { ...f, ...values } : f));
     } else {
@@ -620,8 +642,32 @@ export class ExtrudeTool implements PointerHandler {
     this.stored = { base, doc: this.host.doc(), id };
   }
 
+  /** The bodies the extrusion goes into (the one it changes, its own body being its cut, by its first target). */
+  private touched(): string[] {
+    const profile = this.selected;
+    if (!profile) return [];
+    const from = this.startOffset ?? 0;
+    const areas = [...this.chosen].map((f) => ({ outer: f.region.outer, holes: f.region.holes }));
+    const shapes = this.host.bodies().filter((b) => b.id !== this.editing).flatMap((b) => {
+      const mesh = this.viewport.bodyMesh(b.id);
+      return mesh ? [{ id: b.id, vertices: mesh.vertices, indices: mesh.indices }] : [];
+    });
+    const found = touchedBodies(areas, profile.frame, from, from + this.distance, shapes);
+    const own = this.editing ? findFeature(this.host.doc(), this.editing) : undefined;
+    const first = own?.type === "extrude" && own.target && own.target !== TOUCHED ? [own.target] : [];
+    return [...new Set([...first, ...found])];
+  }
+
+  private touchedText(): string {
+    const names = new Map(this.host.bodies().map((b) => [b.id, b.name]));
+    const ids = this.touched();
+    if (!ids.length) return "Elle ne touche aucun corps.";
+    return `Elle coupe ${ids.length} corps : ${ids.map((id) => names.get(id) ?? id).join(", ")} — une extrusion par corps, gardée par « OK ».`;
+  }
+
   /** The cross, or Échap: closes; a setting still waiting is stored first, nothing done is taken back. */
   cancel(): void {
+    if (this.target === TOUCHED && this.whole() && !this.stored) this.store(true);
     if (this.storeTimer !== undefined) {
       window.clearTimeout(this.storeTimer);
       this.storeTimer = undefined;
