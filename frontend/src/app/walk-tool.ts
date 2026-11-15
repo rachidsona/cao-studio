@@ -88,7 +88,7 @@ class WalkTool implements PointerHandler {
         el("li", {}, "Glissez dans la vue pour regarder autour de vous."),
         el("li", {}, "Flèches ou Z Q S D pour marcher, Maj pour aller plus vite ; sur une tablette, le joystick en bas à gauche."),
         el("li", {}, "Molette : yeux plus haut ou plus bas."),
-        el("li", {}, "Un clic sur une porte ou un tiroir l'ouvre ; un clic au sol vous y emmène."),
+        el("li", {}, "Un clic sur une porte, un tiroir ou un accessoire l'ouvre ; un clic au sol vous y emmène."),
         el("li", {}, "Échap ou « Terminer » : retour à la vue d'avant."),
       ),
       el("label", { class: "grid grid-cols-[7rem_1fr] items-center gap-1.5" }, `Hauteur des yeux (${UNIT_LABELS[unit]})`, this.heightField),

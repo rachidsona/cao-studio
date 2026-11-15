@@ -6,12 +6,16 @@
  * « Mouvements »: nothing changes in the model, and a regeneration of the model closes them. Not while a tool or a
  * sketch takes the clicks of the view, nor with Ctrl, Cmd or Maj (they add to the selection).
  *
+ * An interior accessory comes out the same way (features/accessory-open.ts): a basket on its slides, the half-moons
+ * about their post, the pull-down rail down in front; a cutlery tray in a drawer opens its drawer.
+ *
  * « Ouvrir / fermer les portes » and « Ouvrir / fermer les tiroirs » (Dressing, Cuisine) do it for every door, or every
  * drawer, of the model at once.
  */
 import { madeDoor } from "../document/kitchen-floor";
 import { bodyLabel, findFeature } from "../document/operations";
 import { featureOfBody, type Axis, type CabinetFeature, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
+import { accessoryMoves } from "../features/accessory-open";
 import { drawerNumber, drawerSlide, type Box } from "../features/drawer-open";
 import { frontsParts } from "../features/fronts-parts";
 import { poseOf, rotationMatrix } from "../features/motion";
@@ -19,10 +23,10 @@ import { nicheGeometry, nicheParts, nichePartsIn, nicheWorld } from "../features
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 
-/** What is open: its bodies, where they are when open by `s` (0 closed … 1 open), and the meshes they were opened on. */
+/** What is open: its bodies, where each is when open by `s` (0 closed … 1 open), and the meshes they were opened on. */
 interface Open {
   bodies: string[];
-  pose: (s: number) => { rotation: number[]; translation: Vec3 };
+  pose: (s: number, bodyId: string) => { rotation: number[]; translation: Vec3 };
   meshes: unknown[];
 }
 
@@ -137,7 +141,12 @@ export function drawerBodies(doc: CadDocument, bodies: string[], bodyId: string)
   const feature = findFeature(doc, featureId);
   const drawers = (feature?.type === "niche" && feature.fill === "drawers") || (feature?.type === "fronts" && feature.layout === "drawers");
   const k = drawers ? drawerNumber(bodyLabel(doc, bodyId)) : null;
-  if (k === null) return null;
+  return k === null ? null : drawerOf(doc, bodies, featureId, k);
+}
+
+/** Drawer `k` of these drawers: its bodies, and what stands in it. */
+function drawerOf(doc: CadDocument, bodies: string[], featureId: string, k: number): { key: string; bodies: string[] } {
+  const feature = findFeature(doc, featureId);
   const own = bodies.filter((id) => id.startsWith(`${featureId}#`) && drawerNumber(bodyLabel(doc, id)) === k);
   // What is put in that drawer (a cutlery tray « Dans le tiroir »: its bottom on the drawer's) slides out with it.
   const inside = feature?.type === "niche" ? accessoriesIn(doc, feature, k) : [];
@@ -153,6 +162,47 @@ function accessoriesIn(doc: CadDocument, drawers: NicheFeature, k: number): stri
   const lift = bottom.to[1] - n.box.y0;
   const same = (f: NicheFeature) => f.sketch === drawers.sketch && f.partition === drawers.partition && f.niche.join(".") === drawers.niche.join(".");
   return doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.fill === "accessory" && !f.suppressed && same(f) && Math.abs((f.accessory?.lift ?? -1) - lift) < 0.5).map((f) => f.id);
+}
+
+/** The drawer a cutlery tray (or any accessory) stands in, by its feature id. */
+function drawerHolding(doc: CadDocument, bodies: string[], accessory: NicheFeature): { key: string; bodies: string[] } | null {
+  for (const f of doc.features) {
+    if (f.type !== "niche" || f.fill !== "drawers" || f.suppressed || f.sketch !== accessory.sketch || f.partition !== accessory.partition || f.niche.join(".") !== accessory.niche.join(".")) continue;
+    for (let k = 1; k <= f.drawers; k++) if (accessoriesIn(doc, f, k).includes(accessory.id)) return drawerOf(doc, bodies, f.id, k);
+  }
+  return null;
+}
+
+/**
+ * An accessory pulled out: its bodies, each one's pose (open by `s`), by any of its bodies; or the drawer it stands
+ * in. Null: not an accessory, or one that does not move.
+ */
+export function accessoryOpening(doc: CadDocument, bodies: string[], bodyId: string): { key: string; bodies: string[]; pose?: Open["pose"] } | null {
+  const feature = findFeature(doc, featureOfBody(bodyId));
+  if (feature?.type !== "niche" || feature.fill !== "accessory") return null;
+  const drawer = drawerHolding(doc, bodies, feature);
+  if (drawer) return drawer;
+  const n = nicheGeometry(feature, findFeature(doc, feature.sketch) as SketchFeature | undefined);
+  if (typeof n === "string") return null;
+  const moves = accessoryMoves(feature.accessory?.model, nicheParts(feature, n), n);
+  const origin = nicheWorld(n, [0, 0, 0]);
+  const poses = new Map<string, (s: number) => { rotation: number[]; translation: Vec3 }>();
+  for (const move of moves) {
+    let pose: ((s: number) => { rotation: number[]; translation: Vec3 }) | null = null;
+    if (move.slide) {
+      const to = nicheWorld(n, move.slide);
+      const d = [0, 1, 2].map((i) => to[i]! - origin[i]!);
+      pose = (s) => ({ rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1], translation: [d[0]! * s, d[1]! * s, d[2]! * s] });
+    } else if (move.turn) {
+      const axis = n.frame.v.findIndex((c) => Math.abs(c) > 0.5) as Axis;
+      const swing = outwards(axis, nicheWorld(n, move.turn.pivot), nicheWorld(n, move.turn.free), n.frame.normal, move.turn.angle);
+      pose = (s) => poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s });
+    }
+    if (pose) for (const i of move.parts) poses.set(`${feature.id}#${i}`, pose);
+  }
+  const moving = bodies.filter((id) => poses.has(id));
+  if (!moving.length) return null;
+  return { key: feature.id, bodies: moving, pose: (s, id) => poses.get(id)!(s) };
 }
 
 export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Editor): void {
@@ -173,7 +223,7 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / DURATION);
       const s = from + (to - from) * (1 - (1 - t) ** 3);
-      for (const id of bodies) viewport.setBodyPose(id, s === 0 ? null : pose(s));
+      for (const id of bodies) viewport.setBodyPose(id, s === 0 ? null : pose(s, id));
       if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -271,8 +321,11 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
     const doc = shown();
     const swing = doorSwing(doc, bodyId, boxOf(bodyId));
     const drawer = swing ? null : drawerBodies(doc, viewport.displayedBodies, bodyId);
+    const accessory = swing || drawer ? null : accessoryOpening(doc, viewport.displayedBodies, bodyId);
     if (swing) flipItem(doorItem(doorWithHandle(doc, bodyId), swing));
     else if (drawer) flipItem(drawerItem(drawer));
+    else if (accessory?.pose) flipItem({ key: accessory.key, bodies: accessory.bodies, pose: () => accessory.pose! });
+    else if (accessory) flipItem(drawerItem(accessory));
     showButtons();
   };
 

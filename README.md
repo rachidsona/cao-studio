@@ -1117,6 +1117,13 @@ opération existante.
     - « **Bas à (du bas de la niche)** » le monte dans la niche ; la penderie escamotable se pend sous le haut. Dans
       une niche à tiroirs, « **Dans le tiroir** » pose le range-couverts sur le fond du tiroir choisi ; il sort
       avec ce tiroir quand on l'ouvre dans la vue (`drawerBodies` de `app/drawer-toggle.ts`).
+    - **Sorti d'un clic** dans la vue 3D, comme un tiroir, et refermé d'un second : paniers, porte-pantalons,
+      porte-chaussures, tablette, poubelle, range-bouteilles, porte-cravates et miroir glissent vers l'avant (les
+      coulisses restent) ; le magic corner sort ses paniers avant et avance ses paniers arrière ; les demi-lunes
+      pivotent de 90° autour de leur montant ; la penderie escamotable descend devant la niche ; l'égouttoir sort son
+      bac ; un range-couverts posé dans un tiroir ouvre son tiroir. Les plateaux tournants, qui tournent sur
+      eux-mêmes, ne bougent pas. La vue seulement (`features/accessory-open.ts`, `accessoryOpening` de
+      `app/drawer-toggle.ts`).
     - Il **suit sa niche**, reste **hors du débit** et va au **devis** à son prix indicatif (en MAD, qu'un tarif
       réglé à la main remplace) ; il est chromé dans la vue, son miroir en miroir, ses bacs en plastique gris, tant
       qu'on ne lui donne pas une apparence. Les cotes sont des repères du commerce : la fiche du fabricant fait foi.
@@ -1866,7 +1873,8 @@ opération existante.
     et le panneau dit ce qu'il heurte (contrôle sur les boîtes englobantes, exact pour des planches). La vue
     seulement : le modèle ne change pas.
   - *Tiroirs d'un clic* : dans la vue 3D, un clic sur un tiroir (sa façade ou une pièce de son caisson, d'un Tiroirs
-    de niche ou de façades de caisson) l'**ouvre** : toutes ses pièces glissent ensemble du côté de sa façade. Un
+    de niche ou de façades de caisson) l'**ouvre** : toutes ses pièces glissent ensemble du côté de sa façade ; un
+    clic sur un accessoire intérieur le sort de même (panier, porte-pantalons, demi-lunes, penderie escamotable…). Un
     second clic le **referme**. La vue seulement, comme Mouvements : une régénération du modèle les referme ; rien
     pendant un outil ni avec Ctrl, Cmd ou Maj (`app/drawer-toggle.ts`, `features/drawer-open.ts`).
   - *Mise en plan* (bouton 📐 de la barre du haut, comme l'espace Dessin de Fusion) : un écran à part avec son ruban,

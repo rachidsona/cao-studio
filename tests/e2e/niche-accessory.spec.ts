@@ -75,6 +75,22 @@ test("un accessoire se pose dans une niche par le clic droit, refuse une niche t
   await page.waitForTimeout(900);
   await shot(page, "accessoire-pose");
 
+  // Clicked in the view, it comes out on its slides; clicked again, it goes back (the view only).
+  const [rack] = (await saved()) as unknown as { id: string }[];
+  const view3d = page.locator("canvas.cad-view");
+  const look = async () => (await view3d.screenshot()).toString("base64");
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(400);
+  const closed = await look();
+  const flip = () => page.evaluate((id) => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: `${id}#4` })), rack!.id);
+  await flip();
+  await page.waitForTimeout(700);
+  expect(await look()).not.toBe(closed);
+  await shot(page, "accessoire-sorti");
+  await flip();
+  await page.waitForTimeout(700);
+  expect(await look()).toBe(closed);
+
   // Bought: in the quote, not in the cut list.
   await click(page, '[data-workshop="quote"]');
   const quote = page.getByRole("dialog", { name: "Devis" });
