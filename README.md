@@ -2733,7 +2733,10 @@ opération existante.
   ouvre la même liste de modules pour choisir celui à ajouter.
   - **Modules programmables** (section « Formules » du panneau, `app/dressing/module-formulas.ts`) : un module dont les
     cotes se calculent sur la niche où on le pose. La section est une **carte à part** (filet violet à gauche, fond
-    teinté, marque « ƒx »), fermée comme ouverte, pour la distinguer des autres réglages du module. Des **paramètres** (« pas » : 350), des **conditions** qui changent de
+    teinté, marque « ƒx »), fermée comme ouverte, pour la distinguer des autres réglages du module. Chaque champ y a
+    le style des autres : son nom à gauche et sa **calculatrice « ⌨ »** à droite — la valeur d'un paramètre, et chaque
+    cote calculée, qu'elle ait déjà une formule ou non : la calculatrice s'ouvre sur ce qu'elle donne sur la niche (ou
+    la cote fixe) et écrit son résultat avec son unité (« 35 cm », en mm si l'on travaille en pouces). Des **paramètres** (« pas » : 350), des **conditions** qui changent de
     module selon la niche (« Si largeur > 45 cm alors Tiroirs et étagères ») et une **formule** par cote : nombre
     d'étagères, espacement, chapeau, zone et nombre de tiroirs, tringle sous le haut, épaisseur des étagères — « une
     étagère tous les 35 cm » s'écrit `plancher(hauteur / pas) - 1`. Les formules lisent la largeur et la hauteur libres

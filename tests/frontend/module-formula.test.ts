@@ -83,3 +83,15 @@ describe("formules d'un module", () => {
     for (const text of ["alert(1)", "constructor", "__proto__", "this.x", "process.exit()", "`x`", "a => a"]) expect(parseFormula(text, NAMES)).toEqual(expect.any(String));
   });
 });
+
+describe("la calculatrice d'une formule écrit sa cote avec son unité", () => {
+  it("en cm, en m, en mm ; en pouces, en mm (les formules ne lisent pas les pouces) — et la formule relit la même cote", async () => {
+    const { lengthText } = await import("../../frontend/src/app/dressing/module-formulas");
+    expect(lengthText(300, "cm")).toBe("30 cm");
+    expect(lengthText(18, "cm")).toBe("1,8 cm");
+    expect(lengthText(1250, "m")).toBe("1,25 m");
+    expect(lengthText(18, "mm")).toBe("18 mm");
+    expect(lengthText(25.4, "in")).toBe("25,4 mm");
+    for (const text of ["30 cm", "1,8 cm", "1,25 m", "25,4 mm"]) expect(evaluateFormula(read(text), NICHE)).toBeCloseTo({ "30 cm": 300, "1,8 cm": 18, "1,25 m": 1250, "25,4 mm": 25.4 }[text]!, 6);
+  });
+});

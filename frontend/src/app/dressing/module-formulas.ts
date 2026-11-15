@@ -5,7 +5,7 @@
  * français, citée. Une formule laissée vide garde la cote du panneau.
  */
 import { MODULES, type ModuleKind } from "../../document/dressing-modules";
-import { FORMULA_FUNCTIONS, parseFormula } from "../../document/module-formula";
+import { evaluateFormula, FORMULA_FUNCTIONS, parseFormula } from "../../document/module-formula";
 import {
   formulasOf,
   nicheMeasures,
@@ -20,7 +20,8 @@ import {
   type NicheVariables,
 } from "../../document/module-program";
 import type { DisplayUnit } from "../../document/types";
-import { formatLength, parseNumber } from "../../measurements/units";
+import { formatLength, parseNumber, toDisplay, trim } from "../../measurements/units";
+import { openCalculator } from "../../ui/calculator";
 import { el } from "../../ui/dom";
 import { FIELD, ROW, SMALL } from "./module-options";
 
@@ -72,8 +73,9 @@ export function programPreview(program: ModuleProgram, niche: NicheVariables | n
 }
 
 /** A text field: the preview follows each letter, the program takes it when it is left (or Entrée). */
-function textField(label: string, value: string, o: { placeholder?: string; invalid?: boolean; typed(text: string): void; set(text: string): void; redraw(): void }): HTMLInputElement {
-  const input = el("input", { type: "text", class: `${FIELD} font-mono`, value, "aria-label": label, ...(o.placeholder ? { placeholder: o.placeholder } : {}), "aria-invalid": String(o.invalid ?? false), spellcheck: "false", autocomplete: "off" });
+function textField(label: string, value: string, o: { placeholder?: string; invalid?: boolean; numeric?: boolean; typed(text: string): void; set(text: string): void; redraw(): void }): HTMLInputElement {
+  // A number (a parameter's value): `inputmode` gives it the calculator of every number field (ui/field-keypads.ts).
+  const input = el("input", { type: "text", class: `${FIELD} font-mono`, value, "aria-label": label, ...(o.numeric ? { inputmode: "decimal" } : {}), ...(o.placeholder ? { placeholder: o.placeholder } : {}), "aria-invalid": String(o.invalid ?? false), spellcheck: "false", autocomplete: "off" });
   input.addEventListener("input", () => o.typed(input.value));
   input.addEventListener("change", () => o.set(input.value));
   input.addEventListener("blur", () => o.redraw());
@@ -82,6 +84,43 @@ function textField(label: string, value: string, o: { placeholder?: string; inva
     if (event.key === "Enter") input.blur();
   });
   return input;
+}
+
+/** A length as a formula writes it: in the unit shown when formulas know it (mm, cm, m), otherwise in mm. */
+export function lengthText(mm: number, unit: DisplayUnit): string {
+  return unit === "in" ? `${trim(mm, 1)} mm` : `${trim(toDisplay(mm, unit), 4)} ${unit}`;
+}
+
+/**
+ * The « ⌨ » beside a formula, as beside every number field: the calculator opened on what the formula gives now (or
+ * the fixed size), its result written in the field — with its unit for a length — as if typed.
+ */
+function formulaKeypad(input: HTMLInputElement, label: string, count: boolean, now: () => number, unit: DisplayUnit): HTMLButtonElement {
+  const keypad = el("button", { type: "button", class: "size-7 shrink-0 border border-gray-300 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "aria-label": `Calculatrice : ${label}`, "data-field-keypad": "" }, "⌨");
+  keypad.addEventListener("pointerdown", (event) => event.stopPropagation());
+  keypad.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const r = keypad.getBoundingClientRect();
+    const container = (input.closest("main") ?? document.querySelector("#editor main") ?? document.body) as HTMLElement;
+    const box = container.getBoundingClientRect();
+    openCalculator({
+      container,
+      anchor: { x: Math.max(box.left + 8, Math.min(r.right + 8, box.right - 248)), y: r.top + r.height / 2 },
+      value: now(),
+      unit: count ? "deg" : unit,
+      plain: count,
+      title: label,
+      locked: true,
+      noLock: true,
+      onSubmit: (value) => {
+        input.value = count ? trim(Math.round(value), 0) : lengthText(value, unit);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      },
+    });
+  });
+  return keypad;
 }
 
 export function formulaRows(o: FormulaSection): HTMLElement[] {
@@ -124,6 +163,7 @@ export function formulaRows(o: FormulaSection): HTMLElement[] {
       redraw: o.redraw,
     });
     const value = textField(`Valeur du paramètre ${i + 1}`, String(param.value).replace(".", ","), {
+      numeric: true,
       typed: () => {},
       set: (text) => {
         const v = parseNumber(text);
@@ -133,7 +173,7 @@ export function formulaRows(o: FormulaSection): HTMLElement[] {
       redraw: o.redraw,
     });
     value.classList.add("text-right");
-    return el("div", { class: "grid grid-cols-[1fr_5rem_auto] gap-1" }, name, value, remove(`Retirer le paramètre ${i + 1}`, () => program.params.splice(i, 1)));
+    return el("div", { class: "grid grid-cols-[1fr_7rem_auto] gap-1" }, name, value, remove(`Retirer le paramètre ${i + 1}`, () => program.params.splice(i, 1)));
   });
   const addParam = el("button", { type: "button", class: `${SMALL} w-full` }, "Ajouter un paramètre");
   addParam.addEventListener("click", () => {
@@ -171,6 +211,15 @@ export function formulaRows(o: FormulaSection): HTMLElement[] {
     rodDrop: formatLength(program.sizes.rod?.drop ?? 60, o.unit),
     thickness: formatLength(program.thickness, o.unit),
   };
+  const fixedValue: Record<FormulaTarget, number> = {
+    shelves: program.sizes.shelves ?? 0,
+    spacing: program.sizes.spacing,
+    hat: program.sizes.hat,
+    drawerZone: program.sizes.drawerZone,
+    drawers: program.sizes.drawers,
+    rodDrop: program.sizes.rod?.drop ?? 60,
+    thickness: program.thickness,
+  };
   const formulas = targets.map((target) => {
     const text = program.formulas[target] ?? "";
     const input = textField(`Formule : ${TARGETS[target].label}`, text, {
@@ -180,7 +229,16 @@ export function formulaRows(o: FormulaSection): HTMLElement[] {
       set: (value) => commit(() => (value.trim() ? (program.formulas[target] = value) : delete program.formulas[target])),
       redraw: o.redraw,
     });
-    return el("label", { class: "block space-y-0.5" }, el("span", { class: "text-gray-700 dark:text-gray-200" }, TARGETS[target].label), input);
+    // What it gives now: the formula worked out on the niche when it reads, otherwise the fixed size.
+    const now = () => {
+      const formula = parseFormula(input.value, names);
+      const values = o.niche ? { ...o.niche, ...Object.fromEntries(program.params.map((p) => [p.name, p.value])) } : null;
+      const v = typeof formula === "string" || !values ? null : evaluateFormula(formula, values);
+      return typeof v === "number" ? v : fixedValue[target];
+    };
+    const keypad = formulaKeypad(input, TARGETS[target].label, TARGETS[target].count !== undefined, now, o.unit);
+    input.classList.add("flex-1");
+    return el("label", { class: ROW }, TARGETS[target].label, el("span", { class: "flex min-w-0 items-center gap-1" }, input, keypad));
   });
 
   const close = el("button", { type: "button", class: `${SMALL} bg-white dark:bg-gray-900` }, "Sans formules");

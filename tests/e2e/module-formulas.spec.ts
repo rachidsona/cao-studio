@@ -68,7 +68,7 @@ test("Module à formules : créé, gardé, posé dans des niches de tailles diff
   await expect(preview).toHaveText("Choisissez une niche : le résultat des formules s'y affiche.");
   await panel.getByRole("button", { name: "Ajouter un paramètre" }).click();
   await expect(panel.getByLabel("Nom du paramètre 1")).toHaveValue("pas");
-  await expect(panel.getByLabel("Valeur du paramètre 1")).toHaveValue("350");
+  await expect(panel.getByLabel("Valeur du paramètre 1", { exact: true })).toHaveValue("350");
   const shelves = panel.getByLabel("Formule : Nombre d'étagères");
   await shelves.fill("plancher(hauteur / pas");
   await expect(preview).toHaveText("Nombre d'étagères — formule « plancher(hauteur / pas » : une parenthèse fermante manque pour « plancher( ».");
@@ -80,6 +80,20 @@ test("Module à formules : créé, gardé, posé dans des niches de tailles diff
   await expect(preview).toHaveText("Choisissez une niche : le résultat des formules s'y affiche.");
   // The fixed count gives way to the formula.
   await expect(panel.getByLabel("Étagères", { exact: true })).toHaveCount(0);
+  // Each field as the others: its name on the left, its « ⌨ » on the right — a parameter's value, a formula. The
+  // calculator writes a size with its unit (in cm here), read back by the formula; emptied, the fixed size again.
+  await expect(card.getByRole("button", { name: "Calculatrice : Valeur du paramètre 1" })).toBeVisible();
+  await card.getByRole("button", { name: "Calculatrice : Espacement des étagères" }).click();
+  const calc = page.getByRole("dialog", { name: "Espacement des étagères" });
+  await calc.locator("input[data-expression]").fill("30+5");
+  await calc.getByRole("button", { name: "Valider" }).click();
+  await expect(calc).toHaveCount(0);
+  const hat = panel.getByLabel("Formule : Espacement des étagères");
+  await expect(hat).toHaveValue("35 cm");
+  await expect(hat).toHaveAttribute("aria-invalid", "false");
+  await hat.fill("");
+  await hat.press("Enter");
+  await expect(hat).toHaveValue("");
 
   // Kept under a name, with its formulas.
   await panel.getByLabel("Nom du module").fill("Une étagère tous les 35 cm");
