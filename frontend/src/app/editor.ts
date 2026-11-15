@@ -194,13 +194,9 @@ export class Editor {
     this.recomputing = true;
     ref(this.root, "status-recompute").textContent = "Recalcul…";
     try {
-      const result = await this.geometry.recompute(this.previewDoc ?? this.doc);
-      this.result = result;
-      this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
-      this.picked.invalidate();
-      // Bodies hidden with the eye of the browser stay in the document but are not drawn.
-      this.viewport.modelBodies = result.bodies;
-      this.viewport.setBodies(result.bodies.filter((b) => !isBodyHidden(this.previewDoc ?? this.doc, b.bodyId)));
+      const doc = this.previewDoc ?? this.doc, real = this.previewDoc ? null : doc;
+      const result = await this.geometry.recompute(doc);
+      this.show(result, real);
       if (fitView) this.viewport.setView("iso");
       const failures = result.statuses.filter((s) => s.state === "error").length;
       ref(this.root, "status-recompute").textContent =
@@ -217,6 +213,17 @@ export class Editor {
       await this.recompute();
     }
   }
+
+  /** Shows a regeneration: the worker's, or at opening the one kept in the browser (persistence/model-cache.ts). */
+  show(result: RecomputeResponse, doc: CadDocument | null): void {
+    this.result = result;
+    this.statuses = new Map(result.statuses.map((s) => [s.id, s]));
+    this.picked.invalidate();
+    this.viewport.modelBodies = result.bodies; // bodies hidden with the eye of the browser stay in the document, not drawn
+    this.viewport.setBodies(result.bodies.filter((b) => !isBodyHidden(this.previewDoc ?? this.doc, b.bodyId)));
+    this.onShown(result, doc);
+  }
+  /** After each model shown, with the real document it was computed from (null: a tool's provisional one). */ onShown: (result: RecomputeResponse, doc: CadDocument | null) => void = () => {};
 
   /** Applies a new document as one undo step (workshop tools too); `amend`: in place of the last one (a tool set again). */
   change(next: CadDocument, amend = false): Promise<void> {

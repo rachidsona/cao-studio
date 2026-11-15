@@ -1,6 +1,6 @@
 /**
- * Les fiches d'aide des barres d'outils : « Tout sélectionner » et « Tout ouvrir » (colonne à droite de la vue), et le
- * glisser des icônes d'une barre à l'autre ; à part pour garder interface.ts court.
+ * Les fiches d'aide des barres d'outils : « Tout sélectionner » et « Tout ouvrir » (colonne à droite de la vue), le
+ * glisser des icônes d'une barre à l'autre, et l'ouverture d'un projet ; à part pour garder interface.ts court.
  */
 import type { ToolHelp } from "./types";
 
@@ -43,4 +43,16 @@ export const DRAG_HELP: ToolHelp = {
     "Le « + » en bas de la colonne à droite de la vue liste tous les outils : un clic remet une de ses icônes enlevées, ou en ajoute une autre.",
   ],
   tip: "Échap pendant le glisser annule. Lâchée sur une barre qui ne la prend pas (un outil d'esquisse sur le ruban du modèle), l'icône reste où elle était. Vos barres sont retenues par le navigateur.",
+};
+
+/** Opening a project: the model kept in the browser first, the exact one next (app/quick-open.ts). */
+export const OPEN_PROJECT_HELP: ToolHelp = {
+  keys: [], name: "Ouverture d'un projet",
+  what: "Rouvre un projet presque aussitôt : le navigateur garde le dernier modèle calculé de chaque projet et le montre pendant que le noyau 3D démarre et recalcule.",
+  steps: [
+    "La première fois, l'écran de chargement suit le démarrage du noyau 3D puis le calcul des corps.",
+    "Les fois suivantes, si le modèle n'a pas changé depuis, ses corps s'affichent tout de suite ; la barre d'état en bas dit « Dernier calcul affiché — calcul exact en cours… », puis « Recalcul … ms » quand le calcul exact les a remplacés.",
+    "Pendant ce temps, vous pouvez déjà regarder, tourner et sélectionner : les mesures, les contours, les perçages et les exports (DXF, STEP…) attendent le calcul exact, une seconde ou deux, et répondent ensuite.",
+  ],
+  tip: "Un projet modifié ailleurs (un autre ordinateur, un autre onglet), une mise à jour de l'éditeur ou du catalogue de l'atelier : l'ancien modèle n'est pas montré, le projet se calcule comme la première fois. Un devis, une vue ou un nom changé ne compte pas. Le navigateur garde les 12 derniers projets calculés ; vider ses données ne fait que ralentir la prochaine ouverture.",
 };

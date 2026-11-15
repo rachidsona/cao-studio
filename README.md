@@ -259,6 +259,18 @@ Playwright, migrations à jour, `check --deploy` et tests backend sur PostgreSQL
   si on la demande (`sketcher/profiles.ts`, `features/builders.ts`). Sur un dressing de 120 corps, le calcul passe de
   1,25 s à 0,85 s.
 - Au chargement, un écran suit le téléchargement du noyau 3D (barre de progression), puis le calcul du projet.
+- **Ouverture rapide** (`app/quick-open.ts`, `persistence/model-cache.ts`) : le navigateur garde (IndexedDB) les
+  maillages et états du dernier calcul de chaque projet (les 12 derniers), nommés par une clé du modèle — ses
+  opérations telles que le noyau les reçoit (quincaillerie et gorges incorporées) et ses pièces supprimées, plus la
+  version de l'éditeur ; un devis, une vue ou un nom changé ne la change pas. À l'ouverture, si la clé est la même,
+  ces corps s'affichent aussitôt, le noyau démarrant en arrière-plan, et le vrai calcul les remplace (« Dernier calcul
+  affiché — calcul exact en cours… » dans la barre d'état). Le calcul exact ne change pas : les questions sur les
+  corps (mesures, contours, perçages) nomment le premier recalcul et le worker, qui répond dans l'ordre, y répond
+  une fois ses corps calculés ; les exports passent eux aussi après lui. Chaque modèle calculé est gardé un instant
+  après (aussitôt pour celui de l'ouverture, et quand on quitte la page). Mesuré sur un projet de test de 60 caissons
+  (540 corps, `tests/e2e/open-fast.spec.ts`) : première image à 1,1–1,2 s avant, 0,26–0,31 s à la deuxième ouverture,
+  modèle exact toujours vers 1,1 s. Repères `cao:first-image`, `cao:kernel-ready`, `cao:model-ready` et
+  `cao:model-kept` dans le panneau Performance du navigateur.
 
 Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une plaque de
 80 × 50 × 10 mm avec un perçage Ø10 et vérifie :
@@ -286,7 +298,7 @@ Le test de référence (`tests/frontend/reference-plate.test.ts`) construit une 
 | `frontend/src/viewport/` | Scène Three.js en Z vers le haut, grille adaptative, gizmo, vues, sélection de faces |
 | `frontend/src/ui/`, `app/` | Navigateur, ligne de temps, propriétés, session (enregistrement automatique, récupération) |
 | `frontend/src/io/` | Export STEP/STL, import/export du format natif `.cao.json` |
-| `frontend/src/persistence/` | API Django (CSRF, conflits de version), copie locale de secours |
+| `frontend/src/persistence/` | API Django (CSRF, conflits de version), copie locale de secours, modèles gardés pour l'ouverture rapide |
 
 Principes :
 

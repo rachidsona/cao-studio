@@ -103,6 +103,7 @@ import { bindDigitKeys } from "./ui/digit-keys";
 import { bindScrollArrows } from "./ui/scroll-arrows";
 import { Viewport } from "./viewport/viewport";
 import { bindProjectPreview } from "./app/project-preview";
+import { QuickOpen } from "./app/quick-open";
 
 function readConfig(): EditorConfig {
   const node = document.getElementById("editor-config");
@@ -143,17 +144,21 @@ async function start(): Promise<void> {
   };
   // What one keeps for all one's projects (« Mes caissons », suppliers, rates…): the server's copy, while the rest loads.
   const kept = startKeptData();
+  // The model last computed for this project, kept in the browser: read while the document loads (app/quick-open.ts).
+  const quick = new QuickOpen(config.projectId);
+  // The kernel starts in the background: a kept model is shown without waiting for it.
+  const kernelReady = geometry.init().then(() => {
+    kernelStatus.textContent = "Noyau OpenCascade prêt";
+    kernelStatus.dataset.state = "ready";
+    performance.mark("cao:kernel-ready");
+  });
+  kernelReady.catch((error: unknown) => showFatal(root, `Erreur : ${error instanceof Error ? error.message : String(error)}`));
   const [snapshot, catalog] = await Promise.all([
     loadProject(config.apiUrl),
     // The workshop's catalogue: its materials and hardware join the built-in ones, its profile heads the documents.
     loadCatalog(config.catalogUrl),
     // The sketcher solves interactively on the main thread (small, fast module).
     initSolver({ locateFile: () => gcsWasmUrl }),
-    geometry.init().then(() => {
-      kernelStatus.textContent = "Noyau OpenCascade prêt";
-      kernelStatus.dataset.state = "ready";
-      loading.show("Préparation du projet…", 0.9);
-    }),
   ]);
   // The libraries in place before the tools read them (a moment at most: the server is near).
   await kept;
@@ -273,9 +278,28 @@ async function start(): Promise<void> {
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
   bindProjectOrganizer(root, config, (message, kind) => editor.notify(message, kind));
   editor.render();
-  loading.show("Calcul des corps…", 0.95);
-  await editor.recompute(true);
-  loading.done();
+  const shown = await quick.show(editor);
+  // Each real model is kept for the next opening (the one just shown is not written again).
+  quick.follow(editor);
+  if (shown) {
+    // The kept model at once; the exact one replaces it when the kernel has recomputed.
+    viewport.setView("iso");
+    loading.done();
+    const bodies = editor.result?.bodies.length;
+    requestAnimationFrame(() => performance.mark("cao:first-image", { detail: { cached: true, bodies } }));
+    const exact = editor.recompute();
+    ref(root, "status-recompute").textContent = "Dernier calcul affiché — calcul exact en cours…";
+    await exact;
+  } else {
+    await kernelReady;
+    loading.show("Calcul des corps…", 0.95);
+    await editor.recompute(true);
+    const bodies = editor.result?.bodies.length;
+    requestAnimationFrame(() => performance.mark("cao:first-image", { detail: { cached: false, bodies } }));
+    loading.done();
+  }
+  // The times of the opening, for the tests and the browser's performance panel (tests/e2e/open-fast.spec.ts).
+  performance.mark("cao:model-ready", { detail: { bodies: editor.result?.bodies.length } });
   // The picture of the model on its card of the home page (app/project-preview.ts): after the saves, and now if none.
   const preview = bindProjectPreview(viewport, () => editor.doc, config.apiUrl);
   const savedState = session.onStateChange;

@@ -1,4 +1,4 @@
-import { DRAG_HELP, SIDE_HELP } from "./bars";
+import { DRAG_HELP, OPEN_PROJECT_HELP, SIDE_HELP } from "./bars";
 import type { HelpFamily } from "./types";
 
 export const CURIC: HelpFamily[] = [
@@ -202,7 +202,7 @@ export const SCREEN: HelpFamily[] = [
           "Le « + » ouvre un menu : tapez un « Nom du nouveau projet » puis « Créer », ou choisissez un projet dans « Ouvrir un projet ».",
         ],
         tip: "Huit onglets au plus : fermez-en un pour en ouvrir un autre.",
-      },
+      }, OPEN_PROJECT_HELP,
       {
         keys: [], name: "Mes outils",
         what: "Une barre à vous, posée en haut à gauche de la vue, avec les outils que vous utilisez le plus.",

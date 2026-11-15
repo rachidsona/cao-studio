@@ -17,6 +17,9 @@ export const TIME_LIMITS: Partial<Record<WorkerRequest["type"], number>> & { oth
 
 const limitOf = (type: WorkerRequest["type"]) => TIME_LIMITS[type] ?? TIME_LIMITS.other;
 
+/** The document as the kernel receives it: the chosen hardware's sizes in the fronts and doors it drills, the gorge profiles' notches in the sides. */
+export const kernelDocument = (doc: CadDocument): CadDocument => stampGorges(stampHardware(doc));
+
 export class GeometryClient {
   private worker!: Worker;
   private nextId = 1;
@@ -80,7 +83,9 @@ export class GeometryClient {
   private call<T>(request: WorkerRequest, generation?: number): Promise<T> {
     const id = this.nextId++;
     // A question about the bodies names the recompute whose bodies are shown: the worker refuses it after a newer one.
-    const tag = generation ?? (BODY_QUESTIONS.has(request.type) ? this.shown : undefined);
+    // Before the first answer, the bodies shown at opening are those kept in the browser (app/quick-open.ts), made from
+    // the first recompute's document: the question names it, and the worker, answering in order, waits for its bodies.
+    const tag = generation ?? (BODY_QUESTIONS.has(request.type) ? this.shown || Math.min(this.sent, 1) : undefined);
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { type: request.type, resolve: resolve as (value: unknown) => void, reject });
       this.worker.postMessage({ ...request, id, ...(tag === undefined ? {} : { generation: tag }) } satisfies WorkerEnvelope);
@@ -92,11 +97,10 @@ export class GeometryClient {
   }
 
   async recompute(doc: CadDocument): Promise<RecomputeResponse> {
-    // The chosen hardware's sizes go into the fronts and doors it drills; the gorge profiles' notches into the sides.
     const generation = ++this.sent;
     // The meshes held: the worker sends again only those of bodies that changed (worker.ts meshesOf).
     const known = Object.fromEntries([...this.meshes].map(([id, mesh]) => [id, mesh.meshId ?? 0]));
-    const wire = await this.call<Omit<RecomputeResponse, "bodies"> & { bodies: WireMesh[] }>({ type: "recompute", doc: stampGorges(stampHardware(doc)), known }, generation);
+    const wire = await this.call<Omit<RecomputeResponse, "bodies"> & { bodies: WireMesh[] }>({ type: "recompute", doc: kernelDocument(doc), known }, generation);
     const bodies = wire.bodies.map((m) => ("same" in m ? this.meshes.get(m.bodyId) : m)).filter((m): m is BodyMesh => !!m);
     this.meshes = new Map(bodies.map((m) => [m.bodyId, m]));
     this.shown = Math.max(this.shown, generation);
