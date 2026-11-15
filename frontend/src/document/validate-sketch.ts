@@ -2,6 +2,7 @@
  * Structural validation of a v2 sketch (points, curves, constraints) from an
  * untrusted source. Mirrors the server-side rules in apps/projects.
  */
+import { isModuleFormula } from "./module-program";
 import { AXIS_X, AXIS_Y, DIMENSION_KINDS, ORIGIN, RESERVED_IDS } from "./sketch";
 import CONSTRAINTS from "./sketch-constraints.json";
 
@@ -43,7 +44,8 @@ export function validateSketch(feature: Json, where: string, errors: string[]): 
       feature.offsets.every(
         (o) =>
           isObject(o) && typeof o.id === "string" && typeof o.name === "string" && strings(o.curves) && strings(o.source) &&
-          isFiniteNumber(o.distance) && typeof o.both === "boolean" && (o.join === "round" || o.join === "sharp"),
+          isFiniteNumber(o.distance) && typeof o.both === "boolean" && (o.join === "round" || o.join === "sharp") &&
+          (o.formula === undefined || isModuleFormula(o.formula)),
       );
     if (!valid) errors.push(`${where} : décalages invalides.`);
   }
