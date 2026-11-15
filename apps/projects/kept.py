@@ -27,6 +27,7 @@ KEYS = frozenset({
     "cao.label-template",
     "cao.gcode",
     "cao.dxf-layers",
+    "cao.dxf-machines",
     "cao.part-tags",
     "cao.render-materials",
     "cao.worktop-bars",

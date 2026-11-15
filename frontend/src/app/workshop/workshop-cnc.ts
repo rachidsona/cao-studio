@@ -10,7 +10,8 @@ import { bodyLabel } from "../../document/operations";
 import { isFabricated } from "../../document/fabrication-parts";
 import { opsOf } from "../../document/hardware-rules";
 import type { GeometryClient } from "../../geometry/client";
-import { LAYER_PROFILES, boardFaces, documentedHoleDepth, flattenOutline, holeDepth, layerName, partsDxf, type FlatPart, type LayerProfile } from "../../io/dxf";
+import { boardFaces, documentedHoleDepth, flattenOutline, holeDepth, loopDepthOf, partsDxf, type FlatPart } from "../../io/dxf";
+import { layersPanel, loadLayers, saveLayers } from "./dxf-machines";
 import { edgeHoles } from "../../document/face-ops";
 import { GCODE, partsGcode, type GcodeOptions } from "../../io/gcode";
 import { qrSvg } from "../../io/qr";
@@ -57,7 +58,12 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
         faces.map(async (face) => {
           const outline = await geometry.faceOutline(id, face);
           // The depth the document drills first; the mesh only for a hole it does not describe (a hinge cup).
-          return flattenOutline(outline, name, thickness, (center, radius) => documentedHoleDepth(drilled, center, radius, thickness) ?? holeDepth(mesh.vertices, center, outline.normal, radius, thickness));
+          return flattenOutline(
+            outline, name, thickness,
+            (center, radius) => documentedHoleDepth(drilled, center, radius, thickness) ?? holeDepth(mesh.vertices, center, outline.normal, radius, thickness),
+            // An inner outline: a cut-out goes through, a groove or a pocket stops at its bottom.
+            (points) => loopDepthOf(mesh.vertices, outline.normal, points, thickness),
+          );
         }),
       );
       const holes = (p: FlatPart) => p.edges.filter((e) => e.kind === "circle").length;
@@ -71,17 +77,6 @@ export async function flatParts(viewport: Viewport, editor: Editor, geometry: Ge
   return { parts, skipped, flip, edges };
 }
 
-const LAYERS_KEY = "cao.dxf-layers";
-
-/** The layer naming of the machine, kept by the browser (as the G-code settings). */
-function loadLayers(): LayerProfile {
-  try {
-    return { ...LAYER_PROFILES[0]!.profile, ...(JSON.parse(localStorage.getItem(LAYERS_KEY) ?? "null") as Partial<LayerProfile> | null) };
-  } catch {
-    return { ...LAYER_PROFILES[0]!.profile };
-  }
-}
-
 /** The DXF of these parts, with the layer names of the machine as last set. */
 export const savedDxf = (parts: FlatPart[]) => partsDxf(parts, 20, loadLayers());
 
@@ -89,45 +84,16 @@ async function exportDxf(viewport: Viewport, editor: Editor, geometry: GeometryC
   const { parts, skipped, edges } = await flatParts(viewport, editor, geometry);
   if (!parts.length) return editor.notify("Aucune pièce à plat à exporter.", "info");
   const profile = loadLayers();
-  const preset = el("select", { class: "h-8 w-full border border-gray-300 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Noms des calques" },
-    ...LAYER_PROFILES.map((p) => el("option", { value: p.id, selected: p.profile.contour === profile.contour && p.profile.drill === profile.drill }, p.label)),
-    el("option", { value: "custom", selected: !LAYER_PROFILES.some((p) => p.profile.contour === profile.contour && p.profile.drill === profile.drill) }, "Personnalisé"));
-  const text = (label: string, key: keyof LayerProfile) => {
-    const input = el("input", { type: "text", class: "h-8 w-full border border-gray-300 bg-white px-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-900", value: profile[key], "aria-label": label });
-    input.addEventListener("keydown", (e) => e.stopPropagation());
-    input.addEventListener("input", () => {
-      profile[key] = input.value.trim() || LAYER_PROFILES[0]!.profile[key];
-      preset.value = "custom";
-      example();
-    });
-    return input;
-  };
-  const contour = text("Calque des contours", "contour");
-  const drill = text("Calque des perçages", "drill");
-  const sample = el("p", { class: "text-xs text-gray-600 dark:text-gray-300" });
-  const example = () => (sample.textContent = `Exemple : contour d'un panneau de 19 mm → ${layerName(profile.contour, { t: 19 })} ; perçage Ø8 de 12 mm → ${layerName(profile.drill, { d: 8, z: 12, t: 19 })}.`);
-  preset.addEventListener("change", () => {
-    const chosen = LAYER_PROFILES.find((p) => p.id === preset.value);
-    if (!chosen) return;
-    Object.assign(profile, chosen.profile);
-    contour.value = profile.contour;
-    drill.value = profile.drill;
-    example();
-  });
-  example();
+  const pockets = parts.filter((p) => p.edges.some((e) => e.kind !== "circle" && e.depth !== undefined)).map((p) => p.name);
   const content = el("div", { class: "space-y-2 text-xs" },
-    el("p", { class: "text-gray-600 dark:text-gray-300" }, "Beaucoup de logiciels de commande numérique usinent d'après le nom du calque : réglez-le comme votre machine l'attend. {d} : diamètre, {z} : profondeur, {t} : épaisseur du panneau (en mm)."),
-    preset, el("label", { class: "grid gap-0.5" }, "Contours", contour), el("label", { class: "grid gap-0.5" }, "Perçages", drill), sample,
+    layersPanel(profile),
+    pockets.length ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Rainures ou poches dans le calque des poches, à leur profondeur : ${pockets.join(", ")}.`) : null,
     edges.length ? el("p", { class: "text-amber-700 dark:text-amber-400" }, `Perçages sur chant à faire à part (perceuse horizontale), cotés sur les fiches : ${edges.join(", ")}.`) : null);
   const close = openModal("DXF pour la commande numérique", content, [
     {
       label: "Exporter",
       run: () => {
-        try {
-          localStorage.setItem(LAYERS_KEY, JSON.stringify(profile));
-        } catch {
-          // Not remembered: only this time.
-        }
+        saveLayers(profile);
         downloadText("pieces-cnc.dxf", partsDxf(parts, 20, profile), "application/dxf");
         editor.notify(`DXF exporté : ${parts.length} pièce${parts.length > 1 ? "s" : ""}${skipped.length ? ` (sans face plane : ${skipped.join(", ")})` : ""}.`, "success");
         close();

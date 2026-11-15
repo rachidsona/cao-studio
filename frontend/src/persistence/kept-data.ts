@@ -1,7 +1,7 @@
 /**
  * Ce qu'on garde pour tous ses projets — « Mes caissons », « Mes modules », « Mes découpes », « Mes murs », les styles
- * de dressing, les fournisseurs, les tarifs du devis, les standards de l'atelier, l'étiquette, le G-code et les calques
- * DXF, les étiquettes de pièces, les matières du rendu — est gardé par le serveur (/api/kept/, apps/projects/kept.py)
+ * de dressing, les fournisseurs, les tarifs du devis, les standards de l'atelier, l'étiquette, le G-code, les calques
+ * DXF et les machines, les étiquettes de pièces, les matières du rendu — est gardé par le serveur (/api/kept/, apps/projects/kept.py)
  * et plus seulement par ce navigateur : il suit le compte sur un autre ordinateur, et ne se perd plus quand on vide
  * le navigateur. Le navigateur en garde une copie, que chaque partie de l'éditeur lit comme avant.
  * À l'ouverture, ce que le serveur a remplace la copie ; ce que le serveur n'a pas encore (gardé avant) lui est
@@ -19,6 +19,7 @@ export const KEPT_KEYS = new Set([
   "cao.label-template",
   "cao.gcode",
   "cao.dxf-layers",
+  "cao.dxf-machines",
   "cao.part-tags",
   "cao.render-materials",
   "cao.worktop-bars",

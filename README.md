@@ -1601,12 +1601,25 @@ opération existante.
     pièces sont préfixées du nom de leur projet. Gardé par le serveur (`/api/batch/`, `apps/projects/production.py`).
   - *Export DXF commande numérique* : chaque panneau mis à plat sur celle de ses deux grandes faces qui porte le plus
     de perçages (une porte montre ses cuvettes), avec le **contour exact** du noyau (lignes, arcs) et les **perçages
-    en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm, calques CONTOUR, PERCAGE et
-    TEXTE, lu par les logiciels de FAO.
-    - **Noms des calques pour la machine** : beaucoup de logiciels de commande numérique usinent d'après le nom du
-      calque. À l'export, on choisit « Générique », « Diamètre et profondeur » (`PERCAGE_D8_Z12`, `CONTOUR_Z19`),
-      « Court » (`Z12-D8`, `Z19`) ou un modèle à soi, où `{d}` est le diamètre, `{z}` la profondeur et `{t}`
-      l'épaisseur du panneau. Le choix est retenu par le navigateur.
+    en cercles**, posés côte à côte avec leur nom et leur épaisseur. DXF R12 en mm, calques CONTOUR, POCHE, PERCAGE
+    et TEXTE, lu par les logiciels de FAO.
+    - **Calques des machines** : beaucoup de logiciels de commande numérique usinent d'après le nom du calque. À
+      l'export, on choisit un modèle — « Générique » (`CONTOUR`, `POCHE_Z8`, `PERCAGE`), « Diamètre et profondeur »
+      (`PERCAGE_D8_Z12`, `CONTOUR_Z19`), « Court » (`Z12-D8`, `Z19`), **woodWOP** de HOMAG et Weeke (contour
+      `FK-1T101R` : fraisage de contour, Z sous le dessous du panneau, outil, compensation à droite), **ABF**
+      (`ABF-Z12-D8`, `ABF_GROOVE-Z8`), **Vectric** (un calque par opération) — ou l'on règle les trois noms soi-même :
+      contours, **poches et rainures**, perçages, où `{d}` est le diamètre, `{z}` la profondeur et `{t}` l'épaisseur du
+      panneau (31 signes au plus, comme le veut le DXF R12). Seuls le contour woodWOP et les noms ABF suivent ce que
+      leurs éditeurs ou utilisateurs publient ; les autres sont des points de départ, à caler sur la table du
+      post-processeur de la machine. **Contours enchaînés** (cochés pour les modèles des machines) : chaque contour
+      devient une polyligne fermée (arcs gardés par leur bombé), tournant dans le sens des aiguilles d'une montre, si
+      bien qu'une compensation à droite met la fraise dans la chute — dehors pour le tour de la pièce, dedans pour
+      une découpe intérieure. Un réglage s'**enregistre sous le nom de la machine** (« Weeke de l'atelier »), à
+      reprendre d'un clic ; le dernier choix et les machines sont gardés avec le compte (`app/workshop/dxf-machines.ts`).
+    - **Poches et rainures** : un contour intérieur de la face qui ne traverse pas (une rainure, une poche) est
+      mesuré sur le maillage et part dans le calque des poches à sa profondeur, au lieu d'être découpé de part en
+      part ; une découpe intérieure qui traverse reste un contour (`loopDepthOf`, `io/dxf.ts`). Le G-code ne les
+      détoure plus non plus : il les dit à faire à part.
     - Les **perçages sur chant** (tourillons, excentriques : perçage horizontal) ne sont pas sur la pièce à plat :
       l'export les signale, et les fiches de fabrication les cotent, chant par chant (« chant court côté X− :
       2 × Ø8 prof. 34 à 50, 306 », `document/face-ops.ts`).

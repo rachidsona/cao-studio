@@ -316,13 +316,15 @@ export const WORKSHOP: HelpFamily[] = [
       },
       {
         keys: ["data-workshop:dxf"], name: "DXF pour la commande numérique",
-        what: "Exporte chaque panneau à plat, avec son contour exact et ses perçages, pour la machine.",
+        what: "Exporte chaque panneau à plat, avec son contour exact, ses rainures et ses perçages, dans des calques nommés comme votre machine les attend.",
         steps: [
           "Cliquez « DXF pour la commande numérique ».",
-          "Choisissez les « Noms des calques » attendus par votre machine, ou écrivez les vôtres pour les contours et les perçages.",
-          "Cliquez « Exporter ».",
+          "Choisissez votre machine dans la liste : un modèle tout fait pour les logiciels de commande numérique courants, ou une de vos machines enregistrées.",
+          "Au besoin, réglez les trois noms de calques comme le post-processeur de la machine les attend : contours, poches et rainures, perçages.",
+          "Laissez « Contours enchaînés » coché si la machine compense la fraise : chaque contour tourne dans le sens des aiguilles d'une montre, la compensation à droite met la fraise dans la chute.",
+          "Tapez le nom de la machine et cliquez « Enregistrer la machine » pour la reprendre d'un clic la prochaine fois. Cliquez « Exporter ».",
         ],
-        tip: "Dans un nom de calque, {d} donne le diamètre, {z} la profondeur et {t} l'épaisseur du panneau. Une pièce sans face plane est laissée de côté, les perçages sur chant sont à faire à part.",
+        tip: "Dans un nom de calque, {d} donne le diamètre, {z} la profondeur et {t} l'épaisseur du panneau. Une rainure ou une poche part dans son calque à sa profondeur, sans être découpée. Essayez le premier fichier sur la machine avant une série. Une pièce sans face plane est laissée de côté, les perçages sur chant sont à faire à part.",
       },
       {
         keys: ["data-workshop:gcode"], name: "G-code",

@@ -196,7 +196,8 @@ function jobOf(part: FlatPart, at: P2, o: GcodeOptions): Job {
     const R = circles[0]!.radius + r;
     contours.push([{ kind: "arc", c, r: R, a: [c[0] + R, c[1]], b: [c[0] - R, c[1]], ccw: false }, { kind: "arc", c, r: R, a: [c[0] - R, c[1]], b: [c[0] + R, c[1]], ccw: false }]);
   } else {
-    const loops = loopsOf(part.edges).sort((a, b) => Math.abs(signedArea(b)) - Math.abs(signedArea(a)));
+    // A groove or a pocket (an inner outline that does not go through) is not cut out: partsGcode says so.
+    const loops = loopsOf(part.edges.filter((e) => e.kind === "circle" || e.depth === undefined)).sort((a, b) => Math.abs(signedArea(b)) - Math.abs(signedArea(a)));
     // Material on the left: the outline counterclockwise, the cut-outs clockwise; the tool on the right, outside it.
     loops.forEach((loop, i) => {
       const area = signedArea(loop);
@@ -315,6 +316,8 @@ export function partsGcode(groups: { label: string; size: [number, number]; part
       if (count > 1) out.push("M5", `M0 (posez le panneau ${count})`);
       const jobs: Job[] = [];
       for (const { part, at } of sheet) {
+        const pocket = part.edges.find((e) => e.kind !== "circle" && e.depth !== undefined);
+        if (pocket && pocket.kind !== "circle") skipped.push(`${part.name} (rainure ou poche de ${n3(pocket.depth!)} mm non usinée : à faire à part)`);
         try {
           jobs.push(jobOf(part, at, o));
         } catch (error) {
