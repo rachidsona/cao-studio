@@ -233,7 +233,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez le nom d'un groupe (« Créer ▾ ») : le menu liste tous ses outils, et un clic sur un nom lance l'outil.",
           "À droite d'un outil, l'épingle le met dans la barre ou le range dans le menu ; l'étoile l'ajoute à « Mes outils ». « Par défaut » remet le groupe comme à l'origine. Glissez le nom d'un groupe pour le déplacer : l'ordre est retenu.",
         ],
-        tip: "Quand la fenêtre est trop étroite, des icônes se replient d'elles-mêmes (Client et Fabrication d'abord, Dressing et Cuisine en dernier) mais restent dans le menu de leur groupe.",
+        tip: "Quand la fenêtre est trop étroite, des icônes se replient d'elles-mêmes (Client et Fabrication d'abord, Dressing et Cuisine en dernier) mais restent dans le menu de leur groupe. Un petit point orange marque un outil nouveau — sur son icône, sa ligne de menu et le nom de son groupe s'il y est rangé — jusqu'à ce que vous vous en serviez une fois.",
       },
       DRAG_HELP,
     ],

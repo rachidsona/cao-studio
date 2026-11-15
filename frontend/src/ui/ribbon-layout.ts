@@ -230,6 +230,8 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
         run.type = "button";
         run.setAttribute("role", "menuitem");
         run.className = "ribbon-menu-run";
+        // Its key: a new tool's line has the dot too (ui/new-tools.ts).
+        run.dataset.newTool = key;
         run.disabled = (button as HTMLButtonElement).disabled;
         const icon = button.querySelector("svg")?.cloneNode(true);
         const text = document.createElement("span");

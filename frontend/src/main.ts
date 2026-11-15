@@ -9,6 +9,7 @@ import { Editor, type EditorConfig } from "./app/editor";
 import { bindCommandPalette } from "./app/command-palette";
 import { bindToolColumns } from "./ui/tool-columns";
 import { bindSideTools } from "./ui/side-tools";
+import { bindNewTools } from "./ui/new-tools";
 import { bindToolDrag } from "./ui/tool-drag";
 import { bindNavigatorFold } from "./ui/navigator-fold";
 import { bindContextBar } from "./app/context-bar";
@@ -274,6 +275,7 @@ async function start(): Promise<void> {
   bindNavigatorFold(root);
   bindToolColumns(root);
   bindSideTools(root);
+  bindNewTools(root);
   bindProductionFolder(root, viewport, editor, geometry, notice);
   bindProjectTabs(root, config, session, (message, kind) => editor.notify(message, kind));
   bindProjectOrganizer(root, config, (message, kind) => editor.notify(message, kind));

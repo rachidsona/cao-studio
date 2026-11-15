@@ -16,7 +16,7 @@ import { resolveFace } from "../geometry/references";
 import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, solidsResult, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
 import { facePanels, faceSlab } from "./paneling";
-import { splitRing } from "./ring-sides";
+import { frameEnds, isFrame, splitRing } from "./ring-sides";
 
 /** Two faces are the same one when their centres are this close (mm). */
 const SAME_FACE = 1e-4;
@@ -204,9 +204,21 @@ function backPanel(feature: ShellFeature, target: Shape3D, walls: Shape3D[]): { 
 }
 
 export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
-  // « Séparer les côtés » (no thickness): a body already hollow, a frame, cut into its sides (features/ring-sides.ts).
-  if (feature.thickness === 0 && feature.sides === "separate" && !feature.back && !feature.faces.length) {
-    return { kind: "solids", shapes: splitRing(feature.name, requireSolid(lookup, feature.target).shape, feature.joint ?? "miter") };
+  // « Séparer les côtés »: a frame cut into its sides (features/ring-sides.ts) — already hollow, or a solid body emptied
+  // first, open at both ends of its axis. (No thickness and no `frame`: the first such steps, bodies already hollow.)
+  if (feature.sides === "separate" && !feature.back && !feature.faces.length && (feature.frame || feature.thickness === 0)) {
+    const target = requireSolid(lookup, feature.target).shape;
+    const joint = feature.joint ?? "miter";
+    if (isFrame(target)) return { kind: "solids", shapes: splitRing(feature.name, target, joint) };
+    if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps est plein ; saisissez l'épaisseur de ses côtés pour le vider.`);
+    const ends = frameEnds(target);
+    if (!ends) throw new GeometryError(`${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
+    const frame = hollowed(feature.name, target, ends, feature.thickness);
+    try {
+      return { kind: "solids", shapes: splitRing(feature.name, frame, joint) };
+    } finally {
+      frame.delete();
+    }
   }
   requirePositive(Math.abs(feature.thickness), `${feature.name} : l'épaisseur`);
   const target = requireSolid(lookup, feature.target).shape;

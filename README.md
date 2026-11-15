@@ -2099,16 +2099,25 @@ opération existante.
   la coque du noyau ne donne rien — un corps fermé, un trou à travers une face ouverte —, la Coque en profite aussi ;
   des parois que plus rien ne tient ensemble font plusieurs corps ; les côtés plats viennent de `facePanels`
   (`features/paneling.ts`), les côtés courbes de ce qui reste de la paroi une fois ôtés les panneaux.
-- **Séparer les côtés** (groupe Modifier, rangé dans son menu ; `data-action="split-sides"`) : un clic sur un corps
-  **déjà creux** — un cadre, un caisson sans fond, tout contour fermé à trou extrudé, carré, triangle, polygone, de biais —
-  et chacun de ses côtés droits devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de
-  côtés pour un polygone). **Joints** : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou
-  « Bout à bout » : les côtés les plus longs traversent (deux voisins jamais tous les deux), les autres s'arrêtent contre
-  eux. Le contour se lit sur la face du dessus du corps (son contour et son trou, côtés parallèles deux à deux, une
-  paroi d'épaisseur régulière) ; chaque côté est le corps coupé par son prisme sur toute sa hauteur, rien ne se perd.
-  C'est une étape « Vider un corps » sans épaisseur (`thickness: 0`) : le corps n'est que coupé ; son étape de
-  l'Historique rouvre cet outil. Un corps plein se vide d'abord (« Vider un corps »). `features/ring-sides.ts`
-  (`ringWalls`, le calcul pur dans le plan ; `splitRing`), `app/split-sides-tool.ts`.
+- **Séparer les côtés** (groupe Modifier, rangé dans son menu ; `data-action="split-sides"`) : un clic sur un corps —
+  un cadre, un caisson sans fond, tout contour extrudé, carré, triangle, polygone, coins arrondis, de biais — et chacun
+  de ses côtés devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de côtés pour un
+  polygone ; un coin arrondi est un côté courbe à lui). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
+  côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
+  qui se font face, toutes les autres d'équerre) ; **déjà creux**, il garde ses côtés tels qu'ils sont. **Joints** :
+  « En onglet (tout angle) », le joint du coin intérieur au coin extérieur, ou « Bout à bout » : les côtés les plus
+  longs traversent (deux voisins jamais tous les deux), les autres s'arrêtent contre la face intérieure du côté qui
+  traverse ; là où deux côtés se rejoignent en tangence (un coin arrondi), le joint reste droit. Le contour se lit sur
+  la face du dessus du corps : son contour et son trou, autant de coins l'un que l'autre, chaque coin du contour avec
+  le coin du trou le plus proche — la paroi peut être d'épaisseur inégale ; un côté courbe est suivi de près (un point
+  tous les 5 mm) ; chaque côté est le corps coupé par son prisme sur toute sa hauteur, rien ne se perd. C'est une étape
+  « Vider un corps » marquée `frame` (`ShellFeature.frame`) ; son étape de l'Historique rouvre cet outil.
+  `features/ring-sides.ts` (`ringWalls`, le calcul pur dans le plan ; `splitRing`, `frameEnds`),
+  `app/split-sides-tool.ts`.
+- **Outils nouveaux** : un petit **point orange** marque un outil nouveau — sur son icône (ruban, colonne de droite,
+  sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,
+  jusqu'à ce qu'on s'en serve une fois ; le navigateur retient ceux qu'on a utilisés. La liste est dans
+  `ui/new-tools.ts` (`NEW_TOOLS`) : un outil qu'on ajoute à l'application s'y inscrit.
 - **Panneaux sur faces** (groupe Modifier, après Coque), dans l'historique : les faces planes cliquées d'un volume
   deviennent des panneaux de l'épaisseur voulue, pris dans le volume ; un clic prend aussi les **faces pareilles**
   (même aire, même périmètre, à plat : les côtés d'un seau à pans, les deux côtés d'un caisson, `app/face-twins.ts`),

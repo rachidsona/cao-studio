@@ -1,5 +1,5 @@
 /** « Séparer les côtés » : un cadre déjà creux (rectangle, triangle, polygone) coupé en ses côtés, en onglet ou bout à bout. */
-import { basicFaceExtrusion, makeBox, makePolygon, measureVolume, Vector, type Shape3D } from "replicad";
+import { basicFaceExtrusion, drawRoundedRectangle, makeBox, makePolygon, measureVolume, Vector, type Shape3D } from "replicad";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ringWalls, splitRing, type P2 } from "../../frontend/src/features/ring-sides";
 import { setupKernel } from "./kernel-setup";
@@ -35,7 +35,13 @@ describe("séparer les côtés d'un cadre", () => {
     expect(butt.reduce((s, w) => s + area(w), 0)).toBeCloseTo(area(outer) - area(inner), 6);
     // The 600 long sides run through (600 × 18), the others stand between them (364 × 18).
     expect(butt.map(area).map(Math.round).sort((a, b) => a - b)).toEqual([6552, 6552, 10800, 10800]);
-    expect(ringWalls(outer, [[18, 18], [582, 18], [500, 382], [18, 382]], "miter")).toMatch(/parallèles/);
+    // A wall of uneven thickness (a hole not parallel to the outline): each corner with its corner, nothing lost.
+    const uneven: P2[] = [[18, 18], [582, 30], [560, 382], [25, 370]];
+    for (const joint of ["miter", "butt"] as const) {
+      const walls = ringWalls(outer, uneven, joint) as P2[][];
+      expect(walls.reduce((s, w) => s + area(w), 0)).toBeCloseTo(area(outer) - area(uneven), 6);
+    }
+    expect(ringWalls(outer, [[18, 18], [582, 18], [300, 382]], "miter")).toMatch(/même nombre de côtés/);
   });
 
   it("un cadre de bois de 4 côtés, un triangle et un hexagone deviennent 4, 3 et 6 corps qui font le cadre entier", () => {
@@ -57,9 +63,47 @@ describe("séparer les côtés d'un cadre", () => {
     }
   }, 120_000);
 
+  it("un cadre aux coins arrondis : ses côtés droits et ses coins courbes, chacun un corps, rien de perdu", () => {
+    const solid = (w: number, h: number, r: number) => drawRoundedRectangle(w, h, r).sketchOnPlane("XY").extrude(500) as Shape3D;
+    const [a, b] = [solid(600, 400, 60), solid(564, 364, 42)];
+    const body = a.cut(b) as Shape3D;
+    for (const joint of ["miter", "butt"] as const) {
+      const sides = splitRing("Côtés", body, joint);
+      expect(sides).toHaveLength(8);
+      expect(sides.reduce((s, p) => s + measureVolume(p), 0)).toBeCloseTo(measureVolume(body), -1);
+      for (const s of sides) s.delete();
+    }
+    for (const s of [a, b, body]) s.delete();
+  }, 120_000);
+
   it("refuse un corps plein : il faut le vider d'abord", () => {
     const box = makeBox([0, 0, 0], [600, 400, 720]) as unknown as Shape3D;
     expect(() => splitRing("Côtés", box, "miter")).toThrow(/n'est pas creux/);
     box.delete();
   });
+});
+
+describe("séparer les côtés d'un corps plein", () => {
+  it("un pavé plein est vidé dessus et dessous, puis séparé en ses 4 côtés à la bonne épaisseur", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { centeredRectangle } = await import("../../frontend/src/document/sketch");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    const doc = (sketch: object) => ({
+      ...createReferencePlate(),
+      features: [
+        { id: "sk1", type: "sketch", name: "Contour", plane: "XY", offset: 0, ...sketch },
+        { id: "ex1", type: "extrude", name: "Plein", sketch: "sk1", distance: 720, operation: "new" },
+        { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "ex1", faces: [], thickness: 18, sides: "separate", joint: "butt", frame: true },
+      ],
+    });
+    const r = new Recomputer();
+    const box = r.recompute(doc(centeredRectangle(600, 400)) as never);
+    expect(box.statuses.find((s) => s.id === "sh1")?.state).toBe("ok");
+    const out = r.output("sh1");
+    expect(out?.kind === "solids" ? out.shapes.length : 0).toBe(4);
+    // The sides 18 mm thick: 2 × 600 + 2 × 364, by 18 by 720.
+    const volume = out?.kind === "solids" ? out.shapes.reduce((s, p) => s + measureVolume(p), 0) : 0;
+    expect(volume).toBeCloseTo((2 * 600 + 2 * 364) * 18 * 720, -2);
+    r.dispose();
+  }, 120_000);
 });

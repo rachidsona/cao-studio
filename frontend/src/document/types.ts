@@ -622,6 +622,11 @@ export interface ShellFeature extends FeatureBase {
   /** Separate flat sides meeting: mitred (missing) or butted. */
   joint?: "miter" | "butt";
   /**
+   * « Séparer les côtés »: a frame — the body, already hollow, cut into its sides; solid, first emptied `thickness`
+   * thick, open at both ends of its axis (features/ring-sides.ts). With `faces` empty and no `back`.
+   */
+  frame?: boolean;
+  /**
    * A back closing an open face (`face`, one of `faces`), `thickness` mm: « inset », between the sides, flush with
    * the body's outside; « applied », the whole face, the sides stopping before it. A body of its own, first ("<id>#0").
    */

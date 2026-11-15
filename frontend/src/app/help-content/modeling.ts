@@ -155,13 +155,14 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:split-sides"],
         name: "Séparer les côtés",
-        what: "Sépare un corps déjà creux — un cadre, un caisson sans fond, un contour fermé à trou extrudé — en ses côtés : un panneau par côté, 4 pour un carré, 3 pour un triangle, autant que de côtés pour un polygone.",
+        what: "Sépare un corps en ses côtés, un panneau par côté : un cadre, un caisson sans fond, un contour extrudé — carré, triangle, polygone, coins arrondis —, déjà creux ou plein.",
         steps: [
-          "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps creux dans la vue (ou sélectionnez-le avant).",
+          "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps dans la vue (ou sélectionnez-le avant).",
+          "Un corps plein est d'abord vidé : réglez l'« Épaisseur des côtés » ; il s'ouvre dessus et dessous, comme un caisson sans fond. Un corps déjà creux garde ses côtés tels qu'ils sont.",
           "Choisissez les « Joints » : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou « Bout à bout » : les côtés les plus longs traversent, les autres s'arrêtent contre eux.",
           "Le résultat s'affiche ; « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
         ],
-        tip: "Les côtés doivent être droits, ceux du trou parallèles à ceux du contour (une épaisseur de paroi régulière). Un corps plein se vide d'abord avec « Vider un corps », qui peut aussi donner un panneau par côté. Pour régler les joints ensuite, cliquez l'étape dans l'Historique, puis « Modifier ».",
+        tip: "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone ; un coin arrondi est un côté courbe à lui, joint droit vers son centre. La paroi peut être d'épaisseur inégale : chaque coin du contour va avec le coin du trou le plus proche. Le trou doit avoir autant de coins que le contour. Pour régler les joints ensuite, cliquez l'étape dans l'Historique, puis « Modifier ».",
       },
       {
         keys: ["data-action:paneling"],

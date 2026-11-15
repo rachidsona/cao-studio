@@ -39,12 +39,12 @@ test("un cadre de 60 × 40 cm, ses côtés de 1,8 cm, devient quatre panneaux, e
 
   await click(page, '[data-action="split-sides"]');
   const tool = page.getByRole("dialog", { name: "Séparer les côtés" });
-  await expect(tool).toContainText("Cliquez le corps creux");
+  await expect(tool).toContainText("Cliquez le corps à séparer");
   const view = (await page.locator("canvas.cad-view").boundingBox())!;
   // The frame fills the view: a click on it.
   await page.mouse.click(view.x + view.width / 2, view.y + view.height * 0.3);
   await expect(tool).toContainText("Corps : « Évidement »");
-  await expect.poll(shell, { timeout: 30_000 }).toMatchObject({ target: "ex2", faces: [], thickness: 0, sides: "separate", joint: "miter" });
+  await expect.poll(shell, { timeout: 30_000 }).toMatchObject({ target: "ex2", faces: [], sides: "separate", joint: "miter", frame: true });
   await expect(status).not.toContainText("erreur", { timeout: 30_000 });
   const tree = page.getByLabel(/^Navigateur : corps/);
   await expect(tree.getByText("côté 4", { exact: true }).first()).toBeVisible();

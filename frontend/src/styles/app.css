@@ -281,6 +281,26 @@
   :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon])[data-remove="true"] {
     @apply bg-red-100 outline outline-2 outline-red-500 dark:bg-red-950;
   }
+  /* A new tool, until it is used once (ui/new-tools.ts): a small orange dot on its button, its line in a menu, and the
+     name of a group whose menu holds one out of sight. */
+  [data-new], [data-new-inside] {
+    position: relative;
+  }
+  [data-new]::after, [data-new-inside]::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: var(--color-orange-500);
+    box-shadow: 0 0 0 1.5px var(--color-white);
+    pointer-events: none;
+  }
+  :where(.dark) [data-new]::after, :where(.dark) [data-new-inside]::after {
+    box-shadow: 0 0 0 1.5px var(--color-gray-900);
+  }
   /* The column of selection and view tools beside the viewport: compact, scrolling only on very short screens. */
   [data-side-tools] {
     scrollbar-width: none;
