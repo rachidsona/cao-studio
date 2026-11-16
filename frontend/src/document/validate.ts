@@ -287,7 +287,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.fill === "accessory" && !(isObject(feature.accessory) && typeof feature.accessory.model === "string" && isFiniteNumber(feature.accessory.lift))) errors.push(`${where} : accessoire invalide.`);
       if (feature.span !== undefined && (!Array.isArray(feature.span) || !feature.span.every((p) => Array.isArray(p) && p.every((k) => Number.isInteger(k))))) errors.push(`${where} : niches de la porte invalides.`);
       checkNumbers(feature, ["diameter", "drop", "drawers", "gap", "thickness"], where, errors);
-      if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => h === "left" || h === "right"))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
+      if (feature.hinges !== undefined && !(Array.isArray(feature.hinges) && feature.hinges.every((h) => ["left", "right", "top", "bottom"].includes(h as string)))) errors.push(`${where} : sens d'ouverture des portes invalide.`);
       if (feature.joined !== undefined && !(Array.isArray(feature.joined) && feature.joined.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : portes communes invalides.`);
       if (feature.skipped !== undefined && !(Array.isArray(feature.skipped) && feature.skipped.every((c) => Number.isInteger(c) && (c as number) >= 0))) errors.push(`${where} : cases sans porte invalides.`);
       if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);

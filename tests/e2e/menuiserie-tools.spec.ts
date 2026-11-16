@@ -677,6 +677,37 @@ test("des niches qui ne forment pas un rectangle : une porte chacune (ou par rec
   expect(errors).toEqual([]);
 });
 
+test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "Porte relevable e2e");
+  const hinges = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string; hinges?: string[] }[] } }).document.features.filter((f) => f.type === "niche" && f.fill === "door").map((f) => f.hinges), api);
+  };
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const tool = page.getByRole("dialog", { name: "Porte sur niches" });
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await tool.getByRole("combobox", { name: "Charnières" }).selectOption("top");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect.poll(hinges, { timeout: 30_000 }).toEqual([["top"]]);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  // Its menu (a right click on it): downwards now.
+  await page.waitForTimeout(800);
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5, { button: "right" });
+  await page.getByRole("menuitem", { name: "S'ouvre vers le bas (abattant)" }).click();
+  await expect.poll(hinges, { timeout: 30_000 }).toEqual([["bottom"]]);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
 test("un bouton sort et rentre tous les tiroirs", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

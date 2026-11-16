@@ -119,7 +119,11 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     const inset = handleInset(f);
     // A drawer front across its middle; a glazed one in the middle of its frame's top rail, not through the glass.
     const drawerV = isGlass(f) ? v1 - glassFrame(f) / 2 : (v0 + v1) / 2;
-    const at = (k: number): [number, number] => (part.handle ? [part.handle === "left" ? u0 + inset : u1 - inset, (v0 + v1) / 2 + k] : [(u0 + u1) / 2 + k, drawerV]);
+    // A lift-up door or a flap: across its middle, near its free edge.
+    const at = (k: number): [number, number] =>
+      part.handle === "top" || part.handle === "bottom" ? [(u0 + u1) / 2 + k, part.handle === "top" ? v1 - inset : v0 + inset]
+      : part.handle ? [part.handle === "left" ? u0 + inset : u1 - inset, (v0 + v1) / 2 + k]
+      : [(u0 + u1) / 2 + k, drawerV];
     const spacing = f.hw?.handleSpacing ?? 128;
     for (const du of spacing > 0 ? [-spacing / 2, spacing / 2] : [0]) {
       const start = nicheWorld(n, [...at(du), w1 + 0.005]);

@@ -1139,6 +1139,13 @@ opération existante.
     un (sans autre niche au milieu) partagent une porte, les autres ont chacune la leur — regroupées deux à deux tant
     que l'ensemble reste un rectangle ; « OK » pose toutes ces portes en une étape (« 2 portes posées sur 3 niches »).
     Une porte qu'on modifie garde ses niches telles qu'elles sont choisies (`app/dressing/niche-tool.ts` `doorGroups`).
+  - **Porte sur niches vers le haut ou vers le bas** : « Charnières » propose aussi « En haut » (elle se relève, sur
+    une paire de compas de porte relevable choisie d'après sa hauteur et son poids) et « En bas » (abattant, sur un
+    compas d'abattant) ; ses charnières vont alors le long de ce bord (autant que sa largeur en demande), sa poignée
+    couchée en travers près du bord libre. Un clic l'ouvre en tournant autour de ce bord (100° vers le haut, 90° vers
+    le bas) ; son menu (clic droit) la fait s'ouvrir vers le haut, vers le bas ou de nouveau sur le côté, et « Ouvrir de
+    l'autre côté » passe de l'un à l'autre. Compas et charnières vont au devis (`NicheFeature.hinges` « top » /
+    « bottom », `features/niche-parts.ts`, `app/drawer-toggle.ts` `doorSwing`, `document/door-edit.ts` `withDoorHinge`).
   - **Pose des façades** (liste « Façades » des Tiroirs, « Pose » de la Porte sur niches) : **encastrée** (dans la
     niche, au nu des panneaux) ou **en applique** (devant les panneaux, sur la moitié de ceux autour de la niche — le
     panneau entier au bord du meuble —, comme une porte de case). Des tiroirs encastrés d'office, en applique au choix :

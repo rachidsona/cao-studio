@@ -25,12 +25,16 @@ export interface DoorInfo {
   index: number;
   /** The side of its hinges, as one faces it; null when it cannot be told (a board, the two doors of a cabinet). */
   hinge: "left" | "right" | null;
+  /** A door over niches hinged along its top (lift-up) or its bottom (a flap); null: on a side, or another door. */
+  lift?: "top" | "bottom" | null;
   /** Its handle, and whether one can be put or taken off. */
   handles: boolean | null;
 }
 
 const partNumber = (bodyId: string) => (bodyId.includes("#") ? Number(bodyId.slice(bodyId.indexOf("#") + 1)) : 0);
 const other = (side: "left" | "right") => (side === "left" ? "right" : "left");
+/** A hinge on a side, or nothing (a top or a bottom one). */
+const side = (h: string | undefined): "left" | "right" | undefined => (h === "left" || h === "right" ? h : undefined);
 /** The usual sides of `n` doors in a row: left, right, left… (each pair opens from its middle). */
 const inTurn = (n: number): ("left" | "right")[] => Array.from({ length: n }, (_, i) => (i % 2 === 0 ? "left" : "right"));
 
@@ -67,7 +71,8 @@ export function doorOf(doc: CadDocument, bodyId: string): DoorInfo | null {
     // A handle (and the glass of a glazed door) comes after the doors, one per door, in order, and says whose it is.
     const index = nichePartsIn(doc.features, f)[part]?.of ?? (part < count ? part : part - count);
     if (index < 0 || index >= count) return null;
-    return { kind: f.fill === "door" ? "niche" : "partition", feature: f.id, index, hinge: f.hinges?.[index] ?? inTurn(count)[index]!, handles: f.handles };
+    const h = f.hinges?.[index] ?? inTurn(count)[index]!;
+    return { kind: f.fill === "door" ? "niche" : "partition", feature: f.id, index, hinge: h === "left" || h === "right" ? h : null, lift: h === "top" || h === "bottom" ? h : null, handles: f.handles };
   }
   if (f?.type === "extrude" && (f.door || madeDoor(doc, f.id))) return { kind: "board", feature: f.id, index: 0, hinge: null, handles: null };
   return null;
@@ -84,17 +89,26 @@ export function withDoorFlipped(doc: CadDocument, bodyId: string): CadDocument |
     return updateFeature(doc, f.id, () => ({ ...f, side }) satisfies FrontsFeature);
   }
   if (door.kind === "partition" && f?.type === "niche") {
-    const hinges = Array.from({ length: nicheDoors(f, doc) }, (_, i) => f.hinges?.[i] ?? inTurn(nicheDoors(f, doc))[i]!);
+    const hinges = Array.from({ length: nicheDoors(f, doc) }, (_, i) => side(f.hinges?.[i]) ?? inTurn(nicheDoors(f, doc))[i]!);
     hinges[door.index] = other(hinges[door.index]!);
     return withDoorSettings(doc, f.sketch, f.partition, { hinges });
   }
-  if (door.kind === "niche" && f?.type === "niche") return updateFeature(doc, f.id, () => ({ ...f, hinges: [other(door.hinge ?? "left")] }) satisfies NicheFeature);
+  // A lift-up door becomes a flap, and the other way.
+  if (door.kind === "niche" && f?.type === "niche") return updateFeature(doc, f.id, () => ({ ...f, hinges: [door.lift === "top" ? "bottom" : door.lift === "bottom" ? "top" : other(door.hinge ?? "left")] }) satisfies NicheFeature);
   if (door.kind === "board" && f?.type === "extrude") {
     const made = f.door ?? madeDoor(doc, f.id);
     if (!made) return "Cette porte n'a pas de charnière.";
     return updateFeature(doc, f.id, () => ({ ...f, door: { ...made, hinge: made.hinge.map((c) => (c ? -c : 0)) as typeof made.hinge } }) satisfies ExtrudeFeature);
   }
   return "Ce n'est pas une porte.";
+}
+
+/** A door over niches hinged where asked: on a side, along its top (lift-up) or its bottom (a flap). */
+export function withDoorHinge(doc: CadDocument, bodyId: string, hinge: "left" | "right" | "top" | "bottom"): CadDocument | string {
+  const door = doorOf(doc, bodyId);
+  const f = door && findFeature(doc, door.feature);
+  if (door?.kind !== "niche" || f?.type !== "niche") return "Seule une porte posée sur des niches s'ouvre vers le haut ou le bas.";
+  return updateFeature(doc, f.id, () => ({ ...f, hinges: [hinge] }) satisfies NicheFeature);
 }
 
 /** The door taken off: a case of a Répartition left open, the piece of a cabinet's fronts or a board taken out. */

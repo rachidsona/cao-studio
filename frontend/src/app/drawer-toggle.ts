@@ -113,6 +113,14 @@ export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): S
   // A handle, or the glass of a glazed door, swings with its door.
   const part = own?.of !== undefined ? parts[own.of] : own;
   if (!part?.handle) return null;
+  if (part.handle === "top" || part.handle === "bottom") {
+    // Hinged along its top (a lift-up door, its handle at the bottom) or its bottom (a flap): about the line of that
+    // edge, across the niche.
+    const [hingeV, freeV] = part.handle === "bottom" ? [part.to[1], part.from[1]] : [part.from[1], part.to[1]];
+    const [u, w] = [(part.from[0] + part.to[0]) / 2, part.to[2]];
+    const axis = n.frame.u.findIndex((c) => Math.abs(c) > 0.5) as Axis;
+    return outwards(axis, nicheWorld(n, [u, hingeV, w]), nicheWorld(n, [u, freeV, w]), n.frame.normal, part.handle === "bottom" ? DOOR_ANGLE : FLAP_ANGLE);
+  }
   const [hingeU, freeU] = part.handle === "right" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
   const [v, w] = [(part.from[1] + part.to[1]) / 2, part.to[2]];
   const pivot = nicheWorld(n, [hingeU, v, w]);

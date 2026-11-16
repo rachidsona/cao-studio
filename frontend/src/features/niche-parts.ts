@@ -26,7 +26,7 @@
  */
 import type { PartitionParams } from "../document/sketch";
 import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
-import { hingeCount } from "./fronts-parts";
+import { FLAP_STAY, hingeCount, LIFT_CLASSES, liftStay } from "./fronts-parts";
 import { partitionLayout } from "../sketcher/partition";
 import { frameOf, toWorld, type SketchFrame } from "../sketcher/frame";
 import { isPartition, pathKey, rebuildChain, type NicheNode } from "../sketcher/partition-history";
@@ -59,8 +59,8 @@ export interface NichePart {
   radius?: number;
   /** A drawer front or a door (its handle holes), or a hardware part (bought, not cut: out of the cut list). */
   role?: "front" | "hardware";
-  /** A door: the edge its handle goes along (the other one has the hinges). */
-  handle?: "left" | "right";
+  /** A door: the edge its handle goes along (the other one has the hinges): a side, or the top or bottom (a lift-up door, a flap). */
+  handle?: "left" | "right" | "top" | "bottom";
   /** A handle or the glass of a door: the index of the front it is on (it swings or slides with it). */
   of?: number;
 }
@@ -288,13 +288,20 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     // the middle). The handle goes along the other edge.
     const parts = doors.map(([a, b, c, d], i): NichePart => {
       const hinge = f.hinges?.[i] ?? (i % 2 === 0 ? "left" : "right");
-      return { name: `Porte ${i + 1}`, kind: "box", from: [a, b, w0], to: [c, d, w1], role: "front", handle: hinge === "left" ? "right" : "left" };
+      const handle = ({ left: "right", right: "left", top: "bottom", bottom: "top" } as const)[hinge];
+      return { name: `Porte ${i + 1}`, kind: "box", from: [a, b, w0], to: [c, d, w1], role: "front", handle };
     });
     // The handles, after the doors (their numbers stay): along the edge opposite the hinges, 40 mm in (on the frame of
-    // a glass door), at mid-height.
+    // a glass door), at mid-height — across the middle of a lift-up door or a flap, near its free edge.
     const count = parts.length;
     const handleIn = handleInset(f);
     if (f.handles) parts.forEach((door, i) => {
+      if (door.handle === "top" || door.handle === "bottom") {
+        const v = door.handle === "top" ? door.to[1] - handleIn : door.from[1] + handleIn;
+        const u = (door.from[0] + door.to[0]) / 2;
+        parts.push({ name: `Poignée porte ${i + 1}`, kind: "handle", from: [u - half(f), v, door.to[2]], to: [u + half(f), v, door.to[2]], role: "hardware", of: i });
+        return;
+      }
       const u = door.handle === "left" ? door.from[0] + handleIn : door.to[0] - handleIn;
       const v = (door.from[1] + door.to[1]) / 2;
       parts.push({ name: `Poignée porte ${i + 1}`, kind: "handle", from: [u, v - half(f), door.to[2]], to: [u, v + half(f), door.to[2]], role: "hardware", of: i });
@@ -388,6 +395,8 @@ function drawerFronts(f: Pick<NicheFeature, "drawers" | "gap" | "bottomGap" | "b
 
 /** Half the spacing of the handle's holes (128 mm unless another handle was chosen; 0 for a knob). */
 const half = (f: Pick<NicheFeature, "hw">) => (f.hw?.handleSpacing ?? 128) / 2;
+/** A door's weight (kg) for its stays: a panel of melamine-faced board, about 700 kg/m³ — a common guide. */
+const doorMass = (p: NichePart) => ((p.to[0] - p.from[0]) * (p.to[1] - p.from[1]) * Math.abs(p.to[2] - p.from[2]) * 700) / 1e9;
 
 /** A point of the niche's frame in the world. */
 export function nicheWorld(n: Pick<NicheGeometry, "frame">, [u, v, w]: Vec3): Vec3 {
@@ -456,10 +465,18 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
   const fronts = parts.filter((p) => p.role === "front").length;
   if (f.fill === "doors" || f.fill === "door") {
     const doors = parts.filter((p) => p.role === "front");
-    const hinges = doors.reduce((sum, p) => sum + hingeCount(p.to[1] - p.from[1]), 0);
+    // A lift-up door or a flap: its hinges along its top or bottom edge (as many as its width asks), and a pair of stays.
+    const across = (p: NichePart) => p.handle === "top" || p.handle === "bottom";
+    const hinges = doors.reduce((sum, p) => sum + hingeCount(across(p) ? p.to[0] - p.from[0] : p.to[1] - p.from[1]), 0);
+    const stays = doors.filter(across).map((p) => (p.handle === "top" ? FLAP_STAY : (liftStay(p.to[1] - p.from[1], doorMass(p))?.name ?? LIFT_CLASSES.at(-1)!.name)));
     // A glass door: its glass and its aluminium frame bought, hinges made for the frame.
     const glass = glassHardware(f, doors.map((p) => ({ from: p.from, to: p.to, depth: 2 as const })));
-    return [{ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges }, ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []), ...glass];
+    return [
+      { name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges },
+      ...[...new Set(stays)].map((name) => ({ name, quantity: stays.filter((s) => s === name).length })),
+      ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []),
+      ...glass,
+    ];
   }
   if (f.inner) return [{ name: "Coulisse de tiroir (paire)", quantity: fronts }, { name: INNER_SPACERS, quantity: fronts }];
   // Glazed fronts: their glass and their aluminium frame bought, as a glazed door's.

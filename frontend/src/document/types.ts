@@ -780,8 +780,11 @@ export interface NicheFeature extends FeatureBase {
   bottomGap?: number;
   betweenGap?: number;
   sideGap?: number;
-  /** Doors: the side of the hinges of each one, from the left (missing: in turn, left first). */
-  hinges?: ("left" | "right")[];
+  /**
+   * Doors: the side of the hinges of each one, from the left (missing: in turn, left first). A door over niches may
+   * also be hinged along its top (« top »: a lift-up door, on stays) or its bottom (« bottom »: a flap).
+   */
+  hinges?: ("left" | "right" | "top" | "bottom")[];
   /** Doors: the cases sharing one door with the next one. */
   joined?: number[];
   /** Doors: the cases left without one. */

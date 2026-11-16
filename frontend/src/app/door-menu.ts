@@ -8,7 +8,7 @@
  * de cuisine qui la porte s'isole pour être aménagé (app/cabinet-furnish.ts). Chaque
  * changement est une annulation (document/door-edit.ts).
  */
-import { doorOf, withDoorFlipped, withDoorHandles, withDoorRemoved, withDoorStyle } from "../document/door-edit";
+import { doorOf, withDoorFlipped, withDoorHandles, withDoorHinge, withDoorRemoved, withDoorStyle } from "../document/door-edit";
 import { bodyLabel, findFeature, renameBody } from "../document/operations";
 import type { CadDocument } from "../document/types";
 import { el } from "../ui/dom";
@@ -90,10 +90,16 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
     ...(modify ? [{ label: "Modifier les portes…", run: modify }] : []),
     { label: "Ouvrir / fermer la porte", run: () => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: bodyId })) },
     {
-      label: door.hinge ? `Ouvrir de l'autre côté (charnières ${SIDE[door.hinge === "left" ? "right" : "left"]})` : "Ouvrir de l'autre côté",
+      label: door.hinge ? `Ouvrir de l'autre côté (charnières ${SIDE[door.hinge === "left" ? "right" : "left"]})` : door.lift ? `Ouvrir de l'autre côté (vers le ${door.lift === "top" ? "bas" : "haut"})` : "Ouvrir de l'autre côté",
       disabled: pair,
       run: () => apply(withDoorFlipped(doc, bodyId), door.hinge ? `« ${name} » s'ouvre maintenant ${SIDE[door.hinge === "left" ? "right" : "left"]}.` : `« ${name} » s'ouvre maintenant de l'autre côté.`),
     },
+    // A door over niches: upwards (lift-up, on stays), downwards (a flap), or back on a side.
+    ...(door.kind === "niche"
+      ? ([["top", "S'ouvre vers le haut (relevable)", "s'ouvre maintenant vers le haut"], ["bottom", "S'ouvre vers le bas (abattant)", "s'ouvre maintenant vers le bas"], ["left", "S'ouvre sur le côté", "s'ouvre maintenant sur le côté"]] as const)
+          .filter(([hinge]) => (hinge === "left" ? !!door.lift : door.lift !== hinge))
+          .map(([hinge, label, done]) => ({ label, run: () => apply(withDoorHinge(doc, bodyId, hinge), `« ${name} » ${done}.`) }))
+      : []),
     ...(door.handles !== null ? [{ label: door.handles ? "Ôter les poignées" : "Mettre des poignées", run: () => apply(withDoorHandles(doc, bodyId), door.handles ? "Poignées ôtées." : "Poignées posées.") }] : []),
     { label: "Renommer…", run: () => askName(event.clientX, event.clientY, name, (next) => apply(renameBody(editor.doc, bodyId, next), `Porte renommée « ${next} ».`)) },
     "separator",
