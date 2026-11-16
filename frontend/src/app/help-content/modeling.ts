@@ -158,7 +158,7 @@ export const MODELING: HelpFamily[] = [
         what: "Sépare un corps en ses côtés, un panneau par côté : un cadre, un caisson sans fond, un contour extrudé — carré, triangle, polygone, coins arrondis —, déjà creux ou plein.",
         steps: [
           "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps dans la vue (ou sélectionnez-le avant).",
-          "Un corps plein est d'abord vidé : réglez l'« Épaisseur des côtés » ; il s'ouvre dessus et dessous, comme un caisson sans fond. Pour l'ouvrir ailleurs (devant et derrière…), cliquez sur le corps la face à vider : elle s'ouvre avec celle d'en face ; « Ouvrir dessus et dessous » revient au départ. Un corps déjà creux garde ses côtés tels qu'ils sont.",
+          "Un corps plein est d'abord vidé : réglez l'« Épaisseur des côtés » ; il s'ouvre dessus et dessous, comme un caisson sans fond — un panneau trop mince pour cela (un côté d'un cadre), par ses deux grandes faces : il devient un cadre. Pour l'ouvrir ailleurs (devant et derrière…), cliquez sur le corps la face à vider : elle s'ouvre avec celle d'en face ; « Ouvrir dessus et dessous » revient au départ. Un corps déjà creux garde ses côtés tels qu'ils sont.",
           "Choisissez les « Joints » : « En onglet (tout angle) », le joint sur la bissectrice de chaque coin, ou bout à bout en choisissant qui passe aux angles, comme dans une Répartition : « les côtés passent » (ils vont de bout en bout, le dessus et le dessous s'arrêtent entre eux), « le dessus et le dessous passent », ou « les plus longs passent ».",
           "Le résultat s'affiche ; « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
         ],

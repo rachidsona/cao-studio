@@ -288,9 +288,10 @@ export const isFrame = (target: Shape3D): boolean => target.faces.some((f) => f.
 /**
  * The two ends of a solid body taken as a frame, to open: two flat faces facing away from each other, every other face
  * square to them (the ends of a prism) — the top and the bottom when there are such, else the largest; or, a way given
- * (the normal of a face clicked), the largest pair of faces square to it.
+ * (the normal of a face clicked), the largest pair of faces square to it. With the sides' `thickness`, only ends wide
+ * enough to be emptied to it come first (a board's top, 18 mm wide, cannot hold two sides of 18 mm: its faces can).
  */
-export function frameEnds(target: Shape3D, along?: readonly number[]): [Face, Face] | null {
+export function frameEnds(target: Shape3D, along?: readonly number[], thickness = 0): [Face, Face] | null {
   const flat = target.faces.filter((f) => f.geomType === "PLANE").map((face) => {
     const v = face.normalAt(face.center);
     return { face, normal: [v.x, v.y, v.z] as P3, area: measureArea(face) };
@@ -306,6 +307,14 @@ export function frameEnds(target: Shape3D, along?: readonly number[]): [Face, Fa
     return chosen ? [chosen[0].face, chosen[1].face] : null;
   }
   const candidates = ends.length ? ends : pairs;
-  const best = [...candidates].sort((p, q) => Number(Math.abs(q[0].normal[2]) > 0.9999) - Number(Math.abs(p[0].normal[2]) > 0.9999) || q[0].area - p[0].area)[0];
+  // Wide enough: the end's two sizes (its box, less the way it faces) more than two sides.
+  const roomy = (face: Face) => {
+    const box = face.boundingBox;
+    const sizes = [box.width, box.height, box.depth].sort((a, b) => b - a);
+    box.delete();
+    return sizes[1]! > 2 * thickness + 1;
+  };
+  const fits = new Map(candidates.map((c) => [c, roomy(c[0].face)]));
+  const best = [...candidates].sort((p, q) => Number(fits.get(q)) - Number(fits.get(p)) || Number(Math.abs(q[0].normal[2]) > 0.9999) - Number(Math.abs(p[0].normal[2]) > 0.9999) || q[0].area - p[0].area)[0];
   return best ? [best[0].face, best[1].face] : null;
 }

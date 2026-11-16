@@ -70,7 +70,7 @@ export class SplitSidesTool extends PanelTool {
         this.render();
         this.schedulePreview();
       }),
-      this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous. Pour l'ouvrir ailleurs (devant et derrière…), cliquez la face à vider sur le corps."),
+      this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous — ou, pour un panneau trop mince pour cela, par ses deux grandes faces. Pour l'ouvrir ailleurs, cliquez la face à vider sur le corps."),
       this.open ? this.resetOpen() : null,
       this.info("Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
     ];

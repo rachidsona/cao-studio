@@ -149,6 +149,29 @@ describe("séparer les côtés d'un corps plein", () => {
     r.dispose();
   }, 120_000);
 
+  it("un panneau trop mince pour s'ouvrir dessus et dessous s'ouvre d'office par ses deux grandes faces", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    // A side board: 18 thick (x), 2000 long (y), 700 high (z) — its top only 18 wide.
+    const board = { points: [[0, 0], [18, 0], [18, 2000], [0, 2000]].map(([x, y], i) => ({ id: `b${i}`, x, y })), curves: [0, 1, 2, 3].map((i) => ({ id: `l${i}`, kind: "line", p1: `b${i}`, p2: `b${(i + 1) % 4}` })), constraints: [] };
+    const doc = { ...createReferencePlate(), features: [
+      { id: "sk1", type: "sketch", name: "Panneau", plane: "XY", offset: 0, ...board },
+      { id: "ex1", type: "extrude", name: "Panneau", sketch: "sk1", distance: 700, operation: "new" },
+      { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "ex1", faces: [], thickness: 18, sides: "separate", joint: "miter", frame: true },
+    ] };
+    const r = new Recomputer();
+    const made = r.recompute(doc as never);
+    expect(made.statuses.find((s) => s.id === "sh1")?.state).toBe("ok");
+    const out = r.output("sh1");
+    expect(out?.kind === "solids" ? out.shapes.length : 0).toBe(4);
+    // A frame round a hole through the board: every piece 18 thick along x.
+    for (const p of out?.kind === "solids" ? out.shapes : []) {
+      const b = p.boundingBox.bounds;
+      expect(Math.round(b[1][0] - b[0][0])).toBe(18);
+    }
+    r.dispose();
+  }, 120_000);
+
   it("la face à vider choisie : ouvert devant et derrière (le long de y), les côtés font toute la profondeur", async () => {
     const { Recomputer } = await import("../../frontend/src/history/recompute");
     const { centeredRectangle } = await import("../../frontend/src/document/sketch");
