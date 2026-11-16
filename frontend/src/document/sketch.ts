@@ -262,6 +262,8 @@ export interface OffsetRecord {
   /** One copy on each side, at the same distance. */
   both: boolean;
   join: "round" | "sharp";
+  /** Made by « Décaler l'arête »: made again, its lines still stop at the lines already drawn they meet. */
+  edge?: boolean;
   /** A « Répartition » or a division by shelves: how it was made, to make it again (the fields above are then empty). */
   step?: PartitionStep;
   /** The extrusions made with it (feature ids), one body per element. */

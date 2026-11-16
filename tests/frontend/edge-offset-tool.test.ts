@@ -107,4 +107,21 @@ describe("décaler l'arête, sans fenêtre", () => {
     expect(typedDigit({ key: "(", code: "Digit5" })).toBeNull();
     expect(typedDigit({ key: "a", code: "KeyQ" })).toBeNull();
   });
+
+  it("le cas « can » : le côté droit décalé de 50 s'arrête au trait en travers (y = 800), et l'étape s'en souvient", async () => {
+    const { host, right, get, set } = setup();
+    // The rectangle 100 × 50 of the setup, and a line across it 5 under its top.
+    const g = get();
+    set({ ...g, points: [...g.points, { id: "x1", x: 100, y: 45 }, { id: "x2", x: 20, y: 45 }], curves: [...g.curves, { id: "across", kind: "line", p1: "x1", p2: "x2" }] });
+    const tool = new EdgeOffsetTool(host);
+    tool.pickCurve(right);
+    await flush();
+    await (tool as unknown as { make(d: number): Promise<void> }).make(5);
+    const made = get().offsets![0]!;
+    expect(made.edge).toBe(true);
+    const line = get().curves.find((c) => c.id === made.curves[0])!;
+    const ys = line.kind === "line" ? [pointPos(get(), line.p1)[1], pointPos(get(), line.p2)[1]].sort((a, b) => a - b) : [];
+    expect(ys[0]).toBeCloseTo(0, 6);
+    expect(ys[1]).toBeCloseTo(45, 6);
+  });
 });

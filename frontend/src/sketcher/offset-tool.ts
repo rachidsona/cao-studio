@@ -9,7 +9,7 @@
  */
 import type { OffsetRecord, SketchGeometry } from "../document/sketch";
 import type { DisplayUnit } from "../document/types";
-import type { OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
+import type { OffsetCurve, OffsetJoin, OffsetOutcome, OffsetPath } from "../geometry/offset";
 import { formatLength } from "../measurements/units";
 import { openCalculator } from "../ui/calculator";
 import { renderOffsetPanel, type OffsetPanelState } from "../ui/offset-panel";
@@ -18,6 +18,7 @@ import { ArrowHandle } from "../viewport/arrow-handle";
 import type { Viewport } from "../viewport/viewport";
 import { removeEntities, type Vec2 } from "./edit";
 import type { Vec3 } from "./frame";
+import { trimToExisting } from "./offset-edge";
 import { allConstruction, addOffsetCurves, connectedChain, handleFor, OffsetSelectionError, offsetName, offsetPreview, pathsFromCurves } from "./offset";
 import type { Preview } from "./tools";
 import { placePanel } from "../ui/dock";
@@ -327,7 +328,7 @@ export class OffsetTool {
     this.busy = false;
     this.outcome = outcome;
     this.problem = problem;
-    this.preview = outcome ? offsetPreview(outcome.curves) : null;
+    this.preview = outcome ? offsetPreview(this.ruled(outcome.curves, this.editing ? removeEntities(this.host.geometry(), this.editing.curves) : this.host.geometry())) : null;
     this.draw();
     this.host.changed();
     // A result shown is stored a moment later (no « OK »): the offset made, then set again in place.
@@ -349,6 +350,16 @@ export class OffsetTool {
     if (this.store(true)) this.finish(this.made);
   }
 
+  /** An « Arête décalée » opened again (from the history): made by « Décaler l'arête », it keeps its rule. */
+  private edgeMade(): boolean {
+    return !!this.editing && (this.editing.edge === true || this.editing.name.startsWith("Arête décalée"));
+  }
+
+  /** The curves as they are made: an « Arête décalée »'s lines stop at the lines already drawn (`base`). */
+  private ruled(curves: OffsetCurve[], base: SketchGeometry): OffsetCurve[] {
+    return this.edgeMade() ? trimToExisting(curves, base, new Set(this.curveIds())) : curves;
+  }
+
   /** The offset stored (one undo step); it is then the one changed: its curves are replaced by the next settings. */
   private store(loud = false): boolean {
     if (this.done) return false;
@@ -359,7 +370,7 @@ export class OffsetTool {
     const current = this.host.geometry();
     // Redoing an offset replaces the curves it made before.
     const base = this.editing ? removeEntities(current, this.editing.curves) : current;
-    const { geometry, created } = addOffsetCurves(base, this.outcome.curves, allConstruction(base, this.curveIds()));
+    const { geometry, created } = addOffsetCurves(base, this.ruled(this.outcome.curves, base), allConstruction(base, this.curveIds()));
     if (created.length === 0) {
       if (loud) this.host.notify("Le décalage n'a produit aucune courbe.", "error");
       return false;
@@ -372,6 +383,7 @@ export class OffsetTool {
       distance: this.shownDistance(),
       both: this.direction === "both",
       join: this.join,
+      ...(this.edgeMade() ? { edge: true } : {}),
     };
     const previous = current.offsets ?? [];
     geometry.offsets = this.editing ? previous.map((o) => (o.id === record.id ? record : o)) : [...previous, record];

@@ -142,7 +142,7 @@ export class EdgeOffsetTool {
     const base = copy.created.length ? removeEntities(current, copy.created) : current;
     // The rule of the tool: a new line stops at the first line already drawn it meets, each side of its middle.
     const { geometry, created } = addOffsetCurves(base, trimToExisting(curves, base, new Set(copy.source)), allConstruction(base, copy.source));
-    const record: OffsetRecord = { id: copy.id, name: copy.name, curves: created, source: copy.source, distance, both: false, join: "sharp" };
+    const record: OffsetRecord = { id: copy.id, name: copy.name, curves: created, source: copy.source, distance, both: false, join: "sharp", edge: true };
     geometry.offsets = [...(base.offsets ?? []).filter((o) => o.id !== copy.id), record];
     this.applying = true;
     const stored = this.host.apply(geometry, `${copy.name} : ${formatLength(Math.abs(distance), this.host.unit())}.`);
@@ -291,7 +291,8 @@ export class EdgeOffsetTool {
     const ticket = ++this.ticket;
     try {
       const curves = await this.curvesAt(copy, value);
-      if (ticket === this.ticket && this.drag === drag) this.host.display(drag.base, curves ? offsetPreview(curves) : null);
+      // Shown as it will be made: stopped at the lines already drawn.
+      if (ticket === this.ticket && this.drag === drag) this.host.display(drag.base, curves ? offsetPreview(trimToExisting(curves, drag.base, new Set(copy.source))) : null);
     } catch {
       // A value the kernel refuses is skipped while dragging.
     }
