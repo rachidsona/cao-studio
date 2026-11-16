@@ -21,6 +21,8 @@ import { featureOfBody, type CadDocument, type RoomFeature } from "../../documen
 import { drawerSlide } from "../../features/drawer-open";
 import { meshesOverlap } from "../../features/mesh-overlap";
 import { withOverlapCut, withOverlapsCut } from "../../document/overlap-fix";
+import { kitchenRoomFixes, withKitchenOnRoom } from "../../document/kitchen-room-fix";
+import { askConfirm } from "../../ui/confirm-dialog";
 import { collisions, type Box } from "../../features/motion";
 import type { GeometryClient } from "../../geometry/client";
 import { el } from "../../ui/dom";
@@ -200,6 +202,20 @@ export async function showCheck(viewport: Viewport, editor: Editor, geometry: Ge
       return [small, large] as const;
     }))).then(() => editor.notify(`${overlaps.length} chevauchements corrigés : chaque fois, la plus grande pièce est coupée par l'autre.`, "success"));
   });
-  const content = el("div", { class: "max-h-[60vh] overflow-y-auto" }, el("p", { class: problems.length ? "text-xs font-medium" : "text-xs font-medium text-emerald-700 dark:text-emerald-400" }, summary), all, ...sections);
+  // A kitchen typed by hand that runs into the walls of the surveyed room: it follows the room (kitchen-room-fix.ts).
+  const intoWalls = problems.filter((p) => p.kind === "room" && p.severity === "error").flatMap((p) => p.bodies);
+  const onRoom = kitchenRoomFixes(editor.doc, intoWalls).map((fix) => {
+    const button = el("button", { type: "button", class: `${BUTTON} mt-2 block`, "data-fix-kitchen-room": fix.plan, title: "La cuisine prend les longueurs et la hauteur des murs de la pièce, et elle est refaite : plus rien n'entre dans un mur" }, `Corriger : ${fix.label}`);
+    button.addEventListener("click", () => void (async () => {
+      const made = withKitchenOnRoom(editor.doc, fix);
+      if (typeof made === "string") return editor.notify(made, "error");
+      if (made.problems.length && !(await askConfirm(`La cuisine prend les cotes de ${fix.room.name}. ${made.problems.join(" ")} Continuer ? (⌘Z pour revenir)`, "Corriger"))) return;
+      close();
+      await editor.change(made.doc);
+      editor.notify(made.problems.length ? `Cuisine posée sur ${fix.room.name}. ${made.problems.join(" ")}` : `Cuisine posée sur ${fix.room.name} : elle n'entre plus dans les murs.`, made.problems.length ? "info" : "success");
+    })());
+    return button;
+  });
+  const content = el("div", { class: "max-h-[60vh] overflow-y-auto" }, el("p", { class: problems.length ? "text-xs font-medium" : "text-xs font-medium text-emerald-700 dark:text-emerald-400" }, summary), all, ...onRoom, ...sections);
   const close = openModal("Contrôle avant fabrication", content, [{ label: "Fermer", run: () => close() }]);
 }

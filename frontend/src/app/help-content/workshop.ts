@@ -370,7 +370,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Lisez le résumé, puis les listes rangées par sorte de problème. Un point rouge est une erreur, un point orange une chose à vérifier.",
           "Cliquez « Voir » sur une ligne pour sélectionner les pièces en cause.",
         ],
-        tip: "Il vérifie les pièces qui se chevauchent, les pièces trop grandes pour leur panneau, les pièces sans matière, les perçages, les portes et tiroirs qui heurtent en s'ouvrant, les étagères qui fléchissent et le basculement. Deux pièces qui se chevauchent : « Couper « … » » coupe l'une par l'autre, qui reste entière ; « Corriger les N chevauchements » les fait tous d'un coup. Le « ⚠ à vérifier » de la barre d'état ouvre ce contrôle.",
+        tip: "Il vérifie les pièces qui se chevauchent, les pièces trop grandes pour leur panneau, les pièces sans matière, les perçages, les portes et tiroirs qui heurtent en s'ouvrant, les étagères qui fléchissent et le basculement. Deux pièces qui se chevauchent : « Couper « … » » coupe l'une par l'autre, qui reste entière ; « Corriger les N chevauchements » les fait tous d'un coup. Une cuisine aux cotes tapées qui entre dans les murs de la Pièce relevée : « Corriger : Poser la cuisine sur … » la pose sur la pièce (le mur qui la déplace le moins devient son mur A), ses longueurs et sa hauteur viennent des murs et elle est refaite ; ce qui ne tient plus est dit avant, ⌘Z revient. Le « ⚠ à vérifier » de la barre d'état ouvre ce contrôle.",
       },
       {
         keys: ["data-workshop:weight"], name: "Poids et stabilité",

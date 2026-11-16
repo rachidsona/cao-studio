@@ -1829,6 +1829,11 @@ opération existante.
       par l'autre, qui reste entière (une étape Combiner, couper en gardant l'outil ; la plus grande d'abord, elle
       reste d'un tenant), et « Corriger les N chevauchements » les fait tous (`document/overlap-fix.ts`). Une coupe
       de Combiner qui traverse un corps de part en part le laisse en morceaux, un corps chacun, au lieu d'une erreur.
+    - Meuble qui entre dans un mur de la Pièce relevée. Quand c'est une cuisine aux cotes tapées à la main (son plan
+      n'est pas posé sur la pièce), elle se **corrige d'un clic** : « Corriger : Poser la cuisine sur … » la pose sur
+      la pièce, comme « Mur A dans la pièce » du Plan de cuisine — le mur qui la déplace le moins devient son mur A,
+      ses longueurs et sa hauteur sous plafond viennent des murs, et elle est refaite en une annulation. Ce qui ne
+      tient plus (un meuble trop large pour le mur raccourci) est dit avant d'appliquer (`document/kitchen-room-fix.ts`).
     - Pièce plus grande que le panneau brut de sa matière, le sens du fil respecté.
     - Pièce sans matière.
     - Perçage qui déborde du bord, qui laisse moins de 1 mm jusqu'au bord, ou qui en mord un autre (deux cercles
