@@ -299,10 +299,10 @@ export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math
 /**
  * Where the dimension lines lie outside the face, in label sizes: the first chain (each case's width over it, the
  * niches against its sides and the plinth beside it), then the whole (its length over that, its height on the right),
- * a full line apart so that their figures never touch.
+ * their figures written on them, a full figure apart so that they never touch.
  */
-export const CHAIN = 0.9;
-export const WHOLE = 2.1;
+export const CHAIN = 0.8;
+export const WHOLE = 2.15;
 
 /** Where the line of the whole height lies: beyond the chain of the right side when there is one. */
 export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE : CHAIN);
@@ -310,7 +310,7 @@ export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "case
 /** Room for the dimensions around the face. */
 export function faceViewBox(face: Pick<PartitionFace, "length" | "height" | "cases">): string {
   const fs = faceFont(face);
-  const [x0, y0] = [-fs * 1.95, -fs * (WHOLE + 1.15)];
+  const [x0, y0] = [-fs * 1.85, -fs * (WHOLE + 0.75)];
   return `${x0} ${y0} ${heightLine(face) + fs * 1.05 - x0} ${face.height + fs * 1.4 - y0}`;
 }
 

@@ -4,7 +4,7 @@
  * qui est choisi entouré en laiton. Les cotes qu'on peut taper sur place portent `data-edit`. Pur : une chaîne, où ne
  * vont que des nombres et des mots fixes (aucun nom venu d'un fichier).
  */
-import { CHAIN, cm, faceFont, heightLine, SMALL, WHOLE, type FacePick, type FaceRect, type PartitionFace } from "./partition-face";
+import { CHAIN, cm, faceFont, heightLine, SMALL, WHOLE, type FaceLabel, type FacePick, type FaceRect, type PartitionFace } from "./partition-face";
 
 /** Laiton, comme les poignées de la cuisine : ce qui est choisi et ce qui se tire. */
 export const BRASS = "#b8975a";
@@ -13,9 +13,9 @@ const PANEL = "fill-gray-300 stroke-gray-600 dark:fill-gray-600 dark:stroke-gray
 const NICHE = "fill-gray-50 stroke-gray-500 dark:fill-gray-900 dark:stroke-gray-500";
 const FRONT = "fill-gray-100 stroke-gray-500 dark:fill-gray-700 dark:stroke-gray-400";
 /**
- * The dimensions, as on a workshop drawing: thin lines and figures in the ink of the page (no red, which says an error),
- * the figures a shade stronger than their lines; one that can be typed turns blue under the pointer. Inside the face,
- * the free heights of the niches and fronts are their figure alone, quieter.
+ * The dimensions, as on a workshop drawing: thin lines with an arrow at each end and the figure in their middle, in the
+ * ink of the page (no red, which says an error), the figures a shade stronger than their lines; one that can be typed
+ * turns blue under the pointer. Inside the face, the free heights of the niches and fronts are their figure alone.
  */
 const LABEL = "fill-gray-800 dark:fill-gray-100";
 const EDITABLE = "hover:fill-sky-700 dark:hover:fill-sky-300";
@@ -23,20 +23,26 @@ const INNER = "fill-gray-500 dark:fill-gray-400";
 const MAIN = "stroke-gray-500 dark:stroke-gray-400";
 const OUTLINE = `fill="rgb(184 151 90 / 0.25)" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none" data-picked=""`;
 /**
- * A dimension line from end to end of what it measures, closed at each end by an oblique tick at 45° (`tick`: its
- * half length, in mm of the face), as on an architect's or a cabinetmaker's drawing: it reads at any size, and the
- * chains of dimensions meet tick to tick.
+ * A dimension line from end to end of what it measures, an arrow at each end pointing to it (`arrow`: their length, in
+ * mm of the face), and, when its figure is written on it, broken in its middle by `gap` (mm) to leave the figure room:
+ * ← 70,5 →, as on a workshop drawing.
  */
-export function dimLine([x1, y1, x2, y2]: [number, number, number, number], tick: number, tone = DIM): string {
+export function dimLine([x1, y1, x2, y2]: [number, number, number, number], arrow: number, tone = DIM, gap = 0): string {
   const length = Math.hypot(x2 - x1, y2 - y1);
   if (length < 1) return "";
-  const t = Math.min(tick, length / 3);
+  const a = Math.min(arrow, length / 2.5);
   const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
-  // Turned 45° from the line, the same way at both ends.
-  const [dx, dy] = [(ux - uy) * Math.SQRT1_2 * t, (uy + ux) * Math.SQRT1_2 * t];
-  const mark = (x: number, y: number) => `<line x1="${x - dx}" y1="${y - dy}" x2="${x + dx}" y2="${y + dy}" class="${tone}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
-  return `<g pointer-events="none" data-dimline=""><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>${mark(x1, y1)}${mark(x2, y2)}</g>`;
+  const head = (x: number, y: number, dx: number, dy: number) => `<path d="M${x} ${y}L${x + dx * a - dy * a * 0.3} ${y + dy * a + dx * a * 0.3}L${x + dx * a + dy * a * 0.3} ${y + dy * a - dx * a * 0.3}Z" class="${tone.replace(/stroke-/g, "fill-")}"/>`;
+  const line = (from: number, to: number) => `<line x1="${x1 + ux * from}" y1="${y1 + uy * from}" x2="${x1 + ux * to}" y2="${y1 + uy * to}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  const lines = gap > 0 ? line(0, (length - gap) / 2) + line((length + gap) / 2, length) : line(0, length);
+  return `<g pointer-events="none" data-dimline="">${lines}${head(x1, y1, ux, uy)}${head(x2, y2, -ux, -uy)}</g>`;
 }
+
+/** The room a figure takes along its line (mm), a little air on each side. */
+const figure = (text: string, size: number) => text.length * size * 0.55 + size * 0.35;
+
+/** Whether the figure goes on its line, between its arrows: not on a dimension too short (a plinth). */
+const fits = (length: number, text: string, size: number, arrow: number) => length >= figure(text, size) + arrow * 2;
 
 /** Drawn as a dimension line: what is dimensioned outside the face (the sides' chains) or across a niche (its width). */
 const outside = (l: { side?: "left" | "right"; span?: [number, number, number, number] }) => !!l.span && (!!l.side || Math.abs(l.span[1] - l.span[3]) < 1e-9);
@@ -91,28 +97,45 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
   }
   // The small dimensions, then the main ones, outside as on a drawing: each case's width over the face and its length
   // over them, the niches against its sides beside it, its height on the right. The lines first, their figures over them.
-  const tick = fs * 0.22;
+  const arrow = fs * 0.32;
   const [gap, past] = [fs * 0.15, fs * 0.25];
   const [chain, whole, right] = [-fs * CHAIN, -fs * WHOLE, heightLine(face)];
+  // Each dimension line with its figure on it when there is room (its place then moves onto the line), else beside it.
+  const small = fs * SMALL;
+  const placed = new Map<FaceLabel, { x: number; y: number }>();
   for (const l of face.labels) {
     if (!l.span || !outside(l)) continue;
-    parts.push(dimLine(l.span, tick));
+    const [x1, y1, x2, y2] = l.span;
+    const on = fits(Math.hypot(x2 - x1, y2 - y1), l.text, small, arrow);
+    if (on) placed.set(l, { x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
+    parts.push(dimLine(l.span, arrow, DIM, on ? figure(l.text, small) : 0));
     if (l.side === "left") parts.push(ext(-gap, l.span[1], l.span[0] - past, l.span[1]), ext(-gap, l.span[3], l.span[0] - past, l.span[3]));
     if (l.side === "right") parts.push(ext(L + gap, l.span[1], l.span[0] + past, l.span[1]), ext(L + gap, l.span[3], l.span[0] + past, l.span[3]));
   }
-  parts.push(dimLine([0, whole, L, whole], tick, MAIN), ext(0, -gap, 0, whole - past), ext(L, -gap, L, whole - past));
-  parts.push(dimLine([right, 0, right, H], tick, MAIN), ext(L + gap, 0, right + past, 0), ext(L + gap, H, right + past, H));
-  for (const c of face.cases) parts.push(dimLine([c.x0, chain, c.x1, chain], tick, MAIN), ext(c.x0, -gap, c.x0, chain - past), ext(c.x1, -gap, c.x1, chain - past));
+  const [length, height] = [cm(L), cm(H)];
+  parts.push(dimLine([0, whole, L, whole], arrow, MAIN, figure(length, fs)), ext(0, -gap, 0, whole - past), ext(L, -gap, L, whole - past));
+  parts.push(dimLine([right, 0, right, H], arrow, MAIN, figure(height, fs)), ext(L + gap, 0, right + past, 0), ext(L + gap, H, right + past, H));
+  const caseSize = fs * 0.85;
+  const caseOn = face.cases.map((c) => fits(c.width, cm(c.width), caseSize, arrow));
+  face.cases.forEach((c, i) => parts.push(dimLine([c.x0, chain, c.x1, chain], arrow, MAIN, caseOn[i] ? figure(cm(c.width), caseSize) : 0), ext(c.x0, -gap, c.x0, chain - past), ext(c.x1, -gap, c.x1, chain - past)));
   const tone = (inner: boolean) => (inner ? INNER : LABEL);
   const editable = (k: number | undefined, inner: boolean) => (k === undefined ? `class="${tone(inner)}" pointer-events="none"` : `class="${tone(inner)} ${EDITABLE} cursor-text" data-edit="${k}"`);
   const upright = (x: number, y: number) => `transform="rotate(-90 ${x} ${y})" dominant-baseline="central"`;
-  for (const l of face.labels) parts.push(`<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="${fs * SMALL}" ${l.side ? upright(l.x, l.y) : ""} ${editable(l.edit, !l.side && l.kind !== "panel")} data-label="${l.kind}">${l.text}</text>`);
-  // The whole, the main figures: a little larger than the chain's, a full line over it.
-  parts.push(`<text x="${L / 2}" y="${whole - fs * 0.2}" text-anchor="middle" font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${cm(L)}</text>`);
-  parts.push(`<text x="${right + fs * 0.55}" y="${H / 2}" text-anchor="middle" font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" ${upright(right + fs * 0.55, H / 2)} data-edit="1" data-dim="height">${cm(H)}</text>`);
+  // On its line, a figure is centred on it, upright on a side; beside it, where the face put it.
+  const centred = `text-anchor="middle" dominant-baseline="central"`;
+  for (const l of face.labels) {
+    const at = placed.get(l);
+    const [x, y] = at ? [at.x, at.y] : [l.x, l.y];
+    const where = at ? centred : `text-anchor="${l.anchor}"`;
+    parts.push(`<text x="${x}" y="${y}" ${where} font-size="${small}" ${l.side ? upright(x, y) : ""} ${editable(l.edit, !l.side && l.kind !== "panel" && !at)} data-label="${l.kind}">${l.text}</text>`);
+  }
+  // The whole, the main figures, on their lines: a little larger than the chain's, in bold.
+  parts.push(`<text x="${L / 2}" y="${whole}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${length}</text>`);
+  parts.push(`<text x="${right}" y="${H / 2}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" ${upright(right, H / 2)} data-edit="1" data-dim="height">${height}</text>`);
   face.cases.forEach((c, i) => {
     const on = pick?.kind === "case" && pick.index === i;
-    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${chain - fs * 0.2}" text-anchor="middle" font-size="${fs * 0.85}" class="${on ? "font-semibold" : ""} ${LABEL} ${EDITABLE} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
+    const [y, where] = caseOn[i] ? [chain, centred] : [chain - fs * 0.25, `text-anchor="middle"`];
+    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${y}" ${where} font-size="${caseSize}" class="${on ? "font-semibold" : ""} ${LABEL} ${EDITABLE} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
   });
   return parts.join("");
 }

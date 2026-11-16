@@ -959,8 +959,9 @@ opération existante.
     vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
     équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — et ses cotes
     (en cm), **dehors comme sur un plan d'atelier** : traits fins et chiffres dans l'encre de la page (gris, plus de
-    rouge, qui dit une erreur), chaque ligne de cote fermée par un **trait oblique à 45°** et tenue entre deux lignes
-    d'attache détachées du dessin. Au-dessus, la chaîne des largeurs des cases, puis, une rangée plus haut, la
+    rouge, qui dit une erreur), chaque ligne de cote **fléchée à ses deux bouts, son chiffre au milieu** de la ligne
+    (← 70,5 →, et debout sur les côtés), tenue entre deux lignes d'attache détachées du dessin ; une cote trop courte
+    pour son chiffre (le socle) l'a à côté. Au-dessus, la chaîne des largeurs des cases, puis, une rangée plus haut, la
     longueur, en gras ; à gauche, bout à bout, la hauteur libre des niches de la première case, et le **socle** qui
     ferme la chaîne au sol ; à droite, celle des niches de la dernière case, puis la hauteur, en gras. Dans le dessin,
     **le chiffre seul**, sans ligne, plus discret : la hauteur libre de chaque niche des cases du milieu, au centre,

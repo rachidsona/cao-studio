@@ -110,8 +110,10 @@ describe("face d'une Répartition", () => {
     // and the length, the height and each case's width; inside, the niches and fronts have their figure alone.
     const drawn = face.labels.filter((l) => l.span && (l.side || l.span[1] === l.span[3]));
     expect(count(svg, "data-dimline=")).toBe(drawn.length + 2 + face.cases.length);
-    // Closed by oblique ticks, not arrows; in the ink of the page, not in red.
-    expect(svg).not.toMatch(/<path d="M[^"]*Z"/);
+    // An arrow at each end (← 70,5 →), the line broken in its middle for the figure written on it; in the ink of the
+    // page, not in red.
+    expect(count(svg, '<path d="M')).toBe(2 * count(svg, "data-dimline="));
+    expect(svg).toMatch(/dominant-baseline="central" font-size="[\d.]+" font-weight="600" [^>]*data-dim="length"/);
     expect(svg).not.toMatch(/red-/);
   });
 
