@@ -1,38 +1,86 @@
 /**
- * « Séparer les côtés » d'un corps fait de panneaux d'équerre (features/board-split.ts), côté noyau : ses faces lues
- * comme des contours (toutes planes, d'équerre avec les axes, à bords droits), et un corps par panneau trouvé.
+ * « Séparer les côtés » d'un corps fait de panneaux d'équerre (features/board-split.ts), côté noyau. Le repère des
+ * panneaux est lu sur le corps lui-même (sa plus grande face, puis la plus grande d'équerre avec elle) : un caisson
+ * tourné de biais se sépare comme un droit. Ses faces planes d'équerre dans ce repère donnent les panneaux — un bord
+ * courbe compte pour sa corde, un perçage et une face de biais n'y comptent pas —, puis chaque panneau est recoupé par
+ * le corps : perçages, chanfreins, encoches et arrondis lui restent.
  */
-import { makeBox, type Shape3D } from "replicad";
-import { arePanels, boardBoxes, type Axis, type AxisFace, type Pass } from "./board-split";
+import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Shape3D } from "replicad";
+import { arePanels, boardBoxes, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
 
-/** The body's faces square to the axes, as contours; null when one is not (curved, slanted, a drilled hole). */
-export function axisFaces(target: Shape3D): AxisFace[] | null {
-  const out: AxisFace[] = [];
-  for (const face of target.faces) {
-    if (face.geomType !== "PLANE") return null;
-    const v = face.normalAt(face.center);
-    const n = [v.x, v.y, v.z];
-    const found = n.findIndex((c) => Math.abs(Math.abs(c) - 1) < 1e-6);
-    if (found < 0) return null;
-    const axis = found as Axis;
+type P3 = [number, number, number];
+const dot = (a: P3, b: P3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a: P3, b: P3): P3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const vec = (v: { x: number; y: number; z: number }): P3 => [v.x, v.y, v.z];
+
+/** The panels' frame: the largest flat face's normal, the largest square to it, and the third. */
+type Frame = [P3, P3, P3];
+
+interface Flat {
+  normal: P3;
+  area: number;
+  face: Shape3D["faces"][number];
+}
+
+function frameOf(flats: readonly Flat[]): Frame | null {
+  const sorted = [...flats].sort((a, b) => b.area - a.area);
+  const u = sorted[0]?.normal;
+  if (!u) return null;
+  const v = sorted.find((f) => Math.abs(dot(f.normal, u)) < 1e-4)?.normal;
+  if (!v) return null;
+  return [u, v, cross(u, v)];
+}
+
+/** The body's faces square to the frame's axes, as straight edges in it (a curved edge by its chord). */
+export function axisFaces(target: Shape3D): { faces: AxisFace[]; frame: Frame } | null {
+  const flats: Flat[] = target.faces.filter((f) => f.geomType === "PLANE").map((face) => ({ face, normal: vec(face.normalAt(face.center)), area: measureArea(face) }));
+  const frame = frameOf(flats);
+  if (!frame) return null;
+  // Mostly panels: the faces square to the frame make most of its surface (not a turned part with two flats).
+  const total = target.faces.reduce((sum, f) => sum + measureArea(f), 0);
+  let square = 0;
+  const faces: AxisFace[] = [];
+  for (const { face, normal, area } of flats) {
+    const axis = frame.findIndex((d) => Math.abs(Math.abs(dot(normal, d)) - 1) < 1e-6);
+    if (axis < 0) continue;
+    square += area;
     const [a, b] = ([0, 1, 2] as const).filter((k) => k !== axis) as [Axis, Axis];
-    const c = face.center;
-    const edges: [[number, number], [number, number]][] = [];
+    const edges: AxisFace["edges"] = [];
     for (const edge of face.edges) {
-      if (edge.geomType !== "LINE") return null;
-      const [p, q] = [edge.startPoint, edge.endPoint].map((v) => [v.x, v.y, v.z]) as [number[], number[]];
-      edges.push([[p[a]!, p[b]!], [q[a]!, q[b]!]]);
+      const [p, q] = [vec(edge.startPoint), vec(edge.endPoint)];
+      if (Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 1e-6) continue; // a whole circle (a hole): no chord
+      edges.push([[dot(p, frame[a]!), dot(p, frame[b]!)], [dot(q, frame[a]!), dot(q, frame[b]!)]]);
     }
-    out.push({ axis, at: [c.x, c.y, c.z][axis]!, edges });
+    faces.push({ axis: axis as Axis, at: dot(vec(face.center), frame[axis]!), edges });
   }
-  return out;
+  if (square < 0.7 * total) return null;
+  return { faces, frame };
+}
+
+/** A box of the frame as a solid, where it is in the world. */
+function prism([lo, hi]: Box, [u, v, w]: Frame): Shape3D {
+  const at = (a: number, b: number, c: number): P3 => [0, 1, 2].map((k) => a * u[k]! + b * v[k]! + c * w[k]!) as P3;
+  const base = makePolygon([at(lo[0], lo[1], lo[2]), at(hi[0], lo[1], lo[2]), at(hi[0], hi[1], lo[2]), at(lo[0], hi[1], lo[2])]);
+  const h = hi[2] - lo[2];
+  return basicFaceExtrusion(base, new Vector([w[0] * h, w[1] * h, w[2] * h])) as unknown as Shape3D;
 }
 
 /** The panels of a body made of square panels, a body each; null when it is not such a body (left to the other ways). */
 export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
-  const faces = axisFaces(target);
-  if (!faces) return null;
-  const boxes = boardBoxes(faces, pass);
+  const read = axisFaces(target);
+  if (!read) return null;
+  const { faces, frame } = read;
+  // The upright: the frame's axis nearest the world's Z.
+  const vertical = [0, 1, 2].reduce((best, k) => (Math.abs(frame[k]![2]) > Math.abs(frame[best]![2]) ? k : best), 0) as Axis;
+  const boxes = boardBoxes(faces, pass, vertical);
   if (typeof boxes === "string" || !arePanels(boxes)) return null;
-  return boxes.map(([lo, hi]) => makeBox(lo, hi) as unknown as Shape3D);
+  const pieces: Shape3D[] = [];
+  for (const box of boxes) {
+    const block = prism(box, frame);
+    // Cut by the body: what it has of holes, chamfers and notches stays with each panel.
+    const piece = block.intersect(target) as Shape3D;
+    block.delete();
+    if (piece.faces.length) pieces.push(piece);
+  }
+  return pieces.length >= 2 ? pieces : null;
 }

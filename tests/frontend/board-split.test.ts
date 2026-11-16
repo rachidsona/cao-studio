@@ -60,6 +60,31 @@ describe("un caisson d'un seul corps séparé en panneaux", () => {
   }, 120_000);
 });
 
+describe("un caisson tourné de biais et percé", () => {
+  it("se sépare comme un droit, chaque panneau garde ses perçages", async () => {
+    const { makeBox, makeCylinder, measureVolume } = await import("replicad");
+    const { splitBoards } = await import("../../frontend/src/features/board-split-shape");
+    const parts = [
+      makeBox([0, 0, 0], [18, 580, 864]), makeBox([1182, 0, 0], [1200, 580, 864]), makeBox([18, 0, 150], [1182, 580, 168]),
+      makeBox([18, 0, 764], [1182, 18, 864]), makeBox([18, 562, 764], [1182, 580, 864]),
+    ];
+    let body = parts[0]! as unknown as import("replicad").Shape3D;
+    for (const p of parts.slice(1)) body = body.fuse(p as never) as never;
+    // A hole of 35 through the left side (a hinge cup drilled through, for the test), then the whole turned by 30°.
+    body = body.cut(makeCylinder(17.5, 40, [-10, 300, 500], [1, 0, 0]) as never) as never;
+    body = body.rotate(30, [0, 0, 0], [0, 0, 1]) as never;
+    const pieces = splitBoards(body, "largest");
+    expect(pieces).not.toBeNull();
+    expect(pieces!).toHaveLength(5);
+    const volumes = pieces!.map((p) => measureVolume(p)).sort((a, b) => a - b);
+    expect(volumes.reduce((a, b) => a + b, 0)).toBeCloseTo(measureVolume(body), 0);
+    // The drilled side has its hole: a little less than a whole side.
+    const side = 18 * 580 * 864;
+    expect(volumes.filter((v) => Math.abs(v - side) < 1)).toHaveLength(1);
+    expect(volumes.some((v) => v < side - 1000 && v > side - 2 * Math.PI * 17.5 * 17.5 * 18)).toBe(true);
+  }, 120_000);
+});
+
 describe("lecture en panneaux (calcul pur)", () => {
   // An L of two boards seen as faces: a floor board 600 × 400 × 18 and an upright 18 × 400 × 300 on its left end.
   const square = (axis: 0 | 1 | 2, at: number, [a0, b0, a1, b1]: Rect): AxisFace => ({ axis, at, edges: [[[a0, b0], [a1, b0]], [[a1, b0], [a1, b1]], [[a1, b1], [a0, b1]], [[a0, b1], [a0, b0]]] });

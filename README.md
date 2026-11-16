@@ -2206,7 +2206,9 @@ opération existante.
   matière sont regroupées en planches entières, la plus grande d'abord (`features/board-split.ts`) ; sans choix, la
   façon qui ne coupe aucun panneau en deux (des côtés qui descendent au sol sous un dessous surélevé passent),
   « les côtés passent » ou « le dessus et le dessous passent » suivis, pas d'onglet (des panneaux joints se rejoignent
-  bout à bout). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
+  bout à bout). Le repère des panneaux est lu sur le corps (sa plus grande face, puis la plus grande d'équerre) : un
+  caisson **tourné de biais** se sépare comme un droit ; puis chaque panneau est recoupé par le corps, ses **perçages**,
+  chanfreins, encoches et arrondis lui restent (`features/board-split-shape.ts`). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
   côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
   qui se font face, toutes les autres d'équerre ; seulement des bouts assez larges pour y tenir deux côtés de
   l'épaisseur voulue : un panneau de 18 mm s'ouvre d'office par ses deux grandes faces et devient un cadre) — ou par
