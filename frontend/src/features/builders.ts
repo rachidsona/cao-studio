@@ -86,6 +86,31 @@ function buildSketch(feature: SketchFeature): ProfileOutput {
   };
 }
 
+/**
+ * The prism with the faces of one plane made one: a side of the profile drawn in two lines one after the other (a
+ * point left on it) would give two faces side by side, and a line across the face. Only when there are such.
+ */
+function merged(prism: Shape3D): Shape3D {
+  const flat = prism.faces.filter((f) => f.geomType === "PLANE").map((f) => {
+    const c = f.center;
+    const n = f.normalAt(c);
+    return { n: [n.x, n.y, n.z], d: n.x * c.x + n.y * c.y + n.z * c.z };
+  });
+  const twins = flat.some((a, i) => flat.slice(i + 1).some((b) => a.n[0]! * b.n[0]! + a.n[1]! * b.n[1]! + a.n[2]! * b.n[2]! > 1 - 1e-9 && Math.abs(a.d - b.d) < 1e-6));
+  if (!twins) return prism;
+  try {
+    const one = prism.simplify() as Shape3D;
+    if (one.solids.length === prism.solids.length && Math.abs(measureVolume(one) - measureVolume(prism)) < 1e-6 * Math.max(1, measureVolume(prism))) {
+      prism.delete();
+      return one;
+    }
+    one.delete();
+  } catch {
+    // Kept as made.
+  }
+  return prism;
+}
+
 /** Above and below any piece of furniture (mm). */
 const CLIP_REACH = 20000;
 
@@ -104,7 +129,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
     }
   } else drawing = profileDrawing(feature.name, profile).clone();
   const sketch = onProfilePlane(drawing, profile);
-  let prism = sketch.extrude(feature.distance) as Shape3D;
+  let prism = merged(sketch.extrude(feature.distance) as Shape3D);
   if (feature.startOffset) {
     // Fusion's "Start: Offset": the solid starts this far from the sketch plane.
     const n = frameOf(profile).normal;

@@ -624,6 +624,9 @@ serveur accepte les deux versions.
   « Contraintes ». Une contrainte en conflit reste toujours visible en rouge.
 - Les profils fermés sont légèrement teintés et la grille s'affiche sur le plan de l'esquisse.
 - **Extrusion**, comme dans Fusion 360 :
+  - **une face par plan** : un côté du profil tracé en plusieurs traits à la suite (un point resté dessus, là où un
+    autre trait l'a coupé) ne donne qu'une face au corps, sans ligne au travers — les faces d'un même plan sont
+    réunies après l'extrusion (`features/builders.ts` `merged`, seulement quand il y en a) ;
   - le bouton (ou la touche E) surligne les profils fermés ; quand l'esquisse a **plusieurs zones**, aucune n'est
     choisie d'avance (comme Shapr3D) : cliquez celle à extruder, la flèche vient dessus, puis d'autres pour les
     ajouter. Une esquisse d'une seule zone, ou une extrusion qu'on modifie, garde ses zones ;
