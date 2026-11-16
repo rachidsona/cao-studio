@@ -20,6 +20,30 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
+  /*
+   * The design system (design-system/cao-studio/MASTER.md). Type scale: the two small sizes of a dense CAD interface
+   * (captions of the ribbon, labels of the panels) named instead of written in pixels; the rest is Tailwind's (12 14 16
+   * 18 20 24 30). Nothing under 10 px. They keep the line height around them (set it with leading-*).
+   */
+  --text-3xs: 10px;
+  --text-2xs: 11px;
+
+  /*
+   * Elevation: the editor is square (its radii are nought, below); the home page and its forms, softer, take these named
+   * radii. A control (field, button), a chip (the tick of a card), a tag, a card, a pill (the folder filters).
+   */
+  --radius-tag: 6px;
+  --radius-chip: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+
+  /* The colour of the dimensions of the pieces, of the icon names and of the hovered snap points: one orange. */
+  --color-dimension: #f8500a;
+
+  /* Motion: short and the same everywhere; « réduire les animations » of the system brings them to nothing (below). */
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   /* Square corners everywhere (cards, buttons, fields, menus): the radii are nought; only the circles (rounded-full) stay round. */
   --radius-xs: 0;
   --radius-sm: 0;
@@ -91,6 +115,44 @@
   body {
     -webkit-tap-highlight-color: transparent;
   }
+  /*
+   * Keyboard focus, the same on every control of the app (buttons and fields drawn by the TypeScript included): a ring
+   * in the accent, outside the control. Zero specificity, so a control that draws its own focus keeps it; the 3D view
+   * has its own cursor and no ring.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--color-sky-500);
+    outline-offset: 1px;
+  }
+  :where(canvas):focus-visible {
+    outline: none;
+  }
+  /* What can be clicked shows the hand (Tailwind 4 leaves buttons with the arrow). */
+  :where(button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, label:has(> input[type="checkbox"]), select:not(:disabled)) {
+    cursor: pointer;
+  }
+  /* Measures and prices in columns: figures of one width, so that the numbers do not jump as they change. */
+  .font-mono,
+  [data-price] {
+    font-variant-numeric: tabular-nums;
+  }
+  /* « Réduire les animations » of the system: no movement, no rise of the buttons, colours change at once. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .tool-btn-primary:hover,
+    .btn-accent:hover:not(:disabled),
+    .tool-btn-primary:active,
+    .btn-accent:active:not(:disabled) {
+      transform: none;
+    }
+  }
   /* Thin scrollbars in the accent's solid tone, as in gestion menuiserie. */
   .dark * {
     scrollbar-width: thin;
@@ -114,7 +176,7 @@
     @apply font-medium text-white dark:text-white;
     background-image: linear-gradient(to top, var(--bouton-1), var(--bouton-2), var(--bouton-3));
     box-shadow: 0 2px 10px rgb(0 0 0 / 0.2);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s var(--ease-out-soft), box-shadow 0.2s var(--ease-out-soft);
   }
   .tool-btn-primary:hover,
   .btn-accent:hover:not(:disabled) {
@@ -145,7 +207,7 @@
     @apply flex items-center gap-0.5;
   }
   .ribbon-caption {
-    @apply text-[10px] leading-3 font-semibold tracking-wider text-gray-500 uppercase select-none dark:text-gray-400;
+    @apply text-3xs leading-3 font-semibold tracking-wider text-gray-500 uppercase select-none dark:text-gray-400;
   }
   .ribbon-sep {
     @apply mx-0.5 w-px shrink-0 self-stretch bg-gray-200 dark:bg-gray-800;
@@ -253,7 +315,7 @@
   /* The name of an edge tab, written downwards (ui/edge-tabs.ts). */
   .edge-tab-vertical {
     writing-mode: vertical-rl;
-    @apply py-1 text-[10px] tracking-wider uppercase;
+    @apply py-1 text-3xs tracking-wider uppercase;
   }
   /* Where a dragged icon will land, in any bar (ui/tool-drag.ts): a line above, below or beside an icon, or the bar. */
   :is([data-tool-columns], [data-favorites], [data-side-tools], [data-ribbon]) [data-drop="before"],
@@ -341,10 +403,10 @@
     @apply mt-1 flex items-center justify-between gap-2 border-t border-gray-200 px-1.5 pt-1 dark:border-gray-700;
   }
   .ribbon-menu-hint {
-    @apply text-[10px] text-gray-500 dark:text-gray-400;
+    @apply text-3xs text-gray-500 dark:text-gray-400;
   }
   .ribbon-menu-reset {
- @apply h-7 shrink-0 px-2 text-[11px] font-medium text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950;
+ @apply h-7 shrink-0 px-2 text-2xs font-medium text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950;
   }
   .ribbon-menu-toggle {
  @apply size-8 shrink-0 text-sm opacity-30 grayscale hover:bg-gray-100 aria-pressed:opacity-100 aria-pressed:grayscale-0 disabled:cursor-default dark:hover:bg-gray-700;
@@ -365,7 +427,7 @@
  @apply absolute right-1 bottom-1 block size-2.5 rounded-full border border-white/40;
   }
   .palette-swatch-name {
-    @apply text-[11px] leading-tight text-gray-600 dark:text-gray-300;
+    @apply text-2xs leading-tight text-gray-600 dark:text-gray-300;
   }
   .palette-swatch[aria-pressed="true"] .palette-swatch-name {
     @apply font-semibold text-sky-700 dark:text-sky-300;
@@ -489,14 +551,14 @@
   /* Every dimension of the view, on a piece (app/piece-dims.ts) or around a Répartition (app/plan-dims-view.ts): a small white pill. */
   /* The name of a tool's icon, hovered: the same pastille as the dimensions of the pieces (ui/icon-titles.ts). */
   .cad-icon-tip {
-    @apply pointer-events-none fixed z-[70] inline-flex min-h-5 items-center justify-center rounded-full border border-[#f8500a] bg-white px-2 font-mono text-[11px] leading-none font-semibold whitespace-nowrap text-[#f8500a] shadow-sm;
+    @apply pointer-events-none fixed z-70 inline-flex min-h-5 items-center justify-center rounded-full border border-dimension bg-white px-2 font-mono text-2xs leading-none font-semibold whitespace-nowrap text-dimension shadow-sm;
   }
   .cad-icon-tip[hidden] {
     display: none;
   }
   .cad-piece-dim,
   .cad-plan-dim {
-    @apply pointer-events-none inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-[#f8500a] bg-white px-1 font-mono text-[10px] leading-none font-semibold whitespace-nowrap text-[#f8500a];
+    @apply pointer-events-none inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-dimension bg-white px-1 font-mono text-3xs leading-none font-semibold whitespace-nowrap text-dimension;
   }
   /* The dimensions of a Répartition: small, so that the drawing stays in sight. */
   .cad-shelf-handle {
@@ -517,7 +579,7 @@
     @apply bg-amber-500 px-2 text-sm font-semibold text-gray-950 hover:bg-amber-400 dark:bg-amber-400 dark:text-gray-950;
   }
   .cad-glyph {
- @apply cursor-pointer bg-gray-900/80 px-1 text-[10px] leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
+ @apply cursor-pointer bg-gray-900/80 px-1 text-3xs leading-4 font-semibold text-white select-none dark:bg-gray-100/80 dark:text-gray-900;
   }
   .cad-glyph.cad-selected {
     @apply bg-rose-600 text-white dark:bg-rose-500 dark:text-white;

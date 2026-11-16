@@ -72,7 +72,7 @@ export function openPicker(anchor: HTMLElement, options: PickerOptions): void {
     const groups = [...new Set(shown.map((t) => t.group))];
     list.replaceChildren(
       ...groups.flatMap((group) => [
-        el("p", { class: "px-1.5 pt-2 pb-0.5 text-[10px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400" }, group),
+        el("p", { class: "px-1.5 pt-2 pb-0.5 text-3xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400" }, group),
         ...shown
           .filter((t) => t.group === group)
           .map((tool) => {

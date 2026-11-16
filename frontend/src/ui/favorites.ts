@@ -76,13 +76,13 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
   bar.className = `absolute top-2 left-2 z-20 items-center gap-0.5 border border-gray-200 bg-white/95 p-1 shadow-lg backdrop-blur data-[moving=true]:opacity-80 data-[moving=true]:shadow-2xl dark:border-gray-700 dark:bg-gray-900/95 ${visibility}`;
   // The grip (drag to move the bar, double-click: back to its place) and the button that turns it.
   const grip = document.createElement("div");
-  grip.className = "flex shrink-0 cursor-move touch-none items-center justify-center text-[11px] leading-none text-gray-400 select-none hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
+  grip.className = "flex shrink-0 cursor-move touch-none items-center justify-center text-2xs leading-none text-gray-400 select-none hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
   grip.textContent = "⠿";
   grip.title = "Glisser pour déplacer ma barre ; double-clic : la remettre à sa place";
   grip.dataset.favoritesGrip = "";
   const turn = document.createElement("button");
   turn.type = "button";
-  turn.className = "flex shrink-0 items-center justify-center text-[11px] leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
+  turn.className = "flex shrink-0 items-center justify-center text-2xs leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
   const list = document.createElement("div");
   list.className = "flex items-center gap-0.5";
   // « – » hides the bar; only its star stays, at its place, to bring it back.

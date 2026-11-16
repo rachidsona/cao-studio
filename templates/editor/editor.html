@@ -41,7 +41,7 @@
 
     <button type="button" class="tool-btn" data-command-palette title="Palette de commandes : tapez le nom d&#x27;un outil (⌘K ou Ctrl+K)" aria-label="Palette de commandes"><span aria-hidden="true">⌕</span><span class="hidden lg:inline">Outils</span></button>
     <button type="button" class="tool-btn" data-workshop="drawing" title="Mise en plan (comme l'espace Dessin de Fusion) : feuilles A4 à A0 avec cartouche, vues du modèle, cotes, coupes, détails, nomenclature, dessin 2D ; PDF, DXF, SVG" aria-label="Mise en plan">
-      <span aria-hidden="true">📐</span><span class="hidden md:inline">Mise en plan</span>
+      <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4l16 16z"/><path d="M8 16v-4l4 4z"/><path d="M4 8h2M4 12h2M8 20v-2M12 20v-2"/></svg><span class="hidden md:inline">Mise en plan</span>
     </button>
     <button type="button" class="tool-btn" data-action="undo" data-ref="undo" title="Annuler (⌘Z)" aria-label="Annuler" disabled>↶</button>
     <button type="button" class="tool-btn" data-action="redo" data-ref="redo" title="Rétablir (⇧⌘Z)" aria-label="Rétablir" disabled>↷</button>
@@ -541,7 +541,7 @@
 
   {# ---- Status bar ---- #}
   {# The messages (saved, done, refused…): down at the right, small, the newest at the bottom — never over the view; clicks go through them. #}
-  <div data-ref="toasts" class="pointer-events-none fixed right-3 bottom-8 z-[60] flex w-[min(15rem,calc(100%-1.5rem))] flex-col items-end gap-1" aria-live="polite"></div>
+  <div data-ref="toasts" class="pointer-events-none fixed right-3 bottom-8 z-60 flex w-[min(15rem,calc(100%-1.5rem))] flex-col items-end gap-1" aria-live="polite"></div>
   <footer class="flex items-center gap-4 overflow-x-auto border-t border-gray-200 bg-white px-3 py-1 text-xs whitespace-nowrap text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
     <span data-ref="status-kernel" class="data-[state=error]:text-red-600 data-[state=ready]:text-emerald-700 dark:data-[state=ready]:text-emerald-400">Initialisation…</span>
     <span data-ref="status-recompute"></span>

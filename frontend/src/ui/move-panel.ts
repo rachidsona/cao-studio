@@ -123,7 +123,7 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
       row("Y", numberField("Y", base.pos[1] + delta[1], unit, actions.container, (v) => actions.setDelta([delta[0], v - base.pos[1]]))),
     );
   }
-  if (state.mode === "absolute" && base) rows.push(el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, `Position du ${base.label}.`));
+  if (state.mode === "absolute" && base) rows.push(el("p", { class: "text-2xs text-gray-500 dark:text-neutral-400" }, `Position du ${base.label}.`));
 
   if (!state.stretch) {
     // Copies instead of a move: « 5 » or « x5 » one after the other, « /5 » spread over the displacement.
@@ -166,9 +166,9 @@ export function renderMovePanel(panel: HTMLElement, state: MovePanelState, actio
     row("Éléments", count),
     state.stretch ? null : row("Contours", contour),
     ...rows,
-    el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, hint),
+    el("p", { class: "text-2xs text-gray-500 dark:text-neutral-400" }, hint),
     state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
-    !state.problem && dof && state.ready ? el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, dof) : null,
+    !state.problem && dof && state.ready ? el("p", { class: "text-2xs text-gray-500 dark:text-neutral-400" }, dof) : null,
     panelFooter(actions.cancel, actions.confirm, !state.ready),
   ];
   panel.replaceChildren(

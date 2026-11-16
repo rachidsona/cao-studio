@@ -48,7 +48,7 @@ export class DrawingNavigator {
       else this.open.add(key);
       this.draw();
     });
-    return el("div", { class: "flex min-h-7 items-center gap-1 text-xs font-semibold", style: `padding-left:${depth * 12}px` }, toggle, ...extra, el("span", { class: "min-w-0 flex-1 truncate" }, label), count === null ? "" : el("span", { class: "px-1 text-gray-400" }, String(count)));
+    return el("div", { class: "flex min-h-7 items-center gap-1 text-xs font-semibold", style: `padding-left:${depth * 12}px` }, toggle, ...extra, el("span", { class: "min-w-0 flex-1 truncate" }, label), count === null ? "" : el("span", { class: "px-1 text-gray-500" }, String(count)));
   }
 
   private row(id: string | null, label: string, depth: number, visible: boolean, toggle: () => void, selected = false): HTMLElement {
@@ -62,7 +62,7 @@ export class DrawingNavigator {
     const picked = new Set(this.host.selection());
     const bodies = this.host.bodies();
     const hideItem = (id: string, hide: boolean) => this.host.update((s) => ({ ...s, hiddenItems: toggled(s.hiddenItems, id, hide) }));
-    const out: HTMLElement[] = [el("h2", { class: "px-1 pb-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase" }, "Navigateur")];
+    const out: HTMLElement[] = [el("h2", { class: "px-1 pb-1 text-2xs font-semibold tracking-wide text-gray-500 uppercase" }, "Navigateur")];
     for (const s of this.host.sheets()) {
       const current = s.id === sheet.id;
       const name = el("button", { type: "button", class: `min-w-0 flex-1 truncate text-left text-xs ${current ? "font-bold text-sky-800 dark:text-sky-300" : ""}` }, `📄 ${s.name}`);

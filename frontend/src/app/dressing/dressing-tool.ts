@@ -238,7 +238,7 @@ export class DressingTool extends PanelTool {
         return el(
           "li",
           { class: "flex items-center gap-1 px-1 hover:bg-gray-100 dark:hover:bg-gray-700/60" },
-          el("span", { class: "w-7 shrink-0 text-center text-[11px] text-gray-500 dark:text-gray-400" }, `${wall}${i + 1}`),
+          el("span", { class: "w-7 shrink-0 text-center text-2xs text-gray-500 dark:text-gray-400" }, `${wall}${i + 1}`),
           toolIcon(MODULE_ICONS[kind], "size-5 shrink-0"),
           select,
           remove,

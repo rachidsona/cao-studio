@@ -15,7 +15,7 @@ import { applianceDrawing } from "./appliance-drawings";
 import { wholeOwner } from "../move-whole";
 import { PanelTool, type ToolContext } from "../panel-tool";
 
-const CHIP = "h-6 border px-1.5 text-[11px] font-medium";
+const CHIP = "h-6 border px-1.5 text-2xs font-medium";
 const on = "border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200";
 const off = "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 
@@ -71,8 +71,8 @@ export class ApplianceTool extends PanelTool {
       const price = appliancePrice(def, size);
       card.append(
         el("span", { class: "block font-medium" }, def.name),
-        el("span", { class: "block text-[10px] text-gray-500 dark:text-gray-400" }, `${size.map((v) => formatLength(v, unit).replace(/\s?(mm|cm|m)$/, "")).join(" × ")} · ${def.note}`),
-        ...(price ? [el("span", { class: "block text-[10px] text-gray-600 dark:text-gray-300", title: "Prix public indicatif TTC, non compté dans le devis", "data-appliance-price": String(price) }, `≈ ${priceText(price)}`)] : []),
+        el("span", { class: "block text-3xs text-gray-500 dark:text-gray-400" }, `${size.map((v) => formatLength(v, unit).replace(/\s?(mm|cm|m)$/, "")).join(" × ")} · ${def.note}`),
+        ...(price ? [el("span", { class: "block text-3xs text-gray-600 dark:text-gray-300", title: "Prix public indicatif TTC, non compté dans le devis", "data-appliance-price": String(price) }, `≈ ${priceText(price)}`)] : []),
       );
       card.addEventListener("click", () => ((this.model = lastModel = def.id), this.render()));
       const extra = chosen

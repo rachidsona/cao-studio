@@ -110,7 +110,7 @@ export function section(title: string, ...children: (Node | null)[]): HTMLElemen
     el(
       "summary",
       { class: "flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-2 select-none hover:bg-gray-50 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden" },
-      el("span", { class: "inline-block w-3 text-[10px] text-gray-400 transition-transform group-open/card:rotate-90", "aria-hidden": "true" }, "▶"),
+      el("span", { class: "inline-block w-3 text-3xs text-gray-400 transition-transform group-open/card:rotate-90", "aria-hidden": "true" }, "▶"),
       el("h3", { class: "panel-title" }, title),
     ),
     el("div", { class: "space-y-3 px-3 pt-1 pb-3" }, ...children),

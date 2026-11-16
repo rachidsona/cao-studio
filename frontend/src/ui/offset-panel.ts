@@ -71,7 +71,7 @@ const ONE_SIDE = "M4 6h16M4 12h16M4 18h16";
 const TWO_SIDES = "M4 5h16M4 12h16M4 19h16";
 
 export const BOX = " border border-gray-300 bg-gray-100 text-xs text-gray-900 shadow-xl dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100";
-export const TITLE = "flex h-7 items-center gap-1.5 bg-gray-200 px-2 text-[11px] font-semibold tracking-wide uppercase dark:bg-neutral-700";
+export const TITLE = "flex h-7 items-center gap-1.5 bg-gray-200 px-2 text-2xs font-semibold tracking-wide uppercase dark:bg-neutral-700";
 export const BODY = "space-y-2 px-3 py-3";
 export const ROW = "grid min-h-8 grid-cols-[6.5rem_1fr] items-center gap-2";
 export const FIELD =
@@ -196,7 +196,7 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
 
   const info = el(
     "button",
-    { type: "button", class: "flex size-6 items-center justify-center rounded-full border border-gray-400 text-[11px] font-bold hover:bg-gray-200 dark:border-neutral-400 dark:hover:bg-neutral-600", title: "Aide", "aria-label": "Aide", "aria-expanded": String(state.showHelp) },
+    { type: "button", class: "flex size-6 items-center justify-center rounded-full border border-gray-400 text-2xs font-bold hover:bg-gray-200 dark:border-neutral-400 dark:hover:bg-neutral-600", title: "Aide", "aria-label": "Aide", "aria-expanded": String(state.showHelp) },
     "i",
   );
   info.addEventListener("click", actions.toggleHelp);
@@ -213,11 +213,11 @@ export function renderOffsetPanel(panel: HTMLElement, state: OffsetPanelState, a
     row("Inverser", el("div", { class: "flex items-center gap-2" }, flip, caption ? el("span", { class: "text-gray-600 dark:text-neutral-300" }, caption) : null)),
     row("Distance", distanceControl(state, actions)),
     row("Coins", selectControl("Coins", state.join, [["round", "Arrondis"], ["sharp", "Vifs"]], (v) => actions.setJoin(v as OffsetJoin))),
-    el("p", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, status),
+    el("p", { class: "text-2xs text-gray-500 dark:text-neutral-400" }, status),
     state.problem ? el("p", { class: " border border-red-300 bg-red-50 px-2 py-1.5 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, state.problem) : null,
     ...state.warnings.map((w) => el("p", { class: " border border-amber-300 bg-amber-50 px-2 py-1.5 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" }, w)),
     state.showHelp ? el("p", { class: " bg-gray-200 px-2 py-1.5 text-gray-700 dark:bg-neutral-700 dark:text-neutral-200" }, HELP) : null,
   ];
-  const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, info, el("span", { class: "flex-1" }), el("span", { class: "text-[11px] text-gray-500 dark:text-neutral-400" }, "Enregistré dès qu'il est prêt"));
+  const footer = el("div", { class: "flex items-center gap-2 border-t border-gray-300 px-3 py-2 dark:border-neutral-600" }, info, el("span", { class: "flex-1" }), el("span", { class: "text-2xs text-gray-500 dark:text-neutral-400" }, "Enregistré dès qu'il est prêt"));
   panel.replaceChildren(el("div", { class: BOX, role: "group" }, title, el("div", { class: BODY }, ...body.filter((n): n is HTMLElement => n !== null)), footer));
 }

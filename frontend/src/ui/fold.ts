@@ -22,7 +22,7 @@ export class Folds {
     const head = el(
       "button",
       { type: "button", "aria-expanded": String(open), "data-fold": key, class: "flex min-h-8 w-full items-center gap-1.5 px-1.5 py-1 text-left font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800" },
-      el("span", { class: `inline-block w-3 shrink-0 text-[10px] transition-transform ${open ? "rotate-90" : ""}`, "aria-hidden": "true" }, "▶"),
+      el("span", { class: `inline-block w-3 shrink-0 text-3xs transition-transform ${open ? "rotate-90" : ""}`, "aria-hidden": "true" }, "▶"),
       el("span", { class: "min-w-0 flex-1" }, title),
       aside ?? null,
     );

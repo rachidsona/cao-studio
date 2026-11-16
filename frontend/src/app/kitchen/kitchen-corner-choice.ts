@@ -67,7 +67,7 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
         "div",
         { class: "space-y-1 border border-gray-200 p-1.5 dark:border-gray-700", "data-corner-choice": joint },
         el("p", { class: "font-medium" }, `${run.label} et ${lower(other)}`),
-        el("p", { class: "text-[11px] font-semibold text-gray-600 dark:text-gray-300" }, "En bas"),
+        el("p", { class: "text-2xs font-semibold text-gray-600 dark:text-gray-300" }, "En bas"),
         el(
           "div",
           { class: "grid gap-1", role: "radiogroup", "aria-label": `${info?.label ?? "Angle"} : que mettre en bas ?` },
@@ -75,30 +75,30 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
             const on = kind === chosen;
             const button = el("button", { type: "button", role: "radio", "aria-checked": String(on), "data-corner-kind": kind, title: CORNER_KINDS[kind].summary, class: `flex items-start gap-1.5 border p-1 text-left ${on ? "border-sky-500 bg-sky-50 dark:bg-sky-950" : "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"}` });
             button.innerHTML = cornerSketch(kind);
-            button.append(el("span", { class: "min-w-0" }, el("span", { class: "block text-[11px] font-medium leading-tight" }, CORNER_KINDS[kind].label), el("span", { class: "block text-[10px] leading-tight text-gray-500 dark:text-gray-400" }, CORNER_KINDS[kind].summary)));
+            button.append(el("span", { class: "min-w-0" }, el("span", { class: "block text-2xs font-medium leading-tight" }, CORNER_KINDS[kind].label), el("span", { class: "block text-3xs leading-tight text-gray-500 dark:text-gray-400" }, CORNER_KINDS[kind].summary)));
             button.addEventListener("click", () => set({ kind }));
             return button;
           }),
         ),
         lowSize,
-        where ? el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, where) : null,
+        where ? el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, where) : null,
         run.wall
           ? el(
               "div",
               { class: "space-y-1 pt-1" },
-              el("p", { class: "text-[11px] font-semibold text-gray-600 dark:text-gray-300" }, "En haut"),
+              el("p", { class: "text-2xs font-semibold text-gray-600 dark:text-gray-300" }, "En haut"),
               el(
                 "div",
                 { class: "grid grid-cols-3 gap-1", role: "radiogroup", "aria-label": `${info?.label ?? "Angle"} : que mettre en haut ?` },
                 ...(Object.keys(WALL_CORNER_KINDS) as WallCornerKind[]).map((kind) => {
                   const on = kind === high;
-                  const button = el("button", { type: "button", role: "radio", "aria-checked": String(on), "data-wall-corner-kind": kind, title: WALL_CORNER_KINDS[kind].summary, class: `border px-1 py-1 text-center text-[11px] leading-tight ${on ? "border-sky-500 bg-sky-50 font-medium dark:bg-sky-950" : "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"}` }, WALL_CORNER_KINDS[kind].label);
+                  const button = el("button", { type: "button", role: "radio", "aria-checked": String(on), "data-wall-corner-kind": kind, title: WALL_CORNER_KINDS[kind].summary, class: `border px-1 py-1 text-center text-2xs leading-tight ${on ? "border-sky-500 bg-sky-50 font-medium dark:bg-sky-950" : "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"}` }, WALL_CORNER_KINDS[kind].label);
                   button.addEventListener("click", () => set({ wall: kind }));
                   return button;
                 }),
               ),
               highSize,
-              high !== "none" ? el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, WALL_CORNER_KINDS[high].summary) : null,
+              high !== "none" ? el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, WALL_CORNER_KINDS[high].summary) : null,
             )
           : null,
       );

@@ -12,7 +12,7 @@ import { formatLength, fromDisplay, parseNumber, UNIT_LABELS } from "../../measu
 import { el } from "../../ui/dom";
 import { elevation, unitSummary } from "./unit-elevation";
 
-const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-[11px] text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
+const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
 /** The models of a family, each with its entries at their widths: the catalogue's (one per name) or the appliances. */
 export function familyModels(family: UnitKind | "appliance", wall = true): CatalogEntry[][] {
@@ -70,7 +70,7 @@ function freeWidthButtons(usual: CatalogEntry, unit: DisplayUnit, add: (e: Catal
   }
   const other = el("button", { type: "button", class: WIDTH, "data-width-other": usual.id, title: `Ajouter « ${usual.name} » à une autre largeur` }, "Autre…");
   other.addEventListener("click", () => {
-    const input = el("input", { type: "text", inputmode: "decimal", class: "h-6 w-16 border border-[var(--brass)] bg-transparent px-1 font-mono text-[11px] focus:outline-none", "aria-label": `Largeur de « ${usual.name} » (${UNIT_LABELS[unit]})`, placeholder: UNIT_LABELS[unit], "data-width-input": usual.id });
+    const input = el("input", { type: "text", inputmode: "decimal", class: "h-6 w-16 border border-[var(--brass)] bg-transparent px-1 font-mono text-2xs focus:outline-none", "aria-label": `Largeur de « ${usual.name} » (${UNIT_LABELS[unit]})`, placeholder: UNIT_LABELS[unit], "data-width-input": usual.id });
     const ok = el("button", { type: "button", class: WIDTH, "data-width-ok": usual.id }, "OK");
     const box = el("span", { class: "flex items-center gap-1" }, input, ok);
     const take = () => {
@@ -110,8 +110,8 @@ function freeWidthButtons(usual: CatalogEntry, unit: DisplayUnit, add: (e: Catal
 export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit", free?: FreeWidths): HTMLElement {
   const usual = entries.find((e) => e.width === 600) ?? entries[Math.floor(entries.length / 2)]!;
   const art = el("div", { class: "flex h-[92px] items-end justify-center border-b border-gray-300 dark:border-gray-600" });
-  const summary = el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" });
-  const size = el("p", { class: "font-mono text-[10px] text-gray-500 dark:text-gray-400", "data-unit-size": "" });
+  const summary = el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" });
+  const size = el("p", { class: "font-mono text-3xs text-gray-500 dark:text-gray-400", "data-unit-size": "" });
   const show = (e: CatalogEntry) => {
     art.innerHTML = elevation(e);
     summary.textContent = unitSummary(e);

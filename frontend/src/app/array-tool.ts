@@ -270,7 +270,7 @@ export class ArrayTool extends PanelTool {
 /** A small heading inside the panel. */
 function el0(text: string): HTMLElement {
   const h = document.createElement("h3");
-  h.className = "pt-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400";
+  h.className = "pt-1 text-2xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400";
   h.textContent = text;
   return h;
 }

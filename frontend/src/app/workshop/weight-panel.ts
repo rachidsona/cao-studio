@@ -87,7 +87,7 @@ export function bindWeight(root: HTMLElement, viewport: Viewport, editor: Editor
       el("label", { class: "block space-y-1" }, el("span", {}, "Face avant"), frontSelect),
       el("p", { class: report.tips ? "font-medium text-red-700 dark:text-red-400" : "font-medium text-emerald-700 dark:text-emerald-400" }, verdict),
       ...(report.fixToWall ? [el("p", { class: "bg-amber-50 px-2 py-1 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, "Haut et peu profond : à fixer au mur (équerre ou sangle anti-basculement), comme le demande la norme des meubles de rangement.")] : []),
-      el("p", { class: "text-[11px] text-gray-500" }, "Masses volumiques courantes : aggloméré mélaminé 650 kg/m³, MDF 750, contreplaqué 680, chêne 700, HDF 900 (une pièce sans matière est comptée en aggloméré). La quincaillerie n'est pas pesée."),
+      el("p", { class: "text-2xs text-gray-500" }, "Masses volumiques courantes : aggloméré mélaminé 650 kg/m³, MDF 750, contreplaqué 680, chêne 700, HDF 900 (une pièce sans matière est comptée en aggloméré). La quincaillerie n'est pas pesée."),
     );
   };
 

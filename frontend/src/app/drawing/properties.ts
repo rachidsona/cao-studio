@@ -32,7 +32,7 @@ function dimStyleRows(style: DimStyle | undefined, change: (s: DimStyle | undefi
   return [
     row("Trait", select(style?.weight ?? "", [...inherit, ["thin", "Fin"], ["thick", "Épais"]], (v) => change(clean({ ...style, weight: (v || undefined) as DimStyle["weight"] })), "Épaisseur du trait des cotes")),
     row("Lignes d'attache", select(style?.dashed === undefined ? "" : style.dashed ? "dashed" : "solid", [...inherit, ["solid", "Continues"], ["dashed", "En petits traits"]], (v) => change(clean({ ...style, dashed: v ? v === "dashed" : undefined })), "Type du trait des cotes")),
-    el("p", { class: "text-[11px] text-gray-500" }, "La ligne de cote, avec ses flèches et ses chiffres, reste toujours continue."),
+    el("p", { class: "text-2xs text-gray-500" }, "La ligne de cote, avec ses flèches et ses chiffres, reste toujours continue."),
   ];
 }
 
@@ -116,7 +116,7 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
       parts.push(row("Côté", select(side, sides, (v) => host.setDimensionSide(v as "top" | "bottom" | "left" | "right"), "Côté de la cote")));
     }
     if (DIMENSION_KINDS.has(note.kind)) parts.push(...dimStyleRows("style" in note ? note.style : undefined, (style) => set({ style }), false));
-    if (note.kind === "dimension" || note.kind === "diameter" || note.kind === "radius" || note.kind === "angle") parts.push(row("Texte imposé", input(note.text ?? "", (v) => set({ text: v || undefined }), "Texte imposé")), el("p", { class: "text-[11px] text-gray-500" }, "Vide : la valeur mesurée, qui suit le modèle."));
+    if (note.kind === "dimension" || note.kind === "diameter" || note.kind === "radius" || note.kind === "angle") parts.push(row("Texte imposé", input(note.text ?? "", (v) => set({ text: v || undefined }), "Texte imposé")), el("p", { class: "text-2xs text-gray-500" }, "Vide : la valeur mesurée, qui suit le modèle."));
     if (note.kind === "text" || note.kind === "note") parts.push(row("Texte", input(note.text, (v) => set({ text: v }), "Texte")));
     if (note.kind === "text") parts.push(row("Taille (mm)", select(String(note.size), ["2.5", "3.5", "5", "7", "10"].map((v): [string, string] => [v, v]), (v) => set({ size: Number(v) }), "Taille du texte")));
   } else if (item) {
@@ -149,7 +149,7 @@ export function drawProperties(panel: HTMLElement, host: PanelHost): void {
       ...dimStyleRows(sheet.dimStyle ?? { weight: "thin", dashed: false }, (dimStyle) => set({ dimStyle }), true),
       heading("Dessin 2D libre"),
       row("Échelle", select(String(sheet.sketch.scale), scaleOptions(), (v) => set({ sketch: { ...sheet.sketch, scale: Number(v) } }), "Échelle du dessin 2D")),
-      el("p", { class: "text-[11px] text-gray-500" }, "Les lignes, rectangles et cercles se dessinent en millimètres réels à cette échelle, depuis le coin bas gauche de la feuille."),
+      el("p", { class: "text-2xs text-gray-500" }, "Les lignes, rectangles et cercles se dessinent en millimètres réels à cette échelle, depuis le coin bas gauche de la feuille."),
       standard, removeSheet);
   }
   if (!parts.length) parts.push(el("p", { class: "text-gray-500" }, "Sélectionnez une vue, une cote ou un trait pour le régler."));

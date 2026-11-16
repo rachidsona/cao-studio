@@ -109,7 +109,7 @@ export class FeatureDialog {
     const root = this.root;
     if (!root) return;
     const badge = STATE_BADGES[item.state];
-    const close = el("button", { type: "button", class: "ml-auto size-5 text-[11px] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
+    const close = el("button", { type: "button", class: "ml-auto size-5 text-2xs text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700", "aria-label": "Fermer" }, "✕");
     close.addEventListener("click", () => this.close());
 
     const name = el("input", {
@@ -155,7 +155,7 @@ export class FeatureDialog {
         "div",
         { class: "flex items-center gap-1.5 border-b border-gray-200 px-2 py-1 dark:border-gray-700" },
         item.body ? el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, "◼") : toolIcon(TYPE_SPRITES[item.type], "size-5 shrink-0"),
-        el("h2", { class: "text-[10px] font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
+        el("h2", { class: "text-3xs font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
         el("span", { class: `size-2 rounded-full ${badge.dot}`, title: badge.label, "aria-label": badge.label }),
         close,
       ),

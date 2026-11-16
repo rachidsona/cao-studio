@@ -152,7 +152,7 @@ export function bindMotion(root: HTMLElement, viewport: Viewport, editor: Editor
       slider,
       el("div", { class: "flex gap-1" }, play, reset),
       result,
-      el("p", { class: "text-[11px] text-gray-500" }, "Contrôle sur les boîtes englobantes (exact pour des planches). La vue seulement : le modèle ne change pas."),
+      el("p", { class: "text-2xs text-gray-500" }, "Contrôle sur les boîtes englobantes (exact pour des planches). La vue seulement : le modèle ne change pas."),
     ];
     panel.body.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   };

@@ -227,10 +227,10 @@ export function bindSharing(root: HTMLElement, viewport: Viewport, editor: Edito
       done.addEventListener("change", () => void call(`${commentsUrl}${c.id}/`, { method: "PATCH", body: JSON.stringify({ resolved: done.checked }) }).then(render, (e: Error) => editor.notify(e.message, "error")));
       const see = c.position ? el("button", { type: "button", class: BUTTON }, "Voir") : null;
       see?.addEventListener("click", () => show(c.position!));
-      const head = el("p", { class: "text-[11px] text-gray-500" }, el("b", {}, c.author), `${c.from_owner ? " (vous)" : ""} · ${when(c.created_at)}${c.link ? ` · ${c.link}` : ""}`);
+      const head = el("p", { class: "text-2xs text-gray-500" }, el("b", {}, c.author), `${c.from_owner ? " (vous)" : ""} · ${when(c.created_at)}${c.link ? ` · ${c.link}` : ""}`);
       const body = el("p", { class: "whitespace-pre-wrap" });
       body.innerHTML = escapeHtml(c.body);
-      return el("div", { class: `space-y-1 border p-2 ${c.resolved ? "border-gray-200 opacity-60 dark:border-gray-700" : c.from_owner ? "border-sky-200 dark:border-sky-900" : "border-orange-300 dark:border-orange-800"}` }, head, body, el("div", { class: "flex items-center gap-2" }, c.from_owner ? null : el("label", { class: "flex items-center gap-1 text-[11px]" }, done, "Traité"), see));
+      return el("div", { class: `space-y-1 border p-2 ${c.resolved ? "border-gray-200 opacity-60 dark:border-gray-700" : c.from_owner ? "border-sky-200 dark:border-sky-900" : "border-orange-300 dark:border-orange-800"}` }, head, body, el("div", { class: "flex items-center gap-2" }, c.from_owner ? null : el("label", { class: "flex items-center gap-1 text-2xs" }, done, "Traité"), see));
     });
     const last = [...comments].reverse().find((c) => c.token);
     const reply = el("textarea", { class: "w-full border border-gray-300 bg-white p-2 text-xs dark:border-gray-600 dark:bg-gray-900", rows: "2", placeholder: last ? `Répondre (sur le lien « ${last.link} »)` : "Écrire une note", "aria-label": "Réponse" });

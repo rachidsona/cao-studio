@@ -181,7 +181,7 @@ function historyRow(item: NavItem, selected: boolean): HTMLElement {
     "li",
     {
       ...(selected ? { "data-selected": "" } : {}),
-      class: `flex items-center gap-1 px-1 text-[11px] ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
+      class: `flex items-center gap-1 px-1 text-2xs ${flat(selected, "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/60")}`,
     },
     el(
       "button",
@@ -245,7 +245,7 @@ function groupNode(group: BodyFolder, s: Selection): HTMLElement {
     eye,
     mark,
     el("span", { class: `flex-1 truncate ${hidden ? "opacity-60" : ""}`, ...(group.folder ? { "data-folder-name": group.folder, title: "Double-cliquez pour renommer" } : {}) }, group.name),
-    el("span", { class: "px-1.5 text-[10px] text-gray-500 dark:text-gray-400" }, String(bodies.length)),
+    el("span", { class: "px-1.5 text-3xs text-gray-500 dark:text-gray-400" }, String(bodies.length)),
   );
   return el("li", { "data-group": group.id }, head, children(key, group.entries.map((e) => entryNode(e, s))));
 }

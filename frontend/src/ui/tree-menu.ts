@@ -25,7 +25,7 @@ export function openTreeMenu(x: number, y: number, items: TreeMenuItem[]): void 
   const menu = el("div", { class: "ribbon-menu tree-menu min-w-52 py-1", role: "menu", "data-tree-menu": "" });
   for (const item of items) {
     if (item === "separator") menu.append(el("div", { class: "my-1 border-t border-gray-200 dark:border-gray-700", role: "separator" }));
-    else if ("heading" in item) menu.append(el("p", { class: "truncate px-2 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400" }, item.heading));
+    else if ("heading" in item) menu.append(el("p", { class: "truncate px-2 pt-1 pb-0.5 text-3xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400" }, item.heading));
     else {
       const button = el(
         "button",

@@ -40,7 +40,7 @@ const WIDE = "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 da
 const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const SELECT = "h-7 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
-const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-[11px] text-gray-600 hover:border-sky-500 hover:text-gray-900 dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
+const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 hover:border-sky-500 hover:text-gray-900 dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
 type Family = "base" | "wall" | "tall" | "appliance" | "mine";
 const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
@@ -305,7 +305,7 @@ export class RunEditor {
         { class: `grid ${options.length > 3 ? "grid-cols-2" : "grid-cols-3"} gap-1`, role: "group", "aria-label": "Le reste va" },
         ...options.map(([side, label]) => {
           const on = side === this.rest;
-          const b = el("button", { type: "button", "aria-pressed": String(on), "data-rest": side, class: `border px-1 py-1 text-center ${on ? "border-sky-500 bg-sky-50 dark:bg-sky-950" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "block font-medium" }, label), el("span", { class: "block text-[10px] leading-tight text-gray-500 dark:text-gray-400" }, what(side)));
+          const b = el("button", { type: "button", "aria-pressed": String(on), "data-rest": side, class: `border px-1 py-1 text-center ${on ? "border-sky-500 bg-sky-50 dark:bg-sky-950" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "block font-medium" }, label), el("span", { class: "block text-3xs leading-tight text-gray-500 dark:text-gray-400" }, what(side)));
           b.addEventListener("click", () => {
             this.rest = side;
             this.touched();
@@ -348,7 +348,7 @@ export class RunEditor {
       out.addEventListener("click", () => this.change(this.items.filter((i) => i.id !== item.id)));
       return el("div", { class: "flex items-center gap-1" }, el("span", { class: "flex-1" }, `${row === "wall" ? "Haut" : "Bas"} · place ${same.indexOf(item) + 1}/${same.length}`), input, out);
     });
-    return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-spaces": String(spaces.length) }, el("p", { class: "font-medium" }, "Espaces gardés"), el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Laissés là où des meubles ont été poussés dans la 3D."), ...rows);
+    return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-spaces": String(spaces.length) }, el("p", { class: "font-medium" }, "Espaces gardés"), el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Laissés là où des meubles ont été poussés dans la 3D."), ...rows);
   }
 
   /** The changes not yet applied: the units, where the rest goes, the corners. */
@@ -466,7 +466,7 @@ export class RunEditor {
     return [
       field("Largeur", "width", item.width, limits.width),
       usual,
-      limits.height ? field("Hauteur", "height", size.height, limits.height) : el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, `Hauteur ${formatLength(size.height, unit)} : celle du plan de travail.`),
+      limits.height ? field("Hauteur", "height", size.height, limits.height) : el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, `Hauteur ${formatLength(size.height, unit)} : celle du plan de travail.`),
       field("Profondeur", "depth", size.depth, limits.depth),
       el("div", { class: "flex justify-end" }, reset),
     ];

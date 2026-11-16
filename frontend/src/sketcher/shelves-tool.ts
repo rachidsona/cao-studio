@@ -326,7 +326,7 @@ export class ShelvesTool {
       extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw())) : null,
       result ? el("p", { class: " bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, this.niches.length > 1 ? `Une niche choisie ne peut pas être divisée : ${problem}` : problem) : null,
-      el("p", { class: "text-[11px] text-gray-500" }, this.words.between),
+      el("p", { class: "text-2xs text-gray-500" }, this.words.between),
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));

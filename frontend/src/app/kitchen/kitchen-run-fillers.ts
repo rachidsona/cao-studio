@@ -44,7 +44,7 @@ export function fillerRows(host: FillerHost): HTMLElement[] {
   const rows: ["base" | "wall", string][] = [["base", "En bas"], ...(host.wall ? ([["wall", "En haut"]] as ["wall", string][]) : [])];
   return [
     el("label", { class: ROW }, `Largeur (${UNIT_LABELS[unit]})`, input),
-    el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "De 1 à 30 cm. Un fileur posé se règle en le cliquant sur la bande, et se supprime dans la liste ci-dessous."),
+    el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "De 1 à 30 cm. Un fileur posé se règle en le cliquant sur la bande, et se supprime dans la liste ci-dessous."),
     ...rows.map(([row, label]) => {
       const model = row === "wall" ? FILLER_WALL : FILLER;
       const put = (where: "start" | "after" | "end") => {
@@ -72,7 +72,7 @@ function placedFillers(host: FillerHost): HTMLElement {
   // Low ones first, then up, each in its order along the run.
   const hand = (i: KitchenRunItem) => isFiller(i) && !isSpace(i);
   const placed = [...items.filter((i) => hand(i) && rowOf(itemEntry(i)) !== "wall"), ...items.filter((i) => hand(i) && rowOf(itemEntry(i)) === "wall")];
-  if (!placed.length) return el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400", "data-fillers-placed": "0" }, "Aucun fileur posé sur ce linéaire.");
+  if (!placed.length) return el("p", { class: "text-2xs text-gray-500 dark:text-gray-400", "data-fillers-placed": "0" }, "Aucun fileur posé sur ce linéaire.");
   const remove = (ids: string[]) => host.change(items.filter((i) => !ids.includes(i.id)), ids.includes(host.chosen ?? "") ? null : host.chosen);
   const rows = placed.map((item) => {
     const row = rowOf(itemEntry(item));

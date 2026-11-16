@@ -9,7 +9,7 @@ import {
   type DrawingTool, type ToolHost,
 } from "./tools";
 
-const BTN = "flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] leading-tight hover:bg-gray-100 aria-pressed:bg-sky-100 aria-pressed:text-sky-800 dark:hover:bg-gray-800 dark:aria-pressed:bg-sky-950";
+const BTN = "flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 px-1.5 text-2xs leading-tight hover:bg-gray-100 aria-pressed:bg-sky-100 aria-pressed:text-sky-800 dark:hover:bg-gray-800 dark:aria-pressed:bg-sky-950";
 
 export interface RibbonActions {
   use(make: (host: ToolHost) => DrawingTool): void;
@@ -36,7 +36,7 @@ export function drawingRibbon(api: RibbonActions): HTMLElement {
     return b;
   };
   const group = (caption: string, ...buttons: HTMLElement[]) =>
-    el("div", { class: "flex flex-col border-r border-gray-200 px-1 dark:border-gray-700", role: "group", "aria-label": caption }, el("div", { class: "flex" }, ...buttons), el("span", { class: "text-center text-[10px] font-semibold tracking-wide text-gray-500 uppercase" }, caption));
+    el("div", { class: "flex flex-col border-r border-gray-200 px-1 dark:border-gray-700", role: "group", "aria-label": caption }, el("div", { class: "flex" }, ...buttons), el("span", { class: "text-center text-3xs font-semibold tracking-wide text-gray-500 uppercase" }, caption));
   const use = (make: (host: ToolHost) => DrawingTool) => () => api.use(make);
   return el("div", { class: "flex shrink-0 items-stretch overflow-x-auto border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900" },
     el("div", { class: "flex items-center px-3 text-sm font-bold tracking-wide text-sky-800 uppercase dark:text-sky-300" }, "Mise en plan"),

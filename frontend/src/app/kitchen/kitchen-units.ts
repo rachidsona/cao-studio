@@ -107,7 +107,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     const runs = planSpace(editor.doc, plan.id);
     return el(
       "div",
-      { class: "space-y-0.5 border border-sky-200 bg-sky-50/60 px-2 py-1.5 text-[11px] text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100", "data-units-space": "" },
+      { class: "space-y-0.5 border border-sky-200 bg-sky-50/60 px-2 py-1.5 text-2xs text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100", "data-units-space": "" },
       el("p", { class: "font-medium" }, "Place libre"),
       ...runs.map(({ run, fill }) => el("p", {}, `${run.label} : ${spaceLeft(fill, length, run.wall)}`)),
     );
@@ -167,10 +167,10 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
     panel.body.style.setProperty("--brass", BRASS);
     panel.body.replaceChildren(
       tabs,
-      el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400", "data-units-where": "" }, where(anchor?.name)),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400", "data-units-where": "" }, where(anchor?.name)),
       spaceList() ?? "",
       el("div", {}, ...content),
-      el("p", { class: "border-t border-gray-200 pt-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400" }, "Poignée ✥ : déplacer. Maj : librement. ↻ : tourner."),
+      el("p", { class: "border-t border-gray-200 pt-2 text-2xs text-gray-500 dark:border-gray-700 dark:text-gray-400" }, "Poignée ✥ : déplacer. Maj : librement. ↻ : tourner."),
     );
   };
 

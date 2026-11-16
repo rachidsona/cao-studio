@@ -172,7 +172,7 @@ export function openConstructionPlane(container: HTMLElement, viewport: Viewport
             select("Autour de", around, [["u", "son axe x (rouge)"], ["v", "son axe y (vert)"]], (v) => (around = v)),
           ]
         : [el("p", { class: "text-gray-600 dark:text-gray-300" }, picked.length < 3 ? `Cliquez trois coins de corps (${picked.length} sur 3).` : "Plan défini. Un nouveau clic recommence.")];
-    panel.body.replaceChildren(el("div", { class: "flex gap-1" }, ...tabs), ...body, create, el("p", { class: "text-[11px] text-gray-500" }, "Le carré orange montre le plan ; l'axe rouge sera l'axe x de l'esquisse."));
+    panel.body.replaceChildren(el("div", { class: "flex gap-1" }, ...tabs), ...body, create, el("p", { class: "text-2xs text-gray-500" }, "Le carré orange montre le plan ; l'axe rouge sera l'axe x de l'esquisse."));
   };
   draw();
   render();

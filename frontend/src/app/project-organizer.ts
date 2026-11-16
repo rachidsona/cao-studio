@@ -289,7 +289,7 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
         "data-organizer-open": project.id,
       },
       el("span", { class: "truncate" }, project.name),
-      opened ? el("span", { class: "ml-auto shrink-0 text-[9px] text-sky-500", title: "Ouvert dans un onglet", "aria-label": "ouvert" }, "●") : null,
+      opened ? el("span", { class: "ml-auto shrink-0 text-3xs text-sky-500", title: "Ouvert dans un onglet", "aria-label": "ouvert" }, "●") : null,
     );
     open.addEventListener("click", () => {
       const pages = pageTabs();
@@ -320,9 +320,9 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
       "button",
       { type: "button", class: "flex min-h-8 min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold text-gray-800 dark:text-gray-200", "aria-expanded": String(open), title: open ? `Plier « ${g.name} »` : `Déplier « ${g.name} »`, "data-folder-toggle": "" },
       el("span", { class: "w-3 shrink-0 text-gray-400", "aria-hidden": "true" }, open ? "▾" : "▸"),
-      el("span", { class: `shrink-0 text-[#f8500a] ${g.id === null ? "opacity-60" : ""}`, "aria-hidden": "true", "data-folder-icon": "" }, filledFolder()),
+      el("span", { class: `shrink-0 text-dimension ${g.id === null ? "opacity-60" : ""}`, "aria-hidden": "true", "data-folder-icon": "" }, filledFolder()),
       el("span", { class: "truncate" }, g.name),
-      el("span", { class: "ml-auto shrink-0 font-normal text-gray-400" }, String(g.projects.length)),
+      el("span", { class: "ml-auto shrink-0 font-normal text-gray-500" }, String(g.projects.length)),
     );
     toggle.addEventListener("click", () => {
       if (shut.has(key)) shut.delete(key);
@@ -345,7 +345,7 @@ export function bindProjectOrganizer(root: HTMLElement, config: EditorConfig, no
     dropOn(head, g.id);
     const section = el("section", { class: "mb-1", "aria-label": g.name, "data-folder-group": key }, head);
     if (open) {
-      const rows = g.projects.length ? g.projects.map((p) => row(p, tabs)) : [el("li", { class: "px-2 py-1 text-xs text-gray-400" }, g.id === null ? "Aucun" : "Vide : glissez-y un projet")];
+      const rows = g.projects.length ? g.projects.map((p) => row(p, tabs)) : [el("li", { class: "px-2 py-1 text-xs text-gray-500" }, g.id === null ? "Aucun" : "Vide : glissez-y un projet")];
       section.append(el("ul", { class: "ml-2.5 border-l border-gray-200 pl-1 dark:border-gray-700" }, ...rows));
     }
     return section;

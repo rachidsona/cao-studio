@@ -333,7 +333,7 @@ export class SketchArrayTool {
       el("label", { class: "grid grid-cols-[6rem_1fr] items-center gap-1.5" }, "Égaliser", equal),
       ...boards,
       el("label", { class: "flex min-h-8 items-center gap-2" }, attach, "D'un côté à l'autre, liées aux côtés"),
-      el("p", { class: "text-[11px] text-gray-500" }, this.equalize === "openings" ? "n lignes font n + 1 ouvertures égales entre les panneaux (ceux de l'outil Panneaux : même épaisseur et même côté)." : "n lignes font n + 1 espaces égaux entre les axes."),
+      el("p", { class: "text-2xs text-gray-500" }, this.equalize === "openings" ? "n lignes font n + 1 ouvertures égales entre les panneaux (ceux de l'outil Panneaux : même épaisseur et même côté)." : "n lignes font n + 1 espaces égaux entre les axes."),
     ];
   }
 

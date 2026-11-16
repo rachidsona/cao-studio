@@ -97,7 +97,7 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
     input.addEventListener("change", () => setParameter(name, readParameter(input.value, p)));
     const remove = el("button", { type: "button", class: `${BUTTON} w-8`, "aria-label": `Supprimer ${name}` }, "✕");
     remove.addEventListener("click", () => void removeParameter(name));
-    const shown = p.expression ? el("span", { class: "text-[11px] text-gray-500" }, `= ${Number(p.value.toFixed(4))} ${p.unit}`) : null;
+    const shown = p.expression ? el("span", { class: "text-2xs text-gray-500" }, `= ${Number(p.value.toFixed(4))} ${p.unit}`) : null;
     return el("div", { class: "space-y-0.5" }, el("div", { class: "grid grid-cols-[5rem_1fr_auto] items-center gap-1.5" }, el("span", { class: "truncate font-mono font-semibold", title: p.comment ?? name }, name), input, remove), shown, error ? el("p", { class: "text-red-600", role: "alert" }, error) : null);
   };
 
@@ -198,7 +198,7 @@ export function bindParameters(root: HTMLElement, viewport: Viewport, editor: Ed
       ...configurationSection(),
       el("h3", { class: "panel-title pt-1" }, "Liens avec les cotes"),
       ...linkSection(values),
-      el("p", { class: "text-[11px] text-gray-500" }, "Formules : + − * / ^ ( ), pi, min(a; b), max, round, floor, ceil, sqrt. Les paramètres et formules sont en millimètres (1 cm = 10). Modifier un paramètre met à jour toutes les cotes liées."),
+      el("p", { class: "text-2xs text-gray-500" }, "Formules : + − * / ^ ( ), pi, min(a; b), max, round, floor, ceil, sqrt. Les paramètres et formules sont en millimètres (1 cm = 10). Modifier un paramètre met à jour toutes les cotes liées."),
     );
   };
 

@@ -221,7 +221,7 @@ export class NicheHeightTool {
       niche && this.height !== null && heldHeights(niche.input)[niche.index] !== null ? release : null,
       heights && !problem ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, `${heights} (du bas vers le haut).`) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
-      niche ? el("p", { class: "text-[11px] text-gray-500" }, held.some((h, i) => h !== null && i !== niche.index) ? "Les niches déjà réglées gardent leur hauteur ; les autres se partagent le reste." : "Les autres niches se partagent le reste à parts égales.") : null,
+      niche ? el("p", { class: "text-2xs text-gray-500" }, held.some((h, i) => h !== null && i !== niche.index) ? "Les niches déjà réglées gardent leur hauteur ; les autres se partagent le reste." : "Les autres niches se partagent le reste à parts égales.") : null,
       panelFooter(() => this.cancel(), () => this.confirm(), !niche || !!problem),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));

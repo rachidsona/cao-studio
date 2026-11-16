@@ -162,7 +162,7 @@ async function showGcode(viewport: Viewport, editor: Editor, geometry: GeometryC
       field("Écart entre pièces", "spacing", "mm"), field("Marge du panneau", "margin", "mm"),
     ),
     summary,
-    el("p", { class: "text-[11px] text-gray-500" }, "Z0 sur le dessus du panneau, origine au coin du panneau. Perçages au foret de leur diamètre (T2, T3…), grands trous vidés et contours détourés à la fraise (T1), compensée dans le calcul. Vérifiez le programme dans un simulateur avant de lancer la machine."),
+    el("p", { class: "text-2xs text-gray-500" }, "Z0 sur le dessus du panneau, origine au coin du panneau. Perçages au foret de leur diamètre (T2, T3…), grands trous vidés et contours détourés à la fraise (T1), compensée dans le calcul. Vérifiez le programme dans un simulateur avant de lancer la machine."),
   );
   const close = openModal("G-code pour la commande numérique", content, [
     {

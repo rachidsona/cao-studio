@@ -38,12 +38,12 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
       el("h3", { class: "panel-title pt-1" }, `Règles des fabricants${problems.length ? ` (${problems.length})` : ""}`),
       ...(problems.length
         ? problems.map((p) => {
-            const button = el("button", { type: "button", class: "tool-btn shrink-0 border border-gray-300 px-1.5 text-[11px] dark:border-gray-600" }, "Voir");
+            const button = el("button", { type: "button", class: "tool-btn shrink-0 border border-gray-300 px-1.5 text-2xs dark:border-gray-600" }, "Voir");
             button.addEventListener("click", () => see(p.bodies));
             return el("div", { class: `flex items-start gap-2 ${p.severity === "error" ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`, "data-maker-problem": p.severity }, el("p", { class: "min-w-0 flex-1" }, p.message), button);
           })
         : [el("p", { class: "text-emerald-700 dark:text-emerald-400" }, "Tout va avec ce choix : portes assez épaisses pour la cuvette, poignées qui tiennent sur leurs façades, coulisses assez fortes pour les tiroirs pleins.")]),
-      el("p", { class: "text-[11px] text-gray-500" }, `Repères courants : ${CONTENT_LOAD} kg de contenu par m² de fond de tiroir, 3 mm de porte sous la cuvette, 600 mm au plus pour une porte battante. La fiche du fabricant fait foi.`));
+      el("p", { class: "text-2xs text-gray-500" }, `Repères courants : ${CONTENT_LOAD} kg de contenu par m² de fond de tiroir, 3 mm de porte sous la cuvette, 600 mm au plus pour une porte battante. La fiche du fabricant fait foi.`));
   };
   /** Only the rules again (the lists keep their focus while one is being chosen). */
   const refreshRules = () => panel?.body.querySelector("[data-maker-rules]")?.replaceWith(makerRules());
@@ -64,7 +64,7 @@ export function bindHardwarePanel(root: HTMLElement, viewport: Viewport, editor:
       section("Charnières", "hinge", HINGE_MODELS, choice.hinge, (m) => `Cuvette Ø${m.cup.diameter} × ${m.cup.depth}, à ${m.cup.edge} mm du bord · ${m.opening}°${m.softClose ? " · amortie" : ""}`),
       section("Coulisses", "slide", SLIDE_MODELS, choice.slide, (m) => `${m.load} kg · ${m.full ? "sortie totale" : "sortie partielle"}${m.softClose ? " · amortie" : ""}`),
       section("Poignées", "handle", HANDLE_MODELS, choice.handle, (m) => (m.spacing ? `Entraxe ${m.spacing} mm, trous Ø${m.hole}` : `Un trou Ø${m.hole}`)),
-      el("p", { class: "text-[11px] text-gray-500" }, "Les façades, portes et tiroirs sont percés aux cotes du modèle choisi ; un usinage « Charnières » déjà fait garde les siennes, un nouveau prend celles de la charnière choisie. Cotes courantes de chaque gamme : vérifiez la fiche du fabricant avant une série."),
+      el("p", { class: "text-2xs text-gray-500" }, "Les façades, portes et tiroirs sont percés aux cotes du modèle choisi ; un usinage « Charnières » déjà fait garde les siennes, un nouveau prend celles de la charnière choisie. Cotes courantes de chaque gamme : vérifiez la fiche du fabricant avant une série."),
       makerRules(),
       el("h3", { class: "panel-title pt-1" }, "Quincaillerie du projet"),
       ...(all.length ? all.map((h) => el("p", {}, `${h.name} : ${h.quantity}${h.unit ? ` ${h.unit}` : ""}`)) : [el("p", { class: "text-gray-500" }, "Aucune pour l'instant.")]),

@@ -62,7 +62,7 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
   const container = canvas.parentElement as HTMLElement;
   const card = el("div", {
     class:
-      "pointer-events-none absolute z-20 hidden max-w-72 space-y-0.5 border border-emerald-400 bg-white/95 px-2 py-1.5 text-[11px] leading-snug text-gray-800 shadow-lg " +
+      "pointer-events-none absolute z-20 hidden max-w-72 space-y-0.5 border border-emerald-400 bg-white/95 px-2 py-1.5 text-2xs leading-snug text-gray-800 shadow-lg " +
       "dark:border-emerald-600 dark:bg-gray-900/95 dark:text-gray-100",
     role: "status",
   });
@@ -101,7 +101,7 @@ export function bindSelectPlus(root: HTMLElement, viewport: Viewport, host: { do
           `${i === 0 ? "" : "└ "}${level.label}`,
         ),
       ),
-      el("div", { class: "pt-0.5 text-[10px] text-gray-500 dark:text-gray-400" }, "Ctrl : niveau suivant · clic : sélectionner · Maj + clic : ajouter"),
+      el("div", { class: "pt-0.5 text-3xs text-gray-500 dark:text-gray-400" }, "Ctrl : niveau suivant · clic : sélectionner · Maj + clic : ajouter"),
     );
     card.classList.remove("hidden");
     viewport.setHoverHighlight("bodies" in chosen.target || "face" in chosen.target ? chosen.target : null);

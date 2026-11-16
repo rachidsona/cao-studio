@@ -5,7 +5,7 @@
 import { el } from "./dom";
 
 const ARROW =
-  "absolute left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-sky-500/40 bg-white/90 text-[11px] " +
+  "absolute left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-sky-500/40 bg-white/90 text-2xs " +
   "text-sky-700 shadow-md hover:bg-sky-50 dark:bg-gray-900/90 dark:text-sky-300 dark:hover:bg-gray-800 data-[hidden=true]:hidden";
 
 export function bindScrollArrows(scroller: HTMLElement): void {

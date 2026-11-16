@@ -107,7 +107,7 @@ export function bindWorkflowSteps(root: HTMLElement, editor: Editor): void {
       const done = s.done?.(doc) ?? false;
       const on = s === current;
       const b = el("button", { type: "button", "aria-pressed": String(on), "data-step": s.id, title: done ? `${s.label} : fait` : s.label, class: `flex h-8 items-center gap-1 border px-2 text-xs font-medium whitespace-nowrap ${on ? "border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-100" : "border-gray-200 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"}` },
-        el("span", { class: `flex size-4 items-center justify-center text-[10px] ${done ? "bg-emerald-600 text-white" : "border border-current"}` }, done ? "✓" : String(i + 1)),
+        el("span", { class: `flex size-4 items-center justify-center text-3xs ${done ? "bg-emerald-600 text-white" : "border border-current"}` }, done ? "✓" : String(i + 1)),
         s.label,
       );
       b.addEventListener("click", () => choose(s));

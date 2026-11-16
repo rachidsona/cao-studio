@@ -57,7 +57,7 @@ export function accessoryRows(o: AccessoryRows): (HTMLElement | null)[] {
     m?.shape === "tray" && o.drawers.length ? el("label", { class: ROW }, "Dans le tiroir", drawer) : null,
     m && !m.hung ? o.number("Bas à (du bas de la niche)", lift, (v) => set({ lift: v }), true) : null,
     m?.shape === "shelf" ? o.number("Épaisseur tablette", o.settings.thickness, (v) => ((o.settings.thickness = v), o.changed())) : null,
-    m ? el("p", { class: "text-[11px] text-gray-500", "data-accessory-needs": "" }, `Il lui faut une niche ${wide}, ${formatLength(m.depth + SET_BACK, o.unit)} de profondeur et ${formatLength(m.height, o.unit)} de hauteur.`) : null,
+    m ? el("p", { class: "text-2xs text-gray-500", "data-accessory-needs": "" }, `Il lui faut une niche ${wide}, ${formatLength(m.depth + SET_BACK, o.unit)} de profondeur et ${formatLength(m.height, o.unit)} de hauteur.`) : null,
   ];
 }
 

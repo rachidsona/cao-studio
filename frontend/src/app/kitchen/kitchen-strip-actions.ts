@@ -88,7 +88,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   }
   const chosen = !!appliance || host.other?.kind === "worktop" || ids.length > 0;
   // Its name on a line of its own, whole; what one does of it under it.
-  const bar = el("div", { class: "space-y-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("p", { class: chosen ? "truncate font-medium" : "text-[11px] text-gray-500 dark:text-gray-400" }, label), buttons.length ? el("div", { class: "flex flex-wrap gap-1" }, ...buttons) : null);
+  const bar = el("div", { class: "space-y-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("p", { class: chosen ? "truncate font-medium" : "text-2xs text-gray-500 dark:text-gray-400" }, label), buttons.length ? el("div", { class: "flex flex-wrap gap-1" }, ...buttons) : null);
   return {
     bar,
     key(event) {

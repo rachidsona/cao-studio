@@ -220,7 +220,7 @@ export class KitchenPlanTool {
       this.fields.check("Crédence", "splashback"),
       this.fields.check("Plinthes", "kick"),
       el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
-      el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
       this.fields.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),
       this.fields.check("Meubles hauts au-dessus", "wallUnits"),
       this.fields.check("Électroménager (évier, lave-vaisselle, plaque, four, hotte)", "appliances"),

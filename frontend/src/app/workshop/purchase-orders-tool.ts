@@ -115,7 +115,7 @@ export function openPurchaseOrders(editor: Editor, lines: PurchaseLine[], projec
       add,
       el("h3", { class: "text-sm font-semibold" }, "Bons"),
       ...(tables.length ? tables : [el("p", { class: "text-gray-500" }, "Rien à commander : tout vient du stock de chutes.")]),
-      el("p", { class: "text-[11px] text-gray-500" }, "Prix indicatifs, tirés des tarifs du devis. Les fournisseurs sont gardés par ce navigateur."),
+      el("p", { class: "text-2xs text-gray-500" }, "Prix indicatifs, tirés des tarifs du devis. Les fournisseurs sont gardés par ce navigateur."),
     );
   };
   draw();

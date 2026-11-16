@@ -53,7 +53,7 @@ export function bindLayers(root: HTMLElement, viewport: Viewport, editor: Editor
     });
     panel.body.replaceChildren(
       ...(rows.length ? rows : [el("p", { class: "text-gray-500" }, "Aucun calque. Rangez les corps par familles : caisson, façades, quincaillerie…")]),
-      el("p", { class: "text-[11px] text-gray-500" }, `Sans calque : ${none} corps. Sélection : ${chosen.length} corps.`),
+      el("p", { class: "text-2xs text-gray-500" }, `Sans calque : ${none} corps. Sélection : ${chosen.length} corps.`),
       release,
       create,
     );

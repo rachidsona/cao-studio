@@ -1449,6 +1449,14 @@ opération existante.
   **clair** l'emporte sur les palettes (fonds blancs, accent bleu), les boutons gardant le dégradé de la palette,
   comme dans la gestion. Techniquement, les gris et les bleus de Tailwind (`gray`, `sky`) sont tirés des variables
   de la palette (`styles/palettes.css`) : tout le reste suit sans toucher aux gabarits.
+- **Système de design** (`design-system/cao-studio/MASTER.md`) : la référence de l'apparence — couleurs par jeton
+  (gris et accent de la palette, l'orange des cotes `text-dimension`), tailles de texte nommées (`text-3xs` 10 px,
+  `text-2xs` 11 px, rien en pixels écrits à la main), rayons nommés des pages d'accueil (`rounded-tag`, `chip`,
+  `control`, `card`, `pill` ; l'éditeur reste carré), couches (z-index), espacements, cibles de 44 px, mise en page
+  par largeur. Sur toutes les pages : un **anneau de focus** dans l'accent au clavier, la main sur ce qui se clique,
+  des chiffres de même largeur pour les mesures et les prix, et « Réduire les animations » du système respecté. Sur
+  téléphone, les liens de l'en-tête (Guide, Accueil, Paramètres, Mon compte) passent dans un **menu ☰** qui se ferme
+  avec Échap ; les dossiers et la Mise en plan ont des icônes dessinées au lieu d'emojis.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne

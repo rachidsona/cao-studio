@@ -21,7 +21,7 @@ export function modeButtons(current: InputMode, choose: (mode: InputMode) => voi
   ];
   return el("div", { class: "grid grid-cols-2 gap-1", role: "group", "aria-label": "Type de déplacement" }, ...modes.map(([mode, label, title]) => {
     const on = current === mode;
-    const b = el("button", { type: "button", title, "aria-pressed": String(on), "data-move-mode": mode, class: `h-7 text-[11px] font-medium ${on ? PRESSED : BUTTON}` }, label);
+    const b = el("button", { type: "button", title, "aria-pressed": String(on), "data-move-mode": mode, class: `h-7 text-2xs font-medium ${on ? PRESSED : BUTTON}` }, label);
     b.addEventListener("click", () => choose(mode));
     return b;
   }));
@@ -31,7 +31,7 @@ export function modeButtons(current: InputMode, choose: (mode: InputMode) => voi
 export function pivotButtons([min, max]: [Vec3, Vec3], put: (pivot: Vec3) => void): HTMLElement {
   const mid = (i: number) => (min[i]! + max[i]!) / 2;
   const at = (label: string, p: Vec3) => {
-    const b = el("button", { type: "button", class: `h-7 flex-1 text-[11px] ${BUTTON}`, "data-pivot": label, title: `Pivot : ${label.toLowerCase()} de ce qui est déplacé` }, label);
+    const b = el("button", { type: "button", class: `h-7 flex-1 text-2xs ${BUTTON}`, "data-pivot": label, title: `Pivot : ${label.toLowerCase()} de ce qui est déplacé` }, label);
     b.addEventListener("click", () => put(p));
     return b;
   };
@@ -43,6 +43,6 @@ export function measureRows({ typed, length, axis, copies }: { typed: string; le
   const shown = typed ? `Mesure : ${typed}▏` : `Déplacement : ${length}${axis !== null ? ` · bloqué sur ${"XYZ"[axis]}` : ""}${copies ? ` · ${copies} copie${copies > 1 ? "s" : ""}` : ""}`;
   return [
     el("p", { class: `px-2 py-1 font-mono ${typed ? "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100" : "text-gray-500 dark:text-gray-400"}`, "data-move-typed": "" }, shown),
-    el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Au clavier : une distance puis Entrée ; 10;20;0 un vecteur ; x5 cinq copies, /5 réparties. → X, ← Y, ↑ Z bloquent un axe (↓ le libère). Alt : copie ; Maj + glisser une flèche : copie."),
+    el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Au clavier : une distance puis Entrée ; 10;20;0 un vecteur ; x5 cinq copies, /5 réparties. → X, ← Y, ↑ Z bloquent un axe (↓ le libère). Alt : copie ; Maj + glisser une flèche : copie."),
   ];
 }

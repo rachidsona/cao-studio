@@ -108,7 +108,7 @@ export function bindWorkshop(root: HTMLElement, viewport: Viewport, editor: Edit
       grain,
       el("div", { class: "grid grid-cols-4 gap-1" }, ...checks),
       band,
-      el("p", { class: "text-[11px] text-gray-500" }, "L1/L2 : les deux grands côtés ; l1/l2 : les deux petits."),
+      el("p", { class: "text-2xs text-gray-500" }, "L1/L2 : les deux grands côtés ; l1/l2 : les deux petits."),
     );
     if (ids.length > 1 || inRun) panel.body.append(run);
   };

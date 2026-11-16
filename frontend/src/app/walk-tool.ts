@@ -92,7 +92,7 @@ class WalkTool implements PointerHandler {
         el("li", {}, "Échap ou « Terminer » : retour à la vue d'avant."),
       ),
       el("label", { class: "grid grid-cols-[7rem_1fr] items-center gap-1.5" }, `Hauteur des yeux (${UNIT_LABELS[unit]})`, this.heightField),
-      el("p", { class: "text-[11px] text-gray-500" }, `De ${trim(toDisplay(EYE.low, unit), 2)} à ${trim(toDisplay(EYE.high, unit), 2)} ${UNIT_LABELS[unit]}. Les murs et les meubles vous arrêtent ; le modèle ne change pas.`),
+      el("p", { class: "text-2xs text-gray-500" }, `De ${trim(toDisplay(EYE.low, unit), 2)} à ${trim(toDisplay(EYE.high, unit), 2)} ${UNIT_LABELS[unit]}. Les murs et les meubles vous arrêtent ; le modèle ne change pas.`),
       panelFooter(() => this.close(), null),
     );
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());

@@ -237,7 +237,7 @@ export class PushTool extends PanelTool {
     return [
       this.info(this.elements.length ? `À pousser : ${this.elements.map((e) => `« ${e.name} »`).join(", ")}.` : "Cliquez un caisson, une Répartition ou un corps (Maj : en ajouter un)."),
       el("label", { class: "grid grid-cols-[5rem_1fr] items-center gap-1.5" }, `Pas (${UNIT_LABELS[unit]})`, input),
-      el("p", { class: "text-[11px] text-gray-500 dark:text-gray-400" }, "Tapez le pas au clavier puis une flèche : ← → sur les côtés, ↑ ↓ vers le fond ou vers vous, Page↑ / Page↓ pour monter ou descendre."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Tapez le pas au clavier puis une flèche : ← → sur les côtés, ↑ ↓ vers le fond ou vers vous, Page↑ / Page↓ pour monter ou descendre."),
       el(
         "div",
         { class: "grid grid-cols-3 gap-1", role: "group", "aria-label": "Pousser" },

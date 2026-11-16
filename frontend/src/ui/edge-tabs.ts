@@ -18,4 +18,4 @@ export function edgeTabs(root: HTMLElement): HTMLElement | null {
 
 /** The look of an edge tab: a small drawer pull against the view's left edge. */
 export const EDGE_TAB_CLASS =
-  "pointer-events-auto flex w-5 flex-col items-center justify-center gap-0.5 border border-l-0 border-gray-200 bg-white/95 py-1 text-[10px] leading-none text-gray-500 shadow-md hover:bg-gray-100 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100";
+  "pointer-events-auto flex w-5 flex-col items-center justify-center gap-0.5 border border-l-0 border-gray-200 bg-white/95 py-1 text-3xs leading-none text-gray-500 shadow-md hover:bg-gray-100 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100";

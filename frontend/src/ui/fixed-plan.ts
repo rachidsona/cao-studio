@@ -36,5 +36,5 @@ export function fixedPlanToggle(changed: () => void): HTMLElement {
     box.blur();
     changed();
   });
-  return el("label", { class: "flex items-center justify-end gap-1.5 text-[11px] text-gray-500 dark:text-gray-400", title: "Coché : le plan reste en haut du panneau quand on fait défiler les réglages. Décoché : il défile avec eux." }, box, "Plan fixe");
+  return el("label", { class: "flex items-center justify-end gap-1.5 text-2xs text-gray-500 dark:text-gray-400", title: "Coché : le plan reste en haut du panneau quand on fait défiler les réglages. Décoché : il défile avec eux." }, box, "Plan fixe");
 }

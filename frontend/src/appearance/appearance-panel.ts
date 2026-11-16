@@ -79,12 +79,12 @@ export class AppearancePanel {
       "button",
       { type: "button", class: "group flex min-w-0 flex-col items-center gap-0.5 p-1 text-center hover:bg-sky-50 dark:hover:bg-sky-950", title: `${appearance.name}${note ? ` — ${note}` : ""}\nClic : donner aux corps sélectionnés ; ou glisser sur un corps de la vue (sur la sélection : à toute la sélection)`, draggable: "true", "data-appearance": appearance.id },
       image,
-      el("span", { class: "line-clamp-2 w-full text-[10px] leading-tight text-gray-700 dark:text-gray-200" }, appearance.name),
-      note ? el("span", { class: "text-[10px] text-gray-500" }, note) : null,
+      el("span", { class: "line-clamp-2 w-full text-3xs leading-tight text-gray-700 dark:text-gray-200" }, appearance.name),
+      note ? el("span", { class: "text-3xs text-gray-500" }, note) : null,
     );
     button.addEventListener("click", () => this.applyToSelection(appearance.id, color));
     if (appearance.category === "custom" && !note) {
-      const remove = el("button", { type: "button", class: "absolute top-0 right-0 size-5 bg-white/90 text-[10px] text-gray-600 hover:text-red-600 dark:bg-gray-900/90", title: "Retirer ce motif du projet", "aria-label": `Retirer le motif ${appearance.name}` }, "✕");
+      const remove = el("button", { type: "button", class: "absolute top-0 right-0 size-5 bg-white/90 text-3xs text-gray-600 hover:text-red-600 dark:bg-gray-900/90", title: "Retirer ce motif du projet", "aria-label": `Retirer le motif ${appearance.name}` }, "✕");
       remove.addEventListener("click", (event) => {
         event.stopPropagation();
         this.host.removeImage(appearance.id);
@@ -174,7 +174,7 @@ export class AppearancePanel {
         { class: "space-y-1" },
         el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Mes motifs"),
         el("div", { class: "flex items-center gap-1" }, pick, size, el("span", { class: "text-gray-500" }, "mm"), file),
-        el("p", { class: "text-[10px] text-gray-500" }, "Une photo de bois, de pierre, de tissu… depuis votre ordinateur. Elle est gardée avec le projet ; la taille dit combien de millimètres l'image couvre."),
+        el("p", { class: "text-3xs text-gray-500" }, "Une photo de bois, de pierre, de tissu… depuis votre ordinateur. Elle est gardée avec le projet ; la taille dit combien de millimètres l'image couvre."),
       ),
       el("div", { class: "space-y-1" }, el("h3", { class: "font-semibold text-gray-600 dark:text-gray-300" }, "Bibliothèque"), search, category),
       this.grid,

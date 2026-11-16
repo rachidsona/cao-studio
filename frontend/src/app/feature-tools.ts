@@ -256,7 +256,7 @@ export class CombineTool extends PanelTool {
     const ops: [CombineFeature["operation"], string, string][] = [["join", "∪", "Joindre"], ["cut", "−", "Couper"], ["intersect", "∩", "Intersection"]];
     const operation = el("div", { class: "grid grid-cols-3 gap-1", role: "group", "aria-label": "Opération" }, ...ops.map(([op, sign, label]) => {
       const on = this.operation === op;
-      const b = el("button", { type: "button", "aria-pressed": String(on), "data-combine-op": op, class: `flex h-12 flex-col items-center justify-center border text-[11px] font-medium ${on ? "border-sky-600 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "text-lg leading-none" }, sign), label);
+      const b = el("button", { type: "button", "aria-pressed": String(on), "data-combine-op": op, class: `flex h-12 flex-col items-center justify-center border text-2xs font-medium ${on ? "border-sky-600 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "text-lg leading-none" }, sign), label);
       b.addEventListener("click", () => ((this.operation = op), changed()));
       return b;
     }));

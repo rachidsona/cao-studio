@@ -66,7 +66,7 @@ export function bindSag(root: HTMLElement, viewport: Viewport, editor: Editor): 
       el("label", { class: "block space-y-1" }, el("span", {}, "Flèche admise"), ratioSelect),
       el("p", { class: bad ? "font-medium text-red-700 dark:text-red-400" : "font-medium text-emerald-700 dark:text-emerald-400" }, rows.length ? (bad ? `${bad} planche${bad > 1 ? "s" : ""} sur ${rows.length} fléchi${bad > 1 ? "ssent" : "t"} trop.` : `Les ${rows.length} planches tiennent.`) : "Aucune planche horizontale chargée."),
       ...cards,
-      el("p", { class: "text-[11px] text-gray-500" }, "Planche posée sur ses deux bouts, charge répartie ; la flèche à long terme compte le fluage des panneaux (×3,25 pour l'aggloméré et le MDF, ×1,8 pour le contreplaqué, ×1,6 pour le chêne massif)."),
+      el("p", { class: "text-2xs text-gray-500" }, "Planche posée sur ses deux bouts, charge répartie ; la flèche à long terme compte le fluage des panneaux (×3,25 pour l'aggloméré et le MDF, ×1,8 pour le contreplaqué, ×1,6 pour le chêne massif)."),
     );
   };
 

@@ -158,6 +158,6 @@ export function layersPanel(profile: LayerProfile): HTMLElement {
     el("label", { class: "flex items-center gap-2" }, chain, "Contours enchaînés en polylignes fermées, dans le sens des aiguilles d'une montre (compensation à droite : la fraise dans la chute)"),
     sample,
     el("div", { class: "flex gap-1.5" }, name, keep, remove),
-    el("p", { class: "text-[11px] text-gray-500" }, "Seuls le contour woodWOP (FK, Z sous le panneau, outil, compensation) et les noms ABF suivent ce que leurs éditeurs ou utilisateurs publient ; les autres noms sont des points de départ. Vérifiez le premier fichier sur la machine avant de lancer une série."),
+    el("p", { class: "text-2xs text-gray-500" }, "Seuls le contour woodWOP (FK, Z sous le panneau, outil, compensation) et les noms ABF suivent ce que leurs éditeurs ou utilisateurs publient ; les autres noms sont des points de départ. Vérifiez le premier fichier sur la machine avant de lancer une série."),
   );
 }

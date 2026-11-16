@@ -32,7 +32,7 @@ interface Shot {
 export class RenderPanel {
   readonly element: HTMLElement;
   private body = el("div", { class: "space-y-1" });
-  private status = el("p", { class: "text-[11px] text-gray-600 tabular-nums dark:text-gray-300", "aria-live": "polite" });
+  private status = el("p", { class: "text-2xs text-gray-600 tabular-nums dark:text-gray-300", "aria-live": "polite" });
   private bar = el("div", { class: "h-full w-0 bg-sky-500 transition-[width]" });
   private gallery: Shot[] = [];
   private lastStatus = "";

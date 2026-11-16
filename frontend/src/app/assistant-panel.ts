@@ -79,7 +79,7 @@ export function bindAssistant(root: HTMLElement, viewport: Viewport, editor: Edi
         "div",
         { class: "mr-6 space-y-1.5 border border-gray-200 p-2 dark:border-gray-700" },
         el("p", { class: "whitespace-pre-wrap" }, t.content),
-        actions.length ? el("ol", { class: "list-decimal space-y-0.5 pl-5 text-[11px] text-gray-600 dark:text-gray-300" }, ...actions.map((a) => el("li", {}, describeAction(a)))) : null,
+        actions.length ? el("ol", { class: "list-decimal space-y-0.5 pl-5 text-2xs text-gray-600 dark:text-gray-300" }, ...actions.map((a) => el("li", {}, describeAction(a)))) : null,
         actions.length ? go : null,
       );
     });
@@ -101,7 +101,7 @@ export function bindAssistant(root: HTMLElement, viewport: Viewport, editor: Edi
     const examples = turns.length
       ? []
       : EXAMPLES.map((x) => {
-          const b = el("button", { type: "button", class: "block w-full border border-dashed border-gray-300 p-1.5 text-left text-[11px] text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800" }, x);
+          const b = el("button", { type: "button", class: "block w-full border border-dashed border-gray-300 p-1.5 text-left text-2xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800" }, x);
           b.addEventListener("click", () => {
             draft = x;
             render();
@@ -112,7 +112,7 @@ export function bindAssistant(root: HTMLElement, viewport: Viewport, editor: Edi
     panel.body.replaceChildren(
       scroller,
       input,
-      el("div", { class: "flex items-center justify-between gap-2" }, el("span", { class: "text-[11px] text-gray-500" }, "Claude propose, vous appliquez (⌘↵ pour envoyer)."), go),
+      el("div", { class: "flex items-center justify-between gap-2" }, el("span", { class: "text-2xs text-gray-500" }, "Claude propose, vous appliquez (⌘↵ pour envoyer)."), go),
     );
     scroller.scrollTop = scroller.scrollHeight;
     if (!busy) input.focus();

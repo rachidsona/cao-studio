@@ -79,7 +79,7 @@ export function myUnitsSection(host: Host): HTMLElement {
     "section",
     { class: "space-y-1.5", "data-my-units": "" },
     el("h3", { class: "font-semibold text-gray-500 uppercase" }, "Mes meubles"),
-    ...(rows.length ? rows : [el("p", { class: "text-[11px] text-gray-500" }, "Aucun pour l'instant : décrivez-en un, ou reprenez le caisson sélectionné.")]),
+    ...(rows.length ? rows : [el("p", { class: "text-2xs text-gray-500" }, "Aucun pour l'instant : décrivez-en un, ou reprenez le caisson sélectionné.")]),
     fromSelection,
     toggle,
     open ? form(host, unit, (e) => keep([...myUnits(), e], `« ${e.name} » est dans vos meubles ; un clic le pose dans la cuisine.`)) : null,

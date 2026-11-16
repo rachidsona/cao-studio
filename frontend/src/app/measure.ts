@@ -268,7 +268,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
       return b;
     });
     const between = TARGETS.map(([t, name, icon]) => {
-      const b = el("button", { type: "button", class: `flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 border border-gray-300 text-[11px] font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800 ${target === t ? "border-sky-600 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200" : ""}`, "aria-pressed": String(target === t), title: `Mesurer entre deux ${name.toLowerCase()}` });
+      const b = el("button", { type: "button", class: `flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 border border-gray-300 text-2xs font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800 ${target === t ? "border-sky-600 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200" : ""}`, "aria-pressed": String(target === t), title: `Mesurer entre deux ${name.toLowerCase()}` });
       b.innerHTML = `<svg class="size-6 shrink-0" aria-hidden="true"><use href="#${icon}"/></svg><span>${name}</span>`;
       b.addEventListener("click", () => {
         target = t;
@@ -319,7 +319,7 @@ export function bindMeasure(root: HTMLElement, viewport: Viewport, editor: Edito
       lastPair && mode === "measure" ? spacing : null,
       ...list,
       measures.length || angles.length ? clear : null,
-      el("p", { class: "text-[11px] text-gray-500" }, "Les points s'accrochent aux coins, arêtes et guides, et s'alignent sur les coins (boutons d'accrochage de l'esquisse). Les guides sont enregistrés ; les mesures disparaissent quand on quitte."),
+      el("p", { class: "text-2xs text-gray-500" }, "Les points s'accrochent aux coins, arêtes et guides, et s'alignent sur les coins (boutons d'accrochage de l'esquisse). Les guides sont enregistrés ; les mesures disparaissent quand on quitte."),
     ];
     panel.body.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
   };

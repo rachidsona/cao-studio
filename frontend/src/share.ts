@@ -132,7 +132,7 @@ function setMarker(key: string, position: Vec3 | null, label: string, pending = 
   markers.delete(key);
   if (!position) return;
   const node = el("span", label);
-  node.className = `pointer-events-none absolute left-0 top-0 flex size-6 items-center justify-center rounded-full text-[11px] font-bold text-white shadow ${pending ? "bg-orange-500" : "bg-sky-600"}`;
+  node.className = `pointer-events-none absolute left-0 top-0 flex size-6 items-center justify-center rounded-full text-2xs font-bold text-white shadow ${pending ? "bg-orange-500" : "bg-sky-600"}`;
   host.append(node);
   markers.set(key, { at: toScene(position), node });
 }

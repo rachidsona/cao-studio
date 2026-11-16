@@ -370,7 +370,7 @@ export class NicheTool {
           ]),
       result ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
-      el("p", { class: "text-[11px] text-gray-500" }, words.help),
+      el("p", { class: "text-2xs text-gray-500" }, words.help),
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));

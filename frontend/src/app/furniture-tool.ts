@@ -184,7 +184,7 @@ class FurnitureTool {
     const range = (key: "width" | "height" | "depth") => model.limits[key].map((v) => formatLength(v, unit)).join(" à ");
     const rows: (HTMLElement | null)[] = [
       panelHeader(this.editing ? `Modifier : ${this.editing.name}` : "Assistant meuble", () => this.close()),
-      this.editing ? el("p", { class: "text-[11px] text-gray-500" }, "OK le refait à neuf à ces cotes, à sa place : ses cases sont recomptées, ce qui y a été retouché à la main est refait.") : null,
+      this.editing ? el("p", { class: "text-2xs text-gray-500" }, "OK le refait à neuf à ces cotes, à sa place : ses cases sont recomptées, ce qui y a été retouché à la main est refait.") : null,
       select("Meuble", last.kind, FURNITURE.map((m): [string, string] => [m.kind, m.label]), (v) => {
         const m = furnitureModel(v as FurnitureKind);
         // Another furniture starts at its usual size.
@@ -197,7 +197,7 @@ class FurnitureTool {
       number(last.kind === "stairs" ? "Hauteur haute (sous le haut de l'escalier)" : "Hauteur", last.height, (v) => (last = { ...last, height: v })),
       number(last.kind === "headboard" ? "Profondeur des chevets" : "Profondeur", last.depth, (v) => (last = { ...last, depth: v })),
       last.kind === "stairs" ? number("Hauteur basse (au pied de l'escalier)", last.low ?? 0, (v) => (last = { ...last, low: v }), true) : null,
-      el("p", { class: "text-[11px] text-gray-500" }, `Largeur de ${range("width")}, hauteur de ${range("height")}, profondeur de ${range("depth")}.`),
+      el("p", { class: "text-2xs text-gray-500" }, `Largeur de ${range("width")}, hauteur de ${range("height")}, profondeur de ${range("depth")}.`),
       select(model.choice, last.option, model.options, (v) => (last = { ...last, option: v })),
       number("Épaisseur des panneaux", last.thickness, (v) => (last = { ...last, thickness: v })),
       select("Matière", lastMaterial, MATERIALS.filter((m) => m.kind === "panel").map((m): [string, string] => [m.id, m.name]), (v) => (lastMaterial = v)),
@@ -205,7 +205,7 @@ class FurnitureTool {
       !this.editing && lastWhere !== "right" && walls.some((w) => w.id === lastWhere) ? number("Depuis le début du mur", lastFrom, (v) => (lastFrom = v), true) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       passage ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100", "data-furniture-passage": "" }, passage) : null,
-      el("p", { class: "text-[11px] text-gray-500" }, "Ses caissons sont des Répartitions : étagères, tiroirs, portes et modules s'y retouchent ensuite (clic droit dans une niche)."),
+      el("p", { class: "text-2xs text-gray-500" }, "Ses caissons sont des Répartitions : étagères, tiroirs, portes et modules s'y retouchent ensuite (clic droit dans une niche)."),
       panelFooter(() => this.close(), () => this.confirm(), problem !== null),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
