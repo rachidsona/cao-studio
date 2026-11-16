@@ -16,6 +16,7 @@ import { resolveFace } from "../geometry/references";
 import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, solidsResult, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
 import { facePanels, faceSlab } from "./paneling";
+import { splitBoards } from "./board-split-shape";
 import { frameEnds, isFrame, splitRing } from "./ring-sides";
 
 /** Two faces are the same one when their centres are this close (mm). */
@@ -209,7 +210,20 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
   if (feature.sides === "separate" && !feature.back && !feature.faces.length && (feature.frame || feature.thickness === 0)) {
     const target = requireSolid(lookup, feature.target).shape;
     const joint = feature.joint ?? "miter";
-    if (isFrame(target)) return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };
+    // A body of square panels joined into one (a caisson, a U, a shelf unit): a body per panel (board-split.ts), when
+    // it is not a frame of one profile (its sides would not be straight along its axis).
+    const boards = () => splitBoards(target, feature.pass ?? "largest");
+    if (isFrame(target)) {
+      try {
+        return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };
+      } catch (error) {
+        const panels = error instanceof GeometryError ? boards() : null;
+        if (panels) return { kind: "solids", shapes: panels };
+        throw error;
+      }
+    }
+    const panels = boards();
+    if (panels) return { kind: "solids", shapes: panels };
     if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps est plein ; saisissez l'épaisseur de ses côtés pour le vider.`);
     const ends = frameEnds(target, feature.open, feature.thickness);
     if (!ends) throw new GeometryError(feature.open ? `${feature.name} : la face choisie n'a pas de face plane en face d'elle à ouvrir aussi ; cliquez-en une autre.` : `${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);

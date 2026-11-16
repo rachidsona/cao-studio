@@ -3,7 +3,9 @@
  * carré, triangle ou polygone, côtés droits ou courbes, paroi régulière ou non — et chacun de ses côtés devient un
  * corps, un panneau par côté (features/ring-sides.ts). Un corps plein est d'abord vidé à l'« Épaisseur des côtés »,
  * ouvert aux deux bouts de son axe (le dessus et le dessous). Les côtés se rejoignent en onglet (à tout angle) ou bout à
- * bout — les côtés passent, ou le dessus et le dessous, comme dans une Répartition, ou les plus longs. C'est une étape « Vider un corps » marquée `frame` ; son étape de l'historique
+ * bout — les côtés passent, ou le dessus et le dessous, comme dans une Répartition, ou les plus longs. Un corps fait de
+ * panneaux d'équerre joints (un caisson d'un seul corps) est redécoupé en ses panneaux (features/board-split.ts).
+ * C'est une étape « Vider un corps » marquée `frame` ; son étape de l'historique
  * rouvre cet outil.
  */
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";

@@ -2199,7 +2199,13 @@ opération existante.
   un cadre, un caisson sans fond, tout contour extrudé, carré, triangle, polygone, coins arrondis, de biais — et chacun
   de ses côtés devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de côtés pour un
   polygone ; un coin arrondi est un côté courbe à lui ; un contour à encoches dont le trou n'a pas autant de coins :
-  la séparation suit la forme, chaque côté du contour une pièce, le joint allant jusqu'au trou). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
+  la séparation suit la forme, chaque côté du contour une pièce, le joint allant jusqu'au trou). **Corps fait de
+  panneaux joints** (un caisson d'un seul corps : côtés, dessous, traverses ; toutes ses faces planes et d'équerre) :
+  il est redécoupé en ses panneaux, un corps chacun — les plans de ses faces le quadrillent, les cases dans la
+  matière sont regroupées en planches entières, la plus grande d'abord (`features/board-split.ts`) ; sans choix, la
+  façon qui ne coupe aucun panneau en deux (des côtés qui descendent au sol sous un dessous surélevé passent),
+  « les côtés passent » ou « le dessus et le dessous passent » suivis, pas d'onglet (des panneaux joints se rejoignent
+  bout à bout). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
   côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
   qui se font face, toutes les autres d'équerre ; seulement des bouts assez larges pour y tenir deux côtés de
   l'épaisseur voulue : un panneau de 18 mm s'ouvre d'office par ses deux grandes faces et devient un cadre) — ou par

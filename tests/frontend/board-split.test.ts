@@ -1,0 +1,85 @@
+/** « Séparer les côtés » d'un caisson fait de panneaux joints en un seul corps : un corps par panneau. */
+import { beforeAll, describe, expect, it } from "vitest";
+import { boardBoxes, type AxisFace } from "../../frontend/src/features/board-split";
+import { setupKernel } from "./kernel-setup";
+
+beforeAll(() => setupKernel(), 120_000);
+
+type Rect = [number, number, number, number];
+/** A rectangle drawn on the floor, extruded from `z` by `height`. */
+function board(id: string, [x0, y0, x1, y1]: Rect, z: number, height: number) {
+  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  return [
+    { id: `sk${id}`, type: "sketch", name: `Esquisse ${id}`, plane: "XY", offset: 0, points: corners.map(([x, y], i) => ({ id: `p${id}${i}`, x, y })), curves: [0, 1, 2, 3].map((i) => ({ id: `l${id}${i}`, kind: "line", p1: `p${id}${i}`, p2: `p${id}${(i + 1) % 4}` })), constraints: [] },
+    { id: `ex${id}`, type: "extrude", name: `Panneau ${id}`, sketch: `sk${id}`, distance: height, operation: "new", ...(z ? { startOffset: z } : {}) },
+  ];
+}
+
+/** A sink cabinet as one body: two sides to the floor, a bottom raised over a 150 plinth, two rails at the top. */
+async function caisson(pass?: "sides" | "boards", joint: "butt" | "miter" = "butt") {
+  const { Recomputer } = await import("../../frontend/src/history/recompute");
+  const { createReferencePlate } = await import("../../frontend/src/document/types");
+  const doc = { ...createReferencePlate(), features: [
+    ...board("1", [0, 0, 18, 580], 0, 864),
+    ...board("2", [1182, 0, 1200, 580], 0, 864),
+    ...board("3", [18, 0, 1182, 580], 150, 18),
+    ...board("4", [18, 0, 1182, 18], 764, 100),
+    ...board("5", [18, 562, 1182, 580], 764, 100),
+    { id: "cb1", type: "combine", name: "Caisson", target: "ex1", tools: ["ex2", "ex3", "ex4", "ex5"], operation: "join" },
+    { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "cb1", faces: [], thickness: 18, sides: "separate", joint, ...(pass ? { pass } : {}), frame: true },
+  ] };
+  const r = new Recomputer();
+  const made = r.recompute(doc as never);
+  const out = r.output("sh1");
+  const sizes = (out?.kind === "solids" ? out.shapes : []).map((p) => {
+    const [lo, hi] = p.boundingBox.bounds;
+    return [0, 1, 2].map((i) => Math.round(hi[i]! - lo[i]!)).join("×");
+  });
+  const status = made.statuses.find((s) => s.id === "sh1");
+  r.dispose();
+  return { status, sizes: sizes.sort() };
+}
+
+describe("un caisson d'un seul corps séparé en panneaux", () => {
+  it("sans choix : les côtés jusqu'au sol, le dessous entre eux, les deux traverses — cinq panneaux, aucun coupé en deux", async () => {
+    const { status, sizes } = await caisson();
+    expect(status?.state).toBe("ok");
+    expect(sizes).toEqual(["1164×18×100", "1164×18×100", "1164×580×18", "18×580×864", "18×580×864"]);
+  }, 120_000);
+
+  it("en onglet aussi : des panneaux joints se rejoignent bout à bout", async () => {
+    const { sizes } = await caisson(undefined, "miter");
+    expect(sizes).toHaveLength(5);
+  }, 120_000);
+
+  it("« le dessus et le dessous passent » est suivi : le dessous traverse, chaque côté est coupé à sa hauteur", async () => {
+    const { status, sizes } = await caisson("boards");
+    expect(status?.state).toBe("ok");
+    expect(sizes).toContain("1200×580×18");
+    expect(sizes).toHaveLength(7);
+  }, 120_000);
+});
+
+describe("lecture en panneaux (calcul pur)", () => {
+  // An L of two boards seen as faces: a floor board 600 × 400 × 18 and an upright 18 × 400 × 300 on its left end.
+  const square = (axis: 0 | 1 | 2, at: number, [a0, b0, a1, b1]: Rect): AxisFace => ({ axis, at, edges: [[[a0, b0], [a1, b0]], [[a1, b0], [a1, b1]], [[a1, b1], [a0, b1]], [[a0, b1], [a0, b0]]] });
+  const faces: AxisFace[] = [
+    square(0, 0, [0, 0, 400, 318]), square(0, 18, [0, 18, 400, 318]), square(0, 600, [0, 0, 400, 18]),
+    { axis: 1, at: 0, edges: [[[0, 0], [600, 0]], [[600, 0], [600, 18]], [[600, 18], [18, 18]], [[18, 18], [18, 318]], [[18, 318], [0, 318]], [[0, 318], [0, 0]]] },
+    { axis: 1, at: 400, edges: [[[0, 0], [600, 0]], [[600, 0], [600, 18]], [[600, 18], [18, 18]], [[18, 18], [18, 318]], [[18, 318], [0, 318]], [[0, 318], [0, 0]]] },
+    square(2, 0, [0, 0, 600, 400]), square(2, 18, [18, 0, 600, 400]), square(2, 318, [0, 0, 18, 400]),
+  ];
+
+  it("deux panneaux, l'un qui passe à l'angle", () => {
+    const sides = boardBoxes(faces, "sides");
+    expect(sides).toEqual([[[0, 0, 0], [18, 400, 318]], [[18, 0, 0], [600, 400, 18]]]);
+    const boards = boardBoxes(faces, "boards");
+    expect(boards).toEqual([[[0, 0, 0], [600, 400, 18]], [[0, 0, 18], [18, 400, 318]]]);
+  });
+
+  it("refuse un corps d'un seul panneau, ou qui n'est pas d'équerre sur ses trois axes", () => {
+    const one: AxisFace[] = [square(0, 0, [0, 0, 400, 18]), square(0, 600, [0, 0, 400, 18]), square(1, 0, [0, 0, 600, 18]), square(1, 400, [0, 0, 600, 18]), square(2, 0, [0, 0, 600, 400]), square(2, 18, [0, 0, 600, 400])];
+    expect(boardBoxes(one)).toMatch(/un seul panneau/);
+    expect(boardBoxes(faces.filter((f) => f.axis !== 2))).toMatch(/d'équerre/);
+  });
+});
