@@ -13,13 +13,14 @@ const PANEL = "fill-gray-300 stroke-gray-600 dark:fill-gray-600 dark:stroke-gray
 const NICHE = "fill-gray-50 stroke-gray-500 dark:fill-gray-900 dark:stroke-gray-500";
 const FRONT = "fill-gray-100 stroke-gray-500 dark:fill-gray-700 dark:stroke-gray-400";
 /**
- * The dimensions, as on a workshop drawing: thin lines with an arrow at each end and the figure in their middle, in the
- * ink of the page (no red, which says an error), the figures a shade stronger than their lines; one that can be typed
- * turns blue under the pointer. Inside the face, the free heights of the niches and fronts are their figure alone.
+ * The dimensions, as on a workshop drawing: lines with an arrow at each end and the figure in their middle, the lines
+ * in the ink of the page, the figures in green and bold (no red, which says an error); one that can be typed turns blue
+ * under the pointer. Inside the face, the free heights of the niches and fronts are their figure alone, less bold.
  */
-const LABEL = "fill-gray-800 dark:fill-gray-100";
+/** The figures: green #63df0f on the dark theme (as Polyboard's), a deeper green on white to stay readable. */
+const LABEL = "fill-[#2b7d03] dark:fill-[#63df0f]";
 const EDITABLE = "hover:fill-sky-700 dark:hover:fill-sky-300";
-const INNER = "fill-gray-500 dark:fill-gray-400";
+const INNER = LABEL;
 const MAIN = "stroke-gray-500 dark:stroke-gray-400";
 const OUTLINE = `fill="rgb(184 151 90 / 0.25)" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none" data-picked=""`;
 /**
@@ -33,7 +34,7 @@ export function dimLine([x1, y1, x2, y2]: [number, number, number, number], arro
   const a = Math.min(arrow, length / 2.5);
   const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
   const head = (x: number, y: number, dx: number, dy: number) => `<path d="M${x} ${y}L${x + dx * a - dy * a * 0.3} ${y + dy * a + dx * a * 0.3}L${x + dx * a + dy * a * 0.3} ${y + dy * a - dx * a * 0.3}Z" class="${tone.replace(/stroke-/g, "fill-")}"/>`;
-  const line = (from: number, to: number) => `<line x1="${x1 + ux * from}" y1="${y1 + uy * from}" x2="${x1 + ux * to}" y2="${y1 + uy * to}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  const line = (from: number, to: number) => `<line x1="${x1 + ux * from}" y1="${y1 + uy * from}" x2="${x1 + ux * to}" y2="${y1 + uy * to}" class="${tone}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
   const lines = gap > 0 ? line(0, (length - gap) / 2) + line((length + gap) / 2, length) : line(0, length);
   return `<g pointer-events="none" data-dimline="">${lines}${head(x1, y1, ux, uy)}${head(x2, y2, -ux, -uy)}</g>`;
 }
@@ -131,15 +132,16 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
     const at = placed.get(l);
     const [x, y] = at ? [at.x, at.y] : [l.x, l.y];
     const where = at ? centred : `text-anchor="${l.anchor}"`;
-    parts.push(`<text x="${x}" y="${y}" ${where} font-size="${small}" ${editable(l.edit, !l.side && l.kind !== "panel" && !at)} data-label="${l.kind}">${l.text}</text>`);
+    const inner = !l.side && l.kind !== "panel" && !at;
+    parts.push(`<text x="${x}" y="${y}" ${where} font-size="${small}" font-weight="${inner ? 500 : 600}" ${editable(l.edit, inner)} data-label="${l.kind}">${l.text}</text>`);
   }
   // The whole, the main figures, on their lines: a little larger than the chain's, in bold.
-  parts.push(`<text x="${L / 2}" y="${whole}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${length}</text>`);
-  parts.push(`<text x="${right}" y="${H / 2}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="1" data-dim="height">${height}</text>`);
+  parts.push(`<text x="${L / 2}" y="${whole}" ${centred} font-size="${fs}" font-weight="700" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${length}</text>`);
+  parts.push(`<text x="${right}" y="${H / 2}" ${centred} font-size="${fs}" font-weight="700" class="${LABEL} ${EDITABLE} cursor-text" data-edit="1" data-dim="height">${height}</text>`);
   face.cases.forEach((c, i) => {
     const on = pick?.kind === "case" && pick.index === i;
     const [y, where] = caseOn[i] ? [chain, centred] : [chain - fs * 0.25, `text-anchor="middle"`];
-    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${y}" ${where} font-size="${caseSize}" class="${on ? "font-semibold" : ""} ${LABEL} ${EDITABLE} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
+    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${y}" ${where} font-size="${caseSize}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
   });
   return parts.join("");
 }

@@ -113,8 +113,10 @@ describe("face d'une Répartition", () => {
     // An arrow at each end (← 70,5 →), the line broken in its middle for the figure written on it; in the ink of the
     // page, not in red.
     expect(count(svg, '<path d="M')).toBe(2 * count(svg, "data-dimline="));
-    expect(svg).toMatch(/dominant-baseline="central" font-size="[\d.]+" font-weight="600" [^>]*data-dim="length"/);
+    expect(svg).toMatch(/dominant-baseline="central" font-size="[\d.]+" font-weight="700" [^>]*data-dim="length"/);
     expect(svg).not.toMatch(/red-/);
+    // The figures in green #63df0f (deeper on white), bold.
+    expect(svg).toContain("dark:fill-[#63df0f]");
     // Every figure written level, the upright chains' too.
     expect(svg).not.toMatch(/rotate\(/);
   });

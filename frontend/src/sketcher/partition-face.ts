@@ -303,13 +303,13 @@ export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math
  * their figures written on them, a full figure apart so that they never touch.
  */
 export const CHAIN = 0.8;
-export const WHOLE = 2.15;
+export const WHOLE = 2.5;
 /**
  * The upright chains, beside the face: their figures are written level, across their line, so they lie farther out;
  * the whole height beyond the chain of the right side.
  */
 export const SIDE = 1.35;
-export const WHOLE_SIDE = 3.3;
+export const WHOLE_SIDE = 3.75;
 
 /** Where the line of the whole height lies: beyond the chain of the right side when there is one. */
 export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE_SIDE : SIDE);
@@ -317,8 +317,8 @@ export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "case
 /** Room for the dimensions around the face. */
 export function faceViewBox(face: Pick<PartitionFace, "length" | "height" | "cases">): string {
   const fs = faceFont(face);
-  const [x0, y0] = [-fs * (SIDE + 1.35), -fs * (WHOLE + 0.75)];
-  return `${x0} ${y0} ${heightLine(face) + fs * 1.0 - x0} ${face.height + fs * 1.4 - y0}`;
+  const [x0, y0] = [-fs * (SIDE + 1.6), -fs * (WHOLE + 0.8)];
+  return `${x0} ${y0} ${heightLine(face) + fs * 1.25 - x0} ${face.height + fs * 1.4 - y0}`;
 }
 
 /** The narrowest a case can be pulled to (mm). */

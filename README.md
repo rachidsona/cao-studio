@@ -958,8 +958,9 @@ opération existante.
   - **Face du mur** (en haut du panneau, sous son titre, comme la bande du linéaire de la cuisine) : la Répartition
     vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
     équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — et ses cotes
-    (en cm), **dehors comme sur un plan d'atelier** : traits fins et chiffres dans l'encre de la page (gris, plus de
-    rouge, qui dit une erreur), chaque ligne de cote **fléchée à ses deux bouts, son chiffre au milieu** de la ligne
+    (en cm), **dehors comme sur un plan d'atelier** : les lignes dans l'encre de la page (gris, plus de rouge, qui dit
+    une erreur), les **chiffres en vert #63df0f et en gras** (un vert plus foncé sur fond clair, pour rester lisible ;
+    les totaux plus gras encore, ceux du dedans un peu moins), chaque ligne de cote **fléchée à ses deux bouts, son chiffre au milieu** de la ligne
     (← 70,5 →, et ↑ 30,2 ↓ sur les côtés, le chiffre toujours écrit à l'horizontale), tenue entre deux lignes
     d'attache détachées du dessin ; une cote trop courte
     pour son chiffre (le socle) l'a à côté. Au-dessus, la chaîne des largeurs des cases, puis, une rangée plus haut, la
