@@ -185,7 +185,7 @@ export const MODELING: HelpFamily[] = [
           "Cliquez « Cintrer contre » (menu du groupe Modifier), puis le panneau et la face ronde du corps, dans l'ordre qu'on veut : une face ronde donne le corps rond, une face plate le panneau.",
           "Le panneau s'y enroule : « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
         ],
-        tip: "Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc (mesurée au milieu de l'épaisseur), centré là où il était. Contre l'extérieur d'un fût il s'enroule dehors, contre l'intérieur d'un anneau dedans. Il suit le corps rond : le fût change de rayon, le panneau se recourbe. Pour le régler, cliquez son étape dans l'Historique, puis « Modifier ».",
+        tip: "Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc (mesurée au milieu de l'épaisseur), à partir de là où il touche le corps rond : centré sur lui, il s'enroule des deux côtés ; s'il en part, il s'enroule dans le sens où il part. Il faut un panneau droit : une pièce déjà cintrée, prolongée ou découpée est refusée. Contre l'extérieur d'un fût il s'enroule dehors, contre l'intérieur d'un anneau dedans. Il suit le corps rond : le fût change de rayon, le panneau se recourbe. Pour le régler, cliquez son étape dans l'Historique, puis « Modifier ».",
       },
       {
         keys: ["data-action:paneling"],

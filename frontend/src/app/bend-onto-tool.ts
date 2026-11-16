@@ -36,7 +36,7 @@ export class BendOntoTool extends PanelTool {
       this.info(this.target ? `Panneau : « ${bodyLabel(doc, this.target)} ». Cliquez un autre panneau droit pour changer.` : "Cliquez le panneau droit à cintrer (posé à plat contre le corps rond)."),
       this.info(this.onto ? `Contre : « ${bodyLabel(doc, this.onto.body)} ». Cliquez une autre face ronde pour changer.` : "Cliquez la face ronde du corps : le panneau s'y enroule."),
       this.info("Dans l'ordre qu'on veut : une face ronde donne le corps rond, une face plate le panneau."),
-      this.info("Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc, centré là où il était. Contre l'extérieur d'un fût il s'enroule dehors, contre l'intérieur d'un anneau dedans."),
+      this.info("Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc, à partir de là où il touche le corps rond (centré sur lui, des deux côtés ; s'il en part, dans le sens où il part). Il faut un panneau droit, pas une pièce déjà cintrée ou prolongée."),
     ];
   }
 
