@@ -120,6 +120,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   toutes les esquisses montrés dans la vue d'un coup, comme une fenêtre qui couvrirait tout le modèle ; ce qui est
   caché (calques, coupe, isolement) n'est pas pris. Un message dit combien ; Échap vide la sélection
   (`app/select-all.ts`).
+- **Sélectionner les esquisses** (bouton de la colonne Vue, à côté) : de même, mais les esquisses seules — toutes
+  celles montrées dans la vue, aucun corps —, comme le filtre « Corps » prend les corps ; une esquisse cachée n'est pas
+  prise (le message dit combien le sont, et que l'œil du titre « Esquisses » les montre).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble

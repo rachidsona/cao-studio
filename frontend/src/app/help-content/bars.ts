@@ -17,6 +17,19 @@ const SELECT_ALL_HELP: ToolHelp = {
   tip: "Ce qui est caché (un calque éteint, une coupe, un isolement) n'est pas pris : cachez d'abord ce que vous voulez laisser de côté. Dans une esquisse, Ctrl + A prend tout le dessin.",
 };
 
+const SELECT_SKETCHES_HELP: ToolHelp = {
+  keys: [],
+  selector: "[data-select-sketches]",
+  name: "Sélectionner les esquisses",
+  what: "Sélectionne d'un coup toutes les esquisses montrées dans la vue, et elles seules — comme le filtre « Corps » prend les corps.",
+  steps: [
+    "Cliquez « Sélectionner les esquisses », dans la colonne à droite de la vue : toutes les esquisses montrées sont en bleu, la barre du bas dit combien.",
+    "Servez-vous de la sélection : les cacher, les déplacer, les isoler, les supprimer…",
+    "Échap, ou un clic dans le vide, vide la sélection.",
+  ],
+  tip: "Une esquisse cachée n'est pas prise : l'œil du titre « Esquisses », dans l'arbre, les montre toutes d'abord.",
+};
+
 const OPEN_ALL_HELP: ToolHelp = {
   keys: [],
   selector: "[data-open-all]",
@@ -30,7 +43,7 @@ const OPEN_ALL_HELP: ToolHelp = {
 };
 
 /** In the family of the column beside the view. */
-export const SIDE_HELP: ToolHelp[] = [SELECT_ALL_HELP, OPEN_ALL_HELP];
+export const SIDE_HELP: ToolHelp[] = [SELECT_ALL_HELP, SELECT_SKETCHES_HELP, OPEN_ALL_HELP];
 
 export const DRAG_HELP: ToolHelp = {
   keys: [],

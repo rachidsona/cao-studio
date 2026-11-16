@@ -627,6 +627,13 @@ export class Viewport {
     return { bodies: bodies.length, sketches: sketches.length };
   }
 
+  /** Every sketch shown, alone (no body), instead of the selection; how many. */
+  selectSketches(): number {
+    const sketches = this.sketches.shown();
+    this.selection.all([], sketches);
+    return sketches.length;
+  }
+
   clearSelection(): void { this.selection.clear(); }
 
   /** Dimension text displayed next to a selected edge. */

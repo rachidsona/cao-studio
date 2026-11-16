@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectAllText } from "../../frontend/src/app/select-all";
+import { selectAllText, selectSketchesText } from "../../frontend/src/app/select-all";
 
 describe("Tout sélectionner", () => {
   it("dit ce qui est pris", () => {
@@ -10,5 +10,17 @@ describe("Tout sélectionner", () => {
 
   it("dit pourquoi rien ne l'est", () => {
     expect(selectAllText(0, 0)).toMatch(/^Rien à sélectionner/);
+  });
+});
+
+describe("Sélectionner les esquisses", () => {
+  it("dit combien sont prises, et celles cachées laissées", () => {
+    expect(selectSketchesText(3, 3)).toBe("3 esquisses sélectionnées. Échap vide la sélection.");
+    expect(selectSketchesText(1, 3)).toBe("1 esquisse sélectionnée (2 cachées, non prises). Échap vide la sélection.");
+  });
+
+  it("dit pourquoi aucune ne l'est", () => {
+    expect(selectSketchesText(0, 2)).toMatch(/^Aucune esquisse montrée.*2 esquisses sont cachées/);
+    expect(selectSketchesText(0, 0)).toBe("Aucune esquisse dans le projet.");
   });
 });
