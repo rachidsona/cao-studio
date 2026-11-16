@@ -41,5 +41,10 @@ test("les semblables d'un trou, puis tout le dessin", async ({ page }) => {
   const all = Number((await page.getByText(/éléments sélectionnés\./).last().innerText()).split(" ")[0]);
   // The plate's four sides and the four circles.
   expect(all).toBe(8);
+  // The same from the button of the sketch bar, shown there.
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-sketch-command="skselectall"]')).toBeVisible();
+  await page.locator('[data-sketch-command="skselectall"]').click();
+  await expect(page.getByText("8 éléments sélectionnés.").last()).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -383,6 +383,7 @@ export class SketchController {
       mode.apply(geometry, `Cotation automatique : ${count} cote${count > 1 ? "s" : ""} de référence.`);
       return;
     }
+    if (id === "skselectall") return void (allCurves(mode.geometry).length ? this.selectInSketch(allCurves(mode.geometry), "") : this.host.notify("Rien à sélectionner : l'esquisse est vide.", "info"));
     if (id === "skselectsimilar" || id === "skselectchain") {
       const found = id === "skselectsimilar" ? similarCurves(mode.geometry, mode.selection) : chainCurves(mode.geometry, mode.selection);
       if (!found.length) return this.host.notify("Choisissez d'abord un trait, un cercle ou un arc.", "info");

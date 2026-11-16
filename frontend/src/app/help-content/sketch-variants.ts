@@ -109,6 +109,12 @@ export const STRETCH: ToolHelp = {
 /** Les fiches des sélections intelligentes de l'esquisse (sketcher/smart-select.ts). */
 export const SMART_SELECT: ToolHelp[] = [
   {
+    keys: ["data-sketch-command:skselectall"], name: "Tout sélectionner (esquisse)",
+    what: "Choisit d'un coup tout le dessin de l'esquisse ouverte : traits, cercles, arcs (les traits de construction aussi).",
+    steps: ["Cliquez « Tout sélectionner » dans la barre de l'esquisse (ou Ctrl ou ⌘ + A) : le message dit combien d'éléments sont choisis.", "Déplacez, tournez, mettez à l'échelle ou supprimez le tout ; Échap vide la sélection."],
+    tip: "Hors d'une esquisse, le bouton de la colonne Vue sélectionne toutes les esquisses montrées dans la vue.",
+  },
+  {
     keys: ["data-sketch-command:skselectsimilar"], name: "Sélectionner les semblables",
     what: "Choisit d'un coup tous les éléments de même sorte et de même taille que ceux choisis : tous les trous de Ø 5, toutes les étagères de 564, tous les arcs de rayon 10.",
     steps: ["Cliquez un élément (ou plusieurs de tailles différentes).", "Cliquez « Sélectionner les semblables » : le message dit combien sont choisis.", "Appliquez ensuite une contrainte, une cote, Déplacer ou Suppr à tous."],
