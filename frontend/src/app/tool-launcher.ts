@@ -44,6 +44,7 @@ import { PanelingTool } from "./paneling-tool";
 import { LoftTool, ShellTool } from "./shell-loft-tools";
 import { isSideSplit, SplitSidesTool } from "./split-sides-tool";
 import { CopyOpsTool } from "./copy-ops-tool";
+import { BendOntoTool, isBendOnto } from "./bend-onto-tool";
 import { ModifierTool } from "./modifier-tool";
 import { FrontsTool } from "./fronts-tool";
 import { AssemblyTool } from "./assembly-tool";
@@ -52,7 +53,7 @@ import { LayoutCopyTool } from "./dressing/layout-copy-tool";
 import { KitchenTool } from "./kitchen/kitchen-tool";
 import { DressingTool } from "./dressing/dressing-tool";
 
-export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances" | "snack" | "splitSides" | "copyOps";
+export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances" | "snack" | "splitSides" | "copyOps" | "bendOnto";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -88,7 +89,7 @@ export function toolOptions(kind: PanelToolKind, selected: Feature | undefined, 
     ...((selected?.type === "sketch" && (kind === "revolve" || kind === "move" || kind === "panels" || kind === "gable")) ? { sketchId: selected.id } : {}),
     ...((kind === "hole" || kind === "faceStrip") && picked.lastFace ? { pick: picked.lastFace } : {}),
     ...((kind === "fillet" || kind === "chamfer" || kind === "pullFace" || kind === "moveEdge") && edges.length ? { edges } : {}),
-    ...((kind === "hollow" || kind === "splitSides" || kind === "copyOps" || kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting" || kind === "push") && bodies.length ? { bodies } : {}),
+    ...((kind === "hollow" || kind === "splitSides" || kind === "copyOps" || kind === "bendOnto" || kind === "combine" || kind === "split" || kind === "move" || kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "machining" || kind === "assembly" || kind === "overlap" || kind === "layoutCopy" || kind === "rectArray" || kind === "modifier" || kind === "ffd" || kind === "swap" || kind === "spacing" || kind === "trim" || kind === "cutout" || kind === "mate" || kind === "coincide" || kind === "lighting" || kind === "push") && bodies.length ? { bodies } : {}),
     ...(kind === "mirror" || kind === "align" || kind === "stretch" || kind === "array" || kind === "rotate" || kind === "sweep" || kind === "extrudePath" || kind === "rectArray" || kind === "coincide" || kind === "spacing" ? curicSketches(selected, picked.selection.sketches) : {}),
     ...((kind === "split" || kind === "move" || kind === "shell" || kind === "hollow" || kind === "paneling" || kind === "intersect" || kind === "align" || kind === "ffd" || kind === "faceGlue" || kind === "extend" || kind === "push") && faces.length ? { faces } : {}),
     ...(kind === "loft" ? curicSketches(selected, picked.selection.sketches) : {}),
@@ -172,6 +173,12 @@ export class ToolLauncher {
         tool.start();
         return;
       }
+      case "bendOnto": {
+        const tool = new BendOntoTool(ctx, editing?.type === "modifier" && isBendOnto(editing) ? editing : null, options.bodies ?? []);
+        this.active = tool;
+        tool.start();
+        return;
+      }
       case "copyOps": {
         // The body selected is the one whose operations are copied.
         const tool = new CopyOpsTool(ctx, options.bodies ?? []);
@@ -200,7 +207,8 @@ export class ToolLauncher {
         break;
       case "modifier":
         this.active =
-          editing?.type === "modifier" && editing.kind === "ffd" ? new FfdTool(ctx, editing, [])
+          editing?.type === "modifier" && isBendOnto(editing) ? new BendOntoTool(ctx, editing)
+          : editing?.type === "modifier" && editing.kind === "ffd" ? new FfdTool(ctx, editing, [])
           : editing?.type === "modifier" && editing.kind === "points" ? new EdgeMoveTool(ctx, editing, null)
           : editing?.type === "modifier" && editing.kind === "face-scale" ? new FaceScaleTool(ctx, editing)
           : new ModifierTool(ctx, editing?.type === "modifier" ? editing : null, options.bodies ?? []);

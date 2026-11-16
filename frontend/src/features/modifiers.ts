@@ -14,6 +14,8 @@ import type { ModifierFeature } from "../document/types";
 import { bodyMetrics, GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { requireSolid, type OutputLookup } from "./common";
 import { scaledPoint } from "./face-scale";
+import { bentOnto } from "./bend-onto";
+import { resolveFace } from "../geometry/references";
 import { ffdPoint, isDeformed, subdivide, type Box } from "./ffd";
 import type { SolidOutput } from "./outputs";
 
@@ -22,6 +24,11 @@ const axis = (i: number, s = 1): V => [0, 1, 2].map((k) => (k === i ? s : 0)) as
 
 export function buildModifier(feature: ModifierFeature, lookup: OutputLookup): SolidOutput {
   const shape = requireSolid(lookup, feature.target).shape;
+  // Bent onto the round face of another body (« Cintrer contre un corps rond »).
+  if (feature.kind === "bend" && feature.onto) {
+    const round = requireSolid(lookup, feature.onto.body).shape;
+    return { kind: "solid", shape: requireSingleValidSolid(bentOnto(feature.name, shape, resolveFace(round, feature.onto.face)), feature.name) };
+  }
   if (feature.kind === "ffd") return buildFfd(feature, shape);
   if (feature.kind === "points") return buildPointMove(feature, shape);
   if (feature.kind === "face-scale") return buildFaceScale(feature, shape);

@@ -686,6 +686,8 @@ export interface ModifierFeature extends FeatureBase {
   frame?: [Vec3, Vec3];
   /** "face-scale": the face and its scale. */
   face?: FaceScale;
+  /** "bend" onto a round body (« Cintrer contre ») : its cylindrical face the board wraps on, instead of `amount`. */
+  onto?: { body: string; face: FaceRef };
 }
 
 /** A flat face and how it is scaled: its centre, two unit directions in it, its size along them (mm), a scale for each. */
@@ -1109,8 +1111,10 @@ export function featureInputs(feature: Feature): string[] {
       return feature.target && feature.operation !== "new" ? [...feature.profiles, feature.target] : [...feature.profiles];
     case "shell":
     case "paneling":
-    case "modifier":
       return [feature.target];
+    case "modifier":
+      // Bent onto a round body: that body too.
+      return feature.onto ? [feature.target, feature.onto.body] : [feature.target];
     case "panels":
       return [feature.sketch];
     case "fronts":

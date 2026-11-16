@@ -2173,6 +2173,12 @@ opération existante.
   « Vider un corps » marquée `frame` (`ShellFeature.frame`) ; son étape de l'Historique rouvre cet outil.
   `features/ring-sides.ts` (`ringWalls`, le calcul pur dans le plan ; `splitRing`, `frameEnds`),
   `app/split-sides-tool.ts`.
+- **Cintrer contre** (groupe Modifier, rangé dans son menu ; `data-action="bend-onto"`) : un panneau droit posé à plat
+  contre la face ronde d'un autre corps — un fût, un angle arrondi, l'intérieur d'un anneau — s'y enroule : un clic sur
+  le panneau, un clic sur la face ronde. Il garde son épaisseur et sa hauteur le long de l'axe ; sa longueur devient
+  l'arc, mesurée au milieu de l'épaisseur, centré là où il était ; dehors contre un fût, dedans contre un anneau. Une
+  étape Modificateur (cintrer, `ModifierFeature.onto` : le corps et sa face), qui suit le corps rond (il change de
+  rayon, le panneau se recourbe) et se rouvre dans cet outil (`features/bend-onto.ts`, `app/bend-onto-tool.ts`).
 - **Copier les opérations** (groupe Modifier, rangé dans son menu ; `data-action="copy-ops"`) : un clic sur un corps —
   découpé, percé, aux côtés séparés, arrondi, usiné — puis sur un ou plusieurs autres corps, et ce qu'on a fait au
   premier est refait sur chacun, à la même place par rapport à lui. Le corps d'origine est celui d'avant ces
