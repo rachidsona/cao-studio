@@ -1634,6 +1634,14 @@ opération existante.
     - Le panneau dit quels caissons « ne suivent plus » leur standard (retouchés à la main), pour les remettre
       d'accord. Un nouveau caisson, de nouvelles façades et les Règles d'assemblage partent du standard
       (`document/standards.ts`, `app/workshop/standards-panel.ts`).
+    - **Perçage des assemblages automatique** (réglé ainsi dans les modèles fournis ; « À la main » pour garder
+      l'outil Règles d'assemblage) : chaque caisson qui suit le standard est percé de lui-même de ses confirmats,
+      tourillons ou excentriques à chaque jonction — côtés contre dessus, dessous et étagères —, à l'entraxe du
+      standard. Les perçages sont refaits à chaque changement de cote, de standard ou de façades (étagères reculées
+      derrière des façades encastrées comprises), vont dans les fichiers machine (DXF, G-code) comme les autres
+      usinages, la visserie au devis, et le contrôle avant fabrication les voit. Calculé pour le noyau seulement,
+      comme les gorges : le projet garde ses cotes. Un caisson déjà assemblé à la main garde ses usinages et n'en
+      reçoit pas d'autres (`features/cabinet-joints.ts`).
   - *Remplacer partout* (le « Modify Style » de Polyboard) : une matière par une autre, ou une épaisseur de chant par
     une autre, dans tout le projet d'un coup, standards du projet compris, en une annulation (`document/replace.ts`).
   - *Matière et chants* : un panneau flottant règle, pour les corps (ou la face) sélectionnés, la matière (mélaminés,
@@ -1773,6 +1781,12 @@ opération existante.
       **l'angle de la charnière choisie** (110°, 155°…) : une porte qui bute contre un mur se voit proposer un fileur
       côté charnière ou un limiteur d'angle d'ouverture. Ce sont des repères courants : la fiche du fabricant fait foi
       (`document/maker-rules.ts`).
+    - **Charnières selon le poids** : une porte de caisson reçoit d'elle-même autant de charnières que son poids en
+      demande (4,5 kg par charnière Ø35), si c'est plus que sa hauteur (2, 3 ou 4) — porte battante, relevable ou
+      abattant —, et ses cuvettes sont percées en conséquence : le devis, les perçages des fichiers machine et le
+      Contrôle comptent les mêmes. Au-delà de cinq, le Contrôle la dit trop lourde (l'alléger ou la partager en deux).
+      Le nombre est recopié pour le noyau seulement, d'après la matière de la porte (`document/hardware.ts`
+      `stampHinges`, `features/fronts-parts.ts` `hingesFor`).
     - **Règles de quincaillerie de l'atelier** : les articles du catalogue de l'atelier
       (pages `/catalogue/`) comptés d'après le meuble — par caisson, par porte, charnières selon la hauteur des
       portes (2 jusqu'à 90 cm, 3 jusqu'à 1,60 m, 4 au-delà), par étagère, par niche, par côté ou cloison — s'ajoutent

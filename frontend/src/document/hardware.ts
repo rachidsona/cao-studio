@@ -6,13 +6,14 @@
  * (choisis d'après son poids et sa hauteur) ou d'un abattant, le profil gorge des façades sans poignée, et les ferrures
  * de jonction des plans de travail (deux par joint, document/worktop-bars.ts).
  */
-import { frontsHardware, frontsParts } from "../features/fronts-parts";
+import { autoJointHoles } from "../features/cabinet-joints";
+import { frontsHardware, frontsParts, hingeCount, hingesFor, swingsUp } from "../features/fronts-parts";
 import { isGlass } from "../features/glass-door";
 import { nicheHardware, nichePartsIn } from "../features/niche-parts";
 import { partMass } from "../features/stability";
 import { catalogItems } from "./hardware-catalog";
 import { bodyInfo } from "./materials";
-import type { CadDocument, FrontsFeature } from "./types";
+import type { CadDocument, Feature, FrontsFeature } from "./types";
 import { WORKTOP_FITTING, worktopBars } from "./worktop-bars";
 
 export const CONFIRMAT_SCREW = "Vis confirmat 7 × 50";
@@ -55,6 +56,9 @@ export function modelHardware(doc: CadDocument): { name: string; quantity: numbe
       if (f.kind === "minifix") cams += f.ops.filter((op) => op.kind === "hole" && op.diameter >= 14).length;
     }
   }
+  // The joints the standards drill by themselves (features/cabinet-joints.ts).
+  const auto = autoJointHoles(doc);
+  [screwHoles, dowelHoles, cams] = [screwHoles + auto.confirmat, dowelHoles + auto.dowel, cams + auto.cams];
   add(CONFIRMAT_SCREW, Math.floor(screwHoles / 2));
   add(DOWEL, Math.floor(dowelHoles / 2));
   add(MINIFIX_SET, cams);
@@ -89,4 +93,31 @@ export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
   if (f?.type !== "niche") return false;
   const role = nichePartsIn(doc.features, f)[Number(index)]?.role;
   return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f));
+}
+
+/**
+ * The document the kernel builds: each door of a cabinet heavier than its height asks for carries the number of hinges
+ * its weight needs (`hingeCounts`, by part), so its cups are drilled as the quote counts them.
+ */
+export function stampHinges(doc: CadDocument): CadDocument {
+  let changed = false;
+  const features = doc.features.map((f): Feature => {
+    if (f.type !== "fronts") return f;
+    const counts: Record<number, number> = {};
+    if (f.hinges && f.layout !== "drawers" && !f.suppressed) {
+      const cabinet = doc.features.find((c) => c.id === f.cabinet);
+      const up = swingsUp(f);
+      frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined).forEach((p, i) => {
+        if (p.role?.kind !== "door") return;
+        const height = up ? p.to[0] - p.from[0] : p.to[2] - p.from[2];
+        const n = hingesFor(height, frontMass(doc, f, i));
+        if (n > hingeCount(height)) counts[i] = n;
+      });
+    }
+    if (!Object.keys(counts).length && !f.hingeCounts) return f;
+    changed = true;
+    const { hingeCounts: _old, ...rest } = f;
+    return Object.keys(counts).length ? { ...rest, hingeCounts: counts } : rest;
+  });
+  return changed ? { ...doc, features } : doc;
 }

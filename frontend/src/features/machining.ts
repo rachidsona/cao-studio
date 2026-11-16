@@ -22,7 +22,7 @@ function unit(v: Vec3): Vec3 {
   return [v[0] / l, v[1] / l, v[2] / l];
 }
 
-function toolOf(op: MachiningOp, name: string): Shape3D {
+export function toolOf(op: MachiningOp, name: string): Shape3D {
   if (op.kind === "hole") {
     if (Math.hypot(...op.dir) < 1e-9) throw new GeometryError(`${name} : direction de perçage nulle.`);
     const dir = unit(op.dir);

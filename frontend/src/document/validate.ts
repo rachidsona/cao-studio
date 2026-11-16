@@ -20,7 +20,7 @@ const OPERATIONS = new Set(["new", "join", "cut", "intersect"]);
 function standardOk(s: unknown): boolean {
   if (!isObject(s) || typeof s.id !== "string" || typeof s.name !== "string") return false;
   if (!["thickness", "backThickness", "frontGap", "frontThickness", "band", "bandTrim", "jointSpacing"].every((k) => isFiniteNumber(s[k]))) return false;
-  if (s.plinth !== undefined && !isFiniteNumber(s.plinth)) return false;
+  if ((s.plinth !== undefined && !isFiniteNumber(s.plinth)) || (s.autoJoints !== undefined && typeof s.autoJoints !== "boolean")) return false;
   if (!["none", "applied", "inset"].includes(s.back as string) || !["sides-through", "top-bottom-through"].includes(s.construction as string)) return false;
   if (!["overlay", "inset"].includes(s.frontMount as string) || !["confirmat", "dowel", "minifix"].includes(s.joint as string)) return false;
   return ["carcass", "fronts", "backs"].every((k) => s[k] === undefined || typeof s[k] === "string");

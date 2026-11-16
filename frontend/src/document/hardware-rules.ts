@@ -8,9 +8,10 @@
  *   décalant la charnière de 32 mm, features/fronts.ts ; reste ce qu'on ne peut pas décaler).
  * Les charges sont des repères courants : la fiche du fabricant fait foi.
  */
+import { autoJointOps } from "../features/cabinet-joints";
 import { junctions, type Board } from "../features/assembly-rules";
 import { cabinetParts } from "../features/cabinet-parts";
-import { frontsParts, hingeCount, hingeHeights, LIFT_CLASSES, liftStay, swingsUp } from "../features/fronts-parts";
+import { frontsParts, HINGE_LOAD, hingeCount, hingeHeights, hingesFor, LIFT_CLASSES, liftStay, swingsUp } from "../features/fronts-parts";
 import { nichePartsIn } from "../features/niche-parts";
 import { partMass } from "../features/stability";
 import type { Problem } from "./fabrication-check";
@@ -18,18 +19,27 @@ import { bodyInfo } from "./materials";
 import { bodyLabel } from "./operations";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type MachiningOp, type Vec3 } from "./types";
 
-/** What one Ø35 hinge carries, as a common guide (kg). */
-export const HINGE_LOAD = 4.5;
+export { HINGE_LOAD };
 
 /** Hinges a door needs: by its height, and by its weight. */
-export function hingesNeeded(height: number, mass: number): number {
-  return Math.max(hingeCount(height), Math.ceil(mass / HINGE_LOAD));
-}
+export const hingesNeeded = (height: number, mass: number): number => hingesFor(height, mass);
 
 /** The machining operations a body carries: those of the machining that made it and of every one before. */
 export function opsOf(doc: CadDocument, bodyId: string): MachiningOp[] {
   const out: MachiningOp[] = [];
   let id: string | undefined = bodyId;
+  // The joints a standard drills by itself in a cabinet's board (features/cabinet-joints.ts).
+  const board = (): string | undefined => {
+    let at: string | undefined = bodyId;
+    for (let guard = 0; at && guard < 200; guard++) {
+      const f = doc.features.find((x) => x.id === at);
+      if (f?.type !== "machining") return at;
+      at = f.target;
+    }
+    return at;
+  };
+  const origin = board();
+  if (origin) out.push(...autoJointOps(doc, origin));
   for (let guard = 0; id && guard < 200; guard++) {
     const f = doc.features.find((x) => x.id === id);
     if (f?.type !== "machining") break;
@@ -80,13 +90,15 @@ export function doorProblems(doc: CadDocument): Problem[] {
         const size = [0, 1, 2].map((k) => Math.abs(p.to[k]! - p.from[k]!));
         if (swingsUp(f)) {
           // Hinged along its top or its bottom: its hinges by its width; a lift-up door, its stays by weight × height.
-          check(id, size, size[0]!, hingeCount(size[0]!));
+          check(id, size, size[0]!, hingesFor(size[0]!, partMass(size[0]! * size[1]! * size[2]!, bodyInfo(doc, id).material)));
           const mass = partMass(size[0]! * size[1]! * size[2]!, bodyInfo(doc, id).material);
           if (f.side === "top" && !liftStay(size[2]!, mass)) problems.push({ kind: "hardware", severity: "warning", message: `${bodyLabel(doc, id)} pèse ${mass.toFixed(1)} kg pour ${Math.round(size[2]!)} mm de haut : c'est plus qu'une paire de compas ne tient (facteur ${Math.round(size[2]! * mass)}, ${LIFT_CLASSES.at(-1)!.upTo} au plus). Allégez la porte, réduisez sa hauteur ou voyez la fiche du fabricant.`, bodies: [id] });
           return;
         }
-        const n = hingeCount(size[2]!);
+        // As many as its weight asks (features/fronts-parts.ts hingesFor): past five, a door too heavy to hang well.
+        const n = hingesFor(size[2]!, partMass(size[0]! * size[1]! * size[2]!, bodyInfo(doc, id).material));
         check(id, size, size[2]!, n);
+        if (n > 5) problems.push({ kind: "hardware", severity: "warning", message: `${bodyLabel(doc, id)} est très lourde : ${n} charnières. Allégez-la (matière, épaisseur) ou partagez-la en deux portes.`, bodies: [id] });
         const { blocked } = hingeHeights(p.from[2], p.to[2], n, shelves);
         if (blocked.length) problems.push({ kind: "hardware", severity: "warning", message: `${bodyLabel(doc, id)} : ${blocked.length > 1 ? "des charnières tombent" : "une charnière tombe"} sur une étagère, même décalée de 32 mm ; déplacez l'étagère.`, bodies: [id] });
       });

@@ -178,7 +178,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Cliquez le bouton « Appliquer : … caisson(s), … façade(s), … pièce(s) » pour reconstruire les caissons qui suivent le standard.",
           "Cliquez « Enregistrer dans l'atelier » pour le retrouver dans d'autres projets de ce navigateur.",
         ],
-        tip: "Le panneau liste les caissons retouchés à la main qui ne le suivent plus. Un caisson peut suivre un autre standard, ou aucun, dans l'outil Caisson, ligne « Standard ».",
+        tip: "Le panneau liste les caissons retouchés à la main qui ne le suivent plus. Un caisson peut suivre un autre standard, ou aucun, dans l'outil Caisson, ligne « Standard ». « Perçage des assemblages : Automatique » perce seul chaque jonction des caissons qui le suivent, refaite à chaque changement de cote et comptée au devis.",
       },
       {
         keys: ["data-workshop:hardware"], name: "Quincaillerie",
@@ -188,7 +188,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Choisissez un modèle dans « Charnières », « Coulisses » et « Poignées » ; le panneau donne ses cotes et son prix HT.",
           "Lisez « Règles des fabricants » : une porte trop fine pour la cuvette, une porte battante de plus de 600 mm, une poignée trop longue pour sa façade, un tiroir plein trop lourd pour ses coulisses ; « Voir » sélectionne la pièce. En bas, « Quincaillerie du projet » compte tout.",
         ],
-        tip: "Les façades, portes et tiroirs neufs sont percés aux cotes du modèle choisi. Le Contrôle ouvre chaque porte jusqu'à l'angle de la charnière choisie : contre un mur, un fileur ou un limiteur d'ouverture. Repères courants : la fiche du fabricant fait foi.",
+        tip: "Les façades, portes et tiroirs neufs sont percés aux cotes du modèle choisi ; une porte lourde reçoit seule les charnières que son poids demande (4,5 kg chacune). Le Contrôle ouvre chaque porte jusqu'à l'angle de la charnière choisie : contre un mur, un fileur ou un limiteur d'ouverture. Repères courants : la fiche du fabricant fait foi.",
       },
       {
         keys: ["data-workshop:parameters"], name: "Paramètres",

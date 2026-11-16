@@ -1,6 +1,8 @@
 /** Promise-based proxy to the geometry worker, used by the editor on the main thread. */
+import { stampHinges } from "../document/hardware";
 import { stampHardware } from "../document/hardware-catalog";
 import { stampGorges } from "../features/fronts-parts";
+import { stampCabinetJoints } from "../features/cabinet-joints";
 import { stampInsetSetbacks } from "../features/inset-setback";
 import type { CadDocument, FaceRef } from "../document/types";
 import type { ExportFormat } from "../io/exporters";
@@ -20,9 +22,10 @@ const limitOf = (type: WorkerRequest["type"]) => TIME_LIMITS[type] ?? TIME_LIMIT
 
 /**
  * The document as the kernel receives it: the chosen hardware's sizes in the fronts and doors it drills, the gorge
- * profiles' notches in the sides, the shelves set back behind inset doors.
+ * profiles' notches in the sides, the hinges a heavy door needs, the shelves set back behind inset doors, the holes of
+ * the joints the standards drill.
  */
-export const kernelDocument = (doc: CadDocument): CadDocument => stampInsetSetbacks(stampGorges(stampHardware(doc)));
+export const kernelDocument = (doc: CadDocument): CadDocument => stampCabinetJoints(stampInsetSetbacks(stampGorges(stampHinges(stampHardware(doc)))));
 
 export class GeometryClient {
   private worker!: Worker;

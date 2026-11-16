@@ -101,9 +101,9 @@ describe("Minifix et contrôles", () => {
     expect(heights[0]).toBe(100 + 64);
     expect(blocked).toEqual([]);
     expect(hingeHeights(0, 720, 2, [[0, 720]]).blocked).toEqual([0, 1]);
-    // A tall heavy door on too few hinges.
+    // A tall heavy door: it gets the hinges its weight asks for, and is said to be too heavy past five.
     const tall = docOf(cabinet({ height: 2200, depth: 600, shelves: 0 }), { ...fronts, thickness: 40 });
-    expect(doorProblems({ ...tall, bodyInfo: { "fr1#0": { material: "solid-oak" } } }).map((p) => p.message).join(" ")).toMatch(/il en faudrait/);
+    expect(doorProblems({ ...tall, bodyInfo: { "fr1#0": { material: "solid-oak" } } }).map((p) => p.message).join(" ")).toMatch(/très lourde : 9 charnières/);
   });
 });
 

@@ -14,7 +14,7 @@ export function shelvesOf(cabinet: CabinetFeature | undefined): [number, number]
 }
 
 /** Where the drill goes in a front: hinge cups on the inside face, handle holes through. */
-export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, number][]): { at: Vec3; radius: number; depth: number }[] {
+export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, number][], index?: number): { at: Vec3; radius: number; depth: number }[] {
   const role = part.role;
   if (!role) return [];
   const [x0, y0, z0] = part.from;
@@ -22,16 +22,18 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
   const inside = y1; // the face towards the cabinet (+Y)
   const out: { at: Vec3; radius: number; depth: number }[] = [];
   const up = role.kind === "door" && (role.hinge === "top" || role.hinge === "bottom");
+  // As many hinges as the door's height asks, or more when its weight does (stamped: document/hardware.ts stampHinges).
+  const count = (height: number) => (index !== undefined ? f.hingeCounts?.[index] : undefined) ?? hingeCount(height);
   if (role.kind === "door" && f.hinges && !isGlass(f)) {
     const cup = { edge: f.hw?.cupEdge ?? 22.5, radius: (f.hw?.cupDiameter ?? 35) / 2, depth: f.hw?.cupDepth ?? 13 };
     if (up) {
       // A lift-up door or a flap: along its top or its bottom edge, their plates on the top or the bottom board.
       const z = role.hinge === "top" ? z1 - cup.edge : z0 + cup.edge;
-      for (const x of hingeHeights(x0, x1, hingeCount(x1 - x0)).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
+      for (const x of hingeHeights(x0, x1, count(x1 - x0)).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
     } else {
       const x = role.hinge === "left" ? x0 + cup.edge : x1 - cup.edge;
       // Kept clear of the shelves: a hinge's plate on the side cannot sit on one.
-      for (const z of hingeHeights(z0, z1, hingeCount(z1 - z0), shelves).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
+      for (const z of hingeHeights(z0, z1, count(z1 - z0), shelves).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
     }
   }
   if (f.handles && f.grip !== "gorge") {
@@ -62,5 +64,5 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
 export function frontsHoleCount(feature: FrontsFeature, cabinet: CabinetFeature | undefined): number {
   if (frontsProblem(feature, cabinet)) return 0;
   const shelves = shelvesOf(cabinet);
-  return frontsParts(feature, cabinet).reduce((n, part) => n + drillings(part, feature, shelves).length, 0);
+  return frontsParts(feature, cabinet).reduce((n, part, i) => n + drillings(part, feature, shelves, i).length, 0);
 }

@@ -14,12 +14,14 @@
  * the carcass is shallower by its thickness) or inset (inner size, the
  * horizontal boards stop in front of it). A plinth raises the bottom: the
  * sides go down to the floor. Handleless fronts notch the front edge of the sides where their gorge profiles run
- * (`notches`, stamped from the fronts: features/fronts-parts.ts stampGorges).
+ * (`notches`, stamped from the fronts: features/fronts-parts.ts stampGorges); a standard that drills its joints by
+ * itself puts their holes in the boards (`joints`, stamped by features/cabinet-joints.ts).
  */
-import { makeBox, type Shape3D } from "replicad";
-import type { CabinetFeature, Vec3 } from "../document/types";
+import { makeBox, makeCompound, type Shape3D } from "replicad";
+import type { CabinetFeature, MachiningOp, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { cabinetParts, cabinetProblem } from "./cabinet-parts";
+import { toolOf } from "./machining";
 import type { SolidsOutput } from "./outputs";
 
 export { cabinetPartNames, cabinetParts, cabinetProblem, type CabinetPart } from "./cabinet-parts";
@@ -43,6 +45,18 @@ function notched(solid: Shape3D, part: { from: Vec3; to: Vec3 }, feature: Cabine
   return solid;
 }
 
+/** A board with the holes of its joints, all cut at once (the shape is consumed). */
+function drilled(solid: Shape3D, ops: MachiningOp[], name: string): Shape3D {
+  if (!ops.length) return solid;
+  const tools = ops.map((op) => toolOf(op, name));
+  const tool = (tools.length === 1 ? tools[0]! : makeCompound(tools)) as Shape3D;
+  const cut = solid.cut(tool) as Shape3D;
+  solid.delete();
+  // makeCompound takes the tools in: deleting the compound releases them.
+  tool.delete();
+  return cut;
+}
+
 export function buildCabinet(feature: CabinetFeature): SolidsOutput {
   const problem = cabinetProblem(feature);
   if (problem) throw new GeometryError(`${feature.name} : ${problem}`);
@@ -52,6 +66,8 @@ export function buildCabinet(feature: CabinetFeature): SolidsOutput {
     for (const part of parts) {
       let solid = makeBox(part.from, part.to) as unknown as Shape3D;
       if (part.name.startsWith("Côté")) solid = notched(solid, part, feature);
+      const holes = feature.joints?.find((j) => j.part === shapes.length)?.ops ?? [];
+      if (holes.length) solid = drilled(solid, holes, `${feature.name} — ${part.name}`);
       if (!isShapeValid(solid)) {
         solid.delete();
         throw new GeometryError(`${feature.name} : la pièce « ${part.name} » est invalide.`);

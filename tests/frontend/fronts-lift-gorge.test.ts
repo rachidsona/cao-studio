@@ -57,8 +57,9 @@ describe("porte relevable et abattant", () => {
     expect(liftStay(400, 4.1)?.name).toBe("Compas de porte relevable force 2 (paire)");
     expect(liftStay(700, 13)).toBeNull();
     const f = fronts({ side: "top" });
+    // 10 kg: three hinges along its top edge (4,5 kg each), more than its width alone asks.
     expect(frontsHardware(f, wall, () => 10)).toEqual([
-      { name: "Charnière à boîtier Ø35", quantity: 2 },
+      { name: "Charnière à boîtier Ø35", quantity: 3 },
       { name: "Compas de porte relevable force 3 (paire)", quantity: 1 },
       { name: "Poignée entraxe 128 mm", quantity: 1 },
     ]);

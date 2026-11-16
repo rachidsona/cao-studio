@@ -443,6 +443,8 @@ export interface CabinetFeature extends FeatureBase {
   notches?: CabinetNotch[];
   /** Its shelves this far back from its front, behind inset fronts: copied in for the kernel only (features/inset-setback.ts). */
   shelfSetback?: number;
+  /** The holes of its joints, drilled by its standard: copied in for the kernel only (features/cabinet-joints.ts). */
+  joints?: { part: number; ops: MachiningOp[] }[];
 }
 
 /** A notch in the front edge of a cabinet's sides: from `z0` to `z1` above its origin, `depth` back from its front. */
@@ -738,6 +740,8 @@ export interface FrontsFeature extends FeatureBase {
   profile?: ProfileFinish;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
   hw?: HardwareSizes;
+  /** By part, the hinges of a door heavier than its height asks for: copied in for the kernel only (document/hardware.ts stampHinges). */
+  hingeCounts?: Record<number, number>;
 }
 
 /** How the fronts of a cabinet look: framed, fluted, slatted or glazed, with their sizes (features/door-decor.ts). */

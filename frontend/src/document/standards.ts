@@ -36,28 +36,30 @@ export interface ConstructionStandard {
   /** How the carcass is assembled (Règles d'assemblage) and the spacing of the fasteners (mm). */
   joint: "confirmat" | "dowel" | "minifix";
   jointSpacing: number;
+  /** The cabinets that follow it get the holes of their joints by themselves, made again at each change (features/cabinet-joints.ts). */
+  autoJoints?: boolean;
 }
 
 export const STANDARDS: ConstructionStandard[] = [
   {
     id: "melamine-19", name: "Mélaminé 19 mm, fond vissé, système 32", thickness: 19, back: "applied", backThickness: 3, construction: "sides-through",
-    frontMount: "overlay", frontGap: 3, frontThickness: 19, carcass: "melamine-white", fronts: "melamine-white", backs: "hdf", band: 1, bandTrim: 1, joint: "confirmat", jointSpacing: 128,
+    frontMount: "overlay", frontGap: 3, frontThickness: 19, carcass: "melamine-white", fronts: "melamine-white", backs: "hdf", band: 1, bandTrim: 1, joint: "confirmat", jointSpacing: 128, autoJoints: true,
   },
   {
     id: "melamine-16", name: "Mélaminé 16 mm économique, fond rainuré", thickness: 16, back: "inset", backThickness: 3, construction: "sides-through",
-    frontMount: "overlay", frontGap: 3, frontThickness: 16, carcass: "melamine-white", fronts: "melamine-white", backs: "hdf", band: 0.4, bandTrim: 1, joint: "dowel", jointSpacing: 96,
+    frontMount: "overlay", frontGap: 3, frontThickness: 16, carcass: "melamine-white", fronts: "melamine-white", backs: "hdf", band: 0.4, bandTrim: 1, joint: "dowel", jointSpacing: 96, autoJoints: true,
   },
   {
     id: "minifix-18", name: "Démontable 18 mm à excentriques (Minifix)", thickness: 18, back: "inset", backThickness: 8, construction: "sides-through",
-    frontMount: "overlay", frontGap: 3, frontThickness: 19, carcass: "melamine-oak", fronts: "melamine-oak", backs: "hdf", band: 1, bandTrim: 1, joint: "minifix", jointSpacing: 256,
+    frontMount: "overlay", frontGap: 3, frontThickness: 19, carcass: "melamine-oak", fronts: "melamine-oak", backs: "hdf", band: 1, bandTrim: 1, joint: "minifix", jointSpacing: 256, autoJoints: true,
   },
   {
     id: "plywood-18", name: "Contreplaqué bouleau 18 mm, façades rentrées", thickness: 18, back: "inset", backThickness: 8, construction: "top-bottom-through",
-    frontMount: "inset", frontGap: 2, frontThickness: 18, carcass: "birch-plywood", fronts: "birch-plywood", backs: "birch-plywood", band: 0, bandTrim: 1, joint: "dowel", jointSpacing: 96,
+    frontMount: "inset", frontGap: 2, frontThickness: 18, carcass: "birch-plywood", fronts: "birch-plywood", backs: "birch-plywood", band: 0, bandTrim: 1, joint: "dowel", jointSpacing: 96, autoJoints: true,
   },
   {
     id: "lacquer-22", name: "Haut de gamme 22 mm, façades laquées", thickness: 22, back: "inset", backThickness: 8, construction: "sides-through",
-    frontMount: "overlay", frontGap: 2, frontThickness: 22, carcass: "melamine-anthracite", fronts: "lacquer-white", backs: "melamine-anthracite", band: 2, bandTrim: 1, joint: "dowel", jointSpacing: 96,
+    frontMount: "overlay", frontGap: 2, frontThickness: 22, carcass: "melamine-anthracite", fronts: "lacquer-white", backs: "melamine-anthracite", band: 2, bandTrim: 1, joint: "dowel", jointSpacing: 96, autoJoints: true,
   },
 ];
 

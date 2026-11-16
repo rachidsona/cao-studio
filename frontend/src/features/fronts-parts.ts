@@ -122,6 +122,14 @@ export function hingeCount(height: number): number {
   return height < 900 ? 2 : height < 1600 ? 3 : 4;
 }
 
+/** What one Ø35 hinge carries, as a common guide (kg). */
+export const HINGE_LOAD = 4.5;
+
+/** Hinges a door needs: by its height, and by its weight (kg) when it is known. */
+export function hingesFor(height: number, mass = 0): number {
+  return Math.max(hingeCount(height), Math.ceil(mass / HINGE_LOAD));
+}
+
 /** Half the height of a hinge's mounting plate on the cabinet's side, which a shelf must leave free (mm). */
 const PLATE = 25;
 
@@ -257,7 +265,8 @@ export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undef
   const out: { name: string; quantity: number; unit?: string }[] = [];
   const up = swingsUp(f);
   // Along the top or the bottom edge: counted by the width of the door.
-  const hinges = f.hinges ? doors.reduce((n, d) => n + hingeCount(up ? d.to[0] - d.from[0] : d.to[2] - d.from[2]), 0) : 0;
+  // By the height of each door (its width along the top or the bottom) and by its weight when it is known.
+  const hinges = f.hinges ? doors.reduce((n, d) => n + hingesFor(up ? d.to[0] - d.from[0] : d.to[2] - d.from[2], mass?.(parts.indexOf(d)) ?? 0), 0) : 0;
   // A glazed door hangs on hinges made for its aluminium frame; its glass and its profile are bought.
   if (hinges) out.push({ name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges });
   if (up && doors[0]) {

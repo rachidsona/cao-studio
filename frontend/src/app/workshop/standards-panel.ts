@@ -136,12 +136,17 @@ export function bindStandardsPanel(root: HTMLElement, viewport: Viewport, editor
         pick("Construction", "construction", [["sides-through", "Côtés toute hauteur"], ["top-bottom-through", "Dessus et dessous toute largeur"]]),
         pick("Façades", "frontMount", [["overlay", "En applique"], ["inset", "Rentrées"]]),
         pick("Assemblage", "joint", [["confirmat", "Confirmat"], ["dowel", "Tourillons"], ["minifix", "Excentriques Minifix"]]),
+        el("label", { class: "grid gap-0.5" }, el("span", { class: "text-gray-500" }, "Perçage des assemblages"), (() => {
+          const select = el("select", { class: SELECT, "aria-label": "Perçage des assemblages", "data-auto-joints": "" }, el("option", { value: "1", selected: current.autoJoints === true }, "Automatique"), el("option", { value: "", selected: current.autoJoints !== true }, "À la main (Règles d'assemblage)"));
+          select.addEventListener("change", () => edit(current, { autoJoints: select.value === "1" }));
+          return select;
+        })()),
         pick("Chant visible", "band", [["0", "Aucun"], ...EDGE_BANDS.map((b): [string, string] => [String(b), `${b} mm`])]),
         pick("Caisson en", "carcass", materials),
         pick("Façades en", "fronts", materials),
         pick("Fonds en", "backs", materials),
       ),
-      el("p", { class: "text-[11px] text-gray-500" }, "Les chants au moins aussi épais que « Déduire les chants dès » sont retirés de la cote de coupe, les plus fins non. Socle vide : chaque caisson garde le sien."),
+      el("p", { class: "text-[11px] text-gray-500" }, "Les chants au moins aussi épais que « Déduire les chants dès » sont retirés de la cote de coupe, les plus fins non. Socle vide : chaque caisson garde le sien. Perçage automatique : chaque caisson qui suit le standard est percé de ses confirmats, tourillons ou excentriques à chaque jonction, refaits à chaque changement de cote et comptés au devis."),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, `${following.length} caisson(s) sur ${cabinets.length} suivent un standard${off.size ? ` ; ne le suivent plus : ${cabinets.filter((c) => off.has(c.id)).map((c) => c.name).join(", ")}` : ""}.`),
       apply,
       keep,

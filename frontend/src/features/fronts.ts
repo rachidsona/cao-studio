@@ -57,7 +57,7 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
         // The door's frame [across, up, through] is the world's [x, z, y].
         solid = cutGrooves(solid, decorGrooves(feature, part.from[0], part.to[0], part.from[2], part.to[2], clear), part.from[1], 1, ([u, v, w]) => [u, w, v]);
       }
-      for (const d of drillings(part, feature, shelves)) {
+      for (const d of drillings(part, feature, shelves, shapes.length)) {
         // Drilled from the inside face towards the outside (−Y).
         tools.push(makeCylinder(d.radius, d.depth + 0.01, [d.at[0], d.at[1] + 0.005, d.at[2]], [0, -1, 0]) as unknown as Shape3D);
       }
