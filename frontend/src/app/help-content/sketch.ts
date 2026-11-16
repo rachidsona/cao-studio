@@ -180,7 +180,7 @@ export const SKETCH: HelpFamily[] = [
           "Tirez la flèche, ou tapez un chiffre pour saisir la distance (les calculs comme « 250 − 180 » passent).",
           "Cliquez un autre élément pour une autre copie. Échap termine.",
         ],
-        tip: "Sur un corps, les arêtes sont projetées dans l'esquisse en traits violets fixes. Le sens positif va vers l'intérieur de la face ; un signe moins prend l'autre côté.",
+        tip: "Sur un corps, les arêtes sont projetées dans l'esquisse en traits violets fixes. Le sens positif va vers l'intérieur de la face ; un signe moins prend l'autre côté. Règle de l'outil : un trait décalé ne dépasse pas les traits déjà dessinés qu'il croise — depuis son milieu, il s'arrête au premier de chaque côté (les traits de construction ne l'arrêtent pas).",
       }, {
         keys: ["data-sketch-tool:extend"], name: "Prolonger",
         what: "Allonge le bout d'une ligne ou d'un arc jusqu'à la courbe suivante.",

@@ -17,7 +17,7 @@ import type { Viewport } from "../viewport/viewport";
 import { removeEntities, type Vec2 } from "./edit";
 import type { Vec3 } from "./frame";
 import { addOffsetCurves, allConstruction, connectedChain, handleFor, offsetPreview, pathsFromCurves } from "./offset";
-import { intoFaceSign, projectedRings, ringsOf } from "./offset-edge";
+import { intoFaceSign, projectedRings, ringsOf, trimToExisting } from "./offset-edge";
 import type { Preview } from "./tools";
 
 export interface EdgeOffsetHost {
@@ -140,7 +140,8 @@ export class EdgeOffsetTool {
     if (!curves) return this.host.notify("Aucun trait à cette distance : elle est trop grande pour la forme.", "info");
     const current = this.host.geometry();
     const base = copy.created.length ? removeEntities(current, copy.created) : current;
-    const { geometry, created } = addOffsetCurves(base, curves, allConstruction(base, copy.source));
+    // The rule of the tool: a new line stops at the first line already drawn it meets, each side of its middle.
+    const { geometry, created } = addOffsetCurves(base, trimToExisting(curves, base, new Set(copy.source)), allConstruction(base, copy.source));
     const record: OffsetRecord = { id: copy.id, name: copy.name, curves: created, source: copy.source, distance, both: false, join: "sharp" };
     geometry.offsets = [...(base.offsets ?? []).filter((o) => o.id !== copy.id), record];
     this.applying = true;

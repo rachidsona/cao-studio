@@ -441,7 +441,10 @@ serveur accepte les deux versions.
   ouvre la **calculatrice** (touches, parenthèses, mm / cm / m) avec la distance dedans, pour calculer une mesure. Chaque réglage est une étape d'annulation. Un autre clic fait une autre copie
   (aussi de la copie qu'on vient de faire) ; l'outil reste actif jusqu'à **Échap**, et les copies restent. Les arêtes
   des corps sont projetées en repères violets (sans doubler celles déjà dans l'esquisse) ; les copies sont de vrais
-  traits, listées dans l'historique (« Arête décalée n »). Le calcul est dans `sketcher/edge-offset-tool.ts` et
+  traits, listées dans l'historique (« Arête décalée n »). **Règle de l'outil** : un trait décalé ne dépasse pas les
+  traits déjà dessinés qu'il croise — depuis son milieu, il s'arrête au premier de chaque côté (le côté d'un rectangle
+  décalé s'arrête au trait tiré en travers, au lieu de courir jusqu'au bord) ; les traits de construction et ceux
+  qu'on décale ne l'arrêtent pas (`trimToExisting`). Le calcul est dans `sketcher/edge-offset-tool.ts` et
   `sketcher/offset-edge.ts`.
 - **Décalage** (touche O, bouton « Décalage ») : copie parallèle de lignes, segments, arcs, cercles,
   polylignes et contours fermés, calculée par OpenCascade (`BRepOffsetAPI_MakeOffset`) :

@@ -7,7 +7,7 @@
  * doubling those already in the sketch, and says on which side the face is.
  */
 import type { SketchGeometry } from "../document/sketch";
-import type { OffsetPath } from "../geometry/offset";
+import type { OffsetCurve, OffsetPath } from "../geometry/offset";
 import type { EdgeOutline, FaceOutline, OutlineEdge } from "../geometry/protocol";
 import type { Vec2 } from "./edit";
 import type { SketchFrame, Vec3 } from "./frame";
@@ -144,4 +144,44 @@ export function projectFace(g: SketchGeometry, outline: FaceOutline, frame: Sket
     // Seen slanted, the edges may cross: the side is then the kernel's.
   }
   return { geometry, ids: [...new Set(ids)], rings };
+}
+
+/**
+ * The rule of « Décaler l'arête »: a new straight line goes no further than the lines already drawn that it meets —
+ * from its middle, it stops at the first one on each side (the line offset from the side of a rectangle stops at the
+ * line drawn across it, instead of running on past it). The source lines (`skip`) and construction lines do not stop
+ * it. Curves are left as they are.
+ */
+export function trimToExisting(curves: readonly OffsetCurve[], g: SketchGeometry, skip: ReadonlySet<string>): OffsetCurve[] {
+  const at = (id: string): Vec2 => {
+    if (id === "origin") return [0, 0];
+    const p = g.points.find((q) => q.id === id);
+    return p ? [p.x, p.y] : [NaN, NaN];
+  };
+  const walls = g.curves.filter((c) => c.kind === "line" && !c.construction && !skip.has(c.id)).map((c) => (c.kind === "line" ? [at(c.p1), at(c.p2)] : null)).filter((w): w is [Vec2, Vec2] => !!w);
+  return curves.map((curve) => {
+    if (curve.kind !== "line") return curve;
+    const [a, b] = [curve.a, curve.b];
+    const d: Vec2 = [b[0] - a[0], b[1] - a[1]];
+    const len = Math.hypot(d[0], d[1]);
+    if (len < 1e-9) return curve;
+    let [low, high] = [0, 1];
+    for (const [p, q] of walls) {
+      const e: Vec2 = [q[0] - p[0], q[1] - p[1]];
+      const den = d[0] * e[1] - d[1] * e[0];
+      // Parallel lines do not stop it.
+      if (Math.abs(den) < 1e-9 * len * Math.hypot(e[0], e[1])) continue;
+      const w: Vec2 = [p[0] - a[0], p[1] - a[1]];
+      const t = (w[0] * e[1] - w[1] * e[0]) / den;
+      const u = (w[0] * d[1] - w[1] * d[0]) / den;
+      // Crossed inside the other line (its ends included), strictly inside this one.
+      const tolerance = 1e-6;
+      if (u < -tolerance || u > 1 + tolerance || t <= tolerance || t >= 1 - tolerance) continue;
+      if (t < 0.5) low = Math.max(low, t);
+      else high = Math.min(high, t);
+    }
+    if (low === 0 && high === 1) return curve;
+    const point = (t: number): Vec2 => [Number((a[0] + d[0] * t).toFixed(6)), Number((a[1] + d[1] * t).toFixed(6))];
+    return { kind: "line", a: point(low), b: point(high) };
+  });
 }
