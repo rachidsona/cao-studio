@@ -28,14 +28,10 @@ import { loadFace, type LoadedFace } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
+import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 
+/** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
-const SHAPES: [Shape, string][] = [
-  ["line", "Ligne / polyligne"],
-  ["rectangle", "Rectangle"],
-  ["circle", "Cercle"],
-  ["offset", "Décalage du contour"],
-];
 
 /** What a snap is called in the value box. */
 const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle: "Milieu du trait", center: "Centre de la face", free: "" };
@@ -57,7 +53,7 @@ const NOTHING: Typed = { x: null, y: null, length: null, angle: null };
 const TYPING = /^[0-9.,;\- +*/()×÷]$/;
 
 export class DrawOnFaceTool extends PanelTool {
-  private shape: Shape = last.shape;
+  private shape: Shape = isStripTrace(lastMagicTrace()) ? last.shape : (lastMagicTrace() as Shape);
   private thenPull = last.thenPull;
   /** The face the drawing is on: set with the first point, which locks it. */
   private face: LoadedFace | null = null;
@@ -86,7 +82,7 @@ export class DrawOnFaceTool extends PanelTool {
   private readonly sketchName: string;
 
   constructor(ctx: ToolContext) {
-    super(ctx, "Dessiner sur le corps", null);
+    super(ctx, MAGIC_EXTRUDE, null);
     const doc = ctx.doc();
     this.sketchId = uniqueId(doc, "sk");
     this.sketchName = uniqueName(doc, "Tracé");
@@ -466,8 +462,11 @@ export class DrawOnFaceTool extends PanelTool {
               ? "Cliquez le coin opposé."
               : "Cliquez un point du cercle.";
     return [
-      this.selectRow("Tracé", this.shape, SHAPES, (v) => {
-        this.shape = v as Shape;
+      this.selectRow("Tracé", this.shape, TRACES, (v) => {
+        rememberTrace(v as Trace);
+        // A line from an edge or a corner: the other way of « Magie extrusion ».
+        if (isStripTrace(v as Trace)) return this.ctx.switchTo?.("faceStrip");
+        this.shape = last.shape = v as Shape;
         this.points = [];
         this.face = null;
         this.typed = { ...NOTHING };

@@ -1234,7 +1234,12 @@ opération existante.
   - La coupe (triangle ou arc) est une esquisse sur le pignon, extrudée sur toute la longueur du dessus. Une ligne
     hors du milieu donne deux pans inégaux.
   - Une annulation ; la ligne tracée est cachée (`features/gable.ts`, `app/gable-tool.ts`).
-- **Dessiner sur le corps** (groupe « Curic », comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
+- **Magie extrusion** (groupe « Curic », `data-action="face-strip"`, `app/magic-extrude.ts`) : un seul outil réunit
+  les deux manières de tracer sur un corps puis d'extruder, décrites ci-dessous. Le premier choix de son panneau,
+  « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
+  puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme
+  sur une face). Changer de tracé passe de l'une à l'autre sans fermer l'outil ; il s'ouvre sur le dernier tracé choisi.
+- **Magie extrusion — une forme sur une face** (anciennement « Dessiner sur le corps » ; comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
   ↕, ici en pointillés rouge et bleu avec leur valeur) s'affichent et peuvent être **saisies** (« Bord ↔ », « Bord ↕ »)
@@ -1278,7 +1283,7 @@ opération existante.
       relief.
     - C'est une coupe dessinée sur le pignon et extrudée le long du faîtage (`features/roof-offset.ts`). L'autre
       égout est pris au bord du corps, à la hauteur du premier, comme les toits de l'outil Toit.
-- **Magie extrude — tracé et extrusion** (groupe « Curic », comme Curic DIO 2) : on trace sur une face et on tire ou pousse
+- **Magie extrusion — un trait depuis une arête ou un coin** (comme Curic DIO 2) : on trace sur une face et on tire ou pousse
   aussitôt, en trois gestes :
   1. **Survoler** : un coin de la face sous le pointeur (point orange), une arête (en vert #63df0f, épaissie) ou l'intérieur de la face
      (teintée). **Ctrl** passe d'une ligne au double trait.

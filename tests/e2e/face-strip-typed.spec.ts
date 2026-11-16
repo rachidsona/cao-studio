@@ -22,17 +22,24 @@ test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteu
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(1200);
   await click(page, '[data-action="face-strip"]');
-  const tool = page.getByRole("dialog", { name: /Magie extrude/ });
+  const tool = page.getByRole("dialog", { name: "Magie extrusion" });
   await expect(tool).toBeVisible();
-  // Two ways to start: on a line (an edge, the line parallel to it) or on a point (a corner, the line across).
-  const start = tool.getByRole("combobox", { name: "Départ" });
+  // « Magie extrusion »: every trace in one choice — a line from an edge or a corner, or a shape on a face.
+  const start = tool.getByRole("combobox", { name: "Tracé" });
   await expect(start).toHaveValue("edge");
-  await expect(start.locator("option")).toHaveText(["Sur un trait (parallèle)", "Sur un point (en travers)"]);
+  await expect(start.locator("option")).toHaveText(["Trait depuis une arête (parallèle)", "Trait depuis un coin (en travers)", "Ligne / polyligne", "Rectangle", "Cercle", "Décalage du contour"]);
   const values = page.getByRole("status", { name: "Mesures" });
   await expect(values).toContainText("sur un trait");
   await start.selectOption("corner");
   await expect(values).toContainText("sur un point");
-  await start.selectOption("edge");
+  // A shape on a face: the same tool, its other way to draw, then back to the line from an edge.
+  await start.selectOption("rectangle");
+  await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("rectangle");
+  await expect(tool).toContainText("Cliquez sur une face du corps");
+  await expect(page.locator("#editor")).toHaveAttribute("data-tool", "drawOnFace");
+  await tool.getByRole("combobox", { name: "Tracé" }).selectOption("edge");
+  await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("edge");
+  await expect(page.locator("#editor")).toHaveAttribute("data-tool", "faceStrip");
 
   // The left edge of the plate, near its top corner: an edge, not the corner (« sur un trait »).
   const view = (await page.locator("canvas.cad-view").boundingBox())!;

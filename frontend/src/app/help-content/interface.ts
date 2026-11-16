@@ -4,29 +4,18 @@ import type { HelpFamily } from "./types";
 export const CURIC: HelpFamily[] = [
   {
     title: "Curic",
-    where: "Ruban du haut, groupe « Curic ». Son nom ouvre le menu de tous ses outils : Dessiner sur le corps, Assemblage, Étirer, Tourner, Lignes tout autour et Arêtes cachées n'y restent rangés que tant que vous ne les épinglez pas dans la barre.",
+    where: "Ruban du haut, groupe « Curic ». Son nom ouvre le menu de tous ses outils : Assemblage, Étirer, Tourner, Lignes tout autour et Arêtes cachées n'y restent rangés que tant que vous ne les épinglez pas dans la barre.",
     tools: [
       {
-        keys: ["data-action:face-strip"], name: "Magie extrude (tracé et extrusion)",
-        what: "Trace un trait sur une face depuis une arête ou un coin, puis ajoute ou creuse de la matière dans la bande tracée.",
+        keys: ["data-action:face-strip"], name: "Magie extrusion",
+        what: "Un seul outil pour tout tracer sur un corps puis l'extruder : un trait depuis une arête ou un coin, ou une ligne, un rectangle, un cercle, le décalage du contour dessinés sur une face — puis ajouter ou creuser de la matière.",
         steps: [
-          "Cliquez « Magie extrude » et choisissez le « Départ » : « Sur un trait (parallèle) » prend les arêtes, et aussi un trait tracé avant sur la face (le nouveau trait part de lui) ; « Sur un point (en travers) » prend les coins. L'intérieur d'une face se tire ou se pousse tel quel.",
-          "Cliquez l'arête ou le coin de départ : le trait suit le pointeur, avec les distances aux bords. Ctrl bascule entre « Une ligne » et « Double trait ».",
-          "Tapez la distance au clavier, sans cliquer de champ (retrait;largeur pour un double trait) : elle s'écrit dans la case des mesures en bas de la vue, et Entrée pose le trait. Ou cliquez pour le poser où est le pointeur.",
-          "Tirez pour ajouter, poussez pour creuser — ou tapez la hauteur (− pour creuser) puis Entrée. Tab inverse. Cochez « Nouveau corps » pour que ce qui est extrudé soit un corps à part, le corps cliqué restant tel quel. Cliquez pour terminer.",
+          "Cliquez « Magie extrusion » et choisissez le « Tracé » : « Trait depuis une arête (parallèle) » ou « Trait depuis un coin (en travers) », « Ligne / polyligne », « Rectangle », « Cercle » ou « Décalage du contour ». L'outil s'ouvre sur le dernier tracé choisi.",
+          "Un trait : cliquez l'arête ou le coin de départ (un trait tracé avant sur la face compte comme une arête) ; le trait suit le pointeur, avec les distances aux bords. Ctrl bascule entre « Une ligne » et « Double trait ». Tapez la distance au clavier (retrait;largeur pour un double trait) puis Entrée, ou cliquez pour le poser.",
+          "Une forme : cliquez sur une face (ce premier point la fixe, les distances aux bords s'affichent en bas), puis le point suivant, le coin opposé ou un point du cercle — Entrée termine une ligne. Les mesures se tapent séparées par « ; » (120;45).",
+          "Tirez pour ajouter, poussez pour creuser — ou tapez la hauteur (− pour creuser) puis Entrée ; Tab inverse. « Nouveau corps » garde le corps cliqué tel quel. L'intérieur d'une face se tire ou se pousse tel quel.",
         ],
-        tip: "La croix ✕ avant de tirer garde le tracé seul, en esquisse. Visez un coin ou une arête d'un corps pour vous arrêter à son niveau. Échap revient d'une étape. Seules les faces planes se tirent.",
-      },
-      {
-        keys: ["data-action:draw-on-face"], name: "Dessiner sur le corps",
-        what: "Trace une ligne, un rectangle ou un cercle directement sur une face, avec les distances aux bords les plus proches.",
-        steps: [
-          "Dans le panneau, choisissez « Tracé » : « Ligne / polyligne », « Rectangle », « Cercle » ou « Décalage du contour ».",
-          "Cliquez sur une face du corps : ce premier point fixe la face, et les distances aux bords s'affichent en bas.",
-          "Cliquez le point suivant, le coin opposé ou un point du cercle. Entrée termine une ligne.",
-          "Vous pouvez taper les mesures, séparées par « ; » (120;45), puis Entrée. Une forme fermée enchaîne avec l'extrusion si « Puis tirer / pousser » est coché.",
-        ],
-        tip: "Le point s'accroche aux coins et aux milieux des arêtes. Échap reprend le tracé. Le dessin est une esquisse posée sur la face.",
+        tip: "La croix ✕ avant de tirer garde le tracé seul, en esquisse ; une forme fermée enchaîne avec l'extrusion si « Puis tirer / pousser » est coché. Le point s'accroche aux coins et aux milieux des arêtes ; visez un coin ou une arête d'un corps pour vous arrêter à son niveau. Échap revient d'une étape. Seules les faces planes se tirent.",
       },
       {
         keys: ["data-action:mirror"], name: "Symétrie",
@@ -178,7 +167,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez des faces, arêtes ou points dans la vue : le panneau donne leurs mesures et propose des actions (Congé, Chanfrein, Extruder, Esquisse sur la face, Combiner, Scinder le corps, Déplacer, Supprimer).",
           "« Tout désélectionner » vide la sélection.",
         ],
-        tip: "Survolez une icône d'outil (dessin compris) : son nom s'affiche dessous, dans une pastille orange comme les cotes des pièces. Chaque champ d'un nombre a sa calculatrice : le bouton ⌨ à sa droite (un calcul, des unités : 60 cm − 2*18 mm), ✓ écrit le résultat dans le champ ; et tout champ de nombre prend un calcul tapé directement — (190+100)/2, 2*70, 80-2,5 —, son résultat écrit à Entrée. Un outil ouvert (Extrusion, Perçage, Congé, Réseau…), tapez la valeur sans cliquer de champ : elle va dans le premier champ de nombre de sa fenêtre, entouré de bleu, calcul compris, et Entrée l'applique (Échap l'abandonne) ; Magie extrude, Déplacer, Pousser et Dessiner sur le corps la prennent dans leur case des mesures, calcul compris. Sur un clavier AZERTY, la touche 5 sans Maj donne 5, qu'une « ) » refait parenthèse ; ce que fait l'outil est ici, dans l'Aide, et « Outils » (Ctrl + K) le trouve aussi par ce qu'il fait. La fenêtre d'un outil ouvert prend un onglet à côté de « Sélection ». Sur un écran étroit, ces fenêtres se posent sur la vue. Chaque outil a « Terminer » et « OK » en bas de sa fenêtre : chaque réglage valable est enregistré aussitôt (Ctrl + Z le reprend) ; « OK » (ou Entrée) garde l'opération et l'outil reste ouvert, à neuf, pour la suivante — plusieurs opérations à la suite, chacune son étape d'historique ; seul « Terminer » (la croix ✕, Échap) ferme l'outil, et ce qu'il proposait sans avoir été réglé n'est pas gardé. L'opération se change ensuite par son étape dans l'Historique (« Modifier »). Le ruban et la barre des étapes du haut sont cachés d'office : les cases « Ruban d'outils en haut » et « Barre des étapes » du menu ⋯ les remettent chacun (sans la barre des étapes, le ruban montre tous les outils de l'onglet).",
+        tip: "Survolez une icône d'outil (dessin compris) : son nom s'affiche dessous, dans une pastille orange comme les cotes des pièces. Chaque champ d'un nombre a sa calculatrice : le bouton ⌨ à sa droite (un calcul, des unités : 60 cm − 2*18 mm), ✓ écrit le résultat dans le champ ; et tout champ de nombre prend un calcul tapé directement — (190+100)/2, 2*70, 80-2,5 —, son résultat écrit à Entrée. Un outil ouvert (Extrusion, Perçage, Congé, Réseau…), tapez la valeur sans cliquer de champ : elle va dans le premier champ de nombre de sa fenêtre, entouré de bleu, calcul compris, et Entrée l'applique (Échap l'abandonne) ; Magie extrusion, Déplacer et Pousser la prennent dans leur case des mesures, calcul compris. Sur un clavier AZERTY, la touche 5 sans Maj donne 5, qu'une « ) » refait parenthèse ; ce que fait l'outil est ici, dans l'Aide, et « Outils » (Ctrl + K) le trouve aussi par ce qu'il fait. La fenêtre d'un outil ouvert prend un onglet à côté de « Sélection ». Sur un écran étroit, ces fenêtres se posent sur la vue. Chaque outil a « Terminer » et « OK » en bas de sa fenêtre : chaque réglage valable est enregistré aussitôt (Ctrl + Z le reprend) ; « OK » (ou Entrée) garde l'opération et l'outil reste ouvert, à neuf, pour la suivante — plusieurs opérations à la suite, chacune son étape d'historique ; seul « Terminer » (la croix ✕, Échap) ferme l'outil, et ce qu'il proposait sans avoir été réglé n'est pas gardé. L'opération se change ensuite par son étape dans l'Historique (« Modifier »). Le ruban et la barre des étapes du haut sont cachés d'office : les cases « Ruban d'outils en haut » et « Barre des étapes » du menu ⋯ les remettent chacun (sans la barre des étapes, le ruban montre tous les outils de l'onglet).",
       },
       {
         keys: [], name: "Colonne Projets",

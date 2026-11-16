@@ -37,6 +37,7 @@ import { PushTool } from "./push-tool";
 import { ApplianceTool } from "./appliances/appliance-tool";
 import { SweepTool } from "./sweep-tool";
 import { DrawOnFaceTool } from "./draw-on-face-tool";
+import { isStripTrace, lastMagicTrace } from "./magic-extrude";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
 import type { PanelTool, ToolContext } from "./panel-tool";
@@ -122,6 +123,11 @@ export class ToolLauncher {
       closed: () => {
         this.active = null;
         this.context.closed();
+      },
+      // « Magie extrusion »: its other way to draw takes over, the tool still open.
+      switchTo: (next) => {
+        this.open(next);
+        this.context.reopened?.(next);
       },
       // After « OK »: the same tool afresh, for the next operation; it stores nothing before it is touched.
       again: () => {
@@ -241,6 +247,11 @@ export class ToolLauncher {
         void this.openMove(ctx, editing, options);
         return;
       case "faceStrip": {
+        // « Magie extrusion » opens on the trace chosen last: a shape on a face is drawn by the other half of it.
+        if (!isStripTrace(lastMagicTrace())) {
+          this.active = new DrawOnFaceTool(ctx);
+          break;
+        }
         const tool = new FaceStripTool(ctx);
         this.active = tool;
         void tool.open(options.pick);

@@ -40,6 +40,7 @@ import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, loadFace, regionUnder, startOnFace, StripMarks, type Hover, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
+import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { TypedValues } from "../ui/typed-values";
 
@@ -73,7 +74,7 @@ export class FaceStripTool extends PanelTool {
   private pointer: Vec2 | null = null;
   private mode = last.mode;
   private anchor = last.anchor;
-  private departure = last.start;
+  private departure: Start = isStripTrace(lastMagicTrace()) ? (lastMagicTrace() as Start) : last.start;
   /** What is pulled or pushed made a body of its own, the body left as it is. */
   private newBody = last.newBody;
   /** The distance and the height typed on the keyboard, in the value box at the bottom of the view. */
@@ -99,7 +100,7 @@ export class FaceStripTool extends PanelTool {
   private readonly marks: StripMarks;
 
   constructor(ctx: ToolContext) {
-    super(ctx, "Magie extrude — tracé et extrusion", null);
+    super(ctx, MAGIC_EXTRUDE, null);
     const doc = ctx.doc();
     this.sketchId = uniqueId(doc, "sk");
     this.sketchName = uniqueName(doc, "Tracé");
@@ -278,7 +279,10 @@ export class FaceStripTool extends PanelTool {
     };
     if (this.phase === "pick") {
       return [
-        this.selectRow("Départ", this.departure, [["edge", "Sur un trait (parallèle)"], ["corner", "Sur un point (en travers)"]], (v) => {
+        this.selectRow("Tracé", this.departure, TRACES, (v) => {
+          rememberTrace(v as Trace);
+          // A shape on a face: the other way of « Magie extrusion ».
+          if (!isStripTrace(v as Trace)) return this.ctx.switchTo?.("drawOnFace");
           this.departure = last.start = v as Start;
           this.hover = null;
           changed();
@@ -290,7 +294,7 @@ export class FaceStripTool extends PanelTool {
     if (this.phase === "place") {
       const sides = this.sidesAtLine();
       return [
-        this.selectRow("Tracé", this.mode, [["line", "Une ligne"], ["groove", "Double trait (Ctrl)"]], (v) => ((this.mode = v as "line" | "groove"), changed())),
+        this.selectRow("Trait", this.mode, [["line", "Une ligne"], ["groove", "Double trait (Ctrl)"]], (v) => ((this.mode = v as "line" | "groove"), changed())),
         this.numberRow(this.mode === "line" ? "Distance" : "Retrait", this.distance, unit, (v) => (v < 0 || (v === 0 && this.mode === "line") ? undefined : ((this.distance = v), (this.frozen = true), changed())), this.mode === "groove"),
         this.mode === "groove" ? this.numberRow("Largeur", this.width, unit, (v) => ((this.width = v), (this.widthTyped = true), changed())) : null,
         this.mode === "groove"

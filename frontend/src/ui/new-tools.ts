@@ -8,6 +8,7 @@ import { toolKey } from "./tool-catalogue";
 
 /** The tools added lately, by key: the newest first. */
 export const NEW_TOOLS: readonly string[] = [
+  "data-action:face-strip",
   "data-sketch-command:skselectall",
   "data-select-sketches:",
   "data-action:bend-onto",
