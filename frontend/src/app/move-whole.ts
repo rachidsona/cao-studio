@@ -19,8 +19,18 @@ export function wholeOwner(doc: CadDocument, bodyId: string): { kind: Whole["kin
   const f = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));
   if (f?.type === "cabinet") return { kind: "cabinet", id: f.id };
   if (f?.type === "fronts") return { kind: "cabinet", id: f.cabinet };
-  if ((f?.type === "extrude" || f?.type === "niche" || f?.type === "panels") && f.sketch) return { kind: "sketch", id: f.sketch };
+  if (f?.type === "niche" || f?.type === "panels") return f.sketch ? { kind: "sketch", id: f.sketch } : null;
+  // An extrusion is part of a whole when its sketch is a piece of furniture (a Répartition, a dressing or kitchen plan);
+  // the bodies of a plain sketch (a sofa drawn in one sketch) are each their own.
+  if (f?.type === "extrude" && f.sketch && furniture(doc, f.sketch)) return { kind: "sketch", id: f.sketch };
   return null;
+}
+
+/** Whether a sketch is a piece of furniture: its panels made by a Répartition's steps or a plan, or niches equipped in it. */
+function furniture(doc: CadDocument, sketchId: string): boolean {
+  const s = findFeature(doc, sketchId);
+  if (s?.type !== "sketch") return false;
+  return !!s.offsets?.some((r) => r.step) || !!s.dressingPlan || !!s.kitchenPlan || doc.features.some((f) => f.type === "niche" && f.sketch === sketchId);
 }
 
 /** The bodies shown of a whole: a cabinet's with its fronts', a Répartition's panels, doors and niches. */

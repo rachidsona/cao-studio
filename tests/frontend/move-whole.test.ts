@@ -45,6 +45,18 @@ describe("le corps entier d'un élément", () => {
     expect(wholeOf(doc, "ni1#0", ["ex2#0", "ex2#1", "ni1#0"])).toEqual({ kind: "sketch", id: "sk1", name: "Plan — mur a", bodies: ["ex2#0", "ex2#1", "ni1#0"] });
   });
 
+  it("les corps d'une esquisse simple (un canapé dessiné d'une esquisse) sont chacun le leur : on isole l'un d'eux", () => {
+    const doc: CadDocument = {
+      ...createReferencePlate(),
+      features: [
+        { id: "sk1", type: "sketch", name: "Esquisse 1" } as never,
+        { id: "ex1", type: "extrude", name: "Assise", sketch: "sk1" } as never,
+        { id: "ex2", type: "extrude", name: "Dossier", sketch: "sk1" } as never,
+      ],
+    };
+    expect(wholeOf(doc, "ex1", ["ex1", "ex2#0", "ex2#1"])).toBeNull();
+  });
+
   it("un élément seul n'a pas de corps entier à proposer", () => {
     const doc = createReferencePlate();
     expect(wholeOf(doc, "ex1", ["ex1"])).toBeNull();

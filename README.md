@@ -124,7 +124,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble
   entier dont on a choisi une pièce, une face ou une arête : un caisson avec ses façades, une Répartition avec ses
-  panneaux et ses niches, sinon le corps lui-même (`elementOf`). La vue garde son sens et se cadre sur eux ; tous les
+  panneaux et ses niches, sinon le corps lui-même (`elementOf`) — les corps tirés d'une esquisse simple (un canapé
+  dessiné d'une seule esquisse) sont chacun le leur, seule une esquisse de meuble (Répartition, plan, niches) les tient
+  ensemble (`app/move-whole.ts` `wholeOwner`). La vue garde son sens et se cadre sur eux ; tous les
   outils marchent, ceux de niche dans chacune des Répartitions isolées, et ce qu'on crée pendant ce temps se voit
   aussi. Une barre en bas dit ce qui est isolé (« 3 éléments isolés ») ; « Tout montrer », ou I sans sélection, rend
   le reste. Tant que des éléments sont isolés, les murs ne sont plus masqués d'eux-mêmes. La vue seulement
