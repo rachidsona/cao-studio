@@ -487,7 +487,7 @@ export class SketchMode implements PointerHandler {
 
   applicableCommands(): string[] {
     const sel = classify(this.geometry, [...this.selection]);
-    return COMMANDS.filter((c) => c.applies(sel)).map((c) => c.id);
+    return COMMANDS.filter((c) => c.applies(sel, this.geometry)).map((c) => c.id);
   }
 
   /**
@@ -498,7 +498,7 @@ export class SketchMode implements PointerHandler {
     const command = COMMANDS.find((c) => c.id === id);
     const sel = classify(this.geometry, [...this.selection]);
     if (!command) return [];
-    if (!command.applies(sel)) {
+    if (!command.applies(sel, this.geometry)) {
       this.setTool("select");
       this.selection.clear();
       this.pendingCommand = id;
@@ -508,6 +508,16 @@ export class SketchMode implements PointerHandler {
     }
     let geometry = this.geometry;
     const created: string[] = [];
+    // A command that rewrites the sketch (Centrer: a centre point, the drawing moved there).
+    if (command.edit) {
+      const made = command.edit(sel, geometry);
+      if (typeof made === "string") return this.host.notify(made, "info"), [];
+      if (!this.apply(made, `${command.label} ajoutée.`)) return [];
+      this.selection.clear();
+      this.render();
+      this.host.changed();
+      return [];
+    }
     try {
       for (const constraint of command.build(sel, geometry)) {
         const added = addConstraint(geometry, constraint as Omit<SketchConstraint, "id">);

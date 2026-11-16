@@ -404,13 +404,16 @@ export class SketchPointer {
     // "Cote" tool: the second click on a measured element places the dimension.
     if (dimensionTool && hit && mode.selection.has(hit.id)) return mode.values.placeMeasurement();
     if (!hit) {
-      if (!waiting) {
+      if (!waiting || waiting.regions) {
         // Inside a closed shape: its sides are chosen (the smallest area under the pointer); clicked again, they are released.
+        // With Maj (or Ctrl, ⌘), or while a command takes several drawings (Centrer), added to what is chosen.
         const face = dimensionTool ? null : regionAt(mode.faces, p);
         const sides = face ? boundaryCurves(mode.geometry, face) : [];
         const chosen = sides.length > 0 && sides.every((id) => mode.selection.has(id));
-        mode.selection.clear();
+        const adding = !!waiting || event.shiftKey || event.ctrlKey || event.metaKey;
+        if (!adding) mode.selection.clear();
         mode.clickedAt.clear(); // sides of a shape go whole
+        if (chosen && adding) for (const id of sides) mode.selection.delete(id);
         if (!chosen) for (const id of sides) mode.selection.add(id);
       }
     } else if (mode.selection.has(hit.id)) {
@@ -422,7 +425,7 @@ export class SketchPointer {
       mode.selection.add(hit.id);
       mode.clickedAt.set(hit.id, p);
     }
-    if (waiting && waiting.applies(classify(mode.geometry, [...mode.selection]))) {
+    if (waiting && waiting.applies(classify(mode.geometry, [...mode.selection]), mode.geometry)) {
       // Everything it needs is picked: applied at once; the command keeps waiting for the next ones.
       mode.runCommand(waiting.id);
       mode.pendingCommand = waiting.id;

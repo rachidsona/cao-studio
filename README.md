@@ -607,7 +607,8 @@ serveur accepte les deux versions.
   (menu « Cotes ▾ », caché par défaut) pose les cotes qui manquent, à leur mesure actuelle, sans bouger le dessin :
   longueurs, diamètres et rayons, puis angles des traits penchés, puis place des points depuis l'origine.
 - **Centrer** (menu « Contraintes ▾ » de l'esquisse, `data-sketch-command="centerin"`) : deux dessins choisis (un trait
-  de chacun suffit, ou Ctrl + A) — un rectangle dans un rectangle, un cercle dans un carré, un polygone — et le plus
+  de chacun suffit, ou Ctrl + A ; ou « Centrer » d'abord, puis un clic dans chacun, comme les autres contraintes ;
+  Maj + clic dans un dessin l'ajoute à ceux déjà choisis) — un rectangle dans un rectangle, un cercle dans un carré, un polygone — et le plus
   petit va au milieu du plus grand, et y reste : un point de construction au milieu de la diagonale du grand (son
   centre pour un cercle), le petit tenu symétrique autour (sa diagonale, son centre). Le petit est posé au milieu
   avant les contraintes, le grand ne bouge pas ; il change ensuite de taille ou bouge, le petit suit son milieu

@@ -417,8 +417,8 @@ export const SKETCH: HelpFamily[] = [
         keys: ["data-sketch-command:centerin"], name: "Centrer",
         what: "Met un dessin au milieu d'un autre — un rectangle dans un rectangle, un cercle dans un carré — et l'y garde.",
         steps: [
-          "Choisissez un trait de chacun des deux dessins (Maj + clic, ou une fenêtre qui les prend).",
-          "Cliquez « Centrer » (menu du groupe Contraintes) : le plus petit va au milieu du plus grand.",
+          "Cliquez « Centrer » (menu du groupe Contraintes), puis l'intérieur (ou un trait) de chacun des deux dessins : le plus petit va au milieu du plus grand.",
+          "Ou choisissez d'abord les deux dessins — Maj + clic dans le second, un trait de chacun, ou une fenêtre —, puis « Centrer ».",
         ],
         tip: "Il y reste : si le grand change de taille ou bouge, le petit suit son milieu (un point de construction au centre du grand, le petit symétrique autour). Supprimez les contraintes de Symétrie pour le libérer.",
       }, {

@@ -6,6 +6,7 @@ import { AXIS_X, AXIS_Y, curvePoints, ORIGIN, type DimensionConstraint, type Ske
 import { pairSpec } from "../sketcher/annotations";
 import { chainDimensions } from "../sketcher/chain-dims";
 import { findCurve, measure } from "../sketcher/edit";
+import { drawingCount, withCentered } from "../sketcher/center-in";
 
 export type EntityKind = "point" | "line" | "circle" | "arc";
 
@@ -47,8 +48,12 @@ export interface Command {
    */
   accepts: EntityKind[];
   pick: string;
-  applies(sel: Selection): boolean;
+  applies(sel: Selection, g?: SketchGeometry): boolean;
   build(sel: Selection, g: SketchGeometry): NewConstraint[];
+  /** A click inside a closed shape picks its sides (a drawing taken whole), while it waits. */
+  regions?: boolean;
+  /** Rewrites the sketch itself (a point added, a drawing moved) instead of adding constraints; a string: why not. */
+  edit?(sel: Selection, g: SketchGeometry): SketchGeometry | string;
 }
 
 const count = (sel: Selection) => sel.order.length;
@@ -77,6 +82,20 @@ function dimension(d: Omit<DimensionConstraint, "id" | "value">, g: SketchGeomet
 }
 
 export const COMMANDS: Command[] = [
+  {
+    id: "centerin",
+    label: "Contrainte de centrage",
+    glyph: "⊡",
+    accepts: ["line", "circle", "arc"],
+    regions: true,
+    pick: "cliquez les deux dessins (un trait de chacun, ou l'intérieur) : le plus petit va au milieu du plus grand",
+    applies: (s, g) => !!g && drawingCount(g, s.order) === 2,
+    build: () => [],
+    edit: (s, g) => {
+      const made = withCentered(g, s.order);
+      return typeof made === "string" ? made : made.geometry;
+    },
+  },
   {
     id: "coincident",
     label: "Coïncidence",

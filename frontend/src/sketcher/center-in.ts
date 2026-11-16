@@ -37,6 +37,9 @@ function drawings(g: SketchGeometry, ids: readonly string[]): string[][] {
   return out;
 }
 
+/** How many drawings the selection takes in. */
+export const drawingCount = (g: SketchGeometry, ids: readonly string[]): number => drawings(g, ids).length;
+
 /** How a drawing is centred: its centre (a circle), or its two farthest points (the diagonal of a rectangle). */
 function shapeOf(g: SketchGeometry, curves: readonly string[]): { shape: Shape; size: number } | null {
   const round = curves.map((id) => findCurve(g, id)).find((c) => c?.kind === "circle" || c?.kind === "arc");
