@@ -1782,7 +1782,13 @@ opération existante.
   - *Contrôle avant fabrication* : un bouton liste ce qui gâcherait du panneau ou bloquerait le montage, rangé par
     sorte. Chaque ligne a un bouton « Voir » qui sélectionne les pièces en cause.
     - Pièces qui se chevauchent : erreur pour deux panneaux droits, « peut-être » pour une pièce façonnée. Deux
-      pièces qui se touchent ne comptent pas.
+      pièces qui se touchent ne comptent pas. Une pièce façonnée (un congé, une encoche, un contour) est regardée
+      telle qu'elle est, pas par sa boîte : des points en grille dans la boîte commune, un seul dans les deux pièces
+      à la fois et elles se chevauchent — l'assise d'un canapé qui contourne le dossier et les accoudoirs ne compte
+      plus (`features/mesh-overlap.ts`). Un chevauchement se **corrige d'un clic** : « Couper « … » » coupe une pièce
+      par l'autre, qui reste entière (une étape Combiner, couper en gardant l'outil ; la plus grande d'abord, elle
+      reste d'un tenant), et « Corriger les N chevauchements » les fait tous (`document/overlap-fix.ts`). Une coupe
+      de Combiner qui traverse un corps de part en part le laisse en morceaux, un corps chacun, au lieu d'une erreur.
     - Pièce plus grande que le panneau brut de sa matière, le sens du fil respecté.
     - Pièce sans matière.
     - Perçage qui déborde du bord, qui laisse moins de 1 mm jusqu'au bord, ou qui en mord un autre (deux cercles

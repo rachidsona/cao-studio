@@ -10,7 +10,7 @@ import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveEdges, resolveFace, resolveFacePlane } from "../geometry/references";
 import { prismUntil } from "./face-until";
 import { frameOf, toWorld } from "../sketcher/frame";
-import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, type OutputLookup } from "./common";
+import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requireProfile, requireSolid, solidsResult, type OutputLookup } from "./common";
 import type { SolidOutput, SolidsOutput } from "./outputs";
 
 /** Axis of a revolution, in world coordinates, from a sketch line or a sketch axis. */
@@ -101,7 +101,7 @@ export function buildChamfer(feature: ChamferFeature, lookup: OutputLookup): Sol
   return { kind: "solid", shape: requireSingleValidSolid(result, feature.name) };
 }
 
-export function buildCombine(feature: CombineFeature, lookup: OutputLookup): SolidOutput {
+export function buildCombine(feature: CombineFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   if (feature.tools.length === 0) throw new GeometryError(`${feature.name} : choisissez au moins un corps outil.`);
   if (feature.tools.includes(feature.target)) throw new GeometryError(`${feature.name} : le corps cible ne peut pas être aussi un outil.`);
   let current = requireSolid(lookup, feature.target).shape;
@@ -119,6 +119,8 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
     throw error;
   }
   const messages = { join: "les corps ne se touchent pas", cut: "la coupe sépare le corps", intersect: "les corps n'ont pas de volume commun" };
+  // A cut right through a body (a back crossed by the seat): its pieces, each a body, as an extrusion that cuts.
+  if (feature.operation === "cut" && current.solids.length > 1) return solidsResult(current, feature.name);
   if (current.solids.length !== 1) {
     const count = current.solids.length;
     current.delete();

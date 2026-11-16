@@ -19,6 +19,8 @@ import { MATERIALS } from "../../document/materials";
 import { bodyLabel, bodyOrigin, findFeature } from "../../document/operations";
 import { featureOfBody, type CadDocument, type RoomFeature } from "../../document/types";
 import { drawerSlide } from "../../features/drawer-open";
+import { meshesOverlap } from "../../features/mesh-overlap";
+import { withOverlapCut, withOverlapsCut } from "../../document/overlap-fix";
 import { collisions, type Box } from "../../features/motion";
 import type { GeometryClient } from "../../geometry/client";
 import { el } from "../../ui/dom";
@@ -106,8 +108,18 @@ export function quickProblems(viewport: Viewport, doc: CadDocument): Problem[] {
     return { id: p.id, name: bodyLabel(doc, p.id), box: p.bbox, boxLike, ...(owner?.type === "paneling" || owner?.type === "shell" ? { together: owner.id } : {}) };
   });
   const sheets = new Map(MATERIALS.map((m) => [m.name, m.sheet]));
+  // A shaped piece (a fillet, a notch) is looked at as it is, not by its box: only real overlaps stay.
+  const meshOf = (id: string) => viewport.bodyMesh(id);
+  const real = (p: Problem) => {
+    if (p.kind !== "overlap" || p.severity === "error" || p.bodies.length !== 2) return true;
+    const [a, b] = [meshOf(p.bodies[0]!), meshOf(p.bodies[1]!)];
+    if (!a || !b) return true;
+    const [la, ha] = a.metrics.bbox;
+    const [lb, hb] = b.metrics.bbox;
+    return meshesOverlap(a, b, [0, 1, 2].map((i) => Math.max(la[i]!, lb[i]!)), [0, 1, 2].map((i) => Math.min(ha[i]!, hb[i]!)));
+  };
   return [
-    ...overlapProblems(checked),
+    ...overlapProblems(checked).filter(real),
     ...roomProblems(doc.features.filter((f): f is RoomFeature => f.type === "room" && !f.suppressed), checked),
     ...layoutProblems(layoutOf(viewport, doc)),
     ...dressingChecks(doc).map((message): Problem => ({ kind: "layout", severity: "warning", message, bodies: [] })),
@@ -145,6 +157,12 @@ export async function showCheck(viewport: Viewport, editor: Editor, geometry: Ge
   const summary = problems.length
     ? `${errors} erreur${errors > 1 ? "s" : ""} et ${problems.length - errors} point${problems.length - errors > 1 ? "s" : ""} à vérifier.`
     : "Aucun problème trouvé : les pièces ne se chevauchent pas, tiennent sur leur panneau, ont une matière, leurs perçages sont dans la matière et les portes et tiroirs s'ouvrent librement.";
+  const BUTTON = "h-7 border border-gray-300 px-2 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+  const boxVolume = (id: string) => {
+    const b = viewport.bodyMesh(id)?.metrics.bbox;
+    return b ? (b[1][0] - b[0][0]) * (b[1][1] - b[0][1]) * (b[1][2] - b[0][2]) : 0;
+  };
+  const bySize = ([a, b]: [string, string]): [string, string] => (boxVolume(a) >= boxVolume(b) ? [a, b] : [b, a]);
   const sections = (Object.keys(PROBLEM_TITLES) as ProblemKind[]).flatMap((kind) => {
     const list = problems.filter((p) => p.kind === kind);
     if (!list.length) return [];
@@ -154,10 +172,34 @@ export async function showCheck(viewport: Viewport, editor: Editor, geometry: Ge
         const see = el("button", { type: "button", class: "h-7 shrink-0 border border-gray-300 px-2 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Voir");
         see.addEventListener("click", () => show(p.bodies));
         const mark = p.severity === "error" ? el("span", { class: "shrink-0 text-red-600", title: "Erreur" }, "●") : el("span", { class: "shrink-0 text-amber-500", title: "À vérifier" }, "●");
-        return el("div", { class: "flex items-start gap-2 py-1 text-xs" }, mark, el("span", { class: "flex-1" }, p.message), see);
+        return el("div", { class: "py-1 text-xs" }, el("div", { class: "flex items-start gap-2" }, mark, el("span", { class: "flex-1" }, p.message), see), overlapFixes(p));
       }),
     ];
   });
-  const content = el("div", { class: "max-h-[60vh] overflow-y-auto" }, el("p", { class: problems.length ? "text-xs font-medium" : "text-xs font-medium text-emerald-700 dark:text-emerald-400" }, summary), ...sections);
+  // Two pieces overlapping: one cut by the other, at a click (or all of them at once).
+  function overlapFixes(p: Problem): HTMLElement | null {
+    if (p.kind !== "overlap" || p.bodies.length !== 2) return null;
+    // The larger first: cut by the other, it keeps in one piece (a seat round its back, not the back cut through).
+    const [a, b] = bySize(p.bodies as [string, string]);
+    const fix = (cut: string, by: string) => {
+      const button = el("button", { type: "button", class: BUTTON, "data-fix-overlap": "" }, `Couper « ${bodyLabel(editor.doc, cut)} »`);
+      button.addEventListener("click", () => {
+        close();
+        void editor.change(withOverlapCut(editor.doc, cut, by)).then(() => editor.notify(`« ${bodyLabel(editor.doc, cut)} » coupé là où il entrait dans « ${bodyLabel(editor.doc, by)} ».`, "success"));
+      });
+      return button;
+    };
+    return el("div", { class: "mt-1 flex flex-wrap gap-1 pl-4" }, fix(a, b), fix(b, a));
+  }
+  const overlaps = problems.filter((p) => p.kind === "overlap" && p.bodies.length === 2);
+  const all = overlaps.length > 1 ? el("button", { type: "button", class: `${BUTTON} mt-2`, "data-fix-overlaps": "" }, `Corriger les ${overlaps.length} chevauchements`) : null;
+  all?.addEventListener("click", () => {
+    close();
+    void editor.change(withOverlapsCut(editor.doc, overlaps.map((p) => {
+      const [large, small] = bySize(p.bodies as [string, string]);
+      return [small, large] as const;
+    }))).then(() => editor.notify(`${overlaps.length} chevauchements corrigés : chaque fois, la plus grande pièce est coupée par l'autre.`, "success"));
+  });
+  const content = el("div", { class: "max-h-[60vh] overflow-y-auto" }, el("p", { class: problems.length ? "text-xs font-medium" : "text-xs font-medium text-emerald-700 dark:text-emerald-400" }, summary), all, ...sections);
   const close = openModal("Contrôle avant fabrication", content, [{ label: "Fermer", run: () => close() }]);
 }
