@@ -7,7 +7,8 @@
  * rouvre cet outil.
  */
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import type { ShellFeature } from "../document/types";
+import { featureOfBody, type ShellFeature, type Vec3 } from "../document/types";
+import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** The joints, and for butted ones which pass at the corners (as a Répartition's « Qui passe aux angles »). */
@@ -34,6 +35,8 @@ export class SplitSidesTool extends PanelTool {
   private joint: Joint;
   /** The sides' thickness when the body is solid (it is emptied first); unused for a body already hollow. */
   private thickness: number;
+  /** The way a solid body is opened: the normal of a face of it clicked (with the one facing it); null: top and bottom. */
+  private open: Vec3 | null;
 
   constructor(ctx: ToolContext, editing: ShellFeature | null, bodies: readonly string[] = []) {
     super(ctx, "Séparer les côtés", editing);
@@ -43,12 +46,13 @@ export class SplitSidesTool extends PanelTool {
     this.target = editing?.target ?? bodies[0] ?? null;
     this.joint = editing ? jointOf(editing) : lastJoint;
     this.thickness = editing?.thickness || lastThickness;
+    this.open = editing?.open ?? null;
   }
 
   protected feature(): ShellFeature | string {
     if (!this.target) return "Cliquez le corps à séparer en ses côtés : un cadre, un caisson sans fond, un contour extrudé, plein ou creux.";
     const [joint, pass] = this.joint.split(":") as ["miter" | "butt", ("sides" | "boards")?];
-    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: [], thickness: this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), frame: true };
+    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: [], thickness: this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -66,8 +70,21 @@ export class SplitSidesTool extends PanelTool {
         this.render();
         this.schedulePreview();
       }),
-      this.info("Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés, ouvert dessus et dessous ; un corps déjà creux garde ses côtés tels qu'ils sont."),
+      this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous. Pour l'ouvrir ailleurs (devant et derrière…), cliquez la face à vider sur le corps."),
+      this.open ? this.resetOpen() : null,
+      this.info("Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
     ];
+  }
+
+  /** Back to the top and the bottom. */
+  private resetOpen(): HTMLElement {
+    const button = el("button", { type: "button", class: "h-8 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-split-open-reset": "" }, "Ouvrir dessus et dessous");
+    button.addEventListener("click", () => {
+      this.open = null;
+      this.render();
+      this.schedulePreview();
+    });
+    return button;
   }
 
   override move(event: PointerEvent): void {
@@ -78,9 +95,21 @@ export class SplitSidesTool extends PanelTool {
   protected override click(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
     if (!face) return;
-    this.target = face.bodyId;
-    this.render();
-    this.schedulePreview();
+    // The body chosen (or a side of its preview) clicked again: that face opened, with the one facing it.
+    const same = face.bodyId === this.target || featureOfBody(face.bodyId) === this.id;
+    if (!this.target || !same) {
+      this.target = face.bodyId;
+      this.open = null;
+      this.render();
+      this.schedulePreview();
+      return;
+    }
+    void this.ctx.geometry.describe(face.bodyId, [], face.faceIndex).then(({ face: ref }) => {
+      if (ref?.type !== "PLANE") return this.ctx.notify("Cliquez une face plane du corps : elle s'ouvre avec celle d'en face.", "info");
+      this.open = ref.normal.map((c) => Number(c.toFixed(6))) as Vec3;
+      this.render();
+      this.schedulePreview();
+    }).catch(() => this.ctx.notify("Cette face ne se lit pas : cliquez-en une autre.", "info"));
   }
 
   protected override dispose(): void {

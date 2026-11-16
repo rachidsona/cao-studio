@@ -2139,7 +2139,9 @@ opération existante.
   de ses côtés devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de côtés pour un
   polygone ; un coin arrondi est un côté courbe à lui). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
   côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
-  qui se font face, toutes les autres d'équerre) ; **déjà creux**, il garde ses côtés tels qu'ils sont. **Joints** :
+  qui se font face, toutes les autres d'équerre) — ou par **la face qu'on clique** sur le corps (déjà choisi), avec
+  celle d'en face : devant et derrière, les côtés… (`ShellFeature.open`, la normale de la face ; « Ouvrir dessus et
+  dessous » y revient) ; **déjà creux**, il garde ses côtés tels qu'ils sont. **Joints** :
   « En onglet (tout angle) », le joint du coin intérieur au coin extérieur, ou bout à bout, en choisissant **qui passe
   aux angles** comme dans une Répartition (`ShellFeature.pass`) : « les côtés passent » (debout : d'aplomb pour un
   cadre debout, le long de y pour un cadre couché vu de dessus), « le dessus et le dessous passent », ou « les plus

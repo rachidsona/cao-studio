@@ -64,3 +64,44 @@ test("un cadre de 60 × 40 cm, ses côtés de 1,8 cm, devient quatre panneaux, e
   await shot(page, "cotes-separes-bout-a-bout");
   expect(errors).toEqual([]);
 });
+
+test("un corps plein ouvert par la face cliquée : devant et derrière au lieu de dessus et dessous", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-separer-face");
+  const features = [
+    { id: "sk1", type: "sketch", name: "Contour", plane: "XY", offset: 0, ...centeredRectangle(600, 400) },
+    { id: "ex1", type: "extrude", name: "Plein", sketch: "sk1", distance: 720, operation: "new" },
+  ];
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features }, base_version: now.version, message: "Plein" }) });
+  }, { url: api, features });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const shell = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; open?: number[] }[] } }).document.features.find((f) => f.type === "shell"), api);
+  };
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  await click(page, '[data-action="split-sides"]');
+  const tool = page.getByRole("dialog", { name: "Séparer les côtés" });
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  // The body, then its front face (the middle of the view, seen from the front).
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height * 0.3);
+  await expect(tool).toContainText("Ouvert dessus et dessous");
+  await page.waitForTimeout(1500);
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height * 0.3);
+  await expect(tool).toContainText("Ouvert par la face cliquée");
+  await expect.poll(async () => (await shell())?.open?.map((c) => Math.round(c)), { timeout: 30_000 }).toEqual([0, -1, 0]);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  // Back to the top and the bottom.
+  await tool.locator("[data-split-open-reset]").click();
+  await expect.poll(async () => (await shell())?.open, { timeout: 30_000 }).toBeUndefined();
+  expect(errors).toEqual([]);
+});

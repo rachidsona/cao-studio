@@ -627,6 +627,11 @@ export interface ShellFeature extends FeatureBase {
    */
   pass?: "sides" | "boards";
   /**
+   * « Séparer les côtés » of a solid body: the way it is emptied through — the normal of a face clicked, opened with
+   * the one facing it. Missing: its top and bottom (else its two largest faces facing each other).
+   */
+  open?: Vec3;
+  /**
    * « Séparer les côtés »: a frame — the body, already hollow, cut into its sides; solid, first emptied `thickness`
    * thick, open at both ends of its axis (features/ring-sides.ts). With `faces` empty and no `back`.
    */

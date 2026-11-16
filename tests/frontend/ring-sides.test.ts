@@ -148,4 +148,34 @@ describe("séparer les côtés d'un corps plein", () => {
     expect(volume).toBeCloseTo((2 * 600 + 2 * 364) * 18 * 720, -2);
     r.dispose();
   }, 120_000);
+
+  it("la face à vider choisie : ouvert devant et derrière (le long de y), les côtés font toute la profondeur", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { centeredRectangle } = await import("../../frontend/src/document/sketch");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    const doc = (open?: number[]) => ({
+      ...createReferencePlate(),
+      features: [
+        { id: "sk1", type: "sketch", name: "Contour", plane: "XY", offset: 0, ...centeredRectangle(600, 400) },
+        { id: "ex1", type: "extrude", name: "Plein", sketch: "sk1", distance: 720, operation: "new" },
+        { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "ex1", faces: [], thickness: 18, sides: "separate", joint: "butt", frame: true, ...(open ? { open } : {}) },
+      ],
+    });
+    const r = new Recomputer();
+    const made = r.recompute(doc([0, -1, 0]) as never);
+    expect(made.statuses.find((s) => s.id === "sh1")?.state).toBe("ok");
+    const out = r.output("sh1");
+    const pieces = out?.kind === "solids" ? out.shapes : [];
+    expect(pieces).toHaveLength(4);
+    // Every side through the whole 400 along y; 600 × 720 less the opening 564 × 684, by 400.
+    for (const p of pieces) {
+      const b = p.boundingBox.bounds;
+      expect(Math.round(b[1][1] - b[0][1])).toBe(400);
+    }
+    expect(pieces.reduce((s, p) => s + measureVolume(p), 0)).toBeCloseTo((600 * 720 - 564 * 684) * 400, -2);
+    // A way with no face square to it: said.
+    const wrong = r.recompute(doc([0.6, 0.8, 0]) as never);
+    expect(wrong.statuses.find((s) => s.id === "sh1")?.message).toMatch(/face choisie/);
+    r.dispose();
+  }, 120_000);
 });

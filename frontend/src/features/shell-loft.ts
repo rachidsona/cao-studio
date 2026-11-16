@@ -211,8 +211,8 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
     const joint = feature.joint ?? "miter";
     if (isFrame(target)) return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };
     if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps est plein ; saisissez l'épaisseur de ses côtés pour le vider.`);
-    const ends = frameEnds(target);
-    if (!ends) throw new GeometryError(`${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
+    const ends = frameEnds(target, feature.open);
+    if (!ends) throw new GeometryError(feature.open ? `${feature.name} : la face choisie n'a pas de face plane en face d'elle à ouvrir aussi ; cliquez-en une autre.` : `${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
     const frame = hollowed(feature.name, target, ends, feature.thickness);
     try {
       return { kind: "solids", shapes: splitRing(feature.name, frame, joint, feature.pass) };

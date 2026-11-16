@@ -287,9 +287,10 @@ export const isFrame = (target: Shape3D): boolean => target.faces.some((f) => f.
 
 /**
  * The two ends of a solid body taken as a frame, to open: two flat faces facing away from each other, every other face
- * square to them (the ends of a prism) — the top and the bottom when there are such, else the largest.
+ * square to them (the ends of a prism) — the top and the bottom when there are such, else the largest; or, a way given
+ * (the normal of a face clicked), the largest pair of faces square to it.
  */
-export function frameEnds(target: Shape3D): [Face, Face] | null {
+export function frameEnds(target: Shape3D, along?: readonly number[]): [Face, Face] | null {
   const flat = target.faces.filter((f) => f.geomType === "PLANE").map((face) => {
     const v = face.normalAt(face.center);
     return { face, normal: [v.x, v.y, v.z] as P3, area: measureArea(face) };
@@ -299,6 +300,11 @@ export function frameEnds(target: Shape3D): [Face, Face] | null {
   const pairs = flat.flatMap((a, i) => flat.slice(i + 1).flatMap((b) => (d3(a.normal, b.normal) < -0.9999 ? [[a, b] as const] : [])));
   // A prism's ends: every other flat face square to them, no curved face (a curved side would not be one).
   const ends = pairs.filter(([a]) => !others.length && flat.every((f) => f === a || Math.abs(d3(f.normal, a.normal)) > 0.9999 || Math.abs(d3(f.normal, a.normal)) < 1e-4));
+  // A way chosen (a face clicked): the pair of faces square to it, the largest.
+  if (along) {
+    const chosen = pairs.filter(([a]) => Math.abs(d3(a.normal, along as P3)) > 0.999).sort((p, q) => q[0].area - p[0].area)[0];
+    return chosen ? [chosen[0].face, chosen[1].face] : null;
+  }
   const candidates = ends.length ? ends : pairs;
   const best = [...candidates].sort((p, q) => Number(Math.abs(q[0].normal[2]) > 0.9999) - Number(Math.abs(p[0].normal[2]) > 0.9999) || q[0].area - p[0].area)[0];
   return best ? [best[0].face, best[1].face] : null;
