@@ -2096,6 +2096,12 @@ opération existante.
   case des mesures — Magie extrude, Dessiner sur le corps, Déplacer (ses copies « x5 », « /5 » gardées), Pousser — la
   gardent et y prennent les calculs aussi. Sur un clavier AZERTY, la touche 5 sans Maj donne 5, qu'une « ) » refait
   parenthèse (`repairBrackets`). Rien n'est pris dans l'esquisse (ses cotes ont leurs cases), ni avec Ctrl, ⌘ ou Alt.
+- **Esquisse seule** (« Corps » du groupe Affichage de l'esquisse, `data-sketch-bodies`) : les corps derrière
+  l'esquisse, en transparence, ou cachés — les esquisses seules à l'écran, rien d'un corps à viser. Le choix est
+  retenu par le navigateur pour les esquisses suivantes ; en quittant l'esquisse les corps reviennent toujours
+  (`app/sketch-bodies.ts`, `Viewport.setSketchAlone`, `BodyLayer.setAllHidden`). Les points de l'esquisse sont des
+  **pastilles rondes** : petites pour ceux des arêtes des corps (violets), un peu plus grandes pour l'origine et les
+  points visés ou choisis (`sketcher/overlay.ts` `dotTexture`).
 - **Cotes tapées pendant le tracé, comme Fusion 360** (esquisse : Ligne, Rectangle, Cercle ;
   `sketcher/typed-dims.ts`, `sketcher/shape-entry.ts`) : le premier point cliqué, les mesures en direct de la forme
   sont des **cases** (`[data-dim-field]`). On tape une valeur, dans l'unité du projet : elle s'écrit dans la case en

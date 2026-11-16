@@ -355,7 +355,16 @@ export class Viewport {
     this.grid.object.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...frame.normal));
     this.grid.object.position.set(...frame.origin);
     this.layer.setOpacity(0.25);
+    this.layer.setAllHidden(this.sketchAlone);
     this.controls.update();
+  }
+
+  /** In a sketch, the bodies hidden: the sketches alone (the « Corps » button of the sketch's Affichage). */
+  private sketchAlone = false;
+  setSketchAlone(on: boolean): void {
+    this.sketchAlone = on;
+    if (this.inSketch) this.layer.setAllHidden(on);
+    this.markShadows();
   }
 
   exitSketch(): void {
@@ -364,6 +373,7 @@ export class Viewport {
     this.grid.object.quaternion.identity();
     this.grid.object.position.set(0, 0, 0);
     this.layer.setOpacity(1);
+    this.layer.setAllHidden(false);
     if (this.savedCamera) {
       this.setCameraState(this.savedCamera);
       this.savedCamera = null;

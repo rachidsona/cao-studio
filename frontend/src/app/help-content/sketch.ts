@@ -429,8 +429,16 @@ export const SKETCH: HelpFamily[] = [
     where: "Barre d'outils de l'esquisse, groupe « Affichage », tout à droite. Ces boutons restent enfoncés quand l'option est active ; votre choix est gardé d'une fois sur l'autre.",
     tools: [
       {
+        keys: ["data-sketch-bodies:"], name: "Corps dans l'esquisse",
+        what: "Montre les corps derrière l'esquisse (en transparence) ou les cache : les esquisses seules à l'écran.",
+        steps: [
+          "Dans une esquisse, cliquez « Corps » (menu du groupe Affichage) : les corps disparaissent, il ne reste que les esquisses.",
+          "Recliquez pour les remettre.",
+        ],
+        tip: "Le choix vaut pour les esquisses suivantes. Corps cachés, on ne peut plus viser leurs arêtes ni leurs coins. En quittant l'esquisse, les corps reviennent toujours.",
+      }, {
         keys: ["data-sketch-command:points"], name: "Points",
-        what: "Montre ou cache les petits carrés noirs aux extrémités des lignes.",
+        what: "Montre ou cache les petits points ronds aux extrémités des lignes.",
         steps: [
           "Cliquez « Points » pour les afficher en permanence.",
           "Recliquez pour les cacher à nouveau.",

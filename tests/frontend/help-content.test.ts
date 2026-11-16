@@ -5,7 +5,7 @@ import { HELP_FAMILIES } from "../../frontend/src/app/help-content";
 import { searchCommands } from "../../frontend/src/ui/command-search";
 
 const PAGE = readFileSync("templates/editor/editor.html", "utf8");
-const ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy", "data-library", "data-snap", "data-hidden-joints"];
+const ATTRIBUTES = ["data-action", "data-sketch-tool", "data-sketch-command", "data-workshop", "data-new-sketch", "data-select-plus", "data-select-window", "data-section", "data-linked-copy", "data-library", "data-snap", "data-hidden-joints", "data-sketch-bodies"];
 /** Not tools: the help itself, and the buttons that only open and close a panel on a phone. */
 const NOT_TOOLS = new Set(["data-action:help", "data-action:panel", "data-action:close-panels"]);
 

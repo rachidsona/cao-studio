@@ -123,7 +123,7 @@ export class BodyLayer {
       if (kept && kept.data === data) {
         previous.delete(data.bodyId);
         this.bodies.set(data.bodyId, kept);
-        kept.mesh.visible = kept.edges.visible = true;
+        kept.mesh.visible = kept.edges.visible = !this.allHidden;
         this.setPose(data.bodyId, null);
         continue;
       }
@@ -141,6 +141,7 @@ export class BodyLayer {
 
       const edges = new THREE.LineSegments(new THREE.BufferGeometry(), this.edgeMaterial);
       edges.userData.bodyId = data.bodyId;
+      mesh.visible = edges.visible = !this.allHidden;
       this.scene.add(mesh, edges);
       this.bodies.set(data.bodyId, { mesh, edges, data, tint });
     }
@@ -225,7 +226,15 @@ export class BodyLayer {
   /** Shows or hides a body's mesh and edges (view only: a step of the assembly instructions). */
   setVisible(bodyId: string, visible: boolean): void {
     const body = this.bodies.get(bodyId);
-    if (body) body.mesh.visible = body.edges.visible = visible;
+    if (body) body.mesh.visible = body.edges.visible = visible && !this.allHidden;
+  }
+
+  /** Every body out of sight and out of reach (the sketch alone, « Corps » off), or back. */
+  private allHidden = false;
+  setAllHidden(hidden: boolean): void {
+    if (hidden === this.allHidden) return;
+    this.allHidden = hidden;
+    for (const body of this.bodies.values()) body.mesh.visible = body.edges.visible = !hidden;
   }
 
   /**

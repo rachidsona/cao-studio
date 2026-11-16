@@ -100,6 +100,23 @@ function arcPolyline(center: Vec2, radius: number, start: number, end: number, s
   return out;
 }
 
+/** A round dot (white, the colour given by the points): drawn once, shared by every point. */
+let dot: THREE.Texture | null = null;
+function dotTexture(): THREE.Texture {
+  if (dot) return dot;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 64;
+  const g = canvas.getContext("2d");
+  if (g) {
+    g.fillStyle = "#fff";
+    g.beginPath();
+    g.arc(32, 32, 30, 0, Math.PI * 2);
+    g.fill();
+  }
+  dot = new THREE.CanvasTexture(canvas);
+  return dot;
+}
+
 export class SketchOverlay {
   private group = new THREE.Group();
   /** The reference image under the sketch, kept from one drawing to the next (made again when it changes). */
@@ -278,15 +295,21 @@ export class SketchOverlay {
       const c = new THREE.Color(state.selection.has(p.id) ? COLORS.selected : state.hover === p.id ? COLORS.hover : p.fixed ? COLORS.projected : COLORS.point);
       return [c.r, c.g, c.b];
     });
-    const pointGeometry = new THREE.BufferGeometry();
-    pointGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-    pointGeometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    const pointObject = new THREE.Points(
-      pointGeometry,
-      new THREE.PointsMaterial({ size: 11, sizeAttenuation: false, vertexColors: true, depthTest: false }),
-    );
-    pointObject.renderOrder = 11;
-    this.group.add(pointObject);
+    // Round dots: the points of the bodies (violet) small, the others (the origin, those pointed at or chosen) larger.
+    const small = (p: { id: string; fixed?: boolean }) => !!p.fixed && !state.selection.has(p.id) && state.hover !== p.id;
+    for (const [list, size] of [[points.filter((p) => !small(p)), 9], [points.filter(small), 6]] as const) {
+      if (!list.length) continue;
+      const at = list.map((p) => points.indexOf(p));
+      const pointGeometry = new THREE.BufferGeometry();
+      pointGeometry.setAttribute("position", new THREE.Float32BufferAttribute(at.flatMap((i) => positions.slice(3 * i, 3 * i + 3)), 3));
+      pointGeometry.setAttribute("color", new THREE.Float32BufferAttribute(at.flatMap((i) => colors.slice(3 * i, 3 * i + 3)), 3));
+      const pointObject = new THREE.Points(
+        pointGeometry,
+        new THREE.PointsMaterial({ size, sizeAttenuation: false, vertexColors: true, depthTest: false, map: dotTexture(), alphaTest: 0.5, transparent: true }),
+      );
+      pointObject.renderOrder = 11;
+      this.group.add(pointObject);
+    }
 
     this.renderRegions(state.regions, state.hoverRegion ?? null);
     this.renderConstraints(state);
