@@ -33,30 +33,34 @@ export class BendOntoTool extends PanelTool {
   protected rows(): (HTMLElement | null)[] {
     const doc = this.ctx.doc();
     return [
-      this.info(this.target ? `Panneau : « ${bodyLabel(doc, this.target)} ».` : "1. Cliquez le panneau droit à cintrer (posé à plat contre le corps rond)."),
-      this.info(this.onto ? `Contre : « ${bodyLabel(doc, this.onto.body)} ». Cliquez une autre face ronde pour changer.` : "2. Cliquez la face ronde du corps : le panneau s'y enroule."),
+      this.info(this.target ? `Panneau : « ${bodyLabel(doc, this.target)} ». Cliquez un autre panneau droit pour changer.` : "Cliquez le panneau droit à cintrer (posé à plat contre le corps rond)."),
+      this.info(this.onto ? `Contre : « ${bodyLabel(doc, this.onto.body)} ». Cliquez une autre face ronde pour changer.` : "Cliquez la face ronde du corps : le panneau s'y enroule."),
+      this.info("Dans l'ordre qu'on veut : une face ronde donne le corps rond, une face plate le panneau."),
       this.info("Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc, centré là où il était. Contre l'extérieur d'un fût il s'enroule dehors, contre l'intérieur d'un anneau dedans."),
     ];
   }
 
   override move(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
-    this.ctx.viewport.setHoverHighlight(face ? (this.target ? { face } : { bodies: [face.bodyId] }) : null);
+    this.ctx.viewport.setHoverHighlight(face ? { face } : null);
   }
 
   protected override click(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
     if (!face) return;
-    // The board first; then the round face of another body.
-    if (!this.target || (!this.onto && face.bodyId === this.target)) {
-      this.target = face.bodyId;
-      this.render();
-      return;
-    }
-    if (face.bodyId === this.target || face.bodyId.split("#")[0] === this.id) return this.ctx.notify("Cliquez la face ronde d'un autre corps.", "info");
+    // The preview of the bend clicked: the board it was made from.
+    const body = face.bodyId.split("#")[0] === this.id ? this.target : face.bodyId;
+    if (!body) return;
+    // In any order: a round face is the body to bend onto; a flat one, the board (a body chosen before the tool, or
+    // clicked, that turns out round, becomes the round one).
     void this.ctx.geometry.describe(face.bodyId, [], face.faceIndex).then(({ face: ref }) => {
-      if (!ref || ref.type !== "CYLINDRE") return this.ctx.notify("Cette face n'est pas ronde : cliquez la face cylindrique du corps (le tour d'un fût, un angle arrondi).", "info");
-      this.onto = { body: face.bodyId, face: ref };
+      if (ref?.type === "CYLINDRE" && body === face.bodyId) {
+        if (this.target === body) this.target = null;
+        this.onto = { body, face: ref };
+      } else {
+        if (this.onto?.body === body) return this.ctx.notify("Ce corps est le corps rond : cliquez le panneau droit, ou une autre face ronde.", "info");
+        this.target = body;
+      }
       this.render();
       this.schedulePreview();
     }).catch(() => this.ctx.notify("Cette face ne se lit pas : cliquez-en une autre.", "info"));

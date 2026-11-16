@@ -182,7 +182,7 @@ export const MODELING: HelpFamily[] = [
         what: "Courbe un panneau droit pour qu'il épouse la face ronde d'un autre corps : un fût, un angle arrondi, l'intérieur d'un anneau.",
         steps: [
           "Posez le panneau droit à plat contre le corps rond (son épaisseur tournée vers lui), à la hauteur voulue.",
-          "Cliquez « Cintrer contre » (menu du groupe Modifier), puis le panneau, puis la face ronde du corps.",
+          "Cliquez « Cintrer contre » (menu du groupe Modifier), puis le panneau et la face ronde du corps, dans l'ordre qu'on veut : une face ronde donne le corps rond, une face plate le panneau.",
           "Le panneau s'y enroule : « OK » (ou Entrée) le garde, « Terminer » (Échap) ferme l'outil.",
         ],
         tip: "Il garde son épaisseur et sa hauteur ; sa longueur devient l'arc (mesurée au milieu de l'épaisseur), centré là où il était. Contre l'extérieur d'un fût il s'enroule dehors, contre l'intérieur d'un anneau dedans. Il suit le corps rond : le fût change de rayon, le panneau se recourbe. Pour le régler, cliquez son étape dans l'Historique, puis « Modifier ».",
