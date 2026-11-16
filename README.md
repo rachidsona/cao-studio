@@ -1452,6 +1452,9 @@ opération existante.
   (`data-digit-keys`). **Hors des champs aussi** : les mesures tapées sans champ — la case des mesures de « Magie
   extrude » et de « Dessiner sur le corps », Pousser, Déplacer, les cotes d'une forme tracée dans l'esquisse, la
   mise en plan, le nombre de côtés du polygone — lisent la touche par `keyChar`, qui donne le chiffre de la rangée.
+- **Les esquisses dans l'Historique** : la bande du bas montre chaque esquisse à sa place dans l'histoire, avant ce
+  qui en est fait (son icône d'esquisse), suivie de ses propres étapes (décalages, Répartition, étagères) ; un clic
+  l'ouvre, « Modifier » l'édite (`app/navigator.ts` `items`).
 - **Fond de la vue 3D** : un dégradé bleu nuit, de #1f2f40 en haut à #101d26 en bas (barre d'historique comprise),
   dans les deux thèmes ; la grille et les couleurs d'esquisse sont choisies pour ce fond sombre (variables
   `--viewport-gradient`, `--viewport-grid`, `--sketch-*` de `app.css`).

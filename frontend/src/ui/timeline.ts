@@ -1,6 +1,6 @@
 /**
  * Timeline (bottom strip), like the history bar of desktop CAD tools: the
- * operations of the document in order (extrusion, hole, revolution…), each as the
+ * operations of the document in order (sketch, extrusion, hole, revolution…), each as the
  * icon of its tool (the name is its tooltip). A click on one selects what it made in the view and opens the dialog to
  * edit, rename or delete it. Ctrl/⌘ + click marks one step (again: unmarks it), Maj + click every step from the last
  * one marked; the marked steps are deleted together (one undo step) by the bar that appears, or the Suppr key.
@@ -64,7 +64,7 @@ export function renderTimeline(
     { class: "flex items-center gap-1 overflow-x-auto px-2 py-0.5", role: "toolbar", "aria-label": "Historique des opérations", tabindex: "-1" },
     el("span", { class: "shrink-0 pr-1 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400", title: "Ctrl ou ⌘ + clic : choisir plusieurs étapes ; Maj + clic : toutes celles entre deux" }, "Historique"),
     bar,
-    ...(chips.length ? chips : [el("span", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Aucune opération : extrudez une esquisse pour commencer.")]),
+    ...(chips.length ? chips : [el("span", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Aucune opération : dessinez une esquisse pour commencer.")]),
   );
   strip.addEventListener("click", (event) => {
     const element = event.target as HTMLElement;

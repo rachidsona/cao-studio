@@ -97,9 +97,10 @@ export class Navigator {
   private items(): { sketches: NavItem[]; operations: NavItem[]; bodies: NavItem[] } {
     const doc = this.host.doc();
     const sketches = doc.features.filter((f) => f.type === "sketch").map((f) => this.item(f));
-    // The timeline follows the history: an offset comes where its sketch is.
+    // The timeline follows the history: a sketch where it was made (a click opens it, « Modifier »), then its own
+    // steps (offsets, Répartition, shelves).
     const operations = doc.features.flatMap((f) =>
-      f.type === "sketch" ? (f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: o.step?.kind === "shelves" && o.step.input.vertical ? "cloisons" : (o.step?.kind ?? "offset"), hidden: false, offset: { sketchId: f.id } })) : [this.item(f)],
+      f.type === "sketch" ? [this.item(f), ...(f.offsets ?? []).map((o): NavItem => ({ ...this.item(f, o.name), id: o.id, type: o.step?.kind === "shelves" && o.step.input.vertical ? "cloisons" : (o.step?.kind ?? "offset"), hidden: false, offset: { sketchId: f.id } }))] : [this.item(f)],
     );
     const bodies = this.host.bodyIds().flatMap((bodyId) => {
       // A piece of a split ("sp1#2") has no feature of its own: it takes the state of the split.

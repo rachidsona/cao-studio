@@ -8,7 +8,8 @@ test("plusieurs étapes de l'historique choisies et supprimées d'un coup, puis 
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "Historique e2e");
   const strip = page.getByRole("toolbar", { name: "Historique des opérations" });
-  const chips = strip.locator("[data-op]");
+  // The operations (the sketches too are in the history: one goes with the extrusion made of it).
+  const chips = strip.locator('[data-op]:not([data-op^="sk"])');
   const before = await chips.count();
   expect(before).toBeGreaterThanOrEqual(2);
   const last = chips.nth(before - 1);
