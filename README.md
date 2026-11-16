@@ -1457,6 +1457,11 @@ opération existante.
   des chiffres de même largeur pour les mesures et les prix, et « Réduire les animations » du système respecté. Sur
   téléphone, les liens de l'en-tête (Guide, Accueil, Paramètres, Mon compte) passent dans un **menu ☰** qui se ferme
   avec Échap ; les dossiers et la Mise en plan ont des icônes dessinées au lieu d'emojis.
+  **Jetons sémantiques** des surfaces, traits, encres et focus (`bg-surface-panel`, `border-line`, `text-ink-muted`…),
+  qui suivent le thème et la palette ; les cartes de l'éditeur les utilisent. **Au doigt** (tablette, téléphone) :
+  la colonne de sélection et de vue, Mes outils, les colonnes d'outils, les menus de groupe, le Navigateur, la colonne
+  Projets et l'historique passent à des cibles de 44 px, les champs à 44 px et 16 px de texte (pas de zoom d'iOS) ;
+  à la souris, rien ne change.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne

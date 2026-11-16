@@ -13,6 +13,20 @@ sur celui-ci ; sans ce fichier, ce document s'applique seul. Les valeurs vivent 
 
 ## 2. Couleurs — toujours par jeton, jamais d'hexadécimal dans un composant
 
+**Jetons sémantiques** : ils nomment le rôle d'une couleur, et leur valeur suit le thème et la palette. On les préfère
+aux gris pour tout nouveau composant.
+
+| Jeton (utilitaire) | Variable | Clair | Sombre |
+|---|---|---|---|
+| `bg-surface-page` | `--surface-page` | gris 100 | nuit de la palette |
+| `bg-surface-panel` | `--surface-panel` | blanc | nuit claire |
+| `bg-surface-raised` | `--surface-raised` | blanc | nuit des tableaux |
+| `border-line` | `--line` | gris 200 | accent à 18 % |
+| `border-line-strong` | `--line-strong` | gris 300 | accent à 35 % |
+| `text-ink` | `--ink-strong` | gris 900 | encre de la palette |
+| `text-ink-muted` | `--ink-soft` | gris 500 | encre atténuée |
+| `outline-focus` | `--focus-ring` | accent | accent |
+
 | Rôle | Utiliser | Notes |
 |---|---|---|
 | Fonds, bordures, textes | `gray-50 … gray-950` | Ils suivent le thème : les gris de Tailwind en clair, la palette choisie en sombre (`palettes.css`). |
@@ -82,6 +96,11 @@ dégradé de la palette et le halo de l'accent (`.cad-card`).
 
 - Rythme de **4 px** (échelle de Tailwind) : `gap-0.5` dans le ruban, `gap-1` et `gap-2` dans les panneaux, `p-4` pour une carte, `py-8` pour une page.
 - **Cibles** : 44 × 44 px pour les boutons de la barre et des pages (`min-h-11 min-w-11`). Dans les colonnes d'outils denses, 36 px (`min-h-9`) ; jamais moins de 24 px.
+- **Densité tactile** : au doigt (`pointer: coarse`, tablette ou téléphone), un bloc de `app.css` porte à **44 px** les
+  contrôles compacts : la colonne de sélection et de vue, Mes outils, les colonnes d'outils, les lignes des menus de
+  groupe, les lignes et boutons du Navigateur et de la colonne Projets, l'historique. Les champs passent à 44 px de haut
+  et à 16 px de texte, pour qu'iOS ne zoome pas. À la souris, rien ne change. La vue 3D a déjà ses tolérances au doigt :
+  rayon de prise, flèches et poignées agrandies.
 - **Largeur des pages** : `max-w-6xl`, avec une gouttière `px-4`.
 
 ## 6. Mise en page adaptative
