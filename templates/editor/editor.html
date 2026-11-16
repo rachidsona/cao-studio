@@ -16,12 +16,12 @@
   {# ---- Top bar: project, file and history commands ---- #}
   <header class="flex items-center gap-1 border-b border-gray-200 bg-white px-2 pt-[env(safe-area-inset-top)] dark:border-gray-800 dark:bg-gray-900">
     <a href="{% url 'projects:list' %}" class="tool-btn" title="Mes projets" aria-label="Retour à mes projets">
-      <span aria-hidden="true">←</span><span class="hidden md:inline">Projets</span>
+      {% include "editor/_hicon.html" with name="back" %}<span class="hidden md:inline">Projets</span>
     </a>
     {# The project's name opens a menu: the projects, the workshop's catalogue, the drawing of the cabinet selected. #}
     <details class="relative min-w-0 flex-1" data-project-menu>
       <summary class="tool-btn max-w-full cursor-pointer list-none justify-start px-1" title="{{ project.name }} — menu : projets, fiche du projet, pour l&#x27;atelier, pour le client, paramètres de l&#x27;atelier" aria-label="Menu du projet {{ project.name }}">
-        <h1 class="min-w-0 truncate text-sm font-semibold">{{ project.name }}</h1><span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" aria-hidden="true">▾</span>
+        <h1 class="min-w-0 truncate text-sm font-semibold">{{ project.name }}</h1><span class="shrink-0 text-gray-500 dark:text-gray-400">{% include "editor/_hicon.html" with name="chevron" class="size-3.5" %}</span>
       </summary>
       <div class="absolute left-0 z-40 mt-1 w-80 space-y-1 border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900" role="menu">
         <a href="{% url 'projects:list' %}" class="tool-btn w-full justify-start" role="menuitem">← Mes projets</a>
@@ -39,19 +39,19 @@
       </div>
     </details>
 
-    <button type="button" class="tool-btn" data-command-palette title="Palette de commandes : tapez le nom d&#x27;un outil (⌘K ou Ctrl+K)" aria-label="Palette de commandes"><span aria-hidden="true">⌕</span><span class="hidden lg:inline">Outils</span></button>
-    <button type="button" class="tool-btn" data-workshop="drawing" title="Mise en plan (comme l'espace Dessin de Fusion) : feuilles A4 à A0 avec cartouche, vues du modèle, cotes, coupes, détails, nomenclature, dessin 2D ; PDF, DXF, SVG" aria-label="Mise en plan">
+    <button type="button" class="tool-btn" data-command-palette title="Palette de commandes : tapez le nom d&#x27;un outil (⌘K ou Ctrl+K)" aria-label="Palette de commandes">{% include "editor/_hicon.html" with name="search" %}<span class="hidden lg:inline">Outils</span></button>
+    <button type="button" class="tool-btn hidden sm:inline-flex" data-workshop="drawing" title="Mise en plan (comme l'espace Dessin de Fusion) : feuilles A4 à A0 avec cartouche, vues du modèle, cotes, coupes, détails, nomenclature, dessin 2D ; PDF, DXF, SVG" aria-label="Mise en plan">
       <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4l16 16z"/><path d="M8 16v-4l4 4z"/><path d="M4 8h2M4 12h2M8 20v-2M12 20v-2"/></svg><span class="hidden md:inline">Mise en plan</span>
     </button>
-    <button type="button" class="tool-btn" data-action="undo" data-ref="undo" title="Annuler (⌘Z)" aria-label="Annuler" disabled>↶</button>
-    <button type="button" class="tool-btn" data-action="redo" data-ref="redo" title="Rétablir (⇧⌘Z)" aria-label="Rétablir" disabled>↷</button>
+    <button type="button" class="tool-btn" data-action="undo" data-ref="undo" title="Annuler (⌘Z)" aria-label="Annuler" disabled>{% include "editor/_hicon.html" with name="undo" %}</button>
+    <button type="button" class="tool-btn" data-action="redo" data-ref="redo" title="Rétablir (⇧⌘Z)" aria-label="Rétablir" disabled>{% include "editor/_hicon.html" with name="redo" %}</button>
     <button type="button" class="tool-btn tool-btn-primary" data-action="save" title="Enregistrer (⌘S)">
-      <span aria-hidden="true">⤓</span><span class="hidden sm:inline">Enregistrer</span>
+      {% include "editor/_hicon.html" with name="save" %}<span class="hidden sm:inline">Enregistrer</span>
     </button>
-    <button type="button" class="tool-btn" data-action="help" title="Aide : comment fonctionne chaque outil (touche ?)" aria-label="Aide"><span aria-hidden="true">?</span><span class="hidden md:inline">Aide</span></button>
+    <button type="button" class="tool-btn hidden sm:inline-flex" data-action="help" title="Aide : comment fonctionne chaque outil (touche ?)" aria-label="Aide">{% include "editor/_hicon.html" with name="help" %}<span class="hidden md:inline">Aide</span></button>
 
     <details class="relative">
-      <summary class="tool-btn cursor-pointer list-none" aria-label="Fichier et réglages">⋯</summary>
+      <summary class="tool-btn cursor-pointer list-none" aria-label="Fichier et réglages" title="Fichier, réglages, palette, aide">{% include "editor/_hicon.html" with name="more" %}</summary>
       <div class="absolute right-0 z-40 mt-1 max-h-[calc(100dvh-4rem)] w-72 space-y-1 overflow-y-auto border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900">
         <p class="panel-title px-2 pt-1">Exporter</p>
         <button type="button" class="tool-btn w-full justify-start" data-action="export-step">STEP (solide exact)</button>

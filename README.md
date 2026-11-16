@@ -1462,6 +1462,10 @@ opération existante.
   la colonne de sélection et de vue, Mes outils, les colonnes d'outils, les menus de groupe, le Navigateur, la colonne
   Projets et l'historique passent à des cibles de 44 px, les champs à 44 px et 16 px de texte (pas de zoom d'iOS) ;
   à la souris, rien ne change.
+  **En-tête de l'éditeur** : ses boutons ont des icônes dessinées d'une même famille (`editor/_hicon.html` : retour,
+  recherche, annuler, rétablir, enregistrer, aide, menu) au lieu des caractères ← ⌕ ↶ ↷ ⤓ ? ⋯ ; annuler et rétablir
+  désactivés restent lisibles. Sur téléphone, « Mise en plan » et « Aide » passent dans les menus (projet et ⋯) pour
+  que le nom du projet se lise.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne

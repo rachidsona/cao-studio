@@ -128,6 +128,11 @@ Pas de défilement horizontal de la page. Sur téléphone, un champ est en `text
 ## 8. Icônes
 
 - **Icônes vectorielles** : les volumes blancs de la barre (`scripts/icons3d.py`, `_icons.html`) et des traits de 1,5 à 2 px ailleurs.
+- **En-tête de l'éditeur** : `templates/editor/_hicon.html` (`{% include "editor/_hicon.html" with name="undo" %}`) —
+  retour, recherche, annuler, rétablir, enregistrer, aide, plus, chevron. Une famille : grille de 24, trait de 1,8,
+  bouts ronds, couleur du texte. Une nouvelle icône d'en-tête s'y ajoute plutôt qu'en caractère (↶ ⤓ ⌕…).
+  Sous 640 px, « Mise en plan » et « Aide » quittent l'en-tête (ils restent dans le menu du projet et le menu ⋯) pour
+  laisser lire le nom du projet.
 - **Pas d'emoji comme icône** d'interface. Les signes typographiques (✕ ✓ ★ ▸ ⋯) restent permis, dans la couleur du texte.
 - Une icône seule a un `aria-label` ; une icône à côté d'un texte a `aria-hidden="true"`.
 
