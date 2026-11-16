@@ -172,6 +172,25 @@ describe("séparer les côtés d'un corps plein", () => {
     r.dispose();
   }, 120_000);
 
+  it("un côté en onglet, mince (ses bouts coupés à 45°), s'ouvre aussi d'office par ses deux grandes faces", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    // A box 80 × 50 × 10 split into mitred sides 1.9 thick; then one side split again, its sides 1 thick.
+    const pts = [[60, -25], [140, -25], [140, 25], [60, 25]];
+    const sk = { id: "sk2", type: "sketch", name: "Boîte", plane: "XY", offset: 0, points: pts.map(([x, y], i) => ({ id: `p${i}`, x, y })), curves: [0, 1, 2, 3].map((i) => ({ id: `l${i}`, kind: "line", p1: `p${i}`, p2: `p${(i + 1) % 4}` })), constraints: [] };
+    const doc = { ...createReferencePlate(), features: [sk,
+      { id: "ex2", type: "extrude", name: "Boîte", sketch: "sk2", distance: 10, operation: "new" },
+      { id: "sh6", type: "shell", name: "Côtés séparés 6", target: "ex2", faces: [], thickness: 1.9, sides: "separate", joint: "miter", frame: true },
+      { id: "sh10", type: "shell", name: "Côtés séparés 10", target: "sh6#0", faces: [], thickness: 1, sides: "separate", joint: "miter", frame: true },
+    ] };
+    const r = new Recomputer();
+    const made = r.recompute(doc as never);
+    expect(made.statuses.find((s) => s.id === "sh10")?.state).toBe("ok");
+    const out = r.output("sh10");
+    expect(out?.kind === "solids" ? out.shapes.length : 0).toBe(4);
+    r.dispose();
+  }, 120_000);
+
   it("la face à vider choisie : ouvert devant et derrière (le long de y), les côtés font toute la profondeur", async () => {
     const { Recomputer } = await import("../../frontend/src/history/recompute");
     const { centeredRectangle } = await import("../../frontend/src/document/sketch");

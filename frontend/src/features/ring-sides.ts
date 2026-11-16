@@ -306,7 +306,6 @@ export function frameEnds(target: Shape3D, along?: readonly number[], thickness 
     const chosen = pairs.filter(([a]) => Math.abs(d3(a.normal, along as P3)) > 0.999).sort((p, q) => q[0].area - p[0].area)[0];
     return chosen ? [chosen[0].face, chosen[1].face] : null;
   }
-  const candidates = ends.length ? ends : pairs;
   // Wide enough: the end's two sizes (its box, less the way it faces) more than two sides.
   const roomy = (face: Face) => {
     const box = face.boundingBox;
@@ -314,6 +313,10 @@ export function frameEnds(target: Shape3D, along?: readonly number[], thickness 
     box.delete();
     return sizes[1]! > 2 * thickness + 1;
   };
+  // A prism's ends wide enough; else any pair of faces facing away that is (a mitred side: its ends cut at 45°, its
+  // top too narrow, its two large faces); else the ends as they are.
+  const wide = (list: typeof pairs) => list.filter((c) => roomy(c[0].face));
+  const candidates = wide(ends).length ? ends : wide(pairs).length ? pairs : ends.length ? ends : pairs;
   const fits = new Map(candidates.map((c) => [c, roomy(c[0].face)]));
   const best = [...candidates].sort((p, q) => Number(fits.get(q)) - Number(fits.get(p)) || Number(Math.abs(q[0].normal[2]) > 0.9999) - Number(Math.abs(p[0].normal[2]) > 0.9999) || q[0].area - p[0].area)[0];
   return best ? [best[0].face, best[1].face] : null;
