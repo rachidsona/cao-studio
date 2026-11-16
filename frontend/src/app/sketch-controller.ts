@@ -34,6 +34,7 @@ import type { ToolName } from "../sketcher/tools";
 import { typedDigit } from "../sketcher/edge-offset-tool";
 import { ref } from "../ui/dom";
 import type { Viewport } from "../viewport/viewport";
+import { withCentered } from "../sketcher/center-in";
 
 /** Direction of the longest straight edge of a face (the x axis of a sketch drawn on it). */
 function longestEdge(outline: FaceOutline): Vec3 | undefined {
@@ -389,6 +390,13 @@ export class SketchController {
       return this.selectInSketch(found, id === "skselectsimilar" ? "semblable" : "de la chaîne");
     }
     if (id === "joineryshapes") return openJoineryShapes(this.host.unit(), () => mode.setTool("joinery"));
+    if (id === "centerin") {
+      const made = withCentered(mode.geometry, [...mode.selection]);
+      if (typeof made === "string") return this.host.notify(made, "info");
+      mode.selection.clear();
+      mode.apply(made.geometry, "Dessin centré : il reste au milieu de l'autre, même si celui-ci change de taille ou bouge.");
+      return;
+    }
     if (id === "fullydefine") {
       const { geometry, count, dof } = fullyDefine(mode.geometry);
       if (mode.lastSolve.dof === 0) return this.host.notify("L'esquisse est déjà entièrement contrainte.", "info");

@@ -414,6 +414,14 @@ export const SKETCH: HelpFamily[] = [
         ],
         tip: "Différent de « Coïncidence » : deux points y sont liés pour de bon, ici le point reste libre de glisser le long de la courbe.",
       }, {
+        keys: ["data-sketch-command:centerin"], name: "Centrer",
+        what: "Met un dessin au milieu d'un autre — un rectangle dans un rectangle, un cercle dans un carré — et l'y garde.",
+        steps: [
+          "Choisissez un trait de chacun des deux dessins (Maj + clic, ou une fenêtre qui les prend).",
+          "Cliquez « Centrer » (menu du groupe Contraintes) : le plus petit va au milieu du plus grand.",
+        ],
+        tip: "Il y reste : si le grand change de taille ou bouge, le petit suit son milieu (un point de construction au centre du grand, le petit symétrique autour). Supprimez les contraintes de Symétrie pour le libérer.",
+      }, {
         keys: ["data-sketch-command:midpoint"], name: "Milieu",
         what: "Place un point exactement au milieu d'une ligne.",
         steps: [

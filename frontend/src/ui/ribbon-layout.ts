@@ -40,7 +40,7 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
     "data-sketch-tool:polygon", "data-sketch-tool:slot", "data-sketch-tool:oval", "data-sketch-tool:curve", "data-sketch-tool:text",
     "data-sketch-command:importdxf", "data-sketch-command:underlay", "data-sketch-command:skmirror", "data-sketch-command:skrotate", "data-sketch-command:skscale", "data-sketch-command:skpolar", "data-sketch-command:autodim", "data-sketch-command:skselectsimilar", "data-sketch-command:skselectchain", "data-sketch-command:joineryshapes", "data-sketch-tool:stretch", "data-sketch-command:dimRadius", "data-sketch-command:dimDiameter", "data-sketch-command:dimAngle", "data-sketch-command:dimChain", "data-sketch-command:fullydefine", "data-sketch-tool:extend", "data-sketch-tool:chamfer", "data-sketch-tool:project", "data-sketch-tool:intersect", "data-sketch-tool:break", "data-sketch-tool:array",
     "data-sketch-command:symmetric", "data-sketch-command:concentric", "data-sketch-command:fix", "data-sketch-command:pointOnCurve", "data-sketch-command:midpoint",
-    "data-sketch-bodies:",
+    "data-sketch-bodies:", "data-sketch-command:centerin",
   ],
 };
 

@@ -606,6 +606,12 @@ serveur accepte les deux versions.
   `constraints/constraint-state.ts`) ; le compteur « … à fixer » dit combien il en manque. **Contraindre tout**
   (menu « Cotes ▾ », caché par défaut) pose les cotes qui manquent, à leur mesure actuelle, sans bouger le dessin :
   longueurs, diamètres et rayons, puis angles des traits penchés, puis place des points depuis l'origine.
+- **Centrer** (menu « Contraintes ▾ » de l'esquisse, `data-sketch-command="centerin"`) : deux dessins choisis (un trait
+  de chacun suffit, ou Ctrl + A) — un rectangle dans un rectangle, un cercle dans un carré, un polygone — et le plus
+  petit va au milieu du plus grand, et y reste : un point de construction au milieu de la diagonale du grand (son
+  centre pour un cercle), le petit tenu symétrique autour (sa diagonale, son centre). Le petit est posé au milieu
+  avant les contraintes, le grand ne bouge pas ; il change ensuite de taille ou bouge, le petit suit son milieu
+  (`sketcher/center-in.ts`).
 - **Cotation automatique** (menu « Cotes ▾ » de l'esquisse) : d'un coup, les cotes des traits sélectionnés, sinon de
   tout le dessin hors construction :
   - les cotes de chaîne, d'un niveau de points au suivant, en X sous le dessin et en Y à sa gauche ;
