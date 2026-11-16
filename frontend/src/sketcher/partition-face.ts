@@ -235,8 +235,8 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
   add({ x: 0, y: H + F * 1.05, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }, { what: "thickness" }, input.thickness);
   if (input.boards && input.plinth > 0) {
     // The plinth closes the chain of the left side, at the floor: its figure alone, as on a drawing.
-    const line = -F * CHAIN;
-    add({ x: line - F * 0.45, y: H - input.plinth / 2, text: cm(input.plinth), kind: "plinth", anchor: "middle", side: "left", span: [line, H - input.plinth, line, H] }, { what: "plinth" }, input.plinth);
+    const line = -F * SIDE;
+    add({ x: line - F * 0.25, y: H - input.plinth / 2 + fs * 0.35, text: cm(input.plinth), kind: "plinth", anchor: "end", side: "left", span: [line, H - input.plinth, line, H] }, { what: "plinth" }, input.plinth);
   }
   for (const p of face.pieces) {
     // As thick as the panels (« ép. » says it): not written again on each shelf.
@@ -256,10 +256,11 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
     const height = { what: "niche" as const, path: n.path, axis: "y" as const };
     const cx = n.x + n.w / 2;
     if (out) {
-      // Beside the face, upright, its line from the shelf under it to the one over it.
-      const line = out === "left" ? -F * CHAIN : face.length + F * CHAIN;
-      const x = out === "left" ? line - F * 0.45 : line + F * 0.45;
-      add({ x, y: n.y + n.h / 2, text: cm(n.h), kind: "niche", anchor: "middle", side: out, span: [line, n.y, line, n.y + n.h] }, height, n.h);
+      // Beside the face, its line from the shelf under it to the one over it, the figure written level on it (or
+      // beside it, outwards, when the niche is too low for it).
+      const line = out === "left" ? -F * SIDE : face.length + F * SIDE;
+      const x = out === "left" ? line - F * 0.25 : line + F * 0.25;
+      add({ x, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: out === "left" ? "end" : "start", side: out, span: [line, n.y, line, n.y + n.h] }, height, n.h);
     } else {
       // Its free height, written in its middle (what it measures: from the shelf under it to the one over it).
       add({ x: cx, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "middle", span: [cx, n.y, cx, n.y + n.h] }, height, n.h);
@@ -303,15 +304,21 @@ export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math
  */
 export const CHAIN = 0.8;
 export const WHOLE = 2.15;
+/**
+ * The upright chains, beside the face: their figures are written level, across their line, so they lie farther out;
+ * the whole height beyond the chain of the right side.
+ */
+export const SIDE = 1.35;
+export const WHOLE_SIDE = 3.3;
 
 /** Where the line of the whole height lies: beyond the chain of the right side when there is one. */
-export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE : CHAIN);
+export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE_SIDE : SIDE);
 
 /** Room for the dimensions around the face. */
 export function faceViewBox(face: Pick<PartitionFace, "length" | "height" | "cases">): string {
   const fs = faceFont(face);
-  const [x0, y0] = [-fs * 1.85, -fs * (WHOLE + 0.75)];
-  return `${x0} ${y0} ${heightLine(face) + fs * 1.05 - x0} ${face.height + fs * 1.4 - y0}`;
+  const [x0, y0] = [-fs * (SIDE + 1.35), -fs * (WHOLE + 0.75)];
+  return `${x0} ${y0} ${heightLine(face) + fs * 1.0 - x0} ${face.height + fs * 1.4 - y0}`;
 }
 
 /** The narrowest a case can be pulled to (mm). */

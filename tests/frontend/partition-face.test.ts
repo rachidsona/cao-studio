@@ -115,6 +115,8 @@ describe("face d'une Répartition", () => {
     expect(count(svg, '<path d="M')).toBe(2 * count(svg, "data-dimline="));
     expect(svg).toMatch(/dominant-baseline="central" font-size="[\d.]+" font-weight="600" [^>]*data-dim="length"/);
     expect(svg).not.toMatch(/red-/);
+    // Every figure written level, the upright chains' too.
+    expect(svg).not.toMatch(/rotate\(/);
   });
 
   it("cote une niche de cloison par sa largeur et sa hauteur, une case entière par sa hauteur", () => {

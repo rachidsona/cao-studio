@@ -25,7 +25,7 @@ const OUTLINE = `fill="rgb(184 151 90 / 0.25)" stroke="${BRASS}" stroke-width="3
 /**
  * A dimension line from end to end of what it measures, an arrow at each end pointing to it (`arrow`: their length, in
  * mm of the face), and, when its figure is written on it, broken in its middle by `gap` (mm) to leave the figure room:
- * ← 70,5 →, as on a workshop drawing.
+ * ← 70,5 →, as on a workshop drawing; on an upright line the figure stays level, across it.
  */
 export function dimLine([x1, y1, x2, y2]: [number, number, number, number], arrow: number, tone = DIM, gap = 0): string {
   const length = Math.hypot(x2 - x1, y2 - y1);
@@ -37,6 +37,8 @@ export function dimLine([x1, y1, x2, y2]: [number, number, number, number], arro
   const lines = gap > 0 ? line(0, (length - gap) / 2) + line((length + gap) / 2, length) : line(0, length);
   return `<g pointer-events="none" data-dimline="">${lines}${head(x1, y1, ux, uy)}${head(x2, y2, -ux, -uy)}</g>`;
 }
+
+const EPSILON = 1e-9;
 
 /** The room a figure takes along its line (mm), a little air on each side. */
 const figure = (text: string, size: number) => text.length * size * 0.55 + size * 0.35;
@@ -106,32 +108,34 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
   for (const l of face.labels) {
     if (!l.span || !outside(l)) continue;
     const [x1, y1, x2, y2] = l.span;
-    const on = fits(Math.hypot(x2 - x1, y2 - y1), l.text, small, arrow);
+    // An upright line takes its figure level, across it: it needs the figure's height, not its length.
+    const level = Math.abs(x2 - x1) < EPSILON;
+    const room = level ? small * 1.3 : figure(l.text, small);
+    const on = Math.hypot(x2 - x1, y2 - y1) >= room + arrow * 2;
     if (on) placed.set(l, { x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
-    parts.push(dimLine(l.span, arrow, DIM, on ? figure(l.text, small) : 0));
+    parts.push(dimLine(l.span, arrow, DIM, on ? room : 0));
     if (l.side === "left") parts.push(ext(-gap, l.span[1], l.span[0] - past, l.span[1]), ext(-gap, l.span[3], l.span[0] - past, l.span[3]));
     if (l.side === "right") parts.push(ext(L + gap, l.span[1], l.span[0] + past, l.span[1]), ext(L + gap, l.span[3], l.span[0] + past, l.span[3]));
   }
   const [length, height] = [cm(L), cm(H)];
   parts.push(dimLine([0, whole, L, whole], arrow, MAIN, figure(length, fs)), ext(0, -gap, 0, whole - past), ext(L, -gap, L, whole - past));
-  parts.push(dimLine([right, 0, right, H], arrow, MAIN, figure(height, fs)), ext(L + gap, 0, right + past, 0), ext(L + gap, H, right + past, H));
+  parts.push(dimLine([right, 0, right, H], arrow, MAIN, fs * 1.3), ext(L + gap, 0, right + past, 0), ext(L + gap, H, right + past, H));
   const caseSize = fs * 0.85;
   const caseOn = face.cases.map((c) => fits(c.width, cm(c.width), caseSize, arrow));
   face.cases.forEach((c, i) => parts.push(dimLine([c.x0, chain, c.x1, chain], arrow, MAIN, caseOn[i] ? figure(cm(c.width), caseSize) : 0), ext(c.x0, -gap, c.x0, chain - past), ext(c.x1, -gap, c.x1, chain - past)));
   const tone = (inner: boolean) => (inner ? INNER : LABEL);
   const editable = (k: number | undefined, inner: boolean) => (k === undefined ? `class="${tone(inner)}" pointer-events="none"` : `class="${tone(inner)} ${EDITABLE} cursor-text" data-edit="${k}"`);
-  const upright = (x: number, y: number) => `transform="rotate(-90 ${x} ${y})" dominant-baseline="central"`;
-  // On its line, a figure is centred on it, upright on a side; beside it, where the face put it.
+  // On its line, a figure is centred on it, always level; beside it, where the face put it.
   const centred = `text-anchor="middle" dominant-baseline="central"`;
   for (const l of face.labels) {
     const at = placed.get(l);
     const [x, y] = at ? [at.x, at.y] : [l.x, l.y];
     const where = at ? centred : `text-anchor="${l.anchor}"`;
-    parts.push(`<text x="${x}" y="${y}" ${where} font-size="${small}" ${l.side ? upright(x, y) : ""} ${editable(l.edit, !l.side && l.kind !== "panel" && !at)} data-label="${l.kind}">${l.text}</text>`);
+    parts.push(`<text x="${x}" y="${y}" ${where} font-size="${small}" ${editable(l.edit, !l.side && l.kind !== "panel" && !at)} data-label="${l.kind}">${l.text}</text>`);
   }
   // The whole, the main figures, on their lines: a little larger than the chain's, in bold.
   parts.push(`<text x="${L / 2}" y="${whole}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${length}</text>`);
-  parts.push(`<text x="${right}" y="${H / 2}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" ${upright(right, H / 2)} data-edit="1" data-dim="height">${height}</text>`);
+  parts.push(`<text x="${right}" y="${H / 2}" ${centred} font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="1" data-dim="height">${height}</text>`);
   face.cases.forEach((c, i) => {
     const on = pick?.kind === "case" && pick.index === i;
     const [y, where] = caseOn[i] ? [chain, centred] : [chain - fs * 0.25, `text-anchor="middle"`];
