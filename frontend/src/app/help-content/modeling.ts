@@ -155,7 +155,7 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:split-sides"],
         name: "Séparer les côtés",
-        what: "Sépare un corps en ses côtés, un panneau par côté : un cadre, un caisson sans fond, un contour extrudé — carré, triangle, polygone, coins arrondis —, déjà creux ou plein.",
+        what: "Sépare un corps en ses côtés, un panneau par côté : un cadre, un caisson sans fond, un contour extrudé — carré, triangle, polygone, coins arrondis, encoches —, déjà creux ou plein. Quand le trou n'a pas autant de coins que le contour (un contour à encoches vidé : le trou s'arrondit à chaque coin rentrant), la séparation suit la forme : chaque côté du contour devient une pièce.",
         steps: [
           "Cliquez « Séparer les côtés » (menu du groupe Modifier), puis le corps dans la vue (ou sélectionnez-le avant).",
           "Un corps plein est d'abord vidé : réglez l'« Épaisseur des côtés » ; il s'ouvre dessus et dessous, comme un caisson sans fond — un panneau trop mince pour cela (un côté d'un cadre), par ses deux grandes faces : il devient un cadre. Pour l'ouvrir ailleurs (devant et derrière…), cliquez sur le corps la face à vider : elle s'ouvre avec celle d'en face ; « Ouvrir dessus et dessous » revient au départ. Un corps déjà creux garde ses côtés tels qu'ils sont.",

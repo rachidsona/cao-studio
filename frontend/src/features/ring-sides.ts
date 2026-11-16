@@ -4,12 +4,14 @@
  * onglet (le joint sur la bissectrice de chaque coin) ou bout à bout : les plus longs traversent (deux côtés
  * voisins ne traversent jamais tous les deux), les autres s'arrêtent contre eux ; deux côtés qui ne traversent ni
  * l'un ni l'autre se rejoignent en onglet. Le contour se lit sur la face du dessus du corps (son contour extérieur et
- * son trou, autant de coins l'un que l'autre, chaque coin du contour avec le coin du trou le plus proche : la paroi peut
- * être d'épaisseur inégale) ; chaque côté est le corps coupé par son prisme, sur toute la hauteur.
+ * son trou ; autant de coins l'un que l'autre, chaque coin du contour va avec le coin du trou le plus proche : la paroi
+ * peut être d'épaisseur inégale ; sinon — un contour à encoches vidé —, la séparation suit la forme : ring-follow.ts) ;
+ * chaque côté est le corps coupé par son prisme, sur toute la hauteur.
  * ringWalls est le calcul pur, dans le plan de cette face.
  */
 import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Face, type Shape3D } from "replicad";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
+import { followWalls } from "./ring-follow";
 
 export type P2 = [number, number];
 type P3 = [number, number, number];
@@ -75,9 +77,8 @@ export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | r
   const outer = ccw("corners" in outerIn ? outerIn : polygon(outerIn));
   const inner0 = ccw("corners" in innerIn ? innerIn : polygon(innerIn));
   const n = outer.corners.length;
-  if (n < 3 || inner0.corners.length !== n) return "le contour et son trou n'ont pas le même nombre de côtés.";
   // Each corner of the outline with its corner of the hole: the turn of the hole that keeps them closest.
-  const shift = Array.from({ length: n }, (_, j) => j).reduce((best, j) => {
+  const shift = inner0.corners.length !== n ? 0 : Array.from({ length: n }, (_, j) => j).reduce((best, j) => {
     const cost = (s: number) => outer.corners.reduce((sum, p, k) => sum + len(sub(p, inner0.corners[(k + s) % n]!)), 0);
     return cost(j) < cost(best) ? j : best;
   }, 0);
@@ -98,6 +99,9 @@ export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | r
       if (!through.has((i + n - 1) % n) && !through.has((i + 1) % n)) through.add(i);
     }
   }
+  // Not as many corners in the hole (a notched, rounded outline emptied: its hole is rounded at each corner going
+  // in): the split follows the shape, one wall a side of the outline.
+  if (n < 3 || inner0.corners.length !== n) return followWalls(outer, inner0, joint, through, widen);
   /** Whether the outline turns at corner k (not two sides meeting tangent, as a rounded corner's arc and its side). */
   const sharp = (k: number) => {
     const [a, b] = [side(outer, k - 1), side(outer, k)];

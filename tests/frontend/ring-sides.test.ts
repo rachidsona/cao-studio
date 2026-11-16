@@ -41,7 +41,13 @@ describe("séparer les côtés d'un cadre", () => {
       const walls = ringWalls(outer, uneven, joint) as P2[][];
       expect(walls.reduce((s, w) => s + area(w), 0)).toBeCloseTo(area(outer) - area(uneven), 6);
     }
-    expect(ringWalls(outer, [[18, 18], [582, 18], [300, 382]], "miter")).toMatch(/même nombre de côtés/);
+    // A hole of fewer corners (a triangle in a rectangle): the split follows the outline, one wall a side, nothing lost.
+    const triangle: P2[] = [[18, 18], [582, 18], [300, 382]];
+    for (const joint of ["miter", "butt"] as const) {
+      const walls = ringWalls(outer, triangle, joint) as P2[][];
+      expect(walls).toHaveLength(4);
+      expect(walls.reduce((s, w) => s + area(w), 0)).toBeCloseTo(area(outer) - area(triangle), 6);
+    }
   });
 
   it("bout à bout, on choisit qui passe : les côtés (debout) ou le dessus et le dessous, comme dans une Répartition", () => {
@@ -219,5 +225,37 @@ describe("séparer les côtés d'un corps plein", () => {
     const wrong = r.recompute(doc([0.6, 0.8, 0]) as never);
     expect(wrong.statuses.find((s) => s.id === "sh1")?.message).toMatch(/face choisie/);
     r.dispose();
+  }, 120_000);
+
+  it("un contour à encoches et coins arrondis, vidé : le trou n'a pas autant de coins, la séparation suit la forme", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    // As in « can »: a plate 2220 × 850 with a notch at the right and a step at the top, three corners rounded (r 50).
+    const P = [["a", 2220, 0], ["b", 2220, 220], ["c", 2170, 220], ["d", 2170, 800], ["e", 280, 800], ["f", 280, 850], ["g", 0, 850]] as const;
+    const ids = ["origin", ...P.map((p) => p[0])];
+    const sketch = { id: "sk1", type: "sketch", name: "Contour", plane: "XY", offset: 0, points: P.map(([id, x, y]) => ({ id, x, y })), curves: ids.map((p, i) => ({ id: `l${i}`, kind: "line", p1: p, p2: ids[(i + 1) % ids.length] })), constraints: [] };
+    const edge = (x: number, y: number) => ({ type: "LINE", mid: [x, y, 25], rel: [x / 2220, y / 850, 0.5], dir: [0, 0, 1], length: 50 });
+    const features = (joint: "miter" | "butt") => [
+      sketch,
+      { id: "ex1", type: "extrude", name: "Plaque", sketch: "sk1", distance: 50, operation: "new" },
+      { id: "f1", type: "fillet", name: "Congé 1", target: "ex1", edges: [edge(2220, 0)], radius: 50 },
+      { id: "f2", type: "fillet", name: "Congé 2", target: "f1", edges: [edge(0, 0)], radius: 50 },
+      { id: "f3", type: "fillet", name: "Congé 3", target: "f2", edges: [edge(0, 850)], radius: 50 },
+      { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "f3", faces: [], thickness: 20, sides: "separate", joint, frame: true },
+    ];
+    const totals: number[] = [];
+    for (const joint of ["miter", "butt"] as const) {
+      const r = new Recomputer();
+      const result = r.recompute({ ...createReferencePlate(), features: features(joint) } as never);
+      expect(result.statuses.filter((s) => s.state !== "ok")).toEqual([]);
+      const out = r.output("sh1");
+      const parts = out?.kind === "solids" ? out.shapes : [];
+      // One piece a side of the outline: 8 straight sides and 3 rounded corners.
+      expect(parts).toHaveLength(11);
+      totals.push(parts.reduce((s, p) => s + measureVolume(p), 0));
+      r.dispose();
+    }
+    // The same matter either way, none lost or doubled.
+    expect(totals[0]).toBeCloseTo(totals[1]!, -1);
   }, 120_000);
 });
