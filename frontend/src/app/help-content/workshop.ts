@@ -127,7 +127,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Pour une couleur unie, réglez « Couleur au choix », le type de surface, puis cliquez « Appliquer ».",
           "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ».",
         ],
-        tip: "Des faces choisies dans la vue : cochez « Seulement la face choisie » pour ne peindre qu'elles ; en glissant, Alt ne peint que la face sous le curseur. « Retirer l'apparence » rend celle de la matière.",
+        tip: "Des faces choisies dans la vue : cochez « Seulement la face choisie » pour ne peindre qu'elles ; en glissant, Alt ne peint que la face sous le curseur. « Retirer l'apparence » rend celle de la matière. Plus vite, sans cet outil : une face choisie dans la vue, « Couleur de la face » du panneau Sélection la colore seule (« D'origine » lui rend celle de son corps).",
       },
       {
         keys: ["data-workshop:material"], name: "Matière et chants",

@@ -1937,6 +1937,9 @@ opération existante.
     - Dans la vue, une pièce ou une face. Quand des faces sont choisies, le panneau demande « La pièce entière »
       (par défaut) ou « Seulement la face choisie » : le dessus d'un plan en marbre, le côté visible d'un caisson
       en noyer, le reste de la pièce gardant le sien.
+    - Plus vite, sans l'outil : une face (ou plusieurs) choisie dans la vue, le panneau Sélection a « Couleur de la face »
+      — elle seule prend la couleur choisie (une laque satinée), le reste du corps garde la sienne ; « D'origine » lui
+      rend celle de son corps (`app/face-color.ts`).
     - Une vignette glissée sur la vue donne le motif à la pièce lâchée dessous, ou seulement à la face dessous avec
       Alt.
     Une face est retrouvée par son orientation et la place de son centre dans la pièce, donc aussi quand la pièce

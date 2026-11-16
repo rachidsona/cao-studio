@@ -23,6 +23,20 @@ export interface SelectionActions {
   remove(): void;
   /** The step of a Répartition that made this body, to change it from the piece (a shelf: the heights of its niches). */
   step(body: string): { name: string; kind: "partition" | "shelves"; run(): void } | null;
+  /** The faces picked painted alone (null: their body's look back), and the colour of the first one, if its own. */
+  faceColor?(color: string | null): void;
+  faceColorNow?(): string | null;
+}
+
+/** « Couleur de la face »: the faces picked alone take a colour, the rest of their body keeps its own. */
+function faceColorRow(count: number, actions: SelectionActions): HTMLElement | null {
+  if (!count || !actions.faceColor) return null;
+  const now = actions.faceColorNow?.() ?? null;
+  const input = el("input", { type: "color", value: now ?? "#c0392b", class: "h-8 w-12 shrink-0 cursor-pointer border border-gray-300 bg-white dark:border-gray-600", "aria-label": count > 1 ? "Couleur des faces" : "Couleur de la face", "data-face-color": "" });
+  input.addEventListener("change", () => actions.faceColor?.(input.value));
+  const reset = el("button", { type: "button", class: "h-8 border border-gray-300 px-2 text-xs hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800", disabled: !now, title: "Rendre à la face la couleur de son corps" }, "D'origine");
+  reset.addEventListener("click", () => actions.faceColor?.(null));
+  return el("div", { class: "flex items-center gap-2 text-sm" }, el("span", { class: "flex-1" }, count > 1 ? `Couleur des ${count} faces` : "Couleur de la face"), input, reset);
 }
 
 /**
@@ -127,6 +141,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   return section(
     `Sélection (${parts.join(", ")})`,
     el("ul", { class: "space-y-1 text-sm" }, ...items),
+    faceColorRow(faces.length, actions),
     buttons.length ? el("div", { class: "@container" }, el("div", { class: "flex flex-wrap gap-1.5" }, ...buttons)) : null,
     el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes, points ou corps. Ctrl/Maj + clic ajoute des corps et des esquisses entières ; Maj + glisser (ou « Fenêtre ») les prend par fenêtre. Un point de corps s'accroche dans une esquisse (contrainte Coïncidence)."),
     clear,
