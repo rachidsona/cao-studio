@@ -234,8 +234,9 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
   };
   add({ x: 0, y: H + F * 1.05, text: `ép. ${cm(input.thickness)}`, kind: "panel", anchor: "start" }, { what: "thickness" }, input.thickness);
   if (input.boards && input.plinth > 0) {
-    const at = face.length / 2 - fs * 2.6;
-    add({ x: face.length / 2, y: H - input.plinth / 2 + fs * 0.35, text: `socle ${cm(input.plinth)}`, kind: "plinth", anchor: "middle", span: [at, H - input.plinth, at, H] }, { what: "plinth" }, input.plinth);
+    // The plinth closes the chain of the left side, at the floor: its figure alone, as on a drawing.
+    const line = -F * CHAIN;
+    add({ x: line - F * 0.45, y: H - input.plinth / 2, text: cm(input.plinth), kind: "plinth", anchor: "middle", side: "left", span: [line, H - input.plinth, line, H] }, { what: "plinth" }, input.plinth);
   }
   for (const p of face.pieces) {
     // As thick as the panels (« ép. » says it): not written again on each shelf.
@@ -260,8 +261,8 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
       const x = out === "left" ? line - F * 0.45 : line + F * 0.45;
       add({ x, y: n.y + n.h / 2, text: cm(n.h), kind: "niche", anchor: "middle", side: out, span: [line, n.y, line, n.y + n.h] }, height, n.h);
     } else {
-      // Its free height: a line from the shelf under it to the one over it, the figure beside it.
-      add({ x: cx + fs * 0.3, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "start", span: [cx, n.y, cx, n.y + n.h] }, height, n.h);
+      // Its free height, written in its middle (what it measures: from the shelf under it to the one over it).
+      add({ x: cx, y: n.y + n.h / 2 + fs * 0.35, text: cm(n.h), kind: "niche", anchor: "middle", span: [cx, n.y, cx, n.y + n.h] }, height, n.h);
     }
     // Narrower than its case (beside a cloison): its width too, from side to side, low in it.
     if (narrower) {
@@ -272,8 +273,9 @@ function faceLabels(face: PartitionFace, input: PartitionInput, niches: readonly
   for (const f of face.fronts) {
     const block = niches.find((e) => e.id === f.of);
     if (f.h < fs * 1.2) continue;
-    const line = f.x + fs * 0.3;
-    const label = { x: line + fs * 0.3, y: f.y + f.h / 2 + fs * 0.35, text: cm(f.h), kind: "front" as const, anchor: "start" as const, span: [line, f.y, line, f.y + f.h] as [number, number, number, number] };
+    // Its height, against its right edge: its middle stays free for a click that takes the drawers.
+    const line = f.x + f.w - fs * 0.35;
+    const label = { x: line, y: f.y + f.h / 2 + fs * 0.35, text: cm(f.h), kind: "front" as const, anchor: "end" as const, span: [line, f.y, line, f.y + f.h] as [number, number, number, number] };
     if (block) add(label, { what: "front", id: block.id, count: block.drawers, path: [...block.niche] }, f.h);
     else face.labels.push(label);
   }
@@ -296,10 +298,11 @@ export const faceFont = (face: Pick<PartitionFace, "length" | "height">) => Math
 
 /**
  * Where the dimension lines lie outside the face, in label sizes: the first chain (each case's width over it, the
- * niches against its sides beside it), then the whole (its length over that, its height on the right).
+ * niches against its sides and the plinth beside it), then the whole (its length over that, its height on the right),
+ * a full line apart so that their figures never touch.
  */
-export const CHAIN = 0.65;
-export const WHOLE = 1.8;
+export const CHAIN = 0.9;
+export const WHOLE = 2.1;
 
 /** Where the line of the whole height lies: beyond the chain of the right side when there is one. */
 export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "cases">) => face.length + faceFont(face) * (face.cases.length > 1 ? WHOLE : CHAIN);
@@ -307,8 +310,8 @@ export const heightLine = (face: Pick<PartitionFace, "length" | "height" | "case
 /** Room for the dimensions around the face. */
 export function faceViewBox(face: Pick<PartitionFace, "length" | "height" | "cases">): string {
   const fs = faceFont(face);
-  const [x0, y0] = [-fs * 1.5, -fs * 2.75];
-  return `${x0} ${y0} ${heightLine(face) + fs * 1.0 - x0} ${face.height + fs * 1.35 - y0}`;
+  const [x0, y0] = [-fs * 1.95, -fs * (WHOLE + 1.15)];
+  return `${x0} ${y0} ${heightLine(face) + fs * 1.05 - x0} ${face.height + fs * 1.4 - y0}`;
 }
 
 /** The narrowest a case can be pulled to (mm). */

@@ -958,17 +958,17 @@ opération existante.
   - **Face du mur** (en haut du panneau, sous son titre, comme la bande du linéaire de la cuisine) : la Répartition
     vue de face, à l'échelle — ses panneaux, ses niches, les étagères et cloisons qui les divisent, et ce qui les
     équipe (façades de tiroirs, tringles, portes en pointillés ; les poignées n'y sont pas dessinées) — et ses cotes
-    (en cm, en **rouge**), **dehors comme sur un plan**, chacune entre deux lignes d'attache : au-dessus, la largeur
-    de chaque case, puis la longueur ; à gauche, bout à bout, la hauteur libre des niches de la première case (socle
-    compris dans le dessin) ; à droite, celle des niches de la dernière case, puis la hauteur. Dans le dessin restent
-    l'épaisseur des panneaux (« ép. 1,8 », sous le coin gauche), celle d'une étagère ou d'une cloison quand elle
-    n'est pas celle des panneaux, la hauteur libre des niches des cases du milieu (et la largeur d'une niche plus
-    étroite que sa case), la hauteur de
-    chaque façade de tiroir sur elle, la hauteur d'une tringle depuis le sol sous elle (« tringle 180 ») et celle du
-    socle ; toutes viennent du calcul de la 3D, et une niche trop petite pour sa cote n'en a pas. Chaque cote se lit
-    sur une **ligne de cote fléchée** qui va d'un bout à l'autre de ce qu'elle mesure — d'une étagère à la suivante,
-    de côté à côté, du haut au bas d'une façade, du sol à la tringle, sur toute la longueur, la hauteur et la largeur
-    de chaque case — la valeur à côté (seules les épaisseurs, trop minces, n'ont que leur chiffre). Elle suit le
+    (en cm), **dehors comme sur un plan d'atelier** : traits fins et chiffres dans l'encre de la page (gris, plus de
+    rouge, qui dit une erreur), chaque ligne de cote fermée par un **trait oblique à 45°** et tenue entre deux lignes
+    d'attache détachées du dessin. Au-dessus, la chaîne des largeurs des cases, puis, une rangée plus haut, la
+    longueur, en gras ; à gauche, bout à bout, la hauteur libre des niches de la première case, et le **socle** qui
+    ferme la chaîne au sol ; à droite, celle des niches de la dernière case, puis la hauteur, en gras. Dans le dessin,
+    **le chiffre seul**, sans ligne, plus discret : la hauteur libre de chaque niche des cases du milieu, au centre,
+    la hauteur de chaque façade de tiroir contre son bord droit (son milieu reste au clic qui prend les tiroirs),
+    celle d'une tringle depuis le sol sous elle (« tringle 180 »), l'épaisseur d'une étagère ou d'une cloison quand
+    elle n'est pas celle des panneaux ; la largeur d'une niche plus étroite que sa case garde sa ligne de cote ;
+    l'épaisseur des panneaux (« ép. 1,8 ») sous le coin gauche. Toutes viennent du calcul de la 3D, une niche trop
+    petite pour sa cote n'en a pas, et une cote qu'on peut taper passe en bleu au survol. Le dessin suit le
     panneau (hauteur, cases, largeurs, côtés), étagères refaites comprises. Un
     clic dans une case ne choisit rien (pas de cadre). Chaque côté entre deux cases se tire (curseur ↔ au survol,
     sa poignée laiton cachée jusque-là) : la case de gauche change de largeur au centimètre, celle de droite prend la

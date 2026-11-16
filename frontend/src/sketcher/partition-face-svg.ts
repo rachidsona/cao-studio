@@ -12,28 +12,40 @@ export const BRASS = "#b8975a";
 const PANEL = "fill-gray-300 stroke-gray-600 dark:fill-gray-600 dark:stroke-gray-300";
 const NICHE = "fill-gray-50 stroke-gray-500 dark:fill-gray-900 dark:stroke-gray-500";
 const FRONT = "fill-gray-100 stroke-gray-500 dark:fill-gray-700 dark:stroke-gray-400";
-/** The dimensions, as on a drawing: red lines and figures. */
-const LABEL = "fill-red-700 dark:fill-red-400";
-const MAIN = "stroke-red-600 dark:stroke-red-400";
+/**
+ * The dimensions, as on a workshop drawing: thin lines and figures in the ink of the page (no red, which says an error),
+ * the figures a shade stronger than their lines; one that can be typed turns blue under the pointer. Inside the face,
+ * the free heights of the niches and fronts are their figure alone, quieter.
+ */
+const LABEL = "fill-gray-800 dark:fill-gray-100";
+const EDITABLE = "hover:fill-sky-700 dark:hover:fill-sky-300";
+const INNER = "fill-gray-500 dark:fill-gray-400";
+const MAIN = "stroke-gray-500 dark:stroke-gray-400";
 const OUTLINE = `fill="rgb(184 151 90 / 0.25)" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none" data-picked=""`;
 /**
- * A dimension line from end to end of what it measures, an arrow at each end (`a`: their length, in mm of the face);
- * smaller arrows on a short one (a plinth), nothing on none.
+ * A dimension line from end to end of what it measures, closed at each end by an oblique tick at 45° (`tick`: its
+ * half length, in mm of the face), as on an architect's or a cabinetmaker's drawing: it reads at any size, and the
+ * chains of dimensions meet tick to tick.
  */
-export function dimLine([x1, y1, x2, y2]: [number, number, number, number], arrow: number, tone = DIM): string {
+export function dimLine([x1, y1, x2, y2]: [number, number, number, number], tick: number, tone = DIM): string {
   const length = Math.hypot(x2 - x1, y2 - y1);
   if (length < 1) return "";
-  const a = Math.min(arrow, length / 2.5);
+  const t = Math.min(tick, length / 3);
   const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
-  const head = (x: number, y: number, dx: number, dy: number) => `<path d="M${x} ${y}L${x + dx * a - dy * a * 0.35} ${y + dy * a + dx * a * 0.35}L${x + dx * a + dy * a * 0.35} ${y + dy * a - dx * a * 0.35}Z" class="${tone.replace(/stroke-/g, "fill-")}"/>`;
-  return `<g pointer-events="none" data-dimline=""><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>${head(x1, y1, ux, uy)}${head(x2, y2, -ux, -uy)}</g>`;
+  // Turned 45° from the line, the same way at both ends.
+  const [dx, dy] = [(ux - uy) * Math.SQRT1_2 * t, (uy + ux) * Math.SQRT1_2 * t];
+  const mark = (x: number, y: number) => `<line x1="${x - dx}" y1="${y - dy}" x2="${x + dx}" y2="${y + dy}" class="${tone}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+  return `<g pointer-events="none" data-dimline=""><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${tone}" stroke-width="1" vector-effect="non-scaling-stroke"/>${mark(x1, y1)}${mark(x2, y2)}</g>`;
 }
+
+/** Drawn as a dimension line: what is dimensioned outside the face (the sides' chains) or across a niche (its width). */
+const outside = (l: { side?: "left" | "right"; span?: [number, number, number, number] }) => !!l.span && (!!l.side || Math.abs(l.span[1] - l.span[3]) < 1e-9);
 
 /** The lines of the dimensions, as their figures. */
 const DIM = MAIN;
 
-/** An extension line, from what is measured to just past its dimension line. */
-const ext = (x1: number, y1: number, x2: number, y2: number) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${MAIN} opacity-60" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none" data-ext=""/>`;
+/** An extension line, from just off what is measured to just past its dimension line. */
+const ext = (x1: number, y1: number, x2: number, y2: number) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${MAIN} opacity-70" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none" data-ext=""/>`;
 
 const box = (r: FaceRect, tone: string, extra = "") => `<rect x="${r.x}" y="${r.y}" width="${Math.max(0, r.w)}" height="${Math.max(0, r.h)}" class="${tone}" vector-effect="non-scaling-stroke" ${extra}/>`;
 
@@ -79,25 +91,28 @@ export function partitionFaceSvg(face: PartitionFace, picked: FacePick | number 
   }
   // The small dimensions, then the main ones, outside as on a drawing: each case's width over the face and its length
   // over them, the niches against its sides beside it, its height on the right. The lines first, their figures over them.
-  const arrow = fs * SMALL * 0.28;
+  const tick = fs * 0.22;
+  const [gap, past] = [fs * 0.15, fs * 0.25];
   const [chain, whole, right] = [-fs * CHAIN, -fs * WHOLE, heightLine(face)];
   for (const l of face.labels) {
-    if (!l.span) continue;
-    parts.push(dimLine(l.span, arrow));
-    if (l.side === "left") parts.push(ext(-fs * 0.1, l.span[1], l.span[0] - fs * 0.1, l.span[1]), ext(-fs * 0.1, l.span[3], l.span[0] - fs * 0.1, l.span[3]));
-    if (l.side === "right") parts.push(ext(L + fs * 0.1, l.span[1], l.span[0] + fs * 0.1, l.span[1]), ext(L + fs * 0.1, l.span[3], l.span[0] + fs * 0.1, l.span[3]));
+    if (!l.span || !outside(l)) continue;
+    parts.push(dimLine(l.span, tick));
+    if (l.side === "left") parts.push(ext(-gap, l.span[1], l.span[0] - past, l.span[1]), ext(-gap, l.span[3], l.span[0] - past, l.span[3]));
+    if (l.side === "right") parts.push(ext(L + gap, l.span[1], l.span[0] + past, l.span[1]), ext(L + gap, l.span[3], l.span[0] + past, l.span[3]));
   }
-  parts.push(dimLine([0, whole, L, whole], arrow, MAIN), ext(0, -fs * 0.1, 0, whole - fs * 0.1), ext(L, -fs * 0.1, L, whole - fs * 0.1));
-  parts.push(dimLine([right, 0, right, H], arrow, MAIN), ext(L + fs * 0.1, 0, right + fs * 0.1, 0), ext(L + fs * 0.1, H, right + fs * 0.1, H));
-  for (const c of face.cases) parts.push(dimLine([c.x0, chain, c.x1, chain], arrow, MAIN), ext(c.x0, -fs * 0.1, c.x0, chain - fs * 0.1), ext(c.x1, -fs * 0.1, c.x1, chain - fs * 0.1));
-  const editable = (k: number | undefined) => (k === undefined ? `class="${LABEL}" pointer-events="none"` : `class="${LABEL} cursor-text" data-edit="${k}"`);
+  parts.push(dimLine([0, whole, L, whole], tick, MAIN), ext(0, -gap, 0, whole - past), ext(L, -gap, L, whole - past));
+  parts.push(dimLine([right, 0, right, H], tick, MAIN), ext(L + gap, 0, right + past, 0), ext(L + gap, H, right + past, H));
+  for (const c of face.cases) parts.push(dimLine([c.x0, chain, c.x1, chain], tick, MAIN), ext(c.x0, -gap, c.x0, chain - past), ext(c.x1, -gap, c.x1, chain - past));
+  const tone = (inner: boolean) => (inner ? INNER : LABEL);
+  const editable = (k: number | undefined, inner: boolean) => (k === undefined ? `class="${tone(inner)}" pointer-events="none"` : `class="${tone(inner)} ${EDITABLE} cursor-text" data-edit="${k}"`);
   const upright = (x: number, y: number) => `transform="rotate(-90 ${x} ${y})" dominant-baseline="central"`;
-  for (const l of face.labels) parts.push(`<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="${fs * SMALL}" ${l.side ? upright(l.x, l.y) : ""} ${editable(l.edit)} data-label="${l.kind}">${l.text}</text>`);
-  parts.push(`<text x="${L / 2}" y="${whole - fs * 0.15}" text-anchor="middle" font-size="${fs}" class="${LABEL} cursor-text" data-edit="0" data-dim="length">${cm(L)}</text>`);
-  parts.push(`<text x="${right + fs * 0.5}" y="${H / 2}" text-anchor="middle" font-size="${fs}" class="${LABEL} cursor-text" ${upright(right + fs * 0.5, H / 2)} data-edit="1" data-dim="height">${cm(H)}</text>`);
+  for (const l of face.labels) parts.push(`<text x="${l.x}" y="${l.y}" text-anchor="${l.anchor}" font-size="${fs * SMALL}" ${l.side ? upright(l.x, l.y) : ""} ${editable(l.edit, !l.side && l.kind !== "panel")} data-label="${l.kind}">${l.text}</text>`);
+  // The whole, the main figures: a little larger than the chain's, a full line over it.
+  parts.push(`<text x="${L / 2}" y="${whole - fs * 0.2}" text-anchor="middle" font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" data-edit="0" data-dim="length">${cm(L)}</text>`);
+  parts.push(`<text x="${right + fs * 0.55}" y="${H / 2}" text-anchor="middle" font-size="${fs}" font-weight="600" class="${LABEL} ${EDITABLE} cursor-text" ${upright(right + fs * 0.55, H / 2)} data-edit="1" data-dim="height">${cm(H)}</text>`);
   face.cases.forEach((c, i) => {
     const on = pick?.kind === "case" && pick.index === i;
-    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${chain - fs * 0.15}" text-anchor="middle" font-size="${fs}" class="${on ? "font-semibold" : ""} ${LABEL} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
+    parts.push(`<text x="${(c.x0 + c.x1) / 2}" y="${chain - fs * 0.2}" text-anchor="middle" font-size="${fs * 0.85}" class="${on ? "font-semibold" : ""} ${LABEL} ${EDITABLE} cursor-text" ${on ? `style="fill:${BRASS}"` : ""} data-edit="${2 + i}" data-width="${i}">${cm(c.width)}</text>`);
   });
   return parts.join("");
 }

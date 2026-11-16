@@ -78,7 +78,9 @@ describe("face d'une Répartition", () => {
     const face = partitionFace({ input: INPUT, origin: [100, 0], depth: 600, id: "of1" }, sketch, { sketch, niches: [niche("drawers", [1]), niche("rod", [0, 3])] })!;
     const of = (kind: string) => face.labels.filter((l) => l.kind === kind).map((l) => l.text);
     expect(of("panel")).toEqual(["ép. 3"]);
-    expect(of("plinth")).toEqual(["socle 5"]);
+    // The plinth closes the chain of the left side, at the floor: its figure alone.
+    expect(of("plinth")).toEqual(["5"]);
+    expect(face.labels.find((l) => l.kind === "plinth")).toMatchObject({ side: "left", span: [expect.any(Number), 2500 - 50, expect.any(Number), 2500] });
     expect(of("shelf")).toEqual(["1,8", "1,8", "1,8"]);
     // The first case: its four niches share 2390 mm less three shelves of 18 mm, in the chain on the left; the second
     // is all drawers, its height in the chain on the right.
@@ -104,8 +106,13 @@ describe("face d'une Répartition", () => {
     const svg = partitionFaceSvg(face);
     expect(count(svg, 'data-label="')).toBe(face.labels.length);
     expect(svg).toContain(`data-label="shelf">1,8<`);
-    // The lines: one per dimension that has one, and the length, the height and each case's width.
-    expect(count(svg, "data-dimline=")).toBe(face.labels.filter((l) => l.span).length + 2 + face.cases.length);
+    // The lines, as on a workshop drawing: only outside (the sides' chains, the plinth) and across a niche (its width),
+    // and the length, the height and each case's width; inside, the niches and fronts have their figure alone.
+    const drawn = face.labels.filter((l) => l.span && (l.side || l.span[1] === l.span[3]));
+    expect(count(svg, "data-dimline=")).toBe(drawn.length + 2 + face.cases.length);
+    // Closed by oblique ticks, not arrows; in the ink of the page, not in red.
+    expect(svg).not.toMatch(/<path d="M[^"]*Z"/);
+    expect(svg).not.toMatch(/red-/);
   });
 
   it("cote une niche de cloison par sa largeur et sa hauteur, une case entière par sa hauteur", () => {
