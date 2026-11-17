@@ -5,7 +5,8 @@
  * formes simples (features/appliance-shapes.ts) avec son apparence, pour qu'un four ait sa porte en verre noir, son
  * hublot, sa poignée et ses manettes, une plaque gaz ses grilles en fonte, un robinet son col de cygne. Les pièces de
  * chaque famille sont dans appliance-parts-cooking.ts (fours, micro-ondes, plaques), appliance-parts-cold.ts
- * (réfrigérateurs, caves à vin, lave-vaisselle) et appliance-parts-water.ts (hottes, éviers, robinets).
+ * (réfrigérateurs, caves à vin, lave-vaisselle), appliance-parts-water.ts (hottes, éviers, robinets) et
+ * appliance-parts-more.ts (machine à café, tiroir chauffe-plat, plaque aspirante, lave-linge).
  *
  * Chaque pièce est le corps « <id>#n » de l'appareil, son apparence gardée par son rang : les premières pièces de chaque
  * modèle restent dans leur ordre, celles ajoutées depuis viennent après (document/appliance-looks.ts les habille dans
@@ -15,7 +16,8 @@
 import type { Vec3 } from "../document/types";
 import { applianceDef, finishLooks, type ApplianceCategory } from "./appliance-library";
 import { hob, microwave, oven } from "./appliance-parts-cooking";
-import { dishwasher, fridge, wine } from "./appliance-parts-cold";
+import { dishwasher, fridge, sidesOf, wine } from "./appliance-parts-cold";
+import { coffee, hobExtract, warmingDrawer, washer } from "./appliance-parts-more";
 import { hood, sink, tap } from "./appliance-parts-water";
 import type { AppliancePart } from "./appliance-shapes";
 
@@ -48,13 +50,13 @@ export function applianceParts(f: ApplianceSpec): AppliancePart[] {
   const L = finishLooks(f.finish, def.category);
   const [W, H, D] = [f.width, f.height, f.depth];
   const by: Record<ApplianceCategory, () => AppliancePart[]> = {
-    oven: () => oven(W, H, D, L),
+    oven: () => (f.model === "coffee-builtin" ? coffee(W, H, D, L) : f.model === "drawer-warming" ? warmingDrawer(W, H, D, L) : oven(W, H, D, L)),
     microwave: () => microwave(W, H, D, L, f.model === "microwave-free"),
-    hob: () => hob(W, H, D, L, f.model === "hob-gas"),
+    hob: () => (f.model === "hob-extract" ? hobExtract(W, H, D) : hob(W, H, D, L, f.model === "hob-gas")),
     hood: () => hood(f.model, W, H, D, L),
     fridge: () => fridge(f.model, W, H, D, L),
     wine: () => wine(W, H, D, L),
-    dishwasher: () => dishwasher(f.model, W, H, D, L),
+    dishwasher: () => (f.model.startsWith("washer") ? washer(f.model, W, H, D, L, sidesOf(L)) : dishwasher(f.model, W, H, D, L)),
     sink: () => sink(f.model, W, H, D, L),
     tap: () => tap(f.model, W, H, D, L),
   };

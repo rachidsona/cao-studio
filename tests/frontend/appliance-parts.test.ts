@@ -116,6 +116,39 @@ describe("électroménager : les nouveaux modèles se posent à leur place", () 
     if (typeof r === "string") throw new Error(r);
     expect((r.doc.features[0] as CabinetFeature).shelves).toBe(0);
   });
+
+  it("réfrigérateur sous plan et lave-linge intégrable au sol du caisson bas ; un réfrigérateur trop haut pour lui refusé ; machine à café et tiroir chauffe-plat en colonne", () => {
+    expect(applianceSpot(applianceDef("fridge-under")!, [598, 820, 550], base, 908)).toEqual([1, 0, 870 - 820 - 5]);
+    expect(applianceSpot(applianceDef("fridge-under")!, [598, 820, 550], tall, 908)).toEqual([1, 0, 150 + 18]);
+    expect(applianceSpot(applianceDef("fridge-builtin")!, [540, 1220, 545], base, 908)).toMatch(/1220 mm de haut/);
+    expect(applianceSpot(applianceDef("washer-builtin")!, [596, 818, 544], base, 908)).toEqual([2, 0, 870 - 818 - 5]);
+    for (const id of ["coffee-builtin", "drawer-warming"]) expect(typeof applianceSpot(applianceDef(id)!, applianceDef(id)!.sizes[0]!, tall, 908), id).toBe("object");
+    expect(applianceDef("hob-extract")!.category).toBe("hob");
+  });
+});
+
+describe("électroménager : un micro-ondes réaliste", () => {
+  it("sa vitre ouvre sur sa cavité aux parois claires, son plateau tournant en verre dedans ; touches, bouton d'ouverture ; ouïes du posable", () => {
+    for (const [model, size] of [["microwave-builtin", [595, 390, 400]], ["microwave-free", [485, 280, 370]]] as const) {
+      const parts = applianceParts({ model, width: size[0], height: size[1], depth: size[2], finish: "inox" });
+      const by = Object.fromEntries(parts.map((p) => [p.name, p]));
+      const door = by["Porte"]!.shapes[0]!;
+      const body = by["Caisse"]!.shapes[0]!;
+      // The door and the body are dug through where the window is: the cavity shows through the tinted glass.
+      expect(door.kind === "box" && door.holes?.length, model).toBe(1);
+      expect(body.kind === "box" && body.holes?.[0]![0][1], model).toBeLessThan(0);
+      expect(by["Intérieur"]!.shapes, model).toHaveLength(5);
+      expect(by["Plateau tournant"]!.look).toBe("glass-clear");
+      const [plate] = by["Plateau tournant"]!.shapes.slice(-1).map(shapeBox);
+      const [cavity] = [body.kind === "box" ? body.holes![0]! : null];
+      for (const i of [0, 1]) {
+        expect(plate![0][i]!, model).toBeGreaterThan(cavity![0][i]!);
+        expect(plate![1][i]!, model).toBeLessThan(cavity![1][i]!);
+      }
+      expect(by["Touches"]!.shapes, model).toHaveLength(5);
+    }
+    expect(appliancePartNames({ model: "microwave-free", width: 485, height: 280, depth: 370, finish: "black" })).toEqual(["Caisse", "Porte", "Vitre", "Commandes", "Manette", "Poignée", "Afficheur", "Pieds", "Intérieur", "Plateau tournant", "Touches", "Ouïes"]);
+  });
 });
 
 describe("électroménager : apparences et projets enregistrés", () => {

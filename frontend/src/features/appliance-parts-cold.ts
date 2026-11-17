@@ -1,6 +1,6 @@
 /**
  * Les pièces des appareils de froid et de lavage : réfrigérateur combiné intégrable (derrière les portes de sa
- * colonne), combiné posable et américain (portes de 55 mm, joint sombre entre elles, poignées barres, afficheur,
+ * colonne) et sous plan, combiné posable et américain (portes de 55 mm, joint sombre entre elles, poignées barres, afficheur,
  * distributeur d'eau), cave à vin (porte vitrée dans son cadre, clayettes en bois derrière, grille de ventilation),
  * lave-vaisselle tout intégrable (porte à habiller, bandeau et touches sur la tranche) et posable (sa porte, son dessus,
  * son bandeau). Repère de features/appliance-parts.ts. Pur.
@@ -8,13 +8,21 @@
 import { box, frame, handle, type AppliancePart, type Looks } from "./appliance-shapes";
 
 /** The sides' look of a freestanding appliance from its face's: black steel by black glass, white plastic by white glass. */
-const sidesOf = (L: Looks): string => (L.face === "glass-lacquered-black" ? "steel-black" : L.face === "glass-lacquered-white" ? "plastic-white" : L.face);
+export const sidesOf = (L: Looks): string => (L.face === "glass-lacquered-black" ? "steel-black" : L.face === "glass-lacquered-white" ? "plastic-white" : L.face);
 
 /** Thickness of a freestanding fridge's doors (mm). */
 const DOOR = 55;
 
 /** A fridge. The first pieces of each model keep their order (saved documents). */
 export function fridge(model: string, W: number, H: number, D: number, L: Looks): AppliancePart[] {
+  if (model === "fridge-under") {
+    // Under the worktop, behind its cabinet's door: one door over its ventilation grille.
+    return [
+      { name: "Caisse", look: "plastic-white", shapes: [box([0, 40, 0], [W, D, H])] },
+      { name: "Porte", look: "plastic-white", shapes: [box([0, 0, 90], [W, 40, H])] },
+      { name: "Grille de ventilation", look: "plastic-black", shapes: [box([20, 0, 0], [W - 20, 40, 90])] },
+    ];
+  }
   if (model === "fridge-builtin") {
     // Its own doors (white), to which the column's doors are fixed; the freezer at the bottom.
     const split = Math.round(H * 0.38);

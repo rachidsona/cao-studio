@@ -47,7 +47,8 @@ export function applianceSpot(def: ApplianceDef, size: [number, number, number],
       if (w > W + 1) return `${def.name} : ${w} mm de large, le caisson n'en a que ${W}.`;
       const tall = H > 1500;
       // Under the worktop on the floor, as a dishwasher: a wine cooler of a base cabinet.
-      const floor = def.category === "dishwasher" || (def.category === "wine" && !tall);
+      // An under-counter fridge too, when it fits there (a taller one is a column's).
+      const floor = def.category === "dishwasher" || ((def.category === "wine" || def.category === "fridge") && !tall && h <= H);
       if (h > H - 2 * t + 1 && !floor) return `${def.name} : ${h} mm de haut, le caisson n'en a que ${H}.`;
       if (floor) return [x, 0, Math.max(0, H - h - 5)];
       if (def.category === "fridge" || def.category === "wine") return [x, 0, c.plinth + t];

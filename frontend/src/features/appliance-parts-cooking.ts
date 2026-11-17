@@ -1,9 +1,9 @@
 /**
  * Les pièces des appareils de cuisson : four encastrable (porte en verre noir et son hublot, joint, bandeau de
- * commande avec son écran, son afficheur et ses manettes à jupe, poignée barre), micro-ondes (porte vitrée, colonne de
- * commandes), plaque induction (vitrocéramique noire, foyers cerclés, commandes tactiles) et plaque gaz (plateau,
- * brûleurs et leurs chapeaux émaillés, grilles en fonte sur leurs pieds, manettes). Repère de features/appliance-parts.ts.
- * Pur.
+ * commande avec son écran, son afficheur et ses manettes à jupe, poignée barre), micro-ondes (porte et sa vitre
+ * ouverte sur la cavité aux parois claires et son plateau tournant, colonne de commandes et touches), plaque induction
+ * (vitrocéramique noire, foyers cerclés, commandes tactiles) et plaque gaz (plateau, brûleurs et leurs chapeaux
+ * émaillés, grilles en fonte sur leurs pieds, manettes). Repère de features/appliance-parts.ts. Pur.
  */
 import { box, cyl, handle, knob, ringDisc, topKnob, type AppliancePart, type ApplianceShape, type Looks } from "./appliance-shapes";
 
@@ -29,21 +29,36 @@ export function oven(W: number, H: number, D: number, L: Looks): AppliancePart[]
   ];
 }
 
-/** A microwave: its door and window on the left, its column of controls on the right (built in, or on the worktop). */
+/**
+ * A microwave: its door on the left, its window open onto its lit cavity (light walls, a glass turntable on its hub), its
+ * column of controls on the right (knob, touch keys, display, the door's push button). A freestanding one stands on feet,
+ * vent slots on its right side. The first seven pieces keep their order (saved documents).
+ */
 export function microwave(W: number, H: number, D: number, L: Looks, free: boolean): AppliancePart[] {
   const door = Math.round(W * 0.72);
   const panel = (W + door) / 2;
   const inset = free ? 0 : 6;
+  const base = free ? 10 : 0;
+  // The window, and the cavity behind it (open at the front: seen through the tinted glass).
+  const [wx0, wx1, wz0, wz1] = [32, door - 52, base + 40, H - 36];
+  const [cx0, cx1, cz0, cz1, back] = [24, door - 40, base + 28, H - 28, D - 60];
+  const [mx, my, plate] = [(cx0 + cx1) / 2, back / 2, Math.min(cx1 - cx0, back) / 2 - 12];
   const parts: AppliancePart[] = [
-    { name: "Caisse", look: free ? L.face : L.body, shapes: [box([inset, 0, free ? 10 : 4], [W - inset, D, H - (free ? 0 : 4)])] },
-    { name: "Porte", look: L.face, shapes: [box([0, -18, free ? 10 : 0], [door - 1, 0, H])] },
-    { name: "Vitre", look: L.glass, shapes: [box([32, -19, 40], [door - 52, -18, H - 36])] },
-    { name: "Commandes", look: "glass-lacquered-black", shapes: [box([door, -18, free ? 10 : 0], [W, 0, H])] },
+    { name: "Caisse", look: free ? L.face : L.body, shapes: [box([inset, 0, free ? 10 : 4], [free ? W - 1.5 : W - inset, D, H - (free ? 0 : 4)], [[[cx0, -1, cz0], [cx1, back, cz1]]])] },
+    { name: "Porte", look: L.face, shapes: [box([0, -18, base], [door - 1, 0, H], [[[wx0, -19, wz0], [wx1, 1, wz1]]])] },
+    { name: "Vitre", look: L.glass, shapes: [box([wx0, -12, wz0], [wx1, -10, wz1])] },
+    { name: "Commandes", look: "glass-lacquered-black", shapes: [box([door, -18, base], [W, 0, H])] },
     { name: "Manette", look: L.trim, shapes: knob(panel, H * 0.4, -18, 17, 20) },
     { name: "Poignée", look: L.trim, shapes: handle("z", 50, H - 50, door - 26, -18, 26, 7) },
     { name: "Afficheur", look: "display-white", shapes: [box([panel - 34, -18.4, H * 0.72], [panel + 34, -18, H * 0.72 + 22])] },
   ];
   if (free) parts.push({ name: "Pieds", look: "rubber-black", shapes: [40, W - 40].flatMap((x) => [60, D - 60].map((y) => cyl([x, y, 0], [x, y, 10], 14))) });
+  parts.push(
+    { name: "Intérieur", look: free ? "plastic-white" : "steel-brushed", shapes: [box([cx0, back - 2, cz0], [cx1, back, cz1]), box([cx0, 0, cz0], [cx1, back - 2, cz0 + 2]), box([cx0, 0, cz1 - 2], [cx1, back - 2, cz1]), box([cx0, 0, cz0 + 2], [cx0 + 2, back - 2, cz1 - 2]), box([cx1 - 2, 0, cz0 + 2], [cx1, back - 2, cz1 - 2])] },
+    { name: "Plateau tournant", look: "glass-clear", shapes: [cyl([mx, my, cz0 + 2], [mx, my, cz0 + 8], 25), cyl([mx, my, cz0 + 8], [mx, my, cz0 + 14], plate)] },
+    { name: "Touches", look: "plastic-grey", shapes: [...[0.55, 0.63].flatMap((k) => [-22, 22].map((dx) => cyl([panel + dx, -18, H * k], [panel + dx, -18.6, H * k], 8))), box([panel - 32, -19.5, base + 22], [panel + 32, -18, base + 40])] },
+  );
+  if (free) parts.push({ name: "Ouïes", look: "plastic-black", shapes: Array.from({ length: 6 }, (_, k) => box([W - 1.5, D * 0.5, H * 0.3 + k * 16], [W, D * 0.85, H * 0.3 + k * 16 + 7])) });
   return parts;
 }
 
