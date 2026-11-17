@@ -12,7 +12,7 @@
  * outil.
  */
 import * as THREE from "three";
-import { roomKeepOuts } from "../document/cabinet-clear";
+import { keepInRoom, roomKeepOuts, wallBody } from "../document/cabinet-clear";
 import { cabinetAxes, slideCabinet, turnCabinet } from "../document/kitchen-catalog";
 import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../document/operations";
 import { withCabinetDuplicated } from "../document/unit-duplicate";
@@ -109,7 +109,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (!event.altKey) ({ translate: delta, guides: lines } = alignBox(drag.box, drag.others, delta, axes, STICK_PX * viewport.worldPerPixel()));
     delta = delta.map(Math.round) as Vec3;
     // Never into another piece of furniture: beside it, flush (no place clear on its path: where it was).
-    const clear = event.altKey ? delta : clearOf(drag.box, drag.solid, delta, axes);
+    const clear = event.altKey ? delta : keepInRoom(editor.doc, drag.box, clearOf(drag.box, drag.solid, delta, axes) ?? [0, 0, 0]);
     if (clear && clear !== delta) lines = [];
     delta = clear ?? [0, 0, 0];
     drag.delta = delta;
@@ -154,7 +154,9 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     const offset: [number, number] = [rect.left + ((top.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - top.y) / 2) * rect.height - event.clientY];
     const from = onPlane(event, z, offset);
     if (!from) return;
-    drag = { cabinet, bodies, box, others, solid: [...others, ...roomKeepOuts(editor.doc)], z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
+    const wall = wallBody(editor.doc);
+    const solid = viewport.displayedBodies.filter((id) => !own.has(id) && !wall(id)).map(boxOf).filter((b): b is Box => !!b);
+    drag = { cabinet, bodies, box, others, solid: [...solid, ...roomKeepOuts(editor.doc)], z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("keydown", key, true);

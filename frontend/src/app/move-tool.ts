@@ -24,7 +24,7 @@ import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
 import { SnapDots } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
-import { roomKeepOuts } from "../document/cabinet-clear";
+import { keepInRoom, roomKeepOuts, wallBody } from "../document/cabinet-clear";
 import { clearOf } from "../features/box-clear";
 import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
@@ -172,8 +172,13 @@ export class MoveTool extends PanelTool {
       const ys = this.sketch.points.map((p) => p.y);
       const c: [number, number] = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
       this.center = toWorld(frame, c[0], c[1]);
-      // A whole Répartition: its panels' corners are points of it too.
-      if (this.options.element) this.group = new Set(wholeBodies(this.ctx.doc(), "sketch", this.sketch.id, this.ctx.viewport.displayedBodies));
+      // A whole Répartition: its panels' corners are points of it too; its box keeps it out of walls and neighbours.
+      if (this.options.element) {
+        this.group = new Set(wholeBodies(this.ctx.doc(), "sketch", this.sketch.id, this.ctx.viewport.displayedBodies));
+        const all = new THREE.Box3();
+        for (const id of this.group) for (const p of this.ctx.viewport.bodyMesh(id)?.metrics.bbox ?? []) all.expandByPoint(new THREE.Vector3(...p));
+        this.box = all.isEmpty() ? null : ([all.min.toArray(), all.max.toArray()] as Box);
+      }
       return;
     }
     if (this.cabinet) {
@@ -244,7 +249,7 @@ export class MoveTool extends PanelTool {
   private setTranslate(v: Vec3): void {
     const kept = this.clear(v);
     // A distance typed that would bring the cabinet into a wall or a neighbour: stopped flush, and said.
-    if (kept !== v && !this.following && !this.gizmo.dragging) this.ctx.notify("Le caisson s'arrête au ras : plus loin, il entrerait dans un mur ou un meuble (« Accrochage intelligent » éteint, il va où on le dit).", "info");
+    if (kept.some((c, i) => Math.abs(c - v[i]!) > 0.5) && !this.following && !this.gizmo.dragging) this.ctx.notify(`${this.furniture ? "Le meuble" : "La pièce"} s'arrête au ras : plus loin, ${this.furniture ? "il" : "elle"} entrerait dans un mur${this.furniture ? " ou un meuble" : ""} (« Accrochage intelligent » éteint, ${this.furniture ? "il" : "elle"} va où on le dit).`, "info");
     this.translate = kept.map((x) => (Math.abs(x) < 1e-9 ? 0 : x)) as Vec3;
     this.sync();
   }
@@ -576,19 +581,29 @@ export class MoveTool extends PanelTool {
   /** What is moved, its preview and its copies: not in its own way. */
   private readonly own = (id: string): boolean => (id === this.subject.id && this.copies === 0) || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
 
-  /**
-   * A cabinet moved whole (an arrow dragged, the pointer followed, a point clicked, a distance typed) never goes into a
-   * wall or a neighbour, nor through a wall of the room: beside it, flush — no place clear on its way: where it is
-   * (features/box-clear.ts, document/cabinet-clear.ts). The smart snapping off, or anything else moved: as asked.
-   */
-  private clear(move: Vec3, axes: readonly number[] = [0, 1, 2]): Vec3 {
-    if (!this.cabinet || !this.box || !bodySnap.smart) return move;
-    return clearOf(this.box, [...otherBoxes(this.ctx.viewport, this.own), ...roomKeepOuts(this.ctx.doc())], move, axes) ?? this.translate;
+  /** A piece of furniture moved whole: a cabinet, or a whole Répartition (a dressing, a bookcase). */
+  private get furniture(): boolean {
+    return this.cabinet !== null || (this.sketch !== null && !!this.options.element);
   }
 
-  /** A cabinet brought onto a face (no point caught), the direction free: it keeps its height — it slides on the floor, it does not climb the wall pointed at. */
+  /**
+   * What is moved (an arrow dragged, the pointer followed, a point clicked, a distance typed) never goes into a wall of
+   * the room nor through one — square or out of square: it stops flush, in the room. A piece of furniture moved whole
+   * does not go into the other bodies either (a neighbour, a column): beside it, flush. A single part may still go
+   * into another body (to cut it, to fit it). No place clear on its way: where it is (features/box-clear.ts,
+   * document/cabinet-clear.ts). The smart snapping off: as asked.
+   */
+  private clear(move: Vec3, axes: readonly number[] = [0, 1, 2]): Vec3 {
+    if (!this.box || !bodySnap.smart || (this.sketch && !this.options.element)) return move;
+    const doc = this.ctx.doc();
+    const wall = wallBody(doc);
+    const obstacles = this.furniture ? [...otherBoxes(this.ctx.viewport, (id) => this.own(id) || wall(id)), ...roomKeepOuts(doc)] : roomKeepOuts(doc);
+    return keepInRoom(doc, this.box, clearOf(this.box, obstacles, move, axes) ?? this.translate);
+  }
+
+  /** Furniture brought onto a face (no point caught), the direction free: it keeps its height — it slides on the floor, it does not climb the wall pointed at. */
   private level(d: Vec3, mode: AxisLockMode, onFace: boolean): Vec3 {
-    return this.cabinet && onFace && mode === "free" && this.axisLock === null ? [d[0], d[1], 0] : d;
+    return this.furniture && onFace && mode === "free" && this.axisLock === null ? [d[0], d[1], 0] : d;
   }
 
   override up(event: PointerEvent, isClick: boolean): boolean {

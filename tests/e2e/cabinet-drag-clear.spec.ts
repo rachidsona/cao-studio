@@ -1,6 +1,7 @@
 /** Un caisson déplacé par sa poignée « ✥ Déplacer » ne se pose jamais dans un autre : il est remis à côté, au ras. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
+import { roomClashes } from "../../frontend/src/features/room-plan";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 
@@ -139,6 +140,89 @@ test("dans une pièce : une cote tapée s'arrête au ras du mur, le caisson agra
   await bar.locator("input").press("Enter");
   await expect(page.getByText(/décalé au ras/).first()).toBeVisible();
   expect(await placed()).toMatchObject({ x: 2200, width: 800 });
+  expect(errors).toEqual([]);
+});
+
+test("pièce hors d'équerre : un caisson tiré loin vers le mur de biais reste dans la pièce ; une pièce libre s'arrête au mur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-murs-biais");
+  // Wall B leans out by 5°; a cabinet against wall A, and a plain block (a sketch pulled) in the middle.
+  const room = { id: "pc1", type: "room", name: "Pièce 1", height: 2500, thickness: 200, walls: [[3000, 85], [2500, 95], [3000, 85], [2500, 95]].map(([length, angle]) => ({ length, angle })), obstacles: [] };
+  const cabinet = { id: "cb1", type: "cabinet", name: "Bas biais", origin: [1200, -560, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" };
+  const corners = [[1200, -1700], [1500, -1700], [1500, -1400], [1200, -1400]];
+  const block = [
+    { id: "skb", type: "sketch", name: "Bloc", plane: "XY", offset: 0, points: corners.map(([x, y], i) => ({ id: `pb${i}`, x, y })), curves: [0, 1, 2, 3].map((i) => ({ id: `lb${i}`, kind: "line", p1: `pb${i}`, p2: `pb${(i + 1) % 4}` })), constraints: [] },
+    { id: "exb", type: "extrude", name: "Bloc libre", sketch: "skb", distance: 400, operation: "new" },
+  ];
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    const bodyInfo = Object.fromEntries([0, 1, 2, 3].map((i) => [`pc1#${i}`, { room: true }]));
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, bodyInfo }, base_version: now.version, message: "Pièce" }) });
+  }, { url: api, features: [room, cabinet, ...block] });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const saved = async () => {
+    await page.waitForTimeout(900);
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return project.document.features as { id: string; type: string; origin?: number[]; translate?: number[] }[];
+  };
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+
+  // The cabinet's grip, dragged far to the right, towards the leaning wall B and well beyond it.
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Bas biais" }).first().click();
+  const grip = page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Déplacer le caisson");
+  await expect(grip).toBeVisible();
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Slowly, step by step, then far beyond the wall.
+  await page.mouse.move(box.x + box.width / 2 + 900, box.y + box.height / 2, { steps: 40 });
+  await page.mouse.up();
+  const c = (await saved()).find((f) => f.id === "cb1")!;
+  // Flush against the leaning wall, on the room's side: at y = −560 wall B stands at x ≈ 2951 (not stopped 17 cm short by
+  // the wall's box, not passed behind it), and it runs into no wall.
+  expect(c.origin![0]! + 600).toBeGreaterThan(2945);
+  expect(c.origin![0]! + 600).toBeLessThanOrEqual(2952);
+  expect(roomClashes(room as never, [[c.origin![0]!, c.origin![1]!, 0], [c.origin![0]! + 600, c.origin![1]! + 560, 870]]).hits).toEqual([]);
+  // Back into the room, then brought only 6 cm beyond the leaning wall: flush against it again, not 17 cm short.
+  const slide = async (px: number) => {
+    await page.locator('[data-head^="group:"]').filter({ hasText: "Bas biais" }).first().click();
+    const at = (await grip.boundingBox())!;
+    await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(at.x + at.width / 2 + px, at.y + at.height / 2, { steps: 20 });
+    await page.mouse.up();
+    return (await saved()).find((f) => f.id === "cb1")!.origin![0]!;
+  };
+  const back = await slide(-200);
+  const perPixel = (c.origin![0]! - back) / 200;
+  const near = await slide(Math.round((2951 + 60 - (back + 600)) / perPixel));
+  expect(near + 600).toBeGreaterThan(2945);
+  expect(near + 600).toBeLessThanOrEqual(2952);
+
+  // The plain block, moved by a distance typed 3 m to the left: it stops flush against wall D (out of square too: at
+  // y = −1400, the block's nearest corner, it stands at x ≈ −122), inside the room.
+  await page.locator('[data-head^="group:"], [data-body]').filter({ hasText: "Bloc libre" }).first().click();
+  await click(page, '[data-action="move"]');
+  const tool = page.getByRole("dialog", { name: /^Déplacer/ });
+  await expect(tool).toBeVisible();
+  const dx = tool.getByLabel(/^ΔX/);
+  await dx.fill("-300");
+  await dx.press("Tab");
+  await expect(page.getByText(/La pièce s'arrête au ras/).first()).toBeVisible();
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  const moved = (await saved()).find((f) => f.type === "move");
+  const tx = moved!.translate![0]!;
+  expect(tx).toBeLessThan(-1300);
+  expect(tx).toBeGreaterThan(-1330);
+  expect(roomClashes(room as never, [[1200 + tx, -1700, 0], [1500 + tx, -1400, 400]]).hits).toEqual([]);
   expect(errors).toEqual([]);
 });
 

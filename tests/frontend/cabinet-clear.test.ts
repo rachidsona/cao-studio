@@ -1,6 +1,6 @@
 /** Un caisson ne traverse pas un mur, et agrandi contre un mur ou un voisin il est décalé au ras, ou sa cote refusée. */
 import { describe, expect, it } from "vitest";
-import { cabinetKeptClear, roomKeepOuts, wallKeepOuts } from "../../frontend/src/document/cabinet-clear";
+import { cabinetKeptClear, keepInRoom, leavesRoom, roomKeepOuts, wallKeepOuts } from "../../frontend/src/document/cabinet-clear";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type RoomFeature } from "../../frontend/src/document/types";
 import { clearOf } from "../../frontend/src/features/box-clear";
@@ -72,3 +72,31 @@ describe("un caisson agrandi à la main", () => {
     expect(cabinetKeptClear(docOf(inWall), next)).toBe(next);
   });
 });
+
+describe("une pièce hors d'équerre : rien ne passe derrière un mur de biais", () => {
+  // Wall B leans out: the room is wider at the back (wall A) than at the front (wall C).
+  const skew: RoomFeature = { ...room, walls: [{ length: 3000, angle: 85 }, { length: 2500, angle: 95 }, { length: 3000, angle: 85 }, { length: 2500, angle: 95 }] };
+  const doc: CadDocument = { ...createReferencePlate(), features: [skew] };
+  const box = cabinetBox(cabinet("cb1", 1200));
+
+  it("tiré loin vers le mur de biais : il s'arrête à son ras, dans la pièce", () => {
+    const move = keepInRoom(doc, box, [5000, 0, 0]);
+    expect(move[0]).toBeGreaterThan(1000);
+    expect(move[0]).toBeLessThan(2000);
+    expect(leavesRoom(doc, box, [[box[0][0] + move[0], box[0][1], 0], [box[1][0] + move[0], box[1][1], 870]])).toBe(false);
+    // One millimetre more and a corner is out.
+    expect(leavesRoom(doc, box, [[box[0][0] + move[0] + 2, box[0][1], 0], [box[1][0] + move[0] + 2, box[1][1], 870]])).toBe(true);
+  });
+
+  it("un déplacement qui reste dans la pièce est gardé tel quel ; ce qui n'est dans aucune pièce est libre", () => {
+    expect(keepInRoom(doc, box, [300, -200, 0])).toEqual([300, -200, 0]);
+    const outside = cabinetBox(cabinet("cb9", 9000, 5000));
+    expect(keepInRoom(doc, outside, [-20000, 0, 0])).toEqual([-20000, 0, 0]);
+  });
+
+  it("agrandi contre le mur de biais : la cote est refusée plutôt que de le faire sortir", () => {
+    const against = { ...cabinet("cb1", 1200), origin: [1200 + keepInRoom(doc, box, [5000, 0, 0])[0], -560, 0] as [number, number, number] };
+    expect(cabinetKeptClear({ ...doc, features: [skew, against] }, { ...against, width: 900 })).toMatch(/sortirait de la pièce/);
+  });
+});
+
