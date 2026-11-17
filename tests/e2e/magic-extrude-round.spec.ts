@@ -47,13 +47,30 @@ test("Magie extrusion : le dessus d'un cylindre se lit — distances au bord pou
     const r = document.querySelector("canvas.cad-view")!.getBoundingClientRect();
     return r.height;
   });
-  let found = false;
+  let found = 0;
   for (let k = 0.2; k < 0.5 && !found; k += 0.01) {
     await page.mouse.move(cx + radius * k, cy);
     await page.waitForTimeout(150);
-    found = ((await values.textContent()) ?? "").includes("part de cette arête");
+    if (((await values.textContent()) ?? "").includes("part de cette arête")) found = cx + radius * k;
   }
-  expect(found).toBe(true);
+  expect(found).toBeGreaterThan(0);
+
+  // « Puis tirer / pousser » unticked: the line laid is kept as a sketch alone, nothing extruded.
+  const count = async () => {
+    await page.waitForTimeout(1500);
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    const features = project.document.features as { type: string }[];
+    return [features.filter((f) => f.type === "sketch").length, features.filter((f) => f.type === "extrude").length];
+  };
+  const [sketches, extrudes] = await count();
+  await tool.getByRole("checkbox", { name: "Puis tirer / pousser" }).uncheck();
+  await page.mouse.move(found, cy);
+  await page.mouse.move(found + 1, cy);
+  await page.mouse.click(found + 1, cy);
+  await page.mouse.move(found - 20, cy);
+  await page.mouse.click(found - 20, cy);
+  expect(await count()).toEqual([sketches + 1, extrudes]);
   expect(errors).toEqual([]);
 });
 

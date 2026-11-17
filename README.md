@@ -1242,6 +1242,8 @@ opération existante.
   « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
   puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme
   sur une face). Changer de tracé passe de l'une à l'autre sans fermer l'outil ; il s'ouvre sur le dernier tracé choisi.
+  **Tracer sans extruder** : décochée, la case « Puis tirer / pousser » (la même pour les deux manières, gardée pour la
+  session) garde le trait ou la forme seul, en esquisse, dès qu'il est posé.
   **Sur toutes les formes** : faces planes de tout contour — triangle, polygone, bout d'un cylindre, face percée (un
   cercle entier se lit en petits segments ; seuls les vrais angles, plus de 15°, sont des coins où accrocher un trait,
   pas les points le long d'un arc) — et **le flanc d'un cylindre** (face courbe d'axe X, Y ou Z, entière ou morceau) :

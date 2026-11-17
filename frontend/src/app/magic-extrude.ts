@@ -28,3 +28,10 @@ export const lastMagicTrace = (): Trace => lastTrace;
 export function rememberTrace(t: Trace): void {
   lastTrace = t;
 }
+
+/** « Puis tirer / pousser »: unticked, a trace or a shape is kept as a sketch alone, without extruding it (the session's choice). */
+let pull = true;
+export const pullAfter = (): boolean => pull;
+export function rememberPull(v: boolean): void {
+  pull = v;
+}

@@ -28,7 +28,7 @@ import { loadFace, type LoadedFace } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
-import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace } from "./magic-extrude";
+import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
 
 /** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
@@ -38,7 +38,7 @@ const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle
 
 /** Kept for the session: what was drawn last, and whether a closed shape goes on with the push/pull. */
 /** Kept for the session: the last shape, pulling after, and offsetting the whole roof (both slopes) or one face. */
-const last = { shape: "line" as Shape, thenPull: true, roof: false };
+const last = { shape: "line" as Shape, roof: false };
 
 const RED = 0xdc2626;
 const BLUE = 0x2563eb;
@@ -54,7 +54,7 @@ const TYPING = /^[0-9.,;\- +*/()×÷]$/;
 
 export class DrawOnFaceTool extends PanelTool {
   private shape: Shape = isStripTrace(lastMagicTrace()) ? last.shape : (lastMagicTrace() as Shape);
-  private thenPull = last.thenPull;
+  private thenPull = pullAfter();
   /** The face the drawing is on: set with the first point, which locks it. */
   private face: LoadedFace | null = null;
   private points: Vec2[] = [];
@@ -432,7 +432,8 @@ export class DrawOnFaceTool extends PanelTool {
       this.ctx.notify(built, "info");
       return;
     }
-    Object.assign(last, { shape: this.shape, thenPull: this.thenPull });
+    Object.assign(last, { shape: this.shape });
+    rememberPull(this.thenPull);
     const doc = { ...this.ctx.doc(), features: [...this.ctx.doc().features, built] };
     const goOn = this.closedShape && this.thenPull && !!this.ctx.extrude;
     this.close();

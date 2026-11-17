@@ -28,7 +28,7 @@ import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, loadFace, regionUnder, startOnFace, StripMarks, type Hover, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
-import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace } from "./magic-extrude";
+import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
@@ -289,6 +289,7 @@ export class FaceStripTool extends PanelTool {
         }),
         this.info(this.departure === "edge" ? "1. Survolez une arête (en vert) : le trait lui sera parallèle, copiable sur une autre face ; l'intérieur d'une face se tire ou se pousse." : "1. Survolez un coin (point orange) : le trait partira en travers ; l'intérieur d'une face se tire ou se pousse."),
         this.info(this.mode === "line" ? "Une ligne (Ctrl : double trait)." : "Double trait (Ctrl : une ligne)."),
+        this.checkRow("Puis tirer / pousser", pullAfter(), (v) => (rememberPull(v), changed())),
       ];
     }
     if (this.phase === "place") {
@@ -464,8 +465,8 @@ export class FaceStripTool extends PanelTool {
     const band = this.currentBand();
     if (!band || !this.face) return this.ctx.notify("Le trait sort de la face : rapprochez-le.", "info");
     [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [band, null, 0, false, null];
-    this.targets = captureTargets(this.ctx.viewport);
-    this.phase = "pull";
+    [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
+    if (!pullAfter()) return this.confirm();
     this.typed.clear();
     if (event ?? this.lastEvent) this.move((event ?? this.lastEvent)!);
     else (this.redraw(), this.render());
