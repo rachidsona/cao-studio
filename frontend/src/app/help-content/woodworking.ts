@@ -269,7 +269,7 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:appliances"],
         name: "Électroménager",
-        what: "La bibliothèque d'appareils de cuisine, génériques et réalistes, à leurs cotes du commerce et bâtis pièce par pièce : fours 60 et 90 cm, machine à café et tiroir chauffe-plat encastrables, plaques induction, aspirante ou gaz jusqu'à 90 cm, hottes murale, en verre, îlot ou intégrée, réfrigérateurs (dont sous plan), caves à vin, lave-vaisselle, lave-linge, micro-ondes (sa cavité et son plateau tournant visibles par la vitre), éviers et robinets.",
+        what: "La bibliothèque d'appareils de cuisine, génériques et réalistes, à leurs cotes du commerce et bâtis pièce par pièce : fours 60 et 90 cm, piano de cuisson 90 cm, machine à café et tiroir chauffe-plat encastrables, plaques induction, aspirante, teppanyaki ou gaz jusqu'à 90 cm, hottes murale, en verre, îlot ou intégrée, réfrigérateurs (dont sous plan et multi-portes), congélateur intégrable, caves à vin, lave-vaisselle, lave-linge, sèche-linge, micro-ondes (sa cavité et son plateau tournant visibles par la vitre), éviers, robinets et petit électroménager posé sur le plan (bouilloire, grille-pain, machine expresso, robot pâtissier).",
         steps: [
           "Dans l'onglet Cuisine, cliquez « Électroménager » : la bibliothèque s'ouvre par familles (Fours, Plaques, Hottes, Caves à vin…).",
           "Cliquez un appareil, puis choisissez sa taille et sa finition (inox, noir, blanc ; chromé, noir mat ou laiton pour un robinet). Sa carte donne ses cotes et son prix indicatif en MAD.",

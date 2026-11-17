@@ -2612,11 +2612,14 @@ opération existante.
   modèle ne change pas (`app/drawer-toggle.ts`).
 - **Électroménager** (groupe « Cuisine », après « Meubles de cuisine ») : la **bibliothèque d'appareils de cuisine**,
   par familles — **Fours et encastrables** (pyrolyse 60 cm, 90 cm, compact 45 cm, vapeur, machine à café 45 cm,
-  tiroir chauffe-plat 14 cm), **Plaques** (induction 60, 80 ou 90 cm, induction aspirante 80 cm à hotte intégrée, gaz
-  60, 75 ou 90 cm, domino), **Hottes** (murale cheminée, inclinée en verre, îlot, groupe filtrant intégré),
-  **Réfrigérateurs** (combiné intégrable, sous plan intégrable, combiné posable, américain), **Caves à vin** (sous
+  tiroir chauffe-plat 14 cm, piano de cuisson posable 90 cm), **Plaques** (induction 60, 80 ou 90 cm, induction
+  aspirante 80 cm à hotte intégrée, gaz 60, 75 ou 90 cm, domino induction ou teppanyaki), **Hottes** (murale cheminée, inclinée en verre, îlot, groupe filtrant intégré),
+  **Réfrigérateurs** (combiné intégrable, sous plan intégrable, congélateur intégrable, combiné posable, américain,
+  multi-portes), **Caves à vin** (sous
   plan 60 ou 30 cm, en colonne), **Lave-vaisselle et lave-linge** (lave-vaisselle tout intégrable à porte à habiller
-  ou posable, lave-linge intégrable ou posable), **Micro-ondes** (encastrable 38 ou 45 cm, posable), **Éviers** (inox 1 bac et égouttoir, inox 2 bacs, granit) et **Robinets** (col de cygne, douchette,
+  ou posable, lave-linge intégrable ou posable, sèche-linge posable), **Micro-ondes** (encastrable 38 ou 45 cm,
+  posable), **Petit électroménager** (bouilloire, grille-pain, machine expresso, robot pâtissier, posés sur le plan
+  contre le mur, sans découpe), **Éviers** (inox 1 bac et égouttoir, inox 2 bacs, granit) et **Robinets** (col de cygne, douchette,
   semi-pro à ressort) —, des modèles **génériques, sans marque**, chacun **dessiné** dans sa carte (de face, de dessus ou
   de profil, dans sa finition) avec ses cotes et son **prix indicatif en MAD** (TTC, par taille : pour information, le
   devis ne compte pas l'électroménager), à ses tailles du commerce (four 595 × 595 × 548, lave-vaisselle
@@ -2638,7 +2641,8 @@ opération existante.
     manettes à jupe, poignée barre sur ses pieds ; un **micro-ondes** : sa vitre ouverte sur sa cavité aux parois
     claires et son **plateau tournant** en verre, colonne de commandes (manette, touches, afficheur, bouton
     d'ouverture), ouïes et pieds du posable ; une **machine à café** : sa niche à tasses creusée, ses buses et son
-    égouttoir ; un **tiroir chauffe-plat** : façade et poignée ;
+    égouttoir ; un **tiroir chauffe-plat** : façade et poignée ; un **piano de cuisson** : four large et sa vitre,
+    bandeau de six manettes, dessus gaz à cinq feux et grilles en fonte, tiroir ;
   - une **plaque induction** en vitrocéramique noire, ses foyers cerclés et ses commandes tactiles ; une **plaque gaz** :
     brûleurs et chapeaux émaillés, **grilles en fonte** sur leurs pieds, manettes ; une **plaque aspirante** : sa grille
     d'aspiration au milieu des foyers ;
@@ -2647,7 +2651,11 @@ opération existante.
   - un **réfrigérateur** : portes de 55 mm, joint sombre entre elles, poignées, afficheur (l'américain son
     distributeur) ; une **cave à vin** : porte vitrée dans son cadre et clayettes en bois derrière ; un
     **lave-vaisselle** tout intégrable : porte à habiller, bandeau et touches sur la tranche ; un **lave-linge** : hublot
-    cerclé et sa vitre, bandeau, bac à lessive, programmateur ;
+    cerclé et sa vitre, bandeau, bac à lessive, programmateur ; un **sèche-linge** : grand hublot, bac à eau, trappe
+    du condenseur ; un **multi-portes** : deux portes sur deux tiroirs congélateur ;
+  - le **petit électroménager** : bouilloire (socle, anse, bec, voyant), grille-pain (deux fentes creusées, levier,
+    molette), machine expresso (groupe, porte-filtre, buse vapeur, égouttoir, une tasse), robot pâtissier (tête, bol
+    inox, fouet) ;
   - un **évier** : plage, bacs, bonde, trop-plein, égouttoir ; un **mitigeur** : col de cygne, manette, mousseur.
 
   Chaque pièce a son **apparence réelle** (inox brossé, verre laqué noir, verre de four teinté, vitrocéramique, fonte,

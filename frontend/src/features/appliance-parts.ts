@@ -6,7 +6,9 @@
  * hublot, sa poignée et ses manettes, une plaque gaz ses grilles en fonte, un robinet son col de cygne. Les pièces de
  * chaque famille sont dans appliance-parts-cooking.ts (fours, micro-ondes, plaques), appliance-parts-cold.ts
  * (réfrigérateurs, caves à vin, lave-vaisselle), appliance-parts-water.ts (hottes, éviers, robinets) et
- * appliance-parts-more.ts (machine à café, tiroir chauffe-plat, plaque aspirante, lave-linge).
+ * appliance-parts-more.ts (machine à café, tiroir chauffe-plat, plaque aspirante, lave-linge),
+ * appliance-parts-extra.ts (piano de cuisson, multi-portes, congélateur, sèche-linge, teppanyaki) et
+ * appliance-parts-small.ts (bouilloire, grille-pain, expresso, robot pâtissier).
  *
  * Chaque pièce est le corps « <id>#n » de l'appareil, son apparence gardée par son rang : les premières pièces de chaque
  * modèle restent dans leur ordre, celles ajoutées depuis viennent après (document/appliance-looks.ts les habille dans
@@ -18,6 +20,8 @@ import { applianceDef, finishLooks, type ApplianceCategory } from "./appliance-l
 import { hob, microwave, oven } from "./appliance-parts-cooking";
 import { dishwasher, fridge, sidesOf, wine } from "./appliance-parts-cold";
 import { coffee, hobExtract, warmingDrawer, washer } from "./appliance-parts-more";
+import { dryer, freezer, fridgeFrench, range, teppan } from "./appliance-parts-extra";
+import { espresso, kettle, mixer, toaster } from "./appliance-parts-small";
 import { hood, sink, tap } from "./appliance-parts-water";
 import type { AppliancePart } from "./appliance-shapes";
 
@@ -32,7 +36,7 @@ export interface ApplianceSpec {
 }
 
 /** How far its door, its handles and its knobs stand out in front of its box (mm). */
-const FRONT: Record<ApplianceCategory, number> = { oven: 70, microwave: 60, hob: 0, hood: 10, fridge: 50, wine: 65, dishwasher: 60, sink: 0, tap: 0 };
+const FRONT: Record<ApplianceCategory, number> = { oven: 70, microwave: 60, hob: 0, hood: 10, fridge: 50, wine: 65, dishwasher: 60, sink: 0, tap: 0, small: 60 };
 
 /** The space its pieces take in its own frame: its box, with what stands out in front and on top. */
 export function applianceEnvelope(f: ApplianceSpec): [Vec3, Vec3] {
@@ -50,15 +54,19 @@ export function applianceParts(f: ApplianceSpec): AppliancePart[] {
   const L = finishLooks(f.finish, def.category);
   const [W, H, D] = [f.width, f.height, f.depth];
   const by: Record<ApplianceCategory, () => AppliancePart[]> = {
-    oven: () => (f.model === "coffee-builtin" ? coffee(W, H, D, L) : f.model === "drawer-warming" ? warmingDrawer(W, H, D, L) : oven(W, H, D, L)),
+    oven: () => (f.model === "range-90" ? range(W, H, D, L, sidesOf(L)) : f.model === "coffee-builtin" ? coffee(W, H, D, L) : f.model === "drawer-warming" ? warmingDrawer(W, H, D, L) : oven(W, H, D, L)),
     microwave: () => microwave(W, H, D, L, f.model === "microwave-free"),
-    hob: () => (f.model === "hob-extract" ? hobExtract(W, H, D) : hob(W, H, D, L, f.model === "hob-gas")),
+    hob: () => (f.model === "hob-extract" ? hobExtract(W, H, D) : f.model === "hob-teppan" ? teppan(W, H, D) : hob(W, H, D, L, f.model === "hob-gas")),
     hood: () => hood(f.model, W, H, D, L),
-    fridge: () => fridge(f.model, W, H, D, L),
+    fridge: () => (f.model === "fridge-french" ? fridgeFrench(W, H, D, L, sidesOf(L)) : f.model === "freezer-builtin" ? freezer(W, H, D) : fridge(f.model, W, H, D, L)),
     wine: () => wine(W, H, D, L),
-    dishwasher: () => (f.model.startsWith("washer") ? washer(f.model, W, H, D, L, sidesOf(L)) : dishwasher(f.model, W, H, D, L)),
+    dishwasher: () => (f.model === "dryer-free" ? dryer(W, H, D, L, sidesOf(L)) : f.model.startsWith("washer") ? washer(f.model, W, H, D, L, sidesOf(L)) : dishwasher(f.model, W, H, D, L)),
     sink: () => sink(f.model, W, H, D, L),
     tap: () => tap(f.model, W, H, D, L),
+    small: () => {
+      const body = sidesOf(L);
+      return f.model === "kettle" ? kettle(W, H, D, body, L.trim) : f.model === "toaster" ? toaster(W, H, D, body, L.trim) : f.model === "espresso" ? espresso(W, H, D, body, L.trim) : mixer(W, H, D, body);
+    },
   };
   return by[def.category]();
 }

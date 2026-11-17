@@ -125,6 +125,22 @@ describe("électroménager : les nouveaux modèles se posent à leur place", () 
     for (const id of ["coffee-builtin", "drawer-warming"]) expect(typeof applianceSpot(applianceDef(id)!, applianceDef(id)!.sizes[0]!, tall, 908), id).toBe("object");
     expect(applianceDef("hob-extract")!.category).toBe("hob");
   });
+
+  it("le petit électroménager se pose sur le plan de travail, contre le mur, sans le découper ; piano de cuisson et multi-portes debout", () => {
+    expect(CATEGORIES.map((c) => c.id)).toContain("small");
+    for (const id of ["kettle", "toaster", "espresso", "mixer"]) {
+      const def = applianceDef(id)!;
+      const [w, h, d] = def.sizes[0]!;
+      expect(applianceSpot(def, [w, h, d], base, 908), id).toEqual([(600 - w) / 2, 560 - d - 30, 908]);
+      const r = withAppliance({ ...createReferencePlate(), features: [base] }, id, [w, h, d], def.finishes[0]!, base);
+      if (typeof r === "string") throw new Error(r);
+      expect(r.doc.features.some((f) => f.type !== "cabinet" && f.type !== "appliance"), id).toBe(false);
+    }
+    for (const id of ["range-90", "fridge-french", "dryer-free"]) expect(applianceDef(id)!.place, id).toBe("stand");
+    // The range's grids are its top: nothing above its height.
+    expect(applianceEnvelope({ model: "range-90", width: 900, height: 900, depth: 600, finish: "inox" })[1][2]).toBe(900);
+    expect(appliancePartNames({ model: "range-90", width: 900, height: 900, depth: 600, finish: "inox" })).toEqual(expect.arrayContaining(["Porte du four", "Grilles en fonte", "Chapeaux de brûleurs", "Manettes"]));
+  });
 });
 
 describe("électroménager : un micro-ondes réaliste", () => {

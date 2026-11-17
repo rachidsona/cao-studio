@@ -57,7 +57,8 @@ export function applianceSpot(def: ApplianceDef, size: [number, number, number],
       return [x, 0, Math.max(c.plinth + t, H - h - t)];
     }
     case "top":
-      if (def.category === "microwave") return [x, D - d - 30, top];
+      // On the worktop, near the wall: a microwave, a kettle, a toaster.
+      if (def.category === "microwave" || def.category === "small") return [x, D - d - 30, top];
       // A hob or a sink: its plate on the worktop, its body under it.
       return [x, (D - 40 - d) / 2, top - (h - topOf(def))];
     case "tap":
