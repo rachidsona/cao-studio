@@ -32,6 +32,17 @@ describe("remplissage selon les besoins", () => {
     for (const kind of ["long", "double", "drawers", "shoes", "shelves"] as const) expect(kinds, kind).toContain(kind);
   });
 
+  it("n'annonce sans place que les modules dont le besoin reste à couvrir (les autres, élargis, le couvrent déjà)", () => {
+    // The panel's needs on the default U: the drawers lack room, the rest is held by the widened modules.
+    const p = plan({ model: "U" });
+    const proposal = proposeNeeds({ longRod: 2, shortRod: 2, shoes: 20, drawers: 6, shelves: 4 }, p, free(p));
+    const unit = { long: "Penderie longue", double: "Penderie courte", drawers: "Tiroirs", shoes: "Chaussures", shelves: "Étagères" } as Record<string, string>;
+    for (const kind of proposal.left) {
+      const row = proposal.report.find((r) => r.label === unit[kind])!;
+      expect(row.held, kind).toBeLessThan(row.asked);
+    }
+  });
+
   it("annonce ce qui ne tient pas", () => {
     const p = plan({ model: "I", lengthA: 1200 });
     const proposal = proposeNeeds({ ...NO_NEEDS, longRod: 6 }, p, free(p));

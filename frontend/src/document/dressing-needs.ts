@@ -29,6 +29,8 @@ const PAIR = 220;
 const { drawers: MODULE_DRAWERS, drawerZone: DRAWER_ZONE, spacing: SHELF_HEIGHT } = moduleSizes("drawers");
 const SHOE_HEIGHT = moduleSizes("shoes").spacing;
 /** Left to right along a wall. */
+/** The need a module is for (what it was asked for). */
+const NEED: Record<ModuleKind, keyof DressingNeeds | null> = { long: "longRod", double: "shortRod", drawers: "drawers", shoes: "shoes", shelves: "shelves", "rod-drawers": "drawers", trousers: null };
 const PLACE: Record<ModuleKind, number> = { long: 0, shelves: 1, drawers: 2, "rod-drawers": 2, shoes: 3, trousers: 3, double: 4 };
 
 /** What a module of this width and this inside height holds. */
@@ -48,7 +50,7 @@ export interface NeedsProposal {
   zones: { zone: PlanZone; kinds: ModuleKind[] }[];
   /** Asked and held, need by need. */
   report: { label: string; asked: number; held: number; unit: string }[];
-  /** Modules that found no place. */
+  /** Modules that found no place, for a need the others do not cover. */
   left: ModuleKind[];
 }
 
@@ -91,7 +93,13 @@ export function proposeNeeds(needs: DressingNeeds, plan: DressingPlan, free: rea
       for (const key of Object.keys(held) as (keyof DressingNeeds)[]) held[key] += has[key];
     }
   }
-  return { zones, left, report: LABELS.filter(([key]) => needs[key] > 0).map(([key, label, unit]) => ({ label, asked: needs[key], held: held[key], unit })) };
+  // The widened modules may hold what one that found no place was for: only the lack still there is announced.
+  const lacking = left.filter((kind, i) => {
+    const unit = NEED[kind];
+    const before = left.slice(0, i).filter((k) => k === kind).length;
+    return !unit || held[unit] + before * holds(kind, share(kind), inner)[unit] < needs[unit] - 1e-9;
+  });
+  return { zones, left: lacking, report: LABELS.filter(([key]) => needs[key] > 0).map(([key, label, unit]) => ({ label, asked: needs[key], held: held[key], unit })) };
 }
 
 /** The proposal built: a Répartition for each zone, a module in each of its cases. A string: why it cannot be. */
