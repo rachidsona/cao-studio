@@ -213,9 +213,13 @@ test("le contrôle en direct signale deux caissons qui se chevauchent", async ({
   await page.keyboard.press("Enter");
   await expect(status).toBeVisible({ timeout: 8000 });
   await expect(status).toContainText("à vérifier");
+  // The button hides the frames only: the count stays in the status bar.
   await click(page, '[data-workshop="live-check"]');
-  await expect(status).toBeHidden();
+  await expect(page.locator('[data-workshop="live-check"]').first()).toHaveAttribute("aria-pressed", "false");
+  await page.waitForTimeout(1500);
+  await expect(status).toBeVisible();
   await click(page, '[data-workshop="live-check"]');
+  await expect(page.locator('[data-workshop="live-check"]').first()).toHaveAttribute("aria-pressed", "true");
   await expect(status).toBeVisible();
 });
 

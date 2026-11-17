@@ -1,7 +1,8 @@
 /**
  * Le contrôle en direct : pendant la conception, les pièces à problème sont entourées dans la vue (rouge : erreur,
  * ambre : à regarder) et leur nombre s'affiche dans la barre d'état ; un clic ouvre le Contrôle avant fabrication, qui
- * va plus loin (perçages, ouverture des portes, flèche, stabilité). Le bouton l'éteint ; c'est gardé dans ce navigateur.
+ * va plus loin (perçages, ouverture des portes, flèche, stabilité). Le bouton montre ou cache les cadres seuls — le nombre
+ * reste dans la barre d'état ; c'est gardé dans ce navigateur.
  */
 import * as THREE from "three";
 import type { Problem } from "../../document/fabrication-check";
@@ -36,7 +37,7 @@ export function bindLiveCheck(root: HTMLElement, viewport: Viewport, editor: Edi
     const worst = new Map<string, Problem["severity"]>();
     for (const p of problems) for (const id of p.bodies) if (p.severity === "error" || !worst.has(id)) worst.set(id, p.severity);
     const seen = new Set(viewport.bodyMeshes().filter((m) => m.visible).map((m) => m.userData.bodyId as string));
-    for (const [id, severity] of [...worst].filter(([id]) => seen.has(id)).sort((a, b) => Number(b[1] === "error") - Number(a[1] === "error")).slice(0, MAX_FRAMES)) {
+    for (const [id, severity] of [...worst].filter(([id]) => on && seen.has(id)).sort((a, b) => Number(b[1] === "error") - Number(a[1] === "error")).slice(0, MAX_FRAMES)) {
       const box = viewport.bodyMesh(id)?.metrics.bbox;
       if (!box) continue;
       const [low, high] = box;
@@ -58,7 +59,7 @@ export function bindLiveCheck(root: HTMLElement, viewport: Viewport, editor: Edi
     for (const frame of group.children) frame.visible = viewport.bodyInView(frame.userData.bodyId as string);
   });
   // The material comes last in a design: a board without one is not a problem yet.
-  const update = () => show(on ? quickProblems(viewport, editor.doc).filter((p) => p.kind !== "material") : []);
+  const update = () => show(quickProblems(viewport, editor.doc).filter((p) => p.kind !== "material"));
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const set = viewport.setBodies.bind(viewport);

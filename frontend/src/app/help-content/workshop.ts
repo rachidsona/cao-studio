@@ -357,7 +357,7 @@ export const WORKSHOP: HelpFamily[] = [
         keys: ["data-workshop:live-check"], name: "Contrôle en direct",
         what: "Entoure les pièces à problème pendant la conception, sans ouvrir le contrôle complet.",
         steps: [
-          "Laissez « Contrôle en direct » enfoncé : après chaque changement, un cadre rouge (erreur) ou ambre (à regarder) entoure les pièces en cause.",
+          "Laissez « Contrôle en direct » enfoncé : après chaque changement, un cadre rouge (erreur) ou ambre (à regarder) entoure les pièces en cause. Relâché, il cache ces cadres ; leur nombre reste dans la barre d'état.",
           "Dans la barre d'état, cliquez « à vérifier » pour lire la liste dans le Contrôle avant fabrication.",
         ],
         tip: "Il voit les chevauchements, la pièce et son plan, les panneaux bruts et les portes, mais pas les pièces sans matière, qu'on choisit souvent à la fin. Le contrôle complet va plus loin : perçages, ouverture, flèche, stabilité.",
