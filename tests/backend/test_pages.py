@@ -45,7 +45,8 @@ def test_projects_list_renders(client_logged, project):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Conception 3D" in content and "Cuisine &amp; Dressing" in content
-    # Each project is a card that opens it; of the two ways to begin, only the kitchen has a picture.
+    # A welcome band (the kitchen's picture, a hello to the account), then the two ways to begin; each project is a card.
+    assert "Du premier trait à la pose." in content and f"Bonjour {project.owner.get_username()}" in content
     assert "Plaque" in content and 'data-project-row="' in content
     assert f"/projects/{project.id}/editor/" in content
     assert "/static/img/accueil/conception-3d.jpg" not in content

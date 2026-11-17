@@ -23,7 +23,8 @@ npm run build                 # typecheck + Tailwind (static/css) + Vite (static
 ```
 
 Ouvrir http://127.0.0.1:8765/ → la **page d'accueil** (`/projects/`, lien « Accueil » de l'en-tête) a deux
-cartes au titre centré, celle de la cuisine avec sa photo (`static/img/accueil/cuisine-dressing.jpg`) :
+parties : un **bandeau d'accueil** (la photo de la cuisine, `static/img/accueil/cuisine-dressing.jpg`, sous un titre et
+un bonjour au nom du compte), puis deux cartes égales, chacune avec son icône dessinée, alignées ligne à ligne :
 **Conception 3D** (nommer le projet, « Créer et ouvrir », ou « Ouvrir le projet exemple ») et **Conception Cuisine & Dressing** (nommer une
 cuisine ou un dressing, puis « Créer une cuisine » ou « Créer un dressing » : le projet s'ouvre dans l'éditeur sur
 l'onglet Cuisine ou Dressing, son plan à droite, `?onglet=kitchen`). Dessous, « Mes projets » : les dossiers, la
