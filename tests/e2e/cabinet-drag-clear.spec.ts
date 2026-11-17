@@ -61,3 +61,84 @@ test("un caisson amené dans son voisin est posé à côté de lui ; Alt le lais
   expect(forced).toBeLessThan(second! - 100);
   expect(errors).toEqual([]);
 });
+
+test("dans une pièce : une cote tapée s'arrête au ras du mur, le caisson agrandi est décalé, il ne traverse pas le mur et ne monte pas dessus", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-caisson-murs");
+  // A room 3 × 2,5 m (wall A along x at y = 0, the room towards −y, wall B at x = 3000) and a cabinet against wall A.
+  const room = { id: "pc1", type: "room", name: "Pièce 1", height: 2500, thickness: 200, walls: [3000, 2500, 3000, 2500].map((length) => ({ length, angle: 90 })), obstacles: [] };
+  const cabinet = { id: "cb1", type: "cabinet", name: "Bas mur", origin: [1200, -560, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" };
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    const bodyInfo = Object.fromEntries([0, 1, 2, 3].map((i) => [`pc1#${i}`, { room: true }]));
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, bodyInfo }, base_version: now.version, message: "Pièce" }) });
+  }, { url: api, features: [room, cabinet] });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const placed = async () => {
+    await page.waitForTimeout(900);
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    const c = (project.document.features as { type: string; origin?: number[]; width?: number }[]).find((f) => f.type === "cabinet")!;
+    return { x: Math.round(c.origin![0]!), y: Math.round(c.origin![1]!), z: Math.round(c.origin![2]!), width: c.width };
+  };
+  const choose = () => page.locator('[data-head^="group:"]').filter({ hasText: "Bas mur" }).first().click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+
+  // « Déplacer », the whole cabinet, 3 m typed to the right: it would end beyond wall B — stopped flush against it.
+  await choose();
+  await click(page, '[data-action="move"]');
+  const tool = page.getByRole("dialog", { name: /^Déplacer/ });
+  await tool.getByRole("combobox", { name: "Déplacer", exact: true }).selectOption({ label: "Le corps entier" });
+  const dx = tool.getByLabel(/^ΔX/);
+  await dx.fill("300");
+  await dx.press("Tab");
+  await expect(page.getByText(/s'arrête au ras/).first()).toBeVisible();
+  expect(await placed()).toMatchObject({ x: 2400, y: -560, z: 0 });
+
+  // Following the pointer onto wall A, high up: it keeps its height (it does not climb the wall) and stays out of it.
+  await tool.getByRole("button", { name: "Centre", exact: true }).click();
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  const [cx, cy] = [view.x + view.width / 2, view.y + view.height / 2];
+  await page.mouse.move(cx - 40, cy - 60, { steps: 6 });
+  await page.mouse.move(cx - 60, cy - 90, { steps: 6 });
+  await page.mouse.click(cx - 60, cy - 90);
+  const followed = await placed();
+  expect(followed.z).toBe(0);
+  expect(followed.y).toBeLessThanOrEqual(-560);
+  expect(followed.x).toBeGreaterThanOrEqual(0);
+  expect(followed.x).toBeLessThanOrEqual(2400);
+  await tool.getByRole("button", { name: /^Terminer/ }).click();
+  await expect(tool).toHaveCount(0);
+
+  // Brought back against wall B by its grip, far beyond the wall: it does not pass through — flush, on the room's side.
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  await choose();
+  const grip = page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Déplacer le caisson");
+  await expect(grip).toBeVisible();
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 900, box.y + box.height / 2, { steps: 3 });
+  await page.mouse.up();
+  expect((await placed()).x).toBe(2400);
+
+  // Made 20 cm wider from its bar, against wall B: slid back by as much, flush — not into the wall.
+  await choose();
+  const bar = page.getByRole("toolbar", { name: "Caisson sélectionné" });
+  await bar.getByText(/^L /).click();
+  await bar.locator("input").fill("80");
+  await bar.locator("input").press("Enter");
+  await expect(page.getByText(/décalé au ras/).first()).toBeVisible();
+  expect(await placed()).toMatchObject({ x: 2200, width: 800 });
+  expect(errors).toEqual([]);
+});
+

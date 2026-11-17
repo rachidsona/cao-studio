@@ -9,6 +9,7 @@
  * up to 600 mm wide, two beyond, and changed afterwards with the Façades tool. OK adds the operation (one undo step);
  * it is edited again from the timeline.
  */
+import { cabinetKeptClear } from "../document/cabinet-clear";
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import { cabinetStandard, cabinetTo, findStandard, frontsTo } from "../document/standards";
@@ -99,7 +100,9 @@ export class CabinetTool extends PanelTool {
     const settings = fill ? { ...this.settings, width: fill.width } : this.settings;
     const problem = cabinetProblem(settings);
     if (problem) return problem;
-    return { id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...settings };
+    const made: CabinetFeature = { id: this.id, type: "cabinet", name: this.name, origin: this.origin, ...settings };
+    // A cabinet changed by hand: wider or deeper against a wall or a neighbour, slid flush — or refused, with why.
+    return this.editing ? cabinetKeptClear(this.docBefore(), made) : made;
   }
 
   /** The other cabinets of the filled width, side by side along the width (turned with the cabinet). */

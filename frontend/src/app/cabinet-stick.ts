@@ -7,6 +7,7 @@
  * Échap rend la main. La vue tourne toujours en glissant.
  */
 import * as THREE from "three";
+import { roomKeepOuts } from "../document/cabinet-clear";
 import { cabinetAxes, slideCabinet, stickDelta, type StickTarget } from "../document/kitchen-catalog";
 import { bodyOrigin, findFeature, updateFeature } from "../document/operations";
 import { featureOfBody, type CabinetFeature, type Vec3 } from "../document/types";
@@ -51,6 +52,8 @@ export function stickCabinet(viewport: Viewport, editor: Editor, cabinet: Cabine
   const box = around(bodies.map((id) => bodyBox(viewport, id)).filter((b): b is Box => !!b));
   if (!box) return end();
   const others = viewport.displayedBodies.filter((id) => !own.has(id)).map((id) => bodyBox(viewport, id)).filter((b): b is Box => !!b);
+  // The walls with what lies behind them: stuck on a wall's outer face, it would stand out of the room.
+  const solid = [...others, ...roomKeepOuts(editor.doc)];
   const rotation = cabinet.rotation ?? 0;
   const guides = new SnapGuides(viewport.scene);
   const size = [0, 1, 2].map((i) => box[1][i]! - box[0][i]!) as Vec3;
@@ -88,7 +91,7 @@ export function stickCabinet(viewport: Viewport, editor: Editor, cabinet: Cabine
     }
     // Never into a wall or a neighbour (a point near the corner of the room): slid out of it, flush; no place: none shown.
     const rounded = delta ? (delta.map(Math.round) as Vec3) : null;
-    const clear = rounded ? clearOf(box, others, rounded, [0, 1]) : null;
+    const clear = rounded ? clearOf(box, solid, rounded, [0, 1]) : null;
     if (clear !== rounded) lines = [];
     current = hit && clear ? { delta: clear, bodyId: hit.bodyId } : null;
     ghost.visible = !!current;

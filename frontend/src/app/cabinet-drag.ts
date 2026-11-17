@@ -4,7 +4,7 @@
  * et s'arrête au ras des autres corps — contre le côté d'un voisin, dans l'alignement de son fond ou de sa façade,
  * au bout du plan de travail, contre un mur. Il n'entre jamais dans un autre meuble : amené dedans, il est posé à côté
  * de lui, au ras, du côté le plus proche (features/box-clear.ts) — ce qu'il touchait déjà (la plinthe sous lui, la
- * crédence derrière) ne le gêne pas (Alt : sans aimant ni arrêt, pour le poser où l'on veut). Un clic sur « ✥ » sans tirer le colle à une face ou
+ * crédence derrière) ne le gêne pas ; il ne traverse pas non plus un mur de la Pièce (document/cabinet-clear.ts) (Alt : sans aimant ni arrêt, pour le poser où l'on veut). Un clic sur « ✥ » sans tirer le colle à une face ou
  * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
  * (Ctrl + D) en met une copie à côté — sur son linéaire quand le Plan de cuisine l'a fait
  * (document/unit-duplicate.ts) — et « ✕ » le supprime avec ses façades.
@@ -12,6 +12,7 @@
  * outil.
  */
 import * as THREE from "three";
+import { roomKeepOuts } from "../document/cabinet-clear";
 import { cabinetAxes, slideCabinet, turnCabinet } from "../document/kitchen-catalog";
 import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../document/operations";
 import { withCabinetDuplicated } from "../document/unit-duplicate";
@@ -42,6 +43,8 @@ interface Drag {
   bodies: string[];
   box: Box;
   others: Box[];
+  /** The others, and the walls with what lies behind them: it goes into none, through none. */
+  solid: Box[];
   /** The height of the plane the pointer slides on, and where it was taken. */
   z: number;
   from: Vec3;
@@ -106,7 +109,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (!event.altKey) ({ translate: delta, guides: lines } = alignBox(drag.box, drag.others, delta, axes, STICK_PX * viewport.worldPerPixel()));
     delta = delta.map(Math.round) as Vec3;
     // Never into another piece of furniture: beside it, flush (no place clear on its path: where it was).
-    const clear = event.altKey ? delta : clearOf(drag.box, drag.others, delta, axes);
+    const clear = event.altKey ? delta : clearOf(drag.box, drag.solid, delta, axes);
     if (clear && clear !== delta) lines = [];
     delta = clear ?? [0, 0, 0];
     drag.delta = delta;
@@ -151,7 +154,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     const offset: [number, number] = [rect.left + ((top.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - top.y) / 2) * rect.height - event.clientY];
     const from = onPlane(event, z, offset);
     if (!from) return;
-    drag = { cabinet, bodies, box, others, z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
+    drag = { cabinet, bodies, box, others, solid: [...others, ...roomKeepOuts(editor.doc)], z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("keydown", key, true);

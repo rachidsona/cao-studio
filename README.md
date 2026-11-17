@@ -780,9 +780,12 @@ opération existante.
 - **Déplacer** (bouton « Déplacer », ou dans le panneau Sélection) : ce qui est déplacé dépend de la
   sélection. Pour un corps, l'option **« Copier »** (comme Curic Gizmo) garde l'original et pose 1 à 10 copies, la k-ième
   décalée k fois du déplacement (une opération « Copie n » de type réseau). Un **caisson déplacé en entier** — une flèche ou une tuile
-  tirée, le caisson qui suit la souris, un point cliqué — s'accroche aux murs et aux autres meubles et **n'entre jamais dedans** : amené dans un mur ou un
-  voisin, il est posé à côté, au ras (`features/box-clear.ts`, comme la poignée « ✥ ») ; l'accrochage intelligent éteint
-  le laisse libre.
+  tirée, le caisson qui suit la souris, un point cliqué, une distance tapée — s'accroche aux murs et aux autres meubles et **n'entre jamais dedans** : amené dans un mur ou un
+  voisin, il est posé à côté, au ras (`features/box-clear.ts`, comme la poignée « ✥ »), et il **ne traverse pas un mur**
+  de la Pièce : un mur compte avec tout ce qui est derrière lui (`document/cabinet-clear.ts`, `roomKeepOuts`). Une
+  distance tapée qui l'y ferait entrer s'arrête au ras, et le dit. Amené sur une face (pas sur un point accroché), il
+  **garde sa hauteur** : il glisse au sol au lieu de monter sur le mur visé. L'accrochage intelligent éteint le laisse
+  libre.
   - un **corps** (filtre « Corps », navigateur, ou un sommet ou une arête de ce corps) : nouvelle opération
     « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
     exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
@@ -2758,7 +2761,8 @@ opération existante.
   - **Il n'entre jamais dans un autre meuble** (`features/box-clear.ts`, `clearOf`) : amené dans un voisin, sous des
     meubles hauts ou à travers un plan de travail, il est posé **à côté, au ras**, du côté d'où il vient ; il ne passe
     au-delà d'un meuble que s'il l'a déjà dépassé de plus de la moitié de sa largeur, et ne va jamais plus loin que sa
-    place de départ (serré entre ses voisins et le mur du bout, il y reste). Ce qu'il touchait déjà — la plinthe qui
+    place de départ (serré entre ses voisins et le mur du bout, il y reste). **Un mur de la Pièce ne se traverse
+    jamais** : tiré bien au-delà, le caisson reste à son ras, du côté de la pièce (`roomKeepOuts`). Ce qu'il touchait déjà — la plinthe qui
     passe sous lui, la crédence derrière — ne le gêne pas. Alt le laisse où on le pose.
   - **Coller** : un clic sur ✥ sans tirer, puis un clic sur une face debout ou un coin d'un autre meuble (ou d'un
     mur). Au survol, un fantôme orange montre où il ira.
@@ -3060,7 +3064,9 @@ opération existante.
   sélectionnées, son nom, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent dans une barre en
   bas de la vue, juste au-dessus de l'historique, avec ses poignées ✥ et ↻ (`app/cabinet-bar.ts`). Un clic en fait
   un champ, Entrée reconstruit le caisson. Une cote liée à un paramètre (« largeur ») change le paramètre, et tout ce
-  qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`).
+  qui le suit ; une cote faite d'une formule plus longue reste à sa formule (`app/drivers-3d.ts`). Un caisson **agrandi contre
+  un mur ou un voisin** (ici, ou dans l'outil Caisson rouvert) est décalé d'autant, au ras, au lieu d'y entrer ; sans
+  place pour le décaler, la cote est refusée avec le mur ou le meuble qu'il toucherait (`cabinetKeptClear`).
 - **Assistant meuble** (bouton du ruban, masqué d'office) : un meuble entier en quelques choix, à la largeur, la
   hauteur et la profondeur voulues, dans la matière et l'épaisseur voulues (`document/furniture-models.ts`, pur).
   - **Meuble TV** : une case tous les 60 cm environ, les extrémités à portes, à tiroirs ou ouvertes, le milieu

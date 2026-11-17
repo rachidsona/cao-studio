@@ -45,3 +45,30 @@ export function clearOf(box: Box, others: readonly Box[], translate: Vec3, axes:
   out[best.axis] = out[best.axis]! + best.by;
   return out;
 }
+
+/**
+ * A box that grew where it stands (a cabinet made wider, deeper, higher) kept out of the `others` it did not stand in
+ * before: no shift when it stands in none, else the nearest one along one of `axes`, no further than it grew on that
+ * axis (it gives back what it took, it does not jump elsewhere). Null: no room for it at this size.
+ */
+export function clearGrown(before: Box, after: Box, others: readonly Box[], axes: readonly number[], eps = CLEARANCE): Vec3 | null {
+  const obstacles = others.filter((o) => !inside(before, o, eps));
+  if (!obstacles.some((o) => inside(after, o, eps))) return [0, 0, 0];
+  let best: { axis: number; by: number } | null = null;
+  for (const axis of axes) {
+    const [b, c] = [0, 1, 2].filter((i) => i !== axis) as [number, number];
+    const blocked = obstacles.filter((o) => overlap(after, o, b, eps) && overlap(after, o, c, eps)).map((o) => [o[0][axis]!, o[1][axis]!] as const);
+    const at = after[0][axis]!;
+    const size = after[1][axis]! - at;
+    const grew = Math.abs(size - (before[1][axis]! - before[0][axis]!)) + Math.abs(at - before[0][axis]!);
+    const free = (x: number) => blocked.every(([lo, hi]) => x + size <= lo + eps || x >= hi - eps);
+    for (const x of blocked.flatMap(([lo, hi]) => [lo - size, hi])) {
+      if (free(x) && Math.abs(x - at) <= grew + eps && (!best || Math.abs(x - at) < Math.abs(best.by) - 1e-9)) best = { axis, by: x - at };
+    }
+  }
+  if (!best) return null;
+  const out: Vec3 = [0, 0, 0];
+  out[best.axis] = best.by;
+  return out;
+}
+

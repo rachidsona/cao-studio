@@ -24,6 +24,7 @@ import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
 import { SnapDots } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
+import { roomKeepOuts } from "../document/cabinet-clear";
 import { clearOf } from "../features/box-clear";
 import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
@@ -241,7 +242,10 @@ export class MoveTool extends PanelTool {
   }
 
   private setTranslate(v: Vec3): void {
-    this.translate = v.map((x) => (Math.abs(x) < 1e-9 ? 0 : x)) as Vec3;
+    const kept = this.clear(v);
+    // A distance typed that would bring the cabinet into a wall or a neighbour: stopped flush, and said.
+    if (kept !== v && !this.following && !this.gizmo.dragging) this.ctx.notify("Le caisson s'arrête au ras : plus loin, il entrerait dans un mur ou un meuble (« Accrochage intelligent » éteint, il va où on le dit).", "info");
+    this.translate = kept.map((x) => (Math.abs(x) < 1e-9 ? 0 : x)) as Vec3;
     this.sync();
   }
 
@@ -418,7 +422,7 @@ export class MoveTool extends PanelTool {
   /** The direction changed: the target is reached again along it. */
   private relock(): void {
     const d = this.reachMove();
-    if (d) this.setTranslate(this.clear(d));
+    if (d) this.setTranslate(this.level(d, this.lock.mode, this.reachFace));
     else this.render();
   }
 
@@ -438,7 +442,7 @@ export class MoveTool extends PanelTool {
     const snap = hover && hover.index >= 0 ? (hover.points[hover.index] ?? null) : null;
     const face = snap ? null : (this.ctx.viewport.pickFace(event, (id) => id === this.subject.id || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`))?.point.toArray() as Vec3 | undefined) ?? null;
     const d = followMove({ source: this.source, ray: this.ctx.viewport.rayFromEvent(event), axis: this.axisDir(), snap, face, step: dragStep(this.ctx.viewport.worldPerPixel()) });
-    if (d) this.setTranslate(this.clear(lockMove(d, this.lock.of(event))));
+    if (d) this.setTranslate(this.level(lockMove(d, this.lock.of(event)), this.lock.of(event), !snap));
     this.showAxis();
   }
 
@@ -573,13 +577,18 @@ export class MoveTool extends PanelTool {
   private readonly own = (id: string): boolean => (id === this.subject.id && this.copies === 0) || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
 
   /**
-   * A cabinet moved whole with the pointer (an arrow dragged, the pointer followed, a point clicked) never goes into a
-   * wall or a neighbour: beside it, flush — no place clear on its way: where it is (features/box-clear.ts). The smart
-   * snapping off, a distance typed, or anything else moved: as asked.
+   * A cabinet moved whole (an arrow dragged, the pointer followed, a point clicked, a distance typed) never goes into a
+   * wall or a neighbour, nor through a wall of the room: beside it, flush — no place clear on its way: where it is
+   * (features/box-clear.ts, document/cabinet-clear.ts). The smart snapping off, or anything else moved: as asked.
    */
   private clear(move: Vec3, axes: readonly number[] = [0, 1, 2]): Vec3 {
     if (!this.cabinet || !this.box || !bodySnap.smart) return move;
-    return clearOf(this.box, otherBoxes(this.ctx.viewport, this.own), move, axes) ?? this.translate;
+    return clearOf(this.box, [...otherBoxes(this.ctx.viewport, this.own), ...roomKeepOuts(this.ctx.doc())], move, axes) ?? this.translate;
+  }
+
+  /** A cabinet brought onto a face (no point caught), the direction free: it keeps its height — it slides on the floor, it does not climb the wall pointed at. */
+  private level(d: Vec3, mode: AxisLockMode, onFace: boolean): Vec3 {
+    return this.cabinet && onFace && mode === "free" && this.axisLock === null ? [d[0], d[1], 0] : d;
   }
 
   override up(event: PointerEvent, isClick: boolean): boolean {
@@ -723,7 +732,7 @@ export class MoveTool extends PanelTool {
     this.hover = null;
     this.placeSnaps();
     const d = this.reachMove();
-    if (d) this.setTranslate(this.clear(d));
+    if (d) this.setTranslate(this.level(d, this.lock.mode, this.reachFace));
     else this.sync();
   }
 

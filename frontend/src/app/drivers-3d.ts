@@ -6,6 +6,7 @@
  * le paramètre, et tout ce qui le suit ; une cote faite d'une formule plus longue est laissée à sa formule. Rien ne
  * s'affiche pendant un outil.
  */
+import { cabinetKeptClear } from "../document/cabinet-clear";
 import { applyExpressions } from "../document/expressions";
 import { bodyOrigin, updateFeature } from "../document/operations";
 import { featureOfBody, type CabinetFeature } from "../document/types";
@@ -49,7 +50,13 @@ export function bindDrivers(root: HTMLElement, viewport: Viewport, editor: Edito
     const problem = cabinetProblem(next);
     if (problem) return editor.notify(problem, "error");
     const formula = cabinet.expressions?.[key]?.trim();
-    if (!formula) return void editor.change(updateFeature(editor.doc, cabinet.id, () => next));
+    if (!formula) {
+      // Against a wall or a neighbour: slid flush by what it took, or refused with why (document/cabinet-clear.ts).
+      const kept = cabinetKeptClear(editor.doc, next);
+      if (typeof kept === "string") return editor.notify(kept, "error");
+      if (kept !== next) editor.notify(`${cabinet.name} décalé au ras : à cette cote, il entrait dans un mur ou un meuble.`, "info");
+      return void editor.change(updateFeature(editor.doc, cabinet.id, () => kept));
+    }
     // Driven by a parameter: the parameter changes (and what follows it); by a longer formula: the formula stays.
     const parameter = editor.doc.parameters[formula];
     if (!parameter || parameter.expression) return editor.notify(`Cette cote suit la formule « ${formula} » : changez-la dans Atelier › Paramètres.`, "info");
