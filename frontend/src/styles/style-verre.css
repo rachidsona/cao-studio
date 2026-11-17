@@ -1,0 +1,160 @@
+/*
+ * The « Verre » style (class style-verre on <html>, « ⋯ » menu → Style): as the recent apps of macOS — the page a deep
+ * wash of the palette's colours, the toolbar, the panels, the menus and the tool windows sheets of frosted glass on it
+ * (translucent, blurred, a light rim), large rounded corners, soft long shadows, the 3D view a rounded pane. Only shapes
+ * and surfaces: the colours are the palette's (palettes.css), the sizes and hit areas the design system's.
+ */
+@layer components {
+  html.style-verre {
+    --verre-radius: 16px;
+    --verre-control: 10px;
+    /* Light: frosted white on a pale wash. */
+    --verre-page:
+      radial-gradient(50% 60% at 8% 5%, rgb(56 189 248 / 0.45), transparent 72%),
+      radial-gradient(50% 60% at 92% 12%, rgb(167 139 250 / 0.42), transparent 72%),
+      radial-gradient(60% 60% at 70% 100%, rgb(45 212 191 / 0.38), transparent 72%),
+      radial-gradient(50% 50% at 0% 100%, rgb(251 146 60 / 0.25), transparent 72%),
+      #e9eef5;
+    --verre-sheet: rgb(255 255 255 / 0.5);
+    --verre-sheet-strong: rgb(255 255 255 / 0.82);
+    --verre-rim: rgb(255 255 255 / 0.75);
+    --verre-hover: rgb(15 23 42 / 0.06);
+    --verre-shadow: 0 1px 1px rgb(15 23 42 / 0.04), 0 18px 40px -20px rgb(15 23 42 / 0.35);
+    --line: rgb(15 23 42 / 0.09);
+    --line-strong: rgb(15 23 42 / 0.16);
+  }
+  html.style-verre.dark {
+    /* Dark: frosted night on a wash of the palette's own colours. */
+    --verre-page:
+      radial-gradient(45% 55% at 8% 0%, color-mix(in srgb, rgb(var(--brand)) 55%, transparent), transparent 72%),
+      radial-gradient(50% 60% at 95% 10%, color-mix(in srgb, rgb(var(--brand-plein)) 95%, transparent), transparent 72%),
+      radial-gradient(60% 60% at 75% 100%, color-mix(in srgb, rgb(var(--brand)) 40%, transparent), transparent 72%),
+      radial-gradient(55% 55% at 0% 95%, color-mix(in srgb, var(--degrade-bas) 100%, transparent), transparent 72%),
+      rgb(var(--night));
+    --verre-sheet: rgb(var(--night-light) / 0.4);
+    --verre-sheet-strong: rgb(var(--night-light) / 0.82);
+    --verre-rim: rgb(255 255 255 / 0.12);
+    --verre-hover: rgb(255 255 255 / 0.08);
+    --verre-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 24px 48px -24px rgb(0 0 0 / 0.75);
+    --line: rgb(255 255 255 / 0.09);
+    --line-strong: rgb(255 255 255 / 0.16);
+  }
+
+  /* The page behind everything: the wash, on the body (fixed, so that the glass has something to blur). */
+  html.style-verre body {
+    background: var(--verre-page) fixed;
+  }
+  html.style-verre #editor {
+    background: transparent !important;
+  }
+
+  /*
+   * The sheets of glass: the top bar, the tabs, the toolbar, the panels. The frosted layer is drawn by a ::before behind
+   * each one, not by the element itself: a backdrop-filter on the element would shut its own drop-down menus inside it
+   * (the « ⋯ » menu of the top bar, the « Affichage » menu of the toolbar fell behind the panels).
+   */
+  html.style-verre :where(#editor > header, .ribbon-tabs, #editor [data-ribbon], #editor [data-render-bar], #editor [data-ref="panel-tree"], #editor [data-project-organizer], #editor [data-ref="panel-properties"], #editor [data-side-tools]) {
+    position: relative;
+    background: transparent !important;
+    border-color: var(--verre-rim) !important;
+  }
+  html.style-verre :where(#editor > header, .ribbon-tabs, #editor [data-ribbon], #editor [data-render-bar], #editor [data-ref="panel-tree"], #editor [data-project-organizer], #editor [data-ref="panel-properties"], #editor [data-side-tools])::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--verre-sheet);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    backdrop-filter: blur(22px) saturate(170%);
+    pointer-events: none;
+  }
+  html.style-verre :where(#editor [data-ribbon], #editor [data-render-bar], #editor [data-ref="panel-tree"], #editor [data-project-organizer], #editor [data-ref="panel-properties"], #editor [data-side-tools]) {
+    box-shadow: var(--verre-shadow) !important;
+  }
+  html.style-verre :where(#editor > header, .ribbon-tabs) {
+    box-shadow: none !important;
+    border-width: 0 0 1px;
+  }
+  /* The cards inside the panels: glass on glass, a lighter sheet with its own rim (no blur: nothing to shut in). */
+  html.style-verre .cad-card {
+    background: var(--verre-sheet) !important;
+    border-color: var(--verre-rim) !important;
+    box-shadow: var(--verre-shadow) !important;
+  }
+  /* Menus and floating windows: a thicker glass, to stay readable over the view (they shut nothing in). */
+  html.style-verre :where(.ribbon-menu, [role="dialog"]:not(aside), [role="menu"], details > .absolute) {
+    background: var(--verre-sheet-strong) !important;
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+    border-color: var(--verre-rim) !important;
+    border-radius: var(--verre-radius);
+    box-shadow: var(--verre-shadow), 0 2px 8px rgb(0 0 0 / 0.12) !important;
+  }
+  html.style-verre .cad-card {
+    border-radius: var(--verre-radius);
+  }
+
+  /* Controls: rounded, a soft fill under the pointer, what is on a glassy pill in the accent. */
+  html.style-verre :where(button, select, textarea, summary, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"])) {
+    border-radius: var(--verre-control);
+  }
+  html.style-verre :where(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"])) {
+    background-color: var(--verre-hover);
+    border-color: var(--line-strong);
+  }
+  html.style-verre .tool-btn:hover:not(:disabled) {
+    background-color: var(--verre-hover);
+  }
+  html.style-verre .tool-btn[aria-pressed="true"] {
+    background-color: color-mix(in srgb, var(--focus-ring) 20%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--focus-ring) 45%, transparent);
+  }
+  /* The primary buttons: the palette's tone, a light rim on top as on macOS, no rise. */
+  html.style-verre .tool-btn-primary,
+  html.style-verre .btn-accent {
+    border-radius: var(--verre-control);
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.18), transparent 55%);
+    background-color: var(--bouton-1);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 6px 16px -8px rgb(0 0 0 / 0.5);
+  }
+  html.style-verre .tool-btn-primary:hover,
+  html.style-verre .btn-accent:hover:not(:disabled) {
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.24), transparent 55%);
+    background-color: var(--bouton-survol-1);
+    transform: none;
+  }
+  /* The workspaces: a segmented control — the chosen one a pill of glass. */
+  html.style-verre .ribbon-tabs > button {
+    border-bottom-width: 0;
+    border-radius: 999px;
+    margin-bottom: 0.25rem;
+  }
+  html.style-verre .ribbon-tabs > [aria-selected="true"] {
+    background: var(--verre-sheet-strong);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  }
+  html.style-verre .palette-swatch,
+  html.style-verre .palette-swatch-gradient {
+    border-radius: var(--verre-control);
+  }
+
+  /* Large screens: the cards rounded, further apart on the wash; the 3D view a rounded pane. */
+  @media (min-width: 1024px) {
+    html.style-verre #editor [data-ribbon],
+    html.style-verre #editor [data-render-bar] {
+      margin: 0.75rem 0.75rem 0;
+    }
+    html.style-verre #editor [data-ref="main-row"] {
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+    html.style-verre #editor :where([data-ribbon], [data-render-bar], [data-ref="panel-tree"], [data-project-organizer], [data-ref="panel-properties"], [data-side-tools], [data-ref="workspace"]) {
+      border-radius: var(--verre-radius);
+    }
+    html.style-verre #editor [data-ref="workspace"] {
+      border-color: var(--verre-rim) !important;
+      box-shadow: var(--verre-shadow) !important;
+    }
+  }
+}

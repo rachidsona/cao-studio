@@ -1482,6 +1482,16 @@ opération existante.
   **clair** l'emporte sur les palettes (fonds blancs, accent bleu), les boutons gardant le dégradé de la palette,
   comme dans la gestion. Techniquement, les gris et les bleus de Tailwind (`gray`, `sky`) sont tirés des variables
   de la palette (`styles/palettes.css`) : tout le reste suit sans toucher aux gabarits.
+- **Style de l'interface** (menu **« ⋯ » → Style**, gardé dans le navigateur, `localStorage` « style », posé avant le
+  premier affichage sur toutes les pages) : **Classique** (angles droits, cartes en dégradé, halo de l'accent),
+  **Verre** — comme les apps récentes de macOS : le fond lavé des couleurs de la palette, la barre du haut, les onglets,
+  le ruban et les panneaux en **verre givré** (translucides et flous, un liseré clair, coins de 16 px, ombres longues),
+  les menus et les fenêtres en verre plus épais, les onglets en contrôle segmenté — ou **Minimal clair**, comme Figma ou
+  Onshape : choisi, il passe en thème clair ; les panneaux blancs sont **collés bord à bord** par un filet fin, sans
+  carte ni ombre, rayons de 6 px, boutons principaux d'un seul ton, titres et onglets en minuscules. Un style change les
+  formes et les matières, pas les couleurs : il va avec chaque palette (`styles/style-verre.css`,
+  `styles/style-minimal.css`). Le verre est dessiné derrière chaque panneau (`::before`), pour que ses menus déroulants
+  (« ⋯ », « Affichage ») passent toujours par-dessus.
 - **Système de design** (`design-system/cao-studio/MASTER.md`) : la référence de l'apparence — couleurs par jeton
   (gris et accent de la palette, l'orange des cotes `text-dimension`), tailles de texte nommées (`text-3xs` 10 px,
   `text-2xs` 11 px, rien en pixels écrits à la main), rayons nommés des pages d'accueil (`rounded-tag`, `chip`,

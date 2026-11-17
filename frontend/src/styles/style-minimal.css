@@ -1,0 +1,136 @@
+/*
+ * The « Minimal clair » style (class style-minimal on <html>, « ⋯ » menu → Style; choosing it puts the light theme on):
+ * as Figma, Onshape or Notion — white panels joined edge to edge by one hairline (no cards, no gaps, no shadows), a
+ * very light grey page, small radii, flat solid buttons in one accent, quiet headings in sentence case, a lot of air.
+ * In the dark theme it stays flat (no gradient, no glow). Only shapes and surfaces: the colours are the theme's and the
+ * palette's, the sizes and hit areas the design system's.
+ */
+@layer components {
+  html.style-minimal {
+    --minimal-radius: 6px;
+    --surface-page: #f7f7f8;
+    --line: #e7e7ea;
+    --line-strong: #d6d6db;
+    /* Flatter toolbar icons: lighter volumes, a thinner edge. */
+    --ic-edge: rgb(71 85 105 / 0.55);
+  }
+  html.style-minimal.dark {
+    --surface-page: rgb(var(--night));
+    --line: rgb(255 255 255 / 0.08);
+    --line-strong: rgb(255 255 255 / 0.14);
+    --ic-edge: rgb(15 23 42 / 0.45);
+  }
+
+  /* Controls: small radii, a flat grey under the pointer, what is on a light tint of the accent (no ring). */
+  html.style-minimal :where(button, select, textarea, summary, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"])) {
+    border-radius: var(--minimal-radius);
+  }
+  html.style-minimal .tool-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--ink-strong) 5%, transparent);
+  }
+  html.style-minimal .tool-btn[aria-pressed="true"] {
+    background-color: color-mix(in srgb, var(--focus-ring) 12%, transparent);
+    color: var(--color-sky-700);
+    box-shadow: none;
+  }
+  html.style-minimal.dark .tool-btn[aria-pressed="true"] {
+    color: var(--color-sky-200);
+  }
+  /* The primary buttons: one flat tone of the accent, no gradient, no shadow, no rise. */
+  html.style-minimal .tool-btn-primary,
+  html.style-minimal .btn-accent {
+    border-radius: var(--minimal-radius);
+    background-image: none;
+    background-color: var(--color-sky-600);
+    box-shadow: none;
+  }
+  html.style-minimal .tool-btn-primary:hover,
+  html.style-minimal .btn-accent:hover:not(:disabled) {
+    background-image: none;
+    background-color: var(--color-sky-700);
+    transform: none;
+    box-shadow: none;
+  }
+  html.style-minimal.dark .tool-btn-primary,
+  html.style-minimal.dark .btn-accent {
+    background-color: var(--bouton-1);
+  }
+  html.style-minimal.dark .tool-btn-primary:hover,
+  html.style-minimal.dark .btn-accent:hover:not(:disabled) {
+    background-color: var(--bouton-survol-1);
+  }
+
+  /* Headings: sentence case, medium, grey — the content speaks, not the labels. */
+  html.style-minimal .panel-title {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+  html.style-minimal .ribbon-caption {
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  html.style-minimal .ribbon-tabs {
+    background: var(--surface-panel);
+  }
+  html.style-minimal .ribbon-tabs > button {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    border-radius: 0;
+  }
+  html.style-minimal .ribbon-tabs > [aria-selected="true"] {
+    color: var(--ink-strong);
+  }
+
+  /* Menus and windows: white, one hairline, a faint shadow only to lift them off the page. */
+  html.style-minimal :where(.ribbon-menu, [role="dialog"], [role="menu"], details > .absolute) {
+    border-radius: 8px;
+    border-color: var(--line) !important;
+    box-shadow: 0 8px 24px -12px rgb(15 23 42 / 0.18) !important;
+  }
+  html.style-minimal .cad-card,
+  html.style-minimal.dark .cad-card {
+    border-radius: 8px;
+    border-color: var(--line) !important;
+    background: var(--surface-panel) !important;
+    box-shadow: none !important;
+  }
+  html.style-minimal .palette-swatch,
+  html.style-minimal .palette-swatch-gradient {
+    border-radius: var(--minimal-radius);
+  }
+
+  /* Large screens: no cards — the toolbar and the panels joined edge to edge by one hairline, the view between them. */
+  @media (min-width: 1024px) {
+    html.style-minimal #editor [data-ribbon],
+    html.style-minimal #editor [data-render-bar] {
+      margin: 0;
+    }
+    html.style-minimal #editor [data-ref="main-row"] {
+      gap: 0;
+      padding: 0;
+    }
+    html.style-minimal #editor :where([data-ribbon], [data-render-bar], [data-ref="panel-tree"], [data-project-organizer], [data-ref="panel-properties"], [data-side-tools], [data-ref="workspace"]) {
+      border-radius: 0;
+      border-width: 0;
+      box-shadow: none !important;
+    }
+    html.style-minimal #editor [data-ribbon],
+    html.style-minimal #editor [data-render-bar] {
+      border-bottom: 1px solid var(--line);
+    }
+    html.style-minimal #editor :where([data-ref="panel-tree"], [data-project-organizer], [data-side-tools]) {
+      border-right: 1px solid var(--line);
+    }
+    html.style-minimal #editor [data-ref="panel-properties"] {
+      border-left: 1px solid var(--line);
+    }
+    html.style-minimal.dark #editor :where([data-ribbon], [data-render-bar]) {
+      background: var(--surface-panel);
+    }
+  }
+}

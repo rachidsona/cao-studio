@@ -10,6 +10,13 @@ sur celui-ci ; sans ce fichier, ce document s'applique seul. Les valeurs vivent 
 - **Éditeur carré** : tous les rayons de Tailwind (`rounded-sm` … `rounded-4xl`) valent 0. Seuls les cercles (`rounded-full`) restent ronds.
 - **Pages d'accueil plus douces** (accueil, fiches) : elles prennent les rayons nommés du § 4.
 - Animation **sobre** : un retour visuel, jamais de décor.
+- **Trois styles** (classe sur `<html>`, menu « ⋯ » → Style, `localStorage` « style ») : **Classique**, décrit ici ;
+  **Verre** (`styles/style-verre.css`, `style-verre`) — un fond lavé des couleurs de la palette, la barre du haut, les
+  onglets, le ruban et les panneaux en verre givré (16 px), les menus en verre plus épais ; le verre est un `::before`
+  derrière chaque panneau, jamais un `backdrop-filter` sur le panneau lui-même (il y enfermerait ses menus déroulants) ;
+  **Minimal clair** (`styles/style-minimal.css`, `style-minimal`) — choisi, il passe en thème clair : panneaux collés bord
+  à bord par un filet, sans carte ni ombre, rayons de 6 px, boutons d'un seul ton, titres en minuscules. Un style ne
+  change que formes, matières et typographie ; un composant nouveau doit rester juste dans les trois.
 
 ## 2. Couleurs — toujours par jeton, jamais d'hexadécimal dans un composant
 

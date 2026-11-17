@@ -19,6 +19,11 @@
         var palette = localStorage.getItem("palette");
         if (palette && /^palette-[a-z]+$/.test(palette)) document.documentElement.classList.add(palette);
       } catch (e) {}
+      /* The style of the interface (shapes and surfaces: « Classique » by default, « Verre », « Minimal clair »), before first paint too. */
+      try {
+        var style = localStorage.getItem("style");
+        if (style && /^style-[a-z]+$/.test(style)) document.documentElement.classList.add(style);
+      } catch (e) {}
     })();
   </script>
   {# The font of gestion menuiserie (Inter); without the network, the system font. #}
@@ -111,6 +116,29 @@
       });
     });
     showPalette();
+    /* Style buttons (data-ui-style: a class, or "" for the default one), as the palette's. */
+    function showStyle() {
+      var current = (document.documentElement.className.match(/\bstyle-[a-z]+/) || [""])[0];
+      document.querySelectorAll("[data-ui-style]").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-ui-style") === current));
+      });
+    }
+    document.querySelectorAll("[data-ui-style]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var html = document.documentElement;
+        html.className = html.className.replace(/\bstyle-[a-z]+\b/g, "").trim();
+        var style = button.getAttribute("data-ui-style");
+        if (style) html.classList.add(style);
+        /* « Minimal clair » is a light style: it puts the light theme on (the toggle still brings the dark back). */
+        if (style === "style-minimal") {
+          html.classList.remove("dark");
+          try { localStorage.setItem("theme", "light"); } catch (e) {}
+        }
+        try { localStorage.setItem("style", style || ""); } catch (e) {}
+        showStyle();
+      });
+    });
+    showStyle();
     /* Digits typed without Maj, on every page (the same rule as frontend/src/ui/digit-keys.ts): on a French keyboard
        the keys of the digit row give & é " ' ( § è ! ç à without Maj or Verr. Maj; in a number field they type their
        digit. « - » stays a minus, and in a field that takes a calculation (data-expression) its signs stay too. */

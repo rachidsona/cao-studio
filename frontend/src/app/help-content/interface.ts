@@ -459,13 +459,14 @@ export const SCREEN: HelpFamily[] = [
         tip: "Le changement d'unité s'annule avec Ctrl+Z. Sans enregistrement automatique, l'éditeur prévient avant de quitter avec des modifications non enregistrées.",
       },
       {
-        keys: [], selector: "header [data-theme-toggle]", name: "Thème et palettes de couleurs",
-        what: "Passe de l'écran clair à l'écran sombre et change les couleurs du thème sombre.",
+        keys: [], selector: "header [data-theme-toggle]", name: "Thème, style et palettes de couleurs",
+        what: "Passe de l'écran clair à l'écran sombre, change le style de l'interface (ses formes et ses matières) et les couleurs du thème sombre.",
         steps: [
           "Cliquez « ⋯ », puis « Thème clair / sombre » pour passer de l'un à l'autre.",
+          "Dans la rubrique « Style », choisissez « Classique » (angles droits, cartes en dégradé), « Verre » (panneaux de verre givré sur un fond coloré, coins très arrondis, comme les apps récentes de macOS) ou « Minimal clair » (panneaux blancs collés bord à bord par un filet fin, sans ombre, un seul accent ; il passe en thème clair). Le style va avec n'importe quelle palette.",
           "Dans la rubrique « Palette », cliquez une pastille : Atelier, Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal Charcoal, Crimson Terre, Mocha Mist, Forêt Profonde, Graphite Laiton, Indigo Nuit ou Chêne Sable.",
         ],
-        tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ.",
+        tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ, « Classique » le style de départ ; les deux choix sont gardés dans ce navigateur.",
       },
     ],
   },
