@@ -2,13 +2,12 @@
 {% load static assets %}
 {% block title %}Accueil · CAO Studio{% endblock %}
 {% block content %}
-{# The home page: the two ways to begin (a 3D project; a kitchen or a dressing), each with its picture, #}
+{# The home page: the two ways to begin (a 3D project; a kitchen or a dressing, with its picture), #}
 {# then « Mes projets »: where the jobs stand, the folders, a search, and every project as a card. #}
 <div class="space-y-10">
-  {# The two ways to design, each with its picture, its title and its « new » form; side by side on a wide screen. #}
+  {# The two ways to design, each with its title and its « new » form (the kitchen's with its picture); side by side on a wide screen. #}
   <div class="grid gap-x-8 gap-y-6 lg:grid-cols-2">
-    <section class="overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-3d-title">
-      <img src="{% static 'img/accueil/conception-3d.jpg' %}" alt="Un meuble télé sur mesure, noir et chêne, modélisé en 3D" width="1024" height="819" class="block aspect-[5/4] w-full object-cover" loading="eager">
+    <section class="flex flex-col justify-center overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="design-3d-title">
       <div class="p-5">
         <h1 id="design-3d-title" class="text-center text-2xl font-semibold tracking-tight">Conception 3D</h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Pièces et meubles modélisés en 3D : esquisses, volumes, assemblages, liste de débit et mise en plan.</p>

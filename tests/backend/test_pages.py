@@ -45,10 +45,10 @@ def test_projects_list_renders(client_logged, project):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Conception 3D" in content and "Cuisine &amp; Dressing" in content
-    # Each project is a card that opens it; the two ways to begin have their pictures back.
+    # Each project is a card that opens it; of the two ways to begin, only the kitchen has a picture.
     assert "Plaque" in content and 'data-project-row="' in content
     assert f"/projects/{project.id}/editor/" in content
-    assert "/static/img/accueil/conception-3d.jpg" in content
+    assert "/static/img/accueil/conception-3d.jpg" not in content
     assert "/static/img/accueil/cuisine-dressing.jpg" in content
 
 
