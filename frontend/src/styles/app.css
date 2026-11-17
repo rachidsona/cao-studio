@@ -661,6 +661,13 @@
   :is([data-ref="tree"], .cad-tree, [data-project-organizer]) button:not([data-select]) {
     min-width: 2rem;
   }
+  /* The headings of the Navigator: their buttons, wider, touch each other, so that « Corps » keeps its name. */
+  [data-ref="tree"] summary {
+    column-gap: 0;
+  }
+  [data-ref="tree"] summary > svg {
+    margin-right: 0.25rem;
+  }
   /* The history under the view. */
   [data-ref="timeline"] button {
     min-height: 2.75rem;

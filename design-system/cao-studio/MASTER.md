@@ -133,6 +133,10 @@ Pas de défilement horizontal de la page. Sur téléphone, un champ est en `text
   bouts ronds, couleur du texte. Une nouvelle icône d'en-tête s'y ajoute plutôt qu'en caractère (↶ ⤓ ⌕…).
   Sous 640 px, « Mise en plan » et « Aide » quittent l'en-tête (ils restent dans le menu du projet et le menu ⋯) pour
   laisser lire le nom du projet.
+- **Chevrons** (déplier, replier) : dessinés (`chevronIcon` de `ui/icons.ts`, le même trait que `_hicon.html`), tournés
+  d'un quart de tour quand c'est ouvert ; jamais ▸ ▾ en caractère. Dans le Navigateur, leur cible fait 24 px.
+- **Titre de section du Navigateur** : sur une ligne, le nombre à part en `font-mono text-3xs` (« CORPS 7 »), jamais
+  entre parenthèses ; au doigt, ses boutons se touchent pour lui laisser la place.
 - **Pas d'emoji comme icône** d'interface. Les signes typographiques (✕ ✓ ★ ▸ ⋯) restent permis, dans la couleur du texte.
 - Une icône seule a un `aria-label` ; une icône à côté d'un texte a `aria-hidden="true"`.
 

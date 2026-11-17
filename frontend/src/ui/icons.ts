@@ -45,6 +45,11 @@ export function dotsIcon(): SVGElement {
   ]);
 }
 
+/** A chevron pointing right (rotated a quarter turn when its folder is open), like the editor's header (_hicon.html). */
+export function chevronIcon(): SVGElement {
+  return icon([{ tag: "path", attrs: { d: "m9 6 6 6-6 6" } }]);
+}
+
 /** A bin, to delete. */
 export function trashIcon(): SVGElement {
   return icon([

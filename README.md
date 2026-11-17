@@ -1478,6 +1478,9 @@ opération existante.
   recherche, annuler, rétablir, enregistrer, aide, menu) au lieu des caractères ← ⌕ ↶ ↷ ⤓ ? ⋯ ; annuler et rétablir
   désactivés restent lisibles. Sur téléphone, « Mise en plan » et « Aide » passent dans les menus (projet et ⋯) pour
   que le nom du projet se lise.
+  **Navigateur** : ses chevrons (déplier, replier, tout replier) sont dessinés de la même famille, sur des cibles de
+  24 px ; le titre des sections tient sur une ligne, le nombre à part (« CORPS 7 »), même au doigt dans la colonne
+  étroite d'une tablette en paysage.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne
@@ -2794,7 +2797,7 @@ opération existante.
   « of5 » servait encore donnait à la seconde étape du module l'identifiant d'une autre (des Cloisons voisines), et
   chaque réglage changé ensuite laissait derrière lui des étagères orphelines qui remplissaient des niches entières.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
-- **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état ; son bouton montre ou cache les cadres seuls, le nombre reste.
+- **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
 - **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition ouvre la
   calculatrice à côté d'elle : une valeur ou un calcul, au clavier ou sur son pavé.

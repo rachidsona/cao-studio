@@ -14,7 +14,7 @@
 import { el } from "./dom";
 import { STATE_BADGES, TYPE_ICONS, type NavItem } from "./feature-meta";
 import { renameFolder, treeMenu, wireDrag, type TreeContext } from "./browser-actions";
-import { dotsIcon, eyeIcon, fine, folderIcon, trashIcon } from "./icons";
+import { chevronIcon, dotsIcon, eyeIcon, fine, folderIcon, trashIcon } from "./icons";
 
 export interface BrowserHandlers {
   /** `adding`: Ctrl, Cmd or Maj was held (adds to, or removes from, a multiple selection). */
@@ -94,19 +94,27 @@ const isOpen = (key: string) => (key.startsWith("group:") && !key.startsWith("gr
 /** While the search filters the tree (browser-filter.ts), its folders are open, to show what was found (not the bodies' histories). */
 let showAll = false;
 
+/** The drawn chevron of a fold (MASTER.md § 8), turned down when open; `extra`: its own classes. */
+function fold(extra: string): SVGElement {
+  const svg = fine(chevronIcon(), 12);
+  svg.setAttribute("class", `shrink-0 transition-transform ${extra}`);
+  for (const node of svg.children) node.setAttribute("stroke-width", "2");
+  return svg;
+}
+
 function chevron(key: string, name: string): HTMLElement {
   const open = isOpen(key);
   return el(
     "button",
     {
       type: "button",
-      class: "size-5 shrink-0 text-xs leading-none text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700",
+      class: "flex size-6 shrink-0 items-center justify-center text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700",
       title: open ? "Replier" : "Déplier",
       "aria-label": `${open ? "Replier" : "Déplier"} ${name}`,
       "aria-expanded": String(open),
       "data-toggle": key,
     },
-    el("span", { class: `inline-block transition-transform ${open ? "rotate-90" : ""}`, "aria-hidden": "true" }, "▸"),
+    fold(open ? "rotate-90" : ""),
   );
 }
 
@@ -167,7 +175,7 @@ function row(item: NavItem, selected: boolean, onSelectKey: string, menuId = ite
       ...(selected ? { "data-selected": "" } : {}),
       ...(menuKind === "body" ? { "data-head": `body:${item.id}`, draggable: "true" } : {}),
     },
-    toggle ?? el("span", { class: "w-5 shrink-0", "aria-hidden": "true" }),
+    toggle ?? el("span", { class: "w-6 shrink-0", "aria-hidden": "true" }),
     eye,
     select,
     menu,
@@ -251,7 +259,7 @@ function groupNode(group: BodyFolder, s: Selection): HTMLElement {
 }
 
 /** Buttons of the "Corps" heading, acting on every body: a new folder, the triangle that folds them, the eye, the bin. */
-const HEAD_BUTTON = "flex size-7 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
+const HEAD_BUTTON = "flex size-6 shrink-0 items-center justify-center text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-100";
 
 /** The eye and the bin of a heading (`all`: « tous les corps », « toutes les esquisses »), tagged `data-hide-<kind>` and `data-remove-<kind>`. */
 function eyeAndBin(all: string, allHidden: boolean, kind: string, filtered = false): HTMLElement[] {
@@ -275,7 +283,7 @@ function eyeAndBin(all: string, allHidden: boolean, kind: string, filtered = fal
 function bodiesActions(rows: BodyRow[], filtered = false): HTMLElement[] {
   return [
     el("button", { type: "button", class: HEAD_BUTTON, title: "Nouveau dossier (avec les corps sélectionnés)", "aria-label": "Nouveau dossier", "data-new-folder": "" }, fine(folderIcon(true), 15)),
-    el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, "▾"),
+    el("button", { type: "button", class: HEAD_BUTTON, "data-fold-all": "" }, fold("rotate-90")),
     ...eyeAndBin("tous les corps", rows.every((r) => r.item.hidden), "all", filtered),
   ];
 }
@@ -287,9 +295,10 @@ function section(title: string, count: number, rows: HTMLElement[], empty: strin
     el(
       "summary",
       // Bodies dropped on the « Corps » heading leave their folder.
-      { ...(bodies ? { "data-drop": "" } : {}), class: "flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase select-none dark:text-sky-400" },
-      el("span", { class: "inline-block w-3 transition-transform group-open/section:rotate-90", "aria-hidden": "true" }, "▸"),
-      el("span", { class: "flex-1" }, `${title} (${count})`),
+      { ...(bodies ? { "data-drop": "" } : {}), class: "flex min-h-9 cursor-pointer list-none items-center gap-1 px-2 text-xs font-semibold tracking-wider text-sky-700 uppercase select-none dark:text-sky-400" },
+      fold("group-open/section:rotate-90"),
+      // On one line, the count apart in figures (it wrapped under the heading's buttons).
+      el("span", { class: "flex-1 truncate whitespace-nowrap" }, title, el("span", { class: "ml-1.5 font-mono text-3xs font-normal tracking-normal text-gray-500 dark:text-gray-400" }, String(count))),
       ...actions,
     ),
     rows.length ? el("ul", { class: "space-y-0.5" }, ...rows) : el("p", { class: "px-6 pb-1 text-xs text-gray-500 dark:text-gray-400" }, empty),
@@ -428,10 +437,10 @@ function reveal(root: HTMLElement, data: { sketches: NavItem[]; selectedId: stri
   target.scrollIntoView({ block: "nearest" });
 }
 
-/** The triangle of the "Corps" heading: ▾ folds everything open, ▸ unfolds every assembly and body. */
+/** The chevron of the "Corps" heading: down, it folds everything open; right, it unfolds every assembly and body. */
 function syncFoldAll(root: HTMLElement, button: HTMLElement): void {
   const anyOpen = [...root.querySelectorAll<HTMLElement>("[data-bodies] [data-toggle]")].some((b) => isOpen(b.dataset.toggle as string));
-  button.textContent = anyOpen ? "▾" : "▸";
+  button.firstElementChild?.classList.toggle("rotate-90", anyOpen);
   button.title = anyOpen ? "Tout replier" : "Tout déplier";
   button.setAttribute("aria-label", anyOpen ? "Replier tous les corps" : "Déplier tous les corps");
 }
