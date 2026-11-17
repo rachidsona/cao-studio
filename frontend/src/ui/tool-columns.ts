@@ -8,7 +8,8 @@
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
  * et seul un petit onglet numéroté reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir. Les colonnes sont vides
  * au départ et les mêmes dans les trois espaces (Conception 3D, Dressing, Cuisine), gardées dans ce navigateur
- * (ui/tool-columns-store.ts). Cachées en esquisse, en rendu et sur les petits écrans.
+ * (ui/tool-columns-store.ts). Cachées en esquisse, en rendu et sur les petits écrans ; la vue garde toujours au moins
+ * 200 px : les colonnes qui n'y tiennent pas (fenêtre étroite, panneaux larges) passent pour l'instant à leur onglet.
  */
 import { el } from "./dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
@@ -48,6 +49,19 @@ export function bindToolColumns(root: HTMLElement): void {
   });
   edgeTabs(root)?.append(tabs);
   const watchers: MutationObserver[] = [];
+  // The view keeps room: beside it, as many open columns as fit (the others wait at their tab, not folded for good).
+  const MIN_VIEW = 200;
+  const COLUMN_WIDTH = 45;
+  const row = bar.parentElement;
+  const others = () => [...(row?.children ?? [])].filter((k) => k !== bar && !k.matches('[data-ref="workspace"]'));
+  const fitting = () => {
+    if (!row) return COLUMN_COUNT;
+    const free = row.clientWidth - others().reduce((sum, k) => sum + k.getBoundingClientRect().width, 0);
+    return Math.max(0, Math.floor((free - MIN_VIEW) / COLUMN_WIDTH));
+  };
+  let fits = fitting();
+  /** Columns opened from their tab, the last first: they are the ones shown when not all fit. */
+  const wanted: number[] = [];
   /** The icon being dragged to another place. */
   let dragging: { column: number; key: string } | null = null;
 
@@ -133,7 +147,11 @@ export function bindToolColumns(root: HTMLElement): void {
       el("span", { "aria-hidden": "true" }, "›"),
       el("span", { "aria-hidden": "true" }, String(index + 1)),
     );
-    tab.addEventListener("click", () => save(toggleFold(state, index)));
+    tab.addEventListener("click", () => {
+      wanted.splice(0, wanted.length, index, ...wanted.filter((i) => i !== index));
+      if (state.folded[index]) save(toggleFold(state, index));
+      else render();
+    });
     return tab;
   };
 
@@ -226,8 +244,27 @@ export function bindToolColumns(root: HTMLElement): void {
   const render = () => {
     for (const w of watchers.splice(0)) w.disconnect();
     const indexes = Array.from({ length: COLUMN_COUNT }, (_, i) => i);
-    bar.replaceChildren(...indexes.filter((i) => !state.folded[i]).map(columnOf));
-    tabs.replaceChildren(...indexes.filter((i) => state.folded[i]).map(tabOf));
+    const rank = (i: number) => (wanted.includes(i) ? wanted.indexOf(i) - COLUMN_COUNT : i);
+    const shown = new Set(indexes.filter((i) => !state.folded[i]).sort((a, b) => rank(a) - rank(b)).slice(0, fits));
+    bar.replaceChildren(...indexes.filter((i) => shown.has(i)).map(columnOf));
+    tabs.replaceChildren(...indexes.filter((i) => !shown.has(i)).map(tabOf));
   };
   render();
+  // A narrower window, a panel opened or closed: the columns that fit again.
+  const refit = () => {
+    const next = fitting();
+    if (next !== fits) {
+      fits = next;
+      render();
+    }
+  };
+  const resized = new ResizeObserver(refit);
+  if (row) {
+    for (const k of [row, ...row.children]) resized.observe(k);
+    // A panel put in the row later (the projects' column): watched too.
+    new MutationObserver(() => {
+      for (const k of row.children) resized.observe(k);
+      refit();
+    }).observe(row, { childList: true });
+  }
 }

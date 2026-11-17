@@ -145,3 +145,25 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   await expect(tab(0)).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test("une fenêtre de 1024 px garde la vue : les colonnes qui n'y tiennent pas attendent à leur onglet, et reviennent quand elle s'élargit", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-colonnes-etroit");
+  await page.evaluate(() => localStorage.removeItem("cao.tool-columns-off"));
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  // The view was 2 px wide before, pushed out by seven empty columns (309 px) beside the panels: now the columns that
+  // do not fit beside 200 px of view wait at their tab, and the view has what the panels leave.
+  const view = async () => (await page.locator('[data-ref="workspace"]').boundingBox())!.width;
+  const shown = await page.locator("[data-tool-columns] [data-tool-column]").count();
+  expect(shown).toBeLessThan(7);
+  await expect(page.locator("[data-tool-column-unfold]")).toHaveCount(7 - shown);
+  expect(await view()).toBeGreaterThan(100);
+  // Wider: they all come back (none was folded for good).
+  await page.setViewportSize({ width: 1800, height: 900 });
+  await expect(page.locator("[data-tool-columns] [data-tool-column]")).toHaveCount(7);
+  await expect(page.locator("[data-tool-column-unfold]")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

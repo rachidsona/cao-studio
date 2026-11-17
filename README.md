@@ -1625,8 +1625,10 @@ opération existante.
   icône (« sep:line:1 », « sep:space:2 »). La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
   reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord gauche de la vue, par-dessus,
   pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine : elles restent en place
-  quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Cachées en
-  esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,
+  quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Quand la
+  place manque (fenêtre étroite, panneaux ouverts), la vue garde au moins 200 px : les colonnes qui n'y tiennent pas
+  passent pour l'instant à leur onglet (celle qu'on rouvre par son onglet prend la place d'une autre) et reviennent
+  quand la fenêtre s'élargit. Cachées en esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,
   `ui/tool-columns-store.ts`).
 - **Glisser les icônes d'une barre à l'autre**, la même chose dans toutes les barres — le ruban du haut, Mes outils,
   les sept colonnes et la colonne de sélection et de vue : une icône **glissée hors des barres** (sur la vue, le
