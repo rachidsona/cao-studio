@@ -1,7 +1,7 @@
 /**
  * L'électroménager d'une implantation de cuisine, en nombres : où vont l'évier (sous la fenêtre s'il y en a une, sinon
- * vers le premier tiers du mur A), le lave-vaisselle (à côté de l'évier), la plaque (à deux modules au moins de
- * l'évier, pas contre une colonne ni sous une fenêtre) ; et les règles d'ergonomie d'une cuisine — le triangle
+ * sur le mur A, vers son premier tiers), le lave-vaisselle (à côté de l'évier), la plaque (pas contre une colonne ni
+ * sous une fenêtre) — l'évier et la plaque choisis ensemble pour que le triangle avec le réfrigérateur suive ses conseils ; et les règles d'ergonomie d'une cuisine — le triangle
  * évier, plaque, réfrigérateur, le passage devant un îlot, la plaque loin d'un bout de plan. Pur.
  */
 
@@ -20,29 +20,42 @@ export interface Slot {
 
 export type Role = "sink" | "dishwasher" | "hob";
 
-/** The slot (its index) given to the sink, the dishwasher and the hob, among the base slots in run order. */
-export function placeAppliances(slots: readonly Slot[]): Partial<Record<Role, number>> {
-  const out: Partial<Record<Role, number>> = {};
-  const ok = (i: number) => i >= 0 && i < slots.length && slots[i]!.width >= 600 && !Object.values(out).includes(i);
-  const runA = slots.map((s, i) => [s, i] as const).filter(([s]) => s.run === "A");
-  if (!runA.length) return out;
-  // The sink: under a window of wall A, else about a third along it.
-  const under = runA.find(([s, i]) => s.window && ok(i));
-  const third = runA[Math.floor(runA.length / 3)];
-  const sink = under?.[1] ?? (third && ok(third[1]) ? third[1] : runA.find(([, i]) => ok(i))?.[1]);
-  if (sink === undefined) return out;
-  out.sink = sink;
+/** The slot (its index) given to the sink, the dishwasher and the hob, among the base slots in run order; `fridge`: its front, when there is one. */
+export function placeAppliances(slots: readonly Slot[], fridge?: [number, number]): Partial<Record<Role, number>> {
+  const runA = slots.map((s, i) => [s, i] as const).filter(([s]) => s.run === "A").map(([, i]) => i);
+  if (!runA.length) return {};
+  const ok = (i: number, taken: (number | undefined)[]) => i >= 0 && i < slots.length && slots[i]!.width >= 600 && !taken.includes(i);
+  // The sink under a window of wall A when there is one; else one of wall A, about a third along it at best.
+  const windows = runA.filter((i) => slots[i]!.window && ok(i, []));
+  const sinks = windows.length ? windows : runA.filter((i) => ok(i, []));
+  const third = runA[Math.floor(runA.length / 3)]!;
   // The dishwasher right beside the sink (the next slot of the same run, else the one before), 600 wide.
-  const side = [sink + 1, sink - 1].find((i) => ok(i) && slots[i]!.run === slots[sink]!.run && slots[i]!.width === 600 && Math.abs(slots[i]!.at - slots[sink]!.at) <= Math.max(slots[i]!.width, slots[sink]!.width) + 1);
-  if (side !== undefined) out.dishwasher = side;
-  // The hob: two slots at least from the sink, not under a window nor at an edge; the farthest such one along the runs.
-  const candidates = slots.map((_, i) => i).filter((i) => ok(i) && Math.abs(i - sink) >= 2 && !slots[i]!.window);
-  const hob = candidates.find((i) => !slots[i]!.edge && i > sink) ?? candidates.find((i) => !slots[i]!.edge) ?? candidates[0];
-  if (hob !== undefined) out.hob = hob;
-  return out;
+  const dishwasherBy = (sink: number) => [sink + 1, sink - 1].find((i) => ok(i, [sink]) && slots[i]!.run === slots[sink]!.run && slots[i]!.width === 600 && Math.abs(slots[i]!.at - slots[sink]!.at) <= Math.max(slots[i]!.width, slots[sink]!.width) + 1);
+  // The hob: the fewest of the triangle's advice broken — 1.20 m at least from the sink on the floor (across a corner,
+  // two slots apart can be side by side), and with the fridge when known, 2.70 m at most a side and 4 to 7 m in all —,
+  // then not at an edge, then after the sink; never under a window.
+  const hobScore = (sink: number, i: number) => {
+    const sides = fridge ? [dist(slots[i]!.middle, slots[sink]!.middle), dist(slots[i]!.middle, fridge), dist(fridge, slots[sink]!.middle)] : [dist(slots[i]!.middle, slots[sink]!.middle)];
+    const total = sides.reduce((x, y) => x + y, 0);
+    const broken = sides.filter((d) => tooNear(d) || (fridge && tooFar(d))).length + (fridge && (total < 4000 || total > 7000) ? 1 : 0);
+    return broken * 4 + (slots[i]!.edge ? 2 : 0) + (i < sink ? 1 : 0);
+  };
+  // Sink, dishwasher and hob chosen together: the fewest warnings (a dishwasher not beside the sink is one), then the
+  // sink nearest the third of wall A.
+  let best: { cost: number; out: Partial<Record<Role, number>> } | null = null;
+  for (const sink of sinks) {
+    const dishwasher = dishwasherBy(sink);
+    const hob = slots.map((_, i) => i).filter((i) => ok(i, [sink, dishwasher]) && !slots[i]!.window).reduce<number | undefined>((b, i) => (b === undefined || hobScore(sink, i) < hobScore(sink, b) ? i : b), undefined);
+    const cost = (hob === undefined ? 100 : hobScore(sink, hob)) + (dishwasher === undefined ? 4 : 0) + Math.abs(sink - third) / 100;
+    if (!best || cost < best.cost) best = { cost, out: { sink, ...(dishwasher !== undefined ? { dishwasher } : {}), ...(hob !== undefined ? { hob } : {}) } };
+  }
+  return best?.out ?? {};
 }
 
 const dist = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+// Two posts of the triangle 1.20 to 2.70 m apart (exactly 1.20 m is not « less than 1.20 m »).
+const tooNear = (d: number) => d < 1200 - 0.5;
+const tooFar = (d: number) => d > 2700 + 0.5;
 const m = (mm: number) => `${(mm / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} m`;
 
 /** What the kitchen does well or not, as short sentences: the work triangle, the passage, the hob's sides. */
@@ -57,11 +70,11 @@ export function ergonomics(places: { sink?: [number, number]; hob?: [number, num
     if (total < 4000) warn.push(`${label} : trop serré (4 à 7 m conseillés).`);
     else if (total > 7000) warn.push(`${label} : trop de pas (4 à 7 m conseillés).`);
     else ok.push(`${label} (4 à 7 m conseillés).`);
-    if (sides.some((s) => s < 1200)) warn.push("Deux postes du triangle sont à moins de 1,20 m l'un de l'autre.");
-    if (sides.some((s) => s > 2700)) warn.push("Deux postes du triangle sont à plus de 2,70 m l'un de l'autre.");
+    if (sides.some(tooNear)) warn.push("Deux postes du triangle sont à moins de 1,20 m l'un de l'autre.");
+    if (sides.some(tooFar)) warn.push("Deux postes du triangle sont à plus de 2,70 m l'un de l'autre.");
   } else if (sink && hob) {
     const d = dist(sink, hob);
-    (d >= 1200 ? ok : warn).push(`Évier et plaque à ${m(d)} l'un de l'autre (1,20 m au moins conseillé).`);
+    (tooNear(d) ? warn : ok).push(`Évier et plaque à ${m(d)} l'un de l'autre (1,20 m au moins conseillé).`);
   }
   if (checks.islandPassage !== undefined) {
     const p = checks.islandPassage;

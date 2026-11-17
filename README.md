@@ -2406,9 +2406,11 @@ opération existante.
     fenêtre, et un plafond bas près du mur (retombée, rampant) les ôte ; le panneau dit ce qui a été évité.
   - **Angle** (L, U) : mort et fermé par deux fileurs, ou **meuble d'angle** (un caisson qui file dans l'angle, une
     porte de 45 cm et un panneau fixe dans l'angle).
-  - **Électroménager** : l'**évier** sous la fenêtre du mur A (sinon vers son premier tiers), le **lave-vaisselle**
-    juste à côté (sa façade, sans caisson), la **plaque** à deux modules au moins de l'évier, pas sous une fenêtre
-    ni au bout du plan, avec le **four** sous elle (ou en **colonne**), la **hotte** et son conduit à la place du
+  - **Électroménager** : l'**évier** sous la fenêtre du mur A (sinon sur ce mur, vers son premier tiers), le
+    **lave-vaisselle** juste à côté (sa façade, sans caisson), la **plaque** pas sous une fenêtre ni au bout du plan —
+    l'évier et la plaque choisis ensemble pour que le triangle avec le réfrigérateur suive ses conseils (1,20 à 2,70 m
+    entre deux postes, mesurés au sol : dans un angle, la plaque ne tombe plus juste à côté de l'évier) —, avec le
+    **four** sous elle (ou en **colonne**), la **hotte** et son conduit à la place du
     meuble haut au-dessus, la **colonne réfrigérateur** au bout libre (du mur A, du mur B en U). Le plan de travail
     est **découpé** pour l'évier et la plaque (usinages « Découpes », comme l'outil Découpes) ; les appareils vont
     sur le calque « Électroménager », hors débit et devis.

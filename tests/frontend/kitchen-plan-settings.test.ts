@@ -42,3 +42,23 @@ describe("réglages de l'Implantation sur le plan de cuisine", () => {
     expect(models(plan()).includes("app-hob-oven")).toBe(true);
   });
 });
+
+describe("« Proposer » suit les conseils de son propre triangle d'activité", () => {
+  const warnings = (p: KitchenFloorPlan) => built(p).ergonomics?.warn ?? [];
+
+  it("en U et en G : la plaque n'est plus mise juste après l'angle, à côté de l'évier (deux modules d'écart dans l'ordre, côte à côte au sol)", () => {
+    for (const p of [plan({ model: "U" }), plan({ model: "U", lengthA: 4800 }), plan({ model: "G-left", lengthA: 4800 }), plan({ model: "U", ovenColumn: true })]) expect(warnings(p)).toEqual([]);
+  });
+
+  it("deux postes à 1,20 m tout juste ne sont pas « à moins de 1,20 m »", () => {
+    expect(warnings(plan({ model: "I", lengthA: 4800 }))).toEqual([]);
+  });
+
+  it("sur toutes les formes et longueurs, deux fois moins d'avertissements qu'avant", () => {
+    let n = 0;
+    for (const model of ["I", "L-left", "L-right", "U", "G-left", "G-right", "facing"] as const)
+      for (const lengthA of [2400, 3000, 3600, 4200, 4800]) for (const ovenColumn of [false, true]) n += warnings(plan({ model, lengthA, ovenColumn })).length;
+    // 67 before: the hob chosen two slots from the sink in run order, the sink always at a third of wall A.
+    expect(n).toBeLessThanOrEqual(30);
+  });
+});

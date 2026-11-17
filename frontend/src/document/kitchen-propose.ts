@@ -37,6 +37,7 @@ export function proposeKitchen(p: KitchenFloorPlan, room?: KitchenRoomInfo): { r
   const rest: Record<string, RestSide> = {};
   const slots: (Slot & { item: KitchenRunItem; mid: number })[] = [];
   const highs: { run: string; at: number; item: KitchenRunItem }[] = [];
+  let fridge: [number, number] | undefined;
   for (const run of all) {
     const right = fromRight(run);
     rest[run.id] = run.id === "I" ? "both" : right ? "start" : "end";
@@ -80,6 +81,8 @@ export function proposeKitchen(p: KitchenFloorPlan, room?: KitchenRoomInfo): { r
         }
       }
     }
+    // The fridge's front, for the work triangle: the last column, at the very end of the run.
+    if (column && tall[0] === "app-fridge") fridge = runAt(run, freeEnd === "right" ? g.base[1] - COLUMN / 2 : g.base[0] + COLUMN / 2, run.back + s.cabinet + FRONT);
     const columnItems = column ? tall.reduce<KitchenRunItem[]>((list, m) => [...list, newItem([...items, ...wallItems, ...list], m, COLUMN)], []) : [];
     // The fridge at the very end, the oven column next to the units.
     const lows = freeEnd === "right" ? [...baseItems, ...[...columnItems].reverse()] : [...columnItems, ...baseItems];
@@ -87,7 +90,7 @@ export function proposeKitchen(p: KitchenFloorPlan, room?: KitchenRoomInfo): { r
   }
   // The appliances, among the base slots in the Implantation's order.
   if (!appliances) return { runs, rest };
-  const roles = placeAppliances(slots);
+  const roles = placeAppliances(slots, fridge);
   const swap = (item: KitchenRunItem, to: string, width = item.width) => Object.assign(item, { model: to, width });
   if (roles.sink !== undefined) swap(slots[roles.sink]!.item, "app-sink");
   if (roles.dishwasher !== undefined) swap(slots[roles.dishwasher]!.item, "app-dishwasher");
