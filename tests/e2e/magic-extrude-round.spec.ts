@@ -63,7 +63,7 @@ test("Magie extrusion : le dessus d'un cylindre se lit — distances au bord pou
     const features = project.document.features as { type: string }[];
     return [features.filter((f) => f.type === "sketch").length, features.filter((f) => f.type === "extrude").length];
   };
-  const [sketches, extrudes] = await count();
+  const [sketches, extrudes] = (await count()) as [number, number];
   await tool.getByRole("checkbox", { name: "Puis tirer / pousser" }).uncheck();
   await page.mouse.move(found, cy);
   await page.mouse.move(found + 1, cy);

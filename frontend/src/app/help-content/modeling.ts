@@ -35,7 +35,7 @@ export const MODELING: HelpFamily[] = [
         name: "Toit",
         what: "Plie le dessus d'un bloc en toit à deux pans ou arrondi (niche pour chien, cabane, abri).",
         steps: [
-          "Dessinez, sur le dessus du bloc, une seule ligne parallèle à un de ses bords.",
+          "Dessinez, sur le dessus du bloc, une seule ligne parallèle à un de ses bords — à l'esquisse, ou avec Magie extrusion (« Trait depuis une arête », « Puis tirer / pousser » décoché) : les traits de sa bande posés sur le contour ne comptent pas.",
           "Sélectionnez cette esquisse et cliquez « Toit ». Sans sélection, l'outil prend la dernière ligne trouvée sur un dessus.",
           "Choisissez la « Forme » : « Deux pans » ou « Arrondi (voûte) ».",
           "Tirez la flèche vers le haut ou tapez la « Hauteur du faîtage » (« Hauteur de la voûte » si arrondi).",

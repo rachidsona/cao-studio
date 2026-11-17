@@ -20,12 +20,24 @@ import { PanelTool, type ToolContext } from "./panel-tool";
 /** Kept for the session: the last shape chosen. */
 let lastShape: RoofShape = "gable";
 
-/** The one line of a sketch, in the model; null when it has another drawing. */
+/**
+ * The one line of a sketch, in the model; null when it has another drawing. Lines lying along the face's projected
+ * outline do not count: a line laid by Magie extrusion is kept with the band it closes on the outline.
+ */
 function sketchLine(sketch: SketchFeature): [Vec3, Vec3] | null {
-  const lines = sketch.curves.filter((c) => !c.construction);
+  const at = (id: string) => sketch.points.find((p) => p.id === id);
+  const ends = (c: SketchFeature["curves"][number]) => (c.kind === "line" ? [at(c.p1), at(c.p2)] : []);
+  const outline = sketch.curves.filter((c) => c.projected && c.kind === "line").map(ends);
+  const onSegment = (p: { x: number; y: number }, [a, b]: (typeof outline)[number]) => {
+    if (!a || !b) return false;
+    const [dx, dy] = [b.x - a.x, b.y - a.y];
+    const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1);
+    return t > -1e-6 && t < 1 + 1e-6 && Math.hypot(a.x + dx * t - p.x, a.y + dy * t - p.y) < 1e-3;
+  };
+  const along = (c: SketchFeature["curves"][number]) => outline.some((o) => ends(c).every((p) => p && onSegment(p, o)));
+  const lines = sketch.curves.filter((c) => !c.construction && !along(c));
   const line = lines[0];
   if (lines.length !== 1 || line?.kind !== "line") return null;
-  const at = (id: string) => sketch.points.find((p) => p.id === id);
   const [a, b] = [at(line.p1), at(line.p2)];
   if (!a || !b) return null;
   const frame = frameOf(sketch);
