@@ -14,7 +14,7 @@
 import { el } from "./dom";
 import { STATE_BADGES, TYPE_ICONS, type NavItem } from "./feature-meta";
 import { renameFolder, treeMenu, wireDrag, type TreeContext } from "./browser-actions";
-import { chevronIcon, dotsIcon, eyeIcon, fine, folderIcon, trashIcon } from "./icons";
+import { dotsIcon, eyeIcon, fine, folderIcon, foldChevron as fold, trashIcon } from "./icons";
 
 export interface BrowserHandlers {
   /** `adding`: Ctrl, Cmd or Maj was held (adds to, or removes from, a multiple selection). */
@@ -93,14 +93,6 @@ const toggled = loadToggled();
 const isOpen = (key: string) => (key.startsWith("group:") && !key.startsWith("group:kind:") ? !toggled.has(key) : toggled.has(key));
 /** While the search filters the tree (browser-filter.ts), its folders are open, to show what was found (not the bodies' histories). */
 let showAll = false;
-
-/** The drawn chevron of a fold (MASTER.md § 8), turned down when open; `extra`: its own classes. */
-function fold(extra: string): SVGElement {
-  const svg = fine(chevronIcon(), 12);
-  svg.setAttribute("class", `shrink-0 transition-transform ${extra}`);
-  for (const node of svg.children) node.setAttribute("stroke-width", "2");
-  return svg;
-}
 
 function chevron(key: string, name: string): HTMLElement {
   const open = isOpen(key);

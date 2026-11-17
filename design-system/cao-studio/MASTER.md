@@ -137,6 +137,9 @@ Pas de défilement horizontal de la page. Sur téléphone, un champ est en `text
   d'un quart de tour quand c'est ouvert ; jamais ▸ ▾ en caractère. Dans le Navigateur, leur cible fait 24 px.
 - **Titre de section du Navigateur** : sur une ligne, le nombre à part en `font-mono text-3xs` (« CORPS 7 »), jamais
   entre parenthèses ; au doigt, ses boutons se touchent pour lui laisser la place.
+- **Cartes des Propriétés** (`section` de `ui/fields.ts`) : le chevron dessiné (`foldChevron`), le nom en
+  `.panel-title` et, s'il y a lieu, ce qu'il contient en petites lettres grises (« SÉLECTION 1 corps ») — on écrit le
+  titre « Sélection (1 corps) », la carte le sépare. Une ligne : le nom en gris (`gray-600`), la valeur en encre.
 - **Pas d'emoji comme icône** d'interface. Les signes typographiques (✕ ✓ ★ ▸ ⋯) restent permis, dans la couleur du texte.
 - Une icône seule a un `aria-label` ; une icône à côté d'un texte a `aria-hidden="true"`.
 

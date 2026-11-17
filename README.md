@@ -1483,6 +1483,9 @@ opération existante.
   **Navigateur** : ses chevrons (déplier, replier, tout replier) sont dessinés de la même famille, sur des cibles de
   24 px ; le titre des sections tient sur une ligne, le nombre à part (« CORPS 7 »), même au doigt dans la colonne
   étroite d'une tablette en paysage.
+  **Propriétés** : leurs cartes et les titres pliables prennent le même chevron dessiné ; le titre garde son nom en
+  capitales et dit à part ce qu'il contient (« SÉLECTION 1 corps ») ; dans une ligne, le nom est en gris et la valeur
+  en encre ; sans sélection, le panneau renvoie au Navigateur.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne
