@@ -12,6 +12,9 @@
 /* The themes of gestion menuiserie: palettes, light theme (palettes.css). */
 @import "./palettes.css";
 
+/* The « Élégant » style: other shapes and surfaces, whatever the palette (style-elegant.css). */
+@import "./style-elegant.css";
+
 /*
  * Tailwind's greys and blues, used by every panel, border, text and button of the app, follow the theme: the
  * palette chosen in dark, Tailwind's own colours in light (palettes.css).

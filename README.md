@@ -1482,6 +1482,13 @@ opération existante.
   **clair** l'emporte sur les palettes (fonds blancs, accent bleu), les boutons gardant le dégradé de la palette,
   comme dans la gestion. Techniquement, les gris et les bleus de Tailwind (`gray`, `sky`) sont tirés des variables
   de la palette (`styles/palettes.css`) : tout le reste suit sans toucher aux gabarits.
+- **Style de l'interface** (menu **« ⋯ » → Style**, gardé dans le navigateur, `localStorage` « style », posé avant le
+  premier affichage sur toutes les pages) : **Classique** — angles droits, cartes en dégradé, halo de l'accent — ou
+  **Élégant** : coins arrondis (boutons et champs 8 px, cartes 14 px), surfaces unies sans dégradé ni halo, filets fins
+  tirés de l'encre, ombres douces, boutons principaux d'un seul ton sans soulèvement, titres en caractères à
+  empattements (Playfair Display, chargée seulement quand ce style est choisi), cartes de l'éditeur un peu plus
+  espacées. Un style change les **formes et les matières**, pas les couleurs : il va avec chaque palette et avec le
+  thème clair (`styles/style-elegant.css`, classe `style-elegant` sur `<html>`).
 - **Système de design** (`design-system/cao-studio/MASTER.md`) : la référence de l'apparence — couleurs par jeton
   (gris et accent de la palette, l'orange des cotes `text-dimension`), tailles de texte nommées (`text-3xs` 10 px,
   `text-2xs` 11 px, rien en pixels écrits à la main), rayons nommés des pages d'accueil (`rounded-tag`, `chip`,
