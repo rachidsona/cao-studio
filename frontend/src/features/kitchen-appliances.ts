@@ -33,12 +33,13 @@ export function placeAppliances(slots: readonly Slot[], fridge?: [number, number
   const dishwasherBy = (sink: number) => [sink + 1, sink - 1].find((i) => ok(i, [sink]) && slots[i]!.run === slots[sink]!.run && slots[i]!.width === 600 && Math.abs(slots[i]!.at - slots[sink]!.at) <= Math.max(slots[i]!.width, slots[sink]!.width) + 1);
   // The hob: the fewest of the triangle's advice broken — 1.20 m at least from the sink on the floor (across a corner,
   // two slots apart can be side by side), and with the fridge when known, 2.70 m at most a side and 4 to 7 m in all —,
-  // then not at an edge, then after the sink; never under a window.
+  // then not at an edge, then after the sink; never under a window, on the island only when nothing else is left.
   const hobScore = (sink: number, i: number) => {
     const sides = fridge ? [dist(slots[i]!.middle, slots[sink]!.middle), dist(slots[i]!.middle, fridge), dist(fridge, slots[sink]!.middle)] : [dist(slots[i]!.middle, slots[sink]!.middle)];
     const total = sides.reduce((x, y) => x + y, 0);
     const broken = sides.filter((d) => tooNear(d) || (fridge && tooFar(d))).length + (fridge && (total < 4000 || total > 7000) ? 1 : 0);
-    return broken * 4 + (slots[i]!.edge ? 2 : 0) + (i < sink ? 1 : 0);
+    // On a wall, under its hood (none is put over an island: the plan passes its slots as « I »), unless nothing else.
+    return ((slots[i]!.run as string) === "I" ? 100 : 0) + broken * 4 + (slots[i]!.edge ? 2 : 0) + (i < sink ? 1 : 0);
   };
   // Sink, dishwasher and hob chosen together: the fewest warnings (a dishwasher not beside the sink is one), then the
   // sink nearest the third of wall A.

@@ -50,6 +50,12 @@ describe("« Proposer » suit les conseils de son propre triangle d'activité", 
     for (const p of [plan({ model: "U" }), plan({ model: "U", lengthA: 4800 }), plan({ model: "G-left", lengthA: 4800 }), plan({ model: "U", ovenColumn: true })]) expect(warnings(p)).toEqual([]);
   });
 
+  it("avec un îlot, la plaque reste sur un mur, sous sa hotte", () => {
+    const runs = proposeKitchen(plan({ island: true })).runs;
+    expect(runs.I!.map((i) => i.model).filter((m) => m.startsWith("app-hob"))).toEqual([]);
+    expect(Object.values(runs).flat().some((i) => i.model === "app-hood")).toBe(true);
+  });
+
   it("deux postes à 1,20 m tout juste ne sont pas « à moins de 1,20 m »", () => {
     expect(warnings(plan({ model: "I", lengthA: 4800 }))).toEqual([]);
   });
