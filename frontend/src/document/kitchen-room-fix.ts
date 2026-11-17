@@ -3,10 +3,10 @@
  * que le projet a une Pièce relevée, et les deux ne se recouvrent pas. La cuisine suit la pièce : son plan est posé sur le
  * mur de la pièce qui la déplace le moins (le même choix que « Mur A dans la pièce » du Plan de cuisine), ses longueurs et
  * sa hauteur sous plafond en viennent, et elle est refaite — les meubles posés gardent leur ordre, ce qui ne tient plus
- * est dit. Une seule annulation. Pur.
+ * est dit. Une seule annulation. Un plan neuf, lui, est posé d'office sur la pièce (planOnRoom). Pur.
  */
 import { kitchenPlanIn, kitchenRunOf, withKitchenChanged } from "./kitchen-floor";
-import { linkedKitchen } from "./kitchen-plan-room";
+import { linkedKitchen, unlinkedKitchen } from "./kitchen-plan-room";
 import { planRooms } from "./plan-room";
 import { featureOfBody, type CadDocument, type KitchenFloorPlan, type RoomFeature } from "./types";
 import { bodyOrigin } from "./operations";
@@ -68,4 +68,23 @@ export function withKitchenOnRoom(doc: CadDocument, fix: KitchenRoomFix): { doc:
   const linked = linkedKitchen(plan, fix.room, fix.wall);
   if (typeof linked === "string") return linked;
   return withKitchenChanged(doc, fix.plan, linked);
+}
+
+/**
+ * A plan on the project's surveyed room, as a magnet: its wall A on the wall that moves it least, its sizes the walls'
+ * — nothing of it can stand in them. Already on a wall of this project, it is measured again on it (another shape has
+ * other walls). As it is, its sizes typed, without a room or when no wall takes this shape.
+ */
+export function planOnRoom(doc: CadDocument, plan: KitchenFloorPlan): KitchenFloorPlan {
+  const rooms = planRooms(doc);
+  const known = rooms.find((r) => r.id === plan.room?.id);
+  const again = known ? linkedKitchen(plan, known, plan.room!.wall) : null;
+  if (again && typeof again !== "string") return again;
+  const free = unlinkedKitchen(plan);
+  for (const room of rooms) {
+    const wall = nearestWall(free, room);
+    const linked = wall === null ? null : linkedKitchen(free, room, wall);
+    if (linked && typeof linked !== "string") return linked;
+  }
+  return free;
 }

@@ -13,6 +13,7 @@ import * as THREE from "three";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../../document/kitchen-floor";
 import { kitchenFromPlan } from "../../document/kitchen-plan-build";
 import { kitchenMarks, kitchenRoomInfo, linkedKitchen, unlinkedKitchen } from "../../document/kitchen-plan-room";
+import { planOnRoom } from "../../document/kitchen-room-fix";
 import { CORNER_KINDS, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../document/kitchen-propose";
@@ -63,6 +64,8 @@ export interface OpenRun {
   add(entry: CatalogEntry): void;
 }
 let current: KitchenPlanTool | null = null;
+/** « Cotes tapées ici » chosen: a new plan is no longer put on the room by itself (kept for the visit). */
+let typed = false;
 /** The run seen alone in the view, with its dimensions. */
 let seen: { plan: string; run: string } | null = null;
 export const kitchenRunOpen = (): OpenRun | null => current?.openRunInfo() ?? null;
@@ -104,6 +107,8 @@ export class KitchenPlanTool {
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     placePanel(container, this.panel, { first: true, quiet });
     const placed = this.placed();
+    // A room surveyed: the new plan stands on its walls, as a magnet — not in them (document/kitchen-room-fix.ts).
+    if (!placed && !typed) this.plan = planOnRoom(this.editor.doc, this.plan);
     const zone = placed && run ? kitchenRuns(kitchenPlanIn(this.editor.doc, placed.id)!).find((r) => r.id === run) : undefined;
     if (placed && zone) this.openRun(placed.id, zone, false);
     else this.draw();
@@ -164,7 +169,9 @@ export class KitchenPlanTool {
   // ---- the model and its sizes --------------------------------------------------------
 
   private set(patch: Partial<KitchenFloorPlan>): void {
-    this.plan = last = { ...this.plan, ...patch };
+    const next = { ...this.plan, ...patch };
+    // On a room, another shape takes its sizes from its own walls.
+    this.plan = last = patch.model && next.room ? planOnRoom(this.editor.doc, next) : next;
     this.draw();
     const placed = this.placed();
     if (this.editing && placed) this.changeSoon(placed.id);
@@ -244,6 +251,7 @@ export class KitchenPlanTool {
       const room = rooms.find((r) => r.id === id);
       const next = room ? linkedKitchen(this.plan, room, Number(wall)) : unlinkedKitchen(this.plan);
       if (typeof next === "string") return this.editor.notify(next, "error");
+      typed = !room;
       this.set(next);
     });
   }

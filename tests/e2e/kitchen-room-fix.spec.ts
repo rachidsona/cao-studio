@@ -54,3 +54,44 @@ test("une cuisine de 3,6 m dans une pièce de 3 m : « Corriger » la pose sur l
   }).toPass({ timeout: 60_000 });
   expect(errors).toEqual([]);
 });
+
+test("un plan neuf dans un projet qui a une pièce : posé d'office sur ses murs, la cuisine proposée n'entre dans aucun", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-cuisine-aimant");
+  const surveyed = setBodyInfo({ ...createReferencePlate(), features: [room] } as CadDocument, [0, 1, 2, 3].map((i) => `pc1#${i}`), { room: true });
+  const { features, layers, bodyInfo } = surveyed as CadDocument & { layers?: unknown; bodyInfo?: unknown };
+  await page.evaluate(async ({ url, features, layers, bodyInfo }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, ...(layers ? { layers } : {}), ...(bodyInfo ? { bodyInfo } : {}) }, base_version: now.version, message: "Pièce" }) });
+  }, { url: api, features, layers, bodyInfo });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  const click = (selector: string) => page.evaluate((sel) => document.querySelector<HTMLElement>(sel)?.click(), selector);
+  await click('[data-ribbon-tab="kitchen"]');
+  await click('[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  // The room is there: wall A stands on one of its walls, its sizes are the room's (none to type).
+  await expect(tool.getByLabel("Mur A dans la pièce")).toHaveValue("pc1:0");
+  await tool.getByRole("button", { name: "En U", exact: true }).click();
+  await expect(tool.getByLabel("Mur A dans la pièce")).toHaveValue("pc1:0");
+  await expect(tool).toContainText("Cotes de la pièce : mur A");
+  await expect(tool.getByLabel("Longueur mur B")).toHaveCount(0);
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator("[data-propose]").click();
+  const confirm = page.getByRole("button", { name: "Proposer", exact: true });
+  if (await confirm.isVisible({ timeout: 3_000 }).catch(() => false)) await confirm.click();
+  await expect(page.getByText(/Cuisine proposée/).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 60_000 });
+  // Checked: whatever is left to look at, nothing runs into a wall.
+  await page.waitForTimeout(3_000);
+  const status = page.locator("[data-live-problems]");
+  if (await status.isVisible()) {
+    await status.click();
+    await expect(page.getByRole("dialog", { name: "Contrôle avant fabrication" })).not.toContainText("entre dans le mur", { timeout: 15_000 });
+  }
+  expect(errors).toEqual([]);
+});
+

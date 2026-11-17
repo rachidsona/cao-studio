@@ -1,5 +1,6 @@
 /** Un meuble déplacé ne se pose pas dans un autre : il est remis à côté, au ras. */
 import { describe, expect, it } from "vitest";
+import { stickDelta } from "../../frontend/src/document/kitchen-catalog";
 import { clearOf } from "../../frontend/src/features/box-clear";
 import type { Box } from "../../frontend/src/features/smart-align";
 
@@ -54,3 +55,27 @@ describe("un meuble déplacé reste hors des autres", () => {
     expect(clearOf(island, [base], [900, 1480, 0], [])).toBeNull();
   });
 });
+
+describe("un caisson collé contre un mur près d'un angle de la pièce", () => {
+  // A room 3 × 2,5 m (its wall A along x at y = 0, the room towards −y), walls 200 thick; a cabinet in its middle.
+  const wallA: Box = [[0, 0, 0], [3000, 200, 2500]];
+  const wallB: Box = [[3000, -2500, 0], [3200, 0, 2500]];
+  const wallD: Box = [[-200, -2500, 0], [0, 0, 2500]];
+  const cabinet: Box = [[1200, -1500, 0], [1800, -940, 870]];
+  const stuck = (x: number) => {
+    const delta = stickDelta(cabinet, 0, { kind: "face", point: [x, 0, 1200], normal: [0, -1, 0], other: wallA })!;
+    const clear = clearOf(cabinet, [wallA, wallB, wallD], delta.map(Math.round) as [number, number, number], [0, 1])!;
+    return [cabinet[0][0] + clear[0], cabinet[1][1] + clear[1]];
+  };
+
+  it("visé à 11 cm de l'angle : centré, il entrerait de 18 cm dans le mur d'à côté — il est glissé au ras, le dos au mur", () => {
+    expect(stickDelta(cabinet, 0, { kind: "face", point: [115, 0, 1200], normal: [0, -1, 0], other: wallA })![0]).toBeLessThan(-1200);
+    expect(stuck(115)).toEqual([0, 0]);
+    expect(stuck(2900)).toEqual([2400, 0]);
+  });
+
+  it("visé au milieu du mur : centré sur le point, rien ne le gêne", () => {
+    expect(stuck(1000)).toEqual([700, 0]);
+  });
+});
+

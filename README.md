@@ -779,7 +779,10 @@ opération existante.
 - **Intersection** : disponible aussi pour l'extrusion et la révolution.
 - **Déplacer** (bouton « Déplacer », ou dans le panneau Sélection) : ce qui est déplacé dépend de la
   sélection. Pour un corps, l'option **« Copier »** (comme Curic Gizmo) garde l'original et pose 1 à 10 copies, la k-ième
-  décalée k fois du déplacement (une opération « Copie n » de type réseau).
+  décalée k fois du déplacement (une opération « Copie n » de type réseau). Un **caisson déplacé en entier** — une flèche ou une tuile
+  tirée, le caisson qui suit la souris, un point cliqué — s'accroche aux murs et aux autres meubles et **n'entre jamais dedans** : amené dans un mur ou un
+  voisin, il est posé à côté, au ras (`features/box-clear.ts`, comme la poignée « ✥ ») ; l'accrochage intelligent éteint
+  le laisse libre.
   - un **corps** (filtre « Corps », navigateur, ou un sommet ou une arête de ce corps) : nouvelle opération
     « Déplacement » dans l'historique, où le noyau translate le **solide réel** (volume, boîte englobante,
     exports et opérations suivantes le voient à sa nouvelle place ; rien n'est seulement décalé à
@@ -2446,7 +2449,10 @@ opération existante.
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
     réfrigérateur, au bout libre).
-  « Mur A dans la pièce » pose le plan sur la Pièce relevée :
+  **Aimant sur la pièce** : dans un projet qui a une Pièce relevée, un plan neuf s'y pose de lui-même — son mur A sur le
+  mur qui le déplace le moins, ses cotes celles des murs —, pour qu'aucun meuble n'entre dans un mur ; une autre forme
+  reprend ses cotes sur ses murs ; « Cotes tapées ici » le libère pour la visite (`planOnRoom`,
+  `document/kitchen-room-fix.ts`). « Mur A dans la pièce » pose le plan sur la Pièce relevée :
   cotes et plafond en viennent, ses portes, fenêtres, prises et retombées sont marquées sur le schéma, les meubles bas
   laissent les portes libres, les hauts les fenêtres, et un plafond bas ôte les hauts (`document/kitchen-plan-room.ts`).
   **Murs hors d'équerre** : un mur B ou C qui fait avec le mur A un angle relevé jusqu'à 5° de l'équerre est pris (les
@@ -2759,6 +2765,8 @@ opération existante.
     - Sur le côté d'un voisin : son côté contre lui, les fonds alignés.
     - Sur un mur ou une façade : son fond contre elle, centré sur le point, aimanté aux voisins.
     - Sur un coin : son coin le plus proche dessus. Échap annule ; la vue tourne toujours en glissant.
+    - **Jamais dans un mur ni dans un voisin** : visé près d'un angle de la pièce (centré, il dépasserait dans le mur
+      d'à côté), il est glissé au ras de ce mur, le dos contre celui qu'on a cliqué (`clearOf`).
   - **↻** le tourne d'un quart de tour sur place.
   - Le document ne change qu'au lâcher ou au clic, une annulation (`app/cabinet-drag.ts`, `app/cabinet-stick.ts`).
 - **Pièce** (groupe « Pièce ») : le relevé de la pièce, tel qu'on le mesure.

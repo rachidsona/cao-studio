@@ -2,13 +2,15 @@
  * « Coller » un caisson : un clic sur sa poignée ✥ (sans la tirer), puis un clic sur une face debout ou un coin d'un
  * autre corps — un meuble, un mur. Au survol, un fantôme orange montre où il ira : son côté contre le côté d'un
  * voisin (fonds alignés), son fond contre un mur ou une façade (centré sur le point, aimanté aux voisins), ou son coin
- * le plus proche sur le coin pointé (document/kitchen-catalog.ts, stickDelta). Le clic l'y pose, une annulation ;
+ * le plus proche sur le coin pointé (document/kitchen-catalog.ts, stickDelta) — jamais dans un mur ni dans un voisin :
+ * visé près d'un angle de la pièce, il est glissé au ras (features/box-clear.ts). Le clic l'y pose, une annulation ;
  * Échap rend la main. La vue tourne toujours en glissant.
  */
 import * as THREE from "three";
 import { cabinetAxes, slideCabinet, stickDelta, type StickTarget } from "../document/kitchen-catalog";
 import { bodyOrigin, findFeature, updateFeature } from "../document/operations";
 import { featureOfBody, type CabinetFeature, type Vec3 } from "../document/types";
+import { clearOf } from "../features/box-clear";
 import { alignBox, type Box } from "../features/smart-align";
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { faceSnaps } from "../viewport/face-snaps";
@@ -84,7 +86,11 @@ export function stickCabinet(viewport: Viewport, editor: Editor, cabinet: Cabine
       const j = Math.abs(n[0]) >= Math.abs(n[1]) ? 1 : 0;
       if (Math.abs(cabinetAxes(rotation).back[j]!) <= 0.5) ({ translate: delta, guides: lines } = alignBox(box, others, delta, [j], 12 * viewport.worldPerPixel()));
     }
-    current = hit && delta ? { delta: delta.map(Math.round) as Vec3, bodyId: hit.bodyId } : null;
+    // Never into a wall or a neighbour (a point near the corner of the room): slid out of it, flush; no place: none shown.
+    const rounded = delta ? (delta.map(Math.round) as Vec3) : null;
+    const clear = rounded ? clearOf(box, others, rounded, [0, 1]) : null;
+    if (clear !== rounded) lines = [];
+    current = hit && clear ? { delta: clear, bodyId: hit.bodyId } : null;
     ghost.visible = !!current;
     if (current) ghost.position.set(...([0, 1, 2].map((i) => (box[0][i]! + box[1][i]!) / 2 + current!.delta[i]!) as Vec3));
     guides.show(current ? lines : [], viewport);

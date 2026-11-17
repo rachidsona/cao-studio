@@ -24,6 +24,7 @@ import { bodyVertices } from "../viewport/body-points";
 import { faceSnaps, ontoPlane, type FaceSnaps } from "../viewport/face-snaps";
 import { SnapDots } from "../viewport/snap-squares";
 import { AXIS_NAMES, MoveGizmo, type GizmoHandle } from "../viewport/move-gizmo";
+import { clearOf } from "../features/box-clear";
 import { alignBox, type Box, type Guide } from "../features/smart-align";
 import { SnapGuides } from "../viewport/snap-guides";
 import { AXIS_LOCK_OPTIONS, AxisLock, lockMove, type AxisLockMode } from "./axis-lock";
@@ -417,7 +418,7 @@ export class MoveTool extends PanelTool {
   /** The direction changed: the target is reached again along it. */
   private relock(): void {
     const d = this.reachMove();
-    if (d) this.setTranslate(d);
+    if (d) this.setTranslate(this.clear(d));
     else this.render();
   }
 
@@ -437,7 +438,7 @@ export class MoveTool extends PanelTool {
     const snap = hover && hover.index >= 0 ? (hover.points[hover.index] ?? null) : null;
     const face = snap ? null : (this.ctx.viewport.pickFace(event, (id) => id === this.subject.id || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`))?.point.toArray() as Vec3 | undefined) ?? null;
     const d = followMove({ source: this.source, ray: this.ctx.viewport.rayFromEvent(event), axis: this.axisDir(), snap, face, step: dragStep(this.ctx.viewport.worldPerPixel()) });
-    if (d) this.setTranslate(lockMove(d, this.lock.of(event)));
+    if (d) this.setTranslate(this.clear(lockMove(d, this.lock.of(event))));
     this.showAxis();
   }
 
@@ -562,10 +563,23 @@ export class MoveTool extends PanelTool {
     const result = toGlobal(frame, start.map((s, i) => (along.includes(i) ? roundTo(moved[i] as number, step) : s)) as Vec3);
     // Smart snapping (global axes): a face or the middle of the body stops at the level of another body's.
     if (!bodySnap.smart || !this.box || frame !== GLOBAL_FRAME) return (this.guides.clear(), result);
-    const own = (id: string) => (id === this.subject.id && this.copies === 0) || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
-    const aligned = alignBox(this.box, otherBoxes(this.ctx.viewport, own), result, along, bodySnap.tolerance(this.ctx.viewport));
-    this.guides.show(aligned.guides, this.ctx.viewport);
-    return aligned.translate;
+    const aligned = alignBox(this.box, otherBoxes(this.ctx.viewport, this.own), result, along, bodySnap.tolerance(this.ctx.viewport));
+    const clear = this.clear(aligned.translate, along);
+    this.guides.show(clear === aligned.translate ? aligned.guides : [], this.ctx.viewport);
+    return clear;
+  }
+
+  /** What is moved, its preview and its copies: not in its own way. */
+  private readonly own = (id: string): boolean => (id === this.subject.id && this.copies === 0) || this.group.has(id) || featureOfBody(id) === this.id || id.startsWith(`${this.copy.id}#`);
+
+  /**
+   * A cabinet moved whole with the pointer (an arrow dragged, the pointer followed, a point clicked) never goes into a
+   * wall or a neighbour: beside it, flush — no place clear on its way: where it is (features/box-clear.ts). The smart
+   * snapping off, a distance typed, or anything else moved: as asked.
+   */
+  private clear(move: Vec3, axes: readonly number[] = [0, 1, 2]): Vec3 {
+    if (!this.cabinet || !this.box || !bodySnap.smart) return move;
+    return clearOf(this.box, otherBoxes(this.ctx.viewport, this.own), move, axes) ?? this.translate;
   }
 
   override up(event: PointerEvent, isClick: boolean): boolean {
@@ -709,7 +723,7 @@ export class MoveTool extends PanelTool {
     this.hover = null;
     this.placeSnaps();
     const d = this.reachMove();
-    if (d) this.setTranslate(d);
+    if (d) this.setTranslate(this.clear(d));
     else this.sync();
   }
 

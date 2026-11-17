@@ -4,7 +4,7 @@ import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import { kitchenRoomFixes, withKitchenOnRoom } from "../../frontend/src/document/kitchen-room-fix";
+import { kitchenRoomFixes, planOnRoom, withKitchenOnRoom } from "../../frontend/src/document/kitchen-room-fix";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type RoomFeature } from "../../frontend/src/document/types";
 import { roomClashes } from "../../frontend/src/features/room-plan";
 
@@ -59,3 +59,29 @@ describe("cuisine qui entre dans les murs de la pièce", () => {
     expect(kitchenRoomFixes(doc, ["inconnu"])).toEqual([]);
   });
 });
+
+describe("un plan neuf dans un projet qui a une pièce", () => {
+  const base: CadDocument = { ...createReferencePlate(), features: [room] };
+  const typed = { ...KITCHEN_PLAN, model: "U" as const, lengthA: 3600, lengthB: 2400, lengthC: 2400 };
+
+  it("est posé d'office sur la pièce : ses cotes sont celles des murs, aucun caisson proposé n'entre dans un mur", () => {
+    const plan = planOnRoom(base, typed);
+    expect(plan.room).toEqual({ id: "pc1", wall: 0 });
+    expect(plan.lengthA).toBeLessThanOrEqual(3000);
+    expect(plan.lengthB).toBeLessThanOrEqual(2500);
+    const { doc, id } = withKitchenPlan(base, plan);
+    const built = withKitchenBuilt(doc, id, proposeKitchen(plan, undefined));
+    if (typeof built === "string") throw new Error(built);
+    expect(cabinets(built.doc).length).toBeGreaterThan(0);
+    expect(inWalls(built.doc)).toEqual([]);
+  });
+
+  it("une autre forme reprend ses cotes sur son mur ; sans pièce, ou sa pièce d'un autre projet, les cotes tapées restent", () => {
+    const onRoom = planOnRoom(base, { ...typed, model: "I" as const });
+    expect(planOnRoom(base, { ...onRoom, model: "U" as const, lengthB: 9999 })).toMatchObject({ room: { id: "pc1", wall: 0 }, lengthB: planOnRoom(base, typed).lengthB });
+    expect(planOnRoom(createReferencePlate(), typed)).toEqual(typed);
+    const elsewhere = planOnRoom(createReferencePlate(), { ...onRoom, room: { id: "pc9", wall: 0 } });
+    expect(elsewhere.room).toBeUndefined();
+  });
+});
+

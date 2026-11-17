@@ -50,7 +50,7 @@ export const WOODWORKING: HelpFamily[] = [
         steps: [
           "Ouvrez l'onglet « Cuisine » et cliquez « Plan de cuisine » dans le groupe « Cuisine ».",
           "Choisissez un modèle : droite, en L, en U, en G (une péninsule au bout d'un mur) ou parallèle ; cochez « Îlot face au mur A » si vous en voulez un.",
-          "Si une pièce est relevée, choisissez « Mur A dans la pièce » : ses cotes, ses portes, fenêtres, prises et retombées viennent sur le schéma. Sinon tapez les longueurs et la « Hauteur sous plafond ».",
+          "Si une pièce est relevée, le plan s'y pose de lui-même, comme un aimant : « Mur A dans la pièce » est déjà sur un de ses murs, ses cotes, ses portes, fenêtres, prises et retombées viennent sur le schéma, et aucun meuble ne peut entrer dans un mur. Changez de mur dans cette liste, ou choisissez « Cotes tapées ici » pour taper les longueurs et la « Hauteur sous plafond ».",
           "« Voir » à côté d'un linéaire (ou « Voir mur A isolé » dans le linéaire) le montre seul, de face, avec ses cotes : largeurs en bas et en haut, longueur du mur, hauteurs. Cliquez une cote : la calculatrice s'ouvre à côté. Tapez la valeur ou un calcul (360 − 2 × 60, 1,2 m + 15 cm), au clavier ou sur son pavé, puis Entrée ou ✓ : le meuble, l'angle ou le mur suit, la cuisine est refaite ; une valeur refusée dit pourquoi. « Tout montrer » rend tout.",
           "Dans un linéaire, les boutons du haut (Mur A, Mur B, Mur C…) ouvrent les autres murs ; ce qui n'est pas appliqué l'est d'abord, si vous le voulez.",
           "Les murs et la bande restent en haut du panneau quand vous faites défiler ; décochez « Plan fixe » pour qu'ils défilent avec le reste (le choix vaut aussi pour la Répartition du dressing).",
@@ -95,7 +95,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Sans plan : sélectionnez le caisson à côté duquel poser le meuble ; sans sélection, le meuble suit le dernier caisson.",
           "Cliquez « Meubles de cuisine », puis l'onglet « Bas », « Hauts » ou « Colonnes » : chaque meuble est dessiné de face, avec ce qu'il contient et ses cotes.",
           "Survolez une largeur pour voir le meuble à cette taille, cliquez-la pour l'ajouter : il arrive sélectionné, construit comme son voisin.",
-          "Tirez sa poignée ✥ pour le placer le long du mur (Maj : librement). La poignée ↻ le tourne.",
+          "Tirez sa poignée ✥ pour le placer le long du mur (Maj : librement) : il s'accroche aux murs et aux meubles voisins comme un aimant et n'entre jamais dedans. Un clic sur ✥ sans tirer, puis un clic sur un mur ou un meuble, l'y colle — près d'un angle, il se pose au ras du mur d'à côté. La poignée ↻ le tourne.",
           "Pour un meuble qui n'est pas dans la liste, ouvrez l'onglet « Mes meubles » : « ＋ Décrire un nouveau meuble », ou « Ajouter … à ma liste » avec un caisson sélectionné.",
         ],
         tip: "Chaque clic est une annulation. « Mes meubles » est gardé dans ce navigateur.",
