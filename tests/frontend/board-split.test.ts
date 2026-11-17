@@ -68,11 +68,12 @@ describe("un caisson tourné de biais et percé", () => {
       makeBox([0, 0, 0], [18, 580, 864]), makeBox([1182, 0, 0], [1200, 580, 864]), makeBox([18, 0, 150], [1182, 580, 168]),
       makeBox([18, 0, 764], [1182, 18, 864]), makeBox([18, 562, 764], [1182, 580, 864]),
     ];
-    let body = parts[0]! as unknown as import("replicad").Shape3D;
-    for (const p of parts.slice(1)) body = body.fuse(p as never) as never;
+    type Solid = import("replicad").Shape3D;
+    let body = parts[0]! as unknown as Solid;
+    for (const p of parts.slice(1)) body = body.fuse(p as never) as unknown as Solid;
     // A hole of 35 through the left side (a hinge cup drilled through, for the test), then the whole turned by 30°.
-    body = body.cut(makeCylinder(17.5, 40, [-10, 300, 500], [1, 0, 0]) as never) as never;
-    body = body.rotate(30, [0, 0, 0], [0, 0, 1]) as never;
+    body = body.cut(makeCylinder(17.5, 40, [-10, 300, 500], [1, 0, 0]) as never) as unknown as Solid;
+    body = body.rotate(30, [0, 0, 0], [0, 0, 1]) as unknown as Solid;
     const pieces = splitBoards(body, "largest");
     expect(pieces).not.toBeNull();
     expect(pieces!).toHaveLength(5);

@@ -185,11 +185,12 @@ export class DrawOnFaceTool extends PanelTool {
       // Loaded, but not flat: nothing is drawn on it (a curved roof, a round edge); an offset follows it though.
       this.curved = !!pick && !face && this.loaded.has(`${pick.bodyId}#${pick.faceIndex}`);
       viewport.setHoverHighlight(pick ? { face: pick } : null);
-      if (this.shape === "offset" && (this.curvedOffset.locked || this.curved || (last.roof && face?.slanted)) && this.curvedOffset.move(pick, this.step(), () => this.lastEvent && this.move(this.lastEvent), last.roof)) {
+      // On a curved face (a cylinder's side): its offset outline, or a rectangle or a circle that follows it.
+      const c = this.curvedOffset;
+      if (c.wants(this.shape, this.curved, last.roof && !!face?.slanted) && c.move(pick, this.step(), () => this.lastEvent && this.move(this.lastEvent), last.roof)) {
         this.marks.clear();
-        this.curvedOffset.draw(this.marks);
-        const v = formatLength(this.curvedOffset.distance, this.ctx.unit());
-        return this.box.show(this.curvedOffset.label, `${v} ${this.curvedOffset.text}`, this.curvedOffset.locked ? "Réglez la profondeur dans le panneau : elle est enregistrée aussitôt." : "Cliquez pour le poser, puis réglez la profondeur.");
+        c.draw(this.marks);
+        return this.box.show(c.label, c.reading((mm) => formatLength(mm, this.ctx.unit())), c.hint);
       }
     }
     this.snapped = "free";
@@ -244,7 +245,7 @@ export class DrawOnFaceTool extends PanelTool {
     const face = this.face ?? this.hoverFace;
     const p = this.cursor;
     if (!face && this.curved) {
-      this.box.show("Face courbe", "—", "On trace sur une face plane ; le Décalage, lui, suit aussi une face courbe. Pour évider tout le volume, outil Coque (Modifier).");
+      this.box.show("Face courbe", "—", "Sur une face courbe : Rectangle, Cercle ou Décalage du contour (la ligne, sur une face plane). Pour évider tout le volume, outil Coque (Modifier).");
     } else if (!face || !p) {
       this.box.show("Mesures", "—", "Survolez une face du corps.");
     } else if (this.shape === "offset") {
@@ -337,7 +338,7 @@ export class DrawOnFaceTool extends PanelTool {
 
   /** Places the point under the pointer (the first one locks the face); the last one ends a rectangle or a circle; an offset is placed at once. */
   private place(): void {
-    if (this.shape === "offset" && this.curvedOffset.place()) {
+    if (this.curvedOffset.wants(this.shape, this.curved, false) && this.curvedOffset.place()) {
       this.render();
       return this.schedulePreview();
     }
@@ -446,9 +447,9 @@ export class DrawOnFaceTool extends PanelTool {
     if (c.locked) {
       const set = (key: "distance" | "depth", v: number) => ((c[key] = v), this.render(), this.schedulePreview());
       return [
-        this.numberRow("Décalage", c.distance, this.ctx.unit(), (v) => set("distance", v)),
+        c.shape === "offset" ? this.numberRow("Décalage", c.distance, this.ctx.unit(), (v) => set("distance", v)) : null,
         this.numberRow("Profondeur", c.depth, this.ctx.unit(), (v) => set("depth", v), true),
-        this.info("Un panneau creusé dans la face courbe ou sous les deux pans du toit (un trou s'il traverse) ; profondeur négative : en relief."),
+        this.info(c.shape === "circle" ? "Un perçage vers l'axe de la face courbe ; profondeur négative : un bossage en relief." : "Un panneau creusé dans la face courbe ou sous les deux pans du toit (un trou s'il traverse) ; profondeur négative : en relief."),
       ];
     }
     const step =

@@ -1242,6 +1242,13 @@ opération existante.
   « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
   puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme
   sur une face). Changer de tracé passe de l'une à l'autre sans fermer l'outil ; il s'ouvre sur le dernier tracé choisi.
+  **Sur toutes les formes** : faces planes de tout contour — triangle, polygone, bout d'un cylindre, face percée (un
+  cercle entier se lit en petits segments ; seuls les vrais angles, plus de 15°, sont des coins où accrocher un trait,
+  pas les points le long d'un arc) — et **le flanc d'un cylindre** (face courbe d'axe X, Y ou Z, entière ou morceau) :
+  *Rectangle* — deux coins cliqués, il suit la face (largeur mesurée sur elle ; hauteur le long de l'axe) — creusé à la
+  « Profondeur » (négative : en relief), *Cercle* — son centre puis un point du bord — percé vers l'axe depuis le plan
+  tangent (négative : un bossage), *Décalage du contour* qui fait le tour entier d'un cylindre (sans couture) ; OK les
+  garde (`features/curved-offset.ts`, `app/curved-offset.ts`). La ligne seule reste sur une face plane.
 - **Magie extrusion — une forme sur une face** (anciennement « Dessiner sur le corps » ; comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et

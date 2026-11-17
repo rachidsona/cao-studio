@@ -17,7 +17,7 @@ import type { CadDocument, PlaneFrame, SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline } from "../geometry/protocol";
 import type { Vec2 } from "../sketcher/edit";
-import { facePolygon, nearestEdge, type FaceEdge } from "../sketcher/face-strip";
+import { facePolygon, nearestEdge, polygonCorners, type FaceEdge } from "../sketcher/face-strip";
 import { frameOf, nearestPlane, planeFrame, rayToSketch, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
 import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
@@ -41,8 +41,9 @@ export function startOnFace(viewport: Viewport, face: LoadedFace, event: Pointer
   if (!p) return null;
   const snap = px * viewport.worldPerPixel();
   if (start === "corner") {
-    const corner = face.polygon.findIndex((v) => Math.hypot(p[0] - v[0], p[1] - v[1]) <= snap);
-    return corner >= 0 ? { kind: "corner", index: corner } : null;
+    // Only the real corners: not the points along a circle or an arc read as short segments.
+    const corner = polygonCorners(face.polygon).find((i) => Math.hypot(p[0] - face.polygon[i]![0], p[1] - face.polygon[i]![1]) <= snap);
+    return corner !== undefined ? { kind: "corner", index: corner } : null;
   }
   const near = nearestEdge(face.polygon, p);
   if (near && near.d <= snap) return { kind: "edge", edge: near.edge };

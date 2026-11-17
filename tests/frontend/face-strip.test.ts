@@ -5,7 +5,7 @@ import type { CadDocument, Feature, SketchFeature } from "../../frontend/src/doc
 import type { FaceOutline } from "../../frontend/src/geometry/protocol";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
-import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, traceReference, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
+import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, polygonCorners, traceReference, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
 import { sketchFrame } from "../../frontend/src/sketcher/frame";
 import { sketchRegions } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
@@ -34,6 +34,42 @@ const box = (poly: [number, number][]) => {
   const ys = poly.map((p) => Number(p[1].toFixed(6)));
   return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
 };
+
+describe("Magie extrusion sur toutes les faces planes", () => {
+  const disc = (holeRadius?: number): FaceOutline => ({
+    surface: "PLANE", center: [0, 0, 10], normal: [0, 0, 1],
+    edges: [{ kind: "circle", center: [0, 0, 10], radius: 40 }, ...(holeRadius ? [{ kind: "circle" as const, center: [0, 0, 10] as P3, radius: holeRadius }] : [])],
+  });
+
+  it("le bout d'un cylindre (un cercle entier) est une face : un contour rond, sans coin", () => {
+    const poly = facePolygon(disc(), frame)!;
+    expect(poly.length).toBeGreaterThan(32);
+    expect(poly.every((p) => Math.abs(Math.hypot(p[0], p[1]) - 40) < 1e-6)).toBe(true);
+    expect(polygonCorners(poly)).toEqual([]);
+    // A line from its rim: the band between the rim and the line follows the round face.
+    const edge = polygonEdges(poly)[0]!;
+    expect(bandPolygon(poly, edge, 0, 10)).not.toBeNull();
+  });
+
+  it("une face percée garde son contour extérieur (le trou est un cercle à part)", () => {
+    const poly = facePolygon(disc(15), frame)!;
+    expect(Math.max(...poly.map((p) => Math.hypot(p[0], p[1])))).toBeCloseTo(40, 6);
+  });
+
+  it("triangle et hexagone : chaque sommet est un coin, d'où part un trait en travers", () => {
+    const flat = (points: [number, number][]): FaceOutline => ({
+      surface: "PLANE", center: [0, 0, 10], normal: [0, 0, 1],
+      edges: points.map((p, i) => ({ kind: "line" as const, a: [p[0], p[1], 10] as P3, b: [points[(i + 1) % points.length]![0], points[(i + 1) % points.length]![1], 10] as P3 })),
+    });
+    const triangle = facePolygon(flat([[0, 0], [100, 0], [30, 80]]), frame)!;
+    expect(polygonCorners(triangle)).toHaveLength(3);
+    const hexagon = facePolygon(flat(Array.from({ length: 6 }, (_, k): [number, number] => [50 * Math.cos((k * Math.PI) / 3), 50 * Math.sin((k * Math.PI) / 3)])), frame)!;
+    expect(polygonCorners(hexagon)).toHaveLength(6);
+    const corner = triangle.findIndex((p) => p[0] === 0 && p[1] === 0);
+    const across = cornerReference(triangle, corner, [30, 2])!;
+    expect(stripPolygon(triangle, across, 0, 30)).not.toBeNull();
+  });
+});
 
 describe("bande d'une face", () => {
   it("le contour se reforme, la bande suit l'arête choisie vers l'intérieur", () => {

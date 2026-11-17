@@ -39,15 +39,38 @@ function arcSegments(frame: SketchFrame, e: { center: [number, number, number]; 
   return Array.from({ length: steps }, (_, k) => [at(k), at(k + 1)]);
 }
 
+/** Segments all round a whole circle of the face (the end of a cylinder, the rim of a hole), in the face's plane. */
+function circleSegments(frame: SketchFrame, e: { center: [number, number, number]; radius: number }): [Vec2, Vec2][] {
+  const c = toSketch(frame, e.center);
+  const steps = Math.ceil((2 * Math.PI) / ARC_STEP);
+  const at = (k: number): Vec2 => [c[0] + e.radius * Math.cos((2 * Math.PI * (k % steps)) / steps), c[1] + e.radius * Math.sin((2 * Math.PI * (k % steps)) / steps)];
+  return Array.from({ length: steps }, (_, k) => [at(k), at(k + 1)]);
+}
+
 /**
- * The outer boundary of the face as a polygon (its edges chained end to end, an arc as short segments), in sketch
- * coordinates.
+ * The corners of a face's polygon: where its outline turns (more than 15°), not the points along an arc or a circle
+ * read as short segments.
+ */
+export function polygonCorners(polygon: readonly Vec2[]): number[] {
+  const n = polygon.length;
+  return polygon.flatMap((p, i) => {
+    const [a, b] = [polygon[(i - 1 + n) % n]!, polygon[(i + 1) % n]!];
+    const [u, v] = [sub(p, a), sub(b, p)];
+    const cos = dot(u, v) / ((Math.hypot(u[0], u[1]) * Math.hypot(v[0], v[1])) || 1);
+    return cos < Math.cos((15 * Math.PI) / 180) ? [i] : [];
+  });
+}
+
+/**
+ * The outer boundary of the face as a polygon (its edges chained end to end, an arc or a whole circle as short
+ * segments), in sketch coordinates.
  */
 export function facePolygon(outline: FaceOutline, frame: SketchFrame): Vec2[] | null {
   const segments: [Vec2, Vec2][] = [];
   for (const e of outline.edges) {
     if (e.kind === "line") segments.push([toSketch(frame, e.a), toSketch(frame, e.b)]);
     else if (e.kind === "arc") segments.push(...arcSegments(frame, e));
+    else segments.push(...circleSegments(frame, e));
   }
   if (segments.length < 3) return null;
   const same = (p: Vec2, q: Vec2) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-4;
