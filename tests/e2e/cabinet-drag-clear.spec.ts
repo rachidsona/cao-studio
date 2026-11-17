@@ -1,7 +1,7 @@
 /** Un caisson déplacé par sa poignée « ✥ Déplacer » ne se pose jamais dans un autre : il est remis à côté, au ras. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
-import { withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { createReferencePlate, type CabinetFeature, type CadDocument } from "../../frontend/src/document/types";
@@ -289,8 +289,7 @@ test("Dupliquer un caisson collé à une cuisine du Plan : ses meubles sont pous
   const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
   const doc = project.document as CadDocument;
   // The plan keeps 60 cm free before its first unit, and its units stand there; the copy stands where the first was.
-  const plan = doc.features.find((f) => f.id === made.id) as { kitchenPlan: { runs: { A: { model: string; width: number }[] } } };
-  expect(plan.kitchenPlan.runs.A[0]).toMatchObject({ model: "space", width: 600 });
+  expect(kitchenPlanIn(doc, made.id)!.runs!.A![0]).toMatchObject({ model: "space", width: 600 });
   const xs = runCabinets(doc, made.id, "A").map((c) => Math.round((doc.features.find((f) => f.id === c.cabinet) as CabinetFeature).origin[0]));
   expect(xs).toEqual([Math.round(first.origin[0]) + 600, Math.round(first.origin[0]) + 1200]);
   const all = doc.features.filter((f): f is CabinetFeature => f.type === "cabinet").map((c) => Math.round(c.origin[0])).sort((a, b) => a - b);
