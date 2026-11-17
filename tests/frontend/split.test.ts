@@ -63,6 +63,16 @@ describe("coupe réussie", () => {
     r.dispose();
   });
 
+  it("un trait tracé sur une face coupe le corps en travers de la face (Magie extrusion, Couper le corps)", () => {
+    // A line on the top face from (5, −10) to (5, 10): the plane through it, across the face, is x = 5 (normal not unit).
+    const { r, result, metrics } = run(doc(...plate(), split({ kind: "line", origin: [5, -10, 10], normal: [-2, 0, 0] })));
+    expect(result.bodies).toHaveLength(2);
+    const boxes = result.bodies.map((id) => metrics(id).bbox).sort((a, b) => a[0][0] - b[0][0]);
+    expect(boxes).toEqual([[[-20, -10, 0], [5, 10, 10]], [[5, -10, 0], [20, 10, 10]]]);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc(...plate(), split({ kind: "line", origin: [0, 0, 0], normal: [0, 0, 0] })))))).toThrow(/plan de coupe du trait/);
+    r.dispose();
+  });
+
   it("les plans XZ et YZ suivent la convention des esquisses (normale −Y pour XZ)", () => {
     // XZ offset 4 moves the plane along its normal −Y: it cuts at y = −4.
     const { r, result, metrics } = run(doc(...plate(), split(plane("XZ", 4), "positive")));

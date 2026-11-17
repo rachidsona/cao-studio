@@ -172,7 +172,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       } else if (tool.kind === "face") {
         if (typeof tool.body !== "string") errors.push(`${where} : corps de la face de coupe manquant.`);
         checkRefs(tool.face, "face", where, errors);
-      } else errors.push(`${where} : outil de coupe inconnu.`);
+      } else if (tool.kind !== "line" || !isVec3(tool.origin) || !isVec3(tool.normal) || Math.hypot(...(tool.normal as number[])) < 1e-9) errors.push(`${where} : ${tool.kind === "line" ? "plan de coupe du trait invalide" : "outil de coupe inconnu"}.`);
       break;
     }
     case "cabinet":

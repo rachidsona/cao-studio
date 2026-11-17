@@ -17,7 +17,8 @@ import type { CadDocument, PlaneFrame, SketchFeature } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline } from "../geometry/protocol";
 import type { Vec2 } from "../sketcher/edit";
-import { facePolygon, nearestEdge, polygonCorners, type FaceEdge } from "../sketcher/face-strip";
+import { markedPoints } from "../sketcher/face-draw";
+import { facePolygon, nearestEdge, polygonCorners, referenceDistance, type FaceEdge, type StripReference } from "../sketcher/face-strip";
 import { frameOf, nearestPlane, planeFrame, rayToSketch, sketchFrame, toWorld, type SketchFrame } from "../sketcher/frame";
 import { interiorPoint } from "../sketcher/loops";
 import { sketchRegions } from "../sketcher/polylines";
@@ -29,7 +30,7 @@ export type Start = "edge" | "corner";
 /** What a click would take, picking: an edge (`trace`: a line of a sketch drawn on the face), a corner, the face, a sketch area. */
 export type Hover = { kind: "edge"; edge: FaceEdge; trace?: true } | { kind: "corner"; index: number } | { kind: "face" } | { kind: "region" };
 
-const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+export const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /**
  * What a click on a body face starts from, if not the whole face (null): « Départ » a point takes its corners only
@@ -56,6 +57,35 @@ export function startOnFace(viewport: Viewport, face: LoadedFace, event: Pointer
   if (Math.abs(dot(rel(a), f.normal)) > 0.05 || Math.abs(dot(rel(b), f.normal)) > 0.05) return null;
   const flat = (q: Vec3): Vec2 => [dot(rel(q), f.u), dot(rel(q), f.v)];
   return { kind: "edge", edge: { a: flat(a), b: flat(b) }, trace: true };
+}
+
+/** The plane through the line a→b drawn on the face, across the face (it cuts the body along the line). */
+export function planeAcross(face: LoadedFace, [a, b]: [Vec2, Vec2]): { origin: Vec3; normal: Vec3 } {
+  const [p, q] = [toWorld(face.frame, a[0], a[1]), toWorld(face.frame, b[0], b[1])];
+  const [d, n] = [[q[0] - p[0], q[1] - p[1], q[2] - p[2]], face.frame.normal] as [Vec3, Vec3];
+  const across: Vec3 = [d[1] * n[2] - d[2] * n[1], d[2] * n[0] - d[0] * n[2], d[0] * n[1] - d[1] * n[0]];
+  const length = Math.hypot(...across);
+  return { origin: p, normal: across.map((c) => Number((c / length).toFixed(9))) as Vec3 };
+}
+
+/**
+ * Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. `trace`: the
+ * edge is a line of a sketch drawn on the face (a trace made before), the new line measured from it, on the pointer's side.
+ */
+export type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3; trace?: true } | { kind: "corner"; face: string; index: number; at3: Vec3 };
+
+/** What the line snaps to, laying it: the middle of an edge or the centre of the face. */
+export type Middle = { point: Vec2; kind: "middle" | "center" };
+export const MIDDLE_NAMES: Record<Middle["kind"], string> = { middle: "Milieu du trait", center: "Centre de la face" };
+
+/** The middle of an edge or the centre of the face nearest the pointer on the screen (within `px`, as « Dessiner sur le corps »), ahead of the reference. */
+export function middleOnFace(viewport: Viewport, face: LoadedFace, ref: StripReference, event: PointerEvent, px = 18): Middle | null {
+  let best: (Middle & { d: number }) | null = null;
+  for (const m of markedPoints(face.polygon)) {
+    const d = viewport.screenDistance(event, toWorld(face.frame, m.point[0], m.point[1]));
+    if (d <= px && referenceDistance(ref, m.point) > 1e-6 && (!best || d < best.d)) best = { ...m, d };
+  }
+  return best && { point: best.point, kind: best.kind };
 }
 
 /** A planar face Magie extrude works on (or a closed area of a sketch, seen the same way). */
@@ -178,7 +208,7 @@ export class StripMarks {
   draw(marks: { edge?: [Vec3, Vec3]; corner?: Vec3; target?: Vec3; band?: Vec3[]; labels?: { at: Vec3; text: string }[] }): void {
     this.clear();
     if (marks.target) {
-      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...marks.target)]), new THREE.PointsMaterial({ color: 0x16a34a, size: 16, sizeAttenuation: false, depthTest: false }));
+      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...marks.target)]), new THREE.PointsMaterial({ color: EDGE_COLOR, size: 16, sizeAttenuation: false, depthTest: false }));
       dot.renderOrder = 48;
       this.group.add(dot);
     }

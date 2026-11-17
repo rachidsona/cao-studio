@@ -26,6 +26,11 @@ export function toolPlane(tool: SplitTool, lookup: OutputLookup): { origin: Vec3
     const frame = sketchFrame(tool.plane, tool.offset);
     return { origin: frame.origin, normal: frame.normal };
   }
+  if (tool.kind === "line") {
+    const length = Math.hypot(...tool.normal);
+    if (![...tool.origin, ...tool.normal].every(Number.isFinite) || length < 1e-9) throw new GeometryError("Le plan de coupe du trait n'est pas valide.");
+    return { origin: tool.origin, normal: tool.normal.map((c) => c / length) as Vec3 };
+  }
   return resolveFacePlane(requireSolid(lookup, tool.body).shape, tool.face);
 }
 

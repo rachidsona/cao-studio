@@ -13,18 +13,19 @@
 import { expressionKey } from "../ui/digit-keys";
 import { evaluateTyped, repairBrackets } from "../measurements/typed-expression";
 import { uniqueId, uniqueName } from "../document/operations";
-import type { Feature, SketchFeature } from "../document/types";
+import type { Feature, SketchFeature, SplitFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, trim, UNIT_LABELS } from "../measurements/units";
 import { addCircle, addLine, addRectangle, type Vec2, type VertexInput } from "../sketcher/edit";
 import { markedPoints, offsetPolygon, parseTyped, pointAtLength, pointerOffset, snapDims, snapOnFace, withTypedDistances, type SnapKind } from "../sketcher/face-draw";
 import { bandSketch } from "../sketcher/face-strip";
 import { rayToSketch, toWorld } from "../sketcher/frame";
+import { pointInPolygon } from "../sketcher/loops";
 import { projectOutline } from "../sketcher/projection";
 import { ValueBox } from "../ui/value-box";
 import { dragStep, roundTo } from "../viewport/axis-drag";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
-import { loadFace, type LoadedFace } from "./face-strip-view";
+import { loadFace, planeAcross, type LoadedFace } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
@@ -36,13 +37,14 @@ type Shape = "line" | "rectangle" | "circle" | "offset";
 /** What a snap is called in the value box. */
 const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle: "Milieu du trait", center: "Centre de la face", free: "" };
 
-/** Kept for the session: what was drawn last, and whether a closed shape goes on with the push/pull. */
-/** Kept for the session: the last shape, pulling after, and offsetting the whole roof (both slopes) or one face. */
-const last = { shape: "line" as Shape, roof: false };
+/** Kept for the session: the last shape, offsetting the whole roof (both slopes) or one face, and cutting the body along a line. */
+const last = { shape: "line" as Shape, roof: false, cut: false };
 
 const RED = 0xdc2626;
 const BLUE = 0x2563eb;
 const ORANGE = 0xf97316;
+/** The point when it is snapped (a corner, a middle, the centre): the green of what is chosen. */
+const GREEN = 0x63df0f;
 /** Crosses marking the centre of the face and the middles of its edges. */
 const SKY = 0x0284c7;
 
@@ -116,18 +118,6 @@ export class DrawOnFaceTool extends PanelTool {
     return dragStep(this.ctx.viewport.worldPerPixel());
   }
 
-  /** Whether the point lies inside the polygon of the face. */
-  private inside(face: LoadedFace, p: Vec2): boolean {
-    let inside = false;
-    const poly = face.polygon;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const [xi, yi] = poly[i] as Vec2;
-      const [xj, yj] = poly[j] as Vec2;
-      if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
-  }
-
   /**
    * Where the pointer lands: on a cross (centre of the face, middle of an edge) within 18 pixels, or a corner within 10 —
    * measured on the screen, whatever the depth of the face — else its distances to the edges rounded.
@@ -156,7 +146,7 @@ export class DrawOnFaceTool extends PanelTool {
       this.offsetOutline = offsetPolygon(face.polygon, this.offsetDistance);
       return raw;
     }
-    const snap = this.points.length === 0 && !this.inside(face, raw) ? { point: raw, kind: "free" as SnapKind } : this.snapAt(face, raw, event);
+    const snap = this.points.length === 0 && !pointInPolygon(raw, face.polygon) ? { point: raw, kind: "free" as SnapKind } : this.snapAt(face, raw, event);
     this.snapped = snap.kind;
     let p = snap.point;
     const first = this.points.at(-1);
@@ -211,15 +201,15 @@ export class DrawOnFaceTool extends PanelTool {
         if (outline) outline.forEach((q, i) => this.marks.line(at(q), at(outline[(i + 1) % outline.length] as Vec2), ORANGE, false));
       } else {
         // Where the distances to the nearest edges are measured: red along X, blue along Y (their values are in the box).
-        if (this.points.length === 0 && this.inside(face, p)) {
+        if (this.points.length === 0 && pointInPolygon(p, face.polygon)) {
           for (const dim of snapDims(face.polygon, p)) if (dim.distance > 1e-6) this.marks.line(at(dim.from), at(dim.to), dim.axis === 0 ? RED : BLUE, true);
         }
         // The centre of the face and the middles of its edges, marked with a cross: the pointer snaps to them.
         for (const m of markedPoints(face.polygon)) {
           const here = Math.hypot(m.point[0] - p[0], m.point[1] - p[1]) < 1e-6;
-          this.marks.cross(at(m.point), here ? ORANGE : SKY, here ? 20 : 14);
+          this.marks.cross(at(m.point), here ? GREEN : SKY, here ? 20 : 14);
         }
-        this.marks.dot(at(p), ORANGE);
+        this.marks.dot(at(p), this.snapped === "free" ? ORANGE : GREEN);
         const chain = [...this.points, p];
         const lastPoint = this.points.at(-1);
         if (this.shape === "line") chain.slice(1).forEach((q, i) => this.marks.line(at(chain[i] as Vec2), at(q), ORANGE, false));
@@ -251,7 +241,7 @@ export class DrawOnFaceTool extends PanelTool {
     } else if (this.shape === "offset") {
       this.box.show("Décalage", this.offsetOutline ? fmt(this.offsetDistance) : `${fmt(this.offsetDistance)} — trop grand`, "Tapez la distance puis Entrée (− : vers l'extérieur), ou cliquez.");
     } else if (this.points.length === 0) {
-      const dims = this.inside(face, p) ? snapDims(face.polygon, p) : [];
+      const dims = pointInPolygon(p, face.polygon) ? snapDims(face.polygon, p) : [];
       const dx = dims.find((d) => d.axis === 0);
       const dy = dims.find((d) => d.axis === 1);
       const where = SNAP_NAMES[this.snapped];
@@ -420,9 +410,19 @@ export class DrawOnFaceTool extends PanelTool {
     return sketch;
   }
 
+  /** « Couper le corps »: the body split by the plane through the straight line, across the face (null: no cut asked). */
+  private cut(): SplitFeature | string | null {
+    const face = this.face;
+    if (this.shape !== "line" || !last.cut || !face || !this.ready()) return null;
+    if (this.points.length !== 2) return "Pour couper le corps, tracez une seule ligne droite (deux points).";
+    const doc = this.ctx.doc();
+    return { id: uniqueId(doc, "sp"), type: "split", name: uniqueName(doc, "Scission"), target: face.pick.bodyId, tool: { kind: "line", ...planeAcross(face, this.points as [Vec2, Vec2]) }, keep: "both" };
+  }
+
   protected override companions(): Feature[] {
     const curved = this.curvedOffset.locked ? this.curvedOffset.features(this.sketchId, this.sketchName) : null;
-    return curved && typeof curved !== "string" ? curved.slice(1) : [];
+    const cut = this.cut();
+    return curved && typeof curved !== "string" ? curved.slice(1) : cut && typeof cut !== "string" ? [cut] : [];
   }
 
   override confirm(): void {
@@ -432,9 +432,11 @@ export class DrawOnFaceTool extends PanelTool {
       this.ctx.notify(built, "info");
       return;
     }
+    const cut = this.cut();
+    if (typeof cut === "string") return this.ctx.notify(cut, "info");
     Object.assign(last, { shape: this.shape });
     rememberPull(this.thenPull);
-    const doc = { ...this.ctx.doc(), features: [...this.ctx.doc().features, built] };
+    const doc = { ...this.ctx.doc(), features: [...this.ctx.doc().features, built, ...(cut ? [cut] : [])] };
     const goOn = this.closedShape && this.thenPull && !!this.ctx.extrude;
     this.close();
     this.ctx.commit(doc, built.id, goOn ? () => this.ctx.extrude?.() : undefined);
@@ -479,6 +481,7 @@ export class DrawOnFaceTool extends PanelTool {
       }),
       this.shape === "offset" ? this.selectRow("Décalage sur", last.roof ? "roof" : "face", [["face", "La face survolée"], ["roof", "Tout le toit (les deux pans)"]], (v) => ((last.roof = v === "roof"), this.lastEvent && this.move(this.lastEvent))) : null,
       this.info(step),
+      this.shape === "line" ? this.checkRow("Couper le corps", last.cut, (v) => ((last.cut = v), this.render(), this.schedulePreview())) : null,
       this.closedShape
         ? this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {
             this.thenPull = v;

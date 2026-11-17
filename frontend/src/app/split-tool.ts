@@ -54,6 +54,8 @@ export class SplitTool extends PanelTool {
   /** Where the cutting face was clicked: marked in blue while the tool is open. */
   private facePick: FacePick | null = null;
   private keep: SplitKeep = "both";
+  /** A cut by a line traced on a face (« Magie extrusion »), edited here: kept until another tool is chosen. */
+  private line: Extract<CutTool, { kind: "line" }> | null = null;
   /** In "Face plane", clicks choose the cutting face until there is one, then the bodies to cut. */
   private pickingBody = false;
   /** Centre and size of the target (for the plane indicator and the arrow). */
@@ -74,7 +76,8 @@ export class SplitTool extends PanelTool {
       if (editing.tool.kind === "plane") {
         this.plane = editing.tool.plane;
         this.offset = editing.tool.offset;
-      } else {
+      } else if (editing.tool.kind === "line") this.line = editing.tool;
+      else {
         this.mode = "face";
         this.face = { body: editing.tool.body, ref: editing.tool.face, label: `Face plane de « ${bodyLabel(doc, editing.tool.body)} »` };
       }
@@ -134,6 +137,7 @@ export class SplitTool extends PanelTool {
 
   /** Normal (positive side) and a point of the current cutting plane, or null while it is not chosen. */
   private planeNow(): { normal: Vec3; origin: Vec3 } | null {
+    if (this.line) return this.line;
     if (this.mode === "plane") {
       const frame = sketchFrame(this.plane, this.offset);
       return { normal: frame.normal, origin: frame.origin };
@@ -182,7 +186,7 @@ export class SplitTool extends PanelTool {
   private splits(): SplitFeature[] {
     if (this.mode === "face" && !this.face) return [];
     const crossed = this.targets.filter((t) => this.crosses(t));
-    const tool: CutTool = this.mode === "plane" || !this.face ? { kind: "plane", plane: this.plane, offset: this.offset } : { kind: "face", body: this.face.body, face: this.face.ref };
+    const tool: CutTool = this.line ?? (this.mode === "plane" || !this.face ? { kind: "plane", plane: this.plane, offset: this.offset } : { kind: "face", body: this.face.body, face: this.face.ref });
     // Fresh ids after this one's for the others (the first fresh one is this tool's own).
     const more = this.editing ? [] : freshFeatureIds(this.ctx.doc(), "sp", "Scission", crossed.length).slice(1);
     return crossed.map((target, i) => ({ ...(i === 0 ? { id: this.id, name: this.name } : more[i - 1]!), type: "split", target, tool, keep: this.keep }));
@@ -253,6 +257,7 @@ export class SplitTool extends PanelTool {
       names.length > 1 ? this.linkButton("Ne garder que le premier", () => this.setTargets(this.targets.slice(0, 1))) : null,
       this.selectRow("Outil", this.mode, [["plane", "Plan de construction"], ["face", "Face plane (clic dans la vue)"]], (v) => {
         this.mode = v as "plane" | "face";
+        this.line = null;
         this.face = null; // pick again: the target is shown whole until a face is chosen
         if (this.mode === "plane") this.offset = this.centreOffset();
         this.sync();

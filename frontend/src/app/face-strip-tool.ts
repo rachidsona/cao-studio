@@ -27,26 +27,18 @@ import { bandRange, bandSketch, cornerReference, edgeReference, traceReference, 
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
-import { aimAt, captureTargets, loadFace, regionUnder, startOnFace, StripMarks, type Hover, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
+import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
 import { TypedValues } from "../ui/typed-values";
 
-/**
- * Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. `trace`: the
- * edge is a line of a sketch drawn on the face (a trace made before), the new line measured from it, on the pointer's side.
- */
-type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3; trace?: true } | { kind: "corner"; face: string; index: number; at3: Vec3 };
-
 /** Pointer distance (pixels) within which a corner or an edge is hovered. */
 const SNAP_PX = 12;
 
 /** Last settings, kept for the next use in the session. */
 let last = { mode: "line" as "line" | "groove", anchor: "start" as GrooveAnchor, start: "edge" as Start, newBody: false };
-
-const dot3 = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 export class FaceStripTool extends PanelTool {
   private readonly sketchId: string;
@@ -62,6 +54,8 @@ export class FaceStripTool extends PanelTool {
   private origin: Origin | null = null;
   private strip: StripReference | null = null;
   private pointer: Vec2 | null = null;
+  /** Step 2: the middle of an edge or the centre of the face the line goes through, when the pointer is on it. */
+  private middle: Middle | null = null;
   private mode = last.mode;
   private anchor = last.anchor;
   private departure: Start = isStripTrace(lastMagicTrace()) ? (lastMagicTrace() as Start) : last.start;
@@ -114,8 +108,9 @@ export class FaceStripTool extends PanelTool {
       this.typed.box.show("Départ", this.departure === "edge" ? "sur un trait" : "sur un point", hint);
     }
     else if (this.phase === "place") {
-      if (this.mode === "line") this.typed.box.show("Distance", fmt(this.distance), "Tapez la distance puis Entrée : le trait est posé.");
-      else this.typed.box.show("Retrait ; largeur", `${fmt(this.distance)} ; ${fmt(this.width)}`, "Tapez retrait;largeur puis Entrée.");
+      const where = this.middle ? `${MIDDLE_NAMES[this.middle.kind]} — ` : "";
+      if (this.mode === "line") this.typed.box.show("Distance", fmt(this.distance), `${where}Tapez la distance puis Entrée : le trait est posé.`);
+      else this.typed.box.show("Retrait ; largeur", `${fmt(this.distance)} ; ${fmt(this.width)}`, `${where}Tapez retrait;largeur puis Entrée.`);
     } else this.typed.box.show("Hauteur", `${this.height < 0 ? "−" : ""}${fmt(Math.abs(this.height))}`, "Tapez la hauteur (− : creuser) puis Entrée.");
     this.typed.refresh();
   }
@@ -187,7 +182,8 @@ export class FaceStripTool extends PanelTool {
     return back === null ? null : { origin: [p[0] - n[0] * back, p[1] - n[1] * back], normal: n };
   }
 
-  private place(face: LoadedFace, p: Vec2): void {
+  private place(face: LoadedFace, p: Vec2, event: PointerEvent): void {
+    this.middle = null;
     const ref = this.referenceOn(face, p);
     if (!ref) {
       this.strip = null;
@@ -196,6 +192,9 @@ export class FaceStripTool extends PanelTool {
     this.strip = ref;
     this.pointer = p;
     if (this.frozen) return;
+    // On the middle of an edge or the centre of the face, the line goes through it (the exact distance, not rounded).
+    this.middle = middleOnFace(this.ctx.viewport, face, ref, event);
+    if (this.middle) return void (this.distance = Number(referenceDistance(ref, this.middle.point).toFixed(4)));
     const raw = referenceDistance(ref, p);
     const snap = SNAP_PX * this.ctx.viewport.worldPerPixel();
     // A double line whose first line is at the pointer snaps onto the start (retrait 0).
@@ -359,7 +358,8 @@ export class FaceStripTool extends PanelTool {
       const nrm = face.outline.normal;
       labels.push({ at: [c[0] + nrm[0] * this.height, c[1] + nrm[1] * this.height, c[2] + nrm[2] * this.height], text: `${this.operation() === "join" ? "+" : "−"} ${formatLength(Math.abs(this.height), unit)}` });
     }
-    this.marks.draw({ ...start, ...(this.phase === "pull" && this.target ? { target: this.target } : {}), ...(band ? { band: band.map(w) } : {}), labels });
+    const aimed = this.phase === "pull" ? this.target : this.phase === "place" && this.middle ? w(this.middle.point) : null;
+    this.marks.draw({ ...start, ...(aimed ? { target: aimed } : {}), ...(band ? { band: band.map(w) } : {}), labels });
   }
 
   /** Centre of what is pulled: the band, or the face. */
@@ -413,7 +413,7 @@ export class FaceStripTool extends PanelTool {
         const n = face.outline.normal;
         const depth = pick && !this.widthTyped ? this.ctx.viewport.depthAt(face.pick.bodyId, pick.point.toArray() as Vec3, [-n[0], -n[1], -n[2]]) : null;
         if (depth) this.width = Number(depth.toFixed(3));
-      } else this.place(face, p);
+      } else this.place(face, p, event);
     }
     this.redraw();
     this.render();

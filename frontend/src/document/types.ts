@@ -362,7 +362,9 @@ export interface CombineFeature extends FeatureBase {
 export type SplitTool =
   | { kind: "plane"; plane: PlaneName; offset: number }
   /** Plane of a planar face of `body` (the face is found again after a regeneration). */
-  | { kind: "face"; body: string; face: FaceRef };
+  | { kind: "face"; body: string; face: FaceRef }
+  /** Plane through a straight line traced on a face, across that face (« Magie extrusion », Couper le corps): a point and the normal. */
+  | { kind: "line"; origin: Vec3; normal: Vec3 };
 
 /** Which parts a split keeps: both sides, or only one. */
 export type SplitKeep = "both" | "positive" | "negative";

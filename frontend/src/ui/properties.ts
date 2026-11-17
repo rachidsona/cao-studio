@@ -142,7 +142,7 @@ function splitSection(feature: SplitFeature, ctx: PropertiesContext): HTMLElemen
       "dl",
       { class: "space-y-1" },
       row("Corps scindé", ctx.bodyName(feature.target)),
-      row("Outil de coupe", feature.tool.kind === "plane" ? `Plan ${feature.tool.plane}, décalage ${formatLength(feature.tool.offset, ctx.unit)}` : `Face plane de ${ctx.bodyName(feature.tool.body)}`),
+      row("Outil de coupe", feature.tool.kind === "plane" ? `Plan ${feature.tool.plane}, décalage ${formatLength(feature.tool.offset, ctx.unit)}` : feature.tool.kind === "line" ? "Trait tracé sur une face" : `Face plane de ${ctx.bodyName(feature.tool.body)}`),
       row("Parties conservées", SPLIT_KEEP[feature.keep]),
     ),
   );
