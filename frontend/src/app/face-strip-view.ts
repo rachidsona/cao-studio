@@ -59,6 +59,13 @@ export function startOnFace(viewport: Viewport, face: LoadedFace, event: Pointer
   return { kind: "edge", edge: { a: flat(a), b: flat(b) }, trace: true };
 }
 
+/** The corners of the bodies shown that lie in the plane of the face (within 0.05 mm), in its coordinates: magnets for drawing. */
+export function coplanarCorners(viewport: Viewport, face: LoadedFace): Vec2[] {
+  const f = face.frame;
+  const rel = (q: Vec3): Vec3 => [q[0] - f.origin[0], q[1] - f.origin[1], q[2] - f.origin[2]];
+  return viewport.bodyVertices().map(rel).filter((q) => Math.abs(dot(q, f.normal)) < 0.05).map((q): Vec2 => [dot(q, f.u), dot(q, f.v)]);
+}
+
 /** The plane through the line a→b drawn on the face, across the face (it cuts the body along the line). */
 export function planeAcross(face: LoadedFace, [a, b]: [Vec2, Vec2]): { origin: Vec3; normal: Vec3 } {
   const [p, q] = [toWorld(face.frame, a[0], a[1]), toWorld(face.frame, b[0], b[1])];
@@ -219,7 +226,7 @@ export class StripMarks {
       this.group.add(edge);
     }
     if (marks.corner) {
-      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...marks.corner)]), new THREE.PointsMaterial({ color: 0xf97316, size: 14, sizeAttenuation: false, depthTest: false }));
+      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...marks.corner)]), new THREE.PointsMaterial({ color: EDGE_COLOR, size: 14, sizeAttenuation: false, depthTest: false }));
       dot.renderOrder = 47;
       this.group.add(dot);
     }

@@ -1,6 +1,6 @@
 /** Magie extrusion: laying the line, it snaps to the middle of an edge or the centre of the face under the pointer. */
 import { describe, expect, it } from "vitest";
-import { middleOnFace, type LoadedFace } from "../../frontend/src/app/face-strip-view";
+import { coplanarCorners, middleOnFace, type LoadedFace } from "../../frontend/src/app/face-strip-view";
 import { edgeReference } from "../../frontend/src/sketcher/face-strip";
 import type { Viewport } from "../../frontend/src/viewport/viewport";
 
@@ -19,5 +19,12 @@ describe("middleOnFace", () => {
   it("skips the middle of the edge the line starts from, and points too far away", () => {
     expect(middleOnFace(viewport, face, ref, at(50, 2))).toBeNull();
     expect(middleOnFace(viewport, face, ref, at(20, 20))).toBeNull();
+  });
+});
+
+describe("coplanarCorners", () => {
+  it("keeps the corners of bodies in the plane of the face, in its coordinates (magnets)", () => {
+    const vertices = { bodyVertices: () => [[120, 30, 0], [100, 60, 0.01], [50, 30, 18], [0, 0, -5]] } as unknown as Viewport;
+    expect(coplanarCorners(vertices, face)).toEqual([[120, 30], [100, 60]]);
   });
 });

@@ -25,7 +25,7 @@ import { ValueBox } from "../ui/value-box";
 import { dragStep, roundTo } from "../viewport/axis-drag";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
-import { loadFace, planeAcross, type LoadedFace } from "./face-strip-view";
+import { coplanarCorners, loadFace, planeAcross, type LoadedFace } from "./face-strip-view";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
@@ -35,7 +35,7 @@ import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, typ
 type Shape = "line" | "rectangle" | "circle" | "offset";
 
 /** What a snap is called in the value box. */
-const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin de la face", middle: "Milieu du trait", center: "Centre de la face", free: "" };
+const SNAP_NAMES: Record<SnapKind, string> = { corner: "Coin, point accroché", middle: "Milieu du trait", center: "Centre de la face", free: "" };
 
 /** Kept for the session: the last shape, offsetting the whole roof (both slopes) or one face, and cutting the body along a line. */
 const last = { shape: "line" as Shape, roof: false, cut: false };
@@ -60,6 +60,9 @@ export class DrawOnFaceTool extends PanelTool {
   /** The face the drawing is on: set with the first point, which locks it. */
   private face: LoadedFace | null = null;
   private points: Vec2[] = [];
+  /** Which points were snapped (shown green), and the corners of the bodies in the plane of each face (magnets). */
+  private snaps: boolean[] = [];
+  private readonly magnets = new Map<string, Vec2[]>();
   /** Where the pointer lands (snapped, typed values applied). */
   private cursor: Vec2 | null = null;
   private hoverFace: LoadedFace | null = null;
@@ -110,18 +113,10 @@ export class DrawOnFaceTool extends PanelTool {
     return null;
   }
 
-  private world(face: LoadedFace, p: Vec2) {
-    return toWorld(face.frame, p[0], p[1]);
-  }
+  private world = (face: LoadedFace, p: Vec2) => toWorld(face.frame, p[0], p[1]);
+  private step = (): number => dragStep(this.ctx.viewport.worldPerPixel());
 
-  private step(): number {
-    return dragStep(this.ctx.viewport.worldPerPixel());
-  }
-
-  /**
-   * Where the pointer lands: on a cross (centre of the face, middle of an edge) within 18 pixels, or a corner within 10 —
-   * measured on the screen, whatever the depth of the face — else its distances to the edges rounded.
-   */
+  /** Where the pointer lands (on the screen): a cross (centre, middle of an edge) within 18 px, a magnet point within 14, else rounded. */
   private snapAt(face: LoadedFace, raw: Vec2, event: PointerEvent): { point: Vec2; kind: SnapKind } {
     const viewport = this.ctx.viewport;
     let best: { point: Vec2; kind: SnapKind; d: number } | null = null;
@@ -129,7 +124,9 @@ export class DrawOnFaceTool extends PanelTool {
       const d = viewport.screenDistance(event, this.world(face, point));
       if (d <= reach && (!best || d < best.d)) best = { point, kind, d };
     };
-    for (const a of face.polygon) consider(a, "corner", 10);
+    // Magnets: the corners of the face, those of the bodies in its plane, and the points already drawn.
+    const magnets = this.magnets.get(face.key) ?? this.magnets.set(face.key, coplanarCorners(viewport, face)).get(face.key)!;
+    for (const a of [...face.polygon, ...magnets, ...this.points]) consider(a, "corner", 14);
     for (const m of markedPoints(face.polygon)) consider(m.point, m.kind, 18);
     const found = best as { point: Vec2; kind: SnapKind } | null;
     return found ?? snapOnFace(face.polygon, raw, this.step(), 0);
@@ -222,7 +219,7 @@ export class DrawOnFaceTool extends PanelTool {
           ring.slice(1).forEach((q, i) => this.marks.line(at(ring[i] as Vec2), at(q), ORANGE, false));
           this.marks.line(at(lastPoint), at(p), ORANGE, true);
         }
-        for (const q of this.points) this.marks.dot(at(q), ORANGE);
+        this.points.forEach((q, i) => this.marks.dot(at(q), this.snaps[i] ? GREEN : ORANGE));
       }
     }
     this.showValues();
@@ -347,6 +344,7 @@ export class DrawOnFaceTool extends PanelTool {
     if (this.shape === "line" && lastPoint && Math.hypot(p[0] - lastPoint[0], p[1] - lastPoint[1]) < 1e-6) return this.confirm();
     if (this.shape !== "line" && lastPoint && Math.hypot(p[0] - lastPoint[0], p[1] - lastPoint[1]) < 1e-6) return;
     this.points.push(p);
+    this.snaps.push(this.snapped !== "free");
     this.typed = { ...NOTHING };
     this.ctx.viewport.setHoverHighlight(null);
     if (this.shape !== "line" && this.points.length === 2) return this.confirm();
@@ -358,7 +356,7 @@ export class DrawOnFaceTool extends PanelTool {
   override handleKey(event: KeyboardEvent): boolean {
     if (event.key === "Escape") {
       if (this.points.length) {
-        this.points = [];
+        [this.points, this.snaps] = [[], []];
         this.face = null;
         this.typed = { ...NOTHING };
         this.render();
@@ -471,7 +469,7 @@ export class DrawOnFaceTool extends PanelTool {
         // A line from an edge or a corner: the other way of « Magie extrusion ».
         if (isStripTrace(v as Trace)) return this.ctx.switchTo?.("faceStrip");
         this.shape = last.shape = v as Shape;
-        this.points = [];
+        [this.points, this.snaps] = [[], []];
         this.face = null;
         this.typed = { ...NOTHING };
         this.buffer = null;
