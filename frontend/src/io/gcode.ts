@@ -6,6 +6,7 @@
  * plusieurs passes. La fraise est compensée dans le calcul (pas de G41/G42), en avalant à l'opposé (opposition).
  * Z = 0 sur le dessus du panneau ; la dernière passe descend un peu dans le martyr. Millimètres, G21 G90.
  */
+import { nestParts, placedPart } from "./sheet-nesting";
 import type { FlatEdge, FlatPart } from "./dxf";
 
 type P2 = [number, number];
@@ -272,43 +273,24 @@ function sheetCode(jobs: Job[], o: GcodeOptions, tools: Map<number, number>): st
   return out;
 }
 
-/** The parts packed in rows on sheets of `size` (their length along X); the parts too large are returned apart. */
-export function packParts(parts: FlatPart[], size: [number, number], o: GcodeOptions): { sheets: { part: FlatPart; at: P2 }[][]; tooBig: string[] } {
-  const r = o.tool / 2;
-  const [W, H] = [size[0] - 2 * o.margin, size[1] - 2 * o.margin];
-  const room = (p: FlatPart): P2 => [p.width + o.tool + o.spacing, p.height + o.tool + o.spacing];
-  const sheets: { part: FlatPart; at: P2 }[][] = [];
-  const tooBig: string[] = [];
-  let sheet: { part: FlatPart; at: P2 }[] = [];
-  let [x, y, row] = [0, 0, 0];
-  for (const p of [...parts].sort((a, b) => b.height - a.height || b.width - a.width)) {
-    const [w, h] = room(p);
-    if (w - o.spacing > W || h - o.spacing > H) {
-      tooBig.push(p.name);
-      continue;
-    }
-    if (x + w - o.spacing > W) [x, y, row] = [0, y + row, 0];
-    if (y + h - o.spacing > H) {
-      sheets.push(sheet);
-      [sheet, x, y, row] = [[], 0, 0, 0];
-    }
-    sheet.push({ part: p, at: [o.margin + x + r, o.margin + y + r] });
-    x += w;
-    row = Math.max(row, h);
-  }
-  if (sheet.length) sheets.push(sheet);
-  return { sheets, tooBig };
+/** The parts nested on sheets of `size` (their length along X) by their real outline; the parts too large are returned apart. */
+export function packParts(parts: FlatPart[], size: [number, number], o: GcodeOptions, grain = true): { sheets: { part: FlatPart; at: P2 }[][]; tooBig: string[] } {
+  // By their real outline (io/sheet-nesting.ts): the bit and the spacing between two parts, its radius inside the margin.
+  const nested = nestParts(parts, { sheet: size, gap: o.tool + o.spacing, margin: o.margin + o.tool / 2, grain });
+  const sheets: { part: FlatPart; at: P2 }[][] = Array.from({ length: nested.sheets }, () => []);
+  for (const p of nested.placements) sheets[p.sheet]!.push({ part: placedPart(parts[p.part]!, p), at: [0, 0] });
+  return { sheets, tooBig: nested.tooLarge.map((i) => parts[i]!.name) };
 }
 
 /** The program for groups of parts (one group per material and thickness, on sheets of the given size). */
-export function partsGcode(groups: { label: string; size: [number, number]; parts: FlatPart[] }[], o: GcodeOptions = GCODE): { code: string; sheets: number; skipped: string[] } {
+export function partsGcode(groups: { label: string; size: [number, number]; parts: FlatPart[]; grain?: boolean }[], o: GcodeOptions = GCODE): { code: string; sheets: number; skipped: string[] } {
   const drills = [...new Set(groups.flatMap((g) => g.parts.flatMap((p) => p.edges.flatMap((e) => (e.kind === "circle" && p.edges.length > 1 && 2 * e.radius <= o.drillMax + EPS ? [Number((2 * e.radius).toFixed(2))] : [])))))].sort((a, b) => a - b);
   const tools = new Map(drills.map((d, i) => [d, i + 2]));
   const out = ["%", "(CAO Studio : usinage des pièces)", `(fraise T1 D${n3(o.tool)} ; ${drills.map((d) => `T${tools.get(d)} foret D${n3(d)}`).join(", ") || "aucun foret"})`, "(Z0 sur le dessus du panneau)", "G21 G90 G17", `G0 Z${n3(o.safeZ)}`];
   const skipped: string[] = [];
   let count = 0;
   for (const g of groups) {
-    const { sheets, tooBig } = packParts(g.parts, g.size, o);
+    const { sheets, tooBig } = packParts(g.parts, g.size, o, g.grain ?? true);
     skipped.push(...tooBig.map((n) => `${n} (plus grande que le panneau)`));
     for (const sheet of sheets) {
       count++;

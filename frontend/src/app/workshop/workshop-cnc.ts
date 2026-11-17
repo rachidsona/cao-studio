@@ -113,10 +113,12 @@ function loadOptions(): GcodeOptions {
 
 /** The parts by material and thickness, each on the sheets it is cut from. */
 function gcodeGroups(parts: (FlatPart & { material: string })[]) {
-  const by = new Map<string, { label: string; size: [number, number]; parts: FlatPart[] }>();
+  const by = new Map<string, { label: string; size: [number, number]; parts: FlatPart[]; grain: boolean }>();
   for (const p of parts) {
     const key = `${p.material}|${Number(p.thickness.toFixed(1))}`;
-    const group = by.get(key) ?? { label: `${p.material} ${Number(p.thickness.toFixed(1))} mm`, size: MATERIALS.find((m) => m.name === p.material)?.sheet ?? [2800, 2070], parts: [] };
+    const material = MATERIALS.find((m) => m.name === p.material);
+    // A plain board may be turned a quarter; a wood look keeps its grain along the sheet.
+    const group = by.get(key) ?? { label: `${p.material} ${Number(p.thickness.toFixed(1))} mm`, size: material?.sheet ?? [2800, 2070], parts: [], grain: material?.look !== "plain" };
     group.parts.push(p);
     by.set(key, group);
   }

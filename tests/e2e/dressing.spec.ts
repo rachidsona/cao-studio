@@ -428,7 +428,7 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   expect(download.suggestedFilename()).toBe("dossier-e2e-dossier-production.zip");
   const files = unzipSync(new Uint8Array(await readFile(await download.path())));
   expect(Object.keys(files).sort()).toEqual([
-    "00-lisez-moi.txt", "01-liste-de-debit.csv", "01-liste-de-debit.html", "02-bon-a-attribuer.csv", "02-bons-de-commande.html", "02-calepinage.html", "02-liste-d-achat.csv",
+    "00-lisez-moi.txt", "01-liste-de-debit.csv", "01-liste-de-debit.html", "01-plaqueuse.csv", "02-bon-a-attribuer.csv", "02-bons-de-commande.html", "02-calepinage.html", "02-liste-d-achat.csv",
     "03-fiches-de-fabrication.html", "04-etiquettes.html", "05-pieces-cnc.dxf", "05-pieces.nc", "06-notice-de-montage.html",
   ]);
   const text = (name: string) => strFromU8(files[name]!);

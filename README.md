@@ -1738,8 +1738,11 @@ opération existante.
     - Les **perçages sur chant** (tourillons, excentriques : perçage horizontal) ne sont pas sur la pièce à plat :
       l'export les signale, et les fiches de fabrication les cotent, chant par chant (« chant court côté X− :
       2 × Ø8 prof. 34 à 50, 306 », `document/face-ops.ts`).
-  - *G-code* : le programme de la défonceuse, prêt à lancer. Les pièces d'une même matière et épaisseur sont rangées
-    en bandes sur les panneaux bruts (une pause M0 entre deux panneaux) ; pour chacun, les perçages au foret de leur
+  - *G-code* : le programme de la défonceuse, prêt à lancer. Les pièces d'une même matière et épaisseur sont
+    **imbriquées par leur contour réel** sur les panneaux bruts (`io/sheet-nesting.ts` : la plus grande d'abord, en bas
+    à gauche puis glissée tant que son contour le permet — un arrondi, une encoche, deux triangles s'emboîtent —,
+    l'écart entre pièces plus la fraise entre deux ; un décor bois ne fait que des demi-tours, un panneau uni aussi des
+    quarts de tour), une pause M0 entre deux panneaux ; pour chacun, les perçages au foret de leur
     diamètre (T2, T3…) et à leur **vraie profondeur** (lue sur le maillage : borgne ou traversant), les grands trous
     (cuvettes Ø35) vidés en cercles concentriques à la fraise (T1), les découpes intérieures, puis le contour détouré
     en plusieurs passes jusque dans le martyr. La fraise est compensée dans le calcul (arcs aux angles saillants,

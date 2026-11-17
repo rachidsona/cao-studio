@@ -335,7 +335,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Lisez le résumé : nombre de pièces et de panneaux bruts, pièces non usinées.",
           "Cliquez « Télécharger le G-code ».",
         ],
-        tip: "Les réglages sont retenus par le navigateur. Vérifiez toujours le programme dans un simulateur avant de lancer la machine. Un perçage borgne sur l'autre face demande de retourner la pièce.",
+        tip: "Les pièces sont imbriquées sur les panneaux par leur contour réel (un arrondi, une encoche, un triangle s'emboîtent), l'écart entre pièces plus la fraise entre deux ; un décor bois ne fait que des demi-tours, un panneau uni aussi des quarts de tour. Les réglages sont retenus par le navigateur. Vérifiez toujours le programme dans un simulateur avant de lancer la machine. Un perçage borgne sur l'autre face demande de retourner la pièce.",
       },
       {
         keys: ["data-workshop:production-folder"], name: "Dossier de production",

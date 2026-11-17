@@ -310,7 +310,8 @@ export function loopArea(loop: readonly Span[]): number {
 }
 
 /** A DXF R12 file with the parts side by side along x, `gap` mm apart, its layers named by `profile`. */
-export function partsDxf(parts: FlatPart[], gap = 20, profile: LayerProfile = LAYER_PROFILES[0]!.profile): string {
+/** `laid`: the parts are already where they go (nested on a sheet, io/sheet-nesting.ts), not set side by side. */
+export function partsDxf(parts: FlatPart[], gap = 20, profile: LayerProfile = LAYER_PROFILES[0]!.profile, laid = false): string {
   // A circle alone is the outline of a round part; among other edges, a hole.
   const hole = (part: FlatPart, e: FlatEdge) => e.kind === "circle" && part.edges.length > 1;
   const layerOf = (part: FlatPart, e: FlatEdge) =>
@@ -353,7 +354,7 @@ export function partsDxf(parts: FlatPart[], gap = 20, profile: LayerProfile = LA
     // R12 text is plain ASCII: accents dropped, other signs replaced.
     const label = `${part.name} - ep. ${num(part.thickness)} mm`.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7E]/g, "-");
     out.push("0", "TEXT", "8", "TEXTE", ...at([0, -Math.max(12, part.height * 0.04) - 4]), "40", num(Math.max(8, Math.min(30, part.width / 25))), "1", label);
-    x += part.width + gap;
+    if (!laid) x += part.width + gap;
   }
   out.push("0", "ENDSEC", "0", "EOF");
   return `${out.join("\r\n")}\r\n`;
