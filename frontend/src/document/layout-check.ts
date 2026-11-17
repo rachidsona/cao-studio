@@ -7,7 +7,7 @@
  * - une plaque à moins de 60 cm de l'évier ;
  * - moins de 80 cm devant un four, un réfrigérateur, un lave-vaisselle ou un lave-linge ;
  * - un meuble haut à moins de 45 cm au-dessus de la plaque ;
- * - une tringle de penderie hors de 170 à 190 cm du sol.
+ * - une tringle de penderie hors de 170 à 190 cm du sol (la basse d'une double penderie n'en est pas).
  * Les chevauchements de pièces sont ceux du Contrôle avant fabrication (fabrication-check.ts).
  */
 import type { KitchenLayout } from "../features/kitchen-layout";
@@ -133,9 +133,12 @@ export function layoutProblems(input: LayoutInput): Problem[] {
       if (clearance >= 0 && clearance < 450) out.push(warn(`Le meuble haut ${label(c)} est à ${cm(clearance)} cm au-dessus de la plaque (45 cm au moins).`, [...c.ids, ...hob.ids]));
     }
   }
-  for (const rail of of("rail")) {
+  const rails = of("rail");
+  for (const rail of rails) {
     const z = (rail.box[0][2] + rail.box[1][2]) / 2;
-    if (z < 1700 || z > 1900) out.push(warn(`La tringle ${label(rail)} est à ${cm(z)} cm du sol (170 à 190 cm conseillés).`, rail.ids));
+    // The low rod of a double hanging (another rod right over it) hangs about 1 m up, by design.
+    const under = rails.some((r) => r !== rail && r.box[0][2] > rail.box[1][2] && [0, 1].every((i) => Math.min(r.box[1][i]!, rail.box[1][i]!) > Math.max(r.box[0][i]!, rail.box[0][i]!) - 1e-6));
+    if (!under && (z < 1700 || z > 1900)) out.push(warn(`La tringle ${label(rail)} est à ${cm(z)} cm du sol (170 à 190 cm conseillés).`, rail.ids));
   }
   return out;
 }

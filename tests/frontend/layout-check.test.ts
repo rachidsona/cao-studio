@@ -67,6 +67,10 @@ describe("alertes", () => {
   it("veut la tringle entre 170 et 190 cm", () => {
     expect(messages([item("Penderie", [[20, -300, 1487], [980, -300, 1513]], "cabinet", "rail")])).toEqual(["La tringle « Penderie » est à 150 cm du sol (170 à 190 cm conseillés)."]);
     expect(messages([item("Penderie", [[20, -300, 1787], [980, -300, 1813]], "cabinet", "rail")])).toEqual([]);
+    // A double hanging: its low rod at 106 cm is not too low; its high rod is judged as any.
+    const low = item("Penderie basse", [[20, -300, 1047], [980, -300, 1073]], "cabinet", "rail");
+    expect(messages([low, item("Penderie haute", [[20, -300, 1787], [980, -300, 1813]], "cabinet", "rail")])).toEqual([]);
+    expect(messages([low])).toEqual(["La tringle « Penderie basse » est à 106 cm du sol (170 à 190 cm conseillés)."]);
   });
 });
 
