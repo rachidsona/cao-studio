@@ -226,3 +226,30 @@ test("pièce hors d'équerre : un caisson tiré loin vers le mur de biais reste 
   expect(errors).toEqual([]);
 });
 
+test("Dupliquer une colonne collée à une autre : la copie à côté, la voisine poussée — rien n'entre dans rien", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-dupliquer-pousse");
+  const col = (id: string, x: number) => ({ id, type: "cabinet", name: `Colonne ${id}`, origin: [x, -600, 0], rotation: 0, width: 600, height: 2400, depth: 600, thickness: 18, back: "applied", backThickness: 3, shelves: 4, plinth: 100, construction: "sides-through" });
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features }, base_version: now.version, message: "Colonnes" }) });
+  }, { url: api, features: [col("cb1", 0), col("cb2", 600)] });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await click(page, '[data-action="fit"]');
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Colonne cb1" }).first().click();
+  await page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Dupliquer le caisson").click();
+  await expect(page.getByText(/poussé de 60 cm/).first()).toBeVisible();
+  await page.waitForTimeout(900);
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  const xs = (project.document.features as { type: string; id: string; origin: number[] }[]).filter((f) => f.type === "cabinet").map((f) => [f.id, Math.round(f.origin[0]!)]);
+  expect(Object.fromEntries(xs)).toMatchObject({ cb1: 0, cb2: 1200 });
+  expect(xs.map(([, x]) => x).sort((a, b) => (a as number) - (b as number))).toEqual([0, 600, 1200]);
+  expect(errors).toEqual([]);
+});
+
