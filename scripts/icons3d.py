@@ -21,6 +21,9 @@ STOPS = {  # tone: top, left, right faces, each from one colour to the next
     "y": (("#fff3b0", "#ffd84d"), ("#ffcf33", "#f0ad10"), ("#e0a00c", "#b57a06")),
     "d": (("#64748b", "#475569"), ("#334155", "#1e293b"), ("#1e293b", "#0f172a")),
 }
+# Each colour a CSS variable with its value as fallback (--ic-b1 … --ic-b6, the white ones always set in app.css):
+# the icon styles of the « ⋯ » menu (« Plat », « Contraste fort », « Monochrome ») change them, not the drawings.
+STOPS = {tone: tuple(tuple(c if c.startswith("var(") else f"var(--ic-{tone}{2 * i + j + 1},{c})" for j, c in enumerate(face)) for i, face in enumerate(faces)) for tone, faces in STOPS.items()}
 TONES = {"white": "w", "blue": "b", "orange": "o", "green": "g", "yellow": "y", "dark": "d"}
 INK = "#0284c7"
 
@@ -166,7 +169,7 @@ class Icon:
         return "".join(out)
 
 
-GROUP = '<g stroke="var(--ic-edge)" stroke-width=".28" stroke-linejoin="round" stroke-linecap="round">'
+GROUP = '<g stroke="var(--ic-edge)" style="stroke-width:var(--ic-edge-w,.28)" stroke-linejoin="round" stroke-linecap="round">'
 
 
 def defs():
@@ -176,13 +179,13 @@ def defs():
             out.append(f'<linearGradient id="k{tone}{part}" x1="0" y1="0" x2="{"1" if part == "t" else "0"}" y2="1"><stop offset="0" style="stop-color:{a}"/><stop offset="1" style="stop-color:{b}"/></linearGradient>')
         a, b = faces[0][0], faces[2][1]
         out.append(f'<radialGradient id="k{tone}b" cx=".36" cy=".3" r=".8"><stop offset="0" style="stop-color:{a}"/><stop offset=".55" style="stop-color:{faces[1][0]}"/><stop offset="1" style="stop-color:{b}"/></radialGradient>')
-    out.append('<linearGradient id="kcap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#e6ebf1"/></linearGradient>')
+    out.append('<linearGradient id="kcap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ic-cap1,#fff)"/><stop offset="1" style="stop-color:var(--ic-cap2,#e6ebf1)"/></linearGradient>')
     return "<defs>" + "".join(out) + "</defs>"
 
 
-CAP = ('<g class="ic-cap"><rect x="1.8" y="2.6" width="20.4" height="20" rx="3.4" fill="#9dafc2"/>'
-       '<rect x="1.8" y="1.4" width="20.4" height="20" rx="3.4" fill="url(#kcap)" stroke="var(--ic-edge)" stroke-width=".24"/>'
-       '<g transform="translate(3.72 3.32) scale(.69)" stroke-width="1.35" style="color:#334155;--ic-accent:#0284c7;--ic-action:#ea580c">')
+CAP = ('<g class="ic-cap"><rect x="1.8" y="2.6" width="20.4" height="20" rx="3.4" style="fill:var(--ic-cap-shadow,#9dafc2)"/>'
+       '<rect x="1.8" y="1.4" width="20.4" height="20" rx="3.4" fill="url(#kcap)" stroke="var(--ic-edge)" style="stroke-width:var(--ic-cap-edge-w,.24)"/>'
+       '<g transform="translate(3.72 3.32) scale(.69)" stroke-width="1.35" style="color:var(--ic-cap-ink,#334155);--ic-accent:var(--ic-cap-accent,#0284c7);--ic-action:var(--ic-cap-action,#ea580c)">')
 
 
 def main():
@@ -201,6 +204,10 @@ def main():
         kept += 1
         if 'class="ic-cap"' in body:
             return match.group(0)
+        # Drawn elsewhere at full size (a volume, or a selection's dashed frame): kept as it is, with no key under it;
+        # the edges of its volumes in the variable of the others.
+        if '<g stroke="var(--ic-edge)"' in body or body.startswith('<rect x="1" y="1" width="22" height="22"'):
+            return re.sub(r'<g stroke="var\(--ic-edge\)" stroke-width="([.\d]+)"', r'<g stroke="var(--ic-edge)" style="stroke-width:var(--ic-edge-w,\1)"', match.group(0))
         return f'{head}<symbol id="i-{name}"{attrs}>{CAP}{body}</g></g></symbol>'
 
     text = re.sub(r'(\s*)<symbol id="i-([a-z0-9-]+)"([^>]*)>(.*?)</symbol>', symbol, text, flags=re.S)

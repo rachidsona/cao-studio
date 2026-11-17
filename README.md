@@ -1492,6 +1492,14 @@ opération existante.
   formes et les matières, pas les couleurs : il va avec chaque palette (`styles/style-verre.css`,
   `styles/style-minimal.css`). Le verre est dessiné derrière chaque panneau (`::before`), pour que ses menus déroulants
   (« ⋯ », « Affichage ») passent toujours par-dessus.
+- **Style des icônes** (menu **« ⋯ » → Icônes**, gardé dans le navigateur, `localStorage` « icons », posé avant le
+  premier affichage) : **Volumes** (par défaut : de petits volumes blancs en dégradés doux), **Plat** (faces en aplats,
+  sans dégradé, contour léger), **Contraste fort** (arêtes foncées et épaisses, faces bien distinctes, couleurs plus
+  vives : lisible d'un coup d'œil, même en petit) ou **Monochrome** (tout en gris, arêtes marquées). Les mêmes dessins
+  pour les quatre : chaque couleur des icônes (`scripts/icons3d.py`, `templates/editor/_icons.html`) est une variable
+  CSS — `--ic-w1…6` le blanc, `--ic-b`, `-o`, `-g`, `-y`, `-d` le bleu, l'orange, le vert, le jaune, le foncé (1–2 la
+  face du dessus, 3–4 la gauche, 5–6 la droite), `--ic-edge` et `--ic-edge-w` les arêtes, `--ic-cap-*` la touche sous
+  les icônes à plat — que chaque style change (`styles/icon-styles.css`). Il va avec chaque palette et chaque style.
 - **Système de design** (`design-system/cao-studio/MASTER.md`) : la référence de l'apparence — couleurs par jeton
   (gris et accent de la palette, l'orange des cotes `text-dimension`), tailles de texte nommées (`text-3xs` 10 px,
   `text-2xs` 11 px, rien en pixels écrits à la main), rayons nommés des pages d'accueil (`rounded-tag`, `chip`,

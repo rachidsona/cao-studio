@@ -1,0 +1,54 @@
+/*
+ * The styles of the toolbar icons (class icons-* on <html>, « ⋯ » menu → Icônes), whatever the palette and the style
+ * of the interface. The icons are the same drawings (scripts/icons3d.py, templates/editor/_icons.html): each of their
+ * colours is a CSS variable (--ic-w1…6 white, --ic-b blue, -o orange, -g green, -y yellow, -d dark: 1–2 the top face,
+ * 3–4 the left, 5–6 the right), their edges --ic-edge and --ic-edge-w, the white key under the flat ones --ic-cap-*.
+ * « Volumes » (no class) is the default: white volumes in soft gradients.
+ */
+@layer components {
+  /* « Plat » : flat faces, no gradient, a lighter outline — the shape read by its three tones only. */
+  html.icons-plat {
+    --ic-w1: #ffffff; --ic-w2: #ffffff; --ic-w3: #e2e8f0; --ic-w4: #e2e8f0; --ic-w5: #b8c6d6; --ic-w6: #b8c6d6;
+    --ic-b1: #5cc8ff; --ic-b2: #5cc8ff; --ic-b3: #1d9bf0; --ic-b4: #1d9bf0; --ic-b5: #0a6cc0; --ic-b6: #0a6cc0;
+    --ic-o1: #ffb26b; --ic-o2: #ffb26b; --ic-o3: #ff7f24; --ic-o4: #ff7f24; --ic-o5: #d4560a; --ic-o6: #d4560a;
+    --ic-g1: #b4e86e; --ic-g2: #b4e86e; --ic-g3: #6cbf2c; --ic-g4: #6cbf2c; --ic-g5: #3f8a16; --ic-g6: #3f8a16;
+    --ic-y1: #ffe680; --ic-y2: #ffe680; --ic-y3: #ffc61a; --ic-y4: #ffc61a; --ic-y5: #d99a06; --ic-y6: #d99a06;
+    --ic-d1: #64748b; --ic-d2: #64748b; --ic-d3: #334155; --ic-d4: #334155; --ic-d5: #1e293b; --ic-d6: #1e293b;
+    --ic-edge: rgb(15 23 42 / 0.3);
+    --ic-edge-w: 0.18;
+    --ic-cap1: #ffffff;
+    --ic-cap2: #ffffff;
+    --ic-cap-shadow: #cbd5e1;
+  }
+  html.dark.icons-plat {
+    --ic-w3: #e9eff6; --ic-w4: #e9eff6; --ic-w5: #c3d0de; --ic-w6: #c3d0de;
+    --ic-edge: rgb(2 6 23 / 0.35);
+  }
+
+  /* « Contraste fort » : dark, thick edges and shaded sides far apart — read at a glance, even small or on a projector. */
+  html.icons-contraste {
+    --ic-w1: #ffffff; --ic-w2: #f8fafc; --ic-w3: #cbd5e1; --ic-w4: #b4c2d3; --ic-w5: #7d8fa6; --ic-w6: #5f7189;
+    --ic-edge: #0f172a;
+    --ic-edge-w: 0.55;
+    --ic-cap-edge-w: 0.5;
+    --ic-cap-ink: #020617;
+    --ic-cap-shadow: #64748b;
+    --ic-cap-accent: #0369a1;
+    --ic-cap-action: #c2410c;
+  }
+  html.dark.icons-contraste {
+    --ic-edge: #020617;
+  }
+  html.icons-contraste use[href^="#i-"] {
+    filter: saturate(1.35);
+  }
+
+  /* « Monochrome » : all in greys, as a sober interface — the shapes and their edges say the tool, not the colours. */
+  html.icons-mono {
+    --ic-edge-w: 0.4;
+    --ic-cap-edge-w: 0.4;
+  }
+  html.icons-mono use[href^="#i-"] {
+    filter: grayscale(1) contrast(1.12);
+  }
+}
