@@ -23,25 +23,15 @@ import { uniqueId, uniqueName } from "../document/operations";
 import type { ExtrudeFeature, FaceRef, Feature, SketchFeature, Vec3 } from "../document/types";
 import { formatLength, fromDisplay } from "../measurements/units";
 import type { Vec2 } from "../sketcher/edit";
-import {
-  bandRange,
-  bandSketch,
-  cornerReference,
-  edgeReference,
-  traceReference,
-  referenceDistance,
-  sideDistances,
-  stripPolygon,
-  type FaceEdge,
-  type GrooveAnchor,
-  type StripReference,
-} from "../sketcher/face-strip";
+import { bandRange, bandSketch, cornerReference, edgeReference, traceReference, referenceDistance, sideDistances, stripPolygon, type FaceEdge, type GrooveAnchor, type StripReference } from "../sketcher/face-strip";
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, loadFace, regionUnder, startOnFace, StripMarks, type Hover, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { CurvedOffset } from "./curved-offset";
+import { Marks } from "./measure";
 import { TypedValues } from "../ui/typed-values";
 
 /**
@@ -98,6 +88,9 @@ export class FaceStripTool extends PanelTool {
   private target: Vec3 | null = null;
   private lastEvent: PointerEvent | null = null;
   private readonly marks: StripMarks;
+  /** The side of a cylinder: a line from its round rim, its band dug all round (curved-offset.ts). */
+  private readonly round: CurvedOffset;
+  private readonly roundMarks: Marks;
 
   constructor(ctx: ToolContext) {
     super(ctx, MAGIC_EXTRUDE, null);
@@ -107,6 +100,7 @@ export class FaceStripTool extends PanelTool {
     this.extrudeId = uniqueId(doc, "ex");
     this.extrudeName = uniqueName(doc, "Extrusion");
     this.marks = new StripMarks(ctx.viewport.scene);
+    [this.round, this.roundMarks] = [new CurvedOffset(ctx), new Marks(ctx.viewport.scene)];
     this.typed = new TypedValues(ctx.container, () => this.phase !== "pick", (values, text) => this.applyTyped(values, text), () => this.showValues());
   }
 
@@ -239,6 +233,8 @@ export class FaceStripTool extends PanelTool {
   }
 
   protected feature(): Feature | string {
+    const round = this.round.locked ? this.round.features(this.sketchId, this.sketchName) : null;
+    if (round) return typeof round === "string" ? round : round[0]!;
     if (this.phase === "pick") return "Survolez une arête (trait parallèle), un coin (trait en travers) ou l'intérieur d'une face (la tirer ou la pousser), puis cliquez.";
     if (!this.face) return "Amenez le pointeur sur une face.";
     if (this.phase === "place") {
@@ -251,6 +247,8 @@ export class FaceStripTool extends PanelTool {
   }
 
   protected override companions(): Feature[] {
+    const round = this.round.locked ? this.round.features(this.sketchId, this.sketchName) : null;
+    if (round) return typeof round === "string" ? [] : round.slice(1);
     return this.phase === "pull" && !this.faceRef && !this.area && this.face && Math.abs(this.height) >= 1e-3 ? [this.extrusion(this.face)] : [];
   }
 
@@ -260,6 +258,7 @@ export class FaceStripTool extends PanelTool {
   }
 
   override confirm(): void {
+    if (this.round.locked) return super.confirm();
     const built = this.feature();
     if (typeof built !== "string") last = { mode: this.mode, anchor: this.anchor, start: this.departure, newBody: this.newBody };
     const extruded = this.phase === "pull" && Math.abs(this.height) >= 1e-3;
@@ -277,6 +276,7 @@ export class FaceStripTool extends PanelTool {
       this.render();
       this.schedulePreview();
     };
+    if (this.round.locked) return [this.numberRow("Profondeur", this.round.depth, unit, (v) => ((this.round.depth = v), changed()), true), this.info(this.round.hint)];
     if (this.phase === "pick") {
       return [
         this.selectRow("Tracé", this.departure, TRACES, (v) => {
@@ -372,6 +372,7 @@ export class FaceStripTool extends PanelTool {
   protected override dispose(): void {
     this.typed.dispose();
     this.marks.dispose();
+    this.roundMarks.clear();
     this.ctx.viewport.setHoverHighlight(null);
   }
 
@@ -393,6 +394,8 @@ export class FaceStripTool extends PanelTool {
       // A sketch area in front of the body faces is pulled like a face (as DIO's trowel on a face).
       const under = this.phase === "pick" ? regionUnder(this.ctx.viewport, this.ctx.doc(), event, pick ? pick.point.distanceTo(this.ctx.viewport.camera.position) : null) : null;
       const body = pick ? this.faceOf(pick) : null;
+      if (this.round.locked || (this.phase === "pick" && this.departure === "edge" && pick && !body && this.round.wants("ring", true, false) && this.round.move(pick, dragStep(this.ctx.viewport.worldPerPixel()), () => this.lastEvent && this.move(this.lastEvent)))) return this.showRound();
+      this.roundMarks.clear();
       // Picking, an edge or a corner of the body comes first, then a line of a trace drawn on the face, then the
       // trace's area (a band pulled before stays in front of the face it hollowed: its edges must still be taken).
       const start = this.phase === "pick" && body ? startOnFace(this.ctx.viewport, body, event, this.departure, SNAP_PX) : null;
@@ -416,11 +419,17 @@ export class FaceStripTool extends PanelTool {
     if (this.phase !== "pick") this.schedulePreview();
   }
 
+  private showRound(): void {
+    this.roundMarks.clear();
+    this.round.draw(this.roundMarks);
+    this.typed.box.show(this.round.label, this.round.reading((mm) => formatLength(mm, this.ctx.unit())), this.round.hint);
+    this.render();
+  }
+
   protected override click(event: PointerEvent): void {
-    if (this.phase === "pull") {
-      this.finish();
-      return;
-    }
+    if (this.round.locked) return;
+    if (this.phase === "pick" && this.round.place()) return (this.render(), this.schedulePreview());
+    if (this.phase === "pull") return this.finish();
     if (this.phase === "place") return this.lay(event);
     const face = this.face;
     if (!face || !this.hover) {
@@ -429,17 +438,14 @@ export class FaceStripTool extends PanelTool {
     }
     if (this.hover.kind === "region") {
       [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [face.polygon, null, 0, false, null];
-      this.targets = captureTargets(this.ctx.viewport);
-      this.phase = "pull";
-      this.move(event);
-      return;
+      [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
+      return this.move(event);
     }
     if (this.hover.kind === "face") {
       void this.ctx.geometry.describe(face.pick.bodyId, [], face.pick.faceIndex).then(({ face: ref }) => {
         if (!ref || ref.type !== "PLANE") return this.ctx.notify("Seules les faces planes se tirent ou se poussent.", "error");
         [this.faceRef, this.band, this.height, this.frozenHeight, this.target] = [ref, null, 0, false, null];
-        this.targets = captureTargets(this.ctx.viewport);
-        this.phase = "pull";
+        [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
         this.redraw();
         this.render();
       });
@@ -449,9 +455,7 @@ export class FaceStripTool extends PanelTool {
       this.hover.kind === "edge"
         ? { kind: "edge", face: face.key, edge: this.hover.edge, a3: this.world(face, this.hover.edge.a), b3: this.world(face, this.hover.edge.b), ...(this.hover.trace ? { trace: true as const } : {}) }
         : { kind: "corner", face: face.key, index: this.hover.index, at3: this.world(face, face.polygon[this.hover.index] as Vec2) };
-    this.frozen = false;
-    this.distance = 0;
-    this.phase = "place";
+    [this.frozen, this.distance, this.phase] = [false, 0, "place"];
     this.move(event);
   }
 

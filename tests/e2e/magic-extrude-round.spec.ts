@@ -110,5 +110,19 @@ test("Magie extrusion sur le flanc d'un cylindre : un rectangle creusé qui suit
     expect(made.some((f) => f.type === "extrude" && f.name.startsWith(word) && f.operation === "cut")).toBe(true);
     await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   }
+  // A line from its round rim: the band between the rim and the line, dug all round.
+  await click(page, '[data-action="face-strip"]');
+  await tool.getByRole("combobox", { name: "Tracé" }).selectOption("edge");
+  await expect(async () => {
+    await page.mouse.move(cx + unit * 2, cy - unit * 3);
+    await page.mouse.move(cx + unit * 2 + 1, cy - unit * 3);
+    await expect(values).toContainText("bord rond", { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+  await page.mouse.click(cx + unit * 2 + 1, cy - unit * 3);
+  await expect(tool.getByRole("textbox", { name: "Profondeur" })).toBeVisible();
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  const ring = await saved();
+  expect(ring.some((f) => f.type === "extrude" && f.name.startsWith("Bande ronde") && f.operation === "cut")).toBe(true);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });

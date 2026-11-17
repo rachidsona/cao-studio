@@ -1247,8 +1247,10 @@ opération existante.
   pas les points le long d'un arc) — et **le flanc d'un cylindre** (face courbe d'axe X, Y ou Z, entière ou morceau) :
   *Rectangle* — deux coins cliqués, il suit la face (largeur mesurée sur elle ; hauteur le long de l'axe) — creusé à la
   « Profondeur » (négative : en relief), *Cercle* — son centre puis un point du bord — percé vers l'axe depuis le plan
-  tangent (négative : un bossage), *Décalage du contour* qui fait le tour entier d'un cylindre (sans couture) ; OK les
-  garde (`features/curved-offset.ts`, `app/curved-offset.ts`). La ligne seule reste sur une face plane.
+  tangent (négative : un bossage), *Décalage du contour* qui fait le tour entier d'un cylindre (sans couture), et le
+  *Trait depuis une arête* au **bord rond** : la bande entre le bord le plus proche et le trait, creusée tout autour
+  (négative : un collet) ; OK les garde (`features/curved-offset.ts`, `app/curved-offset.ts`). La ligne seule reste
+  sur une face plane.
 - **Magie extrusion — une forme sur une face** (anciennement « Dessiner sur le corps » ; comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
   on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et

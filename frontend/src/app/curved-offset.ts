@@ -22,7 +22,7 @@ const ORANGE = 0xf97316;
 
 type Picked = { kind: "curve"; face: CurvedFace; bodyId: string } | { kind: "roof"; face: RoofFace; bodyId: string };
 /** What is drawn on the curved face: its offset outline, or a rectangle or a circle clicked on it. */
-export type CurvedShape = "offset" | "rectangle" | "circle";
+export type CurvedShape = "offset" | "rectangle" | "circle" | "ring";
 type Place = { s: number; a: number };
 
 const outlineOf = (p: Picked, d: number) => (p.kind === "curve" ? curvedOutline(p.face, d) : roofOutline(p.face, d));
@@ -71,6 +71,7 @@ export class CurvedOffset {
   wants(shape: string, curved: boolean, roof: boolean): boolean {
     if (shape !== this.shape) [this.shape, this.points, this.locked] = [shape as CurvedShape, [], null];
     if (shape === "offset") return !!this.locked || curved || roof;
+    if (shape === "ring") return !!this.locked || curved;
     return (shape === "rectangle" || shape === "circle") && (!!this.locked || this.points.length > 0 || curved);
   }
 
@@ -86,6 +87,8 @@ export class CurvedOffset {
       if (this.hover.kind !== "curve") return false;
       const at = facePlace(this.hover.face, p);
       this.cursor = { s: roundTo(at.s, step), a: at.a };
+      // A line from the nearer round rim: its distance from it.
+      if (this.shape === "ring") this.distance = roundTo(Math.min(at.s - this.hover.face.s0, this.hover.face.s1 - at.s), step);
       return true;
     }
     this.distance = roundTo(this.hover.kind === "curve" ? curvedPointerOffset(this.hover.face, p) : roofPointerOffset(this.hover.face, p), step);
@@ -97,6 +100,11 @@ export class CurvedOffset {
     let [b0, b1] = [Math.min(a.a, b.a), Math.max(a.a, b.a)];
     if (b1 - b0 > Math.PI) [b0, b1] = [b1, b0 + 2 * Math.PI];
     return [b0, b1, Math.min(a.s, b.s), Math.max(a.s, b.s)];
+  }
+
+  /** A ring's band: from the nearer round rim to the line through the point. */
+  private band(f: CurvedFace, p: Place): [number, number] {
+    return p.s - f.s0 <= f.s1 - p.s ? [f.s0, p.s] : [p.s, f.s1];
   }
 
   /** A circle's radius: from its centre to the point, across the face. */
@@ -116,8 +124,9 @@ export class CurvedOffset {
   private drawShape(marks: Marks): void {
     const f = (this.on ?? this.hover)?.face as CurvedFace | undefined;
     const [first, last] = [this.points[0], this.points[1] ?? this.cursor];
-    if (!f || !first || !last || (this.on ?? this.hover)?.kind !== "curve") return;
     const seg = (pts: Vec3[]) => pts.slice(1).forEach((p, k) => marks.line(pts[k]!, p, ORANGE, false));
+    if (f && last && this.shape === "ring") return this.band(f, last).forEach((s) => seg(Array.from({ length: 65 }, (_, k) => onFace(f, s, f.a0 + ((f.a1 - f.a0) * k) / 64))));
+    if (!f || !first || !last || (this.on ?? this.hover)?.kind !== "curve") return;
     if (this.shape === "rectangle") {
       const [b0, b1, s0, s1] = this.span(first, last);
       const arc = (s: number) => Array.from({ length: 33 }, (_, k) => onFace(f, s, b0 + ((b1 - b0) * k) / 32));
@@ -144,7 +153,7 @@ export class CurvedOffset {
       if (this.locked || !this.cursor || (!this.hover && !this.on)) return false;
       if (!this.points.length) this.on = this.hover;
       this.points.push(this.cursor);
-      if (this.points.length === 2) this.locked = this.on;
+      if (this.points.length === 2 || this.shape === "ring") this.locked = this.on;
       return true;
     }
     if (this.locked || !this.hover || !outlineOf(this.hover, this.distance)) return false;
@@ -156,12 +165,14 @@ export class CurvedOffset {
   get label(): string {
     if (this.shape === "rectangle") return "Rectangle sur la face courbe : largeur (sur la face) ; hauteur";
     if (this.shape === "circle") return "Cercle sur la face courbe : diamètre";
+    if (this.shape === "ring") return "Trait depuis le bord rond : distance";
     return (this.locked ?? this.hover)?.kind === "roof" ? "Décalage sur tout le toit" : "Décalage sur la face courbe";
   }
 
   /** The value read (mm), or what is missing. */
   reading(fmt: (mm: number) => string): string {
     if (this.shape === "offset") return `${fmt(this.distance)} ${this.hover && !outlineOf(this.hover, this.distance) ? "trop grand" : ""}`;
+    if (this.shape === "ring") return fmt(this.distance);
     const f = (this.on ?? this.hover)?.face as CurvedFace | undefined;
     const [first, last] = [this.points[0], this.points[1] ?? this.cursor];
     if (!f || !first || !last) return "—";
@@ -174,6 +185,7 @@ export class CurvedOffset {
     if (this.locked) return "Réglez la profondeur dans le panneau : elle est enregistrée aussitôt.";
     if (this.shape === "rectangle") return this.points.length ? "Cliquez le coin opposé." : "Cliquez un coin sur la face courbe.";
     if (this.shape === "circle") return this.points.length ? "Cliquez un point du bord." : "Cliquez le centre sur la face courbe.";
+    if (this.shape === "ring") return "Cliquez : la bande entre le bord rond et le trait se creuse tout autour (profondeur négative : un collet).";
     return "Cliquez pour le poser, puis réglez la profondeur.";
   }
 
@@ -194,19 +206,20 @@ export class CurvedOffset {
   private shapeFeatures(sketchId: string, name: string): Feature[] | string {
     const picked = this.locked;
     const [first, second] = this.points;
-    if (!picked || picked.kind !== "curve" || !first || !second) return "Cliquez les deux points sur la face courbe.";
+    const ring = this.shape === "ring";
+    if (!picked || picked.kind !== "curve" || !first || (!second && !ring)) return "Cliquez les deux points sur la face courbe.";
     const f = picked.face;
     const doc = this.ctx.doc();
-    const words = this.shape === "rectangle" ? "Rectangle courbe" : "Cercle courbe";
-    if (this.shape === "rectangle") {
-      const [b0, b1, s0, s1] = this.span(first, second);
+    const words = ring ? "Bande ronde" : this.shape === "rectangle" ? "Rectangle courbe" : "Cercle courbe";
+    if (ring || this.shape === "rectangle") {
+      const [b0, b1, s0, s1] = ring ? [f.a0, f.a1, ...this.band(f, first).sort((x, y) => x - y)] as [number, number, number, number] : this.span(first, second!);
       const plan = sectorRecess(f, b0, b1, s0, s1, this.depth);
       if (typeof plan === "string") return plan;
       const sketch: SketchFeature = { id: sketchId, type: "sketch", name, plane: plan.plane, offset: Number(plan.offset.toFixed(6)), hidden: true, ...plan.geometry };
       const id = uniqueId({ ...doc, features: [...doc.features, sketch] }, "ex");
       return [sketch, { id, type: "extrude", name: `${words} ${name.replace(/^\D+/, "")}`.trim(), sketch: sketchId, distance: plan.distance, operation: plan.operation, target: picked.bodyId }];
     }
-    const plan = curvedCircle(f, first.s, first.a, this.radius(f, first, second), this.depth);
+    const plan = curvedCircle(f, first.s, first.a, this.radius(f, first, second!), this.depth);
     if (typeof plan === "string") return plan;
     const n = plan.frame.normal;
     const plane = Math.abs(n[0]) > 0.7 ? "YZ" : Math.abs(n[1]) > 0.7 ? "XZ" : "XY";
