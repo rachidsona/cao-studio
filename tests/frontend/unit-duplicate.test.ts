@@ -4,6 +4,8 @@ import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenRunItem, type RoomFeature } from "../../frontend/src/document/types";
 import { withCabinetDuplicated } from "../../frontend/src/document/unit-duplicate";
+import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
+import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
@@ -92,6 +94,45 @@ describe("dupliquer un meuble de cuisine", () => {
     it("serré entre deux murs sans place : refusé, avec ce qu'il faut faire", () => {
       const full = { ...createReferencePlate(), features: [room, ...[0, 600, 1200, 1800, 2400, 3000].map((x, i) => col(`cb${i + 1}`, x))] };
       expect(withCabinetDuplicated(full, "cb3")).toMatch(/Pas de place à côté/);
+    });
+  });
+
+  describe("posé à part, un meuble du Plan de cuisine dans le chemin", () => {
+    // A straight kitchen 3,6 m long, two base units at the start of wall A; a free cabinet stands just before them.
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, wallUnits: false });
+    const units = [newItem([], "base-bas-2-portes", 600)];
+    units.push(newItem(units, "base-bas-2-portes", 800));
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: units } });
+    if (typeof built === "string") throw new Error(built);
+    const planUnits = () => runCabinets(built.doc, made.id, "A").map((r) => built.doc.features.find((f) => f.id === r.cabinet) as CabinetFeature);
+    const first = planUnits()[0]!;
+    const free: CabinetFeature = { ...first, id: "cbfree", name: "Bas libre", origin: [first.origin[0] - 600, first.origin[1], first.origin[2]] };
+    const doc: CadDocument = { ...built.doc, features: [...built.doc.features, free] };
+
+    it("la copie se pose à côté, les meubles du plan sont poussés le long de leur mur, et le plan garde la place libre", () => {
+      const r = withCabinetDuplicated(doc, "cbfree");
+      if (typeof r === "string") throw new Error(r);
+      expect((r.doc.features.find((f) => f.id === r.cabinet) as CabinetFeature).origin[0]).toBe(first.origin[0]);
+      expect(r.note).toMatch(/poussé/);
+      // Applied (as the editor does): the plan keeps a free room of 60 cm before its first unit, and rebuilds its units there.
+      const synced = syncKitchenPlans(doc, r.doc);
+      const items = kitchenPlanIn(synced, made.id)!.runs!.A!;
+      expect(items[0]).toMatchObject({ model: "space", width: 600 });
+      const xs = runCabinets(synced, made.id, "A").map((c) => (synced.features.find((f) => f.id === c.cabinet) as CabinetFeature).origin[0]);
+      expect(xs).toEqual([first.origin[0] + 600, first.origin[0] + 1200]);
+    });
+
+    it("au bout du linéaire, sans place pour le pousser : la copie va de l'autre côté", () => {
+      const last = planUnits()[1]!;
+      const after: CabinetFeature = { ...free, origin: [last.origin[0] + last.width, last.origin[1], last.origin[2]] };
+      const full = withKitchenBuilt(made.doc, made.id, { runs: { A: [...units, newItem(units, "base-bas-2-portes", 600), newItem(units, "base-bas-2-portes", 600), newItem(units, "base-bas-2-portes", 1000)] } });
+      if (typeof full === "string") throw new Error(full);
+      const placed = runCabinets(full.doc, made.id, "A").map((c) => full.doc.features.find((f) => f.id === c.cabinet) as CabinetFeature);
+      // The run is full (3,6 m): a free cabinet just before its first unit cannot push it along.
+      const r = withCabinetDuplicated({ ...full.doc, features: [...full.doc.features, { ...free, origin: [placed[0]!.origin[0] - 600, free.origin[1], free.origin[2]] }] }, "cbfree");
+      if (typeof r === "string") throw new Error(r);
+      expect((r.doc.features.find((f) => f.id === r.cabinet) as CabinetFeature).origin[0]).toBe(placed[0]!.origin[0] - 1200);
+      expect(after.id).toBe("cbfree");
     });
   });
 });

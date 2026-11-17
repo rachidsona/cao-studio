@@ -2527,9 +2527,11 @@ opération existante.
     et au bout du plan ; un clic puis un clic sur une face ou un coin l'y colle), « ↻ », et maintenant
     « ⧉ Dupliquer » (Ctrl + D) — le même juste après lui sur son linéaire quand le Plan de cuisine l'a fait, sinon sa
     copie **juste à côté de lui** (à sa droite d'abord) avec ses façades et ses matières, **les caissons qui sont dans
-    le chemin poussés** de sa largeur (chacun d'autant que nécessaire : un écart entre deux absorbe la poussée) ; si un
-    mur ou un meuble d'un plan de cuisine l'en empêche, l'autre côté, puis la première place libre — jamais dans un
-    meuble ni dans un mur (`document/unit-duplicate.ts`) — et « ✕ » qui le supprime.
+    le chemin poussés** de sa largeur (chacun d'autant que nécessaire : un écart entre deux absorbe la poussée) — un
+    meuble du Plan de cuisine aussi, le long de son mur, le plan gardant la place libre qu'il laisse (comme un meuble
+    poussé dans la 3D, `document/kitchen-moves.ts`) ; si un mur ou le bout d'un linéaire l'en empêche, l'autre côté,
+    puis la première place libre — jamais dans un meuble ni dans un mur (`document/unit-duplicate.ts`) — et « ✕ » qui
+    le supprime.
   - **Éditeur de linéaire** : un clic sur un linéaire ouvre « Linéaire — mur A », sa **bande de face à l'échelle**
     (dessinée avec les dessins du catalogue) sur deux rangées : en bas les meubles bas et les colonnes, en haut les
     meubles hauts, la hotte et le micro-ondes. On y ajoute un meuble du catalogue (largeurs du commerce de 300 à 1200),

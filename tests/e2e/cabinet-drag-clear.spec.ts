@@ -1,6 +1,11 @@
 /** Un caisson déplacé par sa poignée « ✥ Déplacer » ne se pose jamais dans un autre : il est remis à côté, au ras. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
+import { withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
+import { createReferencePlate, type CabinetFeature, type CadDocument } from "../../frontend/src/document/types";
+import { newItem } from "../../frontend/src/features/kitchen-run-items";
 import { roomClashes } from "../../frontend/src/features/room-plan";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
@@ -250,6 +255,46 @@ test("Dupliquer une colonne collée à une autre : la copie à côté, la voisin
   const xs = (project.document.features as { type: string; id: string; origin: number[] }[]).filter((f) => f.type === "cabinet").map((f) => [f.id, Math.round(f.origin[0]!)]);
   expect(Object.fromEntries(xs)).toMatchObject({ cb1: 0, cb2: 1200 });
   expect(xs.map(([, x]) => x).sort((a, b) => (a as number) - (b as number))).toEqual([0, 600, 1200]);
+  expect(errors).toEqual([]);
+});
+
+test("Dupliquer un caisson collé à une cuisine du Plan : ses meubles sont poussés le long du mur, le plan garde la place", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-dupliquer-plan");
+  const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, wallUnits: false });
+  const units = [newItem([], "base-bas-2-portes", 600)];
+  units.push(newItem(units, "base-bas-2-portes", 800));
+  const built = withKitchenBuilt(made.doc, made.id, { runs: { A: units } });
+  if (typeof built === "string") throw new Error(built);
+  const first = built.doc.features.find((f) => f.id === runCabinets(built.doc, made.id, "A")[0]!.cabinet) as CabinetFeature;
+  const free: CabinetFeature = { ...first, id: "cbfree", name: "Bas libre", origin: [first.origin[0] - 600, first.origin[1], first.origin[2]] };
+  const { features, layers, bodyInfo } = { ...built.doc, features: [...built.doc.features, free] } as CadDocument & { layers?: unknown; bodyInfo?: unknown };
+  await page.evaluate(async ({ url, features, layers, bodyInfo }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, ...(layers ? { layers } : {}), ...(bodyInfo ? { bodyInfo } : {}) }, base_version: now.version, message: "Cuisine" }) });
+  }, { url: api, features, layers, bodyInfo });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await click(page, '[data-action="fit"]');
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Bas libre" }).first().click();
+  await page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Dupliquer le caisson").click();
+  await expect(page.getByText(/poussé/).first()).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 60_000 });
+  await page.waitForTimeout(900);
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  const doc = project.document as CadDocument;
+  // The plan keeps 60 cm free before its first unit, and its units stand there; the copy stands where the first was.
+  const plan = doc.features.find((f) => f.id === made.id) as { kitchenPlan: { runs: { A: { model: string; width: number }[] } } };
+  expect(plan.kitchenPlan.runs.A[0]).toMatchObject({ model: "space", width: 600 });
+  const xs = runCabinets(doc, made.id, "A").map((c) => Math.round((doc.features.find((f) => f.id === c.cabinet) as CabinetFeature).origin[0]));
+  expect(xs).toEqual([Math.round(first.origin[0]) + 600, Math.round(first.origin[0]) + 1200]);
+  const all = doc.features.filter((f): f is CabinetFeature => f.type === "cabinet").map((c) => Math.round(c.origin[0])).sort((a, b) => a - b);
+  expect(all).toEqual([first.origin[0] - 600, first.origin[0], first.origin[0] + 600, first.origin[0] + 1200].map(Math.round));
   expect(errors).toEqual([]);
 });
 

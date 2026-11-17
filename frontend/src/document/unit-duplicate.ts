@@ -5,6 +5,8 @@
  */
 import { leavesRoom, roomKeepOuts } from "./cabinet-clear";
 import { cabinetAxes, cabinetBox, slideCabinet } from "./kitchen-catalog";
+import { itemsMoved, unitsMoved } from "./kitchen-moves";
+import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { kitchenFromPlan } from "./kitchen-plan-build";
 import { planItemOf, runCabinets } from "./kitchen-plan-add";
@@ -42,7 +44,8 @@ export function withCabinetDuplicated(doc: CadDocument, cabinetId: string): { do
     return { doc: built.doc, cabinet: runCabinets(built.doc, owner.plan, owner.run).find((x) => x.item === copy.id)?.cabinet ?? null, note: `« ${itemEntry(item).name} » dupliqué sur son linéaire, juste après lui.` };
   }
   // On its own: its copy right beside it (its right first), the cabinets in the way on that side pushed along by its
-  // width; when they cannot be (a wall, a cabinet of a kitchen plan), the nearest free place — never in another
+  // width — a unit of a kitchen plan too, its plan following —; when they cannot be (a wall, the end of a run), the
+  // nearest free place — never in another
   // cabinet, nor in a wall, nor out of its room. Its fronts and its materials go with it.
   const pushed = pushBeside(doc, c, 1) ?? pushBeside(doc, c, -1);
   const shift = pushed?.shift ?? freeBeside(doc, c);
@@ -71,8 +74,9 @@ export function withCabinetDuplicated(doc: CadDocument, cabinetId: string): { do
 
 /**
  * The copy right beside the cabinet on one side (1: along its width, its right; −1: its left), and the cabinets in its
- * lane on that side pushed along, each as far as needed and no further (a gap between two absorbs the push). Null when a
- * pushed cabinet would go into a wall or out of its room, or when one of a kitchen plan is in the way (its run owns it).
+ * lane on that side pushed along, each as far as needed and no further (a gap between two absorbs the push) — a unit of a
+ * kitchen plan too, along its run, its plan keeping the room it leaves. Null when a pushed cabinet would go into a wall
+ * or out of its room, or when a plan's run cannot keep its unit there.
  */
 function pushBeside(doc: CadDocument, c: CabinetFeature, side: 1 | -1): { shift: Vec3; moves: CabinetFeature[] } | null {
   const { along } = cabinetAxes(c.rotation ?? 0);
@@ -91,7 +95,8 @@ function pushBeside(doc: CadDocument, c: CabinetFeature, side: 1 | -1): { shift:
     const near = dir > 0 ? lo[axis]! : hi[axis]!;
     const by = dir > 0 ? front - near : near - front;
     if (by <= 1) break;
-    if (planItemOf(doc, o.id)) return null;
+    // A unit of a kitchen plan is pushed only along its own run (its wall): its plan keeps the room it leaves.
+    if (planItemOf(doc, o.id) && Math.abs(cabinetAxes(o.rotation ?? 0).along[axis]!) < 0.5) return null;
     const delta: Vec3 = [0, 0, 0];
     delta[axis] = dir * by;
     const slid = slideCabinet(o, delta);
@@ -106,7 +111,32 @@ function pushBeside(doc: CadDocument, c: CabinetFeature, side: 1 | -1): { shift:
   shift[axis] = dir * c.width;
   const copyBox: [Vec3, Vec3] = [box[0].map((v, i) => v + shift[i]!) as Vec3, box[1].map((v, i) => v + shift[i]!) as Vec3];
   if (roomKeepOuts(doc).some((k) => [0, 1, 2].every((i) => copyBox[0][i]! < k[1][i]! - 1 && copyBox[1][i]! > k[0][i]! + 1)) || leavesRoom(doc, box, copyBox)) return null;
-  return { shift, moves };
+  return plansKeep(doc, moves) ? { shift, moves } : null;
+}
+
+/**
+ * Whether the kitchen plans whose units are among `moves` can keep them where they are pushed — a free room before
+ * each on its run (document/kitchen-moves.ts, as when one is pushed in the 3D); not when its run cannot say it (beyond
+ * its end, into another unit of it). The plan itself follows when the document is applied (document/kitchen-sync.ts).
+ */
+function plansKeep(doc: CadDocument, moves: readonly CabinetFeature[]): boolean {
+  const owners = moves.map((m) => planItemOf(doc, m.id)).filter((o): o is NonNullable<typeof o> => o !== null);
+  if (!owners.length) return true;
+  const moved = new Map(moves.map((m) => [m.id, m]));
+  const after: CadDocument = { ...doc, features: doc.features.map((f) => moved.get(f.id) ?? f) };
+  for (const planId of new Set(owners.map((o) => o.plan))) {
+    const plan = kitchenPlanIn(doc, planId);
+    if (!plan) return false;
+    const room = kitchenRoomInfo(doc, plan);
+    const units = kitchenFromPlan(plan, room).units;
+    const s = kitchenSizes(plan);
+    for (const run of kitchenRuns(plan).filter((r) => owners.some((o) => o.plan === planId && o.run === r.id))) {
+      const shifts = unitsMoved(after, plan, run, units.filter((u) => u.run === run.id), doc);
+      if (!Object.keys(shifts).length) return false;
+      if (!itemsMoved(runGeometry(plan, run, room?.[run.id]), plan.runs?.[run.id] ?? [], { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, shifts)) return false;
+    }
+  }
+  return true;
 }
 
 /**
