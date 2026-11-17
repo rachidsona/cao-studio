@@ -10,12 +10,6 @@ sur celui-ci ; sans ce fichier, ce document s'applique seul. Les valeurs vivent 
 - **Éditeur carré** : tous les rayons de Tailwind (`rounded-sm` … `rounded-4xl`) valent 0. Seuls les cercles (`rounded-full`) restent ronds.
 - **Pages d'accueil plus douces** (accueil, fiches) : elles prennent les rayons nommés du § 4.
 - Animation **sobre** : un retour visuel, jamais de décor.
-- **Deux styles** (classe sur `<html>`, menu « ⋯ » → Style, `localStorage` « style ») : **Classique**, décrit ici, et
-  **Élégant** (`styles/style-elegant.css`, classe `style-elegant`) — coins arrondis (contrôles 8 px, cartes 14 px), surfaces
-  unies sans dégradé ni halo, filets dans l'encre à 10 %, ombres douces, boutons principaux d'un seul ton, titres `h1`
-  et `h2` en Playfair Display, cartes de l'éditeur espacées de 12 px. Un style ne change que formes, matières et
-  typographie : les couleurs restent celles de la palette, les tailles et les cibles celles de ce document. Un composant
-  nouveau doit rester juste dans les deux styles.
 
 ## 2. Couleurs — toujours par jeton, jamais d'hexadécimal dans un composant
 

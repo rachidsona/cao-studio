@@ -19,18 +19,12 @@
         var palette = localStorage.getItem("palette");
         if (palette && /^palette-[a-z]+$/.test(palette)) document.documentElement.classList.add(palette);
       } catch (e) {}
-      /* The style of the interface (shapes and surfaces: « Classique » by default, « Élégant »), before first paint too. */
-      try {
-        var style = localStorage.getItem("style");
-        if (style && /^style-[a-z]+$/.test(style)) document.documentElement.classList.add(style);
-      } catch (e) {}
     })();
   </script>
-  {# The font of gestion menuiserie (Inter), and the serif of the « Élégant » style's titles (fetched only when that #}
-  {# style is on); without the network, the system fonts. #}
+  {# The font of gestion menuiserie (Inter); without the network, the system font. #}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% versioned_static 'css/app.css' %}">
   {% block head_extra %}{% endblock %}
 </head>
@@ -117,24 +111,6 @@
       });
     });
     showPalette();
-    /* Style buttons (data-ui-style: a class, or "" for the default one), as the palette's. */
-    function showStyle() {
-      var current = (document.documentElement.className.match(/\bstyle-[a-z]+/) || [""])[0];
-      document.querySelectorAll("[data-ui-style]").forEach(function (b) {
-        b.setAttribute("aria-pressed", String(b.getAttribute("data-ui-style") === current));
-      });
-    }
-    document.querySelectorAll("[data-ui-style]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        var html = document.documentElement;
-        html.className = html.className.replace(/\bstyle-[a-z]+\b/g, "").trim();
-        var style = button.getAttribute("data-ui-style");
-        if (style) html.classList.add(style);
-        try { localStorage.setItem("style", style || ""); } catch (e) {}
-        showStyle();
-      });
-    });
-    showStyle();
     /* Digits typed without Maj, on every page (the same rule as frontend/src/ui/digit-keys.ts): on a French keyboard
        the keys of the digit row give & é " ' ( § è ! ç à without Maj or Verr. Maj; in a number field they type their
        digit. « - » stays a minus, and in a field that takes a calculation (data-expression) its signs stay too. */

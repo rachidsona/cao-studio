@@ -459,14 +459,13 @@ export const SCREEN: HelpFamily[] = [
         tip: "Le changement d'unité s'annule avec Ctrl+Z. Sans enregistrement automatique, l'éditeur prévient avant de quitter avec des modifications non enregistrées.",
       },
       {
-        keys: [], selector: "header [data-theme-toggle]", name: "Thème, style et palettes de couleurs",
-        what: "Passe de l'écran clair à l'écran sombre, change le style de l'interface (ses formes et ses matières) et les couleurs du thème sombre.",
+        keys: [], selector: "header [data-theme-toggle]", name: "Thème et palettes de couleurs",
+        what: "Passe de l'écran clair à l'écran sombre et change les couleurs du thème sombre.",
         steps: [
           "Cliquez « ⋯ », puis « Thème clair / sombre » pour passer de l'un à l'autre.",
-          "Dans la rubrique « Style », choisissez « Classique » (angles droits, cartes en dégradé, halo de l'accent) ou « Élégant » (coins arrondis, surfaces unies, filets fins, boutons pleins, titres à empattements). Le style va avec n'importe quelle palette, en clair comme en sombre.",
           "Dans la rubrique « Palette », cliquez une pastille : Atelier, Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal Charcoal, Crimson Terre, Mocha Mist, Forêt Profonde, Graphite Laiton, Indigo Nuit ou Chêne Sable.",
         ],
-        tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ, « Classique » le style de départ ; les deux choix sont gardés dans ce navigateur.",
+        tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ.",
       },
     ],
   },
