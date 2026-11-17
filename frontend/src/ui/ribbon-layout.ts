@@ -46,13 +46,13 @@ const DEFAULT_HIDDEN: Record<string, string[]> = {
 
 /** The groups whose icons fold away first when the bar is too narrow, in that order (then the others, from the right). */
 const FOLD_ORDER: Record<string, string[]> = {
-  model: ["Client", "Fabrication", "Atelier", "Curic", "Modifier", "Pièce", "Meuble", "Créer", "Cuisine", "Dressing"],
+  model: ["Client", "Fabrication", "Atelier", "Modifier", "Pièce", "Meuble", "Créer", "Cuisine", "Dressing"],
   sketch: ["Affichage", "Contraintes", "Cotes", "Modifier", "Créer"],
 };
 
 /** The groups each tab of the model's bar shows. */
 const TABS: Record<string, string[]> = {
-  design: ["Créer", "Modifier", "Curic", "Atelier", "Fabrication", "Client"],
+  design: ["Créer", "Modifier", "Atelier", "Fabrication", "Client"],
   dressing: ["Modifier", "Pièce", "Dressing", "Fabrication", "Client"],
   kitchen: ["Modifier", "Pièce", "Cuisine", "Meuble", "Fabrication", "Client"],
 };

@@ -2,7 +2,7 @@
  * "Coupe" (as Curic Section): a plane perpendicular to X, Y or Z hides what
  * lies beyond it, to see inside a cabinet or a room; a slider moves it, a box
  * keeps the other side instead. The view only: the model is not cut and
- * nothing is saved. The Curic group's button opens and closes it.
+ * nothing is saved. The Modifier group's button opens and closes it.
  */
 import type { Axis, DisplayUnit } from "../document/types";
 import { formatLength } from "../measurements/units";

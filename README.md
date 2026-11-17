@@ -1243,7 +1243,7 @@ opération existante.
   - La coupe (triangle ou arc) est une esquisse sur le pignon, extrudée sur toute la longueur du dessus. Une ligne
     hors du milieu donne deux pans inégaux.
   - Une annulation ; la ligne tracée est cachée (`features/gable.ts`, `app/gable-tool.ts`).
-- **Magie extrusion** (groupe « Curic », `data-action="face-strip"`, `app/magic-extrude.ts`) : un seul outil réunit
+- **Magie extrusion** (groupe « Modifier », `data-action="face-strip"`, `app/magic-extrude.ts`) : un seul outil réunit
   les deux manières de tracer sur un corps puis d'extruder, décrites ci-dessous. Le premier choix de son panneau,
   « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
   puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme
@@ -1335,12 +1335,12 @@ opération existante.
   l'esquisse puis le trait ou la zone sous le pointeur (avec sa longueur ou son aire).
 - **Les outils Curic marchent aussi sur les esquisses** (sélection multiple, esquisse choisie dans l'arbre, ou clic
   sur une esquisse dans la vue pendant l'outil) :
-- **Symétrie** (groupe « Curic », comme Curic Mirror) : copie miroir des corps et des esquisses choisis par rapport à
+- **Symétrie** (groupe « Modifier », comme Curic Mirror) : copie miroir des corps et des esquisses choisis par rapport à
   un plan perpendiculaire à X, Y ou Z, dessiné en orange. Le plan se place contre le côté + de la sélection (les copies
   viennent juste à côté), au centre, contre le côté −, ou à une position saisie. Les originaux restent ; les copies de
   corps s'appellent « … — symétrie », celles d'esquisses « … (symétrie) » (nouvelles esquisses, retournées dans leur
   plan ou posées sur un plan parallèle).
-- **Aligner** (groupe « Curic », comme Curic Align) : les corps et les esquisses choisis s'alignent sur une référence —
+- **Aligner** (groupe « Modifier », comme Curic Align) : les corps et les esquisses choisis s'alignent sur une référence —
   un corps ou une esquisse — axe par axe : côté − aligné, centré, côté + aligné, accolé après (+) ou avant (−), ou sans
   bouger. Par défaut : accolé après en X, même face avant (Y), même sol (Z) — des caissons côte à côte. Avec plusieurs
   éléments sélectionnés, le dernier est la référence. Un corps aligné sur un corps suit sa référence si l'historique
@@ -1369,7 +1369,7 @@ opération existante.
     entier glisse pour que les deux points se touchent (un caisson avec ses façades, par sa position ; deux points d'un
     même caisson ne bougent que la pièce). « Bouger » garde certains sens : les trois, à plat (X et Y, même hauteur),
     ou un seul axe. Point rose : il part ; point vert : il arrive (`app/align-points.ts`).
-- **Assemblage** (groupe « Curic », masqué par défaut) : relier deux pièces face contre face, pour que l'une suive
+- **Assemblage** (groupe « Modifier », masqué par défaut) : relier deux pièces face contre face, pour que l'une suive
   l'autre. On clique une face de la pièce qui bouge, puis une face de la pièce fixe :
   - des faces opposées se mettent **en contact**, avec un jeu (0 par défaut) ;
   - des faces de même sens **affleurent**, avec un retrait ;
@@ -1378,13 +1378,13 @@ opération existante.
   et seuls les corps prennent le clic (pas l'esquisse sous une planche). Le résultat est un alignement calculé sur
   les pièces elles-mêmes : quand la pièce fixe change (un caisson élargi, une cote d'esquisse), l'autre suit. Il se
   rouvre dans Aligner (`app/mate-tool.ts`, test `tests/frontend/mate.test.ts`).
-- **Étirer** (groupe « Curic », comme Curic Stretch) : un plan à travers le meuble (orange), perpendiculaire à X, Y ou Z,
+- **Étirer** (groupe « Modifier », comme Curic Stretch) : un plan à travers le meuble (orange), perpendiculaire à X, Y ou Z,
   et une distance. Les corps traversés par le plan s'allongent (la section au plan est prolongée, le résultat reste une
   seule planche), ceux au-delà se déplacent, ceux avant restent : un caisson de 600 passe à 800 en une fois. Les
   esquisses aussi : leurs points au-delà du plan bougent, les traits qui le traversent s'allongent, les cotes suivent.
   Distance négative : raccourcir. Ce qui est concerné : la sélection, sinon tous les corps visibles et les esquisses
   libres (une esquisse déjà extrudée n'est pas étirée deux fois). Un clic sur un corps place le plan à cet endroit.
-- **Réseau** (groupe « Curic », comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis
+- **Réseau** (groupe « Modifier », comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis
   le long de X, Y ou Z — avec un **pas** entre copies (une étagère tous les 32 cm), ou **réparties sur une distance**
   (3 copies sur 60 cm : une tous les 20 cm). 1 à 30 copies ; le pas proposé est la taille de ce qui est copié (copies
   accolées). Les originaux restent ; les copies de corps s'appellent « … — Réseau 1 (2) », celles d'esquisses
@@ -1417,21 +1417,21 @@ opération existante.
   table, tiroirs en étoile. Les copies de corps seulement (pas d'esquisses).
   **Composants liés** : une copie est une fonction du corps d'origine ; modifier l'original (cotes de son esquisse, du
   caisson…) met à jour toutes ses copies (test `composants liés` dans `tests/frontend/curic.test.ts`).
-- **Tourner** (groupe « Curic », comme Curic Rotate) : corps et esquisses choisis tournent autour d'un axe parallèle à
+- **Tourner** (groupe « Modifier », comme Curic Rotate) : corps et esquisses choisis tournent autour d'un axe parallèle à
   X, Y ou Z, par quarts de tour (−90°, +90°, 180°) ou d'un angle saisi, autour du centre de la sélection ou d'un **coin
   de corps cliqué** (point vert). Une esquisse ne tourne que dans son plan (autour de sa normale) ; ses contraintes
   horizontale/verticale s'échangent au quart de tour.
-- **Coupe** (groupe « Curic », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
+- **Coupe** (groupe « Modifier », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.
-- **Arêtes cachées** (menu du groupe « Curic », comme Curic Hidden) : un interrupteur qui efface les lignes de joint
+- **Arêtes cachées** (menu du groupe « Modifier », comme Curic Hidden) : un interrupteur qui efface les lignes de joint
   entre les pièces qui se rejoignent **à fleur** — deux planches côte à côte, une planche posée sur une autre de même
   largeur, un côté sous le dessus qui le recouvre — pour voir le meuble comme une seule surface lisse ; les pièces
   restent séparées (débit, devis, mise en plan inchangés). Un vrai angle reste dessiné : une marche plus basse, une
   planche plus étroite posée sur une autre, deux corps qui ne se touchent que par une arête. Une arête plus longue que
   le joint n'est effacée que le long du voisin. Seuls les corps en boîte (planches, blocs) comptent comme voisins. La
   vue seulement ; l'état est gardé dans ce navigateur (`viewport/joint-edges.ts`, `app/hidden-joints.ts`).
-- **Lignes tout autour** (menu du groupe « Curic », comme l'outil Intersect de Curic OI) : on clique une face plane
+- **Lignes tout autour** (menu du groupe « Modifier », comme l'outil Intersect de Curic OI) : on clique une face plane
   d'un corps, puis on tire la flèche plantée dedans ou on tape la distance : une ligne fait le tour du corps,
   parallèle à la face, à cette distance. C'est la coupe du corps par ce plan, posée en esquisse (« Intersection 1 »,
   un profil fermé qui se tire ensuite avec Extruder ou Magie extrude) ; le corps reste entier. « Nombre de lignes » les
@@ -1453,7 +1453,7 @@ opération existante.
   bleu et l'orange ne changent pas avec la palette (`templates/editor/_icons.html`, `--ic-accent` et `--ic-action`). Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
   l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
   seule ligne** : quand la fenêtre est trop étroite, les icônes se replient une à une dans le menu de leur groupe —
-  celles de **Client d'abord**, puis Fabrication, Atelier, Curic, Créer, Modifier, Pièce, Meuble et Dressing (en esquisse : Affichage, Contraintes, Cotes,
+  celles de **Client d'abord**, puis Fabrication, Atelier, Créer, Modifier, Pièce, Meuble et Dressing (en esquisse : Affichage, Contraintes, Cotes,
   Modifier, Créer), chaque groupe en commençant par sa dernière icône — et reviennent quand la fenêtre s'élargit.
 - **Coins carrés partout** : cartes, boutons, champs de saisie, menus, panneaux d'outils, étiquettes et pages n'ont
   plus de coins arrondis (les rayons du thème sont à zéro et les classes d'arrondi retirées) ; seules les pastilles

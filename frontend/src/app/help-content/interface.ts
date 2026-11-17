@@ -4,7 +4,7 @@ import type { HelpFamily } from "./types";
 export const CURIC: HelpFamily[] = [
   {
     title: "Curic",
-    where: "Ruban du haut, groupe « Curic ». Son nom ouvre le menu de tous ses outils : Assemblage, Étirer, Tourner, Lignes tout autour et Arêtes cachées n'y restent rangés que tant que vous ne les épinglez pas dans la barre.",
+    where: "Ruban du haut, groupe « Modifier ». Son nom ouvre le menu de tous ses outils : Assemblage, Étirer, Tourner, Lignes tout autour et Arêtes cachées n'y restent rangés que tant que vous ne les épinglez pas dans la barre.",
     tools: [
       {
         keys: ["data-action:face-strip"], name: "Magie extrusion",

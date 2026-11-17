@@ -37,7 +37,7 @@ test("les onglets Conception 3D, Dressing et Cuisine montrent chacun leurs outil
   const tabs = page.getByRole("tablist", { name: "Espaces de travail" }).getByRole("tab");
   await expect(tabs).toHaveText(["Conception 3D", "Dressing", "Cuisine"]);
   const groups = () => page.locator('[data-ribbon="model"] > .ribbon-group:visible').evaluateAll((all) => all.map((g) => g.getAttribute("aria-label")));
-  expect(await groups()).toEqual(["Créer", "Modifier", "Curic", "Atelier", "Fabrication", "Client"]);
+  expect(await groups()).toEqual(["Créer", "Modifier", "Atelier", "Fabrication", "Client"]);
   await expect(page.locator('[data-action="extrude"]')).toBeVisible();
 
   await tabs.nth(1).click();
@@ -150,7 +150,7 @@ test("un ordre de groupes gardé passe aux nouveaux groupes", async ({ page }) =
   });
   await newProject(page, "Ordre e2e");
   const names = await page.locator('[data-ribbon="model"] > .ribbon-group').evaluateAll((all) => all.map((g) => g.getAttribute("aria-label")));
-  expect(names).toEqual(["Modifier", "Pièce", "Cuisine", "Meuble", "Dressing", "Créer", "Curic", "Atelier", "Fabrication", "Client"]);
+  expect(names).toEqual(["Modifier", "Pièce", "Cuisine", "Meuble", "Dressing", "Créer", "Atelier", "Fabrication", "Client"]);
   await page.getByRole("tab", { name: "Dressing" }).click();
   await expect(page.locator('[data-ribbon="model"] [data-action="module"]')).toBeVisible();
 });
