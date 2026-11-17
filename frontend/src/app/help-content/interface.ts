@@ -463,7 +463,7 @@ export const SCREEN: HelpFamily[] = [
         what: "Passe de l'écran clair à l'écran sombre et change les couleurs du thème sombre.",
         steps: [
           "Cliquez « ⋯ », puis « Thème clair / sombre » pour passer de l'un à l'autre.",
-          "Dans la rubrique « Palette », cliquez une pastille : Atelier, Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal Charcoal, Crimson Terre ou Mocha Mist.",
+          "Dans la rubrique « Palette », cliquez une pastille : Atelier, Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal Charcoal, Crimson Terre, Mocha Mist, Forêt Profonde, Graphite Laiton, Indigo Nuit ou Chêne Sable.",
         ],
         tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ.",
       },

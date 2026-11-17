@@ -1,6 +1,6 @@
 /*
  * The themes of « gestion menuiserie » (Atelier des Nobles): a dark theme in deep blue with a cyan accent by default,
- * nine palettes built each on two colours (a class on <html>, chosen in the « ⋯ » menu and kept in localStorage
+ * thirteen palettes built each on two colours (a class on <html>, chosen in the « ⋯ » menu and kept in localStorage
  * "palette"), and the light theme. A palette only redefines variables:
  *   --night, --night-light, --night-table  the page, the panels, the tables (r g b);
  *   --ink, --ink-muted, --edge              the text, the secondary text, the hairlines;
@@ -8,7 +8,7 @@
  *   --degrade-*, --bouton-*                 the gradients of the cards and of the primary buttons.
  * Tailwind's « gray » and « sky », used by every panel and button of the app, are derived from them (app.css), so the
  * whole interface takes the palette. As in gestion menuiserie, the light theme wins over the palettes (they are dark
- * ones, Mocha Mist excepted), and the primary buttons keep the palette's gradient in both.
+ * ones, Mocha Mist and Chêne Sable excepted), and the primary buttons keep the palette's gradient in both.
  */
 @layer base {
   :root {
@@ -82,7 +82,7 @@
     --s950: color-mix(in srgb, rgb(var(--brand-plein)) 25%, rgb(var(--night)));
   }
 
-  /* --- The nine palettes (two colours each) --- */
+  /* --- The thirteen palettes (two colours each) --- */
   html.palette-navy {
     /* Navy Mirage : #141E30 et #35577D */
     --night: 12 19 30;
@@ -265,6 +265,100 @@
     --brand: 45 18 11;
     /* Its accent is dark on a light page: the tones written as text (50 to 300 in the dark theme) are dark, the tones
        used as backgrounds (900, 950) are light. */
+    --s50: rgb(var(--brand));
+    --s100: rgb(var(--brand));
+    --s200: color-mix(in srgb, rgb(var(--brand)) 85%, rgb(var(--night-light)));
+    --s300: color-mix(in srgb, rgb(var(--brand)) 75%, rgb(var(--night-light)));
+    --s900: color-mix(in srgb, rgb(var(--brand)) 22%, rgb(var(--night-light)));
+    --s950: color-mix(in srgb, rgb(var(--brand)) 12%, rgb(var(--night-light)));
+  }
+  html.palette-foret {
+    /* Forêt Profonde : #0F2A1E et #2E5E46, accent menthe — calme, végétal */
+    --night: 10 28 20;
+    --night-light: 14 37 27;
+    --night-table: 38 78 58;
+    --ink: 230 242 234;
+    --ink-muted: 140 170 154;
+    --brand-plein: 44 102 74;
+    --degrade-bas: #2e5e46;
+    --degrade-milieu: #1e4432;
+    --degrade-haut: #0f2a1e;
+    --bouton-1: #327a57;
+    --bouton-2: #28634a;
+    --bouton-3: #183326;
+    --bouton-survol-1: #3d9068;
+    --bouton-survol-2: #307456;
+    --bouton-survol-3: #1f3e2f;
+  }
+  html.dark.palette-foret {
+    --brand: 143 211 176;
+  }
+
+  html.palette-laiton {
+    /* Graphite Laiton : #16181D et #3A3F4B, accent laiton — sobre, haut de gamme */
+    --night: 17 19 23;
+    --night-light: 23 25 30;
+    --night-table: 52 56 66;
+    --ink: 238 234 226;
+    --ink-muted: 162 158 150;
+    --brand-plein: 138 106 46;
+    --degrade-bas: #3a3f4b;
+    --degrade-milieu: #282c35;
+    --degrade-haut: #16181d;
+    --bouton-1: #94702f;
+    --bouton-2: #765a26;
+    --bouton-3: #34302a;
+    --bouton-survol-1: #a67e37;
+    --bouton-survol-2: #86672c;
+    --bouton-survol-3: #3f392f;
+  }
+  html.dark.palette-laiton {
+    --brand: 217 178 106;
+  }
+
+  html.palette-indigo {
+    /* Indigo Nuit : #14143A et #3B3B8F, accent pervenche — net, technique */
+    --night: 13 13 38;
+    --night-light: 18 18 50;
+    --night-table: 48 48 118;
+    --ink: 235 235 255;
+    --ink-muted: 156 156 200;
+    --brand-plein: 67 67 160;
+    --degrade-bas: #3b3b8f;
+    --degrade-milieu: #272766;
+    --degrade-haut: #14143a;
+    --bouton-1: #4c4cbd;
+    --bouton-2: #3d3d9c;
+    --bouton-3: #22224f;
+    --bouton-survol-1: #5f5fd0;
+    --bouton-survol-2: #4b4bb4;
+    --bouton-survol-3: #2a2a5e;
+  }
+  html.dark.palette-indigo {
+    --brand: 165 180 252;
+  }
+
+  html.palette-sable {
+    /* Chêne Sable : #E9E1D3 et #C9B391, le second thème clair : encre brun foncé, accent noyer — chaleureux, bois */
+    --night: 233 225 211;
+    --night-light: 243 238 229;
+    --night-table: 201 179 145;
+    --ink: 42 33 24;
+    --ink-muted: 106 86 64;
+    --brand-plein: 74 52 28;
+    --degrade-bas: #c9b391;
+    --degrade-milieu: #d9cab2;
+    --degrade-haut: #e9e1d3;
+    --bouton-1: #6b4c2c;
+    --bouton-2: #573d23;
+    --bouton-3: #3f2c19;
+    --bouton-survol-1: #7a5733;
+    --bouton-survol-2: #634528;
+    --bouton-survol-3: #48331d;
+  }
+  html.dark.palette-sable {
+    --brand: 74 52 28;
+    /* As Mocha Mist: a dark accent on a light page (text tones dark, background tones light). */
     --s50: rgb(var(--brand));
     --s100: rgb(var(--brand));
     --s200: color-mix(in srgb, rgb(var(--brand)) 85%, rgb(var(--night-light)));

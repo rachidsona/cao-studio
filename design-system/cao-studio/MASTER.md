@@ -40,7 +40,8 @@ aux gris pour tout nouveau composant.
 | Succès | `emerald-*`, avec ✓ ou un texte | |
 
 **Palettes** (classe sur `<html>`, choisie dans le menu « ⋯ ») : Atelier (par défaut), navy, ocean, crimson, amber, braise,
-charbon, mocha, terre, violet. Le thème clair l'emporte sur les palettes.
+charbon, mocha, terre, violet, foret, laiton, indigo, sable (mocha et sable sont claires). Le thème clair l'emporte sur
+les palettes. Une palette nouvelle garde 4,5:1 pour l'encre et l'accent sur ses fonds, et pour le blanc sur ses boutons.
 
 **Contraste** : un texte courant vaut au moins `gray-500` sur fond clair, soit 4,5:1. `gray-400` est réservé aux icônes
 décoratives et aux états « caché / éteint », qui ont toujours un autre signe (barré, œil fermé).
