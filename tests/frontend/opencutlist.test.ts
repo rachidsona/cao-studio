@@ -1,7 +1,7 @@
 /** Comme OpenCutList : repères des pièces, débit en barres des tasseaux, import d'une liste de pièces en CSV. */
 import { describe, expect, it } from "vitest";
 import { layoutBars } from "../../frontend/src/document/bars";
-import { cutList, cutListCsv, partTag, type CutRow, type PartInput } from "../../frontend/src/document/cut-list";
+import { cutList, cutListCsv, edgeBanderCsv, partTag, type CutRow, type PartInput } from "../../frontend/src/document/cut-list";
 import { setBodyInfo } from "../../frontend/src/document/materials";
 import { layoutSheets } from "../../frontend/src/document/nesting";
 import { importParts, parsePartsCsv } from "../../frontend/src/document/parts-import";
@@ -11,6 +11,19 @@ import { createReferencePlate, type CadDocument } from "../../frontend/src/docum
 
 const box = (id: string, l: number, w: number, t: number): PartInput => ({ id, bbox: [[0, 0, 0], [l, w, t]], volume: l * w * t });
 const plate = (): CadDocument => ({ ...createReferencePlate(), features: [] });
+
+describe("fichier de la plaqueuse", () => {
+  it("une ligne par pièce chantée, son repère en code-barres, un chant par colonne ; les pièces sans chant n'y sont pas", () => {
+    let doc = setBodyInfo(plate(), ["a", "b"], { material: "melamine-white", edges: { length1: true, length2: false, width1: true, width2: false }, band: 1 });
+    doc = setBodyInfo(doc, ["c"], { material: "mdf" });
+    const { rows } = cutList(doc, [box("a", 600, 400, 19), box("b", 600, 400, 19), box("c", 800, 300, 19)]);
+    const lines = edgeBanderCsv(rows).split("\r\n");
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toMatch(/^"Code-barres";.*"Chant L1";"Chant L2";"Chant l1";"Chant l2"/);
+    expect(lines.slice(1).map((l) => l.split(";")[0])).toEqual(['"B-1"', '"B-2"']);
+    expect(lines[1]!.split(";").slice(6, 11)).toEqual(['"oui"', '""', '"oui"', '""', "1"]);
+  });
+});
 
 describe("repères des pièces", () => {
   it("A … Z puis AA, AB", () => {

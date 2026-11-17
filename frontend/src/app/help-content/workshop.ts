@@ -345,7 +345,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Cochez les documents voulus : liste de débit, calepinage, fiches, étiquettes, fichiers machine, notice, devis.",
           "Cliquez « Télécharger le dossier » (ou « Télécharger quand même » s'il reste des erreurs).",
         ],
-        tip: "Le devis n'est pas coché au départ. Les documents reprennent les réglages déjà faits dans chaque outil. Le résultat du contrôle est écrit dans le dossier.",
+        tip: "Le devis n'est pas coché au départ. Les documents reprennent les réglages déjà faits dans chaque outil. Le résultat du contrôle est écrit dans le dossier. Avec la liste de débit vient le fichier de la plaqueuse (01-plaqueuse.csv) : une ligne par pièce chantée, son repère en code-barres comme sur l'étiquette, un chant par colonne (L1, L2, l1, l2).",
       },
     ],
   },

@@ -4,7 +4,7 @@
  * DXF, G-code, notice, devis) : le dossier ne calcule rien de plus, il les réunit, aux réglages déjà faits dans chacun.
  */
 import { strToU8, zipSync, type Zippable } from "three/examples/jsm/libs/fflate.module.js";
-import { cutList, cutListCsv } from "../../document/cut-list";
+import { cutList, cutListCsv, edgeBanderCsv } from "../../document/cut-list";
 import { modelHardware } from "../../document/hardware";
 import { folderReadme, FOLDER_ITEMS, type FolderItem } from "../../document/production-folder";
 import type { GeometryClient } from "../../geometry/client";
@@ -34,6 +34,7 @@ async function folderFiles(viewport: Viewport, editor: Editor, geometry: Geometr
   const { rows, totals } = cutList(editor.doc, partsOf(viewport, editor.doc));
   if (wanted.has("cutlist")) {
     files.set("01-liste-de-debit.csv", `${BOM}${cutListCsv(rows, editor.unit)}`);
+    files.set("01-plaqueuse.csv", `${BOM}${edgeBanderCsv(rows)}`);
     page("01-liste-de-debit.html", cutListPage(rows, totals, editor.unit), "Liste de débit");
   }
   if (wanted.has("layout")) {

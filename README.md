@@ -2874,7 +2874,9 @@ opération existante.
   du reste, au début ou à la fin du mur, ou des caissons égaux. Le résultat est une Répartition ordinaire ; quand le plan
   change, le reste prend la différence et le fileur suit (`fillChoices` de `document/plan-layout.ts`).
 - **Dossier de production** (groupe « Atelier ») : le contrôle du projet d'abord, puis tous les fichiers de l'atelier en
-  un seul .zip : liste de débit, calepinage et liste d'achat, fiches, étiquettes, DXF, G-code, notice de montage et, à la
+  un seul .zip : liste de débit (avec le **fichier de la plaqueuse**, `01-plaqueuse.csv` : une ligne par pièce chantée,
+  son repère en code-barres, un chant par colonne L1, L2, l1, l2 — `edgeBanderCsv`), calepinage et liste d'achat,
+  fiches, étiquettes, DXF, G-code, notice de montage et, à la
   demande, devis ; le résultat du contrôle est écrit dans `00-lisez-moi.txt` (`app/workshop/production-folder.ts`).
 - **Palette de commandes** (⌘K ou Ctrl+K, bouton « Outils ») : on tape quelques lettres, sans se soucier des accents,
   Entrée lance l'outil, même rangé dans un menu ; seuls les outils du mode en cours sont proposés, les derniers utilisés

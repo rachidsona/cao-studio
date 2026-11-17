@@ -143,6 +143,26 @@ export function cutListCsv(rows: CutRow[], unit: DisplayUnit = "mm"): string {
   return [head.map(cell).join(";"), ...lines].join("\r\n");
 }
 
+/**
+ * The file of the edge bander (plaqueuse) : one line per piece — its mark is the barcode the label carries —, the cutting
+ * size it arrives at, and the band of each of its four edges in a column of its own (L1, L2 the long ones, l1, l2 the
+ * short ones), as the bander's import reads them. Pieces with no band are left out.
+ */
+export function edgeBanderCsv(rows: CutRow[]): string {
+  const head = ["Code-barres", "Pièce", "Matière", "Longueur de coupe (mm)", "Largeur de coupe (mm)", "Épaisseur (mm)", "Chant L1", "Chant L2", "Chant l1", "Chant l2", "Épaisseur de chant (mm)"];
+  const cell = (v: string | number) => (typeof v === "number" ? String(v).replace(".", ",") : csvText(v));
+  const lines = rows
+    .filter((r) => r.edges.length1 || r.edges.length2 || r.edges.width1 || r.edges.width2)
+    .flatMap((r) =>
+      Array.from({ length: r.quantity }, (_, k) => {
+        const side = (on: boolean) => (on ? "oui" : "");
+        const code = `${r.tag ?? ""}${r.quantity > 1 ? `-${k + 1}` : ""}`;
+        return [code, r.names[k] ?? r.names[0] ?? "", r.material, r.cutLength, r.cutWidth, r.thickness, side(r.edges.length1), side(r.edges.length2), side(r.edges.width1), side(r.edges.width2), r.band].map(cell).join(";");
+      }),
+    );
+  return [head.map(cell).join(";"), ...lines].join("\r\n");
+}
+
 export function grainText(grain: CutRow["grain"]): string {
   return GRAIN[grain];
 }
