@@ -6,6 +6,7 @@
  * « Proposer une cuisine » les remplit tous comme l'Implantation. OK refait la cuisine 3D entière, en une annulation, et
  * « Modifier le plan » la fait suivre. Cliquer l'esquisse du plan, ou un meuble fait par lui, rouvre l'outil.
  */
+import { openKitchenDossier } from "./kitchen-dossier-view";
 import { SPACE } from "../../features/kitchen-run-items";
 import { withCaissonsPlaced } from "../../document/cabinet-furnish";
 import * as THREE from "three";
@@ -295,6 +296,8 @@ export class KitchenPlanTool {
       return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${run.label} · ${formatLength(run.zone.run.length, unit)}${count ? ` · ${count} meuble${count > 1 ? "s" : ""}${free > 0 ? ` · ${formatLength(free, unit)} libres` : ""}` : ""}`), see, go);
     };
     const propose = el("button", { type: "button", class: WIDE, "data-propose": "" }, "Proposer une cuisine");
+    const dossier = el("button", { type: "button", class: WIDE, "data-kitchen-dossier-open": "", title: "Plan coté, chaque linéaire vu de face et la liste des meubles, en PDF pour le client" }, "Dossier de cuisine (PDF)");
+    dossier.addEventListener("click", () => openKitchenDossier(this.editor, planId));
     propose.title = "Remplit tous les linéaires comme l'Implantation : modules de 60 cm d'abord, puis le plus grand qui tient, un fileur, l'électroménager à sa place";
     propose.addEventListener("click", () => void this.propose(planId, plan));
     const change = el("button", { type: "button", class: WIDE }, "Modifier le plan");
@@ -311,6 +314,7 @@ export class KitchenPlanTool {
       el("div", { class: "text-gray-700 dark:text-gray-200" }, kitchenSchema(plan, (r) => [r.label], (r) => this.openRun(planId, r), layout.fills, kitchenMarks(doc, plan))),
       el("ul", { class: "space-y-1", "aria-label": "Linéaires du plan" }, ...kitchenRuns(plan).map(row)),
       propose,
+      kitchenStarted(plan) ? dossier : null,
       isolatedSketch() === planId ? showAllButton(() => this.draw()) : null,
       // Titled parts fold, one open at a time, all closed at first.
       kitchenStarted(plan) && layout.ergonomics.ok.length ? this.folds.fold("ergonomics", `Ergonomie (${layout.ergonomics.ok.length})`, () => layout.ergonomics.ok.map((m) => el("p", { class: "text-emerald-700 dark:text-emerald-300" }, `• ${m}`))) : null,

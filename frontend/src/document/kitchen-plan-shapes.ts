@@ -142,8 +142,65 @@ function islandRun(p: KitchenFloorPlan): KitchenRun {
   return { id: "I", label: "Îlot", zone, line: start, length: p.islandLength, left: "free", right: "free", wall: false, back: Math.max(0, p.islandDepth - p.depth) };
 }
 
+/** Up to this far out of square, a side wall is taken (°): the units stay square to wall A, scribed against it. */
+export const SKEW_MAX = 5;
+
+/**
+ * How far the run of a side wall coming into the room stands off its corner's line, so that its far end clears the
+ * wall: its length times the slope (mm). A wall opening away needs none: a gap grows behind its units instead.
+ */
+export const skewShift = (p: KitchenFloorPlan, wall: "B" | "C"): number => {
+  const skew = p.skew?.[wall] ?? 0;
+  return skew < 0 ? (wall === "B" ? p.lengthB : p.lengthC) * Math.tan((-skew * Math.PI) / 180) : 0;
+};
+
+/** A zone moved across the plan by `dx` (mm). */
+function moved(zone: PlanZone, dx: number): PlanZone {
+  if (!dx) return zone;
+  const { run } = zone;
+  return {
+    ...zone, outline: zone.outline.map(([x, y]): Point => [x + dx, y]),
+    run: { ...run, offset: run.plane === "YZ" && !run.frame ? run.offset + dx : run.offset, origin: [run.origin[0] + dx, run.origin[1]], ...(run.frame ? { frame: { ...run.frame, origin: [run.frame.origin[0] + dx, run.frame.origin[1], run.frame.origin[2]] } } : {}) },
+  };
+}
+
+/** Wall A's zone between side runs moved off their corners: its units from their fronts; to the wall where A passes. */
+function narrowed(zone: PlanZone, run: Pick<KitchenRun, "left" | "right">, left: number, right: number, depth: number): PlanZone {
+  const [a0, a1] = [zone.run.start + (run.left === "stop" ? left : 0), zone.run.start + zone.run.length - (run.right === "stop" ? right : 0)];
+  return { ...zone, outline: rect(a0, -depth, a1, 0), run: { ...zone.run, start: a0, length: a1 - a0 } };
+}
+
 /** The runs of this plan, from left to right along the walls, then the island. */
 export function kitchenRuns(p: KitchenFloorPlan): KitchenRun[] {
+  const runs = squareRuns(p);
+  const [left, right] = [skewShift(p, "B"), skewShift(p, "C")];
+  if (!left && !right) return runs;
+  // A side wall coming into the room: its run moved off the corner, wall A's units starting from its front.
+  return runs.map((r) => {
+    if (r.zone.id === "B" && r.id === "B") return { ...r, zone: moved(r.zone, left) };
+    if (r.zone.id === "C" && r.id === "C") return { ...r, zone: moved(r.zone, -right) };
+    if (r.id !== "A") return r;
+    const [l, rr] = [r.left === "free" ? 0 : left, r.right === "free" ? 0 : right];
+    return { ...r, line: l, length: r.length - l - rr, zone: narrowed(r.zone, r, l, rr, p.depth) };
+  });
+}
+
+/** What a wall out of square does to the kitchen, said for the panel: the gap behind its units, the scribed worktop. */
+export function skewNotes(p: KitchenFloorPlan): string[] {
+  return (["B", "C"] as const).flatMap((wall) => {
+    const skew = p.skew?.[wall];
+    if (!skew || !kitchenRuns(p).some((r) => r.id === wall)) return [];
+    const length = wall === "B" ? p.lengthB : p.lengthC;
+    const gap = Math.round(length * Math.tan((Math.abs(skew) * Math.PI) / 180));
+    const angle = `${(90 + skew).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}°`;
+    return [skew > 0
+      ? `Mur ${wall} hors d'équerre (angle de ${angle}) : il s'écarte des meubles, jusqu'à ${gap} mm au bout. Plan de travail et crédence à scribe contre lui, une joue ou un fileur à scribe au bout.`
+      : `Mur ${wall} hors d'équerre (angle de ${angle}) : ses meubles sont avancés de ${gap} mm pour ne pas toucher le mur au bout ; ${gap} mm de jour dans l'angle, plan de travail à scribe.`];
+  });
+}
+
+/** The runs of the plan, every wall square to wall A. */
+function squareRuns(p: KitchenFloorPlan): KitchenRun[] {
   const zones = planZones(proxy(p));
   const peninsula = peninsulaOf(p);
   const has = (id: string) => zones.some((z) => z.id === id);

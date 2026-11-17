@@ -30,6 +30,11 @@ export interface RunInfo {
   spans: Span[];
   /** The ceiling height `into` mm from the wall's face (lowered by a drop or a slope on this wall). */
   ceiling: (into: number) => number;
+  /**
+   * Wall B or C out of square with wall A: the corner's angle less 90° (°). Above 0 the wall opens away from the room,
+   * below it comes in; its length is then measured square to wall A.
+   */
+  skew?: number;
 }
 
 /** A quarter turn (counterclockwise, seen from above) about the origin, then a shift in the plane. */
@@ -39,6 +44,8 @@ export interface Placement {
 }
 
 const TOLERANCE = 0.5;
+/** A survey whose last wall ends this near its first one's start is a closed room (mm). */
+export const CLOSING = 50;
 
 /** The ceiling over a wall, `into` mm into the room. */
 function ceilingOf(room: RoomInput, wall: number): (into: number) => number {
@@ -53,10 +60,14 @@ function ceilingOf(room: RoomInput, wall: number): (into: number) => number {
   };
 }
 
-/** The walls of the room an assistant uses, from the room's wall `a` as its wall A, or why it cannot. */
-export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "R" | "U"): { place: Placement; walls: Partial<Record<RunWall, RunInfo>> } | string {
+/** A side wall out of square: its skew, and its length square to wall A. */
+const skewed = (info: RunInfo, skew: number): RunInfo => (Math.abs(skew) <= TOLERANCE ? info : { ...info, skew, length: info.length * Math.cos((skew * Math.PI) / 180) });
+
+/** The walls of the room an assistant uses, from the room's wall `a` as its wall A, or why it cannot; side walls up to `skewMax`° out of square. */
+export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "R" | "U", skewMax = TOLERANCE): { place: Placement; walls: Partial<Record<RunWall, RunInfo>> } | string {
   const n = room.walls.length;
-  const closed = n >= 3 && closingGap(room) < 1;
+  // A surveyed room never closes to the millimetre: a few centimetres apart, its last wall still meets its first.
+  const closed = n >= 3 && closingGap(room) < CLOSING;
   const at = (i: number) => (i >= 0 && i < n ? i : closed ? (i + n) % n : null);
   const frames = wallFrames(room);
   const fa = frames[a];
@@ -82,14 +93,14 @@ export function roomRuns(room: RoomInput, a: number, layout: "I" | "L" | "R" | "
   if (layout === "L" || layout === "U") {
     const b = at(a - 1);
     if (b === null) return `Il n'y a pas de mur avant le ${wallName(a)} pour le mur B : choisissez un autre mur A.`;
-    if (Math.abs(room.walls[b]!.angle - 90) > TOLERANCE) return `L'angle entre le ${wallName(b)} et le ${wallName(a)} n'est pas droit (${room.walls[b]!.angle}°).`;
-    walls.B = info(b, "corner");
+    if (Math.abs(room.walls[b]!.angle - 90) > skewMax) return `L'angle entre le ${wallName(b)} et le ${wallName(a)} n'est pas droit (${room.walls[b]!.angle}°)${skewMax > TOLERANCE ? ` : ${skewMax}° d'écart au plus` : ""}.`;
+    walls.B = skewed(info(b, "corner"), room.walls[b]!.angle - 90);
   }
   if (layout === "R" || layout === "U") {
     const c = at(a + 1);
     if (c === null) return `Il n'y a pas de mur après le ${wallName(a)} pour le mur C : choisissez un autre mur A.`;
-    if (Math.abs(room.walls[a]!.angle - 90) > TOLERANCE) return `L'angle entre le ${wallName(a)} et le ${wallName(c)} n'est pas droit (${room.walls[a]!.angle}°).`;
-    walls.C = info(c, "start");
+    if (Math.abs(room.walls[a]!.angle - 90) > skewMax) return `L'angle entre le ${wallName(a)} et le ${wallName(c)} n'est pas droit (${room.walls[a]!.angle}°)${skewMax > TOLERANCE ? ` : ${skewMax}° d'écart au plus` : ""}.`;
+    walls.C = skewed(info(c, "start"), room.walls[a]!.angle - 90);
   }
   return { place: { quarter: quarter as Placement["quarter"], origin: fa.start }, walls };
 }

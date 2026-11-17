@@ -264,6 +264,15 @@ export abstract class PanelTool implements PointerHandler {
   }
 
   /**
+   * The document changed from elsewhere (another tool's panel, a plan, an undo): the preview made again on it, so that
+   * it never stays shown over what was done since. Its own storing changes nothing.
+   */
+  followDoc(): void {
+    if (this.closedFlag || (this.stored && this.ctx.doc() === this.stored.doc)) return;
+    this.schedulePreview();
+  }
+
+  /**
    * The document this tool stored was set again in place by something that follows it (an element kept by « Prolonger
    * élément », app/extend-follow.ts): still the tool's own, so its next setting sets it again instead of adding to it.
    */

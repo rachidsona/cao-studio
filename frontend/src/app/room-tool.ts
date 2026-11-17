@@ -5,12 +5,14 @@
  * chaque mur et chaque obstacle est un corps « pièce » (hors liste de débit) ; les Finitions s'ajustent à ses murs et
  * à son plafond, et le Contrôle signale le meuble qui la heurte ou cache une prise (features/room-plan.ts). « Murs pas
  * d'aplomb » prend le relevé de chantier de chaque mur — de combien sa face avance à mi-hauteur et en haut — : le mur
- * penche dans la vue, et les Finitions de tout meuble contre lui en recoupent le fileur ou la joue.
+ * penche dans la vue, et les Finitions de tout meuble contre lui en recoupent le fileur ou la joue. « Coller un relevé »
+ * remplit les murs d'après les mesures d'un télémètre laser collées telles quelles (features/room-survey.ts).
  */
 import { setBodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import type { CadDocument, Feature, RoomFeature } from "../document/types";
 import { closingGap, roomPieces, WALL_NAMES, type Obstacle, type RoomInput } from "../features/room-plan";
+import { parseSurvey } from "../features/room-survey";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
@@ -49,6 +51,8 @@ export class RoomTool extends PanelTool {
   private room: RoomInput;
   /** « Murs pas d'aplomb »: the rows of each wall's out of plumb are shown. */
   private plumb: boolean;
+  /** « Coller un relevé »: the field where a laser meter's measures are pasted is shown. */
+  private pasting = false;
 
   constructor(ctx: ToolContext, editing: RoomFeature | null) {
     super(ctx, "Pièce", editing);
@@ -121,11 +125,37 @@ export class RoomTool extends PanelTool {
       }),
       this.plumb ? this.info("De combien la face de chaque mur avance dans la pièce, à mi-hauteur et en haut, par rapport au pied du mur (négatif : il penche en arrière). Les Finitions recoupent fileurs et joues contre lui.") : null,
       ...walls,
-      el("div", { class: "flex gap-1" }, button("+ Mur", () => ((r.walls = [...r.walls, { length: 2000, angle: 90 }]), this.changed())), r.walls.length > 1 ? button("− Dernier mur", () => ((r.walls = r.walls.slice(0, -1)), (r.obstacles = r.obstacles.filter((o) => o.wall < r.walls.length)), this.changed())) : null),
+      this.pasting ? this.survey() : null,
+      el("div", { class: "flex gap-1" }, this.pasting ? null : button("Coller un relevé…", () => ((this.pasting = true), this.render())), button("+ Mur", () => ((r.walls = [...r.walls, { length: 2000, angle: 90 }]), this.changed())), r.walls.length > 1 ? button("− Dernier mur", () => ((r.walls = r.walls.slice(0, -1)), (r.obstacles = r.obstacles.filter((o) => o.wall < r.walls.length)), this.changed())) : null),
       gap > 1 ? this.info(`La pièce ne se ferme pas : ${Math.round(gap)} mm entre la fin du dernier mur et le début du premier. Vérifiez les longueurs et les angles relevés.`) : null,
       el("div", { class: "flex flex-wrap gap-1 pt-1" }, ...(Object.keys(NEW) as Obstacle["kind"][]).map((kind) => button(`+ ${KIND_NAMES[kind]}`, () => ((r.obstacles = [...r.obstacles, NEW[kind](0)]), this.changed())))),
       ...obstacles,
     ];
+  }
+
+  /** The measures of a laser meter pasted (text or CSV of its app): the walls replaced by them, their openings kept. */
+  private survey(): HTMLElement {
+    const field = el("textarea", { rows: "5", class: "w-full border border-gray-300 bg-white p-1.5 font-mono text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Relevé collé", "data-room-survey": "", placeholder: "Un mur par ligne : longueur, puis l'angle du coin\n3,452 m\n2,498 m 91,5°\n…" });
+    field.addEventListener("keydown", (event) => event.stopPropagation());
+    const take = el("button", { type: "button", class: "h-7 flex-1 btn-accent text-xs font-medium" }, "Remplacer les murs");
+    take.addEventListener("click", () => {
+      const walls = parseSurvey(field.value);
+      if (typeof walls === "string") return this.ctx.notify(walls, "error");
+      this.room.walls = walls;
+      this.room.obstacles = this.room.obstacles.filter((o) => o.wall < walls.length);
+      this.pasting = false;
+      this.ctx.notify(`${walls.length} mur(s) repris du relevé.`, "success");
+      this.changed();
+    });
+    const cancel = el("button", { type: "button", class: "h-7 flex-1 border border-gray-300 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Annuler");
+    cancel.addEventListener("click", () => ((this.pasting = false), this.render()));
+    return el("div", { class: "space-y-1 border border-sky-200 p-1.5 dark:border-sky-900" }, el("p", { class: "text-gray-600 dark:text-gray-300" }, "Collez le relevé du télémètre (texte ou CSV de son application) : mètres, centimètres ou millimètres, l'angle de chaque coin s'il est mesuré (90° sinon)."), field, el("div", { class: "flex gap-1" }, cancel, take));
+  }
+
+  /** A project has its room: after OK the tool closes, rather than proposing a second room over the first. */
+  protected override again(): void {
+    this.close();
+    void this.ctx.preview(null);
   }
 
   /** Opens the panel with its preview. */

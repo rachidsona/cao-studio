@@ -50,8 +50,14 @@ export function toast(region: HTMLElement, message: string, kind: ToastKind = "i
     message,
   );
   region.append(node);
+  // The last three only: a pile of messages would cover the panels (a tablet's narrow screen first).
+  const shown = region.querySelectorAll("[data-toast]");
+  for (let i = 0; i < shown.length - TOASTS_SHOWN; i++) shown[i]!.remove();
   setTimeout(() => node.remove(), timeoutMs);
 }
+
+/** How many messages stay on screen at once. */
+const TOASTS_SHOWN = 3;
 
 export function slugify(name: string): string {
   return (

@@ -158,6 +158,8 @@ export interface KitchenFloorPlan {
   cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number }>>;
   room?: { id: string; wall: number };
   place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
+  /** Walls B and C out of square with wall A, from the surveyed room: the corner's angle less 90° (°). */
+  skew?: Partial<Record<"B" | "C", number>>;
   frontMaterial?: string;
   worktopMaterial?: string;
   /** As the Implantation's (features/kitchen-layout.ts): the plinth's height and the worktop's thickness (mm), built. */

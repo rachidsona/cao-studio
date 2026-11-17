@@ -1,11 +1,12 @@
 /**
  * Le plan de cuisine posé sur la Pièce relevée, comme le Plan de dressing (plan-room.ts) : un mur de la pièce devient le
  * mur A, ses voisins les murs B et C ; les longueurs et la hauteur sous plafond en viennent, et le plan se tourne et se
- * déplace dessus. Ce que ses murs ont — portes, fenêtres, prises, retombées et rampants — se marque sur le schéma, et se lit
+ * déplace dessus ; un mur B ou C hors d'équerre (5° au plus) est pris, les meubles restant d'équerre au mur A. Ce que ses murs ont — portes, fenêtres, prises, retombées et rampants — se marque sur le schéma, et se lit
  * linéaire par linéaire pour laisser libres les portes et les fenêtres et ôter les meubles hauts sous un plafond bas. Pur.
  */
 import type { KitchenRoomInfo } from "./kitchen-plan-build";
 import { planObstacles, planRooms, type PlanObstacle } from "./plan-room";
+import { SKEW_MAX } from "./kitchen-plan-shapes";
 import { PLAN, type Point } from "./plan-shapes";
 import type { CadDocument, DressingPlan, KitchenFloorPlan, RoomFeature } from "./types";
 import { wallName } from "../features/room-plan";
@@ -22,16 +23,19 @@ export const kitchenRoomOf = (doc: CadDocument, p: KitchenFloorPlan): RoomFeatur
 
 /** This plan on this wall of the room: its sizes and its place; a string: why it cannot be. */
 export function linkedKitchen(p: KitchenFloorPlan, room: RoomFeature, wall: number): KitchenFloorPlan | string {
-  const runs = roomRuns(room, wall, layoutOf(p));
+  const runs = roomRuns(room, wall, layoutOf(p), SKEW_MAX);
   if (typeof runs === "string") return runs;
+  // Its side walls out of square: the units stay square to wall A (kitchen-plan-shapes.ts skewShift, skewNotes).
+  const skew = Object.fromEntries((["B", "C"] as const).flatMap((w) => (runs.walls[w]?.skew ? [[w, runs.walls[w]!.skew!]] : [])));
+  const { skew: _old, ...rest } = p;
   return {
-    ...p, room: { id: room.id, wall }, place: runs.place, lengthA: runs.walls.A!.length, height: room.height,
+    ...rest, room: { id: room.id, wall }, place: runs.place, lengthA: runs.walls.A!.length, height: room.height, ...(Object.keys(skew).length ? { skew } : {}),
     ...(runs.walls.B ? { lengthB: runs.walls.B.length } : {}), ...(runs.walls.C ? { lengthC: runs.walls.C.length } : {}),
   };
 }
 
 export function unlinkedKitchen(p: KitchenFloorPlan): KitchenFloorPlan {
-  const { room: _room, place: _place, ...free } = p;
+  const { room: _room, place: _place, skew: _skew, ...free } = p;
   return free;
 }
 
@@ -39,7 +43,7 @@ export function unlinkedKitchen(p: KitchenFloorPlan): KitchenFloorPlan {
 export function kitchenRoomInfo(doc: CadDocument, p: KitchenFloorPlan): KitchenRoomInfo | undefined {
   const room = kitchenRoomOf(doc, p);
   if (!room || p.room === undefined) return undefined;
-  const runs = roomRuns(room, p.room.wall, layoutOf(p));
+  const runs = roomRuns(room, p.room.wall, layoutOf(p), SKEW_MAX);
   if (typeof runs === "string") return undefined;
   const info: KitchenRoomInfo = {};
   if (runs.walls.A) info.A = runs.walls.A;

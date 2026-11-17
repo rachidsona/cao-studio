@@ -8,7 +8,7 @@
  */
 import { cabinetAxes } from "./kitchen-catalog";
 import { cornerSide, wallCornerSide } from "./kitchen-corners";
-import { FRONT, jointOf, kitchenRuns, kitchenSizes, runAt, runGeometry, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
+import { FRONT, jointOf, kitchenRuns, kitchenSizes, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
@@ -27,7 +27,7 @@ const OVEN = 595;
  */
 export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): KitchenLayout & { fills: Record<string, RunFill>; kept: KitchenUnit[] } {
   const s = kitchenSizes(p);
-  const out: KitchenLayout & { fills: Record<string, RunFill>; kept: KitchenUnit[] } = { units: [], boxes: [], notes: [], ergonomics: { ok: [], warn: [] }, fills: {}, kept: [] };
+  const out: KitchenLayout & { fills: Record<string, RunFill>; kept: KitchenUnit[] } = { units: [], boxes: [], notes: skewNotes(p), ergonomics: { ok: [], warn: [] }, fills: {}, kept: [] };
   const places: Parameters<typeof ergonomics>[0] = {};
   const checks: Parameters<typeof ergonomics>[1] = p.island ? { islandPassage: p.passage } : {};
   for (const run of kitchenRuns(p)) {

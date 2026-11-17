@@ -235,7 +235,7 @@ export class Editor {
     this.session[amend ? "replace" : "apply"](doc);
     this.sketches.followDocument();
     this.updateHistoryButtons();
-    return this.recompute().then(() => this.follower.after());
+    return (this.tools.active?.followDoc(), this.recompute()).then(() => this.follower.after());
   }
 
   // ---- rendering ----------------------------------------------------------

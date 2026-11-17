@@ -196,8 +196,14 @@ npm run typecheck         # TypeScript strict
 npm run test:e2e          # Playwright : parcours dans un vrai navigateur (après npm run build)
 npm run test:e2e:rapide   # les parcours essentiels seulement ({ tag: "@rapide" })
 GUIDE=1 npx playwright test tests/e2e/guide.spec.ts   # refait les captures du guide (static/guide/)
+BENCH_OUT=bench.json npx playwright test tests/e2e/bench-scenarios.spec.ts   # scénarios chronométrés (gestes, secondes)
 .venv/bin/python manage.py check --deploy   # avec DJANGO_DEBUG=false et DJANGO_SECRET_KEY
 ```
+
+Les **scénarios chronométrés** (`tests/e2e/bench-scenarios.spec.ts`) refont deux projets types — une cuisine en L du
+relevé collé au dossier PDF du client, un dressing en U du plan au prix — en comptant les gestes de l'utilisateur et le
+temps de chaque étape ; refaits dans un autre logiciel par quelqu'un qui le maîtrise, ils donnent le point de
+comparaison. `BENCH_OUT` garde les mesures en JSON.
 
 Les tests de bout en bout (`tests/e2e/`) lancent leur propre serveur Django sur le port 8799 avec une base à part
 (`.e2e/db.sqlite3`, recréée à chaque fois) : ouvrir un projet, tracer une ligne dans une esquisse et la retrouver
@@ -2438,6 +2444,12 @@ opération existante.
   « Mur A dans la pièce » pose le plan sur la Pièce relevée :
   cotes et plafond en viennent, ses portes, fenêtres, prises et retombées sont marquées sur le schéma, les meubles bas
   laissent les portes libres, les hauts les fenêtres, et un plafond bas ôte les hauts (`document/kitchen-plan-room.ts`).
+  **Murs hors d'équerre** : un mur B ou C qui fait avec le mur A un angle relevé jusqu'à 5° de l'équerre est pris (les
+  autres assistants le refusent toujours). Les meubles restent d'équerre au mur A, comme les pose un cuisiniste. Un mur
+  qui s'ouvre laisse un jour derrière ses meubles, qui grandit jusqu'au bout : le panneau dit sa cote, plan de travail et
+  crédence à scribe, joue ou fileur à scribe au bout. Un mur qui rentre fait avancer son linéaire juste assez pour que
+  le bout ne touche pas le mur, et les meubles du mur A partent de son devant ; le jour est alors dans l'angle
+  (`skewShift`, `skewNotes` dans `document/kitchen-plan-shapes.ts`, `skew` de `features/room-runs.ts`).
   - **Le plan et la 3D restent d'accord, dans les deux sens** (`document/kitchen-sync.ts`) : le plan refait la cuisine
     quand il change ; et un meuble qu'il a fait, changé dans la 3D — sa largeur sous la vue ou dans ses propriétés, une
     cote tapée, Prolonger élément, Déformer — change le plan : la largeur, la profondeur (et la hauteur d'un haut ou
@@ -2568,6 +2580,14 @@ opération existante.
     plans (« Plan de travail A », « Plan de travail A2 »), chacun avec les découpes des meubles qu'il couvre. Il passe
     sur un lave-vaisselle, sur la place d'un caisson aménagé et sur une place libre de moins de 5 cm. Une découpe
     d'évier ou de plaque a besoin de 5 cm de plan à chaque bout : un meuble d'évier tout au bout du plan est signalé.
+  - **Dossier de cuisine (PDF)** (dans le Plan de cuisine, dès qu'un linéaire est aménagé) : ce qu'un cuisiniste remet à
+    son client, en pages A4 paysage montrées dans une fenêtre puis en un seul PDF. Le **plan vu de dessus coté** —
+    chaque linéaire et ses meubles bas numérotés, la longueur de chaque mur, le passage devant l'îlot — ; l'**élévation
+    de chaque linéaire**, mur vu de face à l'échelle avec ses meubles bas, hauts et colonnes numérotés, le plan de
+    travail, les fileurs, la **chaîne des largeurs** d'un bout du mur à l'autre (angles et vides compris) et les
+    hauteurs (plan de travail, dessous et dessus des hauts) ; la **liste des meubles** — numéro, linéaire, désignation,
+    largeur × hauteur × profondeur, façades —, trente par page (`document/kitchen-dossier.ts`,
+    `app/kitchen/kitchen-dossier-view.ts`).
   - **Proposer une cuisine** remplit tous les linéaires avec l'algorithme de l'Implantation (600 d'abord, puis le plus
     grand qui tient, un fileur ; évier, lave-vaisselle, plaque et four, hotte, colonne réfrigérateur au bout libre) :
     la même cuisine que l'Implantation, à retoucher meuble par meuble (`document/kitchen-propose.ts`).
@@ -2726,6 +2746,14 @@ opération existante.
     d'équerre se relève comme elle est), la hauteur sous plafond et l'épaisseur des murs. Le mur A part de l'origine
     vers +X, la pièce à sa droite (vers −Y, là où se posent les meubles) ; les suivants tournent à droite. Les murs se
     rejoignent d'onglet à l'extérieur ; un relevé qui ne se ferme pas le dit, avec l'écart en mm.
+  - **Coller un relevé** : les mesures d'un télémètre laser, collées telles que son application les exporte (texte ou
+    CSV, au point-virgule, à la tabulation ou à la virgule, en-tête et numéros de mur compris), remplacent les murs : un
+    mur par ligne, sa longueur en mètres, centimètres ou millimètres (sans unité : en mètres sous 50, en mm au-delà),
+    puis l'angle de son coin s'il a été mesuré (90° sinon). Les ouvertures des murs gardés restent
+    (`features/room-survey.ts`).
+  - Après OK, l'outil Pièce se ferme (un projet a sa pièce : il ne propose pas d'en poser une seconde par-dessus). Un
+    outil laissé ouvert refait son aperçu quand le projet change ailleurs (un plan de cuisine, une annulation), au lieu
+    de rester affiché par-dessus ce qui a été fait depuis (`PanelTool.followDoc`).
   - Ce qui gêne : fenêtres et portes (percées dans le mur, depuis le début du mur, avec leur allège), prises,
     retombées de plafond (une poutre ou un soffite le long d'un mur : avancée et retombée) et rampants (une sous-pente
     qui descend vers un mur : hauteur au mur et distance jusqu'au plafond).
@@ -2805,7 +2833,7 @@ opération existante.
   « of5 » servait encore donnait à la seconde étape du module l'identifiant d'une autre (des Cloisons voisines), et
   chaque réglage changé ensuite laissait derrière lui des étagères orphelines qui remplissaient des niches entières.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
-- **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état.
+- **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état ; son bouton montre ou cache les cadres seuls, le nombre reste.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
 - **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition ouvre la
   calculatrice à côté d'elle : une valeur ou un calcul, au clavier ou sur son pavé.
