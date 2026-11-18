@@ -1494,14 +1494,16 @@ opération existante.
   (« ⋯ », « Affichage ») passent toujours par-dessus.
 - **Modèle des icônes** (menu **« ⋯ » → Icônes (le dessin)**, gardé dans le navigateur, `localStorage` « icon-model ») :
   le dessin même des icônes. **Volumes** (par défaut : les dessins de la page, de petits volumes en relief) ou un
-  jeu **redessiné** sur 24 × 24 : **Studio** (petits solides gris clair en axonométrie, ce qui compte en bleu, ce qui
-  agit en orange, des arêtes fines et foncées ; des couleurs fixes, les mêmes en thème clair et sombre), **Glyphe**
-  (formes plates grises, un accent de couleur) ou **Croquis** (un trait de croquis sur des aplats jaune, bleu et
-  rouge). Trois dessins différents
+  jeu **redessiné** sur 24 × 24 : **Studio** (petits solides en axonométrie, gris clair ombrés en dégradé, ce qui
+  compte en bleu, ce qui agit en orange aux flèches à pointe pleine), **Glyphe** (formes plates grises, un accent de
+  couleur) ou **Croquis** (les solides vus plus de face, la façade large, en couleurs vives à plat — crème, jaune,
+  bleu, rouge — au trait noir qui dépasse des coins comme un croquis à main levée). Studio et Croquis ont des couleurs
+  fixes, les mêmes en thème clair et sombre. Trois dessins différents
   de chaque outil, pas trois rendus du même (`tests/frontend/icon-models.test.ts`). Les **35 outils du ruban et de la
   colonne de sélection** sont redessinés ; les autres gardent leur volume en attendant. Les dessins sont décrits dans
-  `scripts/icon_models_set.py` (Glyphe et Croquis : une suite de tracés par outil) et `scripts/icon_models_studio.py`
-  (Studio : des volumes placés dans l'espace, projetés et centrés, chaque face teintée selon son côté) ;
+  `scripts/icon_models_set.py` (Glyphe : une suite de tracés par outil) et `scripts/icon_models_studio.py` (Studio et
+  Croquis : des volumes placés dans l'espace, projetés selon la vue du modèle, mis à l'échelle de l'icône, chaque face
+  peinte selon son côté) ;
   `python3 scripts/icon_models.py` écrit `static/icons/studio.svg`, `glyphe.svg`, `croquis.svg`. Le modèle choisi, l'éditeur charge son fichier et remplace
   le contenu de chaque symbole du même nom dans la page (`app/icon-models.ts`) : toutes les icônes qui en sont tirées
   changent d'un coup, et « Volumes » rend les dessins de la page. Les rendus ci-dessous ne peignent que les volumes :

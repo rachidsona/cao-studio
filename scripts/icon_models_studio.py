@@ -1,21 +1,25 @@
 """
-Le modèle « Studio » des icônes (scripts/icon_models.py) : chaque outil en petits solides vus en axonométrie
-(X vers la droite et l'avant, Y vers la gauche et l'avant, Z en haut), gris clair, ce qui compte en couleur, les
-arêtes fines et foncées ; les faces pleines cachent ce qui est derrière — dessinées du fond vers l'avant. Un dessin est
-une fonction de l'origine o (là où tombe le point X = Y = Z = 0) ; fit() la choisit pour centrer le dessin. Sortes en
-plus de icon_models_set.py : F une face grise, K une face bleu pâle, H une face bleue ; suivies de « < » pour une face
-tournée à gauche, « > » à droite (plus sombres que le dessus).
+Les modèles d'icônes en volumes (scripts/icon_models.py) : chaque outil en petits solides placés dans l'espace (X, Y
+au sol, Z en haut), vus d'en haut — « Studio » en axonométrie, « Croquis » plus de face, la façade large et le côté
+fuyant ; les faces pleines cachent ce qui est derrière, dessinées du fond vers l'avant. Un dessin est une fonction de
+l'origine o (là où tombe le point X = Y = Z = 0) ; fit() choisit l'échelle et l'origine pour qu'il remplisse l'icône.
+Sortes en plus de icon_models_set.py : F une face neutre, K une face pâle de l'accent, H une face de l'accent, suivies
+de « < » pour une face tournée à gauche, « > » à droite ; R une flèche qui agit, sa pointe pleine.
 """
 from math import hypot
 
 from icon_models_set import BRACKETS, C, R, SMALL_POINTER, STAR, n
 
 SEEN = []
+# How a model looks at the space: screen x = ax X + ay Y, y = bx X + by Y - Z; and the drawing's scale.
+VIEWS = {"studio": dict(ax=1, ay=-1, bx=0.5, by=0.5), "croquis": dict(ax=0.92, ay=-0.5, bx=0.2, by=0.42)}
+VIEW = dict(VIEWS["studio"], scale=1)
 
 
 def pt(o, X, Y, Z):
     """Where a point of the space falls on the icon."""
-    x, y = o[0] + X - Y, o[1] + (X + Y) / 2 - Z
+    v, s = VIEW, VIEW["scale"]
+    x, y = o[0] + s * (v["ax"] * X + v["ay"] * Y), o[1] + s * (v["bx"] * X + v["by"] * Y - Z)
     SEEN.append((x, y))
     return x, y
 
@@ -29,12 +33,13 @@ def line(o, *pts):
     return iso(o, *pts, close=False)
 
 
-def arrow(o, P, Q, head=1.7):
+def arrow(o, P, Q, head=2.4):
+    """A shaft from P to the base of a closed head at Q (filled by the kind R)."""
     (x1, y1), (x2, y2) = pt(o, *P), pt(o, *Q)
     size = hypot(x2 - x1, y2 - y1)
     ux, uy = (x2 - x1) / size, (y2 - y1) / size
-    bx, by, w = x2 - head * ux, y2 - head * uy, head * 0.65
-    return f"M{n(x1)} {n(y1)}L{n(x2)} {n(y2)}M{n(bx - w * uy)} {n(by + w * ux)}L{n(x2)} {n(y2)}L{n(bx + w * uy)} {n(by - w * ux)}"
+    bx, by, w = x2 - head * ux, y2 - head * uy, head * 0.55
+    return f"M{n(x1)} {n(y1)}L{n(bx)} {n(by)}M{n(bx - w * uy)} {n(by + w * ux)}L{n(x2)} {n(y2)}L{n(bx + w * uy)} {n(by - w * ux)}z"
 
 
 def rect(X, Y, a, b):
@@ -46,11 +51,14 @@ def prism(o, pts, h, z=0):
     back to front, and its top."""
     edges = list(zip(pts, pts[1:] + pts[:1]))
     turn = sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in edges)
+    eye = (-VIEW["ay"], VIEW["ax"])  # the way the eye looks, on the ground (no screen x moves along it)
     left, right = [], []
     for (x1, y1), (x2, y2) in edges:
         nx, ny = (y2 - y1, x1 - x2) if turn > 0 else (y1 - y2, x2 - x1)
-        if nx + ny > 1e-9:  # faces the eye, which looks along (-1, -1, -1)
-            (left if ny > nx else right).append((x1 + x2 + y1 + y2, iso(o, (x1, y1, z), (x2, y2, z), (x2, y2, z + h), (x1, y1, z + h))))
+        if nx * eye[0] + ny * eye[1] > 1e-9:  # faces the eye
+            depth = (x1 + x2) * eye[0] + (y1 + y2) * eye[1]
+            side = left if VIEW["ax"] * nx + VIEW["ay"] * ny < 0 else right
+            side.append((depth, iso(o, (x1, y1, z), (x2, y2, z), (x2, y2, z + h), (x1, y1, z + h))))
     return "".join(d for _, d in sorted(left)), "".join(d for _, d in sorted(right)), iso(o, *((x, y, z + h) for x, y in pts))
 
 
@@ -64,13 +72,20 @@ def wire(o, X, Y, Z, a, b, h):
     return "".join(prism(o, rect(X, Y, a, b), h, Z))
 
 
-def fit(draw, at=(12, 12)):
-    """The drawing, centred on at; it must stay inside the 24 × 24 with a margin."""
+def bounds(draw):
     SEEN.clear()
     draw((0, 0))
     xs, ys = zip(*SEEN)
-    assert max(xs) - min(xs) <= 21 and max(ys) - min(ys) <= 21, (max(xs) - min(xs), max(ys) - min(ys))
-    return draw((at[0] - (min(xs) + max(xs)) / 2, at[1] - (min(ys) + max(ys)) / 2))
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def fit(draw, at=(12, 12), size=20.5):
+    """The drawing as large as size allows (but not blown up past 1.4 times), centred on at."""
+    VIEW["scale"] = 1
+    x0, y0, x1, y1 = bounds(draw)
+    VIEW["scale"] = min(size / (x1 - x0), size / (y1 - y0), 1.4)
+    x0, y0, x1, y1 = bounds(draw)
+    return draw((at[0] - (x0 + x1) / 2, at[1] - (y0 + y1) / 2))
 
 
 def mirror(o):
@@ -96,11 +111,11 @@ DRAW = {
     "linked-copy": lambda o: [*box(o, 0, 0, 0, 5, 5, 5), *box(o, 8, 1, 0, 5, 5, 5, "K", "H"), ("p", line(o, (2.5, 2.5, 5), (10.5, 3.5, 5)))],
     "combine": lambda o: [*box(o, 0, 0, 0, 9, 9, 3.5), *box(o, 2.5, 2.5, 3.5, 4, 4, 4.5, "K", "H")],
     "split": lambda o: [*box(o, 0, 0, 0, 4.5, 8, 7), ("p", iso(o, (5.5, -1, 0), (5.5, 9, 0), (5.5, 9, 8.5), (5.5, -1, 8.5))), *box(o, 6.5, 0, 0, 4.5, 8, 7, "K", "K")],
-    "move-3d": lambda o: [("o", arrow(o, (0, 0, 0), (8, 0, 0)) + arrow(o, (0, 0, 0), (0, 8, 0)) + arrow(o, (0, 0, 0), (0, 0, 8))), *box(o, -1.5, -1.5, 0, 3, 3, 3, "F", "H")],
-    "face-glue": lambda o: [*box(o, 0, 0, 0, 4.5, 8, 7), ("H>", iso(o, (4.5, 0, 7), (4.5, 8, 7), (4.5, 8, 0), (4.5, 0, 0))), *box(o, 7, 0, 0, 4.5, 8, 7, "K", "K"), ("o", arrow(o, (10, 4, 7), (6, 4, 7)))],
-    "extend-element": lambda o: [*box(o, 0, 0, 0, 6, 6, 5), ("d", wire(o, 6, 0, 0, 5, 6, 5)), *box(o, 11.5, -1, 0, 1, 8, 8, "H", "H"), ("o", arrow(o, (1.5, 3, 5), (9, 3, 5)))],
-    "push": lambda o: [*box(o, 0, 0, 0, 7, 7, 7, "F", "K"), ("o", arrow(o, (3.5, 14, 3.5), (3.5, 8.2, 3.5)))],
-    "face-strip": lambda o: [*box(o, 0, 0, 0, 10, 10, 2.5), *box(o, 3, 3, 2.5, 4, 4, 2.5, "K", "H"), ("o", arrow(o, (5, 5, 5.5), (5, 5, 11)))],
+    "move-3d": lambda o: [("R", arrow(o, (0, 0, 0), (8, 0, 0)) + arrow(o, (0, 0, 0), (0, 8, 0)) + arrow(o, (0, 0, 0), (0, 0, 8))), *box(o, -1.5, -1.5, 0, 3, 3, 3, "F", "H")],
+    "face-glue": lambda o: [*box(o, 0, 0, 0, 4.5, 8, 7), ("H>", iso(o, (4.5, 0, 7), (4.5, 8, 7), (4.5, 8, 0), (4.5, 0, 0))), *box(o, 7, 0, 0, 4.5, 8, 7, "K", "K"), ("R", arrow(o, (10, 4, 7), (6, 4, 7)))],
+    "extend-element": lambda o: [*box(o, 0, 0, 0, 6, 6, 5), ("d", wire(o, 6, 0, 0, 5, 6, 5)), *box(o, 11.5, -1, 0, 1, 8, 8, "H", "H"), ("R", arrow(o, (1.5, 3, 5), (9, 3, 5)))],
+    "push": lambda o: [*box(o, 0, 0, 0, 7, 7, 7, "F", "K"), ("R", arrow(o, (3.5, 14, 3.5), (3.5, 8.2, 3.5)))],
+    "face-strip": lambda o: [*box(o, 0, 0, 0, 10, 10, 2.5), *box(o, 3, 3, 2.5, 4, 4, 2.5, "K", "H"), ("R", arrow(o, (5, 5, 5.5), (5, 5, 11)))],
     "mirror": mirror,
     "room": lambda o: [("F", iso(o, (0, 0, 0), (8, 0, 0), (8, 8, 0), (0, 8, 0))), *box(o, -1, -1, 0, 1, 9, 6), *box(o, 0, -1, 0, 8, 1, 6), ("H<", iso(o, (4.5, 0, 0), (7, 0, 0), (7, 0, 4.5), (4.5, 0, 4.5)))],
     "lighting": lambda o: [*box(o, 0, 3, 0, 10, 6, 4, "F", "K"), *box(o, 0, 0, 10, 10, 2, 1), ("p", line(o, (2, 2, 10), (2, 7.5, 4)) + line(o, (5, 2, 10), (5, 7.5, 4)) + line(o, (8, 2, 10), (8, 7.5, 4)))],
@@ -108,7 +123,7 @@ DRAW = {
     "kitchen": lambda o: [*box(o, 0, 0, 0, 11, 5, 5), *box(o, 0, 0, 5, 11, 5.6, 0.8, "H", "H"), *box(o, 0, 0, 8.5, 11, 3, 4), ("s", line(o, (3.7, 5, 0), (3.7, 5, 5)) + line(o, (7.3, 5, 0), (7.3, 5, 5)) + line(o, (3.7, 3, 8.5), (3.7, 3, 12.5)) + line(o, (7.3, 3, 8.5), (7.3, 3, 12.5)))],
     "kitchen-units": lambda o: [*box(o, 0, 0, 0, 7, 7, 9, "F", "K"), ("s", line(o, (0, 7, 6.5), (7, 7, 6.5))), ("a", line(o, (2.8, 7, 7.8), (4.2, 7, 7.8)) + line(o, (5.8, 7, 2.5), (5.8, 7, 4.5)))],
     "appliances": lambda o: [*box(o, 0, 0, 0, 7, 7, 10.5), ("K<", iso(o, (1.2, 7, 1.5), (5.8, 7, 1.5), (5.8, 7, 6.5), (1.2, 7, 6.5))), ("a", line(o, (1.2, 7, 8.5), (5.8, 7, 8.5)))],
-    "doors-open": lambda o: doors(o, 6, [(6, 8.5, 11.5)]),
+    "doors-open": lambda o: doors(o, 6, [(6, 11, 9.5)]),
     "drawers-open": lambda o: [*box(o, 0, 0, 0, 7, 7, 9), ("s", line(o, (0, 7, 3), (7, 7, 3)) + line(o, (0, 7, 6), (7, 7, 6))), *box(o, 0.5, 7, 3.2, 6, 4, 2.6, "K", "F"), ("a", line(o, (2.5, 11, 4.5), (4.5, 11, 4.5)))],
     "cabinet": lambda o: [*box(o, 0, 0, 0, 7, 6, 10, "F", "K"), ("s", line(o, (3.5, 6, 0), (3.5, 6, 10))), ("a", line(o, (2.8, 6, 4.3), (2.8, 6, 5.8)) + line(o, (4.2, 6, 4.3), (4.2, 6, 5.8)))],
     "fronts": lambda o: [("d", wire(o, 0, 0, 0, 8, 6, 10)), *box(o, 0, 6.6, 0, 3.9, 0.8, 10, "H", "H"), *box(o, 4.1, 6.6, 0, 3.9, 0.8, 10, "H", "H")],
@@ -124,19 +139,21 @@ DRAW = {
     "piece-dims": lambda o: [*box(o, 0, 0, 0, 8, 5, 2, "F", "K"), ("a", line(o, (0, 6.5, 0), (8, 6.5, 0)) + line(o, (0, 5.8, 0), (0, 7.2, 0)) + line(o, (8, 5.8, 0), (8, 7.2, 0)) + line(o, (9.5, 0, 0), (9.5, 5, 0)) + line(o, (8.8, 0, 0), (10.2, 0, 0)) + line(o, (8.8, 5, 0), (10.2, 5, 0)))],
     "grid": lambda o: [("F", iso(o, (0, 0, 0), (9, 0, 0), (9, 9, 0), (0, 9, 0))), ("s", line(o, (3, 0, 0), (3, 9, 0)) + line(o, (6, 0, 0), (6, 9, 0)) + line(o, (0, 3, 0), (9, 3, 0)) + line(o, (0, 6, 0), (9, 6, 0))), *box(o, 3, 3, 0, 3, 3, 2.5, "K", "H")],
     "select-all": lambda o: [*box(o, 0, 0, 0, 3.5, 3.5, 3.5, "K", "H"), *box(o, 5, 0, 0, 3.5, 3.5, 3.5, "K", "H"), *box(o, 0, 5, 0, 3.5, 3.5, 3.5, "K", "H")],
-    "open-all": lambda o: doors(o, 8, [(0, -2, 9.5), (8, 10, 9.5)]),
+    "open-all": lambda o: doors(o, 8, [(0, -2, 9.5), (8, 11.5, 8.5)]),
     "xray": lambda o: [*cube(o, "K", "K"), ("d", line(o, (8, 0, 0), (0, 0, 0), (0, 8, 0)) + line(o, (0, 0, 0), (0, 0, 8))), ("A", C(*pt(o, 4, 4, 4), 2))],
     "isolate": lambda o: [("d", wire(o, -5.5, 1, 0, 3.5, 3.5, 3.5) + wire(o, 1, -5.5, 0, 3.5, 3.5, 3.5)), *box(o, 0, 0, 0, 5, 5, 5, "K", "H"), ("d", wire(o, 6, 6, 0, 3, 3, 3))],
 }
-# Where the volumes go when a flat sign (pointer, frame, star) shares the icon, and that sign.
+# Where the volumes go, and how large, when a flat sign (pointer, frame, star) shares the icon; and that sign.
 AROUND = {
-    "filter-auto": ((10, 11), [("F", SMALL_POINTER), ("O", STAR)]),
-    "window": ((10, 10), [("e", R(2.5, 2.5, 15.5, 15.5, 1)), ("F", SMALL_POINTER)]),
-    "fit": ((12, 12), [("a", BRACKETS)]),
-    "select-all": ((12, 12), [("e", R(2, 2, 20, 20, 1.5))]),
+    "filter-auto": ((10, 11), 15, [("F", SMALL_POINTER), ("O", STAR)]),
+    "window": ((10, 10), 12.5, [("e", R(2.5, 2.5, 15.5, 15.5, 1)), ("F", SMALL_POINTER)]),
+    "fit": ((12, 12), 11.5, [("a", BRACKETS)]),
+    "select-all": ((12, 12), 17, [("e", R(2, 2, 20, 20, 1.5))]),
 }
 
 
-def studio(name):
-    at, signs = AROUND.get(name, ((12, 12), []))
-    return fit(DRAW[name], at) + signs
+def scene(name, model):
+    """The drawing of a tool as a model looks at it."""
+    VIEW.update(VIEWS[model])
+    at, size, signs = AROUND.get(name, ((12, 12), 20.5, []))
+    return fit(DRAW[name], at, size) + signs

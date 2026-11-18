@@ -1,6 +1,7 @@
 /**
  * Les modèles d'icônes (static/icons/*.svg, faits par scripts/icon_models.py) : chacun redessine les mêmes outils, tous
- * connus de la page, et ne contient que du dessin — des symboles, un groupe, des tracés —, rien qui s'exécute.
+ * connus de la page, et ne contient que du dessin — des symboles, un groupe, des tracés, des dégradés —, rien qui
+ * s'exécute.
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -18,12 +19,12 @@ describe("modèles d'icônes", () => {
     expect(first!.filter((id) => !page.has(id))).toEqual([]);
   });
 
-  it("rien que du dessin : symboles, groupe et tracés, sans script, lien ni style", () => {
+  it("rien que du dessin : symboles, groupe, tracés et dégradés, sans script, lien ni style", () => {
     for (const [model, text] of files) {
       const tags = new Set([...text.matchAll(/<([a-zA-Z]+)/g)].map((m) => m[1]));
-      expect([...tags].sort(), model).toEqual(["g", "path", "svg", "symbol"]);
+      expect([...tags].filter((t) => !["defs", "linearGradient", "stop"].includes(t!)).sort(), model).toEqual(["g", "path", "svg", "symbol"]);
       const attributes = new Set([...text.matchAll(/\s([a-zA-Z:-]+)="/g)].map((m) => m[1]));
-      expect([...attributes].filter((a) => !["xmlns", "id", "viewBox", "d", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray"].includes(a!)), model).toEqual([]);
+      expect([...attributes].filter((a) => !["xmlns", "id", "viewBox", "d", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "x1", "y1", "x2", "y2", "offset", "stop-color"].includes(a!)), model).toEqual([]);
     }
   });
 
