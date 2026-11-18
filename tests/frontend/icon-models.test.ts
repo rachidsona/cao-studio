@@ -1,6 +1,6 @@
 /**
- * Les modèles d'icônes (static/icons/*.svg, faits par scripts/icon_models.py) : chacun redessine les mêmes outils, tous
- * connus de la page, et ne contient que du dessin — des symboles, un groupe, des tracés, des dégradés —, rien qui
+ * Les modèles d'icônes (static/icons/*.svg, faits par scripts/icon_models.py) : chacun redessine tous les outils de la
+ * page, et ne contient que du dessin — des symboles, un groupe, des tracés, des dégradés —, rien qui
  * s'exécute.
  */
 import { readFileSync } from "node:fs";
@@ -12,11 +12,10 @@ const page = new Set(ids(readFileSync("templates/editor/_icons.html", "utf8")));
 const files = ICON_MODELS.map((model) => [model, readFileSync(`static/icons/${model}.svg`, "utf8")] as const);
 
 describe("modèles d'icônes", () => {
-  it("les trois modèles redessinent les mêmes outils, tous dans la page", () => {
+  it("les trois modèles redessinent tous les outils de la page, et rien d'autre", () => {
     const [first, ...others] = files.map(([, text]) => ids(text));
-    expect(first!.length).toBeGreaterThanOrEqual(35);
     for (const other of others) expect(other).toEqual(first);
-    expect(first!.filter((id) => !page.has(id))).toEqual([]);
+    expect([...first!].sort()).toEqual([...page].sort());
   });
 
   it("rien que du dessin : symboles, groupe, tracés et dégradés, sans script, lien ni style", () => {

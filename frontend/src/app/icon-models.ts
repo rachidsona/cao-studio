@@ -3,7 +3,7 @@
  * (templates/editor/_icons.html) — ou un autre jeu, redessiné : « Studio », « Glyphe », « Croquis »
  * (static/icons/*.svg, faits par scripts/icon_models.py). Un modèle choisi, son fichier est chargé et chacun de ses
  * symboles remplace le contenu du symbole du même nom dans la page : toutes les icônes qui en sont tirées (<use>)
- * changent d'un coup ; un outil qu'il ne redessine pas encore garde son volume. Gardé par le navigateur.
+ * changent d'un coup : chaque modèle redessine tous les outils. Gardé par le navigateur.
  */
 const KEY = "icon-model";
 export const ICON_MODELS = ["studio", "glyphe", "croquis"] as const;
