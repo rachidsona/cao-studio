@@ -248,7 +248,8 @@ test("Plan de dressing : le schéma, une Répartition par zone, l'angle coupé, 
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="iso"]')?.click());
 
   // Each zone: its Répartition opens in its own tool; the corner too.
-  const zone = (name: string) => zones.getByRole("listitem").filter({ hasText: name }).getByRole("button").last();
+  // (Its « Dedans : » buttons come after it.)
+  const zone = (name: string) => zones.getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: /^(Modifier|Répartition)$/ });
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await expect(zones.getByRole("listitem")).toHaveCount(3);
   for (const name of ["Mur A", "Angle droit", "Mur C"]) {

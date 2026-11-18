@@ -636,6 +636,8 @@ test("plan de cuisine : un meuble haut poussé dans la 3D reste où il est, le l
   const strip = tool.locator('[data-run-strip="A"]');
   await strip.locator("[data-item]").filter({ has: page.locator("title", { hasText: "Hotte" }) }).click();
   await tool.locator("[data-run-item]").getByRole("button", { name: "Retirer" }).click();
+  // Its place left empty; closed up, the room is at the end of the row.
+  await tool.locator("[data-strip-close-up]").click();
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible();
   await click(page, '[data-action="view"][data-view="front"]');
