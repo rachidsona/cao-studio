@@ -191,7 +191,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
     const [a, b] = [pl.at, pl.at + pl.item.width];
     const on = host.other?.kind === "caisson" && host.other.id === pl.item.id;
-    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-pointer"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer)</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
   }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
@@ -208,6 +208,8 @@ export function runStrip(host: StripHost): SVGSVGElement {
     `<text x="${pl.item.width / 2}" y="${pl.row === "wall" ? -30 : height + 120}" text-anchor="middle" font-size="90" ${editable(pl) ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none"'}>${editable(pl) ? "<title>Cliquer pour changer la largeur</title>" : ""}${Math.round(pl.item.width / 10)}</text>`;
   // The chosen unit's edge, drawn last: over the unit next to it.
   let handle = () => {};
+  // The units of each row and the caissons furnished by hand there, in the order a drag puts them in.
+  const row = [...fill.placed, ...fill.spaces.filter((q) => q.item.furnished)];
   for (const pl of fill.placed) {
     const { body, z, height } = drawing(pl, p);
     const group = document.createElementNS(SVG, "g");
@@ -219,7 +221,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const picked = host.picked?.includes(pl.item.id) ?? false;
     if (picked) group.setAttribute("data-picked", "");
     group.innerHTML = `<title>${escapeHtml(label)}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
-    drag(node, group, pl, fill, host);
+    drag(node, group, pl, row, host, (event) => host.pick(pl.item.id, event.shiftKey || event.ctrlKey || event.metaKey));
     if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
@@ -253,9 +255,10 @@ export function runStrip(host: StripHost): SVGSVGElement {
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
-  for (const held of node.querySelectorAll<SVGElement>("[data-held]")) {
-    held.addEventListener("pointerdown", (event) => event.stopPropagation());
-    held.addEventListener("click", () => host.pickOther?.({ kind: "caisson", id: held.getAttribute("data-held")! }));
+  // A caisson furnished by hand: clicked, chosen; dragged, moved as a unit is.
+  for (const held of node.querySelectorAll<SVGGElement>("[data-held]")) {
+    const pl = fill.spaces.find((q) => q.item.id === held.getAttribute("data-held"))!;
+    if (host.pickOther) drag(node, held, pl, row, host, () => host.pickOther!({ kind: "caisson", id: pl.item.id }), 0);
   }
   // The plinths, over the units' feet: clicked, chosen (set back, taken away, given a look) — all those of the run together.
   if (host.pickOther) {
@@ -316,7 +319,7 @@ function edge(node: SVGSVGElement, pl: Placed, top: number, height: number, resi
 }
 
 /** Pressed and let go where it was: chosen; dragged: put among its row where it is dropped. */
-function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, fill: RunFill, host: StripHost): void {
+function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, row: readonly Placed[], host: StripHost, pick: (event: PointerEvent) => void, origin = pl.at): void {
   group.addEventListener("pointerdown", (down) => {
     down.preventDefault();
     down.stopPropagation();
@@ -328,15 +331,16 @@ function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, fill: RunFill
     const motion = (event: PointerEvent) => {
       const dx = x(event) - start;
       if (Math.abs(dx) > 20) moved = true;
-      group.setAttribute("transform", `translate(${pl.at + dx} ${group.transform.baseVal.consolidate()?.matrix.f ?? 0})`);
+      group.setAttribute("transform", `translate(${origin + dx} ${group.transform.baseVal.consolidate()?.matrix.f ?? 0})`);
     };
     const up = (event: PointerEvent) => {
       group.removeEventListener("pointermove", motion);
       group.removeEventListener("pointerup", up);
-      if (!moved) return host.pick(pl.item.id, event.shiftKey || event.ctrlKey || event.metaKey);
+      if (!moved) return pick(event);
       const by = x(event) - start;
       const middle = pl.at + by + pl.item.width / 2;
-      const others = fill.placed.filter((o) => o.row === pl.row && o.item.id !== pl.item.id);
+      // The units of its row and the caissons furnished by hand there: their order.
+      const others = row.filter((o) => o.row === pl.row && o.item.id !== pl.item.id);
       const before = (m: number) => others.filter((o) => o.at + o.item.width / 2 < m).length;
       // Past a neighbour: their order changes. Still between the same ones: it is put down there, in the free room.
       if (before(middle) !== before(pl.at + pl.item.width / 2) || !host.slide) host.move(pl.item.id, before(middle));

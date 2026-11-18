@@ -131,6 +131,8 @@ export class RunEditor {
   }
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
+    // A caisson furnished by hand (moved): chosen as it is on the strip.
+    if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null];
     this.items = items;
     this.chosen = chosen;
     this.picked = picked.filter((id) => items.some((i) => i.id === id));
@@ -181,8 +183,8 @@ export class RunEditor {
     if (!item) return;
     const row = rowOf(itemEntry(item));
     const others = this.items.filter((i) => i !== item);
-    // Among the units of its row as the strip shows them: the room kept free is not one.
-    const same = others.map((i, k) => [i, k] as const).filter(([i]) => rowOf(itemEntry(i)) === row && !isSpace(i));
+    // Among the units of its row as the strip shows them: the room kept free is not one, a caisson furnished there is.
+    const same = others.map((i, k) => [i, k] as const).filter(([i]) => rowOf(itemEntry(i)) === row && (!isSpace(i) || !!i.furnished));
     const at = index >= same.length ? (same.at(-1)?.[1] ?? others.length - 1) + 1 : same[index]![1];
     this.change([...others.slice(0, at), item, ...others.slice(at)], id);
   }

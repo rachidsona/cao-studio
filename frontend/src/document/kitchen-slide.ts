@@ -10,7 +10,7 @@ import { itemsMoved } from "./kitchen-moves";
 import { runGeometry, type KitchenRun, type RestSide } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "./types";
 import { gapsAsItems } from "../features/kitchen-run-gaps";
-import { fillRun, openRoom, type RunFill } from "../features/kitchen-run-items";
+import { FILLER, FILLER_WALL, fillRun, openRoom, SPACE_WALL, type RunFill } from "../features/kitchen-run-items";
 import type { RunInfo } from "../features/room-runs";
 
 type Heights = Parameters<typeof fillRun>[2];
@@ -19,7 +19,7 @@ const SNAP = 15;
 
 /** How far the unit `id` may slide in the free room beside it, towards the start (negative) and the end of its run. */
 export function slideRoom(fill: RunFill, id: string): [number, number] {
-  const pl = fill.placed.find((p) => p.item.id === id);
+  const pl = fill.placed.find((p) => p.item.id === id) ?? fill.spaces.find((p) => p.item.id === id && p.item.furnished);
   if (!pl) return [0, 0];
   // Not the room a furnished caisson holds: it stands there.
   const gaps = openRoom(fill, pl.row);
@@ -35,6 +35,13 @@ export function slideRoom(fill: RunFill, id: string): [number, number] {
  * the free room beside it; or why it cannot be.
  */
 export function itemSlid(plan: KitchenFloorPlan, run: KitchenRun, info: RunInfo | undefined, items: KitchenRunItem[], heights: Heights, id: string, by: number): { items: KitchenRunItem[]; rest: RestSide; by: number } | string {
+  // The caissons furnished by hand slide as units do: taken meanwhile for panels of their width (a filler put by hand).
+  const held = new Map(items.filter((i) => i.furnished).map((i) => [i.id, i]));
+  if (held.size) {
+    const plain = items.map((i) => (held.has(i.id) ? (({ furnished: _held, ...rest }) => ({ ...rest, model: i.model === SPACE_WALL ? FILLER_WALL : FILLER }))(i) : i));
+    const made = itemSlid(plan, run, info, plain, heights, id, by);
+    return typeof made === "string" ? made : { ...made, items: made.items.map((i) => (held.has(i.id) ? { ...i, model: held.get(i.id)!.model, furnished: held.get(i.id)!.furnished } : i)) };
+  }
   const g = runGeometry(plan, run, info);
   if (g.rest === "walls") return "Avec le reste « contre les murs », un meuble ne se glisse pas : choisissez d'abord où va le reste (Place libre).";
   const fill = fillRun(g, items, heights);

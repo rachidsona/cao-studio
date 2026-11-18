@@ -66,7 +66,8 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   /** Its place among the units of its row, and how many they are. */
   const place = (id: string): [number, number] => {
     const item = items.find((i) => i.id === id);
-    const same = item ? items.filter((i) => rowOf(itemEntry(i)) === rowOf(itemEntry(item)) && !isSpace(i)) : [];
+    // The units of its row and the caissons furnished by hand there, not the room kept free.
+    const same = item ? items.filter((i) => rowOf(itemEntry(i)) === rowOf(itemEntry(item)) && (!isSpace(i) || !!i.furnished)) : [];
     return [item ? same.indexOf(item) : -1, same.length];
   };
   const step = (id: string, by: -1 | 1) => {
@@ -92,7 +93,10 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   } else if (host.other?.kind === "caisson") {
     const id = host.other.id;
     label = `Caisson aménagé ${(items.find((i) => i.id === id)?.width ?? 0) / 10} cm`;
+    const [index, count] = place(id);
     buttons = [
+      button("←", "data-strip-left", "Un cran à gauche (←) ; ou tirez-le sur la bande", () => step(id, -1), index <= 0),
+      button("→", "data-strip-right", "Un cran à droite (→)", () => step(id, 1), index < 0 || index >= count - 1),
       button("Modifier dans la 3D", "data-strip-caisson-open", "Isole ce caisson, de face, pour changer ses étagères, cloisons, tiroirs et portes", () => host.openCaisson(id)),
       button("Supprimer", "data-strip-remove", "Ôte ce caisson avec ses panneaux et ses portes (Suppr) : sa place reste vide", () => host.removeCaisson(id)),
     ];
@@ -129,7 +133,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     bar,
     key(event) {
       const mod = event.ctrlKey || event.metaKey;
-      const one = ids.length === 1 ? ids[0]! : null;
+      const one = ids.length === 1 ? ids[0]! : host.other?.kind === "caisson" ? host.other.id : null;
       const done = () => (event.preventDefault(), event.stopPropagation());
       if (event.key === "Delete" || event.key === "Backspace") {
         if (appliance) host.removeAppliance(appliance.id);

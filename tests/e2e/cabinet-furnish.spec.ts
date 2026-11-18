@@ -75,6 +75,27 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await page.locator("[data-zone-isolated]").getByRole("button", { name: "Tout montrer" }).click();
   if (!(await tool.isVisible())) await click(page, '[data-workshop="kitchen-plan"]');
   if (!(await tool.locator('[data-run-strip="A"]').isVisible())) await tool.locator('[data-open-run="A"]').click();
+  // Dragged along the strip into the room left free: put down there, still furnished, in the 3D too.
+  const caissonAt = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return (project.document.features as { name: string; frame?: { origin: number[] } }[]).find((f) => f.name.startsWith("Caisson — "))!.frame!.origin[0]!;
+  };
+  const x0 = await caissonAt();
+  const held = tool.locator('[data-run-strip="A"] [data-held]');
+  const was = (await held.boundingBox())!;
+  const whole = (await tool.locator('[data-run-strip="A"] svg').boundingBox())!;
+  const [hx, hy] = [was.x + was.width / 2, was.y + was.height / 2];
+  await page.mouse.move(hx, hy);
+  await page.mouse.down();
+  await page.mouse.move(hx + whole.width * 0.15, hy, { steps: 4 });
+  await page.mouse.move(hx + whole.width * 0.3, hy, { steps: 4 });
+  await page.mouse.up();
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  await expect.poll(async () => (await held.boundingBox())!.x, { timeout: 30_000 }).toBeGreaterThan(was.x + whole.width * 0.2);
+  await expect(held).toContainText("Caisson aménagé");
+  expect(Math.abs((await caissonAt()) - x0)).toBeGreaterThan(500);
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");

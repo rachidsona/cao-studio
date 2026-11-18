@@ -93,4 +93,21 @@ describe("supprimer un meuble sur la bande", () => {
     expect(slideRoom(fill, items[0]!.id)).toEqual([0, 0]);
     expect(slideRoom(fill, items[2]!.id)).toEqual([0, 800]);
   });
+
+  it("un caisson aménagé glissé dans la place vide : posé là, il reste aménagé, ses voisins ne bougent pas", () => {
+    const items = units([["base-bas-2-portes", 1000], ["space", 1200], ["base-bas-1-porte", 600]]).map((i) => (isSpace(i) ? { ...i, furnished: "sk1" } : i));
+    const p = plan("end", items);
+    const [first, held, last] = items as [KitchenRunItem, KitchenRunItem, KitchenRunItem];
+    // The last unit first, to the end of the wall: room opens between it and the caisson.
+    const away = itemSlid(p, run(p), undefined, items, heights(p), last.id, 800);
+    if (typeof away === "string") throw new Error(away);
+    const fill = fillOf({ ...p, rest: { A: away.rest } }, away.items);
+    expect(slideRoom(fill, held.id)).toEqual([0, 800]);
+    const made = itemSlid({ ...p, rest: { A: away.rest } }, run(p), undefined, away.items, heights(p), held.id, 500);
+    if (typeof made === "string") throw new Error(made);
+    expect(made.items.find((i) => i.id === held.id)).toMatchObject({ model: "space", furnished: "sk1", width: 1200 });
+    const now = fillOf({ ...p, rest: { A: made.rest } }, made.items);
+    const where = (id: string) => Math.round([...now.placed, ...now.spaces].find((pl) => pl.item.id === id)!.at);
+    expect([where(first.id), where(held.id), where(last.id)]).toEqual([0, 1500, 3000]);
+  });
 });
