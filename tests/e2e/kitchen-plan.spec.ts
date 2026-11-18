@@ -295,7 +295,11 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await tool.locator('[data-plan-switch="wallUnits"]').uncheck();
   await tool.getByLabel("Retour du plan aux bouts libres").selectOption("miter");
   await tool.locator('[data-plan-switch="endPanels"]').check();
-  await tool.getByLabel("Aspect du plan de travail").selectOption("dekton-aura");
+  // Each look by its sphere: the list opened, Dekton Aura clicked, shown as the one chosen.
+  await tool.locator('[data-worktop-looks] summary').click();
+  await expect(tool.locator('[data-worktop-look="dekton-aura"] img')).toHaveAttribute("src", /^data:image\/png/);
+  await tool.locator('[data-worktop-look="dekton-aura"]').click();
+  await expect(tool.locator('[data-worktop-looks] summary')).toContainText("Dekton Aura");
   await shot(page, "12-reglages");
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.locator("[data-propose]").click();
