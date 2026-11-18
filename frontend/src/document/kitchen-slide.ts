@@ -10,7 +10,7 @@ import { itemsMoved } from "./kitchen-moves";
 import { runGeometry, type KitchenRun, type RestSide } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "./types";
 import { gapsAsItems } from "../features/kitchen-run-gaps";
-import { fillRun, type RunFill } from "../features/kitchen-run-items";
+import { fillRun, openRoom, type RunFill } from "../features/kitchen-run-items";
 import type { RunInfo } from "../features/room-runs";
 
 type Heights = Parameters<typeof fillRun>[2];
@@ -21,7 +21,8 @@ const SNAP = 15;
 export function slideRoom(fill: RunFill, id: string): [number, number] {
   const pl = fill.placed.find((p) => p.item.id === id);
   if (!pl) return [0, 0];
-  const gaps = pl.row === "wall" ? fill.wallFree : fill.free;
+  // Not the room a furnished caisson holds: it stands there.
+  const gaps = openRoom(fill, pl.row);
   const [a, b] = [pl.at, pl.at + pl.item.width];
   // The room kept free by an « Espace libre » is free too: it gives way.
   const before = gaps.find(([, g1]) => Math.abs(g1 - a) < 1);

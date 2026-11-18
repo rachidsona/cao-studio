@@ -6,7 +6,7 @@
  */
 import { withRoomLeft } from "./kitchen-strip-actions";
 import type { DisplayUnit, KitchenFloorPlan, KitchenRunItem } from "../../document/types";
-import { applianceOf, isFiller, itemEntry, rowOf, runModels, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, isFiller, itemEntry, openRoom, rowOf, runModels, type RunFill } from "../../features/kitchen-run-items";
 import { withCommonSize, withDuplicated, withEqualWidths, withModel, withRoomShared } from "../../features/kitchen-run-multi";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
@@ -71,7 +71,7 @@ export function multiRows(host: MultiHost): (HTMLElement | null)[] {
   };
   // The room left on each row: its free stretches and its fillers.
   const has = (r: "base" | "wall") => chosen.some((i) => !applianceOf(i) && !isFiller(i) && rowOf(itemEntry(i)) === r);
-  const room = { base: has("base") ? [...host.fill.free, ...host.fill.fillers].reduce((s, [a, b]) => s + b - a, 0) : 0, wall: has("wall") ? host.fill.wallFree.reduce((s, [a, b]) => s + b - a, 0) : 0 };
+  const room = { base: has("base") ? openRoom(host.fill, "base", [...host.fill.free, ...host.fill.fillers]).reduce((s, [a, b]) => s + b - a, 0) : 0, wall: has("wall") ? openRoom(host.fill, "wall").reduce((s, [a, b]) => s + b - a, 0) : 0 };
   const share = () => {
     let next = items;
     let given = 0;

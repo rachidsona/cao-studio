@@ -13,7 +13,7 @@ import { itemSlid } from "../../document/kitchen-slide";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
@@ -326,7 +326,8 @@ export class RunEditor {
       const f = fillRun(runGeometry({ ...plan, rest: { ...plan.rest, [run.id]: side } }, run, room?.[run.id]), this.items, heights);
       const widths = [...new Set(f.fillers.map(([a, b]) => length(b - a)))];
       const fillers = f.fillers.length ? `${f.fillers.length > 1 ? `${f.fillers.length} fileurs` : "1 fileur"} de ${widths.join(" et ")}` : "";
-      const open = f.free.length ? `${f.free.map(([a, b]) => length(b - a)).join(" + ")} libres` : "";
+      const low = openRoom(f, "base");
+      const open = low.length ? `${low.map(([a, b]) => length(b - a)).join(" + ")} libres` : "";
       const at = f.walls.filter((w) => w >= 1);
       const walls = at.length ? `${at.length > 1 ? "2 fileurs muraux" : "1 fileur mural"} de ${[...new Set(at.map(length))].join(" et ")}` : "";
       return [walls, fillers, open].filter(Boolean).join(", ") || "rien à combler";

@@ -59,17 +59,20 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await page.locator("[data-caisson-name]").press("Enter");
   await expect(page.getByText(/gardé dans Mes caissons/).first()).toBeVisible();
 
-  // The whole kitchen again; its run keeps the cabinet's place, free.
+  // The whole kitchen again; its run keeps the cabinet's place: drawn there as a caisson, not as free room.
   await page.locator("[data-zone-isolated]").getByRole("button", { name: "Tout montrer" }).click();
   await expect(page.locator("[data-zone-isolated]")).toHaveCount(0);
   await click(page, '[data-workshop="kitchen-plan"]');
   await tool.locator('[data-open-run="A"]').click();
+  await expect(tool.locator('[data-run-strip="A"] [data-held]')).toContainText("Caisson aménagé");
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);
+  await expect(tool.locator('[data-fold="space"]')).toContainText("260 cm libres en bas");
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");
   await tool.getByRole("tab", { name: "Mes meubles" }).click();
-  await expect(tool.getByText("Caisson aménagé").first()).toBeVisible();
+  // (The strip says it too, over the caisson: the list of « Mes meubles » comes after it.)
+  await expect(tool.getByText("Caisson aménagé").last()).toBeVisible();
   await tool.getByRole("button", { name: /^Ajouter Mon caisson rangement de / }).click();
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });

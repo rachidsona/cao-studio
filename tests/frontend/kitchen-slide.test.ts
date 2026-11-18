@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { KITCHEN_PLAN, kitchenRuns, kitchenSizes, runGeometry } from "../../frontend/src/document/kitchen-plan-shapes";
 import { itemSlid, slideRoom } from "../../frontend/src/document/kitchen-slide";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../frontend/src/document/types";
-import { fillRun, isFiller, isSpace, newItem } from "../../frontend/src/features/kitchen-run-items";
+import { fillRun, isFiller, isSpace, newItem, openRoom, spaceLeft } from "../../frontend/src/features/kitchen-run-items";
 import { withRoomLeft } from "../../frontend/src/app/kitchen/kitchen-strip-actions";
 
 const units = (list: [string, number][]) => list.reduce<KitchenRunItem[]>((items, [m, w]) => [...items, newItem(items, m, w)], []);
@@ -81,5 +81,16 @@ describe("supprimer un meuble sur la bande", () => {
     if (typeof made === "string") throw new Error(made);
     const closed = at({ ...p, rest: { A: made.rest } }, made.items);
     expect([closed[one.id], closed[three.id]]).toEqual([before[one.id], before[one.id]! + 600]);
+  });
+
+  it("un caisson aménagé à la main tient sa place : ni place libre, ni place où glisser un voisin", () => {
+    const items = units([["base-bas-2-portes", 1000], ["space", 1200], ["base-bas-1-porte", 600]]).map((i) => (isSpace(i) ? { ...i, furnished: "sk1" } : i));
+    const p = plan("end", items);
+    const fill = fillOf(p, items);
+    // 3600 − 2800: only the 800 at the end is open.
+    expect(openRoom(fill, "base")).toEqual([[2800, 3600]]);
+    expect(spaceLeft(fill, (mm) => `${mm / 10} cm`, false)).toBe("80 cm libres en bas");
+    expect(slideRoom(fill, items[0]!.id)).toEqual([0, 0]);
+    expect(slideRoom(fill, items[2]!.id)).toEqual([0, 800]);
   });
 });

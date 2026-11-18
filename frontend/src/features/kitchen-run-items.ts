@@ -337,27 +337,31 @@ function joined(stretches: [number, number][]): [number, number][] {
   return out;
 }
 
+/** The room left open in a row (`gaps`: its free stretches), less the room furnished caissons hold: they stand there. */
+export function openRoom(fill: Pick<RunFill, "free" | "wallFree" | "spaces">, row: "base" | "wall", gaps: readonly [number, number][] = row === "wall" ? fill.wallFree : fill.free): [number, number][] {
+  const kept = fill.spaces.filter((pl) => pl.row === row && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  return gaps.flatMap(([a, b]) => {
+    let parts: [number, number][] = [[a, b]];
+    for (const [k0, k1] of kept) parts = parts.flatMap(([p0, p1]): [number, number][] => (k1 <= p0 || k0 >= p1 ? [[p0, p1]] : [[p0, Math.max(p0, k0)], [Math.min(p1, k1), p1]]));
+    return parts.filter(([p0, p1]) => p1 - p0 >= 1);
+  });
+}
+
 /**
  * The widest room left open in a row of a filled run (mm), for a unit put there: the open stretches, those a filler
  * closes and the room kept free, not the room a furnished caisson holds; 0 when the row is full.
  */
 export function widestRoom(fill: Pick<RunFill, "free" | "wallFree" | "fillers" | "spaces">, row: "base" | "wall"): number {
-  const kept = fill.spaces.filter((pl) => pl.row === row && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
-  const open = (row === "wall" ? fill.wallFree : [...fill.free, ...fill.fillers]).flatMap(([a, b]) => {
-    // Less the spaces kept in it.
-    let parts: [number, number][] = [[a, b]];
-    for (const [k0, k1] of kept) parts = parts.flatMap(([p0, p1]): [number, number][] => (k1 <= p0 || k0 >= p1 ? [[p0, p1]] : [[p0, Math.max(p0, k0)], [Math.min(p1, k1), p1]]));
-    return parts;
-  });
-  return Math.max(0, ...open.map(([a, b]) => b - a));
+  return Math.max(0, ...openRoom(fill, row, row === "wall" ? fill.wallFree : [...fill.free, ...fill.fillers]).map(([a, b]) => b - a));
 }
 
 /** The room left on a run, in words: « 137,1 cm libres en bas, 60 cm + 120 cm en haut ». */
-export function spaceLeft(fill: Pick<RunFill, "free" | "wallFree">, length: (mm: number) => string, wall = true): string {
+export function spaceLeft(fill: Pick<RunFill, "free" | "wallFree" | "spaces">, length: (mm: number) => string, wall = true): string {
   const list = (gaps: [number, number][]) => gaps.map(([a, b]) => length(b - a)).join(" + ");
-  const base = fill.free.length ? `${list(fill.free)} libres en bas` : "le bas est plein";
+  const [low, high] = [openRoom(fill, "base"), openRoom(fill, "wall")];
+  const base = low.length ? `${list(low)} libres en bas` : "le bas est plein";
   if (!wall) return base;
-  return `${base}, ${fill.wallFree.length ? `${list(fill.wallFree)} en haut` : "le haut est plein"}`;
+  return `${base}, ${high.length ? `${list(high)} en haut` : "le haut est plein"}`;
 }
 
 /** What the appliances of a run want: the hood over the hob, worktop on both sides of the hob, the dishwasher by the sink. */

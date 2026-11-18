@@ -12,7 +12,7 @@ import { kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenFloorPlan, Vec3 } from "../../document/types";
 import type { KitchenBox } from "../../features/kitchen-layout";
-import { applianceOf, isFiller, itemSize, type Placed, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, isFiller, itemSize, openRoom, type Placed, type RunFill } from "../../features/kitchen-run-items";
 import { BRASS, elevationBody } from "./unit-elevation";
 import { escapeHtml } from "../workshop/workshop-ui";
 
@@ -183,8 +183,14 @@ export function runStrip(host: StripHost): SVGSVGElement {
   // The room left open, dashed, with its width (cm).
   const open = (a: number, b: number, z0: number, z1: number, row: string) =>
     `${rect(a, y(z1), b - a, z1 - z0, "fill-sky-50/60 stroke-sky-500 dark:fill-sky-950/40", `stroke-dasharray="6 4" data-free="${row}"`)}${empty(a, z0, b - a, z1 - z0, "free")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 30}" text-anchor="middle" font-size="90" class="fill-sky-700 dark:fill-sky-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`;
-  for (const [a, b] of fill.free) parts.push(open(a, b, 0, s.base, "base"));
-  for (const [a, b] of fill.wallFree) parts.push(open(a, b, s.wallBottom, s.wallTop, "wall"));
+  for (const [a, b] of openRoom(fill, "base")) parts.push(open(a, b, 0, s.base, "base"));
+  for (const [a, b] of openRoom(fill, "wall")) parts.push(open(a, b, s.wallBottom, s.wallTop, "wall"));
+  // A caisson furnished by hand in a room the plan keeps for it: it stands there, drawn as a unit.
+  for (const pl of fill.spaces.filter((q) => q.item.furnished)) {
+    const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
+    const [a, b] = [pl.at, pl.at + pl.item.width];
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"><title>Caisson aménagé à la main : il garde sa place ; changez-le dans la 3D</title>${rect(a, y(z1), b - a, z1 - z0, PANEL)}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+  }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
   // A corner (its unit, its filler, its dead square) clicked: its settings open.
