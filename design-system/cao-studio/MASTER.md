@@ -148,6 +148,9 @@ Pas de défilement horizontal de la page. Sur téléphone, un champ est en `text
 - **Cartes des Propriétés** (`section` de `ui/fields.ts`) : le chevron dessiné (`foldChevron`), le nom en
   `.panel-title` et, s'il y a lieu, ce qu'il contient en petites lettres grises (« SÉLECTION 1 corps ») — on écrit le
   titre « Sélection (1 corps) », la carte le sépare. Une ligne : le nom en gris (`gray-600`), la valeur en encre.
+- **Colonne Sélection et vue** : des groupes `role="group"` (Sélection, Vue, Affichage, puis les outils ajoutés) ; le
+  trait entre deux groupes est dessiné par `app.css` (`border-line`), jamais par un élément. Un nouvel outil va dans le
+  groupe de ce qu'il fait : il choisit (Sélection), il déplace le regard (Vue), il change ce qu'on voit (Affichage).
 - **Pas d'emoji comme icône** d'interface. Les signes typographiques (✕ ✓ ★ ▸ ⋯) restent permis, dans la couleur du texte.
 - Une icône seule a un `aria-label` ; une icône à côté d'un texte a `aria-hidden="true"`.
 

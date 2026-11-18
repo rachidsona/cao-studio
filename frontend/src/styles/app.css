@@ -483,6 +483,11 @@
   .panel-title {
     @apply text-xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400;
   }
+  /* The column Sélection et vue: a line between its groups (Sélection, Vue, Affichage, the tools added), none above the
+     first one shown nor around a group put away. */
+  [data-side-tools] > [role="group"]:not([hidden]) ~ [role="group"]:not([hidden]) {
+    @apply mt-1 border-t border-line pt-2;
+  }
   /* The navigator (and the lists drawn like it, `.cad-tree`) written as the rows of gestion menuiserie's tables: bold, silver grey, vivid green under the
      pointer (the selected row keeps its colours). Light theme and Mocha Mist: the ink, a dark green. */
   :is([data-ref="tree"], .cad-tree) [data-select] {

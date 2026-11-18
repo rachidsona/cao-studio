@@ -1548,6 +1548,9 @@ opération existante.
   **Propriétés** : leurs cartes et les titres pliables prennent le même chevron dessiné ; le titre garde son nom en
   capitales et dit à part ce qu'il contient (« SÉLECTION 1 corps ») ; dans une ligne, le nom est en gris et la valeur
   en encre ; sans sélection, le panneau renvoie au Navigateur.
+  **Colonne Sélection et vue** : rangée en trois groupes séparés d'un trait — la sélection (filtres, fenêtre, tout
+  sélectionner, esquisses, isoler, Sélection++), la vue (ajuster, orbite, grille) et l'affichage (cotes et repères des
+  pièces, tout ouvrir, rayons X, murs) ; un groupe dont on a rangé tous les outils s'en va avec son trait.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne
