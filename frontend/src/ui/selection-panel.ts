@@ -128,7 +128,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   const deletable = bodies.length + sketches.length + faces.length + edges.length + vertices.length + sketch.filter((p) => p.kind !== "region").length;
   if (deletable) buttons.push(action("i-delete", `Supprimer${deletable > 1 ? ` (${deletable})` : ""}`, actions.remove));
   if (sketch.length === 0 && sketches.length === 0) buttons.push(action("i-move-3d", "Déplacer", actions.move));
-  const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200" }, "Tout désélectionner");
+  const clear = el("button", { type: "button", class: "text-xs text-gray-500 underline hover:text-gray-800 dark:hover:text-gray-200" }, "Tout désélectionner");
   clear.addEventListener("click", actions.clear);
   const parts = [
     bodies.length ? `${bodies.length} corps` : "",
@@ -140,8 +140,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
   ].filter(Boolean);
   return section(
     `Sélection (${parts.join(", ")})`,
-    // The name of each line in grey, what it is in ink: read at a glance, as in a CAD properties panel.
-    el("ul", { class: "space-y-1 text-sm [&>li>span:first-child]:text-gray-600 dark:[&>li>span:first-child]:text-gray-300" }, ...items),
+    el("ul", { class: "space-y-1 text-sm" }, ...items),
     faceColorRow(faces.length, actions),
     buttons.length ? el("div", { class: "@container" }, el("div", { class: "flex flex-wrap gap-1.5" }, ...buttons)) : null,
     el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes, points ou corps. Ctrl/Maj + clic ajoute des corps et des esquisses entières ; Maj + glisser (ou « Fenêtre ») les prend par fenêtre. Un point de corps s'accroche dans une esquisse (contrainte Coïncidence)."),

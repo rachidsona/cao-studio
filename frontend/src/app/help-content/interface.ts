@@ -229,7 +229,7 @@ export const SCREEN: HelpFamily[] = [
   },
   {
     title: "Vue et sélection",
-    where: "Colonne verticale « Sélection et vue » à droite de la vue, en trois groupes séparés d'un trait : la sélection (filtres, fenêtre, tout sélectionner, isoler, Sélection++), la vue (ajuster, orbite, grille) et l'affichage (cotes, repères, tout ouvrir, rayons X, murs). Elle disparaît pendant une esquisse et pendant le rendu.",
+    where: "Colonne verticale « Sélection et vue » à droite de la vue. Elle disparaît pendant une esquisse et pendant le rendu.",
     tools: [
       {
         keys: [], selector: "[data-ribbon-tab]", name: "Onglets Conception 3D, Dressing et Cuisine",

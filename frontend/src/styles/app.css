@@ -47,19 +47,6 @@
   /* The colour of the dimensions of the pieces, of the icon names and of the hovered snap points: one orange. */
   --color-dimension: #f8500a;
 
-  /*
-   * Semantic CAD tokens (design-system/cao-studio/MASTER.md § 2): what a colour is for, not which grey it is. Their
-   * values follow the theme and the palette (below, @layer base); bg-surface-panel, border-line, text-ink-muted…
-   */
-  --color-surface-page: var(--surface-page);
-  --color-surface-panel: var(--surface-panel);
-  --color-surface-raised: var(--surface-raised);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--ink-strong);
-  --color-ink-muted: var(--ink-soft);
-  --color-focus: var(--focus-ring);
-
   /* Motion: short and the same everywhere; « réduire les animations » of the system brings them to nothing (below). */
   --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -118,25 +105,8 @@
     --ic-w4: #a9b8ca;
     --ic-w5: #94a3b8;
     --ic-w6: #74879e;
-    /* Semantic CAD tokens, light theme: a grey page, white panels, Tailwind's hairlines and inks. */
-    --surface-page: var(--color-gray-100);
-    --surface-panel: var(--color-white);
-    --surface-raised: var(--color-white);
-    --line: var(--color-gray-200);
-    --line-strong: var(--color-gray-300);
-    --ink-strong: var(--color-gray-900);
-    --ink-soft: var(--color-gray-500);
-    --focus-ring: var(--color-sky-500);
   }
   .dark {
-    /* Dark theme: the palette's night for the page, its lighter night for the panels, hairlines in its accent. */
-    --surface-page: rgb(var(--night));
-    --surface-panel: rgb(var(--night-light));
-    --surface-raised: rgb(var(--night-table));
-    --line: rgb(var(--brand) / 0.18);
-    --line-strong: rgb(var(--brand) / 0.35);
-    --ink-strong: var(--color-gray-100);
-    --ink-soft: var(--color-gray-400);
     --ic-accent: #38bdf8;
     --ic-action: #fb923c;
     --ic-edge: rgb(15 23 42 / 0.55);
@@ -157,7 +127,7 @@
    * has its own cursor and no ring.
    */
   :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: 2px solid var(--color-sky-500);
     outline-offset: 1px;
   }
   :where(canvas):focus-visible {
@@ -252,7 +222,7 @@
      set apart on a grey background (on phones the panels are sheets rising from the bottom). */
   @media (min-width: 1024px) {
     #editor {
-      background: var(--surface-page);
+      background: var(--color-gray-100);
     }
     #editor [data-ribbon],
     #editor [data-render-bar] {
@@ -269,9 +239,9 @@
     #editor [data-ref="panel-properties"],
     #editor [data-side-tools],
     #editor [data-ref="workspace"] {
-      border: 1px solid var(--line);
+      border: 1px solid var(--color-gray-200);
       border-radius: 0;
-      background-color: var(--surface-panel);
+      background-color: var(--color-white);
       box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 6px 18px -4px rgb(15 23 42 / 0.16);
     }
     #editor [data-ref="panel-tree"],
@@ -290,7 +260,7 @@
     /* Dark: the page in the palette's night, the toolbar a card in the palette's gradient with an accent frame and
        glow (the cards of gestion menuiserie), the side columns quieter so their own cards stand out. */
     .dark #editor {
-      background: var(--surface-page);
+      background: rgb(var(--night));
     }
     .dark #editor [data-ribbon],
     .dark #editor [data-render-bar] {
@@ -304,8 +274,8 @@
     .dark #editor [data-project-organizer],
     .dark #editor [data-ref="panel-properties"],
     .dark #editor [data-side-tools] {
-      border-color: var(--line);
-      background-color: var(--surface-panel);
+      border-color: rgb(var(--brand) / 0.18);
+      background-color: rgb(var(--night-light));
       box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.65);
     }
     .dark #editor [data-ref="workspace"] {
@@ -483,11 +453,6 @@
   .panel-title {
     @apply text-xs font-semibold tracking-wider text-sky-700 uppercase dark:text-sky-400;
   }
-  /* The column Sélection et vue: a line between its groups (Sélection, Vue, Affichage, the tools added), none above the
-     first one shown nor around a group put away. */
-  [data-side-tools] > [role="group"]:not([hidden]) ~ [role="group"]:not([hidden]) {
-    @apply mt-1 border-t border-line pt-2;
-  }
   /* The navigator (and the lists drawn like it, `.cad-tree`) written as the rows of gestion menuiserie's tables: bold, silver grey, vivid green under the
      pointer (the selected row keeps its colours). Light theme and Mocha Mist: the ink, a dark green. */
   :is([data-ref="tree"], .cad-tree) [data-select] {
@@ -641,52 +606,4 @@
 /* The right panel shows one tab at a time: the properties or one tool window (ui/dock.ts). */
 [data-dock-hidden] {
   display: none !important;
-}
-
-/*
- * Touch density (design-system/cao-studio/MASTER.md § 5): on a tablet or a phone (a finger, `pointer: coarse`), the
- * compact controls of the editor grow to 44 px, the fields to 16 px text (iOS zooms on a smaller one); with a mouse
- * nothing changes. Outside the layers, so that it wins over the compact utilities (min-h-9, h-7…) it is there to undo.
- */
-@media (pointer: coarse) {
-  /* The selection and view column, « Mes outils », the four columns of tools: 44 px icons. */
-  [data-side-tools] {
-    width: 3.5rem;
-  }
-  :is([data-side-tools], [data-favorites], [data-tool-columns]) :is(.icon-btn, [data-select-filter]) {
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-  }
-  /* The lines of a group menu and their ★ / 📌 toggles. */
-  .ribbon-menu-run {
-    min-height: 2.75rem;
-  }
-  .ribbon-menu-toggle {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
-  /* The navigator and the lists drawn like it: rows a finger can take, their eye and ⋯ wide enough to hit. */
-  :is([data-ref="tree"], .cad-tree, [data-project-organizer]) :is(button, summary) {
-    min-height: 2.75rem;
-  }
-  :is([data-ref="tree"], .cad-tree, [data-project-organizer]) button:not([data-select]) {
-    min-width: 2rem;
-  }
-  /* The headings of the Navigator: their buttons, wider, touch each other, so that « Corps » keeps its name. */
-  [data-ref="tree"] summary {
-    column-gap: 0;
-  }
-  [data-ref="tree"] summary > svg {
-    margin-right: 0.25rem;
-  }
-  /* The history under the view. */
-  [data-ref="timeline"] button {
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-  }
-  /* The fields of the panels and tool windows. */
-  #editor :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
-    min-height: 2.75rem;
-    font-size: 16px;
-  }
 }

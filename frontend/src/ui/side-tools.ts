@@ -104,8 +104,8 @@ export function bindSideTools(root: HTMLElement): void {
         delete button.dataset.sideHidden;
       }
     }
-    // A box or a group whose buttons are all put away goes too, with its line (app.css); the orbit's options are not counted.
-    for (const box of nav.querySelectorAll<HTMLElement>('[role="group"]:not([data-orbit-options]):not([data-side-extra])')) box.hidden = [...box.querySelectorAll("button")].filter((b) => !b.closest("[data-orbit-options]")).every((b) => b.hidden);
+    // A box whose buttons are all put away goes too.
+    for (const box of nav.querySelectorAll<HTMLElement>('[role="group"][aria-label="Filtre de sélection"]')) box.hidden = [...box.querySelectorAll("button")].every((b) => b.hidden);
     for (const w of watchers.splice(0)) w.disconnect();
     const byKey = tools();
     extras.replaceChildren(...state.extra.flatMap((key) => {

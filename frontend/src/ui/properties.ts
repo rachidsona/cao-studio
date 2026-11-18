@@ -233,7 +233,7 @@ export function renderProperties(container: HTMLElement, ctx: PropertiesContext)
     if (picked) sections.unshift(picked);
   }
   if (sections.length === 0) {
-    sections.push(section("Propriétés", el("p", { class: "text-sm text-gray-500 dark:text-gray-400" }, "Sélectionnez un élément dans le Navigateur, ou une face dans la vue.")));
+    sections.push(section("Propriétés", el("p", { class: "text-sm text-gray-500" }, "Sélectionnez une opération dans l'arbre ou une face dans la vue.")));
   }
   container.replaceChildren(...sections);
 }

@@ -2,7 +2,6 @@
 import type { DisplayUnit } from "../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "./dom";
-import { foldChevron } from "./icons";
 
 export const inputClass =
   "h-8 w-full border border-gray-300 bg-white px-2 text-right font-mono text-sm tabular-nums " +
@@ -102,7 +101,7 @@ export const PANEL_CARD =
   "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
   "dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_6px_20px_rgba(0,0,0,0.75)]";
 
-/** A card of the side panel that folds and unfolds by its title (its chevron); folded cards stay folded (remembered). */
+/** A card of the side panel that folds and unfolds by its title (▸); folded cards stay folded (remembered). */
 export function section(title: string, ...children: (Node | null)[]): HTMLElement {
   const key = sectionKey(title);
   const card = el(
@@ -111,9 +110,8 @@ export function section(title: string, ...children: (Node | null)[]): HTMLElemen
     el(
       "summary",
       { class: "flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-2 select-none hover:bg-gray-50 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden" },
-      foldChevron("text-gray-500 group-open/card:rotate-90 dark:text-gray-400"),
-      // « Sélection (1 corps) »: the name in capitals, what it holds apart in plain small letters.
-      el("h3", { class: "panel-title" }, key, ...(title.length > key.length && title.endsWith(")") ? [" ", el("span", { class: "ml-1 font-normal tracking-normal text-gray-500 normal-case dark:text-gray-400" }, title.slice(key.length).trim().slice(1, -1))] : [])),
+      el("span", { class: "inline-block w-3 text-3xs text-gray-400 transition-transform group-open/card:rotate-90", "aria-hidden": "true" }, "▶"),
+      el("h3", { class: "panel-title" }, title),
     ),
     el("div", { class: "space-y-3 px-3 pt-1 pb-3" }, ...children),
   );

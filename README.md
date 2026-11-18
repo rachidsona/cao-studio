@@ -1535,24 +1535,6 @@ opération existante.
   des chiffres de même largeur pour les mesures et les prix, et « Réduire les animations » du système respecté. Sur
   téléphone, les liens de l'en-tête (Guide, Accueil, Paramètres, Mon compte) passent dans un **menu ☰** qui se ferme
   avec Échap ; les dossiers et la Mise en plan ont des icônes dessinées au lieu d'emojis.
-  **Jetons sémantiques** des surfaces, traits, encres et focus (`bg-surface-panel`, `border-line`, `text-ink-muted`…),
-  qui suivent le thème et la palette ; les cartes de l'éditeur les utilisent. **Au doigt** (tablette, téléphone) :
-  la colonne de sélection et de vue, Mes outils, les colonnes d'outils, les menus de groupe, le Navigateur, la colonne
-  Projets et l'historique passent à des cibles de 44 px, les champs à 44 px et 16 px de texte (pas de zoom d'iOS) ;
-  à la souris, rien ne change.
-  **En-tête de l'éditeur** : ses boutons ont des icônes dessinées d'une même famille (`editor/_hicon.html` : retour,
-  recherche, annuler, rétablir, enregistrer, aide, menu) au lieu des caractères ← ⌕ ↶ ↷ ⤓ ? ⋯ ; annuler et rétablir
-  désactivés restent lisibles. Sur téléphone, « Mise en plan » et « Aide » passent dans les menus (projet et ⋯) pour
-  que le nom du projet se lise.
-  **Navigateur** : ses chevrons (déplier, replier, tout replier) sont dessinés de la même famille, sur des cibles de
-  24 px ; le titre des sections tient sur une ligne, le nombre à part (« CORPS 7 »), même au doigt dans la colonne
-  étroite d'une tablette en paysage.
-  **Propriétés** : leurs cartes et les titres pliables prennent le même chevron dessiné ; le titre garde son nom en
-  capitales et dit à part ce qu'il contient (« SÉLECTION 1 corps ») ; dans une ligne, le nom est en gris et la valeur
-  en encre ; sans sélection, le panneau renvoie au Navigateur.
-  **Colonne Sélection et vue** : rangée en trois groupes séparés d'un trait — la sélection (filtres, fenêtre, tout
-  sélectionner, esquisses, isoler, Sélection++), la vue (ajuster, orbite, grille) et l'affichage (cotes et repères des
-  pièces, tout ouvrir, rayons X, murs) ; un groupe dont on a rangé tous les outils s'en va avec son trait.
 - **Écriture des tableaux de « gestion menuiserie »** : la police **Inter** (chargée depuis Google Fonts ; sans
   réseau, la police du système), et le navigateur écrit comme les lignes de ses tableaux : noms des corps,
   esquisses et dossiers **en gras gris argent** (#c0c0c0), **vert vif** (#00ff00) sous le pointeur, la ligne
