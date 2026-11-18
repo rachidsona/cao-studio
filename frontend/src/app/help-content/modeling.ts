@@ -287,7 +287,7 @@ export const MODELING: HelpFamily[] = [
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
           "L'aperçu montre le résultat ; OK (ou Entrée) le garde, en une annulation. Annuler (ou Échap, ou la croix) ne change rien.",
         ],
-        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange, les corps outils en bleu (en rouge pour Couper). Réunis en un seul (Union), le corps qu'ils font devient bleu (#2078CF, laque satinée), à changer ensuite dans Apparence.",
+        tip: "Il faut une cible et au moins un corps outil, sinon l'outil refuse de valider. Le corps survolé s'éclaire en vert avant le clic ; une fois choisis, la cible reste marquée en orange, les corps outils en bleu (en rouge pour Couper). Réunis en un seul (Union), le corps qu'ils font garde l'aspect et la matière du corps cible, à changer ensuite dans Apparence.",
       },
       {
         keys: ["data-action:split"],

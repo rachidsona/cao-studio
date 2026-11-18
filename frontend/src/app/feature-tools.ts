@@ -2,7 +2,6 @@
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
 import type { BooleanOperation, CadDocument, CombineFeature, FaceRef, HoleFeature, RevolveFeature, SketchFeature, Vec3 } from "../document/types";
-import { setBodyAppearance } from "../appearance/assign";
 import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -118,9 +117,15 @@ export class RevolveTool extends PanelTool {
   }
 }
 
-/** The look of the body that bodies combined into one make: a satin lacquer of this blue. */
-export const JOINED_LOOK = "lacquer-satin";
-export const JOINED_COLOR = "#2078CF";
+/**
+ * The body that bodies combined into one make (`id`), with the material and the look of its target: it goes on looking
+ * as the target did (nothing given to it when the target had none).
+ */
+export function withTargetLook(doc: CadDocument, id: string, target: string): CadDocument {
+  const from = doc.bodyInfo?.[target];
+  const kept = Object.fromEntries(Object.entries({ material: from?.material, appearance: from?.appearance, color: from?.color, layer: from?.layer }).filter(([, v]) => v !== undefined));
+  return Object.keys(kept).length ? { ...doc, bodyInfo: { ...doc.bodyInfo, [id]: { ...doc.bodyInfo?.[id], ...kept } } } : doc;
+}
 
 export class CombineTool extends PanelTool {
   private readonly id: string;
@@ -194,12 +199,9 @@ export class CombineTool extends PanelTool {
     this.ctx.viewport.setHoverHighlight(null);
   }
 
-  /**
-   * The bodies made one (an union, not when editing): the body they make is painted blue, so that it reads as one
-   * (as a satin lacquer, #2078CF, its colour then changed like any other in Apparence).
-   */
+  /** The bodies made one (an union, not when editing): the body they make looks as its target did. */
   protected override decorate(doc: CadDocument): CadDocument {
-    return this.operation === "join" && !this.editing ? setBodyAppearance(doc, [this.id], JOINED_LOOK, JOINED_COLOR) : doc;
+    return this.operation === "join" && !this.editing && this.target ? withTargetLook(doc, this.id, this.target) : doc;
   }
 
   /** Bodies offered: the visible ones, plus those already used when editing. */

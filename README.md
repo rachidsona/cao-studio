@@ -720,7 +720,7 @@ opération existante.
   clic, ou ✕, l'en retire) ; le résultat montré par l'aperçu tient lieu de la cible. Le panneau ne liste que les
   outils choisis ; « Choisir dans la liste » déplie tous les corps, à cocher. Sans sélection d'avance, rien n'est
   choisi d'office (`app/combine-pick.ts`). Des corps **réunis en un seul** (Union, à la création) font un corps
-  **bleu #2078CF** (une laque satinée), qui se lit d'un coup comme un seul ; sa couleur se change ensuite dans
+  qui garde l'aspect et la matière du **corps cible** (`withTargetLook`) ; sa couleur se change ensuite dans
   Apparence.
   - **Comme le Combiner de Fusion 360** : deux champs de sélection, « Corps cible » et « Corps outils » (« 2
     sélectionnés »), celui qui prend le prochain clic cerné de bleu, ✕ pour le vider ; l'opération en trois boutons
