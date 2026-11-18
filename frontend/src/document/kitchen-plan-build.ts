@@ -143,7 +143,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
     if (p.endPanels) endPanels(p, run, fill, band, box);
-    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, part, i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
+    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, intoCorners(run, part), i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, fill.free))) {
@@ -320,6 +320,18 @@ function endPanels(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, band: Ba
   }
 }
 
+/** Thickness of a splashback (mm). */
+const SPLASH = 10;
+
+/**
+ * A stretch of splashback, on into the corners where the run stops against the run that passes (whose worktop covers
+ * the corner): up to that run's splashback, the corner's wall covered too.
+ */
+function intoCorners(run: KitchenRun, [a, b]: [number, number]): [number, number] {
+  const [z0, z1] = zoneSpan(run);
+  return [run.left === "stop" && a <= z0 + 1e-6 ? SPLASH : a, run.right === "stop" && b >= z1 - 1e-6 ? run.length - SPLASH : b];
+}
+
 /** Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */
 function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, number], part: number, spans: RunInfo["spans"], full: number, band: Band, box: BoxOf): void {
   const top = p.worktopHeight;
@@ -331,6 +343,6 @@ function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, n
     const [a, b] = [cuts[i]!, cuts[i + 1]!];
     if (doors.some((d) => d.from < b && d.to > a)) continue;
     const z1 = Math.min(full, ...windows.filter((sp) => sp.from < b && sp.to > a).map((sp) => sp.bottom));
-    if (z1 - top >= 20) box(`Crédence ${run.id}${part ? part + 1 : ""}${n++ ? `-${n}` : ""}`, "splashback", band(a, b, 0, 10, top, z1));
+    if (z1 - top >= 20) box(`Crédence ${run.id}${part ? part + 1 : ""}${n++ ? `-${n}` : ""}`, "splashback", band(a, b, 0, SPLASH, top, z1));
   }
 }

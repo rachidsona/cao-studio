@@ -106,6 +106,17 @@ describe("plan de travail qui suit les meubles", () => {
     expect(info("Plinthe A")).toEqual({ material: "lacquer-white" });
   });
 
+  it("la crédence d'un mur qui s'arrête contre l'autre va jusque dans l'angle, contre la crédence du mur qui passe", () => {
+    const units = (list: [string, number][]) => list.reduce<KitchenRunItem[]>((items, [m, w]) => [...items, newItem(items, m, w)], []);
+    const u: KitchenFloorPlan = { ...KITCHEN_PLAN, model: "U", lengthA: 3000, lengthB: 2500, lengthC: 2500, rest: { A: "end", B: "start", C: "end" }, runs: { A: units([["base-bas-2-portes", 1000]]), B: units([["base-bas-1-porte", 600]]), C: units([["base-bas-1-porte", 600]]) } };
+    const at = (name: string) => kitchenFromPlan(u).boxes.find((b) => b.name === name)!;
+    const [a, b, c] = [at("Crédence A"), at("Crédence B"), at("Crédence C")];
+    // Wall A along x at y = 0, its splashback 10 mm off it; walls B (x = 0) and C (x = 3000) along y.
+    expect([Math.round(a.from[1]), Math.round(b.to[1]), Math.round(c.to[1])]).toEqual([-10, -10, -10]);
+    // The worktops still stop where wall A's starts.
+    expect(Math.round(at("Plan de travail B").to[1])).toBe(-600);
+  });
+
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
     const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
     const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });
