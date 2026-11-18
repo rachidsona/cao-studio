@@ -236,7 +236,14 @@ export function worktopSpans(run: KitchenRun, fill: RunFill): [number, number][]
   const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
   const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
-  return without(zoneSpan(run), [...open, ...columns]).filter(([a, b]) => b - a >= 1);
+  const units = [...fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind !== "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]), ...held];
+  const [z0, z1] = zoneSpan(run);
+  // Against a column or open room, it stops at the caisson's side, not over the filler beside it; at the run's ends it goes on to the wall or the corner.
+  return without([z0, z1], [...open, ...columns]).map(([a, b]): [number, number] => {
+    const inside = units.filter(([u0, u1]) => u1 > a + 1e-6 && u0 < b - 1e-6);
+    if (!inside.length) return [a, b];
+    return [a > z0 + 1e-6 ? Math.max(a, Math.min(...inside.map(([u0]) => u0))) : a, b < z1 - 1e-6 ? Math.min(b, Math.max(...inside.map(([, u1]) => u1))) : b];
+  }).filter(([a, b]) => b - a >= 1);
 }
 
 /**

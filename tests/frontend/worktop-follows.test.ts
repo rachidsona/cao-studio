@@ -37,6 +37,13 @@ describe("plan de travail qui suit les meubles", () => {
     expect(spans(plan([["base-bas-2-portes", 1000], ["tall-colonne-rangement", 600], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 1000], ["Plan de travail A2", 1600, 2200]]);
   });
 
+  it("s'arrête au flanc du caisson, pas sur le fileur qui le sépare d'une colonne", () => {
+    // 3600 = 1000 + 600 + 600 + 1300 - 100 left over: closed by a filler. Against the column, the worktop starts at the caisson.
+    const p = { ...plan([["tall-colonne-rangement", 600], ["base-bas-2-portes", 1000], ["base-bas-2-portes", 1000], ["base-bas-2-portes", 900]], "start"), lengthA: 3600 };
+    expect(spans(p, "filler")).toEqual([["Fileur A", 600, 700]]);
+    expect(spans(p, "worktop")).toEqual([["Plan de travail A", 700, 3600]]);
+  });
+
   it("donne à chaque morceau les découpes des meubles qu'il couvre", () => {
     const p = plan([["base-bas-1-porte", 600], ["app-sink", 800], ["base-bas-1-porte", 400], ["space", 600], ["base-bas-1-porte", 300], ["app-hob", 600], ["base-bas-1-porte", 300]]);
     const tops = kitchenFromPlan(p).boxes.filter((b) => b.kind === "worktop");
