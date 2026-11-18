@@ -4,6 +4,7 @@
  * même largeur pour tous, la place libre partagée entre eux, un autre modèle, leur double, ou les retirer
  * (features/kitchen-run-multi.ts). Rien ne change dans le projet avant OK, comme le reste du linéaire.
  */
+import { withRoomLeft } from "./kitchen-strip-actions";
 import type { DisplayUnit, KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import { applianceOf, isFiller, itemEntry, rowOf, runModels, type RunFill } from "../../features/kitchen-run-items";
 import { withCommonSize, withDuplicated, withEqualWidths, withModel, withRoomShared } from "../../features/kitchen-run-multi";
@@ -106,6 +107,6 @@ export function multiRows(host: MultiHost): (HTMLElement | null)[] {
       const made = withDuplicated(items, picked);
       host.change(made.items, made.copies);
     }),
-    button(`Retirer les ${chosen.length} meubles`, "data-multi-remove", () => host.change(items.filter((i) => !picked.includes(i.id)), [])),
+    button(`Retirer les ${chosen.length} meubles`, "data-multi-remove", () => host.change(withRoomLeft(items, picked), [])),
   ];
 }

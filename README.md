@@ -2617,6 +2617,15 @@ opération existante.
       montants également espacés, ses étagères recoupées case par case (8 cm au moins par case) ; des tiroirs n'y
       passent pas. « Aménager case par case… » isole le meuble et ouvre l'aménagement détaillé (une case différente
       de l'autre). Les cotes du meuble sont dans `app/kitchen/kitchen-unit-sizes.ts`.
+    - **Glisser un meuble dans la place vide** (`document/kitchen-slide.ts`) : sur la bande, un meuble tiré
+      au-delà d'un voisin change d'ordre, comme avant ; lâché dans la place vide à côté de lui (hachurée), il s'y
+      pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres
+      meubles ne bougent pas. Le plan le garde par des « Espaces libres », le reste du linéaire allant « à droite » ;
+      les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place.
+    - **Supprimer un meuble** sur la bande (Suppr, « Supprimer », « Retirer », ou plusieurs à la fois) **laisse sa
+      place vide** (un « Espace libre » de sa largeur, comme un meuble supprimé dans la 3D) : ses voisins ne bougent
+      pas. On referme quand on le décide : « Resserrer les meubles » (toutes les places vides), un voisin glissé
+      dans la place, ou « Place libre » › « Espaces gardés » › « Supprimer » pour une seule.
     - **Plinthe** du linéaire : cliquée sur la bande (sous les meubles), elle se **recule** ou s'**avance** par pas
       de 1 cm (jusqu'à 15 cm en retrait des façades), se **supprime** (Suppr) et se **remet**, et prend un **aspect**
       de l'Apparence (marbres, Dekton, bétons, bois, chacun sur sa vignette : `app/kitchen/look-picker.ts`), commun à

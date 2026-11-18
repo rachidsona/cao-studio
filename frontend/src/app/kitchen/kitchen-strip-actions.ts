@@ -1,13 +1,14 @@
 /**
  * Ce qu'on fait de ce qui est choisi sur la bande d'un linéaire, sans ouvrir un volet : une barre sous la bande
- * (← →, Aligner sur le bas pour un meuble haut, Dupliquer, Supprimer), le clavier — Suppr le supprime, Ctrl + D le duplique, les flèches le déplacent d'un
+ * (← →, Aligner sur le bas pour un meuble haut, Dupliquer, Supprimer), le clavier — Suppr le supprime (sa place reste
+ * vide, on la referme si l'on veut : « Resserrer les meubles »), Ctrl + D le duplique, les flèches le déplacent d'un
  * cran — et le clic droit sur un meuble. Un meuble (ou plusieurs), un appareil posé à la main (Électroménager, ôté avec
  * sa découpe), le plan de travail du linéaire, qu'on supprime et qu'on remet, ou sa plinthe : reculée ou avancée,
  * supprimée et remise, son aspect choisi dans l'Apparence.
  */
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenRunItem } from "../../document/types";
-import { isFiller, isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../../features/kitchen-run-items";
+import { isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../../features/kitchen-run-items";
 import { withDuplicated } from "../../features/kitchen-run-multi";
 import { el } from "../../ui/dom";
 import { openTreeMenu } from "../../ui/tree-menu";
@@ -38,12 +39,20 @@ export interface StripActionsHost {
   align(id: string): void;
 }
 
+/**
+ * The items with those of `ids` taken out, each leaving its room free (an « Espace libre » of its width, as a unit
+ * deleted in the 3D): the others stay where they are, and one decides to close up or not. Room already kept free goes.
+ */
+export function withRoomLeft(items: readonly KitchenRunItem[], ids: readonly string[]): KitchenRunItem[] {
+  return items.flatMap((i): KitchenRunItem[] => (!ids.includes(i.id) ? [i] : isSpace(i) ? [] : [{ id: i.id, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE, width: i.width }]));
+}
+
 export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(event: KeyboardEvent): void; menu(id: string, event: MouseEvent): void } {
   const { items } = host;
   const chosenIds = () => (host.picked.length > 1 ? [...host.picked] : host.chosen ? [host.chosen] : []);
-  // A filler taken out leaves its room free (as in the 3D): taken away, the plan would close it with a filler again.
-  const remove = (ids: readonly string[]) =>
-    host.change(items.flatMap((i) => (!ids.includes(i.id) ? [i] : isFiller(i) && !isSpace(i) ? [{ ...i, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE }] : [])), null, []);
+  const remove = (ids: readonly string[]) => host.change(withRoomLeft(items, ids), null, []);
+  /** The room kept free that nothing holds: taken away, the units close up. */
+  const empty = items.filter((i) => isSpace(i) && !i.furnished);
   const duplicate = (ids: readonly string[]) => {
     const one = ids.length === 1 ? items.find((i) => i.id === ids[0]) : undefined;
     // One: its copy beside it, as it is (its own sizes, its door's side), if there is room.
@@ -101,7 +110,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     ];
   } else {
     label = "Cliquez un meuble, un appareil, le plan de travail ou la plinthe : Suppr le supprime, Ctrl + D le duplique, ← → le déplacent.";
-    buttons = [...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))])];
+    buttons = [...(empty.length ? [button(`Resserrer les meubles (${empty.length} place${empty.length > 1 ? "s" : ""} vide${empty.length > 1 ? "s" : ""})`, "data-strip-close-up", "Ôte les places gardées vides : les meubles se rapprochent. Pour n'en refermer qu'une, glissez un voisin dedans, ou « Place libre » › « Supprimer ».", () => host.change(items.filter((i) => !empty.includes(i)), null, []))] : []), ...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))])];
   }
   const chosen = !!appliance || host.other?.kind === "worktop" || host.other?.kind === "kick" || ids.length > 0;
   // Its name on a line of its own, whole; what one does of it under it.

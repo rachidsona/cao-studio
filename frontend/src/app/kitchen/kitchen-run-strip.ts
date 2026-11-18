@@ -4,7 +4,7 @@
  * micro-ondes, chacun dessiné par app/unit-elevation.ts ; les fileurs, les angles (pris par les meubles de l'angle), et
  * la place libre hachurée, en pointillés, avec sa largeur (cm) ; la crédence, les retours du plan et les joues de finition comme la 3D les a ; les appareils posés à la main (Électroménager), en
  * sombre, là où la 3D les a. Un clic choisit un meuble, un appareil posé à la main ou le plan de travail ; glisser un
- * meuble le change de place dans sa rangée ; le clavier (Suppr, Ctrl + D, les flèches) et le clic droit agissent sur
+ * meuble au-delà d'un voisin le change de place dans sa rangée, le lâcher dans la place vide à côté de lui l'y pose ; le clavier (Suppr, Ctrl + D, les flèches) et le clic droit agissent sur
  * ce qui est choisi (kitchen-strip-actions.ts).
  */
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
@@ -59,6 +59,8 @@ export interface StripHost {
   pick(id: string, add?: boolean): void;
   /** The item moved to this place among those of its row. */
   move(id: string, index: number): void;
+  /** The item dropped in the free room beside it, `by` mm along the run from where it stood (document/kitchen-slide.ts). */
+  slide?(id: string, by: number): void;
   /** The chosen unit's width, pulled by its right edge (mm). */
   resize?(id: string, width: number): void;
   /** A corner clicked: its settings. */
@@ -320,9 +322,13 @@ function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, fill: RunFill
       group.removeEventListener("pointermove", motion);
       group.removeEventListener("pointerup", up);
       if (!moved) return host.pick(pl.item.id, event.shiftKey || event.ctrlKey || event.metaKey);
-      const middle = pl.at + (x(event) - start) + pl.item.width / 2;
+      const by = x(event) - start;
+      const middle = pl.at + by + pl.item.width / 2;
       const others = fill.placed.filter((o) => o.row === pl.row && o.item.id !== pl.item.id);
-      host.move(pl.item.id, others.filter((o) => o.at + o.item.width / 2 < middle).length);
+      const before = (m: number) => others.filter((o) => o.at + o.item.width / 2 < m).length;
+      // Past a neighbour: their order changes. Still between the same ones: it is put down there, in the free room.
+      if (before(middle) !== before(pl.at + pl.item.width / 2) || !host.slide) host.move(pl.item.id, before(middle));
+      else host.slide(pl.item.id, by);
     };
     group.addEventListener("pointermove", motion);
     group.addEventListener("pointerup", up);

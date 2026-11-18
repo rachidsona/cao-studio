@@ -14,7 +14,7 @@ import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-s
 import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
-import { featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature, type Vec3 } from "./types";
+import { PART_SEPARATOR, featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature, type Vec3 } from "./types";
 import { isSpace } from "../features/kitchen-run-items";
 import { placePoint, turn } from "../features/room-runs";
 
@@ -98,6 +98,8 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   const unlinked = Object.values(old.runs ?? {}).some((items) => items.some((i) => isSpace(i) && !i.furnished));
   const plan: KitchenFloorPlan = unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch };
   const madeBefore = Object.values(old.made ?? {}).flat();
+  // What each piece made before is, to find it again once made anew (its ids are given out again).
+  const before = madeKeys(base, old);
   const work = handWork(base, new Set(madeBefore));
   // The cut-outs of each worktop, to keep those put or changed by hand in it.
   const cuts = new Map(madeBefore.flatMap((id) => {
@@ -128,7 +130,49 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   // Each run as it is placed: a unit put in a room kept free stands there in its order too.
   const runs = plan.runs && Object.fromEntries(Object.entries(plan.runs).map(([run, items]) => [run, layout.fills[run]?.items ?? items]));
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, ...(runs ? { runs } : {}), made } } : f));
+  doc = withLinksFollowing(doc, before, madeKeys(doc, kitchenPlanIn(doc, planId) ?? plan));
   return { doc, problems: [...problems, ...followed.problems, ...layout.notes] };
+}
+
+/**
+ * What each piece the plan made is, whatever its id: a unit by its item of the run (its name for a corner unit), its
+ * fronts by their unit, a board by its name in its run.
+ */
+function madeKeys(doc: CadDocument, plan: KitchenFloorPlan): Map<string, string> {
+  const keys = new Map<string, string>();
+  const units = kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).units;
+  for (const [run, ids] of Object.entries(plan.made ?? {})) {
+    const cabinets = ids.filter((id) => findFeature(doc, id)?.type === "cabinet");
+    const own = units.filter((u) => u.run === run);
+    if (cabinets.length === own.length) cabinets.forEach((id, i) => keys.set(id, `${run}:${own[i]!.item ?? own[i]!.name}`));
+    for (const id of ids) {
+      const f = findFeature(doc, id);
+      if (!f || keys.has(id)) continue;
+      keys.set(id, f.type === "fronts" ? `fronts:${keys.get(f.cabinet) ?? f.cabinet}` : `${run}:${f.name}`);
+    }
+  }
+  return keys;
+}
+
+/**
+ * The links of « Prolonger élément » (document/extend-reach.ts) kept on the pieces the plan made again: each on the same
+ * unit or board (its new id), not on another that took its old id — gone with it when it is no more.
+ */
+function withLinksFollowing(doc: CadDocument, before: Map<string, string>, after: Map<string, string>): CadDocument {
+  if (!doc.extendLinks?.length || !before.size) return doc;
+  const anew = new Map([...after].map(([id, key]) => [key, id]));
+  const moved = (body: string): string | null => {
+    const [owner, part] = body.split(PART_SEPARATOR);
+    if (!before.has(owner!)) return body;
+    const id = anew.get(before.get(owner!)!);
+    return id ? `${id}${PART_SEPARATOR}${part}` : null;
+  };
+  const extendLinks = doc.extendLinks.flatMap((l) => {
+    const [from, to] = [moved(l.from.body), moved(l.to.body)];
+    return from && to ? [{ ...l, from: { ...l.from, body: from }, to: { ...l.to, body: to } }] : [];
+  });
+  const { extendLinks: _, ...rest } = doc;
+  return extendLinks.length ? { ...rest, extendLinks } : rest;
 }
 
 /**

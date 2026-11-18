@@ -814,3 +814,62 @@ test("linéaire : façades et intérieur du meuble choisi — étagères, cloiso
   await shot(page, "21-plinthe");
   expect(errors).toEqual([]);
 });
+
+test("linéaire : un meuble glissé à la souris dans la place vide s'y pose, la place qu'il laisse gardée libre", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const api = await newProject(page, "zz-test-plan-cuisine-glisser");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await expect(page.getByText("Bas 2 portes 1000 (A1)").first()).toBeVisible({ timeout: 60_000 });
+  const strip = tool.locator('[data-run-strip="A"]');
+  await expect(strip.locator('[data-free="base"]')).toHaveCount(1);
+  // Taken by its middle and dropped further along the wall, in the room left free.
+  const unit = (await strip.locator("[data-item]").first().boundingBox())!;
+  const whole = (await strip.locator("svg").boundingBox())!;
+  const [x, y] = [unit.x + unit.width / 2, unit.y + unit.height / 2];
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + whole.width * 0.15, y, { steps: 4 });
+  await page.mouse.move(x + whole.width * 0.3, y, { steps: 4 });
+  await page.mouse.up();
+  // Free room before it and after it now.
+  await expect(strip.locator('[data-free="base"]')).toHaveCount(2);
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const features = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; name: string; origin?: number[] }[] } }).document.features, api);
+  const cabinet = features.find((f) => f.type === "cabinet" && f.name.startsWith("Bas 2 portes 1000"))!;
+  // 30 % of a 3,60 m wall (and its margins): about 1,10 m from where it stood, at the wall's start.
+  expect(cabinet.origin![0]).toBeGreaterThan(800);
+  expect(cabinet.origin![0]).toBeLessThan(1400);
+  await shot(page, "22-meuble-glisse");
+  // A second unit added (it takes the room left free before the first), then deleted: its room stays empty, the
+  // first one where it was; one decides to close up, and the units come together.
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  const small = strip.locator("[data-item]", { hasText: "Bas 1 porte 60" });
+  const big = strip.locator("[data-item]", { hasText: "Bas 2 portes 100" });
+  await expect(small).toHaveCount(1);
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  const left = async () => Math.round((await big.boundingBox())!.x);
+  const was = await left();
+  // Just added, it is the one chosen already (a click would let it go).
+  await expect(tool.locator("[data-strip-actions]")).toContainText("Bas 1 porte");
+  await tool.locator("[data-strip-remove]").click();
+  await expect(small).toHaveCount(0);
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  expect(Math.abs((await left()) - was)).toBeLessThanOrEqual(2);
+  const close = tool.locator("[data-strip-close-up]");
+  await expect(close).toContainText("Resserrer les meubles");
+  await close.click();
+  await expect(close).toHaveCount(0);
+  await expect.poll(left, { timeout: 30_000 }).toBeLessThan(was - 50);
+  expect(errors).toEqual([]);
+});

@@ -5,7 +5,7 @@ import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
 import { findFeature, updateFeature } from "../../frontend/src/document/operations";
-import { createReferencePlate, type CabinetFeature, type CadDocument, type KitchenFloorPlan } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem } from "../../frontend/src/document/types";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { withAppliance } from "../../frontend/src/document/appliance-place";
 import { handAppliances } from "../../frontend/src/document/kitchen-hand-appliances";
@@ -155,5 +155,28 @@ describe("un meuble du plan poussé avec sa plaque posée à la main", () => {
     if (was.type !== "machining" || is.type !== "machining" || was.ops[0]!.kind !== "box" || is.ops[0]!.kind !== "box") throw new Error("cut");
     expect(is.ops[0]!.from[0]).toBeCloseTo(was.ops[0]!.from[0] + dir[0] * 200, 3);
     expect(findFeature(out, is.target)?.name).toBe("Plan de travail A");
+  });
+});
+
+describe("liens de Prolonger élément sur une cuisine refaite", () => {
+  it("restent sur le même meuble, pas sur celui qui prend son numéro ; ôtés quand il n'est plus", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 3000 });
+    let items: KitchenRunItem[] = [];
+    for (const [m, w] of [["base-bas-2-portes", 800], ["base-bas-1-porte", 600], ["base-bas-3-tiroirs", 600]] as const) items = [...items, newItem(items, m, w)];
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items } });
+    if (typeof built === "string") throw new Error(built);
+    const cab = (d: CadDocument, start: string) => d.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith(start))!;
+    const face = { type: "PLANE" as const, center: [0, 0, 0] as [number, number, number], rel: [0.5, 0.5, 0.5] as [number, number, number], normal: [1, 0, 0] as [number, number, number], area: 0 };
+    const doc: CadDocument = { ...built.doc, extendLinks: [{ id: "pl1", from: { body: `${cab(built.doc, "Bas 3 tiroirs").id}#0`, face }, to: { body: `${cab(built.doc, "Bas 1 porte").id}#1`, face } }] };
+    // The first unit taken out: the others are made again, their ids given out anew.
+    const again = withKitchenBuilt(doc, made.id, { runs: { A: items.slice(1) } });
+    if (typeof again === "string") throw new Error(again);
+    const link = again.doc.extendLinks![0]!;
+    expect(link.from.body).toBe(`${cab(again.doc, "Bas 3 tiroirs").id}#0`);
+    expect(link.to.body).toBe(`${cab(again.doc, "Bas 1 porte").id}#1`);
+    // The unit it held on to taken out: the link goes.
+    const gone = withKitchenBuilt(again.doc, made.id, { runs: { A: [items[2]!] } });
+    if (typeof gone === "string") throw new Error(gone);
+    expect(gone.doc.extendLinks).toBeUndefined();
   });
 });

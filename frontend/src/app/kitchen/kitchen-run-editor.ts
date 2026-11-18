@@ -9,6 +9,7 @@
 import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
+import { itemSlid } from "../../document/kitchen-slide";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
@@ -32,7 +33,7 @@ import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
 import { furnishItem, insideRows } from "./kitchen-unit-inside";
 import { sizeFields } from "./kitchen-unit-sizes";
-import { stripActions } from "./kitchen-strip-actions";
+import { stripActions, withRoomLeft } from "./kitchen-strip-actions";
 import { alignedOver } from "../../features/kitchen-run-align";
 import { withApplianceRemoved } from "../../document/appliance-remove";
 import { multiRows, pickAllRow } from "./kitchen-run-multi-view";
@@ -55,6 +56,8 @@ export interface RunEditorHost {
   chosen?: string | null;
   fold?: string | null;
   other?: StripOther | null;
+  /** The strip had the keyboard (the run made again under it: Suppr and the arrows still go to what is chosen). */
+  focus?: boolean;
   redraw(): void;
   /** Something changed: stored a moment later (no « OK »), the kitchen made again. */
   changed(): void;
@@ -96,6 +99,7 @@ export class RunEditor {
     this.chosen = this.items.some((i) => i.id === host.chosen) ? host.chosen! : null;
     this.rest = runGeometry(host.plan, host.run).rest;
     this.folds.open = host.fold ?? null;
+    this.focusStrip = host.focus === true;
     // The plinth or the worktop chosen stays chosen (set back again, another look), if it is still there.
     this.other = host.other?.kind === "kick" && !kickOf(host.plan, host.run.id).on ? null : (host.other ?? null);
   }
@@ -181,6 +185,17 @@ export class RunEditor {
     this.change([...others.slice(0, at), item, ...others.slice(at)], id);
   }
 
+  /** A unit dropped in the free room beside it on the strip: put down there, the others where they were (document/kitchen-slide.ts). */
+  private slide(id: string, by: number): void {
+    const plan = this.current();
+    const s = kitchenSizes(plan);
+    const made = itemSlid(plan, this.host.run, this.host.room?.[this.host.run.id], this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, id, by);
+    if (typeof made === "string") return (this.host.editor.notify(made, "info"), this.host.redraw());
+    this.rest = made.rest;
+    this.focusStrip = true;
+    this.change(made.items, id, []);
+  }
+
   /** The corners chosen here, and the worktop taken away or put back. */
   private get settings(): CornerSetting {
     const { plan, run } = this.host;
@@ -259,7 +274,7 @@ export class RunEditor {
         }
         this.folds.open = "chosen";
         this.host.redraw();
-      }, move: (id, index) => this.move(id, index), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label), filler: (gap) => { const made = fillerFromGap(this.items, fill, gap); this.focusStrip = true; this.change(made.items, made.id, []); } });
+      }, move: (id, index) => this.move(id, index), slide: (id, by) => this.slide(id, by), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label), filler: (gap) => { const made = fillerFromGap(this.items, fill, gap); this.focusStrip = true; this.change(made.items, made.id, []); } });
     const clear = el("button", { type: "button", class: WIDE, disabled: !this.items.length }, "Vider le linéaire");
     clear.addEventListener("click", () => this.change([], null));
     const f = this.folds;
@@ -434,7 +449,7 @@ export class RunEditor {
       return b;
     };
     const out = el("button", { type: "button", class: SMALL }, "Retirer");
-    out.addEventListener("click", () => this.change(this.items.filter((i) => i.id !== item.id), null));
+    out.addEventListener("click", () => this.change(withRoomLeft(this.items, [item.id]), null));
     return el(
       "div",
       { class: "space-y-1.5 border border-sky-200 p-1.5 dark:border-sky-900", "data-run-item": item.id },
