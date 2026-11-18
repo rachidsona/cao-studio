@@ -2637,6 +2637,15 @@ opération existante.
       pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres
       meubles ne bougent pas. Le plan le garde par des « Espaces libres », le reste du linéaire allant « à droite » ;
       les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place.
+    - **Sans portes** (`app/kitchen/strip-doors.ts`) : la case, à côté de « Plan fixe », dessine la bande sans les
+      portes ni les façades de tiroir — l'intérieur des caissons se voit : étagères, cloisons, tiroirs (leurs caissons
+      en pointillés), tiroirs à l'anglaise ; les portes d'angle en pointillés aussi. Le navigateur s'en souvient. Sous
+      la bande, chaque titre pliable est une carte détachée par son ombre (`ui/fold.ts`).
+    - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
+      par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
+      l'élargit de tout ce reste (la place ouverte, celle des fileurs et des fileurs muraux), dans ses limites, ses
+      voisins se poussant ; la place gardée par un « Espace libre » reste, voulue. Refusé, avec la raison, quand la
+      rangée ne le tient pas.
     - **Supprimer un meuble** sur la bande (Suppr, « Supprimer », « Retirer », ou plusieurs à la fois) **laisse sa
       place vide** (un « Espace libre » de sa largeur, comme un meuble supprimé dans la 3D) : ses voisins ne bougent
       pas. On referme quand on le décide : « Resserrer les meubles » (toutes les places vides), un voisin glissé

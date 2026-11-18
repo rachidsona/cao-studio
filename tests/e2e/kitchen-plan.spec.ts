@@ -889,3 +889,61 @@ test("linéaire : un meuble glissé à la souris dans la place vide s'y pose, la
   await expect.poll(left, { timeout: 30_000 }).toBeLessThan(was - 50);
   expect(errors).toEqual([]);
 });
+
+test("linéaire : le vide comblé en prolongeant un meuble choisi dans « Place libre »", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-prolonger");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await tool.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  const strip = tool.locator('[data-run-strip="A"]');
+  await expect(strip.locator('[data-free="base"]')).toHaveCount(1);
+  // The second one prolonged (by about 1 m, within its 2,40 m at most): no room left open, no filler.
+  await unfold(tool, "space");
+  const pick = tool.locator('[data-widen-pick="base"]');
+  await pick.selectOption({ label: await pick.locator("option").nth(1).textContent() ?? "" });
+  await tool.locator('[data-widen="base"]').click();
+  await expect(strip.locator('[data-free="base"]')).toHaveCount(0, { timeout: 30_000 });
+  await expect(tool.locator('[data-widen="base"]')).toHaveCount(0);
+  expect((await strip.locator("[data-item]", { hasText: "Bas 2 portes" }).allTextContents()).some((t) => !/\b100\b/.test(t))).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("linéaire : « Sans portes » montre l'intérieur des meubles sur la bande ; les titres pliables sont des cartes", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-sans-portes");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-3-tiroirs-600"]').click();
+  await tool.locator('[data-add="base-bas-tiroir-et-porte-600"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  const trays = strip.locator('rect[class*="stroke-dasharray"]');
+  await expect(strip.locator("[data-item]")).toHaveCount(2);
+  await expect(trays).toHaveCount(0);
+  await shot(page, "23-avec-portes");
+  // Their fronts taken off: the three drawers' boxes, the drawer over the door, the shelf.
+  await tool.locator("[data-strip-no-doors]").check();
+  await expect(trays).toHaveCount(4);
+  await shot(page, "23-sans-portes");
+  // Each title a card, its shadow under it.
+  const shadow = await tool.locator('[data-fold-section="add"]').evaluate((e) => getComputedStyle(e).boxShadow);
+  expect(shadow).not.toBe("none");
+  await tool.locator("[data-strip-no-doors]").uncheck();
+  await expect(trays).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

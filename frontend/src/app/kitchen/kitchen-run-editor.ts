@@ -33,6 +33,8 @@ import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
 import { caissonActions, furnishItem, insideRows } from "./kitchen-unit-inside";
 import { heldRows } from "./kitchen-held-rows";
+import { widenRows } from "./kitchen-widen-rows";
+import { doorsToggle } from "./strip-doors";
 import { sizeFields } from "./kitchen-unit-sizes";
 import { stripActions, withRoomLeft } from "./kitchen-strip-actions";
 import { alignedOver } from "../../features/kitchen-run-align";
@@ -223,13 +225,12 @@ export class RunEditor {
     const g = this.geometry();
     const s = kitchenSizes(plan);
     const fill = fillRun(g, this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop });
-    // A unit put in the room kept free stands there in the run's order too.
-    this.items = fill.items;
+    this.items = fill.items; // a unit put in the room kept free stands there in the run's order too
     const appliances = handAppliances(editor.doc, this.host.plan, run);
     const off = plan.noWorktop?.[run.id] === true;
     // What is chosen on the strip, acted on from under it, by the keyboard or a right click.
-    const actions = stripActions({
     const caisson = caissonActions(editor, (id) => this.items.find((i) => i.id === id)?.furnished, () => this.dirty, () => ((this.other = null), (this.focusStrip = true), this.host.redraw(), this.host.changed()));
+    const actions = stripActions({
       items: this.items, chosen: this.chosen, picked: this.picked, other: this.other, worktopOff: off, appliances,
       change: (items, chosen, picked) => ((this.focusStrip = true), this.change(items, chosen, picked ?? [])),
       putAfter: (copy, after) => {
@@ -264,8 +265,8 @@ export class RunEditor {
         this.chosen = null;
         this.picked = [];
         this.focusStrip = true;
-        this.host.redraw();
         if (this.other?.kind === "caisson" || this.other?.kind === "corner") this.folds.open = "chosen";
+        this.host.redraw();
       }, pick: (id, add) => {
         this.other = null;
         this.focusStrip = true;
@@ -286,15 +287,15 @@ export class RunEditor {
     clear.addEventListener("click", () => this.change([], null));
     const f = this.folds;
     const chosen = fill.placed.find((p) => p.item.id === this.chosen)?.item ?? this.items.find((i) => i.id === this.chosen);
-    const rows: (HTMLElement | null)[] = [
     const setCorner = (joint: Joint, c: CornerChange) => ((this.corners = withCorner(this.current(), joint, c)), this.touched());
     const corner = this.other?.kind === "corner" ? cornerChosen(plan, run, unit, setCorner, () => this.host.redraw(), this.other.side, this.other.row) : null;
     const held = this.other?.kind === "caisson" ? this.items.find((i) => i.id === (this.other as { id: string }).id && i.furnished) : undefined;
+    const rows: (HTMLElement | null)[] = [
       this.header(`Linéaire — ${run.label.toLowerCase()}`),
       // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan (« Plan fixe »).
       el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
         // Fixed at the top while the panel scrolls, or scrolling with it (kept for the dressing too).
-        fixedPlanToggle(() => this.host.redraw()),
+        el("div", { class: "flex items-center justify-end gap-3" }, doorsToggle(() => this.host.redraw()), fixedPlanToggle(() => this.host.redraw())),
         this.walls(),
         el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
       ),
@@ -302,14 +303,14 @@ export class RunEditor {
       actions.bar,
       this.dirty ? null : this.keepMoves(),
       // Every titled part folds; one open at a time, all closed at first.
-      f.fold("space", `Place libre : ${spaceLeft(fill, (mm) => formatLength(mm, unit), run.wall)}`, () => [this.restChoice(), this.spaceRows()]),
+      f.fold("space", `Place libre : ${spaceLeft(fill, (mm) => formatLength(mm, unit), run.wall)}`, () => [this.restChoice(), widenRows({ plan: this.current(), geometry: this.geometry(), items: this.items, unit, change: (items, id) => this.change(items, id), notify: (m) => this.host.editor.notify(m, "info") }), this.spaceRows()]),
       this.picked.length > 1
         ? f.fold("chosen", `Meubles choisis (${this.picked.length})`, () => multiRows({ plan, items: this.items, picked: this.picked, fill, unit, change: (items, picked) => this.change(items, null, picked), notify: (m, k) => this.host.editor.notify(m, k) }).filter((r): r is HTMLElement => r !== null))
-        : f.fold("chosen", chosen ? `Meuble choisi : ${itemEntry(chosen).name} · ${formatLength(chosen.width, unit)}` : "Meuble choisi", () => [this.selected(chosen), pickAllRow(this.items, run.wall, (ids) => ((this.picked = ids), (this.chosen = null), this.host.redraw()))]),
         : corner
         ? f.fold("chosen", `Meuble choisi : ${corner.title}`, () => [corner.body])
         : held
         ? f.fold("chosen", `Meuble choisi : caisson aménagé · ${formatLength(held.width, unit)}`, () => [heldRows({ editor: this.host.editor, plan, item: held, busy: this.dirty, width: (mm) => this.change(this.items.map((i) => (i.id === held.id ? { ...i, width: mm } : i))), open: () => caisson.openCaisson(held.id), done: () => (this.host.redraw(), this.host.changed()), redraw: () => this.host.redraw() })])
+        : f.fold("chosen", chosen ? `Meuble choisi : ${itemEntry(chosen).name} · ${formatLength(chosen.width, unit)}` : "Meuble choisi", () => [this.selected(chosen), pickAllRow(this.items, run.wall, (ids) => ((this.picked = ids), (this.chosen = null), this.host.redraw()))]),
       f.fold("add", "Ajouter des meubles", () => this.catalog()),
       f.fold("fillers", "Fileurs", () => this.fillerRows()),
       run.left !== "free" || run.right !== "free"

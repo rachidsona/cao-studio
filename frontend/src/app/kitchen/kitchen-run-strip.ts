@@ -15,10 +15,13 @@ import type { KitchenBox } from "../../features/kitchen-layout";
 import { applianceOf, isFiller, itemSize, openRoom, type Placed, type RunFill } from "../../features/kitchen-run-items";
 import { BRASS, elevationBody } from "./unit-elevation";
 import { escapeHtml } from "../workshop/workshop-ui";
+import { doorsHidden } from "./strip-doors";
 
 const SVG = "http://www.w3.org/2000/svg";
 const WALL = "fill-gray-50 dark:fill-gray-900";
 const PANEL = "fill-gray-100 stroke-gray-500 dark:fill-gray-700 dark:stroke-gray-400";
+/** A corner door taken off (« Sans portes »): its outline only, dashed. */
+const OPEN = "fill-transparent stroke-gray-400 [stroke-dasharray:6_4]";
 const STONE = "fill-gray-400 stroke-gray-600 dark:fill-gray-500 dark:stroke-gray-300";
 const DEAD = "fill-gray-200 dark:fill-gray-800";
 /** Each strip its own hatch (an id is for the whole page). */
@@ -44,7 +47,7 @@ function drawing(pl: Placed, p: KitchenFloorPlan): { body: string; z: number; he
   }
   const { height, z } = itemSize(p, pl.item, pl.entry);
   const entry = role === "dishwasher" ? { ...pl.entry, layout: "door" as const } : pl.entry;
-  return { body: elevationBody({ ...entry, height, plinth: pl.row === "wall" ? 0 : (entry.plinth ?? s.plinth) }).body, z, height };
+  return { body: elevationBody({ ...entry, height, plinth: pl.row === "wall" ? 0 : (entry.plinth ?? s.plinth) }, doorsHidden()).body, z, height };
 }
 
 export interface StripHost {
@@ -105,6 +108,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
   node.setAttribute("aria-label", `Face de ${run.label.toLowerCase()}`);
   node.style.setProperty("--brass", BRASS);
   const hatch = `kitchen-hatch-${++hatches}`;
+  const bare = doorsHidden();
   // The room left free, hatched (not a corner: the units of the corner take it).
   const empty = (x: number, z0: number, w: number, h: number, what: string) => (w > 1 && h > 1 ? `<rect x="${x}" y="${y(z0 + h)}" width="${w}" height="${h}" fill="url(#${hatch})" pointer-events="none" data-empty="${what}"/>` : "");
   const parts: string[] = [
@@ -130,7 +134,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     // Up in the wall row: a wall corner unit's panel and door, or its filler.
     const high = g.wall ? wallCornerSide(p, run, side) : null;
     for (const f of high?.fronts ?? []) {
-      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : PANEL, `data-wall-corner-front="${f.kind}" data-side="${side}"`));
+      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : f.kind === "door" && bare ? OPEN : PANEL, `data-wall-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.wallBottom, s.wallTop, side, "wall"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
@@ -140,7 +144,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const corner = cornerSide(p, run, side, fill.walls[side === "left" ? 0 : 1]);
     if (!corner) continue;
     for (const f of corner.fronts) {
-      const tone = f.kind === "blind" ? `${PANEL} opacity-70` : PANEL;
+      const tone = f.kind === "blind" ? `${PANEL} opacity-70` : f.kind === "door" && bare ? OPEN : PANEL;
       parts.push(rect(f.from, y(s.base), f.to - f.from, s.base - s.plinth, tone, `data-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.plinth, s.base, side, "base"));
       if (f.kind === "door") {

@@ -69,21 +69,36 @@ function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
   return Array.from({ length: n }, (_, i) => box(x0, top + ((bottom - top) * (i + 1)) / (n + 1) - 9, x1 - x0, 18, PANEL)).join("") + uprights;
 }
 
+/** Its inside, its fronts taken off (« Sans portes » of the strip): shelves, uprights, drawers as their boxes. */
+function opened(e: CatalogEntry, x0: number, x1: number, top: number, bottom: number): string {
+  const tray = (y: number, h: number) => box(x0 + 30, y, x1 - x0 - 60, h, `${BODY} [stroke-dasharray:6_4]`);
+  const stack = (n: number, from: number) => {
+    const h = (bottom - from - (n - 1) * GAP) / n;
+    return Array.from({ length: n }, (_, i) => tray(from + i * (h + GAP) + h * 0.35, h * 0.65)).join("");
+  };
+  if (e.layout === "drawers") return stack(e.drawers ?? 3, top);
+  // A drawer over the doors; English drawers behind them, in their lower half.
+  const drawer = e.topDrawer && e.layout !== "none" ? tray(top + e.topDrawer * 0.35, e.topDrawer * 0.65 - GAP) : "";
+  const from = e.topDrawer && e.layout !== "none" ? top + e.topDrawer : top;
+  const inner = e.innerDrawers ? stack(e.innerDrawers, (from + bottom) / 2) : "";
+  return drawer + inner + fronts({ ...e, layout: "none", topDrawer: undefined }, x0, x1, from, e.innerDrawers ? (from + bottom) / 2 : bottom);
+}
+
 /** An oven in its niche: its controls, its window and its handle. */
 function oven(x0: number, x1: number, top: number): string {
   const h = Math.min(595, x1 - x0);
   return box(x0, top, x1 - x0, h, BODY) + box(x0 + 40, top + 150, x1 - x0 - 80, h - 200, GLASS) + handle(x0 + 60, top + 105, x1 - 60, top + 105);
 }
 
-/** The drawing in mm, its top at 0 and the floor at its height (a tap above, at negative y), with no frame: to be placed. */
-export function elevationBody(e: CatalogEntry): { body: string; width: number; height: number; above: number } {
+/** The drawing in mm, its top at 0 and the floor at its height (a tap above, at negative y), with no frame: to be placed; `open`, without its fronts. */
+export function elevationBody(e: CatalogEntry, open = false): { body: string; width: number; height: number; above: number } {
   const kind = KINDS[e.kind];
   const [W, H, plinth] = [e.width, e.height ?? kind.height, e.plinth ?? kind.plinth];
   const carcass = H - plinth;
   const [x0, x1, top, bottom] = [GAP, W - GAP, GAP, carcass - GAP];
   let inside: string;
   if (hasMicrowave(e)) inside = box(x0, top + 120, x1 - x0, Math.min(380, bottom - top - 120), GLASS);
-  else if (!hasOven(e)) inside = fronts(e, x0, x1, top, bottom);
+  else if (!hasOven(e)) inside = open ? opened(e, x0, x1, top, bottom) : fronts(e, x0, x1, top, bottom);
   else if (e.kind === "tall") {
     const at = (bottom - top) * 0.3;
     const door = { ...e, layout: "door" as const };
