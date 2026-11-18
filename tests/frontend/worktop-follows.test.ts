@@ -1,7 +1,7 @@
 /** Le plan de travail et la crédence d'un linéaire suivent ses meubles : rien au-dessus de la place libre ni à travers une colonne. */
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { layoutPlan } from "../../frontend/src/document/kitchen-plan";
 import { withApplianceRemoved } from "../../frontend/src/document/appliance-remove";
 import { createReferencePlate, type ApplianceFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type MachiningFeature } from "../../frontend/src/document/types";
@@ -117,12 +117,18 @@ describe("plan de travail qui suit les meubles", () => {
     expect(Math.round(at("Plan de travail B").to[1])).toBe(-600);
   });
 
-  it("sous la hotte, la crédence monte jusqu'à elle, entre les meubles hauts", () => {
+  it("sous la hotte, la crédence monte jusqu'à elle, d'un seul morceau ; ou, au choix, seulement là", () => {
     const p = plan([["base-bas-2-portes", 1800], ["wall-haut-1-porte", 600], ["app-hood", 600], ["wall-haut-1-porte", 600]]);
-    const pieces = kitchenFromPlan(p).boxes.filter((b) => b.kind === "splashback").map((b) => [b.name, Math.round(b.from[0]), Math.round(b.to[0]), b.from[2], b.to[2]]);
-    const low = pieces.find((x) => x[0] === "Crédence A")!;
-    // Under the hood (600 to 1200 along the wall): from the splashback's top up to the hood, 65 cm over the worktop.
-    expect(pieces.find((x) => x[0] === "Crédence sous hotte A")).toEqual(["Crédence sous hotte A", 600, 1200, low[4], p.worktopHeight + 650]);
+    const [H, hood] = [p.worktopHeight, p.worktopHeight + 650];
+    const pieces = kitchenFromPlan(p).boxes.filter((b) => b.kind === "splashback");
+    expect(pieces.map((b) => b.name)).toEqual(["Crédence A"]);
+    // One piece, its top stepped up under the hood (600 to 1200 along the wall), up to it, 65 cm over the worktop.
+    const top = kitchenSizes(p).wallBottom;
+    expect(pieces[0]!.profile).toEqual({ along: 0, points: [[0, H], [1800, H], [1800, top], [1200, top], [1200, hood], [600, hood], [600, top], [0, top]] });
+    expect([pieces[0]!.from[2], pieces[0]!.to[2]]).toEqual([H, hood]);
+    // Only under the hood: one plain piece, as wide as the hood, from the worktop up to it.
+    const only = kitchenFromPlan({ ...p, splashbackHoodOnly: true }).boxes.filter((b) => b.kind === "splashback");
+    expect(only.map((b) => [b.name, Math.round(b.from[0]), Math.round(b.to[0]), b.from[2], b.to[2], b.profile])).toEqual([["Crédence A", 600, 1200, H, hood, undefined]]);
     expect(kitchenFromPlan({ ...p, splashback: false }).boxes.some((b) => b.name.startsWith("Crédence"))).toBe(false);
   });
 

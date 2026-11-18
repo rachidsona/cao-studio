@@ -2505,8 +2505,9 @@ opération existante.
     jusqu'au bout ; au choix le plan passe par-dessus, le retour monte par-dessus le bout du plan, ou les deux se
     rejoignent en coupe d'onglet à 45°). Le plan de travail suit le caisson : contre une colonne ou une place
     libre, il s'arrête au flanc du meuble, pas sur le fileur à côté. La crédence d'un mur qui s'arrête contre un
-    autre va jusque dans l'angle, contre celle du mur qui passe ; sous la hotte, elle monte jusqu'à elle
-    (« Crédence sous hotte »). Les **joues de finition aux bouts libres**
+    autre va jusque dans l'angle, contre celle du mur qui passe ; sous la hotte, elle monte jusqu'à elle,
+    d'un seul morceau (son contour découpé, dessiné debout). La case **Crédence seulement sous la hotte** ne la met
+    que là, de la largeur de la hotte, du plan de travail jusqu'à elle. Les **joues de finition aux bouts libres**
     (case) couvrent, dans la matière des façades, le côté qui se voit de la dernière colonne et du dernier meuble
     haut d'un linéaire (pas celui d'un meuble haut contre une colonne ; celui d'un bas est laissé au retour du
     plan). L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)

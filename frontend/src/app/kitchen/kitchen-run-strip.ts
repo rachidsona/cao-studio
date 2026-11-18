@@ -157,7 +157,17 @@ export function runStrip(host: StripHost): SVGSVGElement {
     if (!finish) continue;
     const [u0, u1] = [along(box.from), along([box.to[0], box.to[1], 0]), along([box.from[0], box.to[1], 0]), along([box.to[0], box.from[1], 0])].reduce(([lo, hi], u) => [Math.min(lo, u), Math.max(hi, u)], [Infinity, -Infinity]);
     const [z0, z1] = [box.from[2], box.to[2]];
-    parts.push(`${rect(u0, y(z1), u1 - u0, z1 - z0, finish === "end-panel" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE, `data-finish="${finish}" pointer-events="none"`)}`);
+    const tone = finish === "end-panel" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE;
+    // Not square (a splashback stepped up under the hood, a piece cut at 45°): its outline.
+    const profile = box.profile;
+    if (profile) {
+      const pts = profile.points.map(([c, z]) => {
+        const q: Vec3 = [...box.from];
+        q[profile.along] = c;
+        return `${along(q)},${y(z)}`;
+      });
+      parts.push(`<polygon points="${pts.join(" ")}" class="${tone}" vector-effect="non-scaling-stroke" data-finish="${finish}" pointer-events="none"/>`);
+    } else parts.push(rect(u0, y(z1), u1 - u0, z1 - z0, tone, `data-finish="${finish}" pointer-events="none"`));
   }
   // The worktop, over the units only; clicked (a band taller than it takes the click), it is chosen.
   const tops = host.worktop ?? (fill.placed.some((pl) => pl.row === "base") ? [zoneSpan(run)] : []);

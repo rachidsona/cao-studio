@@ -146,8 +146,14 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
     if (p.endPanels) endPanels(p, run, fill, band, box);
     const full = ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600;
-    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, intoCorners(run, part), i, g.spans, full, band, box);
-    if (run.wall && p.splashback !== false) underHoods(p, run, fill, covered.map((part) => intoCorners(run, part)), full, band, box);
+    // Under a hood the splashback goes up to it, in one piece; or, as chosen, only there.
+    const hoods = fill.placed.filter((x) => x.row === "wall" && applianceOf(x.item)?.role === "hood").map((x): [number, number] => [x.at, x.at + x.item.width]);
+    const hoodTop = p.worktopHeight + HOOD;
+    if (run.wall && p.splashback !== false) {
+      const parts = covered.map((part) => intoCorners(run, part));
+      if (p.splashbackHoodOnly) parts.flatMap(([a, b]) => hoods.map(([h0, h1]): [number, number] => [Math.max(a, h0), Math.min(b, h1)]).filter(([u0, u1]) => u1 - u0 >= 1)).forEach((part, i) => splashback(p, run, part, i, g.spans, hoodTop, band, box));
+      else parts.forEach((part, i) => splashback(p, run, part, i, g.spans, full, band, box, { hoods, top: hoodTop }));
+    }
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, fill.free))) {
@@ -337,23 +343,11 @@ function intoCorners(run: KitchenRun, [a, b]: [number, number]): [number, number
 }
 
 /**
- * Under a hood, the splashback goes on up to it (over the splashback's own top, between the wall units on each side),
- * as wide as the hood's place and the splashback under it: a piece of its own.
+ * Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window:
+ * one piece per height. Under a hood (`raise`), the piece goes on up to it: one piece still, its outline stepped up
+ * there (drawn upright through its thickness, document/kitchen-plan.ts).
  */
-function underHoods(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, parts: [number, number][], full: number, band: Band, box: BoxOf): void {
-  const top = p.worktopHeight + HOOD;
-  if (top - full < 20) return;
-  let n = 0;
-  for (const pl of fill.placed.filter((x) => x.row === "wall" && applianceOf(x.item)?.role === "hood")) {
-    for (const [a, b] of parts) {
-      const [u0, u1] = [Math.max(a, pl.at), Math.min(b, pl.at + pl.item.width)];
-      if (u1 - u0 >= 1) box(`Crédence sous hotte ${run.id}${n++ ? n : ""}`, "splashback", band(u0, u1, 0, SPLASH, full, top));
-    }
-  }
-}
-
-/** Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */
-function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, number], part: number, spans: RunInfo["spans"], full: number, band: Band, box: BoxOf): void {
+function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, number], part: number, spans: RunInfo["spans"], full: number, band: Band, box: BoxOf, raise?: { hoods: [number, number][]; top: number }): void {
   const top = p.worktopHeight;
   const windows = spans.filter((sp) => sp.bottom > 0 && sp.from < to && sp.to > from);
   const doors = spans.filter((sp) => sp.bottom <= 0 && sp.from < to && sp.to > from);
@@ -363,6 +357,34 @@ function splashback(p: KitchenFloorPlan, run: KitchenRun, [from, to]: [number, n
     const [a, b] = [cuts[i]!, cuts[i + 1]!];
     if (doors.some((d) => d.from < b && d.to > a)) continue;
     const z1 = Math.min(full, ...windows.filter((sp) => sp.from < b && sp.to > a).map((sp) => sp.bottom));
-    if (z1 - top >= 20) box(`Crédence ${run.id}${part ? part + 1 : ""}${n++ ? `-${n}` : ""}`, "splashback", band(a, b, 0, SPLASH, top, z1));
+    if (z1 - top < 20) continue;
+    const name = `Crédence ${run.id}${part ? part + 1 : ""}${n++ ? `-${n}` : ""}`;
+    const under = raise && raise.top - z1 >= 20 ? raise.hoods.map(([h0, h1]): [number, number] => [Math.max(a, h0), Math.min(b, h1)]).filter(([u0, u1]) => u1 - u0 >= 1).sort((x, y) => x[0] - y[0]) : [];
+    if (!under.length) {
+      box(name, "splashback", band(a, b, 0, SPLASH, top, z1));
+      continue;
+    }
+    // Its outline from the front: the bottom, then along the top from the far end, up under each hood.
+    const along = Math.abs(run.zone.run.normal[0]) > 0.5 ? 1 : 0;
+    const at = (u: number) => band(u, u, 0, 0, 0, 0)[0][along]!;
+    const outline: [number, number][] = [[a, top], [b, top], [b, z1], ...[...under].reverse().flatMap(([u0, u1]): [number, number][] => [[u1, z1], [u1, raise!.top], [u0, raise!.top], [u0, z1]]), [a, z1]];
+    box(name, "splashback", band(a, b, 0, SPLASH, top, raise!.top), { profile: { along, points: outlineCorners(outline).map(([u, z]): [number, number] => [at(u), z]) } });
   }
+}
+
+/** An outline rid of the points it passes twice and of those on a straight line between their neighbours. */
+function outlineCorners(points: [number, number][]): [number, number][] {
+  const same = (p: [number, number], q: [number, number]) => Math.abs(p[0] - q[0]) < 1e-6 && Math.abs(p[1] - q[1]) < 1e-6;
+  let pts = points.filter((q, i) => !same(q, points[(i + 1) % points.length]!));
+  let changed = true;
+  while (changed && pts.length > 3) {
+    changed = false;
+    pts = pts.filter((q, i) => {
+      const [p0, p1] = [pts[(i + pts.length - 1) % pts.length]!, pts[(i + 1) % pts.length]!];
+      const flat = Math.abs((q[0] - p0[0]) * (p1[1] - p0[1]) - (q[1] - p0[1]) * (p1[0] - p0[0])) < 1e-6;
+      if (flat) changed = true;
+      return !flat;
+    });
+  }
+  return pts;
 }

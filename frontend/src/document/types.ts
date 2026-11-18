@@ -184,6 +184,8 @@ export interface KitchenFloorPlan {
   worktopJoint?: "top" | "side" | "miter";
   /** Finishing sides in the fronts' material at the free ends of the runs: the last column's and the last wall unit's. */
   endPanels?: boolean;
+  /** The splashback only where the hood is, from the worktop up to it (else along the whole worktop, up to it under the hood). */
+  splashbackHoodOnly?: boolean;
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
   rest?: Record<string, "end" | "start" | "both" | "walls">;
