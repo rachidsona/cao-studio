@@ -227,6 +227,7 @@ export class KitchenPlanTool {
       this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
       this.fields.check("Crédence", "splashback"),
       this.fields.check("Plinthes", "kick"),
+      this.fields.check("Retour du plan jusqu'au sol aux bouts libres", "worktopEnds"),
       el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
       el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
       this.fields.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),

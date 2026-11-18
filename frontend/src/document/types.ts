@@ -176,6 +176,8 @@ export interface KitchenFloorPlan {
   kick?: boolean;
   /** The runs whose worktop was taken away (on the run's strip): no worktop there, nor its cut-outs. */
   noWorktop?: Record<string, boolean>;
+  /** The worktop goes down to the floor at the free ends of the runs (in its material, over the units' sides). */
+  worktopEnds?: boolean;
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
   rest?: Record<string, "end" | "start" | "both" | "walls">;

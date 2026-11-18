@@ -50,6 +50,19 @@ describe("plan de travail qui suit les meubles", () => {
     expect(spans({ ...p, noWorktop: { A: false } }, "worktop")).toEqual([["Plan de travail A", 0, 1800]]);
   });
 
+  it("descend jusqu'au sol aux bouts libres où vont les meubles, sur demande, le plan passant par-dessus", () => {
+    const p = { ...plan([["base-bas-2-portes", 1000], ["base-bas-1-porte", 600]]), worktopEnds: true };
+    const T = p.worktopThickness ?? 38;
+    // The units stop short of the right end: a return on the left only, the worktop over it.
+    expect(spans(p, "worktop")).toEqual([["Plan de travail A", -T, 1600]]);
+    const ret = kitchenFromPlan(p).boxes.filter((b) => b.name.startsWith("Retour de plan"));
+    expect(ret.map((b) => [b.name, b.kind, Math.round(b.from[0]), Math.round(b.to[0]), b.from[2], b.to[2]])).toEqual([["Retour de plan A (gauche)", "splashback", -T, 0, 0, p.worktopHeight - T]]);
+    // The wall full: both ends; without the option, none.
+    const full = { ...plan([["base-bas-2-portes", 1200], ["base-bas-2-portes", 1200], ["base-bas-2-portes", 1200]]), worktopEnds: true };
+    expect(kitchenFromPlan(full).boxes.filter((b) => b.name.startsWith("Retour")).map((b) => b.name)).toEqual(["Retour de plan A (gauche)", "Retour de plan A (droite)"]);
+    expect(kitchenFromPlan({ ...full, worktopEnds: false }).boxes.some((b) => b.name.startsWith("Retour"))).toBe(false);
+  });
+
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
     const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
     const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });

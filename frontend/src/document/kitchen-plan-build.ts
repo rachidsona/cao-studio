@@ -251,6 +251,8 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
   // Along the run: the axis its normal is not on. Across it, the zone as it is (its corner, an island's depth).
   const along = Math.abs(nx) > 0.5 ? 1 : 0;
   const whole: [Vec3, Vec3] = [[Math.min(...xs), Math.min(...ys), base], [Math.max(...xs), Math.max(...ys), p.worktopHeight]];
+  const T = p.worktopHeight - base;
+  const [z0, z1] = zoneSpan(run);
   covered.forEach(([a, b], i) => {
     const [lo, hi] = band(a, b, 0, 1, base, p.worktopHeight);
     const from: Vec3 = [...whole[0]];
@@ -258,8 +260,20 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
     from[along] = Math.max(whole[0][along]!, lo[along]!);
     to[along] = Math.min(whole[1][along]!, hi[along]!);
     if (to[along]! - from[along]! < 1) return;
+    // A return down to the floor at a free end of the run the piece reaches, the worktop running on over it.
+    const ends = p.worktopEnds ? (["left", "right"] as const).filter((side) => run[side] === "free" && (side === "left" ? a <= z0 + 1e-6 : b >= z1 - 1e-6)) : [];
+    const returns = ends.map((side) => {
+      const [rlo, rhi] = side === "left" ? band(a - T, a, 0, 1, 0, base) : band(b, b + T, 0, 1, 0, base);
+      const [rFrom, rTo]: [Vec3, Vec3] = [[...from], [...to]];
+      [rFrom[along], rTo[along], rFrom[2], rTo[2]] = [rlo[along]!, rhi[along]!, 0, base];
+      from[along] = Math.min(from[along]!, rFrom[along]!);
+      to[along] = Math.max(to[along]!, rTo[along]!);
+      return { side, at: [rFrom, rTo] as [Vec3, Vec3] };
+    });
     const own = holes.filter((h) => h.u >= a - 1e-6 && h.u <= b + 1e-6).map(({ u: _u, ...h }) => h);
     box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0] });
+    // In the worktop's material (as a splashback), out of the worktop's cut-outs and bars.
+    for (const r of returns) box(`Retour de plan ${run.id}${r.side === "right" ? " (droite)" : " (gauche)"}`, "splashback", r.at);
   });
 }
 

@@ -293,6 +293,7 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await tool.getByLabel("Façades des bas").selectOption("drawers");
   await tool.locator('[data-plan-switch="splashback"]').uncheck();
   await tool.locator('[data-plan-switch="wallUnits"]').uncheck();
+  await tool.locator('[data-plan-switch="worktopEnds"]').check();
   await shot(page, "12-reglages");
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.locator("[data-propose]").click();
@@ -300,6 +301,9 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await expect(page.getByText(/Bas 3 tiroirs \d+ \(A\d\)/).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Plan de travail A").first()).toBeVisible();
   await expect(page.getByText("Crédence A")).toHaveCount(0);
+  // The worktop down to the floor at a free end of the run.
+  await expect(page.getByText(/^Retour de plan A/).first()).toBeVisible();
+  await shot(page, "13-retour-de-plan");
   await expect(page.getByText(/^Bas 1 porte|^Haut 1 porte/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
