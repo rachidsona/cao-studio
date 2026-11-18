@@ -1493,13 +1493,16 @@ opération existante.
   `styles/style-minimal.css`). Le verre est dessiné derrière chaque panneau (`::before`), pour que ses menus déroulants
   (« ⋯ », « Affichage ») passent toujours par-dessus.
 - **Modèle des icônes** (menu **« ⋯ » → Icônes (le dessin)**, gardé dans le navigateur, `localStorage` « icon-model ») :
-  le dessin même des icônes. **Volumes** (par défaut : les dessins de la page, de petits volumes en perspective) ou un
-  jeu **redessiné à plat** sur 24 × 24 : **Ligne** (pictogrammes au trait), **Solide** (formes pleines) ou
-  **Technique** (comme un dessin d'atelier : traits fins, pointillés, cotes, vues en plan). Trois dessins différents
+  le dessin même des icônes. **Volumes** (par défaut : les dessins de la page, de petits volumes en relief) ou un
+  jeu **redessiné** sur 24 × 24 : **Studio** (petits solides gris clair en axonométrie, ce qui compte en bleu, ce qui
+  agit en orange, des arêtes fines et foncées ; des couleurs fixes, les mêmes en thème clair et sombre), **Glyphe**
+  (formes plates grises, un accent de couleur) ou **Croquis** (un trait de croquis sur des aplats jaune, bleu et
+  rouge). Trois dessins différents
   de chaque outil, pas trois rendus du même (`tests/frontend/icon-models.test.ts`). Les **35 outils du ruban et de la
   colonne de sélection** sont redessinés ; les autres gardent leur volume en attendant. Les dessins sont décrits dans
-  `scripts/icon_models_set.py` (une suite de tracés par outil et par modèle) ; `python3 scripts/icon_models.py` écrit
-  `static/icons/ligne.svg`, `solide.svg`, `technique.svg`. Le modèle choisi, l'éditeur charge son fichier et remplace
+  `scripts/icon_models_set.py` (Glyphe et Croquis : une suite de tracés par outil) et `scripts/icon_models_studio.py`
+  (Studio : des volumes placés dans l'espace, projetés et centrés, chaque face teintée selon son côté) ;
+  `python3 scripts/icon_models.py` écrit `static/icons/studio.svg`, `glyphe.svg`, `croquis.svg`. Le modèle choisi, l'éditeur charge son fichier et remplace
   le contenu de chaque symbole du même nom dans la page (`app/icon-models.ts`) : toutes les icônes qui en sont tirées
   changent d'un coup, et « Volumes » rend les dessins de la page. Les rendus ci-dessous ne peignent que les volumes :
   ils sont grisés avec un autre modèle.

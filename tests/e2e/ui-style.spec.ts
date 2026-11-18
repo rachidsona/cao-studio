@@ -104,7 +104,7 @@ test("style des icônes : Contour, Plein, Deux tons peignent autrement les même
   expect(errors).toEqual([]);
 });
 
-test("modèle des icônes : Ligne, Solide, Technique redessinent les outils du ruban, gardés au rechargement ; « Volumes » rend les dessins de la page", async ({ page }) => {
+test("modèle des icônes : Studio, Glyphe, Croquis redessinent les outils du ruban, gardés au rechargement ; « Volumes » rend les dessins de la page", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -131,11 +131,11 @@ test("modèle des icônes : Ligne, Solide, Technique redessinent les outils du r
   expect(volumes.cabinet).toContain("url(#kwt)");
 
   const seen = [volumes.cabinet];
-  for (const [name, model] of [["Ligne", "ligne"], ["Solide", "solide"], ["Technique", "technique"]] as const) {
+  for (const [name, model] of [["Studio", "studio"], ["Glyphe", "glyphe"], ["Croquis", "croquis"]] as const) {
     await choose(name);
     await expect.poll(async () => (await look()).model).toBe(model);
     const now = await look();
-    // Another drawing each time, flat (none of the volumes' faces); a tool not redrawn keeps its own; the styles of
+    // Another drawing each time, none of the volumes' gradients; a tool not redrawn keeps its own; the styles of
     // the volumes are not offered.
     expect(seen).not.toContain(now.cabinet);
     expect(now.cabinet).not.toContain("url(#k");
@@ -144,7 +144,7 @@ test("modèle des icônes : Ligne, Solide, Technique redessinent les outils du r
   }
   await page.reload();
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
-  await expect.poll(async () => (await look()).model).toBe("technique");
+  await expect.poll(async () => (await look()).model).toBe("croquis");
   expect((await look()).cabinet).toBe(seen[3]);
 
   await choose("Volumes");
