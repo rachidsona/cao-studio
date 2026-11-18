@@ -791,5 +791,26 @@ test("linéaire : façades et intérieur du meuble choisi — étagères, cloiso
   await expect(page.locator('[title="Porte gauche — OK"]').first()).toBeAttached();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
   await shot(page, "20-interieur-du-meuble");
+  // The plinth, chosen on the strip: set back, given a look, taken away and put back.
+  const strip = tool.locator('[data-run-strip="A"]');
+  const bar = tool.locator("[data-strip-actions]");
+  await strip.locator("[data-kick]").first().click();
+  await expect(bar).toContainText("Plinthe");
+  await bar.locator("[data-strip-kick-back]").click();
+  await expect(bar).toContainText("reculée de 1 cm");
+  // Stored (the kitchen made again): the plinth is still the one chosen.
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  await expect(bar).toContainText("reculée de 1 cm");
+  await bar.locator("[data-kick-looks] summary").click();
+  await bar.locator('[data-kick-look="dekton-sirius"]').click();
+  await expect(bar.locator("[data-kick-looks] summary")).toContainText("Dekton Sirius");
+  await expect(page.locator('[title="Plinthe A — OK"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  await bar.locator("[data-strip-remove]").click();
+  await expect(strip.locator("[data-kick]")).toHaveCount(0);
+  await expect(page.locator('[title="Plinthe A — OK"]')).toHaveCount(0, { timeout: 60_000 });
+  await bar.locator("[data-strip-kick-on]").click();
+  await expect(strip.locator("[data-kick]")).toHaveCount(1);
+  await shot(page, "21-plinthe");
   expect(errors).toEqual([]);
 });

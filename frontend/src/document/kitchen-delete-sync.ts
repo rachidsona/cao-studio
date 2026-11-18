@@ -4,7 +4,7 @@
  * cuisine est refaite, ses voisins ne bougent pas, et un autre meuble peut prendre cette place
  * (features/kitchen-run-items.ts). Un caisson aménagé dont on supprime les panneaux disparaît en entier, son esquisse
  * avec ; la place qu'il tenait redevient libre. Un fileur du linéaire supprimé (posé à la main, ou celui que le plan met
- * dans le reste) laisse aussi sa place libre, sans fileur. Toute la cuisine supprimée d'un coup n'est pas refaite. Pur.
+ * dans le reste) laisse aussi sa place libre, sans fileur. Une plinthe supprimée : son linéaire n'en a plus. Toute la cuisine supprimée d'un coup n'est pas refaite. Pur.
  */
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { runCabinets } from "./kitchen-plan-add";
@@ -44,10 +44,13 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
     const deleted = made.filter((id) => !findFeature(doc, id) && findFeature(prev, id));
     const units = new Set(deleted.filter((id) => findFeature(prev, id)?.type === "cabinet"));
     const fillers = deletedFillers(prev, plan.made ?? {}, deleted);
+    // A run's plinth deleted (any piece of it): that run has none, until it is put back on its strip.
+    const kicks = Object.entries(plan.made ?? {}).flatMap(([run, ids]) => ids.filter((id) => deleted.includes(id) && /^Plinthe /.test(findFeature(prev, id)?.name ?? "")).map((id) => ({ id, run })));
+    const noKick = kicks.length ? { ...plan.noKick, ...Object.fromEntries(kicks.map((k) => [k.run, true])) } : undefined;
     // Only units (their fronts go with them) and fillers: with a worktop or a wall deleted too, the kitchen is being taken away.
     const only = deleted.every((id) => {
       const f = findFeature(prev, id);
-      return units.has(id) || fillers.some((x) => x.id === id) || (f?.type === "fronts" && units.has(f.cabinet));
+      return units.has(id) || fillers.some((x) => x.id === id) || kicks.some((x) => x.id === id) || (f?.type === "fronts" && units.has(f.cabinet));
     });
     if (fillers.length && only) {
       const fills = kitchenFromPlan(plan, kitchenRoomInfo(prev, plan)).fills;
@@ -89,8 +92,8 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
       return held?.type === "sketch" && (held.offsets ?? []).some(isPartition) && !boards(doc, held.id) && boards(prev, held.id) ? [held.id] : [];
     });
     if (emptied.length) doc = deleteFeatures(doc, emptied).next;
-    if (freed) {
-      const built = withKitchenBuilt(doc, sketch.id, { runs });
+    if (freed || (noKick && only)) {
+      const built = withKitchenBuilt(doc, sketch.id, { runs, ...(noKick && only ? { noKick } : {}) });
       if (typeof built !== "string") doc = built.doc;
     } else if (emptied.length) {
       // Its room, free again (kitchenPlanIn no longer sees it held).

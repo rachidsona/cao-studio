@@ -84,7 +84,7 @@ export interface StripHost {
   focus?: boolean;
 }
 
-export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" };
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -151,11 +151,12 @@ export function runStrip(host: StripHost): SVGSVGElement {
   // The splashback, the worktop's returns and the finishing sides, where the 3D has them: along the run, and up.
   const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];
   const along = (q: Vec3) => (q[0] - o[0]) * (e[0] - o[0]) + (q[1] - o[1]) * (e[1] - o[1]);
+  const spanOf = (box: KitchenBox): [number, number] => [along(box.from), along([box.to[0], box.to[1], 0]), along([box.from[0], box.to[1], 0]), along([box.to[0], box.from[1], 0])].reduce<[number, number]>(([lo, hi], u) => [Math.min(lo, u), Math.max(hi, u)], [Infinity, -Infinity]);
   for (const box of host.boxes ?? []) {
     // The worktop too: over a return it runs on (the strip's own worktop stops at the units).
     const finish = box.kind === "splashback" ? (box.name.startsWith("Retour") ? "return" : "splashback") : box.kind === "worktop" ? "worktop" : box.name.startsWith("Joue de finition") ? "end-panel" : null;
     if (!finish) continue;
-    const [u0, u1] = [along(box.from), along([box.to[0], box.to[1], 0]), along([box.from[0], box.to[1], 0]), along([box.to[0], box.from[1], 0])].reduce(([lo, hi], u) => [Math.min(lo, u), Math.max(hi, u)], [Infinity, -Infinity]);
+    const [u0, u1] = spanOf(box);
     const [z0, z1] = [box.from[2], box.to[2]];
     const tone = finish === "end-panel" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE;
     // Not square (a splashback stepped up under the hood, a piece cut at 45°): its outline.
@@ -242,6 +243,19 @@ export function runStrip(host: StripHost): SVGSVGElement {
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
+  // The plinths, over the units' feet: clicked, chosen (set back, taken away, given a look) — all those of the run together.
+  if (host.pickOther) {
+    const on = host.other?.kind === "kick";
+    for (const box of (host.boxes ?? []).filter((b) => b.kind === "kick")) {
+      const [u0, u1] = spanOf(box);
+      const kick = document.createElementNS(SVG, "rect");
+      for (const [k, v] of Object.entries({ x: u0, y: y(box.to[2]), width: Math.max(0, u1 - u0), height: box.to[2] - box.from[2], fill: on ? BRASS : "transparent", "fill-opacity": 0.35, stroke: on ? BRASS : "none", "stroke-width": 3, "vector-effect": "non-scaling-stroke", class: "cursor-pointer", "data-kick": "" })) kick.setAttribute(k, String(v));
+      kick.innerHTML = "<title>Plinthe : cliquer pour la choisir (reculer, supprimer, aspect)</title>";
+      kick.addEventListener("pointerdown", (event) => event.stopPropagation());
+      kick.addEventListener("click", () => host.pickOther!({ kind: "kick" }));
+      node.append(kick);
+    }
+  }
   for (const f of node.querySelectorAll<SVGElement>("[data-filler]")) f.addEventListener("click", () => host.filler?.(f.dataset.filler!.split(":").map(Number) as [number, number]));
   // The keyboard on what is chosen: Suppr, Ctrl + D, the arrows.
   if (host.key) {

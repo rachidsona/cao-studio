@@ -19,7 +19,7 @@ import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 import { Folds } from "../../ui/fold";
 import { familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
-import { withCorner, type CornerSetting } from "../../document/kitchen-corners";
+import { kickOf, withCorner, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerChoice } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
 import { BRASS } from "./unit-elevation";
@@ -54,6 +54,7 @@ export interface RunEditorHost {
   /** The unit chosen when it opens, and the part of the panel open (the run made again under it: it stays as it was). */
   chosen?: string | null;
   fold?: string | null;
+  other?: StripOther | null;
   redraw(): void;
   /** Something changed: stored a moment later (no « OK »), the kitchen made again. */
   changed(): void;
@@ -82,6 +83,8 @@ export class RunEditor {
   /** What else is chosen on the strip: an appliance put by hand, or the worktop; the worktop taken away or put back here. */
   private other: StripOther | null = null;
   private worktop: boolean | undefined;
+  /** What was changed of the run's plinth here: taken away or put back, set back, its look (null: its material's own). */
+  private kick: { on?: boolean; back?: number; look?: string | null } = {};
   /** The strip takes the keyboard when it is drawn next: something on it was just chosen or changed. */
   private focusStrip = false;
   private readonly folds = new Folds(() => this.host.redraw());
@@ -93,6 +96,8 @@ export class RunEditor {
     this.chosen = this.items.some((i) => i.id === host.chosen) ? host.chosen! : null;
     this.rest = runGeometry(host.plan, host.run).rest;
     this.folds.open = host.fold ?? null;
+    // The plinth or the worktop chosen stays chosen (set back again, another look), if it is still there.
+    this.other = host.other?.kind === "kick" && !kickOf(host.plan, host.run.id).on ? null : (host.other ?? null);
   }
 
   /** The title, with the cross that stores what waits and closes the run. */
@@ -113,6 +118,10 @@ export class RunEditor {
 
   get openFold(): string | null {
     return this.folds.open;
+  }
+
+  get otherChosen(): StripOther | null {
+    return this.other;
   }
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
@@ -174,7 +183,12 @@ export class RunEditor {
 
   /** The corners chosen here, and the worktop taken away or put back. */
   private get settings(): CornerSetting {
-    return this.worktop === undefined ? this.corners : { ...this.corners, noWorktop: { ...this.host.plan.noWorktop, [this.host.run.id]: !this.worktop } };
+    const { plan, run } = this.host;
+    const k = this.kick;
+    return {
+      ...this.corners, ...(this.worktop === undefined ? {} : { noWorktop: { ...plan.noWorktop, [run.id]: !this.worktop } }),
+      ...(k.on === undefined ? {} : { noKick: { ...plan.noKick, [run.id]: !k.on } }), ...(k.back === undefined ? {} : { kickSetback: { ...plan.kickSetback, [run.id]: k.back } }), ...(k.look === undefined ? {} : { kickLook: k.look ?? undefined }),
+    };
   }
 
   /** The plan as it would be: this run's rest and the corners chosen here. */
@@ -211,6 +225,8 @@ export class RunEditor {
         void editor.change(withApplianceRemoved(editor.doc, id)).then(() => (this.host.redraw(), this.host.changed()));
       },
       setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()),
+      kick: { ...kickOf(plan, run.id), look: plan.kickLook },
+      setKick: (change) => ((this.kick = { ...this.kick, ...change }), change.on === false ? (this.other = null) : 0, (this.focusStrip = true), this.touched()),
       align: (id) => {
         const made = alignedOver(g, this.items, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, id);
         if (typeof made === "string") return editor.notify(made, "info");
@@ -223,7 +239,7 @@ export class RunEditor {
     this.focusStrip = false;
     const strip = runStrip({ plan, run, geometry: g, fill, boxes: kitchenFromPlan(plan, this.host.room).boxes.filter((b) => b.run === run.id), chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
         // An appliance put by hand, or the worktop: chosen instead of a unit (clicked again: no longer).
-        this.other = this.other && this.other.kind === what.kind && (what.kind === "worktop" || (this.other as { id?: string }).id === what.id) ? null : what;
+        this.other = this.other && this.other.kind === what.kind && (what.kind !== "appliance" || (this.other as { id?: string }).id === what.id) ? null : what;
         this.chosen = null;
         this.picked = [];
         this.focusStrip = true;

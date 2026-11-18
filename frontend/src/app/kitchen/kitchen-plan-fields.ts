@@ -3,11 +3,8 @@ import { KITCHEN_PLAN, type KitchenField } from "../../document/kitchen-plan-sha
 import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
-import { APPEARANCES, CATEGORIES, type Appearance, type CategoryId } from "../../appearance/library";
-import { swatch } from "../../appearance/swatches";
+import { lookPicker } from "./look-picker";
 
-/** The families offered, marbles and Dekton first. */
-const LOOKS: CategoryId[] = ["stone", "sintered", "concrete", "wood"];
 
 export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels" | "splashbackHoodOnly";
@@ -50,34 +47,7 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
     choice.addEventListener("change", () => change(choice.value));
     return el("label", { class: ROW }, label, choice);
   };
-  /**
-   * The worktop's look, from the library's stones, Dekton, concretes and woods, or its material's own: each shown by
-   * its sphere (appearance/swatches.ts), drawn when the list is first opened.
-   */
-  const look = (): HTMLElement => {
-    const value = host.plan().worktopLook;
-    const chosen = APPEARANCES.find((a) => a.id === value);
-    const ball = (a: Appearance | undefined, size: string) => {
-      const image = el("img", { alt: "", class: `${size} shrink-0 rounded-full bg-gray-100 dark:bg-gray-800`, draggable: "false" });
-      if (a) image.style.background = a.color;
-      return { image, draw: () => a && void swatch(a).then((url) => url && (image.src = url)) };
-    };
-    const pick = (a: Appearance | undefined, label: string) => {
-      const b = ball(a, "aspect-square w-full");
-      const button = el("button", { type: "button", class: `flex min-w-0 flex-col items-center gap-0.5 p-1 text-center hover:bg-sky-50 dark:hover:bg-sky-950 ${(a?.id ?? undefined) === value ? "ring-2 ring-sky-500" : ""}`, title: label, "aria-pressed": String((a?.id ?? undefined) === value), "data-worktop-look": a?.id ?? "" }, b.image, el("span", { class: "line-clamp-2 w-full text-3xs leading-tight" }, label));
-      button.addEventListener("click", () => host.set({ worktopLook: a?.id }));
-      return { category: a?.category, button, draw: b.draw };
-    };
-    const tiles = [pick(undefined, "Celui de la matière"), ...APPEARANCES.filter((a) => LOOKS.includes(a.category)).map((a) => pick(a, a.name))];
-    const grid = (category: CategoryId | undefined) => el("div", { class: "grid grid-cols-4 gap-1" }, ...tiles.filter((t) => t.category === category).map((t) => t.button));
-    const families = [grid(undefined), ...LOOKS.map((id) => CATEGORIES.find((c) => c.id === id)!).flatMap((c) => [el("p", { class: "pt-1 text-2xs font-semibold text-gray-600 dark:text-gray-300" }, c.name), grid(c.id)])];
-    const current = ball(chosen, "size-6");
-    current.draw();
-    const list = el("details", { class: "border border-gray-300 dark:border-gray-600", "data-worktop-looks": "" },
-      el("summary", { class: "flex cursor-pointer items-center gap-2 px-2 py-1 text-xs", "aria-label": "Aspect du plan de travail" }, current.image, chosen?.name ?? "Celui de la matière"),
-      el("div", { class: "max-h-80 space-y-1 overflow-y-auto p-1" }, ...families));
-    list.addEventListener("toggle", () => list.open && tiles.forEach((t) => t.draw()));
-    return el("div", { class: "space-y-1" }, el("p", {}, "Aspect du plan de travail"), list);
-  };
+  /** The worktop's look, each shown by its sphere (look-picker.ts), or its material's own. */
+  const look = (): HTMLElement => lookPicker({ label: "Aspect du plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop" });
   return { number, check, select, look };
 }

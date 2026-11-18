@@ -95,3 +95,22 @@ describe("supprimer un meuble de cuisine dans la 3D", () => {
     expect(() => parseDocument(freed)).not.toThrow();
   });
 });
+
+describe("plinthe d'un linéaire", () => {
+  it("supprimée dans la 3D : ce linéaire n'en a plus, elle ne revient pas ; reculée et son aspect choisi par le plan", () => {
+    const { doc, plan } = kitchen();
+    const kick = doc.features.find((f) => f.type === "extrude" && f.name === "Plinthe A")!;
+    const freed = withDeletedFreed(doc, deleteFeatures(doc, [kick.id]).next);
+    expect(kitchenPlanIn(freed, plan)!.noKick).toEqual({ A: true });
+    expect(freed.features.some((f) => f.name.startsWith("Plinthe"))).toBe(false);
+    // Put back, set back by 4 cm, in a look of the library.
+    const back = withKitchenBuilt(freed, plan, { noKick: { A: false }, kickSetback: { A: 40 }, kickLook: "dekton-sirius" });
+    if (typeof back === "string") throw new Error(back);
+    const made = back.doc.features.find((f) => f.type === "extrude" && f.name === "Plinthe A")!;
+    const was = doc.features.find((f) => f.id === (kick as { sketch: string }).sketch) as { points: { y: number }[] };
+    const now = back.doc.features.find((f) => f.id === (made as { sketch: string }).sketch) as { points: { y: number }[] };
+    // The run's fronts face −Y: set back, the plinth is 40 mm nearer the wall.
+    expect(Math.min(...now.points.map((p) => p.y)) - Math.min(...was.points.map((p) => p.y))).toBeCloseTo(40);
+    expect(back.doc.bodyInfo?.[made.id]?.appearance).toBe("dekton-sirius");
+  });
+});

@@ -7,7 +7,7 @@
  * (`run`). Le triangle d'activité et le reste de l'ergonomie suivent (features/kitchen-appliances.ts). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
-import { cornerSide, wallCornerSide } from "./kitchen-corners";
+import { cornerSide, kickOf, wallCornerSide } from "./kitchen-corners";
 import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
@@ -168,10 +168,11 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     }
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
+    const kick = kickOf(p, run.id);
     // A rounded end unit stands on its own rounded socle.
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...fill.free, ...rounds.map((r) => r.span)]))) {
       const used = fill.placed.some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
-      if (used && p.kick !== false) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16, D + FRONT, 0, s.plinth - 3));
+      if (used && kick.on) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3));
     }
     if (run.wall && !room) box(`Mur ${run.id}`, "wall", band(run.id === "A" && run.left !== "free" ? -WALL_THICKNESS : 0, run.length + (run.id === "A" && run.right !== "free" ? WALL_THICKNESS : 0), -WALL_THICKNESS, 0, 0, p.height));
   }
@@ -230,12 +231,13 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     }
     // The plinth goes on under the corner, to the end of its fronts; the run that passes closes the inner corner,
     // the other one stops against it.
-    if (p.kick !== false && corner.fronts.length) {
+    const kick = kickOf(p, run.id);
+    if (kick.on && corner.fronts.length) {
       const L = run.length;
       const end = side === "left" ? Math.max(...corner.fronts.map((f) => f.to)) : L - Math.min(...corner.fronts.map((f) => f.from));
       const start = pass ? D + FRONT - 16 : D + FRONT;
       const [a, b] = side === "left" ? [start, end] : [L - end, L - start];
-      if (b - a > 1) box(`Plinthe d'angle ${run.id}${side === "right" ? " (droite)" : ""}`, "kick", band(a, b, D + FRONT - 16, D + FRONT, 0, s.plinth - 3), unit);
+      if (b - a > 1) box(`Plinthe d'angle ${run.id}${side === "right" ? " (droite)" : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3), unit);
     }
     // Up in the wall row, its corner unit and fronts.
     const high = wallRow ? wallCornerSide(p, run, side) : null;

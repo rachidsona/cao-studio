@@ -58,7 +58,7 @@ function cutByHand(doc: CadDocument, [x, y]: number[]): boolean {
 
 /** The features of a layout already made (a kitchen plan's, document/kitchen-plan-build.ts), turned and moved by `place`. */
 /** `kept`: the cut-outs each worktop had before (by its name), those put or changed by hand staying in it. */
-export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map(), worktopLook?: string): KitchenPlan {
+export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map(), worktopLook?: string, kickLook?: string): KitchenPlan {
   let probe = doc;
   const plan: KitchenPlan = { features: [], info: {}, names: {}, layers: {}, layout, problems: [] };
   const push = (f: Feature) => {
@@ -113,7 +113,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     const top = box.kind === "worktop" || box.kind === "splashback";
     const material = top ? worktopMaterial : box.carcass ? "melamine-white" : frontMaterial;
     // Walls, appliances and fittings (a LeMans's trays) are bought, not cut: out of the cut list and the quote.
-    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}) };
+    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}), ...(box.kind === "kick" && kickLook ? { appearance: kickLook } : {}) };
     if (box.kind === "wall") plan.layers[id] = ROOM_LAYER;
     if (box.kind === "appliance") plan.layers[id] = APPLIANCE_LAYER;
     if (box.kind === "fitting") plan.layers[id] = FITTING_LAYER;

@@ -2,7 +2,8 @@
  * Ce qu'on fait de ce qui est choisi sur la bande d'un linéaire, sans ouvrir un volet : une barre sous la bande
  * (← →, Aligner sur le bas pour un meuble haut, Dupliquer, Supprimer), le clavier — Suppr le supprime, Ctrl + D le duplique, les flèches le déplacent d'un
  * cran — et le clic droit sur un meuble. Un meuble (ou plusieurs), un appareil posé à la main (Électroménager, ôté avec
- * sa découpe), ou le plan de travail du linéaire, qu'on supprime et qu'on remet.
+ * sa découpe), le plan de travail du linéaire, qu'on supprime et qu'on remet, ou sa plinthe : reculée ou avancée,
+ * supprimée et remise, son aspect choisi dans l'Apparence.
  */
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenRunItem } from "../../document/types";
@@ -11,6 +12,8 @@ import { withDuplicated } from "../../features/kitchen-run-multi";
 import { el } from "../../ui/dom";
 import { openTreeMenu } from "../../ui/tree-menu";
 import type { StripOther } from "./kitchen-run-strip";
+import { KICK_BACK } from "../../document/kitchen-corners";
+import { lookPicker } from "./look-picker";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
 
@@ -28,6 +31,9 @@ export interface StripActionsHost {
   move(id: string, index: number): void;
   removeAppliance(id: string): void;
   setWorktop(on: boolean): void;
+  /** The run's plinth: built or not, how far back from the fronts (mm), its look; and what changes of it. */
+  kick: { on: boolean; back: number; look: string | undefined };
+  setKick(change: { on?: boolean; back?: number; look?: string | null }): void;
   /** A wall unit set over the base unit under it (features/kitchen-run-align.ts). */
   align(id: string): void;
 }
@@ -74,6 +80,15 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   } else if (host.other?.kind === "worktop") {
     label = "Plan de travail";
     buttons = [button("Supprimer le plan de travail", "data-strip-remove", "Ce linéaire sans plan de travail ni découpes (Suppr) ; il se remet d'un clic", () => host.setWorktop(false))];
+  } else if (host.other?.kind === "kick") {
+    const { back, look } = host.kick;
+    label = `Plinthe${back ? ` · reculée de ${back / 10} cm` : ""}`;
+    buttons = [
+      button("Reculer", "data-strip-kick-back", `En retrait des façades, ${KICK_BACK.step / 10} cm de plus (jusqu'à ${KICK_BACK.max / 10} cm)`, () => host.setKick({ back: back + KICK_BACK.step }), back >= KICK_BACK.max),
+      button("Avancer", "data-strip-kick-front", `Vers les façades, ${KICK_BACK.step / 10} cm`, () => host.setKick({ back: back - KICK_BACK.step }), back <= 0),
+      button("Supprimer la plinthe", "data-strip-remove", "Ce linéaire sans plinthe (Suppr) ; elle se remet d'un clic", () => host.setKick({ on: false })),
+      lookPicker({ label: "Aspect des plinthes", value: look, set: (id) => host.setKick({ look: id ?? null }), attr: "kick" }),
+    ];
   } else if (ids.length) {
     const one = ids.length === 1 ? items.find((i) => i.id === ids[0]) : undefined;
     const [index, count] = one ? place(one.id) : [-1, 0];
@@ -85,10 +100,10 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       button("Supprimer", "data-strip-remove", "Ôter du linéaire (Suppr)", () => remove(ids)),
     ];
   } else {
-    label = "Cliquez un meuble, un appareil ou le plan de travail : Suppr le supprime, Ctrl + D le duplique, ← → le déplacent.";
-    buttons = host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : [];
+    label = "Cliquez un meuble, un appareil, le plan de travail ou la plinthe : Suppr le supprime, Ctrl + D le duplique, ← → le déplacent.";
+    buttons = [...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))])];
   }
-  const chosen = !!appliance || host.other?.kind === "worktop" || ids.length > 0;
+  const chosen = !!appliance || host.other?.kind === "worktop" || host.other?.kind === "kick" || ids.length > 0;
   // Its name on a line of its own, whole; what one does of it under it.
   const bar = el("div", { class: "space-y-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("p", { class: chosen ? "truncate font-medium" : "text-2xs text-gray-500 dark:text-gray-400" }, label), buttons.length ? el("div", { class: "flex flex-wrap gap-1" }, ...buttons) : null);
   return {
@@ -100,6 +115,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       if (event.key === "Delete" || event.key === "Backspace") {
         if (appliance) host.removeAppliance(appliance.id);
         else if (host.other?.kind === "worktop") host.setWorktop(false);
+        else if (host.other?.kind === "kick") host.setKick({ on: false });
         else if (ids.length) remove(ids);
         else return;
         done();

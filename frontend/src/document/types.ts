@@ -195,6 +195,10 @@ export interface KitchenFloorPlan {
   worktopJoint?: "top" | "side" | "miter";
   /** Finishing sides in the fronts' material at the free ends of the runs: the last column's and the last wall unit's. */
   endPanels?: boolean;
+  /** By run: its plinth taken away, and how far it is set back from the fronts (mm). The look of the plinths (appearance/library.ts), over the fronts' material's own. */
+  noKick?: Record<string, boolean>;
+  kickSetback?: Record<string, number>;
+  kickLook?: string;
   /** The splashback only where the hood is, from the worktop up to it (else along the whole worktop, up to it under the hood). */
   splashbackHoodOnly?: boolean;
   /** By run: its units and appliances, and where what is left goes. */
