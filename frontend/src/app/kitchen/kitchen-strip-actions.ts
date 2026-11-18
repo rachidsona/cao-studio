@@ -6,7 +6,7 @@
  */
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenRunItem } from "../../document/types";
-import { isSpace, itemEntry, newItem, rowOf } from "../../features/kitchen-run-items";
+import { isFiller, isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../../features/kitchen-run-items";
 import { withDuplicated } from "../../features/kitchen-run-multi";
 import { el } from "../../ui/dom";
 import { openTreeMenu } from "../../ui/tree-menu";
@@ -35,7 +35,9 @@ export interface StripActionsHost {
 export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(event: KeyboardEvent): void; menu(id: string, event: MouseEvent): void } {
   const { items } = host;
   const chosenIds = () => (host.picked.length > 1 ? [...host.picked] : host.chosen ? [host.chosen] : []);
-  const remove = (ids: readonly string[]) => host.change(items.filter((i) => !ids.includes(i.id)), null, []);
+  // A filler taken out leaves its room free (as in the 3D): taken away, the plan would close it with a filler again.
+  const remove = (ids: readonly string[]) =>
+    host.change(items.flatMap((i) => (!ids.includes(i.id) ? [i] : isFiller(i) && !isSpace(i) ? [{ ...i, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE }] : [])), null, []);
   const duplicate = (ids: readonly string[]) => {
     const one = ids.length === 1 ? items.find((i) => i.id === ids[0]) : undefined;
     // One: its copy beside it, as it is (its own sizes, its door's side), if there is room.

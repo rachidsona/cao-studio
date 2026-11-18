@@ -51,6 +51,26 @@ describe("supprimer un meuble de cuisine dans la 3D", () => {
     expect(withDeletedFreed(doc, doc)).toBe(doc);
   });
 
+  it("un fileur supprimé, celui du reste ou un posé à la main : sa place reste libre, il ne revient pas", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
+    let items: KitchenRunItem[] = [];
+    for (const [model, width] of [["base-bas-2-portes", 800], ["filler", 50], ["base-bas-3-tiroirs", 600], ["base-bas-2-portes", 900]] as const) items = [...items, newItem(items, model, width)];
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items } });
+    if (typeof built === "string") throw new Error(built);
+    const doc = built.doc;
+    const named = (d: CadDocument, name: string) => d.features.find((f) => f.type === "extrude" && f.name === name);
+    // 2400 − 2350: 50 mm of rest, closed by the plan's filler; the one put by hand between the units.
+    expect([named(doc, "Fileur A"), named(doc, "Fileur posé A1")].every(Boolean)).toBe(true);
+    const rest = withDeletedFreed(doc, deleteFeatures(doc, [named(doc, "Fileur A")!.id]).next);
+    expect(kitchenPlanIn(rest, made.id)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["base-bas-2-portes", 800], ["filler", 50], ["base-bas-3-tiroirs", 600], ["base-bas-2-portes", 900], ["space", 50]]);
+    expect(named(rest, "Fileur A")).toBeUndefined();
+    const hand = withDeletedFreed(rest, deleteFeatures(rest, [named(rest, "Fileur posé A1")!.id]).next);
+    expect(kitchenPlanIn(hand, made.id)!.runs!.A!.map((i) => i.model)).toEqual(["base-bas-2-portes", "space", "base-bas-3-tiroirs", "base-bas-2-portes", "space"]);
+    expect(hand.features.some((f) => f.type === "extrude" && f.name.startsWith("Fileur"))).toBe(false);
+    // The units stay where they were.
+    expect(cabinet(hand, "Bas 3 tiroirs")!.origin).toEqual(cabinet(doc, "Bas 3 tiroirs")!.origin);
+  });
+
   it("ne refait pas la cuisine quand on l'enlève : un plan de travail supprimé avec ses meubles", () => {
     const { doc } = kitchen();
     const worktop = doc.features.find((f) => f.name.startsWith("Plan de travail"))!;

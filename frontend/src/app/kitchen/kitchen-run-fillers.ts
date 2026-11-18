@@ -8,6 +8,7 @@ import type { DisplayUnit, KitchenRunItem } from "../../document/types";
 import { FILLER, FILLER_WALL, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
+import { gapsAsItems } from "../../features/kitchen-run-gaps";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
 const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -88,23 +89,12 @@ function placedFillers(host: FillerHost): HTMLElement {
 }
 
 /**
- * The fillers the plan puts in the room left over (up to 15 cm) made ones put by hand, each in its place — after the
- * base unit it follows, or before the one it comes before —, all of them, so that the rest shared out moves none;
- * `gap` (along the run) is the one clicked, then chosen: moved, sized or taken out as a unit is. Taken out, the room
- * it closed is closed again by the plan.
+ * The fillers the plan puts in the room left over made ones put by hand, all of them so that the rest shared out moves
+ * none (features/kitchen-run-gaps.ts); `gap` (along the run) is the one clicked, then chosen: moved, sized or taken
+ * out as a unit is. Taken out, the room it closed is closed again by the plan.
  */
 export function fillerFromGap(items: readonly KitchenRunItem[], fill: RunFill, gap: [number, number]): { items: KitchenRunItem[]; id: string } {
-  const base = fill.placed.filter((pl) => pl.row === "base");
-  let next: KitchenRunItem[] = [...items];
-  let id = "";
-  for (const [a, b] of fill.fillers) {
-    const item = newItem(next, FILLER, Math.round((b - a) * 10) / 10);
-    const before = base.filter((pl) => pl.at + pl.item.width <= a + 1).sort((x, y) => y.at - x.at)[0];
-    const after = base.filter((pl) => pl.at >= b - 1).sort((x, y) => x.at - y.at)[0];
-    const index = (of: string) => next.findIndex((i) => i.id === of);
-    const at = before ? index(before.item.id) + 1 : after ? index(after.item.id) : next.length;
-    next = [...next.slice(0, at), item, ...next.slice(at)];
-    if (Math.abs(a - gap[0]) < 1 && Math.abs(b - gap[1]) < 1) id = item.id;
-  }
-  return { items: next, id };
+  const made = gapsAsItems(items, fill);
+  const k = fill.fillers.findIndex(([a, b]) => Math.abs(a - gap[0]) < 1 && Math.abs(b - gap[1]) < 1);
+  return { items: made.items, id: made.ids[k] ?? "" };
 }
