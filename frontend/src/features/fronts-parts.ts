@@ -14,6 +14,8 @@
  *   avant, door-decor.ts) : une seule planche, débitée comme une porte plate.
  * - Porte vitrée : la porte est le cadre en profilé alu, son verre une pièce à part après les façades (« Vitre … »),
  *   au milieu de l'épaisseur, qui pivote avec elle ; charnières pour cadre alu (glass-door.ts).
+ * - Une ou deux portes sous un tiroir (`topDrawer` : la hauteur de sa façade, en haut du caisson) ; et des tiroirs à
+ *   l'anglaise (`innerDrawers`) derrière les portes, sans façade, en retrait des charnières, en bas du caisson.
  */
 import type { CabinetFeature, CabinetNotch, CadDocument, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "./cabinet-parts";
@@ -66,14 +68,24 @@ export const SLIDES = [250, 300, 350, 400, 450, 500, 550, 600];
 export const SLIDE_PLAY = 12.5;
 export const DRAWER_SIDE = 16;
 export const DRAWER_BOTTOM = 8;
+/** An English drawer behind a door: narrower than an outer one by this on each side, clear of the hinges' plates (mm). */
+export const INNER_CLEAR = 25;
+/** And set back by this behind the door, clear of its hinge cups (mm). */
+export const INNER_BACK = 20;
 
-export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "frameDepth" | "pitch" | "grip" | "hinges" | "hw">>, cabinet: CabinetFeature | undefined): string | null {
+export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "frameDepth" | "pitch" | "grip" | "hinges" | "hw" | "side" | "topDrawer" | "innerDrawers">>, cabinet: CabinetFeature | undefined): string | null {
   if (!cabinet || cabinet.type !== "cabinet") return "Choisissez le caisson à habiller.";
   const problem = cabinetProblem(cabinet);
   if (problem) return problem;
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
   if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
   if (f.layout === "drawers" && (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > 8)) return "De 1 à 8 tiroirs.";
+  if (f.layout !== "drawers" && f.topDrawer !== undefined) {
+    if (swingsUp(f as Pick<FrontsFeature, "layout" | "side">)) return "Un tiroir au-dessus d'une porte relevable ou d'un abattant ne se fait pas : une porte sur le côté.";
+    const a = frontArea(f, cabinet);
+    if (!(f.topDrawer >= 80) || a.z1 - a.z0 - f.topDrawer - a.between < 200) return "La façade du tiroir fait 80 mm au moins, et laisse 200 mm de porte dessous.";
+  }
+  if (f.layout !== "drawers" && f.innerDrawers !== undefined && (!Number.isInteger(f.innerDrawers) || f.innerDrawers < 1 || f.innerDrawers > 5)) return "De 1 à 5 tiroirs à l'anglaise.";
   if (f.grip === "gorge") {
     if (f.mount === "inset") return "Sans poignée, les façades sont en applique : la gorge est derrière leur chant haut.";
     if (isGlass(f)) return f.layout === "drawers" ? "Un tiroir vitré garde sa poignée : la gorge est pour les façades pleines." : "Une porte vitrée garde sa poignée : la gorge est pour les portes pleines.";
@@ -168,11 +180,26 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   const box = (name: string, a: [number, number, number], b: [number, number, number], role?: FrontPart["role"]) =>
     parts.push({ name, from: [ox + a[0], oy + a[1], oz + a[2]], to: [ox + b[0], oy + b[1], oz + b[2]], ...(role ? { role } : {}) });
 
-  if (f.layout === "door") box(f.side === "top" ? "Porte relevable" : f.side === "bottom" ? "Abattant" : "Porte", [x0, y0, z0], [x1, y1, z1], { kind: "door", hinge: f.side ?? "left" });
+  const bt = cabinet.back === "none" ? 0 : cabinet.backThickness;
+  const room = D - bt - (inset ? T : 0) - 10;
+  const length = [...SLIDES].reverse().find((l) => l <= room) ?? Math.max(100, Math.floor(room / 10) * 10);
+  /** A drawer's box, `k` its name, from `zb` up `height`, between `bx0` and `bx1` across, `back` mm behind the fronts. */
+  const drawerBox = (k: string, zb: number, height: number, [bx0, bx1]: [number, number], back = 0) => {
+    const [ya, yb] = [(inset ? T + 2 : 2) + back, (inset ? T + 2 : 2) + back + Math.min(length, room - back)];
+    box(`Tiroir ${k} — côté gauche`, [bx0, ya, zb], [bx0 + DRAWER_SIDE, yb, zb + height]);
+    box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, ya, zb], [bx1, yb, zb + height]);
+    box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, ya, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, ya + DRAWER_SIDE, zb + height]);
+    box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, yb, zb + height]);
+    box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
+  };
+  const slides: [number, number] = [t + SLIDE_PLAY, W - t - SLIDE_PLAY];
+  // Under a drawer, the doors stop below it.
+  const doorTop = f.layout !== "drawers" && f.topDrawer ? z1 - f.topDrawer - between : z1;
+  if (f.layout === "door") box(f.side === "top" ? "Porte relevable" : f.side === "bottom" ? "Abattant" : "Porte", [x0, y0, z0], [x1, y1, doorTop], { kind: "door", hinge: f.side ?? "left" });
   else if (f.layout === "doors") {
     const mid = (x0 + x1) / 2;
-    box("Porte gauche", [x0, y0, z0], [mid - g / 2, y1, z1], { kind: "door", hinge: "left" });
-    box("Porte droite", [mid + g / 2, y0, z0], [x1, y1, z1], { kind: "door", hinge: "right" });
+    box("Porte gauche", [x0, y0, z0], [mid - g / 2, y1, doorTop], { kind: "door", hinge: "left" });
+    box("Porte droite", [mid + g / 2, y0, z0], [x1, y1, doorTop], { kind: "door", hinge: "right" });
   }
   if (f.layout !== "drawers") {
     // The glass of each glazed door, after the doors: in the middle of its thickness (along Y).
@@ -180,12 +207,22 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
       const [from, to] = glassPane(door.from, door.to, 1, glassFrame(f));
       parts.push({ name: `Vitre ${door.name.toLowerCase()}`, from, to, of: i });
     });
+    // The drawer over the doors, its finger space between them when handleless.
+    if (f.topDrawer) {
+      if (gorge) gorges.push(doorTop);
+      box("Façade tiroir 1", [x0, y0, doorTop + between], [x1, y1, z1], { kind: "drawer" });
+      const zb = doorTop + between + 10;
+      drawerBox("1", zb, Math.max(60, Math.min(f.topDrawer - 30, z1 - 15 - zb, gorge ? z1 - (GORGE.height - GORGE.space) - 5 - zb : Infinity)), slides);
+    }
+    // English drawers: behind the doors, clear of the hinges, from the bottom up.
+    const n = f.innerDrawers ?? 0;
+    const [zi0, zi1] = [p + t + 10, (f.topDrawer ? doorTop + between : z1) - t - 10];
+    for (let i = 0; i < n; i++) {
+      const step = (zi1 - zi0) / n;
+      drawerBox(`intérieur ${i + 1}`, zi0 + i * step, Math.max(60, Math.min(160, step - 40)), [slides[0] + INNER_CLEAR, slides[1] - INNER_CLEAR], f.hinges ? INNER_BACK : 0);
+    }
   } else {
     const n = f.drawers;
-    const bt = cabinet.back === "none" ? 0 : cabinet.backThickness;
-    const room = D - bt - (inset ? T : 0) - 10;
-    const length = [...SLIDES].reverse().find((l) => l <= room) ?? Math.max(100, Math.floor(room / 10) * 10);
-    const [bx0, bx1] = [t + SLIDE_PLAY, W - t - SLIDE_PLAY];
     for (let i = 0; i < n; i++) {
       // Drawers numbered from the top.
       const top = z1 - i * (h + between);
@@ -197,12 +234,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
       const zb = Math.max(bottom, p + t) + 10;
       // Under the profile behind the top of a handleless front.
       const height = Math.max(60, Math.min(h - 30, top - 15 - zb, gorge ? top - (GORGE.height - GORGE.space) - 5 - zb : Infinity));
-      const [ya, yb] = [inset ? T + 2 : 2, (inset ? T + 2 : 2) + length];
-      box(`Tiroir ${k} — côté gauche`, [bx0, ya, zb], [bx0 + DRAWER_SIDE, yb, zb + height]);
-      box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, ya, zb], [bx1, yb, zb + height]);
-      box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, ya, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, ya + DRAWER_SIDE, zb + height]);
-      box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, yb, zb + height]);
-      box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
+      drawerBox(String(k), zb, height, slides);
     }
   }
   // The profiles last (the other bodies keep their numbers): the whole width, in the notches of the sides, recessed
@@ -274,7 +306,9 @@ export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undef
     const stay = f.side === "bottom" ? FLAP_STAY : (liftStay(door.to[2] - door.from[2], mass?.(parts.indexOf(door)) ?? 0)?.name ?? LIFT_CLASSES.at(-1)!.name);
     out.push({ name: stay, quantity: 1 });
   }
-  if (drawers.length) out.push({ name: "Coulisse de tiroir (paire)", quantity: drawers.length });
+  // The English drawers behind the doors run on slides too (no front, no handle).
+  const inner = f.layout !== "drawers" ? (f.innerDrawers ?? 0) : 0;
+  if (drawers.length + inner) out.push({ name: "Coulisse de tiroir (paire)", quantity: drawers.length + inner });
   if (f.handles && f.grip !== "gorge" && doors.length + drawers.length) out.push({ name: "Poignée entraxe 128 mm", quantity: doors.length + drawers.length });
   const profiles = parts.filter((p) => p.gorge);
   if (profiles.length) out.push({ name: GORGE_PROFILE, quantity: Math.round(profiles.reduce((m, p) => m + (p.to[0] - p.from[0]), 0) / 10) / 100, unit: "m" });

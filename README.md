@@ -2760,15 +2760,16 @@ opération existante.
     portes, tiroirs, poignées, four, robinet de l'évier — tout calculé depuis ses cotes, aux tons du thème, les
     poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 56 cm ») ; survoler une largeur redessine
     le meuble à cette largeur (`app/kitchen/unit-elevation.ts`).
-  - **Bas** : 1 porte (15 à 60 cm), 2 portes, 3, 4 et 5 tiroirs, casseroliers, évier, four, coulissant bouteilles et
-    épices (15 à 40 cm), poubelle coulissante, ouvert à étagères.
+  - **Bas** : 1 porte (15 à 60 cm), 2 portes, 3, 4 et 5 tiroirs, casseroliers, tiroir et porte, tiroir et 2 portes,
+    tiroirs à l'anglaise (derrière 2 portes), évier, four, coulissant bouteilles et épices (15 à 40 cm), poubelle
+    coulissante, ouvert à étagères.
   - **Hauts** : 1 porte, 2 portes, vitré (cadre alu), relevant (porte qui s'ouvre vers le haut), relevant bas
     (36 cm de haut), égouttoir, ouvert à étagères, sur hotte.
   - **Colonnes** : rangement, garde-manger, coulissante étroite (15 à 40 cm), balais, vitrine, four, réfrigérateur.
   - Les types et leurs largeurs suivent les catalogues du commerce (Nobilia, IKEA Metod, Lapeyre, Foussier Rapido,
     2024–2026). Un coulissant (bouteilles, épices, poubelle, garde-manger) est bâti en caisson et porte : sa ferrure
-    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Pas encore dans la liste : tiroir et porte sur un même
-    meuble, tiroirs à l'anglaise, carrousel et Magic Corner d'angle, angles en biais, terminaux arrondis.
+    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Pas encore dans la liste : carrousel et Magic Corner d'angle,
+    angles en biais, terminaux arrondis.
   - **Avec un Plan de cuisine** dans le projet, un clic **range le meuble dans un linéaire du plan**
     (`document/kitchen-plan-add.ts`) : après le meuble du plan sélectionné, ou celui ajouté juste avant, ou celui choisi
     dans le linéaire ouvert ; sinon au bout du premier linéaire où il tient sans en chasser un autre. Un haut va dans

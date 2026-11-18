@@ -172,7 +172,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       } else if (tool.kind === "face") {
         if (typeof tool.body !== "string") errors.push(`${where} : corps de la face de coupe manquant.`);
         checkRefs(tool.face, "face", where, errors);
-      } else if (tool.kind !== "line" || !isVec3(tool.origin) || !isVec3(tool.normal) || Math.hypot(...(tool.normal as number[])) < 1e-9) errors.push(`${where} : ${tool.kind === "line" ? "plan de coupe du trait invalide" : "outil de coupe inconnu"}.`);
+      } else if (!(tool.kind === "line" ? isVec3(tool.origin) && isVec3(tool.normal) && Math.hypot(...(tool.normal as number[])) >= 1e-9 : tool.kind === "faces" && Array.isArray(tool.faces) && tool.faces.length > 0 && tool.faces.every((f) => Array.isArray(f) && f.length >= 3 && f.every(isVec3)))) errors.push(`${where} : ${tool.kind === "line" ? "plan de coupe du trait invalide" : tool.kind === "faces" ? "surface de coupe du trait invalide" : "outil de coupe inconnu"}.`);
       break;
     }
     case "cabinet":
@@ -261,7 +261,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.cabinet !== "string") errors.push(`${where} : caisson manquant.`);
       if (!["door", "doors", "drawers"].includes(feature.layout as string)) errors.push(`${where} : disposition des façades inconnue.`);
       if (!["overlay", "inset"].includes(feature.mount as string)) errors.push(`${where} : pose des façades inconnue.`);
-      checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors);
+      checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors); for (const k of ["topDrawer", "innerDrawers"]) if (feature[k] !== undefined && !(isFiniteNumber(feature[k]) && (feature[k] as number) > 0 && (k === "topDrawer" || Number.isInteger(feature[k])))) errors.push(`${where} : « ${k} » doit être un nombre positif.`);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
       if (feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) errors.push(`${where} : côté des charnières inconnu.`);
       if (feature.grip !== undefined && feature.grip !== "gorge") errors.push(`${where} : prise de main inconnue.`);

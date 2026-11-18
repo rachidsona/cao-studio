@@ -72,3 +72,33 @@ test("une porte relevable sur compas, puis sans poignée : la gorge va au devis,
   await expect(list).not.toContainText("Profil gorge");
   expect(errors).toEqual([]);
 });
+
+test("un tiroir au-dessus de la porte, puis des tiroirs à l'anglaise derrière : bâtis par le noyau, coulisses au devis", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-tiroir-et-porte");
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  const status = page.locator('[data-ref="status-recompute"]');
+  await click(page, '[data-action="cabinet"]');
+  const cabinet = page.getByRole("dialog", { name: "Caisson" });
+  await cabinet.getByRole("combobox", { name: "Portes" }).selectOption("none");
+  await page.waitForTimeout(800);
+  await cabinet.getByRole("button", { name: "Fermer", exact: true }).click();
+  await click(page, '[data-action="fronts"]');
+  const tool = page.getByRole("dialog", { name: "Façades" });
+  const field = tool.getByLabel(/^Tiroir au-dessus/);
+  await field.fill("15");
+  await field.press("Enter");
+  await expect(tree.getByText("Façade tiroir 1", { exact: true }).first()).toBeVisible();
+  await expect(tree.getByText("Porte", { exact: true }).first()).toBeVisible();
+  await expect(tool).toContainText("1 × coulisse de tiroir (paire)");
+  const inner = tool.getByLabel(/^Tiroirs à l'anglaise/);
+  await inner.fill("2");
+  await inner.press("Enter");
+  await expect(tree.getByText("Tiroir intérieur 2 — fond", { exact: true }).first()).toBeAttached();
+  await expect(tool).toContainText("3 × coulisse de tiroir (paire)");
+  await expect(status).toHaveText(/^Recalcul \d+ ms$/);
+  await shot(page, "tiroir-et-porte");
+  expect(errors).toEqual([]);
+});

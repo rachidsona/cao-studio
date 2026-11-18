@@ -7,6 +7,7 @@ import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
 import { createReferencePlate, type CadDocument, type FrontsFeature, type KitchenRunItem } from "../../frontend/src/document/types";
 import { modelOf, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { unitSummary } from "../../frontend/src/app/kitchen/unit-elevation";
+import { frontsHardware, frontsParts, frontsProblem } from "../../frontend/src/features/fronts-parts";
 
 const entry = (id: string) => CATALOG.find((e) => e.id === id)!;
 const fronts = (doc: CadDocument) => doc.features.filter((f): f is FrontsFeature => f.type === "fronts");
@@ -54,5 +55,45 @@ describe("types de meubles de cuisine", () => {
     const synced = syncKitchenPlans(doc, plain);
     const item = kitchenPlanIn(synced, made.id)!.runs!.A!.find((i) => i.model === modelOf(entry("wall-haut-vitre-600")))!;
     expect(item.facade).toEqual({ style: "flat" });
+  });
+});
+
+describe("tiroir et porte, tiroirs à l'anglaise", () => {
+  const unit = (id: string) => addKitchenUnit(createReferencePlate(), entry(id));
+  it("bas tiroir et 2 portes : les portes sous la façade du tiroir, son caisson derrière ; coulisses et poignées comptées", () => {
+    const { fronts: f, cabinet } = unit("base-bas-tiroir-et-2-portes-800");
+    const parts = frontsParts(f!, cabinet);
+    const doors = parts.filter((p) => p.role?.kind === "door");
+    const front = parts.find((p) => p.name === "Façade tiroir 1")!;
+    expect(doors.map((d) => d.name)).toEqual(["Porte gauche", "Porte droite"]);
+    // The doors stop a gap under the drawer front, which is 150 mm high at the top.
+    expect(Math.round(front.to[2] - front.from[2])).toBe(150);
+    expect(Math.round(front.from[2] - doors[0]!.to[2])).toBe(f!.gap);
+    expect(parts.filter((p) => p.name.startsWith("Tiroir 1 —"))).toHaveLength(5);
+    const hw = frontsHardware(f!, cabinet);
+    expect(hw.find((h) => h.name.startsWith("Coulisse"))?.quantity).toBe(1);
+    expect(hw.find((h) => h.name.startsWith("Poignée"))?.quantity).toBe(3);
+    expect(unitSummary(entry("base-bas-tiroir-et-2-portes-800"))).toBe("1 tiroir · 2 portes · 1 étagère");
+  });
+
+  it("tiroirs à l'anglaise : derrière les portes, sans façade, en retrait des charnières ; leurs coulisses comptées", () => {
+    const { fronts: f, cabinet } = unit("base-bas-tiroirs-a-l-anglaise-800");
+    const parts = frontsParts(f!, cabinet);
+    expect(parts.filter((p) => p.role?.kind === "drawer")).toHaveLength(0);
+    const sides = parts.filter((p) => /^Tiroir intérieur \d — côté gauche$/.test(p.name));
+    expect(sides).toHaveLength(3);
+    // Clear of the hinge plates: narrower than an outer drawer, behind the door.
+    expect(sides[0]!.from[0] - cabinet.origin[0]).toBeCloseTo(cabinet.thickness + 12.5 + 25);
+    expect(frontsHardware(f!, cabinet).find((h) => h.name.startsWith("Coulisse"))?.quantity).toBe(3);
+    expect(unitSummary(entry("base-bas-tiroirs-a-l-anglaise-800"))).toBe("2 portes · 3 tiroirs à l'anglaise");
+  });
+
+  it("refuse un tiroir trop bas, une porte qui ne reste pas, et un tiroir sur une porte relevante", () => {
+    const { fronts: f, cabinet } = unit("base-bas-tiroir-et-porte-600");
+    expect(frontsProblem({ ...f!, topDrawer: 50 }, cabinet)).toMatch(/80 mm/);
+    expect(frontsProblem({ ...f!, topDrawer: 600 }, cabinet)).toMatch(/200 mm de porte/);
+    expect(frontsProblem({ ...f!, side: "top" }, cabinet)).toMatch(/relevable/);
+    expect(frontsProblem({ ...f!, innerDrawers: 9 }, cabinet)).toMatch(/1 à 5/);
+    expect(frontsProblem(f!, cabinet)).toBeNull();
   });
 });

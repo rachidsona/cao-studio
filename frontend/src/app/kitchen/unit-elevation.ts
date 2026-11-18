@@ -33,6 +33,11 @@ function doorGrip(kind: UnitKind, top: number, bottom: number): [number, number]
 
 /** The fronts of a part of the unit, between two heights. */
 function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: number): string {
+  // A drawer over the door(s): its front at the top, the doors under it.
+  if (e.topDrawer && e.layout !== "drawers" && e.layout !== "none") {
+    const under = top + e.topDrawer;
+    return box(x0, top, x1 - x0, e.topDrawer - GAP, PANEL) + handle(x0 + (x1 - x0) * 0.3, top + 42, x1 - (x1 - x0) * 0.3, top + 42) + fronts({ ...e, topDrawer: undefined }, x0, x1, under, bottom);
+  }
   // Glazed: the glass inside its frame.
   const pane = (a: number, b: number) => (e.facade?.style === "glass" ? box(a + 45, top + 45, b - a - 90, bottom - top - 90, GLASS) : "");
   const door = (a: number, b: number, grip: number) => {
@@ -102,5 +107,7 @@ export function unitSummary(e: CatalogEntry): string {
   const shelves = e.top === "rails" ? "2 traverses" : e.shelves ? `${e.shelves} étagère${e.shelves > 1 ? "s" : ""}` : "";
   const door = e.side === "top" ? "1 porte relevante" : e.side === "bottom" ? "1 abattant" : "1 porte";
   const what = hasOven(e) ? "Niche pour four" : e.layout === "drawers" ? `${e.drawers ?? 3} tiroirs` : e.layout === "doors" ? "2 portes" : e.layout === "door" ? door : e.shelves ? "Ouvert" : "Sans façade";
-  return [what, e.facade?.style === "glass" ? "vitré" : "", shelves].filter(Boolean).join(" · ");
+  const drawer = e.topDrawer && e.layout !== "drawers" ? "1 tiroir" : "";
+  const inner = e.innerDrawers ? `${e.innerDrawers} tiroirs à l'anglaise` : "";
+  return [drawer, what, e.facade?.style === "glass" ? "vitré" : "", inner, shelves].filter(Boolean).join(" · ");
 }

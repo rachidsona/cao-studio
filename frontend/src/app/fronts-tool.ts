@@ -98,6 +98,9 @@ export class FrontsTool extends PanelTool {
       }),
       s.layout === "door" ? this.selectRow("Ouverture", s.side ?? "left", [["left", "Charnières à gauche"], ["right", "Charnières à droite"], ["top", "Relevable (charnières en haut)"], ["bottom", "Abattant (charnières en bas)"]], (v) => set("side", v as FrontsFeature["side"])) : null,
       s.layout === "drawers" ? this.numberRow("Tiroirs", s.drawers, "plain", (v) => set("drawers", Math.max(1, Math.min(8, Math.round(v))))) : null,
+      // Doors: a drawer over them (the height of its front; 0: none), English drawers behind them (0: none).
+      doors && !(s.side === "top" || s.side === "bottom") ? this.numberRow("Tiroir au-dessus (0 : sans)", s.topDrawer ?? 0, this.ctx.unit(), (v) => (v > 0 ? (s.topDrawer = v) : delete s.topDrawer, changed())) : null,
+      doors ? this.numberRow("Tiroirs à l'anglaise (0 : sans)", s.innerDrawers ?? 0, "plain", (v) => (Math.round(v) > 0 ? (s.innerDrawers = Math.min(5, Math.round(v))) : delete s.innerDrawers, changed())) : null,
       this.selectRow("Pose", s.mount, [["overlay", "En applique (devant)"], ["inset", "Encastrées (dans l'ouverture)"]], (v) => set("mount", v as FrontsFeature["mount"])),
       this.numberRow("Jeu", s.gap, this.ctx.unit(), (v) => ((s.gap = Math.max(0, v)), this.schedulePreview())),
       this.numberRow("Épaisseur", s.thickness, this.ctx.unit(), (v) => ((s.thickness = Math.max(1, v)), this.schedulePreview())),

@@ -736,6 +736,10 @@ export interface FrontsFeature extends FeatureBase {
   drawers: number;
   mount: "overlay" | "inset";
   gap: number;
+  /** Door or doors under a drawer: the height of its front, at the top of the cabinet (mm). */
+  topDrawer?: number;
+  /** Door or doors with drawers behind them, without fronts (« à l'anglaise »): how many. */
+  innerDrawers?: number;
   thickness: number;
   hinges: boolean;
   handles: boolean;
