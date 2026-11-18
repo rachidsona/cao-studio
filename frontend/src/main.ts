@@ -59,6 +59,7 @@ import { bindPieceDims } from "./app/piece-dims";
 import { bindSelectWhole } from "./app/select-whole";
 import { bindGridToggle } from "./app/grid-toggle";
 import { bindDisplayToggles } from "./app/display-toggles";
+import { bindIconModels } from "./app/icon-models";
 import { bindRibbonToggle } from "./app/ribbon-toggle";
 import { bindWallCutaway } from "./app/wall-cutaway";
 import { bindIsolateSelection } from "./app/isolate-selection";
@@ -225,6 +226,7 @@ async function start(): Promise<void> {
   bindSelectWhole(root, viewport, editor);
   bindGridToggle(root, viewport);
   bindDisplayToggles(root, viewport, editor);
+  bindIconModels(root);
   bindRibbonToggle(root);
   bindTechPlan(root, editor);
   bindWorktopBars(root, editor);

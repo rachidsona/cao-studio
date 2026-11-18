@@ -1,6 +1,7 @@
 /*
  * The styles of the toolbar icons (class icons-* on <html>, « ⋯ » menu → Icônes), whatever the palette and the style
- * of the interface: three other kinds of icons than the white volumes in relief (« Volumes », no class, the default).
+ * of the interface: three other ways to paint the volumes than white in relief (« Relief », no class, the default; they paint
+ * the « Volumes » model only: app/icon-models.ts has the other drawings).
  * The icons are the same drawings (scripts/icons3d.py, templates/editor/_icons.html); a style paints them another way.
  *
  * Only variables reach an icon drawn from the sprite (<use>): inside it, a selector sees the symbol, never <html>. So

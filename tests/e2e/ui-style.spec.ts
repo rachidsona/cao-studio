@@ -49,7 +49,7 @@ test("styles Verre et Minimal clair : verre flou et coins arrondis, puis panneau
   expect(errors).toEqual([]);
 });
 
-test("style des icônes : Contour, Plein, Deux tons peignent autrement les mêmes dessins, gardés au rechargement ; « Volumes » y revient", async ({ page }) => {
+test("style des icônes : Contour, Plein, Deux tons peignent autrement les mêmes dessins, gardés au rechargement ; « Relief » y revient", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -99,7 +99,56 @@ test("style des icônes : Contour, Plein, Deux tons peignent autrement les même
   expect(duo).toMatchObject({ icons: "icons-duo", edge: ".5", key: "0" });
   expect([volumes.face, contour.face, "rgb(238, 242, 247)"]).not.toContain(duo.face);
 
-  await choose("Volumes");
+  await choose("Relief");
   expect(await look()).toMatchObject({ icons: "", face: volumes.face, edge: "", key: "1", stroke: "1.35px", stored: "" });
+  expect(errors).toEqual([]);
+});
+
+test("modèle des icônes : Ligne, Solide, Technique redessinent les outils du ruban, gardés au rechargement ; « Volumes » rend les dessins de la page", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-modeles");
+  // The drawing of the « Caisson » icon as the page has it now, and of a tool no model redraws yet.
+  const look = () => page.evaluate(() => ({
+    model: document.documentElement.dataset.iconModel ?? "",
+    cabinet: document.querySelector("#i-cabinet")!.innerHTML,
+    line: document.querySelector("#i-line")!.innerHTML,
+    used: document.querySelectorAll('#editor [data-ribbon] use[href="#i-cabinet"]').length,
+    styles: [...document.querySelectorAll<HTMLButtonElement>("[data-icon-style]")].every((b) => b.disabled),
+    stored: localStorage.getItem("icon-model"),
+  }));
+  const choose = async (name: string) => {
+    await page.getByLabel("Fichier et réglages").click();
+    const models = page.getByRole("group", { name: "Modèle des icônes" });
+    await models.getByRole("button", { name, exact: true }).click();
+    await expect(models.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByLabel("Fichier et réglages").click();
+  };
+  const volumes = await look();
+  expect(volumes).toMatchObject({ model: "", styles: false });
+  expect(volumes.used).toBeGreaterThan(0);
+  expect(volumes.cabinet).toContain("url(#kwt)");
+
+  const seen = [volumes.cabinet];
+  for (const [name, model] of [["Ligne", "ligne"], ["Solide", "solide"], ["Technique", "technique"]] as const) {
+    await choose(name);
+    await expect.poll(async () => (await look()).model).toBe(model);
+    const now = await look();
+    // Another drawing each time, flat (none of the volumes' faces); a tool not redrawn keeps its own; the styles of
+    // the volumes are not offered.
+    expect(seen).not.toContain(now.cabinet);
+    expect(now.cabinet).not.toContain("url(#k");
+    expect(now).toMatchObject({ line: volumes.line, styles: true, stored: model });
+    seen.push(now.cabinet);
+  }
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect.poll(async () => (await look()).model).toBe("technique");
+  expect((await look()).cabinet).toBe(seen[3]);
+
+  await choose("Volumes");
+  await expect.poll(async () => (await look()).cabinet).toBe(volumes.cabinet);
+  expect(await look()).toMatchObject({ model: "", styles: false, stored: "" });
   expect(errors).toEqual([]);
 });

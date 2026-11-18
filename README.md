@@ -1492,9 +1492,20 @@ opération existante.
   formes et les matières, pas les couleurs : il va avec chaque palette (`styles/style-verre.css`,
   `styles/style-minimal.css`). Le verre est dessiné derrière chaque panneau (`::before`), pour que ses menus déroulants
   (« ⋯ », « Affichage ») passent toujours par-dessus.
+- **Modèle des icônes** (menu **« ⋯ » → Icônes (le dessin)**, gardé dans le navigateur, `localStorage` « icon-model ») :
+  le dessin même des icônes. **Volumes** (par défaut : les dessins de la page, de petits volumes en perspective) ou un
+  jeu **redessiné à plat** sur 24 × 24 : **Ligne** (pictogrammes au trait), **Solide** (formes pleines) ou
+  **Technique** (comme un dessin d'atelier : traits fins, pointillés, cotes, vues en plan). Trois dessins différents
+  de chaque outil, pas trois rendus du même (`tests/frontend/icon-models.test.ts`). Les **35 outils du ruban et de la
+  colonne de sélection** sont redessinés ; les autres gardent leur volume en attendant. Les dessins sont décrits dans
+  `scripts/icon_models_set.py` (une suite de tracés par outil et par modèle) ; `python3 scripts/icon_models.py` écrit
+  `static/icons/ligne.svg`, `solide.svg`, `technique.svg`. Le modèle choisi, l'éditeur charge son fichier et remplace
+  le contenu de chaque symbole du même nom dans la page (`app/icon-models.ts`) : toutes les icônes qui en sont tirées
+  changent d'un coup, et « Volumes » rend les dessins de la page. Les rendus ci-dessous ne peignent que les volumes :
+  ils sont grisés avec un autre modèle.
 - **Style des icônes** (menu **« ⋯ » → Icônes**, gardé dans le navigateur, `localStorage` « icons », posé avant le
-  premier affichage) : quatre genres d'icônes, des mêmes dessins. **Volumes** (par défaut : de petits volumes blancs en
-  relief), **Contour** (au trait : chaque volume par ses arêtes seules, dans l'encre, ce qui compte en accent, ce qui
+  premier affichage) : quatre rendus des volumes, des mêmes dessins. **Relief** (par défaut : de petits volumes blancs en
+  dégradés doux), **Contour** (au trait : chaque volume par ses arêtes seules, dans l'encre, ce qui compte en accent, ce qui
   agit en orange), **Plein** (des silhouettes pleines d'une seule couleur, les faces séparées d'un filet) ou **Deux
   tons** (l'accent seul : une teinte claire pour les faces, le plein pour ce qui compte). Dans ces trois styles les
   icônes à plat (esquisse, contraintes) perdent leur touche blanche et sont dessinées en grand, dans l'encre du style.
