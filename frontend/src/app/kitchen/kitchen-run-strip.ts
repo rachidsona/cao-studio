@@ -2,15 +2,16 @@
  * La bande de face d'un linéaire de cuisine, à l'échelle, comme sur une planche de cuisiniste : le mur et ses portes et
  * fenêtres, le plan de travail, en bas les meubles bas et les colonnes, en haut les meubles hauts, la hotte et le
  * micro-ondes, chacun dessiné par app/unit-elevation.ts ; les fileurs, les angles (pris par les meubles de l'angle), et
- * la place libre hachurée, en pointillés, avec sa largeur (cm) ; les appareils posés à la main (Électroménager), en
+ * la place libre hachurée, en pointillés, avec sa largeur (cm) ; la crédence, les retours du plan et les joues de finition comme la 3D les a ; les appareils posés à la main (Électroménager), en
  * sombre, là où la 3D les a. Un clic choisit un meuble, un appareil posé à la main ou le plan de travail ; glisser un
  * meuble le change de place dans sa rangée ; le clavier (Suppr, Ctrl + D, les flèches) et le clic droit agissent sur
  * ce qui est choisi (kitchen-strip-actions.ts).
  */
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
-import { kitchenSizes, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
+import { kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
-import type { KitchenFloorPlan } from "../../document/types";
+import type { KitchenFloorPlan, Vec3 } from "../../document/types";
+import type { KitchenBox } from "../../features/kitchen-layout";
 import { applianceOf, isFiller, itemSize, type Placed, type RunFill } from "../../features/kitchen-run-items";
 import { BRASS, elevationBody } from "./unit-elevation";
 import { escapeHtml } from "../workshop/workshop-ui";
@@ -74,6 +75,8 @@ export interface StripHost {
   pickOther?(what: StripOther): void;
   /** A filler the plan put in a gap clicked (its place along the run): to be chosen as a unit is. */
   filler?(gap: [number, number]): void;
+  /** The run's pieces as the plan builds them (document/kitchen-plan-build.ts): its splashback, worktop returns and finishing sides drawn as the 3D has them. */
+  boxes?: readonly KitchenBox[];
   /** A key pressed on the strip (Suppr, Ctrl + D, the arrows); a right click on a unit. */
   key?(event: KeyboardEvent): void;
   menu?(id: string, event: MouseEvent): void;
@@ -144,6 +147,17 @@ export function runStrip(host: StripHost): SVGSVGElement {
     }
     const [a, b] = corner.cabinet ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
     parts.push(`<text x="${(a + b) / 2}" y="${H + 120}" text-anchor="middle" font-size="80" class="fill-gray-500 dark:fill-gray-400" pointer-events="none"><title>${corner.name}</title>${corner.kind === "dead" ? "angle" : "angle ✓"}</text>`);
+  }
+  // The splashback, the worktop's returns and the finishing sides, where the 3D has them: along the run, and up.
+  const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];
+  const along = (q: Vec3) => (q[0] - o[0]) * (e[0] - o[0]) + (q[1] - o[1]) * (e[1] - o[1]);
+  for (const box of host.boxes ?? []) {
+    // The worktop too: over a return it runs on (the strip's own worktop stops at the units).
+    const finish = box.kind === "splashback" ? (box.name.startsWith("Retour") ? "return" : "splashback") : box.kind === "worktop" ? "worktop" : box.name.startsWith("Joue de finition") ? "end-panel" : null;
+    if (!finish) continue;
+    const [u0, u1] = [along(box.from), along([box.to[0], box.to[1], 0]), along([box.from[0], box.to[1], 0]), along([box.to[0], box.from[1], 0])].reduce(([lo, hi], u) => [Math.min(lo, u), Math.max(hi, u)], [Infinity, -Infinity]);
+    const [z0, z1] = [box.from[2], box.to[2]];
+    parts.push(`${rect(u0, y(z1), u1 - u0, z1 - z0, finish === "end-panel" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE, `data-finish="${finish}" pointer-events="none"`)}`);
   }
   // The worktop, over the units only; clicked (a band taller than it takes the click), it is chosen.
   const tops = host.worktop ?? (fill.placed.some((pl) => pl.row === "base") ? [zoneSpan(run)] : []);

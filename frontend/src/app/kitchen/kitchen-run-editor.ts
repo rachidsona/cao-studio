@@ -214,7 +214,7 @@ export class RunEditor {
     });
     const focus = this.focusStrip;
     this.focusStrip = false;
-    const strip = runStrip({ plan, run, geometry: g, fill, chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
+    const strip = runStrip({ plan, run, geometry: g, fill, boxes: kitchenFromPlan(plan, this.host.room).boxes.filter((b) => b.run === run.id), chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
         // An appliance put by hand, or the worktop: chosen instead of a unit (clicked again: no longer).
         this.other = this.other && this.other.kind === what.kind && (what.kind === "worktop" || (this.other as { id?: string }).id === what.id) ? null : what;
         this.chosen = null;

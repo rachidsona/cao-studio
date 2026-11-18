@@ -2625,6 +2625,7 @@ opération existante.
       (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
       Un fileur que le plan met dans le reste (jusqu'à 15 cm), cliqué sur la bande, devient un fileur posé à sa place
       — tous ceux du reste à la fois, pour que rien ne bouge —, choisi comme un meuble : Suppr, flèches, glisser, cote.
+      La bande dessine aussi la crédence, les retours du plan et les joues de finition, tels que la 3D les bâtit.
     - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen/kitchen-catalog-view.ts`) :
       chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
       après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.

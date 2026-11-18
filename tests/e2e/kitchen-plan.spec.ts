@@ -193,6 +193,8 @@ test("linéaire : le reste partagé en deux, un fileur de chaque côté, entre l
   for (const unit of ["base-bas-2-portes-1200", "base-bas-1-porte-600", "base-bas-1-porte-400"]) await tool.locator(`[data-add="${unit}"]`).click();
   const strip = tool.locator('[data-run-strip="A"]');
   await expect(strip.locator("[data-filler]")).toHaveCount(1);
+  // The splashback over the units, as the 3D has it.
+  await expect(strip.locator('[data-finish="splashback"]').first()).toBeAttached();
   // Only the room left free is hatched (the wall row, still empty), not the corners the corner units take.
   await expect(strip.locator('[data-empty="free"]')).toHaveCount(1);
   await expect(strip.locator("[data-empty]")).toHaveCount(1);
@@ -323,6 +325,13 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await expect(page.getByText(/^Joue de finition A/).first()).toBeVisible();
   await shot(page, "13-retour-de-plan");
   await expect(page.getByText(/^Bas 1 porte|^Haut 1 porte/)).toHaveCount(0);
+  // The run's strip draws them as the 3D has them: the return and the finishing side (no splashback: unticked).
+  await tool.locator('[data-open-run="A"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  await expect(strip.locator('[data-finish="return"]')).toHaveCount(1);
+  await expect(strip.locator('[data-finish="end-panel"]')).toHaveCount(1);
+  await expect(strip.locator('[data-finish="splashback"]')).toHaveCount(0);
+  await shot(page, "14-bande-finitions");
   expect(errors).toEqual([]);
 });
 
