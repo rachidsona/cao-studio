@@ -65,6 +65,11 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await click(page, '[data-workshop="kitchen-plan"]');
   await tool.locator('[data-open-run="A"]').click();
   await expect(tool.locator('[data-run-strip="A"] [data-held]')).toContainText("Caisson aménagé");
+  // Drawn as the 3D has it: its sides and boards, its shelves, its two doors and their handles.
+  const face = tool.locator('[data-run-strip="A"] [data-held]');
+  expect(await face.locator("rect").count()).toBeGreaterThan(5);
+  await expect(face.locator('line[stroke="#b8975a"]')).toHaveCount(2);
+  await shot(page, "caisson-bande");
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);
   await expect(tool.locator('[data-fold="space"]')).toContainText("260 cm libres en bas");
   // Chosen on the strip: isolated again from there, to be changed in the 3D.

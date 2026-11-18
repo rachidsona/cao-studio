@@ -35,6 +35,7 @@ import { caissonActions, furnishItem, insideRows } from "./kitchen-unit-inside";
 import { heldRows } from "./kitchen-held-rows";
 import { widenRows } from "./kitchen-widen-rows";
 import { doorsToggle } from "./strip-doors";
+import { heldFace } from "./held-face";
 import { sizeFields } from "./kitchen-unit-sizes";
 import { stripActions, withRoomLeft } from "./kitchen-strip-actions";
 import { alignedOver } from "../../features/kitchen-run-align";
@@ -105,8 +106,7 @@ export class RunEditor {
     this.focusStrip = host.focus === true;
     // The plinth or the worktop chosen stays chosen (set back again, another look), if it is still there.
     const other = host.other ?? null;
-    const gone = other?.kind === "kick" ? !kickOf(host.plan, host.run.id).on : other?.kind === "caisson" ? !this.items.some((i) => i.id === other.id && i.furnished) : false;
-    this.other = gone ? null : other;
+    this.other = (other?.kind === "kick" ? !kickOf(host.plan, host.run.id).on : other?.kind === "caisson" ? !this.items.some((i) => i.id === other.id && i.furnished) : false) ? null : other;
   }
 
   /** The title, with the cross that stores what waits and closes the run. */
@@ -259,7 +259,7 @@ export class RunEditor {
     });
     const focus = this.focusStrip;
     this.focusStrip = false;
-    const strip = runStrip({ plan, run, geometry: g, fill, boxes: kitchenFromPlan(plan, this.host.room).boxes.filter((b) => b.run === run.id), chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
+    const strip = runStrip({ plan, run, geometry: g, fill, boxes: kitchenFromPlan(plan, this.host.room).boxes.filter((b) => b.run === run.id), chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, held: (sketch, bare) => heldFace(editor.doc, sketch, bare), key: actions.key, menu: actions.menu, pickOther: (what) => {
         // An appliance put by hand, or the worktop: chosen instead of a unit (clicked again: no longer).
         this.other = this.other && JSON.stringify(this.other) === JSON.stringify(what) ? null : what;
         this.chosen = null;

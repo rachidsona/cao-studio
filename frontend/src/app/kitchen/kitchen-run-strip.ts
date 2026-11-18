@@ -66,6 +66,8 @@ export interface StripHost {
   slide?(id: string, by: number): void;
   /** The chosen unit's width, pulled by its right edge (mm). */
   resize?(id: string, width: number): void;
+  /** A caisson furnished by hand, its face drawn as the 3D has it (or its inside, `bare`), in mm from its top left. */
+  held?(sketch: string, bare: boolean): { svg: string; length: number; height: number } | null;
   /** A corner clicked: its settings. */
   corner?(): void;
   /** The appliances put by hand in front of the run (Électroménager). */
@@ -202,7 +204,10 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
     const [a, b] = [pl.at, pl.at + pl.item.width];
     const on = host.other?.kind === "caisson" && host.other.id === pl.item.id;
-    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" ${host.edit ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"><title>Cliquer pour changer la largeur : le caisson s'y refait, son intérieur adapté</title>` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none">'}${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+    // As the 3D has it, when its face can be drawn: its panels, doors, drawers (app/kitchen/held-face.ts).
+    const face = host.held?.(pl.item.furnished!, bare) ?? null;
+    const zb = itemSize(p, pl.item, pl.entry).z;
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${face ? `<g transform="translate(${a} ${y(zb + face.height)}) scale(${(b - a) / face.length} 1)" pointer-events="none">${face.svg}</g>${rect(a, y(zb + face.height), b - a, face.height, "fill-transparent stroke-none", on ? `stroke="${BRASS}" stroke-width="3"` : "")}` : rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}${face ? "" : `<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text>`}<text x="${(a + b) / 2}" y="${pl.row === "wall" ? y(face ? zb + face.height : z1) - 30 : y(face ? zb : z0) + 120}" text-anchor="middle" font-size="90" ${host.edit ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"><title>Cliquer pour changer la largeur : le caisson s'y refait, son intérieur adapté</title>` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none">'}${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
   }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
