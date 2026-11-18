@@ -101,13 +101,14 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
       });
       continue;
     }
+    const side = box.profile ? sideSketch(place, box, from, to) : null;
     const sketch: Feature = {
-      id: uniqueId(probe, "sk"), type: "sketch", name: uniqueName(probe, "Esquisse"), plane: "XY", offset: from[2], hidden: true,
-      ...rectangleAt(from[0] + w / 2, from[1] + d / 2, w, d),
+      id: uniqueId(probe, "sk"), type: "sketch", name: uniqueName(probe, "Esquisse"), hidden: true,
+      ...(side ? side.sketch : { plane: "XY" as const, offset: from[2], ...rectangleAt(from[0] + w / 2, from[1] + d / 2, w, d) }),
     };
     push(sketch);
     const id = uniqueId(probe, "ex");
-    push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } } : {}) });
+    push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: side ? side.distance : h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } } : {}) });
     plan.names[id] = box.name;
     const material = box.kind === "worktop" || box.kind === "splashback" ? worktopMaterial : frontMaterial;
     // Walls, appliances and fittings (a LeMans's trays) are bought, not cut: out of the cut list and the quote.
@@ -129,6 +130,29 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     }
   }
   return plan;
+}
+
+/**
+ * A box cut at 45° (its `profile`): its outline seen from the front, drawn in the upright plane along it (XZ or YZ,
+ * placed) and extruded through its depth (sketcher/frame.ts: XZ's normal is −Y, YZ's +X).
+ */
+function sideSketch(place: Placement, box: KitchenLayout["boxes"][number], from: number[], to: number[]) {
+  const { along, points } = box.profile!;
+  const at = ([u, z]: [number, number]) => {
+    const q: [number, number, number] = [...box.from];
+    [q[along], q[2]] = [u, z];
+    return placePoint(place, q);
+  };
+  const [p0, p1] = [at(points[0]!), at(points[1]!)];
+  const ax = Math.abs(p1[0] - p0[0]) > Math.abs(p1[1] - p0[1]) ? 0 : 1;
+  const pts = points.map((p, i) => {
+    const q = at(p);
+    return { id: `p${i + 1}`, x: q[ax]!, y: q[2] };
+  });
+  const geometry = { points: pts, curves: pts.map((p, i) => ({ id: `l${i + 1}`, kind: "line" as const, p1: p.id, p2: pts[(i + 1) % pts.length]!.id })), constraints: [] };
+  return ax === 0
+    ? { sketch: { plane: "XZ" as const, offset: -to[1]!, ...geometry }, distance: to[1]! - from[1]! }
+    : { sketch: { plane: "YZ" as const, offset: from[0]!, ...geometry }, distance: to[0]! - from[0]! };
 }
 
 /** The materials and names of the plan in `doc`, and the walls and appliances on their layers (made when missing). */

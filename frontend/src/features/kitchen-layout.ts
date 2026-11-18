@@ -115,6 +115,8 @@ export interface KitchenBox {
   /** A board that opens as a door (a corner unit's): toward its hinge edge, the way it faces (kitchen frame). */
   door?: { hinge: Vec3; out: Vec3 };
   run?: string;
+  /** Not square at its ends (a worktop and its return cut at 45°): its outline seen from the front, along axis `along` and up (kitchen frame), drawn through the box's depth. */
+  profile?: { along: 0 | 1; points: [number, number][] };
 }
 
 export interface KitchenLayout {

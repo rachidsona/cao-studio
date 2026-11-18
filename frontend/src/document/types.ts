@@ -178,6 +178,8 @@ export interface KitchenFloorPlan {
   noWorktop?: Record<string, boolean>;
   /** The worktop goes down to the floor at the free ends of the runs (in its material, over the units' sides). */
   worktopEnds?: boolean;
+  /** How the worktop meets that return: running over it (absent), the return up its end, or both cut at 45°. */
+  worktopJoint?: "top" | "side" | "miter";
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
   rest?: Record<string, "end" | "start" | "both" | "walls">;

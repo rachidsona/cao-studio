@@ -267,20 +267,33 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
     from[along] = Math.max(whole[0][along]!, lo[along]!);
     to[along] = Math.min(whole[1][along]!, hi[along]!);
     if (to[along]! - from[along]! < 1) return;
-    // A return down to the floor at a free end of the run the piece reaches, the worktop running on over it.
+    // A return down to the floor at a free end of the run the piece reaches: the worktop over it, it up the worktop's
+    // end, or both cut at 45°.
+    const joint = p.worktopJoint === "side" || p.worktopJoint === "miter" ? p.worktopJoint : "top";
     const ends = p.worktopEnds ? (["left", "right"] as const).filter((side) => run[side] === "free" && (side === "left" ? a <= z0 + 1e-6 : b >= z1 - 1e-6)) : [];
+    const [f0, t0] = [from[along]!, to[along]!];
+    // The worktop's outline from the front (along, up): its low end then its high end, bottom and top.
+    const outline = { low: [f0, f0], high: [t0, t0] };
     const returns = ends.map((side) => {
       const [rlo, rhi] = side === "left" ? band(a - T, a, 0, 1, 0, base) : band(b, b + T, 0, 1, 0, base);
       const [rFrom, rTo]: [Vec3, Vec3] = [[...from], [...to]];
-      [rFrom[along], rTo[along], rFrom[2], rTo[2]] = [rlo[along]!, rhi[along]!, 0, base];
-      from[along] = Math.min(from[along]!, rFrom[along]!);
-      to[along] = Math.max(to[along]!, rTo[along]!);
-      return { side, at: [rFrom, rTo] as [Vec3, Vec3] };
+      [rFrom[along], rTo[along], rFrom[2], rTo[2]] = [rlo[along]!, rhi[along]!, 0, joint === "top" ? base : p.worktopHeight];
+      const high = rFrom[along]! >= t0 - 1e-6;
+      const [inner, outer] = high ? [rFrom[along]!, rTo[along]!] : [rTo[along]!, rFrom[along]!];
+      if (joint !== "side") {
+        from[along] = Math.min(from[along]!, rFrom[along]!);
+        to[along] = Math.max(to[along]!, rTo[along]!);
+      }
+      if (joint === "miter") outline[high ? "high" : "low"] = [inner, outer];
+      const profile = joint === "miter" ? { along: along as 0 | 1, points: [[inner, 0], [outer, 0], [outer, p.worktopHeight], [inner, base]] as [number, number][] } : undefined;
+      return { side, at: [rFrom, rTo] as [Vec3, Vec3], profile };
     });
     const own = holes.filter((h) => h.u >= a - 1e-6 && h.u <= b + 1e-6).map(({ u: _u, ...h }) => h);
-    box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0] });
+    const mitered = returns.some((r) => r.profile);
+    const profile = mitered ? { along: along as 0 | 1, points: [[outline.low[0], base], [outline.high[0], base], [outline.high[1], p.worktopHeight], [outline.low[1], p.worktopHeight]] as [number, number][] } : undefined;
+    box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0], ...(profile ? { profile } : {}) });
     // In the worktop's material (as a splashback), out of the worktop's cut-outs and bars.
-    for (const r of returns) box(`Retour de plan ${run.id}${r.side === "right" ? " (droite)" : " (gauche)"}`, "splashback", r.at);
+    for (const r of returns) box(`Retour de plan ${run.id}${r.side === "right" ? " (droite)" : " (gauche)"}`, "splashback", r.at, r.profile ? { profile: r.profile } : {});
   });
 }
 

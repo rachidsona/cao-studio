@@ -2497,9 +2497,11 @@ opération existante.
     porte** (panneau devant l'angle et porte de 30 cm, sur le mur qui passe ; un fileur sur l'autre) ou un **haut
     d'angle en L** (60 × 60), porte ou côté réglables ; les hauts des deux murs s'arrêtent contre lui.
   - **Réglages de l'Implantation** : le plan a aussi le **socle**, l'**épaisseur du plan de travail**, la
-    **crédence** et les **plinthes** (bâtis), le **retour du plan jusqu'au sol aux bouts libres** (le côté qui se
-    voit d'un linéaire, d'une péninsule ou d'un îlot couvert dans la matière du plan, qui passe par-dessus ; là où
-    les meubles vont jusqu'au bout), et ce que « Proposer une cuisine » met : les **façades des bas**
+    **crédence** et les **plinthes** (bâtis), le **retour du plan aux bouts libres** (le côté qui se voit d'un
+    linéaire, d'une péninsule ou d'un îlot couvert jusqu'au sol dans la matière du plan, là où les meubles vont
+    jusqu'au bout ; au choix le plan passe par-dessus, le retour monte par-dessus le bout du plan, ou les deux se
+    rejoignent en coupe d'onglet à 45°). Le plan de travail suit le caisson : contre une colonne ou une place
+    libre, il s'arrête au flanc du meuble, pas sur le fileur à côté. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
     réfrigérateur, au bout libre).

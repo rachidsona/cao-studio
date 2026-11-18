@@ -70,6 +70,20 @@ describe("plan de travail qui suit les meubles", () => {
     expect(kitchenFromPlan({ ...full, worktopEnds: false }).boxes.some((b) => b.name.startsWith("Retour"))).toBe(false);
   });
 
+  it("se raccorde au retour au choix : le retour par-dessus, ou les deux coupés à 45°", () => {
+    const p = { ...plan([["base-bas-2-portes", 1000], ["base-bas-1-porte", 600]]), worktopEnds: true };
+    const [T, H] = [p.worktopThickness ?? 38, p.worktopHeight];
+    const pieces = (q: KitchenFloorPlan) => kitchenFromPlan(q).boxes.filter((b) => b.kind === "worktop" || b.name.startsWith("Retour"));
+    // The return up the worktop's end: the worktop stops at the units, the return goes to the top.
+    const side = pieces({ ...p, worktopJoint: "side" });
+    expect(side.map((b) => [b.name, Math.round(b.from[0]), Math.round(b.to[0]), b.to[2], b.profile])).toEqual([["Plan de travail A", 0, 1600, H, undefined], ["Retour de plan A (gauche)", -T, 0, H, undefined]]);
+    // At 45°: both up to the corner, their outlines meeting on the diagonal from the worktop's underside to its top.
+    const [top, ret] = pieces({ ...p, worktopJoint: "miter" });
+    expect([top!.from[0], ret!.to[2]]).toEqual([-T, H]);
+    expect(top!.profile).toEqual({ along: 0, points: [[0, H - T], [1600, H - T], [1600, H], [-T, H]] });
+    expect(ret!.profile).toEqual({ along: 0, points: [[0, 0], [-T, 0], [-T, H], [0, H - T]] });
+  });
+
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
     const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
     const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });
