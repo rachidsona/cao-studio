@@ -24,6 +24,14 @@ def C(x, y, r):
     return f"M{n(x - r)} {n(y)}a{n(r)} {n(r)} 0 1 0 {n(2 * r)} 0a{n(r)} {n(r)} 0 1 0 {n(-2 * r)} 0z"
 
 
+def arr(x1, y1, x2, y2, head=2.4):
+    """An arrow from (x1, y1) to (x2, y2): its shaft to the base of a closed head (filled by the kind R)."""
+    size = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    ux, uy = (x2 - x1) / size, (y2 - y1) / size
+    bx, by, w = x2 - head * ux, y2 - head * uy, head * 0.55
+    return f"M{n(x1)} {n(y1)}L{n(bx)} {n(by)}M{n(bx - w * uy)} {n(by + w * ux)}L{n(x2)} {n(y2)}L{n(bx + w * uy)} {n(by - w * ux)}z"
+
+
 CUBE = "M12 3l8 4.5v9L12 21l-8-4.5v-9z"
 CUBE_IN = "M12 12l8-4.5M12 12v9M12 12L4 7.5"
 POINTER = "M6 3v14.5l3.8-3.6 2.6 5.6 2-1-2.6-5.5H17z"

@@ -6,9 +6,7 @@ l'origine o (là où tombe le point X = Y = Z = 0) ; fit() choisit l'échelle et
 Sortes en plus de icon_models_set.py : F une face neutre, K une face pâle de l'accent, H une face de l'accent, suivies
 de « < » pour une face tournée à gauche, « > » à droite ; R une flèche qui agit, sa pointe pleine.
 """
-from math import hypot
-
-from icon_models_set import BRACKETS, C, R, SMALL_POINTER, STAR, n
+from icon_models_set import BRACKETS, C, R, SMALL_POINTER, STAR, arr, n
 
 SEEN = []
 # How a model looks at the space: screen x = ax X + ay Y, y = bx X + by Y - Z; and the drawing's scale.
@@ -35,11 +33,7 @@ def line(o, *pts):
 
 def arrow(o, P, Q, head=2.4):
     """A shaft from P to the base of a closed head at Q (filled by the kind R)."""
-    (x1, y1), (x2, y2) = pt(o, *P), pt(o, *Q)
-    size = hypot(x2 - x1, y2 - y1)
-    ux, uy = (x2 - x1) / size, (y2 - y1) / size
-    bx, by, w = x2 - head * ux, y2 - head * uy, head * 0.55
-    return f"M{n(x1)} {n(y1)}L{n(bx)} {n(by)}M{n(bx - w * uy)} {n(by + w * ux)}L{n(x2)} {n(y2)}L{n(bx + w * uy)} {n(by - w * ux)}z"
+    return arr(*pt(o, *P), *pt(o, *Q), head)
 
 
 def rect(X, Y, a, b):

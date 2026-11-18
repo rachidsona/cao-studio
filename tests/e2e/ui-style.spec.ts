@@ -109,7 +109,7 @@ test("modèle des icônes : Studio, Glyphe, Croquis redessinent les outils du ru
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "zz-modeles");
-  // The drawing of the « Caisson » icon as the page has it now, and of a tool no model redraws yet.
+  // The drawing of the « Caisson » icon as the page has it now, and of a sketch tool (« Ligne »).
   const look = () => page.evaluate(() => ({
     model: document.documentElement.dataset.iconModel ?? "",
     cabinet: document.querySelector("#i-cabinet")!.innerHTML,
@@ -135,11 +135,12 @@ test("modèle des icônes : Studio, Glyphe, Croquis redessinent les outils du ru
     await choose(name);
     await expect.poll(async () => (await look()).model).toBe(model);
     const now = await look();
-    // Another drawing each time, none of the volumes' gradients; a tool not redrawn keeps its own; the styles of
-    // the volumes are not offered.
+    // Another drawing each time, none of the volumes' gradients, the sketch tools redrawn too; the styles of the
+    // volumes are not offered.
     expect(seen).not.toContain(now.cabinet);
     expect(now.cabinet).not.toContain("url(#k");
-    expect(now).toMatchObject({ line: volumes.line, styles: true, stored: model });
+    expect(now.line).not.toBe(volumes.line);
+    expect(now).toMatchObject({ styles: true, stored: model });
     seen.push(now.cabinet);
   }
   await page.reload();

@@ -5,26 +5,32 @@ agit en orange), « Glyphe » (formes plates grises, un accent) et « Croquis »
 couleurs vives et à plat, au trait noir qui dépasse des coins comme un croquis à main levée). Un fichier par modèle
 dans static/icons/, que l'éditeur charge quand on le choisit (menu « ⋯ » → Icônes, frontend/src/app/icon-models.ts) :
 chaque symbole y remplace celui du même nom de la page ; un outil pas encore redessiné garde son volume. Les dessins
-sont dans scripts/icon_models_set.py (Glyphe) et scripts/icon_models_studio.py (Studio, Croquis).
+sont dans scripts/icon_models_set.py (Glyphe), scripts/icon_models_studio.py (Studio, Croquis) et
+scripts/icon_models_flat.py (les outils plats par nature, un dessin pour les trois).
 
     python3 scripts/icon_models.py
 """
 import re
 from math import hypot
 
+from icon_models_flat import FLAT
+from icon_models_plane import PLANES, on_plane
 from icon_models_set import ICONS
-from icon_models_studio import scene
+from icon_models_studio import DRAW, scene
 
 OUT = "static/icons/{}.svg"
+# Every tool: its own drawing per model (or volumes, DRAW), or one flat drawing for all three ("all").
+TOOLS = {**ICONS, **{name: {"all": drawing} for name, drawing in FLAT.items()}}
 # Each model: its strokes (width, ends, joins), its colours — the ink, the accent, what acts, the dashes of what is
 # hidden or gone (ghost) — how opaque its ink fills are, and the faces of its volumes: for F (neutral), K (pale
 # accent), H (accent), the top, the side turned left, the side turned right.
 MODELS = {
     # Fixed colours, as rendered parts: the same on a light or a dark toolbar. Faces shaded by gradients (GRADIENTS).
-    "studio": dict(width=0.7, ink="#46505c", accent="#1f78d1", action="#f08a24", ghost="#8d99a6", ink_fill=1, faces="gradient"),
-    "glyphe": dict(width=1.6, ink="currentColor", accent="var(--ic-accent)", action="var(--ic-action)", ghost="currentColor", ink_fill=0.72),
+    # flat: the stroke of the drawings shared by the three models (icon_models_flat.py), lines more than volumes.
+    "studio": dict(width=0.7, flat=1.2, ink="#46505c", accent="#1f78d1", action="#f08a24", ghost="#8d99a6", ink_fill=1, faces="gradient"),
+    "glyphe": dict(width=1.6, flat=1.6, ink="currentColor", accent="var(--ic-accent)", action="var(--ic-action)", ghost="currentColor", ink_fill=0.72),
     # Flat bright paint and a black hand line that runs past the corners.
-    "croquis": dict(width=0.95, ink="#1d1f22", accent="#2f7fd6", action="#e2382b", ghost="#7b7f86", ink_fill=1, faces={
+    "croquis": dict(width=0.95, flat=1.3, ink="#1d1f22", accent="#2f7fd6", action="#e2382b", ghost="#7b7f86", ink_fill=1, faces={
         "F": ("#fffdf7", "#f0e6cf", "#ddcca6"),
         "K": ("#e4f1fc", "#c3dcf3", "#a5c6e8"),
         "H": ("#ffd23f", "#f6b623", "#df9612"),
@@ -63,17 +69,24 @@ def sketch(d, k=0.8):
 
 
 def face(kind, d, m):
+    # A face ending in « ~ » (a support under a drawing) has a fine grey outline.
+    line = f'stroke="{m["ghost"]}" stroke-width="{n(m["width"] * 0.6)}"' if kind.endswith("~") else f'stroke="{m["ink"]}"'
+    kind = kind.rstrip("~")
     side = "<>".find(kind[1:]) + 1 if kind[1:] else 0
     if m["faces"] == "gradient":
-        return f'<path d="{d}" fill="url(#icm-{kind[0]}{side})" stroke="{m["ink"]}"/>'
+        return f'<path d="{d}" fill="url(#icm-{kind[0]}{side})" {line}/>'
     fill = f'<path d="{d}" fill="{m["faces"][kind[0]][side]}" stroke="none"/>'
-    # A hand line past the corners where the outline is plain points; a curved one (a pointer) keeps its own.
-    return fill + f'<path d="{sketch(d) if not re.search("[a-yA-LN-Y]", d) else d}" stroke="{m["ink"]}"/>'
+    # A hand line past the corners where the outline is a few straight lines (M, L, z); a curved one keeps its own.
+    straight = not re.search("[a-yA-KN-Y]", d) and d.count("L") <= 8  # a sampled round keeps its own line
+    return fill + f'<path d="{sketch(d) if straight else d}" {line}/>'
 
 
 def shape(kind, d, m):
     if kind[0] in "FKH" and "faces" in m:
         return face(kind, d, m)
+    if kind[0] in "FKH":  # a face in a model without volumes: a flat tint and its outline
+        fill, outline = {"F": ("G", "s"), "K": ("T", "a"), "H": ("A", "")}[kind[0]]
+        return shape(fill, d, m) + (shape(outline, d, m) if outline else "")
     if kind == "R":
         return f'<path d="{d}" fill="{m["action"]}" stroke="{m["action"]}" stroke-width="{n(m["width"] * 2)}"/>'
     if kind in STROKES:
@@ -87,11 +100,18 @@ def shape(kind, d, m):
 def sprite(model):
     m = MODELS[model]
     out = ['<svg xmlns="http://www.w3.org/2000/svg">']
-    for i, (name, drawings) in enumerate(ICONS.items()):
-        drawing = drawings[model] if model in drawings else scene(name, model)
+    for i, (name, drawings) in enumerate(TOOLS.items()):
+        if model in drawings:
+            drawing, mm = drawings[model], m
+        elif name in DRAW:
+            drawing, mm = scene(name, model), m
+        else:
+            # A flat tool: as it is in Glyphe, laid on a board or a sheet in the volume models.
+            drawing = on_plane(drawings["all"], model) if model in PLANES else drawings["all"]
+            mm = dict(m, width=m["flat"])
         # The gradients once, in the first symbol: the page keeps every tool's symbol, so they are always there.
-        body = (DEFS if m.get("faces") == "gradient" and i == 0 else "") + "".join(shape(kind, d, m) for kind, d in drawing)
-        out.append(f'<symbol id="i-{name}" viewBox="0 0 24 24"><g fill="none" stroke="{m["ink"]}" stroke-width="{n(m["width"])}" stroke-linecap="round" stroke-linejoin="round">{body}</g></symbol>')
+        body = (DEFS if m.get("faces") == "gradient" and i == 0 else "") + "".join(shape(kind, d, mm) for kind, d in drawing)
+        out.append(f'<symbol id="i-{name}" viewBox="0 0 24 24"><g fill="none" stroke="{mm["ink"]}" stroke-width="{n(mm["width"])}" stroke-linecap="round" stroke-linejoin="round">{body}</g></symbol>')
     out.append("</svg>\n")
     return "\n".join(out)
 
@@ -100,7 +120,7 @@ def main():
     for model in MODELS:
         text = sprite(model)
         open(OUT.format(model), "w", encoding="utf8").write(text)
-        print(f"{model} : {len(ICONS)} icônes, {len(text) // 1024} Ko")
+        print(f"{model} : {len(TOOLS)} icônes, {len(text) // 1024} Ko")
 
 
 if __name__ == "__main__":
