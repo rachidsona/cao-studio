@@ -294,6 +294,7 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await tool.locator('[data-plan-switch="splashback"]').uncheck();
   await tool.locator('[data-plan-switch="wallUnits"]').uncheck();
   await tool.getByLabel("Retour du plan aux bouts libres").selectOption("miter");
+  await tool.locator('[data-plan-switch="endPanels"]').check();
   await shot(page, "12-reglages");
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.locator("[data-propose]").click();
@@ -305,6 +306,8 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await expect(page.getByText(/^Retour de plan A/).first()).toBeVisible();
   await expect(page.locator('[title="Retour de plan A (gauche) — OK"]').first()).toBeAttached();
   await expect(page.locator('[title="Plan de travail A — OK"]').first()).toBeAttached();
+  // The finishing side against the fridge column, at the run's free end.
+  await expect(page.getByText(/^Joue de finition A/).first()).toBeVisible();
   await shot(page, "13-retour-de-plan");
   await expect(page.getByText(/^Bas 1 porte|^Haut 1 porte/)).toHaveCount(0);
   expect(errors).toEqual([]);

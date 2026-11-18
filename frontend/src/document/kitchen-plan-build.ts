@@ -142,6 +142,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     const covered = worktopSpans(run, fill);
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
+    if (p.endPanels) endPanels(p, run, fill, band, box);
     if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, part, i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
@@ -295,6 +296,28 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
     // In the worktop's material (as a splashback), out of the worktop's cut-outs and bars.
     for (const r of returns) box(`Retour de plan ${run.id}${r.side === "right" ? " (droite)" : " (gauche)"}`, "splashback", r.at, r.profile ? { profile: r.profile } : {});
   });
+}
+
+/**
+ * At a free end of the run, a finishing side in the fronts' material against the side that shows: of the last column
+ * of the base row, and of the last wall unit — the side of a base unit is left to the worktop's return.
+ */
+function endPanels(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, band: Band, box: BoxOf): void {
+  for (const side of ["left", "right"] as const) {
+    if (run[side] !== "free") continue;
+    for (const row of ["base", "wall"] as const) {
+      const units = fill.placed.filter((pl) => pl.row === row && !isFiller(pl.item) && applianceOf(pl.item)?.role !== "hood");
+      if (!units.length) continue;
+      const last = units.reduce((a, b) => (side === "left" ? (b.at < a.at ? b : a) : (b.at + b.item.width > a.at + a.item.width ? b : a)));
+      if (row === "base" && last.entry.kind !== "tall") continue;
+      // A wall unit beside a column: its side is against the column.
+      const beyond = (pl: Placed) => (side === "left" ? pl.at < last.at : pl.at + pl.item.width > last.at + last.item.width);
+      if (row === "wall" && fill.placed.some((pl) => pl.row === "base" && pl.entry.kind === "tall" && beyond(pl))) continue;
+      const { height, depth, z } = itemSize(p, last.item, last.entry);
+      const u = side === "left" ? last.at - FRONT : last.at + last.item.width;
+      box(`Joue de finition ${row === "wall" ? "haute " : ""}${run.id}${side === "right" ? " (droite)" : " (gauche)"}`, "panel", band(u, u + FRONT, 0, depth + FRONT, z, z + height));
+    }
+  }
 }
 
 /** Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */

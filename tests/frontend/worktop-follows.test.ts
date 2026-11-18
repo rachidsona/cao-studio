@@ -84,6 +84,18 @@ describe("plan de travail qui suit les meubles", () => {
     expect(ret!.profile).toEqual({ along: 0, points: [[0, 0], [-T, 0], [-T, H], [0, H - T]] });
   });
 
+  it("met des joues de finition aux bouts libres : contre la dernière colonne et le dernier meuble haut, pas contre un bas", () => {
+    const p = { ...plan([["tall-colonne-rangement", 600], ["base-bas-2-portes", 1000], ["wall-haut-1-porte", 600]]), endPanels: true };
+    const joues = kitchenFromPlan(p).boxes.filter((b) => b.name.startsWith("Joue"));
+    // The column at the left end; the wall unit beside it, its left side against the column, its right one showing.
+    // The base unit's right side is left to the worktop's return.
+    expect(joues.map((b) => [b.name, b.kind, Math.round(b.from[0]), Math.round(b.to[0]), Math.round(b.from[2])])).toEqual([
+      ["Joue de finition A (gauche)", "panel", -19, 0, 0],
+      ["Joue de finition haute A (droite)", "panel", 1200, 1219, 1450],
+    ]);
+    expect(kitchenFromPlan({ ...p, endPanels: false }).boxes.some((b) => b.name.startsWith("Joue"))).toBe(false);
+  });
+
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
     const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
     const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });

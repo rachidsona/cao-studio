@@ -180,6 +180,8 @@ export interface KitchenFloorPlan {
   worktopEnds?: boolean;
   /** How the worktop meets that return: running over it (absent), the return up its end, or both cut at 45°. */
   worktopJoint?: "top" | "side" | "miter";
+  /** Finishing sides in the fronts' material at the free ends of the runs: the last column's and the last wall unit's. */
+  endPanels?: boolean;
   /** By run: its units and appliances, and where what is left goes. */
   runs?: Record<string, KitchenRunItem[]>;
   rest?: Record<string, "end" | "start" | "both" | "walls">;

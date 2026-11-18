@@ -226,7 +226,7 @@ export class KitchenPlanTool {
       this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
       this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
       this.fields.check("Crédence", "splashback"),
-      this.fields.check("Plinthes", "kick"),
+      this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"),
       this.fields.select("Retour du plan aux bouts libres", plan.worktopEnds ? (plan.worktopJoint ?? "top") : "none", [["none", "Aucun"], ["top", "Jusqu'au sol, le plan par-dessus"], ["side", "Jusqu'au sol, le retour par-dessus"], ["miter", "Jusqu'au sol, coupe d'onglet (45°)"]], (v) => this.set(v === "none" ? { worktopEnds: false } : { worktopEnds: true, worktopJoint: v as NonNullable<KitchenFloorPlan["worktopJoint"]> })),
       el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
       el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
