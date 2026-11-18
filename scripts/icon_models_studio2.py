@@ -40,8 +40,7 @@ def tent(o, w, d, h, peak):
 def bent(o):
     """A board bent in an arch, and where it lay straight."""
     up = [(10 * i / 12, 4 * sin(pi * i / 12)) for i in range(13)]
-    profile = [(x, z) for x, z in up] + [(x, z + 1.1) for x, z in reversed(up)]
-    profile = profile[::-1]  # counter-clockwise: along the top from the right, back along the bottom
+    profile = [(x, z) for x, z in up] + [(x, z + 1.1) for x, z in reversed(up)]  # counter-clockwise
     return [("d", wire(o, 0, 0, 0, 10, 6, 0.6)), *slab(o, profile, 0, 6, "H", "H")]
 
 

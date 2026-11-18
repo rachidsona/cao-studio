@@ -5,7 +5,8 @@ agit en orange), « Glyphe » (formes plates grises, un accent) et « Croquis »
 couleurs vives et à plat, au trait noir qui dépasse des coins comme un croquis à main levée). Un fichier par modèle
 dans static/icons/, que l'éditeur charge quand on le choisit (menu « ⋯ » → Icônes, frontend/src/app/icon-models.ts) :
 chaque symbole y remplace celui du même nom de la page ; un outil pas encore redessiné garde son volume. Les dessins
-sont dans scripts/icon_models_set.py et _set2.py (Glyphe), scripts/icon_models_studio.py et _studio2.py (Studio,
+sont dans scripts/icon_models_set.py, _set2.py et _set3.py (Glyphe), scripts/icon_models_studio.py, _studio2.py et
+_studio3.py (Studio,
 Croquis, avec les solides de icon_models_solid.py) et scripts/icon_models_flat.py (les outils plats par nature, un
 dessin pour les trois, posé sur un support par icon_models_plane.py).
 
@@ -18,15 +19,17 @@ from icon_models_flat import FLAT
 from icon_models_plane import PLANES, on_plane
 from icon_models_set import ICONS
 from icon_models_set2 import ICONS2
+from icon_models_set3 import ICONS3
 from icon_models_studio import AROUND, DRAW, scene
 from icon_models_studio2 import AROUND2, DRAW2
+from icon_models_studio3 import AROUND3, DRAW3
 
-DRAW.update(DRAW2)
-AROUND.update(AROUND2)
+DRAW.update(DRAW2, **DRAW3)
+AROUND.update(AROUND2, **AROUND3)
 
 OUT = "static/icons/{}.svg"
 # Every tool: its own drawing per model (or volumes, DRAW), or one flat drawing for all three ("all").
-TOOLS = {**ICONS, **ICONS2, **{name: {"all": drawing} for name, drawing in FLAT.items()}}
+TOOLS = {**ICONS, **ICONS2, **ICONS3, **{name: {"all": drawing} for name, drawing in FLAT.items()}}
 # Each model: its strokes (width, ends, joins), its colours — the ink, the accent, what acts, the dashes of what is
 # hidden or gone (ghost) — how opaque its ink fills are, and the faces of its volumes: for F (neutral), K (pale
 # accent), H (accent), the top, the side turned left, the side turned right.

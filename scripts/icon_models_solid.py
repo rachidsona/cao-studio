@@ -51,18 +51,28 @@ def frustum(o, bottom, top_pts, kind="F", top=None):
 def slab(o, profile, y0, y1, kind="F", top=None, front=None, accent=()):
     """A profile (X, Z) drawn counter-clockwise, run from y0 to y1: a moulding, a bent board; the strips from the
     profile's edges numbered in accent are of the kind H."""
-    strips = [[(x1, y0, z1), (x2, y0, z2), (x2, y1, z2), (x1, y1, z1)] for (x1, z1), (x2, z2) in zip(profile, profile[1:] + profile[:1])]
     E = eye()
-    out = []
-    for i, ((x1, z1), (x2, z2), pts) in enumerate(zip(profile, profile[1:] + profile[:1], strips)):
+    seen = []  # each visible edge: (index, kind)
+    for i, ((x1, z1), (x2, z2)) in enumerate(zip(profile, profile[1:] + profile[:1])):
         nx, nz = z2 - z1, x1 - x2  # outward for a counter-clockwise profile
         size = (nx * nx + nz * nz) ** 0.5 or 1
         nx, nz = nx / size, nz / size
         if nx * E[0] + nz * E[2] <= 1e-6:
             continue
         base = "H" if i in accent else kind
-        k = (base if i in accent else top or kind) if nz > 0.55 else base + ("<" if VIEW["ax"] * nx < 0 else ">")
-        out.append(((x1 + x2) / 2 * E[0] + (z1 + z2) / 2 * E[2], k, iso(o, *pts)))
+        seen.append((i, (base if i in accent else top or kind) if nz > 0.55 else base + ("<" if VIEW["ax"] * nx < 0 else ">")))
+    # Neighbouring edges of one kind make one face (a smooth curve, not a strip per edge).
+    runs = []
+    for i, k in seen:
+        if runs and runs[-1][1] == k and runs[-1][0][-1] == i - 1:
+            runs[-1][0].append(i)
+        else:
+            runs.append(([i], k))
+    out = []
+    for idx, k in runs:
+        pts = [profile[(j) % len(profile)] for j in range(idx[0], idx[-1] + 2)]
+        depth = sum(x * E[0] + z * E[2] for x, z in pts) / len(pts)
+        out.append((depth, k, iso(o, *((x, y0, z) for x, z in pts), *((x, y1, z) for x, z in reversed(pts)))))
     faces = [(k, d) for _, k, d in sorted(out)]
     end = iso(o, *((x, y1, z) for x, z in profile))
     return faces + [(front or kind + ("<" if VIEW["ay"] < 0 else ">"), end)]

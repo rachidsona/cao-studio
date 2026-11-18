@@ -1501,9 +1501,10 @@ opération existante.
   fixes, les mêmes en thème clair et sombre. Trois dessins différents
   de chaque outil, pas trois rendus du même (`tests/frontend/icon-models.test.ts`). Les outils du **ruban**, de la
   **colonne de sélection**, de l'**esquisse** (tracés, contraintes, cotes) et de la **modélisation** (extrusion,
-  révolution, congés, coque, réseaux, coupe…) sont redessinés ; les autres gardent leur
-  volume en attendant. Les dessins sont décrits dans `scripts/icon_models_set.py` et `icon_models_set2.py` (Glyphe :
-  une suite de tracés par outil), `scripts/icon_models_studio.py` et `icon_models_studio2.py` (Studio et Croquis : des volumes placés dans l'espace, projetés selon la vue
+  révolution, congés, coque, réseaux, coupe…) et de la **menuiserie** (caissons, niches, dressing, cuisine,
+  quincaillerie, usinage…) sont redessinés ; les autres gardent leur
+  volume en attendant. Les dessins sont décrits dans `scripts/icon_models_set.py`, `icon_models_set2.py` et `_set3.py` (Glyphe :
+  une suite de tracés par outil), `scripts/icon_models_studio.py`, `icon_models_studio2.py` et `_studio3.py` (Studio et Croquis : des volumes placés dans l'espace, projetés selon la vue
   du modèle, mis à l'échelle de l'icône, chaque face peinte selon son côté ; les solides de forme libre — tronc, toit, cylindre, planche cintrée — dans
   `icon_models_solid.py`) et `scripts/icon_models_flat.py` (les
   outils plats par nature, dessinés une fois : à plat dans Glyphe, posés sur une petite planche grise vue en 3D dans
