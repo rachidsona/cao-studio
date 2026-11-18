@@ -382,7 +382,7 @@ test("linéaire : chaque titre se plie, tous fermés au départ, un seul ouvert 
 test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose en haut, réglable aussi", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await newProject(page, "zz-test-plan-cuisine-hauts-angle");
+  const api = await newProject(page, "zz-test-plan-cuisine-hauts-angle");
   await click(page, '[data-ribbon-tab="kitchen"]');
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
@@ -412,10 +412,24 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   expect((await strip.locator('[data-corner-width="door"]').allTextContents()).map((t) => t.replace(/^\D+/, "")).sort()).toEqual(["39,7", "59,7"]);
   await expect(strip.locator('[data-corner-width="blind"]').first()).toHaveText(/\d+(,\d)?$/);
   await shot(page, "14-hauts-angle");
+  // Clicked on the strip, a corner unit is chosen as a unit is: « Meuble choisi » sets it, its shelves too.
+  await strip.locator('[data-corner-front="blind"]').click({ position: { x: 4, y: 4 } });
+  const chosen = tool.locator('[data-fold="chosen"]');
+  await expect(chosen).toContainText("Meuble d'angle A");
+  await tool.locator("[data-corner-shelves]").filter({ hasText: "+" }).click();
+  await expect(tool.locator('[data-corner-count="shelves"]')).toHaveText("2");
+  await strip.locator('[data-wall-corner-front="blind"]').click({ position: { x: 4, y: 4 } });
+  await expect(chosen).toContainText("Haut d'angle A");
+  await tool.locator("[data-corner-wall-shelves]").filter({ hasText: "−" }).click();
+  await expect(tool.locator('[data-corner-count="wall-shelves"]')).toHaveText("1");
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Haut d'angle A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Meuble d'angle A").first()).toBeVisible();
   await expect(page.getByText("Porte d'angle haute A").first()).toBeVisible();
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const cabinets = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; name: string; shelves?: number }[] } }).document.features.filter((f) => f.type === "cabinet").map((f) => [f.name, f.shelves]), api);
+  expect(cabinets).toEqual(expect.arrayContaining([["Meuble d'angle A", 2], ["Haut d'angle A", 1]]));
   expect(errors).toEqual([]);
 });
 

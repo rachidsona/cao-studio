@@ -32,7 +32,7 @@ const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 type Partition = OffsetRecord & { step: Extract<NonNullable<OffsetRecord["step"]>, { kind: "partition" }> };
 /** The Répartition a caisson's sketch is made of: the first one extruded. */
-const partitionOf = (sketch: SketchFeature): Partition | undefined => (sketch.offsets ?? []).find((r): r is Partition => isPartition(r) && r.step.kind === "partition" && !!r.step.depth);
+export const partitionOf = (sketch: SketchFeature): Partition | undefined => (sketch.offsets ?? []).find((r): r is Partition => isPartition(r) && r.step.kind === "partition" && !!r.step.depth);
 
 /** Whether this feature is a caisson a kept room may hold: a sketch with a Répartition extruded, its panels still there. */
 export function isCaisson(doc: CadDocument, id: string): boolean {
@@ -67,6 +67,14 @@ function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: Plan
   if (typeof rebuilt === "string") return rebuilt;
   const next = updateFeature(doc, sketch.id, () => moved);
   return { doc: withSketchExtrusion(next, sketch.id, rebuilt.geometry, { groups: extrusionGroups(offsets, rebuilt) }), problems: rebuilt.problems };
+}
+
+/** The caisson on `sketchId` made again where it stands, at its Répartition's sizes (its height, its depth changed). */
+export function withCaissonRemade(doc: CadDocument, sketchId: string): { doc: CadDocument; problems: string[] } | string {
+  const sketch = findFeature(doc, sketchId);
+  const record = sketch?.type === "sketch" ? partitionOf(sketch) : undefined;
+  if (sketch?.type !== "sketch" || !sketch.frame || !record) return "Ce caisson n'existe plus.";
+  return withCaissonResized(doc, sketch, sketch.frame, record.step.input.length);
 }
 
 /**

@@ -108,6 +108,22 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
     return doc.features.find((f) => f.name.startsWith("Caisson — "))!.offsets!.find((r) => r.step?.kind === "partition")!.step!.input.length;
   }, api);
   expect(length).toBe(800);
+  const stepDepth = async () => {
+    await caissonAt();
+    return page.evaluate(async (url) => {
+      const doc = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()).document as { features: { name: string; offsets?: { step?: { kind: string; depth?: number } }[] }[] };
+      return doc.features.find((f) => f.name.startsWith("Caisson — "))!.offsets!.find((r) => r.step?.kind === "partition")!.step!.depth!;
+    }, api);
+  };
+  // In « Meuble choisi », as a unit: its depth typed (5 cm less), the caisson made again to it.
+  await unfold(tool, "chosen");
+  const depth = tool.locator('[data-held-item] [data-size="depth"]');
+  const deep = Number((await depth.inputValue()).replace(",", "."));
+  const deepBefore = await stepDepth();
+  await depth.fill(String(deep - 5));
+  await depth.press("Enter");
+  await expect(depth).toHaveValue(String(deep - 5), { timeout: 60_000 });
+  expect(await stepDepth()).toBeCloseTo(deepBefore - 50, 0);
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");
@@ -160,6 +176,14 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await expect(tool.locator('[data-run-strip="A"] [data-held]')).toHaveCount(1, { timeout: 60_000 });
   await page.keyboard.press("Control+s");
   expect(Object.keys(await caissons())).toHaveLength(1);
+  // The other one put back as the unit it was: no caisson left, a unit of the catalogue in its place.
+  await tool.locator('[data-run-strip="A"] [data-held]').click();
+  await unfold(tool, "chosen");
+  await tool.locator("[data-held-unfurnish]").click();
+  await expect(tool.locator('[data-run-strip="A"] [data-held]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(tool.locator('[data-run-strip="A"] [data-item]')).toHaveCount(1);
+  await page.keyboard.press("Control+s");
+  expect(Object.keys(await caissons())).toHaveLength(0);
   expect(errors).toEqual([]);
 });
 

@@ -10,7 +10,7 @@ import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { itemSlid } from "../../document/kitchen-slide";
-import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
+import { kitchenSizes, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
@@ -20,8 +20,8 @@ import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 import { Folds } from "../../ui/fold";
 import { familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
-import { kickOf, withCorner, type CornerSetting } from "../../document/kitchen-corners";
-import { cornerChoice } from "./kitchen-corner-choice";
+import { kickOf, withCorner, type CornerChange, type CornerSetting } from "../../document/kitchen-corners";
+import { cornerChoice, cornerChosen } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
 import { BRASS } from "./unit-elevation";
 import { showAll } from "../zone-view";
@@ -32,6 +32,7 @@ import { myUnits } from "./my-units";
 import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
 import { caissonActions, furnishItem, insideRows } from "./kitchen-unit-inside";
+import { heldRows } from "./kitchen-held-rows";
 import { sizeFields } from "./kitchen-unit-sizes";
 import { stripActions, withRoomLeft } from "./kitchen-strip-actions";
 import { alignedOver } from "../../features/kitchen-run-align";
@@ -131,8 +132,7 @@ export class RunEditor {
   }
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
-    // A caisson furnished by hand (moved): chosen as it is on the strip.
-    if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null];
+    if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null]; // a caisson furnished by hand, moved
     this.items = items;
     this.chosen = chosen;
     this.picked = picked.filter((id) => items.some((i) => i.id === id));
@@ -229,6 +229,7 @@ export class RunEditor {
     const off = plan.noWorktop?.[run.id] === true;
     // What is chosen on the strip, acted on from under it, by the keyboard or a right click.
     const actions = stripActions({
+    const caisson = caissonActions(editor, (id) => this.items.find((i) => i.id === id)?.furnished, () => this.dirty, () => ((this.other = null), (this.focusStrip = true), this.host.redraw(), this.host.changed()));
       items: this.items, chosen: this.chosen, picked: this.picked, other: this.other, worktopOff: off, appliances,
       change: (items, chosen, picked) => ((this.focusStrip = true), this.change(items, chosen, picked ?? [])),
       putAfter: (copy, after) => {
@@ -243,7 +244,7 @@ export class RunEditor {
         this.other = null;
         void editor.change(withApplianceRemoved(editor.doc, id)).then(() => (this.host.redraw(), this.host.changed()));
       },
-      ...caissonActions(editor, (id) => this.items.find((i) => i.id === id)?.furnished, () => this.dirty, () => ((this.other = null), (this.focusStrip = true), this.host.redraw(), this.host.changed())),
+      ...caisson,
       setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()),
       kick: { ...kickOf(plan, run.id), look: plan.kickLook },
       setKick: (change) => ((this.kick = { ...this.kick, ...change }), change.on === false ? (this.other = null) : 0, (this.focusStrip = true), this.touched()),
@@ -259,11 +260,12 @@ export class RunEditor {
     this.focusStrip = false;
     const strip = runStrip({ plan, run, geometry: g, fill, boxes: kitchenFromPlan(plan, this.host.room).boxes.filter((b) => b.run === run.id), chosen: this.chosen, picked: this.picked, worktop: off ? [] : worktopSpans(run, fill), other: this.other, focus, key: actions.key, menu: actions.menu, pickOther: (what) => {
         // An appliance put by hand, or the worktop: chosen instead of a unit (clicked again: no longer).
-        this.other = this.other && this.other.kind === what.kind && (!("id" in what) || (this.other as { id?: string }).id === what.id) ? null : what;
+        this.other = this.other && JSON.stringify(this.other) === JSON.stringify(what) ? null : what;
         this.chosen = null;
         this.picked = [];
         this.focusStrip = true;
         this.host.redraw();
+        if (this.other?.kind === "caisson" || this.other?.kind === "corner") this.folds.open = "chosen";
       }, pick: (id, add) => {
         this.other = null;
         this.focusStrip = true;
@@ -285,6 +287,9 @@ export class RunEditor {
     const f = this.folds;
     const chosen = fill.placed.find((p) => p.item.id === this.chosen)?.item ?? this.items.find((i) => i.id === this.chosen);
     const rows: (HTMLElement | null)[] = [
+    const setCorner = (joint: Joint, c: CornerChange) => ((this.corners = withCorner(this.current(), joint, c)), this.touched());
+    const corner = this.other?.kind === "corner" ? cornerChosen(plan, run, unit, setCorner, () => this.host.redraw(), this.other.side, this.other.row) : null;
+    const held = this.other?.kind === "caisson" ? this.items.find((i) => i.id === (this.other as { id: string }).id && i.furnished) : undefined;
       this.header(`Linéaire — ${run.label.toLowerCase()}`),
       // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan (« Plan fixe »).
       el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
@@ -301,15 +306,14 @@ export class RunEditor {
       this.picked.length > 1
         ? f.fold("chosen", `Meubles choisis (${this.picked.length})`, () => multiRows({ plan, items: this.items, picked: this.picked, fill, unit, change: (items, picked) => this.change(items, null, picked), notify: (m, k) => this.host.editor.notify(m, k) }).filter((r): r is HTMLElement => r !== null))
         : f.fold("chosen", chosen ? `Meuble choisi : ${itemEntry(chosen).name} · ${formatLength(chosen.width, unit)}` : "Meuble choisi", () => [this.selected(chosen), pickAllRow(this.items, run.wall, (ids) => ((this.picked = ids), (this.chosen = null), this.host.redraw()))]),
+        : corner
+        ? f.fold("chosen", `Meuble choisi : ${corner.title}`, () => [corner.body])
+        : held
+        ? f.fold("chosen", `Meuble choisi : caisson aménagé · ${formatLength(held.width, unit)}`, () => [heldRows({ editor: this.host.editor, plan, item: held, busy: this.dirty, width: (mm) => this.change(this.items.map((i) => (i.id === held.id ? { ...i, width: mm } : i))), open: () => caisson.openCaisson(held.id), done: () => (this.host.redraw(), this.host.changed()), redraw: () => this.host.redraw() })])
       f.fold("add", "Ajouter des meubles", () => this.catalog()),
       f.fold("fillers", "Fileurs", () => this.fillerRows()),
       run.left !== "free" || run.right !== "free"
-        ? f.fold("corners", run.left !== "free" && run.right !== "free" ? "Les angles" : "L'angle", () => [
-            cornerChoice(plan, run, unit, (joint, c) => {
-              this.corners = withCorner(this.current(), joint, c);
-              this.touched();
-            }, () => this.host.redraw(), false),
-          ])
+        ? f.fold("corners", run.left !== "free" && run.right !== "free" ? "Les angles" : "L'angle", () => [cornerChoice(plan, run, unit, setCorner, () => this.host.redraw(), false)])
         : null,
       fill.problems.length ? f.fold("checks", `À revoir (${fill.problems.length})`, () => [...fill.problems.map((m) => el("p", { class: "text-amber-900 dark:text-amber-100" }, m)), ...missingRows(fill, unit, (ids) => this.change(this.items.filter((i) => !ids.includes(i.id)), this.chosen))]) : null,
       f.fold("price", "Prix du projet", () => [quoteButton()], el("span", { class: "font-mono font-medium", "data-live-total": "" })),

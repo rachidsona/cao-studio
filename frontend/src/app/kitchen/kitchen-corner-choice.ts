@@ -4,7 +4,7 @@
  * LeMans, meuble en L 90 × 90 —, chacune dessinée vue de dessus avec ce qu'elle apporte. Le choix vaut pour l'angle,
  * donc pour les deux linéaires qui s'y rencontrent, et s'applique avec le reste à OK.
  */
-import { CORNER_KINDS, WALL_CORNER_KINDS, cornerLimits, cornerSketch, type CornerChange } from "../../document/kitchen-corners";
+import { CORNER_KINDS, CORNER_SHELVES, WALL_CORNER_KINDS, cornerLimits, cornerSide, cornerSketch, shelvedCorner, wallCornerSide, type CornerChange } from "../../document/kitchen-corners";
 import { cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenJoints, lArm, wallArm, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "../../document/kitchen-plan-shapes";
 import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
@@ -42,8 +42,19 @@ function sizeField(label: string, key: string, value: number, [lo, hi]: [number,
  * The corners of the run and their choice, low and up in the wall row, with their sizes; null when it has none. A change
  * goes to `change`; `refresh` draws again once a field is left.
  */
-export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: DisplayUnit, change: (joint: Joint, c: CornerChange) => void, refresh: () => void, titled = true): HTMLElement | null {
-  const sides = (["left", "right"] as const).filter((side) => run[side] !== "free");
+/** How many shelves a corner unit has, less or more by a click. */
+function shelfStep(label: string, key: string, count: number, set: (n: number) => void): HTMLElement {
+  const step = (text: string, title: string, n: number) => {
+    const b = el("button", { type: "button", class: "h-7 w-7 border border-gray-300 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800", title, disabled: n < 0 || n > CORNER_SHELVES, [`data-corner-${key}`]: text === "+" ? "more" : "less" }, text);
+    b.addEventListener("click", () => set(n));
+    return b;
+  };
+  return el("div", { class: "grid grid-cols-[1fr_auto_2rem_auto] items-center gap-1" }, label, step("−", "Une étagère de moins", count - 1), el("span", { class: "text-center font-mono", "data-corner-count": key }, String(count)), step("+", "Une étagère de plus", count + 1));
+}
+
+/** The corners of the run (`only`: that end alone, chosen on its strip), each with its solutions, sizes and shelves. */
+export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: DisplayUnit, change: (joint: Joint, c: CornerChange) => void, refresh: () => void, titled = true, only?: "left" | "right"): HTMLElement | null {
+  const sides = (["left", "right"] as const).filter((side) => run[side] !== "free" && (!only || side === only));
   if (!sides.length) return null;
   const joints = kitchenJoints(plan);
   const length = (mm: number) => formatLength(mm, unit);
@@ -60,6 +71,7 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
       const other = info?.walls.find((w) => w !== run.label) ?? "";
       const where = isLCorner(chosen) ? `Un caisson de ${length(lArm(plan, joint))} sur chaque mur.` : chosen === "dead" ? "" : run[side] === "pass" ? `Le meuble d'angle est côté ${lower(run.label)}, qui va jusqu'au mur ; côté ${lower(other)}, un fileur.` : `Le meuble d'angle est côté ${lower(other)}, qui va jusqu'au mur ; côté ${lower(run.label)}, un fileur.`;
       const set = (c: CornerChange) => change(joint, c);
+      const [low, up] = [cornerSide(plan, run, side), wallCornerSide(plan, run, side)];
       // Its size: the door of a blind corner unit, the side of an L.
       const lowSize = isDoorCorner(chosen) ? sizeField("Porte du meuble d'angle", "door", cornerDoor(plan, joint), limits.door, unit, (mm) => set({ door: mm }), refresh) : isLCorner(chosen) ? sizeField("Côté du L, depuis le mur", "arm", lArm(plan, joint), limits.arm, unit, (mm) => set({ arm: mm }), refresh) : null;
       const highSize = high === "unit" ? sizeField("Porte du haut d'angle", "wallDoor", wallCornerDoor(plan, joint), limits.wallDoor, unit, (mm) => set({ wallDoor: mm }), refresh) : high === "l" ? sizeField("Côté du L haut, depuis le mur", "wallArm", wallArm(plan, joint), limits.wallArm, unit, (mm) => set({ wallArm: mm }), refresh) : null;
@@ -81,6 +93,7 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
           }),
         ),
         lowSize,
+        low?.cabinet && shelvedCorner(chosen) ? shelfStep("Étagères", "shelves", low.shelves, (n) => set({ shelves: n })) : null,
         where ? el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, where) : null,
         run.wall
           ? el(
@@ -98,10 +111,17 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
                 }),
               ),
               highSize,
+              up?.cabinet ? shelfStep("Étagères du haut", "wall-shelves", up.shelves, (n) => set({ wallShelves: n })) : null,
               high !== "none" ? el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, WALL_CORNER_KINDS[high].summary) : null,
             )
           : null,
       );
     }),
   );
+}
+
+/** A corner unit chosen on the strip (its end, low or up): its name, and its settings alone, as « Meuble choisi » shows them. */
+export function cornerChosen(plan: KitchenFloorPlan, run: KitchenRun, unit: DisplayUnit, change: (joint: Joint, c: CornerChange) => void, refresh: () => void, side: "left" | "right", row: "base" | "wall"): { title: string; body: HTMLElement | null } {
+  const piece = row === "wall" ? wallCornerSide(plan, run, side) : cornerSide(plan, run, side);
+  return { title: piece?.name ?? (row === "wall" ? "Angle haut" : "Angle"), body: cornerChoice(plan, run, unit, change, refresh, false, side) };
 }

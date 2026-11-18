@@ -87,7 +87,7 @@ export interface StripHost {
 }
 
 /** What else than a unit is chosen on the strip; a caisson furnished by hand by the item that keeps its room. */
-export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" } | { kind: "caisson"; id: string };
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -130,7 +130,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     // Up in the wall row: a wall corner unit's panel and door, or its filler.
     const high = g.wall ? wallCornerSide(p, run, side) : null;
     for (const f of high?.fronts ?? []) {
-      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : PANEL, `data-wall-corner-front="${f.kind}"`));
+      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : PANEL, `data-wall-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.wallBottom, s.wallTop, side, "wall"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
@@ -141,7 +141,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     if (!corner) continue;
     for (const f of corner.fronts) {
       const tone = f.kind === "blind" ? `${PANEL} opacity-70` : PANEL;
-      parts.push(rect(f.from, y(s.base), f.to - f.from, s.base - s.plinth, tone, `data-corner-front="${f.kind}"`));
+      parts.push(rect(f.from, y(s.base), f.to - f.from, s.base - s.plinth, tone, `data-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.plinth, s.base, side, "base"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
@@ -196,10 +196,16 @@ export function runStrip(host: StripHost): SVGSVGElement {
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
   // A corner (its unit, its filler, its dead square) clicked: its settings open.
-  if (host.corner) {
+  // Chosen as a unit is when it can be (« Meuble choisi »), outlined.
+  if (host.corner || host.pickOther) {
     for (const piece of node.querySelectorAll<SVGElement>("[data-corner], [data-corner-front], [data-wall-corner-front]")) {
+      const side = (piece.dataset.corner ?? piece.dataset.side) as "left" | "right";
+      const row = piece.hasAttribute("data-wall-corner-front") ? "wall" : "base";
+      const other = host.other;
+      if (other?.kind === "corner" && other.side === side && other.row === row) piece.setAttribute("stroke", BRASS), piece.setAttribute("stroke-width", "3");
       piece.style.cursor = "pointer";
-      piece.addEventListener("click", () => host.corner?.());
+      piece.addEventListener("pointerdown", (event) => event.stopPropagation());
+      piece.addEventListener("click", () => (host.pickOther ? host.pickOther({ kind: "corner", side, row }) : host.corner?.()));
     }
   }
   // A unit's width under it (over a wall unit): clicked, the calculator; an appliance keeps its widths.

@@ -1,7 +1,7 @@
 /** Les angles du plan de cuisine, angle par angle : angle mort, meuble d'angle à étagère, LeMans, Magic Corner, meuble en L 90 × 90, carrousel. */
 import { describe, expect, it } from "vitest";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
-import { CORNER_KINDS, cornerSide, cornerSketch, withCorner } from "../../frontend/src/document/kitchen-corners";
+import { CORNER_KINDS, CORNER_SHELVES, cornerSide, cornerSketch, wallCornerSide, withCorner } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { CORNER_DOOR, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
@@ -210,5 +210,20 @@ describe("angles de cuisine", () => {
     // No plinth asked: none under the corner either.
     const none = plan({ corners: { left: "unit" }, kick: false });
     expect(kitchenFromPlan({ ...none, ...proposeKitchen(none) }).boxes.some((b) => b.kind === "kick")).toBe(false);
+  });
+
+  it("les étagères d'un meuble d'angle se choisissent, en bas et en haut ; pas celles d'un angle à plateaux", () => {
+    const p = plan({ corners: { left: "unit" }, wallCorners: { left: "unit" } });
+    const a = run(p, "A");
+    expect([cornerSide(p, a, "left")!.shelves, wallCornerSide(p, a, "left")!.shelves]).toEqual([1, 2]);
+    const more = { ...p, ...withCorner(p, "left", { shelves: 3, wallShelves: 0 }) };
+    expect([cornerSide(more, a, "left")!.shelves, wallCornerSide(more, a, "left")!.shelves]).toEqual([3, 0]);
+    // Built with them.
+    const units = kitchenFromPlan({ ...more, runs: { A: [newItem([], "base-bas-1-porte", 600)] } }).units;
+    const unit = units.find((u) => u.name === cornerSide(more, a, "left")!.name)!;
+    expect(unit.shelves).toBe(3);
+    // Not beyond what a caisson holds; a LeMans keeps its trays.
+    expect(cornerSide({ ...more, cornerSizes: { left: { shelves: 99 } } }, a, "left")!.shelves).toBe(CORNER_SHELVES);
+    expect(cornerSide({ ...more, corners: { left: "lemans" } }, a, "left")!.shelves).toBe(0);
   });
 });

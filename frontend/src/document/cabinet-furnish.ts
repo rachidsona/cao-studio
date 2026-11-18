@@ -39,7 +39,7 @@ function freedFromPlan(doc: CadDocument, c: CabinetFeature): { doc: CadDocument;
   if (!item) return itemId === undefined && (plan.made?.[owner.run] ?? []).includes(c.id) ? "Un meuble d'angle ne s'aménage pas ainsi : choisissez un autre meuble du linéaire." : "Ce meuble n'est plus retrouvé dans son linéaire : refaites la cuisine, puis réessayez.";
   const wall = rowOf(itemEntry(item)) === "wall";
   // Its depth, and up in the wall row its height: the room is where the cabinet was, the caisson in it.
-  const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}) };
+  const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}), ...(item.own ? {} : { from: item.model }) };
   const built = withKitchenBuilt(doc, owner.plan, { runs: { ...plan.runs, [owner.run]: items.map((i) => (i === item ? space : i)) } });
   return typeof built === "string" ? built : { doc: built.doc, plan: owner.plan, run: owner.run, item: item.id };
 }

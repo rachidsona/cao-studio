@@ -135,6 +135,8 @@ export interface KitchenRunItem {
   dividers?: number;
   /** Room kept for a caisson furnished by hand (its sketch, document/caisson-follow.ts): it goes where this room goes. */
   furnished?: string;
+  /** The model of the unit that stood there before its caisson was furnished by hand: put back by « Remettre le meuble d'origine ». */
+  from?: string;
 }
 
 /** The plan of a kitchen, seen from above (document/kitchen-plan-shapes.ts): its model, its sizes (mm), and each run's units. */
@@ -166,7 +168,7 @@ export interface KitchenFloorPlan {
   /** By corner, up in the wall row: nothing, a wall corner unit with a door, or an L (document/kitchen-corners.ts). */
   wallCorners?: Partial<Record<"left" | "right", "none" | "unit" | "l">>;
   /** By corner, its sizes as set (mm): the base corner unit's door or its L's side, the wall one's door or side. */
-  cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number }>>;
+  cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number; shelves?: number; wallShelves?: number }>>;
   room?: { id: string; wall: number };
   place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
   /** Walls B and C out of square with wall A, from the surveyed room: the corner's angle less 90° (°). */

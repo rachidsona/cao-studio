@@ -44,11 +44,19 @@ export interface CornerChange {
   arm?: number;
   wallDoor?: number;
   wallArm?: number;
+  /** The shelves of its corner unit, low and up (« Meuble choisi » of the run's editor). */
+  shelves?: number;
+  wallShelves?: number;
 }
+
+/** How many shelves a corner unit may have, low or up. */
+export const CORNER_SHELVES = 4;
+/** The corner units whose shelves one chooses: not those whose trays or baskets fill them, nor the one cut at 45°. */
+export const shelvedCorner = (kind: CornerKind | WallCornerKind): boolean => kind === "unit" || kind === "l";
 
 /** The corner settings with this corner changed. */
 export function withCorner(p: CornerSetting, joint: Joint, c: CornerChange): CornerSetting {
-  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}) };
+  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}), ...(c.shelves !== undefined ? { shelves: c.shelves } : {}), ...(c.wallShelves !== undefined ? { wallShelves: c.wallShelves } : {}) };
   return {
     corners: { ...p.corners, ...(c.kind ? { [joint]: c.kind } : {}) },
     wallCorners: { ...p.wallCorners, ...(c.wall ? { [joint]: c.wall } : {}) },
@@ -129,6 +137,8 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
   } else {
     out.fronts.push(front("filler", "Fileur d'angle", end === "pass" ? D : D + FRONT, c));
   }
+  const own = p.cornerSizes?.[joint]?.shelves;
+  if (out.cabinet && shelvedCorner(kind) && own !== undefined) out.shelves = Math.max(0, Math.min(CORNER_SHELVES, own));
   return out;
 }
 
@@ -158,6 +168,8 @@ export function wallCornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint
     out.name = `Haut d'angle ${tag}`;
     out.fronts.push(front("blind", "Panneau d'angle haut", 0, wc), front("door", "Porte d'angle haute", wc + 1.5, wc + door - 1.5));
   } else out.fronts.push(front("filler", "Fileur d'angle haut", W + FRONT, wc));
+  const own = p.cornerSizes?.[joint]?.wallShelves;
+  if (out.cabinet && own !== undefined) out.shelves = Math.max(0, Math.min(CORNER_SHELVES, own));
   return out;
 }
 

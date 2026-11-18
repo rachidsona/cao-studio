@@ -100,6 +100,9 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       button("Modifier dans la 3D", "data-strip-caisson-open", "Isole ce caisson, de face, pour changer ses étagères, cloisons, tiroirs et portes", () => host.openCaisson(id)),
       button("Supprimer", "data-strip-remove", "Ôte ce caisson avec ses panneaux et ses portes (Suppr) : sa place reste vide", () => host.removeCaisson(id)),
     ];
+  } else if (host.other?.kind === "corner") {
+    label = `Angle ${host.other.side === "left" ? "de gauche" : "de droite"}${host.other.row === "wall" ? ", en haut" : ""} : réglé sous « Meuble choisi »`;
+    buttons = [];
   } else if (host.other?.kind === "worktop") {
     label = "Plan de travail";
     buttons = [button("Supprimer le plan de travail", "data-strip-remove", "Ce linéaire sans plan de travail ni découpes (Suppr) ; il se remet d'un clic", () => host.setWorktop(false))];

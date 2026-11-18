@@ -2624,6 +2624,14 @@ opération existante.
       clavier), ou tiré à la souris — au-delà d'un voisin il change d'ordre, lâché dans la place vide il s'y pose ;
       il reste aménagé et la 3D le suit. Sa largeur, cliquée sous lui, se tape dans la calculatrice (15 à 240 cm) :
       sa place la prend et sa Répartition s'y refait, son intérieur adapté (`document/caisson-follow.ts`).
+      Choisi, « Meuble choisi » le règle comme un meuble : sa largeur, sa hauteur (en haut) et sa profondeur, sa
+      Répartition refaite à ces cotes ; « Remettre le meuble d'origine » ôte l'aménagement fait à la main et remet le
+      meuble du catalogue qu'il était, à sa largeur, réglable comme les autres (`document/caisson-unit.ts`,
+      `app/kitchen/kitchen-held-rows.ts`).
+    - **Caisson d'angle choisi sur la bande** : un clic sur son panneau, sa porte ou son fileur, en bas ou en haut, le
+      choisit comme un meuble ; « Meuble choisi » montre ses réglages seuls — la solution d'angle, la porte ou le côté
+      du L, et le nombre d'étagères (0 à 4, en bas d'un meuble d'angle à étagère ou en L, en haut d'un haut d'angle),
+      gardé par angle (`cornerSizes`, `document/kitchen-corners.ts`). Les angles à plateaux ou à paniers gardent les leurs.
     - **Glisser un meuble dans la place vide** (`document/kitchen-slide.ts`) : sur la bande, un meuble tiré
       au-delà d'un voisin change d'ordre, comme avant ; lâché dans la place vide à côté de lui (hachurée), il s'y
       pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres
