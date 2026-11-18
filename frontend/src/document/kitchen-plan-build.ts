@@ -200,7 +200,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const unit = corner.cabinet ? { corner: true } : {};
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
-    const lowEdit = corner.kind === "l" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
+    const lowEdit = corner.kind === "l" || corner.kind === "carousel" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
     if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, layout: "none", corner: true, cornerEdit: lowEdit });
     for (const f of corner.fronts) {
       const inset = f.kind === "door" ? 1.5 : 0;
@@ -228,9 +228,12 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
       }
     }
     // Two trays, low and half way up, on their fitting.
+    // A LeMans's or a carousel's trays, a Magic Corner's baskets (taller): low, then half way up, in turn.
+    const fitting = corner.kind === "magic" ? { name: "Panier Magic Corner", height: 120 } : { name: corner.kind === "carousel" ? "Plateau tournant" : "Plateau LeMans", height: 25 };
+    const [c0, c1] = corner.across ?? [40, D - 20];
     corner.trays.forEach(([a, b], i) => {
-      const z = s.plinth + 60 + i * Math.round((s.base - s.plinth) / 2);
-      box(`Plateau LeMans ${i + 1} ${run.id}${side === "right" ? " (droite)" : ""}`, "fitting", band(a, b, 40, D - 20, z, z + 25), unit);
+      const z = s.plinth + 60 + (i % 2) * Math.round((s.base - s.plinth) / 2);
+      box(`${fitting.name} ${i + 1} ${run.id}${side === "right" ? " (droite)" : ""}`, "fitting", band(a, b, c0, c1, z, z + fitting.height), unit);
     });
   }
 }

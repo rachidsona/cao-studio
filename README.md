@@ -2495,8 +2495,11 @@ opération existante.
     dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
     étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe ; **meuble d'angle LeMans**, même
-    caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **meuble d'angle en L
-    90 × 90**, un caisson sur chaque mur et une porte pliante. Le meuble d'angle choisi se bâtit même sur un linéaire
+    caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **Magic Corner**, même
+    caisson, deux paniers derrière la porte et deux au fond de l'angle qui viennent devant à l'ouverture ; **meuble
+    d'angle en L 90 × 90**, un caisson sur chaque mur et une porte pliante ; **carrousel**, le même L avec deux
+    plateaux tournants (trois quarts de cercle) dans l'angle. Plateaux et paniers s'achètent (Kesseböhmer…) : sur le
+    calque « Quincaillerie », hors débit et devis. Le meuble d'angle choisi se bâtit même sur un linéaire
     encore vide, et la bande de face le dessine. Ses cotes se règlent : la **porte** du meuble d'angle (30 à 60 cm)
     ou le **côté du L** depuis le mur. **En haut**, chaque angle reçoit aussi, au choix, rien, un **haut d'angle à
     porte** (panneau devant l'angle et porte de 30 cm, sur le mur qui passe ; un fileur sur l'autre) ou un **haut
@@ -2770,8 +2773,8 @@ opération existante.
   - **Colonnes** : rangement, garde-manger, coulissante étroite (15 à 40 cm), balais, vitrine, four, réfrigérateur.
   - Les types et leurs largeurs suivent les catalogues du commerce (Nobilia, IKEA Metod, Lapeyre, Foussier Rapido,
     2024–2026). Un coulissant (bouteilles, épices, poubelle, garde-manger) est bâti en caisson et porte : sa ferrure
-    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Pas encore dans la liste : carrousel et Magic Corner d'angle,
-    angles en biais, terminaux arrondis.
+    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Pas encore dans la liste : angles en biais, terminaux
+    arrondis.
   - **Avec un Plan de cuisine** dans le projet, un clic **range le meuble dans un linéaire du plan**
     (`document/kitchen-plan-add.ts`) : après le meuble du plan sélectionné, ou celui ajouté juste avant, ou celui choisi
     dans le linéaire ouvert ; sinon au bout du premier linéaire où il tient sans en chasser un autre. Un haut va dans

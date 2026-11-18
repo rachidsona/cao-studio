@@ -60,7 +60,7 @@ export function runDims(p: KitchenFloorPlan, run: KitchenRun, g: RunGeometry, fi
     const corner = cornerSide(p, run, side, fill.walls[i]);
     if (corner) {
       // A blind corner unit: its door is its width less the corner; an L: its side, from the wall.
-      if (corner.cabinet) low.push({ span: corner.cabinet, edit: corner.kind === "l" ? { kind: "corner", joint, key: "arm", less: pass ? 0 : -s.cabinet } : { kind: "corner", joint, key: "door", less: s.corner } });
+      if (corner.cabinet) low.push({ span: corner.cabinet, edit: corner.kind === "l" || corner.kind === "carousel" ? { kind: "corner", joint, key: "arm", less: pass ? 0 : -s.cabinet } : { kind: "corner", joint, key: "door", less: s.corner } });
       low.push(...plain(corner.fronts.filter((f) => f.kind === "filler").map((f): [number, number] => [f.from, f.to])));
     }
     const up = g.wall ? wallCornerSide(p, run, side) : null;

@@ -54,6 +54,9 @@ export const jointOf = (run: KitchenRun, side: Joint): Joint => (run.zone.id ===
 
 /** What stands in a corner. */
 export const cornerKind = (p: KitchenFloorPlan, joint: Joint): CornerKind => p.corners?.[joint] ?? p.corner ?? "dead";
+/** An L cabinet on both walls, a folding door (the carousel's trays turn in it); a blind corner unit with a door (a LeMans's or a Magic Corner's fittings in it). */
+export const isLCorner = (kind: CornerKind): boolean => kind === "l" || kind === "carousel";
+export const isDoorCorner = (kind: CornerKind): boolean => kind === "unit" || kind === "lemans" || kind === "magic";
 
 export type WallCornerKind = NonNullable<NonNullable<KitchenFloorPlan["wallCorners"]>["left"]>;
 
@@ -83,7 +86,7 @@ export function wallReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): nu
 /** A corner unit on this end, the run going to the wall: it can stand off it, a filler between. */
 export function movable(p: KitchenFloorPlan, run: KitchenRun, side: Joint): boolean {
   const kind = cornerKind(p, jointOf(run, side));
-  return run[side] === "pass" && (kind === "unit" || kind === "lemans");
+  return run[side] === "pass" && isDoorCorner(kind);
 }
 
 /** How far from the corner's wall the base row of a run starts, at an end in a corner. */
@@ -92,8 +95,8 @@ export function cornerReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): 
   if (end === "free") return 0;
   const kind = cornerKind(p, jointOf(run, side));
   const s = kitchenSizes(p);
-  if (kind === "l") return lArm(p, jointOf(run, side));
-  return s.corner + (end === "pass" && (kind === "unit" || kind === "lemans") ? cornerDoor(p, jointOf(run, side)) : 0);
+  if (isLCorner(kind)) return lArm(p, jointOf(run, side));
+  return s.corner + (end === "pass" && isDoorCorner(kind) ? cornerDoor(p, jointOf(run, side)) : 0);
 }
 
 /** The sizes that follow from the plan: the cabinets' depth, the base units' height, the wall units' bottom and top, a corner. */

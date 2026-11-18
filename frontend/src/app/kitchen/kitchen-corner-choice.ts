@@ -5,7 +5,7 @@
  * donc pour les deux linéaires qui s'y rencontrent, et s'applique avec le reste à OK.
  */
 import { CORNER_KINDS, WALL_CORNER_KINDS, cornerLimits, cornerSketch, type CornerChange } from "../../document/kitchen-corners";
-import { cornerDoor, cornerKind, jointOf, kitchenJoints, lArm, wallArm, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "../../document/kitchen-plan-shapes";
+import { cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenJoints, lArm, wallArm, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "../../document/kitchen-plan-shapes";
 import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
@@ -58,10 +58,10 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
       const chosen = cornerKind(plan, joint);
       const high = wallCornerKind(plan, joint);
       const other = info?.walls.find((w) => w !== run.label) ?? "";
-      const where = chosen === "l" ? `Un caisson de ${length(lArm(plan, joint))} sur chaque mur.` : chosen === "dead" ? "" : run[side] === "pass" ? `Le meuble d'angle est côté ${lower(run.label)}, qui va jusqu'au mur ; côté ${lower(other)}, un fileur.` : `Le meuble d'angle est côté ${lower(other)}, qui va jusqu'au mur ; côté ${lower(run.label)}, un fileur.`;
+      const where = isLCorner(chosen) ? `Un caisson de ${length(lArm(plan, joint))} sur chaque mur.` : chosen === "dead" ? "" : run[side] === "pass" ? `Le meuble d'angle est côté ${lower(run.label)}, qui va jusqu'au mur ; côté ${lower(other)}, un fileur.` : `Le meuble d'angle est côté ${lower(other)}, qui va jusqu'au mur ; côté ${lower(run.label)}, un fileur.`;
       const set = (c: CornerChange) => change(joint, c);
       // Its size: the door of a blind corner unit, the side of an L.
-      const lowSize = chosen === "unit" || chosen === "lemans" ? sizeField("Porte du meuble d'angle", "door", cornerDoor(plan, joint), limits.door, unit, (mm) => set({ door: mm }), refresh) : chosen === "l" ? sizeField("Côté du L, depuis le mur", "arm", lArm(plan, joint), limits.arm, unit, (mm) => set({ arm: mm }), refresh) : null;
+      const lowSize = isDoorCorner(chosen) ? sizeField("Porte du meuble d'angle", "door", cornerDoor(plan, joint), limits.door, unit, (mm) => set({ door: mm }), refresh) : isLCorner(chosen) ? sizeField("Côté du L, depuis le mur", "arm", lArm(plan, joint), limits.arm, unit, (mm) => set({ arm: mm }), refresh) : null;
       const highSize = high === "unit" ? sizeField("Porte du haut d'angle", "wallDoor", wallCornerDoor(plan, joint), limits.wallDoor, unit, (mm) => set({ wallDoor: mm }), refresh) : high === "l" ? sizeField("Côté du L haut, depuis le mur", "wallArm", wallArm(plan, joint), limits.wallArm, unit, (mm) => set({ wallArm: mm }), refresh) : null;
       return el(
         "div",

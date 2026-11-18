@@ -11,14 +11,16 @@
  * du linéaire depuis sa gauche, que la cuisine 3D (kitchen-plan-build.ts) et la bande de face (app/kitchen-run-strip.ts)
  * dessinent. Pur.
  */
-import { FRONT, cornerDoor, cornerKind, jointOf, kitchenSizes, lArm, wallArm, wallCorner, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "./kitchen-plan-shapes";
+import { FRONT, cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenSizes, lArm, wallArm, wallCorner, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
 
 export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }> = {
   dead: { label: "Angle mort", summary: "Fermé par deux fileurs. Le moins cher ; la place de l'angle est perdue." },
   unit: { label: "Meuble d'angle à étagère", summary: "Une porte (45 cm d'origine) et une étagère ; le fond de l'angle se range de loin." },
   lemans: { label: "Meuble d'angle LeMans", summary: "Une porte (45 cm d'origine), deux plateaux qui pivotent et sortent : tout l'angle sert." },
+  magic: { label: "Meuble d'angle Magic Corner", summary: "Une porte (45 cm d'origine) ; à l'ouverture, deux paniers sortent et ceux du fond viennent devant : tout l'angle sert." },
   l: { label: "Meuble d'angle en L", summary: "Un caisson sur chaque mur (90 cm d'origine), porte pliante : l'angle s'ouvre en grand." },
+  carousel: { label: "Meuble d'angle carrousel", summary: "En L (90 cm d'origine), porte pliante ; deux plateaux tournants (trois quarts de cercle) : on fait tourner l'angle." },
 };
 
 export const WALL_CORNER_KINDS: Record<WallCornerKind, { label: string; summary: string }> = {
@@ -62,7 +64,11 @@ export interface CornerFront {
   to: number;
 }
 
-/** What an end of a run in a corner has: its cabinet (none: a dead corner), its fronts, the trays of a LeMans. */
+/**
+ * What an end of a run in a corner has: its cabinet (none: a dead corner), its fronts, and the fittings bought for it
+ * (`trays`, along the run, low then half way up in turn, `across` from the wall: a LeMans's trays, a carousel's, a
+ * Magic Corner's baskets).
+ */
 export interface CornerSide {
   kind: CornerKind | WallCornerKind;
   name: string;
@@ -70,6 +76,8 @@ export interface CornerSide {
   shelves: number;
   fronts: CornerFront[];
   trays: [number, number][];
+  /** How far the trays reach from the wall, across the run (missing: the whole depth). */
+  across?: [number, number];
 }
 
 /** The corner at this end of the run, or null at a free end; a corner unit `off` the wall, a wall filler between. */
@@ -89,20 +97,28 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
     return { kind: k, name: `${name} ${tag}`, from, to };
   };
   const out: CornerSide = { kind, name: `${CORNER_KINDS[kind].label} ${tag}`, cabinet: null, shelves: 0, fronts: [], trays: [] };
-  if (kind === "l") {
+  if (isLCorner(kind)) {
     const arm = lArm(p, joint);
     out.cabinet = span(end === "pass" ? 0 : D, arm);
-    out.name = `Meuble d'angle en L ${tag}`;
-    out.shelves = 1;
+    out.name = `${kind === "carousel" ? "Meuble d'angle carrousel" : "Meuble d'angle en L"} ${tag}`;
+    out.shelves = kind === "carousel" ? 0 : 1;
     out.fronts.push(front("door", "Porte pliante", D + FRONT + 1.5, arm - 1.5));
-  } else if (end === "pass" && kind !== "dead") {
+    // The carousel's two trays, in the corner square, held by the run that passes (its cabinet takes the corner).
+    if (kind === "carousel" && end === "pass") {
+      const tray = span(40, arm - 40);
+      out.trays.push(tray, tray);
+      out.across = [40, Math.min(D, arm) - 40];
+    }
+  } else if (end === "pass" && isDoorCorner(kind)) {
     const o = off >= 1 ? off : 0;
     if (o) out.fronts.push(front("filler", "Fileur mural", 0, o));
     out.cabinet = span(o, o + c + door);
-    out.name = `${kind === "lemans" ? "Meuble d'angle LeMans" : "Meuble d'angle"} ${tag}`;
-    out.shelves = kind === "lemans" ? 0 : 1;
+    out.name = `${kind === "lemans" ? "Meuble d'angle LeMans" : kind === "magic" ? "Meuble d'angle Magic Corner" : "Meuble d'angle"} ${tag}`;
+    out.shelves = kind === "unit" ? 1 : 0;
     out.fronts.push(front("blind", "Panneau d'angle", o, o + c), front("door", "Porte d'angle", o + c + 1.5, o + c + door - 1.5));
     if (kind === "lemans") out.trays.push(span(o + c - 300, o + c + door - 30), span(o + c - 300, o + c + door - 30));
+    // Magic Corner: two baskets behind the door, two more in the blind part, at the back.
+    if (kind === "magic") out.trays.push(span(o + c + 20, o + c + door - 30), span(o + c + 20, o + c + door - 30), span(o + 40, o + c - 20), span(o + 40, o + c - 20));
   } else {
     out.fronts.push(front("filler", "Fileur d'angle", end === "pass" ? D : D + FRONT, c));
   }
@@ -148,17 +164,20 @@ export function cornerSketch(kind: CornerKind): string {
   const d = 22;
   const parts = [`<path d="M2 62 V2 H62" fill="none" ${WALL}/>`];
   // The other units of both runs, past the corner.
-  const reach = kind === "l" ? 40 : 26;
-  const top = kind === "unit" || kind === "lemans" ? 44 : reach;
+  const reach = isLCorner(kind) ? 40 : 26;
+  const top = isDoorCorner(kind) ? 44 : reach;
   parts.push(`<rect x="${top}" y="4" width="${60 - top}" height="${d}" ${UNIT}/>`, `<rect x="4" y="${reach}" width="${d}" height="${60 - reach}" ${UNIT}/>`);
   if (kind === "dead") parts.push(`<rect x="4" y="4" width="${d}" height="${d}" class="fill-gray-300 dark:fill-gray-600"/>`, `<path d="M6 6 L${d + 2} ${d + 2} M${d + 2} 6 L6 ${d + 2}" class="stroke-gray-500" stroke-width="1"/>`);
-  if (kind === "unit" || kind === "lemans") {
+  if (isDoorCorner(kind)) {
     parts.push(`<rect x="4" y="4" width="40" height="${d}" ${PICK}/>`, `<path d="M26 ${d + 4} A18 18 0 0 0 44 ${d + 22}" ${DOOR}/>`);
-    if (kind === "lemans") parts.push(`<ellipse cx="33" cy="15" rx="9" ry="6" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2"/>`, `<ellipse cx="33" cy="${d + 16}" rx="9" ry="6" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2" stroke-dasharray="2 2"/>`);
+    if (kind === "magic") parts.push(`<rect x="28" y="9" width="12" height="12" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2"/>`, `<rect x="8" y="9" width="14" height="12" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2" stroke-dasharray="2 2"/>`);
+    else if (kind === "lemans") parts.push(`<ellipse cx="33" cy="15" rx="9" ry="6" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2"/>`, `<ellipse cx="33" cy="${d + 16}" rx="9" ry="6" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2" stroke-dasharray="2 2"/>`);
     else parts.push(`<line x1="8" y1="15" x2="40" y2="15" stroke="var(--corner, #b08d57)" stroke-width="1"/>`);
   }
-  if (kind === "l") {
+  if (isLCorner(kind)) {
     parts.push(`<path d="M4 4 H40 V${d + 4} H${d + 4} V40 H4 Z" ${PICK}/>`, `<path d="M${d + 4} ${d + 4} L40 ${d + 16} M${d + 4} ${d + 4} L${d + 16} 40" ${DOOR}/>`);
+    // Three quarters of a circle, turning round the corner.
+    if (kind === "carousel") parts.push(`<path d="M${d + 4} 6 A16 16 0 1 0 38 ${d + 4} L${d + 4} ${d + 4} Z" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2"/>`);
   }
   return `<svg viewBox="0 0 64 64" class="size-11 shrink-0" aria-hidden="true">${parts.join("")}</svg>`;
 }

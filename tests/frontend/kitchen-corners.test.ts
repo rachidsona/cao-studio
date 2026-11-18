@@ -1,10 +1,10 @@
-/** Les angles du plan de cuisine, angle par angle : angle mort, meuble d'angle à étagère, LeMans, meuble en L 90 × 90. */
+/** Les angles du plan de cuisine, angle par angle : angle mort, meuble d'angle à étagère, LeMans, Magic Corner, meuble en L 90 × 90, carrousel. */
 import { describe, expect, it } from "vitest";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { CORNER_KINDS, cornerSide, cornerSketch, withCorner } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { CORNER_DOOR, KITCHEN_PLAN, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
+import { CORNER_DOOR, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
 import { createReferencePlate, type CadDocument, type KitchenFloorPlan } from "../../frontend/src/document/types";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -39,12 +39,27 @@ describe("angles de cuisine", () => {
       const p = plan({ corners: { left: kind, right: kind } });
       const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
       const corner = layout.units.filter((u) => u.name.startsWith("Meuble d'angle"));
-      expect(corner.length, kind).toBe(kind === "dead" ? 0 : kind === "l" ? 4 : 2);
+      expect(corner.length, kind).toBe(kind === "dead" ? 0 : isLCorner(kind) ? 4 : 2);
       const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${kind} : ${i} et ${j}`).toBe(false);
-      if (kind === "l") expect(layout.boxes.filter((b) => b.name.startsWith("Porte pliante")).length).toBe(4);
+      if (isLCorner(kind)) expect(layout.boxes.filter((b) => b.name.startsWith("Porte pliante")).length).toBe(4);
       if (kind === "dead") expect(layout.boxes.filter((b) => b.name.startsWith("Fileur d'angle")).length).toBe(4);
     }
+  });
+
+  it("le carrousel a ses deux plateaux tournants dans l'angle, le Magic Corner ses quatre paniers ; tous dans leur caisson", () => {
+    const p = plan({ corners: { left: "magic", right: "carousel" } });
+    const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
+    const fittings = layout.boxes.filter((b) => b.kind === "fitting");
+    expect(fittings.filter((b) => b.name.startsWith("Panier Magic Corner")).length).toBe(4);
+    expect(fittings.filter((b) => b.name.startsWith("Plateau tournant")).length).toBe(2);
+    const units = layout.units.map((u) => cabinetBox(u));
+    const within = (b: Box, u: Box) => [0, 1, 2].every((i) => b[0][i]! >= u[0][i]! - 1e-6 && b[1][i]! <= u[1][i]! + 1e-6);
+    for (const f of fittings) expect(units.some((u) => within([f.from, f.to], u)), f.name).toBe(true);
+    // Baskets low and half way up; the Magic Corner's door as a blind unit's.
+    expect(new Set(fittings.filter((b) => b.name.startsWith("Panier")).map((b) => b.from[2])).size).toBe(2);
+    expect(layout.boxes.some((b) => b.name.startsWith("Porte d'angle"))).toBe(true);
+    expect(cornerSketch("carousel")).toContain("<path");
   });
 
   it("le LeMans a ses deux plateaux, achetés : hors débit et devis, sur le calque Quincaillerie", () => {
