@@ -19,6 +19,13 @@ describe("largeurs de la bande à la calculatrice", () => {
     expect(stripWidth(host, { kind: "item", id: "zz", width: 600 }, 500)).toMatch(/n'est plus/);
   });
 
+  it("un caisson aménagé à la main : sa place prend la largeur (le caisson s'y refait), dans ses limites", () => {
+    const held: KitchenRunItem = { id: "k3", model: "space", width: 1000, furnished: "sk1" };
+    const host = { ...at({}), items: [...items, held] };
+    expect(stripWidth(host, { kind: "item", id: "k3", width: 1000 }, 800)).toEqual({ items: [...items, { ...held, width: 800 }] });
+    expect(stripWidth(host, { kind: "item", id: "k3", width: 1000 }, 100)).toMatch(/La largeur va de 15 cm à 240 cm/);
+  });
+
   it("la porte d'un meuble d'angle : sa taille, ses jeux en plus ; elle se retrouve sur la bande", () => {
     const host = at({ corners: { left: "unit" } });
     const made = stripWidth(host, { kind: "corner", side: "left", row: "base", width: 447 }, 497);

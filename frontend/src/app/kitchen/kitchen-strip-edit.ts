@@ -12,6 +12,8 @@ import { formatLength } from "../../measurements/units";
 import { openCalculator } from "../../ui/calculator";
 import type { StripEdit } from "./kitchen-run-strip";
 
+/** What a caisson furnished by hand may be made to on the strip (mm): its Répartition is made again at that width. */
+const HELD_WIDTH: [number, number] = [150, 2400];
 /** The gaps around a corner door (mm): its front is its size less them. */
 const DOOR_GAPS = 3;
 
@@ -33,7 +35,7 @@ export function stripWidth(host: Omit<StripEditHost, "setItems" | "setCorners">,
   if (what.kind === "item") {
     const item = host.items.find((i) => i.id === what.id);
     if (!item) return "Ce meuble n'est plus sur le linéaire.";
-    const limits = sizeLimits(plan, itemEntry(item)).width;
+    const limits = item.furnished ? HELD_WIDTH : sizeLimits(plan, itemEntry(item)).width;
     if (mm < limits[0] - 0.05 || mm > limits[1] + 0.05) return `La largeur va ${range(limits)}.`;
     return { items: host.items.map((i) => (i.id === item.id ? { ...i, width: Math.round(mm * 10) / 10 } : i)) };
   }

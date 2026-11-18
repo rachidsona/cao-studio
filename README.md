@@ -2622,7 +2622,8 @@ opération existante.
       « Modifier dans la 3D » l'isole de face, « Supprimer » (ou Suppr) l'ôte en entier et laisse sa place vide
       (`withCaissonRemoved`, `document/kitchen-delete-sync.ts`). Il se déplace comme un meuble : ← → (boutons ou
       clavier), ou tiré à la souris — au-delà d'un voisin il change d'ordre, lâché dans la place vide il s'y pose ;
-      il reste aménagé et la 3D le suit.
+      il reste aménagé et la 3D le suit. Sa largeur, cliquée sous lui, se tape dans la calculatrice (15 à 240 cm) :
+      sa place la prend et sa Répartition s'y refait, son intérieur adapté (`document/caisson-follow.ts`).
     - **Glisser un meuble dans la place vide** (`document/kitchen-slide.ts`) : sur la bande, un meuble tiré
       au-delà d'un voisin change d'ordre, comme avant ; lâché dans la place vide à côté de lui (hachurée), il s'y
       pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres

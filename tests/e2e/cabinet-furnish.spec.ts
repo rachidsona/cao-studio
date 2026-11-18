@@ -96,6 +96,18 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await expect.poll(async () => (await held.boundingBox())!.x, { timeout: 30_000 }).toBeGreaterThan(was.x + whole.width * 0.2);
   await expect(held).toContainText("Caisson aménagé");
   expect(Math.abs((await caissonAt()) - x0)).toBeGreaterThan(500);
+  // Its width clicked and typed: its room takes it, the caisson made again to it.
+  await held.locator("[data-edit-item]").click();
+  await page.locator("[data-strip-width]").fill("80");
+  await page.locator("[data-strip-width]").press("Enter");
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  await expect(held).toContainText("80");
+  await caissonAt();
+  const length = await page.evaluate(async (url) => {
+    const doc = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()).document as { features: { name: string; offsets?: { step?: { kind: string; input: { length: number } } }[] }[] };
+    return doc.features.find((f) => f.name.startsWith("Caisson — "))!.offsets!.find((r) => r.step?.kind === "partition")!.step!.input.length;
+  }, api);
+  expect(length).toBe(800);
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");

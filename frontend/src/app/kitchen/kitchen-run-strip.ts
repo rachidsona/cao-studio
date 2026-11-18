@@ -191,7 +191,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
     const [a, b] = [pl.at, pl.at + pl.item.width];
     const on = host.other?.kind === "caisson" && host.other.id === pl.item.id;
-    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" ${host.edit ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"><title>Cliquer pour changer la largeur : le caisson s'y refait, son intérieur adapté</title>` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none">'}${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
   }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
@@ -234,7 +234,8 @@ export function runStrip(host: StripHost): SVGSVGElement {
       t.addEventListener("click", (event) => {
         event.stopPropagation();
         const item = t.dataset.editItem;
-        const placed = item ? fill.placed.find((pl) => pl.item.id === item) : undefined;
+        // A unit's, or a caisson furnished by hand's.
+        const placed = item ? [...fill.placed, ...fill.spaces].find((pl) => pl.item.id === item) : undefined;
         if (placed) host.edit!({ kind: "item", id: placed.item.id, width: placed.item.width }, t);
         else if (t.dataset.editSide) host.edit!({ kind: "corner", side: t.dataset.editSide as "left" | "right", row: t.dataset.editRow as "base" | "wall", width: Number(t.dataset.editWidth) }, t);
       });
