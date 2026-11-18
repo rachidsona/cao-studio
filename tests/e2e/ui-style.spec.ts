@@ -49,18 +49,23 @@ test("styles Verre et Minimal clair : verre flou et coins arrondis, puis panneau
   expect(errors).toEqual([]);
 });
 
-test("style des icônes : Plat, Contraste fort, Monochrome changent les couleurs et les arêtes des mêmes dessins, gardés au rechargement ; « Volumes » y revient", async ({ page }) => {
+test("style des icônes : Contour, Plein, Deux tons peignent autrement les mêmes dessins, gardés au rechargement ; « Volumes » y revient", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "zz-icones");
+  // The dark theme, kept over the reload below.
+  await page.evaluate(() => (localStorage.setItem("theme", "dark"), document.documentElement.classList.add("dark")));
+  // What the sprite itself shows: the top face of a white volume, its edge, the key under a flat icon.
   const look = () => page.evaluate(() => {
     const root = getComputedStyle(document.documentElement);
+    const stop = getComputedStyle(document.querySelector("#kwt stop")!).stopColor;
     return {
       icons: document.documentElement.className.match(/\bicons-[a-z]+/)?.[0] ?? "",
-      blue: root.getPropertyValue("--ic-b3").trim(),
+      face: stop,
       edge: root.getPropertyValue("--ic-edge-w").trim(),
-      filter: getComputedStyle(document.querySelector('#editor use[href^="#i-"]')!).filter,
+      key: getComputedStyle(document.querySelector("symbol .ic-cap > rect")!).opacity,
+      stroke: getComputedStyle(document.querySelector("symbol .ic-cap > g")!).strokeWidth,
       stored: localStorage.getItem("icons"),
     };
   });
@@ -71,18 +76,30 @@ test("style des icônes : Plat, Contraste fort, Monochrome changent les couleurs
     await expect(styles.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.getByLabel("Fichier et réglages").click();
   };
-  // By default: the white volumes, their colours from the sprite.
-  expect(await look()).toMatchObject({ icons: "", blue: "", edge: "", filter: "none" });
-  await choose("Plat");
-  expect(await look()).toEqual({ icons: "icons-plat", blue: "#1d9bf0", edge: ".18", filter: "none", stored: "icons-plat" });
+  // By default: white volumes on their keys.
+  const volumes = await look();
+  expect(volumes).toMatchObject({ icons: "", face: "rgb(255, 255, 255)", edge: "", key: "1", stroke: "1.35px" });
+
+  // Line icons: the faces the colour of the panel (not white), thick edges in the ink, no key.
+  await choose("Contour");
+  const contour = await look();
+  expect(contour).toMatchObject({ icons: "icons-contour", edge: ".9", key: "0", stroke: "1.6px", stored: "icons-contour" });
+  expect(contour.face).not.toBe(volumes.face);
   await page.reload();
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
-  expect((await look()).icons).toBe("icons-plat");
-  await choose("Contraste fort");
-  expect(await look()).toMatchObject({ icons: "icons-contraste", edge: ".55", filter: "saturate(1.35)" });
-  await choose("Monochrome");
-  expect(await look()).toMatchObject({ icons: "icons-mono", filter: "grayscale(1) contrast(1.12)" });
+  expect((await look()).icons).toBe("icons-contour");
+
+  // Solid glyphs: the faces in the ink (light on the dark theme), parted by a hairline.
+  await choose("Plein");
+  expect(await look()).toMatchObject({ icons: "icons-plein", face: "rgb(238, 242, 247)", edge: ".55", key: "0", stroke: "2.3px" });
+
+  // Two tones: a tint of the accent, neither the panel's colour nor the ink.
+  await choose("Deux tons");
+  const duo = await look();
+  expect(duo).toMatchObject({ icons: "icons-duo", edge: ".5", key: "0" });
+  expect([volumes.face, contour.face, "rgb(238, 242, 247)"]).not.toContain(duo.face);
+
   await choose("Volumes");
-  expect(await look()).toEqual({ icons: "", blue: "", edge: "", filter: "none", stored: "" });
+  expect(await look()).toMatchObject({ icons: "", face: volumes.face, edge: "", key: "1", stroke: "1.35px", stored: "" });
   expect(errors).toEqual([]);
 });

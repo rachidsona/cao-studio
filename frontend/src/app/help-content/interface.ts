@@ -464,7 +464,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez « ⋯ », puis « Thème clair / sombre » pour passer de l'un à l'autre.",
           "Dans la rubrique « Style », choisissez « Classique » (angles droits, cartes en dégradé), « Verre » (panneaux de verre givré sur un fond coloré, coins très arrondis, comme les apps récentes de macOS) ou « Minimal clair » (panneaux blancs collés bord à bord par un filet fin, sans ombre, un seul accent ; il passe en thème clair). Le style va avec n'importe quelle palette.",
-          "Dans la rubrique « Icônes », choisissez le dessin des icônes de la barre d'outils : « Volumes » (petits volumes blancs en relief, par défaut), « Plat » (aplats nets, sans dégradé), « Contraste fort » (arêtes foncées et épaisses, lisibles même en petit) ou « Monochrome » (tout en gris, sobre).",
+          "Dans la rubrique « Icônes », choisissez le genre des icônes de la barre d'outils : « Volumes » (petits volumes blancs en relief, par défaut), « Contour » (au trait, fines et nettes), « Plein » (silhouettes pleines d'une seule couleur, les plus lisibles en petit) ou « Deux tons » (la couleur de l'accent, en teinte claire et en plein).",
           "Dans la rubrique « Palette », cliquez une pastille : Atelier, Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal Charcoal, Crimson Terre, Mocha Mist, Forêt Profonde, Graphite Laiton, Indigo Nuit ou Chêne Sable.",
         ],
         tip: "Les palettes ne concernent que le thème sombre. « Atelier » est la palette de départ, « Classique » le style de départ, « Volumes » les icônes de départ ; ces choix sont gardés dans ce navigateur.",

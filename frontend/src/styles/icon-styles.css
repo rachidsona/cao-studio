@@ -1,54 +1,87 @@
 /*
  * The styles of the toolbar icons (class icons-* on <html>, « ⋯ » menu → Icônes), whatever the palette and the style
- * of the interface. The icons are the same drawings (scripts/icons3d.py, templates/editor/_icons.html): each of their
- * colours is a CSS variable (--ic-w1…6 white, --ic-b blue, -o orange, -g green, -y yellow, -d dark: 1–2 the top face,
- * 3–4 the left, 5–6 the right), their edges --ic-edge and --ic-edge-w, the white key under the flat ones --ic-cap-*.
- * « Volumes » (no class) is the default: white volumes in soft gradients.
+ * of the interface: three other kinds of icons than the white volumes in relief (« Volumes », no class, the default).
+ * The icons are the same drawings (scripts/icons3d.py, templates/editor/_icons.html); a style paints them another way.
+ *
+ * Only variables reach an icon drawn from the sprite (<use>): inside it, a selector sees the symbol, never <html>. So
+ * a style is a set of variables — the colours of the faces (--ic-w1…6 white, --ic-b blue, -o orange, -g green,
+ * -y yellow, -d dark: 1–2 the top face, 3–4 the left, 5–6 the right), the edges (--ic-edge, --ic-edge-w, and
+ * --ic-edge-b / -o for the blue and orange faces), the white key under the flat icons (--ic-cap-*) — read by the
+ * sprite and by the few rules below, which change nothing while a variable is not set.
  */
 @layer components {
-  /* « Plat » : flat faces, no gradient, a lighter outline — the shape read by its three tones only. */
-  html.icons-plat {
-    --ic-w1: #ffffff; --ic-w2: #ffffff; --ic-w3: #e2e8f0; --ic-w4: #e2e8f0; --ic-w5: #b8c6d6; --ic-w6: #b8c6d6;
-    --ic-b1: #5cc8ff; --ic-b2: #5cc8ff; --ic-b3: #1d9bf0; --ic-b4: #1d9bf0; --ic-b5: #0a6cc0; --ic-b6: #0a6cc0;
-    --ic-o1: #ffb26b; --ic-o2: #ffb26b; --ic-o3: #ff7f24; --ic-o4: #ff7f24; --ic-o5: #d4560a; --ic-o6: #d4560a;
-    --ic-g1: #b4e86e; --ic-g2: #b4e86e; --ic-g3: #6cbf2c; --ic-g4: #6cbf2c; --ic-g5: #3f8a16; --ic-g6: #3f8a16;
-    --ic-y1: #ffe680; --ic-y2: #ffe680; --ic-y3: #ffc61a; --ic-y4: #ffc61a; --ic-y5: #d99a06; --ic-y6: #d99a06;
-    --ic-d1: #64748b; --ic-d2: #64748b; --ic-d3: #334155; --ic-d4: #334155; --ic-d5: #1e293b; --ic-d6: #1e293b;
-    --ic-edge: rgb(15 23 42 / 0.3);
-    --ic-edge-w: 0.18;
-    --ic-cap1: #ffffff;
-    --ic-cap2: #ffffff;
-    --ic-cap-shadow: #cbd5e1;
+  symbol g[stroke="var(--ic-edge)"] > [fill^="url(#kb"] {
+    stroke: var(--ic-edge-b, var(--ic-edge));
   }
-  html.dark.icons-plat {
-    --ic-w3: #e9eff6; --ic-w4: #e9eff6; --ic-w5: #c3d0de; --ic-w6: #c3d0de;
-    --ic-edge: rgb(2 6 23 / 0.35);
+  symbol g[stroke="var(--ic-edge)"] > [fill^="url(#ko"] {
+    stroke: var(--ic-edge-o, var(--ic-edge));
+  }
+  /* The drawing of a flat icon on its key: as the sprite places it, or as large as the volumes when the key is gone. */
+  symbol .ic-cap > g {
+    transform: var(--ic-cap-fit, translate(3.72px, 3.32px) scale(0.69));
+    stroke-width: var(--ic-cap-stroke, 1.35);
+  }
+  symbol .ic-cap > rect {
+    opacity: var(--ic-cap-key, 1);
   }
 
-  /* « Contraste fort » : dark, thick edges and shaded sides far apart — read at a glance, even small or on a projector. */
-  html.icons-contraste {
-    --ic-w1: #ffffff; --ic-w2: #f8fafc; --ic-w3: #cbd5e1; --ic-w4: #b4c2d3; --ic-w5: #7d8fa6; --ic-w6: #5f7189;
-    --ic-edge: #0f172a;
+  html:is(.icons-contour, .icons-plein, .icons-duo) {
+    --ic-ink: #1e293b;
+    /* No key under the flat icons: the drawing alone, in the ink. */
+    --ic-cap-key: 0;
+    --ic-cap-fit: translate(1.2px, 1.2px) scale(0.9);
+    --ic-cap-ink: var(--ic-ink);
+    --ic-cap-accent: var(--ic-accent);
+    --ic-cap-action: var(--ic-action);
+    --ic-g1: #65c32a; --ic-g2: #65c32a; --ic-g3: #65c32a; --ic-g4: #65c32a; --ic-g5: #65c32a; --ic-g6: #65c32a;
+    --ic-y1: #fbbf24; --ic-y2: #fbbf24; --ic-y3: #fbbf24; --ic-y4: #fbbf24; --ic-y5: #fbbf24; --ic-y6: #fbbf24;
+    --ic-o1: var(--ic-action); --ic-o2: var(--ic-action); --ic-o3: var(--ic-action); --ic-o4: var(--ic-action); --ic-o5: var(--ic-action); --ic-o6: var(--ic-action);
+    --ic-edge-o: var(--ic-action);
+  }
+  html.dark:is(.icons-contour, .icons-plein, .icons-duo) {
+    --ic-ink: #eef2f7;
+  }
+
+  /* « Contour » : line icons — every volume by its edges only, in the ink; what matters in the accent, what acts in
+     orange. Its faces are the panel's colour, not transparent: a volume still hides what is behind it. */
+  html.icons-contour {
+    --ic-face: var(--surface-panel);
+    --ic-tint: color-mix(in srgb, var(--ic-accent) 32%, var(--surface-panel));
+    --ic-w1: var(--ic-face); --ic-w2: var(--ic-face); --ic-w3: var(--ic-face); --ic-w4: var(--ic-face); --ic-w5: var(--ic-face); --ic-w6: var(--ic-face);
+    --ic-d1: var(--ic-face); --ic-d2: var(--ic-face); --ic-d3: var(--ic-face); --ic-d4: var(--ic-face); --ic-d5: var(--ic-face); --ic-d6: var(--ic-face);
+    --ic-b1: var(--ic-tint); --ic-b2: var(--ic-tint); --ic-b3: var(--ic-tint); --ic-b4: var(--ic-tint); --ic-b5: var(--ic-tint); --ic-b6: var(--ic-tint);
+    --ic-edge: var(--ic-ink);
+    --ic-edge-b: var(--ic-accent);
+    --ic-edge-w: 0.9;
+    --ic-cap-stroke: 1.6;
+  }
+
+  /* « Plein » : solid glyphs — a volume one flat shape in the ink, its faces parted by a hairline of the panel. */
+  html.icons-plein {
+    --ic-shade: color-mix(in srgb, var(--ic-ink) 45%, var(--surface-panel));
+    --ic-w1: var(--ic-ink); --ic-w2: var(--ic-ink); --ic-w3: var(--ic-ink); --ic-w4: var(--ic-ink); --ic-w5: var(--ic-ink); --ic-w6: var(--ic-ink);
+    --ic-d1: var(--ic-shade); --ic-d2: var(--ic-shade); --ic-d3: var(--ic-shade); --ic-d4: var(--ic-shade); --ic-d5: var(--ic-shade); --ic-d6: var(--ic-shade);
+    --ic-b1: var(--ic-accent); --ic-b2: var(--ic-accent); --ic-b3: var(--ic-accent); --ic-b4: var(--ic-accent); --ic-b5: var(--ic-accent); --ic-b6: var(--ic-accent);
+    --ic-edge: var(--surface-panel);
     --ic-edge-w: 0.55;
-    --ic-cap-edge-w: 0.5;
-    --ic-cap-ink: #020617;
-    --ic-cap-shadow: #64748b;
-    --ic-cap-accent: #0369a1;
-    --ic-cap-action: #c2410c;
-  }
-  html.dark.icons-contraste {
-    --ic-edge: #020617;
-  }
-  html.icons-contraste use[href^="#i-"] {
-    filter: saturate(1.35);
+    --ic-cap-stroke: 2.3;
   }
 
-  /* « Monochrome » : all in greys, as a sober interface — the shapes and their edges say the tool, not the colours. */
-  html.icons-mono {
-    --ic-edge-w: 0.4;
-    --ic-cap-edge-w: 0.4;
-  }
-  html.icons-mono use[href^="#i-"] {
-    filter: grayscale(1) contrast(1.12);
+  /* « Deux tons » : the accent alone, in two strengths — clear faces a light tint, what matters solid, fine edges
+     (tints mixed with the panel's colour, not see-through: a volume still hides what is behind it). */
+  html.icons-duo {
+    --ic-t1: color-mix(in srgb, var(--ic-accent) 16%, var(--surface-panel));
+    --ic-t2: color-mix(in srgb, var(--ic-accent) 30%, var(--surface-panel));
+    --ic-t3: color-mix(in srgb, var(--ic-accent) 46%, var(--surface-panel));
+    --ic-w1: var(--ic-t1); --ic-w2: var(--ic-t1); --ic-w3: var(--ic-t2); --ic-w4: var(--ic-t2); --ic-w5: var(--ic-t3); --ic-w6: var(--ic-t3);
+    --ic-d1: var(--ic-t2); --ic-d2: var(--ic-t2); --ic-d3: var(--ic-t3); --ic-d4: var(--ic-t3); --ic-d5: var(--ic-t3); --ic-d6: var(--ic-t3);
+    --ic-b1: var(--ic-accent); --ic-b2: var(--ic-accent);
+    --ic-b3: color-mix(in srgb, var(--ic-accent) 85%, var(--surface-panel)); --ic-b4: color-mix(in srgb, var(--ic-accent) 85%, var(--surface-panel));
+    --ic-b5: color-mix(in srgb, var(--ic-accent) 70%, var(--surface-panel)); --ic-b6: color-mix(in srgb, var(--ic-accent) 70%, var(--surface-panel));
+    --ic-edge: var(--ic-accent);
+    --ic-edge-w: 0.5;
+    --ic-cap-ink: var(--ic-accent);
+    --ic-cap-accent: var(--ic-ink);
+    --ic-cap-stroke: 1.7;
   }
 }
