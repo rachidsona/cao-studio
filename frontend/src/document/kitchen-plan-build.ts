@@ -20,6 +20,8 @@ import { WALL_THICKNESS } from "./joinery-defaults";
 export type KitchenRoomInfo = Partial<Record<string, RunInfo>>;
 
 const OVEN = 595;
+/** A chimney hood's underside over the worktop (mm). */
+const HOOD = 650;
 
 /**
  * The layout of the plan, each piece with its run, and how each run was filled; `kept`: the room kept free, each as the
@@ -83,7 +85,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         const { height, z, depth } = itemSize(p, pl.item, entry);
         if (role === "hood") {
           // A chimney hood up to the ceiling, 65 cm over the worktop.
-          put("Hotte", "hood-chimney", band(at + 1, at + w - 1, 0, 500, p.worktopHeight + 650, Math.max(p.worktopHeight + 900, ceiling)));
+          put("Hotte", "hood-chimney", band(at + 1, at + w - 1, 0, 500, p.worktopHeight + HOOD, Math.max(p.worktopHeight + 900, ceiling)));
           continue;
         }
         cabinet(name, at, w, depth, z, height, { plinth: 0, ...look });
@@ -143,7 +145,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
     if (p.endPanels) endPanels(p, run, fill, band, box);
-    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, intoCorners(run, part), i, g.spans, ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600, band, box);
+    const full = ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600;
+    if (run.wall && p.splashback !== false) for (const [i, part] of covered.entries()) splashback(p, run, intoCorners(run, part), i, g.spans, full, band, box);
+    if (run.wall && p.splashback !== false) underHoods(p, run, fill, covered.map((part) => intoCorners(run, part)), full, band, box);
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, fill.free))) {
@@ -330,6 +334,22 @@ const SPLASH = 10;
 function intoCorners(run: KitchenRun, [a, b]: [number, number]): [number, number] {
   const [z0, z1] = zoneSpan(run);
   return [run.left === "stop" && a <= z0 + 1e-6 ? SPLASH : a, run.right === "stop" && b >= z1 - 1e-6 ? run.length - SPLASH : b];
+}
+
+/**
+ * Under a hood, the splashback goes on up to it (over the splashback's own top, between the wall units on each side),
+ * as wide as the hood's place and the splashback under it: a piece of its own.
+ */
+function underHoods(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, parts: [number, number][], full: number, band: Band, box: BoxOf): void {
+  const top = p.worktopHeight + HOOD;
+  if (top - full < 20) return;
+  let n = 0;
+  for (const pl of fill.placed.filter((x) => x.row === "wall" && applianceOf(x.item)?.role === "hood")) {
+    for (const [a, b] of parts) {
+      const [u0, u1] = [Math.max(a, pl.at), Math.min(b, pl.at + pl.item.width)];
+      if (u1 - u0 >= 1) box(`Crédence sous hotte ${run.id}${n++ ? n : ""}`, "splashback", band(u0, u1, 0, SPLASH, full, top));
+    }
+  }
 }
 
 /** Over a stretch of worktop (`part`: which), up to the wall units (or 60 cm), and only up to the sill under a window: one piece per height. */

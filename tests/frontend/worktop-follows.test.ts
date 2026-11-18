@@ -117,6 +117,15 @@ describe("plan de travail qui suit les meubles", () => {
     expect(Math.round(at("Plan de travail B").to[1])).toBe(-600);
   });
 
+  it("sous la hotte, la crédence monte jusqu'à elle, entre les meubles hauts", () => {
+    const p = plan([["base-bas-2-portes", 1800], ["wall-haut-1-porte", 600], ["app-hood", 600], ["wall-haut-1-porte", 600]]);
+    const pieces = kitchenFromPlan(p).boxes.filter((b) => b.kind === "splashback").map((b) => [b.name, Math.round(b.from[0]), Math.round(b.to[0]), b.from[2], b.to[2]]);
+    const low = pieces.find((x) => x[0] === "Crédence A")!;
+    // Under the hood (600 to 1200 along the wall): from the splashback's top up to the hood, 65 cm over the worktop.
+    expect(pieces.find((x) => x[0] === "Crédence sous hotte A")).toEqual(["Crédence sous hotte A", 600, 1200, low[4], p.worktopHeight + 650]);
+    expect(kitchenFromPlan({ ...p, splashback: false }).boxes.some((b) => b.name.startsWith("Crédence"))).toBe(false);
+  });
+
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
     const sink: ApplianceFeature = { id: "ap1", type: "appliance", name: "Évier inox", model: "sink-steel", finish: "inox", origin: [620, -540, 870], width: 760, depth: 500, height: 180 };
     const cut = (id: string, name: string, x: number): MachiningFeature => ({ id, type: "machining", name, target: "ex1", kind: "cutout", ops: [{ kind: "box", from: [x - 370, -520, 869], to: [x + 370, -60, 909], mode: "cut" }] });
