@@ -44,8 +44,13 @@ export async function openInCabinet(editor: Editor, cabinetId: string, at: [numb
 
 /** The caisson of this niche kept in « Mes caissons » (of a dressing's wall, its case only), under the name typed. */
 export function keepCaisson(event: MouseEvent, editor: Editor, niche: PickedNiche, name: string): void {
-  askName(event.clientX, event.clientY, name.replace(/^(Caisson|Plan) — /, ""), (typed) => {
-    const entry = caissonEntry(editor.doc, niche.sketch, typed, niche.path[0]);
+  keepCaissonAt(event.clientX, event.clientY, editor, niche.sketch, name, niche.path[0]);
+}
+
+/** The caisson on `sketch` (`at`: of a dressing's wall, that case only) kept in « Mes caissons », asked for its name at x, y. */
+export function keepCaissonAt(x: number, y: number, editor: Editor, sketch: string, name: string, at?: number): void {
+  askName(x, y, name.replace(/^(Caisson|Plan) — /, "").replace(/\s*\([A-Z]+\d+\)$/, ""), (typed) => {
+    const entry = caissonEntry(editor.doc, sketch, typed, at);
     if (typeof entry === "string") return editor.notify(entry, "info");
     if (!addMyUnit(entry)) return editor.notify("Mes caissons n'ont pas pu être gardés dans ce navigateur.", "error");
     editor.notify(`« ${entry.name} » gardé dans Mes caissons : posez-le dans un linéaire (Plan de cuisine, Ajouter des meubles, onglet « Mes meubles ») ou dans une case d'un dressing (clic droit dans la case).`, "success");

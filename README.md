@@ -2633,7 +2633,8 @@ opération existante.
       Choisi, « Meuble choisi » le règle comme un meuble : sa largeur, sa hauteur (en haut) et sa profondeur, sa
       Répartition refaite à ces cotes ; « Remettre le meuble d'origine » ôte l'aménagement fait à la main et remet le
       meuble du catalogue qu'il était, à sa largeur, réglable comme les autres (`document/caisson-unit.ts`,
-      `app/kitchen/kitchen-held-rows.ts`).
+      `app/kitchen/kitchen-held-rows.ts`). « Garder dans Mes meubles… » le range dans « Mes caissons » sous le nom
+      tapé, pour le poser dans un autre linéaire, un autre projet ou une case d'un dressing.
     - **Caisson d'angle choisi sur la bande** : un clic sur son panneau, sa porte ou son fileur, en bas ou en haut, le
       choisit comme un meuble ; « Meuble choisi » montre ses réglages seuls — la solution d'angle, la porte ou le côté
       du L, et le nombre d'étagères (0 à 4, en bas d'un meuble d'angle à étagère ou en L, en haut d'un haut d'angle),

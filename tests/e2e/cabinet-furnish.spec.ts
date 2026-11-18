@@ -129,6 +129,11 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await depth.press("Enter");
   await expect(depth).toHaveValue(String(deep - 5), { timeout: 60_000 });
   expect(await stepDepth()).toBeCloseTo(deepBefore - 50, 0);
+  // Kept from « Meuble choisi » too, to be put again elsewhere.
+  await tool.locator("[data-held-keep]").click();
+  await page.locator("[data-caisson-name]").fill("Caisson du plan");
+  await page.locator("[data-caisson-name]").press("Enter");
+  await expect(page.getByText(/« Caisson du plan » gardé dans Mes caissons/).first()).toBeVisible();
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");

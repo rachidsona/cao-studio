@@ -9,6 +9,8 @@ import { itemEntry, itemSize } from "../../features/kitchen-run-items";
 import { el } from "../../ui/dom";
 import type { Editor } from "../editor";
 import { sizeFields } from "./kitchen-unit-sizes";
+import { findFeature } from "../../document/operations";
+import { keepCaissonAt } from "../cabinet-furnish";
 
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
 
@@ -57,12 +59,19 @@ export function heldRows(host: HeldHost): HTMLElement {
   open.addEventListener("click", () => host.open());
   const back = el("button", { type: "button", class: `${SMALL} w-full`, "data-held-unfurnish": "", title: `Ôte l'aménagement fait à la main et remet « ${entry.name} » à sa place, à sa largeur : réglable comme les autres (façades, étagères, cloisons)` }, `Remettre le meuble d'origine (${entry.name})`);
   back.addEventListener("click", () => !wait() && apply(withCaissonUnfurnished(editor.doc, sketch)));
+  // Kept to be put again elsewhere: in a run (« Mes meubles ») or in a dressing's case.
+  const keep = el("button", { type: "button", class: `${SMALL} w-full`, "data-held-keep": "", title: "Le garde dans « Mes caissons », avec son intérieur et ses portes : il se pose ensuite dans un autre linéaire (Ajouter des meubles › Mes meubles), un autre projet, ou une case d'un dressing" }, "Garder dans Mes meubles…");
+  keep.addEventListener("click", () => {
+    const at = keep.getBoundingClientRect();
+    keepCaissonAt(at.left, at.bottom, editor, sketch, findFeature(editor.doc, sketch)?.name ?? "Mon caisson");
+  });
   return el(
     "div",
     { class: "space-y-1.5 border border-sky-200 p-1.5 dark:border-sky-900", "data-held-item": item.id },
     el("p", { class: "font-medium text-sky-700 dark:text-sky-300" }, "Aménagé à la main"),
     ...sizes,
     el("div", { class: "flex justify-end" }, open),
+    keep,
     back,
   );
 }
