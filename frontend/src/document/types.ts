@@ -162,6 +162,8 @@ export interface KitchenFloorPlan {
   skew?: Partial<Record<"B" | "C", number>>;
   frontMaterial?: string;
   worktopMaterial?: string;
+  /** The look of the worktop and splashback (appearance/library.ts: a marble, a Dekton…), over its material's own. */
+  worktopLook?: string;
   /** As the Implantation's (features/kitchen-layout.ts): the plinth's height and the worktop's thickness (mm), built. */
   plinth?: number;
   worktopThickness?: number;

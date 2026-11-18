@@ -2507,7 +2507,8 @@ opération existante.
     libre, il s'arrête au flanc du meuble, pas sur le fileur à côté. Les **joues de finition aux bouts libres**
     (case) couvrent, dans la matière des façades, le côté qui se voit de la dernière colonne et du dernier meuble
     haut d'un linéaire (pas celui d'un meuble haut contre une colonne ; celui d'un bas est laissé au retour du
-    plan). Et ce que « Proposer une cuisine » met : les **façades des bas**
+    plan). L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois)
+    pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
     réfrigérateur, au bout libre).

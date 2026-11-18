@@ -224,7 +224,7 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null,
       this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
-      this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })),
+      this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })), this.fields.look(),
       this.fields.check("Crédence", "splashback"),
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"),
       this.fields.select("Retour du plan aux bouts libres", plan.worktopEnds ? (plan.worktopJoint ?? "top") : "none", [["none", "Aucun"], ["top", "Jusqu'au sol, le plan par-dessus"], ["side", "Jusqu'au sol, le retour par-dessus"], ["miter", "Jusqu'au sol, coupe d'onglet (45°)"]], (v) => this.set(v === "none" ? { worktopEnds: false } : { worktopEnds: true, worktopJoint: v as NonNullable<KitchenFloorPlan["worktopJoint"]> })),

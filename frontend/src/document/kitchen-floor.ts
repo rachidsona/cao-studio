@@ -116,7 +116,7 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
     const empty = !(plan.runs?.[run.id] ?? []).length;
     const sub = { ...layout, units: layout.units.filter((u) => u.run === run.id && (!empty || u.corner)), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall" || b.corner)) };
     if (!sub.units.length && !sub.boxes.length) continue;
-    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, cuts);
+    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, cuts, plan.worktopLook);
     doc = decorateKitchen({ ...doc, features: [...doc.features, ...built.features] }, built);
     made[run.id] = built.features.map((f) => f.id);
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);

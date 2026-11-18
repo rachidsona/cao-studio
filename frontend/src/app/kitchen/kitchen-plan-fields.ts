@@ -3,6 +3,9 @@ import { KITCHEN_PLAN, type KitchenField } from "../../document/kitchen-plan-sha
 import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
+import { APPEARANCES, CATEGORIES, type CategoryId } from "../../appearance/library";
+
+const LOOKS: CategoryId[] = ["stone", "sintered", "concrete", "wood"];
 
 export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels";
@@ -45,5 +48,13 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
     choice.addEventListener("change", () => change(choice.value));
     return el("label", { class: ROW }, label, choice);
   };
-  return { number, check, select };
+  /** The worktop's look, from the library's stones, Dekton, concretes and woods (by family), or its material's own. */
+  const look = (): HTMLElement => {
+    const value = host.plan().worktopLook ?? "";
+    const groups = CATEGORIES.filter((c) => LOOKS.includes(c.id)).map((c) => el("optgroup", { label: c.name }, ...APPEARANCES.filter((a) => a.category === c.id).map((a) => el("option", { value: a.id, selected: a.id === value }, a.name))));
+    const choice = el("select", { class: SELECT, "aria-label": "Aspect du plan de travail" }, el("option", { value: "", selected: !value }, "Celui de la matière"), ...groups);
+    choice.addEventListener("change", () => host.set({ worktopLook: choice.value || undefined }));
+    return el("label", { class: ROW }, "Aspect du plan de travail", choice);
+  };
+  return { number, check, select, look };
 }

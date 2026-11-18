@@ -58,7 +58,7 @@ function cutByHand(doc: CadDocument, [x, y]: number[]): boolean {
 
 /** The features of a layout already made (a kitchen plan's, document/kitchen-plan-build.ts), turned and moved by `place`. */
 /** `kept`: the cut-outs each worktop had before (by its name), those put or changed by hand staying in it. */
-export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map()): KitchenPlan {
+export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map(), worktopLook?: string): KitchenPlan {
   let probe = doc;
   const plan: KitchenPlan = { features: [], info: {}, names: {}, layers: {}, layout, problems: [] };
   const push = (f: Feature) => {
@@ -110,9 +110,10 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     const id = uniqueId(probe, "ex");
     push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: side ? side.distance : h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } } : {}) });
     plan.names[id] = box.name;
-    const material = box.kind === "worktop" || box.kind === "splashback" ? worktopMaterial : frontMaterial;
+    const top = box.kind === "worktop" || box.kind === "splashback";
+    const material = top ? worktopMaterial : frontMaterial;
     // Walls, appliances and fittings (a LeMans's trays) are bought, not cut: out of the cut list and the quote.
-    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material };
+    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}) };
     if (box.kind === "wall") plan.layers[id] = ROOM_LAYER;
     if (box.kind === "appliance") plan.layers[id] = APPLIANCE_LAYER;
     if (box.kind === "fitting") plan.layers[id] = FITTING_LAYER;

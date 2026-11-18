@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { layoutPlan } from "../../frontend/src/document/kitchen-plan";
 import { withApplianceRemoved } from "../../frontend/src/document/appliance-remove";
 import { createReferencePlate, type ApplianceFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type MachiningFeature } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -94,6 +95,15 @@ describe("plan de travail qui suit les meubles", () => {
       ["Joue de finition haute A (droite)", "panel", 1200, 1219, 1450],
     ]);
     expect(kitchenFromPlan({ ...p, endPanels: false }).boxes.some((b) => b.name.startsWith("Joue"))).toBe(false);
+  });
+
+  it("prend l'aspect choisi (un marbre, un Dekton) sur le plan et la crédence, la matière restant celle du devis", () => {
+    const p = plan([["base-bas-2-portes", 1000]]);
+    const built = layoutPlan(createReferencePlate(), kitchenFromPlan(p), 19, "lacquer-white", "solid-oak", undefined, undefined, "dekton-aura");
+    const info = (name: string) => built.info[Object.keys(built.names).find((id) => built.names[id] === name)!];
+    expect(info("Plan de travail A")).toEqual({ material: "solid-oak", appearance: "dekton-aura" });
+    expect(info("Crédence A")).toEqual({ material: "solid-oak", appearance: "dekton-aura" });
+    expect(info("Plinthe A")).toEqual({ material: "lacquer-white" });
   });
 
   it("un appareil posé à la main s'ôte avec la découpe faite pour lui, et elle seule", () => {
