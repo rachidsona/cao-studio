@@ -28,6 +28,9 @@ function frontStyle(f: FrontsFeature): FrontStyle | undefined {
   return Object.fromEntries(keys.filter((k) => f[k] !== undefined).map((k) => [k, f[k]])) as FrontStyle;
 }
 
+/** A style as the plan compares it: plain fronts, none. */
+const frontStyleOf = (f: FrontStyle | undefined): FrontStyle | undefined => (f && f.style && f.style !== "flat" ? f : undefined);
+
 /** `next` with every kitchen plan following the units of it changed in the 3D (none: `next` itself). */
 export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocument {
   let doc = next;
@@ -52,8 +55,10 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         const fronts = doc.features.find((f) => f.type === "fronts" && f.cabinet === c.id);
         const side = fronts?.type === "fronts" && fronts.layout === "door" ? (fronts.side ?? "left") : null;
         const k0 = (runs[run.id] ?? []).findIndex((it) => it.id === u.item);
-        if (side && k0 >= 0 && (runs[run.id]![k0]!.side ?? "left") !== side) {
-          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (side === "left" ? (({ side: _gone, ...rest }) => rest)(it) : { ...it, side }) : it));
+        // What its model gives (a lift-up door, glazed fronts): kept by the model, not written on the item.
+        const model = k0 >= 0 ? itemEntry(runs[run.id]![k0]!) : undefined;
+        if (side && k0 >= 0 && (runs[run.id]![k0]!.side ?? model?.side ?? "left") !== side) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (side === "left" && !model?.side ? (({ side: _gone, ...rest }) => rest)(it) : { ...it, side }) : it));
           changed = true;
         }
         // Its fronts made handleless, or given their handles back (the Façades tool): the plan keeps it too.
@@ -64,8 +69,8 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         }
         // Its fronts' style (the Façades tool, the menu of a door): the plan keeps it.
         const facade = fronts?.type === "fronts" ? frontStyle(fronts) : undefined;
-        if (fronts && k0 >= 0 && JSON.stringify(runs[run.id]![k0]!.facade) !== JSON.stringify(facade)) {
-          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade ? { ...it, facade } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
+        if (fronts && k0 >= 0 && JSON.stringify(frontStyleOf(runs[run.id]![k0]!.facade ?? model?.facade)) !== JSON.stringify(facade)) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade || model?.facade ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
         // Only a change made since: the plan's own rebuilds are what it builds.

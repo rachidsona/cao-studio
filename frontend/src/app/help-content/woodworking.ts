@@ -93,7 +93,7 @@ export const WOODWORKING: HelpFamily[] = [
         steps: [
           "Avec un Plan de cuisine : sélectionnez le meuble du plan après lequel ranger le nouveau ; sans sélection, il va au bout du premier linéaire où il tient. Le panneau dit où il ira et, sous « Place libre », combien il reste sur chaque mur ; chaque pose le redit.",
           "Sans plan : sélectionnez le caisson à côté duquel poser le meuble ; sans sélection, le meuble suit le dernier caisson.",
-          "Cliquez « Meubles de cuisine », puis l'onglet « Bas », « Hauts » ou « Colonnes » : chaque meuble est dessiné de face, avec ce qu'il contient et ses cotes.",
+          "Cliquez « Meubles de cuisine », puis l'onglet « Bas », « Hauts » ou « Colonnes » : chaque meuble est dessiné de face, avec ce qu'il contient et ses cotes. Bas : portes, 3 à 5 tiroirs, casseroliers, évier, four, coulissant bouteilles et épices, poubelle coulissante, ouvert. Hauts : portes, vitré, relevant, relevant bas, égouttoir, ouvert, sur hotte. Colonnes : rangement, garde-manger, coulissante étroite, balais, vitrine, four, réfrigérateur.",
           "Survolez une largeur pour voir le meuble à cette taille, cliquez-la pour l'ajouter : il arrive sélectionné, construit comme son voisin.",
           "Tirez sa poignée ✥ pour le placer le long du mur (Maj : librement) : il s'accroche aux murs et aux meubles voisins comme un aimant et n'entre jamais dedans. Un clic sur ✥ sans tirer, puis un clic sur un mur ou un meuble, l'y colle — près d'un angle, il se pose au ras du mur d'à côté. La poignée ↻ le tourne.",
           "Pour un meuble qui n'est pas dans la liste, ouvrez l'onglet « Mes meubles » : « ＋ Décrire un nouveau meuble », ou « Ajouter … à ma liste » avec un caisson sélectionné.",

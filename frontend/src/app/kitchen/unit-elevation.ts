@@ -33,10 +33,17 @@ function doorGrip(kind: UnitKind, top: number, bottom: number): [number, number]
 
 /** The fronts of a part of the unit, between two heights. */
 function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: number): string {
+  // Glazed: the glass inside its frame.
+  const pane = (a: number, b: number) => (e.facade?.style === "glass" ? box(a + 45, top + 45, b - a - 90, bottom - top - 90, GLASS) : "");
   const door = (a: number, b: number, grip: number) => {
     const [y0, y1] = doorGrip(e.kind, top, bottom);
-    return box(a, top, b - a, bottom - top, PANEL) + handle(grip, y0, grip, y1);
+    return box(a, top, b - a, bottom - top, PANEL) + pane(a, b) + handle(grip, y0, grip, y1);
   };
+  // Lift-up (hinged along its top) or flap (along its bottom): the handle along the edge that opens.
+  if (e.layout === "door" && e.side) {
+    const y = e.side === "top" ? bottom - 45 : top + 45;
+    return box(x0, top, x1 - x0, bottom - top, PANEL) + pane(x0, x1) + handle(x0 + (x1 - x0) * 0.3, y, x1 - (x1 - x0) * 0.3, y);
+  }
   if (e.layout === "door") return door(x0, x1, x1 - 45);
   if (e.layout === "doors") {
     const middle = (x0 + x1) / 2;
@@ -50,7 +57,9 @@ function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
       return box(x0, y, x1 - x0, h, PANEL) + handle(x0 + (x1 - x0) * 0.3, y + 42, x1 - (x1 - x0) * 0.3, y + 42);
     }).join("");
   }
-  return "";
+  // Open: its shelves, seen from the front.
+  const n = e.top === "rails" ? 0 : e.shelves;
+  return Array.from({ length: n }, (_, i) => box(x0, top + ((bottom - top) * (i + 1)) / (n + 1) - 9, x1 - x0, 18, PANEL)).join("");
 }
 
 /** An oven in its niche: its controls, its window and its handle. */
@@ -91,6 +100,7 @@ export function unitSummary(e: CatalogEntry): string {
   // One of « Mes caissons »: its inside as it was kept.
   if (e.caisson) return ["Caisson aménagé", e.caisson.doors ? "portes" : "", e.caisson.cases.some((c) => c.equipment.some((q) => q.feature.fill === "drawers")) ? "tiroirs" : ""].filter(Boolean).join(" · ");
   const shelves = e.top === "rails" ? "2 traverses" : e.shelves ? `${e.shelves} étagère${e.shelves > 1 ? "s" : ""}` : "";
-  const what = hasOven(e) ? "Niche pour four" : e.layout === "drawers" ? `${e.drawers ?? 3} tiroirs` : e.layout === "doors" ? "2 portes" : e.layout === "door" ? "1 porte" : "Sans façade";
-  return [what, shelves].filter(Boolean).join(" · ");
+  const door = e.side === "top" ? "1 porte relevante" : e.side === "bottom" ? "1 abattant" : "1 porte";
+  const what = hasOven(e) ? "Niche pour four" : e.layout === "drawers" ? `${e.drawers ?? 3} tiroirs` : e.layout === "doors" ? "2 portes" : e.layout === "door" ? door : e.shelves ? "Ouvert" : "Sans façade";
+  return [what, e.facade?.style === "glass" ? "vitré" : "", shelves].filter(Boolean).join(" · ");
 }

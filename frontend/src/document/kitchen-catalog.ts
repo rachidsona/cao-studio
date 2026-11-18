@@ -11,7 +11,7 @@ import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
 import { frontsMaterials } from "../features/fronts-parts";
 import { WALL_UNIT } from "../features/kitchen-layout";
 import { uniqueId } from "./operations";
-import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature, type Vec3 } from "./types";
+import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontStyle, type FrontsFeature, type Vec3 } from "./types";
 
 export type UnitKind = "base" | "wall" | "tall";
 
@@ -25,6 +25,10 @@ export interface CatalogEntry {
   shelves: number;
   /** Two rails instead of a top: the sink goes through. */
   top?: CabinetFeature["top"];
+  /** One door hinged along its top (« top »: a lift-up door, « relevante ») or its bottom (« bottom »: a flap). */
+  side?: "top" | "bottom";
+  /** Its fronts' style when not plain: glazed in an aluminium frame (a « vitré »). */
+  facade?: FrontStyle;
   /** Height when not the kind's own (a short unit over the hood). */
   height?: number;
   /** One's own units: their depth and plinth, and their name kept as it is (no width after it). */
@@ -48,17 +52,36 @@ const slug = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g,
 const entries = (kind: UnitKind, name: string, widths: number[], rest: Omit<CatalogEntry, "id" | "kind" | "name" | "width">): CatalogEntry[] =>
   widths.map((width) => ({ id: `${kind}-${slug(name)}-${width}`, kind, name, width, ...rest }));
 
+/**
+ * The units of the trade (Nobilia, IKEA Metod, Lapeyre, Foussier Rapido catalogues, 2024–2026), at their usual widths:
+ * those a caisson and its fronts make — doors, drawers, a lift-up door, glazed fronts, open shelves. A pull-out (bottles,
+ * spices, bin, larder) is a door on its caisson here, its fitting bought (Kesseböhmer, Blum…), out of the cut list.
+ */
 export const CATALOG: CatalogEntry[] = [
-  ...entries("base", "Bas 1 porte", [300, 400, 450, 500, 600], { layout: "door", shelves: 1 }),
+  ...entries("base", "Bas 1 porte", [150, 200, 300, 400, 450, 500, 600], { layout: "door", shelves: 1 }),
   ...entries("base", "Bas 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 1 }),
   ...entries("base", "Bas 3 tiroirs", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, shelves: 0 }),
+  ...entries("base", "Bas 4 tiroirs", [300, 400, 500, 600, 800, 900], { layout: "drawers", drawers: 4, shelves: 0 }),
+  ...entries("base", "Bas 5 tiroirs", [400, 600], { layout: "drawers", drawers: 5, shelves: 0 }),
   ...entries("base", "Bas casseroliers", [600, 800, 900], { layout: "drawers", drawers: 2, shelves: 0 }),
   ...entries("base", "Bas évier", [600, 800, 1200], { layout: "doors", shelves: 0, top: "rails" }),
   ...entries("base", "Bas four", [600], { layout: "none", shelves: 0 }),
-  ...entries("wall", "Haut 1 porte", [300, 400, 450, 500, 600], { layout: "door", shelves: 2 }),
+  ...entries("base", "Bas coulissant bouteilles et épices", [150, 200, 300, 400], { layout: "door", shelves: 3 }),
+  ...entries("base", "Bas poubelle coulissante", [300, 400, 450, 500, 600], { layout: "door", shelves: 0 }),
+  ...entries("base", "Bas ouvert", [150, 200, 300, 400, 600], { layout: "none", shelves: 2 }),
+  ...entries("wall", "Haut 1 porte", [200, 300, 400, 450, 500, 600], { layout: "door", shelves: 2 }),
   ...entries("wall", "Haut 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 2 }),
+  ...entries("wall", "Haut vitré", [300, 400, 450, 500, 600, 800, 900, 1000], { layout: "doors", shelves: 2, facade: { style: "glass" } }),
+  ...entries("wall", "Haut relevant", [600, 800, 900, 1000, 1200], { layout: "door", side: "top", shelves: 1 }),
+  ...entries("wall", "Haut relevant bas", [600, 800, 900, 1200], { layout: "door", side: "top", shelves: 0, height: 360 }),
+  ...entries("wall", "Haut égouttoir", [600, 800, 900], { layout: "doors", shelves: 1 }),
+  ...entries("wall", "Haut ouvert", [150, 200, 300, 400, 600, 800], { layout: "none", shelves: 2 }),
   ...entries("wall", "Haut sur hotte", [600, 900], { layout: "door", shelves: 0, height: 350 }),
-  ...entries("tall", "Colonne rangement", [450, 600], { layout: "doors", shelves: 4 }),
+  ...entries("tall", "Colonne rangement", [400, 450, 500, 600], { layout: "doors", shelves: 4 }),
+  ...entries("tall", "Colonne garde-manger", [300, 400, 450, 500, 600], { layout: "door", shelves: 5 }),
+  ...entries("tall", "Colonne coulissante étroite", [150, 200, 300, 400], { layout: "door", shelves: 5 }),
+  ...entries("tall", "Colonne balais", [400, 450, 500, 600], { layout: "door", shelves: 1 }),
+  ...entries("tall", "Colonne vitrine", [400, 450, 500, 600], { layout: "door", shelves: 4, facade: { style: "glass" } }),
   ...entries("tall", "Colonne four", [600], { layout: "none", shelves: 1 }),
   ...entries("tall", "Colonne réfrigérateur", [600], { layout: "door", shelves: 0 }),
 ];
@@ -150,7 +173,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
     fronts = {
       id: uniqueId(next, "fr"), type: "fronts", name: `Façades ${cabinet.name}`, cabinet: cabinet.id, layout: entry.layout, drawers: entry.drawers ?? 3,
       mount: model?.mount ?? "overlay", gap: model?.gap ?? 3, thickness: model?.thickness ?? 19, hinges: model?.hinges ?? true, handles: model?.handles ?? true,
-      ...(model?.hw ? { hw: model.hw } : {}),
+      ...(model?.hw ? { hw: model.hw } : {}), ...(entry.side && entry.layout === "door" ? { side: entry.side } : {}), ...(entry.facade ?? {}),
     };
     next = { ...next, features: [...next.features, fronts] };
     const material = (model && doc.bodyInfo?.[`${model.id}${PART_SEPARATOR}0`]?.material) || "lacquer-white";
