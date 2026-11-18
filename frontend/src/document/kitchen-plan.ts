@@ -16,7 +16,7 @@ import { cabinetAxes } from "./kitchen-catalog";
 import { addLayer, layersOf } from "./layers";
 import { uniqueId, uniqueName } from "./operations";
 import { rectangleAt } from "./sketch";
-import { PART_SEPARATOR, type ApplianceFeature, type BodyInfo, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type MachiningFeature } from "./types";
+import { PART_SEPARATOR, type ApplianceFeature, type BodyInfo, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type MachiningFeature, type Vec3 } from "./types";
 
 const ROOM_LAYER = "Pièce";
 const APPLIANCE_LAYER = "Électroménager";
@@ -101,17 +101,17 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
       });
       continue;
     }
-    const side = box.profile ? sideSketch(place, box, from, to) : null;
+    const side = box.profile && !box.outline ? sideSketch(place, box, from, to) : null;
     const sketch: Feature = {
       id: uniqueId(probe, "sk"), type: "sketch", name: uniqueName(probe, "Esquisse"), hidden: true,
-      ...(side ? side.sketch : { plane: "XY" as const, offset: from[2], ...rectangleAt(from[0] + w / 2, from[1] + d / 2, w, d) }),
+      ...(side ? side.sketch : { plane: "XY" as const, offset: from[2], ...(box.outline ? outlineAt(box.outline.map(([x, y]) => placePoint(place, [x, y, 0]))) : rectangleAt(from[0] + w / 2, from[1] + d / 2, w, d)) }),
     };
     push(sketch);
     const id = uniqueId(probe, "ex");
     push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: side ? side.distance : h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } } : {}) });
     plan.names[id] = box.name;
     const top = box.kind === "worktop" || box.kind === "splashback";
-    const material = top ? worktopMaterial : frontMaterial;
+    const material = top ? worktopMaterial : box.carcass ? "melamine-white" : frontMaterial;
     // Walls, appliances and fittings (a LeMans's trays) are bought, not cut: out of the cut list and the quote.
     plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}) };
     if (box.kind === "wall") plan.layers[id] = ROOM_LAYER;
@@ -131,6 +131,12 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     }
   }
   return plan;
+}
+
+/** An outline seen from above (placed): its corners joined by lines, in the plane XY. */
+function outlineAt(points: Vec3[]) {
+  const pts = points.map((q, i) => ({ id: `p${i + 1}`, x: q[0], y: q[1] }));
+  return { points: pts, curves: pts.map((p, i) => ({ id: `l${i + 1}`, kind: "line" as const, p1: p.id, p2: pts[(i + 1) % pts.length]!.id })), constraints: [] };
 }
 
 /**

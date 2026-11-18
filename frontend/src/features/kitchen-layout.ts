@@ -120,6 +120,10 @@ export interface KitchenBox {
   run?: string;
   /** Not square at its ends (a worktop and its return cut at 45°): its outline seen from the front, along axis `along` and up (kitchen frame), drawn through the box's depth. */
   profile?: { along: 0 | 1; points: [number, number][] };
+  /** Not square seen from above (a rounded end, a corner unit cut at 45°): its outline (kitchen frame, x y), up its height. */
+  outline?: [number, number][];
+  /** A board of the carcass (a corner unit cut at 45°, a rounded end): the carcass's material, not the fronts'. */
+  carcass?: boolean;
 }
 
 export interface KitchenLayout {

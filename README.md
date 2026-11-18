@@ -2480,7 +2480,8 @@ opération existante.
     caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **Magic Corner**, même
     caisson, deux paniers derrière la porte et deux au fond de l'angle qui viennent devant à l'ouverture ; **meuble
     d'angle en L 90 × 90**, un caisson sur chaque mur et une porte pliante ; **carrousel**, le même L avec deux
-    plateaux tournants (trois quarts de cercle) dans l'angle. Plateaux et paniers s'achètent (Kesseböhmer…) : sur le
+    plateaux tournants (trois quarts de cercle) dans l'angle ; **en biais**, un pentagone sur les deux murs (90 × 90)
+    à porte à 45°, sa plinthe en biais et un triangle de plan de travail devant lui. Plateaux et paniers s'achètent (Kesseböhmer…) : sur le
     calque « Quincaillerie », hors débit et devis. Le meuble d'angle choisi se bâtit même sur un linéaire
     encore vide, et la bande de face le dessine. Ses cotes se règlent : la **porte** du meuble d'angle (30 à 60 cm)
     ou le **côté du L** depuis le mur. **En haut**, chaque angle reçoit aussi, au choix, rien, un **haut d'angle à
@@ -2749,14 +2750,16 @@ opération existante.
     le meuble à cette largeur (`app/kitchen/unit-elevation.ts`).
   - **Bas** : 1 porte (15 à 60 cm), 2 portes, 3, 4 et 5 tiroirs, casseroliers, tiroir et porte, tiroir et 2 portes,
     tiroirs à l'anglaise (derrière 2 portes), évier, four, coulissant bouteilles et épices (15 à 40 cm), poubelle
-    coulissante, ouvert à étagères.
+    coulissante, ouvert à étagères, terminal arrondi (quart de rond au bout du linéaire, ouvert ; le plan de travail
+    s'arrondit au-dessus et la plinthe s'arrête avant son socle arrondi).
   - **Hauts** : 1 porte, 2 portes, vitré (cadre alu), relevant (porte qui s'ouvre vers le haut), relevant bas
-    (36 cm de haut), égouttoir, ouvert à étagères, sur hotte.
+    (36 cm de haut), égouttoir, ouvert à étagères, terminal arrondi, sur hotte.
   - **Colonnes** : rangement, garde-manger, coulissante étroite (15 à 40 cm), balais, vitrine, four, réfrigérateur.
   - Les types et leurs largeurs suivent les catalogues du commerce (Nobilia, IKEA Metod, Lapeyre, Foussier Rapido,
     2024–2026). Un coulissant (bouteilles, épices, poubelle, garde-manger) est bâti en caisson et porte : sa ferrure
-    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Pas encore dans la liste : angles en biais, terminaux
-    arrondis.
+    (Kesseböhmer, Blum…) s'achète, hors liste de débit. Les meubles en forme (terminal arrondi, angle en biais) sont bâtis
+    planche par planche à leur contour (`document/kitchen-shaped.ts`) ; le débit compte chaque planche dans son
+    rectangle.
   - **Avec un Plan de cuisine** dans le projet, un clic **range le meuble dans un linéaire du plan**
     (`document/kitchen-plan-add.ts`) : après le meuble du plan sélectionné, ou celui ajouté juste avant, ou celui choisi
     dans le linéaire ouvert ; sinon au bout du premier linéaire où il tient sans en chasser un autre. Un haut va dans

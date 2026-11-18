@@ -55,7 +55,7 @@ export const jointOf = (run: KitchenRun, side: Joint): Joint => (run.zone.id ===
 /** What stands in a corner. */
 export const cornerKind = (p: KitchenFloorPlan, joint: Joint): CornerKind => p.corners?.[joint] ?? p.corner ?? "dead";
 /** An L cabinet on both walls, a folding door (the carousel's trays turn in it); a blind corner unit with a door (a LeMans's or a Magic Corner's fittings in it). */
-export const isLCorner = (kind: CornerKind): boolean => kind === "l" || kind === "carousel";
+export const isLCorner = (kind: CornerKind): boolean => kind === "l" || kind === "carousel" || kind === "diagonal";
 export const isDoorCorner = (kind: CornerKind): boolean => kind === "unit" || kind === "lemans" || kind === "magic";
 
 export type WallCornerKind = NonNullable<NonNullable<KitchenFloorPlan["wallCorners"]>["left"]>;

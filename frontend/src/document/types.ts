@@ -151,7 +151,7 @@ export interface KitchenFloorPlan {
   /** A dead corner closed by two fillers, or a corner unit on the run that passes: of every corner, unless set below. */
   corner?: "dead" | "unit";
   /** By corner (document/kitchen-corners.ts): dead, a blind corner unit with a shelf or LeMans trays, an L unit 90 × 90. */
-  corners?: Partial<Record<"left" | "right", "dead" | "unit" | "lemans" | "magic" | "l" | "carousel">>;
+  corners?: Partial<Record<"left" | "right", "dead" | "unit" | "lemans" | "magic" | "l" | "carousel" | "diagonal">>;
   /** By corner, up in the wall row: nothing, a wall corner unit with a door, or an L (document/kitchen-corners.ts). */
   wallCorners?: Partial<Record<"left" | "right", "none" | "unit" | "l">>;
   /** By corner, its sizes as set (mm): the base corner unit's door or its L's side, the wall one's door or side. */

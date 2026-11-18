@@ -1,0 +1,107 @@
+/**
+ * Les meubles de cuisine qui ne sont pas des boîtes droites, en planches au contour libre vu de dessus (un caisson
+ * ordinaire est une boîte : ceux-ci sont bâtis planche par planche) :
+ * - le **terminal arrondi** au bout d'un linéaire : dessous, étagères et dessus en quart de rond (un quart d'ellipse
+ *   de sa largeur sur sa profondeur), un côté droit contre son voisin, ouvert, sur un socle arrondi en retrait ; le plan
+ *   de travail s'arrondit au-dessus de lui ;
+ * - l'**angle en biais** : un caisson pentagone sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus en
+ *   pentagone, deux côtés, une porte à 45° et sa plinthe ; un morceau de plan de travail en triangle couvre son devant.
+ * Chaque planche est une pièce du plan (document/kitchen-plan.ts dessine son contour à plat et le monte en hauteur) ;
+ * le débit la compte dans son rectangle. Pur.
+ */
+import type { KitchenBox } from "../features/kitchen-layout";
+import type { Vec3 } from "./types";
+
+/** A point along the run (`u`) and off its back (`a`) in the kitchen frame. */
+export type At = (u: number, a: number) => [number, number];
+type BoxOf = (name: string, kind: KitchenBox["kind"], at: [Vec3, Vec3], extra?: Partial<KitchenBox>) => void;
+
+const T = 18;
+/** Segments of a quarter round. */
+const STEPS = 12;
+
+/** An outline (run frame) as a box: its points in the kitchen frame, its bounds, from `z0` to `z1`. */
+function shaped(at: At, points: [number, number][], z0: number, z1: number): { at: [Vec3, Vec3]; outline: [number, number][] } {
+  const outline = points.map(([u, a]) => at(u, a));
+  const xs = outline.map((p) => p[0]);
+  const ys = outline.map((p) => p[1]);
+  return { at: [[Math.min(...xs), Math.min(...ys), z0], [Math.max(...xs), Math.max(...ys), z1]], outline };
+}
+
+/**
+ * A quarter round from `u0` to `u1` along the run, `depth` off its back: square on the side of `u0` (`round` the side
+ * that is rounded), a quarter of an ellipse to the other, `inset` in from its edge (a socle set back).
+ */
+export function quarterRound(u0: number, u1: number, depth: number, round: "left" | "right", inset = 0): [number, number][] {
+  const [w, d] = [u1 - u0 - inset, depth - inset];
+  const c = round === "right" ? u0 : u1;
+  const sign = round === "right" ? 1 : -1;
+  const arc = Array.from({ length: STEPS + 1 }, (_, i): [number, number] => {
+    const t = (Math.PI / 2) * (i / STEPS);
+    return [c + sign * w * Math.cos(t), d * Math.sin(t)];
+  });
+  return [[c, 0], ...arc];
+}
+
+/** A rounded end unit at `u0`…`u1` (`round` its rounded side), `depth` deep, from `z0` up to `z1`; a socle under it from the floor when `socle`. */
+export function roundTerminal(name: string, at: At, [u0, u1]: [number, number], round: "left" | "right", depth: number, [z0, z1]: [number, number], shelves: number, socle: number, box: BoxOf): void {
+  const plate = (label: string, z: number) => {
+    const s = shaped(at, quarterRound(u0, u1, depth, round), z, z + T);
+    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, carcass: true });
+  };
+  if (socle > 0) {
+    const s = shaped(at, quarterRound(u0, u1, depth, round, 30), 0, socle - 3);
+    box(`${name} — socle`, "kick", s.at, { outline: s.outline });
+  }
+  plate("dessous", z0);
+  for (let k = 1; k <= shelves; k++) plate(`étagère ${k}`, z0 + ((z1 - z0) * k) / (shelves + 1) - T / 2);
+  plate("dessus", z1 - T);
+  // Its straight side, against its neighbour.
+  const [s0, s1] = round === "right" ? [u0, u0 + T] : [u1 - T, u1];
+  const [p, q] = [at(s0, 0), at(s1, depth)];
+  box(`${name} — côté`, "panel", [[Math.min(p[0], q[0]), Math.min(p[1], q[1]), z0 + T], [Math.max(p[0], q[0]), Math.max(p[1], q[1]), z1 - T]], { carcass: true });
+}
+
+/**
+ * The worktop's outline over a run with a rounded end unit at `u0`…`u1` (`round` its side), the worktop from `a` to `b`
+ * along the run and `depth` off its back: its end rounded as the unit under it.
+ */
+export function roundedWorktop(at: At, [a, b]: [number, number], [u0, u1]: [number, number], round: "left" | "right", depth: number): [number, number][] {
+  const end = quarterRound(u0, u1, depth, round);
+  // The arc runs from the back of the rounded end to the front of its square side.
+  const points: [number, number][] = [[round === "right" ? a : b, 0], ...end.slice(1), [round === "right" ? a : b, depth]];
+  return points.map(([u, v]) => at(u, v));
+}
+
+/**
+ * A corner unit cut at 45°, its arms `arm` long on both walls from the corner, `depth` deep (run frame of the run that
+ * passes: `u` along it from the corner's wall, `a` off its back towards the room), from `z0` up to `z1`; its socle
+ * `socle` high; `front` the fronts' thickness; `top` the worktop's depth, `z2` its top: the triangle of worktop over its front.
+ */
+export function diagonalCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], socle: number, front: number, [top, z2, thick]: [number, number, number], box: BoxOf): void {
+  const plate = (label: string, z: number, inner = 0) => {
+    const pts: [number, number][] = [[0, 0], [arm - inner, 0], [arm - inner, depth + inner], [depth + inner, arm - inner], [0, arm - inner]];
+    const s = shaped(at, pts, z, z + T);
+    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, carcass: true });
+  };
+  plate("dessous", z0);
+  plate("étagère", (z0 + z1) / 2 - T / 2, T);
+  plate("dessus", z1 - T);
+  const side = (label: string, pts: [number, number][]) => {
+    const s = shaped(at, pts, z0 + T, z1 - T);
+    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, carcass: true });
+  };
+  side("côté", [[arm - T, 0], [arm, 0], [arm, depth], [arm - T, depth]]);
+  side("côté (2)", [[0, arm - T], [depth, arm - T], [depth, arm], [0, arm]]);
+  // The door on the diagonal, in front of it by its thickness.
+  const f = front / Math.SQRT2;
+  const door = shaped(at, [[arm, depth], [depth, arm], [depth + f, arm + f], [arm + f, depth + f]], z0 + 1.5, z1 - 1.5);
+  box(`${name} — porte en biais`, "panel", door.at, { outline: door.outline });
+  // The plinth, set back under the door.
+  const k = shaped(at, [[arm, depth - 30], [depth - 30, arm], [depth - 46, arm], [arm, depth - 46]], 0, socle - 3);
+  box(`${name} — plinthe`, "kick", k.at, { outline: k.outline });
+  // The worktop over its front: a triangle between the two runs' worktops, as far over the door as they are.
+  const o = (top - depth) * (Math.SQRT2 - 1);
+  const w = shaped(at, [[top, top], [arm + o, top], [top, arm + o]], z2 - thick, z2);
+  box(`${name} — plan de travail`, "worktop", w.at, { outline: w.outline });
+}

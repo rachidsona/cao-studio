@@ -8,11 +8,12 @@
  */
 import { cabinetAxes } from "./kitchen-catalog";
 import { cornerSide, wallCornerSide } from "./kitchen-corners";
-import { FRONT, jointOf, kitchenRuns, kitchenSizes, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
+import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } from "../features/kitchen-run-items";
+import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
 
@@ -62,6 +63,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     let n = 0;
     let fillers = 0;
     const holes: (NonNullable<KitchenBox["holes"]>[number] & { u: number })[] = [];
+    const rounds: Rounded[] = [];
     const hole = (pl: Placed, appliance: string, soft = false) => {
       const u = pl.at + pl.item.width / 2;
       const [x, y] = runAt(run, u, run.back + p.depth / 2);
@@ -78,6 +80,16 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         continue;
       }
       const role = applianceOf(pl.item)?.role;
+      // A rounded end unit: built board by board (document/kitchen-shaped.ts), rounded towards the end of its row.
+      if (entry.round) {
+        const row = fill.placed.filter((o) => o.row === pl.row && o !== pl);
+        const round = row.some((o) => o.at > at) && !row.some((o) => o.at < at) ? "left" : "right";
+        const { height, depth, z } = itemSize(p, pl.item, entry);
+        const base = pl.row === "base";
+        roundTerminal(`Terminal arrondi ${run.id}${++n}`, (u, a) => runAt(run, u, run.back + a), [at, at + w], round, depth, base ? [s.plinth, s.base] : [z, z + height], entry.shelves, base ? s.plinth : 0, box);
+        if (base) rounds.push({ span: [at, at + w], round });
+        continue;
+      }
       const name = `${entry.name}${entry.custom ? "" : ` ${w}`} (${run.id}${++n})`;
       const look = { item: pl.item.id, shelves: entry.shelves, layout: entry.layout, ...(pl.item.side ?? entry.side ? { side: pl.item.side ?? entry.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(pl.item.facade ?? entry.facade ? { facade: pl.item.facade ?? entry.facade } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
       const plinth = entry.plinth ?? s.plinth;
@@ -143,7 +155,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     corners(p, run, fill.walls, g.wall !== null, band, box, cabinet);
     const covered = worktopSpans(run, fill);
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
-    if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box);
+    if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box, rounds);
     if (p.endPanels) endPanels(p, run, fill, band, box);
     const full = ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600;
     // Under a hood the splashback goes up to it, in one piece; or, as chosen, only there.
@@ -156,7 +168,8 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     }
     // Under the units and fillers only: the room left open has none.
     let kicks = 0;
-    for (const [a, b] of fill.stretches.flatMap((st) => without(st, fill.free))) {
+    // A rounded end unit stands on its own rounded socle.
+    for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...fill.free, ...rounds.map((r) => r.span)]))) {
       const used = fill.placed.some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
       if (used && p.kick !== false) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16, D + FRONT, 0, s.plinth - 3));
     }
@@ -183,6 +196,8 @@ function without([a, b]: [number, number], open: [number, number][]): [number, n
 }
 
 type Band = (u0: number, u1: number, a: number, b: number, z0: number, z1: number) => [Vec3, Vec3];
+/** A rounded end unit's place along the run, and its rounded side. */
+type Rounded = { span: [number, number]; round: "left" | "right" };
 type BoxOf = (name: string, kind: KitchenBox["kind"], at: [Vec3, Vec3], extra?: Partial<KitchenBox>) => void;
 
 /** The corners of a run (kitchen-corners.ts): a filler, or a corner unit, its panel and door, a LeMans's trays. */
@@ -201,6 +216,13 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
     const lowEdit = corner.kind === "l" || corner.kind === "carousel" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
+    // Cut at 45°: its boards, its door and its piece of worktop, on the run that passes.
+    if (corner.kind === "diagonal" && pass) {
+      const L = run.length;
+      const at = (u: number, a: number) => runAt(run, side === "left" ? u : L - u, run.back + a);
+      // Marked as the corner's: built even on a run with nothing else on it yet.
+      diagonalCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], (name, kind, where, extra) => box(name, kind, where, { ...extra, corner: true }));
+    }
     if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, layout: "none", corner: true, cornerEdit: lowEdit });
     for (const f of corner.fronts) {
       const inset = f.kind === "door" ? 1.5 : 0;
@@ -264,7 +286,7 @@ export function worktopSpans(run: KitchenRun, fill: RunFill): [number, number][]
  * The worktop of the run: over its units only (`covered`, along the run), one piece per stretch of them — the first
  * keeps the run's name —, each with the cut-outs of the sinks and hobs under it.
  */
-function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number][], holes: (NonNullable<KitchenBox["holes"]>[number] & { u: number })[], band: Band, box: BoxOf): void {
+function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number][], holes: (NonNullable<KitchenBox["holes"]>[number] & { u: number })[], band: Band, box: BoxOf, rounds: Rounded[] = []): void {
   const xs = run.zone.outline.map((q) => q[0]);
   const ys = run.zone.outline.map((q) => q[1]);
   const base = kitchenSizes(p).base;
@@ -284,10 +306,12 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
     // A return down to the floor at a free end of the run the piece reaches: the worktop over it, it up the worktop's
     // end, or both cut at 45°.
     const joint = p.worktopJoint === "side" || p.worktopJoint === "miter" ? p.worktopJoint : "top";
-    const ends = p.worktopEnds ? (["left", "right"] as const).filter((side) => run[side] === "free" && (side === "left" ? a <= z0 + 1e-6 : b >= z1 - 1e-6)) : [];
+    // Over a rounded end unit at an end of the piece: that end rounded as it, no return there.
+    const round = rounds.find((r) => (r.round === "right" ? Math.abs(r.span[1] - b) < 1 : Math.abs(r.span[0] - a) < 1));
+    const ends = p.worktopEnds ? (["left", "right"] as const).filter((side) => run[side] === "free" && side !== round?.round && (side === "left" ? a <= z0 + 1e-6 : b >= z1 - 1e-6)) : [];
     const [f0, t0] = [from[along]!, to[along]!];
     // The worktop's outline from the front (along, up): its low end then its high end, bottom and top.
-    const outline = { low: [f0, f0], high: [t0, t0] };
+    const ends0 = { low: [f0, f0], high: [t0, t0] };
     const returns = ends.map((side) => {
       const [rlo, rhi] = side === "left" ? band(a - T, a, 0, 1, 0, base) : band(b, b + T, 0, 1, 0, base);
       const [rFrom, rTo]: [Vec3, Vec3] = [[...from], [...to]];
@@ -298,14 +322,15 @@ function worktops(p: KitchenFloorPlan, run: KitchenRun, covered: [number, number
         from[along] = Math.min(from[along]!, rFrom[along]!);
         to[along] = Math.max(to[along]!, rTo[along]!);
       }
-      if (joint === "miter") outline[high ? "high" : "low"] = [inner, outer];
+      if (joint === "miter") ends0[high ? "high" : "low"] = [inner, outer];
       const profile = joint === "miter" ? { along: along as 0 | 1, points: [[inner, 0], [outer, 0], [outer, p.worktopHeight], [inner, base]] as [number, number][] } : undefined;
       return { side, at: [rFrom, rTo] as [Vec3, Vec3], profile };
     });
     const own = holes.filter((h) => h.u >= a - 1e-6 && h.u <= b + 1e-6).map(({ u: _u, ...h }) => h);
     const mitered = returns.some((r) => r.profile);
-    const profile = mitered ? { along: along as 0 | 1, points: [[outline.low[0], base], [outline.high[0], base], [outline.high[1], p.worktopHeight], [outline.low[1], p.worktopHeight]] as [number, number][] } : undefined;
-    box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0], ...(profile ? { profile } : {}) });
+    const profile = mitered ? { along: along as 0 | 1, points: [[ends0.low[0], base], [ends0.high[0], base], [ends0.high[1], p.worktopHeight], [ends0.low[1], p.worktopHeight]] as [number, number][] } : undefined;
+    const outline = round ? roundedWorktop((u, v) => runAt(run, u, v), [a, b], round.span, round.round, run.zone.run.depth) : undefined;
+    box(`Plan de travail ${run.id}${i ? i + 1 : ""}`, "worktop", [from, to], { holes: own, front: [nx, ny, 0], ...(profile ? { profile } : {}), ...(outline ? { outline } : {}) });
     // In the worktop's material (as a splashback), out of the worktop's cut-outs and bars.
     for (const r of returns) box(`Retour de plan ${run.id}${r.side === "right" ? " (droite)" : " (gauche)"}`, "splashback", r.at, r.profile ? { profile: r.profile } : {});
   });

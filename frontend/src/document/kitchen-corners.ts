@@ -20,6 +20,7 @@ export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }
   lemans: { label: "Meuble d'angle LeMans", summary: "Une porte (45 cm d'origine), deux plateaux qui pivotent et sortent : tout l'angle sert." },
   magic: { label: "Meuble d'angle Magic Corner", summary: "Une porte (45 cm d'origine) ; à l'ouverture, deux paniers sortent et ceux du fond viennent devant : tout l'angle sert." },
   l: { label: "Meuble d'angle en L", summary: "Un caisson sur chaque mur (90 cm d'origine), porte pliante : l'angle s'ouvre en grand." },
+  diagonal: { label: "Meuble d'angle en biais", summary: "Sur les deux murs (90 cm d'origine), une porte à 45° : un pentagone, une étagère, l'angle se range de face." },
   carousel: { label: "Meuble d'angle carrousel", summary: "En L (90 cm d'origine), porte pliante ; deux plateaux tournants (trois quarts de cercle) : on fait tourner l'angle." },
 };
 
@@ -97,7 +98,9 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
     return { kind: k, name: `${name} ${tag}`, from, to };
   };
   const out: CornerSide = { kind, name: `${CORNER_KINDS[kind].label} ${tag}`, cabinet: null, shelves: 0, fronts: [], trays: [] };
-  if (isLCorner(kind)) {
+  // Cut at 45°: not a box, built board by board on the run that passes (document/kitchen-shaped.ts).
+  if (kind === "diagonal") out.name = `Meuble d'angle en biais ${tag}`;
+  else if (isLCorner(kind)) {
     const arm = lArm(p, joint);
     out.cabinet = span(end === "pass" ? 0 : D, arm);
     out.name = `${kind === "carousel" ? "Meuble d'angle carrousel" : "Meuble d'angle en L"} ${tag}`;
@@ -176,6 +179,7 @@ export function cornerSketch(kind: CornerKind): string {
   }
   if (isLCorner(kind)) {
     parts.push(`<path d="M4 4 H40 V${d + 4} H${d + 4} V40 H4 Z" ${PICK}/>`, `<path d="M${d + 4} ${d + 4} L40 ${d + 16} M${d + 4} ${d + 4} L${d + 16} 40" ${DOOR}/>`);
+    if (kind === "diagonal") parts.push(`<path d="M40 ${d + 4} L${d + 4} 40" stroke="var(--corner, #b08d57)" stroke-width="2"/>`);
     // Three quarters of a circle, turning round the corner.
     if (kind === "carousel") parts.push(`<path d="M${d + 4} 6 A16 16 0 1 0 38 ${d + 4} L${d + 4} ${d + 4} Z" fill="none" stroke="var(--corner, #b08d57)" stroke-width="1.2"/>`);
   }

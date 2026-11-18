@@ -32,6 +32,8 @@ export interface CatalogEntry {
   /** Door(s) under a drawer: the drawer front's height (mm); English drawers behind the door(s): how many. */
   topDrawer?: number;
   innerDrawers?: number;
+  /** A rounded end unit: open, its shelves a quarter round towards the end of its row (document/kitchen-shaped.ts). */
+  round?: boolean;
   /** Height when not the kind's own (a short unit over the hood). */
   height?: number;
   /** One's own units: their depth and plinth, and their name kept as it is (no width after it). */
@@ -75,6 +77,7 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("base", "Bas coulissant bouteilles et épices", [150, 200, 300, 400], { layout: "door", shelves: 3 }),
   ...entries("base", "Bas poubelle coulissante", [300, 400, 450, 500, 600], { layout: "door", shelves: 0 }),
   ...entries("base", "Bas ouvert", [150, 200, 300, 400, 600], { layout: "none", shelves: 2 }),
+  ...entries("base", "Bas terminal arrondi", [300, 400, 560], { layout: "none", shelves: 1, round: true }),
   ...entries("wall", "Haut 1 porte", [200, 300, 400, 450, 500, 600], { layout: "door", shelves: 2 }),
   ...entries("wall", "Haut 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 2 }),
   ...entries("wall", "Haut vitré", [300, 400, 450, 500, 600, 800, 900, 1000], { layout: "doors", shelves: 2, facade: { style: "glass" } }),
@@ -82,6 +85,7 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("wall", "Haut relevant bas", [600, 800, 900, 1200], { layout: "door", side: "top", shelves: 0, height: 360 }),
   ...entries("wall", "Haut égouttoir", [600, 800, 900], { layout: "doors", shelves: 1 }),
   ...entries("wall", "Haut ouvert", [150, 200, 300, 400, 600, 800], { layout: "none", shelves: 2 }),
+  ...entries("wall", "Haut terminal arrondi", [300, 350], { layout: "none", shelves: 1, round: true }),
   ...entries("wall", "Haut sur hotte", [600, 900], { layout: "door", shelves: 0, height: 350 }),
   ...entries("tall", "Colonne rangement", [400, 450, 500, 600], { layout: "doors", shelves: 4 }),
   ...entries("tall", "Colonne garde-manger", [300, 400, 450, 500, 600], { layout: "door", shelves: 5 }),
