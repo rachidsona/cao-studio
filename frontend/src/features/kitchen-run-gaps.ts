@@ -9,7 +9,8 @@ import { FILLER, newItem, type RunFill } from "./kitchen-run-items";
 
 /** The items with each filler of the rest (`fill.fillers`, by its index) made the item `model(k)` gives; the new ids by index. */
 export function gapsAsItems(items: readonly KitchenRunItem[], fill: RunFill, model: (k: number) => string = () => FILLER): { items: KitchenRunItem[]; ids: string[] } {
-  const base = fill.placed.filter((pl) => pl.row === "base");
+  // The room kept free has its place in the row too: a filler after it stays after it.
+  const base = [...fill.placed, ...fill.spaces].filter((pl) => pl.row === "base");
   let next: KitchenRunItem[] = [...items];
   const ids: string[] = [];
   fill.fillers.forEach(([a, b], k) => {

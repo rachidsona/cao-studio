@@ -110,4 +110,16 @@ describe("supprimer un meuble sur la bande", () => {
     const where = (id: string) => Math.round([...now.placed, ...now.spaces].find((pl) => pl.item.id === id)!.at);
     expect([where(first.id), where(held.id), where(last.id)]).toEqual([0, 1500, 3000]);
   });
+
+  it("une place gardée libre avant le fileur du bout : le fileur reste au bout, le meuble se glisse dans la place", () => {
+    const items = units([["base-bas-2-portes", 1000], ["base-bas-1-porte", 600], ["space", 500]]);
+    const p = plan("end", items, 2150);
+    const fill = fillOf(p, items);
+    expect(fill.fillers.length).toBe(1);
+    const made = itemSlid(p, run(p), undefined, items, heights(p), items[1]!.id, 300);
+    if (typeof made === "string") throw new Error(made);
+    const now = fillOf({ ...p, rest: { A: made.rest } }, made.items);
+    expect(now.placed.find((pl) => pl.item.id === items[1]!.id)!.at).toBeCloseTo(fill.placed.find((pl) => pl.item.id === items[1]!.id)!.at + 300);
+    expect(now.missing).toEqual([]);
+  });
 });
