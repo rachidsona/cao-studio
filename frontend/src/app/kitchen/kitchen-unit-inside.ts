@@ -15,6 +15,8 @@ import { hasInside } from "../../features/kitchen-run-items";
 import { el } from "../../ui/dom";
 import { kitchenFromPlan, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { findFeature } from "../../document/operations";
+import { withCaissonRemoved } from "../../document/kitchen-delete-sync";
+import { isolateSketch } from "../zone-view";
 import type { KitchenFloorPlan } from "../../document/types";
 import { furnishCabinet } from "../cabinet-furnish";
 import type { Editor } from "../editor";
@@ -90,4 +92,23 @@ export async function furnishItem(editor: Editor, plan: KitchenFloorPlan, runId:
   const cabinet = units.length === cabinets.length ? cabinets[units.findIndex((u) => u.item === itemId)] : undefined;
   if (!cabinet) return editor.notify("Ce meuble n'est pas encore bâti : attendez que la cuisine soit refaite, puis recommencez.", "info");
   await furnishCabinet(editor, cabinet);
+}
+
+/**
+ * A caisson furnished by hand, chosen on the strip by the item keeping its room (`heldBy`: its sketch): isolated to be
+ * changed in the 3D, or deleted, its room left free; not while the kitchen is about to be made again (`busy`).
+ */
+export function caissonActions(editor: Editor, heldBy: (id: string) => string | undefined, busy: () => boolean, removed: () => void): { openCaisson(id: string): void; removeCaisson(id: string): void } {
+  return {
+    openCaisson(id) {
+      const held = findFeature(editor.doc, heldBy(id) ?? "");
+      if (held) isolateSketch(held.id, held.name);
+    },
+    removeCaisson(id) {
+      const sketch = heldBy(id);
+      if (!sketch) return;
+      if (busy()) return editor.notify("La cuisine est refaite dans un instant : recommencez ensuite.", "info");
+      void editor.change(withCaissonRemoved(editor.doc, sketch)).then(removed);
+    },
+  };
 }

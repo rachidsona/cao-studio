@@ -103,3 +103,9 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
   }
   return doc;
 }
+
+/** The caisson furnished by hand on `sketch` deleted from the plan's strip, as in the 3D: whole, its room free again. */
+export function withCaissonRemoved(doc: CadDocument, sketch: string): CadDocument {
+  const panels = doc.features.filter((f) => (f.type === "extrude" || f.type === "niche") && f.sketch === sketch).map((f) => f.id);
+  return withDeletedFreed(doc, deleteFeatures(doc, panels.length ? panels : [sketch]).next);
+}

@@ -2618,7 +2618,9 @@ opération existante.
       passent pas. « Aménager case par case… » isole le meuble et ouvre l'aménagement détaillé (une case différente
       de l'autre). Les cotes du meuble sont dans `app/kitchen/kitchen-unit-sizes.ts`. Le caisson ainsi aménagé
       reste sur la bande, dessiné à sa place (« Caisson aménagé ») : sa place ne compte pas comme place libre, et un
-      voisin ne s'y glisse pas (`openRoom`, `features/kitchen-run-items.ts`).
+      voisin ne s'y glisse pas (`openRoom`, `features/kitchen-run-items.ts`). Cliqué sur la bande, il se choisit :
+      « Modifier dans la 3D » l'isole de face, « Supprimer » (ou Suppr) l'ôte en entier et laisse sa place vide
+      (`withCaissonRemoved`, `document/kitchen-delete-sync.ts`).
     - **Glisser un meuble dans la place vide** (`document/kitchen-slide.ts`) : sur la bande, un meuble tiré
       au-delà d'un voisin change d'ordre, comme avant ; lâché dans la place vide à côté de lui (hachurée), il s'y
       pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres

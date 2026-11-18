@@ -1,7 +1,7 @@
 /** Supprimer dans la 3D un meuble du Plan de cuisine, ou un caisson aménagé : sa place est libre, rien ne revient. */
 import { describe, expect, it } from "vitest";
 import { withCabinetFurnished } from "../../frontend/src/document/cabinet-furnish";
-import { withDeletedFreed } from "../../frontend/src/document/kitchen-delete-sync";
+import { withCaissonRemoved, withDeletedFreed } from "../../frontend/src/document/kitchen-delete-sync";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { deleteFeatures } from "../../frontend/src/document/operations";
@@ -93,6 +93,10 @@ describe("supprimer un meuble de cuisine dans la 3D", () => {
     expect(room).toMatchObject({ model: "space", width: 800 });
     expect(room.furnished).toBeUndefined();
     expect(() => parseDocument(freed)).not.toThrow();
+    // Deleted from the plan's strip: the same, at once.
+    const gone = withCaissonRemoved(made.doc, made.sketch);
+    expect(gone.features.some((f) => f.id === made.sketch || ((f.type === "extrude" || f.type === "niche") && f.sketch === made.sketch))).toBe(false);
+    expect(kitchenPlanIn(gone, plan)!.runs!.A![0]).toEqual(room);
   });
 });
 

@@ -86,7 +86,8 @@ export interface StripHost {
   focus?: boolean;
 }
 
-export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" };
+/** What else than a unit is chosen on the strip; a caisson furnished by hand by the item that keeps its room. */
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" } | { kind: "caisson"; id: string };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -189,7 +190,8 @@ export function runStrip(host: StripHost): SVGSVGElement {
   for (const pl of fill.spaces.filter((q) => q.item.furnished)) {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
     const [a, b] = [pl.at, pl.at + pl.item.width];
-    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"><title>Caisson aménagé à la main : il garde sa place ; changez-le dans la 3D</title>${rect(a, y(z1), b - a, z1 - z0, PANEL)}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+    const on = host.other?.kind === "caisson" && host.other.id === pl.item.id;
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-pointer"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer)</title>${rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text><text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 110}" text-anchor="middle" font-size="90" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
   }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");
@@ -251,6 +253,10 @@ export function runStrip(host: StripHost): SVGSVGElement {
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
+  for (const held of node.querySelectorAll<SVGElement>("[data-held]")) {
+    held.addEventListener("pointerdown", (event) => event.stopPropagation());
+    held.addEventListener("click", () => host.pickOther?.({ kind: "caisson", id: held.getAttribute("data-held")! }));
+  }
   // The plinths, over the units' feet: clicked, chosen (set back, taken away, given a look) — all those of the run together.
   if (host.pickOther) {
     const on = host.other?.kind === "kick";

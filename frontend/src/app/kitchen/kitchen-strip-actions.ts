@@ -31,6 +31,9 @@ export interface StripActionsHost {
   putAfter(copy: KitchenRunItem, after: string): void;
   move(id: string, index: number): void;
   removeAppliance(id: string): void;
+  /** A caisson furnished by hand (by the item keeping its room): isolated to be changed in the 3D, or deleted, its room left free. */
+  openCaisson(id: string): void;
+  removeCaisson(id: string): void;
   setWorktop(on: boolean): void;
   /** The run's plinth: built or not, how far back from the fronts (mm), its look; and what changes of it. */
   kick: { on: boolean; back: number; look: string | undefined };
@@ -86,6 +89,13 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   if (appliance) {
     label = appliance.name;
     buttons = [button("Supprimer l'appareil", "data-strip-remove", "Ôter cet appareil du projet, avec sa découpe dans le plan de travail (Suppr)", () => host.removeAppliance(appliance.id))];
+  } else if (host.other?.kind === "caisson") {
+    const id = host.other.id;
+    label = `Caisson aménagé ${(items.find((i) => i.id === id)?.width ?? 0) / 10} cm`;
+    buttons = [
+      button("Modifier dans la 3D", "data-strip-caisson-open", "Isole ce caisson, de face, pour changer ses étagères, cloisons, tiroirs et portes", () => host.openCaisson(id)),
+      button("Supprimer", "data-strip-remove", "Ôte ce caisson avec ses panneaux et ses portes (Suppr) : sa place reste vide", () => host.removeCaisson(id)),
+    ];
   } else if (host.other?.kind === "worktop") {
     label = "Plan de travail";
     buttons = [button("Supprimer le plan de travail", "data-strip-remove", "Ce linéaire sans plan de travail ni découpes (Suppr) ; il se remet d'un clic", () => host.setWorktop(false))];
@@ -112,7 +122,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     label = "Cliquez un meuble, un appareil, le plan de travail ou la plinthe : Suppr le supprime, Ctrl + D le duplique, ← → le déplacent.";
     buttons = [...(empty.length ? [button(`Resserrer les meubles (${empty.length} place${empty.length > 1 ? "s" : ""} vide${empty.length > 1 ? "s" : ""})`, "data-strip-close-up", "Ôte les places gardées vides : les meubles se rapprochent. Pour n'en refermer qu'une, glissez un voisin dedans, ou « Place libre » › « Supprimer ».", () => host.change(items.filter((i) => !empty.includes(i)), null, []))] : []), ...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))])];
   }
-  const chosen = !!appliance || host.other?.kind === "worktop" || host.other?.kind === "kick" || ids.length > 0;
+  const chosen = !!appliance || (!!host.other && host.other.kind !== "appliance") || ids.length > 0;
   // Its name on a line of its own, whole; what one does of it under it.
   const bar = el("div", { class: "space-y-1", "data-strip-actions": "", role: "toolbar", "aria-label": "Ce qui est choisi sur la bande" }, el("p", { class: chosen ? "truncate font-medium" : "text-2xs text-gray-500 dark:text-gray-400" }, label), buttons.length ? el("div", { class: "flex flex-wrap gap-1" }, ...buttons) : null);
   return {
@@ -123,6 +133,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       const done = () => (event.preventDefault(), event.stopPropagation());
       if (event.key === "Delete" || event.key === "Backspace") {
         if (appliance) host.removeAppliance(appliance.id);
+        else if (host.other?.kind === "caisson") host.removeCaisson(host.other.id);
         else if (host.other?.kind === "worktop") host.setWorktop(false);
         else if (host.other?.kind === "kick") host.setKick({ on: false });
         else if (ids.length) remove(ids);

@@ -67,6 +67,14 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await expect(tool.locator('[data-run-strip="A"] [data-held]')).toContainText("Caisson aménagé");
   await expect(tool.locator('[data-run-strip="A"] [data-free="base"]')).toHaveCount(1);
   await expect(tool.locator('[data-fold="space"]')).toContainText("260 cm libres en bas");
+  // Chosen on the strip: isolated again from there, to be changed in the 3D.
+  await tool.locator('[data-run-strip="A"] [data-held]').click();
+  await expect(tool.locator("[data-strip-actions]")).toContainText("Caisson aménagé 100 cm");
+  await tool.locator("[data-strip-caisson-open]").click();
+  await expect(page.locator("[data-zone-isolated]")).toContainText("Bas 2 portes 1000");
+  await page.locator("[data-zone-isolated]").getByRole("button", { name: "Tout montrer" }).click();
+  if (!(await tool.isVisible())) await click(page, '[data-workshop="kitchen-plan"]');
+  if (!(await tool.locator('[data-run-strip="A"]').isVisible())) await tool.locator('[data-open-run="A"]').click();
 
   // Put again on the run, from « Mes meubles »: made with its shelves, its place kept too.
   await unfold(tool, "add");
@@ -110,6 +118,15 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await click(page, '[data-action="fit"]');
   await page.waitForTimeout(800);
   await shot(page, "caisson-suit");
+  // One chosen on the strip and deleted: it goes whole, its room left empty; the other one stays.
+  await click(page, '[data-workshop="kitchen-plan"]');
+  await tool.locator('[data-open-run="A"]').click();
+  await expect(tool.locator('[data-run-strip="A"] [data-held]')).toHaveCount(2);
+  await tool.locator('[data-run-strip="A"] [data-held]').first().click();
+  await tool.locator("[data-strip-remove]").click();
+  await expect(tool.locator('[data-run-strip="A"] [data-held]')).toHaveCount(1, { timeout: 60_000 });
+  await page.keyboard.press("Control+s");
+  expect(Object.keys(await caissons())).toHaveLength(1);
   expect(errors).toEqual([]);
 });
 
