@@ -15,7 +15,7 @@ async function planOf(page: Page, name: string, set?: (tool: ReturnType<Page["ge
   const partition = page.getByRole("dialog", { name: "Répartition" });
   const count = await zones.getByRole("listitem").count();
   for (let i = 0; i < count; i++) {
-    await zones.getByRole("listitem").nth(i).getByRole("button").last().click();
+    await zones.getByRole("listitem").nth(i).getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
     await partition.getByRole("button", { name: "Fermer", exact: true }).click();
     await expect(partition).toHaveCount(0);
     await page.waitForTimeout(800);

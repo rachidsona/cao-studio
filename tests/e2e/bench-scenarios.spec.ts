@@ -89,7 +89,7 @@ test("dressing en U : plan, chaque zone répartie, prix du projet", async ({ pag
   const partition = page.getByRole("dialog", { name: "Répartition" });
   const count = await zones.getByRole("listitem").count();
   for (let i = 0; i < count; i++) {
-    await b.act(() => zones.getByRole("listitem").nth(i).getByRole("button").last().click());
+    await b.act(() => zones.getByRole("listitem").nth(i).getByRole("button", { name: /^(Modifier|Répartition)$/ }).click());
     await b.act(() => partition.getByRole("button", { name: "OK", exact: true }).click());
     // The tool stays open for another: « Terminer » puts it away.
     if (await partition.count()) await b.act(() => partition.getByRole("button", { name: "Terminer" }).click());

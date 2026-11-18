@@ -46,7 +46,7 @@ const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
-  door: { title: "Porte sur niches", one: "porte", help: "Une porte sur les niches choisies : celles qui forment un rectangle (sans autre niche au milieu) en partagent une, les autres ont chacune la leur — jamais de refus. Charnières à gauche, à droite, en haut (elle s'ouvre vers le haut, sur une paire de compas) ou en bas (abattant). En applique, elle couvre la moitié des panneaux autour (le panneau entier au bord du meuble), comme la porte d'une case ; encastrée, elle est dans les niches, au nu des panneaux, un jeu tout autour." },
+  door: { title: "Porte sur niches", one: "porte", help: "Une porte sur les niches choisies : celles qui forment un rectangle (sans autre niche au milieu) en partagent une, les autres ont chacune la leur — jamais de refus. Charnières à gauche, à droite, en haut (elle s'ouvre vers le haut, sur une paire de compas) ou en bas (abattant). En applique, elle couvre la moitié des panneaux autour (le panneau entier au bord du meuble), comme la porte d'une case — sur une étagère ou une cloison, « Sur une étagère » la fait aussi la recouvrir entière ou s'arrêter au ras ; encastrée, elle est dans les niches, au nu des panneaux, un jeu tout autour." },
   accessory: { title: "Accessoire", one: "accessoire", help: "Un accessoire acheté, posé dans la niche : il la suit, va au devis à son prix indicatif et reste hors du débit (sauf la tablette coulissante, débitée, avec sa paire de coulisses). Chaque modèle demande une largeur et une profondeur de niche : l'outil dit ce qui manque. Les cotes sont des repères du commerce, la fiche du fabricant fait foi. Dans la vue 3D, un clic sur l'accessoire le sort (glissé, pivoté ou descendu), un second le rentre. Dans un meuble de cuisine : clic droit sur le meuble, « Accessoire intérieur… » (il est isolé et aménagé d'abord)." },
   drawers: { title: "Tiroirs", one: "tiroirs", help: "Façades encastrées dans la niche (au nu des panneaux), ou en applique devant eux (elles couvrent la moitié des panneaux autour) ; chacune avec son caisson sur coulisses. Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère." },
 };
@@ -181,7 +181,7 @@ export class NicheTool {
       });
     }
     return this.niches.map((niche) => {
-      const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path, fill: this.fill, mount: this.settings.mount }, sketch);
+      const geometry = nicheGeometry({ partition: niche.partition, niche: niche.path, fill: this.fill, mount: this.settings.mount, cover: this.settings.cover }, sketch);
       if (typeof geometry === "string") return { niche, geometry: null, problem: geometry };
       return { niche, geometry, problem: nicheProblem({ fill: this.fill, ...this.settings }, geometry) };
     });
@@ -259,6 +259,10 @@ export class NicheTool {
     const mounted = this.settings.mount ?? (this.fill === "door" ? "overlay" : "inset");
     const mount = el("select", { class: FIELD, "aria-label": "Pose" }, el("option", { value: "overlay", selected: mounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: mounted === "inset" }, "Encastrée (dans la niche)"));
     mount.addEventListener("change", () => ((this.settings.mount = mount.value as "overlay" | "inset"), this.recompute()));
+    // Overlaid, on a shelf or a cloison inside: half of it, all of it, or up to it.
+    const covered = this.settings.cover ?? "half";
+    const cover = el("select", { class: FIELD, "aria-label": "Sur une étagère", "data-door-cover": "" }, ...([["half", "À mi-épaisseur"], ["whole", "La recouvre entière"], ["none", "Au ras (l'étagère se voit)"]] as const).map(([v, t]) => el("option", { value: v, selected: covered === v }, t)));
+    cover.addEventListener("change", () => ((this.settings.cover = cover.value === "half" ? undefined : (cover.value as "whole" | "none")), this.recompute()));
     // Drawer fronts may also be « à l'anglaise »: inset, set back behind a door.
     const drawerMounted = this.settings.inner ? "inner" : mounted;
     const drawerMount = el("select", { class: FIELD, "aria-label": "Façades" }, el("option", { value: "overlay", selected: drawerMounted === "overlay" }, "En applique (devant)"), el("option", { value: "inset", selected: drawerMounted === "inset" }, "Encastrée (dans la niche)"), el("option", { value: "inner", selected: drawerMounted === "inner" }, "À l'anglaise (derrière une porte)"));
@@ -347,6 +351,7 @@ export class NicheTool {
       ...(this.fill === "door"
         ? [
             el("label", { class: ROW }, "Pose", mount),
+            mounted === "overlay" ? el("label", { class: ROW, title: "Le bord de la porte sur une étagère ou une cloison du meuble : à sa moitié (comme la porte d'une case), sur toute son épaisseur, ou au ras de sa face" }, "Sur une étagère", cover) : null,
             number("Jeu", this.settings.gap, (v) => ((this.settings.gap = v), this.recompute()), true),
             number("Épaisseur porte", this.settings.thickness, (v) => ((this.settings.thickness = v), this.recompute())),
             ...styles,

@@ -201,7 +201,7 @@ test("Mes caissons : une colonne d'un dressing gardée, puis posée dans une aut
   const tool = page.getByRole("dialog", { name: "Plan de dressing" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
   await tool.getByRole("button", { name: "Créer le plan" }).click();
-  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);

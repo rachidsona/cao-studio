@@ -30,7 +30,7 @@ test("face du mur : les tiroirs posés s'y voient, une case s'élargit en tirant
   const strip = partition.locator("[data-partition-strip]");
   const reopen = async () => {
     await action(page, '[data-workshop="dressing-plan"]');
-    await zones(page).getByRole("listitem").first().getByRole("button").last().click();
+    await zones(page).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
     await expect(partition).toContainText("Modifier");
   };
   await reopen();

@@ -22,7 +22,7 @@ async function wall(page: Page) {
   const tool = page.getByRole("dialog", { name: "Plan de dressing" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
   await tool.getByRole("button", { name: "Créer le plan" }).click();
-  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
@@ -296,7 +296,7 @@ test("un clic dans la vue ne déplace pas une Répartition rouverte : la vue res
   await wall(page);
   await page.getByRole("tab", { name: "Plan de dressing" }).click();
   const zones = page.getByRole("dialog", { name: "Plan de dressing" }).getByRole("list", { name: "Zones du plan" });
-  await zones.getByRole("listitem").first().getByRole("button").last().click();
+  await zones.getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await expect(partition).toBeVisible();
   const corner = partition.getByLabel(/^Coin X/);
@@ -640,7 +640,14 @@ test("une porte se pose sur les niches choisies, depuis Façades", async ({ page
   // Inset, it fits in the niches: smaller than over the panels around them.
   const size = tool.getByText(/Porte de .* sur 2 niches/);
   const over = await size.textContent();
+  // Overlaid, on the panel beside its niches: over all of it, wider; back to half of it.
+  const cover = tool.getByRole("combobox", { name: "Sur une étagère" });
+  await cover.selectOption("whole");
+  await expect(size).not.toHaveText(over!);
+  await cover.selectOption("half");
+  await expect(size).toHaveText(over!);
   await tool.getByRole("combobox", { name: "Pose" }).selectOption("inset");
+  await expect(cover).toHaveCount(0);
   await expect(size).not.toHaveText(over!);
   await tool.getByRole("button", { name: "OK", exact: true }).click();
   await expect(page.getByText("Porte posée sur 2 niches.")).toBeVisible();

@@ -18,7 +18,7 @@ test("panneau Répartition : un bouton par mur, un autre mur ouvert d'un clic (f
   const count = await zones.getByRole("listitem").count();
   expect(count).toBeGreaterThanOrEqual(2);
   // The first wall made and opened in its Répartition.
-  await zones.getByRole("listitem").first().getByRole("button").last().click();
+  await zones.getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await expect(partition).toBeVisible();
   const walls = partition.getByRole("group", { name: "Murs du dressing" });

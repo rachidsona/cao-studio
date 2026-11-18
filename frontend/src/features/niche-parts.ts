@@ -76,7 +76,7 @@ export const INNER_SPACER = 15;
 export const INNER_SPACERS = "Cales de coulisse à l'anglaise (paire)";
 
 /** The niche the feature equips, with the frame of its sketch and the depth of the partition's panels. */
-type NicheAsk = Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][]; mount?: NicheFeature["mount"] };
+type NicheAsk = Pick<NicheFeature, "partition" | "niche"> & { fill?: NicheFeature["fill"]; span?: number[][]; mount?: NicheFeature["mount"]; cover?: NicheFeature["cover"] };
 
 /** The geometry of a niche, kept while the feature and its sketch stay the same objects (read it, never change it). */
 const geometryCache = new WeakMap<SketchFeature, WeakMap<NicheAsk, NicheGeometry | string>>();
@@ -110,7 +110,7 @@ function computeNicheGeometry(f: NicheAsk, sketch: SketchFeature | undefined): N
   const rebuilt = rebuildChain(sketch, f.partition);
   if (typeof rebuilt === "string") return rebuilt;
   if (f.fill === "door") {
-    const box = doorBox(rebuilt.niches, [f.niche, ...(f.span ?? [])], step);
+    const box = doorBox(rebuilt.niches, [f.niche, ...(f.span ?? [])], step, f.cover);
     if (typeof box === "string") return box;
     // Inset: in the niches themselves; overlaid: over half the panels around them.
     return { frame, box: f.mount === "inset" ? box.inner : box.outer, depth: record.step.depth, step, ...cut };
@@ -124,9 +124,10 @@ function computeNicheGeometry(f: NicheAsk, sketch: SketchFeature | undefined): N
 /**
  * What a door over these niches covers: the rectangle they make, out to the middle of the panels around it (to the
  * middle of the space to the next niche: half a simple panel, a whole one of a double side), and over the whole panel
- * at the edge of the cabinet — as the door of a case. The niches must make a rectangle, with no other niche inside.
+ * at the edge of the cabinet — as the door of a case; `cover`: over a whole shelf or cloison inside, or up to its face.
+ * The niches must make a rectangle, with no other niche inside.
  */
-function doorBox(niches: Map<string, NicheNode>, paths: number[][], step: { input: PartitionParams; origin: [number, number] }): { inner: NicheBox; outer: NicheBox } | string {
+function doorBox(niches: Map<string, NicheNode>, paths: number[][], step: { input: PartitionParams; origin: [number, number] }, cover?: NicheFeature["cover"]): { inner: NicheBox; outer: NicheBox } | string {
   const chosen = paths.map((p) => niches.get(pathKey(p)));
   if (chosen.some((n) => !n)) return "Une niche de cette porte n'existe plus : refaites la porte.";
   const boxes = chosen.map((n) => n!.box);
@@ -144,7 +145,7 @@ function doorBox(niches: Map<string, NicheNode>, paths: number[][], step: { inpu
     const near = leaves.filter((n) => across(n, along) && (end === "0" ? n.box[`${along}1`] <= edge + EPS : n.box[`${along}0`] >= edge - EPS));
     if (!near.length) return outer[`${along}${end}`];
     const next = end === "0" ? Math.max(...near.map((n) => n.box[`${along}1`])) : Math.min(...near.map((n) => n.box[`${along}0`]));
-    return (edge + next) / 2;
+    return cover === "whole" ? next : cover === "none" ? edge : (edge + next) / 2;
   };
   return { inner: box, outer: { x0: below(box.x0, "x", "0"), x1: below(box.x1, "x", "1"), y0: below(box.y0, "y", "0"), y1: below(box.y1, "y", "1") } };
 }

@@ -859,6 +859,11 @@ export interface NicheFeature extends FeatureBase {
   mount?: "overlay" | "inset";
   /**
    * Drawers « à l'anglaise »: behind a door, their fronts set back in the niche (features/niche-parts.ts INNER_*),
+  /**
+   * A door overlaid, at an edge on a shelf or a cloison inside the cabinet: half of it covered (missing, as a case's
+   * door), all of it (its edge level with the panel's other face), or none (level with the face it rests on).
+   */
+  cover?: "whole" | "none";
    * their slides on spacers past the hinge plates, no handle (a notch).
    */
   inner?: boolean;

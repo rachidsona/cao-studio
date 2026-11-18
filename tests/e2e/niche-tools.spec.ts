@@ -11,7 +11,7 @@ async function ready(page: Page) {
   const tool = page.getByRole("dialog", { name: "Plan de dressing" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
   await tool.getByRole("button", { name: "Créer le plan" }).click();
-  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button").last().click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
@@ -165,7 +165,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   // A niche of another wall than the last one made: Module follows the click.
   await click(page, '[data-workshop="dressing-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de dressing" });
-  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").nth(1).getByRole("button").last().click();
+  await tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").nth(1).getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);

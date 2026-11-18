@@ -293,7 +293,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);
       if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       if (feature.split !== undefined && feature.split !== "whole" && feature.split !== "cases") errors.push(`${where} : découpe du fond invalide.`);
-      if (feature.mount !== undefined && feature.mount !== "overlay" && feature.mount !== "inset") errors.push(`${where} : pose des façades inconnue.`);
+      for (const [key, ok, what] of [["mount", ["overlay", "inset"], "pose des façades inconnue"], ["cover", ["whole", "none"], "recouvrement de la porte inconnu"]] as const) if (feature[key] !== undefined && !(ok as readonly string[]).includes(feature[key] as string)) errors.push(`${where} : ${what}.`);
       for (const key of ["sideGap", "betweenGap", "bottomGap"]) if (feature[key] !== undefined && !isFiniteNumber(feature[key])) errors.push(`${where} : « ${key} » doit être un nombre fini.`);
       if (typeof feature.handles !== "boolean") errors.push(`${where} : réglage des poignées invalide.`);
       break;

@@ -62,7 +62,7 @@ test("plan posé sur la pièce : longueurs reprises, panneaux sur le mur, et le 
   await expect(tool.locator('[data-obstacle="window"]')).toHaveCount(1);
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await expect(tool.locator("[data-plan-checks]")).toContainText("La fenêtre du mur A est derrière Mur A.");
-  await zones(page).getByRole("listitem").first().getByRole("button").last().click();
+  await zones(page).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
   const partition = page.getByRole("dialog", { name: "Répartition" });
   await partition.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(partition).toHaveCount(0);
@@ -151,7 +151,7 @@ test("le plan garde son onglet à côté de Sélection, quel que soit l'outil ou
   await action(page, '[data-workshop="dressing-plan"]');
   await planTool(page).getByRole("button", { name: "En L à gauche", exact: true }).click();
   await planTool(page).getByRole("button", { name: "Créer le plan" }).click();
-  await zones(page).getByRole("listitem").first().getByRole("button").last().click();
+  await zones(page).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
 
   // The Répartition of the zone opens behind it, and the plan stays: it comes first, and it follows what was made.
   const partition = page.getByRole("dialog", { name: "Répartition" });

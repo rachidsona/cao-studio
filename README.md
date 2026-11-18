@@ -1191,6 +1191,10 @@ opération existante.
     leurs jeux de bord (haut, bas, côtés) sont alors partagés avec la façade voisine (la moitié de chaque côté), et
     leurs caissons restent dans la niche. Une porte sur niches en applique d'office, encastrée au choix : un jeu tout
     autour dans ses niches (`NicheFeature.mount`, `drawerFronts` et `doorBox` dans `features/niche-parts.ts`).
+  - **Porte en applique au bord d'une étagère** (« Sur une étagère » de la Porte sur niches, en applique) : sur une
+    étagère ou une cloison du meuble, son bord s'arrête **à mi-épaisseur** (d'office, comme une porte de case), la
+    **recouvre entière** (le bord au niveau de son autre face) ou s'arrête **au ras** de sa face (l'étagère se voit) ;
+    au bord du meuble, elle couvre toujours le panneau entier (`NicheFeature.cover`, `doorBox`).
   - **Tiroirs à l'anglaise** (« À l'anglaise (derrière une porte) » dans la liste « Façades ») : des tiroirs intérieurs
     derrière une porte. Leurs devants sont encastrés 25 mm en retrait de la face des panneaux (une porte encastrée et
     son jeu passent devant), leurs coulisses vissées sur des **cales** de 15 mm (« Cale gauche 1 »… : achetées, au
