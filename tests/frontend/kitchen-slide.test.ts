@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { KITCHEN_PLAN, kitchenRuns, kitchenSizes, runGeometry } from "../../frontend/src/document/kitchen-plan-shapes";
 import { itemSlid, slideRoom } from "../../frontend/src/document/kitchen-slide";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../frontend/src/document/types";
-import { fillRun, isFiller, isSpace, newItem, openRoom, spaceLeft } from "../../frontend/src/features/kitchen-run-items";
+import { fillRun, inKeptRoom, isFiller, isSpace, joinedSpaces, newItem, openRoom, spaceLeft } from "../../frontend/src/features/kitchen-run-items";
 import { withRoomLeft } from "../../frontend/src/app/kitchen/kitchen-strip-actions";
 
 const units = (list: [string, number][]) => list.reduce<KitchenRunItem[]>((items, [m, w]) => [...items, newItem(items, m, w)], []);
@@ -121,5 +121,15 @@ describe("supprimer un meuble sur la bande", () => {
     const now = fillOf({ ...p, rest: { A: made.rest } }, made.items);
     expect(now.placed.find((pl) => pl.item.id === items[1]!.id)!.at).toBeCloseTo(fill.placed.find((pl) => pl.item.id === items[1]!.id)!.at + 300);
     expect(now.missing).toEqual([]);
+  });
+
+  it("des places gardées côte à côte ne font qu'une : un meuble de leur largeur à toutes s'y met", () => {
+    const items = units([["wall-haut-1-porte", 600], ["space-wall", 100], ["base-bas-1-porte", 600], ["space-wall", 50], ["space-wall", 400], ["wall-haut-1-porte", 600]]);
+    // The base unit between them is of another row: they are side by side up there.
+    expect(joinedSpaces(items).filter(isSpace).map((i) => i.width)).toEqual([550]);
+    const put = inKeptRoom(items, newItem(items, "wall-haut-1-porte", 550))!;
+    expect(put.map((i) => [i.model, i.width])).toEqual([["wall-haut-1-porte", 600], ["wall-haut-1-porte", 550], ["base-bas-1-porte", 600], ["wall-haut-1-porte", 600]]);
+    // A furnished caisson's room is not joined.
+    expect(joinedSpaces([items[1]!, { ...items[3]!, furnished: "sk1" }]).length).toBe(2);
   });
 });

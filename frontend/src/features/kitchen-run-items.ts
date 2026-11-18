@@ -145,10 +145,32 @@ export function insertItem(items: readonly KitchenRunItem[], item: KitchenRunIte
 }
 
 /**
+ * The items with the rooms kept free side by side in a row (no unit of that row between them) made one « Espace
+ * libre », their widths summed: a unit deleted, then one slid beside it, leave one room, not three.
+ */
+export function joinedSpaces(items: readonly KitchenRunItem[]): KitchenRunItem[] {
+  const out: KitchenRunItem[] = [];
+  const last = new Map<string, number>();
+  for (const item of items) {
+    const row = rowOf(itemEntry(item));
+    const k = last.get(row);
+    const prev = k === undefined ? undefined : out[k];
+    if (prev && isSpace(prev) && !prev.furnished && isSpace(item) && !item.furnished) {
+      out[k!] = { ...prev, width: Math.round((prev.width + item.width) * 10) / 10 };
+      continue;
+    }
+    last.set(row, out.length);
+    out.push(item);
+  }
+  return out.length === items.length ? [...items] : out;
+}
+
+/**
  * `item` put in the room kept free in its row — an « Espace libre » no furnished caisson holds, wide enough for it, the
  * narrowest such —, in its place there, that room keeping what is left of it; null when there is none.
  */
-export function inKeptRoom(items: readonly KitchenRunItem[], item: KitchenRunItem): KitchenRunItem[] | null {
+export function inKeptRoom(given: readonly KitchenRunItem[], item: KitchenRunItem): KitchenRunItem[] | null {
+  const items = joinedSpaces(given);
   const row = rowOf(itemEntry(item));
   const space = items.filter((i) => isSpace(i) && !i.furnished && rowOf(itemEntry(i)) === row && i.width >= item.width - 0.5).sort((a, b) => a.width - b.width)[0];
   if (!space) return null;

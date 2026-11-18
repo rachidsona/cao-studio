@@ -13,7 +13,7 @@ import { itemSlid } from "../../document/kitchen-slide";
 import { kitchenSizes, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, joinedSpaces, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
@@ -135,7 +135,7 @@ export class RunEditor {
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
     if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null]; // a caisson furnished by hand, moved
-    this.items = items;
+    this.items = joinedSpaces(items);
     this.chosen = chosen;
     this.picked = picked.filter((id) => items.some((i) => i.id === id));
     this.touched();
@@ -395,9 +395,9 @@ export class RunEditor {
       });
       const out = el("button", { type: "button", class: SMALL, "data-space-remove": item.id, title: "Les meubles d'après se resserrent" }, "Supprimer");
       out.addEventListener("click", () => this.change(this.items.filter((i) => i.id !== item.id)));
-      return el("div", { class: "flex items-center gap-1" }, el("span", { class: "flex-1" }, `${row === "wall" ? "Haut" : "Bas"} · place ${same.indexOf(item) + 1}/${same.length}`), input, out);
+      return el("div", { class: "flex items-center gap-1" }, el("span", { class: "flex-1" }, `${row === "wall" ? "En haut" : "En bas"}, ${((b) => (b ? `après « ${itemEntry(b).name} »` : "au début"))(same.slice(0, same.indexOf(item)).reverse().find((i) => !isSpace(i)))}`), input, out);
     });
-    return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-spaces": String(spaces.length) }, el("p", { class: "font-medium" }, "Espaces gardés"), el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Laissés là où des meubles ont été poussés dans la 3D."), ...rows);
+    return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-spaces": String(spaces.length) }, el("p", { class: "font-medium" }, "Espaces gardés"), el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Les places laissées vides : un meuble supprimé, glissé sur la bande ou poussé dans la 3D. Côte à côte, elles ne font qu'une ; un meuble ajouté s'y met s'il y tient. « Supprimer » referme la place : les meubles d'après se rapprochent."), ...rows);
   }
 
   /** The changes not yet applied: the units, where the rest goes, the corners. */
