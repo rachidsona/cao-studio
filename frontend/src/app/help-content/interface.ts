@@ -392,8 +392,9 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez « Outils », ou appuyez sur ⌘K ou Ctrl+K.",
           "Tapez quelques lettres : accents et majuscules n'ont pas d'importance, et tous les mots tapés doivent se trouver.",
           "Choisissez avec les flèches haut et bas, puis Entrée lance l'outil. Échap ferme la palette.",
+          "Pour donner un raccourci à un outil : cliquez « + touche » au bout de sa ligne, puis appuyez sur la combinaison voulue (Retour l'enlève, Échap annule). Elle lance ensuite l'outil depuis la vue ; l'aide (?) la liste sous « Mes raccourcis ».",
         ],
-        tip: "Elle propose les outils de la barre en cours (modèle ou esquisse), y compris ceux rangés dans les menus, et met en tête les derniers utilisés.",
+        tip: "Elle propose les outils de la barre en cours (modèle ou esquisse), y compris ceux rangés dans les menus, et met en tête les derniers utilisés. Les raccourcis de l'éditeur (enregistrer, annuler, Échap…) ne se donnent pas ; vos raccourcis sont gardés dans ce navigateur.",
       },
       {
         keys: [], selector: "[data-live-price]", name: "Prix en direct",

@@ -3017,7 +3017,12 @@ opération existante.
   demande, devis ; le résultat du contrôle est écrit dans `00-lisez-moi.txt` (`app/workshop/production-folder.ts`).
 - **Palette de commandes** (⌘K ou Ctrl+K, bouton « Outils ») : on tape quelques lettres, sans se soucier des accents,
   Entrée lance l'outil, même rangé dans un menu ; seuls les outils du mode en cours sont proposés, les derniers utilisés
-  en tête (`app/command-palette.ts`).
+  en tête (`app/command-palette.ts`). Chaque outil y reçoit **son raccourci clavier** : un clic sur « + touche » au bout
+  de sa ligne, puis la combinaison voulue (une lettre, un chiffre, une touche F, avec ⌘ ou Ctrl, ⌥, Maj si l'on veut) ;
+  Retour l'enlève, Échap annule. Une touche par outil et un outil par touche ; ceux de l'éditeur (enregistrer,
+  annuler, Échap…) restent les siens. Gardés dans ce navigateur, listés dans l'aide (?) sous « Mes raccourcis » ; une
+  touche ne lance son outil que quand il est là (une lettre donnée à un outil du modèle reste à l'esquisse)
+  (`app/custom-shortcuts.ts`).
 - **Assistant Dressing** (groupe « Dressing ») : un dressing entier **en nombres**, le long d'un mur (**I**), de deux
   murs en angle (**L**) ou de trois (**U**). On donne la longueur de chaque mur, la **hauteur** (jusqu'au plafond, 250 cm
   proposés), la **profondeur** (60 cm), l'**épaisseur** des panneaux et le **socle** (8 cm), puis le **programme** de

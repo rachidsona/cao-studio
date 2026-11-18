@@ -7,6 +7,7 @@ import { buttonHint } from "../ui/icon-titles";
 import { searchCommands, type Command } from "../ui/command-search";
 import { el } from "../ui/dom";
 import { keyOf } from "../ui/ribbon-layout";
+import { assign, bindCustomShortcuts, comboOf, readShortcuts, shortcutOf } from "./custom-shortcuts";
 
 const KEY = "cao.palette-recent";
 const SHOWN = 12;
@@ -55,6 +56,9 @@ function open(root: HTMLElement): void {
   const overlay = el("div", { class: "fixed inset-0 z-50 bg-black/40 p-4", role: "dialog", "aria-label": "Palette de commandes", "data-palette-window": "" }, panel);
   let found: Command[] = [];
   let at = 0;
+  // The tool whose shortcut is being chosen: the next key pressed is it.
+  let choosing: Command | null = null;
+  let warning = "";
   const close = () => overlay.remove();
   const run = (command: Command | undefined) => {
     if (!command) return;
@@ -65,7 +69,18 @@ function open(root: HTMLElement): void {
   const draw = () => {
     list.replaceChildren(
       ...found.slice(0, SHOWN).map((command, i) => {
-        const row = el("li", { role: "option", "aria-selected": String(i === at), class: `flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm ${i === at ? "bg-sky-100 dark:bg-sky-900" : ""}` }, el("span", { class: "min-w-0 truncate" }, command.label), el("span", { class: "shrink-0 text-xs text-gray-500" }, command.group));
+        const combo = shortcutOf(readShortcuts(), command.key);
+        const waiting = choosing === command;
+        const chip = el("button", { type: "button", class: `shrink-0 border px-1.5 font-mono text-xs ${waiting ? "border-sky-500 text-sky-700 dark:text-sky-300" : combo ? "border-gray-300 dark:border-gray-600" : "border-dashed border-gray-300 text-gray-400 dark:border-gray-600"}`, title: "Choisir le raccourci de cet outil : cliquer, puis appuyer sur la touche (Retour l'enlève, Échap annule)", "data-shortcut-of": command.key }, waiting ? "Appuyez sur une touche…" : (combo ?? "+ touche"));
+        chip.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          choosing = waiting ? null : command;
+          warning = "";
+          at = i;
+          draw();
+        });
+        const row = el("li", { role: "option", "aria-selected": String(i === at), class: `flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm ${i === at ? "bg-sky-100 dark:bg-sky-900" : ""}` }, el("span", { class: "min-w-0 flex-1 truncate" }, command.label), el("span", { class: "shrink-0 text-xs text-gray-500" }, command.group), chip);
         row.addEventListener("mousedown", (event) => {
           event.preventDefault();
           run(command);
@@ -73,6 +88,7 @@ function open(root: HTMLElement): void {
         return row;
       }),
       ...(found.length ? [] : [el("li", { class: "px-3 py-2 text-sm text-gray-500" }, "Aucun outil de ce nom.")]),
+      ...(warning ? [el("li", { class: "px-3 py-2 text-xs text-amber-700 dark:text-amber-300", role: "status" }, warning)] : []),
     );
   };
   const search = () => {
@@ -84,6 +100,17 @@ function open(root: HTMLElement): void {
   input.addEventListener("blur", () => setTimeout(close, 0));
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
+    if (choosing) {
+      event.preventDefault();
+      const combo = event.key === "Escape" ? undefined : event.key === "Backspace" || event.key === "Delete" ? null : comboOf(event);
+      if (combo === undefined) choosing = null;
+      else if (combo === null && event.key !== "Backspace" && event.key !== "Delete") return;
+      else {
+        warning = assign(choosing, combo) ?? "";
+        if (!warning) choosing = null;
+      }
+      return draw();
+    }
     const last = Math.min(found.length, SHOWN) - 1;
     if (event.key === "Escape") close();
     else if (event.key === "Enter") run(found[at]);
@@ -109,4 +136,5 @@ export function bindCommandPalette(root: HTMLElement): void {
     open(root);
   }, true);
   root.querySelector("[data-command-palette]")?.addEventListener("click", () => open(root));
+  bindCustomShortcuts((key) => commands(root).find((c) => c.command.key === key)?.button ?? null);
 }

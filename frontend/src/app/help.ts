@@ -3,6 +3,7 @@
  * help-browser.ts, la fiche de chaque outil. S'ouvre avec le bouton Aide, la touche « ? » ou le menu « ⋯ » ; les
  * raccourcis listés ici sont ceux de keyboard.ts et de sketch-controller.ts.
  */
+import { readShortcuts } from "./custom-shortcuts";
 import { el } from "../ui/dom";
 import { helpBrowser } from "./help-browser";
 import { openModal } from "./workshop/workshop-ui";
@@ -15,7 +16,7 @@ export const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
     title: "Partout",
     keys: [
       [`${MOD} S`, "Enregistrer"],
-      [`${MOD} K`, "Palette de commandes : lancer un outil par son nom"],
+      [`${MOD} K`, "Palette de commandes : lancer un outil par son nom, ou lui donner sa touche (« + touche »)"],
       [`${MOD} Z`, "Annuler"],
       [`${MOD} ⇧ Z  ou  ${MOD} Y`, "Rétablir"],
       ["Échap", "Quitter l'outil, puis la sélection"],
@@ -70,7 +71,10 @@ function helpContent(): HTMLElement {
     { class: "list-decimal space-y-1.5 pl-5 text-sm" },
     ...STEPS.map(([title, text]) => el("li", {}, el("span", { class: "font-semibold" }, `${title} : `), text)),
   );
-  const groups = SHORTCUTS.map(({ title, keys }) =>
+  // Those chosen in the palette (custom-shortcuts.ts), after the editor's own.
+  const mine = Object.entries(readShortcuts()).map(([combo, v]): [string, string] => [combo, v.label]);
+  const all = mine.length ? [...SHORTCUTS, { title: "Mes raccourcis", keys: mine }] : SHORTCUTS;
+  const groups = all.map(({ title, keys }) =>
     el(
       "section",
       { class: "min-w-0" },

@@ -496,3 +496,31 @@ test("un projet par espace : l'onglet Dressing d'une cuisine ouvre ou crée un d
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
   expect(errors).toEqual([]);
 });
+
+test("un raccourci clavier à soi : donné à un outil dans la palette, il le lance, et l'aide le liste", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Raccourcis e2e");
+  const palette = page.getByRole("dialog", { name: "Palette de commandes" });
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("plan de dres");
+  const chip = palette.getByRole("option").first().locator("[data-shortcut-of]");
+  await expect(chip).toHaveText("+ touche");
+  await chip.click();
+  await expect(chip).toHaveText("Appuyez sur une touche…");
+  // One of the editor's own: refused, the choice still open.
+  await page.keyboard.press("Control+s");
+  await expect(palette.getByRole("status")).toContainText("raccourci de l'éditeur");
+  await page.keyboard.press("Alt+p");
+  await expect(chip).toHaveText("⌥+P");
+  await page.keyboard.press("Escape");
+  await expect(palette).toHaveCount(0);
+  await page.keyboard.press("Alt+p");
+  await expect(page.getByRole("dialog", { name: "Plan de dressing" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.locator("canvas").first().click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("?");
+  await expect(page.getByText("Mes raccourcis")).toBeVisible();
+  await expect(page.getByText("⌥+P", { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
