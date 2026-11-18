@@ -55,7 +55,7 @@ export const modelOf = (entry: CatalogEntry): string => entry.id.replace(/-\d+$/
 export const applianceOf = (item: Pick<KitchenRunItem, "model">): ApplianceModel | undefined => APPLIANCES.find((a) => a.model === item.model);
 
 /** What an item is, at its width: its catalogue entry (made at that width when the catalogue has not got it). */
-export function itemEntry(item: KitchenRunItem): CatalogEntry {
+function modelEntry(item: KitchenRunItem): CatalogEntry {
   if (item.own) return { ...item.own, width: item.width };
   if (isFiller(item)) return { id: `${item.model}-${item.width}`, kind: item.model === FILLER_WALL || item.model === SPACE_WALL ? "wall" : "base", name: isSpace(item) ? "Espace libre" : "Fileur", width: item.width, layout: "none", shelves: 0 };
   const app = applianceOf(item);
@@ -67,6 +67,29 @@ export function itemEntry(item: KitchenRunItem): CatalogEntry {
   if (exact) return exact;
   const like = CATALOG.find((e) => modelOf(e) === item.model) ?? CATALOG[0]!;
   return { ...like, id: `${item.model}-${item.width}`, width: item.width, ...(like.layout === "doors" && item.width < 600 ? { layout: "door" as const } : {}) };
+}
+
+/** What a unit's fronts and inside may be set to here: not a filler, a room kept free, an appliance without a cabinet, a furnished caisson, a rounded end. */
+export const hasInside = (item: KitchenRunItem): boolean => !isFiller(item) && !item.own?.caisson && !modelEntry(item).round && (applianceOf(item)?.cabinet !== null);
+
+/**
+ * The entry of an item: its model's, with the fronts and the inside chosen for this unit over them (« Façades et
+ * intérieur »). Drawers leave no room for shelves nor upright boards; upright boards none for a drawer.
+ */
+export function itemEntry(item: KitchenRunItem): CatalogEntry {
+  const e = modelEntry(item);
+  if (!hasInside(item) || [item.layout, item.drawers, item.topDrawer, item.innerDrawers, item.shelves, item.dividers].every((v) => v === undefined)) return e;
+  const layout = item.layout ?? e.layout;
+  const drawers = layout === "drawers";
+  const dividers = drawers ? 0 : (item.dividers ?? e.dividers ?? 0);
+  const doors = layout === "door" || layout === "doors";
+  const top = doors && !dividers ? (item.topDrawer ?? e.topDrawer) : undefined;
+  const inner = doors && !dividers ? (item.innerDrawers ?? e.innerDrawers) : undefined;
+  const { topDrawer: _t, innerDrawers: _i, dividers: _d, side: _s, ...rest } = e;
+  return {
+    ...rest, layout, shelves: drawers ? 0 : (item.shelves ?? e.shelves), ...(drawers ? { drawers: item.drawers ?? e.drawers ?? 3 } : {}),
+    ...(dividers ? { dividers } : {}), ...(top ? { topDrawer: top } : {}), ...(inner ? { innerDrawers: inner } : {}), ...(layout === "door" && e.side && !top ? { side: e.side } : {}),
+  };
 }
 
 /** The models one adds to a run, by family: those of the catalogue (one per name), then the appliances. */

@@ -2605,8 +2605,18 @@ opération existante.
       panneau défile, ouvre un autre linéaire ; ce qui est changé et pas encore appliqué l'est d'abord, sur un oui.
     - Sous la bande, **chaque titre se plie** (`ui/fold.ts`) : Place libre, Meuble choisi, Ajouter des meubles, Les
       angles, À revoir, Prix du projet. Tous sont fermés au départ ; un clic ouvre, un autre ferme, et ouvrir un titre
-      ferme les autres ; choisir un meuble sur la bande ouvre ses réglages. La vue des linéaires plie de même
-      Ergonomie, À revoir et Prix du projet (avec « Ouvrir le devis »).
+      ferme les autres ; choisir un meuble sur la bande ouvre ses réglages, et le titre ouvert le reste quand la
+      cuisine est refaite. La vue des linéaires plie de même Ergonomie, À revoir et Prix du projet (avec « Ouvrir le
+      devis »).
+    - **Façades et intérieur** du meuble choisi (`app/kitchen/kitchen-unit-inside.ts`) : sans quitter le plan, ses
+      **façades** (ouvert, une porte, deux portes, tiroirs), l'**ouverture** d'une porte (gauche, droite, relevante,
+      abattant), le **style** (plates, à cadre, cannelées, à tasseaux, vitrées), le **nombre de tiroirs**, un
+      **tiroir au-dessus** des portes, des tiroirs **à l'anglaise**, ses **étagères** et ses **cloisons** par − / +.
+      Ces choix sont gardés sur le meuble du linéaire, par-dessus son modèle (`itemEntry`) : la bande le redessine,
+      la cuisine est refaite, et « Comme le modèle » les ôte. Un caisson à cloisons (`CabinetFeature.dividers`) a des
+      montants également espacés, ses étagères recoupées case par case (8 cm au moins par case) ; des tiroirs n'y
+      passent pas. « Aménager case par case… » isole le meuble et ouvre l'aménagement détaillé (une case différente
+      de l'autre). Les cotes du meuble sont dans `app/kitchen/kitchen-unit-sizes.ts`.
     - **Fileurs** : des fileurs posés à la main, **en bas** (entre socle et plan de travail) et **en haut** (dans la
       rangée des hauts), au début de la rangée, après le meuble choisi ou à la fin, à la largeur tapée (1 à 30 cm).
       Ils prennent leur place sur le linéaire comme un meuble — se glissent, se règlent, se retirent sur la bande, leur
@@ -2948,7 +2958,9 @@ opération existante.
   Niche, Module et Penderie y marchent, pas les tiroirs ni les portes de Répartition, qui sortiraient par le pan coupé ;
   son côté du bout s'ajoute, et « Porte sur le pan coupé » pose une porte de biais avec ses charnières au devis. « Modifier
   le plan » change les cotes ou le modèle : tout ce qui est fait dessus suit, et ce qu'un autre modèle n'a plus part après
-  confirmation. Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
+  confirmation. Sous chaque zone répartie, « Dedans : » ouvre d'un clic **Étagères, Cloisons, Tiroirs, Portes** ou
+  **Penderie** sur cette zone, isolée de face : on clique la niche à équiper, sans chercher l'outil dans le ruban.
+  Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les

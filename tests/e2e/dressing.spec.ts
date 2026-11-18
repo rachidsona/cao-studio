@@ -405,7 +405,15 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   await expect(page.getByText(/Mur A remplie/)).toBeVisible();
   await expect(tool.getByRole("button", { name: "Modifier", exact: true })).toBeVisible();
   await expect(page.getByText("Mur A — fileur", { exact: true }).first()).toBeVisible();
-  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  // Its inside, straight from the plan: the tools of a niche, each opened on the zone.
+  const inside = tool.locator("[data-zone-inside]").first();
+  await expect(inside.locator("[data-zone-tool]")).toHaveText(["Étagères", "Cloisons", "Tiroirs", "Portes", "Penderie"]);
+  await inside.locator('[data-zone-tool="shelves"]').click();
+  await expect(page.getByRole("dialog", { name: "Étagères" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // The zone was isolated for the tool: the view's bar brings the rest back (the plan's panel gave way to the tool).
+  await page.getByRole("button", { name: "Tout montrer", exact: true }).first().click();
+  if (await tool.count()) await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/Recalcul \d/);
   await page.waitForTimeout(1500);
 

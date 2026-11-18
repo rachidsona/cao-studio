@@ -23,6 +23,8 @@ export interface CatalogEntry {
   layout: FrontsFeature["layout"] | "none";
   drawers?: number;
   shelves: number;
+  /** Upright boards inside, evenly spaced. */
+  dividers?: number;
   /** Two rails instead of a top: the sink goes through. */
   top?: CabinetFeature["top"];
   /** One door hinged along its top (« top »: a lift-up door, « relevante ») or its bottom (« bottom »: a flap). */
@@ -168,7 +170,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const like = anchor ?? null;
   const cabinet: CabinetFeature = {
     id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth,
-    thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves,
+    thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}),
     plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through", ...(entry.top ? { top: entry.top } : {}),
     ...(rotation ? { rotation } : {}), ...(like?.standard ? { standard: like.standard } : {}),
   };

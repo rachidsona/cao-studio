@@ -78,6 +78,8 @@ export interface KitchenUnit {
   /** A drawer over the door(s): its front's height; English drawers behind them: how many (features/fronts-parts.ts). */
   topDrawer?: number;
   innerDrawers?: number;
+  /** Upright boards inside (features/cabinet-parts.ts). */
+  dividers?: number;
   /** One door: the side of its hinges (missing: left; « top »: a lift-up door, « bottom »: a flap). */
   side?: "left" | "right" | "top" | "bottom";
   /** Its fronts without handles, on gorge profiles. */

@@ -33,6 +33,15 @@ const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gra
 /** Kept for the session: the last plan set. */
 let last: DressingPlan = { ...PLAN };
 
+/** What is done inside a zone, each tool opened on it from the plan (the niche clicked there gets it). */
+const INSIDE_TOOLS: ["shelves" | "cloisons" | "drawers" | "door" | "rod", string, string][] = [
+  ["shelves", "Étagères", "Ajouter, ôter ou répartir les étagères d'une niche de cette zone"],
+  ["cloisons", "Cloisons", "Ajouter ou ôter des cloisons dans une niche de cette zone"],
+  ["drawers", "Tiroirs", "Mettre des tiroirs dans une niche, changer leur nombre"],
+  ["door", "Portes", "Une porte sur une ou plusieurs niches, son sens et son style"],
+  ["rod", "Penderie", "Une tringle dans une niche"],
+];
+
 export class PlanLayoutTool {
   private plan: DressingPlan = { ...last };
   /** The plan of the project is being changed, rather than its zones worked on. */
@@ -309,7 +318,20 @@ export class PlanLayoutTool {
         isolateZone(plan, zone.id, zone.label);
         this.draw();
       });
-      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go);
+      // Its inside, straight from the plan: the zone alone in the view, from the front, and the tool open on it.
+      const sketch = plan.made?.[zone.id];
+      const inside = done(zone) && sketch ? el("div", { class: "flex flex-wrap items-center gap-1 pt-0.5", role: "group", "aria-label": `Dedans ${zone.label}`, "data-zone-inside": zone.id },
+        el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Dedans :"),
+        ...INSIDE_TOOLS.map(([tool, label, title]) => {
+          const b = el("button", { type: "button", class: `${SMALL} h-6 px-1.5 text-2xs`, title, "data-zone-tool": tool }, label);
+          b.addEventListener("click", () => {
+            isolateZone(plan, zone.id, zone.label);
+            if (tool === "shelves" || tool === "cloisons") this.editor.sketches.startJoinery(tool, sketch);
+            else this.editor.sketches.startEquip(tool, sketch);
+          });
+          return b;
+        })) : null;
+      return el("li", {}, el("div", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go), inside);
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
     showAllButton.addEventListener("click", () => {

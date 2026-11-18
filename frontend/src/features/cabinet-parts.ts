@@ -16,7 +16,10 @@ export interface CabinetPart {
   to: Vec3;
 }
 
-type Dimensions = Pick<CabinetFeature, "width" | "height" | "depth" | "thickness" | "back" | "backThickness" | "shelves" | "plinth">;
+type Dimensions = Pick<CabinetFeature, "width" | "height" | "depth" | "thickness" | "back" | "backThickness" | "shelves" | "plinth"> & Pick<Partial<CabinetFeature>, "dividers">;
+/** The least a bay between two upright boards is wide (mm). */
+export const MIN_BAY = 80;
+export const MAX_DIVIDERS = 6;
 
 /** Why these dimensions cannot make a cabinet, or null. */
 export function cabinetProblem(f: Dimensions): string | null {
@@ -24,6 +27,9 @@ export function cabinetProblem(f: Dimensions): string | null {
   if (!values.every(Number.isFinite)) return "Une cote du caisson n'est pas un nombre.";
   if (!Number.isInteger(f.shelves) || f.shelves < 0) return "Le nombre d'étagères doit être un entier positif ou nul.";
   if (f.thickness < MIN_LENGTH || f.width <= 2 * f.thickness) return "La largeur doit dépasser deux épaisseurs de panneau.";
+  const n = f.dividers ?? 0;
+  if (!Number.isInteger(n) || n < 0 || n > MAX_DIVIDERS) return `De 0 à ${MAX_DIVIDERS} cloisons.`;
+  if (n > 0 && (f.width - 2 * f.thickness - n * f.thickness) / (n + 1) < MIN_BAY) return `Le caisson est trop étroit pour ${n} cloison${n > 1 ? "s" : ""} (${MIN_BAY / 10} cm au moins entre deux).`;
   if (f.plinth < 0) return "Le socle ne peut pas être négatif.";
   if (f.height - f.plinth - 2 * f.thickness <= f.shelves * f.thickness) return "La hauteur est trop faible pour le socle, le dessus, le dessous et les étagères.";
   if (f.back !== "none" && f.backThickness < MIN_LENGTH) return "L'épaisseur du fond doit être positive.";
@@ -61,11 +67,16 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
   const z0 = p + t;
   const front = Math.min(Math.max(0, f.shelfSetback ?? 0), boardDepth / 2);
   const gap = (H - t - z0 - f.shelves * t) / (f.shelves + 1);
+  // Upright boards between the bottom and the top, evenly spaced: the shelves are then cut bay by bay.
+  const n = f.dividers ?? 0;
+  const bay = (W - 2 * t - n * t) / (n + 1);
   for (let i = 0; i < f.shelves; i++) {
     const z = z0 + gap * (i + 1) + t * i;
-    box(`Étagère ${i + 1}`, t, W - t, front, boardDepth, z, z + t);
+    for (let j = 0; j <= n; j++) box(`Étagère ${i * (n + 1) + j + 1}`, t + j * (bay + t), t + j * (bay + t) + bay, front, boardDepth, z, z + t);
   }
   if (rails) box("Traverse arrière", hx0, hx1, boardDepth - rail, boardDepth, H - t, H);
+  // The upright boards last: the other bodies keep their numbers.
+  for (let j = 1; j <= n; j++) box(`Cloison ${j}`, t + j * bay + (j - 1) * t, t + j * (bay + t), front, boardDepth, z0, H - t);
   return parts;
 }
 

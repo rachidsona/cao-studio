@@ -756,3 +756,40 @@ test("linéaire : une largeur cliquée sur la bande s'ouvre dans la calculatrice
   await expect(strip.locator('[data-edit-side="left"][data-edit-row="base"]')).toHaveText(/49,7$/);
   expect(errors).toEqual([]);
 });
+
+test("linéaire : façades et intérieur du meuble choisi — étagères, cloisons, tiroirs, tiroir au-dessus, depuis le plan", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-interieur");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-2-portes-800"]').click();
+  // The unit just added is the one chosen: its settings, under « Meuble choisi ».
+  await unfold(tool, "chosen");
+  const inside = tool.locator("[data-unit-inside]");
+  await expect(inside).toBeVisible();
+  // Two shelves and an upright board: the caisson made again with them.
+  await inside.locator("[data-inside-shelves]").getByRole("button", { name: /un de plus/ }).click();
+  await expect(inside.locator("[data-inside-shelves]")).toHaveAttribute("data-inside-shelves", "2");
+  await inside.locator("[data-inside-dividers]").getByRole("button", { name: /un de plus/ }).click();
+  await expect(inside.locator("[data-inside-dividers]")).toHaveAttribute("data-inside-dividers", "1");
+  await expect(page.locator('[title="Cloison 1 — OK"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[title="Étagère 4 — OK"]').first()).toBeAttached();
+  // Drawers instead: no shelf nor upright board left; then doors under a drawer.
+  await inside.locator("[data-inside-layout]").selectOption("drawers");
+  await expect(inside.locator("[data-inside-dividers]")).toHaveCount(0);
+  await expect(page.locator('[title="Façade tiroir 3 — OK"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[title="Cloison 1 — OK"]')).toHaveCount(0);
+  await inside.locator("[data-inside-reset]").click();
+  await inside.locator("[data-inside-top]").selectOption("1");
+  await expect(page.locator('[title="Façade tiroir 1 — OK"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[title="Porte gauche — OK"]').first()).toBeAttached();
+  await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
+  await shot(page, "20-interieur-du-meuble");
+  expect(errors).toEqual([]);
+});

@@ -12,7 +12,7 @@ import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { kitchenSizes, runGeometry, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, itemSize, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
@@ -30,6 +30,8 @@ import { handAppliances } from "../../document/kitchen-hand-appliances";
 import { myUnits } from "./my-units";
 import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
+import { furnishItem, insideRows } from "./kitchen-unit-inside";
+import { sizeFields } from "./kitchen-unit-sizes";
 import { stripActions } from "./kitchen-strip-actions";
 import { alignedOver } from "../../features/kitchen-run-align";
 import { withApplianceRemoved } from "../../document/appliance-remove";
@@ -40,7 +42,6 @@ const WIDE = "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 da
 const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const SELECT = "h-7 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
-const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 hover:border-sky-500 hover:text-gray-900 dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
 type Family = "base" | "wall" | "tall" | "appliance" | "mine";
 const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
@@ -50,8 +51,9 @@ export interface RunEditorHost {
   plan: KitchenFloorPlan;
   run: KitchenRun;
   room?: KitchenRoomInfo;
-  /** The unit chosen when it opens. */
+  /** The unit chosen when it opens, and the part of the panel open (the run made again under it: it stays as it was). */
   chosen?: string | null;
+  fold?: string | null;
   redraw(): void;
   /** Something changed: stored a moment later (no « OK »), the kitchen made again. */
   changed(): void;
@@ -90,6 +92,7 @@ export class RunEditor {
     this.items = structuredClone(host.plan.runs?.[host.run.id] ?? []);
     this.chosen = this.items.some((i) => i.id === host.chosen) ? host.chosen! : null;
     this.rest = runGeometry(host.plan, host.run).rest;
+    this.folds.open = host.fold ?? null;
   }
 
   /** The title, with the cross that stores what waits and closes the run. */
@@ -106,6 +109,10 @@ export class RunEditor {
   /** The item chosen on the strip. */
   get chosenItem(): string | null {
     return this.chosen;
+  }
+
+  get openFold(): string | null {
+    return this.folds.open;
   }
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
@@ -395,7 +402,7 @@ export class RunEditor {
     // An appliance comes in its widths; a unit is made to measure: width, height (not under the worktop), depth.
     const widths = el("select", { class: SELECT, "aria-label": "Largeur" }, ...[...new Set([...(app?.widths ?? WIDTHS), item.width])].sort((a, b) => a - b).map((w) => el("option", { value: String(w), selected: w === item.width }, formatLength(w, unit))));
     widths.addEventListener("change", () => replace({ width: Number(widths.value) }));
-    const sizes = app ? [el("label", { class: ROW }, "Largeur", widths)] : this.sizeFields(item, entry, replace);
+    const sizes = app ? [el("label", { class: ROW }, "Largeur", widths)] : sizeFields({ item, entry, plan: this.current(), unit, replace, redraw: () => this.host.redraw() });
     const row = rowOf(entry);
     const models = runModels().filter((m) => (m.kind === "wall") === (row === "wall"));
     const swap = el("select", { class: SELECT, "aria-label": "Échanger contre" }, ...(item.own ? [el("option", { value: "", selected: true }, entry.name)] : []), ...models.map((m) => el("option", { value: m.model, selected: m.model === item.model }, m.name)));
@@ -418,58 +425,9 @@ export class RunEditor {
       item.height !== undefined || item.depth !== undefined || !WIDTHS.includes(item.width) ? el("p", { class: "font-medium text-sky-700 dark:text-sky-300" }, "Sur mesure") : null,
       ...sizes,
       isFiller(item) ? null : el("label", { class: ROW }, "Échanger", swap),
+      insideRows({ item, entry, replace, ...(this.dirty ? {} : { furnish: () => void furnishItem(this.host.editor, this.host.plan, this.host.run.id, this.host.room, item.id) }) }),
       el("div", { class: "flex gap-1" }, step("←", "Un cran à gauche", index - 1), step("→", "Un cran à droite", index + 1), el("span", { class: "flex-1" }), out),
     );
-  }
-
-  /** A unit's width, height and depth, typed (in the display unit) within what it may be, with the usual widths a click away. */
-  private sizeFields(item: KitchenRunItem, entry: ReturnType<typeof itemEntry>, replace: (patch: Partial<KitchenRunItem>) => void): HTMLElement[] {
-    const unit = this.host.editor.unit;
-    const plan = this.current();
-    const size = itemSize(plan, item, entry);
-    const limits = sizeLimits(plan, entry);
-    const field = (label: string, key: "width" | "height" | "depth", value: number, [lo, hi]: [number, number]) => {
-      const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(value, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})`, "data-size": key });
-      const apply = () => {
-        const parsed = parseNumber(input.value);
-        const mm = parsed === null ? NaN : Math.round(fromDisplay(parsed, unit) * 10) / 10;
-        const ok = mm >= lo && mm <= hi;
-        input.setAttribute("aria-invalid", String(!ok));
-        input.title = ok ? "" : `De ${formatLength(lo, unit)} à ${formatLength(hi, unit)}.`;
-        if (ok && mm !== value) replace({ [key]: mm });
-      };
-      input.addEventListener("change", apply);
-      input.addEventListener("blur", () => this.host.redraw());
-      input.addEventListener("keydown", (event) => {
-        event.stopPropagation();
-        if (event.key === "Enter") {
-          apply();
-          input.blur();
-        }
-      });
-      return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
-    };
-    // A filler: its width only.
-    if (isFiller(item)) return [field("Largeur", "width", item.width, limits.width)];
-    const usual = el(
-      "div",
-      { class: "flex flex-wrap justify-end gap-1", "aria-label": "Largeurs courantes" },
-      ...WIDTHS.map((w) => {
-        const b = el("button", { type: "button", class: `${WIDTH} ${w === item.width ? "border-sky-500 text-gray-900 dark:text-white" : ""}`, "data-width": String(w) }, formatLength(w, unit).replace(/\s?(mm|cm|m)$/, ""));
-        b.addEventListener("click", () => replace({ width: w }));
-        return b;
-      }),
-    );
-    const own = item.height !== undefined || item.depth !== undefined;
-    const reset = el("button", { type: "button", class: SMALL, disabled: !own, title: "La hauteur et la profondeur du modèle et du plan" }, "Cotes du modèle");
-    reset.addEventListener("click", () => replace({ height: undefined, depth: undefined }));
-    return [
-      field("Largeur", "width", item.width, limits.width),
-      usual,
-      limits.height ? field("Hauteur", "height", size.height, limits.height) : el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, `Hauteur ${formatLength(size.height, unit)} : celle du plan de travail.`),
-      field("Profondeur", "depth", size.depth, limits.depth),
-      el("div", { class: "flex justify-end" }, reset),
-    ];
   }
 
   /** Fillers put by hand, low and up, and those placed (kitchen-run-fillers.ts). */

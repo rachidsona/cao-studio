@@ -122,6 +122,17 @@ export interface KitchenRunItem {
   grip?: FrontsFeature["grip"];
   /** The style of its fronts, chosen in the Façades tool (missing: plain). */
   facade?: FrontStyle;
+  /**
+   * Its fronts and its inside chosen for this unit, over its model's (« Façades et intérieur » of the run's editor):
+   * no fronts, one door, two, or drawers and how many; a drawer over the doors (its front's height, 0: none), English
+   * drawers behind them; its shelves, its upright boards.
+   */
+  layout?: FrontsFeature["layout"] | "none";
+  drawers?: number;
+  topDrawer?: number;
+  innerDrawers?: number;
+  shelves?: number;
+  dividers?: number;
   /** Room kept for a caisson furnished by hand (its sketch, document/caisson-follow.ts): it goes where this room goes. */
   furnished?: string;
 }
@@ -442,6 +453,8 @@ export interface CabinetFeature extends FeatureBase {
   shelves: number;
   /** Height of the plinth under the bottom (0: none). */
   plinth: number;
+  /** Upright boards between the bottom and the top, evenly spaced (missing: none); the shelves are cut bay by bay. */
+  dividers?: number;
   /** Sides run full height, or top and bottom run full width. */
   construction: "sides-through" | "top-bottom-through";
   /** What closes its top: a full board (missing), or two rails, in front and at the back, under a sink. */

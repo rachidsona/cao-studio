@@ -64,7 +64,9 @@ function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
   }
   // Open: its shelves, seen from the front.
   const n = e.top === "rails" ? 0 : e.shelves;
-  return Array.from({ length: n }, (_, i) => box(x0, top + ((bottom - top) * (i + 1)) / (n + 1) - 9, x1 - x0, 18, PANEL)).join("");
+  const d = e.dividers ?? 0;
+  const uprights = Array.from({ length: d }, (_, j) => box(x0 + ((x1 - x0) * (j + 1)) / (d + 1) - 9, top, 18, bottom - top, PANEL)).join("");
+  return Array.from({ length: n }, (_, i) => box(x0, top + ((bottom - top) * (i + 1)) / (n + 1) - 9, x1 - x0, 18, PANEL)).join("") + uprights;
 }
 
 /** An oven in its niche: its controls, its window and its handle. */
@@ -109,5 +111,6 @@ export function unitSummary(e: CatalogEntry): string {
   const what = hasOven(e) ? "Niche pour four" : e.layout === "drawers" ? `${e.drawers ?? 3} tiroirs` : e.layout === "doors" ? "2 portes" : e.layout === "door" ? door : e.shelves ? "Ouvert" : "Sans façade";
   const drawer = e.topDrawer && e.layout !== "drawers" ? "1 tiroir" : "";
   const inner = e.innerDrawers ? `${e.innerDrawers} tiroirs à l'anglaise` : "";
-  return [drawer, what, e.facade?.style === "glass" ? "vitré" : "", inner, shelves].filter(Boolean).join(" · ");
+  const uprights = e.dividers ? `${e.dividers} cloison${e.dividers > 1 ? "s" : ""}` : "";
+  return [drawer, what, e.facade?.style === "glass" ? "vitré" : "", inner, shelves, uprights].filter(Boolean).join(" · ");
 }

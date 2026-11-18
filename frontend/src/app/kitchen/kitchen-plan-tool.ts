@@ -128,7 +128,7 @@ export class KitchenPlanTool {
     const open = changed && this.runEditor && !this.runEditor.dirty && this.runPlan ? kitchenPlanIn(this.editor.doc, this.runPlan) : undefined;
     const run = open && kitchenRuns(open).find((r) => r.id === this.runEditor?.runId);
     if (changed && this.runEditor && !this.runEditor.dirty) {
-      if (run) return this.openRun(this.runPlan!, run, false, this.runEditor.chosenItem);
+      if (run) return this.openRun(this.runPlan!, run, false, this.runEditor.chosenItem, this.runEditor.openFold);
       this.runEditor = null;
     }
     // The project changed under a run being changed: its preview is made again on it.
@@ -356,14 +356,14 @@ export class KitchenPlanTool {
   }
 
   /** A run opened in its editor, on the plan as it is in the project. */
-  openRun(planId: string, run: KitchenRun, show = true, chosen: string | null = null): void {
+  openRun(planId: string, run: KitchenRun, show = true, chosen: string | null = null, fold: string | null = null): void {
     const plan = kitchenPlanIn(this.editor.doc, planId);
     if (!plan) return;
     this.runPlan = planId;
     // Another wall opened while one is isolated: it is the one seen.
     if (show && seen && seen.run !== run.id && isolatedSketch() === planId) this.seeRun(planId, run);
     this.runEditor = new RunEditor({
-      editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen,
+      editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen, fold,
       redraw: () => this.draw(),
       changed: () => this.storeRunSoon(planId, run),
       back: () => void this.leaveRun(planId, run),

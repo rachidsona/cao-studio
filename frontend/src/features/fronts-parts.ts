@@ -80,6 +80,7 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
   if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
   if (f.layout === "drawers" && (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > 8)) return "De 1 à 8 tiroirs.";
+  if ((cabinet.dividers ?? 0) > 0 && (f.layout === "drawers" || f.topDrawer !== undefined || f.innerDrawers !== undefined)) return "Des tiroirs ne passent pas à travers les cloisons du caisson : ôtez les cloisons, ou aménagez-le case par case.";
   if (f.layout !== "drawers" && f.topDrawer !== undefined) {
     if (swingsUp(f as Pick<FrontsFeature, "layout" | "side">)) return "Un tiroir au-dessus d'une porte relevable ou d'un abattant ne se fait pas : une porte sur le côté.";
     const a = frontArea(f, cabinet);
