@@ -202,6 +202,14 @@ test("linéaire : le reste partagé en deux, un fileur de chaque côté, entre l
   await expect(tool.locator('[data-rest="both"]')).toHaveAttribute("aria-pressed", "true");
   await expect(strip.locator("[data-filler]")).toHaveCount(2);
   await shot(page, "9-reste-partage");
+  // A filler of the plan clicked: the two put by hand in their places (nothing moves), the one clicked chosen as a unit
+  // is; Suppr takes it out, the plan sharing the room again on both sides.
+  await strip.locator("[data-filler]").first().click();
+  await expect(strip.locator("[data-hand-filler]")).toHaveCount(2);
+  await expect(strip.locator("[data-filler]")).toHaveCount(0);
+  await page.keyboard.press("Delete");
+  await expect(strip.locator("[data-hand-filler]")).toHaveCount(1);
+  await expect(strip.locator("[data-filler]")).toHaveCount(2);
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Fileur A2").first()).toBeVisible({ timeout: 60_000 });
   expect(errors).toEqual([]);

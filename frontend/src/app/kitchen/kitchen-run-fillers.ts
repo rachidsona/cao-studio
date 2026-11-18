@@ -5,7 +5,7 @@
  * l'ôter.
  */
 import type { DisplayUnit, KitchenRunItem } from "../../document/types";
-import { FILLER, FILLER_WALL, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf } from "../../features/kitchen-run-items";
+import { FILLER, FILLER_WALL, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 
@@ -85,4 +85,26 @@ function placedFillers(host: FillerHost): HTMLElement {
   const all = el("button", { type: "button", class: `${SMALL} w-full`, "data-filler-remove-all": "" }, placed.length > 1 ? `Supprimer les ${placed.length} fileurs` : "Supprimer le fileur");
   all.addEventListener("click", () => remove(placed.map((i) => i.id)));
   return el("div", { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-fillers-placed": String(placed.length) }, el("p", { class: "font-medium" }, "Fileurs posés"), ...rows, all);
+}
+
+/**
+ * The fillers the plan puts in the room left over (up to 15 cm) made ones put by hand, each in its place — after the
+ * base unit it follows, or before the one it comes before —, all of them, so that the rest shared out moves none;
+ * `gap` (along the run) is the one clicked, then chosen: moved, sized or taken out as a unit is. Taken out, the room
+ * it closed is closed again by the plan.
+ */
+export function fillerFromGap(items: readonly KitchenRunItem[], fill: RunFill, gap: [number, number]): { items: KitchenRunItem[]; id: string } {
+  const base = fill.placed.filter((pl) => pl.row === "base");
+  let next: KitchenRunItem[] = [...items];
+  let id = "";
+  for (const [a, b] of fill.fillers) {
+    const item = newItem(next, FILLER, Math.round((b - a) * 10) / 10);
+    const before = base.filter((pl) => pl.at + pl.item.width <= a + 1).sort((x, y) => y.at - x.at)[0];
+    const after = base.filter((pl) => pl.at >= b - 1).sort((x, y) => x.at - y.at)[0];
+    const index = (of: string) => next.findIndex((i) => i.id === of);
+    const at = before ? index(before.item.id) + 1 : after ? index(after.item.id) : next.length;
+    next = [...next.slice(0, at), item, ...next.slice(at)];
+    if (Math.abs(a - gap[0]) < 1 && Math.abs(b - gap[1]) < 1) id = item.id;
+  }
+  return { items: next, id };
 }

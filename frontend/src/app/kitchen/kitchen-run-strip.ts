@@ -72,6 +72,8 @@ export interface StripHost {
   other?: StripOther | null;
   /** An appliance put by hand, or the worktop, clicked. */
   pickOther?(what: StripOther): void;
+  /** A filler the plan put in a gap clicked (its place along the run): to be chosen as a unit is. */
+  filler?(gap: [number, number]): void;
   /** A key pressed on the strip (Suppr, Ctrl + D, the arrows); a right click on a unit. */
   key?(event: KeyboardEvent): void;
   menu?(id: string, event: MouseEvent): void;
@@ -150,7 +152,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     parts.push(rect(a, y(p.worktopHeight), b - a, p.worktopHeight - s.base, STONE, topOn ? `stroke="${BRASS}" stroke-width="3"` : ""));
     if (host.pickOther) parts.push(`<rect x="${a}" y="${y(p.worktopHeight + 90)}" width="${b - a}" height="${p.worktopHeight - s.base + 90}" fill="transparent" class="cursor-pointer" data-worktop=""><title>Plan de travail : cliquer pour le choisir</title></rect>`);
   }
-  for (const [a, b] of fill.fillers) parts.push(rect(a, y(s.base), b - a, s.base - s.plinth, PANEL, 'data-filler=""'));
+  for (const [a, b] of fill.fillers) parts.push(`${rect(a, y(s.base), b - a, s.base - s.plinth, `${PANEL}${host.filler ? " cursor-pointer" : ""}`, `data-filler="${a}:${b}"`).replace(/\/>$/, "><title>Fileur : cliquer pour le choisir (Suppr, flèches, largeur)</title></rect>")}`);
   // The room left open, dashed, with its width (cm).
   const open = (a: number, b: number, z0: number, z1: number, row: string) =>
     `${rect(a, y(z1), b - a, z1 - z0, "fill-sky-50/60 stroke-sky-500 dark:fill-sky-950/40", `stroke-dasharray="6 4" data-free="${row}"`)}${empty(a, z0, b - a, z1 - z0, "free")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 30}" text-anchor="middle" font-size="90" class="fill-sky-700 dark:fill-sky-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`;
@@ -216,6 +218,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
+  for (const f of node.querySelectorAll<SVGElement>("[data-filler]")) f.addEventListener("click", () => host.filler?.(f.dataset.filler!.split(":").map(Number) as [number, number]));
   // The keyboard on what is chosen: Suppr, Ctrl + D, the arrows.
   if (host.key) {
     node.setAttribute("tabindex", "0");

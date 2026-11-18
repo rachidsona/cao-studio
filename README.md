@@ -2623,6 +2623,8 @@ opération existante.
       largeur se tape sur sa cote — et se bâtissent en panneaux, « Fileur posé A1 », « Fileur posé haut A2 », sans
       caisson ; le reste du mur se partage toujours autour. La liste « Fileurs posés », sous les boutons, les nomme
       (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
+      Un fileur que le plan met dans le reste (jusqu'à 15 cm), cliqué sur la bande, devient un fileur posé à sa place
+      — tous ceux du reste à la fois, pour que rien ne bouge —, choisi comme un meuble : Suppr, flèches, glisser, cote.
     - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen/kitchen-catalog-view.ts`) :
       chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
       après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.
