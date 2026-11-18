@@ -1430,7 +1430,9 @@ opération existante.
 - **Tourner** (groupe « Modifier », comme Curic Rotate) : corps et esquisses choisis tournent autour d'un axe parallèle à
   X, Y ou Z, par quarts de tour (−90°, +90°, 180°) ou d'un angle saisi, autour du centre de la sélection ou d'un **coin
   de corps cliqué** (point vert). Une esquisse ne tourne que dans son plan (autour de sa normale) ; ses contraintes
-  horizontale/verticale s'échangent au quart de tour.
+  horizontale/verticale s'échangent au quart de tour. Un **meuble entier** (caisson et ses façades, appareil) tourné
+  autour de Z ne se pose jamais dans un voisin ni dans un mur : le pivot est décalé pour qu'il arrive au ras, du côté le
+  plus proche — une seule rotation, une annulation (`features/turn-clear.ts`, l'aimant intelligent allumé).
 - **Coupe** (groupe « Modifier », comme Curic Section) : un plan perpendiculaire à X, Y ou Z cache ce qui est au-delà, pour
   voir l'intérieur d'un meuble ; un curseur le déplace, « Garder l'autre côté » inverse. C'est la vue seulement : rien
   n'est coupé ni enregistré ; le bouton (ou « Fermer la coupe ») l'enlève.

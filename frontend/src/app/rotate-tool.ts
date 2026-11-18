@@ -8,9 +8,15 @@
  *
  * The pivot carries the three curved arrows of the Move manipulator (Shapr3D style): dragging one turns around its
  * axis, by steps of 5° (hold Maj for free angles).
+ *
+ * Whole pieces of furniture turned around the vertical (the smart snapping on) do not land in another body nor in a
+ * wall, as Déplacer: the pivot is moved so that they arrive flush beside the nearest (features/turn-clear.ts).
  */
 import { bodyLabel, findFeature } from "../document/operations";
-import type { Axis, Feature, RotateFeature, SketchFeature, Vec3 } from "../document/types";
+import { roomKeepOuts, wallBody } from "../document/cabinet-clear";
+import { PART_SEPARATOR, type Axis, type Feature, type RotateFeature, type SketchFeature, type Vec3 } from "../document/types";
+import { clearPivot } from "../features/turn-clear";
+import { bodySnap } from "./body-snap";
 import type { Box } from "../features/curic";
 import { rotateSketch, sketchBox } from "../sketcher/sketch-transform";
 import { el } from "../ui/dom";
@@ -66,8 +72,28 @@ export class RotateTool extends PanelTool {
     return box ? ([0, 1, 2].map((i) => Number((((box[0][i] as number) + (box[1][i] as number)) / 2).toFixed(4))) as Vec3) : [0, 0, 0];
   }
 
+  /**
+   * Whole pieces of furniture (a caisson and its fronts, an appliance) turned around the vertical: the pivot that keeps
+   * them out of the other bodies and the walls; null when that is not the case, or no place is clear.
+   */
+  private landing(): { center: Vec3; moved: boolean } | null {
+    if (this.editing || this.axis !== 2 || !bodySnap.smart || !this.targets.length || this.sketches.length) return null;
+    const doc = this.ctx.doc();
+    const owner = (id: string) => id.split(PART_SEPARATOR)[0]!;
+    const owners = new Set(this.targets.map(owner));
+    // A caisson's fronts go with it.
+    for (const f of doc.features) if (f.type === "fronts" && owners.has(f.cabinet)) owners.add(f.id);
+    const ids = [...this.bodyBoxes.keys()];
+    const whole = [...owners].every((o) => ["cabinet", "fronts", "appliance"].includes(findFeature(doc, o)?.type ?? "") && ids.filter((id) => owner(id) === o && findFeature(doc, o)?.type !== "fronts").every((id) => this.targets.includes(id)));
+    const box = unionBox(this.targets.map((id) => this.bodyBoxes.get(id) ?? null));
+    if (!whole || !box) return null;
+    const wall = wallBody(doc);
+    const others = [...[...this.bodyBoxes].filter(([id]) => !owners.has(owner(id)) && !wall(id)).map(([, b]) => b), ...roomKeepOuts(doc)];
+    return clearPivot(box, this.angle, this.center(), others);
+  }
+
   private features(): Feature[] {
-    const center = this.center();
+    const center = this.landing()?.center ?? this.center();
     if (!this.editing && this.slots.length < this.targets.length) this.slots = freshFeatureIds(this.ctx.doc(), "ro", "Rotation", this.targets.length);
     const bodies = this.targets.map((target, i): RotateFeature => ({ ...(this.slots[i] as { id: string; name: string }), type: "rotate", target, axis: this.axis, angle: this.angle, center, ...(this.editing?.type === "rotate" && this.editing.dir ? { dir: this.editing.dir } : {}) }));
     const sketches = this.sketches.flatMap((id) => rotateSketch(this.sketch(id) as SketchFeature, this.axis, this.angle, center) ?? []);
@@ -166,6 +192,7 @@ export class RotateTool extends PanelTool {
       ),
       el("div", { class: "flex gap-1" }, turn("−90°", -90), turn("+90°", 90), turn("180°", 180)),
       this.info(this.pivot ? "Pivot : le coin choisi (point vert)." : "Pivot : le centre de la sélection (point vert)."),
+      this.landing()?.moved ? this.info("Tourné, il entrerait dans un voisin ou un mur : il est posé au ras, à côté.") : null,
       skipped ? this.info(`${skipped} esquisse${skipped > 1 ? "s" : ""} ne tourne${skipped > 1 ? "nt" : ""} pas autour de cet axe (seulement dans son plan).`) : null,
       this.info("Cliquez un coin d'un corps pour pivoter autour de lui ; un corps ou une esquisse pour l'ajouter ou le retirer."),
     ];

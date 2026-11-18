@@ -80,7 +80,7 @@ export const CURIC: HelpFamily[] = [
           "Pour pivoter autour d'un coin, cliquez ce coin (point vert) ; un second clic ramène le pivot au centre.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
-        tip: "Tirer une flèche courbe du pivot tourne de 5° en 5° (librement avec Maj). Une esquisse ne tourne que dans son plan.",
+        tip: "Tirer une flèche courbe du pivot tourne de 5° en 5° (librement avec Maj). Une esquisse ne tourne que dans son plan. Un meuble entier tourné autour de la hauteur (Z) n'entre jamais dans un voisin ni dans un mur : il est posé au ras, à côté (l'aimant intelligent allumé), comme avec Déplacer.",
       },
       {
         keys: ["data-workshop:layers"], name: "Calques",
