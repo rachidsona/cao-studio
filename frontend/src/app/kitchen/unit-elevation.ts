@@ -77,6 +77,8 @@ function opened(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
     return Array.from({ length: n }, (_, i) => tray(from + i * (h + GAP) + h * 0.35, h * 0.65)).join("");
   };
   if (e.layout === "drawers") return stack(e.drawers ?? 3, top);
+  // Under a sink: no top, its two rails, front and back, seen as one.
+  if (e.top === "rails") return box(x0, top, x1 - x0, 60, PANEL);
   // A drawer over the doors; English drawers behind them, in their lower half.
   const drawer = e.topDrawer && e.layout !== "none" ? tray(top + e.topDrawer * 0.35, e.topDrawer * 0.65 - GAP) : "";
   const from = e.topDrawer && e.layout !== "none" ? top + e.topDrawer : top;

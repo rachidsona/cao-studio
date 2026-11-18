@@ -133,8 +133,14 @@ export function runStrip(host: StripHost): SVGSVGElement {
   for (const side of ["left", "right"] as const) {
     // Up in the wall row: a wall corner unit's panel and door, or its filler.
     const high = g.wall ? wallCornerSide(p, run, side) : null;
+    // Its fronts taken off (« Sans portes »): the shelves of the corner unit behind them, low and up.
+    const shelves = (c: { cabinet: [number, number] | null; shelves: number } | null, z0: number, z1: number) => {
+      if (!bare || !c?.cabinet || !c.shelves) return;
+      for (let i = 1; i <= c.shelves; i++) parts.push(rect(c.cabinet[0] + 20, y(z0 + ((z1 - z0) * i) / (c.shelves + 1) + 9), c.cabinet[1] - c.cabinet[0] - 40, 18, PANEL, 'data-corner-shelf=""'));
+    };
+    shelves(high, s.wallBottom, s.wallTop);
     for (const f of high?.fronts ?? []) {
-      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind === "blind" ? `${PANEL} opacity-70` : f.kind === "door" && bare ? OPEN : PANEL, `data-wall-corner-front="${f.kind}" data-side="${side}"`));
+      parts.push(rect(f.from, y(s.wallTop), f.to - f.from, s.wallTop - s.wallBottom, f.kind !== "filler" && bare ? OPEN : f.kind === "blind" ? `${PANEL} opacity-70` : PANEL, `data-wall-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.wallBottom, s.wallTop, side, "wall"));
       if (f.kind === "door") {
         const hx = side === "left" ? f.from + 40 : f.to - 40;
@@ -143,8 +149,9 @@ export function runStrip(host: StripHost): SVGSVGElement {
     }
     const corner = cornerSide(p, run, side, fill.walls[side === "left" ? 0 : 1]);
     if (!corner) continue;
+    shelves(corner, s.plinth, s.base);
     for (const f of corner.fronts) {
-      const tone = f.kind === "blind" ? `${PANEL} opacity-70` : f.kind === "door" && bare ? OPEN : PANEL;
+      const tone = f.kind !== "filler" && bare ? OPEN : f.kind === "blind" ? `${PANEL} opacity-70` : PANEL;
       parts.push(rect(f.from, y(s.base), f.to - f.from, s.base - s.plinth, tone, `data-corner-front="${f.kind}" data-side="${side}"`));
       parts.push(frontSize(f, s.plinth, s.base, side, "base"));
       if (f.kind === "door") {

@@ -422,6 +422,11 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   await expect(chosen).toContainText("Haut d'angle A");
   await tool.locator("[data-corner-wall-shelves]").filter({ hasText: "−" }).click();
   await expect(tool.locator('[data-corner-count="wall-shelves"]')).toHaveText("1");
+  // Their fronts hidden on the strip: their shelves are seen, 2 low and 1 up.
+  await tool.locator("[data-strip-no-doors]").check();
+  await expect(strip.locator("[data-corner-shelf]")).toHaveCount(3);
+  await tool.locator("[data-strip-no-doors]").uncheck();
+  await expect(strip.locator("[data-corner-shelf]")).toHaveCount(0);
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Haut d'angle A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Meuble d'angle A").first()).toBeVisible();

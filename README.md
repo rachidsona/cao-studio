@@ -2639,7 +2639,8 @@ opération existante.
       les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place.
     - **Sans portes** (`app/kitchen/strip-doors.ts`) : la case, à côté de « Plan fixe », dessine la bande sans les
       portes ni les façades de tiroir — l'intérieur des caissons se voit : étagères, cloisons, tiroirs (leurs caissons
-      en pointillés), tiroirs à l'anglaise ; les portes d'angle en pointillés aussi. Le navigateur s'en souvient. Sous
+      en pointillés), tiroirs à l'anglaise, traverses d'un bas évier ; les portes et panneaux d'angle en pointillés,
+      les étagères des meubles d'angle derrière, en bas et en haut. Le navigateur s'en souvient. Sous
       la bande, chaque titre pliable est une carte détachée par son ombre (`ui/fold.ts`).
     - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
       par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
