@@ -10,6 +10,7 @@ from math import cos, hypot, pi, sin
 
 from icons3d_meubles import FACE
 from icons3d_set import ICONS
+from icons3d_pro import FRONT
 
 SPRITE = "templates/editor/_icons.html"
 K = 0.866  # cos 30°
@@ -198,7 +199,7 @@ def main():
         head, name, attrs, body = match.group(1), match.group(2), match.group(3), match.group(4)
         if name in ICONS:
             done += 1
-            icon = Icon(front=name in FACE)
+            icon = Icon(front=name in FACE or name in FRONT)
             ICONS[name](icon)
             return f'{head}<symbol id="i-{name}" viewBox="0 0 24 24">{GROUP}{icon.svg()}</g></symbol>'
         kept += 1
