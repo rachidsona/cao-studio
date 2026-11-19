@@ -151,7 +151,7 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-action:panels"],
         name: "Panneaux",
-        what: "Transforme chaque ligne d'une esquisse en planche : vous dessinez le squelette du meuble, les panneaux suivent.",
+        what: "Fait un meuble du squelette que vous dessinez : une Répartition (caisson, cases, étagères, cloisons) quand c'est un rectangle de traits droits, sinon une planche par ligne.",
         steps: [
           "Dessinez une esquisse : le contour du meuble et une ligne par étagère, par exemple de face.",
           "Sélectionnez l'esquisse puis cliquez « Panneaux » ; sinon l'outil prend la dernière esquisse qui a des lignes (liste « Squelette »).",
@@ -159,7 +159,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Choisissez le « Côté » : vers l'intérieur (les traits sont les cotes extérieures), centré sur les traits ou vers l'extérieur.",
           "Choisissez « Aux coins » : les montants passent, ou dessus et dessous passent. C'est enregistré aussitôt.",
         ],
-        tip: "Une ligne intérieure, comme une étagère, est toujours centrée sur son trait. Les planches suivent l'esquisse : si vous la modifiez, elles sont refaites.",
+        tip: "Dessiné debout (de face ou de côté), un contour rectangulaire devient une Répartition : un trait du bas au haut fait un côté entre deux cases, un trait d'un bord à l'autre d'une case une étagère, ou une cloison s'il est debout. Ses niches se remplissent ensuite comme celles d'une Répartition (étagères, tiroirs, penderie, portes), et le squelette est caché. Un trait en biais, une courbe, un contour ouvert, un trait qui s'arrête au milieu d'une niche ou un squelette tracé au sol donnent des planches, une par ligne, centrées sur leur trait pour les lignes intérieures.",
       },
       {
         keys: ["data-library:"],

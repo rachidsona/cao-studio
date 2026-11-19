@@ -3,11 +3,16 @@
  * sketch, the board thickness and depth, the side of the outline lines the
  * boards lie on, and which boards run through at the corners. Every line
  * becomes a board, computed live by the kernel; OK adds the operation (one
- * undo step), each board being a body of its own.
+ * undo step), each board being a body of its own. A skeleton that reads as a caisson (document/skeleton-partition.ts:
+ * a rectangle, straight strokes from edge to edge) becomes a Répartition instead — its cases, shelves and cloisons,
+ * which the niche tools then fill —, the skeleton hidden.
  */
-import { findFeature, uniqueId, uniqueName } from "../document/operations";
+import { withCaissonPlaced } from "../document/caisson-spec";
+import { findFeature, uniqueId, uniqueName, updateFeature } from "../document/operations";
 import { panelDefaults } from "../document/panel-defaults";
-import type { PanelsFeature, SketchFeature } from "../document/types";
+import { skeletonCaisson } from "../document/skeleton-partition";
+import { isPartition } from "../sketcher/partition-history";
+import type { CadDocument, PanelsFeature, SketchFeature } from "../document/types";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 
@@ -19,6 +24,8 @@ export class PanelsTool extends PanelTool {
   private depth: number;
   private align: PanelsFeature["align"];
   private through: PanelsFeature["through"];
+  /** Why the skeleton stays in boards rather than becoming a Répartition (null: it becomes one). */
+  private boards: string | null = null;
 
   constructor(ctx: ToolContext, editing: PanelsFeature | null, preferredSketch?: string) {
     super(ctx, "Panneaux depuis un squelette", editing);
@@ -33,16 +40,33 @@ export class PanelsTool extends PanelTool {
     this.through = editing?.through ?? "vertical";
   }
 
-  /** Sketches with at least one line (the skeleton). */
+  /**
+   * Sketches with at least one line (the skeleton): not a Répartition (already a caisson), nor a hidden one (a skeleton
+   * already made into one) — but the one being changed; in the document as it was before this use of the tool.
+   */
   private sketches(): SketchFeature[] {
-    return this.ctx
-      .doc()
-      .features.filter((f): f is SketchFeature => f.type === "sketch" && f.curves.some((c) => c.kind === "line" && !c.construction && !c.projected));
+    const doc = this.docBefore();
+    const own = doc.features.find((f): f is PanelsFeature => f.type === "panels" && f.id === this.id)?.sketch;
+    return doc.features.filter((f): f is SketchFeature => f.type === "sketch" && f.curves.some((c) => c.kind === "line" && !c.construction && !c.projected) && (f.id === own || (!f.hidden && !(f.offsets ?? []).some(isPartition))));
   }
 
   protected feature(): PanelsFeature | string {
     if (!this.sketch || !findFeature(this.ctx.doc(), this.sketch)) return "Dessinez d'abord le squelette du meuble : une esquisse dont chaque ligne sera un panneau.";
     return { id: this.id, type: "panels", name: this.name, sketch: this.sketch, thickness: this.thickness, depth: this.depth, align: this.align, through: this.through };
+  }
+
+  /**
+   * The skeleton as a Répartition, in place of its boards, when it reads as a caisson: one undo step all the same, the
+   * skeleton hidden. Otherwise the boards, and why.
+   */
+  protected override decorate(doc: CadDocument): CadDocument {
+    const sketch = this.sketch ? findFeature(doc, this.sketch) : undefined;
+    if (sketch?.type !== "sketch") return doc;
+    const made = skeletonCaisson(sketch, { thickness: this.thickness, depth: this.depth, align: this.align, through: this.through });
+    const base = typeof made === "string" ? null : updateFeature({ ...doc, features: doc.features.filter((f) => f.id !== this.id) }, sketch.id, (f) => ({ ...f, hidden: true }));
+    const placed = typeof made === "string" ? made : withCaissonPlaced(base!, made.spec, { frame: made.frame, width: made.width, height: made.height, name: this.name });
+    this.boards = typeof placed === "string" ? placed : null;
+    return typeof placed === "string" ? doc : placed.doc;
   }
 
   /** The result cannot be validated while the kernel refuses it. */
@@ -111,7 +135,11 @@ export class PanelsTool extends PanelTool {
           changed();
         },
       ),
-      this.info("Chaque ligne de l'esquisse devient un panneau (un corps). Une ligne intérieure, comme une étagère, est centrée sur son trait."),
+      this.info(
+        this.boards === null
+          ? "Le squelette devient une Répartition : son contour est le caisson, un trait du bas au haut un côté entre deux cases, un trait d'un bord à l'autre d'une case une étagère (ou une cloison). Les niches se remplissent ensuite comme celles d'une Répartition."
+          : `Chaque ligne de l'esquisse devient un panneau (un corps). Une ligne intérieure, comme une étagère, est centrée sur son trait. ${this.boards}`,
+      ),
     ];
   }
 }

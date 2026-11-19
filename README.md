@@ -1244,6 +1244,14 @@ opération existante.
     planches ne partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
+  - **Le squelette d'un meuble devient une Répartition** : dessiné debout (de face ou de côté), un contour
+    rectangulaire de traits droits est le caisson (l'épaisseur, la profondeur, le côté et « Aux coins » réglés ici),
+    un trait du bas au haut du contour un côté entre deux cases (leurs largeurs tenues), et dans chaque case un trait
+    d'un bord à l'autre une étagère, ou une cloison s'il est debout, à sa cote, et ainsi de suite dans les niches
+    qu'ils font. On l'aménage ensuite comme toute Répartition (niches, tiroirs, penderie, portes, modules) ; le
+    squelette est caché, et ni lui ni la Répartition ne sont plus proposés comme squelette. Un trait en biais, une
+    courbe, un contour ouvert, un trait qui s'arrête au milieu d'une niche ou un squelette tracé au sol restent en
+    planches, la raison dite dans le panneau (`document/skeleton-partition.ts`).
   - **Extruder une esquisse de lignes seules** (deux traits en L au sol…) ouvre Panneaux sur elle : chaque ligne
     devient une planche debout, sa profondeur étant sa hauteur depuis l'esquisse. C'est le moyen de monter des
     parois à partir de leur tracé au sol.
