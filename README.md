@@ -2519,7 +2519,15 @@ opération existante.
     que là, de la largeur de la hotte, du plan de travail jusqu'à elle. Les **joues de finition aux bouts libres**
     (case) couvrent, dans la matière des façades, le côté qui se voit de la dernière colonne et du dernier meuble
     haut d'un linéaire (pas celui d'un meuble haut contre une colonne ; celui d'un bas est laissé au retour du
-    plan). L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)
+    plan). La **casquette des meubles hauts** (Aucune, Plate ou En caisson ; son épaisseur ou sa hauteur, son
+    débord, 38, 80 et 30 mm d'habitude) est posée à plat sur le haut des meubles hauts, des sur-hottes, des fileurs
+    hauts, des meubles d'angle hauts et des colonnes, dans la matière des façades : elle déborde devant les façades et
+    aux bouts libres (par-dessus la joue de finition), s'interrompt à la hotte, à la place libre et là où la
+    profondeur change (une colonne a son morceau), est coupée au droit d'un côté de meuble au-delà d'un panneau brut
+    (280 cm) et s'arrête, dans un angle, au bord de la casquette du mur qui passe. En caisson : un dessus, un bandeau
+    devant et un bout à chaque bout libre. Elle prévient quand une porte relevante dessous ne peut plus se lever et
+    quand le plafond est trop bas (`document/kitchen-cap.ts`).
+    L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)
     pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du

@@ -16,6 +16,7 @@ import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } f
 import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
+import { kitchenCap } from "./kitchen-cap";
 
 /** The room's walls behind the runs, by run (spans along them from their left). */
 export type KitchenRoomInfo = Partial<Record<string, RunInfo>>;
@@ -157,6 +158,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box, rounds);
     if (p.endPanels) endPanels(p, run, fill, band, box);
+    kitchenCap(p, run, fill, g.wall !== null, ceiling, band, box, out.notes);
     const full = ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600;
     // Under a hood the splashback goes up to it, in one piece; or, as chosen, only there.
     const hoods = fill.placed.filter((x) => x.row === "wall" && applianceOf(x.item)?.role === "hood").map((x): [number, number] => [x.at, x.at + x.item.width]);
@@ -196,10 +198,10 @@ function without([a, b]: [number, number], open: [number, number][]): [number, n
   return parts;
 }
 
-type Band = (u0: number, u1: number, a: number, b: number, z0: number, z1: number) => [Vec3, Vec3];
+export type Band = (u0: number, u1: number, a: number, b: number, z0: number, z1: number) => [Vec3, Vec3];
 /** A rounded end unit's place along the run, and its rounded side. */
 type Rounded = { span: [number, number]; round: "left" | "right" };
-type BoxOf = (name: string, kind: KitchenBox["kind"], at: [Vec3, Vec3], extra?: Partial<KitchenBox>) => void;
+export type BoxOf = (name: string, kind: KitchenBox["kind"], at: [Vec3, Vec3], extra?: Partial<KitchenBox>) => void;
 
 /** The corners of a run (kitchen-corners.ts): a filler, or a corner unit, its panel and door, a LeMans's trays. */
 function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wallRow: boolean, band: Band, box: BoxOf, cabinet: (name: string, u: number, w: number, depth: number, z: number, height: number, rest: Pick<KitchenUnit, "plinth" | "shelves" | "layout"> & Partial<KitchenUnit>) => void): void {

@@ -279,6 +279,18 @@ function bounds(outline: Point[]): [number, number, number, number] {
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 }
 
+/** The casquette of the wall row (kitchen-cap.ts), its usual sizes (mm): a plain one's thickness, a caisson one's height, how far it comes out; a raw panel's length. */
+export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 2800 };
+/** Why the casquette's sizes cannot be used, or null. */
+export function capProblem(p: KitchenFloorPlan): string | null {
+  if (!p.cap) return null;
+  const [t, h, o] = [p.capThickness ?? CAP.thickness, p.capHeight ?? CAP.height, p.capOverhang ?? CAP.overhang];
+  if (p.cap === "flat" && !(t >= 16 && t <= 60)) return "La casquette a de 16 à 60 mm d'épaisseur.";
+  if (p.cap === "box" && !(h >= 40 && h <= 200)) return "La casquette en caisson a de 4 à 20 cm de hauteur.";
+  if (!(o >= 0 && o <= 100)) return "Le débord de la casquette va de 0 à 10 cm.";
+  return null;
+}
+
 /** Why this plan cannot be made, or null. */
 export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (!(p.height >= 2000 && p.height <= 4000)) return "La hauteur sous plafond va de 200 à 400 cm.";
@@ -287,6 +299,8 @@ export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (!(p.worktopHeight >= 700 && p.worktopHeight <= 1100)) return "Le plan de travail est de 70 à 110 cm du sol.";
   if (p.plinth !== undefined && !(p.plinth >= 50 && p.plinth <= 250)) return "Le socle va de 5 à 25 cm.";
   if (p.worktopThickness !== undefined && !(p.worktopThickness >= 10 && p.worktopThickness <= 100)) return "Le plan de travail a de 1 à 10 cm d'épaisseur.";
+  const cap = capProblem(p);
+  if (cap) return cap;
   if (p.model === "facing" && !(p.aisle >= 800)) return "Le passage entre les deux linéaires fait 80 cm au moins.";
   const runs = kitchenRuns(p);
   const short = runs.find((r) => r.zone.run.length < 300);

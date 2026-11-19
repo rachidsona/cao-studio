@@ -164,17 +164,17 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const [a, b] = corner.cabinet ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
     parts.push(`<text x="${(a + b) / 2}" y="${H + 120}" text-anchor="middle" font-size="80" class="fill-gray-500 dark:fill-gray-400" pointer-events="none"><title>${corner.name}</title>${corner.kind === "dead" ? "angle" : "angle ✓"}</text>`);
   }
-  // The splashback, the worktop's returns and the finishing sides, where the 3D has them: along the run, and up.
+  // The splashback, the worktop's returns, the finishing sides and the casquette, where the 3D has them: along the run, and up.
   const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];
   const along = (q: Vec3) => (q[0] - o[0]) * (e[0] - o[0]) + (q[1] - o[1]) * (e[1] - o[1]);
   const spanOf = (box: KitchenBox): [number, number] => [along(box.from), along([box.to[0], box.to[1], 0]), along([box.from[0], box.to[1], 0]), along([box.to[0], box.from[1], 0])].reduce<[number, number]>(([lo, hi], u) => [Math.min(lo, u), Math.max(hi, u)], [Infinity, -Infinity]);
   for (const box of host.boxes ?? []) {
     // The worktop too: over a return it runs on (the strip's own worktop stops at the units).
-    const finish = box.kind === "splashback" ? (box.name.startsWith("Retour") ? "return" : "splashback") : box.kind === "worktop" ? "worktop" : box.name.startsWith("Joue de finition") ? "end-panel" : null;
+    const finish = box.kind === "splashback" ? (box.name.startsWith("Retour") ? "return" : "splashback") : box.kind === "worktop" ? "worktop" : box.name.startsWith("Joue de finition") ? "end-panel" : /^(Casquette|Bandeau de casquette|Bout de casquette) /.test(box.name) ? "cap" : null;
     if (!finish) continue;
     const [u0, u1] = spanOf(box);
     const [z0, z1] = [box.from[2], box.to[2]];
-    const tone = finish === "end-panel" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE;
+    const tone = finish === "end-panel" || finish === "cap" ? PANEL : finish === "splashback" ? `${STONE} opacity-50` : STONE;
     // Not square (a splashback stepped up under the hood, a piece cut at 45°): its outline.
     const profile = box.profile;
     if (profile) {

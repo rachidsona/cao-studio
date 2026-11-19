@@ -1,5 +1,5 @@
 /** The fields of the Plan de cuisine's form (kitchen-plan-tool.ts): a length, a setting on or off, a choice. */
-import { KITCHEN_PLAN, type KitchenField } from "../../document/kitchen-plan-shapes";
+import { CAP, KITCHEN_PLAN, type KitchenField } from "../../document/kitchen-plan-shapes";
 import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
@@ -8,7 +8,7 @@ import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-wall
 import type { Editor } from "../editor";
 
 
-export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
+export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels" | "splashbackHoodOnly";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -16,12 +16,13 @@ const SELECT = "h-8 w-full border border-gray-300 bg-white px-1 text-xs dark:bor
 const ROW = "grid grid-cols-[8rem_1fr] items-center gap-1.5";
 
 export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit; set(patch: Partial<KitchenFloorPlan>): void; draw(): void }) {
-  const number = (label: string, key: Sized): HTMLElement => {
+  /** `usual`: its value when not set; `zero`: 0 is a value it may take. */
+  const number = (label: string, key: Sized, usual = 0, zero = false): HTMLElement => {
     const unit = host.unit();
-    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(host.plan()[key] ?? KITCHEN_PLAN[key] ?? 0, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
+    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(host.plan()[key] ?? KITCHEN_PLAN[key] ?? usual, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
     const apply = () => {
       const parsed = parseNumber(input.value);
-      const ok = parsed !== null && parsed > 0;
+      const ok = parsed !== null && (parsed > 0 || (zero && parsed === 0));
       input.setAttribute("aria-invalid", String(!ok));
       if (ok && fromDisplay(parsed, unit) !== host.plan()[key]) host.set({ [key]: fromDisplay(parsed, unit) });
     };
@@ -51,7 +52,15 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
   };
   /** The worktop's look, each shown by its sphere (look-picker.ts), or its material's own. */
   const look = (): HTMLElement => lookPicker({ label: "Aspect du plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop" });
-  return { number, check, select, look };
+  /** The casquette of the wall units (document/kitchen-cap.ts): none, a plain panel or a caisson, and its sizes. */
+  const cap = (): HTMLElement[] => {
+    const kind = host.plan().cap;
+    const choice = select("Casquette des meubles hauts", kind ?? "none", [["none", "Aucune"], ["flat", "Plate (un panneau épais)"], ["box", "En caisson (dessus et bandeau)"]], (v) => host.set({ cap: v === "none" ? undefined : (v as "flat" | "box") }));
+    choice.querySelector("select")!.setAttribute("data-plan-cap", "");
+    if (!kind) return [choice];
+    return [choice, kind === "box" ? number("Hauteur de la casquette", "capHeight", CAP.height) : number("Épaisseur de la casquette", "capThickness", CAP.thickness), number("Débord de la casquette", "capOverhang", CAP.overhang, true)];
+  };
+  return { number, check, select, look, cap };
 }
 
 /**
