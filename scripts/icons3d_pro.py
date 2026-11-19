@@ -19,6 +19,11 @@ def ring(i, x, y, z, r, colour, width=0.45, steps=24):
     return i.path(pts, colour, width)
 
 
+def star(i, cx, cy, r, fill="yt"):
+    """A spark of four points, on the screen plane."""
+    return i.flat([(cx + (r if k % 2 == 0 else r * 0.38) * cos(k * pi / 4 - pi / 2), cy + (r if k % 2 == 0 else r * 0.38) * sin(k * pi / 4 - pi / 2)) for k in range(8)], fill)
+
+
 def double(i, a, b, tone="orange", w=0.7):
     """A dimension: an arrow both ways between a and b."""
     mid = tuple((p + q) / 2 for p, q in zip(a, b))
@@ -26,23 +31,27 @@ def double(i, a, b, tone="orange", w=0.7):
 
 
 def lighting(i):
-    """A wall unit, its LED strip lit under it, the light falling on the worktop."""
-    i.box(-9, -3, 0, 18, 6, 1.6, "dark")
-    i.face([(-6.4, 1.6, 9.4), (6.4, 1.6, 9.4), (8.4, 2.6, 1.6), (-8.4, 2.6, 1.6)], "yt")
-    i.box(-7.5, -3, 10, 15, 4.6, 6.4)
-    i.box(-7.2, 1.6, 10.3, 7, 0.3, 5.8, "blue").box(0.2, 1.6, 10.3, 7, 0.3, 5.8, "blue")
-    return i.box(-7, 0.4, 9.3, 14, 1.4, 0.7, "yellow")
+    """A wall unit from the front, three spots under it, their beams on the worktop."""
+    i.box(-9, -3, 0, 18, 6, 1.4, "dark")
+    for x in (-5.5, 0, 5.5):
+        i.face([(x - 0.8, 2, 9.6), (x + 0.8, 2, 9.6), (x + 2.8, 3, 1.4), (x - 2.8, 3, 1.4)], "yt")
+    i.box(-8, -3, 10, 16, 4.6, 6)
+    i.box(-7.7, 1.6, 10.3, 7.4, 0.3, 5.4, "blue").box(0.3, 1.6, 10.3, 7.4, 0.3, 5.4, "blue")
+    for x in (-5.5, 0, 5.5):
+        i.round(x, 0.4, 9.4, 0.9, 0.6, "yellow")
+    return i
 
 
 def plinth_tech(i):
-    """A base unit on its plinth, a ventilation grille in the plinth."""
-    i.box(-7, -3, 0, 14, 5.6, 3.2, "dark")
-    for k in range(10):
-        x = -5.4 + k * 1.2
-        i.line((x, 2.62, 0.7), (x, 2.62, 2.5), "#cbd5e1", 0.5)
-    i.box(-7.6, -3, 3.2, 15.2, 6.5, 12)
-    i.box(-7.3, 3.5, 3.5, 7, 0.3, 11.4, "blue").box(0.3, 3.5, 3.5, 7, 0.3, 11.4, "blue")
-    return i.box(-1.3, 3.8, 10.4, 0.5, 0.2, 2.6, "orange").box(0.8, 3.8, 10.4, 0.5, 0.2, 2.6, "orange")
+    """A base unit, its plinth brought forward to show the ventilation grille in it."""
+    i.box(-8, -3, 4.2, 16, 6.4, 10.8)
+    i.box(-7.7, 3.4, 4.5, 7.4, 0.3, 10.2, "blue").box(0.3, 3.4, 4.5, 7.4, 0.3, 10.2, "blue")
+    i.box(-8, 3.6, 0, 16, 1.2, 3.4)
+    i.box(-5, 4.8, 0.6, 10, 0.2, 2.2, "dark")
+    for k in range(7):
+        x = -4.2 + k * 1.4
+        i.line((x, 5.02, 0.9), (x, 5.02, 2.5), "#cbd5e1", 0.5)
+    return i
 
 
 def snack(i):
@@ -87,11 +96,12 @@ def cutout(i):
 
 
 def kitchen_plan(i):
-    """The plan of a kitchen on the floor, its units rising from it: an L along two walls, an island."""
-    i.box(-10, -10, 0, 20, 20, 1, "blue")
-    i.box(-9, -9, 1, 18, 5, 6.4).box(-9.3, -9.3, 7.4, 18.6, 5.6, 0.9, "dark")
-    i.box(-9, -4, 1, 5, 13, 6.4).box(-9.3, -4, 7.4, 5.6, 13.3, 0.9, "dark")
-    return i.box(0.5, 1.5, 1, 7.5, 5, 6.4).box(0.2, 1.2, 7.4, 8.1, 5.6, 0.9, "orange")
+    """A blueprint standing, the kitchen drawn on it in white (an L of units, an island), a pencil on it."""
+    i.box(-8, -0.5, 0, 16, 1, 16, "blue")
+    y = 0.52
+    i.path([(-6.4, y, 14.4), (6.4, y, 14.4), (6.4, y, 11.6), (-3.6, y, 11.6), (-3.6, y, 1.6), (-6.4, y, 1.6), (-6.4, y, 14.4)], "#ffffff", 0.75)
+    i.path([(-0.4, y, 7.8), (5.2, y, 7.8), (5.2, y, 4.6), (-0.4, y, 4.6), (-0.4, y, 7.8)], "#ffffff", 0.75)
+    return i.pencil(5.4, y, 2.6, 11, 1.5)
 
 
 def cloisons(i):
@@ -114,17 +124,15 @@ def push(i):
 
 
 def face_strip(i):
-    """A block, a strip of its top pulled up in blue, under the wand that does it."""
-    i.box(-7, -7, 0, 14, 14, 6.4)
-    i.box(-7, -2.6, 6.4, 14, 5.2, 4.6, "blue")
-    # The wand, on the screen: its stick, its lit tip, the sparks around it.
-    tx, ty = i.p(2.4, 0, 12.4)
-    stick = [(tx + 0.5, ty - 0.5), (tx + 7.4, ty - 7.6), (tx + 8.6, ty - 6.4), (tx + 1.7, ty + 0.7)]
-    i.flat(stick, "dl")
-    i.flat([(tx + 0.5, ty - 0.5), (tx + 2.2, ty - 2.25), (tx + 3.4, ty - 1.05), (tx + 1.7, ty + 0.7)], "wt")
-    for cx, cy, r in ((tx - 1.8, ty - 3.4, 2.1), (tx + 4.4, ty + 1.6, 1.4), (tx - 3.6, ty + 0.4, 1.1)):
-        i.flat([(cx + (r if k % 2 == 0 else r * 0.3) * cos(k * pi / 4), cy + (r if k % 2 == 0 else r * 0.3) * sin(k * pi / 4)) for k in range(8)], "ol" if r > 1.2 else "yt")
-    return i
+    """As « Vider un corps » (its walls, its dark inside), a magic wand over it and its sparks."""
+    i.box(-6, -6, 0, 12, 0.9, 8).box(-6, -6, 0, 0.9, 12, 8).box(-5.1, -5.1, 0, 10.2, 10.2, 0.9, "dark")
+    i.box(5.1, -6, 0, 0.9, 12, 8).box(-6, 5.1, 0, 11.1, 0.9, 8)
+    tx, ty = i.p(0, 0, 11)
+    i.flat([(tx, ty), (tx + 8.4, ty - 7.6), (tx + 9.9, ty - 6.1), (tx + 1.5, ty + 1.5)], "dl")
+    i.flat([(tx + 7, ty - 6.3), (tx + 8.4, ty - 7.6), (tx + 9.9, ty - 6.1), (tx + 8.5, ty - 4.8)], "wt")
+    star(i, tx - 0.2, ty + 0.4, 3.6, "yt")
+    star(i, tx + 5.6, ty + 4.4, 1.6, "ol")
+    return star(i, tx - 4.8, ty - 3.2, 1.4, "ol")
 
 
 def drawing(i):
@@ -212,7 +220,7 @@ def part_sheet(i):
 
 
 # Seen from the front, as the cabinets are.
-FRONT = {"lighting", "plinth-tech", "snack", "worktop-bars", "tech-plan", "drawing", "nesting", "cutlist", "production-folder", "batch", "assembly-guide", "part-sheet"}
+FRONT = {"kitchen-plan", "lighting", "plinth-tech", "snack", "worktop-bars", "tech-plan", "drawing", "nesting", "cutlist", "production-folder", "batch", "assembly-guide", "part-sheet"}
 
 PRO = {
     "lighting": lighting, "plinth-tech": plinth_tech, "snack": snack, "worktop-bars": worktop_bars, "tech-plan": tech_plan,
