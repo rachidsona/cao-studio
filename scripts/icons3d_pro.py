@@ -85,14 +85,24 @@ def tech_plan(i):
     return i
 
 
+def worktop_base(i):
+    """A base unit, its blue doors, its worktop: the top of the worktop at z = 10.4."""
+    i.box(-8.4, -5, 0, 16.8, 9.4, 8)
+    i.face([(-8, 4.4, 0.4), (-0.2, 4.4, 0.4), (-0.2, 4.4, 7.6), (-8, 4.4, 7.6)], "bl")
+    i.face([(0.2, 4.4, 0.4), (8, 4.4, 0.4), (8, 4.4, 7.6), (0.2, 4.4, 7.6)], "bl")
+    i.box(-9.4, -6, 8, 18.8, 11.4, 2.4)
+    return 10.4
+
+
 def cutout(i):
-    """A thick worktop, the hole cut in it, the piece cut out lifted over it."""
-    i.box(-9, -7, 0, 18, 14, 3.2)
-    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, 4, 3.2), (-5, 4, 3.2)], "dr")
-    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, -4, 1.2), (-5, -4, 1.2)], "dl")
-    i.face([(-5, -4, 3.2), (-5, 4, 3.2), (-5, 4, 1.2), (-5, -4, 1.2)], "dt")
-    i.box(-5, -4, 8.4, 10, 8, 2.2, "blue")
-    return i.arrow((0, 0, 11.4), (0, 0, 16.4), "orange", 0.95)
+    """A base unit and its worktop, the sink and its tap set in it, the outline of the cut in orange dashes."""
+    z = worktop_base(i)
+    i.dashes([i.p(-8, -4.4, z), i.p(1.4, -4.4, z), i.p(1.4, 4.4, z), i.p(-8, 4.4, z)], ORANGE, 0.55, 1.4, 0.9)
+    i.face([(-7.2, -3.6, z), (0.6, -3.6, z), (0.6, 3.6, z), (-7.2, 3.6, z)], "wr")
+    i.face([(-6.4, -2.8, z - 0.02), (-0.2, -2.8, z - 0.02), (-0.2, 2.8, z - 0.02), (-6.4, 2.8, z - 0.02)], "dl")
+    i.disc(-3.3, 0, z, 0.6, "white", "t")
+    i.round(5.2, -3.2, z, 0.55, 5.4, "white")
+    return i.box(4.9, -3.2, z + 5, 0.6, 4.2, 0.7, "white")
 
 
 def kitchen_plan(i):
@@ -124,15 +134,13 @@ def push(i):
 
 
 def face_strip(i):
-    """As « Vider un corps » (its walls, its dark inside), a magic wand over it and its sparks."""
-    i.box(-6, -6, 0, 12, 0.9, 8).box(-6, -6, 0, 0.9, 12, 8).box(-5.1, -5.1, 0, 10.2, 10.2, 0.9, "dark")
-    i.box(5.1, -6, 0, 0.9, 12, 8).box(-6, 5.1, 0, 11.1, 0.9, 8)
-    tx, ty = i.p(0, 0, 11)
-    i.flat([(tx, ty), (tx + 8.4, ty - 7.6), (tx + 9.9, ty - 6.1), (tx + 1.5, ty + 1.5)], "dl")
-    i.flat([(tx + 7, ty - 6.3), (tx + 8.4, ty - 7.6), (tx + 9.9, ty - 6.1), (tx + 8.5, ty - 4.8)], "wt")
-    star(i, tx - 0.2, ty + 0.4, 3.6, "yt")
-    star(i, tx + 5.6, ty + 4.4, 1.6, "ol")
-    return star(i, tx - 4.8, ty - 3.2, 1.4, "ol")
+    """A thick board, a piece of it pulled out of its hole, lifted over it."""
+    i.box(-9, -7, 0, 18, 14, 3.2)
+    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, 4, 3.2), (-5, 4, 3.2)], "dr")
+    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, -4, 1.2), (-5, -4, 1.2)], "dl")
+    i.face([(-5, -4, 3.2), (-5, 4, 3.2), (-5, 4, 1.2), (-5, -4, 1.2)], "dt")
+    i.box(-5, -4, 8.4, 10, 8, 2.2, "blue")
+    return i.arrow((0, 0, 11.4), (0, 0, 16.4), "orange", 0.95)
 
 
 def drawing(i):
