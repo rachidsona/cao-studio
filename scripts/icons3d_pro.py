@@ -77,17 +77,21 @@ def tech_plan(i):
 
 
 def cutout(i):
-    """A worktop with its cut-outs: a sink with its tap, a hob with its zones."""
-    i.box(-10, -5, 0, 20, 10, 1.6)
-    i.face([(-8.6, -3.6, 1.6), (-1.4, -3.6, 1.6), (-1.4, 3.6, 1.6), (-8.6, 3.6, 1.6)], "dl")
-    i.face([(-7.8, -2.8, 1.6), (-2.2, -2.8, 1.6), (-2.2, 2.8, 1.6), (-7.8, 2.8, 1.6)], "dt")
-    i.disc(-5, 0, 1.62, 0.6, "white", "t")
-    i.round(-5, -4.3, 1.6, 0.4, 3.6, "white")
-    i.box(-5.3, -4.3, 4.6, 0.6, 3, 0.6, "white")
-    i.face([(1, -3.6, 1.6), (8.6, -3.6, 1.6), (8.6, 3.6, 1.6), (1, 3.6, 1.6)], "dt")
-    for x, y, r in ((3, -1.6, 1.4), (6.6, -1.6, 1.1), (3, 1.9, 1.1), (6.6, 1.9, 1.4)):
-        ring(i, x, y, 1.62, r, ORANGE if r > 1.2 else "#94a3b8", 0.4)
-    return i
+    """A thick worktop, the hole cut in it, the piece cut out lifted over it."""
+    i.box(-9, -7, 0, 18, 14, 3.2)
+    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, 4, 3.2), (-5, 4, 3.2)], "dr")
+    i.face([(-5, -4, 3.2), (5, -4, 3.2), (5, -4, 1.2), (-5, -4, 1.2)], "dl")
+    i.face([(-5, -4, 3.2), (-5, 4, 3.2), (-5, 4, 1.2), (-5, -4, 1.2)], "dt")
+    i.box(-5, -4, 8.4, 10, 8, 2.2, "blue")
+    return i.arrow((0, 0, 11.4), (0, 0, 16.4), "orange", 0.95)
+
+
+def kitchen_plan(i):
+    """The plan of a kitchen on the floor, its units rising from it: an L along two walls, an island."""
+    i.box(-10, -10, 0, 20, 20, 1, "blue")
+    i.box(-9, -9, 1, 18, 5, 6.4).box(-9.3, -9.3, 7.4, 18.6, 5.6, 0.9, "dark")
+    i.box(-9, -4, 1, 5, 13, 6.4).box(-9.3, -4, 7.4, 5.6, 13.3, 0.9, "dark")
+    return i.box(0.5, 1.5, 1, 7.5, 5, 6.4).box(0.2, 1.2, 7.4, 8.1, 5.6, 0.9, "orange")
 
 
 def cloisons(i):
@@ -110,11 +114,17 @@ def push(i):
 
 
 def face_strip(i):
-    """On the top of a block, a line drawn, then the strip it makes pulled up in blue."""
-    i.box(-8, -6, 0, 16, 12, 5)
-    i.line((-8, 1.6, 5), (8, 1.6, 5), ORANGE, 0.5)
-    i.box(-8, -1.6, 5, 16, 3.2, 3.4, "blue")
-    return i.arrow((0, 0, 9.2), (0, 0, 14.5))
+    """A block, a strip of its top pulled up in blue, under the wand that does it."""
+    i.box(-7, -7, 0, 14, 14, 6.4)
+    i.box(-7, -2.6, 6.4, 14, 5.2, 4.6, "blue")
+    # The wand, on the screen: its stick, its lit tip, the sparks around it.
+    tx, ty = i.p(2.4, 0, 12.4)
+    stick = [(tx + 0.5, ty - 0.5), (tx + 7.4, ty - 7.6), (tx + 8.6, ty - 6.4), (tx + 1.7, ty + 0.7)]
+    i.flat(stick, "dl")
+    i.flat([(tx + 0.5, ty - 0.5), (tx + 2.2, ty - 2.25), (tx + 3.4, ty - 1.05), (tx + 1.7, ty + 0.7)], "wt")
+    for cx, cy, r in ((tx - 1.8, ty - 3.4, 2.1), (tx + 4.4, ty + 1.6, 1.4), (tx - 3.6, ty + 0.4, 1.1)):
+        i.flat([(cx + (r if k % 2 == 0 else r * 0.3) * cos(k * pi / 4), cy + (r if k % 2 == 0 else r * 0.3) * sin(k * pi / 4)) for k in range(8)], "ol" if r > 1.2 else "yt")
+    return i
 
 
 def drawing(i):
@@ -206,7 +216,7 @@ FRONT = {"lighting", "plinth-tech", "snack", "worktop-bars", "tech-plan", "drawi
 
 PRO = {
     "lighting": lighting, "plinth-tech": plinth_tech, "snack": snack, "worktop-bars": worktop_bars, "tech-plan": tech_plan,
-    "cutout": cutout, "cloisons": cloisons, "push": push, "face-strip": face_strip, "drawing": drawing, "nesting": nesting,
+    "cutout": cutout, "kitchen-plan": kitchen_plan, "cloisons": cloisons, "push": push, "face-strip": face_strip, "drawing": drawing, "nesting": nesting,
     "edge-paint": edge_paint, "cutlist": cutlist, "production-folder": production_folder, "batch": batch,
     "assembly-guide": assembly_guide, "part-sheet": part_sheet,
 }
