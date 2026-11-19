@@ -125,7 +125,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Sélectionnez les corps (dans le navigateur ou dans la vue, Ctrl pour plusieurs), puis cliquez « Apparence ».",
           "Cherchez dans « Bibliothèque » (recherche et « Catégorie ») et cliquez une vignette, ou glissez-la sur un corps de la vue.",
           "Pour une couleur unie, réglez « Couleur au choix », le type de surface, puis cliquez « Appliquer ».",
-          "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ».",
+          "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ». Pour copier l'apparence d'un corps (un verre transparent, une couleur…) sur d'autres, cliquez « Pipette : copier une apparence », cliquez ce corps dans la vue, puis chacun de ceux qui la prennent ; Échap arrête.",
         ],
         tip: "Des faces choisies dans la vue : cochez « Seulement la face choisie » pour ne peindre qu'elles ; en glissant, Alt ne peint que la face sous le curseur. « Retirer l'apparence » rend celle de la matière. Plus vite, sans cet outil : une face choisie dans la vue, « Couleur de la face » du panneau Sélection la colore seule (« D'origine » lui rend celle de son corps).",
       },

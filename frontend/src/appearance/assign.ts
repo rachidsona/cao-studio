@@ -82,3 +82,14 @@ export function setBodyAppearance(doc: CadDocument, bodyIds: string[], appearanc
   const appearance = appearanceById(appearanceId ?? undefined);
   return setBodyInfo(doc, bodyIds, { appearance: appearance?.id, color: appearance?.paintable && isColor(color) ? color : undefined, faces: undefined });
 }
+
+/**
+ * The look of body `from` as the view shows it — its own appearance, its glass door's or its material's, its colour,
+ * the motifs of its faces (glass and its transparency with it) — given to the bodies `to` (« Pipette » of Apparence).
+ */
+export function withLookCopied(doc: CadDocument, from: string, to: string[]): CadDocument {
+  const seen = bodyAppearance(doc, from, undefined);
+  const faces = bodyInfo(doc, from).faces;
+  const next = setBodyAppearance(doc, to, seen?.appearance.id ?? null, seen?.color);
+  return faces?.length ? setBodyInfo(next, to, { faces: structuredClone(faces) }) : next;
+}

@@ -6,7 +6,8 @@
  * Chaque changement est une modification du document (Annuler la reprend) ; la vue passe aux apparences.
  */
 import { AppearancePanel, DRAG_TYPE, droppedAppearance } from "../appearance/appearance-panel";
-import { bodyAppearance, faceAppearances, setBodyAppearance } from "../appearance/assign";
+import { bodyAppearance, faceAppearances, setBodyAppearance, withLookCopied } from "../appearance/assign";
+import { bodyLabel } from "../document/operations";
 import { addCustomAppearance, removeCustomAppearance } from "../appearance/custom";
 import { faceMarks, setFaceAppearance, type FaceMark } from "../appearance/face-looks";
 import type { Appearance } from "../appearance/library";
@@ -60,7 +61,48 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     if (bodyIds.length) showAppearances();
   };
 
+  /** The pipette, while on: the body whose look it took (none yet: the next click takes one). */
+  let pipette: { from: string | null } | null = null;
+  const stopKey = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !pipette) return;
+    event.stopImmediatePropagation();
+    stopPipette();
+  };
+  const stopPipette = () => {
+    if (!pipette) return;
+    pipette = null;
+    window.removeEventListener("keydown", stopKey, true);
+    viewport.setHoverHighlight(null);
+    viewport.setPointerHandler(null);
+    panel?.draw();
+  };
+  const startPipette = () => {
+    pipette = { from: null };
+    window.addEventListener("keydown", stopKey, true);
+    viewport.setPointerHandler({
+      down: () => false,
+      move: (event) => {
+        const body = viewport.pickFace(event)?.bodyId;
+        viewport.setHoverHighlight(body ? { bodies: [body] } : null);
+      },
+      up: (event, isClick) => {
+        if (!isClick || !pipette) return false;
+        const body = viewport.pickFace(event)?.bodyId;
+        if (!body) return true;
+        if (!pipette.from || pipette.from === body) pipette.from = body;
+        else {
+          void editor.change(withLookCopied(editor.doc, pipette.from, [body]));
+          showAppearances();
+        }
+        panel?.draw();
+        return true;
+      },
+    });
+    panel?.draw();
+  };
+
   const close = () => {
+    stopPipette();
     panel?.dispose();
     panel = null;
     button?.setAttribute("aria-pressed", "false");
@@ -99,6 +141,7 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
       importImage,
       removeImage: (id) => void editor.change(removeCustomAppearance(editor.doc, id)),
       notify: (message) => editor.notify(message, "info"),
+      pipette: () => ({ on: !!pipette, taken: pipette?.from ? bodyLabel(editor.doc, pipette.from) : null, toggle: () => (pipette ? stopPipette() : startPipette()) }),
       close,
     });
     button?.setAttribute("aria-pressed", "true");

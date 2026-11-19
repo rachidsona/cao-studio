@@ -524,3 +524,43 @@ test("un raccourci clavier à soi : donné à un outil dans la palette, il le la
   await expect(page.getByText("⌥+P", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("Apparence : la pipette prend l'apparence d'un corps (un verre) et la donne à un autre d'un clic", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "Pipette e2e");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="partition"]')?.click());
+  const canvas = page.locator("canvas.cad-view");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Côtés", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="appearance"]')?.click());
+  const panel = page.getByRole("dialog", { name: "Apparence" });
+  // The two bottoms in clear acrylic: their group chosen in the navigator, then the swatch.
+  const at = { x: box.width / 2, y: box.height / 2 };
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Dessous" }).first().click();
+  await expect(panel.getByText(/Appliquer à : 2 corps/)).toBeVisible();
+  await panel.getByRole("searchbox", { name: "Rechercher une apparence" }).fill("plexiglas");
+  await page.locator("[data-appearance-grid] [data-appearance]").first().click();
+  const glass = panel.locator("[data-appearance]").filter({ hasText: "Plexiglas transparent" }).first();
+  await expect(glass).toContainText("2 corps");
+  // The pipette: its look taken, then given to another board.
+  await panel.locator("[data-appearance-pipette]").click();
+  await expect(panel.locator("[data-pipette-state]")).toContainText("Cliquez le corps dont vous prenez");
+  await page.mouse.click(box.x + at.x, box.y + at.y);
+  await expect(panel.locator("[data-pipette-state]")).toContainText("Cliquez les corps qui prennent");
+  // (A board other than the one taken: clicked on the same one, nothing happens.)
+  search: for (const y of [0.3, 0.4, 0.6, 0.7]) {
+    for (const x of [0.3, 0.4, 0.6, 0.7]) {
+      await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
+      await page.waitForTimeout(300);
+      if (/3 corps/.test((await glass.textContent()) ?? "")) break search;
+    }
+  }
+  await expect(glass).toContainText("3 corps");
+  await page.keyboard.press("Escape");
+  await expect(panel.locator("[data-pipette-state]")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
