@@ -3,7 +3,8 @@
  * apparence — l'autre gardant sa place, son orientation, son nom et son identité. Un meuble de cuisine prend le
  * modèle, les façades, l'intérieur et les cotes (largeur, hauteur, profondeur) d'un autre, et la cuisine est refaite ;
  * un caisson prend les cotes et la construction d'un autre ; des façades prennent la disposition, la pose, le jeu et le
- * style d'autres ; une niche prend les tiroirs, la tringle, l'accessoire ou le style des portes d'une autre. Chaque
+ * style d'autres ; une niche prend la hauteur et la largeur de case, les tiroirs, la tringle, l'accessoire ou le style
+ * des portes d'une autre, les étagères et cloisons autour suivant (comme l'outil « Niche »). Chaque
  * panneau prend l'apparence, telle qu'on la voit, du panneau de même rang. Une porte ou des tiroirs donnent au moins
  * leur style (cadre, verre, cannelures) et leur apparence à toute autre porte ; un électroménager (évier, four) garde
  * sa forme, seul le style de ses portes passe. La matière (débit, devis) ne change pas. Pur.
@@ -14,6 +15,9 @@ import { findFeature, updateFeature } from "./operations";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type KitchenRunItem, type NicheFeature } from "./types";
 import { applianceOf, itemEntry } from "../features/kitchen-run-items";
 import { withLookCopied } from "../appearance/assign";
+import { withNicheHeld, withNicheSize } from "./niche-size";
+import { pathKey, rebuildChain } from "../sketcher/partition-history";
+import type { NicheBox } from "../sketcher/shelves";
 
 /** What a clicked body is, as far as its form goes. */
 export type FormSource =
@@ -135,9 +139,48 @@ function formCopied(doc: CadDocument, from: FormSource, to: FormSource): CadDocu
     return "Des façades prennent la forme d'autres façades, ou le style d'une porte.";
   }
   const target = feature<NicheFeature>(doc, to.id);
-  if (from.kind === "niche" && from.fill === to.fill) return updateFeature(doc, to.id, (f) => taken(f, feature<NicheFeature>(doc, from.id), NICHE[to.fill] ?? []));
-  if (style && (target.fill === "doors" || target.fill === "door" || target.fill === "drawers")) return updateFeature(doc, to.id, (f) => taken(f, style, STYLE));
+  const styled = target.fill === "doors" || target.fill === "door" || target.fill === "drawers";
+  if (from.kind === "niche" && (from.fill === to.fill || (style && styled))) {
+    const source = feature<NicheFeature>(doc, from.id);
+    const sized = withNicheSized(doc, source, to.id);
+    if (typeof sized === "string") return sized;
+    return updateFeature(sized, to.id, (f) => taken(f, source, from.fill === to.fill ? (NICHE[to.fill] ?? []) : STYLE));
+  }
+  if (style && styled) return updateFeature(doc, to.id, (f) => taken(f, style, STYLE));
   return `${FILL_NAME[target.fill]} prend la forme d'une niche de même sorte${target.fill === "rod" || target.fill === "accessory" ? "" : ", ou le style d'une porte"}.`;
+}
+
+/** The box of the niche a niche feature fills, in its sketch (mm). */
+function nicheBox(doc: CadDocument, niche: NicheFeature): NicheBox | null {
+  const g = findFeature(doc, niche.sketch);
+  if (g?.type !== "sketch") return null;
+  const made = rebuildChain(g, niche.partition);
+  return typeof made === "string" ? null : (made.niches.get(pathKey(niche.niche))?.box ?? null);
+}
+
+/** Niche `to` made as high and as wide as niche `from`: the shelves and cloisons around it follow; or why not. */
+function withNicheSized(doc: CadDocument, from: NicheFeature, to: string): CadDocument | string {
+  let next = doc;
+  for (const axis of ["y", "x"] as const) {
+    const target = feature<NicheFeature>(next, to);
+    let want = nicheBox(next, from);
+    let box = nicheBox(next, target);
+    if (!want || !box) return next;
+    // In the same piece, the source is held at its size first: it does not share what the target gives up.
+    if (from.sketch === target.sketch && Math.abs(want[axis === "y" ? "y1" : "x1"] - want[axis === "y" ? "y0" : "x0"] - (box[axis === "y" ? "y1" : "x1"] - box[axis === "y" ? "y0" : "x0"])) >= 0.5) {
+      const held = axis === "y" ? withNicheHeld(next, from.sketch, [want.y0, want.y1]) : withNicheSize(next, from.sketch, axis, [want.x0, want.x1], want.x1 - want.x0);
+      if (typeof held !== "string") next = held;
+      want = nicheBox(next, from);
+      box = nicheBox(next, target);
+      if (!want || !box) return next;
+    }
+    const [w0, w1, b0, b1] = axis === "y" ? [want.y0, want.y1, box.y0, box.y1] : [want.x0, want.x1, box.x0, box.x1];
+    if (Math.abs(w1 - w0 - (b1 - b0)) < 0.5) continue;
+    const sized = withNicheSize(next, target.sketch, axis, [b0, b1], w1 - w0);
+    if (typeof sized === "string") return `« ${target.name} » ne peut pas prendre la ${axis === "y" ? "hauteur" : "largeur"} de « ${from.name} » : ${sized}`;
+    next = sized;
+  }
+  return next;
 }
 
 /** The cabinet a plan unit is. */

@@ -99,6 +99,18 @@ export function withNicheSize(doc: CadDocument, sketchId: string, axis: "x" | "y
   return remade(doc, g, leaf.partition, withInput(g, step.record, withNicheHeight(input, step.index, value)));
 }
 
+/** The niche from `span[0]` to `span[1]` (y) held at its height, the other niches of its division let free to share the rest. */
+export function withNicheHeld(doc: CadDocument, sketchId: string, span: [number, number]): CadDocument | string {
+  const g = findFeature(doc, sketchId);
+  if (g?.type !== "sketch") return "Cette répartition n'existe plus.";
+  const leaf = leafNiches(g).find(({ box }) => Math.abs(box.y0 - span[0]) < NEAR && Math.abs(box.y1 - span[1]) < NEAR);
+  const step = leaf && heightStep(g, leaf.partition, leaf.path);
+  if (!leaf || !step) return "Cette niche va du dessous au dessus.";
+  const input = (step.record.step as { input: ShelfParams }).input;
+  const free = { ...input, mode: "equal" as const, heights: [] };
+  return remade(doc, g, leaf.partition, withInput(g, step.record, withNicheHeight(free, step.index, span[1] - span[0])));
+}
+
 /** Where the `index`-th shelf of a division can go, and where it is (mm, along its axis in the sketch). */
 export function shelfTravel(sketch: SketchFeature, recordId: string, index: number): { position: number; low: number; high: number; vertical: boolean; across: [number, number] } | null {
   const record = sketch.offsets?.find((r) => r.id === recordId);

@@ -2088,7 +2088,9 @@ opération existante.
     suivant la donne telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place, son orientation,
     son nom et son identité — un meuble de cuisine prend le modèle, les façades, l'intérieur, la largeur, la hauteur
     et la profondeur de l'autre, et la cuisine est refaite ; un caisson ses cotes et sa construction ; des façades leur
-    disposition, leur pose et leur style ; une niche ses tiroirs, sa tringle ou son accessoire ; chaque panneau
+    disposition, leur pose et leur style ; une niche la hauteur et la largeur de sa case (étagères et cloisons
+    suivent, la case source gardée, les autres se partageant le reste), ses tiroirs, sa tringle ou son accessoire ;
+    chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
     des tiroirs. Un meuble bas ne donne pas sa forme à un meuble haut. La matière ne change pas (`document/form-copy.ts`).
     **À qui donner le motif** : un clic sur une vignette le donne à ce qui est sélectionné.
