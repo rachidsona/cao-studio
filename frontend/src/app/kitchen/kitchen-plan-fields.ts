@@ -4,6 +4,8 @@ import type { DisplayUnit, KitchenFloorPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { lookPicker } from "./look-picker";
+import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-walls";
+import type { Editor } from "../editor";
 
 
 export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness";
@@ -50,4 +52,20 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
   /** The worktop's look, each shown by its sphere (look-picker.ts), or its material's own. */
   const look = (): HTMLElement => lookPicker({ label: "Aspect du plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop" });
   return { number, check, select, look };
+}
+
+/**
+ * « Murs de la pièce »: the plan's walls shown or hidden — those of its room right away (document/kitchen-walls.ts),
+ * or, with none, those it draws, as its other settings (`plan`: the plan as being set, `setPlan` its change).
+ */
+export function wallsCheck(editor: Editor, planId: string | undefined, plan: KitchenFloorPlan, setPlan: (patch: Partial<KitchenFloorPlan>) => void, done: () => void): HTMLElement {
+  const roomed = !!planId && !!plan.room;
+  const box = el("input", { type: "checkbox", class: "size-4 shrink-0 accent-sky-600", checked: roomed ? kitchenWallsShown(editor.doc, planId!) : plan.noWalls !== true, "data-plan-walls": "" });
+  box.addEventListener("change", () => {
+    if (!roomed) return setPlan({ noWalls: !box.checked });
+    const made = withKitchenWalls(editor.doc, planId!, box.checked);
+    if (typeof made === "string") return editor.notify(made, "error");
+    void editor.change(made).then(done);
+  });
+  return el("label", { class: "flex min-h-7 items-center gap-2", title: "Décochée : les murs de la pièce sont cachés, sans être supprimés. Cochée : ils reviennent, même supprimés." }, box, "Murs de la pièce");
 }

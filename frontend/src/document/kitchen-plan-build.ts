@@ -174,7 +174,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       const used = fill.placed.some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
       if (used && kick.on) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3));
     }
-    if (run.wall && !room) box(`Mur ${run.id}`, "wall", band(run.id === "A" && run.left !== "free" ? -WALL_THICKNESS : 0, run.length + (run.id === "A" && run.right !== "free" ? WALL_THICKNESS : 0), -WALL_THICKNESS, 0, 0, p.height));
+    if (run.wall && !room && !p.noWalls) box(`Mur ${run.id}`, "wall", band(run.id === "A" && run.left !== "free" ? -WALL_THICKNESS : 0, run.length + (run.id === "A" && run.right !== "free" ? WALL_THICKNESS : 0), -WALL_THICKNESS, 0, 0, p.height));
   }
   const base = Object.values(out.fills).flatMap((f) => f.placed.filter((pl) => pl.row === "base"));
   const role = (pl: Placed) => applianceOf(pl.item)?.role;

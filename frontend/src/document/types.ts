@@ -197,6 +197,8 @@ export interface KitchenFloorPlan {
   worktopJoint?: "top" | "side" | "miter";
   /** Finishing sides in the fronts' material at the free ends of the runs: the last column's and the last wall unit's. */
   endPanels?: boolean;
+  /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */
+  noWalls?: boolean;
   /** By run: its plinth taken away, and how far it is set back from the fronts (mm). The look of the plinths (appearance/library.ts), over the fronts' material's own. */
   noKick?: Record<string, boolean>;
   kickSetback?: Record<string, number>;

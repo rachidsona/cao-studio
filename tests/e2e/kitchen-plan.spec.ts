@@ -336,6 +336,17 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await expect(page.getByText(/^Joue de finition A/).first()).toBeVisible();
   await shot(page, "13-retour-de-plan");
   await expect(page.getByText(/^Bas 1 porte|^Haut 1 porte/)).toHaveCount(0);
+  // « Murs de la pièce » (the plan changed): the wall the plan draws behind its run hidden, then back.
+  await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  const walls = tool.locator("[data-plan-walls]");
+  const wallBody = page.getByLabel(/^Navigateur : corps/).getByText("Mur A", { exact: true });
+  await expect(walls).toBeChecked();
+  await expect(wallBody.first()).toBeAttached();
+  await walls.uncheck();
+  await expect(wallBody).toHaveCount(0, { timeout: 60_000 });
+  await tool.locator("[data-plan-walls]").check();
+  await expect(wallBody.first()).toBeAttached({ timeout: 60_000 });
+  await tool.getByRole("button", { name: /^OK|Appliquer|Fermer/ }).first().click().catch(() => undefined);
   // The run's strip draws them as the 3D has them: the return and the finishing side (no splashback: unticked).
   await tool.locator('[data-open-run="A"]').click();
   const strip = tool.locator('[data-run-strip="A"]');

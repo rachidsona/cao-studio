@@ -2656,6 +2656,9 @@ opération existante.
       la bande, chaque titre pliable est une carte détachée par son ombre (`ui/fold.ts`).
     - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
       par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
+    - **Murs de la pièce** (case des réglages du Plan de cuisine, `document/kitchen-walls.ts`) : décochée, elle cache
+      les murs — ceux de la pièce relevée où le plan est posé, sans les supprimer, ou ceux que le plan dessine derrière
+      ses linéaires quand il n'en a pas ; cochée, elle les remet, même s'ils avaient été supprimés.
       l'élargit de tout ce reste (la place ouverte, celle des fileurs et des fileurs muraux), dans ses limites, ses
       voisins se poussant ; la place gardée par un « Espace libre » reste, voulue. Refusé, avec la raison, quand la
       rangée ne le tient pas.
