@@ -2023,8 +2023,10 @@ opération existante.
     navigateur et la liste de débit. Supprimer un calque rend ses corps (sans calque).
   - *Rapporteur* : troisième mode du mètre (« Angle ») : le sommet puis un point de chaque côté ; l'angle s'affiche.
   - *Scènes* : des vues de la caméra nommées, enregistrées dans le document ; un clic y emmène la caméra.
-  - *Visite à pied* (groupe « Client ») : se promener dans la pièce à hauteur d'yeux (1,60 m, de 0,90 à 2 m à la
-    molette ou au champ du panneau). On regarde en glissant dans la vue, on marche avec les flèches ou Z Q S D (la
+  - *Visite à pied* (groupe « Client ») : se promener dans la pièce à hauteur d'yeux (1,60 m, de 0,90 à 2 m avec
+    Maj + molette ou au champ du panneau). La molette zoome comme des jumelles, sans avancer (aussi + et −, ou le
+    curseur « Zoom » du panneau, de ×1 à ×4 ; « ×1 » revient à la vue de l'œil), pour voir de près un détail de la
+    cuisine. On regarde en glissant dans la vue, on marche avec les flèches ou Z Q S D (la
     touche à la place de W A S D, quelle que soit la disposition du clavier), Maj pour aller plus vite, ou avec le
     joystick en bas à gauche de la vue sur une tablette. Un clic sur une porte ou un tiroir l'ouvre, un clic au sol y
     emmène. La visite part du milieu de la pièce relevée, sinon à 2,50 m devant le meuble ; les murs et les meubles
@@ -2654,11 +2656,11 @@ opération existante.
       en pointillés), tiroirs à l'anglaise, traverses d'un bas évier ; les portes et panneaux d'angle en pointillés,
       les étagères des meubles d'angle derrière, en bas et en haut. Le navigateur s'en souvient. Sous
       la bande, chaque titre pliable est une carte détachée par son ombre (`ui/fold.ts`).
-    - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
-      par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
     - **Murs de la pièce** (case des réglages du Plan de cuisine, `document/kitchen-walls.ts`) : décochée, elle cache
       les murs — ceux de la pièce relevée où le plan est posé, sans les supprimer, ou ceux que le plan dessine derrière
       ses linéaires quand il n'en a pas ; cochée, elle les remet, même s'ils avaient été supprimés.
+    - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
+      par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
       l'élargit de tout ce reste (la place ouverte, celle des fileurs et des fileurs muraux), dans ses limites, ses
       voisins se poussant ; la place gardée par un « Espace libre » reste, voulue. Refusé, avec la raison, quand la
       rangée ne le tient pas.

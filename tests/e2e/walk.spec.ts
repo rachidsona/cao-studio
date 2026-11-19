@@ -58,7 +58,21 @@ test("la visite à pied : marcher vers le caisson jusqu'à lui, regarder, monter
   await page.mouse.move(cx - 100, cy, { steps: 5 });
   await page.mouse.up();
   expect((await where()).yaw).toBeGreaterThan(10);
-  await page.mouse.wheel(0, 300);
+  // The wheel zooms in, as binoculars (the visitor stays where he is); Maj + the wheel lowers the eyes.
+  const zoom = async () => Number(await pad.getAttribute("data-zoom"));
+  const here = await where();
+  await page.mouse.wheel(0, -300);
+  await expect.poll(zoom).toBeGreaterThan(1);
+  expect((await where()).y).toBe(here.y);
+  await expect(panel.locator("[data-walk-zoom-value]")).not.toHaveText("×1");
+  await page.keyboard.press("-");
+  await panel.locator("[data-walk-unzoom]").click();
+  expect(await zoom()).toBe(1);
+  await panel.getByRole("slider", { name: "Zoom" }).fill("3");
+  await expect.poll(zoom).toBe(3);
+  await shot(page, "visite-zoom");
+  await panel.locator("[data-walk-unzoom]").click();
+  await page.locator("canvas.cad-view").dispatchEvent("wheel", { deltaY: 300, shiftKey: true });
   await expect.poll(async () => (await where()).eye).toBeLessThan(1600);
 
   // Two metres back, looking down at the floor ahead (dragging down) and clicking it: the visitor goes there.

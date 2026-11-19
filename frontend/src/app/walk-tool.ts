@@ -1,7 +1,8 @@
 /**
  * « Visite à pied » : se promener dans la pièce à hauteur d'yeux (viewport/walk.ts). On regarde en glissant la souris
  * (ou le doigt), on marche avec les flèches ou Z Q S D (W A S D sur un clavier QWERTY : la touche à la même place), Maj
- * pour aller plus vite, le petit joystick en bas de la vue sur une tablette ; la molette monte ou baisse les yeux. Un
+ * pour aller plus vite, le petit joystick en bas de la vue sur une tablette ; la molette zoome comme des jumelles
+ * (+ et − aussi, ou le curseur « Zoom » du panneau, de ×1 à ×4), Maj + molette monte ou baisse les yeux. Un
  * clic sur une porte ou un tiroir l'ouvre ou le ferme, un clic au sol y emmène. Les murs et les meubles arrêtent le
  * visiteur. Échap ou « Terminer » rendent la vue d'avant. Le modèle ne change pas.
  */
@@ -18,6 +19,8 @@ import type { Editor } from "./editor";
 
 /** A wider view than the modelling one, as the eye sees a room. */
 const FOV = 65;
+/** How far the view may be zoomed in, as binoculars (the field of view narrowed this many times). */
+const ZOOM: [number, number] = [1, 4];
 /** A press that moves more than this is a look around, not a click (px). */
 const CLICK = 5;
 
@@ -37,6 +40,10 @@ class WalkTool implements PointerHandler {
   private readonly panel: HTMLElement;
   private readonly pad: HTMLElement;
   private readonly heightField: HTMLInputElement;
+  private readonly zoomField: HTMLInputElement;
+  private readonly zoomText = el("span", { class: "w-10 text-right font-mono", "data-walk-zoom-value": "" });
+  /** The view zoomed in this many times (1: the eye's own). */
+  private zoom = 1;
 
   constructor(
     private readonly viewport: Viewport,
@@ -80,6 +87,10 @@ class WalkTool implements PointerHandler {
       event.stopPropagation();
       if (event.key === "Enter") this.heightField.blur();
     });
+    this.zoomField = el("input", { type: "range", min: String(ZOOM[0]), max: String(ZOOM[1]), step: "0.1", value: "1", class: "w-full accent-sky-600", "aria-label": "Zoom", "data-walk-zoom": "" });
+    this.zoomField.addEventListener("input", () => this.setZoom(Number(this.zoomField.value)));
+    const unzoom = el("button", { type: "button", class: "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "La vue de l'œil, sans zoom", "data-walk-unzoom": "" }, "×1");
+    unzoom.addEventListener("click", () => this.setZoom(1));
     this.panel = el(
       "div",
       { class: "absolute top-2 right-2 z-30 w-64 space-y-2 border border-gray-200 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95", role: "dialog", "aria-label": "Visite à pied" },
@@ -87,17 +98,19 @@ class WalkTool implements PointerHandler {
       el("ul", { class: "list-disc space-y-0.5 pl-4 text-gray-600 dark:text-gray-300" },
         el("li", {}, "Glissez dans la vue pour regarder autour de vous."),
         el("li", {}, "Flèches ou Z Q S D pour marcher, Maj pour aller plus vite ; sur une tablette, le joystick en bas à gauche."),
-        el("li", {}, "Molette : yeux plus haut ou plus bas."),
+        el("li", {}, "Molette, ou + et − : zoom, pour voir de près sans avancer ; Maj + molette : yeux plus haut ou plus bas."),
         el("li", {}, "Un clic sur une porte, un tiroir ou un accessoire l'ouvre ; un clic au sol vous y emmène."),
         el("li", {}, "Échap ou « Terminer » : retour à la vue d'avant."),
       ),
       el("label", { class: "grid grid-cols-[7rem_1fr] items-center gap-1.5" }, `Hauteur des yeux (${UNIT_LABELS[unit]})`, this.heightField),
+      el("div", { class: "grid grid-cols-[3rem_1fr_auto_auto] items-center gap-1.5" }, "Zoom", this.zoomField, this.zoomText, unzoom),
       el("p", { class: "text-2xs text-gray-500" }, `De ${trim(toDisplay(EYE.low, unit), 2)} à ${trim(toDisplay(EYE.high, unit), 2)} ${UNIT_LABELS[unit]}. Les murs et les meubles vous arrêtent ; le modèle ne change pas.`),
       panelFooter(() => this.close(), null),
     );
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     this.showHeight();
+    this.setZoom(1);
     this.place();
     document.body.dataset.walking = "";
   }
@@ -105,6 +118,18 @@ class WalkTool implements PointerHandler {
   /** Where the visitor is, for the tests and the panel. */
   get state(): Walker {
     return this.walker;
+  }
+
+  /** The view zoomed in `zoom` times, as binoculars: the field of view narrowed, the visitor where he stands. */
+  private setZoom(zoom: number): void {
+    this.zoom = Math.min(ZOOM[1], Math.max(ZOOM[0], Math.round(zoom * 10) / 10));
+    const camera = this.viewport.camera;
+    camera.fov = (2 * Math.atan(Math.tan((FOV * Math.PI) / 360) / this.zoom) * 180) / Math.PI;
+    camera.updateProjectionMatrix();
+    this.viewport.invalidate();
+    this.zoomField.value = String(this.zoom);
+    this.zoomText.textContent = `×${String(this.zoom).replace(".", ",")}`;
+    this.pad.dataset.zoom = String(this.zoom);
   }
 
   private showHeight(): void {
@@ -151,6 +176,12 @@ class WalkTool implements PointerHandler {
       event.stopImmediatePropagation();
       return this.close();
     }
+    // + and −: zoom in and out (by the character, whatever the keyboard).
+    if ((event.key === "+" || event.key === "=" || event.key === "-") && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return this.setZoom(this.zoom * (event.key === "-" ? 1 / 1.2 : 1.2));
+    }
     // By the place of the key (event.code): Z Q S D on an AZERTY keyboard are W A S D on a QWERTY one.
     if (/^(Arrow(Up|Down|Left|Right)|Key[WASD]|Shift(Left|Right))$/.test(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
@@ -168,7 +199,10 @@ class WalkTool implements PointerHandler {
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
     event.stopImmediatePropagation();
-    this.walker = atHeight(this.walker, this.walker.eye - Math.sign(event.deltaY) * 50);
+    // (Maj turns the wheel sideways on some systems: its delta is then along x.)
+    const delta = event.deltaY || event.deltaX;
+    if (!event.shiftKey) return this.setZoom(this.zoom * (delta < 0 ? 1.1 : 1 / 1.1));
+    this.walker = atHeight(this.walker, this.walker.eye - Math.sign(delta) * 50);
     this.showHeight();
   };
 

@@ -9,7 +9,7 @@ export const WALK_HELP: ToolHelp = {
     "Cliquez « Visite à pied » : vous êtes au milieu de la pièce, ou à 2,50 m devant le meuble, les yeux à 1,60 m.",
     "Glissez dans la vue pour regarder autour de vous, en haut et en bas.",
     "Marchez avec les flèches ou Z Q S D (W A S D sur un clavier anglais), Maj pour aller plus vite ; sur une tablette, avec le joystick en bas à gauche de la vue.",
-    "Montez ou baissez les yeux avec la molette, ou tapez la « Hauteur des yeux » (de 90 cm à 2 m : un enfant, un fauteuil, un grand).",
+    "Zoomez avec la molette (ou + et −, ou le curseur « Zoom », de ×1 à ×4) pour voir un détail de près sans avancer ; « ×1 » revient à la vue de l'œil. Maj + molette monte ou baisse les yeux, ou tapez la « Hauteur des yeux » (de 90 cm à 2 m : un enfant, un fauteuil, un grand).",
     "Cliquez une porte ou un tiroir pour l'ouvrir ou le fermer, ou un endroit libre du sol pour vous y rendre.",
     "Échap, « Terminer » ou le même bouton rendent la vue d'avant.",
   ],
