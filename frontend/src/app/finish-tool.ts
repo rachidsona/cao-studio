@@ -11,6 +11,7 @@
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import { isHardwareBody } from "../document/hardware";
 import { uniqueId, uniqueName } from "../document/operations";
+import { finishGroups } from "../document/finish-groups";
 import { featureOfBody, type CadDocument, type Feature, type RoomFeature, type TrimFeature } from "../document/types";
 import { FINISH_DEFAULTS, finishParts, type Box, type FinishOptions, type FinishWall } from "../features/finish-parts";
 import { wallFrames, wallLean } from "../features/room-plan";
@@ -73,7 +74,20 @@ export class FinishTool extends PanelTool {
       return wall ? [wall] : boxes([id]);
     });
     if (!furniture.length) return "Aucun meuble affiché à habiller : sélectionnez ses corps.";
-    const { parts, notes, problems } = finishParts(furniture, walls, this.o);
+    // A kitchen in L or U: each run dressed with its own front, the others as its neighbours.
+    const groups = finishGroups(doc, this.source.flatMap((id) => {
+      const box = this.boxOf(id);
+      return box ? [{ id, box }] : [];
+    }));
+    const runs = groups ?? [{ label: "", front: this.o.front, boxes: furniture }];
+    const made = runs.map((g, i) => {
+      const done = finishParts(g.boxes, walls, { ...this.o, front: g.front }, runs.flatMap((other, k) => (k === i ? [] : other.boxes)));
+      const named = (text: string) => (g.label ? `${text} (${g.label})` : text);
+      return { parts: done.parts.map((p) => ({ ...p, name: named(p.name) })), notes: done.notes.map(named), problems: done.problems.map(named) };
+    });
+    const parts = made.flatMap((m) => m.parts);
+    const notes = made.flatMap((m) => m.notes);
+    const problems = made.flatMap((m) => m.problems);
     this.notes = notes;
     // Not a board, but the furniture does not go in: kept all the same (the boards made before go), for the check.
     if (!parts.length && !problems.length) return notes[0] ?? "Rien à ajouter avec ces réglages.";

@@ -127,7 +127,7 @@ export const WOODWORKING: HelpFamily[] = [
         what: "Habille le meuble de joues, de fileurs jusqu'aux murs, d'un bandeau jusqu'au plafond, d'une plinthe et de pieds réglables.",
         steps: [
           "Sélectionnez les corps du meuble ; sans sélection, tout le meuble affiché est habillé.",
-          "Cliquez « Finitions » et indiquez sa « Face avant ».",
+          "Cliquez « Finitions » et indiquez sa « Face avant ». Une cuisine en L ou en U est habillée linéaire par linéaire, chacun de sa propre face avant, sans joue contre le linéaire voisin.",
           "Réglez l'« Épaisseur des planches » et cochez « Joue gauche » et « Joue droite » (vues de devant).",
           "Cochez « Fileurs jusqu'aux murs », « Bandeau haut », « Plinthe (sous un socle) » et « Pieds réglables (sous le socle) », puis réglez leurs cotes.",
           "Pour un mur qui n'est pas d'aplomb ou pas d'équerre, cochez « Relevé de chantier » : tapez de combien le mur avance vers le meuble « en bas », « à mi-hauteur » et « en haut », et « au fond (hors d'équerre) » ; pour le plafond, de combien il descend, pour le sol de combien il monte, pour le mur du fond de combien il avance, « à gauche », « au milieu » et « à droite ». Une valeur négative : l'inverse.",

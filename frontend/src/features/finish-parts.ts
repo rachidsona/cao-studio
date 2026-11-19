@@ -71,8 +71,11 @@ export function unionBox(boxes: readonly Box[]): Box {
   return [0, 1].map((k) => [0, 1, 2].map((i) => (k === 0 ? Math.min : Math.max)(...boxes.map((b) => b[k as 0 | 1][i]!)))) as Box;
 }
 
-/** The finishing boards of this furniture (its bodies' boxes), with what could not be made and why. */
-export function finishParts(furniture: readonly Box[], given: readonly (Box | FinishWall)[], o: FinishOptions): { parts: FinishPart[]; notes: string[]; problems: string[] } {
+/**
+ * The finishing boards of this furniture (its bodies' boxes), with what could not be made and why. `neighbours`: the
+ * other runs of the same kitchen (an L, a U) — no end panel against them, a filler only up to them.
+ */
+export function finishParts(furniture: readonly Box[], given: readonly (Box | FinishWall)[], o: FinishOptions, neighbours: readonly Box[] = []): { parts: FinishPart[]; notes: string[]; problems: string[] } {
   if (!furniture.length) return { parts: [], notes: ["Aucun meuble à habiller."], problems: [] };
   const rooms = given.map((w): FinishWall => (Array.isArray(w) ? { box: w as Box } : (w as FinishWall)));
   const walls = rooms.map((w) => w.box);
@@ -106,7 +109,7 @@ export function finishParts(furniture: readonly Box[], given: readonly (Box | Fi
   const back = o.front.sign < 0 ? depth[1] : depth[0];
   /** The gap from `edge` to the nearest wall on that side, as drawn (null: no wall there), and that wall. */
   const nearWall = (atMax: boolean, edge: number): { gap: number; wall: FinishWall } | null => {
-    const near = rooms
+    const near = [...rooms, ...neighbours.map((box): FinishWall => ({ box }))]
       .filter(({ box: w }) => overlaps(range(w, 2), [z0, z1]) && overlaps(range(w, dep), depth, -1))
       .map((wall) => ({ gap: atMax ? wall.box[0][lat]! - edge : edge - wall.box[1][lat]!, wall }))
       .filter((g) => g.gap > -0.5)
@@ -131,6 +134,11 @@ export function finishParts(furniture: readonly Box[], given: readonly (Box | Fi
     const sign = atMax ? 1 : -1;
     const name = `Joue ${side}`;
     const [from, to] = box(span(edge, edge + sign * t), depth, [z0, z1 + o.ends.above]);
+    // Against the next run of the kitchen (its corner): no end panel there.
+    if (neighbours.some((n) => [0, 1, 2].every((i) => Math.min(n[1][i]!, to![i]! + 1) - Math.max(n[0][i]!, from![i]! - 1) > 0))) {
+      notes.push(`${name} : contre le linéaire voisin, pas de joue.`);
+      continue;
+    }
     const near = nearWall(atMax, edge);
     const s = surveyed(side === "droite" ? "right" : "left", near?.wall);
     const cut = s && near ? joueCut(scribe(near.gap - t, [s.low, s.mid, s.high], s.back), s.back, t) : null;

@@ -2944,7 +2944,10 @@ opération existante.
   assistants Cuisine et Dressing posent leurs meubles sur ce relevé (« Murs » dans leur panneau) (`features/room-plan.ts`,
   `features/room.ts`, `app/room-tool.ts`).
 - **Finitions** (groupe « Meuble ») : habiller un meuble (les corps sélectionnés, sinon tout le meuble affiché)
-  de planches ajustées à sa taille et à la pièce.
+  de planches ajustées à sa taille et à la pièce. Une cuisine en L ou en U, ou avec un îlot, est habillée linéaire par
+  linéaire (`document/finish-groups.ts` : les linéaires d'un plan de cuisine, sinon le sens des caissons), chacun de sa
+  propre face avant ; pas de joue contre le linéaire voisin, et la joue d'un bout libre n'a que la profondeur de son
+  linéaire.
   - Joues de finition, contre ses côtés, sur toute la profondeur (portes comprises), du sol au-dessus, avec un
     dépassement en haut si l'on veut.
   - Fileurs en façade, qui comblent le jour jusqu'au mur voisin, de chaque côté, jusqu'à un écart maximal
