@@ -485,3 +485,8 @@ ICONS = {
     "view-iso": view_iso, "view-front": view_front, "view-top": view_top, "view-right": view_right, "xray": xray,
     "display": display, "assistant": assistant,
 }
+
+# The kitchen and making tools drawn again, more telling (scripts/icons3d_pro.py): they take the place of those above.
+from icons3d_pro import PRO  # noqa: E402
+
+ICONS.update(PRO)
