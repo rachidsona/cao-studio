@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { withCabinetFurnished } from "../../frontend/src/document/cabinet-furnish";
 import { withCaissonRemoved, withDeletedFreed } from "../../frontend/src/document/kitchen-delete-sync";
+import { KICK_BACK } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { deleteFeatures } from "../../frontend/src/document/operations";
@@ -113,8 +114,8 @@ describe("plinthe d'un linéaire", () => {
     const made = back.doc.features.find((f) => f.type === "extrude" && f.name === "Plinthe A")!;
     const was = doc.features.find((f) => f.id === (kick as { sketch: string }).sketch) as { points: { y: number }[] };
     const now = back.doc.features.find((f) => f.id === (made as { sketch: string }).sketch) as { points: { y: number }[] };
-    // The run's fronts face −Y: set back, the plinth is 40 mm nearer the wall.
-    expect(Math.min(...now.points.map((p) => p.y)) - Math.min(...was.points.map((p) => p.y))).toBeCloseTo(40);
+    // The run's fronts face −Y: set back by 4 cm instead of the 6 cm of every plinth, it is 20 mm nearer the fronts.
+    expect(Math.min(...now.points.map((p) => p.y)) - Math.min(...was.points.map((p) => p.y))).toBeCloseTo(40 - KICK_BACK.default);
     expect(back.doc.bodyInfo?.[made.id]?.appearance).toBe("dekton-sirius");
   });
 });

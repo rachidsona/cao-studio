@@ -2678,8 +2678,10 @@ opération existante.
       place vide** (un « Espace libre » de sa largeur, comme un meuble supprimé dans la 3D) : ses voisins ne bougent
       pas. On referme quand on le décide : « Resserrer les meubles » (toutes les places vides), un voisin glissé
       dans la place, ou « Place libre » › « Espaces gardés » › « Supprimer » pour une seule.
-    - **Plinthe** du linéaire : cliquée sur la bande (sous les meubles), elle se **recule** ou s'**avance** par pas
-      de 1 cm (jusqu'à 15 cm en retrait des façades), se **supprime** (Suppr) et se **remet**, et prend un **aspect**
+    - **Plinthe** du linéaire : à **6 cm en retrait des façades** au départ (`KICK_BACK.default`), les côtés des
+      caissons, qui descendent au sol, entaillés au socle pour la laisser passer (`document/kick-notches.ts`, pour le
+      noyau seulement) ; la plinthe d'angle s'arrête contre celle du linéaire voisin, à son retrait. Cliquée sur la
+      bande (sous les meubles), elle se **recule** ou s'**avance** par pas de 1 cm (jusqu'à 15 cm en retrait des façades), se **supprime** (Suppr) et se **remet**, et prend un **aspect**
       de l'Apparence (marbres, Dekton, bétons, bois, chacun sur sa vignette : `app/kitchen/look-picker.ts`), commun à
       toutes les plinthes du plan. Gardé par linéaire (`noKick`, `kickSetback`, `kickLook`) ; une plinthe supprimée
       dans la 3D ne revient pas non plus. Le plan de travail ou la plinthe choisis le restent quand la cuisine est

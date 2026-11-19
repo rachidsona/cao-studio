@@ -12,6 +12,12 @@ import { parseDocument } from "../../frontend/src/document/validate";
 import { KITCHEN, kitchenLayout } from "../../frontend/src/features/kitchen-layout";
 import { fillRun, itemEntry, newItem, type RunFill } from "../../frontend/src/features/kitchen-run-items";
 
+/** A unit's box over its socle: its sides are notched there for the plinth set back (document/kick-notches.ts). */
+const overSocle = (u: Parameters<typeof cabinetBox>[0] & { plinth?: number }): [Box[0], Box[1]] => {
+  const [lo, hi] = cabinetBox(u);
+  return [[lo[0], lo[1], lo[2] + (u.plinth ?? 0)], hi];
+};
+
 const empty = (): CadDocument => ({ ...createReferencePlate(), features: [] });
 const plan = (patch: Partial<KitchenFloorPlan> = {}): KitchenFloorPlan => ({ ...KITCHEN_PLAN, ...patch });
 const items = (...list: [string, number][]): KitchenRunItem[] => list.reduce<KitchenRunItem[]>((all, [model, width]) => [...all, newItem(all, model, width)], []);
@@ -104,7 +110,7 @@ describe("la cuisine tirée du plan", () => {
   it("rien ne se chevauche, en U avec meubles d'angle, et l'électroménager est sur son calque", () => {
     const p = plan({ model: "U", lengthA: 3600, corner: "unit" });
     const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
-    const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind !== "wall" && b.kind !== "worktop" && b.kind !== "splashback" && b.kind !== "appliance").map((b): Box => [b.from, b.to])];
+    const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind !== "wall" && b.kind !== "worktop" && b.kind !== "splashback" && b.kind !== "appliance").map((b): Box => [b.from, b.to])];
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${i} et ${j}`).toBe(false);
     expect(layout.units.filter((u) => u.name.startsWith("Meuble d'angle")).map((u) => u.run)).toEqual(["A", "A"]);
   });
@@ -115,7 +121,7 @@ describe("la cuisine tirée du plan", () => {
         const p = plan({ model, lengthA: 4200, island: !KITCHEN_MODELS[model].noIsland && !["U", "G-left", "G-right"].includes(model), through });
         const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
         expect(layout.units.length, model).toBeGreaterThan(3);
-        const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
+        const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
         for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${model} ${JSON.stringify(through)} : ${i} et ${j}`).toBe(false);
       }
     }

@@ -33,10 +33,10 @@ export const WALL_CORNER_KINDS: Record<WallCornerKind, { label: string; summary:
 /** A corner's settings, as the plan keeps them. */
 /** What a run's editor sets beside its units: the corners, and whether the run keeps its worktop. */
 export type CornerSetting = Pick<KitchenFloorPlan, "corners" | "wallCorners" | "cornerSizes" | "noWorktop" | "noKick" | "kickSetback" | "kickLook">;
-/** How far a run's plinth may be set back from its fronts, and by how much at a time (mm). */
-export const KICK_BACK = { max: 150, step: 10 };
+/** How far a run's plinth may be set back from its fronts, and by how much at a time (mm); 6 cm unless chosen. */
+export const KICK_BACK = { max: 150, step: 10, default: 60 };
 /** A run's plinth: built or taken away, and how far back from the fronts. */
-export const kickOf = (p: KitchenFloorPlan, run: string): { on: boolean; back: number } => ({ on: p.kick !== false && !p.noKick?.[run], back: Math.max(0, Math.min(KICK_BACK.max, p.kickSetback?.[run] ?? 0)) });
+export const kickOf = (p: KitchenFloorPlan, run: string): { on: boolean; back: number } => ({ on: p.kick !== false && !p.noKick?.[run], back: Math.max(0, Math.min(KICK_BACK.max, p.kickSetback?.[run] ?? KICK_BACK.default)) });
 export interface CornerChange {
   kind?: CornerKind;
   wall?: WallCornerKind;

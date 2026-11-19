@@ -2,6 +2,7 @@
 import { stampHinges } from "../document/hardware";
 import { stampHardware } from "../document/hardware-catalog";
 import { stampGorges } from "../features/fronts-parts";
+import { stampKickNotches } from "../document/kick-notches";
 import { stampCabinetJoints } from "../features/cabinet-joints";
 import { stampInsetSetbacks } from "../features/inset-setback";
 import type { CadDocument, FaceRef } from "../document/types";
@@ -25,7 +26,7 @@ const limitOf = (type: WorkerRequest["type"]) => TIME_LIMITS[type] ?? TIME_LIMIT
  * profiles' notches in the sides, the hinges a heavy door needs, the shelves set back behind inset doors, the holes of
  * the joints the standards drill.
  */
-export const kernelDocument = (doc: CadDocument): CadDocument => stampCabinetJoints(stampInsetSetbacks(stampGorges(stampHinges(stampHardware(doc)))));
+export const kernelDocument = (doc: CadDocument): CadDocument => stampCabinetJoints(stampInsetSetbacks(stampKickNotches(stampGorges(stampHinges(stampHardware(doc))))));
 
 export class GeometryClient {
   private worker!: Worker;

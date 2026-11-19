@@ -235,7 +235,9 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     if (kick.on && corner.fronts.length) {
       const L = run.length;
       const end = side === "left" ? Math.max(...corner.fronts.map((f) => f.to)) : L - Math.min(...corner.fronts.map((f) => f.from));
-      const start = pass ? D + FRONT - 16 : D + FRONT;
+      // Up to the plinth of the run beside, as far back from its fronts as it is set.
+      const beside = kickOf(p, run.zone.id === "A" ? (side === "left" ? "B" : "C") : "A").back;
+      const start = (pass ? D + FRONT - 16 : D + FRONT) - beside;
       const [a, b] = side === "left" ? [start, end] : [L - end, L - start];
       if (b - a > 1) box(`Plinthe d'angle ${run.id}${side === "right" ? " (droite)" : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3), unit);
     }

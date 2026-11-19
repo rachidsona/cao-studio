@@ -11,6 +11,12 @@ import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items"
 import { doorSwing } from "../../frontend/src/app/drawer-toggle";
 import { poseOf } from "../../frontend/src/features/motion";
 
+/** A unit's box over its socle: its sides are notched there for the plinth set back (document/kick-notches.ts). */
+const overSocle = (u: Parameters<typeof cabinetBox>[0] & { plinth?: number }): [Box[0], Box[1]] => {
+  const [lo, hi] = cabinetBox(u);
+  return [[lo[0], lo[1], lo[2] + (u.plinth ?? 0)], hi];
+};
+
 const plan = (patch: Partial<KitchenFloorPlan> = {}): KitchenFloorPlan => ({ ...KITCHEN_PLAN, model: "U", lengthA: 3600, ...patch });
 const run = (p: KitchenFloorPlan, id: string) => kitchenRuns(p).find((r) => r.id === id)!;
 type Box = [number[], number[]];
@@ -41,7 +47,7 @@ describe("angles de cuisine", () => {
       const corner = layout.units.filter((u) => u.name.startsWith("Meuble d'angle"));
       expect(corner.length, kind).toBe(kind === "dead" || kind === "diagonal" ? 0 : isLCorner(kind) ? 4 : 2);
       // Boards cut to an outline (the corner cut at 45°) are not their bounds: checked in kitchen-shaped.test.ts.
-      const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
+      const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${kind} : ${i} et ${j}`).toBe(false);
       if (isLCorner(kind) && kind !== "diagonal") expect(layout.boxes.filter((b) => b.name.startsWith("Porte pliante")).length).toBe(4);
       if (kind === "dead") expect(layout.boxes.filter((b) => b.name.startsWith("Fileur d'angle")).length).toBe(4);
@@ -54,7 +60,7 @@ describe("angles de cuisine", () => {
     const fittings = layout.boxes.filter((b) => b.kind === "fitting");
     expect(fittings.filter((b) => b.name.startsWith("Panier Magic Corner")).length).toBe(4);
     expect(fittings.filter((b) => b.name.startsWith("Plateau tournant")).length).toBe(2);
-    const units = layout.units.map((u) => cabinetBox(u));
+    const units = layout.units.map(overSocle);
     const within = (b: Box, u: Box) => [0, 1, 2].every((i) => b[0][i]! >= u[0][i]! - 1e-6 && b[1][i]! <= u[1][i]! + 1e-6);
     for (const f of fittings) expect(units.some((u) => within([f.from, f.to], u)), f.name).toBe(true);
     // Baskets low and half way up; the Magic Corner's door as a blind unit's.
@@ -107,7 +113,7 @@ describe("angles de cuisine", () => {
     const first = cabinetBox(layout.units.find((u) => u.item === items[0]!.id)!);
     // The corner unit now ends where the first unit starts.
     expect(Math.max(...[unitBox[0][0], unitBox[1][0]]) === Math.min(...[first[0][0], first[1][0]]) || Math.max(...[unitBox[0][1], unitBox[1][1]]) === Math.min(...[first[0][1], first[1][1]])).toBe(true);
-    const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
+    const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${i} et ${j}`).toBe(false);
     // With no corner unit going to the wall, nothing moves: the rest goes to the corner ends.
     const dead = plan({ runs: { A: items }, rest: { A: "walls" } });
@@ -123,7 +129,7 @@ describe("angles de cuisine", () => {
     expect(layout.units.find((u) => u.name === "Meuble d'angle A")!.width).toBe(s.corner + 600);
     const door = layout.boxes.find((b) => b.name === "Porte d'angle A")!;
     expect(Math.round(Math.max(door.to[0] - door.from[0], door.to[1] - door.from[1]))).toBe(597);
-    const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
+    const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${i} et ${j}`).toBe(false);
   });
 
@@ -139,7 +145,7 @@ describe("angles de cuisine", () => {
       expect(high.length).toBe(wall === "l" ? 4 : 2);
       const s = kitchenSizes(p);
       for (const h of high) expect([h.origin[2], h.height, h.depth]).toEqual([s.wallBottom, s.wallTop - s.wallBottom, W]);
-      const boxes: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
+      const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${wall} : ${i} et ${j}`).toBe(false);
     }
     // Nothing chosen: the wall row as before.
@@ -200,7 +206,7 @@ describe("angles de cuisine", () => {
         // The corner cut at 45° has its own plinth, cut to its outline (kitchen-shaped.test.ts).
         const kicks = layout.boxes.filter((b) => b.kind === "kick" && !b.outline);
         if (kind !== "diagonal") expect(kicks.filter((b) => b.name.startsWith("Plinthe d'angle")).length, `${kind} ${through}`).toBeGreaterThanOrEqual(2);
-        const others: Box[] = [...layout.units.map((u) => cabinetBox(u)), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
+        const others: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
         for (let i = 0; i < kicks.length; i++) {
           for (let j = i + 1; j < kicks.length; j++) expect(overlaps([kicks[i]!.from, kicks[i]!.to], [kicks[j]!.from, kicks[j]!.to]), `${kind} ${kicks[i]!.name} et ${kicks[j]!.name}`).toBe(false);
           for (const o of others) expect(overlaps([kicks[i]!.from, kicks[i]!.to], o), `${kind} ${kicks[i]!.name}`).toBe(false);
