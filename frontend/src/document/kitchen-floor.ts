@@ -130,7 +130,9 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   // Each run as it is placed: a unit put in a room kept free stands there in its order too.
   const runs = plan.runs && Object.fromEntries(Object.entries(plan.runs).map(([run, items]) => [run, layout.fills[run]?.items ?? items]));
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, ...(runs ? { runs } : {}), made } } : f));
-  doc = withLinksFollowing(doc, before, madeKeys(doc, kitchenPlanIn(doc, planId) ?? plan));
+  const after = madeKeys(doc, kitchenPlanIn(doc, planId) ?? plan);
+  doc = withLinksFollowing(doc, before, after);
+  doc = withLooksFollowing(doc, base, before, after, [old.worktopLook, old.kickLook]);
   return { doc, problems: [...problems, ...followed.problems, ...layout.notes] };
 }
 
@@ -173,6 +175,26 @@ function withLinksFollowing(doc: CadDocument, before: Map<string, string>, after
   });
   const { extendLinks: _, ...rest } = doc;
   return extendLinks.length ? { ...rest, extendLinks } : rest;
+}
+
+/**
+ * The looks given by hand to the pieces the plan made — an appearance, a colour, painted faces — kept on the same pieces
+ * made again (their bodies by their number). Those the plan gives itself (its worktop's and plinths' looks) are its own.
+ */
+function withLooksFollowing(doc: CadDocument, base: CadDocument, before: Map<string, string>, after: Map<string, string>, planLooks: (string | undefined)[]): CadDocument {
+  const anew = new Map([...after].map(([id, key]) => [key, id]));
+  const info = { ...doc.bodyInfo };
+  let changed = false;
+  for (const [body, was] of Object.entries(base.bodyInfo ?? {})) {
+    const [owner, part] = body.split(PART_SEPARATOR);
+    const id = anew.get(before.get(owner!) ?? "");
+    const own = was.appearance && !planLooks.includes(was.appearance);
+    if (!id || !(own || was.color || was.faces?.length)) continue;
+    const target = part === undefined ? id : `${id}${PART_SEPARATOR}${part}`;
+    info[target] = { ...info[target], ...(own ? { appearance: was.appearance } : {}), ...(was.color ? { color: was.color } : {}), ...(was.faces?.length ? { faces: was.faces } : {}) };
+    changed = true;
+  }
+  return changed ? { ...doc, bodyInfo: info } : doc;
 }
 
 /**
