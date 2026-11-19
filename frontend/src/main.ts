@@ -34,6 +34,7 @@ import { bindHelp } from "./app/help";
 import { bindDoorFronts } from "./app/dressing/door-fronts-tool";
 import { bindEdgePaint } from "./app/edge-paint-tool";
 import { bindPipette } from "./app/pipette-tool";
+import { bindFormPipette } from "./app/form-pipette-tool";
 import { bindLivePrice } from "./app/workshop/live-price";
 import { bindNicheCopy } from "./app/dressing/niche-copy-tool";
 import { bindFurnitureTool } from "./app/furniture-tool";
@@ -281,6 +282,7 @@ async function start(): Promise<void> {
   bindDoorFronts(root, viewport, editor);
   bindEdgePaint(root, viewport, editor);
   bindPipette(root, viewport, editor);
+  bindFormPipette(root, viewport, editor);
   bindCommandPalette(root);
   bindNavigatorFold(root);
   bindToolColumns(root);

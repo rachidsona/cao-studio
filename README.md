@@ -2083,6 +2083,13 @@ opération existante.
     plexiglas, ses faces peintes —, chaque clic suivant la donne à un autre corps ; « Reprendre une autre apparence »
     en prend une autre, Échap ou ✕ l'arrête. Sa matière (débit, devis) ne change pas (`withLookCopied`,
     `appearance/assign.ts`).
+    **Pipette de forme** (groupe Atelier, `app/form-pipette-tool.ts`) : un clic prend la
+    forme d'un meuble de cuisine, d'un caisson, de façades, d'une porte, de tiroirs ou d'une niche équipée ; chaque clic
+    suivant la donne à un autre de même sorte, à sa place — un meuble de cuisine prend le modèle, les façades,
+    l'intérieur, la hauteur et la profondeur de l'autre, sa largeur gardée, et la cuisine est refaite ; un caisson ses
+    cotes et sa construction ; des façades leur disposition, leur pose et leur style ; une niche ses tiroirs, sa
+    tringle ou son accessoire ; une porte donne au moins son style à toute autre porte ou à des tiroirs. Un meuble bas
+    ne donne pas sa forme à un meuble haut. Matière et apparence ne changent pas (`document/form-copy.ts`).
     **À qui donner le motif** : un clic sur une vignette le donne à ce qui est sélectionné.
     - Dans le navigateur, une ligne de corps ; Ctrl ou Maj pour en ajouter. Un clic sur le titre d'un groupe
       (« Portes 1 », « Étagères », un dossier) sélectionne toutes ses pièces.
