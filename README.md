@@ -2076,10 +2076,11 @@ opération existante.
     (photo de bois, de pierre, de tissu… en PNG, JPEG ou WebP). L'image est réduite à 1024 px et gardée avec le
     projet ; la taille en millimètres dit combien elle couvre. Elle est appliquée aux corps sélectionnés et rangée
     dans la catégorie « Mes motifs (images importées) », où ✕ la retire (`appearance/custom.ts`).
-    **Pipette** : « Pipette : copier une apparence » ; un clic sur un corps de la vue prend son apparence telle qu'on
-    la voit — celle de sa matière comprise, sa couleur, la transparence d'un verre ou d'un plexiglas, ses faces
-    peintes —, chaque clic suivant la donne à un autre corps ; Échap ou « Pipette : arrêter » la repose. Sa matière
-    (débit, devis) ne change pas (`withLookCopied`, `appearance/assign.ts`).
+    **Pipette** (outil à part, groupe Atelier, `app/pipette-tool.ts`) : un clic sur un corps de la vue prend son
+    apparence telle qu'on la voit — celle de sa matière comprise, sa couleur, la transparence d'un verre ou d'un
+    plexiglas, ses faces peintes —, chaque clic suivant la donne à un autre corps ; « Reprendre une autre apparence »
+    en prend une autre, Échap ou ✕ l'arrête. Sa matière (débit, devis) ne change pas (`withLookCopied`,
+    `appearance/assign.ts`).
     **À qui donner le motif** : un clic sur une vignette le donne à ce qui est sélectionné.
     - Dans le navigateur, une ligne de corps ; Ctrl ou Maj pour en ajouter. Un clic sur le titre d'un groupe
       (« Portes 1 », « Étagères », un dossier) sélectionne toutes ses pièces.

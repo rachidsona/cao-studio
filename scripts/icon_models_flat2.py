@@ -21,6 +21,8 @@ BUBBLE = "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4.5V16H5a2 2
 BIN = P(6, 8, 18, 8, 17, 21, 7, 21, close=True)
 
 FLAT2 = {
+    # Pipette (Atelier): its bulb, its glass tube, a drop of colour at its tip.
+    "pipette": [("F", P(14.6, 4.2, 16.6, 2.4, 18.8, 2.4, 21.6, 5.2, 21.6, 7.4, 19.8, 9.4, close=True)), ("K", P(11.4, 9.4, 14.6, 12.6, 7.2, 20, 4.4, 20.6, 5, 17.8, close=True)), ("s", P(12, 6.8, 17.2, 12) + P(4.6, 20.4, 2.6, 22.4)), ("A", P(5.4, 17.6, 8, 15, 9.6, 16.6, 7, 19.2, close=True))],
     # Documents
     "cutlist": [("F", PAGE), ("s", FOLD + rows(10, 17, 8, 12, 16)), ("A", box(6.5, 7, 8.5, 9) + box(6.5, 11, 8.5, 13) + box(6.5, 15, 8.5, 17))],
     "part-sheet": [("F", PAGE), ("s", FOLD), ("K", box(7, 11, 15, 17.5)), *dim(7, 11, 15, 11, 2.5)],

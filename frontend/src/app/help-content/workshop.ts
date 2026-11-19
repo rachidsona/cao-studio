@@ -1,7 +1,6 @@
 import { DRILL_TEMPLATES_HELP, ORDERS_HELP } from "./orders";
 import { WALK_HELP } from "./walk";
 import type { HelpFamily } from "./types";
-
 const MENU = "Le nom d'un groupe ouvre un menu qui liste tous ses outils : plusieurs n'y sont rangés que dans ce menu, un clic les lance.";
 const WHERE = `Barre d'outils du modèle, groupe « Atelier ». ${MENU}`;
 const MAKING = `Barre d'outils du modèle, groupe « Fabrication ». ${MENU}`;
@@ -125,7 +124,7 @@ export const WORKSHOP: HelpFamily[] = [
           "Sélectionnez les corps (dans le navigateur ou dans la vue, Ctrl pour plusieurs), puis cliquez « Apparence ».",
           "Cherchez dans « Bibliothèque » (recherche et « Catégorie ») et cliquez une vignette, ou glissez-la sur un corps de la vue.",
           "Pour une couleur unie, réglez « Couleur au choix », le type de surface, puis cliquez « Appliquer ».",
-          "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ». Pour copier l'apparence d'un corps (un verre transparent, une couleur…) sur d'autres, cliquez « Pipette : copier une apparence », cliquez ce corps dans la vue, puis chacun de ceux qui la prennent ; Échap arrête.",
+          "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ».",
         ],
         tip: "Des faces choisies dans la vue : cochez « Seulement la face choisie » pour ne peindre qu'elles ; en glissant, Alt ne peint que la face sous le curseur. « Retirer l'apparence » rend celle de la matière. Plus vite, sans cet outil : une face choisie dans la vue, « Couleur de la face » du panneau Sélection la colore seule (« D'origine » lui rend celle de son corps).",
       },
@@ -153,6 +152,7 @@ export const WORKSHOP: HelpFamily[] = [
         ],
         tip: "Chaque clic s'annule à part. Les chants sont les mêmes que ceux de « Matière et chants » : la liste de débit et le devis les lisent.",
       },
+      { keys: ["data-workshop:pipette"], name: "Pipette", what: "Copie l'apparence d'un corps sur d'autres, telle qu'on la voit : sa couleur, la transparence d'un verre ou d'un plexiglas, ses faces peintes.", steps: ["Cliquez « Pipette » (groupe Atelier).", "Cliquez dans la vue le corps dont vous prenez l'apparence.", "Cliquez chacun des corps qui la prennent ; « Reprendre une autre apparence » pour en changer.", "Fermez par la croix ✕ (ou Échap)."], tip: "Seule l'apparence passe : la matière des corps, leur débit et le devis ne changent pas. Chaque clic s'annule à part." },
       {
         keys: ["data-workshop:replace"], name: "Remplacer partout",
         what: "Remplace une matière, ou une épaisseur de chant, par une autre dans tout le projet.",

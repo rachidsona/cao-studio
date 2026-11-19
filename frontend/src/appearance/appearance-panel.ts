@@ -30,8 +30,6 @@ export interface AppearancePanelHost {
   importImage(name: string, image: string, tile: [number, number], bodyIds: string[]): void;
   removeImage(appearanceId: string): void;
   notify(message: string): void;
-  /** The pipette: on or not, the body whose look it has taken (its name), and turning it on or off. */
-  pipette(): { on: boolean; taken: string | null; toggle(): void };
   close(): void;
 }
 
@@ -163,13 +161,7 @@ export class AppearancePanel {
         .catch((error: Error) => this.host.notify(error.message));
     });
 
-    // The pipette: a click takes a body's look, the next ones give it to other bodies.
-    const pipette = this.host.pipette();
-    const dropper = el("button", { type: "button", class: `${BUTTON} w-full ${pipette.on ? "border-sky-500 bg-sky-50 dark:bg-sky-950" : ""}`, "aria-pressed": String(pipette.on), "data-appearance-pipette": "", title: "Prend l'apparence d'un corps (sa matière d'aspect, sa couleur, la transparence d'un verre, ses faces peintes) et la donne à d'autres d'un clic. Échap l'arrête." }, pipette.on ? "Pipette : arrêter" : "Pipette : copier une apparence");
-    dropper.addEventListener("click", () => pipette.toggle());
     const parts: (HTMLElement | null)[] = [
-      dropper,
-      pipette.on ? el("p", { class: "text-sky-700 dark:text-sky-300", "data-pipette-state": "" }, pipette.taken ? `Cliquez les corps qui prennent l'apparence de « ${pipette.taken} ».` : "Cliquez le corps dont vous prenez l'apparence.") : null,
       el("p", { class: targets.length ? "text-gray-700 dark:text-gray-200" : "text-gray-500" }, targets.length ? `Appliquer à : ${faces.only ? `${faces.count} face${faces.count > 1 ? "s" : ""} choisie${faces.count > 1 ? "s" : ""}` : `${targets.length} corps sélectionné${targets.length > 1 ? "s" : ""}`} (clic sur une vignette, ou glissez-la sur la sélection).` : "Sélectionnez des corps (dans le navigateur ou la vue, Ctrl pour plusieurs ; un groupe d'un clic sur son titre) puis cliquez une vignette, ou glissez-la sur la sélection ; sans sélection, glissez-la sur un corps de la vue."),
       faces.count ? this.facesChoice(faces) : null,
       used.length
