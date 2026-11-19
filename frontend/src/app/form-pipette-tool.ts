@@ -1,9 +1,10 @@
 /**
  * « Pipette de forme » (Atelier) : un clic sur un meuble, une porte, des tiroirs, un caisson ou une niche équipée prend
- * sa forme ; chaque clic suivant la donne à un autre élément de même sorte (document/form-copy.ts) — un meuble de
- * cuisine prend le modèle, les façades et l'intérieur d'un autre, sa largeur gardée ; un caisson ses cotes ; des façades
- * leur disposition et leur style ; une niche ses tiroirs, sa tringle ou son accessoire. « Reprendre » en prend une autre ;
- * Échap ou ✕ l'arrête. La matière et l'apparence ne changent pas. Chaque clic est une annulation.
+ * sa forme ; chaque clic suivant la donne telle quelle, cotes et apparence, à un autre élément de même sorte, qui garde
+ * sa place, son orientation, son nom et son identité (document/form-copy.ts) — un meuble de cuisine prend le modèle,
+ * les façades, l'intérieur et les cotes d'un autre ; un caisson ses cotes ; des façades leur disposition et leur style ;
+ * une niche ses tiroirs, sa tringle ou son accessoire. « Reprendre » en prend une autre ; Échap ou ✕ l'arrête. La
+ * matière ne change pas. Chaque clic est une annulation.
  */
 import { formOf, withFormCopied, type FormSource } from "../document/form-copy";
 import { el } from "../ui/dom";
@@ -35,7 +36,7 @@ class FormPipetteTool implements PointerHandler {
       panelHeader("Pipette de forme", () => this.close()),
       this.text,
       this.again,
-      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme à un autre de même sorte, à sa place. Échap pour finir."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Échap pour finir."),
     );
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
@@ -71,7 +72,7 @@ class FormPipetteTool implements PointerHandler {
       this.say();
       return true;
     }
-    const next = withFormCopied(this.editor.doc, this.from, form);
+    const next = withFormCopied(this.editor.doc, this.from, form, this.viewport.displayedBodies);
     if (typeof next === "string") this.editor.notify(next, "error");
     else {
       void this.editor.change(next);

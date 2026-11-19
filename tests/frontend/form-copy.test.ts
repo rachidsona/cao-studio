@@ -4,6 +4,8 @@ import { formOf, withFormCopied } from "../../frontend/src/document/form-copy";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { findFeature } from "../../frontend/src/document/operations";
+import { setBodyAppearance } from "../../frontend/src/appearance/assign";
+import { bodyInfo } from "../../frontend/src/document/materials";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type NicheFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -15,7 +17,7 @@ const ok = (doc: CadDocument | string): CadDocument => {
 };
 
 describe("pipette de forme", () => {
-  it("un meuble de cuisine prend le modèle et l'intérieur d'un autre, sa largeur gardée", () => {
+  it("un meuble de cuisine prend le modèle, l'intérieur et la largeur d'un autre", () => {
     const made = withKitchenPlan(empty(), { ...KITCHEN_PLAN, model: "L-left" });
     const drawers = { ...newItem([], "base-bas-3-tiroirs", 600), id: "u1" };
     const door = { ...newItem([drawers], "base-bas-1-porte", 450), id: "u2" };
@@ -28,7 +30,7 @@ describe("pipette de forme", () => {
     expect(from).toMatchObject({ kind: "unit", label: expect.stringContaining("60 cm") });
     const next = ok(withFormCopied(built.doc, from, to));
     const items = kitchenPlanIn(next, made.id)!.runs!.A!;
-    expect(items.find((i) => i.id === "u2")).toMatchObject({ model: "base-bas-3-tiroirs", width: 450 });
+    expect(items.find((i) => i.id === "u2")).toMatchObject({ model: "base-bas-3-tiroirs", width: 600 });
     expect(() => parseDocument(next)).not.toThrow();
     // A base unit's form is no wall unit's; the unit itself: another one is asked for.
     expect(withFormCopied(built.doc, from, bodies("u3"))).toMatch(/bas.*haut/);
@@ -52,7 +54,12 @@ describe("pipette de forme", () => {
     const c2 = formOf(doc, "c2#3")!;
     expect(c2).toEqual({ kind: "cabinet", id: "c2", label: "c2" });
     const sized = ok(withFormCopied(doc, c1, c2));
-    expect(findFeature(sized, "c2")).toMatchObject({ width: 800, shelves: 2, origin: [1000, 0, 0] });
+    expect(findFeature(sized, "c2")).toMatchObject({ id: "c2", name: "c2", width: 800, shelves: 2, origin: [1000, 0, 0] });
+    // Each board takes the look of the board of the same rank; one beyond the source's, that of its last.
+    const oak = setBodyAppearance(setBodyAppearance(doc, ["c1#0"], "wood-oak"), ["c1#1"], "ral-5014", "#123456");
+    const seen = ok(withFormCopied(oak, c1, c2, ["c1#0", "c1#1", "c2#0", "c2#1", "c2#2"]));
+    expect([0, 1, 2].map((n) => bodyInfo(seen, `c2#${n}`))).toMatchObject([{ appearance: "wood-oak" }, { appearance: "ral-5014", color: "#123456" }, { appearance: "ral-5014" }]);
+    expect(bodyInfo(seen, "c1#0").appearance).toBe("wood-oak");
     const fronted = ok(withFormCopied(doc, formOf(doc, "f1#0")!, formOf(doc, "f2#0")!));
     expect(findFeature(fronted, "f2")).toMatchObject({ cabinet: "c2", layout: "drawers", drawers: 4, style: "frame", frameWidth: 60 });
     // A cabinet is no fronts.

@@ -10,7 +10,7 @@ const runsOf = async (page: Page, api: string) =>
     return doc.features.find((f) => f.type === "sketch" && f.kitchenPlan)!.kitchenPlan!.runs;
   }, api);
 
-test("la forme d'un meuble de cuisine donnée d'un clic à d'autres, chacun gardant sa largeur", async ({ page }) => {
+test("la forme d'un meuble de cuisine donnée d'un clic à d'autres, telle quelle, largeur comprise", async ({ page }) => {
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -51,10 +51,11 @@ test("la forme d'un meuble de cuisine donnée d'un clic à d'autres, chacun gard
   await page.keyboard.press("Control+s");
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
   const after = (await runsOf(page, api)).A!;
-  // The widths stay; the base units are of the form taken, the appliances keep theirs (a sink, an oven).
-  expect(after.map((i) => i.width)).toEqual(before.map((i) => i.width));
-  expect(after.filter((i) => i.model.startsWith("app-")).map((i) => i.model)).toEqual(before.filter((i) => i.model.startsWith("app-")).map((i) => i.model));
-  expect(after.filter((i) => i.model.startsWith("base-")).map((i) => i.model)).toEqual(before.filter((i) => i.model.startsWith("base-")).map(() => "base-bas-3-tiroirs"));
+  // The base units are of the form taken, its width with it; the appliances keep theirs (a sink, an oven).
+  const width = Number(/« .+ (\d+(?:[.,]\d+)?) cm »/.exec(taken)![1]!.replace(",", ".")) * 10;
+  const app = (run: Run) => run.filter((i) => i.model.startsWith("app-"));
+  expect(app(after)).toEqual(app(before).map((i) => expect.objectContaining({ model: i.model, width: i.width })));
+  expect(after.filter((i) => i.model.startsWith("base-")).map((i) => [i.model, i.width])).toEqual(before.filter((i) => i.model.startsWith("base-")).map(() => ["base-bas-3-tiroirs", width]));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/pipette-forme.png` });
   expect(errors).toEqual([]);
 });

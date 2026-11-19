@@ -1,17 +1,19 @@
 /**
- * « Pipette de forme » : la forme d'un élément donnée à un autre de même sorte. Un meuble de cuisine prend le modèle,
- * les façades, l'intérieur et les cotes (hauteur, profondeur) d'un autre, sa largeur et sa place gardées, et la cuisine
- * est refaite ; un caisson prend les cotes et la construction d'un autre, sa place gardée ; des façades prennent la
- * disposition, la pose, le jeu et le style d'autres ; une niche prend les tiroirs, la tringle, l'accessoire ou le style
- * des portes d'une autre. Une porte ou des tiroirs donnent au moins leur style (cadre, verre, cannelures) à toute autre
- * porte ; un électroménager (évier, four) garde sa forme, seul le style de ses portes passe. La matière et l'apparence
- * ne changent pas (c'est la Pipette). Pur.
+ * « Pipette de forme » : la forme d'un élément donnée telle quelle à un autre de même sorte — ses cotes et son
+ * apparence — l'autre gardant sa place, son orientation, son nom et son identité. Un meuble de cuisine prend le
+ * modèle, les façades, l'intérieur et les cotes (largeur, hauteur, profondeur) d'un autre, et la cuisine est refaite ;
+ * un caisson prend les cotes et la construction d'un autre ; des façades prennent la disposition, la pose, le jeu et le
+ * style d'autres ; une niche prend les tiroirs, la tringle, l'accessoire ou le style des portes d'une autre. Chaque
+ * panneau prend l'apparence, telle qu'on la voit, du panneau de même rang. Une porte ou des tiroirs donnent au moins
+ * leur style (cadre, verre, cannelures) et leur apparence à toute autre porte ; un électroménager (évier, four) garde
+ * sa forme, seul le style de ses portes passe. La matière (débit, devis) ne change pas. Pur.
  */
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { planItemOf, type PlanItem } from "./kitchen-plan-add";
 import { findFeature, updateFeature } from "./operations";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type KitchenRunItem, type NicheFeature } from "./types";
 import { applianceOf, itemEntry } from "../features/kitchen-run-items";
+import { withLookCopied } from "../appearance/assign";
 
 /** What a clicked body is, as far as its form goes. */
 export type FormSource =
@@ -23,7 +25,7 @@ export type FormSource =
 const STYLE = ["style", "frameWidth", "frameDepth", "pitch", "grooves", "glass", "profile"] as const;
 const CABINET = ["width", "height", "depth", "thickness", "back", "backThickness", "shelves", "dividers", "plinth", "construction", "top"] as const;
 const FRONTS = ["layout", "side", "grip", "drawers", "topDrawer", "innerDrawers", "mount", "gap", "thickness", "hinges", "handles", ...STYLE] as const;
-const UNIT = ["model", "own", "height", "depth", "side", "grip", "facade", "layout", "drawers", "topDrawer", "innerDrawers", "shelves", "dividers"] as const;
+const UNIT = ["model", "own", "width", "height", "depth", "side", "grip", "facade", "layout", "drawers", "topDrawer", "innerDrawers", "shelves", "dividers"] as const;
 const NICHE: Partial<Record<NicheFeature["fill"], readonly string[]>> = {
   rod: ["diameter", "drop"],
   drawers: ["drawers", "gap", "bottomGap", "betweenGap", "sideGap", "inner", "mount", "thickness", "handles", ...STYLE],
@@ -71,8 +73,36 @@ function frontStyle(doc: CadDocument, source: FormSource): object | null {
 
 const feature = <T extends Feature>(doc: CadDocument, id: string) => findFeature(doc, id) as T;
 
-/** `to` given the form of `from`; or why not. */
-export function withFormCopied(doc: CadDocument, from: FormSource, to: FormSource): CadDocument | string {
+/** `to` given the form of `from`, and the look of its boards (`bodies`: those of the view); or why not. */
+export function withFormCopied(doc: CadDocument, from: FormSource, to: FormSource, bodies: readonly string[] = []): CadDocument | string {
+  const next = formCopied(doc, from, to);
+  return typeof next === "string" ? next : withLooksCopied(doc, next, from, to, bodies);
+}
+
+/** The features whose boards take a look: the one clicked; a unit's cabinet and fronts (its fronts only, for a style). */
+function parts(doc: CadDocument, source: FormSource, other: FormSource): string[] {
+  if (source.kind !== "unit") return [source.id];
+  const cabinet = cabinetOfUnit(doc, source);
+  const fronts = cabinet ? doc.features.find((f) => f.type === "fronts" && f.cabinet === cabinet)?.id : undefined;
+  if (other.kind === "unit") return [cabinet, fronts].filter((id): id is string => !!id);
+  return [other.kind === "cabinet" ? cabinet : fronts].filter((id): id is string => !!id);
+}
+
+/** Each board of `to` seen as the board of the same rank of `from` (as its last one, beyond). */
+function withLooksCopied(before: CadDocument, doc: CadDocument, from: FormSource, to: FormSource, bodies: readonly string[]): CadDocument {
+  const ranks = (feature: string) => bodies.filter((b) => featureOfBody(b) === feature).map((b) => Number(b.slice(b.lastIndexOf("#") + 1)));
+  const source = parts(before, from, to);
+  let next = doc;
+  parts(doc, to, from).forEach((id, k) => {
+    const of = source[k];
+    const mine = of ? ranks(of) : [];
+    if (!of || !mine.length) return;
+    for (const n of new Set([...mine, ...ranks(id)])) next = withLookCopied(next, `${of}#${mine.includes(n) ? n : Math.max(...mine)}`, [`${id}#${n}`]);
+  });
+  return next;
+}
+
+function formCopied(doc: CadDocument, from: FormSource, to: FormSource): CadDocument | string {
   if (from.kind === to.kind && (from.kind === "unit" ? to.kind === "unit" && from.at.plan === to.at.plan && from.at.run === to.at.run && from.at.item === to.at.item : from.id === (to as { id: string }).id)) return "C'est l'élément dont la forme est prise : cliquez-en un autre.";
   const style = frontStyle(doc, from);
   if (to.kind === "unit") {
