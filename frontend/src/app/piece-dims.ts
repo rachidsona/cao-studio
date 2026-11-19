@@ -4,7 +4,8 @@
  * les siennes, et les garde pendant qu'un outil travaille dessus ; sans sélection, toutes les pièces en vue. Seules
  * les cotes qu'on voit s'écrivent (une porte cache le caisson derrière) ; elles suivent la vue quand elle tourne et le
  * modèle quand il change. Éteint, plus rien ; l'état est gardé dans ce navigateur. Sans outil en cours, un clic sur
- * une cote la change (document/piece-size.ts).
+ * une cote la change (document/piece-size.ts) ; une cote de Répartition se change d'un clic même pendant qu'un outil y
+ * travaille (Étagères, Cloisons, Tiroirs…), avec la calculatrice (« 290 − 2 × 1,8 »), et l'outil suit.
  *
  * Une Répartition a ses cotes de plan, autour du meuble (plan-dims-view.ts) : celles-là remplacent les cotes de ses
  * pièces, et s'affichent d'elles-mêmes tant qu'on y travaille (Répartition, Étagères, Cloisons, Penderie, Tiroirs,
@@ -23,7 +24,7 @@ import type { Editor } from "./editor";
 import { documentPlans, joineryPlans } from "./dressing/partition-plan";
 import { withPieceSize } from "../document/piece-size";
 import { editDim, editValue } from "./dim-editor";
-import { PlanDimsView } from "./dressing/plan-dims-view";
+import { PlanDimsView, type DimEdit } from "./dressing/plan-dims-view";
 import { sketchShown } from "./zone-view";
 
 const KEY = "cao.piece-dims";
@@ -126,7 +127,9 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
       doc.features.some((f) => f.type === "niche" && (f.fill === "doors" || f.fill === "door") && f.sketch === sketch && [...seenBodies].some((id) => id.startsWith(`${f.id}#`)));
     const withDoors = <T extends PartitionPlan>(plans: T[], sketch: string | undefined): T[] => (doorsSeen(sketch) ? plans : plans.map((p) => ({ ...p, doors: [] })));
     if (current) {
-      if (shown()) for (const w of current) plansView.show(w.frame, w.preview ? w.plans : withDoors(w.plans, w.sketch?.id), editor.unit);
+      // A Répartition already made, worked on by a tool: its dimensions round it are changed by a click as without one
+      // (not those inside its niches, where the tool's clicks go).
+      if (shown()) for (const w of current) plansView.show(w.frame, w.preview ? w.plans : withDoors(w.plans, w.sketch?.id), editor.unit, [0, 0, 0], !w.preview && w.sketch ? edit(w.sketch.id) : undefined, false);
       return new Set(current.flatMap((w) => (w.sketch ? [w.sketch.id] : [])));
     }
     const done = new Set<string>();
@@ -144,11 +147,14 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
           expected.expandByPoint(corner).expandByPoint(corner.clone().addScaledVector(new THREE.Vector3(...frame.normal), plan.depth));
         }
       }
-      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected), (label, axis, span, value, whole) => editDim(editor, sketch.id, label, axis, span, value, whole));
+      plansView.show(frame, withDoors(plans, sketch.id), editor.unit, shiftOf(moved, expected), edit(sketch.id));
       done.add(sketch.id);
     }
     return done;
   };
+
+  /** A click on a dimension of this Répartition: the calculator, the niche or the whole of it made that size. */
+  const edit = (sketch: string): DimEdit => (label, axis, span, value, whole) => editDim(editor, sketch, label, axis, span, value, whole);
 
   const draw = () => {
     clear();

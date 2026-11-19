@@ -327,7 +327,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez « Cotes des pièces » : chaque pièce vue de face reçoit sa largeur et sa hauteur, une planche vue par la tranche sa longueur.",
           "Sélectionnez un caisson pour ne garder que ses cotes. Recliquez le bouton pour tout effacer.",
-          "Sans outil en cours, cliquez une cote : la calculatrice s'ouvre à côté ; tapez la nouvelle valeur ou un calcul (80 − 2 × 1,8, 1 m + 5 cm) et Entrée : le caisson ou la planche suit. Pour une pièce d'une Répartition, cliquez la cote de sa niche ou le total.",
+          "Sans outil en cours, cliquez une cote : la calculatrice s'ouvre à côté ; tapez la nouvelle valeur ou un calcul (80 − 2 × 1,8, 1 m + 5 cm) et Entrée : le caisson ou la planche suit. Pour une pièce d'une Répartition, cliquez la cote de sa niche ou le total — aussi pendant qu'Étagères, Cloisons, Tiroirs ou un autre outil y travaille : il reste ouvert et suit.",
         ],
         tip: "Seules les cotes visibles s'écrivent (une porte cache le caisson derrière). Une Répartition a ses cotes de plan, affichées d'elles-mêmes pendant que vous y travaillez.",
       },

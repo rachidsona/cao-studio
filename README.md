@@ -3042,7 +3042,9 @@ opération existante.
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état ; son bouton montre ou cache les cadres seuls, le nombre reste.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.
 - **Cotes cliquables** : sans outil en cours, un clic sur une cote de pièce ou sur un total de Répartition ouvre la
-  calculatrice à côté d'elle : une valeur ou un calcul, au clavier ou sur son pavé.
+  calculatrice à côté d'elle : une valeur ou un calcul (« 290 − 2 × 1,8 », « 1,2 m + 15 cm »), au clavier ou sur son
+  pavé. Les cotes d'une Répartition (total, cases, niches) se changent ainsi **même pendant qu'un outil y travaille**
+  (Étagères, Cloisons, Penderie, Tiroirs, Niche…) : l'outil reste ouvert et retrouve ses niches à leurs nouvelles cotes.
 - **Plan de dressing** (groupe « Dressing ») : un dressing commence par son **schéma vu de dessus**. On choisit un
   modèle — droit, en L à gauche ou à droite, en U, avec des angles droits ou à **pan coupé**, ou deux linéaires **face à
   face** —, ses cotes, et « Créer le plan » pose une esquisse au sol, zones séparées par leurs côtés. Chaque zone se clique

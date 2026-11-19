@@ -40,8 +40,11 @@ export class PlanDimsView {
     }
   }
 
-  /** `shift`: how far the bodies were moved from their sketch. */
-  show(frame: SketchFrame, plans: PartitionPlan[], unit: DisplayUnit, shift: Vec3 = [0, 0, 0], edit?: DimEdit): void {
+  /**
+   * `shift`: how far the bodies were moved from their sketch; `edit`: what a click on a value does; `inside`: the values
+   * written inside the niches are clicked too (not while a tool picks niches there: they would take its clicks).
+   */
+  show(frame: SketchFrame, plans: PartitionPlan[], unit: DisplayUnit, shift: Vec3 = [0, 0, 0], edit?: DimEdit, inside = true): void {
     const camera = this.viewport.camera;
     const rect = this.viewport.renderer.domElement.getBoundingClientRect();
     const toEye = camera.getWorldDirection(new THREE.Vector3()).negate();
@@ -93,7 +96,7 @@ export class PlanDimsView {
         value.className = "cad-plan-dim";
         value.dataset.level = dim.level;
         value.textContent = shortValue(toDisplay(dim.length, unit), digits);
-        if (edit && (dim.level === "chain" || dim.level === "inner" || dim.level === "total")) {
+        if (edit && (dim.level === "chain" || (inside && dim.level === "inner") || dim.level === "total")) {
           const across = Math.abs(dim.to[0] - dim.from[0]) > Math.abs(dim.to[1] - dim.from[1]);
           const axis = across ? "x" : "y";
           const span: [number, number] = across ? [dim.from[0], dim.to[0]] : [dim.from[1], dim.to[1]];

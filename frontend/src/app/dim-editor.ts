@@ -27,7 +27,8 @@ export function editValue(editor: Editor, label: HTMLElement, value: number, app
     onSubmit: (mm) => {
       const made = apply(mm);
       if (typeof made === "string") return made;
-      void editor.change(made);
+      // A tool open on the Répartition (Étagères, Cloisons…) finds its niches again.
+      void editor.change(made).then(() => editor.sketches.sync());
       return true;
     },
   });
