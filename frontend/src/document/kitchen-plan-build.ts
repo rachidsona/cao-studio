@@ -9,7 +9,7 @@
 import { cabinetAxes } from "./kitchen-catalog";
 import { cornerSide, kickOf, wallCornerSide } from "./kitchen-corners";
 import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
-import type { KitchenFloorPlan, Vec3 } from "./types";
+import type { KitchenFloorPlan, KitchenRunItem, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } from "../features/kitchen-run-items";
@@ -92,7 +92,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         continue;
       }
       const name = `${entry.name}${entry.custom ? "" : ` ${w}`} (${run.id}${++n})`;
-      const look = { item: pl.item.id, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}), layout: entry.layout, ...(pl.item.side ?? entry.side ? { side: pl.item.side ?? entry.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(pl.item.facade ?? entry.facade ? { facade: pl.item.facade ?? entry.facade } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
+      const look = { item: pl.item.id, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}), layout: entry.layout, ...(pl.item.side ?? entry.side ? { side: pl.item.side ?? entry.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(pl.item.handles === false ? { handles: false as const } : {}), ...(pl.item.facade ?? entry.facade ? { facade: pl.item.facade ?? entry.facade } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
       const plinth = entry.plinth ?? s.plinth;
       if (pl.row === "wall") {
         const { height, z, depth } = itemSize(p, pl.item, entry);
@@ -117,7 +117,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         if (role === "oven-column") {
           put("Four (colonne)", "oven-pyro", band(at + (w - 595) / 2, at + (w + 595) / 2, D - 548, D, 900, 900 + OVEN));
           box("Porte basse colonne four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, plinth, 897));
-          box("Porte haute colonne four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, 903 + OVEN, s.wallTop - 1.5));
+          box("Porte haute colonne four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, 903 + OVEN, s.wallTop - 1.5), { door: doorOn(run, pl.item.side) });
         }
         continue;
       }
@@ -183,6 +183,14 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
   if (base.some((pl) => role(pl) === "dishwasher")) checks.dishwasherBySink = !Object.values(out.fills).some((f) => f.problems.includes("Le lave-vaisselle n'est pas à côté de l'évier."));
   out.ergonomics = ergonomics(places, checks);
   return out;
+}
+
+/** How a door made as a board of this run opens: towards its hinge side (left, right; top: lift-up; bottom: a flap), out to the front. */
+function doorOn(run: KitchenRun, side: KitchenRunItem["side"] = "left"): { hinge: Vec3; out: Vec3 } {
+  const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];
+  const along: Vec3 = [e[0] - o[0], e[1] - o[1], 0];
+  const hinge: Vec3 = side === "top" ? [0, 0, 1] : side === "bottom" ? [0, 0, -1] : side === "right" ? along : [-along[0] || 0, -along[1] || 0, 0];
+  return { hinge, out: [run.zone.run.normal[0], run.zone.run.normal[1], 0] };
 }
 
 /** A stretch less the room left open in it. */

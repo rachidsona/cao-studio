@@ -78,15 +78,29 @@ function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0],
 }
 
 /**
- * A door made as a plain board (a corner unit's, ExtrudeFeature.door), from where it stands (`box`, world): about the
- * vertical of its hinge edge, on its front face.
+ * A door made as a plain board (a corner unit's, the top door of an oven column: ExtrudeFeature.door), from where it
+ * stands (`box`, world): about the vertical of its hinge edge, on its front face, or the horizontal of its top or bottom.
  */
 function boardSwing(door: { hinge: Vec3; out: Vec3 }, [low, high]: Box): Swing | null {
   const axisOf = (v: Vec3) => [0, 1].find((i) => Math.abs(v[i]!) > 0.5);
+  const at = (i: number, v: number) => (v > 0 ? high[i]! : low[i]!);
+  // Hinged along its top (lift-up) or its bottom (a flap): about the horizontal line of that edge, on its front face.
+  if (Math.abs(door.hinge[2]) > 0.5) {
+    const o = axisOf(door.out);
+    if (o === undefined) return null;
+    const across = (o === 0 ? 1 : 0) as Axis;
+    const top = door.hinge[2] > 0;
+    const edge = (z: number): Vec3 => {
+      const p: Vec3 = [0, 0, z];
+      p[across] = (low[across]! + high[across]!) / 2;
+      p[o] = at(o, door.out[o]!);
+      return p;
+    };
+    return outwards(across, edge(top ? high[2] : low[2]), edge(top ? low[2] : high[2]), door.out, top ? DOOR_ANGLE : FLAP_ANGLE);
+  }
   const [h, o] = [axisOf(door.hinge), axisOf(door.out)];
   if (h === undefined || o === undefined || h === o) return null;
   const z = (low[2] + high[2]) / 2;
-  const at = (i: number, v: number) => (v > 0 ? high[i]! : low[i]!);
   const point = (hinge: boolean): Vec3 => {
     const p: Vec3 = [0, 0, z];
     p[h] = at(h, hinge ? door.hinge[h]! : -door.hinge[h]!);

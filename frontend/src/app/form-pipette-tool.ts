@@ -3,10 +3,13 @@
  * sa forme ; chaque clic suivant la donne telle quelle, cotes et apparence, à un autre élément de même sorte, qui garde
  * sa place, son orientation, son nom et son identité (document/form-copy.ts) — un meuble de cuisine prend le modèle,
  * les façades, l'intérieur et les cotes d'un autre ; un caisson ses cotes ; des façades leur disposition et leur style ;
- * une niche ses tiroirs, sa tringle ou son accessoire. « Reprendre » en prend une autre ; Échap ou ✕ l'arrête. La
- * matière ne change pas. Chaque clic est une annulation.
+ * une niche ses tiroirs, sa tringle ou son accessoire ; une porte de tout genre son style, son ouverture et sa poignée ;
+ * un corps ses cotes, sa matière et son apparence ; une étagère ou une cloison la division de sa niche, à la niche
+ * cliquée. « Reprendre » en prend une autre ; Échap ou ✕ l'arrête. Chaque clic est une annulation.
  */
 import { formOf, withFormCopied, type FormSource } from "../document/form-copy";
+import type { Vec3 } from "../document/types";
+import { nicheUnderPointer } from "./dressing/niche-pick";
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
 import { panelHeader } from "../ui/panel-close";
@@ -36,7 +39,7 @@ class FormPipetteTool implements PointerHandler {
       panelHeader("Pipette de forme", () => this.close()),
       this.text,
       this.again,
-      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Une porte donne aussi son ouverture (de côté, relevante), sa poignée, son jeu et sa ferrure. Échap pour finir."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Une porte donne aussi son ouverture (de côté, relevante), sa poignée, son jeu et sa ferrure, à toute autre porte. Un corps donne ses cotes, sa matière et son apparence ; une étagère ou une cloison la division de sa niche à la niche cliquée. Échap pour finir."),
     );
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
@@ -45,7 +48,9 @@ class FormPipetteTool implements PointerHandler {
   }
 
   private say(): void {
-    this.text.textContent = this.from ? `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».` : "Cliquez le meuble, la porte, les tiroirs ou le caisson dont vous prenez la forme.";
+    this.text.textContent = this.from
+      ? this.from.kind === "division" ? `Cliquez les niches (ou l'une de leurs étagères) qui prennent la division de « ${this.from.label} ».` : `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».`
+      : "Cliquez le meuble, la porte, les tiroirs, le caisson, l'étagère ou le corps dont vous prenez la forme.";
     this.again.disabled = !this.from;
   }
 
@@ -58,11 +63,20 @@ class FormPipetteTool implements PointerHandler {
     this.viewport.setHoverHighlight(body && formOf(this.editor.doc, body) ? { bodies: [body] } : null);
   }
 
+  /** The box of a body in the view (world, mm). */
+  private readonly boxOf = (id: string): [Vec3, Vec3] | null => {
+    const b = this.viewport.bodyMesh(id)?.metrics.bbox;
+    return b ? [[...b[0]] as Vec3, [...b[1]] as Vec3] : null;
+  };
+
   up(event: PointerEvent, isClick: boolean): boolean {
     if (!isClick) return false;
     const body = this.viewport.pickFace(event)?.bodyId;
-    if (!body) return true;
-    const form = formOf(this.editor.doc, body);
+    // A division goes to the niche clicked: through its back, or its emptiness.
+    const niche = this.from?.kind === "division" ? nicheUnderPointer(this.viewport, this.editor.doc, event) : null;
+    const picked = body ? formOf(this.editor.doc, body) : null;
+    const form: FormSource | null = niche && picked?.kind !== "division" ? { kind: "place", place: { sketch: niche.sketch, partition: niche.partition, path: niche.path }, label: "la niche" } : picked;
+    if (!body && !form) return true;
     if (!form) {
       this.editor.notify("Cet élément n'a pas de forme à copier : cliquez un meuble, un caisson, une porte, des tiroirs ou une niche équipée.", "error");
       return true;
@@ -72,11 +86,12 @@ class FormPipetteTool implements PointerHandler {
       this.say();
       return true;
     }
-    const next = withFormCopied(this.editor.doc, this.from, form, this.viewport.displayedBodies);
+    const notes: string[] = [];
+    const next = withFormCopied(this.editor.doc, this.from, form, this.viewport.displayedBodies, this.boxOf, notes);
     if (typeof next === "string") this.editor.notify(next, "error");
     else {
       void this.editor.change(next);
-      this.editor.notify(`« ${form.label} » prend la forme de « ${this.from.label} ».`, "success");
+      this.editor.notify(`« ${form.label} » prend la forme de « ${this.from.label} ».${notes.length ? ` Sauf : ${notes.join(" ")}` : ""}`, notes.length ? "info" : "success");
     }
     return true;
   }

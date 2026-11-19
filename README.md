@@ -2102,7 +2102,12 @@ opération existante.
     disposition, leur pose et leur style ; une niche la hauteur et la largeur de sa case (étagères et cloisons
     suivent, la case source gardée, les autres se partageant le reste), ses tiroirs, sa tringle, son accessoire ou
     sa porte telle quelle — son ouverture (de côté, relevante, abattante), sa poignée ou son absence, son jeu, sa
-    ferrure et son style : la porte cliquée devient une copie de l'autre ;
+    ferrure et son style : la porte cliquée devient une copie de l'autre ; et **d'une porte de tout genre à une
+    autre** — de niche, d'une façade de caisson, d'un meuble de cuisine —, le style, le sens d'ouverture et la poignée
+    (la porte haute d'une colonne four s'ouvre alors comme la source, relevante comprise) ; **un corps quelconque**
+    (planche, côté, panneau) donne ses trois cotes, sa matière et son apparence à un autre (une pièce de Répartition
+    garde les cotes de sa niche) ; **une étagère ou une cloison** donne la division de sa niche (nombre, épaisseur,
+    hauteurs, et ce qui la divise encore) à la niche cliquée, ou à celle d'une autre étagère ;
     chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
     des tiroirs. Un meuble bas ne donne pas sa forme à un meuble haut. La matière ne change pas (`document/form-copy.ts`).

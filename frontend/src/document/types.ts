@@ -120,6 +120,8 @@ export interface KitchenRunItem {
   side?: FrontsFeature["side"];
   /** Its fronts without handles, on gorge profiles. */
   grip?: FrontsFeature["grip"];
+  /** Its fronts without handles (the shape pipette gave it a door with none). */
+  handles?: false;
   /** The style of its fronts, chosen in the Façades tool (missing: plain). */
   facade?: FrontStyle;
   /**

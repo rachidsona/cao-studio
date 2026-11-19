@@ -84,6 +84,8 @@ export interface KitchenUnit {
   side?: "left" | "right" | "top" | "bottom";
   /** Its fronts without handles, on gorge profiles. */
   grip?: "gorge";
+  /** Its fronts without handles at all. */
+  handles?: false;
   /** The style of its fronts (missing: plain). */
   facade?: FrontStyle;
   /** Two rails instead of a top: the sink goes through. */

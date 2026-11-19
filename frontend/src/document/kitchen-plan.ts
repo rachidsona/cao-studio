@@ -77,7 +77,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     if (u.layout === "none") continue;
     const fronts: FrontsFeature = {
       id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3, ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}),
-      mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: true,
+      mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false,
     };
     push(fronts);
     frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material }));
