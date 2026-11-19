@@ -18,7 +18,7 @@ import { extrusionOption } from "./extrusion-option";
 import { doorStyleRows } from "./partition-door-style";
 import { FacePanel } from "./partition-face-panel";
 import { extrusionGroups, isPartition, isShelves, partitionRecord, rebuildChain, stepName } from "./partition-history";
-import { casesText, defaultDividers, KIND_NAMES, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type Pass } from "./partition";
+import { casesText, defaultDividers, KIND_NAMES, MAX_CASES, partitionElements, partitionGeometry, partitionLayout, type DividerKind, type PartitionInput, type PartitionLayout, type OuterPass } from "./partition";
 import { extractLoops, sketchFaces } from "./loops";
 import { removeEntities } from "./edit";
 import { regionAt } from "./region-pick";
@@ -270,8 +270,8 @@ export class SketchPartitionTool {
       select(
         label,
         this.input[key],
-        [["board", "Le dessus passe"], ["side", "Le côté passe"], ...(key === "outer" ? ([["miter", "D'onglet (45°)"]] as [string, string][]) : [])],
-        (v) => this.set({ [key]: v as Pass }),
+        [["board", "Le dessus passe"], ["side", "Le côté passe"], ["miter", "D'onglet (45°)"]],
+        (v) => this.set({ [key]: v as OuterPass }),
       );
     const heading = (text: string) => el("h3", { class: "panel-title pt-1" }, text);
     const info = (text: string) => el("p", { class: "text-gray-600 dark:text-gray-300" }, text);
@@ -354,8 +354,8 @@ export class SketchPartitionTool {
       this.input.boards && this.input.outer === "miter"
         ? info(this.input.plinth > 0 ? "D'onglet en haut : le dessus et le côté se rejoignent sur la diagonale à 45°. Avec le socle, le côté descend jusqu'au sol et le dessous s'appuie contre lui." : "D'onglet : le dessus et le dessous rejoignent chaque côté extérieur sur la diagonale à 45° de l'angle.")
         : null,
-      this.input.boards ? pass("Côtés simples", "single") : null,
-      this.input.boards ? pass("Côtés doubles", "double") : null,
+      this.input.boards ? pass("Côtés simples", "single") : null, this.input.boards && this.input.single === "miter" ? info("D'onglet en T : le côté finit en pointe à 45°, les deux morceaux du dessus (et du dessous sans socle) se rejoignent au milieu de son épaisseur.") : null,
+      this.input.boards ? pass("Côtés doubles", "double") : null, this.input.boards && this.input.double === "miter" ? info("D'onglet : chacun des deux panneaux rejoint son morceau de dessus (et de dessous sans socle) à 45°, comme l'angle d'un caisson.") : null,
       heading("Extrusion"),
       check("Extruder les panneaux", extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw(), this.live())),
       extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw(), this.live())) : null,

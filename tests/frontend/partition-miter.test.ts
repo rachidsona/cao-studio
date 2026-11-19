@@ -60,4 +60,48 @@ describe("assemblage d'onglet aux angles extérieurs", () => {
     const panels = regions.reduce((s, r) => s + area(r!.outer), 0);
     expect(panels + niches).toBeCloseTo(2000 * 500, 4);
   });
+
+  it("un côté simple d'onglet : en T, sa pointe à 45° entre les deux morceaux du dessus, qui se rejoignent au milieu de son épaisseur", () => {
+    const i = input({ outer: "board", single: "miter", dividers: ["single", "single"] });
+    const l = layoutOf(i);
+    // Each simple divider [x0, x1], at the top (500 / 450) and at the bottom (0 / 50, no plinth).
+    expect(l.tees).toHaveLength(4);
+    expect(l.miters).toEqual([]);
+    const faces = sketchFaces(extractLoops(partitionGeometry(i, l)));
+    const elements = partitionElements(l);
+    const sides = elements.filter((e) => e.name === "Côté").map((e) => regionAt(faces, e.probe)!);
+    const [x0, x1] = l.tees[0]!;
+    const mid = (x0 + x1) / 2;
+    const divider = sides.find((r) => r.outer.some(([x]) => x === x0))!;
+    // Its point at 45°: half its thickness above the top's underside, in its middle; it no longer reaches the top.
+    expect(divider.outer.some(([x, y]) => x === mid && y === 475)).toBe(true);
+    expect(divider.outer.some(([, y]) => y === 500)).toBe(false);
+    // The two pieces of the top meet above it, in the middle of its thickness.
+    const tops = elements.filter((e) => e.name.startsWith("Dessus")).map((e) => regionAt(faces, e.probe)!);
+    expect(tops.filter((r) => r.outer.some(([x, y]) => x === mid && y === 500))).toHaveLength(2);
+    // A divider of 50 × 500 gives the boards the 50 × 50 at each end, but for its point (50 × 25 / 2); all stays covered.
+    expect(area(divider.outer)).toBeCloseTo(50 * 500 - 2 * (2500 - 625), 6);
+    const regions = elements.map((e) => regionAt(faces, e.probe));
+    expect(new Set(regions).size).toBe(regions.length);
+    const niches = l.caseSpans.reduce((sum, [a, b]) => sum + (b - a) * (l.inner[1] - l.inner[0]), 0);
+    expect(regions.reduce((sum, r) => sum + area(r!.outer), 0) + niches).toBeCloseTo(2000 * 500, 4);
+  });
+
+  it("un côté double d'onglet : chacun de ses deux panneaux rejoint son morceau de dessus à 45°, comme un angle de caisson", () => {
+    const i = input({ outer: "board", double: "miter", cases: 2, dividers: ["double"], plinth: 40 });
+    const l = layoutOf(i);
+    // With a plinth: at the top only, one corner for each panel, on the face they share.
+    const shared = l.miters[0]![0][0];
+    expect(l.miters).toEqual([
+      [[shared, 500], [shared - 50, 450]],
+      [[shared, 500], [shared + 50, 450]],
+    ]);
+    const faces = sketchFaces(extractLoops(partitionGeometry(i, l)));
+    const regions = partitionElements(l).map((e) => regionAt(faces, e.probe));
+    expect(regions.every((r) => r !== null)).toBe(true);
+    expect(new Set(regions).size).toBe(regions.length);
+    const niches = l.caseSpans.reduce((sum, [a, b]) => sum + (b - a) * (l.inner[1] - l.inner[0]), 0);
+    // The plinth under the bottom is left open: only the double divider's two panels go down to the floor.
+    expect(regions.reduce((sum, r) => sum + area(r!.outer), 0) + niches).toBeCloseTo(2000 * 500 - (2000 - 2 * 50) * 40, 4);
+  });
 });

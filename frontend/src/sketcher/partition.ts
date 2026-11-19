@@ -14,7 +14,9 @@
  * pieces). That is chosen for the outer sides, the simple dividers and the double ones: by default the doubles run
  * through and cut the top and the bottom. The outer sides can also be joined « d'onglet » (mitred): the side and the
  * board meet along the 45° diagonal of the corner, at the top, and at the bottom when there is no plinth (with one,
- * the side goes down to the floor and the bottom stops against it). The result is a sketch whose every panel and every case is a closed area,
+ * the side goes down to the floor and the bottom stops against it). The dividers can be mitred too: each panel of a
+ * double one meets its own piece of board as an outer side does; a simple one, in a T, ends in a 45° point between the
+ * two pieces of board, which meet above it in the middle of its thickness. The result is a sketch whose every panel and every case is a closed area,
  * ready to extrude. Pure: lengths in mm, the sketch in its own coordinates (x along the length, y along the height).
  */
 import type { DividerKind, OuterPass, PartitionParams, Pass, SketchGeometry } from "../document/sketch";
@@ -40,6 +42,8 @@ export interface PartitionLayout {
   inner: [number, number];
   /** Mitred corners: the diagonal from the outer corner to the inner one, where the side and the board meet. */
   miters: [[number, number], [number, number]][];
+  /** Mitred T joints of simple dividers: the divider [x0, x1], the outer face of the board (y) and its inner one. */
+  tees: [number, number, number, number][];
 }
 
 export const MAX_CASES = 12;
@@ -76,8 +80,10 @@ export function partitionLayout(input: PartitionInput): PartitionLayout | string
 
   // The side panels, left to right, with what they are: they go the full height, or between the boards.
   // A mitred side is laid out as one that runs through; the corners are then cut along their diagonal.
-  const outer: Pass = input.outer === "miter" ? "side" : input.outer;
-  const sides: { x0: number; x1: number; pass: Pass }[] = [{ x0: 0, x1: e, pass: outer }];
+  const passOf = (p: OuterPass): Pass => (p === "miter" ? "side" : p);
+  const outer = passOf(input.outer);
+  /** `cut`: how it is mitred — a T (a simple divider), or as the left or the right panel of a double one. */
+  const sides: { x0: number; x1: number; pass: Pass; cut?: "tee" | "left" | "right" }[] = [{ x0: 0, x1: e, pass: outer }];
   const caseSpans: [number, number][] = [];
   let x = e;
   // After a divider left out, the next case goes on the niche before it.
@@ -97,8 +103,10 @@ export function partitionLayout(input: PartitionInput): PartitionLayout | string
       joined = true;
       continue;
     }
+    const choice = kind === "double" ? input.double : input.single;
     for (let k = 0; k < (kind === "double" ? 2 : 1); k++) {
-      sides.push({ x0: round(x), x1: round(x + e), pass: kind === "double" ? input.double : input.single });
+      const cut = choice !== "miter" ? undefined : kind === "double" ? (k === 0 ? "left" : "right") : "tee";
+      sides.push({ x0: round(x), x1: round(x + e), pass: passOf(choice), ...(cut ? { cut } : {}) });
       x += e;
     }
   }
@@ -128,13 +136,25 @@ export function partitionLayout(input: PartitionInput): PartitionLayout | string
     }
   }
   const miters: PartitionLayout["miters"] = [];
+  const tees: PartitionLayout["tees"] = [];
+  const corner = (outside: number, inside: number) => {
+    miters.push([[outside, height], [inside, top]]);
+    if (plinth === 0) miters.push([[outside, 0], [inside, base]]);
+  };
   if (boards && input.outer === "miter") {
-    for (const [corner, inside] of [[0, e], [length, round(length - e)]] as const) {
-      miters.push([[corner, height], [inside, top]]);
-      if (plinth === 0) miters.push([[corner, 0], [inside, base]]);
+    corner(0, e);
+    corner(length, round(length - e));
+  }
+  // A double divider's panels end their own pieces of board as outer sides do: the face they share is the corner.
+  for (const s of boards && !input.openTop ? sides : []) {
+    if (s.cut === "left") corner(s.x1, s.x0);
+    if (s.cut === "right") corner(s.x0, s.x1);
+    if (s.cut === "tee") {
+      tees.push([s.x0, s.x1, height, top]);
+      if (plinth === 0) tees.push([s.x0, s.x1, 0, round(base)]);
     }
   }
-  return { caseWidth: round(caseWidths[0] as number), caseWidths: caseWidths.map(round), panels, kinds, caseSpans, inner: [round(base), round(top)], miters };
+  return { caseWidth: round(caseWidths[0] as number), caseWidths: caseWidths.map(round), panels, kinds, caseSpans, inner: [round(base), round(top)], miters, tees };
 }
 
 /** The share of each case: the proportions given (one per case, positive), else all equal; or why they are wrong. */
@@ -184,10 +204,26 @@ export function partitionGeometry(input: PartitionInput, layout: PartitionLayout
     for (let i = 1; i < cutY.length; i++) for (const x of [x0, x1]) add(x, cutY[i - 1]!, x, cutY[i]!);
   }
   // A mitred corner: the line between the side and the board's end gives way to the diagonal.
+  const upright = (x: number, low: number, high: number) => {
+    for (const [key, [x0, y0, x1, y1]] of [...segments]) if (x0 === x && x1 === x && y0 >= low - 1e-9 && y1 <= high + 1e-9) segments.delete(key);
+  };
   for (const [[cx, cy], [ix, iy]] of layout.miters) {
-    const [low, high] = [Math.min(cy, iy), Math.max(cy, iy)];
-    for (const [key, [x0, y0, x1, y1]] of [...segments]) if (x0 === ix && x1 === ix && y0 >= low - 1e-9 && y1 <= high + 1e-9) segments.delete(key);
+    upright(ix, Math.min(cy, iy), Math.max(cy, iy));
     add(cx, cy, ix, iy);
+  }
+  // A mitred T: the divider's end in a 45° point, the two pieces of board meeting above it in its middle.
+  for (const [x0, x1, face, board] of layout.tees) {
+    const [low, high] = [Math.min(face, board), Math.max(face, board)];
+    const mid = round((x0 + x1) / 2);
+    const peak = round(board + (face > board ? 1 : -1) * (x1 - x0) / 2);
+    upright(x0, low, high);
+    upright(x1, low, high);
+    for (const [key, [a, y0, b, y1]] of [...segments]) if (y0 === face && y1 === face && a >= x0 - 1e-9 && b <= x1 + 1e-9) segments.delete(key);
+    add(x0, face, mid, face);
+    add(mid, face, x1, face);
+    add(mid, face, mid, peak);
+    add(x0, board, mid, peak);
+    add(mid, peak, x1, board);
   }
   const points: SketchGeometry["points"] = [];
   const ids = new Map<string, string>();

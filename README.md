@@ -1047,7 +1047,10 @@ opération existante.
     cases = 2 modules, 5 cases = 3 modules (2 + 1 + 2 portes). Les **côtés extérieurs** peuvent aussi être assemblés
     **« D'onglet (45°) »** : le dessus et le côté se rejoignent sur la diagonale de l'angle, coupés tous deux à 45°, et
     de même pour le dessous quand il n'y a pas de socle (avec un socle, le côté descend jusqu'au sol et le dessous
-    s'appuie contre lui). Les panneaux d'onglet sont montrés avec leur coupe dans l'aperçu en volume.
+    s'appuie contre lui). Les **côtés simples et doubles** le peuvent aussi : un côté double d'onglet, ses deux
+    panneaux rejoignent chacun son morceau de dessus (et de dessous sans socle) à 45°, comme l'angle d'un caisson ; un
+    côté simple d'onglet, en T, finit en pointe à 45° et les deux morceaux du dessus se rejoignent au-dessus de lui,
+    au milieu de son épaisseur. Les panneaux d'onglet sont montrés avec leur coupe dans l'aperçu en volume.
   - **Extrusion** (option « Extruder les panneaux », avec sa **profondeur**, 50 cm au départ) : en même temps que la
     répartition, **chaque élément est extrudé en un corps à part** (les panneaux se touchent : une seule extrusion les
     souderait), **nommé** d'après ce qu'il est : **Dessous** et **Dessus** (« Dessous 1 », « Dessous 2 »… quand les

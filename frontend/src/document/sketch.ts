@@ -126,7 +126,10 @@ export function isDimension(c: SketchConstraint): c is DimensionConstraint {
 export type DividerKind = "single" | "double" | "none";
 /** Which runs through at a junction: the top and bottom board (across), or the side (over the full height). */
 export type Pass = "board" | "side";
-/** The outer sides can also meet the top and the bottom « d'onglet »: both cut at 45° along the corner's diagonal. */
+/**
+ * The sides can also meet the top and the bottom « d'onglet »: both cut at 45° — an outer side, and each panel of a
+ * double one, along its corner's diagonal; a simple one, in a T, its end in a point between the two pieces of board.
+ */
 export type OuterPass = Pass | "miter";
 /** How the niches share the height: all equal, the bottom one fixed, the top one fixed, or each as set (`heights`). */
 export type ShelfMode = "equal" | "bottom" | "top" | "set";
@@ -156,8 +159,8 @@ export interface PartitionParams {
   plinth: number;
   /** Which runs through where the outer sides, the simple dividers and the double ones meet the boards. */
   outer: OuterPass;
-  single: Pass;
-  double: Pass;
+  single: OuterPass;
+  double: OuterPass;
   /**
    * Laid in the opening of a body (« Aménager ce corps ») : its outer sides, top and bottom are the body's walls — laid
    * out (the niches inside them), not made.
