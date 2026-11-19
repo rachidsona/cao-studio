@@ -33,13 +33,14 @@ describe("pipette de forme sur des niches", () => {
     const first = box(doc, "1.1");
     doc = ok(withNicheSize(doc, sketch, "y", [first.y0, first.y1], 400));
     const door = (id: string, path: number[]): NicheFeature => ({ id, type: "niche", name: id, sketch, partition, niche: path, fill: "door", diameter: 25, drop: 60, drawers: 1, gap: 3, thickness: 18, handles: true });
-    doc = { ...doc, features: [...doc.features, { ...door("pa", [1, 1]), style: "glass", frameWidth: 20 }, door("pb", [1, 2])] };
+    // The glazed one opens upwards (lift-up), with no handle; the other on a side, with one.
+    doc = { ...doc, features: [...doc.features, { ...door("pa", [1, 1]), style: "glass", frameWidth: 20, hinges: ["top"], handles: false }, { ...door("pb", [1, 2]), hinges: ["left"] }] };
     const height = (d: CadDocument, key: string) => box(d, key).y1 - box(d, key).y0;
     expect(height(doc, "1.2")).not.toBeCloseTo(400, 0);
 
     const next = ok(withFormCopied(doc, formOf(doc, "pa#0")!, formOf(doc, "pb#0")!));
     expect(height(next, "1.2")).toBeCloseTo(400, 3);
     expect(height(next, "1.1")).toBeCloseTo(400, 3);
-    expect(next.features.find((f) => f.id === "pb")).toMatchObject({ name: "pb", niche: [1, 2], style: "glass", frameWidth: 20 });
+    expect(next.features.find((f) => f.id === "pb")).toMatchObject({ name: "pb", niche: [1, 2], style: "glass", frameWidth: 20, hinges: ["top"], handles: false });
   });
 });

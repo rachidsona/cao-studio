@@ -2100,7 +2100,9 @@ opération existante.
     son nom et son identité — un meuble de cuisine prend le modèle, les façades, l'intérieur, la largeur, la hauteur
     et la profondeur de l'autre, et la cuisine est refaite ; un caisson ses cotes et sa construction ; des façades leur
     disposition, leur pose et leur style ; une niche la hauteur et la largeur de sa case (étagères et cloisons
-    suivent, la case source gardée, les autres se partageant le reste), ses tiroirs, sa tringle ou son accessoire ;
+    suivent, la case source gardée, les autres se partageant le reste), ses tiroirs, sa tringle, son accessoire ou
+    sa porte telle quelle — son ouverture (de côté, relevante, abattante), sa poignée ou son absence, son jeu, sa
+    ferrure et son style : la porte cliquée devient une copie de l'autre ;
     chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
     des tiroirs. Un meuble bas ne donne pas sa forme à un meuble haut. La matière ne change pas (`document/form-copy.ts`).

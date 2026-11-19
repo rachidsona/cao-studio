@@ -3,8 +3,8 @@
  * apparence — l'autre gardant sa place, son orientation, son nom et son identité. Un meuble de cuisine prend le
  * modèle, les façades, l'intérieur et les cotes (largeur, hauteur, profondeur) d'un autre, et la cuisine est refaite ;
  * un caisson prend les cotes et la construction d'un autre ; des façades prennent la disposition, la pose, le jeu et le
- * style d'autres ; une niche prend la hauteur et la largeur de case, les tiroirs, la tringle, l'accessoire ou le style
- * des portes d'une autre, les étagères et cloisons autour suivant (comme l'outil « Niche »). Chaque
+ * style d'autres ; une niche prend la hauteur et la largeur de case, les tiroirs, la tringle, l'accessoire ou les
+ * portes d'une autre (leur ouverture — de côté, relevante, abattante —, leur poignée, leur jeu, leur ferrure, leur style), les étagères et cloisons autour suivant (comme l'outil « Niche »). Chaque
  * panneau prend l'apparence, telle qu'on la voit, du panneau de même rang. Une porte ou des tiroirs donnent au moins
  * leur style (cadre, verre, cannelures) et leur apparence à toute autre porte ; un électroménager (évier, four) garde
  * sa forme, seul le style de ses portes passe. La matière (débit, devis) ne change pas. Pur.
@@ -34,8 +34,9 @@ const NICHE: Partial<Record<NicheFeature["fill"], readonly string[]>> = {
   rod: ["diameter", "drop"],
   drawers: ["drawers", "gap", "bottomGap", "betweenGap", "sideGap", "inner", "mount", "thickness", "handles", ...STYLE],
   accessory: ["accessory"],
-  doors: ["mount", "thickness", "handles", ...STYLE],
-  door: ["mount", "cover", "thickness", "handles", ...STYLE],
+  // How it opens (the side of its hinges, or along its top: lift-up), its gap and its hardware (stays) go with it.
+  doors: ["mount", "thickness", "handles", "hinges", "gap", "hw", ...STYLE],
+  door: ["mount", "cover", "thickness", "handles", "hinges", "gap", "hw", ...STYLE],
 };
 const FILL_NAME: Record<NicheFeature["fill"], string> = { rod: "Penderie", drawers: "Tiroirs", doors: "Portes", door: "Porte", accessory: "Accessoire", back: "Fond" };
 

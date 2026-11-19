@@ -36,7 +36,7 @@ class FormPipetteTool implements PointerHandler {
       panelHeader("Pipette de forme", () => this.close()),
       this.text,
       this.again,
-      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Échap pour finir."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Une porte donne aussi son ouverture (de côté, relevante), sa poignée, son jeu et sa ferrure. Échap pour finir."),
     );
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
