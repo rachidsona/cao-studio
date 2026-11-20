@@ -455,7 +455,7 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
     dims.show(plan, run, runDims(plan, run, runGeometry(plan, run, room?.[run.id]), fill), editor.unit, (label, d) => {
       // Typed while a run has changes not applied: they would be lost.
       if (current?.openRunInfo()?.dirty) return editor.notify("Un linéaire est en train d'être enregistré : un instant.", "info");
-      editValue(editor, label, d.b - d.a, (mm) => withRunDim(editor.doc, at.plan, at.run, d.edit!, mm));
+      editValue(editor, label, d.b - d.a, (mm) => withRunDim(editor.doc, at.plan, at.run, d.edit!, mm), true);
     });
   };
   let tool: KitchenPlanTool | null = null;

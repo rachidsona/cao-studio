@@ -562,6 +562,10 @@
   .cad-icon-tip[hidden] {
     display: none;
   }
+  /* A dimension of the view being typed in its place (app/dim-editor.ts): the pill grown into a field. */
+  .cad-dim-field {
+    @apply fixed z-70 h-7 min-w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dimension bg-white px-2.5 text-center font-mono text-xs font-semibold text-dimension shadow-lg outline-none aria-invalid:border-red-600 aria-invalid:text-red-700;
+  }
   .cad-piece-dim,
   .cad-plan-dim {
     @apply pointer-events-none inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-dimension bg-white px-1 font-mono text-3xs leading-none font-semibold whitespace-nowrap text-dimension;
