@@ -18,7 +18,7 @@ import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
 import { toolIcon } from "../../ui/icons";
-import { panelHeader } from "../../ui/panel-close";
+import { asCards, foldedCards, panelHeader, rememberCard } from "../../ui/panel-close";
 import { planSchema } from "./plan-schema";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
@@ -109,7 +109,7 @@ export class PlanLayoutTool {
       this.draw();
     }));
     else if (placed && plan && this.filling) this.panel.replaceChildren(...this.fill(placed.id, plan, this.filling));
-    else this.panel.replaceChildren(...(placed && plan && !this.editing ? this.zones(placed.id, plan) : this.settings(placed?.id)));
+    else this.panel.replaceChildren(...(placed && plan && !this.editing ? this.zones(placed.id, plan) : this.settings(placed?.id))), asCards(this.panel);
     paintPrice();
   }
 
@@ -319,9 +319,8 @@ export class PlanLayoutTool {
         isolateZone(plan, zone.id, zone.label);
         this.draw();
       });
-      // Its inside, straight from the plan: the zone alone in the view, from the front, and the tool open on it.
+      // Its inside's tools (the zone alone, the tool open on it), in a card folded by its title (not by its buttons).
       const sketch = plan.made?.[zone.id];
-      // Its tools in one row of icons, each named under it.
       const inside = done(zone) && sketch ? el("div", { class: "grid grid-cols-5 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${zone.label}`, "data-zone-inside": zone.id },
         ...INSIDE_TOOLS.map(([tool, label, title, icon]) => {
           const b = el("button", { type: "button", class: "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 [&_svg]:size-6", title, "aria-label": label, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, label));
@@ -332,7 +331,11 @@ export class PlanLayoutTool {
           });
           return b;
         })) : null;
-      return el("li", { class: "space-y-1.5 border border-gray-200 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", "data-zone-card": zone.id }, el("div", { class: "flex items-center justify-between gap-1.5" }, el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, zone.label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${formatLength(zone.run.length, unit)}`)), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go), inside);
+      const head = el("summary", { class: "flex cursor-pointer list-none items-center justify-between gap-1.5 [&::-webkit-details-marker]:hidden" }, el("span", { class: "inline-block w-3 shrink-0 text-3xs text-gray-400 transition-transform group-open/zone:rotate-90", "aria-hidden": "true" }, inside ? "▶" : ""), el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, zone.label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${formatLength(zone.run.length, unit)}`)), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go);
+      head.addEventListener("click", (event) => (event.target as Element).closest("button") && event.preventDefault());
+      const card = el("details", { class: "group/zone space-y-1.5", ...(foldedCards().has(`zone:${zone.label}`) ? {} : { open: "" }) }, head, inside);
+      card.addEventListener("toggle", () => rememberCard(`zone:${zone.label}`, card.open));
+      return el("li", { class: "border border-gray-200 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", "data-zone-card": zone.id }, card);
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
     showAllButton.addEventListener("click", () => {
@@ -346,7 +349,7 @@ export class PlanLayoutTool {
     });
     const door = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: plan.cornerDoor === true });
     door.addEventListener("change", () => void this.editor.change(withCornerDoors(this.editor.doc, planId, door.checked)).then(() => this.draw()));
-    const change = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Modifier le plan");
+    const change = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-panel-loose": "" }, "Modifier le plan");
     change.addEventListener("click", () => {
       this.plan = { ...plan };
       this.editing = true;
@@ -365,7 +368,7 @@ export class PlanLayoutTool {
       ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
       ...this.pullDowns(planId, plan),
       ...this.checks(plan),
-      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : PLAN_MODELS[plan.model].ell ? "Deux portes sur le coin en L" : "Porte sur le pan coupé") : null,
+      zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2", "data-panel-loose": "" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : PLAN_MODELS[plan.model].ell ? "Deux portes sur le coin en L" : "Porte sur le pan coupé") : null,
       change,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
@@ -379,7 +382,7 @@ export class PlanLayoutTool {
       choice.addEventListener("change", () => void this.editor.change(withZoneSliding(this.editor.doc, planId, zone, Number(choice.value))).then(() => this.draw()));
       return el("label", { class: ROW }, zone.label, choice);
     });
-    return [el("p", { class: "pt-1 font-medium text-gray-700 dark:text-gray-200", title: plan.roof ? "Un rail de porte coulissante doit être de niveau : pas sous un rampant." : "Deux rails et des vantaux qui se recouvrent de 3 cm" }, "Portes coulissantes"), ...rows];
+    return [el("h3", { class: "panel-title", title: plan.roof ? "Un rail de porte coulissante doit être de niveau : pas sous un rampant." : "Deux rails et des vantaux qui se recouvrent de 3 cm" }, "Portes coulissantes"), ...rows];
   }
 
   /** The rods out of reach: a pull-down rod for each, added or brought up to date in one click. */
@@ -389,7 +392,7 @@ export class PlanLayoutTool {
     const add = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, wanted.length ? `Penderies escamotables (${wanted.length})` : "Retirer les penderies escamotables");
     add.title = "Les tringles à plus de 1,90 m ne s'atteignent pas sans marchepied : une penderie escamotable les descend.";
     add.addEventListener("click", () => void this.editor.change(withPullDowns(this.editor.doc, plan)).then(() => this.draw()));
-    return [add];
+    return [el("h3", { class: "panel-title" }, "Penderies escamotables"), add];
   }
 
   /** What the plan leaves to look at, as it stands. */

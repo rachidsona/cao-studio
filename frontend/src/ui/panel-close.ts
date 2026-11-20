@@ -28,19 +28,19 @@ export function panelFooter(done: () => void, ok: (() => void) | null, blocked =
   return el("div", { class: "flex gap-1.5 pt-1" }, end, keep);
 }
 
-/** Where a card stops: the panel's foot, a message (what it makes, what is wrong). */
-const loose = (e: Element) => !!e.querySelector("[data-panel-done], [data-panel-ok]") || /\bbg-(sky|amber|red)-50\b/.test(e.className);
+/** Where a card stops: the panel's foot, a message (what it makes, what is wrong), what is marked to stay out. */
+const loose = (e: Element) => e.hasAttribute("data-panel-loose") || !!e.querySelector("[data-panel-done], [data-panel-ok]") || /\bbg-(sky|amber|red)-50\b/.test(e.className);
 
 /** The cards folded, by title, kept in this browser (the same title folded in every tool). */
 const FOLDED = "cao.tool-cards.folded";
-const foldedCards = (): Set<string> => {
+export const foldedCards = (): Set<string> => {
   try {
     return new Set(JSON.parse(localStorage.getItem(FOLDED) ?? "[]") as string[]);
   } catch {
     return new Set();
   }
 };
-const rememberCard = (title: string, open: boolean) => {
+export const rememberCard = (title: string, open: boolean) => {
   const all = foldedCards();
   if (open) all.delete(title);
   else all.add(title);

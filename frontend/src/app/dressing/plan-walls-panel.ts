@@ -58,5 +58,5 @@ export function wallsSection(planId: string, plan: DressingPlan, zones: PlanZone
     });
     rows.push(el("div", { class: "flex gap-1" }, wall, to, lay));
   }
-  return rows.length ? [el("p", { class: "pt-1 font-medium text-gray-700 dark:text-gray-200" }, "Mes murs"), ...rows] : [];
+  return rows.length ? [el("h3", { class: "panel-title" }, "Mes murs"), ...rows] : [];
 }

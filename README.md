@@ -3079,8 +3079,9 @@ opération existante.
   **Penderie** sur cette zone, isolée de face : on clique la niche à équiper, sans chercher l'outil dans le ruban.
   Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
-  Dans son panneau, chaque zone est une **carte** : son nom et sa longueur, « Voir » et « Modifier », et dessous ses
-  outils (Étagères, Cloisons, Tiroirs, Portes, Penderie) en une rangée d'icônes nommées.
+  Dans son panneau, chaque zone est une **carte pliable** (un clic sur son titre, pas sur ses boutons) : son nom et sa
+  longueur, « Voir » et « Modifier », et dessous ses outils (Étagères, Cloisons, Tiroirs, Portes, Penderie) en une
+  rangée d'icônes nommées ; Portes coulissantes, Mes murs et Penderies escamotables sont aussi des cartes pliables.
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les
   angles arrondis, avec leur porte cintrée, et les **coins en L** (en L à gauche, à droite, ou en U aux deux angles) : le
