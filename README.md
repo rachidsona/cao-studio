@@ -1680,10 +1680,12 @@ opération existante.
   monte ou descend l'icône d'une place. Pour **séparer** les icônes, le « + » a en haut **« ＋ Ligne »** (un trait fin
   entre deux icônes) et **« ＋ Espace vide »** (une place vide de la taille d'une icône) : ajoutés au bas de la colonne,
   ils se glissent à leur place, se déplacent, se retirent (clic droit, ou glissés dehors) et sont retenus comme une
-  icône (« sep:line:1 », « sep:space:2 »). La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
+  icône (« sep:line:1 », « sep:space:2 »). Chaque colonne a un **nom**, écrit en haut sous sa flèche (son numéro tant
+  qu'elle n'en a pas) : un **double-clic** le change (Entrée garde, Échap laisse l'ancien, vide redonne le numéro), et
+  ses icônes se tiennent **au milieu de sa hauteur**. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
   reprend sa place ; seul un petit **onglet numéroté** (› 1, › 2…) reste en bas du bord gauche de la vue, par-dessus,
   pour la rouvrir. Ce sont **les mêmes colonnes** en Conception 3D, en Dressing et en Cuisine : elles restent en place
-  quand on change d'onglet. Les outils, leur ordre et les colonnes repliées sont retenus par le navigateur. Quand la
+  quand on change d'onglet. Les outils, leur ordre, les noms et les colonnes repliées sont retenus par le navigateur. Quand la
   place manque (fenêtre étroite, panneaux ouverts), la vue garde au moins 200 px : les colonnes qui n'y tiennent pas
   passent pour l'instant à leur onglet (celle qu'on rouvre par son onglet prend la place d'une autre) et reviennent
   quand la fenêtre s'élargit. Cachées en esquisse, en rendu et sur les écrans étroits (`ui/tool-columns.ts`, `ui/tool-columns-picker.ts`,

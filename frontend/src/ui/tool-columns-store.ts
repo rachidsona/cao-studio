@@ -3,6 +3,7 @@
  * colonnes repliées, gardés dans ce navigateur. Les colonnes sont vides au départ, et ce sont les mêmes dans les trois
  * espaces (Conception 3D, Dressing, Cuisine) : elles restent en place quand on change d'onglet. Entre les icônes, des
  * séparateurs : une ligne, ou un espace vide de la taille d'une icône (« sep:line:3 », « sep:space:4 »), chacun le sien.
+ * Chaque colonne peut avoir un nom (vide : son numéro).
  */
 
 export const COLUMN_COUNT = 7;
@@ -13,19 +14,27 @@ export interface ColumnsState {
   columns: string[][];
   /** Whether each column is folded away (only its tab at the edge of the view is left). */
   folded: boolean[];
+  /** The name given to each column (empty: its number). */
+  names: string[];
 }
+
+/** A column's name as kept: on one line, at most this long. */
+export const NAME_LENGTH = 24;
+const cleanName = (name: unknown) => (typeof name === "string" ? name.replace(/\s+/g, " ").trim().slice(0, NAME_LENGTH) : "");
 
 /** A state made of four columns, whatever was read (missing columns empty, unknown tools dropped, no duplicates). */
 export function normalize(raw: unknown, known: (key: string) => boolean): ColumnsState {
   const source = raw && typeof raw === "object" ? (raw as Partial<Record<keyof ColumnsState, unknown>>) : {};
   const columns = Array.isArray(source.columns) ? source.columns : [];
   const folded = Array.isArray(source.folded) ? source.folded : [];
+  const names = Array.isArray(source.names) ? source.names : [];
   return {
     columns: Array.from({ length: COLUMN_COUNT }, (_, i) => {
       const keys = Array.isArray(columns[i]) ? (columns[i] as unknown[]) : [];
       return [...new Set(keys.filter((k): k is string => typeof k === "string" && (known(k) || isSeparator(k))))];
     }),
     folded: Array.from({ length: COLUMN_COUNT }, (_, i) => folded[i] === true),
+    names: Array.from({ length: COLUMN_COUNT }, (_, i) => cleanName(names[i])),
   };
 }
 
@@ -75,6 +84,14 @@ export function addSeparator(state: ColumnsState, column: number, kind: Separato
   const key = `sep:${kind}:${Math.max(0, ...used) + 1}`;
   return { ...state, columns: state.columns.map((keys, i) => (i === column ? [...keys, key] : keys)) };
 }
+
+/** The column named so (empty: back to its number). */
+export function renamed(state: ColumnsState, column: number, name: string): ColumnsState {
+  return { ...state, names: state.names.map((n, i) => (i === column ? cleanName(name) : n)) };
+}
+
+/** What a column is called: its name, or « Colonne n ». */
+export const columnName = (state: ColumnsState, column: number) => state.names[column] || `Colonne ${column + 1}`;
 
 export function toggleFold(state: ColumnsState, column: number): ColumnsState {
   return { ...state, folded: state.folded.map((f, i) => (i === column ? !f : f)) };

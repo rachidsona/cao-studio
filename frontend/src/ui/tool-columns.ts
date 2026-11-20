@@ -7,7 +7,9 @@
  * Chaque icône lance l'outil du ruban (ou de la colonne Sélection et vue), le même, même caché ou replié, et en
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
  * et seul un petit onglet numéroté reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir. Les colonnes sont vides
- * au départ et les mêmes dans les trois espaces (Conception 3D, Dressing, Cuisine), gardées dans ce navigateur
+ * au départ et les mêmes dans les trois espaces (Conception 3D, Dressing, Cuisine), gardées dans ce navigateur, chacune
+ * avec son nom, écrit en haut sous la flèche (un double-clic le change ; vide, son numéro) ; ses icônes se
+ * tiennent au milieu de sa hauteur
  * (ui/tool-columns-store.ts). Cachées en esquisse, en rendu et sur les petits écrans ; la vue garde toujours au moins
  * 200 px : les colonnes qui n'y tiennent pas (fenêtre étroite, panneaux larges) passent pour l'instant à leur onglet.
  */
@@ -15,7 +17,7 @@ import { el } from "./dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
 import { catalogue } from "./tool-catalogue";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
-import { addSeparator, COLUMN_COUNT, insertTool, isSeparator, moveTool, readColumns, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
+import { addSeparator, COLUMN_COUNT, columnName, insertTool, isSeparator, moveTool, NAME_LENGTH, readColumns, renamed, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
 import { draggableTool, draggedTool, registerBar } from "./tool-drag";
 
 export function bindToolColumns(root: HTMLElement): void {
@@ -141,7 +143,7 @@ export function bindToolColumns(root: HTMLElement): void {
         class: `${EDGE_TAB_CLASS} h-9`,
         "aria-expanded": "false",
         "aria-label": `Déplier la colonne ${index + 1}`,
-        title: `Déplier la colonne d'outils ${index + 1}`,
+        title: `Déplier la colonne d'outils ${index + 1}${state.names[index] ? ` (${state.names[index]})` : ""}`,
         "data-tool-column-unfold": String(index),
       },
       el("span", { "aria-hidden": "true" }, "›"),
@@ -155,28 +157,66 @@ export function bindToolColumns(root: HTMLElement): void {
     return tab;
   };
 
+  /** A column's name at its top: its number until it is given one; a double-click changes it (Entrée keeps, Échap leaves). */
+  const nameOf = (index: number): HTMLElement => {
+    const label = el(
+      "span",
+      {
+        class: "line-clamp-2 w-full cursor-text px-px text-center text-3xs leading-tight font-semibold tracking-tighter hyphens-auto text-gray-500 select-none dark:text-gray-400",
+        title: `${columnName(state, index)} — double-clic pour changer son nom`,
+        "data-tool-column-name": String(index),
+      },
+      state.names[index] || String(index + 1),
+    );
+    label.addEventListener("dblclick", () => {
+      const field = el("input", { type: "text", class: "h-5 w-full min-w-0 border border-sky-500 bg-white px-0.5 text-3xs text-gray-900 focus:outline-none dark:bg-gray-950 dark:text-gray-100", value: state.names[index] ?? "", maxlength: String(NAME_LENGTH), "aria-label": `Nom de la colonne ${index + 1}`, placeholder: String(index + 1), "data-tool-column-rename": String(index) });
+      let done = false;
+      const keep = (yes: boolean) => {
+        if (done) return;
+        done = true;
+        if (yes) save(renamed(state, index, field.value));
+        else render();
+      };
+      field.addEventListener("keydown", (event) => {
+        event.stopPropagation();
+        if (event.key === "Enter") keep(true);
+        else if (event.key === "Escape") keep(false);
+      });
+      field.addEventListener("blur", () => keep(true));
+      label.replaceWith(field);
+      field.focus();
+      field.select();
+    });
+    return label;
+  };
+
   const columnOf = (index: number): HTMLElement => {
     const number = index + 1;
+    const name = columnName(state, index);
     const fold = el(
       "button",
       {
         type: "button",
-        class: "flex h-6 w-full shrink-0 items-center justify-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+        class: "flex h-5 w-full shrink-0 items-center justify-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
         "aria-expanded": "true",
         "aria-label": `Replier la colonne ${number}`,
-        title: `Replier la colonne ${number} : elle laisse sa place à la vue, un onglet au bord de la vue la rouvre`,
+        title: `Replier « ${name} » : elle laisse sa place à la vue, un onglet au bord de la vue la rouvre`,
         "data-tool-column-fold": String(index),
       },
       "‹",
     );
     fold.addEventListener("click", () => save(toggleFold(state, index)));
+    const head = el("div", { class: "flex w-full shrink-0 flex-col items-center border-b border-gray-100 pb-0.5 dark:border-gray-800" }, fold, nameOf(index));
     const section = el("section", {
       class: "flex w-11 shrink-0 flex-col items-center border-r border-gray-100 last:border-r-0 dark:border-gray-800",
-      "aria-label": `Colonne ${number}`,
+      "aria-label": name,
       "data-tool-column": String(index),
-    }, fold);
-    const list = el("div", { class: "cad-no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto py-1" });
-    list.append(...(state.columns[index] ?? []).flatMap((key) => {
+    }, head);
+    // Its icons in the middle of its height; scrolled when they are more than it holds.
+    const list = el("div", { class: "cad-no-scrollbar flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto py-1" });
+    const icons = el("div", { class: "my-auto flex flex-col items-center gap-0.5" });
+    list.append(icons);
+    icons.append(...(state.columns[index] ?? []).flatMap((key) => {
       const kind = separatorKind(key);
       if (kind) return [separator(key, kind, index)];
       const tool = byKey.get(key);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSeparator, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, separatorKind, toggleFold, toggleTool } from "../../frontend/src/ui/tool-columns-store";
+import { addSeparator, columnName, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, renamed, separatorKind, toggleFold, toggleTool } from "../../frontend/src/ui/tool-columns-store";
 
 const known = (key: string) => key !== "data-action:gone";
 
@@ -57,5 +57,20 @@ describe("barre à sept colonnes : ce qui est retenu", () => {
     expect(state.columns[0]).toEqual(["sep:space:2", "data-action:move", "sep:line:1"]);
     expect(normalize(JSON.parse(JSON.stringify({ ...state, columns: [[...state.columns[0]!, "data-action:gone"]] })), known).columns[0]).toEqual(state.columns[0]);
     expect(toggleTool(state, 0, "sep:line:1").columns[0]).toEqual(["sep:space:2", "data-action:move"]);
+  });
+
+  it("chaque colonne a un nom, son numéro tant qu'on ne lui en donne pas, gardé d'une visite à l'autre", () => {
+    const known = () => true;
+    const state = normalize({}, known);
+    expect(state.names).toEqual(Array.from({ length: COLUMN_COUNT }, () => ""));
+    expect(columnName(state, 2)).toBe("Colonne 3");
+    const named = renamed(state, 2, "  Dressing   et   portes ");
+    expect(columnName(named, 2)).toBe("Dressing et portes");
+    // Kept as stored; too long, cut; not a string, empty.
+    expect(normalize(JSON.parse(JSON.stringify(named)), known).names[2]).toBe("Dressing et portes");
+    expect(renamed(state, 0, "x".repeat(40)).names[0]).toHaveLength(24);
+    expect(normalize({ names: [12, null] }, known).names.slice(0, 2)).toEqual(["", ""]);
+    // An empty name: back to its number.
+    expect(columnName(renamed(named, 2, " "), 2)).toBe("Colonne 3");
   });
 });
