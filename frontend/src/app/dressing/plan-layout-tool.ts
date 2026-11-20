@@ -17,6 +17,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
+import { toolIcon } from "../../ui/icons";
 import { panelHeader } from "../../ui/panel-close";
 import { planSchema } from "./plan-schema";
 import type { Viewport } from "../../viewport/viewport";
@@ -34,12 +35,12 @@ const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gra
 let last: DressingPlan = { ...PLAN };
 
 /** What is done inside a zone, each tool opened on it from the plan (the niche clicked there gets it). */
-const INSIDE_TOOLS: ["shelves" | "cloisons" | "drawers" | "door" | "rod", string, string][] = [
-  ["shelves", "Étagères", "Ajouter, ôter ou répartir les étagères d'une niche de cette zone"],
-  ["cloisons", "Cloisons", "Ajouter ou ôter des cloisons dans une niche de cette zone"],
-  ["drawers", "Tiroirs", "Mettre des tiroirs dans une niche, changer leur nombre"],
-  ["door", "Portes", "Une porte sur une ou plusieurs niches, son sens et son style"],
-  ["rod", "Penderie", "Une tringle dans une niche"],
+const INSIDE_TOOLS: ["shelves" | "cloisons" | "drawers" | "door" | "rod", string, string, string][] = [
+  ["shelves", "Étagères", "Ajouter, ôter ou répartir les étagères d'une niche de cette zone", "i-shelves"],
+  ["cloisons", "Cloisons", "Ajouter ou ôter des cloisons dans une niche de cette zone", "i-cloisons"],
+  ["drawers", "Tiroirs", "Mettre des tiroirs dans une niche, changer leur nombre", "i-drawers"],
+  ["door", "Portes", "Une porte sur une ou plusieurs niches, son sens et son style", "i-door-fronts"],
+  ["rod", "Penderie", "Une tringle dans une niche", "i-rod"],
 ];
 
 export class PlanLayoutTool {
@@ -320,10 +321,10 @@ export class PlanLayoutTool {
       });
       // Its inside, straight from the plan: the zone alone in the view, from the front, and the tool open on it.
       const sketch = plan.made?.[zone.id];
-      const inside = done(zone) && sketch ? el("div", { class: "flex flex-wrap items-center gap-1 pt-0.5", role: "group", "aria-label": `Dedans ${zone.label}`, "data-zone-inside": zone.id },
-        el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Dedans :"),
-        ...INSIDE_TOOLS.map(([tool, label, title]) => {
-          const b = el("button", { type: "button", class: `${SMALL} h-6 px-1.5 text-2xs`, title, "data-zone-tool": tool }, label);
+      // Its tools in one row of icons, each named under it.
+      const inside = done(zone) && sketch ? el("div", { class: "grid grid-cols-5 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${zone.label}`, "data-zone-inside": zone.id },
+        ...INSIDE_TOOLS.map(([tool, label, title, icon]) => {
+          const b = el("button", { type: "button", class: "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 [&_svg]:size-6", title, "aria-label": label, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, label));
           b.addEventListener("click", () => {
             isolateZone(plan, zone.id, zone.label);
             if (tool === "shelves" || tool === "cloisons") this.editor.sketches.startJoinery(tool, sketch);
@@ -331,7 +332,7 @@ export class PlanLayoutTool {
           });
           return b;
         })) : null;
-      return el("li", {}, el("div", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${zone.label} · ${formatLength(zone.run.length, unit)}`), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go), inside);
+      return el("li", { class: "space-y-1.5 border border-gray-200 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", "data-zone-card": zone.id }, el("div", { class: "flex items-center justify-between gap-1.5" }, el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, zone.label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${formatLength(zone.run.length, unit)}`)), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go), inside);
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
     showAllButton.addEventListener("click", () => {
@@ -357,7 +358,7 @@ export class PlanLayoutTool {
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez une zone pour la répartir."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, planSchema(plan, (z) => [z.label], (z) => void this.make(planId, plan, z), done, this.marks(plan))),
       el("p", { class: "flex justify-between gap-2 font-medium" }, "Prix du projet", el("span", { "data-live-total": "" })),
-      el("ul", { class: "space-y-1", "aria-label": "Zones du plan" }, ...zones.map(row)),
+      el("ul", { class: "space-y-2", "aria-label": "Zones du plan" }, ...zones.map(row)),
       isolatedSketch() ? showAllButton : null,
       needs,
       ...this.sliding(planId, plan, zones),
