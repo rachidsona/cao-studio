@@ -421,6 +421,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Choisissez le nombre de « Tiroirs », et la pose des « Façades » : « Encastrée (dans la niche) », au nu des panneaux, « En applique (devant) », sur la moitié des panneaux autour de la niche, ou « À l'anglaise (derrière une porte) » : des tiroirs intérieurs en retrait, sur des cales qui passent les platines des charnières, sans poignée.",
           "Réglez « Jeu en haut », « Jeu entre façades », « Jeu en bas », « Jeu de côté » et l'« Épaisseur façades », et cochez « Trous de poignée (entraxe 128) ».",
           "Lisez la ligne du panneau (hauteur des façades, longueur des coulisses), puis cliquez « OK ». « Terminer » ferme l'outil.",
+          "Pour enlever des tiroirs seuls, cliquez leur niche : « Supprimer les tiroirs » les retire, la niche, ses étagères, ses cloisons et le reste du meuble restant (de même « Supprimer la penderie », la porte ou l'accessoire dans leur outil).",
         ],
         tip: "Pour des tiroirs sous une penderie, divisez d'abord la niche par une étagère. Les pièces vont au débit, coulisses, cales et poignées au devis. Les tiroirs suivent leur niche. À l'anglaise, posez ensuite la porte par « Porte sur niches » sur la même niche, avec des charnières qui ouvrent à 110° au moins (le panneau dit si celles du projet suffisent).",
       },

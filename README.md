@@ -1162,7 +1162,9 @@ opération existante.
 - **Penderie** et **Tiroirs** (groupe **Dressing**, pour les dressings) : on **équipe une niche** d'une répartition,
   dans la vue 3D comme avec Étagères — on clique une ou plusieurs niches (une niche choisie se reclique pour la
   retirer), on règle, les pièces sont montrées en **orange**, puis OK (une seule annulation). La liste « Équipement »
-  du panneau passe de l'un à l'autre.
+  du panneau passe de l'un à l'autre. Une niche choisie qui a déjà cet équipement montre **« Supprimer les tiroirs »** (la penderie, la
+  porte, l'accessoire) : il est retiré seul, la niche, ses étagères, ses cloisons et le reste du meuble restant, en une
+  annulation.
   - **Penderie** : une **tringle Ø25** (diamètre réglable de 10 à 50 mm) d'un côté à l'autre de la niche, à
     **mi-profondeur**, son axe à **6 cm sous le haut** (réglable), sur **deux supports** contre les côtés. Le panneau
     donne la longueur de la tringle et sa hauteur au-dessus du bas de la niche. Tringle et supports comptent au

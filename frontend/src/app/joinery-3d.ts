@@ -135,6 +135,10 @@ export class Joinery3D implements PointerHandler {
           joinery.refresh();
           return true;
         },
+        replace: (doc, success) => {
+          host.applyDocument(doc, success);
+          joinery.refresh();
+        },
         changed: () => joinery.render(),
         closed: () => joinery.close(),
         notify: (message, kind) => host.notify(message, kind),

@@ -36,6 +36,8 @@ export interface NicheToolHost {
   unit(): DisplayUnit;
   /** Adds these features (or replaces the one changed) as one undo step; false when it was refused. */
   apply(features: NicheFeature[], success: string): boolean;
+  /** The document as it becomes (equipment taken out), one undo step. */
+  replace(doc: CadDocument, success: string): void;
   changed(): void;
   closed(): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
@@ -43,6 +45,9 @@ export interface NicheToolHost {
 
 /** Kept for the session: the last values (mm). */
 const LAST: Settings = { diameter: 25, drop: 60, drawers: 3, gap: 3, bottomGap: 3, betweenGap: 3, sideGap: 3, thickness: 18, handles: true, accessory: { model: "cutlery", lift: 0 } };
+
+/** What « Supprimer » takes out, as the button says it. */
+const REMOVE: Record<NicheFill, string> = { rod: "la penderie", door: "la porte", accessory: "l'accessoire", drawers: "les tiroirs" };
 
 const WORDS: Record<NicheFill, { title: string; one: string; help: string }> = {
   rod: { title: "Penderie", one: "penderie", help: "Une tringle Ø25 d'un côté à l'autre de la niche, à mi-profondeur, sur deux supports ; elle compte au devis (au mètre) mais pas au débit. Pour une double penderie, divisez d'abord la niche par une étagère." },
@@ -305,6 +310,10 @@ export class NicheTool {
     const problem = checked.find((c) => c.problem)?.problem ?? null;
     const ok = el("button", { type: "button", class: "h-8 flex-1 btn-accent font-medium disabled:opacity-40", disabled: this.niches.length === 0 || problem !== null }, "OK");
     ok.addEventListener("click", () => this.confirm());
+    // The same equipment already in the niches chosen: taken out alone, the niche and what divides it staying.
+    const held = this.held();
+    const remove = held.length ? el("button", { type: "button", class: "h-8 w-full border border-red-300 font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950", title: "Retire seulement cet équipement : les étagères, les cloisons et le reste du meuble restent", "data-niche-remove": this.fill }, `Supprimer ${REMOVE[this.fill]}${held.length > 1 ? ` (${held.length} niches)` : ""}`) : null;
+    remove?.addEventListener("click", () => this.removeHeld());
 
     const first = checked[0];
     const box = first?.niche.box;
@@ -376,6 +385,7 @@ export class NicheTool {
       result ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100" }, result) : null,
       problem ? el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, problem) : null,
       el("p", { class: "text-2xs text-gray-500" }, words.help),
+      remove,
       el("div", { class: "flex gap-1.5 pt-0.5" }, cancel, ok),
     ];
     this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
@@ -408,6 +418,27 @@ export class NicheTool {
     });
     const n = features.length;
     if (!this.host.apply(features, this.fill === "door" ? (n > 1 ? `${n} portes posées sur ${this.niches.length} niches.` : `Porte posée sur ${this.niches.length} niche${this.niches.length > 1 ? "s" : ""}.`) : `${n > 1 ? `${n} niches équipées` : "Niche équipée"} : ${WORDS[this.fill].one}.`)) return;
+    this.niches = [];
+    this.recompute();
+  }
+
+  /** The equipment of this tool's sort already in the niches chosen (the one changed, when changing one). */
+  private held(): NicheFeature[] {
+    if (this.editing) return this.host.doc().features.some((f) => f.id === this.editing!.id) ? [this.editing] : [];
+    const key = (path: readonly number[]) => path.join(".");
+    const chosen = new Set(this.niches.map((n) => `${n.partition}/${key(n.path)}`));
+    return this.host.doc().features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === this.host.sketchId() && f.fill === this.fill && [f.niche, ...(f.span ?? [])].some((p) => chosen.has(`${f.partition}/${key(p)}`)));
+  }
+
+  /** « Supprimer les tiroirs » (the rod, the door…): taken out of the niches chosen, as one undo step. */
+  private removeHeld(): void {
+    const gone = new Set(this.held().map((f) => f.id));
+    if (!gone.size) return;
+    const doc = this.host.doc();
+    const info = Object.fromEntries(Object.entries(doc.bodyInfo ?? {}).filter(([id]) => !gone.has(id.split("#")[0]!)));
+    this.host.replace({ ...doc, features: doc.features.filter((f) => !gone.has(f.id)), bodyInfo: info }, `${gone.size > 1 ? `${gone.size} niches` : "Niche"} : ${REMOVE[this.fill]} supprimé${this.fill === "drawers" ? "s" : this.fill === "rod" || this.fill === "door" ? "e" : ""}.`);
+    // The one changed is gone: the tool closes; otherwise it stays for other niches.
+    if (this.editing) return this.cancel();
     this.niches = [];
     this.recompute();
   }
