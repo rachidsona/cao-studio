@@ -6,7 +6,8 @@
  * la taille d'une icône ; ils se glissent et se retirent comme une icône.
  * Chaque icône lance l'outil du ruban (ou de la colonne Sélection et vue), le même, même caché ou replié, et en
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
- * et seul un petit onglet numéroté reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir. Les colonnes sont vides
+ * et seul un petit onglet reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir : son nom écrit debout
+ * (sans nom, son numéro). Les colonnes sont vides
  * au départ et les mêmes dans les trois espaces (Conception 3D, Dressing, Cuisine), gardées dans ce navigateur, chacune
  * avec son nom, écrit en haut sous la flèche (un double-clic le change ; vide, son numéro) ; ses icônes se
  * tiennent au milieu de sa hauteur
@@ -140,14 +141,15 @@ export function bindToolColumns(root: HTMLElement): void {
       "button",
       {
         type: "button",
-        class: `${EDGE_TAB_CLASS} h-9`,
+        class: `${EDGE_TAB_CLASS} ${state.names[index] ? "" : "h-9"}`,
         "aria-expanded": "false",
-        "aria-label": `Déplier la colonne ${index + 1}`,
+        "aria-label": `Déplier la colonne ${index + 1}${state.names[index] ? ` (${state.names[index]})` : ""}`,
         title: `Déplier la colonne d'outils ${index + 1}${state.names[index] ? ` (${state.names[index]})` : ""}`,
         "data-tool-column-unfold": String(index),
       },
       el("span", { "aria-hidden": "true" }, "›"),
-      el("span", { "aria-hidden": "true" }, String(index + 1)),
+      // Its name written upright, as the Navigator's tab; unnamed, its number.
+      state.names[index] ? el("span", { class: "edge-tab-vertical", "aria-hidden": "true", "data-tool-column-tab-name": "" }, state.names[index]) : el("span", { "aria-hidden": "true" }, String(index + 1)),
     );
     tab.addEventListener("click", () => {
       wanted.splice(0, wanted.length, index, ...wanted.filter((i) => i !== index));
@@ -168,6 +170,9 @@ export function bindToolColumns(root: HTMLElement): void {
       },
       state.names[index] || String(index + 1),
     );
+    // A long word made a little smaller, so that it fits the column's width rather than being cut.
+    const longest = Math.max(0, ...(state.names[index] ?? "").split(" ").map((w) => w.length));
+    if (longest > 7) label.style.fontSize = longest > 9 ? "8px" : "9px";
     label.addEventListener("dblclick", () => {
       const field = el("input", { type: "text", class: "h-5 w-full min-w-0 border border-sky-500 bg-white px-0.5 text-3xs text-gray-900 focus:outline-none dark:bg-gray-950 dark:text-gray-100", value: state.names[index] ?? "", maxlength: String(NAME_LENGTH), "aria-label": `Nom de la colonne ${index + 1}`, placeholder: String(index + 1), "data-tool-column-rename": String(index) });
       let done = false;
