@@ -11,7 +11,7 @@ import type { CabinetFeature, FrontsFeature } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import { frontsParts, frontsProblem } from "./fronts-parts";
 import { drillings, shelvesOf } from "./fronts-drillings";
-import { glassFrame, glassOpening, glassPane, isGlass } from "./glass-door";
+import { glassFrame, glassOpening, glassPane, isGlass, uFrame } from "./glass-door";
 import { cutGrooves } from "./decor-cut";
 import { decorClear, decorGrooves, isDecor } from "./door-decor";
 import type { OutputLookup } from "./common";
@@ -28,7 +28,7 @@ export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabine
     for (const part of frontsParts(feature, cabinet)) {
       let solid = makeBox(part.from, part.to) as unknown as Shape3D;
       // A glass door or drawer front: the opening through its aluminium frame, and the groove the glass sits in.
-      const glass = (part.role?.kind === "door" || part.role?.kind === "drawer") && isGlass(feature) ? [glassOpening(part.from, part.to, 1, glassFrame(feature)), glassPane(part.from, part.to, 1, glassFrame(feature))] : [];
+      const glass = (part.role?.kind === "door" || part.role?.kind === "drawer") && isGlass(feature) ? [glassOpening(part.from, part.to, 1, glassFrame(feature), uFrame(feature)), glassPane(part.from, part.to, 1, glassFrame(feature), uFrame(feature))] : [];
       for (const [a, b] of glass) {
         const tool = makeBox(a, b) as unknown as Shape3D;
         const cut = solid.cut(tool) as Shape3D;

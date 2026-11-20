@@ -34,6 +34,7 @@ export const PROFILE_FINISHES: readonly [ProfileFinish, string][] = [
   ["brushed", "Aluminium brossé"],
   ["black", "Aluminium noir"],
   ["wood", "Bois (matière des façades)"],
+  ["wood-u", "Bois en U (ouvert en haut)"],
 ];
 
 /** The appearance (appearance/library.ts) of each glass and of each frame. */
@@ -71,7 +72,11 @@ export interface GlassSettings {
 export const isGlass = (f: Pick<GlassSettings, "style">) => f.style === "glass";
 export const glassFrame = (f: Pick<GlassSettings, "frameWidth">) => f.frameWidth ?? GLASS_FRAME;
 /** A glazed door framed in wood: cut in the workshop, on cup hinges; its glass alone is bought. */
-export const woodFrame = (f: Pick<GlassSettings, "style" | "profile">) => isGlass(f) && f.profile === "wood";
+export const woodFrame = (f: Pick<GlassSettings, "style" | "profile">) => isGlass(f) && (f.profile === "wood" || f.profile === "wood-u");
+/** A wooden frame in a U: its two sides and its bottom rail, the glass up to its top edge. */
+export const uFrame = (f: Pick<GlassSettings, "style" | "profile">) => isGlass(f) && f.profile === "wood-u";
+/** The axis up a door's face from the axis through it: a cabinet's fronts (through y) z, a niche's (through w) v. */
+const upOf = (depth: 0 | 1 | 2) => (depth === 2 ? 1 : 2);
 
 /**
  * What a change of style sets: a frame door its routed frame (70 mm, a panel 6 mm back), a glass door its aluminium
@@ -88,28 +93,28 @@ export function styleChange(style: DoorStyle, current: GlassSettings & { frameDe
 /** The two axes of a door's face (the third, `depth`, runs through its thickness). */
 const faceAxes = (depth: 0 | 1 | 2) => [0, 1, 2].filter((i) => i !== depth) as [number, number];
 
-/** A box inset by `inset` on the face's axes, and from `a` to `b` through the thickness. */
-function insetBox(from: Vec3, to: Vec3, depth: 0 | 1 | 2, inset: number, [a, b]: [number, number]): [Vec3, Vec3] {
+/** A box inset by `inset` on the face's axes, and from `a` to `b` through the thickness; `top`: open at the top, so far beyond it. */
+function insetBox(from: Vec3, to: Vec3, depth: 0 | 1 | 2, inset: number, [a, b]: [number, number], top?: number): [Vec3, Vec3] {
   const lo = [...from] as Vec3;
   const hi = [...to] as Vec3;
   for (const i of faceAxes(depth)) {
     lo[i] = Math.min(from[i]!, to[i]!) + inset;
-    hi[i] = Math.max(from[i]!, to[i]!) - inset;
+    hi[i] = Math.max(from[i]!, to[i]!) + (top !== undefined && i === upOf(depth) ? top : -inset);
   }
   [lo[depth], hi[depth]] = [a, b];
   return [lo, hi];
 }
 
 /** The glass of a door (its box `from`–`to`, `depth` the axis through it): in the middle of its thickness, in the groove. */
-export function glassPane(from: Vec3, to: Vec3, depth: 0 | 1 | 2, frameWidth: number): [Vec3, Vec3] {
+export function glassPane(from: Vec3, to: Vec3, depth: 0 | 1 | 2, frameWidth: number, openTop = false): [Vec3, Vec3] {
   const mid = (from[depth]! + to[depth]!) / 2;
-  return insetBox(from, to, depth, frameWidth - GLASS_GROOVE, [mid - GLASS_THICKNESS / 2, mid + GLASS_THICKNESS / 2]);
+  return insetBox(from, to, depth, frameWidth - GLASS_GROOVE, [mid - GLASS_THICKNESS / 2, mid + GLASS_THICKNESS / 2], openTop ? 0 : undefined);
 }
 
 /** The opening inside the frame, through the door (a little beyond both faces, to cut it clean). */
-export function glassOpening(from: Vec3, to: Vec3, depth: 0 | 1 | 2, frameWidth: number): [Vec3, Vec3] {
+export function glassOpening(from: Vec3, to: Vec3, depth: 0 | 1 | 2, frameWidth: number, openTop = false): [Vec3, Vec3] {
   const [a, b] = [Math.min(from[depth]!, to[depth]!), Math.max(from[depth]!, to[depth]!)];
-  return insetBox(from, to, depth, frameWidth, [a - 1, b + 1]);
+  return insetBox(from, to, depth, frameWidth, [a - 1, b + 1], openTop ? 1 : undefined);
 }
 
 /** How far in from the door's edge its handle goes: on the frame of a glass door, else 40 mm. */
@@ -134,7 +139,9 @@ export function glassHardware(f: GlassSettings, doors: readonly { from: Vec3; to
   for (const d of doors) {
     const [i, j] = faceAxes(d.depth);
     const [a, b] = [Math.abs(d.to[i]! - d.from[i]!), Math.abs(d.to[j]! - d.from[j]!)];
-    area += (a - 2 * (w - GLASS_GROOVE)) * (b - 2 * (w - GLASS_GROOVE));
+    // In a U frame the glass goes up to the top edge: one rail less up the face.
+    const rails = (axis: number) => (uFrame(f) && axis === upOf(d.depth) ? 1 : 2) * (w - GLASS_GROOVE);
+    area += (a - rails(i)) * (b - rails(j));
     metres += 2 * (a + b);
   }
   const round = (v: number) => Math.round(v * 100) / 100;

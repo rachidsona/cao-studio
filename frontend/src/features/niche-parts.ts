@@ -34,7 +34,7 @@ import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
 import { accessoryHardware, accessoryParts, accessoryProblem } from "./accessory-parts";
 import { decorProblem } from "./door-decor";
-import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass, woodFrame } from "./glass-door";
+import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass, uFrame, woodFrame } from "./glass-door";
 
 export interface NicheGeometry {
   frame: SketchFrame;
@@ -309,7 +309,7 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     });
     // The glass of each glazed door, last: bought, it turns with its door.
     if (isGlass(f)) parts.slice(0, count).forEach((door, i) => {
-      const [from, to] = glassPane(door.from, door.to, 2, glassFrame(f));
+      const [from, to] = glassPane(door.from, door.to, 2, glassFrame(f), uFrame(f));
       parts.push({ name: `Vitre porte ${i + 1}`, kind: "box", from, to, role: "hardware", of: i });
     });
     return parts;
@@ -366,7 +366,8 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     parts.forEach((front, i) => {
       if (front.role !== "front") return;
       // On a glazed front, in the middle of the frame's top rail, not through the glass.
-      const [u, v] = [(front.from[0] + front.to[0]) / 2, isGlass(f) ? front.to[1] - glassFrame(f) / 2 : (front.from[1] + front.to[1]) / 2];
+      // A U frame has no top rail: on its bottom one.
+      const [u, v] = [(front.from[0] + front.to[0]) / 2, isGlass(f) ? (uFrame(f) ? front.from[1] + glassFrame(f) / 2 : front.to[1] - glassFrame(f) / 2) : (front.from[1] + front.to[1]) / 2];
       parts.push({ name: `Poignée ${front.name.replace(/^Façade /, "")}`, kind: "handle", from: [u - half(f), v, front.to[2]], to: [u + half(f), v, front.to[2]], role: "hardware", of: i });
     });
   }
@@ -374,7 +375,7 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
   if (isGlass(f) && !f.inner) {
     parts.slice().forEach((front, i) => {
       if (front.role !== "front") return;
-      const [from, to] = glassPane(front.from, front.to, 2, glassFrame(f));
+      const [from, to] = glassPane(front.from, front.to, 2, glassFrame(f), uFrame(f));
       parts.push({ name: `Vitre ${front.name.replace(/^Façade /, "")}`, kind: "box", from, to, role: "hardware", of: i });
     });
   }

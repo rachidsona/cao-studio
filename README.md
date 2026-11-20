@@ -3426,9 +3426,10 @@ opération existante.
     dans l'outil Tiroirs pour ceux d'une niche de Répartition ; une porte vitrée changée en tiroirs le reste) : chaque
     façade est un cadre en profilé alu ouvert sur un verre trempé de 4 mm, comme une porte vitrée — largeur du cadre,
     verre (clair, extra-clair, dépoli, fumé, bronze, noir) et cadre (alu brossé ou noir, ou **bois** : la façade
-    elle-même évidée dans la matière des façades, débitée, sur charnières à boîtier, seul le verre acheté) au choix. Le verre de chaque
-    tiroir (« Vitre tiroir 1 »…) sort avec lui ; sa poignée se perce au milieu de la traverse du haut du cadre, pas
-    dans le verre. Cadre et verre ne sont pas sciés : ils sortent du débit et vont au devis, le verre au m², le profilé
+    elle-même évidée dans la matière des façades, débitée, sur charnières à boîtier, seul le verre acheté ; ou **bois en U** : les deux côtés et
+    la traverse du bas, ouvert en haut, le verre montant jusqu'au bord) au choix. Le verre de chaque
+    tiroir (« Vitre tiroir 1 »…) sort avec lui ; sa poignée se perce au milieu de la traverse du haut du cadre (du bas
+    pour un cadre en U), pas dans le verre. Cadre et verre ne sont pas sciés : ils sortent du débit et vont au devis, le verre au m², le profilé
     au mètre. Pas pour des tiroirs à l'anglaise (derrière une porte) ni sans poignée (gorge), ni sous 8 mm d'épaisseur
     ou avec un cadre trop large pour la façade.
   - Les **modules de dressing** (Module, « Modules à glisser ») choisissent le style des façades de leurs tiroirs dans

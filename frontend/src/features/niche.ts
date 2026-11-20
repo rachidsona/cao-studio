@@ -10,7 +10,7 @@ import { cast, makeBox, makeCompound, makeCylinder, Transformation, type Shape3D
 import type { NicheFeature, SketchFeature, Vec3 } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
 import type { SolidsOutput } from "./outputs";
-import { glassFrame, glassOpening, glassPane, handleInset, isGlass } from "./glass-door";
+import { glassFrame, glassOpening, glassPane, handleInset, isGlass, uFrame } from "./glass-door";
 import { cutGrooves } from "./decor-cut";
 import { decorGrooves, isDecor } from "./door-decor";
 import { nicheGeometry, nicheParts, nicheProblem, nicheWorld, worldBox, type NicheGeometry, type NichePart } from "./niche-parts";
@@ -99,7 +99,7 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   // A glass door, or a glazed drawer front: the opening through the aluminium frame, and the groove the glass sits in (one after the other: they
   // overlap, and overlapping tools cut at once give a wrong solid).
   if (part.role === "front" && (part.handle || f.fill === "drawers") && isGlass(f)) {
-    for (const [from, to] of [glassOpening(part.from, part.to, 2, glassFrame(f)), glassPane(part.from, part.to, 2, glassFrame(f))]) {
+    for (const [from, to] of [glassOpening(part.from, part.to, 2, glassFrame(f), uFrame(f)), glassPane(part.from, part.to, 2, glassFrame(f), uFrame(f))]) {
       const [p, q] = worldBox(n, { from, to });
       const tool = makeBox(p, q) as unknown as Shape3D;
       const cut = solid.cut(tool) as Shape3D;
@@ -118,7 +118,7 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
     // A door: along its edge, 40 mm in (on the frame of a glass door), at mid-height.
     const inset = handleInset(f);
     // A drawer front across its middle; a glazed one in the middle of its frame's top rail, not through the glass.
-    const drawerV = isGlass(f) ? v1 - glassFrame(f) / 2 : (v0 + v1) / 2;
+    const drawerV = isGlass(f) ? (uFrame(f) ? v0 + glassFrame(f) / 2 : v1 - glassFrame(f) / 2) : (v0 + v1) / 2;
     // A lift-up door or a flap: across its middle, near its free edge.
     const at = (k: number): [number, number] =>
       part.handle === "top" || part.handle === "bottom" ? [(u0 + u1) / 2 + k, part.handle === "top" ? v1 - inset : v0 + inset]

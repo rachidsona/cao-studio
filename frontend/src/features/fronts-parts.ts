@@ -19,7 +19,7 @@
  */
 import type { CabinetFeature, CabinetNotch, CadDocument, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetProblem } from "./cabinet-parts";
-import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass, woodFrame } from "./glass-door";
+import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass, uFrame, woodFrame } from "./glass-door";
 import { decorProblem } from "./door-decor";
 
 export interface FrontPart {
@@ -205,7 +205,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   if (f.layout !== "drawers") {
     // The glass of each glazed door, after the doors: in the middle of its thickness (along Y).
     if (isGlass(f)) parts.slice().forEach((door, i) => {
-      const [from, to] = glassPane(door.from, door.to, 1, glassFrame(f));
+      const [from, to] = glassPane(door.from, door.to, 1, glassFrame(f), uFrame(f));
       parts.push({ name: `Vitre ${door.name.toLowerCase()}`, from, to, of: i });
     });
     // The drawer over the doors, its finger space between them when handleless.
@@ -244,7 +244,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   // The glass of each glazed drawer front, at the very end: in the middle of its thickness, it slides out with its drawer.
   if (f.layout === "drawers" && isGlass(f)) parts.slice().forEach((front, i) => {
     if (front.role?.kind !== "drawer") return;
-    const [from, to] = glassPane(front.from, front.to, 1, glassFrame(f));
+    const [from, to] = glassPane(front.from, front.to, 1, glassFrame(f), uFrame(f));
     parts.push({ name: `Vitre ${front.name.replace(/^Façade /, "")}`, from, to, of: i });
   });
   return parts;

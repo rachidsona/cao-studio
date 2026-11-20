@@ -14,7 +14,7 @@ import { emptySketchGeometry, type DoorSettings, type PartitionParams } from "..
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { frontsHardware, frontsParts, frontsProblem } from "../../frontend/src/features/fronts-parts";
-import { ALU_HINGE, glassItem, profileItem } from "../../frontend/src/features/glass-door";
+import { ALU_HINGE, glassItem, glassOpening, glassPane, profileItem, uFrame } from "../../frontend/src/features/glass-door";
 import { nicheGeometry, nicheHardware, nicheParts, nicheProblem } from "../../frontend/src/features/niche-parts";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
@@ -157,6 +157,21 @@ describe("portes vitrées d'un caisson de cuisine", () => {
     expect([2, 3].map((i) => isHardwareBody(doc, `fr1#${i}`))).toEqual([true, true]);
     expect(glassDoorLook(doc, "fr1#0")).toBeUndefined();
     expect(glassDoorLook(doc, "fr1#2")).toBe("glass-frosted");
+  });
+
+  it("un cadre en bois en U : les deux côtés et le bas, ouvert en haut, le verre jusqu'au bord du haut", () => {
+    const u = fronts({ profile: "wood-u", frameWidth: 60 });
+    expect(uFrame(u)).toBe(true);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(kitchen(u))))).not.toThrow();
+    expect(frontsHardware(u, cabinet)[0]).toEqual({ name: "Charnière à boîtier Ø35", quantity: 4 });
+    // A cabinet's door (through y, up z): the opening leaves the top, the glass reaches it; the sides and the bottom keep their rails.
+    const [from, to]: [[number, number, number], [number, number, number]] = [[0, 0, 0], [400, 22, 700]];
+    const [o0, o1] = glassOpening(from, to, 1, 60, true);
+    expect([o0[0], o0[2], o1[0], o1[2]]).toEqual([60, 60, 340, 701]);
+    const [p0, p1] = glassPane(from, to, 1, 60, true);
+    expect([p0[2], p1[2]]).toEqual([55, 700]);
+    // A niche's (through w, up v): the same up its face.
+    expect(glassOpening([0, 0, 0], [400, 700, 22], 2, 60, true)[1][1]).toBe(701);
   });
 
   it("des portes en verre noir : le verre au devis à son prix, son apparence de la bibliothèque", () => {
