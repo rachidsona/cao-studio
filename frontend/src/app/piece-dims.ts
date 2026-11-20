@@ -25,6 +25,8 @@ import { documentPlans, joineryPlans } from "./dressing/partition-plan";
 import { withPieceSize } from "../document/piece-size";
 import { editDim, editValue } from "./dim-editor";
 import { PlanDimsView, type DimEdit } from "./dressing/plan-dims-view";
+import { disposeFat, fatSegments } from "../viewport/fat-lines";
+import type { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { sketchShown } from "./zone-view";
 
 const KEY = "cao.piece-dims";
@@ -42,7 +44,6 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
   const group = new THREE.Group();
   group.renderOrder = 47;
   viewport.scene.add(group);
-  const material = new THREE.LineBasicMaterial({ color: COLOR });
   const raycaster = new THREE.Raycaster();
   let on = false;
   try {
@@ -59,7 +60,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     for (const child of [...group.children]) {
       group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
-      if (child instanceof THREE.LineSegments) child.geometry.dispose();
+      if (child.userData.fat) disposeFat(child as LineSegments2);
     }
   };
 
@@ -226,10 +227,17 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
         group.add(label);
       }
     }
+    // A few pixels wide over a pale halo, as the Répartition's (dressing/plan-dims-view.ts): readable on wood.
     if (points.length) {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-      group.add(new THREE.LineSegments(geometry, material));
+      const vectors = Array.from({ length: points.length / 3 }, (_, n) => new THREE.Vector3(points[3 * n], points[3 * n + 1], points[3 * n + 2]));
+      ([[0xffffff, 4.5, 0.7], [COLOR, 1.8, 1]] as const).forEach(([color, width, opacity], n) => {
+        const line = fatSegments(vectors, color, width);
+        (line.material as THREE.Material & { opacity: number }).opacity = opacity;
+        // Hidden behind the bodies, as before (a door hides the cabinet's dimensions behind it).
+        line.material.depthTest = true;
+        line.renderOrder = 47 + n;
+        group.add(line);
+      });
     }
   };
 

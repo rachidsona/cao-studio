@@ -3260,6 +3260,8 @@ opération existante.
     l'une sur l'autre (un double côté) n'en font qu'une ; elles suivent la vue quand elle tourne et le modèle quand
     il change.
   - Le bouton les cache ; l'état est gardé dans ce navigateur (`features/piece-dims.ts`, `app/piece-dims.ts`).
+  Les traits des cotes (celles des pièces comme celles d'une Répartition) font quelques pixels de large, sur un liseré
+  clair qui les détache du bois comme du fond sombre de la vue.
 - **Cotes dans la vue** (les étiquettes de modification de TopSolid) : quand les pièces d'un seul caisson sont
   sélectionnées, son nom, sa largeur, sa hauteur, sa profondeur et son nombre d'étagères s'affichent dans une barre en
   bas de la vue, juste au-dessus de l'historique, avec ses poignées ✥ et ↻ (`app/cabinet-bar.ts`). Un clic en fait

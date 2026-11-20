@@ -11,11 +11,15 @@ import { toDisplay } from "../../measurements/units";
 import type { SketchFrame } from "../../sketcher/frame";
 import { toWorld } from "../../sketcher/frame";
 import type { Viewport } from "../../viewport/viewport";
+import { disposeFat, fatSegments } from "../../viewport/fat-lines";
+import type { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 
 /** A value of the view clicked: the label, which niche size it is, and its value (mm). */
 export type DimEdit = (label: HTMLElement, axis: "x" | "y", span: [number, number], value: number, whole: boolean) => void;
 
 const LINE = 0xf8500a;
+/** Widths in pixels: the dimension lines over a pale halo that reads on wood as on the dark view; the witness lines. */
+const WIDTH = { line: 1.8, halo: 4.5, witness: 1.2 };
 /** A value needs this much of its line, in pixels: its width along a line across the screen, its height along one up the screen. */
 const ROOM = 30;
 const ROOM_UP = 16;
@@ -24,8 +28,6 @@ const RING = 46;
 
 export class PlanDimsView {
   private readonly group = new THREE.Group();
-  private readonly lines = new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity: 0.9, depthTest: false });
-  private readonly witnesses = new THREE.LineBasicMaterial({ color: LINE, transparent: true, opacity: 0.3, depthTest: false });
 
   constructor(private readonly viewport: Viewport) {
     this.group.renderOrder = 48;
@@ -36,7 +38,7 @@ export class PlanDimsView {
     for (const child of [...this.group.children]) {
       this.group.remove(child);
       if (child instanceof CSS2DObject) child.element.remove();
-      if (child instanceof THREE.LineSegments) child.geometry.dispose();
+      if (child.userData.fat) disposeFat(child as LineSegments2);
     }
   }
 
@@ -115,13 +117,15 @@ export class PlanDimsView {
         this.group.add(label);
       }
     }
-    for (const [points, material] of [[thin, this.witnesses], [main, this.lines]] as const) {
-      if (!points.length) continue;
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-      const segments = new THREE.LineSegments(geometry, material);
-      segments.renderOrder = 48;
-      this.group.add(segments);
-    }
+    // Lines a few pixels wide (WebGL's are one): the witnesses, then the dimension lines over their halo.
+    const vectors = (flat: number[]) => Array.from({ length: flat.length / 3 }, (_, i) => new THREE.Vector3(flat[3 * i], flat[3 * i + 1], flat[3 * i + 2]));
+    const layers: [number[], number, number, number][] = [[thin, LINE, WIDTH.witness, 0.55], [main, 0xffffff, WIDTH.halo, 0.7], [main, LINE, WIDTH.line, 1]];
+    layers.forEach(([points, color, width, opacity], k) => {
+      if (!points.length) return;
+      const line = fatSegments(vectors(points), color, width);
+      (line.material as THREE.Material & { opacity: number }).opacity = opacity;
+      line.renderOrder = 48 + k;
+      this.group.add(line);
+    });
   }
 }
