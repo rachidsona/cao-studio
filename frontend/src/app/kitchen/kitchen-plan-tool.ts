@@ -28,7 +28,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
-import { panelHeader } from "../../ui/panel-close";
+import { asCards, panelHeader } from "../../ui/panel-close";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { kitchenSchema } from "./kitchen-plan-schema";
@@ -162,7 +162,7 @@ export class KitchenPlanTool {
     this.hadPlan ||= !!placed;
     const plan = placed ? kitchenPlanIn(this.editor.doc, placed.id) : undefined;
     if (placed && plan && this.runEditor) this.panel.replaceChildren(...this.runEditor.render());
-    else this.panel.replaceChildren(...(placed && plan && !this.editing ? this.runs(placed.id, plan) : this.settings(placed?.id)));
+    else this.panel.replaceChildren(...(placed && plan && !this.editing ? this.runs(placed.id, plan) : this.settings(placed?.id))), asCards(this.panel);
     paintPrice();
   }
 
@@ -205,13 +205,13 @@ export class KitchenPlanTool {
     const islandRows = plan.island && !model.noIsland;
     const rows: (HTMLElement | null)[] = [
       panelHeader("Plan de cuisine", close),
-      models,
+      el("h3", { class: "panel-title" }, "Modèle"), models,
       el("p", { class: "font-medium text-gray-700 dark:text-gray-200" }, model.label),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, problem ? null : kitchenSchema(plan, (r) => [r.label, formatLength(r.zone.run.length, this.editor.unit)], undefined, {}, kitchenMarks(this.editor.doc, plan))),
       this.roomChoice(),
       ...kitchenJoints(plan).map(({ joint, label, walls }) => this.fields.select(label, plan.through?.[joint] ? "1" : "0", walls.map((w, i): [string, string] => [String(i), `${w} passe`]), (v) => this.set({ through: { ...plan.through, [joint]: v === "1" } }))),
       ...kitchenJoints(plan).map(({ joint }) => this.fields.select(`Dans l'angle, à ${joint === "left" ? "gauche" : "droite"}`, cornerKind(plan, joint), (Object.keys(CORNER_KINDS) as CornerKind[]).map((k): [string, string] => [k, CORNER_KINDS[k].label]), (v) => this.set({ corners: { ...plan.corners, [joint]: v as CornerKind } }))),
-      plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.fields.number("Longueur mur A", "lengthA"),
+      el("h3", { class: "panel-title" }, "Cotes"), plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.fields.number("Longueur mur A", "lengthA"),
       ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.fields.number(label, key)),
       plan.room ? null : this.fields.number("Hauteur sous plafond", "height"),
       this.fields.number("Profondeur des bas", "depth"),
@@ -223,13 +223,13 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null,
-      this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
+      el("h3", { class: "panel-title" }, "Matières et finitions"), this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
       this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })), this.fields.look(),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"), ...this.fields.cap(),
       wallsCheck(this.editor, planId, plan, (patch) => this.set(patch), () => this.draw()),
       this.fields.select("Retour du plan aux bouts libres", plan.worktopEnds ? (plan.worktopJoint ?? "top") : "none", [["none", "Aucun"], ["top", "Jusqu'au sol, le plan par-dessus"], ["side", "Jusqu'au sol, le retour par-dessus"], ["miter", "Jusqu'au sol, coupe d'onglet (45°)"]], (v) => this.set(v === "none" ? { worktopEnds: false } : { worktopEnds: true, worktopJoint: v as NonNullable<KitchenFloorPlan["worktopJoint"]> })),
-      el("p", { class: "pt-1 font-semibold text-gray-700 dark:text-gray-200" }, "Pour « Proposer une cuisine »"),
+      el("h3", { class: "panel-title" }, "Pour « Proposer une cuisine »"),
       el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Comme dans l'Implantation ; ils servent quand vous cliquez « Proposer une cuisine »."),
       this.fields.select("Façades des bas", plan.fronts ?? "mixed", [["mixed", "Tiroirs et portes, en alternance"], ["drawers", "Tiroirs partout"], ["doors", "Portes partout"]], (v) => this.set({ fronts: v as KitchenFloorPlan["fronts"] })),
       this.fields.check("Meubles hauts au-dessus", "wallUnits"),

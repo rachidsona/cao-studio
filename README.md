@@ -966,6 +966,8 @@ opération existante.
   **nouvelle esquisse du plan XZ** (de face : le meuble est debout, ses niches ouvertes vers l'avant), qu'on n'a pas
   à ouvrir ; « Extruder les panneaux » est coché. C'est un rectangle de **hauteur × longueur** (par exemple 250 × 180 cm) divisé en
   **2 à 12 cases égales, une par porte**, avec ses côtés dessinés à leur épaisseur (deux traits, 18 mm par défaut).
+  Son panneau est rangé en **cartes**, comme les Propriétés : Dimensions et cases, Qui passe aux angles, Extrusion,
+  Portes, Fond, Position (`asCards` de `ui/panel-close.ts`).
   - **Côtés** : chacun est **simple** (un panneau) ou **double** (deux panneaux dos à dos, où deux modules se
     rejoignent). Au départ : 2 cases = un simple ; 3 = simple et double ; 4 = simple, double, simple ; 5 = simple,
     double, double, simple (les doubles au milieu) ; et chaque côté se change un par un (« Côté 1 », « Côté 2 »…).
@@ -2521,6 +2523,7 @@ opération existante.
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
   leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
   chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui —, l'autre s'arrête contre lui.
+  Son panneau de réglages est rangé en **cartes** : Modèle, Cotes, Matières et finitions, Pour « Proposer une cuisine ».
   - **Angles** (`document/kitchen-corners.ts`, `app/kitchen/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
     dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à

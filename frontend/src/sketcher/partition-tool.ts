@@ -9,7 +9,7 @@ import type { BackSettings, DoorSettings, OffsetRecord, SketchGeometry } from ".
 import type { DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
-import { panelFooter, panelHeader } from "../ui/panel-close";
+import { asCards, panelFooter, panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
 import { fixedPlanClass, fixedPlanToggle } from "../ui/fixed-plan";
 import type { Vec2 } from "./edit";
@@ -318,7 +318,7 @@ export class SketchPartitionTool {
           this.face.view(),
         ].filter((r): r is HTMLElement => r !== null),
       ),
-      number("Hauteur", this.input.height, (v) => this.resize({ height: v })),
+      heading("Dimensions et cases"), number("Hauteur", this.input.height, (v) => this.resize({ height: v })),
       number("Longueur", this.input.length, (v) => this.resize({ length: v })),
       number("Épaisseur", this.input.thickness, (v) => this.set({ thickness: v })),
       select("Cases", String(this.input.cases), Array.from({ length: MAX_CASES - 1 }, (_, i): [string, string] => [String(i + 2), `${i + 2} cases (${i + 2} portes)`]), (v) =>
@@ -405,7 +405,7 @@ export class SketchPartitionTool {
       typeof layout === "string" ? el("p", { class: " bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, layout) : null,
       panelFooter(() => this.cancel(), () => this.confirm(), typeof layout === "string"),
     ];
-    this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null));
+    this.panel.replaceChildren(...rows.filter((r): r is HTMLElement => r !== null)), asCards(this.panel);
   }
 
   // ---- end --------------------------------------------------------------------------

@@ -27,3 +27,56 @@ export function panelFooter(done: () => void, ok: (() => void) | null, blocked =
   keep?.addEventListener("click", () => ok?.());
   return el("div", { class: "flex gap-1.5 pt-1" }, end, keep);
 }
+
+/** Where a card stops: the panel's foot, a message (what it makes, what is wrong). */
+const loose = (e: Element) => !!e.querySelector("[data-panel-done], [data-panel-ok]") || /\bbg-(sky|amber|red)-50\b/.test(e.className);
+
+/** The cards folded, by title, kept in this browser (the same title folded in every tool). */
+const FOLDED = "cao.tool-cards.folded";
+const foldedCards = (): Set<string> => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(FOLDED) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+};
+const rememberCard = (title: string, open: boolean) => {
+  const all = foldedCards();
+  if (open) all.delete(title);
+  else all.add(title);
+  try {
+    localStorage.setItem(FOLDED, JSON.stringify([...all]));
+  } catch {
+    // Only this visit.
+  }
+};
+
+/**
+ * The settings of a tool panel in cards, as the Properties': each heading (an `h3.panel-title` of the panel) and what
+ * follows it, up to the next heading, the foot or a message. A click on its title folds or unfolds it, as kept.
+ */
+export function asCards(panel: HTMLElement): void {
+  const shut = foldedCards();
+  let body: HTMLElement | null = null;
+  for (const child of [...panel.children]) {
+    if (child.matches("h3.panel-title")) {
+      const title = child.textContent ?? "";
+      child.classList.remove("pt-1");
+      const card = el(
+        "details",
+        { class: "group/card border border-gray-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", "data-panel-card": title, ...(shut.has(title) ? {} : { open: "" }) },
+        el(
+          "summary",
+          { class: "flex min-h-9 cursor-pointer list-none items-center gap-2 px-2.5 py-2 select-none hover:bg-gray-50 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden", title: "Plier ou déplier" },
+          el("span", { class: "inline-block w-3 text-3xs text-gray-400 transition-transform group-open/card:rotate-90", "aria-hidden": "true" }, "▶"),
+        ),
+      );
+      child.before(card);
+      card.firstElementChild!.append(child);
+      body = el("div", { class: "space-y-2 px-2.5 pb-2.5" });
+      card.append(body);
+      card.addEventListener("toggle", () => rememberCard(title, card.open));
+    } else if (body && !loose(child)) body.append(child);
+    else body = null;
+  }
+}
