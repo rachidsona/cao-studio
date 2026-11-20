@@ -49,7 +49,8 @@ class FormPipetteTool implements PointerHandler {
 
   private say(): void {
     this.text.textContent = this.from
-      ? this.from.kind === "division" ? `Cliquez une niche vide : elle prend la division de « ${this.from.label} » ; une autre étagère : elle prend son épaisseur, sa matière et son apparence.` : `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».`
+      ? this.from.kind === "partition" ? `Cliquez une autre Répartition (un côté, une étagère, une niche) : elle prend l'organisation de « ${this.from.label} » — cases, côtés, étagères, cloisons, portes, ce que tient chaque case — en gardant ses cotes.`
+      : this.from.kind === "division" ? `Cliquez une niche vide : elle prend la division de « ${this.from.label} » ; une autre étagère : elle prend son épaisseur, sa matière et son apparence.` : `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».`
       : "Cliquez le meuble, la porte, les tiroirs, le caisson, l'étagère ou le corps dont vous prenez la forme.";
     this.again.disabled = !this.from;
   }
@@ -73,9 +74,9 @@ class FormPipetteTool implements PointerHandler {
     if (!isClick) return false;
     const body = this.viewport.pickFace(event)?.bodyId;
     // A division goes to the niche clicked: through its back, or its emptiness.
-    const niche = this.from?.kind === "division" ? nicheUnderPointer(this.viewport, this.editor.doc, event) : null;
+    const niche = this.from?.kind === "division" || this.from?.kind === "partition" ? nicheUnderPointer(this.viewport, this.editor.doc, event) : null;
     const picked = body ? formOf(this.editor.doc, body) : null;
-    const form: FormSource | null = niche && picked?.kind !== "division" ? { kind: "place", place: { sketch: niche.sketch, partition: niche.partition, path: niche.path }, label: "la niche" } : picked;
+    const form: FormSource | null = niche && picked?.kind !== "division" && picked?.kind !== "partition" ? { kind: "place", place: { sketch: niche.sketch, partition: niche.partition, path: niche.path }, label: "la niche" } : picked;
     if (!body && !form) return true;
     if (!form) {
       this.editor.notify("Cet élément n'a pas de forme à copier : cliquez un meuble, un caisson, une porte, des tiroirs ou une niche équipée.", "error");

@@ -21,6 +21,7 @@ import { withLookCopied } from "../appearance/assign";
 import { withNicheHeld, withNicheSize } from "./niche-size";
 import { pathKey, rebuildChain } from "../sketcher/partition-history";
 import type { NicheBox } from "../sketcher/shelves";
+import { partitionOfBody, withOrganisationCopied } from "./partition-copy";
 import { divisionOf, doorOf, frontsWithDoor, nicheWithDoor, placeLabel, unitWithDoor, withBodyCopied, withDivisionCopied, withShelfCopied, type Box, type DoorForm } from "./form-copy-more";
 import type { NichePlace } from "./niche-recipe";
 
@@ -33,7 +34,9 @@ export type FormSource =
   /** A shelf or a cloison: the niche it divides; a niche picked in the view (a target only). */
   | { kind: "division"; place: NichePlace; body: string; record: string; label: string }
   | { kind: "place"; place: NichePlace; label: string }
-  | { kind: "body"; id: string; label: string };
+  | { kind: "body"; id: string; label: string }
+  /** A whole Répartition, from one of its panels (a side, the top, the bottom): its organisation. */
+  | { kind: "partition"; sketch: string; label: string };
 /** An element of the furniture (not a body, a division or a niche picked). */
 type Element = Extract<FormSource, { kind: "unit" | "cabinet" | "fronts" | "niche" }>;
 
@@ -77,6 +80,8 @@ export function formOf(doc: CadDocument, bodyId: string): FormSource | null {
   if (feature.type === "niche" && feature.fill !== "back") return { kind: "niche", id: feature.id, fill: feature.fill, label: `${FILL_NAME[feature.fill]} (${feature.name})` };
   const division = divisionOf(doc, bodyId);
   if (division) return { kind: "division", place: { sketch: division.sketch, partition: division.partition, path: division.path }, body: bodyId, record: division.record, label: placeLabel(doc, division, division.vertical) };
+  const partition = partitionOfBody(doc, bodyId);
+  if (partition) return { kind: "partition", sketch: partition, label: `Répartition (${findFeature(doc, partition)?.name ?? partition})` };
   // The room's walls and the appliances are not furniture to copy.
   if (feature.type === "appliance" || doc.bodyInfo?.[bodyId]?.room || doc.bodyInfo?.[feature.id]?.room) return null;
   return { kind: "body", id: bodyId, label: doc.bodyNames?.[bodyId] ?? feature.name };
@@ -108,6 +113,12 @@ const feature = <T extends Feature>(doc: CadDocument, id: string) => findFeature
  * its sizes from `boxOf` (its box in the view); `notes`: what could not be copied.
  */
 export function withFormCopied(doc: CadDocument, from: FormSource, to: FormSource, bodies: readonly string[] = [], boxOf: (id: string) => Box | null = () => null, notes: string[] = []): CadDocument | string {
+  // A whole Répartition: its organisation to another one, clicked by any of its pieces (a panel, a shelf, a niche).
+  if (from.kind === "partition") {
+    const target = to.kind === "partition" ? to.sketch : to.kind === "division" || to.kind === "place" ? to.place.sketch : to.kind === "niche" ? (findFeature(doc, to.id) as NicheFeature | undefined)?.sketch : undefined;
+    return target ? withOrganisationCopied(doc, from.sketch, target) : "Une Répartition donne son organisation à une autre Répartition : cliquez l'un de ses panneaux.";
+  }
+  if (to.kind === "partition") return "Une Répartition prend l'organisation d'une autre : cliquez d'abord un côté, le dessus ou le dessous de celle-ci.";
   if (from.kind === "body" || to.kind === "body") return from.kind === "body" && to.kind === "body" ? withBodyCopied(doc, from.id, to.id, boxOf, notes) : "Un corps prend la forme d'un autre corps.";
   if (from.kind === "division" || to.kind === "division" || to.kind === "place") {
     if (from.kind !== "division") return "Une niche prend la division d'une autre : cliquez d'abord une étagère ou une cloison.";

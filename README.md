@@ -2108,7 +2108,11 @@ opération existante.
     (planche, côté, panneau) donne ses trois cotes, sa matière et son apparence à un autre (une pièce de Répartition
     garde les cotes de sa niche) ; **une étagère ou une cloison** donne la division de sa niche (nombre, épaisseur,
     hauteurs, et ce qui la divise encore) à une niche vide qu'on clique, et à une autre étagère seulement son
-    épaisseur, sa matière et son apparence (le nombre et la place des étagères restent) ;
+    épaisseur, sa matière et son apparence (le nombre et la place des étagères restent) ; **une Répartition** (on clique un de
+    ses côtés, son dessus ou son dessous) donne son organisation à une autre, qu'on clique par n'importe laquelle de
+    ses pièces : cases et proportions, côtés, épaisseur, angles, socle, portes, étagères, cloisons, penderies et
+    tiroirs de chaque case, refaits à ses propres cotes — elle garde sa longueur, sa hauteur, sa profondeur, sa place
+    et son fond (`document/partition-copy.ts`) ;
     chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
     des tiroirs. Un meuble bas ne donne pas sa forme à un meuble haut. La matière ne change pas (`document/form-copy.ts`).
