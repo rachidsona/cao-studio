@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { newProject } from "./helpers";
 
-test("pendant Étagères : un clic sur la cote totale, « 180 + 20 », et la Répartition passe à 200 cm, l'outil restant ouvert", async ({ page }) => {
+test("pendant Étagères : un clic sur la cote totale, « + 20 » tapé sur sa valeur, et la Répartition passe à 200 cm, l'outil restant ouvert", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -23,7 +23,10 @@ test("pendant Étagères : un clic sur la cote totale, « 180 + 20 », et la Ré
   await expect(tool).toBeVisible();
   const total = page.locator('.cad-plan-dim[data-level="total"][data-editable]').filter({ hasText: /^180$/ }).first();
   await total.click();
-  await page.locator("[data-dim-editor]").fill("180 + 20");
+  // The value as it opens is selected: « + 20 » typed goes after it (180 + 20), it does not replace it.
+  await expect(page.locator("[data-dim-editor]")).toHaveValue("180");
+  await page.keyboard.type("+20");
+  await expect(page.locator("[data-dim-editor]")).toHaveValue("180+20");
   await page.keyboard.press("Enter");
   await expect(page.locator('.cad-plan-dim[data-level="total"]').filter({ hasText: /^200$/ }).first()).toBeVisible({ timeout: 15_000 });
   await expect(tool).toBeVisible();

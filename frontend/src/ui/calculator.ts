@@ -64,7 +64,13 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     ...o.inputAttrs,
   });
   const error = el("p", { class: "hidden px-1 text-xs text-red-300", role: "alert" });
+  /** An operator while the whole value is selected (as it opens): it goes after the value, which is calculated on. */
+  const onValue = (text: string) => {
+    if (!/^[+−×÷*/-]$/.test(text) || !input.value || input.selectionStart !== 0 || input.selectionEnd !== input.value.length) return;
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
   const insert = (text: string) => {
+    onValue(text);
     const start = input.selectionStart ?? input.value.length;
     const end = input.selectionEnd ?? input.value.length;
     input.value = input.value.slice(0, start) + text + input.value.slice(end);
@@ -172,6 +178,8 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   popup.addEventListener("pointerdown", (event) => event.stopPropagation());
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
+    // « + 5 » typed on the value as it opens: 185 + 5, not 5.
+    onValue(event.key);
     if (event.key === "Enter") {
       event.preventDefault();
       submit();
