@@ -3,7 +3,9 @@
  * panneau de verre trempé de 4 mm, au milieu de l'épaisseur, engagé de 5 mm dans la rainure du profilé. Le cadre
  * pivote comme une porte et le verre avec lui. Ni l'un ni l'autre ne se scie à l'atelier : ils sortent de la liste de
  * débit et vont au devis, le verre au m², le profilé au mètre (tour de chaque porte). Le verre (clair, extra-clair,
- * dépoli, fumé, bronze, noir) et le cadre (aluminium brossé ou noir) prennent leur apparence de la bibliothèque. Pur.
+ * dépoli, fumé, bronze, noir) et le cadre (aluminium brossé ou noir) prennent leur apparence de la bibliothèque. Un
+ * cadre en bois est la porte elle-même, évidée dans la matière des façades : débitée, sur charnières à boîtier, sans
+ * profilé à acheter (seul le verre l'est). Pur.
  */
 import type { GlassKind, ProfileFinish, Vec3 } from "../document/types";
 import { decorChange } from "./door-decor";
@@ -31,11 +33,13 @@ export const GLASS_KINDS: readonly [GlassKind, string][] = [
 export const PROFILE_FINISHES: readonly [ProfileFinish, string][] = [
   ["brushed", "Aluminium brossé"],
   ["black", "Aluminium noir"],
+  ["wood", "Bois (matière des façades)"],
 ];
 
 /** The appearance (appearance/library.ts) of each glass and of each frame. */
 export const GLASS_APPEARANCE: Record<GlassKind, string> = { clear: "glass-clear", "extra-clear": "glass-extra-clear", frosted: "glass-frosted", smoked: "glass-smoked", bronze: "glass-bronze", black: "glass-black" };
-export const PROFILE_APPEARANCE: Record<ProfileFinish, string> = { brushed: "aluminium-brushed", black: "aluminium-black" };
+/** A wooden frame keeps the look of its board (none set here). */
+export const PROFILE_APPEARANCE: Partial<Record<ProfileFinish, string>> = { brushed: "aluminium-brushed", black: "aluminium-black" };
 
 /** Names of the bought items, in the quote and the buying list. */
 const GLASS_WORDS: Record<GlassKind, string> = { clear: "clair", "extra-clear": "extra-clair", frosted: "dépoli", smoked: "fumé", bronze: "bronze", black: "noir" };
@@ -66,6 +70,8 @@ export interface GlassSettings {
 
 export const isGlass = (f: Pick<GlassSettings, "style">) => f.style === "glass";
 export const glassFrame = (f: Pick<GlassSettings, "frameWidth">) => f.frameWidth ?? GLASS_FRAME;
+/** A glazed door framed in wood: cut in the workshop, on cup hinges; its glass alone is bought. */
+export const woodFrame = (f: Pick<GlassSettings, "style" | "profile">) => isGlass(f) && f.profile === "wood";
 
 /**
  * What a change of style sets: a frame door its routed frame (70 mm, a panel 6 mm back), a glass door its aluminium
@@ -134,7 +140,8 @@ export function glassHardware(f: GlassSettings, doors: readonly { from: Vec3; to
   const round = (v: number) => Math.round(v * 100) / 100;
   return [
     { name: glassItem(f.glass), quantity: round(area / 1e6), unit: "m²" },
-    { name: profileItem(f.profile), quantity: round(metres / 1000), unit: "m" },
+    // A wooden frame is cut from the board: no profile to buy.
+    ...(woodFrame(f) ? [] : [{ name: profileItem(f.profile), quantity: round(metres / 1000), unit: "m" }]),
   ];
 }
 

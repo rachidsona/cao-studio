@@ -144,6 +144,21 @@ describe("portes vitrées d'un caisson de cuisine", () => {
     expect(frontsProblem(fronts({ layout: "drawers", frameWidth: 190 }), cabinet)).toMatch(/trop large pour ces façades/);
   });
 
+  it("un cadre en bois : la porte est débitée dans la matière des façades, sur charnières à boîtier, seul le verre est acheté", () => {
+    const wood = fronts({ profile: "wood", frameWidth: 60 });
+    const doc = kitchen(wood);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc)))).not.toThrow();
+    const hardware = frontsHardware(wood, cabinet);
+    expect(hardware[0]).toEqual({ name: "Charnière à boîtier Ø35", quantity: 4 });
+    expect(hardware.some((h) => h.name.startsWith("Profilé alu"))).toBe(false);
+    expect(hardware.find((h) => h.name === glassItem("frosted"))?.unit).toBe("m²");
+    // The frames are cut (not bought), with the board's own look; the glass is bought.
+    expect([0, 1].map((i) => isHardwareBody(doc, `fr1#${i}`))).toEqual([false, false]);
+    expect([2, 3].map((i) => isHardwareBody(doc, `fr1#${i}`))).toEqual([true, true]);
+    expect(glassDoorLook(doc, "fr1#0")).toBeUndefined();
+    expect(glassDoorLook(doc, "fr1#2")).toBe("glass-frosted");
+  });
+
   it("des portes en verre noir : le verre au devis à son prix, son apparence de la bibliothèque", () => {
     const black = fronts({ glass: "black", profile: "black" });
     const doc = kitchen(black);

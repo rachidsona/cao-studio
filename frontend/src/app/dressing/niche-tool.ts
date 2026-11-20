@@ -294,7 +294,7 @@ export class NicheTool {
       ...decorRows(this.settings, (change) => (Object.assign(this.settings, change), this.recompute()), (label, mm, set) => number(label, mm, set, label.startsWith("Bordure"))),
       ...(this.settings.style === "glass"
         ? [
-            number("Cadre alu", this.settings.frameWidth ?? GLASS_FRAME, (v) => ((this.settings.frameWidth = v), this.recompute())),
+            number(this.settings.profile === "wood" ? "Cadre bois" : "Cadre alu", this.settings.frameWidth ?? GLASS_FRAME, (v) => ((this.settings.frameWidth = v), this.recompute())),
             pick("Verre", this.settings.glass ?? "clear", GLASS_KINDS, (v) => (this.settings.glass = v as NicheFeature["glass"])),
             pick("Cadre", this.settings.profile ?? "brushed", PROFILE_FINISHES, (v) => (this.settings.profile = v as NicheFeature["profile"])),
           ]

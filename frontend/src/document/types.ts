@@ -795,7 +795,8 @@ export type FrontStyle = Pick<FrontsFeature, "style" | "frameWidth" | "frameDept
 
 /** The glass of a glazed door, and the finish of its aluminium frame. */
 export type GlassKind = "clear" | "extra-clear" | "frosted" | "smoked" | "bronze" | "black";
-export type ProfileFinish = "brushed" | "black";
+/** The frame of a glazed door: aluminium (brushed, black), or wood — routed in the fronts' own board. */
+export type ProfileFinish = "brushed" | "black" | "wood";
 
 /** Drilling sizes of the hardware chosen for the project: handle holes and hinge cups (mm). */
 export interface HardwareSizes {

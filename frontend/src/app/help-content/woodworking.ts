@@ -20,7 +20,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Choisissez un « Modèle » pour partir de cotes courantes : bas de cuisine, haut, colonne, penderie, placard, ou une vitrine à portes en verre noir.",
           "Réglez « Largeur », « Hauteur », « Profondeur », « Épaisseur », « Socle » et le nombre d'« Étagères ».",
           "Choisissez le « Fond » (vissé derrière, encastré entre les côtés ou sans fond), la « Construction », le « Haut du caisson » (dessus plein, ou deux traverses pour un évier) et l'« Orientation ».",
-          "« Portes » : « Sans portes », « Pleines » ou « Vitrées (cadre alu) » ; pour des portes vitrées, choisissez le « Verre » (« Noir » pour une vitre noire) et le « Cadre » (aluminium brossé ou noir). Le caisson arrive avec ses portes : une jusqu'à 600 mm de large, deux au-delà.",
+          "« Portes » : « Sans portes », « Pleines » ou « Vitrées (cadre alu) » ; pour des portes vitrées, choisissez le « Verre » (« Noir » pour une vitre noire) et le « Cadre » : aluminium brossé ou noir, ou « Bois (matière des façades) » — la porte évidée dans la planche des façades, débitée et percée pour des charnières à boîtier, seul le verre allant au devis. Le caisson arrive avec ses portes : une jusqu'à 600 mm de large, deux au-delà.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
         tip: "Cochez « Remplir une largeur (caissons égaux) », puis « Largeur à remplir » et « Largeur max » : l'outil pose autant de caissons égaux qu'il en faut. Un nouveau caisson se place à droite de ceux qui existent ; sa position est son coin avant gauche en bas.",

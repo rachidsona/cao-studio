@@ -8,7 +8,7 @@
  */
 import { autoJointHoles } from "../features/cabinet-joints";
 import { frontsHardware, frontsParts, hingeCount, hingesFor, swingsUp } from "../features/fronts-parts";
-import { isGlass } from "../features/glass-door";
+import { isGlass, woodFrame } from "../features/glass-door";
 import { nicheHardware, nichePartsIn } from "../features/niche-parts";
 import { partMass } from "../features/stability";
 import { catalogItems } from "./hardware-catalog";
@@ -88,11 +88,12 @@ export function isHardwareBody(doc: CadDocument, bodyId: string): boolean {
     const cabinet = doc.features.find((c) => c.id === f.cabinet);
     const part = frontsParts(f, cabinet?.type === "cabinet" ? cabinet : undefined)[Number(index)];
     // A gorge profile; the aluminium frame and the glass of a glazed door.
-    return !!part?.gorge || (isGlass(f) && (part?.role?.kind === "door" || part?.role?.kind === "drawer" || part?.of !== undefined));
+    // A wooden frame is the door itself, cut from the board: only its glass is bought.
+    return !!part?.gorge || (isGlass(f) && (((part?.role?.kind === "door" || part?.role?.kind === "drawer") && !woodFrame(f)) || part?.of !== undefined));
   }
   if (f?.type !== "niche") return false;
   const role = nichePartsIn(doc.features, f)[Number(index)]?.role;
-  return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f));
+  return role === "hardware" || (role === "front" && (f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner)) && isGlass(f) && !woodFrame(f));
 }
 
 /**

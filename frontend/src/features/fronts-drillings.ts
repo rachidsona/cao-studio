@@ -6,7 +6,7 @@
 import type { CabinetFeature, FrontsFeature, Vec3 } from "../document/types";
 import { cabinetParts } from "./cabinet-parts";
 import { frontsParts, frontsProblem, hingeCount, hingeHeights, type FrontPart } from "./fronts-parts";
-import { glassFrame, handleInset, isGlass } from "./glass-door";
+import { glassFrame, handleInset, isGlass, woodFrame } from "./glass-door";
 
 /** The shelves of the cabinet (their bottom and top), which the hinges keep clear of. */
 export function shelvesOf(cabinet: CabinetFeature | undefined): [number, number][] {
@@ -24,7 +24,7 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
   const up = role.kind === "door" && (role.hinge === "top" || role.hinge === "bottom");
   // As many hinges as the door's height asks, or more when its weight does (stamped: document/hardware.ts stampHinges).
   const count = (height: number) => (index !== undefined ? f.hingeCounts?.[index] : undefined) ?? hingeCount(height);
-  if (role.kind === "door" && f.hinges && !isGlass(f)) {
+  if (role.kind === "door" && f.hinges && (!isGlass(f) || woodFrame(f))) {
     const cup = { edge: f.hw?.cupEdge ?? 22.5, radius: (f.hw?.cupDiameter ?? 35) / 2, depth: f.hw?.cupDepth ?? 13 };
     if (up) {
       // A lift-up door or a flap: along its top or its bottom edge, their plates on the top or the bottom board.

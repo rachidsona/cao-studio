@@ -3422,7 +3422,8 @@ opération existante.
   - **Tiroirs vitrés** (« Style des façades » : « Vitrée (cadre alu) », dans l'outil Façades pour ceux d'un caisson,
     dans l'outil Tiroirs pour ceux d'une niche de Répartition ; une porte vitrée changée en tiroirs le reste) : chaque
     façade est un cadre en profilé alu ouvert sur un verre trempé de 4 mm, comme une porte vitrée — largeur du cadre,
-    verre (clair, extra-clair, dépoli, fumé, bronze, noir) et cadre (alu brossé ou noir) au choix. Le verre de chaque
+    verre (clair, extra-clair, dépoli, fumé, bronze, noir) et cadre (alu brossé ou noir, ou **bois** : la façade
+    elle-même évidée dans la matière des façades, débitée, sur charnières à boîtier, seul le verre acheté) au choix. Le verre de chaque
     tiroir (« Vitre tiroir 1 »…) sort avec lui ; sa poignée se perce au milieu de la traverse du haut du cadre, pas
     dans le verre. Cadre et verre ne sont pas sciés : ils sortent du débit et vont au devis, le verre au m², le profilé
     au mètre. Pas pour des tiroirs à l'anglaise (derrière une porte) ni sans poignée (gorge), ni sous 8 mm d'épaisseur

@@ -11,7 +11,7 @@
  * (app/workshop/fabrication-check.ts). Ce sont des repères courants : la fiche du fabricant fait foi.
  */
 import { frontsParts, swingsUp } from "../features/fronts-parts";
-import { isGlass } from "../features/glass-door";
+import { isGlass, woodFrame } from "../features/glass-door";
 import { nichePartsIn } from "../features/niche-parts";
 import { partMass } from "../features/stability";
 import type { Problem } from "./fabrication-check";
@@ -67,7 +67,7 @@ export function frontFacts(doc: CadDocument): FrontFacts[] {
         if (p.role?.kind !== "door" && p.role?.kind !== "drawer") return;
         const id = `${f.id}${PART_SEPARATOR}${i}`;
         const [w, t, h] = size(p.from, p.to);
-        const facts: FrontFacts = { id, name: bodyLabel(doc, id), kind: p.role.kind, width: w, height: h, thickness: t, cupHinges: p.role.kind === "door" && !!f.hinges && !isGlass(f), swingsUp: up, handleRun: handles ? (p.role.kind === "door" && !up ? h : w) : null };
+        const facts: FrontFacts = { id, name: bodyLabel(doc, id), kind: p.role.kind, width: w, height: h, thickness: t, cupHinges: p.role.kind === "door" && !!f.hinges && (!isGlass(f) || woodFrame(f)), swingsUp: up, handleRun: handles ? (p.role.kind === "door" && !up ? h : w) : null };
         if (p.role.kind === "drawer") {
           const k = /(\d+)$/.exec(p.name)?.[1];
           let mass = massOf(id, p.from, p.to);
@@ -89,7 +89,7 @@ export function frontFacts(doc: CadDocument): FrontFacts[] {
         // In the niche's frame: u across, v up, w out.
         const [w, h, t] = size(p.from, p.to);
         const drawer = f.fill === "drawers";
-        const facts: FrontFacts = { id, name: bodyLabel(doc, id), kind: drawer ? "drawer" : "door", width: w, height: h, thickness: t, cupHinges: !drawer && !isGlass(f), swingsUp: false, handleRun: f.handles && !f.inner ? (drawer ? w : h) : null };
+        const facts: FrontFacts = { id, name: bodyLabel(doc, id), kind: drawer ? "drawer" : "door", width: w, height: h, thickness: t, cupHinges: !drawer && (!isGlass(f) || woodFrame(f)), swingsUp: false, handleRun: f.handles && !f.inner ? (drawer ? w : h) : null };
         if (drawer) {
           const k = /(\d+)$/.exec(p.name)?.[1];
           let mass = massOf(id, p.from, p.to);

@@ -34,7 +34,7 @@ import type { NicheBox } from "../sketcher/shelves";
 import { DRAWER_BOTTOM, DRAWER_SIDE, SLIDE_PLAY, SLIDES } from "./fronts-parts";
 import { accessoryHardware, accessoryParts, accessoryProblem } from "./accessory-parts";
 import { decorProblem } from "./door-decor";
-import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass } from "./glass-door";
+import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, handleInset, isGlass, woodFrame } from "./glass-door";
 
 export interface NicheGeometry {
   frame: SketchFrame;
@@ -473,7 +473,7 @@ export function nicheHardware(features: readonly { id: string; type: string }[],
     // A glass door: its glass and its aluminium frame bought, hinges made for the frame.
     const glass = glassHardware(f, doors.map((p) => ({ from: p.from, to: p.to, depth: 2 as const })));
     return [
-      { name: isGlass(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges },
+      { name: isGlass(f) && !woodFrame(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges },
       ...[...new Set(stays)].map((name) => ({ name, quantity: stays.filter((s) => s === name).length })),
       ...(f.handles ? [{ name: "Poignée entraxe 128 mm", quantity: fronts }] : []),
       ...glass,
