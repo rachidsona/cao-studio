@@ -1,6 +1,6 @@
 /**
  * Les outils choisis pour la barre contextuelle (app/context-bar.ts), par sorte d'élément sélectionné — une pièce, un
- * caisson, une Répartition, un plan de dressing ou de cuisine —, gardés dans ce navigateur. Tant qu'on n'en a pas
+ * caisson, une Répartition, un plan de dressing ou de cuisine, une niche —, gardés dans ce navigateur. Tant qu'on n'en a pas
  * choisi, ceux proposés d'office (document/context-tools.ts).
  */
 const STORAGE = "cao.context-tools";
@@ -21,9 +21,9 @@ function readAll(): Record<string, string[]> {
   }
 }
 
-/** The tools of this sort of element, by key: those chosen, else those proposed (`defaults`, as selectors). */
+/** The tools of this sort of element, by key: those chosen, else those proposed (`defaults`, as selectors or keys). */
 export function contextKeys(kind: string, defaults: readonly string[]): string[] {
-  return readAll()[kind] ?? defaults.map(keyOfSelector).filter((k): k is string => k !== null);
+  return readAll()[kind] ?? defaults.map((d) => keyOfSelector(d) ?? d);
 }
 
 /** This tool added at the end of the bar of this sort of element, or taken out if it is there. */

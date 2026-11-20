@@ -3052,7 +3052,8 @@ opération existante.
   chaque réglage changé ensuite laissait derrière lui des étagères orphelines qui remplissaient des niches entières.
 - **Barre contextuelle** : en haut de la vue, seuls les outils utiles à ce qu'on vient de cliquer. Un clic dans une niche propose ses outils, la niche déjà choisie.
   Ses **outils se choisissent** pour chaque sorte d'élément — pièce, caisson, Répartition, plan de dressing, plan de
-  cuisine : son **« + »** ouvre la liste de tous les outils (un clic ajoute ou retire), un **clic droit** sur une icône
+  cuisine, niche (ses outils à elle en tête de la liste, ouverts sur la niche cliquée) : son **« + »** ouvre la liste
+  de tous les outils, même rangés dans un menu (un clic ajoute ou retire), un **clic droit** sur une icône
   la retire, **« Par défaut »** remet ceux proposés ; le choix reste dans ce navigateur (`ui/context-tools-store.ts`).
 - **Contrôle en direct** (groupe « Fabrication ») : un cadre rouge ou ambre autour des pièces à problème pendant la conception, et leur nombre dans la barre d'état ; son bouton montre ou cache les cadres seuls, le nombre reste.
 - **Variantes** (groupe « Client ») : jusqu'à six versions du projet gardées dans le projet, comparées côte à côte avec leur prix, et rouvertes d'un clic.

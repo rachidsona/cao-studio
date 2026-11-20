@@ -2,7 +2,7 @@
  * La barre contextuelle, en haut de la vue : selon ce qu'on vient de cliquer, seuls les outils utiles
  * (document/context-tools.ts). Un clic dans une niche propose ses outils, la niche déjà choisie ; une pièce, un caisson,
  * une répartition ou le plan proposent les boutons du ruban qui leur servent, même rangés. Ses outils se choisissent,
- * pour chaque sorte d'élément (ui/context-tools-store.ts) : son « + » ouvre la liste de tous les outils (un clic ajoute
+ * pour chaque sorte d'élément, une niche comprise (ui/context-tools-store.ts) : son « + » ouvre la liste de tous les outils (un clic ajoute
  * ou retire), un clic droit sur une icône la retire, « Par défaut » remet ceux proposés. Elle s'efface quand un outil
  * travaille, quand on clique dans le vide et à l'annulation.
  */
@@ -12,7 +12,7 @@ import { el } from "../ui/dom";
 import { toolIcon } from "../ui/icons";
 import { contextKeys, resetContextKeys, toggleContextKey } from "../ui/context-tools-store";
 import { catalogue } from "../ui/tool-catalogue";
-import { iconOf, openPicker } from "../ui/tool-columns-picker";
+import { iconOf, openPicker, type Tool } from "../ui/tool-columns-picker";
 import type { Viewport } from "../viewport/viewport";
 import { openNicheFront } from "./dressing/door-fronts-tool";
 import type { Editor } from "./editor";
@@ -53,20 +53,21 @@ export function bindContextBar(root: HTMLElement, viewport: Viewport, editor: Ed
     return made;
   };
 
-  const draw = () => {
-    if (!free()) return hide();
-    if (niche) {
-      const picked = niche;
-      const size = (v: number) => formatLength(v, editor.unit);
-      return show(`Niche ${size(picked.box.x1 - picked.box.x0)} × ${size(picked.box.y1 - picked.box.y0)}`, [...NICHE_ACTIONS.map(({ action, label, icon }) => button(label, toolIcon(icon, "tool-icon"), () => runNiche(editor, action, picked))), button("Façade de cette case", toolIcon("i-fronts", "tool-icon"), () => openNicheFront(viewport, editor, picked))]);
-    }
-    const { sketches, sketch, bodies } = editor.picked.selection;
-    const chosen = contextTools(editor.doc, sketches.length ? sketches : sketch.slice(0, 1).map((s) => s.sketchId), bodies.length || !editor.picked.bodyId ? bodies : [editor.picked.bodyId]);
-    if (!chosen) return void (bar.hidden = true);
-    const tools = catalogue(root);
+  /**
+   * The bar of a sort of element: its chosen tools (`own`: those of its own, before the ribbon's), its « + » and
+   * « Par défaut ». A right-click takes a tool out.
+   */
+  const choosable = (kind: string, title: string, defaults: readonly string[], own: Tool[] = []) => {
+    const tools = [...own, ...catalogue(root)];
     const byKey = new Map(tools.map((t) => [t.key, t]));
-    const icons = contextKeys(chosen.kind, chosen.tools).flatMap((key) => {
-      const tool = byKey.get(key);
+    // A tool put away in a menu of the ribbon is not in the list of the bars: found by its key all the same.
+    const stored = (key: string): Tool | undefined => {
+      const [name, value] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+      const found = name.startsWith("data-") ? root.querySelector<HTMLElement>(`[data-ribbon="model"] [${name}="${CSS.escape(value)}"]`) : null;
+      return found ? { key, label: found.getAttribute("aria-label") ?? found.title.split(" : ")[0] ?? key, group: "Ruban", button: found } : undefined;
+    };
+    const icons = contextKeys(kind, defaults).flatMap((key) => {
+      const tool = byKey.get(key) ?? stored(key);
       const icon = tool && iconOf(tool.button);
       if (!tool || !icon) return [];
       const made = button(tool.label, icon, () => tool.button.click());
@@ -74,24 +75,48 @@ export function bindContextBar(root: HTMLElement, viewport: Viewport, editor: Ed
       made.dataset.contextTool = key;
       made.addEventListener("contextmenu", (event) => {
         event.preventDefault();
-        toggleContextKey(chosen.kind, chosen.tools, key);
+        toggleContextKey(kind, defaults, key);
         draw();
       });
       return [made];
     });
-    const add = el("button", { type: "button", class: "tool-btn min-h-8 min-w-8 px-1 text-lg leading-none text-gray-500 dark:text-gray-400", title: `Choisir les outils de cette barre (${chosen.title})`, "aria-label": `Choisir les outils de la barre ${chosen.title}`, "aria-haspopup": "dialog", "data-context-add": chosen.kind }, "+");
+    const add = el("button", { type: "button", class: "tool-btn min-h-8 min-w-8 px-1 text-lg leading-none text-gray-500 dark:text-gray-400", title: `Choisir les outils de cette barre (${title})`, "aria-label": `Choisir les outils de la barre ${title}`, "aria-haspopup": "dialog", "data-context-add": kind }, "+");
     add.addEventListener("click", () => {
       openPicker(add, {
         column: 0,
-        title: `Barre « ${chosen.title} » : choisir les outils`,
+        title: `Barre « ${title} » : choisir les outils`,
         tools,
-        chosen: (key) => contextKeys(chosen.kind, chosen.tools).includes(key),
-        toggle: (key) => (toggleContextKey(chosen.kind, chosen.tools, key), draw()),
+        chosen: (key) => contextKeys(kind, defaults).includes(key),
+        toggle: (key) => (toggleContextKey(kind, defaults, key), draw()),
       });
     });
-    const reset = el("button", { type: "button", class: "px-1 text-3xs font-normal text-gray-500 underline-offset-2 hover:underline dark:text-gray-400", title: "Remettre les outils proposés pour cette sorte d'élément", "data-context-reset": chosen.kind }, "Par défaut");
-    reset.addEventListener("click", () => (resetContextKeys(chosen.kind), draw()));
-    show(chosen.title, [...icons, add, reset]);
+    const reset = el("button", { type: "button", class: "px-1 text-3xs font-normal text-gray-500 underline-offset-2 hover:underline dark:text-gray-400", title: "Remettre les outils proposés pour cette sorte d'élément", "data-context-reset": kind }, "Par défaut");
+    reset.addEventListener("click", () => (resetContextKeys(kind), draw()));
+    return [...icons, add, reset];
+  };
+
+  /** A niche's own tools, opened on it (« niche:shelves »…), as tools of the picker: a hidden button stands for each. */
+  const nicheTools = (picked: PickedNiche): Tool[] => {
+    const own = (key: string, label: string, icon: string, go: () => void): Tool => {
+      const stand = el("button", { type: "button", title: label }, toolIcon(icon, "tool-icon"));
+      stand.addEventListener("click", go);
+      return { key, label, group: "Niche", button: stand };
+    };
+    return [...NICHE_ACTIONS.map(({ action, label, icon }) => own(`niche:${action}`, label, icon, () => runNiche(editor, action, picked))), own("niche:front", "Façade de cette case", "i-fronts", () => openNicheFront(viewport, editor, picked))];
+  };
+  const NICHE_DEFAULTS = [...NICHE_ACTIONS.map(({ action }) => `niche:${action}`), "niche:front"];
+
+  const draw = () => {
+    if (!free()) return hide();
+    if (niche) {
+      const picked = niche;
+      const size = (v: number) => formatLength(v, editor.unit);
+      return show(`Niche ${size(picked.box.x1 - picked.box.x0)} × ${size(picked.box.y1 - picked.box.y0)}`, choosable("niche", "Niche", NICHE_DEFAULTS, nicheTools(picked)));
+    }
+    const { sketches, sketch, bodies } = editor.picked.selection;
+    const chosen = contextTools(editor.doc, sketches.length ? sketches : sketch.slice(0, 1).map((s) => s.sketchId), bodies.length || !editor.picked.bodyId ? bodies : [editor.picked.bodyId]);
+    if (!chosen) return void (bar.hidden = true);
+    show(chosen.title, choosable(chosen.kind, chosen.title, chosen.tools));
   };
   const later = () => setTimeout(draw, 0);
 

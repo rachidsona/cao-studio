@@ -258,7 +258,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Cliquez dans une niche : la barre donne sa taille et ses outils (Étagères, Cloisons, Hauteur, Penderie, Tiroirs, Module), la niche étant déjà choisie.",
           "Cliquez une pièce, un caisson, une répartition ou le plan : la barre propose les outils qui leur servent, même rangés dans un menu.",
-          "Pour choisir ses outils : cliquez son « + » (la liste de tous les outils, avec une recherche ; un clic ajoute ou retire), faites un clic droit sur une icône pour la retirer, ou « Par défaut » pour remettre ceux proposés. Le choix vaut pour cette sorte d'élément (pièce, caisson, Répartition, plan de dressing, plan de cuisine) et reste dans ce navigateur.",
+          "Pour choisir ses outils : cliquez son « + » (la liste de tous les outils, avec une recherche ; un clic ajoute ou retire), faites un clic droit sur une icône pour la retirer, ou « Par défaut » pour remettre ceux proposés. Le choix vaut pour cette sorte d'élément (pièce, caisson, Répartition, plan de dressing, plan de cuisine, niche : ses outils à elle en tête de liste, ouverts sur la niche cliquée) et reste dans ce navigateur.",
           "Elle s'efface quand un outil travaille, avec Échap, ou d'un clic dans le vide.",
         ],
       },
