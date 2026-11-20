@@ -1,13 +1,18 @@
 /**
  * La barre contextuelle, en haut de la vue : selon ce qu'on vient de cliquer, seuls les outils utiles
  * (document/context-tools.ts). Un clic dans une niche propose ses outils, la niche déjà choisie ; une pièce, un caisson,
- * une répartition ou le plan proposent les boutons du ruban qui leur servent, même rangés. Elle s'efface quand un outil
+ * une répartition ou le plan proposent les boutons du ruban qui leur servent, même rangés. Ses outils se choisissent,
+ * pour chaque sorte d'élément (ui/context-tools-store.ts) : son « + » ouvre la liste de tous les outils (un clic ajoute
+ * ou retire), un clic droit sur une icône la retire, « Par défaut » remet ceux proposés. Elle s'efface quand un outil
  * travaille, quand on clique dans le vide et à l'annulation.
  */
 import { contextTools } from "../document/context-tools";
 import { formatLength } from "../measurements/units";
 import { el } from "../ui/dom";
 import { toolIcon } from "../ui/icons";
+import { contextKeys, resetContextKeys, toggleContextKey } from "../ui/context-tools-store";
+import { catalogue } from "../ui/tool-catalogue";
+import { iconOf, openPicker } from "../ui/tool-columns-picker";
 import type { Viewport } from "../viewport/viewport";
 import { openNicheFront } from "./dressing/door-fronts-tool";
 import type { Editor } from "./editor";
@@ -58,11 +63,35 @@ export function bindContextBar(root: HTMLElement, viewport: Viewport, editor: Ed
     const { sketches, sketch, bodies } = editor.picked.selection;
     const chosen = contextTools(editor.doc, sketches.length ? sketches : sketch.slice(0, 1).map((s) => s.sketchId), bodies.length || !editor.picked.bodyId ? bodies : [editor.picked.bodyId]);
     if (!chosen) return void (bar.hidden = true);
-    show(chosen.title, chosen.tools.flatMap((selector) => {
-      const tool = root.querySelector<HTMLElement>(`[data-ribbon="model"] ${selector}`);
-      const icon = tool?.querySelector("svg")?.cloneNode(true);
-      return tool && icon ? [button(tool.getAttribute("aria-label") ?? "", icon, () => tool.click())] : [];
-    }));
+    const tools = catalogue(root);
+    const byKey = new Map(tools.map((t) => [t.key, t]));
+    const icons = contextKeys(chosen.kind, chosen.tools).flatMap((key) => {
+      const tool = byKey.get(key);
+      const icon = tool && iconOf(tool.button);
+      if (!tool || !icon) return [];
+      const made = button(tool.label, icon, () => tool.button.click());
+      made.title = `${tool.label} — clic droit : la retirer de cette barre`;
+      made.dataset.contextTool = key;
+      made.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        toggleContextKey(chosen.kind, chosen.tools, key);
+        draw();
+      });
+      return [made];
+    });
+    const add = el("button", { type: "button", class: "tool-btn min-h-8 min-w-8 px-1 text-lg leading-none text-gray-500 dark:text-gray-400", title: `Choisir les outils de cette barre (${chosen.title})`, "aria-label": `Choisir les outils de la barre ${chosen.title}`, "aria-haspopup": "dialog", "data-context-add": chosen.kind }, "+");
+    add.addEventListener("click", () => {
+      openPicker(add, {
+        column: 0,
+        title: `Barre « ${chosen.title} » : choisir les outils`,
+        tools,
+        chosen: (key) => contextKeys(chosen.kind, chosen.tools).includes(key),
+        toggle: (key) => (toggleContextKey(chosen.kind, chosen.tools, key), draw()),
+      });
+    });
+    const reset = el("button", { type: "button", class: "px-1 text-3xs font-normal text-gray-500 underline-offset-2 hover:underline dark:text-gray-400", title: "Remettre les outils proposés pour cette sorte d'élément", "data-context-reset": chosen.kind }, "Par défaut");
+    reset.addEventListener("click", () => (resetContextKeys(chosen.kind), draw()));
+    show(chosen.title, [...icons, add, reset]);
   };
   const later = () => setTimeout(draw, 0);
 

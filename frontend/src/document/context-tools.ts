@@ -7,19 +7,21 @@ import { featureOfBody, type CadDocument } from "./types";
 import { isPartition } from "../sketcher/partition-history";
 
 export interface ContextTools {
+  /** Which sort of element: the tools chosen for it are kept under this name (ui/context-tools-store.ts). */
+  kind: "plan" | "kitchen-plan" | "partition" | "cabinet" | "piece";
   title: string;
-  /** Selectors of buttons of the ribbon. */
+  /** Selectors of buttons of the ribbon, `[data-x="y"]`: its tools until others are chosen. */
   tools: string[];
 }
 
 const action = (name: string) => `[data-action="${name}"]`;
 const workshop = (name: string) => `[data-workshop="${name}"]`;
 
-const PLAN: ContextTools = { title: "Plan de dressing", tools: [workshop("dressing-plan"), workshop("module-palette")] };
-const KITCHEN_PLAN: ContextTools = { title: "Plan de cuisine", tools: [workshop("kitchen-plan"), workshop("kitchen-units")] };
-const PARTITION: ContextTools = { title: "Répartition", tools: [action("shelves"), action("cloisons"), action("module"), workshop("module-palette"), action("penderie"), action("tiroirs"), action("fronts"), action("lighting")] };
-const CABINET: ContextTools = { title: "Caisson", tools: [action("fronts"), workshop("material"), action("move"), action("lighting"), workshop("appearance")] };
-const PIECE: ContextTools = { title: "Pièce", tools: [action("move"), workshop("material"), action("add-hole"), action("split")] };
+const PLAN: ContextTools = { kind: "plan", title: "Plan de dressing", tools: [workshop("dressing-plan"), workshop("module-palette")] };
+const KITCHEN_PLAN: ContextTools = { kind: "kitchen-plan", title: "Plan de cuisine", tools: [workshop("kitchen-plan"), workshop("kitchen-units")] };
+const PARTITION: ContextTools = { kind: "partition", title: "Répartition", tools: [action("shelves"), action("cloisons"), action("module"), workshop("module-palette"), action("penderie"), action("tiroirs"), action("fronts"), action("lighting")] };
+const CABINET: ContextTools = { kind: "cabinet", title: "Caisson", tools: [action("fronts"), workshop("material"), action("move"), action("lighting"), workshop("appearance")] };
+const PIECE: ContextTools = { kind: "piece", title: "Pièce", tools: [action("move"), workshop("material"), action("add-hole"), action("split")] };
 
 const partitioned = (doc: CadDocument, id: string | undefined) => {
   const sketch = id ? findFeature(doc, id) : undefined;
