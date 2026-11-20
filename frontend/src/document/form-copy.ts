@@ -21,7 +21,7 @@ import { withLookCopied } from "../appearance/assign";
 import { withNicheHeld, withNicheSize } from "./niche-size";
 import { pathKey, rebuildChain } from "../sketcher/partition-history";
 import type { NicheBox } from "../sketcher/shelves";
-import { divisionOf, doorOf, frontsWithDoor, nicheWithDoor, placeLabel, unitWithDoor, withBodyCopied, withDivisionCopied, type Box, type DoorForm } from "./form-copy-more";
+import { divisionOf, doorOf, frontsWithDoor, nicheWithDoor, placeLabel, unitWithDoor, withBodyCopied, withDivisionCopied, withShelfCopied, type Box, type DoorForm } from "./form-copy-more";
 import type { NichePlace } from "./niche-recipe";
 
 /** What a clicked body is, as far as its form goes. */
@@ -31,7 +31,7 @@ export type FormSource =
   | { kind: "fronts"; id: string; label: string }
   | { kind: "niche"; id: string; fill: NicheFeature["fill"]; label: string }
   /** A shelf or a cloison: the niche it divides; a niche picked in the view (a target only). */
-  | { kind: "division"; place: NichePlace; label: string }
+  | { kind: "division"; place: NichePlace; body: string; record: string; label: string }
   | { kind: "place"; place: NichePlace; label: string }
   | { kind: "body"; id: string; label: string };
 /** An element of the furniture (not a body, a division or a niche picked). */
@@ -76,7 +76,7 @@ export function formOf(doc: CadDocument, bodyId: string): FormSource | null {
   if (feature.type === "fronts") return { kind: "fronts", id: feature.id, label: feature.name };
   if (feature.type === "niche" && feature.fill !== "back") return { kind: "niche", id: feature.id, fill: feature.fill, label: `${FILL_NAME[feature.fill]} (${feature.name})` };
   const division = divisionOf(doc, bodyId);
-  if (division) return { kind: "division", place: { sketch: division.sketch, partition: division.partition, path: division.path }, label: placeLabel(doc, division, division.vertical) };
+  if (division) return { kind: "division", place: { sketch: division.sketch, partition: division.partition, path: division.path }, body: bodyId, record: division.record, label: placeLabel(doc, division, division.vertical) };
   // The room's walls and the appliances are not furniture to copy.
   if (feature.type === "appliance" || doc.bodyInfo?.[bodyId]?.room || doc.bodyInfo?.[feature.id]?.room) return null;
   return { kind: "body", id: bodyId, label: doc.bodyNames?.[bodyId] ?? feature.name };
@@ -111,7 +111,9 @@ export function withFormCopied(doc: CadDocument, from: FormSource, to: FormSourc
   if (from.kind === "body" || to.kind === "body") return from.kind === "body" && to.kind === "body" ? withBodyCopied(doc, from.id, to.id, boxOf, notes) : "Un corps prend la forme d'un autre corps.";
   if (from.kind === "division" || to.kind === "division" || to.kind === "place") {
     if (from.kind !== "division") return "Une niche prend la division d'une autre : cliquez d'abord une étagère ou une cloison.";
-    return to.kind === "division" || to.kind === "place" ? withDivisionCopied(doc, from.place, to.place) : "Une étagère ou une cloison donne sa division à une niche : cliquez la niche, ou l'une de ses étagères.";
+    // To an empty niche, its whole division; to another shelf, its thickness, material and look only.
+    if (to.kind === "division") return withShelfCopied(doc, { body: from.body, sketch: from.place.sketch, record: from.record }, { sketch: to.place.sketch, record: to.record });
+    return to.kind === "place" ? withDivisionCopied(doc, from.place, to.place) : "Une étagère ou une cloison donne sa forme à une autre étagère, ou sa division à une niche vide.";
   }
   if (from.kind === "place") return "Cliquez d'abord une étagère ou une cloison.";
   const next = formCopied(doc, from, to);

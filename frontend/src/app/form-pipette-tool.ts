@@ -39,7 +39,7 @@ class FormPipetteTool implements PointerHandler {
       panelHeader("Pipette de forme", () => this.close()),
       this.text,
       this.again,
-      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Une porte donne aussi son ouverture (de côté, relevante), sa poignée, son jeu et sa ferrure, à toute autre porte. Un corps donne ses cotes, sa matière et son apparence ; une étagère ou une cloison la division de sa niche à la niche cliquée. Échap pour finir."),
+      el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "Un meuble de cuisine, un caisson, des façades, une porte, des tiroirs, une penderie : chacun donne sa forme telle quelle, cotes et apparence, à un autre de même sorte, qui garde sa place et son nom. Une porte donne aussi son ouverture (de côté, relevante), sa poignée, son jeu et sa ferrure, à toute autre porte. Un corps donne ses cotes, sa matière et son apparence ; une étagère ou une cloison donne sa division à une niche vide, ou son épaisseur, sa matière et son apparence à une autre étagère (le nombre reste). Échap pour finir."),
     );
     placePanel(viewport.renderer.domElement.parentElement as HTMLElement, this.panel);
     window.addEventListener("keydown", this.onKey, true);
@@ -49,7 +49,7 @@ class FormPipetteTool implements PointerHandler {
 
   private say(): void {
     this.text.textContent = this.from
-      ? this.from.kind === "division" ? `Cliquez les niches (ou l'une de leurs étagères) qui prennent la division de « ${this.from.label} ».` : `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».`
+      ? this.from.kind === "division" ? `Cliquez une niche vide : elle prend la division de « ${this.from.label} » ; une autre étagère : elle prend son épaisseur, sa matière et son apparence.` : `Cliquez les éléments qui prennent la forme de « ${this.from.label} ».`
       : "Cliquez le meuble, la porte, les tiroirs, le caisson, l'étagère ou le corps dont vous prenez la forme.";
     this.again.disabled = !this.from;
   }

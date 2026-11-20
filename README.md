@@ -2107,7 +2107,8 @@ opération existante.
     (la porte haute d'une colonne four s'ouvre alors comme la source, relevante comprise) ; **un corps quelconque**
     (planche, côté, panneau) donne ses trois cotes, sa matière et son apparence à un autre (une pièce de Répartition
     garde les cotes de sa niche) ; **une étagère ou une cloison** donne la division de sa niche (nombre, épaisseur,
-    hauteurs, et ce qui la divise encore) à la niche cliquée, ou à celle d'une autre étagère ;
+    hauteurs, et ce qui la divise encore) à une niche vide qu'on clique, et à une autre étagère seulement son
+    épaisseur, sa matière et son apparence (le nombre et la place des étagères restent) ;
     chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
     des tiroirs. Un meuble bas ne donne pas sa forme à un meuble haut. La matière ne change pas (`document/form-copy.ts`).

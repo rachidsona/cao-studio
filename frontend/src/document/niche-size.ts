@@ -99,6 +99,15 @@ export function withNicheSize(doc: CadDocument, sketchId: string, axis: "x" | "y
   return remade(doc, g, leaf.partition, withInput(g, step.record, withNicheHeight(input, step.index, value)));
 }
 
+/** The shelves (or cloisons) of a division made `thickness` thick, where they are: their niches share what they give or take. */
+export function withShelfThickness(doc: CadDocument, sketchId: string, recordId: string, thickness: number): CadDocument | string {
+  const g = findFeature(doc, sketchId);
+  const record = g?.type === "sketch" ? g.offsets?.find((r) => r.id === recordId) : undefined;
+  if (g?.type !== "sketch" || !record || !isShelves(record)) return "Cette étagère n'existe plus.";
+  if (Math.abs(record.step.input.thickness - thickness) < 0.01) return doc;
+  return remade(doc, g, record.step.of, withInput(g, record, { ...record.step.input, thickness }));
+}
+
 /** The niche from `span[0]` to `span[1]` (y) held at its height, the other niches of its division let free to share the rest. */
 export function withNicheHeld(doc: CadDocument, sketchId: string, span: [number, number]): CadDocument | string {
   const g = findFeature(doc, sketchId);

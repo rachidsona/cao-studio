@@ -91,6 +91,12 @@ describe("pipette de forme, corps et divisions", () => {
     expect(from).toMatchObject({ kind: "division", place: { sketch, partition, path: [0] } });
     const next = ok(withFormCopied(doc, from, { kind: "place", place: { sketch, partition, path: [1] }, label: "la niche" }));
     expect(readRecipe(next, { sketch, partition, path: [1] }).steps).toEqual(three.steps);
+    // To another shelf: its thickness only (with its material and look) — the number of shelves there stays.
+    const thick = ok(withRecipe(next, { sketch, partition, path: [1] }, { steps: [{ at: [], input: { count: 2, thickness: 30, mode: "equal" as const, fixed: 0 } }], equipment: [] }));
+    const other = (thick.features.find((f) => f.id === sketch) as SketchFeature).offsets!.filter(isShelves).find((r) => r.step.niche[0] === 1)!;
+    const shelved = ok(withFormCopied(thick, from, formOf(thick, other.bodies![0]!)!));
+    expect(readRecipe(shelved, { sketch, partition, path: [1] }).steps[0]!.input).toMatchObject({ count: 2, thickness: 18 });
+    expect(readRecipe(shelved, { sketch, partition, path: [0] }).steps).toEqual(three.steps);
     // Its own niche: another one is asked for.
     expect(withFormCopied(doc, from, { kind: "place", place: { sketch, partition, path: [0] }, label: "la niche" })).toMatch(/autre/);
   });

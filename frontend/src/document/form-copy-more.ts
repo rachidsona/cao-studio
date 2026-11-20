@@ -4,12 +4,14 @@
  *   son sens d'ouverture (de côté, relevante, abattante) et sa poignée ou son absence ;
  * - un corps quelconque (planche, côté, panneau) donne à un autre ses trois cotes, sa matière et son apparence ;
  * - une étagère ou une cloison donne la division de sa niche (nombre, épaisseur, hauteurs, et ce qui la divise
- *   encore) à une autre niche, qu'on clique la niche ou l'une de ses étagères. Pur.
+ *   encore) à une niche vide qu'on clique ; à une autre étagère, seulement son épaisseur, sa matière et son apparence
+ *   (le nombre et la place des étagères restent). Pur.
  */
 import { bodyOrigin, findFeature } from "./operations";
 import { featureOfBody, type Axis, type CadDocument, type FrontsFeature, type KitchenRunItem, type NicheFeature, type SketchFeature, type Vec3 } from "./types";
 import { readRecipe, withRecipe, type NichePlace } from "./niche-recipe";
 import { withPieceSize } from "./piece-size";
+import { withShelfThickness } from "./niche-size";
 import { withLookCopied } from "../appearance/assign";
 import { isShelves, pathKey } from "../sketcher/partition-history";
 
@@ -63,15 +65,32 @@ export function nicheWithDoor(f: NicheFeature, door: DoorForm): NicheFeature {
   return { ...next, handles: door.handles, ...(door.opening === "left" || door.opening === "right" ? { hinges: (f.hinges ?? [door.opening]).map(() => door.opening) } : {}) };
 }
 
-/** The niche a shelf or a cloison of a Répartition divides, from one of its bodies; null for any other body. */
-export function divisionOf(doc: CadDocument, bodyId: string): (NichePlace & { vertical: boolean }) | null {
+/** A shelf or a cloison of a Répartition, from one of its bodies: its step, and the niche it divides; null for any other body. */
+export function divisionOf(doc: CadDocument, bodyId: string): (NichePlace & { vertical: boolean; record: string }) | null {
   const id = featureOfBody(bodyOrigin(doc, bodyId));
   for (const f of doc.features) {
     if (f.type !== "sketch") continue;
     const record = (f.offsets ?? []).find((r) => isShelves(r) && (r.bodies ?? []).includes(id));
-    if (record && isShelves(record)) return { sketch: f.id, partition: record.step.of, path: record.step.niche, vertical: !!record.step.input.vertical };
+    if (record && isShelves(record)) return { sketch: f.id, partition: record.step.of, path: record.step.niche, vertical: !!record.step.input.vertical, record: record.id };
   }
   return null;
+}
+
+/**
+ * The shelves of the step of body `to` made as body `from` is: its thickness, its material and its look; their number
+ * and their places stay.
+ */
+export function withShelfCopied(doc: CadDocument, from: { body: string; sketch: string; record: string }, to: { sketch: string; record: string }): CadDocument | string {
+  if (from.sketch === to.sketch && from.record === to.record) return "Ce sont les étagères dont la forme est prise : cliquez-en une autre.";
+  const source = (findFeature(doc, from.sketch) as SketchFeature | undefined)?.offsets?.find((r) => r.id === from.record);
+  if (!source || !isShelves(source)) return "Cette étagère n'existe plus.";
+  const sized = withShelfThickness(doc, to.sketch, to.record, source.step.input.thickness);
+  if (typeof sized === "string") return sized;
+  const bodies = (findFeature(sized, to.sketch) as SketchFeature | undefined)?.offsets?.find((r) => r.id === to.record)?.bodies ?? [];
+  if (!bodies.length) return sized;
+  const material = sized.bodyInfo?.[from.body]?.material;
+  const next = material ? { ...sized, bodyInfo: { ...sized.bodyInfo, ...Object.fromEntries(bodies.map((b) => [b, { ...sized.bodyInfo?.[b], material }])) } } : sized;
+  return withLookCopied(next, from.body, bodies);
 }
 
 /** Niche `to` divided as niche `from` is (what it holds stays out: only its shelves and cloisons go). */
