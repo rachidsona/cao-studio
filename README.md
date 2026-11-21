@@ -3127,7 +3127,7 @@ opération existante.
   Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
   Dans son panneau, chaque zone est une **carte pliable** (un clic sur son titre, pas sur ses boutons) : son nom et sa
-  longueur, « Voir » et « Modifier », et dessous ses outils (Étagères, Cloisons, Tiroirs, Portes, Penderie) en une
+  longueur, « Voir » et « Modifier », et dessous ses outils (Module, Étagères, Cloisons, Tiroirs, Portes, Penderie) en une
   rangée d'icônes nommées ; Portes coulissantes, Surmeubles, Mes murs et Penderies escamotables sont aussi des cartes
   pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
   hauteur (20 à 100 cm) et leurs « Portes » (battantes, relevables ou sans), puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
@@ -3136,7 +3136,7 @@ opération existante.
   battantes à gauche puis à droite ou relevables (charnières en haut) : chacune se règle comme toute porte sur niche
   (pose, sur une étagère, jeu, épaisseur, style, charnières, trous de poignée). Chacun est une Répartition gardée
   (`tops` du plan, `document/plan-top.ts`) : sur sa ligne, « Modifier » l'ouvre dans l'outil Répartition (cases, côtés)
-  et ses outils — Étagères, Cloisons, Tiroirs, Portes, Penderie, comme sous une zone — s'y ouvrent ; ce qu'on y fait
+  et ses outils — Module, Étagères, Cloisons, Tiroirs, Portes, Penderie, comme sous une zone — s'y ouvrent ; ce qu'on y fait
   reste ; quand le plan change, ils sont seulement déplacés et mis à sa longueur
   et à sa nouvelle hauteur ; une zone faite ensuite reçoit les siens ; « Retirer les surmeubles » les enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
   rampant.
