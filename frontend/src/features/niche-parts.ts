@@ -350,11 +350,14 @@ export function nicheParts(f: NicheFeature, n: NicheGeometry): NichePart[] {
     // reaches over the panels around it).
     const vb = Math.max(bottom + 10, y0 + 2);
     const height = Math.max(60, Math.min(top - 20, y1 - 5) - vb);
-    box(`Tiroir ${k} — côté gauche`, [bx0, vb, wb], [bx0 + DRAWER_SIDE, vb + height, wa]);
-    box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, vb, wb], [bx1, vb + height, wa]);
-    box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + height, wa]);
+    // Behind a glazed front, no box front to see: the sides run up to the frame, which is fixed on them.
+    const glazed = isGlass(f) && !f.inner;
+    const side = glazed ? f0 : wa;
+    box(`Tiroir ${k} — côté gauche`, [bx0, vb, wb], [bx0 + DRAWER_SIDE, vb + height, side]);
+    box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, vb, wb], [bx1, vb + height, side]);
+    if (!glazed) box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + height, wa]);
     box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, vb + DRAWER_BOTTOM, wb], [bx1 - DRAWER_SIDE, vb + height, wb + DRAWER_SIDE]);
-    box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, vb, wb + DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + DRAWER_BOTTOM, wa - DRAWER_SIDE]);
+    box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, vb, wb + DRAWER_SIDE], [bx1 - DRAWER_SIDE, vb + DRAWER_BOTTOM, glazed ? wa : wa - DRAWER_SIDE]);
     // Its slides' spacers against the sides, bought, fixed (not named as the drawer: they do not slide out with it).
     if (spacer) {
       box(`Cale gauche ${k}`, [x0, vb, wb], [x0 + spacer, vb + 40, wa], "hardware");

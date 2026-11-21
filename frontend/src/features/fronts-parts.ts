@@ -187,11 +187,13 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
   /** A drawer's box, `k` its name, from `zb` up `height`, between `bx0` and `bx1` across, `back` mm behind the fronts. */
   const drawerBox = (k: string, zb: number, height: number, [bx0, bx1]: [number, number], back = 0) => {
     const [ya, yb] = [(inset ? T + 2 : 2) + back, (inset ? T + 2 : 2) + back + Math.min(length, room - back)];
-    box(`Tiroir ${k} — côté gauche`, [bx0, ya, zb], [bx0 + DRAWER_SIDE, yb, zb + height]);
-    box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, ya, zb], [bx1, yb, zb + height]);
-    box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, ya, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, ya + DRAWER_SIDE, zb + height]);
+    // Behind a glazed front (not one inside, behind a door), no box front to see: the sides run up to the frame, fixed on them.
+    const glazed = isGlass(f) && !back;
+    box(`Tiroir ${k} — côté gauche`, [bx0, glazed ? ya - 2 : ya, zb], [bx0 + DRAWER_SIDE, yb, zb + height]);
+    box(`Tiroir ${k} — côté droit`, [bx1 - DRAWER_SIDE, glazed ? ya - 2 : ya, zb], [bx1, yb, zb + height]);
+    if (!glazed) box(`Tiroir ${k} — avant`, [bx0 + DRAWER_SIDE, ya, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, ya + DRAWER_SIDE, zb + height]);
     box(`Tiroir ${k} — arrière`, [bx0 + DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM], [bx1 - DRAWER_SIDE, yb, zb + height]);
-    box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
+    box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, glazed ? ya : ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
   };
   const slides: [number, number] = [t + SLIDE_PLAY, W - t - SLIDE_PLAY];
   // Under a drawer, the doors stop below it.

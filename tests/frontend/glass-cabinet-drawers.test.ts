@@ -19,9 +19,13 @@ const glazed = (over: Partial<FrontsFeature> = {}) => drawers({ ...styleChange("
 
 describe("tiroirs de caisson vitrés", () => {
   it("chaque tiroir a sa vitre, à la fin (les autres pièces gardent leur numéro), qui sort avec lui", () => {
-    const plain = frontsParts(drawers(), cabinet);
+    // Behind the glass no box front: the sides run up to the frame.
+    const plain = frontsParts(drawers(), cabinet).filter((p) => !p.name.endsWith("— avant"));
     const parts = frontsParts(glazed(), cabinet);
+    expect(parts.some((p) => p.name.endsWith("— avant"))).toBe(false);
     expect(parts.slice(0, plain.length).map((p) => p.name)).toEqual(plain.map((p) => p.name));
+    const [front, side] = ["Façade tiroir 1", "Tiroir 1 — côté gauche"].map((n) => parts.find((p) => p.name === n)!);
+    expect(Math.min(side!.from[1], side!.to[1])).toBeCloseTo(Math.max(front!.from[1], front!.to[1]), 6);
     const panes = parts.slice(plain.length);
     expect(panes.map((p) => p.name)).toEqual(["Vitre tiroir 1", "Vitre tiroir 2", "Vitre tiroir 3"]);
     expect(panes.map((p) => drawerNumber(p.name))).toEqual([1, 2, 3]);

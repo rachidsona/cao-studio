@@ -33,7 +33,12 @@ describe("tiroirs à façade vitrée", () => {
     expect(panes.map((p) => p.name)).toEqual(["Vitre tiroir 1", "Vitre tiroir 2", "Vitre tiroir 3"]);
     expect(panes.map((p) => drawerNumber(p.name))).toEqual([1, 2, 3]);
     // The parts before the glass keep their numbers (the bodies of a project do not change).
-    expect(parts.slice(0, nicheParts(drawers(), geometry()).length).map((p) => p.name)).toEqual(nicheParts(drawers(), geometry()).map((p) => p.name));
+    // Behind the glass no box front: the sides run up to the frame.
+    const plain = nicheParts(drawers(), geometry()).filter((p) => !p.name.endsWith("— avant"));
+    expect(parts.some((p) => p.name.endsWith("— avant"))).toBe(false);
+    expect(parts.slice(0, plain.length).map((p) => p.name)).toEqual(plain.map((p) => p.name));
+    const side = parts.find((p) => p.name === "Tiroir 1 — côté gauche")!;
+    expect(Math.max(side.from[2], side.to[2])).toBeCloseTo(Math.min(parts[0]!.from[2], parts[0]!.to[2]), 6);
     const front = parts.find((p) => p.name === "Façade tiroir 1")!;
     const handle = parts.find((p) => p.name === "Poignée tiroir 1")!;
     expect(handle.from[1]).toBeCloseTo(front.to[1] - glassFrame(glazed()) / 2, 6);
