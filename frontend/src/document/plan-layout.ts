@@ -12,7 +12,7 @@ import { slidingDoors } from "./dressing-extras";
 import { WALL_THICKNESS, withWallBoxes, type WallBox } from "./dressing-plan";
 import { addExtrude, deleteFeatures, findFeature, uniqueId, uniqueName, uniqueOffsetId, updateFeature } from "./operations";
 import { arcDoor, circleDoor, cornerOutline, ellFaces, PLAN_MODELS, planCeiling, planLines, planZones, rect, runPoint, upright, zoneHeight, type Corner, type PlanZone, type Point } from "./plan-shapes";
-import type { DoorSettings, PartitionParams, SketchGeometry } from "./sketch";
+import type { PartitionParams, SketchGeometry } from "./sketch";
 import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, DressingPlan, PlaneFrame, SketchFeature, SlopedCeiling, Vec3 } from "./types";
@@ -21,8 +21,9 @@ import { placeBox, placeFrame, placePoint } from "../features/room-runs";
 import { nearestPlane, sketchFrame } from "../sketcher/frame";
 import { partitionLayout } from "../sketcher/partition";
 import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../sketcher/partition-history";
-import { DOOR_DEFAULTS } from "./joinery-defaults";
-import { syncPartitionDoors } from "./partition-doors";
+import { withTopOff, withTopOn } from "./plan-top";
+
+export { topProblem, topStep, withTopUnitsSet } from "./plan-top";
 
 /** Around the door of a cut corner (mm). */
 const GAP = 3;
@@ -46,7 +47,7 @@ export function linesGeometry(lines: [Point, Point][]): SketchGeometry {
 }
 
 /** A point of the plan where it stands: in its room, or as it is. */
-const onFloor = (plan: DressingPlan, [x, y]: Point): Point => {
+export const onFloor = (plan: DressingPlan, [x, y]: Point): Point => {
   if (!plan.place) return [x, y];
   const [wx, wy] = placePoint(plan.place, [x, y, 0]);
   return [wx, wy];
@@ -64,12 +65,12 @@ export function withPlan(doc: CadDocument, p: DressingPlan): { doc: CadDocument;
 
 export const planOf = (doc: CadDocument): SketchFeature | undefined => [...doc.features].reverse().find((f): f is SketchFeature => f.type === "sketch" && f.dressingPlan !== undefined);
 
-const planIn = (doc: CadDocument, planId: string) => (findFeature(doc, planId) as SketchFeature | undefined)?.dressingPlan;
-const withSettings = (doc: CadDocument, planId: string, patch: Partial<DressingPlan>) =>
+export const planIn = (doc: CadDocument, planId: string) => (findFeature(doc, planId) as SketchFeature | undefined)?.dressingPlan;
+export const withSettings = (doc: CadDocument, planId: string, patch: Partial<DressingPlan>) =>
   updateFeature(doc, planId, (f) => (f.type === "sketch" && f.dressingPlan ? { ...f, dressingPlan: { ...f.dressingPlan, ...patch } } : f));
 
 /** The sketch of what was made on a zone, still in the document. */
-const zoneSketch = (doc: CadDocument, plan: DressingPlan, id: string): SketchFeature | undefined => {
+export const zoneSketch = (doc: CadDocument, plan: DressingPlan, id: string): SketchFeature | undefined => {
   const made = plan.made?.[id] ? findFeature(doc, plan.made[id] as string) : undefined;
   return made?.type === "sketch" ? made : undefined;
 };
@@ -128,7 +129,7 @@ export function fillChoices(length: number, thickness: number, width: number, fi
 }
 
 /** A sheet of the plan: a closed shape in a sketch of its own, hidden, made into one body of this thickness. */
-function sheet(doc: CadDocument, name: string, shape: Point[] | SketchGeometry, where: { offset: number; frame?: PlaneFrame }, distance: number, ceiling?: SlopedCeiling): CadDocument {
+export function sheet(doc: CadDocument, name: string, shape: Point[] | SketchGeometry, where: { offset: number; frame?: PlaneFrame }, distance: number, ceiling?: SlopedCeiling): CadDocument {
   const id = uniqueId(doc, "sk");
   const sketch: SketchFeature = { id, type: "sketch", name, plane: where.frame ? nearestPlane(where.frame.normal) : "XY", offset: where.offset, ...(where.frame ? { frame: where.frame } : {}), hidden: true, ...(Array.isArray(shape) ? linesGeometry(loop(shape)) : shape) };
   const next = addExtrude({ ...doc, features: [...doc.features, sketch] }, id, distance);
@@ -225,7 +226,7 @@ function withSlidingDoors(doc: CadDocument, plan: DressingPlan, zone: PlanZone, 
 }
 
 /** What closes a zone around its Répartition, made again: a corner's far side and door when asked, a filler, a sloped top, sliding doors. */
-function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
+export function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
   const { next: clean } = deleteFeatures(base, plan.boards?.[zone.id] ?? []);
   const { cornerB: b, depth: d, thickness: t, lengthA: l } = plan;
@@ -245,101 +246,7 @@ function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadD
   return withSettings(doc, planId, { boards: { ...plan.boards, [zone.id]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
 }
 
-/**
- * Its top units' Répartition, at its zone's top, its sizes; `input`, `doors`: those it has kept (its edits), its doors
- * as they are unless `asked` (« Avec portes » set again).
- */
-function topRecord(id: string, plan: DressingPlan, zone: PlanZone, top: NonNullable<DressingPlan["top"]>, input: PartitionParams, doors?: DoorSettings, asked = true) {
-  const record = partitionRecord(id, `Surmeubles — ${zone.label.toLowerCase()}`, { ...input, length: zone.run.length, height: top.height, thickness: plan.thickness, plinth: 0 }, [zone.run.start, zoneHeight(plan, zone)], zone.run.depth);
-  // A corner's top is open (cut to its outline, as below), with its last side.
-  const wanted = asked ? (top.doors && zone.kind === "run" ? (doors ?? { ...DOOR_DEFAULTS, joined: [], skipped: [] }) : undefined) : doors;
-  if (record.step?.kind === "partition" && wanted) record.step.doors = wanted;
-  return record;
-}
-
-/**
- * The top units of a zone: made once, a Répartition of their own on its top with the cases of the one below (their
- * widths, their sides); then kept and only moved and sized with the plan — what is done in them stays.
- */
-function withTopOn(base: CadDocument, planId: string, zone: PlanZone, asked = false): CadDocument {
-  const plan = planIn(base, planId) as DressingPlan;
-  const top = plan.top;
-  if (!top || plan.roof || !zoneDone(base, plan, zone.id)) return base;
-  const kept = plan.tops?.[zone.id] ? findFeature(base, plan.tops[zone.id]!) : undefined;
-  let doc = base;
-  let sketch: string;
-  if (kept?.type === "sketch") {
-    const was = (kept.offsets ?? []).find(isPartition);
-    if (!was || !isPartition(was)) return base;
-    const { openTop: _o, ...input } = was.step.input;
-    const offsets = (kept.offsets ?? []).map((r) => (r.id === was.id ? { ...topRecord(r.id, plan, zone, top, input, was.step.doors, asked), bodies: r.bodies, curves: r.curves } : r)) as typeof kept.offsets;
-    const { frame: _f, clip: _c, ceiling: _ce, ...rest } = kept;
-    const moved: SketchFeature = { ...rest, ...placed(zone, plan), offsets };
-    const rebuilt = rebuildChain(moved, was.id);
-    if (typeof rebuilt === "string") return base;
-    doc = withSketchExtrusion(updateFeature(doc, kept.id, () => moved), kept.id, rebuilt.geometry, { groups: extrusionGroups(offsets ?? [], rebuilt) });
-    sketch = kept.id;
-  } else {
-    const below = zoneSketch(doc, plan, zone.id)?.offsets?.find(isPartition);
-    if (!below || !isPartition(below)) return base;
-    const { openTop: _o, ...input } = below.step.input;
-    const step = uniqueOffsetId(doc);
-    const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: [topRecord(step, plan, zone, top, input)] }, step);
-    if (typeof rebuilt === "string") return base;
-    sketch = uniqueId(doc, "sk");
-    const feature: SketchFeature = { id: sketch, type: "sketch", name: uniqueName(doc, `Surmeubles — ${zone.label.toLowerCase()}`), ...placed(zone, plan), ...emptySketchGeometry() };
-    doc = withSketchExtrusion({ ...doc, features: [...doc.features, feature] }, sketch, rebuilt.geometry as SketchGeometry, { groups: extrusionGroups([], rebuilt) });
-  }
-  doc = syncPartitionDoors(doc, sketch);
-  // A corner's last side, made again at their height.
-  const key = `top:${zone.id}`;
-  const { next: clean } = deleteFeatures(doc, plan.boards?.[key] ?? []);
-  doc = clean;
-  if (zone.kind === "corner") {
-    const { cornerB: b, depth: d, thickness: t, lengthA: l } = plan;
-    doc = sheet(doc, `Surmeubles — ${zone.label.toLowerCase()} — côté`, (zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b)).map((p) => onFloor(plan, p)), { offset: zoneHeight(plan, zone) }, top.height);
-  }
-  const known = new Set(clean.features.map((f) => f.id));
-  return withSettings(doc, planId, { tops: { ...plan.tops, [zone.id]: sketch }, boards: { ...plan.boards, [key]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
-}
-
-/** The top units of a zone taken away (with all that was done in them). */
-function withTopOff(doc: CadDocument, planId: string, zoneId: string): CadDocument {
-  const plan = planIn(doc, planId) as DressingPlan;
-  const key = `top:${zoneId}`;
-  const sketch = plan.tops?.[zoneId] ? findFeature(doc, plan.tops[zoneId]!) : undefined;
-  const next = sketch?.type === "sketch" ? withoutZone(doc, sketch, plan.boards?.[key] ?? []) : deleteFeatures(doc, plan.boards?.[key] ?? []).next;
-  const { [zoneId]: _t, ...tops } = plan.tops ?? {};
-  const { [key]: _b, ...boards } = plan.boards ?? {};
-  return withSettings(next, planId, { tops, boards });
-}
-
-/** The Répartition of a zone's top units, to open in its tool; null when it has none. */
-export function topStep(doc: CadDocument, plan: DressingPlan, zoneId: string): { sketch: string; step: string } | null {
-  const sketch = plan.tops?.[zoneId] ? findFeature(doc, plan.tops[zoneId]!) : undefined;
-  const step = sketch?.type === "sketch" ? (sketch.offsets ?? []).find(isPartition) : undefined;
-  return sketch && step ? { sketch: sketch.id, step: step.id } : null;
-}
-
-/** Why these top units cannot be, or null. */
-export function topProblem(plan: DressingPlan, top: NonNullable<DressingPlan["top"]>): string | null {
-  if (plan.roof) return "Pas de surmeubles sous un rampant : le dessus suit déjà le plafond.";
-  if (!(top.height >= 200 && top.height <= 1000)) return "La hauteur des surmeubles va de 20 à 100 cm.";
-  return null;
-}
-
-/** Top units over every zone made, those made kept and brought to these settings; null: all taken away. */
-export function withTopUnitsSet(base: CadDocument, planId: string, top: DressingPlan["top"] | null): CadDocument {
-  let doc = withSettings(base, planId, { top: top ?? undefined });
-  const plan = planIn(doc, planId) as DressingPlan;
-  // Those of an older plan, made among a zone's boards: the boards made again without them.
-  for (const zone of planZones(plan)) if (zoneDone(doc, plan, zone.id) && plan.boards?.[zone.id]?.some((id) => findFeature(doc, id)?.name.startsWith("Surmeubles"))) doc = withZoneBoards(doc, planId, zone);
-  for (const id of Object.keys(plan.tops ?? {})) if (!top || !planZones(plan).some((z) => z.id === id)) doc = withTopOff(doc, planId, id);
-  if (top) for (const zone of planZones(plan)) doc = withTopOn(doc, planId, zone, true);
-  return doc;
-}
-
-const placed = ({ run, clip }: PlanZone, plan: DressingPlan) => {
+export const placed = ({ run, clip }: PlanZone, plan: DressingPlan) => {
   const ceiling = belowTop(plan);
   const own = sketchFrame(run.plane, run.offset);
   const frame = plan.place ? placeFrame(plan.place, run.frame ?? { origin: own.origin, xDir: own.u, normal: own.normal }) : run.frame;
@@ -415,7 +322,7 @@ export function withPlanWalls(base: CadDocument, planId: string, on: boolean): C
 }
 
 /** What was made on a zone that the new plan no longer has. */
-function withoutZone(doc: CadDocument, sketch: SketchFeature, boards: string[]): CadDocument {
+export function withoutZone(doc: CadDocument, sketch: SketchFeature, boards: string[]): CadDocument {
   const bodies = (sketch.offsets ?? []).flatMap((r) => r.bodies ?? []);
   const equipment = doc.features.filter((f) => f.type === "niche" && f.sketch === sketch.id).map((f) => f.id);
   return deleteFeatures(doc, [...bodies, ...equipment, ...boards, sketch.id]).next;

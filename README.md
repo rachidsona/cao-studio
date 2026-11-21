@@ -3102,11 +3102,14 @@ opération existante.
   longueur, « Voir » et « Modifier », et dessous ses outils (Étagères, Cloisons, Tiroirs, Portes, Penderie) en une
   rangée d'icônes nommées ; Portes coulissantes, Surmeubles, Mes murs et Penderies escamotables sont aussi des cartes
   pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
-  hauteur (20 à 100 cm) et « Avec portes », puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
+  hauteur (20 à 100 cm) et leurs « Portes » (battantes, relevables ou sans), puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
   Répartition « Surmeubles — mur A » de cette hauteur, aux mêmes cases que celle du dessous (largeurs, côtés), posée sur
-  son dessus, sans socle, avec ses portes battantes ou ouverte ; au débit et au devis comme le reste. Chacun est une
-  Répartition gardée (`tops` du plan) : « Modifier », sur sa ligne, l'ouvre dans l'outil Répartition (cases, portes,
-  étagères, tiroirs), et ce qu'on y fait reste ; quand le plan change, ils sont seulement déplacés et mis à sa longueur
+  son dessus, sans socle ; au débit et au devis comme le reste. Ses portes sont des **Porte sur niches**, une par case,
+  battantes à gauche puis à droite ou relevables (charnières en haut) : chacune se règle comme toute porte sur niche
+  (pose, sur une étagère, jeu, épaisseur, style, charnières, trous de poignée). Chacun est une Répartition gardée
+  (`tops` du plan, `document/plan-top.ts`) : sur sa ligne, « Modifier » l'ouvre dans l'outil Répartition (cases, côtés)
+  et ses outils — Étagères, Cloisons, Tiroirs, Portes, Penderie, comme sous une zone — s'y ouvrent ; ce qu'on y fait
+  reste ; quand le plan change, ils sont seulement déplacés et mis à sa longueur
   et à sa nouvelle hauteur ; une zone faite ensuite reçoit les siens ; « Retirer les surmeubles » les enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
   rampant.
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque

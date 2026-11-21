@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { topProblem, topStep, withPlan, withPlanChanged, withTopUnitsSet, withZonePartition } from "../../frontend/src/document/plan-layout";
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
-import { createReferencePlate, type CadDocument, type DressingPlan, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type CadDocument, type DressingPlan, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
 
@@ -15,6 +15,7 @@ function dressing(): { doc: CadDocument; plan: string } {
 }
 const tops = (doc: CadDocument) => doc.features.filter((f): f is SketchFeature => f.type === "sketch" && f.name.startsWith("Surmeubles") && !!f.offsets?.some(isPartition));
 const stepOf = (s: SketchFeature) => s.offsets!.find(isPartition)!.step as Extract<NonNullable<SketchFeature["offsets"]>[number]["step"], { kind: "partition" }>;
+const doorsOf = (doc: CadDocument, sketch: string) => doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === sketch && f.fill === "door");
 const planOf = (doc: CadDocument, id: string) => (doc.features.find((f) => f.id === id) as SketchFeature).dressingPlan as DressingPlan;
 
 describe("surmeubles du plan de dressing", () => {
@@ -31,8 +32,13 @@ describe("surmeubles du plan de dressing", () => {
     expect([high.input.height, high.input.plinth]).toEqual([400, 0]);
     // On top of the zone: its origin at the zone's height.
     expect(high.origin).toEqual([low.origin![0], 2200]);
-    expect(high.doors).toBeDefined();
+    // Its doors: « Porte sur niches », one per case, left and right in turn — or lift-up ones.
+    expect(high.doors).toBeUndefined();
+    expect(doorsOf(withTop, top!.id).map((d) => [d.niche, d.hinges])).toEqual(Array.from({ length: high.input.cases }, (_, k) => [[k], [k % 2 ? "right" : "left"]]));
     expect(planOf(withTop, plan).top).toEqual({ height: 400, doors: true });
+    const lifted = withTopUnitsSet(withTop, plan, { height: 400, doors: "lift" });
+    expect(doorsOf(lifted, top!.id).every((d) => d.hinges?.[0] === "top")).toBe(true);
+    expect(doorsOf(lifted, top!.id)).toHaveLength(high.input.cases);
     // The plan changed: they follow, at its new height.
     const changed = withPlanChanged(withTop, plan, { ...planOf(withTop, plan), height: 2400 });
     if (typeof changed === "string") throw new Error(changed);
@@ -56,26 +62,26 @@ describe("surmeubles du plan de dressing", () => {
     const withTop = withTopUnitsSet(doc, made.id, { height: 400, doors: true });
     const corner = tops(withTop).find((s) => s.clip);
     expect(corner).toBeDefined();
-    expect(stepOf(corner!).doors).toBeUndefined();
+    expect(doorsOf(withTop, corner!.id)).toHaveLength(0);
     expect(stepOf(corner!).origin![1]).toBe(2200);
     expect(withTop.features.some((f) => f.name.startsWith("Surmeubles — ") && f.name.endsWith("— côté"))).toBe(true);
-    expect(tops(withTop).filter((s) => !s.clip).every((s) => stepOf(s).doors)).toBe(true);
+    expect(tops(withTop).filter((s) => !s.clip).every((s) => doorsOf(withTop, s.id).length > 0)).toBe(true);
   });
 
-  it("gardés : ce qu'on y change (une porte ouverte à droite, une case) reste quand le plan change ; ils s'ouvrent dans leur outil", () => {
+  it("gardés : ce qu'on y change (des portes relevables, une case) reste quand le plan change ; ils s'ouvrent dans leur outil", () => {
     const { doc, plan } = dressing();
     const placed = withTopUnitsSet(doc, plan, { height: 400, doors: true });
     const at = topStep(placed, planOf(placed, plan), "A")!;
     expect(at).not.toBeNull();
     // Changed by hand in its Répartition: its doors opening on the right, 3 cases.
-    const edited = { ...placed, features: placed.features.map((f) => (f.id !== at.sketch || f.type !== "sketch" ? f : { ...f, offsets: f.offsets!.map((r) => (r.id !== at.step || r.step?.kind !== "partition" ? r : { ...r, step: { ...r.step, input: { ...r.step.input, cases: 3, dividers: ["single", "single"], widths: undefined }, doors: { ...r.step.doors!, hinges: ["right", "right", "right"] } } })) })) } as CadDocument;
+    const edited = { ...placed, features: placed.features.map((f) => (f.type === "niche" && f.sketch === at.sketch ? { ...f, hinges: ["top"] } : f.id !== at.sketch || f.type !== "sketch" ? f : { ...f, offsets: f.offsets!.map((r) => (r.id !== at.step || r.step?.kind !== "partition" ? r : { ...r, step: { ...r.step, input: { ...r.step.input, cases: 3, dividers: ["single", "single"], widths: undefined } } })) })) } as CadDocument;
     const changed = withPlanChanged(edited, plan, { ...planOf(edited, plan), height: 2400, lengthA: 2400 });
     if (typeof changed === "string") throw new Error(changed);
     const [top] = tops(changed.doc);
     expect(top!.id).toBe(at.sketch);
     const step = stepOf(top!);
     expect([step.input.cases, step.input.height, step.origin![1]]).toEqual([3, 400, 2400]);
-    expect(step.doors?.hinges).toEqual(["right", "right", "right"]);
+    expect(doorsOf(changed.doc, at.sketch).every((d) => d.hinges?.[0] === "top")).toBe(true);
   });
 
   it("pas sous un rampant, et de 20 à 100 cm", () => {

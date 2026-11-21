@@ -17,7 +17,6 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
-import { toolIcon } from "../../ui/icons";
 import { asCards, panelHeader, zoneCard } from "../../ui/panel-close";
 import { planSchema } from "./plan-schema";
 import type { Viewport } from "../../viewport/viewport";
@@ -25,7 +24,7 @@ import type { Editor } from "../editor";
 import { paintPrice } from "../workshop/live-price";
 import { needsPanel } from "./plan-needs-panel";
 import { wallsSection } from "./plan-walls-panel";
-import { topSection } from "./plan-top-panel";
+import { insideTools, topSection } from "./plan-top-panel";
 import { isolatedSketch, isolateZone, showAll } from "../zone-view";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -36,13 +35,6 @@ const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gra
 let last: DressingPlan = { ...PLAN };
 
 /** What is done inside a zone, each tool opened on it from the plan (the niche clicked there gets it). */
-const INSIDE_TOOLS: ["shelves" | "cloisons" | "drawers" | "door" | "rod", string, string, string][] = [
-  ["shelves", "Étagères", "Ajouter, ôter ou répartir les étagères d'une niche de cette zone", "i-shelves"],
-  ["cloisons", "Cloisons", "Ajouter ou ôter des cloisons dans une niche de cette zone", "i-cloisons"],
-  ["drawers", "Tiroirs", "Mettre des tiroirs dans une niche, changer leur nombre", "i-drawers"],
-  ["door", "Portes", "Une porte sur une ou plusieurs niches, son sens et son style", "i-door-fronts"],
-  ["rod", "Penderie", "Une tringle dans une niche", "i-rod"],
-];
 
 export class PlanLayoutTool {
   private plan: DressingPlan = { ...last };
@@ -322,16 +314,7 @@ export class PlanLayoutTool {
       });
       // Its inside's tools (the zone alone, the tool open on it), in a card folded by its title (not by its buttons).
       const sketch = plan.made?.[zone.id];
-      const inside = done(zone) && sketch ? el("div", { class: "grid grid-cols-5 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${zone.label}`, "data-zone-inside": zone.id },
-        ...INSIDE_TOOLS.map(([tool, label, title, icon]) => {
-          const b = el("button", { type: "button", class: "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 [&_svg]:size-6", title, "aria-label": label, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, label));
-          b.addEventListener("click", () => {
-            isolateZone(plan, zone.id, zone.label);
-            if (tool === "shelves" || tool === "cloisons") this.editor.sketches.startJoinery(tool, sketch);
-            else this.editor.sketches.startEquip(tool, sketch);
-          });
-          return b;
-        })) : null;
+      const inside = done(zone) && sketch ? insideTools(zone.label, zone.id, sketch, this.editor, () => isolateZone(plan, zone.id, zone.label)) : null;
       return zoneCard(`zone:${zone.label}`, zone.label, formatLength(zone.run.length, unit), [zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go], inside, { "data-zone-card": zone.id });
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
