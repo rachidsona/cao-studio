@@ -168,7 +168,7 @@ export const WOODWORKING: HelpFamily[] = [
         steps: [
           "Sélectionnez tous les corps du meuble à garder.",
           "Cliquez « Ma bibliothèque ».",
-          "Tapez un nom dans « Nom du module », puis cliquez « Enregistrer ».",
+          "Tapez un nom dans « Nom du module », puis cliquez « Enregistrer ». Pour ne garder que des pièces d'un meuble (des cadres de façade séparés, une porte d'un dressing) sans le meuble autour, cochez d'abord « Seulement les pièces choisies ».",
           "Dans un autre projet, ouvrez le panneau et cliquez « Insérer » : le module revient à sa place d'origine, ses pièces sélectionnées pour les déplacer.",
           "Pour le coller contre un meuble, cliquez d'abord une face de ce meuble (son côté, son devant ou son dessus), puis « Insérer » : le module se pose contre elle, dehors, son bas sur le bas du meuble et son dos contre le même mur. Une seule annulation (Ctrl + Z) reprend l'insertion et le collage.",
           "Le bouton « ✕ » retire un module de la bibliothèque, après confirmation.",

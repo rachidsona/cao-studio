@@ -3066,6 +3066,10 @@ opération existante.
     on lui donne un nom. Le module garde ces pièces et tout ce dont elles dépendent : un panneau d'une Répartition
     emporte la Répartition entière, une porte sa répartition. Il garde aussi leurs noms, matières, apparences
     importées, les paramètres de leurs formules, et une vignette prise dans la vue.
+  - **Seulement les pièces choisies** (case du panneau) : le module ne montre que les pièces sélectionnées — des cadres
+    de façade séparés, une porte d'un dressing — et ce dont elles sont faites ; le reste de leur meuble y reste pour
+    les refaire, mais retiré de la vue (`removedBodies`), les esquisses d'où elles viennent cachées. Inséré dans un
+    autre projet, on n'y voit qu'elles (`document/library.ts` `moduleOf`, son argument `only`).
   - Insérer : un clic recopie le module dans le projet ouvert, sous des identifiants neufs (toutes les références
     suivent), à l'endroit où il était, en une seule annulation. La vue se recadre sur tout le modèle et les pièces
     insérées sont sélectionnées, prêtes pour Déplacer. Un nom déjà pris prend le numéro suivant ; un paramètre que

@@ -42,6 +42,20 @@ describe("ma bibliothèque", () => {
     expect(typeof moduleOf(doc, [])).toBe("string");
   });
 
+  it("seulement les pièces choisies : les autres de leurs fonctions restent pour les refaire, retirées de la vue", () => {
+    const doc = furniture();
+    const doors = doc.features.find((f): f is NicheFeature => f.type === "niche")!;
+    const shown = [`${doors.id}#0`, `${doors.id}#1`, "sk9#0", "sk9#1", "autre#0"];
+    const module = moduleOf(doc, [`${doors.id}#0`], shown) as CadDocument;
+    expect(module.features.map((f) => f.id)).toEqual(["sk9", doors.id]);
+    expect(module.removedBodies).toEqual([`${doors.id}#1`, "sk9#0", "sk9#1"]);
+    expect(module.features.find((f) => f.id === "sk9")?.hidden).toBe(true);
+    // Without the option, the whole furniture shows.
+    expect((moduleOf(doc, [`${doors.id}#0`]) as CadDocument).removedBodies).toBeUndefined();
+    // A whole feature chosen (a sketch): all its pieces stay.
+    expect((moduleOf(doc, ["sk9"], shown) as CadDocument).removedBodies).toBeUndefined();
+  });
+
   it("s'insère sous des ids neufs, les références, noms et matières suivant ; les paramètres du projet gardent leur valeur", () => {
     const doc = furniture();
     const doors = doc.features.find((f): f is NicheFeature => f.type === "niche")!;

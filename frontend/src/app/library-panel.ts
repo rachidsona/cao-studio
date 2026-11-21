@@ -3,7 +3,8 @@
  * comme un module de son compte (avec une vignette prise dans la vue), puis le remettre d'un clic dans n'importe quel
  * projet, à l'endroit où il était, ses pièces sélectionnées pour le déplacer. Une face d'un meuble choisie avant
  * « Insérer » : le module s'y colle, dehors, aligné en bas et au dos sur ce meuble (document/glue.ts), en une seule
- * annulation avec l'insertion. Les modules sont gardés par le serveur (/api/library/) ; leur contenu et l'insertion :
+ * annulation avec l'insertion. « Seulement les pièces choisies » n'en montre que celles-là (des cadres séparés d'un
+ * dressing, sans le dressing). Les modules sont gardés par le serveur (/api/library/) ; leur contenu et l'insertion :
  * document/library.ts.
  */
 import { featureBacks } from "../document/furniture-facing";
@@ -51,6 +52,8 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
   let panel: { body: HTMLElement; close: () => void } | null = null;
   let modules: ModuleRow[] = [];
   let message = "";
+  /** The module shows the bodies chosen only, not the rest of their furniture. */
+  let only = false;
 
   /** The bodies chosen: picked whole, or through one of their faces, edges or corners; and the sketches. */
   const chosen = () => {
@@ -59,7 +62,7 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
   };
 
   const save = async (name: string) => {
-    const module = moduleOf(editor.doc, chosen());
+    const module = moduleOf(editor.doc, chosen(), only ? viewport.displayedBodies : undefined);
     if (typeof module === "string") return editor.notify(module, "info");
     try {
       await call(URL, { method: "POST", body: JSON.stringify({ name, document: module, thumbnail: thumbnail(viewport) }) });
@@ -173,6 +176,9 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
       if (!text) return name.focus();
       void save(text);
     });
+    const box = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked: only, "data-library-only": "" });
+    box.addEventListener("change", () => (only = box.checked));
+    const alone = el("label", { class: "flex items-center gap-2", title: "Le reste de leur meuble (le dressing d'où viennent des cadres séparés…) reste dans le module pour le refaire, mais n'est pas montré" }, box, "Seulement les pièces choisies");
     const cards = modules.map((m) => {
       const put = el("button", { type: "button", class: BUTTON }, "Insérer");
       put.addEventListener("click", () => void insert(m));
@@ -190,6 +196,7 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
     panel.body.replaceChildren(
       el("p", { class: "text-gray-600 dark:text-gray-300" }, count ? `${count} élément${count > 1 ? "s" : ""} sélectionné${count > 1 ? "s" : ""} : donnez-lui un nom pour l'enregistrer, avec tout ce dont il dépend.` : "Sélectionnez les corps d'un caisson, d'un tiroir ou d'une colonne pour l'enregistrer comme module."),
       el("div", { class: "flex gap-1" }, name, keep),
+      alone,
       ...(message ? [el("p", { class: "bg-emerald-50 px-2 py-1 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" }, message)] : []),
       el("h3", { class: "panel-title pt-1" }, `Mes modules (${modules.length})`),
       ...(cards.length ? cards : [el("p", { class: "text-gray-500" }, "Aucun module pour l'instant.")]),

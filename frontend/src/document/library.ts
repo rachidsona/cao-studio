@@ -3,10 +3,11 @@
  * garde que les fonctions des pièces choisies et tout ce dont elles dépendent (esquisse, répartition, corps de
  * départ…), avec leurs noms, matières, apparences importées et les paramètres de leurs formules. L'insérer dans un
  * projet y recopie ces fonctions sous des identifiants neufs (toutes les références suivent), au même endroit ; les
- * paramètres que le projet a déjà gardent sa valeur.
+ * paramètres que le projet a déjà gardent sa valeur. « Seulement les pièces choisies » : les autres pièces de ces
+ * fonctions (le reste du meuble d'un cadre séparé…) restent dans le module pour le refaire, mais retirées de la vue.
  */
 import { namesIn } from "./expressions";
-import { uniqueId, uniqueName } from "./operations";
+import { bodyOrigin, uniqueId, uniqueName } from "./operations";
 import { featureOfBody, type CadDocument, type Feature } from "./types";
 
 /** Every string in a value (deep), but the feature's own id and name. */
@@ -28,8 +29,11 @@ export function dependencies(doc: CadDocument, feature: Feature): string[] {
 /** Keys of a map by body ("fid" or "fid#n") that belong to these features. */
 const ofFeatures = <T>(map: Record<string, T> | undefined, ids: ReadonlySet<string>) => Object.fromEntries(Object.entries(map ?? {}).filter(([k]) => ids.has(featureOfBody(k))));
 
-/** The module of these bodies: a document with their features and all those they depend on; a reason when empty. */
-export function moduleOf(doc: CadDocument, bodyIds: readonly string[]): CadDocument | string {
+/**
+ * The module of these bodies: a document with their features and all those they depend on; a reason when empty.
+ * `only`: the bodies shown now — those of the module not chosen (nor what a chosen one is made from) left out of it.
+ */
+export function moduleOf(doc: CadDocument, bodyIds: readonly string[], only?: readonly string[]): CadDocument | string {
   const wanted = new Set<string>();
   const visit = (id: string) => {
     if (wanted.has(id)) return;
@@ -57,12 +61,18 @@ export function moduleOf(doc: CadDocument, bodyIds: readonly string[]): CadDocum
     schemaVersion: doc.schemaVersion,
     units: doc.units,
     parameters,
-    features: structuredClone(features),
+    // Only the pieces chosen: the sketches they come from (a dressing's plan) kept, their lines not drawn.
+    features: structuredClone(only ? features.map((f) => (f.type === "sketch" && !bodyIds.includes(f.id) ? { ...f, hidden: true } : f)) : features),
     bodyNames: ofFeatures(doc.bodyNames, wanted),
     bodyInfo: structuredClone(bodyInfo),
   };
   const hidden = (doc.hiddenBodies ?? []).filter((b) => wanted.has(featureOfBody(b)));
   const removed = (doc.removedBodies ?? []).filter((b) => wanted.has(featureOfBody(b)));
+  if (only) {
+    const kept = new Set([...bodyIds, ...bodyIds.map((b) => bodyOrigin(doc, b))]);
+    const out = only.filter((b) => wanted.has(featureOfBody(b)) && !kept.has(b) && !kept.has(featureOfBody(b)) && !kept.has(bodyOrigin(doc, b)));
+    removed.push(...new Set(out.map((b) => bodyOrigin(doc, b))).values());
+  }
   const appearances = (doc.appearances ?? []).filter((a) => used.has(a.id));
   if (hidden.length) module.hiddenBodies = hidden;
   if (removed.length) module.removedBodies = removed;
