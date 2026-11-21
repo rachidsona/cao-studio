@@ -5,6 +5,8 @@
  * là pour la suivante ; seul « Terminer » (la croix, ou Échap) le ferme, en gardant tout ce qui est fait.
  */
 import { el } from "./dom";
+import { alone } from "./fields";
+export { alone };
 
 export const CLOSE_TITLE = "Fermer (ce qui est fait reste enregistré ; Ctrl + Z l'annule)";
 
@@ -28,8 +30,8 @@ export function panelFooter(done: () => void, ok: (() => void) | null, blocked =
   return el("div", { class: "flex gap-1.5 pt-1" }, end, keep);
 }
 
-/** Where a card stops: the panel's foot, a message (what it makes, what is wrong), what is marked to stay out. */
-const loose = (e: Element) => e.hasAttribute("data-panel-loose") || !!e.querySelector("[data-panel-done], [data-panel-ok]") || /\bbg-(sky|amber|red)-50\b/.test(e.className);
+/** Where a card stops: the panel's foot, its main button (« Créer le plan »), a message (what it makes, what is wrong), what is marked to stay out. */
+const loose = (e: Element) => e.hasAttribute("data-panel-loose") || e.matches("button.btn-accent") || !!e.querySelector("[data-panel-done], [data-panel-ok]") || /\bbg-(sky|amber|red)-50\b/.test(e.className);
 
 /** The cards folded, by title, kept in this browser (the same title folded in every tool). */
 const FOLDED = "cao.tool-cards.folded";
@@ -50,6 +52,19 @@ export const rememberCard = (title: string, open: boolean) => {
     // Only this visit.
   }
 };
+
+/**
+ * A zone of a plan (a wall of a kitchen…) as a card, as the dressing's: its name and length in bold, its buttons, and
+ * what it holds folded by its title (its buttons do not fold it), as kept; one open at a time.
+ */
+export function zoneCard(key: string, label: string, length: string, buttons: (HTMLElement | null)[], inside: HTMLElement | null, mark: Record<string, string>): HTMLElement {
+  const head = el("summary", { class: "flex cursor-pointer list-none items-center justify-between gap-1.5 [&::-webkit-details-marker]:hidden" }, el("span", { class: "inline-block w-3 shrink-0 text-3xs text-gray-400 transition-transform group-open/zone:rotate-90", "aria-hidden": "true" }, inside ? "▶" : ""), el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${length}`)), ...buttons);
+  head.addEventListener("click", (event) => (event.target as Element).closest("button") && event.preventDefault());
+  const card = el("details", { class: "group/zone space-y-1.5", "data-zone-card": "", ...(foldedCards().has(key) ? {} : { open: "" }) }, head, inside);
+  card.addEventListener("toggle", () => rememberCard(key, card.open));
+  alone(card, "li > details[data-zone-card]", 2);
+  return el("li", { class: "border border-gray-200 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", ...mark }, card);
+}
 
 /**
  * The settings of a tool panel in cards, as the Properties': each heading (an `h3.panel-title` of the panel) and what
@@ -76,6 +91,7 @@ export function asCards(panel: HTMLElement): void {
       body = el("div", { class: "space-y-2 px-2.5 pb-2.5" });
       card.append(body);
       card.addEventListener("toggle", () => rememberCard(title, card.open));
+      alone(card, "details[data-panel-card]");
     } else if (body && !loose(child)) body.append(child);
     else body = null;
   }

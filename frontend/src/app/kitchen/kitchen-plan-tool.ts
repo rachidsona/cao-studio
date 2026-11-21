@@ -28,7 +28,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
-import { asCards, panelHeader } from "../../ui/panel-close";
+import { asCards, panelHeader, zoneCard } from "../../ui/panel-close";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { kitchenSchema } from "./kitchen-plan-schema";
@@ -69,7 +69,6 @@ let typed = false;
 /** The run seen alone in the view, with its dimensions. */
 let seen: { plan: string; run: string } | null = null;
 export const kitchenRunOpen = (): OpenRun | null => current?.openRunInfo() ?? null;
-
 
 export class KitchenPlanTool {
   private plan: KitchenFloorPlan = { ...last };
@@ -303,7 +302,8 @@ export class KitchenPlanTool {
       go.addEventListener("click", () => this.openRun(planId, run));
       const see = el("button", { type: "button", class: SMALL, "data-see-run": run.id, title: "Isole ce linéaire, de face, avec ses cotes", disabled: !(plan.made?.[run.id]?.length) }, "Voir");
       see.addEventListener("click", () => this.seeRun(planId, run));
-      return el("li", { class: "flex items-center justify-between gap-2" }, el("span", { class: "min-w-0 flex-1" }, `${run.label} · ${formatLength(run.zone.run.length, unit)}${count ? ` · ${count} meuble${count > 1 ? "s" : ""}${free > 0 ? ` · ${formatLength(free, unit)} libres` : ""}` : ""}`), see, go);
+      const inside = count ? el("p", { class: "border-t border-gray-100 pt-1.5 text-gray-600 dark:border-gray-800 dark:text-gray-300", "data-run-inside": run.id }, `${count} meuble${count > 1 ? "s" : ""}${free > 0 ? ` · ${formatLength(free, unit)} libres` : ""}`) : null;
+      return zoneCard(`run:${run.label}`, run.label, formatLength(run.zone.run.length, unit), [see, go], inside, { "data-run-card": run.id });
     };
     const propose = el("button", { type: "button", class: WIDE, "data-propose": "" }, "Proposer une cuisine");
     const dossier = el("button", { type: "button", class: WIDE, "data-kitchen-dossier-open": "", title: "Plan coté, chaque linéaire vu de face et la liste des meubles, en PDF pour le client" }, "Dossier de cuisine (PDF)");
@@ -322,7 +322,7 @@ export class KitchenPlanTool {
       panelHeader("Plan de cuisine", finish),
       el("p", { class: "text-gray-600 dark:text-gray-300" }, "Cliquez un linéaire pour l'aménager meuble par meuble."),
       el("div", { class: "text-gray-700 dark:text-gray-200" }, kitchenSchema(plan, (r) => [r.label], (r) => this.openRun(planId, r), layout.fills, kitchenMarks(doc, plan))),
-      el("ul", { class: "space-y-1", "aria-label": "Linéaires du plan" }, ...kitchenRuns(plan).map(row)),
+      el("ul", { class: "space-y-1.5", "aria-label": "Linéaires du plan" }, ...kitchenRuns(plan).map(row)),
       propose,
       kitchenStarted(plan) ? dossier : null,
       isolatedSketch() === planId ? showAllButton(() => this.draw()) : null,

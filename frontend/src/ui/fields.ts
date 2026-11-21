@@ -96,6 +96,25 @@ function remember(key: string, open: boolean): void {
   }
 }
 
+/**
+ * One card open at a time among those beside it (`selector` from its parent, or from `up` parents): one opened by a
+ * click folds the others; as a panel is drawn, the first open one (in the panel's order) stays, the others fold.
+ */
+export function alone(card: HTMLElement, selector: string, up = 1): void {
+  let asked = false;
+  card.querySelector("summary")?.addEventListener("click", (event) => (asked = !event.defaultPrevented));
+  card.addEventListener("toggle", () => {
+    const clicked = asked;
+    asked = false;
+    if (!(card as HTMLDetailsElement).open) return;
+    let scope: HTMLElement | null = card;
+    for (let i = 0; i < up; i++) scope = scope?.parentElement ?? null;
+    const others = [...(scope?.querySelectorAll<HTMLDetailsElement>(`:scope > ${selector}[open]`) ?? [])].filter((o) => o !== card);
+    if (clicked) for (const other of others) other.open = false;
+    else if (others.some((o) => o.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING)) (card as HTMLDetailsElement).open = false;
+  });
+}
+
 /** Cards of the right panel, like those of the navigator: straight corners, with a strong shadow. */
 export const PANEL_CARD =
   "cad-card border border-gray-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.30)] " +
@@ -116,6 +135,7 @@ export function section(title: string, ...children: (Node | null)[]): HTMLElemen
     el("div", { class: "space-y-3 px-3 pt-1 pb-3" }, ...children),
   );
   card.addEventListener("toggle", () => remember(key, card.open));
+  alone(card, "details[data-section]");
   return card;
 }
 

@@ -4,7 +4,7 @@
  * test (base .e2e/db.sqlite3, recréée à chaque lancement).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { joinStaff, newProject } from "./helpers";
+import { joinStaff, newProject, openCard } from "./helpers";
 
 async function sketchCurves(page: Page, api: string, sketchId: string): Promise<number> {
   const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
@@ -268,6 +268,7 @@ test("Répartition avec portes : chaque porte a ses cotes, sur le bouton Cotes d
   const canvas = page.locator("canvas.cad-view");
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await openCard(page, "Portes");
   await page.getByLabel("Une porte par case").check();
   await page.getByRole("button", { name: "Fermer", exact: true }).click();
   await expect(page.getByText("Côtés", { exact: true })).toBeVisible();

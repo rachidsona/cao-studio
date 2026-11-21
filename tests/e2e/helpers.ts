@@ -1,7 +1,7 @@
 /** Ce que partagent les parcours dans le navigateur. */
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** The account the last newProject made. */
 let lastUser = "";
@@ -43,4 +43,11 @@ export async function newProject(page: Page, name: string): Promise<string> {
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   const id = page.url().match(/projects\/([0-9a-f-]+)\/editor/)?.[1];
   return `/api/projects/${id}/`;
+}
+
+/** Opens a card of a panel by its title, when folded: one card is open at a time (ui/fields.ts `alone`). */
+export async function openCard(scope: Locator | Page, title: string | RegExp): Promise<void> {
+  const page = "page" in scope ? scope.page() : scope;
+  const card = scope.locator("details[data-panel-card], details[data-section]").filter({ has: page.locator("summary h3").filter({ hasText: title }) }).first();
+  if ((await card.getAttribute("open")) === null) await card.locator("summary").first().click();
 }

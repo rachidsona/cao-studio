@@ -1,6 +1,6 @@
 /** La conception guidée du dressing dans un vrai navigateur : besoins, prix, coulissantes, pièce et accord du client. */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, openCard } from "./helpers";
 
 const action = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 const planTool = (page: Page) => page.getByRole("dialog", { name: "Plan de dressing" });
@@ -113,6 +113,7 @@ test("le Plan évite les ouvertures de la pièce, dessine ses murs et équipe le
   await tool.getByRole("button", { name: "Poser les modules" }).click();
   await expect(zones(page).getByRole("listitem").first()).toContainText("Modifier");
   const pullDown = tool.getByRole("button", { name: /^Penderies escamotables/ });
+  await openCard(tool, "Penderies escamotables");
   await expect(pullDown).toBeVisible();
   await pullDown.click();
   await expect(pullDown).toHaveCount(0);

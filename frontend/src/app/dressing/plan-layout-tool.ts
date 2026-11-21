@@ -18,7 +18,7 @@ import { askConfirm } from "../../ui/confirm-dialog";
 import { hasDock, placePanel, showPanel } from "../../ui/dock";
 import { el } from "../../ui/dom";
 import { toolIcon } from "../../ui/icons";
-import { asCards, foldedCards, panelHeader, rememberCard } from "../../ui/panel-close";
+import { asCards, panelHeader, zoneCard } from "../../ui/panel-close";
 import { planSchema } from "./plan-schema";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
@@ -331,11 +331,7 @@ export class PlanLayoutTool {
           });
           return b;
         })) : null;
-      const head = el("summary", { class: "flex cursor-pointer list-none items-center justify-between gap-1.5 [&::-webkit-details-marker]:hidden" }, el("span", { class: "inline-block w-3 shrink-0 text-3xs text-gray-400 transition-transform group-open/zone:rotate-90", "aria-hidden": "true" }, inside ? "▶" : ""), el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, zone.label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${formatLength(zone.run.length, unit)}`)), zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go);
-      head.addEventListener("click", (event) => (event.target as Element).closest("button") && event.preventDefault());
-      const card = el("details", { class: "group/zone space-y-1.5", ...(foldedCards().has(`zone:${zone.label}`) ? {} : { open: "" }) }, head, inside);
-      card.addEventListener("toggle", () => rememberCard(`zone:${zone.label}`, card.open));
-      return el("li", { class: "border border-gray-200 bg-white p-2 shadow-[0_4px_12px_rgba(15,23,42,0.18)] dark:border-gray-700 dark:bg-gray-900 dark:shadow-[0_4px_14px_rgba(0,0,0,0.6)]", "data-zone-card": zone.id }, card);
+      return zoneCard(`zone:${zone.label}`, zone.label, formatLength(zone.run.length, unit), [zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go], inside, { "data-zone-card": zone.id });
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
     showAllButton.addEventListener("click", () => {

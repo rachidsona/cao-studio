@@ -1,6 +1,6 @@
 /** Le Plan de cuisine dans un vrai navigateur : le plan vu de dessus, un linéaire aménagé sur sa bande de face, la cuisine proposée, le plan modifié. */
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, openCard } from "./helpers";
 
 /** Where to keep pictures of each step, when asked (SHOTS=<dossier>). */
 const SHOTS = process.env.SHOTS;
@@ -23,8 +23,9 @@ test("plan de cuisine : plan en L avec îlot, mur A aménagé, cuisine proposée
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
-  await tool.getByLabel("Îlot", { exact: true }).check();
   await expect(tool.getByLabel("Mur B passe", { exact: false }).or(tool.getByLabel("Angle gauche"))).toBeVisible();
+  await openCard(tool, "Cotes");
+  await tool.getByLabel("Îlot", { exact: true }).check();
   await shot(page, "1-reglages");
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   const runs = tool.getByRole("list", { name: "Linéaires du plan" });
@@ -73,6 +74,7 @@ test("plan de cuisine : plan en L avec îlot, mur A aménagé, cuisine proposée
 
   // The plan changed: the kitchen follows; the island gone, its units with it.
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await openCard(tool, "Cotes");
   const length = tool.getByLabel(/^Longueur mur A/);
   const unit = (await length.getAttribute("aria-label"))?.match(/\((\w+)\)/)?.[1];
   await length.fill(unit === "mm" ? "4200" : unit === "m" ? "4,2" : "420");
@@ -309,11 +311,14 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Cotes");
   await expect(tool.getByLabel(/^Socle/)).toBeVisible();
   await expect(tool.getByLabel(/^Épaisseur du plan de travail/)).toBeVisible();
+  await openCard(tool, "Pour « Proposer une cuisine »");
   await tool.getByLabel("Façades des bas").selectOption("drawers");
-  await tool.locator('[data-plan-switch="splashback"]').uncheck();
   await tool.locator('[data-plan-switch="wallUnits"]').uncheck();
+  await openCard(tool, "Matières et finitions");
+  await tool.locator('[data-plan-switch="splashback"]').uncheck();
   await tool.getByLabel("Retour du plan aux bouts libres").selectOption("miter");
   await tool.locator('[data-plan-switch="endPanels"]').check();
   // Each look by its sphere: the list opened, Dekton Aura clicked, shown as the one chosen.
@@ -338,6 +343,7 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await expect(page.getByText(/^Bas 1 porte|^Haut 1 porte/)).toHaveCount(0);
   // « Murs de la pièce » (the plan changed): the wall the plan draws behind its run hidden, then back.
   await tool.getByRole("button", { name: "Modifier le plan" }).click();
+  await openCard(tool, "Matières et finitions");
   const walls = tool.locator("[data-plan-walls]");
   const wallBody = page.getByLabel(/^Navigateur : corps/).getByText("Mur A", { exact: true });
   await expect(walls).toBeChecked();

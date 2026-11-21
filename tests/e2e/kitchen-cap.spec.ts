@@ -1,6 +1,6 @@
 /** La casquette des meubles hauts du Plan de cuisine dans un vrai navigateur : choisie, bâtie par le noyau, dessinée sur la bande. */
 import { expect, test } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, openCard } from "./helpers";
 
 test("plan de cuisine : une casquette en caisson sur les meubles hauts", async ({ page }) => {
   const errors: string[] = [];
@@ -10,6 +10,7 @@ test("plan de cuisine : une casquette en caisson sur les meubles hauts", async (
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Matières et finitions");
   await tool.locator("[data-plan-cap]").selectOption("box");
   await expect(tool.getByLabel(/^Hauteur de la casquette/)).toHaveValue(/^8|^80/);
   await expect(tool.getByLabel(/^Débord de la casquette/)).toBeVisible();
