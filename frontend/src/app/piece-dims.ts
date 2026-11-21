@@ -230,7 +230,7 @@ export function bindPieceDims(root: HTMLElement, viewport: Viewport, editor: Edi
     // A few pixels wide over a pale halo, as the Répartition's (dressing/plan-dims-view.ts): readable on wood.
     if (points.length) {
       const vectors = Array.from({ length: points.length / 3 }, (_, n) => new THREE.Vector3(points[3 * n], points[3 * n + 1], points[3 * n + 2]));
-      ([[0xffffff, 4.5, 0.7], [COLOR, 1.8, 1]] as const).forEach(([color, width, opacity], n) => {
+      ([[0xffffff, 2.6, 0.6], [COLOR, 1.1, 1]] as const).forEach(([color, width, opacity], n) => {
         const line = fatSegments(vectors, color, width);
         (line.material as THREE.Material & { opacity: number }).opacity = opacity;
         // Hidden behind the bodies, as before (a door hides the cabinet's dimensions behind it).

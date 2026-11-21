@@ -19,7 +19,7 @@ export type DimEdit = (label: HTMLElement, axis: "x" | "y", span: [number, numbe
 
 const LINE = 0xf8500a;
 /** Widths in pixels: the dimension lines over a pale halo that reads on wood as on the dark view; the witness lines. */
-const WIDTH = { line: 1.8, halo: 4.5, witness: 1.2 };
+const WIDTH = { line: 1.1, halo: 2.6, witness: 0.9 };
 /** A value needs this much of its line, in pixels: its width along a line across the screen, its height along one up the screen. */
 const ROOM = 30;
 const ROOM_UP = 16;

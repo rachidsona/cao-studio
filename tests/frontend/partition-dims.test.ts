@@ -52,11 +52,19 @@ describe("the dimensions of a Répartition", () => {
     expect(dims.some((d) => d.level === "depth")).toBe(false);
   });
 
-  it("writes inside only what no chain gives", () => {
-    const inner = partitionDims(plan).filter((d) => d.level === "inner");
+  it("writes only what no chain gives, outside the Répartition too, the total beyond it", () => {
+    const dims = partitionDims(plan);
+    const inner = dims.filter((d) => d.level === "inner");
     // The middle niche's height (its width is in the chain below); 1000 − 18.
     expect(inner.map((d) => Math.round(d.length))).toEqual([982]);
-    expect(inner[0]?.witnesses).toEqual([]);
+    // On a line of its own outside, beyond the side's chain, brought out from the side; the total further out.
+    const x = inner[0]!.from[0];
+    const xs = (level: string) => dims.filter((d) => d.level === level && d.from[0] === d.to[0]).map((d) => d.from[0]);
+    expect(x < 0 || x > 1800).toBe(true);
+    expect(inner[0]!.witnesses.length).toBe(2);
+    const side = x < 0 ? -1 : 1;
+    expect(xs("chain").filter((c) => Math.sign(c) === side || (side === 1 && c > 1800)).every((c) => Math.abs(c) < Math.abs(x) || (side === 1 && c < x))).toBe(true);
+    if (side < 0) expect(Math.min(...xs("total"))).toBeLessThan(x);
   });
 
   it("gives once a span shared by several niches inside", () => {

@@ -64,7 +64,7 @@ export function partitionDims(plan: PartitionPlan, gap = ringGap(plan.outer)): P
       to: [span[1], y, 0],
       length: span[1] - span[0],
       level,
-      witnesses: level === "inner" || level === "door" ? [] : span.map((x): [PlanPoint, PlanPoint] => [[x, edge, 0], [x, y, 0]]),
+      witnesses: level === "door" ? [] : span.map((x): [PlanPoint, PlanPoint] => [[x, edge, 0], [x, y, 0]]),
     });
   const vertical = (span: Span, x: number, edge: number, level: PlanDimLevel) =>
     dims.push({
@@ -72,12 +72,8 @@ export function partitionDims(plan: PartitionPlan, gap = ringGap(plan.outer)): P
       to: [x, span[1], 0],
       length: span[1] - span[0],
       level,
-      witnesses: level === "inner" || level === "door" ? [] : span.map((y): [PlanPoint, PlanPoint] => [[edge, y, 0], [x, y, 0]]),
+      witnesses: level === "door" ? [] : span.map((y): [PlanPoint, PlanPoint] => [[edge, y, 0], [x, y, 0]]),
     });
-
-  // The totals, on the outer ring.
-  horizontal([outer.x0, outer.x1], outer.y0 - 2 * gap, outer.y0, "total");
-  vertical([outer.y0, outer.y1], outer.x0 - 2 * gap, outer.x0, "total");
 
   if (niches.length) {
     const lowest = Math.min(...niches.map((n) => n.y0));
@@ -91,25 +87,51 @@ export function partitionDims(plan: PartitionPlan, gap = ringGap(plan.outer)): P
 
     // The chains: the top one when it says something else; the right one too when it does, or when the side is divided,
     // because a column of shelves on the right is too far from the left chain to be read on it.
+    const topChain = !sameSpans(top, bottom);
+    const rightChain = !sameSpans(right, left) || left.length > 1;
     for (const s of bottom) horizontal(s, outer.y0 - gap, outer.y0, "chain");
     for (const s of left) vertical(s, outer.x0 - gap, outer.x0, "chain");
-    if (!sameSpans(top, bottom)) for (const s of top) horizontal(s, outer.y1 + gap, outer.y1, "chain");
-    if (!sameSpans(right, left) || left.length > 1) for (const s of right) vertical(s, outer.x1 + gap, outer.x1, "chain");
+    if (topChain) for (const s of top) horizontal(s, outer.y1 + gap, outer.y1, "chain");
+    if (rightChain) for (const s of right) vertical(s, outer.x1 + gap, outer.x1, "chain");
     if (plan.plinth > 0) vertical([outer.y0, outer.y0 + plan.plinth], outer.x0 - gap, outer.x0, "chain");
 
-    // Inside, only what no chain gives, once each; nothing behind closed doors.
+    // What no chain gives, once each, outside too: a column's heights on a line of their own on its side (level with
+    // its shelves), a row's widths below or above; nothing behind closed doors.
     const widths = [...bottom, ...top];
     const heights = [...left, ...right];
+    const columns: Span[] = [];
+    const rows: Span[] = [];
+    const rings = { left: 1, right: rightChain ? 1 : 0, below: 1, above: topChain ? 1 : 0 };
+    const ringOf = (lines: Span[], at: Span, side: keyof typeof rings) => {
+      const k = lines.findIndex((l) => sameSpan(l, at));
+      if (k >= 0) return (lines[k] as Span & { ring?: number }).ring!;
+      const line = Object.assign([...at] as Span, { ring: ++rings[side] });
+      lines.push(line);
+      return line.ring;
+    };
+    const midX = (outer.x0 + outer.x1) / 2;
+    const midY = (outer.y0 + outer.y1) / 2;
     for (const n of plan.doors?.length ? [] : niches) {
       if (!hasSpan(widths, xSpan(n))) {
         widths.push(xSpan(n));
-        horizontal(xSpan(n), n.y0 + (n.y1 - n.y0) * 0.3, n.y0, "inner");
+        const below = n.y0 + n.y1 < 2 * midY;
+        const ring = ringOf(rows, ySpan(n), below ? "below" : "above");
+        horizontal(xSpan(n), below ? outer.y0 - ring * gap : outer.y1 + ring * gap, below ? outer.y0 : outer.y1, "inner");
       }
       if (!hasSpan(heights, ySpan(n))) {
         heights.push(ySpan(n));
-        vertical(ySpan(n), n.x0 + (n.x1 - n.x0) * 0.3, n.x0, "inner");
+        const onLeft = n.x0 + n.x1 < 2 * midX;
+        const ring = ringOf(columns, xSpan(n), onLeft ? "left" : "right");
+        vertical(ySpan(n), onLeft ? outer.x0 - ring * gap : outer.x1 + ring * gap, onLeft ? outer.x0 : outer.x1, "inner");
       }
     }
+    // The totals, on the outer ring, beyond the lines added; first, so that their values are written before the others.
+    horizontal([outer.x0, outer.x1], outer.y0 - (rings.below + 1) * gap, outer.y0, "total");
+    vertical([outer.y0, outer.y1], outer.x0 - (rings.left + 1) * gap, outer.x0, "total");
+    dims.unshift(...dims.splice(dims.length - 2, 2));
+  } else {
+    horizontal([outer.x0, outer.x1], outer.y0 - 2 * gap, outer.y0, "total");
+    vertical([outer.y0, outer.y1], outer.x0 - 2 * gap, outer.x0, "total");
   }
 
   // Each door: its width near its top, its height down its middle.
