@@ -18,4 +18,16 @@ describe("pipette sur tout un caisson", () => {
     expect(caissonOf(doc, "pn1#0", shown).sort()).toEqual(["ex1#0", "ex1#1", "ex2"]);
     expect(caissonOf(doc, "ex3", shown)).toEqual(["ex3"]);
   });
+
+  it("un mur d'un Plan de dressing avec ses surmeubles, et l'inverse", () => {
+    const doc = { ...createReferencePlate(), features: [
+      { id: "pl", type: "sketch", name: "Plan", plane: "XY", offset: 0, points: [], curves: [], constraints: [], dressingPlan: { made: { A: "skA" }, tops: { A: "skT" } } },
+      { id: "skA", type: "sketch", name: "Plan — mur a", plane: "XZ", offset: 0, points: [], curves: [], constraints: [], offsets: [{ id: "of1", step: { kind: "partition" } }] },
+      { id: "skT", type: "sketch", name: "Surmeubles — mur a", plane: "XZ", offset: 0, points: [], curves: [], constraints: [], offsets: [{ id: "of2", step: { kind: "partition" } }] },
+      { id: "ex1", type: "extrude", name: "Côtés", sketch: "skA", distance: 600, operation: "new" },
+      { id: "ex2", type: "extrude", name: "Côtés", sketch: "skT", distance: 600, operation: "new" },
+    ] } as unknown as CadDocument;
+    expect(caissonOf(doc, "ex1#0", ["ex1#0", "ex2#0"]).sort()).toEqual(["ex1#0", "ex2#0"]);
+    expect(caissonOf(doc, "ex2#0", ["ex1#0", "ex2#0"]).sort()).toEqual(["ex1#0", "ex2#0"]);
+  });
 });

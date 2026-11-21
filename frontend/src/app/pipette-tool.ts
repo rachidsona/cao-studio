@@ -2,7 +2,8 @@
  * « Pipette » (Atelier), outil à part : un clic sur un corps de la vue prend son apparence telle qu'on la voit — celle
  * de sa matière comprise, sa couleur, la transparence d'un verre ou d'un plexiglas, ses faces peintes —, chaque clic
  * suivant la donne à un autre corps (appearance/assign.ts withLookCopied) — avec Ctrl (⌘ sur Mac), à tout le caisson
- * du corps cliqué : les panneaux de sa Répartition ou de son caisson, pas ses portes, tiroirs ni verres. « Reprendre » en prend une autre ; Échap ou
+ * du corps cliqué : les panneaux de sa Répartition ou de son caisson — un mur d'un Plan de dressing avec ses surmeubles,
+ * et l'inverse —, pas ses portes, tiroirs ni verres. « Reprendre » en prend une autre ; Échap ou
  * ✕ l'arrête. La matière des corps (débit, devis) ne change pas. Chaque clic est une annulation.
  */
 import { withLookCopied } from "../appearance/assign";
@@ -16,13 +17,27 @@ import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 
-/** The panels of the caisson a body belongs to (a Répartition's, a cabinet's), shown in the view; the body alone else. */
+/** A Répartition, with those it goes with in a dressing plan: a zone's and its top units'. */
+function withTops(doc: CadDocument, sketch: string): Set<string> {
+  for (const f of doc.features) {
+    const plan = f.type === "sketch" ? f.dressingPlan : undefined;
+    if (!plan) continue;
+    for (const [zone, made] of Object.entries(plan.made ?? {})) {
+      const top = plan.tops?.[zone];
+      if (made === sketch || top === sketch) return new Set([made, ...(top ? [top] : [])]);
+    }
+  }
+  return new Set([sketch]);
+}
+
+/** The panels of the caisson a body belongs to (a Répartition's — a wall's with its top units —, a cabinet's), shown in the view; the body alone else. */
 export function caissonOf(doc: CadDocument, body: string, displayed: readonly string[]): string[] {
   const owner = wholeOwner(doc, body);
   if (!owner) return [body];
+  const sketches = owner.kind === "sketch" ? withTops(doc, owner.id) : new Set<string>();
   const panels = displayed.filter((b) => {
     const f = findFeature(doc, featureOfBody(bodyOrigin(doc, b)));
-    return owner.kind === "cabinet" ? f?.type === "cabinet" && f.id === owner.id : f?.type === "extrude" && f.sketch === owner.id;
+    return owner.kind === "cabinet" ? f?.type === "cabinet" && f.id === owner.id : f?.type === "extrude" && !!f.sketch && sketches.has(f.sketch);
   });
   return panels.length ? panels : [body];
 }

@@ -5,6 +5,7 @@ import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type CadDocument, type DressingPlan, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
+import { withOrganisationCopied } from "../../frontend/src/document/partition-copy";
 
 function dressing(): { doc: CadDocument; plan: string } {
   const made = withPlan({ ...createReferencePlate(), features: [] }, { ...PLAN, model: "I", lengthA: 2000, height: 2200 });
@@ -82,6 +83,26 @@ describe("surmeubles du plan de dressing", () => {
     const step = stepOf(top!);
     expect([step.input.cases, step.input.height, step.origin![1]]).toEqual([3, 400, 2400]);
     expect(doorsOf(changed.doc, at.sketch).every((d) => d.hinges?.[0] === "top")).toBe(true);
+  });
+
+  it("la Pipette de forme copie un surmeuble sur un autre, ses Porte sur niches comprises", () => {
+    const settings = { ...PLAN, model: "L-right" as const, lengthA: 2000, lengthC: 2000, height: 2200 };
+    const made = withPlan({ ...createReferencePlate(), features: [] }, settings);
+    let doc = made.doc;
+    for (const zone of planZones(settings).filter((z) => z.kind === "run")) {
+      const filled = withZonePartition(doc, made.id, zone);
+      if (typeof filled === "string") throw new Error(filled);
+      doc = filled.doc;
+    }
+    doc = withTopUnitsSet(doc, made.id, { height: 400, doors: "lift" });
+    const [a, c] = tops(doc);
+    expect(c).toBeDefined();
+    // C opened at the side first, then given A's form: A's lift-up doors.
+    const sideways = { ...doc, features: doc.features.map((f) => (f.type === "niche" && f.sketch === c!.id ? { ...f, hinges: ["left"] } : f)) } as CadDocument;
+    const copied = withOrganisationCopied(sideways, a!.id, c!.id);
+    if (typeof copied === "string") throw new Error(copied);
+    expect(doorsOf(copied, c!.id).length).toBe(doorsOf(copied, a!.id).length);
+    expect(doorsOf(copied, c!.id).every((d) => d.hinges?.[0] === "top")).toBe(true);
   });
 
   it("pas sous un rampant, et de 20 à 100 cm", () => {

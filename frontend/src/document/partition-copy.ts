@@ -1,18 +1,19 @@
 /**
  * « Pipette de forme » d'une Répartition à une autre : l'organisation de l'une donnée à l'autre, qui garde ses cotes
  * (longueur, hauteur, profondeur), sa place, son nom et son fond. Elle prend la construction de l'autre (cases et
- * leurs proportions, côtés simples, doubles ou absents, épaisseur, qui passe aux angles, socle), ses portes, et ce que
- * tient chaque case (étagères, cloisons, penderie, tiroirs), refaits à ses propres cotes ; ce qu'elle tenait s'en va.
+ * leurs proportions, côtés simples, doubles ou absents, épaisseur, qui passe aux angles, socle), ses portes — les siennes
+ * et ses « Porte sur niches » (celles des surmeubles), leurs réglages et leur ouverture —, et ce que tient chaque case
+ * (étagères, cloisons, penderie, tiroirs), refaits à ses propres cotes ; ce qu'elle tenait s'en va.
  * Pur.
  */
 import { caissonSpecOf } from "./caisson-spec";
 import { withRecipe } from "./niche-recipe";
-import { bodyOrigin, findFeature } from "./operations";
+import { bodyOrigin, findFeature, uniqueId, uniqueName } from "./operations";
 import { syncPartitionDoors } from "./partition-doors";
 import { removeStep } from "./shelf-removal";
 import type { OffsetRecord, PartitionParams } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
-import { featureOfBody, type CadDocument, type SketchFeature } from "./types";
+import { featureOfBody, type CadDocument, type NicheFeature, type SketchFeature } from "./types";
 import { extrusionGroups, isPartition, isShelves, rebuildChain } from "../sketcher/partition-history";
 
 /** The Répartition (its sketch) a panel of it belongs to — a side, the top, the bottom; null for any other body. */
@@ -59,6 +60,10 @@ export function withOrganisationCopied(doc: CadDocument, from: string, to: strin
     const filled = withRecipe(next, { sketch: to, partition, path: [k] }, recipe);
     if (typeof filled === "string") return `Case ${i + 1} : ${filled}`;
     next = filled;
+  }
+  // Its doors over niches, as they are (their niches the same ones, the organisation being the same).
+  for (const door of doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === from && f.fill === "door")) {
+    next = { ...next, features: [...next.features, { ...structuredClone(door), id: uniqueId(next, "pn"), name: uniqueName(next, "Porte"), sketch: to, partition }] };
   }
   return syncPartitionDoors(next, to);
 }

@@ -2105,7 +2105,8 @@ opération existante.
     **Pipette** (outil à part, groupe Atelier, `app/pipette-tool.ts`) : un clic sur un corps de la vue prend son
     apparence telle qu'on la voit — celle de sa matière comprise, sa couleur, la transparence d'un verre ou d'un
     plexiglas, ses faces peintes —, chaque clic suivant la donne à un autre corps, **Ctrl + clic** (⌘) à tout son
-    caisson (les panneaux de sa Répartition ou de son caisson, pas ses portes, tiroirs ni verres : `caissonOf`) ;
+    caisson (les panneaux de sa Répartition ou de son caisson — un mur d'un Plan de dressing avec ses surmeubles, et
+    l'inverse —, pas ses portes, tiroirs ni verres : `caissonOf`) ;
     « Reprendre une autre apparence »
     en prend une autre, Échap ou ✕ l'arrête. Sa matière (débit, devis) ne change pas (`withLookCopied`,
     `appearance/assign.ts`).
@@ -2125,8 +2126,9 @@ opération existante.
     hauteurs, et ce qui la divise encore) à une niche vide qu'on clique, et à une autre étagère seulement son
     épaisseur, sa matière et son apparence (le nombre et la place des étagères restent) ; **une Répartition** (on clique un de
     ses côtés, son dessus ou son dessous) donne son organisation à une autre, qu'on clique par n'importe laquelle de
-    ses pièces : cases et proportions, côtés, épaisseur, angles, socle, portes, étagères, cloisons, penderies et
-    tiroirs de chaque case, refaits à ses propres cotes — elle garde sa longueur, sa hauteur, sa profondeur, sa place
+    ses pièces : cases et proportions, côtés, épaisseur, angles, socle, portes (les siennes et ses Porte sur niches —
+    un surmeuble sur un autre avec ses portes relevables), étagères, cloisons, penderies et tiroirs de chaque case,
+    refaits à ses propres cotes — elle garde sa longueur, sa hauteur, sa profondeur, sa place
     et son fond (`document/partition-copy.ts`) ;
     chaque panneau
     l'apparence du panneau de même rang ; une porte donne au moins son style et son apparence à toute autre porte ou à
