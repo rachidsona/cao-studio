@@ -13,7 +13,7 @@ function dressing(): { doc: CadDocument; plan: string } {
   if (typeof filled === "string") throw new Error(filled);
   return { doc: filled.doc, plan: made.id };
 }
-const tops = (doc: CadDocument) => doc.features.filter((f): f is SketchFeature => f.type === "sketch" && f.name.startsWith("Surmeubles"));
+const tops = (doc: CadDocument) => doc.features.filter((f): f is SketchFeature => f.type === "sketch" && f.name.startsWith("Surmeubles") && !!f.offsets?.some(isPartition));
 const stepOf = (s: SketchFeature) => s.offsets!.find(isPartition)!.step as Extract<NonNullable<SketchFeature["offsets"]>[number]["step"], { kind: "partition" }>;
 const planOf = (doc: CadDocument, id: string) => (doc.features.find((f) => f.id === id) as SketchFeature).dressingPlan as DressingPlan;
 
@@ -42,6 +42,24 @@ describe("surmeubles du plan de dressing", () => {
     const none = withTopUnitsSet(changed.doc, plan, null);
     expect(tops(none)).toHaveLength(0);
     expect(planOf(none, plan).top).toBeUndefined();
+  });
+
+  it("sur un angle aussi : découpés à son contour comme dessous, avec leur dernier côté, ouverts", () => {
+    const settings = { ...PLAN, model: "L-right-cut" as const, lengthA: 2000, height: 2200 };
+    const made = withPlan({ ...createReferencePlate(), features: [] }, settings);
+    let doc = made.doc;
+    for (const zone of planZones(settings)) {
+      const filled = withZonePartition(doc, made.id, zone);
+      if (typeof filled === "string") throw new Error(filled);
+      doc = filled.doc;
+    }
+    const withTop = withTopUnitsSet(doc, made.id, { height: 400, doors: true });
+    const corner = tops(withTop).find((s) => s.clip);
+    expect(corner).toBeDefined();
+    expect(stepOf(corner!).doors).toBeUndefined();
+    expect(stepOf(corner!).origin![1]).toBe(2200);
+    expect(withTop.features.some((f) => f.name.startsWith("Surmeubles — ") && f.name.endsWith("— côté"))).toBe(true);
+    expect(tops(withTop).filter((s) => !s.clip).every((s) => stepOf(s).doors)).toBe(true);
   });
 
   it("pas sous un rampant, et de 20 à 100 cm", () => {

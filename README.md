@@ -3102,11 +3102,12 @@ opération existante.
   longueur, « Voir » et « Modifier », et dessous ses outils (Étagères, Cloisons, Tiroirs, Portes, Penderie) en une
   rangée d'icônes nommées ; Portes coulissantes, Surmeubles, Mes murs et Penderies escamotables sont aussi des cartes
   pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
-  hauteur (20 à 100 cm) et « Avec portes », puis « Poser les surmeubles » — au-dessus de chaque zone droite faite, une
+  hauteur (20 à 100 cm) et « Avec portes », puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
   Répartition « Surmeubles — mur A » de cette hauteur, aux mêmes cases que celle du dessous (largeurs, côtés), posée sur
   son dessus, sans socle, avec ses portes battantes ou ouverte ; au débit et au devis comme le reste. Ils sont refaits
   quand le plan change (à sa nouvelle hauteur) ou quand une zone est faite ensuite ; « Retirer les surmeubles » les
-  enlève. Pas sous un rampant, ni sur un angle.
+  enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
+  rampant.
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les
   angles arrondis, avec leur porte cintrée, et les **coins en L** (en L à gauche, à droite, ou en U aux deux angles) : le

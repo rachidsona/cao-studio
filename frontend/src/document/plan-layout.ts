@@ -5,8 +5,8 @@
  * et Penderie y marchent ; son dernier côté et sa porte, de biais ou cintrée, s'ajoutent autour d'elle. Sous un rampant,
  * tout s'arrête sous le plafond (`ceiling`) et le dessus de chaque zone est une planche en pente. « Remplir » découpe une
  * zone libre en caissons d'une largeur voulue, le reste allant à un caisson ou à un fileur exacts. « Surmeubles » : au-dessus
- * de chaque zone droite faite, une Répartition de leur hauteur aux mêmes cases que celle du dessous, posée sur elle,
- * avec ses portes ou ouverte ; refaite quand le plan change. Pur.
+ * de chaque zone faite, une Répartition de leur hauteur aux mêmes cases que celle du dessous, posée sur elle, avec ses
+ * portes ou ouverte (un angle : découpée à son contour, avec son dernier côté, ouvert) ; refaite quand le plan change. Pur.
  */
 import { slidingDoors } from "./dressing-extras";
 import { WALL_THICKNESS, withWallBoxes, type WallBox } from "./dressing-plan";
@@ -240,7 +240,7 @@ function withZoneBoards(base: CadDocument, planId: string, zone: PlanZone): CadD
   if (ceiling) doc = sheet(doc, `${zone.label} — dessus`, zone.outline.map((p) => onFloor(plan, p)), { offset: plan.plinth }, height, { ...ceiling, slab: upright(plan) });
   const sliding = plan.sliding?.[zone.id];
   if (sliding && zone.kind === "run" && !plan.roof) doc = withSlidingDoors(doc, plan, zone, sliding);
-  if (plan.top && zone.kind === "run" && !plan.roof) doc = withTopUnits(doc, plan, zone, plan.top);
+  if (plan.top && !plan.roof) doc = withTopUnits(doc, plan, zone, plan.top);
   const known = new Set(clean.features.map((f) => f.id));
   return withSettings(doc, planId, { boards: { ...plan.boards, [zone.id]: doc.features.filter((f) => !known.has(f.id)).map((f) => f.id) } });
 }
@@ -252,12 +252,16 @@ function withTopUnits(doc: CadDocument, plan: DressingPlan, zone: PlanZone, top:
   const { openTop: _open, ...input } = below.step.input;
   const step = uniqueOffsetId(doc);
   const record = partitionRecord(step, `Surmeubles — ${zone.label.toLowerCase()}`, { ...input, height: top.height, plinth: 0 }, [zone.run.start, zoneHeight(plan, zone)], zone.run.depth);
-  if (top.doors && record.step?.kind === "partition") record.step.doors = { ...DOOR_DEFAULTS, joined: [], skipped: [] };
+  // A corner's top is open (cut to its outline, as below), with its last side.
+  if (top.doors && zone.kind === "run" && record.step?.kind === "partition") record.step.doors = { ...DOOR_DEFAULTS, joined: [], skipped: [] };
   const rebuilt = rebuildChain({ ...emptySketchGeometry(), offsets: [record] }, step);
   if (typeof rebuilt === "string") return doc;
   const sketch = uniqueId(doc, "sk");
   const feature: SketchFeature = { id: sketch, type: "sketch", name: uniqueName(doc, `Surmeubles — ${zone.label.toLowerCase()}`), ...placed(zone, plan), ...emptySketchGeometry() };
-  return withSketchExtrusion({ ...doc, features: [...doc.features, feature] }, sketch, rebuilt.geometry as SketchGeometry, { groups: extrusionGroups([], rebuilt) });
+  const made = withSketchExtrusion({ ...doc, features: [...doc.features, feature] }, sketch, rebuilt.geometry as SketchGeometry, { groups: extrusionGroups([], rebuilt) });
+  if (zone.kind !== "corner") return made;
+  const { cornerB: b, depth: d, thickness: t, lengthA: l } = plan;
+  return sheet(made, `Surmeubles — ${zone.label.toLowerCase()} — côté`, (zone.id === "left" ? rect(0, -b, d, t - b) : rect(l - d, -b, l, t - b)).map((p) => onFloor(plan, p)), { offset: zoneHeight(plan, zone) }, top.height);
 }
 
 /** Why these top units cannot be, or null. */
@@ -267,7 +271,7 @@ export function topProblem(plan: DressingPlan, top: NonNullable<DressingPlan["to
   return null;
 }
 
-/** Top units over every straight zone made (null: none), those of each zone made again. */
+/** Top units over every zone made (null: none), those of each zone made again. */
 export function withTopUnitsSet(base: CadDocument, planId: string, top: DressingPlan["top"] | null): CadDocument {
   let doc = withSettings(base, planId, { top: top ?? undefined });
   const plan = planIn(doc, planId) as DressingPlan;
@@ -283,7 +287,7 @@ const placed = ({ run, clip }: PlanZone, plan: DressingPlan) => {
 };
 
 /** A zone has boards of its own to make again around its Répartition. */
-const hasBoards = (plan: DressingPlan, zone: PlanZone, fills = plan.fills) => zone.kind === "corner" || fills?.[zone.id]?.filler === true || plan.roof !== undefined || (plan.sliding?.[zone.id] ?? 0) > 0 || (!!plan.top && zone.kind === "run");
+const hasBoards = (plan: DressingPlan, zone: PlanZone, fills = plan.fills) => zone.kind === "corner" || fills?.[zone.id]?.filler === true || plan.roof !== undefined || (plan.sliding?.[zone.id] ?? 0) > 0 || !!plan.top;
 
 /** The Répartition of a zone, against its wall: about one case per 80 cm, to set in its tool; one case in a corner; or the cases of `fill`. */
 export function withZonePartition(doc: CadDocument, planId: string, zone: PlanZone, fill?: FillChoice): { doc: CadDocument; sketch: string; step: string } | string {

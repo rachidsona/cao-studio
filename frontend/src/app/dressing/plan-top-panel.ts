@@ -1,5 +1,5 @@
 /**
- * « Surmeubles » dans le Plan de dressing : au-dessus de chaque zone droite faite, une rangée de caissons dans la
+ * « Surmeubles » dans le Plan de dressing : au-dessus de chaque zone faite (un angle compris), une rangée de caissons dans la
  * continuité de ses cases (document/plan-layout.ts, `withTopUnitsSet`) — leur hauteur, avec portes ou ouverts ; posés,
  * changés ou retirés en une annulation, ils suivent le plan quand il change.
  */
@@ -21,7 +21,7 @@ export function topSection(planId: string, plan: DressingPlan, editor: Editor, r
     const problem = top ? topProblem(plan, top) : null;
     if (problem) return editor.notify(problem, "info");
     void editor.change(withTopUnitsSet(editor.doc, planId, top)).then(() => {
-      editor.notify(top ? `Surmeubles posés : ${trim(toDisplay(top.height, unit), 3)} ${UNIT_LABELS[unit]} de haut, au-dessus de chaque mur fait.` : "Surmeubles retirés.", "success");
+      editor.notify(top ? `Surmeubles posés : ${trim(toDisplay(top.height, unit), 3)} ${UNIT_LABELS[unit]} de haut, au-dessus de chaque mur et angle faits.` : "Surmeubles retirés.", "success");
       redraw();
     });
   };
