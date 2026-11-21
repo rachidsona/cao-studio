@@ -159,10 +159,13 @@ function panelsOf(faces: readonly AxisFace[], pass: Pass, vertical: Axis, merge 
   return boxes;
 }
 
-/** Whether the boxes are panels (each thin against its next size): a caisson, not a solid block with a step. */
-export function arePanels(boxes: readonly Box[], thickest = 100): boolean {
+/**
+ * Whether the boxes are panels (each thin against its next size): a caisson, not a solid block with a step. `sticks`:
+ * the rails of a frame count too (thin, and long against their section: 20 × 19 mm, 184 long).
+ */
+export function arePanels(boxes: readonly Box[], thickest = 100, sticks = false): boolean {
   return boxes.every(([lo, hi]) => {
     const sizes = [0, 1, 2].map((a) => hi[a]! - lo[a]!).sort((a, b) => a - b);
-    return sizes[0]! <= thickest && sizes[0]! * 2 <= sizes[1]!;
+    return sizes[0]! <= thickest && (sizes[0]! * 2 <= sizes[1]! || (sticks && sizes[1]! * 2 <= sizes[2]!));
   });
 }

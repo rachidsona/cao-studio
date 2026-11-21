@@ -78,7 +78,7 @@ export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
   // A glazed frame's groove (a few mm) cuts it in slivers: read again over it — each panel keeps it when recut.
   const panels = (merge: number) => {
     const found = boardBoxes(faces, pass, vertical, merge);
-    return typeof found === "string" || !arePanels(found) ? null : found;
+    return typeof found === "string" || !arePanels(found, 100, merge > 0) ? null : found;
   };
   const boxes = panels(0) ?? panels(GROOVE);
   if (!boxes) return null;
