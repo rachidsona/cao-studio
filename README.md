@@ -1193,6 +1193,12 @@ opération existante.
     un (sans autre niche au milieu) partagent une porte, les autres ont chacune la leur — regroupées deux à deux tant
     que l'ensemble reste un rectangle ; « OK » pose toutes ces portes en une étape (« 2 portes posées sur 3 niches »).
     Une porte qu'on modifie garde ses niches telles qu'elles sont choisies (`app/dressing/niche-tool.ts` `doorGroups`).
+  - **Porte sur niches : commune ou une par niche, et plusieurs portes avant OK** : plusieurs niches choisies, la liste
+    « Portes » propose « Une porte commune » (celles qui forment un rectangle en partagent une) ou « Une porte par niche »
+    (chacune la sienne) — sur une porte qu'on modifie aussi, qui devient alors autant de portes. « + Autre porte » met
+    de côté la porte réglée (elle reste en orange, ses réglages avec elle) pour choisir les niches d'une autre, ses
+    charnières, son style ; un clic sur une niche mise de côté l'en retire ; « OK » pose toutes ces portes en une étape
+    (`app/dressing/niche-tool.ts` `setAside`).
   - **Porte sur niches vers le haut ou vers le bas** : « Charnières » propose aussi « En haut » (elle se relève, sur
     une paire de compas de porte relevable choisie d'après sa hauteur et son poids) et « En bas » (abattant, sur un
     compas d'abattant) ; ses charnières vont alors le long de ce bord (autant que sa largeur en demande), sa poignée

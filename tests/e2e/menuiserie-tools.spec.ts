@@ -688,6 +688,42 @@ test("des niches qui ne forment pas un rectangle : une porte chacune (ou par rec
   expect(errors).toEqual([]);
 });
 
+test("porte sur niches : une par niche ou commune, et d'autres portes mises de côté avant un seul OK", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "Portes de côté e2e");
+  const doors = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string; span?: unknown[]; hinges?: string[] }[] } }).document.features.filter((f) => f.type === "niche" && f.fill === "door").map((f) => `${f.span?.length ?? 0}:${f.hinges?.[0] ?? "left"}`), api);
+  };
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const tool = page.getByRole("dialog", { name: "Porte sur niches" });
+  const box = (await canvas(page).boundingBox())!;
+  // Two niches side by side: one door over them, or one each.
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await expect(tool).toContainText(/Porte de .* sur 2 niches/);
+  const split = tool.getByRole("combobox", { name: "Portes des niches" });
+  await split.selectOption("each");
+  await expect(tool).toContainText("2 portes, une par niche.");
+  // Set aside: another door chosen, its own hinges, then one OK for all.
+  await tool.locator("[data-door-another]").click();
+  await expect(tool.locator("[data-door-pending]")).toHaveAttribute("data-door-pending", "1");
+  await page.mouse.click(box.x + box.width * 0.75, box.y + box.height * 0.5);
+  await tool.getByRole("combobox", { name: "Charnières" }).selectOption("right");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("3 portes posées sur 3 niches.")).toBeVisible();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect.poll(doors, { timeout: 30_000 }).toEqual(["0:left", "0:left", "0:right"]);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
