@@ -104,6 +104,8 @@ export interface DressingPlan {
   boards?: Record<string, string[]>;
   /** By zone filled to size: the width of each case, and which one takes what is left, closed by a filler or not. */
   fills?: Record<string, { cases: number[]; rest: number; filler: boolean }>;
+  /** Top units over each straight zone, in line with its cases: their height (mm), with doors or open. */
+  top?: { height: number; doors?: boolean };
 }
 
 /** A unit or an appliance of a kitchen run, in its row from left to right: a model at a width; one's own units carried whole. */

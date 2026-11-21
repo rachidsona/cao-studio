@@ -25,6 +25,7 @@ import type { Editor } from "../editor";
 import { paintPrice } from "../workshop/live-price";
 import { needsPanel } from "./plan-needs-panel";
 import { wallsSection } from "./plan-walls-panel";
+import { topSection } from "./plan-top-panel";
 import { isolatedSketch, isolateZone, showAll } from "../zone-view";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -361,6 +362,7 @@ export class PlanLayoutTool {
       isolatedSketch() ? showAllButton : null,
       needs,
       ...this.sliding(planId, plan, zones),
+      ...topSection(planId, plan, this.editor, () => this.draw()),
       ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
       ...this.pullDowns(planId, plan),
       ...this.checks(plan),
