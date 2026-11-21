@@ -26,6 +26,18 @@ export interface SelectionActions {
   /** The faces picked painted alone (null: their body's look back), and the colour of the first one, if its own. */
   faceColor?(color: string | null): void;
   faceColorNow?(): string | null;
+  /** The grain of these pieces (by a body or a face of it): along their length, their width, or none. */
+  grain?(bodyIds: string[], grain: "length" | "width" | "none"): void;
+  grainOf?(bodyId: string): "length" | "width" | "none";
+}
+
+/** « Sens du fil » of the pieces picked (a body, or a face of it): its wood's grain along the length or the width. */
+function grainRow(ids: string[], actions: SelectionActions): HTMLElement | null {
+  if (!ids.length || !actions.grain || !actions.grainOf) return null;
+  const now = actions.grainOf(ids[0]!);
+  const select = el("select", { class: "h-8 min-w-0 border border-gray-300 bg-white px-1 text-sm dark:border-gray-600 dark:bg-gray-900", "aria-label": "Sens du fil", "data-grain": "", title: "Le veinage du bois de la pièce : la vue, le débit et le calepinage le suivent" }, ...([["length", "Fil en longueur"], ["width", "Fil en largeur"], ["none", "Sans fil"]] as const).map(([v, t]) => el("option", { value: v, selected: v === now }, t)));
+  select.addEventListener("change", () => actions.grain?.(ids, select.value as "length" | "width" | "none"));
+  return el("div", { class: "flex items-center gap-2 text-sm" }, el("span", { class: "flex-1" }, ids.length > 1 ? `Sens du fil (${ids.length} pièces)` : "Sens du fil"), select);
 }
 
 /** « Couleur de la face »: the faces picked alone take a colour, the rest of their body keeps its own. */
@@ -142,6 +154,7 @@ export function selectionSection(summary: SelectionSummary, unit: DisplayUnit, a
     `Sélection (${parts.join(", ")})`,
     el("ul", { class: "space-y-1 text-sm" }, ...items),
     faceColorRow(faces.length, actions),
+    sketch.length || sketches.length ? null : grainRow([...new Set([...bodies.map((b) => b.id), ...faces.map((f) => f.pick.bodyId)])], actions),
     buttons.length ? el("div", { class: "@container" }, el("div", { class: "flex flex-wrap gap-1.5" }, ...buttons)) : null,
     el("p", { class: "text-xs text-gray-500 dark:text-gray-400" }, "Cliquez d'autres éléments pour les ajouter, recliquez pour les retirer. Le filtre de la barre d'outils choisit faces, arêtes, points ou corps. Ctrl/Maj + clic ajoute des corps et des esquisses entières ; Maj + glisser (ou « Fenêtre ») les prend par fenêtre. Un point de corps s'accroche dans une esquisse (contrainte Coïncidence)."),
     clear,

@@ -30,7 +30,7 @@ import { extrudeTargets, ToolLauncher, toolOptions, type PanelToolKind } from ".
 import { SketchController } from "./sketch-controller";
 import { SketchDisplay } from "./sketch-display";
 import { preferredUnit, setPreferredUnit } from "../measurements/unit-preference";
-import { paintPickedFaces, pickedFaceColor } from "./face-color";
+import { grainOf, paintPickedFaces, pickedFaceColor, setGrain } from "./face-color";
 
 export interface EditorConfig {
   projectId: string;
@@ -282,7 +282,7 @@ export class Editor {
           if (face) void this.sketches.createOnFace(face);
         },
         clear: () => this.viewport.clearSelection(), remove: () => this.removePicked(this.picked.selection), step: (body) => this.sketches.stepOf(body),
-        faceColor: (color) => paintPickedFaces(this.root, this, this.viewport, color), faceColorNow: () => pickedFaceColor(this, this.viewport),
+        faceColor: (color) => paintPickedFaces(this.root, this, this.viewport, color), faceColorNow: () => pickedFaceColor(this, this.viewport), grain: (ids, grain) => setGrain(this.root, this, ids, grain), grainOf: (id) => grainOf(this, id),
       },
       targets: extrudeTargets(this.doc, feature?.id ?? null),
       sketch: {

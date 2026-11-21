@@ -2,7 +2,11 @@
  * « Couleur de la face » (panneau Sélection, une face ou plusieurs choisies dans la vue) : ces faces seules prennent une
  * couleur — une laque satinée de la couleur choisie —, le reste du corps garde la sienne ; « D'origine » la leur rend.
  * La vue passe aux apparences pour la montrer. Le même réglage que l'outil Apparence, « Seulement la face choisie ».
+ * « Sens du fil » (même panneau) : le veinage des pièces choisies (par un corps ou une de ses faces) en longueur, en
+ * largeur, ou sans fil — le même réglage que l'Atelier, suivi au débit et au calepinage.
  */
+import { bodyInfo, setBodyInfo } from "../document/materials";
+import type { BodyInfo } from "../document/types";
 import { faceLooks, faceMarks, matchFace, setFaceAppearance } from "../appearance/face-looks";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -26,6 +30,17 @@ export function pickedFaceColor(editor: Editor, viewport: Viewport): string | nu
   const looks = faceLooks(editor.doc, first.bodyId);
   const at = matchFace(looks, first.mark);
   return at >= 0 ? (looks[at]!.color ?? null) : null;
+}
+
+/** The grain of a piece (along its length unless chosen). */
+export const grainOf = (editor: Editor, bodyId: string): NonNullable<BodyInfo["grain"]> => bodyInfo(editor.doc, bodyId).grain ?? "length";
+
+/** The grain of these pieces turned, in one step; the view shows the appearances. */
+export function setGrain(root: HTMLElement, editor: Editor, bodyIds: string[], grain: NonNullable<BodyInfo["grain"]>): void {
+  void editor.change(setBodyInfo(editor.doc, bodyIds, { grain }));
+  const render = root.querySelector<HTMLButtonElement>('[data-workshop="render"]');
+  if (grain !== "none" && render?.getAttribute("aria-pressed") === "false") render.click();
+  editor.notify(grain === "none" ? "Sans fil : la pièce peut tourner sur le panneau." : `Fil en ${grain === "width" ? "largeur" : "longueur"} : la vue, le débit et le calepinage le suivent.`, "success");
 }
 
 /** The faces picked painted this colour (null: their own look back), in one step; the view shows the appearances. */
