@@ -945,7 +945,8 @@ opération existante.
   entier par quarts de tour autour de la verticale, une pièce seule de l'angle qu'il faut —, ses **bords affleurant
   ceux de l'autre au coin le plus proche du clic** ; pas seulement mise dans son plan. Des faces de même sens (deux
   façades, deux dessus) affleurent seulement, le long de leur normale (`features/face-glue.ts`). Un caisson bouge avec
-  ses façades, par ses **faces extérieures** (la face cliquée ne dit que le côté, jamais il n'entre dans l'autre), ou
+  ses façades — une **Répartition** avec tous ses panneaux, ses portes et ses niches, son esquisse déplacée d'un bloc
+  (`glueKey`) —, par ses **faces extérieures** (la face cliquée ne dit que le côté, jamais il n'entre dans l'autre), ou
   la pièce seule (« Ce qui bouge ») ; deux faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met
   en retrait) (`app/face-glue-tool.ts`).
 - **Caisson** (groupe « Meuble ») : un meuble complet à partir de ses cotes extérieures, chaque pièce étant un

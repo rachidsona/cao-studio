@@ -3,8 +3,8 @@
  * une face d'un autre élément, et le premier vient s'y coller, d'un coup. Des faces qui se regardent, ou d'équerre :
  * la face se pose sur l'autre — tournée d'abord s'il le faut —, ses bords affleurant ceux de l'autre au coin le plus
  * proche du clic (features/face-mate.ts). Des faces de même sens (deux façades) affleurent seulement. Un caisson bouge
- * avec ses façades, par ses faces extérieures, ou une pièce seule si on le veut (ou si les deux faces sont du même
- * caisson). Un jeu les écarte, ou les met en retrait. Une seule annulation.
+ * avec ses façades, une Répartition avec tous ses panneaux, ses portes et ses niches, par ses faces extérieures, ou une
+ * pièce seule si on le veut (ou si les deux faces sont du même meuble). Un jeu les écarte, ou les met en retrait. Une seule annulation.
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import { movesNeeded, spacingFeatures, type Moving } from "../document/spacing";
@@ -12,7 +12,7 @@ import { elementKey } from "../document/swap";
 import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
 import { glueShift, parallelFaces } from "../features/face-glue";
 import { faceOnFace, flushSlide, type FaceMate } from "../features/face-mate";
-import { elementEnvelope, wholeMate } from "./align-whole";
+import { alignWhole, elementEnvelope, wholeMate } from "./align-whole";
 import { el } from "../ui/dom";
 import type { FacePick } from "../viewport/viewport";
 import { freshFeatureIds } from "./curic-common";
@@ -34,6 +34,12 @@ interface Laid {
 }
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/** The piece of furniture a body is in: a Répartition (its sketch, moved with all it holds), a cabinet with its fronts, else its feature. */
+export function glueKey(doc: Parameters<typeof elementKey>[0], bodyId: string): string {
+  const owner = alignWhole(doc, bodyId);
+  return owner?.kind === "sketch" ? owner.id : elementKey(doc, bodyId);
+}
 
 /** Kept for the session: whether the whole cabinet moves, and the gap. */
 let lastWhole = true;
@@ -92,13 +98,13 @@ export class FaceGlueTool extends PanelTool {
   private movingName(): string {
     const doc = this.ctx.doc();
     if (!this.moving) return "";
-    return (this.movesWhole() ? findFeature(doc, elementKey(doc, this.moving.bodyId))?.name : undefined) ?? bodyLabel(doc, this.moving.bodyId);
+    return (this.movesWhole() ? findFeature(doc, glueKey(doc, this.moving.bodyId))?.name : undefined) ?? bodyLabel(doc, this.moving.bodyId);
   }
 
   /** The whole element moves, unless asked otherwise or both faces are of one element (a shelf against its side). */
   private movesWhole(): boolean {
     const doc = this.ctx.doc();
-    return this.whole && !!this.moving && !(this.fixed && elementKey(doc, this.fixed.bodyId) === elementKey(doc, this.moving.bodyId));
+    return this.whole && !!this.moving && !(this.fixed && glueKey(doc, this.fixed.bodyId) === glueKey(doc, this.moving.bodyId));
   }
 
   /** The cabinet moved in place, or the moves of the bodies; or what is still missing. */
@@ -125,8 +131,8 @@ export class FaceGlueTool extends PanelTool {
   /** Moved without turning: the cabinet in place (or its bodies), or the piece alone. */
   private moved(shift: Vec3, whole: boolean): Feature[] | string {
     const doc = this.ctx.doc();
-    const key = whole ? elementKey(doc, this.moving!.bodyId) : this.moving!.bodyId;
-    const bodies = whole ? this.ctx.viewport.displayedBodies.filter((id) => elementKey(doc, id) === key) : [this.moving!.bodyId];
+    const key = whole ? glueKey(doc, this.moving!.bodyId) : this.moving!.bodyId;
+    const bodies = whole ? this.ctx.viewport.displayedBodies.filter((id) => glueKey(doc, id) === key) : [this.moving!.bodyId];
     const moving: Moving[] = [{ key, bodies, whole, shift }];
     const needed = movesNeeded(doc, moving);
     if (this.slots.length < needed) this.slots = freshFeatureIds(doc, "mv", "Déplacement", needed);
