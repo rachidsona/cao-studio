@@ -2104,7 +2104,9 @@ opération existante.
     dans la catégorie « Mes motifs (images importées) », où ✕ la retire (`appearance/custom.ts`).
     **Pipette** (outil à part, groupe Atelier, `app/pipette-tool.ts`) : un clic sur un corps de la vue prend son
     apparence telle qu'on la voit — celle de sa matière comprise, sa couleur, la transparence d'un verre ou d'un
-    plexiglas, ses faces peintes —, chaque clic suivant la donne à un autre corps ; « Reprendre une autre apparence »
+    plexiglas, ses faces peintes —, chaque clic suivant la donne à un autre corps, **Ctrl + clic** (⌘) à tout son
+    caisson (les panneaux de sa Répartition ou de son caisson, pas ses portes, tiroirs ni verres : `caissonOf`) ;
+    « Reprendre une autre apparence »
     en prend une autre, Échap ou ✕ l'arrête. Sa matière (débit, devis) ne change pas (`withLookCopied`,
     `appearance/assign.ts`).
     **Pipette de forme** (groupe Atelier, `app/form-pipette-tool.ts`) : un clic prend la

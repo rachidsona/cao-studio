@@ -1,17 +1,31 @@
 /**
  * « Pipette » (Atelier), outil à part : un clic sur un corps de la vue prend son apparence telle qu'on la voit — celle
  * de sa matière comprise, sa couleur, la transparence d'un verre ou d'un plexiglas, ses faces peintes —, chaque clic
- * suivant la donne à un autre corps (appearance/assign.ts withLookCopied). « Reprendre » en prend une autre ; Échap ou
+ * suivant la donne à un autre corps (appearance/assign.ts withLookCopied) — avec Ctrl (⌘ sur Mac), à tout le caisson
+ * du corps cliqué : les panneaux de sa Répartition ou de son caisson, pas ses portes, tiroirs ni verres. « Reprendre » en prend une autre ; Échap ou
  * ✕ l'arrête. La matière des corps (débit, devis) ne change pas. Chaque clic est une annulation.
  */
 import { withLookCopied } from "../appearance/assign";
-import { bodyLabel } from "../document/operations";
+import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
+import { featureOfBody, type CadDocument } from "../document/types";
+import { wholeOwner } from "./move-whole";
 import { el } from "../ui/dom";
 import { placePanel } from "../ui/dock";
 import { panelHeader } from "../ui/panel-close";
 import type { PointerHandler } from "../viewport/pointer-input";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
+
+/** The panels of the caisson a body belongs to (a Répartition's, a cabinet's), shown in the view; the body alone else. */
+export function caissonOf(doc: CadDocument, body: string, displayed: readonly string[]): string[] {
+  const owner = wholeOwner(doc, body);
+  if (!owner) return [body];
+  const panels = displayed.filter((b) => {
+    const f = findFeature(doc, featureOfBody(bodyOrigin(doc, b)));
+    return owner.kind === "cabinet" ? f?.type === "cabinet" && f.id === owner.id : f?.type === "extrude" && f.sketch === owner.id;
+  });
+  return panels.length ? panels : [body];
+}
 
 const BUTTON = "h-8 w-full border border-gray-300 px-2 text-xs font-medium hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800";
 
@@ -39,7 +53,7 @@ class PipetteTool implements PointerHandler {
   }
 
   private say(): void {
-    this.text.textContent = this.from ? `Cliquez les corps qui prennent l'apparence de « ${bodyLabel(this.editor.doc, this.from)} ».` : "Cliquez le corps dont vous prenez l'apparence.";
+    this.text.textContent = this.from ? `Cliquez les corps qui prennent l'apparence de « ${bodyLabel(this.editor.doc, this.from)} » — Ctrl + clic : tout leur caisson.` : "Cliquez le corps dont vous prenez l'apparence.";
     this.again.disabled = !this.from;
   }
 
@@ -47,9 +61,14 @@ class PipetteTool implements PointerHandler {
     return false;
   }
 
+  /** The bodies a click gives the look to: the one clicked, or with Ctrl (⌘) all of its caisson. */
+  private targets(body: string, event: PointerEvent): string[] {
+    return event.ctrlKey || event.metaKey ? caissonOf(this.editor.doc, body, this.viewport.displayedBodies) : [body];
+  }
+
   move(event: PointerEvent): void {
     const body = this.viewport.pickFace(event)?.bodyId;
-    this.viewport.setHoverHighlight(body ? { bodies: [body] } : null);
+    this.viewport.setHoverHighlight(body ? { bodies: this.from ? this.targets(body, event) : [body] } : null);
   }
 
   up(event: PointerEvent, isClick: boolean): boolean {
@@ -60,7 +79,7 @@ class PipetteTool implements PointerHandler {
       this.from = body;
       this.say();
     } else {
-      void this.editor.change(withLookCopied(this.editor.doc, this.from, [body]));
+      void this.editor.change(withLookCopied(this.editor.doc, this.from, this.targets(body, event).filter((b) => b !== this.from)));
       // The view shows the appearances (« Rendu des matières » on), as Apparence does.
       const render = document.querySelector<HTMLButtonElement>('[data-workshop="render"]');
       if (render?.getAttribute("aria-pressed") === "false") render.click();
