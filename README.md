@@ -3274,6 +3274,11 @@ opération existante.
   chapeau, zone des tiroirs, épaisseur, type de module ; OK le remplace en une annulation, ses pièces gardant matière et
   apparence, et « Retirer ce module » libère sa niche (`document/module-edit.ts`). Dans l'assistant, le « + » d'un mur
   ouvre la même liste de modules pour choisir celui à ajouter.
+  - **Étagères alignées sur la colonne d'à côté** (règle de l'outil) : un module « Étagères » ou « Chaussures » posé
+    seul dans une niche prend d'office les hauteurs des étagères de la colonne voisine — à gauche ou à droite, celle
+    qui en a le plus dans sa hauteur : autant d'étagères, leur dessus à la même hauteur (la dernière niche prend le
+    reste). Changer le nombre ou l'espacement les répartit de nouveau à égalité ; « Aligner sur les étagères
+    voisines » les réaligne, sur un module déjà posé aussi (`document/module-align.ts`).
   - **Modules programmables** (section « Formules » du panneau, `app/dressing/module-formulas.ts`) : un module dont les
     cotes se calculent sur la niche où on le pose. La section est une **carte à part** (filet violet à gauche, fond
     teinté, marque « ƒx »), fermée comme ouverte, pour la distinguer des autres réglages du module. Chaque champ y a

@@ -6,6 +6,7 @@
  * jusqu'à Échap. Un clic dans un module déjà posé le rouvre (document/module-edit.ts) : ses étagères, ses tiroirs, la
  * hauteur de chaque niche, tout se change, et OK le remplace en une annulation. Des formules (module-formulas.ts)
  * calculent le module sur chaque niche où on le pose, et il se recalcule quand sa niche change (document/module-follow.ts).
+ * Des étagères posées seules dans une niche s'alignent d'office sur celles de la colonne d'à côté (document/module-align.ts).
  */
 import {
   MODULES,
@@ -26,6 +27,7 @@ import { nicheGeometry, worldBox } from "../../features/niche-parts";
 import { formatLength } from "../../measurements/units";
 import type { Vec2 } from "../../sketcher/edit";
 import { isPartition, leafNiches } from "../../sketcher/partition-history";
+import { alignedSizes } from "../../document/module-align";
 import type { NicheBox } from "../../sketcher/shelves";
 import { el } from "../../ui/dom";
 import { placePanel } from "../../ui/dock";
@@ -171,7 +173,18 @@ export class ModuleTool {
     const at = this.niches.findIndex((n) => same(n.box, leaf.box));
     if (at >= 0) this.niches.splice(at, 1);
     else this.niches.push({ partition: leaf.partition, path: leaf.path, box: leaf.box });
+    // The rule: shelves in one niche level with those beside it.
+    if (this.niches.length === 1) this.align();
     this.recompute();
+  }
+
+  /** The shelves of the module in its one niche level with those of the column beside; false: none to follow. */
+  private align(): boolean {
+    const sketch = this.sketch();
+    const box = this.niches.length === 1 && !this.programmed() ? this.niches[0]!.box : null;
+    const aligned = box && sketch ? alignedSizes(this.kind, this.sizes, box, leafNiches(sketch).map((n) => n.box), this.thickness) : null;
+    if (aligned) this.sizes = aligned;
+    return !!aligned;
   }
 
   chosen(): NicheBox[] {
@@ -232,6 +245,7 @@ export class ModuleTool {
     this.kind = kind;
     this.sizes = moduleSizes(kind);
     this.mine = null;
+    if (!this.editing) this.align();
     this.recompute();
   }
 
@@ -296,6 +310,13 @@ export class ModuleTool {
       levels: this.niches.length === 1 && !this.programmed(),
       ruled: new Set(Object.keys(this.program?.formulas ?? {})),
       thickness: { value: this.thickness, set: (mm) => (this.thickness = mm) },
+      align: this.niches.length === 1 && !this.programmed()
+        ? () => {
+            if (!this.align()) return this.host.notify("Pas d'étagères dans la colonne d'à côté, sur la hauteur de cette niche.", "info");
+            this.mine = null;
+            this.recompute();
+          }
+        : undefined,
       changed: () => {
         this.mine = null;
         this.recompute();

@@ -751,6 +751,34 @@ test("une porte supprimée seule : sa poignée part avec elle", async ({ page })
   expect(errors).toEqual([]);
 });
 
+test("Module Étagères : posé à côté d'étagères, il s'aligne sur elles", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Étagères alignées e2e");
+  await wall(page);
+  const box = (await canvas(page).boundingBox())!;
+  const [first, next] = [[box.x + box.width * 0.33, box.y + box.height * 0.5], [box.x + box.width * 0.5, box.y + box.height * 0.5]] as const;
+  // Three shelves in the first case.
+  await click(page, '[data-action="module"]');
+  const mod = page.getByRole("dialog", { name: "Module" });
+  await page.mouse.click(...first);
+  await mod.getByRole("button", { name: "Étagères", exact: true }).click();
+  await mod.getByRole("combobox", { name: "Étagères", exact: true }).selectOption("3");
+  await expect(mod).toContainText("Niche 4");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1500);
+  // Shelves in the case beside: three too, level with them.
+  await click(page, '[data-action="module"]');
+  const again = page.getByRole("dialog", { name: "Module" });
+  await page.mouse.click(...next);
+  await again.getByRole("button", { name: "Étagères", exact: true }).click();
+  await expect(again.getByRole("combobox", { name: "Étagères", exact: true })).toHaveValue("3");
+  await expect(again.locator("[data-module-align]")).toBeVisible();
+  if (process.env.SHOTS) await page.waitForTimeout(1500), await page.screenshot({ path: `${process.env.SHOTS}/etageres-alignees.png` });
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
