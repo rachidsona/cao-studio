@@ -3,14 +3,16 @@
  * comme un module de son compte (avec une vignette prise dans la vue), puis le remettre d'un clic dans n'importe quel
  * projet, à l'endroit où il était, ses pièces sélectionnées pour le déplacer. Une face d'un meuble choisie avant
  * « Insérer » : le module s'y colle, dehors, aligné en bas et au dos sur ce meuble (document/glue.ts), en une seule
- * annulation avec l'insertion. « Seulement les pièces choisies » n'en montre que celles-là (des cadres séparés d'un
+ * annulation avec l'insertion ; la face d'une porte ou d'un devant de tiroir : le module prend sa place (une façade à
+ * cadre gardée, posée sur un autre tiroir), la façade d'avant retirée avec sa poignée. « Seulement les pièces choisies » n'en montre que celles-là (des cadres séparés d'un
  * dressing, sans le dressing). Les modules sont gardés par le serveur (/api/library/) ; leur contenu et l'insertion :
  * document/library.ts.
  */
 import { featureBacks } from "../document/furniture-facing";
-import { boxAround, faceOf, glueShift, type Box, type FaceBox } from "../document/glue";
+import { boxAround, faceOf, glueShift, inPlaceShift, type Box, type FaceBox } from "../document/glue";
+import { isFrontPiece, withHangingParts } from "../document/door-edit";
 import { insertModule, moduleOf } from "../document/library";
-import { bodyOrigin } from "../document/operations";
+import { bodyOrigin, removePieces } from "../document/operations";
 import { spacingFeatures, movesNeeded, type Moving } from "../document/spacing";
 import { featureOfBody, type CadDocument, type Feature } from "../document/types";
 import { freshFeatureIds } from "./curic-common";
@@ -93,7 +95,7 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
    * The face chosen before « Insérer » — picked as a face, or clicked on a body then selected (whole) — with the
    * furniture it is part of (its box, its back): where to glue.
    */
-  const target = (): { face: FaceBox; owner: Box; back: [number, number] | null } | null => {
+  const target = (): { face: FaceBox; owner: Box; back: [number, number] | null; front: { id: string; box: Box } | null } | null => {
     const selection = editor.picked.selection;
     const picked = selection.faces[0] ?? (clicked && selection.bodies.includes(clicked.bodyId) ? clicked : undefined);
     const mesh = picked && viewport.bodyMesh(picked.bodyId);
@@ -104,15 +106,20 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
     const bodies = whole ? wholeBodies(doc, whole.kind, whole.id, viewport.displayedBodies) : [picked.bodyId];
     const owner = boxAround(boxesOf(bodies));
     const back = featureBacks(doc).get(featureOfBody(bodyOrigin(doc, picked.bodyId)))?.back ?? null;
-    return owner ? { face, owner, back } : null;
+    // A door or a drawer front: the module takes its place (the front, and its pieces when its sides are split).
+    const id = bodyOrigin(doc, picked.bodyId);
+    const piece = isFrontPiece(doc, picked.bodyId) ? boxAround(boxesOf(viewport.displayedBodies.filter((b) => bodyOrigin(doc, b) === id))) : null;
+    return owner ? { face, owner, back, front: piece ? { id, box: piece } : null } : null;
   };
 
   /** The module just inserted, moved against the face: its cabinets and sketches moved in place, other bodies by a move. */
   const glued = (doc: CadDocument, features: readonly string[], at: NonNullable<ReturnType<typeof target>>): CadDocument | null => {
     const bodies = viewport.displayedBodies.filter((id) => features.includes(featureOfBody(id)));
     const box = boxAround(boxesOf(bodies));
-    const shift = box && glueShift(box, at.face, at.owner, at.back);
-    if (!shift || Math.hypot(...shift) < 1e-6) return null;
+    const shift = box && (at.front ? inPlaceShift(box, at.face, at.front.box) : glueShift(box, at.face, at.owner, at.back));
+    if (!shift) return null;
+    const replaced = (d: CadDocument) => (at.front ? removePieces(d, withHangingParts(d, [at.front.id])) : d);
+    if (Math.hypot(...shift) < 1e-6) return at.front ? replaced(doc) : null;
     const groups = new Map<string, Moving>();
     for (const id of bodies) {
       const whole = wholeOwner(doc, id);
@@ -125,7 +132,9 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
     const made = spacingFeatures(doc, moving, freshFeatureIds(doc, "mv", "Collage", movesNeeded(doc, moving)));
     // A cabinet or a sketch moved in place keeps its id; a move of a body is new.
     const kept = doc.features.map((f) => made.find((m) => m.id === f.id) ?? f);
-    return { ...doc, features: [...kept, ...made.filter((m) => !doc.features.some((f) => f.id === m.id))] as Feature[] };
+    const next = { ...doc, features: [...kept, ...made.filter((m) => !doc.features.some((f) => f.id === m.id))] as Feature[] };
+    // In place of a front: that front taken out, with its handle and its glass.
+    return replaced(next);
   };
 
   const insert = async (row: ModuleRow) => {
@@ -144,7 +153,9 @@ export function bindLibrary(root: HTMLElement, viewport: Viewport, editor: Edito
       for (const id of viewport.displayedBodies) if (features.includes(featureOfBody(id))) viewport.toggleInSelection("body", id);
       editor.notify(
         moved
-          ? `« ${row.name} » inséré contre la face choisie ; ses pièces sont sélectionnées pour le déplacer.`
+          ? at?.front
+            ? `« ${row.name} » inséré à la place de la façade choisie, retirée avec sa poignée (Ctrl+Z la remet).`
+            : `« ${row.name} » inséré contre la face choisie ; ses pièces sont sélectionnées pour le déplacer.`
           : at
             ? `« ${row.name} » inséré à l'endroit où il était enregistré : la face choisie n'est pas droite (de face, de côté ou de dessus).`
             : `« ${row.name} » inséré à l'endroit où il était enregistré ; ses pièces sont sélectionnées pour le déplacer. Choisissez d'abord une face d'un meuble pour l'y coller.`,

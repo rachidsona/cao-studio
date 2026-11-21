@@ -171,6 +171,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Tapez un nom dans « Nom du module », puis cliquez « Enregistrer ». Pour ne garder que des pièces d'un meuble (des cadres de façade séparés, une porte d'un dressing) sans le meuble autour, cochez d'abord « Seulement les pièces choisies ».",
           "Dans un autre projet, ouvrez le panneau et cliquez « Insérer » : le module revient à sa place d'origine, ses pièces sélectionnées pour les déplacer.",
           "Pour le coller contre un meuble, cliquez d'abord une face de ce meuble (son côté, son devant ou son dessus), puis « Insérer » : le module se pose contre elle, dehors, son bas sur le bas du meuble et son dos contre le même mur. Une seule annulation (Ctrl + Z) reprend l'insertion et le collage.",
+          "Pour remplacer une porte ou une façade de tiroir par un module (une façade à cadre gardée seule), cliquez d'abord la face de cette façade (filtre « Faces » si l'esquisse du mur est devant), puis « Insérer » : le module prend sa place, centré sur elle et affleurant, et l'ancienne façade est retirée avec sa poignée.",
           "Le bouton « ✕ » retire un module de la bibliothèque, après confirmation.",
         ],
         tip: "Retirer un module de la bibliothèque ne change pas les projets où il a déjà été inséré. À ne pas confondre avec « Mes modules » de l'outil Module, gardés dans ce navigateur.",

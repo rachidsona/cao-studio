@@ -3074,6 +3074,10 @@ opération existante.
     suivent), à l'endroit où il était, en une seule annulation. La vue se recadre sur tout le modèle et les pièces
     insérées sont sélectionnées, prêtes pour Déplacer. Un nom déjà pris prend le numéro suivant ; un paramètre que
     le projet a déjà garde sa valeur.
+  - **À la place d'une façade** : la face d'une porte ou d'un devant de tiroir cliquée avant « Insérer », le module
+    (une façade à cadre gardée seule…) prend sa place — centré sur elle dans son plan, affleurant sa face — et elle
+    est retirée avec sa poignée et sa vitre, en une annulation (`document/glue.ts` `inPlaceShift`,
+    `document/door-edit.ts` `isFrontPiece`). Sans cela, la face d'une façade collait le module contre tout le meuble.
   - **Collé contre une face** : une face d'un meuble cliquée avant « Insérer » (son côté, son devant, son dessus), le
     module se pose contre elle, dehors (à droite d'un côté droit, sur un dessus…), son bas sur le bas de ce meuble et,
     à l'horizontale, son dos contre le même mur que lui (son bord le plus bas des coordonnées quand son dos n'est pas

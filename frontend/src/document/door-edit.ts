@@ -111,6 +111,15 @@ export function withDoorHinge(doc: CadDocument, bodyId: string, hinge: "left" | 
   return updateFeature(doc, f.id, () => ({ ...f, hinges: [hinge] }) satisfies NicheFeature);
 }
 
+/** Whether a body is a door or a drawer front (not its handle, its glass, a drawer's box): a piece one may replace. */
+export function isFrontPiece(doc: CadDocument, bodyId: string): boolean {
+  const id = bodyOrigin(doc, bodyId);
+  const f = findFeature(doc, featureOfBody(id));
+  if (f?.type === "niche") return nichePartsIn(doc.features, f)[partNumber(id)]?.role === "front";
+  if (f?.type === "fronts") return !!frontsParts(f, findFeature(doc, f.cabinet) as CabinetFeature | undefined)[partNumber(id)]?.role;
+  return f?.type === "extrude" && doorOf(doc, bodyId) !== null;
+}
+
 /**
  * These pieces, with what hangs on each front or door among them: its handle, its glass (a piece taken out alone
  * leaves nothing of it floating). For the doors and drawers of niches and the fronts of a cabinet.

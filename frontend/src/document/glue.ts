@@ -2,7 +2,9 @@
  * Coller un module contre une face (« Ma bibliothèque », app/library-panel.ts) : la face choisie donne un plan, le
  * module s'y pose de son côté, dehors ; dans le plan, il s'aligne sur le meuble de la face — en bas sur son bas, et,
  * à l'horizontale, sur son dos quand on le connaît (sinon sur son bord le plus bas des coordonnées). Une face de
- * dessus le pose sur le meuble, une face de dessous sous lui. Pur : des boîtes et des vecteurs, sans la vue.
+ * dessus le pose sur le meuble, une face de dessous sous lui. Une face d'une façade (une porte, un devant de tiroir) :
+ * le module prend sa place, centré sur elle, affleurant sa face (`inPlaceShift`). Pur : des boîtes et des vecteurs,
+ * sans la vue.
  */
 import type { Vec3 } from "./types";
 
@@ -65,4 +67,18 @@ export function glueShift(module: Box, face: FaceBox, owner: Box, back: [number,
     else shift[i] = back && back[i]! > 0.5 ? owner[1][i]! - module[1][i]! : owner[0][i]! - module[0][i]!;
   }
   return shift.map((v) => Number(v.toFixed(3))) as Vec3;
+}
+
+/**
+ * How far the module goes to take the place of the piece of the face (a door, a drawer front): centred on it in the
+ * plane of the face, its outer side flush with the face. Null: a face not square to the axes.
+ */
+export function inPlaceShift(module: Box, face: FaceBox, piece: Box): Vec3 | null {
+  const axis = [0, 1, 2].reduce((best, i) => (Math.abs(face.normal[i]!) > Math.abs(face.normal[best]!) ? i : best), 0);
+  if (Math.abs(face.normal[axis]!) < 0.9) return null;
+  const plane = (face.box[0][axis]! + face.box[1][axis]!) / 2;
+  return [0, 1, 2].map((i) => {
+    if (i !== axis) return Number(((piece[0][i]! + piece[1][i]! - module[0][i]! - module[1][i]!) / 2).toFixed(3));
+    return Number((face.normal[axis]! > 0 ? plane - module[1][axis]! : plane - module[0][axis]!).toFixed(3));
+  }) as Vec3;
 }
