@@ -3,9 +3,11 @@
  * dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble entier dont on
  * a choisi une pièce, une face ou une arête : un caisson avec ses façades, une Répartition avec ses panneaux et ses
  * niches, sinon le corps lui-même. Ce qu'on crée pendant ce temps se voit aussi. Bouton de la colonne Vue, touche I,
- * clic droit ; « Tout montrer » (ou I sans sélection) rend le reste. La vue seulement : rien ne change dans le projet.
+ * clic droit ; « Tout montrer » (ou I sans sélection) rend le reste. Quand quelque chose est déjà isolé (un mur vu
+ * seul, un meuble), « Isoler » descend d'un cran : les pièces choisies seules (le cadre d'une façade de tiroir, une
+ * étagère). La vue seulement : rien ne change dans le projet.
  */
-import { bodyLabel, findFeature } from "../document/operations";
+import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
 import type { CadDocument } from "../document/types";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -23,6 +25,18 @@ export function selectedElements(editor: Editor): Map<string, string> {
   return out;
 }
 
+/** The pieces of the selection themselves (their bodies), each with its name. */
+export function selectedPieces(editor: Editor): Map<string, string> {
+  const doc = editor.doc;
+  const { bodies, faces, edges, vertices } = editor.picked.selection;
+  const out = new Map<string, string>();
+  for (const id of [...bodies, ...faces.map((p) => p.bodyId), ...edges.map((p) => p.bodyId), ...vertices.map((p) => p.bodyId)]) out.set(bodyOrigin(doc, id), bodyLabel(doc, id));
+  return out;
+}
+
+/** Inside what is isolated already, the pieces chosen alone; else the whole elements they belong to. */
+const toIsolate = (editor: Editor) => (isolating() ? selectedPieces(editor) : selectedElements(editor));
+
 /** The name of an element: its cabinet's or its Répartition's, else its body's. */
 function elementName(doc: CadDocument, key: string, bodyId: string): string {
   const owner = key.includes(":") ? findFeature(doc, key.slice(key.indexOf(":") + 1)) : undefined;
@@ -34,7 +48,7 @@ export const isolatedText = (names: readonly string[]): string => (names.length 
 
 /** Isolates the selection; with nothing selected, shows everything again when something is isolated. */
 export function isolateSelection(editor: Editor): void {
-  const elements = selectedElements(editor);
+  const elements = toIsolate(editor);
   if (elements.size) {
     isolateElements(new Set(elements.keys()), isolatedText([...elements.values()]));
     return editor.notify(`${isolatedText([...elements.values()])} : les autres sont cachés. « Tout montrer » (ou la touche I) les rend.`, "info");
@@ -45,7 +59,8 @@ export function isolateSelection(editor: Editor): void {
 
 /** The line of a menu that isolates the selection (or shows everything again), or null: nothing to do. */
 export function isolateMenuItem(editor: Editor): [string, () => void] | null {
-  const count = selectedElements(editor).size;
+  const count = toIsolate(editor).size;
+  if (count && isolating()) return [count > 1 ? `Isoler ces ${count} pièces seules` : "Isoler la pièce seule", () => isolateSelection(editor)];
   if (count) return [count > 1 ? `Isoler la sélection (${count} éléments)` : "Isoler la sélection", () => isolateSelection(editor)];
   return isolating() ? ["Tout montrer", () => showAll()] : null;
 }

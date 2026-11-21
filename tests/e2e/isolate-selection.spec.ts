@@ -62,7 +62,16 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.mouse.click(430, 660, { button: "right" });
   await page.getByRole("menuitem", { name: "Isoler la sélection" }).click();
   await expect(bar).toContainText(/« Bas 2 portes 1000 \(A1\) » isolé/);
-  expect(Number(await bar.getAttribute("data-shown"))).toBeLessThan(shown);
+  const unit = Number(await bar.getAttribute("data-shown"));
+  expect(unit).toBeLessThan(shown);
+  // Inside it, a piece chosen and isolated again: that piece alone.
+  // (A face picked: one piece, not the whole unit a click would take.)
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="face"]')?.click());
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2);
+  await page.keyboard.press("i");
+  await expect.poll(async () => Number(await bar.getAttribute("data-shown"))).toBe(1);
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="auto"]')?.click());
   await bar.getByRole("button", { name: "Tout montrer" }).click();
   await expect(bar).toHaveCount(0);
   expect(errors).toEqual([]);

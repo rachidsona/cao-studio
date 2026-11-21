@@ -367,6 +367,7 @@ export const SCREEN: HelpFamily[] = [
           "Cliquez « Isoler la sélection » (ou la touche I, ou clic droit → « Isoler la sélection ») : les autres sont cachés et la vue se cadre sur eux.",
           "Travaillez : tous les outils marchent, et ce que vous créez s'affiche aussi.",
           "« Tout montrer », en bas de la vue (ou I sans rien de sélectionné), rend le reste.",
+          "« PDF », à côté, enregistre la vue cadrée telle qu'elle est, avec ses cotes, sur une page A4 paysage, fond blanc et sans grille, sous un cartouche (le projet, ce qui est montré, la date, l'unité des cotes) : un plan à imprimer ou à envoyer.",
         ],
         tip: "Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
       },

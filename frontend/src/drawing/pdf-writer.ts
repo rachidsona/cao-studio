@@ -9,6 +9,8 @@ export interface PdfPage {
   width: number;
   height: number;
   content: string;
+  /** Pictures drawn by `/Im1 Do`… in the content: a JPEG's bytes in hexadecimal, its size in pixels. */
+  images?: { name: string; hex: string; width: number; height: number }[];
 }
 
 export const MM = 72 / 25.4;
@@ -71,7 +73,10 @@ export function writePdf(pages: PdfPage[], title = ""): string {
     // From the paper's millimetres, y down from the top, to PDF points, y up.
     const stream = `q ${n(MM)} 0 0 ${n(-MM)} 0 ${n(h)} cm\n${page.content}\nQ`;
     const content = add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-    kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${n(w)} ${n(h)}] /Resources << /Font << /F1 ${regular} 0 R /F2 ${bold} 0 R >> >> /Contents ${content} 0 R >>`));
+    // A JPEG kept as it is (DCT), written in hexadecimal: the file stays ASCII.
+    const images = (page.images ?? []).map((im) => `/${im.name} ${add(`<< /Type /XObject /Subtype /Image /Width ${im.width} /Height ${im.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${im.hex.length + 1} >>\nstream\n${im.hex}>\nendstream`)} 0 R`);
+    const xobjects = images.length ? ` /XObject << ${images.join(" ")} >>` : "";
+    kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${n(w)} ${n(h)}] /Resources << /Font << /F1 ${regular} 0 R /F2 ${bold} 0 R >>${xobjects} >> /Contents ${content} 0 R >>`));
   }
   objects[catalog - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
   objects[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(" ")}] /Count ${kids.length} >>`;

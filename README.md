@@ -134,9 +134,14 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   dessiné d'une seule esquisse) sont chacun le leur, seule une esquisse de meuble (Répartition, plan, niches) les tient
   ensemble (`app/move-whole.ts` `wholeOwner`). La vue garde son sens et se cadre sur eux ; tous les
   outils marchent, ceux de niche dans chacune des Répartitions isolées, et ce qu'on crée pendant ce temps se voit
-  aussi. Une barre en bas dit ce qui est isolé (« 3 éléments isolés ») ; « Tout montrer », ou I sans sélection, rend
+  aussi. Quand quelque chose est déjà isolé (un mur vu seul, un meuble), « Isoler » (I, clic droit « Isoler la pièce
+  seule ») descend d'un cran : les pièces choisies seules — le cadre d'une façade de tiroir, une étagère. Une barre en
+  bas dit ce qui est isolé (« 3 éléments isolés ») ; « Tout montrer », ou I sans sélection, rend
   le reste. Tant que des éléments sont isolés, les murs ne sont plus masqués d'eux-mêmes. La vue seulement
-  (`app/isolate-selection.ts`, `app/zone-view.ts`).
+  (`app/isolate-selection.ts`, `app/zone-view.ts`). **« PDF »**, sur la même barre, enregistre la vue cadrée telle
+  qu'elle est — un mur isolé de face avec ses cotes — sur une page A4 paysage, fond blanc, sans la grille, sous un
+  cartouche (le projet, ce qui est montré, la date, l'unité des cotes) ; l'image y est gardée en JPEG
+  (`app/view-pdf.ts`, images de `drawing/pdf-writer.ts`).
 - **Murs qui cachent la vue masqués** (case du menu Affichage, cochée d'office, ou bouton « Cacher les murs qui gênent
   la vue » de la colonne à droite de la vue : relâché, murs et caissons restent tous affichés) : la vue tournée, le mur qui se
   trouve entre l'œil et la pièce n'est plus dessiné, et un clic le traverse ; il revient dès qu'on repasse devant
@@ -967,7 +972,9 @@ opération existante.
   à ouvrir ; « Extruder les panneaux » est coché. C'est un rectangle de **hauteur × longueur** (par exemple 250 × 180 cm) divisé en
   **2 à 12 cases égales, une par porte**, avec ses côtés dessinés à leur épaisseur (deux traits, 18 mm par défaut).
   Son panneau est rangé en **cartes**, comme les Propriétés : Dimensions et cases, Qui passe aux angles, Extrusion,
-  Portes, Fond, Position (`asCards` de `ui/panel-close.ts`).
+  Portes, Fond, Position (`asCards` de `ui/panel-close.ts`). Dans tout le panneau de droite (Propriétés, Répartition,
+  Plan de cuisine, Plan de dressing et ses zones), **une seule carte est ouverte à la fois** : en ouvrir une replie
+  les autres (`alone` de `ui/fields.ts`).
   - **Côtés** : chacun est **simple** (un panneau) ou **double** (deux panneaux dos à dos, où deux modules se
     rejoignent). Au départ : 2 cases = un simple ; 3 = simple et double ; 4 = simple, double, simple ; 5 = simple,
     double, double, simple (les doubles au milieu) ; et chaque côté se change un par un (« Côté 1 », « Côté 2 »…).
@@ -2130,7 +2137,9 @@ opération existante.
       en noyer, le reste de la pièce gardant le sien.
     - Plus vite, sans l'outil : une face (ou plusieurs) choisie dans la vue, le panneau Sélection a « Couleur de la face »
       — elle seule prend la couleur choisie (une laque satinée), le reste du corps garde la sienne ; « D'origine » lui
-      rend celle de son corps (`app/face-color.ts`).
+      rend celle de son corps (`app/face-color.ts`). Au-dessous, **« Sens du fil »** des pièces choisies (par un corps
+      ou une de ses faces) : « Fil en longueur », « Fil en largeur » ou « Sans fil » — le même réglage que l'Atelier ; la
+      vue tourne le veinage, le débit et le calepinage le suivent.
     - Une vignette glissée sur la vue donne le motif à la pièce lâchée dessous, ou seulement à la face dessous avec
       Alt.
     Une face est retrouvée par son orientation et la place de son centre dans la pièce, donc aussi quand la pièce
@@ -2335,7 +2344,11 @@ opération existante.
   un cadre, un caisson sans fond, tout contour extrudé, carré, triangle, polygone, coins arrondis, de biais — et chacun
   de ses côtés devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de côtés pour un
   polygone ; un coin arrondi est un côté courbe à lui ; un contour à encoches dont le trou n'a pas autant de coins :
-  la séparation suit la forme, chaque côté du contour une pièce, le joint allant jusqu'au trou). **Corps fait de
+  la séparation suit la forme, chaque côté du contour une pièce, le joint allant jusqu'au trou). **« Le corps »** :
+  « Séparer seulement (tel qu'il est) » ne vide jamais — le corps est coupé tel qu'il est, une façade vitrée à cadre
+  en bois en U en ses deux montants et sa traverse du bas (sa rainure de verre, lue par-dessus — les faces à moins de
+  6 mm l'une de l'autre comptent pour une —, reste à chaque pièce) — ; « Vider et séparer » vide d'abord un corps
+  plein à l'« Épaisseur des côtés ». **Corps fait de
   panneaux joints** (un caisson d'un seul corps : côtés, dessous, traverses ; toutes ses faces planes et d'équerre) :
   il est redécoupé en ses panneaux, un corps chacun — les plans de ses faces le quadrillent, les cases dans la
   matière sont regroupées en planches entières, la plus grande d'abord (`features/board-split.ts`) ; sans choix, la
@@ -2523,7 +2536,10 @@ opération existante.
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
   leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
   chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui —, l'autre s'arrête contre lui.
-  Son panneau de réglages est rangé en **cartes** : Modèle, Cotes, Matières et finitions, Pour « Proposer une cuisine ».
+  Son panneau de réglages est rangé en **cartes** : Modèle, Cotes, Matières et finitions, Pour « Proposer une cuisine »
+  (« Créer le plan » reste dehors, toujours visible). Le plan posé, **chaque linéaire est une carte** comme une zone
+  du dressing (`zoneCard` de `ui/panel-close.ts`) : son nom et sa longueur, « Voir » et « Aménager » dans son titre, et
+  dedans ses meubles et la place libre ; un clic sur le titre la plie.
   - **Angles** (`document/kitchen-corners.ts`, `app/kitchen/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
     dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
@@ -3199,9 +3215,11 @@ opération existante.
   Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
   panneaux) en bas, à gauche et à droite dès qu'un côté est divisé, en haut seulement si elle dit autre chose que le
   bas ; le socle ; la profondeur
-  quand on voit le meuble de biais. À l'intérieur, seule une niche dont une mesure n'est dans aucune chaîne garde sa
-  cote, une seule fois. Des portes en vue ont leur largeur et leur hauteur, et cachent les cotes intérieures ; portes
-  masquées, ces cotes reviennent. Les cotes suivent le panneau de l'outil avant OK et se placent sur la face tournée
+  quand on voit le meuble de biais. **Rien n'est écrit dans les niches** : une mesure qu'aucune chaîne ne donne (les
+  hauteurs d'une colonne du milieu, les largeurs d'un rang) va dehors elle aussi, une seule fois, sur une ligne de cotes
+  à elle — les hauteurs d'une colonne du côté le plus proche, au niveau de ses étagères, les largeurs dessous ou dessus —,
+  et le total recule d'un cran. Traits fins (1 px sur un halo blanc). Des portes en vue ont leur largeur et leur
+  hauteur, et cachent ces cotes ; portes masquées, elles reviennent. Les cotes suivent le panneau de l'outil avant OK et se placent sur la face tournée
   vers l'œil.
   Le bouton « Cotes des pièces » les masque jusqu'à la fin de l'outil ; allumé hors outil, il les montre aussi, à la
   place des cotes pièce par pièce de la Répartition.
@@ -3428,7 +3446,8 @@ opération existante.
     verre (clair, extra-clair, dépoli, fumé, bronze, noir) et cadre (alu brossé ou noir, ou **bois** : la façade
     elle-même évidée dans la matière des façades, débitée, sur charnières à boîtier, seul le verre acheté ; ou **bois en U** : les deux côtés et
     la traverse du bas, ouvert en haut, le verre montant jusqu'au bord) au choix. Le verre de chaque
-    tiroir (« Vitre tiroir 1 »…) sort avec lui ; sa poignée se perce au milieu de la traverse du haut du cadre (du bas
+    tiroir (« Vitre tiroir 1 »…) sort avec lui ; derrière le verre, le caisson du tiroir n'a pas de devant : ses deux côtés
+    montent jusqu'au cadre, fixé sur eux ; sa poignée se perce au milieu de la traverse du haut du cadre (du bas
     pour un cadre en U), pas dans le verre. Cadre et verre ne sont pas sciés : ils sortent du débit et vont au devis, le verre au m², le profilé
     au mètre. Pas pour des tiroirs à l'anglaise (derrière une porte) ni sans poignée (gorge), ni sous 8 mm d'épaisseur
     ou avec un cadre trop large pour la façade.

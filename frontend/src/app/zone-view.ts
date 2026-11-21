@@ -16,6 +16,7 @@ import type { SketchDrawing } from "../viewport/sketch-layer";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { wholeOwner } from "./move-whole";
+import { downloadViewPdf } from "./view-pdf";
 
 interface Focus {
   sketch: string;
@@ -114,7 +115,8 @@ export function isolateElements(keys: ReadonlySet<string>, text: string): void {
   const known = new Set(viewport.displayedBodies.map((id) => bodyOrigin(editor.doc, id)));
   const sketches = new Set([...keys].filter((k) => k.startsWith("sketch:")).map((k) => k.slice("sketch:".length)));
   const shown = () => context!.editor.previewDoc ?? context!.editor.doc;
-  const kept = (id: string) => keys.has(elementOf(shown(), id));
+  // A key is a whole element (a cabinet, a Répartition) or a piece of it alone (its body).
+  const kept = (id: string) => keys.has(elementOf(shown(), id)) || keys.has(bodyOrigin(shown(), id));
   isolate("selection", text, () => (_f, id) => kept(id) || !known.has(bodyOrigin(shown(), id)), [0, -1, 0], false, false, {
     text,
     partition: keys.size === 1 && sketches.size === 1 ? [...sketches][0]! : null,
@@ -133,7 +135,10 @@ function isolate(key: string, label: string, keep: Focus["keep"], front: readonl
   const bar = el("div", { class: "absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-gray-200 bg-white/95 px-2 py-1 text-xs shadow dark:border-gray-700 dark:bg-gray-900/95", "data-zone-isolated": "" }, el("span", { class: "font-medium" }, more.text ?? `${label} isolé`));
   const back = el("button", { type: "button", class: "h-7 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
   back.addEventListener("click", () => showAll());
-  bar.append(back);
+  // The view as it is framed, with its dimensions, on a page to print or send.
+  const pdf = el("button", { type: "button", class: "h-7 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", title: "La vue cadrée, avec ses cotes, sur une page A4 en PDF", "data-zone-pdf": "" }, "PDF");
+  pdf.addEventListener("click", () => downloadViewPdf(viewport, more.text ?? `${label} isolé`, editor.unit));
+  bar.append(back, pdf);
   (viewport.renderer.domElement.parentElement as HTMLElement).append(bar);
   const dims = document.querySelector<HTMLElement>("[data-piece-dims]");
   const dimsWereOff = pieceDims && (focus?.dimsWereOff ?? dims?.getAttribute("aria-pressed") !== "true");
