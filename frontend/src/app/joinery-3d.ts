@@ -9,6 +9,7 @@
 import type { OffsetRecord, SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
 import { findFeature } from "../document/operations";
+import { isEmptyPartition } from "../document/empty-partition";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import * as THREE from "three";
 import type { Vec2 } from "../sketcher/edit";
@@ -60,7 +61,9 @@ export function partitionHolder(doc: CadDocument, selected: string | null): Sket
   // A wall isolated comes first; a panel or an equipment selected stands for its sketch.
   const chosen = selected ? findFeature(doc, selected) : undefined;
   const sketch = isolatedSketch() ?? (chosen?.type === "extrude" || chosen?.type === "niche" ? chosen.sketch : selected);
-  return holders.find((f) => f.id === sketch) ?? holders[holders.length - 1];
+  // By default the last one with something in view: not a Répartition whose panels are all out.
+  const live = holders.filter((f) => !isEmptyPartition(doc, f));
+  return holders.find((f) => f.id === sketch) ?? live[live.length - 1] ?? holders[holders.length - 1];
 }
 
 /** A new Répartition is drawn in the front plane: the cabinet stands, its niches open to the front. */

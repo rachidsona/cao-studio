@@ -106,6 +106,11 @@ test("seulement les pièces choisies : une porte d'un dressing gardée seule, re
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
   await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Porte \d+$/).first()).toBeVisible();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/bibliotheque-seule.png` });
+  // Its pieces (selected) deleted: the wall it came from, hidden, goes with them — no sketch left behind.
+  await expect(page.getByLabel(/^Navigateur : corps/)).toContainText("Plan — mur a");
+  await page.keyboard.press("Delete");
+  await expect(page.getByLabel(/^Navigateur : corps/)).not.toContainText("Plan — mur a", { timeout: 15_000 });
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Porte \d+$/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

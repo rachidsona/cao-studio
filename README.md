@@ -3070,6 +3070,9 @@ opération existante.
     de façade séparés, une porte d'un dressing — et ce dont elles sont faites ; le reste de leur meuble y reste pour
     les refaire, mais retiré de la vue (`removedBodies`), les esquisses d'où elles viennent cachées. Inséré dans un
     autre projet, on n'y voit qu'elles (`document/library.ts` `moduleOf`, son argument `only`).
+    Ses pièces supprimées ensuite (la dernière visible), la Répartition cachée d'où elles venaient part avec elles,
+    en une annulation : aucune esquisse fantôme ne reste, et les outils (Module, Étagères…) ne prennent jamais par
+    défaut une Répartition dont tous les panneaux sont retirés (`document/empty-partition.ts`).
   - Insérer : un clic recopie le module dans le projet ouvert, sous des identifiants neufs (toutes les références
     suivent), à l'endroit où il était, en une seule annulation. La vue se recadre sur tout le modèle et les pièces
     insérées sont sélectionnées, prêtes pour Déplacer. Un nom déjà pris prend le numéro suivant ; un paramètre que

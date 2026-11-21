@@ -3,13 +3,14 @@
  * sketches; a body through a face, an edge or a corner of it (the whole body:
  * the question says so); a piece of a cabinet, of panels or of a split on its
  * own (the operation and its other pieces stay; all its pieces picked, the operation itself goes) — a door or a
- * drawer front with its handle and its glass; lines and points
+ * drawer front with its handle and its glass; a Répartition with nothing left in view, with it; lines and points
  * of a sketch, taken out of it (with
  * their constraints). An area of a sketch is not deleted (its lines are, or
  * the whole sketch). Everything goes in one undo step.
  */
 import { bodyLabel, bodyOrigin, featuresOfPick, findFeature } from "../document/operations";
 import { withHangingParts } from "../document/door-edit";
+import { emptiedPartitions } from "../document/empty-partition";
 export { removeStep, removeWithShelves } from "../document/shelf-removal";
 import { featureOfBody, type CadDocument, type SketchFeature } from "../document/types";
 import { removeEntities } from "../sketcher/edit";
@@ -50,8 +51,12 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>,
   const ownerOf = (body: string) => featureOfBody(bodyOrigin(doc, body));
   // The operations with no piece left in the view once these are gone.
   const emptied = [...new Set(picked.pieces.map(featureOfBody))].filter((owner) => displayed.some((b) => ownerOf(b) === owner) && displayed.every((b) => ownerOf(b) !== owner || picked.pieces.includes(bodyOrigin(doc, b))));
-  const ids = [...new Set([...picked.ids, ...emptied])];
-  const pieces = picked.pieces.filter((p) => !emptied.includes(featureOfBody(p)));
+  const taken = [...new Set([...picked.ids, ...emptied])];
+  const left = picked.pieces.filter((p) => !emptied.includes(featureOfBody(p)));
+  // A Répartition whose panels are all out (a module kept with its pieces only), its last piece in view gone: it goes too.
+  const empty = emptiedPartitions(doc, taken, left, displayed);
+  const ids = [...new Set([...taken, ...empty])];
+  const pieces = left.filter((p) => !empty.includes(featureOfBody(p)));
   const items = (selection.sketch ?? []).filter((p) => !whole.includes(p.sketchId));
   const edits = [...new Set(items.filter((p) => p.kind !== "region").map((p) => p.sketchId))].flatMap((sketchId) => {
     const sketch = findFeature(doc, sketchId);
