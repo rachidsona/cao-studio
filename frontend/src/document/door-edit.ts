@@ -111,6 +111,22 @@ export function withDoorHinge(doc: CadDocument, bodyId: string, hinge: "left" | 
   return updateFeature(doc, f.id, () => ({ ...f, hinges: [hinge] }) satisfies NicheFeature);
 }
 
+/**
+ * These pieces, with what hangs on each front or door among them: its handle, its glass (a piece taken out alone
+ * leaves nothing of it floating). For the doors and drawers of niches and the fronts of a cabinet.
+ */
+export function withHangingParts(doc: CadDocument, pieces: readonly string[]): string[] {
+  const out = new Set(pieces);
+  for (const piece of pieces) {
+    const f = findFeature(doc, featureOfBody(piece));
+    const parts = f?.type === "niche" ? nichePartsIn(doc.features, f) : f?.type === "fronts" ? frontsParts(f, findFeature(doc, f.cabinet) as CabinetFeature | undefined) : null;
+    const n = partNumber(piece);
+    if (!f || !parts?.[n] || parts[n]!.of !== undefined) continue;
+    parts.forEach((p, i) => p.of === n && out.add(`${f.id}#${i}`));
+  }
+  return [...out];
+}
+
 /** The door taken off: a case of a Répartition left open, the piece of a cabinet's fronts or a board taken out. */
 export function withDoorRemoved(doc: CadDocument, bodyId: string): CadDocument | string {
   const door = doorOf(doc, bodyId);

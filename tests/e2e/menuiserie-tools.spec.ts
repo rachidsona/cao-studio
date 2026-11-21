@@ -724,6 +724,33 @@ test("porte sur niches : une par niche ou commune, et d'autres portes mises de c
   expect(errors).toEqual([]);
 });
 
+test("une porte supprimée seule : sa poignée part avec elle", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Porte et poignée e2e");
+  await wall(page);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const tool = page.getByRole("dialog", { name: "Porte sur niches" });
+  const box = (await canvas(page).boundingBox())!;
+  const at = [box.x + box.width * 0.33, box.y + box.height * 0.5] as const;
+  await page.mouse.click(...at);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1000);
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await expect(tree.getByText(/^Poignée porte/).first()).toBeAttached();
+  // The door alone deleted from the navigator (its body's ⋯, Supprimer): its handle goes too.
+  await tree.getByRole("button", { name: "Options de Porte 1" }).last().click();
+  await page.getByRole("dialog", { name: "Corps Porte 1" }).getByRole("button", { name: "Supprimer" }).click();
+  await page.waitForTimeout(1000);
+  await expect(tree.getByText(/^Poignée porte/)).toHaveCount(0);
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

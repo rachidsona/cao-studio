@@ -3548,7 +3548,8 @@ opération existante.
     non dans une boîte du navigateur, que certains navigateurs intégrés bloquent. Supprimer un corps supprime
     l'opération qui l'a créé (son esquisse reste) ; une **pièce** d'un caisson, de façades, de panneaux ou d'une scission
     (le dessus d'un caisson…) est retirée **seule** — l'opération et ses autres pièces restent (`removedBodies` du
-    document ; Ctrl+Z la fait revenir) — et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont
+    document ; Ctrl+Z la fait revenir) ; une porte ou une façade de tiroir supprimée seule (dans la vue, ou par « ⋯ »
+    du Navigateur) emporte sa poignée et sa vitre (`document/door-edit.ts` `withHangingParts`) — et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont
     nommées) ;
   - **sélection par fenêtre** (comme Fusion) : Maj + glisser dans la vue, ou bouton « Fenêtre » (pratique au doigt :
     tant qu'il est enfoncé, glisser trace la fenêtre au lieu de tourner la vue). De gauche à droite (cadre bleu), seuls

@@ -2,12 +2,14 @@
  * What Suppr deletes, whatever is picked in the 3D view: whole bodies and
  * sketches; a body through a face, an edge or a corner of it (the whole body:
  * the question says so); a piece of a cabinet, of panels or of a split on its
- * own (the operation and its other pieces stay; all its pieces picked, the operation itself goes); lines and points
+ * own (the operation and its other pieces stay; all its pieces picked, the operation itself goes) — a door or a
+ * drawer front with its handle and its glass; lines and points
  * of a sketch, taken out of it (with
  * their constraints). An area of a sketch is not deleted (its lines are, or
  * the whole sketch). Everything goes in one undo step.
  */
 import { bodyLabel, bodyOrigin, featuresOfPick, findFeature } from "../document/operations";
+import { withHangingParts } from "../document/door-edit";
 export { removeStep, removeWithShelves } from "../document/shelf-removal";
 import { featureOfBody, type CadDocument, type SketchFeature } from "../document/types";
 import { removeEntities } from "../sketcher/edit";
@@ -42,7 +44,9 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>,
     }
   }
   const whole = selection.sketches ?? [];
-  const picked = featuresOfPick(doc, bodies, whole);
+  const pick = featuresOfPick(doc, bodies, whole);
+  // A door or a drawer front taken out alone takes its handle and its glass with it.
+  const picked = { ...pick, pieces: withHangingParts(doc, pick.pieces) };
   const ownerOf = (body: string) => featureOfBody(bodyOrigin(doc, body));
   // The operations with no piece left in the view once these are gone.
   const emptied = [...new Set(picked.pieces.map(featureOfBody))].filter((owner) => displayed.some((b) => ownerOf(b) === owner) && displayed.every((b) => ownerOf(b) !== owner || picked.pieces.includes(bodyOrigin(doc, b))));
