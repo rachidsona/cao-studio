@@ -32,7 +32,7 @@ export interface NavigatorHost {
   /** Something is picked in the 3D view (it writes its own status line). */
   modelPicked(): boolean;
   /** The multiple selection: whole bodies and sketches, and the faces, edges and corners picked (of bodies). */
-  pickedIds(): { bodies: string[]; sketches: string[]; faces?: { bodyId: string }[]; edges?: { bodyId: string }[]; vertices?: { bodyId: string }[] };
+  pickedIds(): { bodies: string[]; sketches: string[]; faces?: { bodyId: string }[]; edges?: { bodyId: string }[]; vertices?: { bodyId: string }[]; sketch?: { sketchId: string }[] };
   /** Ctrl/Maj + clic in the browser: adds or removes a body or a sketch. */
   toggleInSelection(kind: "body" | "sketch", id: string): void;
   selectFeature(id: string): void;
@@ -176,8 +176,9 @@ export class Navigator {
 
   /** Every body the selection reaches (whole, or through a face, an edge, a corner) is lit in the browser. */
   private picked(): { bodies: string[]; sketches: string[] } {
-    const { bodies, sketches, faces = [], edges = [], vertices = [] } = this.host.pickedIds();
-    return { bodies: [...new Set([...bodies, ...[...faces, ...edges, ...vertices].map((p) => p.bodyId)])], sketches };
+    const { bodies, sketches, faces = [], edges = [], vertices = [], sketch = [] } = this.host.pickedIds();
+    // A line, an area or a point of a sketch picked in the view: its sketch is shown picked in the list.
+    return { bodies: [...new Set([...bodies, ...[...faces, ...edges, ...vertices].map((p) => p.bodyId)])], sketches: [...new Set([...sketches, ...sketch.map((p) => p.sketchId)])] };
   }
 
   /** The steps of the history that made what is selected: an étagère's division, a side's Répartition, a body's own operation. */

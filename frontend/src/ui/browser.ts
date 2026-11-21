@@ -411,11 +411,15 @@ export function renderBrowser(
   reveal(root, data);
 }
 
-/** The row last brought into view: a new selection (in the 3D view too) opens its folders and scrolls to it, once. */
+/**
+ * The row last brought into view: a new selection (in the 3D view too: a body, a sketch, one of its lines or areas)
+ * opens its folders and scrolls to it, once.
+ */
 let revealed = "";
 
-function reveal(root: HTMLElement, data: { sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null }): void {
-  const key = data.selectedBodyId ? `body:${data.selectedBodyId}` : data.sketches.some((s) => s.id === data.selectedId) ? `sketch:${data.selectedId}` : "";
+function reveal(root: HTMLElement, data: { sketches: NavItem[]; selectedId: string | null; selectedBodyId: string | null; picked?: { bodies: string[]; sketches: string[] } }): void {
+  const picked = data.picked?.sketches.find((id) => data.sketches.some((s) => s.id === id));
+  const key = data.selectedBodyId ? `body:${data.selectedBodyId}` : data.sketches.some((s) => s.id === data.selectedId) ? `sketch:${data.selectedId}` : picked ? `sketch:${picked}` : data.picked?.bodies[0] ? `body:${data.picked.bodies[0]}` : "";
   if (key === revealed) return;
   revealed = key;
   const target = key ? root.querySelector<HTMLElement>(`[data-select="${CSS.escape(key)}"]`) : null;
