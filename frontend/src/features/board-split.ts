@@ -35,6 +35,14 @@ function levels(values: number[]): number[] {
   return sorted.filter((v, i) => i === 0 || v - sorted[i - 1]! > EPS);
 }
 
+/** Whether two faces square to one axis are closer than `merge` (but apart): a groove, as a glass's in its frame. */
+export function hasGroove(faces: readonly AxisFace[], merge: number): boolean {
+  return ([0, 1, 2] as const).some((a) => {
+    const at = levels(faces.filter((f) => f.axis === a).map((f) => f.at));
+    return at.some((v, i) => i > 0 && v - at[i - 1]! <= merge);
+  });
+}
+
 /** The levels of these faces, those closer than `merge` taken as one — the larger face's (a groove is not a panel). */
 function mergedLevels(faces: readonly AxisFace[], merge: number): number[] {
   const kept: { at: number; area: number }[] = [];

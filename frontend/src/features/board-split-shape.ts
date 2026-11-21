@@ -6,7 +6,7 @@
  * le corps : perçages, chanfreins, encoches et arrondis lui restent.
  */
 import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Shape3D } from "replicad";
-import { arePanels, boardBoxes, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
+import { arePanels, boardBoxes, hasGroove, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
 
 type P3 = [number, number, number];
 const dot = (a: P3, b: P3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -80,7 +80,7 @@ export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
     const found = boardBoxes(faces, pass, vertical, merge);
     return typeof found === "string" || !arePanels(found, 100, merge > 0) ? null : found;
   };
-  const boxes = panels(0) ?? panels(GROOVE);
+  const boxes = panels(0) ?? (hasGroove(faces, GROOVE) ? panels(GROOVE) : null);
   if (!boxes) return null;
   const pieces: Shape3D[] = [];
   for (const box of boxes) {
