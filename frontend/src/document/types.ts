@@ -106,6 +106,8 @@ export interface DressingPlan {
   fills?: Record<string, { cases: number[]; rest: number; filler: boolean }>;
   /** Top units over each straight zone, in line with its cases: their height (mm), with doors or open. */
   top?: { height: number; doors?: boolean };
+  /** By zone: the sketch of its top units' Répartition. */
+  tops?: Record<string, string>;
 }
 
 /** A unit or an appliance of a kitchen run, in its row from left to right: a model at a width; one's own units carried whole. */

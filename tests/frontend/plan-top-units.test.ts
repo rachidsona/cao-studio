@@ -1,6 +1,6 @@
 /** Surmeubles du Plan de dressing : au-dessus de chaque zone droite faite, une Répartition aux mêmes cases, posée dessus. */
 import { describe, expect, it } from "vitest";
-import { topProblem, withPlan, withPlanChanged, withTopUnitsSet, withZonePartition } from "../../frontend/src/document/plan-layout";
+import { topProblem, topStep, withPlan, withPlanChanged, withTopUnitsSet, withZonePartition } from "../../frontend/src/document/plan-layout";
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { createReferencePlate, type CadDocument, type DressingPlan, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
@@ -60,6 +60,22 @@ describe("surmeubles du plan de dressing", () => {
     expect(stepOf(corner!).origin![1]).toBe(2200);
     expect(withTop.features.some((f) => f.name.startsWith("Surmeubles — ") && f.name.endsWith("— côté"))).toBe(true);
     expect(tops(withTop).filter((s) => !s.clip).every((s) => stepOf(s).doors)).toBe(true);
+  });
+
+  it("gardés : ce qu'on y change (une porte ouverte à droite, une case) reste quand le plan change ; ils s'ouvrent dans leur outil", () => {
+    const { doc, plan } = dressing();
+    const placed = withTopUnitsSet(doc, plan, { height: 400, doors: true });
+    const at = topStep(placed, planOf(placed, plan), "A")!;
+    expect(at).not.toBeNull();
+    // Changed by hand in its Répartition: its doors opening on the right, 3 cases.
+    const edited = { ...placed, features: placed.features.map((f) => (f.id !== at.sketch || f.type !== "sketch" ? f : { ...f, offsets: f.offsets!.map((r) => (r.id !== at.step || r.step?.kind !== "partition" ? r : { ...r, step: { ...r.step, input: { ...r.step.input, cases: 3, dividers: ["single", "single"], widths: undefined }, doors: { ...r.step.doors!, hinges: ["right", "right", "right"] } } })) })) } as CadDocument;
+    const changed = withPlanChanged(edited, plan, { ...planOf(edited, plan), height: 2400, lengthA: 2400 });
+    if (typeof changed === "string") throw new Error(changed);
+    const [top] = tops(changed.doc);
+    expect(top!.id).toBe(at.sketch);
+    const step = stepOf(top!);
+    expect([step.input.cases, step.input.height, step.origin![1]]).toEqual([3, 400, 2400]);
+    expect(step.doors?.hinges).toEqual(["right", "right", "right"]);
   });
 
   it("pas sous un rampant, et de 20 à 100 cm", () => {

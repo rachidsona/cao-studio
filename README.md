@@ -3104,9 +3104,10 @@ opération existante.
   pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
   hauteur (20 à 100 cm) et « Avec portes », puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
   Répartition « Surmeubles — mur A » de cette hauteur, aux mêmes cases que celle du dessous (largeurs, côtés), posée sur
-  son dessus, sans socle, avec ses portes battantes ou ouverte ; au débit et au devis comme le reste. Ils sont refaits
-  quand le plan change (à sa nouvelle hauteur) ou quand une zone est faite ensuite ; « Retirer les surmeubles » les
-  enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
+  son dessus, sans socle, avec ses portes battantes ou ouverte ; au débit et au devis comme le reste. Chacun est une
+  Répartition gardée (`tops` du plan) : « Modifier », sur sa ligne, l'ouvre dans l'outil Répartition (cases, portes,
+  étagères, tiroirs), et ce qu'on y fait reste ; quand le plan change, ils sont seulement déplacés et mis à sa longueur
+  et à sa nouvelle hauteur ; une zone faite ensuite reçoit les siens ; « Retirer les surmeubles » les enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
   rampant.
 - **Formes du plan** : en plus du droit, des L, des U et du face à face, on trouve le U à un seul pan coupé, le U presque
   fermé (un mur D qui laisse l'entrée), la cloison centrale, le dos à dos, les deux profondeurs sur un même mur et les

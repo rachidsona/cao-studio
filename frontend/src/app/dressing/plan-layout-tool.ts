@@ -362,7 +362,7 @@ export class PlanLayoutTool {
       isolatedSketch() ? showAllButton : null,
       needs,
       ...this.sliding(planId, plan, zones),
-      ...topSection(planId, plan, this.editor, () => this.draw()),
+      ...topSection(planId, plan, zones, this.editor, () => this.draw()),
       ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
       ...this.pullDowns(planId, plan),
       ...this.checks(plan),
