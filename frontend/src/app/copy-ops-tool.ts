@@ -2,11 +2,15 @@
  * Outil « Copier les opérations » : on clique le corps dont on veut les opérations (une découpe, un perçage, des côtés
  * séparés…), on coche celles à recopier, puis on clique un ou plusieurs corps : elles y sont refaites à la même place
  * par rapport à chacun, tournées au besoin pour que leurs côtés se répondent (« Autre orientation » en propose une
- * autre). Chaque opération recopiée est une étape à elle (document/copy-operations.ts).
+ * autre). Chaque opération recopiée est une étape à elle (document/copy-operations.ts), un déplacement compris. Vont
+ * aussi, cochés d'office : l'apparence du corps d'origine, et, d'une porte à une porte, son sens d'ouverture, son
+ * style et sa poignée (document/form-copy.ts) ; le tout en une annulation.
  */
 import { comesFrom, operationsOf, placing, turnsBetween, withOperationsCopied, type BodyOperations, type Box, type Turn } from "../document/copy-operations";
-import { bodyLabel } from "../document/operations";
+import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, type CadDocument, type Feature, type Vec3 } from "../document/types";
+import { isDoorBody, withDoorCopied } from "../document/form-copy";
+import { withLookCopied } from "../appearance/assign";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
@@ -19,6 +23,9 @@ interface Target {
 export class CopyOpsTool extends PanelTool {
   private source: { id: string; box: Box; ops: BodyOperations } | null = null;
   private chosen = new Set<string>();
+  /** Also given to each target: the look of the original, and its door's opening, style and handle. */
+  private look = true;
+  private door = true;
   private targets: Target[] = [];
   /** Which of the fitting orientations each target takes (they go round together). */
   private orientation = 0;
@@ -39,10 +46,6 @@ export class CopyOpsTool extends PanelTool {
   private pickSource(bodyId: string): void {
     const doc = this.ctx.doc();
     const ops = operationsOf(doc, bodyId);
-    if (!ops.ops.length) {
-      this.ctx.notify("Ce corps n'a pas d'opération à recopier : cliquez un corps découpé, percé, séparé…", "info");
-      return;
-    }
     // The box of what the operations made of it: every body shown that comes from it.
     const box = this.boxOf(this.ctx.bodies().map((b) => b.id).filter((id) => comesFrom(doc, id, ops.base)));
     if (!box) return;
@@ -75,7 +78,7 @@ export class CopyOpsTool extends PanelTool {
     const owner = new Map<string, string>();
     const features: Feature[] = [];
     const notes = new Set<string>();
-    if (this.source) {
+    if (this.source && this.chosen.size) {
       const chosen = this.source.ops.ops.filter((o) => this.chosen.has(o.id)).map((o) => o.id);
       for (const t of this.targets) {
         const turn = t.turns[this.orientation % t.turns.length]!;
@@ -91,12 +94,31 @@ export class CopyOpsTool extends PanelTool {
     return this.made;
   }
 
+  /** Whether the original is a door, its opening to give. */
+  private isDoor(): boolean {
+    return !!this.source && isDoorBody(this.ctx.doc(), bodyOrigin(this.ctx.doc(), this.source.id));
+  }
+
   protected feature(): Feature | string {
     if (!this.source) return "Cliquez le corps dont vous voulez recopier les opérations.";
-    if (!this.chosen.size) return "Cochez au moins une opération à recopier.";
+    const extras = this.look || (this.door && this.isDoor());
+    if (!this.chosen.size && !extras) return "Cochez au moins une opération à recopier.";
     if (!this.targets.length) return "Cliquez le corps (ou les corps) où les refaire.";
     const { features, notes } = this.copies();
-    return features[0] ?? (notes.join(" ") || "Rien à recopier sur ces corps.");
+    // Only the look or the door to give: the target's own step carries them (unchanged, set again).
+    const own = extras ? findFeature(this.docBefore(), featureOfBody(bodyOrigin(this.docBefore(), this.targets[0]!.id))) : undefined;
+    return features[0] ?? own ?? (notes.join(" ") || "Rien à recopier sur ces corps.");
+  }
+
+  /** The look and the door's opening of the original given to each target. */
+  protected override decorate(doc: CadDocument): CadDocument {
+    if (!this.source) return doc;
+    let next = doc;
+    for (const t of this.targets) {
+      if (this.look) next = withLookCopied(next, this.source.id, [t.id]);
+      if (this.door) next = withDoorCopied(next, bodyOrigin(next, this.source.id), bodyOrigin(next, t.id)) ?? next;
+    }
+    return next;
   }
 
   protected override companions(): Feature[] {
@@ -106,9 +128,9 @@ export class CopyOpsTool extends PanelTool {
   protected rows(): (HTMLElement | null)[] {
     const doc = this.ctx.doc();
     this.ctx.viewport.setChosen([...(this.source ? [{ body: this.source.id, role: "first" as const }] : []), ...this.targets.map((t) => ({ body: t.id, role: "second" as const }))]);
-    if (!this.source) return [this.info("Cliquez le corps dont vous voulez recopier les opérations (découpe, perçage, côtés séparés, congé, usinage…).")];
+    if (!this.source) return [this.info("Cliquez le corps dont vous voulez recopier les opérations (découpe, perçage, côtés séparés, congé, usinage, déplacement…), son apparence et, d'une porte, son sens d'ouverture.")];
     const source = this.source;
-    const several = this.targets.some((t) => t.turns.length > 1);
+    const several = this.chosen.size > 0 && this.targets.some((t) => t.turns.length > 1);
     const again = el("button", { type: "button", class: "h-7 w-full border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-copy-ops-turn": "" }, "Autre orientation ↻");
     again.addEventListener("click", () => {
       this.orientation++;
@@ -126,6 +148,7 @@ export class CopyOpsTool extends PanelTool {
     return [
       this.info(`Corps d'origine : « ${bodyLabel(doc, source.id)} ».`),
       el("p", { class: "font-medium" }, "Opérations à recopier"),
+      source.ops.ops.length ? null : this.info("Aucune opération sur ce corps : son apparence (et sa porte) seulement."),
       ...source.ops.ops.map((o) => {
         const row = this.checkRow(o.copyable ? o.name : `${o.name} (ne se recopie pas)`, this.chosen.has(o.id), (on) => {
           if (on) this.chosen.add(o.id);
@@ -137,11 +160,24 @@ export class CopyOpsTool extends PanelTool {
         if (!o.copyable) row.querySelector("input")!.disabled = true;
         return row;
       }),
+      el("p", { class: "font-medium" }, "Aussi"),
+      this.extraRow("Apparence (couleur, matière vue, motifs)", this.look, (on) => (this.look = on), "look"),
+      this.isDoor() ? this.extraRow("Porte : sens d'ouverture, style, poignée", this.door, (on) => (this.door = on), "door") : null,
       this.info(this.targets.length ? `Sur : ${this.targets.map((t) => `« ${bodyLabel(doc, t.id)} »`).join(", ")}. Recliquez un corps pour le retirer.` : "Cliquez le corps (ou les corps) où les refaire."),
       several ? again : null,
       ...notes.map((n) => el("p", { class: "bg-amber-50 px-2 py-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-100" }, n)),
       other,
     ];
+  }
+
+  private extraRow(label: string, on: boolean, set: (on: boolean) => void, key: string): HTMLElement {
+    const row = this.checkRow(label, on, (v) => {
+      set(v);
+      this.render();
+      this.schedulePreview();
+    });
+    row.dataset.copyExtra = key;
+    return row;
   }
 
   override move(event: PointerEvent): void {

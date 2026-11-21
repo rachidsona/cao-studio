@@ -75,3 +75,57 @@ test("la poche d'un côté du cadre refaite sur le côté d'en face et sur un c�
   await expect(status).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
+
+test("d'une porte à une autre : son sens d'ouverture, son style et son apparence, en une annulation", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-copier-porte");
+  const doors = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string; hinges?: string[]; style?: string }[] } }).document.features.filter((f) => f.type === "niche" && f.fill === "door").map((f) => `${f.hinges?.[0] ?? "left"}:${f.style ?? "flat"}`), api);
+  };
+  // A wall of a dressing, from the front: a door on its first case, another, framed, hinged on the right, on its last.
+  await click(page, '[data-workshop="dressing-plan"]');
+  const plan = page.getByRole("dialog", { name: "Plan de dressing" });
+  await plan.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await plan.getByRole("button", { name: "Créer le plan" }).click();
+  await plan.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").first().getByRole("button", { name: /^(Modifier|Répartition)$/ }).click();
+  await page.getByRole("dialog", { name: "Répartition" }).getByRole("button", { name: "Fermer", exact: true }).click();
+  await page.waitForTimeout(1000);
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(800);
+  await page.getByRole("tab", { name: "Dressing", exact: true }).click();
+  await page.getByRole("group", { name: "Dressing" }).locator('[data-action="fronts"]').click();
+  await page.getByRole("button", { name: "Porte sur des niches choisies…" }).click();
+  const door = page.getByRole("dialog", { name: "Porte sur niches" });
+  const box = (await page.locator("canvas.cad-view").boundingBox())!;
+  const [first, last] = [[box.x + box.width * 0.33, box.y + box.height * 0.5], [box.x + box.width * 0.75, box.y + box.height * 0.5]] as const;
+  await page.mouse.click(...first);
+  await door.getByRole("combobox", { name: "Charnières" }).selectOption("left");
+  await door.getByRole("combobox", { name: "Style" }).selectOption("flat");
+  await door.locator("[data-door-another]").click();
+  await page.mouse.click(...last);
+  await door.getByRole("combobox", { name: "Charnières" }).selectOption("right");
+  await door.getByRole("combobox", { name: "Style" }).selectOption("frame");
+  await door.getByRole("button", { name: "OK", exact: true }).click();
+  await door.getByRole("button", { name: "Terminer" }).click();
+  await expect.poll(doors, { timeout: 30_000 }).toEqual(["left:flat", "right:frame"]);
+  await page.waitForTimeout(800);
+
+  // The last door's opening and style given to the first.
+  await click(page, '[data-action="copy-ops"]');
+  const tool = page.getByRole("dialog", { name: "Copier les opérations" });
+  await page.mouse.click(...last);
+  await expect(tool).toContainText("Corps d'origine");
+  await expect(tool.locator('[data-copy-extra="look"] input')).toBeChecked();
+  await expect(tool.locator('[data-copy-extra="door"] input')).toBeChecked();
+  await page.mouse.click(...first);
+  await expect(tool).toContainText("Sur : ");
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/copier-porte.png` });
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect.poll(doors, { timeout: 30_000 }).toEqual(["right:frame", "right:frame"]);
+  expect(errors).toEqual([]);
+});

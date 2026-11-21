@@ -244,3 +244,34 @@ function cabinetOfUnit(doc: CadDocument, unit: Extract<FormSource, { kind: "unit
 }
 
 const kindName = (kind: string) => ({ base: "bas", wall: "haut", tall: "colonne" })[kind] ?? kind;
+
+const isElement = (s: FormSource | null): s is Element => !!s && (s.kind === "unit" || s.kind === "cabinet" || s.kind === "fronts" || s.kind === "niche");
+
+/** Whether body `bodyId` is a door (of a niche, of fronts, of a kitchen unit). */
+export function isDoorBody(doc: CadDocument, bodyId: string): boolean {
+  const s = formOf(doc, bodyId);
+  return isElement(s) && s.kind !== "unit" && doorFrom(doc, s) !== null;
+}
+
+/**
+ * The door of body `toBody` opening as the door of `fromBody`, with its style and its handle — between two niche doors
+ * of one sort, its pose, gap and hardware too (« Copier les opérations »); null when either is no door.
+ */
+export function withDoorCopied(doc: CadDocument, fromBody: string, toBody: string): CadDocument | null {
+  const [from, to] = [formOf(doc, fromBody), formOf(doc, toBody)];
+  const door = isElement(from) ? doorFrom(doc, from) : null;
+  if (!door || !isElement(to) || to.kind === "cabinet" || (to.kind !== "unit" && from!.kind !== "unit" && (from as { id: string }).id === to.id)) return null;
+  if (to.kind === "unit") {
+    const [target, plan] = [itemOf(doc, to.at), kitchenPlanIn(doc, to.at.plan)];
+    if (!target || !plan) return null;
+    const runs = { ...plan.runs, [to.at.run]: (plan.runs?.[to.at.run] ?? []).map((i) => (i.id === target.id ? unitWithDoor(target, door) : i)) };
+    const built = withKitchenBuilt(doc, to.at.plan, { runs });
+    return typeof built === "string" ? null : built.doc;
+  }
+  if (to.kind === "fronts") return doorOf(feature<FrontsFeature>(doc, to.id)) ? updateFeature(doc, to.id, (f) => frontsWithDoor(f as FrontsFeature, door)) : null;
+  const target = feature<NicheFeature>(doc, to.id);
+  if (target.fill !== "door" && target.fill !== "doors") return null;
+  const source = from!.kind === "niche" ? feature<NicheFeature>(doc, from!.id) : null;
+  if (source?.fill === target.fill) return updateFeature(doc, to.id, (f) => taken(f, source, NICHE[target.fill]!));
+  return updateFeature(doc, to.id, (f) => nicheWithDoor(f as NicheFeature, door));
+}

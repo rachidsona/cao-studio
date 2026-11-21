@@ -168,14 +168,14 @@ export const MODELING: HelpFamily[] = [
       {
         keys: ["data-action:copy-ops"],
         name: "Copier les opérations",
-        what: "Refait sur d'autres corps ce qu'on a fait sur un corps — une découpe, une poche, un perçage, des côtés séparés, un congé, un chanfrein, un usinage —, à la même place par rapport à chacun.",
+        what: "Refait sur d'autres corps ce qu'on a fait sur un corps — une découpe, une poche, un perçage, des côtés séparés, un congé, un chanfrein, un usinage, un déplacement —, à la même place par rapport à chacun, avec son apparence et, d'une porte à une autre, son sens d'ouverture, son style et sa poignée.",
         steps: [
           "Cliquez « Copier les opérations » (menu du groupe Modifier), puis le corps qui a les opérations (ou sélectionnez-le avant).",
-          "Cochez celles à recopier : celles qui ont fait ce corps le sont d'avance ; celles faites ensuite sur ses autres pièces sont proposées aussi.",
+          "Cochez celles à recopier : celles qui ont fait ce corps le sont d'avance ; celles faites ensuite sur ses autres pièces sont proposées aussi. Sous « Aussi », « Apparence » et, pour une porte, « Porte : sens d'ouverture, style, poignée » sont cochées d'office.",
           "Cliquez le corps où les refaire, ou plusieurs ; recliquez-en un pour le retirer. L'aperçu les montre.",
           "Si la copie n'est pas dans le bon sens, « Autre orientation » la tourne. « OK » (ou Entrée) la garde ; « Terminer » (Échap) ferme l'outil.",
         ],
-        tip: "La copie est centrée comme l'original sur son corps, et tournée d'un quart de tour quand le corps cible est en travers. Chaque opération recopiée est une étape de l'Historique (une découpe avec son esquisse) : elle se modifie ensuite comme les autres. Un déplacement du corps d'origine n'est pas recopié.",
+        tip: "La copie est centrée comme l'original sur son corps, et tournée d'un quart de tour quand le corps cible est en travers. Chaque opération recopiée est une étape de l'Historique (une découpe avec son esquisse) : elle se modifie ensuite comme les autres. Un déplacement se refait de la même longueur, et chaque opération tombe au même endroit de la cible, qu'elle ait été faite avant ou après lui. Le tout s'annule en une fois.",
       },
       {
         keys: ["data-action:bend-onto"],

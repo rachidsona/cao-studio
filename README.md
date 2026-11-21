@@ -2403,9 +2403,15 @@ opération existante.
   cadre reçoit la poche du côté long, tournée) ; « Autre orientation » essaie les autres sens qui vont aussi bien.
   Chaque opération recopiée est une étape de l'Historique — une découpe avec sa propre esquisse, un perçage, une
   coque, un congé, un chanfrein, des panneaux sur faces, un usinage —, ses références de faces et d'arêtes déplacées
-  avec elle ; un déplacement du corps n'est pas recopié, une opération qui ne se recopie pas (une découpe de plan de
-  travail) est laissée et la suite faite sans elle. `document/copy-operations.ts` (`operationsOf`, `turnsBetween`,
-  `placing`, `withOperationsCopied`), `app/copy-ops-tool.ts`.
+  avec elle ; une opération qui ne se recopie pas (une découpe de plan de travail) est laissée et la suite faite
+  sans elle. Un **déplacement** se refait aussi, de la même longueur, tourné avec le reste ; chaque opération est
+  placée d'après où étaient alors l'original et la cible (un perçage fait avant un déplacement tombe à la même place
+  sur la cible, déplacée ou non). Sous « Aussi », cochés d'office : l'**apparence** de l'original (couleur, matière
+  vue, motifs des faces) et, d'une porte à une porte (de niche, de façades, de meuble de cuisine), son **sens
+  d'ouverture**, son **style** et sa **poignée** — entre portes sur niches, sa pose, son jeu et sa ferrure aussi
+  (`document/form-copy.ts` `withDoorCopied`) ; un corps sans opération donne au moins cela. Tout en une annulation.
+  `document/copy-operations.ts` (`operationsOf`, `turnsBetween`, `placing`, `withOperationsCopied`),
+  `app/copy-ops-tool.ts`.
 - **Aménager ce corps** (clic droit sur un corps creux qui n'est pas déjà un meuble : un cadre fait avec Séparer les
   côtés, un caisson monté à la main, un corps vidé) : son ouverture reçoit une Répartition marquée `inside`, dont les
   côtés, le dessus et le dessous sont ses parois — tracés, pas faits : rien en double, ses découpes et ses onglets

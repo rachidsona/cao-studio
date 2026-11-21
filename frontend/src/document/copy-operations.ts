@@ -4,8 +4,9 @@
  * opérations (une pièce d'un corps séparé, ou un corps créé tel quel) ; les opérations le suivent jusqu'au corps
  * cliqué, et celles qu'on a faites ensuite sur ses autres pièces se proposent aussi. Chaque opération recopiée est une
  * étape à elle (une esquisse recopiée avec sa découpe), placée par le passage d'une boîte à l'autre : le centre de
- * la boîte d'origine sur celui de la cible, tourné d'un quart de tour au besoin pour que leurs côtés se répondent.
- * Pur.
+ * la boîte d'origine sur celui de la cible, tourné d'un quart de tour au besoin pour que leurs côtés se répondent. Un
+ * déplacement se refait aussi (de la même longueur, tourné avec le reste) ; chaque opération est placée d'après où
+ * étaient alors le corps d'origine et la cible, les déplacements d'avant et d'après comptés. Pur.
  */
 import { findFeature, uniqueId, uniqueName } from "./operations";
 import { consumedBodies, featureOfBody, PART_SEPARATOR, type CadDocument, type EdgeRef, type FaceRef, type Feature, type MachiningOp, type SketchFeature, type Vec3 } from "./types";
@@ -16,9 +17,9 @@ export type Turn = readonly [Vec3, Vec3, Vec3];
 export type Box = readonly [Vec3, Vec3];
 
 /** The operations that can be made again on another body. */
-const COPIED = new Set<Feature["type"]>(["extrude", "hole", "fillet", "chamfer", "shell", "paneling", "machining"]);
+const COPIED = new Set<Feature["type"]>(["extrude", "hole", "fillet", "chamfer", "shell", "paneling", "machining", "move"]);
 /** Placings: not made again (the copy stays where its body is), what follows them still is. */
-const PLACINGS = new Set<Feature["type"]>(["move", "rotate", "align", "stretch"]);
+const PLACINGS = new Set<Feature["type"]>(["rotate", "align", "stretch"]);
 
 export interface BodyOperations {
   /** The body as it was before them. */
@@ -78,6 +79,7 @@ export function comesFrom(doc: CadDocument, bodyId: string, base: string): boole
 
 const AXES: Vec3[] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 const neg = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];
+const plus = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 /** The 24 quarter-turn rotations, the identity first. */
 const TURNS: Turn[] = (() => {
@@ -173,7 +175,8 @@ export interface CopyResult {
  * The document with the chosen operations of `base` made again on `target`, placed by `at` (`turned`: not the
  * identity). The operations not chosen (or that cannot be) leave their body as it was for those after them.
  */
-export function withOperationsCopied(doc: CadDocument, base: string, chosen: readonly string[], target: string, at: Placing, turned: boolean): CopyResult {
+export function withOperationsCopied(doc: CadDocument, base: string, chosen: readonly string[], target: string, placed: Placing, turned: boolean): CopyResult {
+  const at = placed;
   const wanted = new Set(chosen);
   const renamed = new Map<string, string>();
   const passed = new Map<string, string>();
@@ -183,6 +186,28 @@ export function withOperationsCopied(doc: CadDocument, base: string, chosen: rea
     const to = renamed.get(fid);
     if (to) return to + id.slice(fid.length);
     return passed.get(fid);
+  };
+  // Where the original was when each operation was made: moved since by the moves after it (its box is the one seen
+  // now), so a point of then is that point moved by them.
+  const lineage = new Set<string>();
+  const later = new Map<string, Vec3>();
+  let total: Vec3 = [0, 0, 0];
+  for (const f of doc.features) {
+    const used = consumedBodies(f);
+    if (f.type === "combine" || used.length !== 1 || (used[0] !== base && !lineage.has(featureOfBody(used[0]!)))) continue;
+    lineage.add(f.id);
+    if (f.type === "move") total = plus(total, f.translate);
+  }
+  for (const f of doc.features) {
+    if (!lineage.has(f.id)) continue;
+    later.set(f.id, total);
+    if (f.type === "move") total = plus(total, neg(f.translate));
+  }
+  // And where the target is then: moved by the moves made again before.
+  let moved: Vec3 = [0, 0, 0];
+  const shifted = (id: string): Placing => {
+    const [src, dst]: [Vec3, Vec3] = [later.get(id) ?? [0, 0, 0], moved];
+    return { ...at, point: (p) => plus(at.point(plus(p, src)), dst).map((v) => Number(v.toFixed(6))) as Vec3 };
   };
   let next = doc;
   const made: Feature[] = [];
@@ -205,8 +230,13 @@ export function withOperationsCopied(doc: CadDocument, base: string, chosen: rea
       continue;
     }
     const { id, name } = fresh(f);
+    const at = shifted(f.id);
     let copy: Feature;
     switch (f.type) {
+      case "move":
+        copy = { ...structuredClone(f), id, name, target: onto, translate: at.dir(f.translate) };
+        moved = plus(moved, copy.translate);
+        break;
       case "extrude": {
         let sketch = f.sketch;
         const original = sketch ? findFeature(doc, sketch) : undefined;
