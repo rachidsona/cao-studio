@@ -51,7 +51,7 @@ export function axisFaces(target: Shape3D): { faces: AxisFace[]; frame: Frame } 
       if (Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 1e-6) continue; // a whole circle (a hole): no chord
       edges.push([[dot(p, frame[a]!), dot(p, frame[b]!)], [dot(q, frame[a]!), dot(q, frame[b]!)]]);
     }
-    faces.push({ axis: axis as Axis, at: dot(vec(face.center), frame[axis]!), edges });
+    faces.push({ axis: axis as Axis, at: dot(vec(face.center), frame[axis]!), edges, area });
   }
   if (square < 0.7 * total) return null;
   return { faces, frame };
@@ -65,6 +65,9 @@ function prism([lo, hi]: Box, [u, v, w]: Frame): Shape3D {
   return basicFaceExtrusion(base, new Vector([w[0] * h, w[1] * h, w[2] * h])) as unknown as Shape3D;
 }
 
+/** Faces closer than this (mm) along an axis are read as one at a second try: a groove, not a panel. */
+const GROOVE = 6;
+
 /** The panels of a body made of square panels, a body each; null when it is not such a body (left to the other ways). */
 export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
   const read = axisFaces(target);
@@ -72,8 +75,13 @@ export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
   const { faces, frame } = read;
   // The upright: the frame's axis nearest the world's Z.
   const vertical = [0, 1, 2].reduce((best, k) => (Math.abs(frame[k]![2]) > Math.abs(frame[best]![2]) ? k : best), 0) as Axis;
-  const boxes = boardBoxes(faces, pass, vertical);
-  if (typeof boxes === "string" || !arePanels(boxes)) return null;
+  // A glazed frame's groove (a few mm) cuts it in slivers: read again over it — each panel keeps it when recut.
+  const panels = (merge: number) => {
+    const found = boardBoxes(faces, pass, vertical, merge);
+    return typeof found === "string" || !arePanels(found) ? null : found;
+  };
+  const boxes = panels(0) ?? panels(GROOVE);
+  if (!boxes) return null;
   const pieces: Shape3D[] = [];
   for (const box of boxes) {
     const block = prism(box, frame);

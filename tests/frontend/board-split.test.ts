@@ -109,3 +109,24 @@ describe("lecture en panneaux (calcul pur)", () => {
     expect(boardBoxes(faces.filter((f) => f.axis !== 2))).toMatch(/d'équerre/);
   });
 });
+
+describe("une façade vitrée à cadre en bois en U, séparée telle qu'elle est", () => {
+  it("ses deux montants et sa traverse du bas, sa rainure de verre comprise, sans être vidée", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    const cabinet = { id: "cb1", type: "cabinet", name: "Caisson", origin: [0, 0, 0], width: 600, height: 720, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 0, plinth: 100, construction: "sides-through" };
+    const fronts = { id: "fr1", type: "fronts", name: "Façades", cabinet: "cb1", layout: "drawers", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: false, style: "glass", frameWidth: 60, glass: "clear", profile: "wood-u" };
+    const doc = { ...createReferencePlate(), features: [cabinet, fronts, { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "fr1#0", faces: [], thickness: 0, sides: "separate", joint: "butt", frame: true }] };
+    const r = new Recomputer();
+    const made = r.recompute(doc as never);
+    const out = r.output("sh1");
+    const sizes = (out?.kind === "solids" ? out.shapes : []).map((p) => {
+      const [lo, hi] = p.boundingBox.bounds;
+      return [0, 1, 2].map((i) => Math.round(hi[i]! - lo[i]!)).join("×");
+    });
+    const status = made.statuses.find((s) => s.id === "sh1");
+    r.dispose();
+    expect(status?.state).toBe("ok");
+    expect(sizes.sort()).toEqual(["597×19×60", "60×19×144", "60×19×144"]);
+  }, 120_000);
+});

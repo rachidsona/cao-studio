@@ -19,6 +19,8 @@ export interface AxisFace {
   axis: Axis;
   at: number;
   edges: [P2, P2][];
+  /** Its area: of two faces closer than a groove, the larger gives the panel's edge. */
+  area?: number;
 }
 
 /** Which panels run through at the corners: the sides (upright), the top and bottom (lying), or the largest. */
@@ -31,6 +33,17 @@ const MAX_CELLS = 4000;
 function levels(values: number[]): number[] {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted.filter((v, i) => i === 0 || v - sorted[i - 1]! > EPS);
+}
+
+/** The levels of these faces, those closer than `merge` taken as one — the larger face's (a groove is not a panel). */
+function mergedLevels(faces: readonly AxisFace[], merge: number): number[] {
+  const kept: { at: number; area: number }[] = [];
+  for (const f of [...faces].sort((a, b) => a.at - b.at)) {
+    const last = kept[kept.length - 1];
+    if (!last || f.at - last.at > Math.max(EPS, merge)) kept.push({ at: f.at, area: f.area ?? 0 });
+    else if ((f.area ?? 0) > last.area) kept[kept.length - 1] = { at: f.at, area: f.area ?? 0 };
+  }
+  return kept.map((k) => k.at);
 }
 
 /** Inside the contours: a ray from the point crosses an odd number of their edges (holes included). */
@@ -46,19 +59,20 @@ function insideEdges(p: P2, edges: readonly [P2, P2][]): boolean {
  * The panels of the body, as boxes; a string: why it cannot be so (not square, too many steps, one panel only).
  * `vertical`: the upright axis (the sides stand along it; the top and bottom lie square to it).
  */
-export function boardBoxes(faces: readonly AxisFace[], pass: Pass = "largest", vertical: Axis = 2): Box[] | string {
+export function boardBoxes(faces: readonly AxisFace[], pass: Pass = "largest", vertical: Axis = 2, merge = 0): Box[] | string {
   // Nothing chosen: the way that cuts no panel in two — the fewest panels — of the three (a bottom raised over a plinth
   // does not run through the sides, which go down to the floor).
   if (pass === "largest") {
-    const ways = (["largest", "sides", "boards"] as const).map((way) => panelsOf(faces, way, vertical));
+    const ways = (["largest", "sides", "boards"] as const).map((way) => panelsOf(faces, way, vertical, merge));
     const found = ways.filter((w): w is Box[] => typeof w !== "string");
     return found.length ? found.reduce((best, w) => (w.length < best.length ? w : best)) : ways[0]!;
   }
-  return panelsOf(faces, pass, vertical);
+  return panelsOf(faces, pass, vertical, merge);
 }
 
-function panelsOf(faces: readonly AxisFace[], pass: Pass, vertical: Axis): Box[] | string {
-  const grid = ([0, 1, 2] as const).map((a) => levels(faces.filter((f) => f.axis === a).map((f) => f.at)));
+/** `merge`: faces closer than this along an axis taken as one (a glass groove), the cells read away from them. */
+function panelsOf(faces: readonly AxisFace[], pass: Pass, vertical: Axis, merge = 0): Box[] | string {
+  const grid = ([0, 1, 2] as const).map((a) => (merge ? mergedLevels(faces.filter((f) => f.axis === a), merge) : levels(faces.filter((f) => f.axis === a).map((f) => f.at))));
   if (grid.some((g) => g.length < 2)) return "ce corps n'est pas fait de faces d'équerre sur ses trois axes.";
   const [nx, ny, nz] = grid.map((g) => g.length - 1) as [number, number, number];
   if (nx * ny * nz > MAX_CELLS) return "ce corps a trop de décrochements pour être lu en panneaux.";

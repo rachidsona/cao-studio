@@ -5,6 +5,8 @@
  * ouvert aux deux bouts de son axe (le dessus et le dessous). Les côtés se rejoignent en onglet (à tout angle) ou bout à
  * bout — les côtés passent, ou le dessus et le dessous, comme dans une Répartition, ou les plus longs. Un corps fait de
  * panneaux d'équerre joints (un caisson d'un seul corps) est redécoupé en ses panneaux (features/board-split.ts).
+ * « Séparer seulement » ne vide jamais : le corps est coupé tel qu'il est (une façade à cadre en U et sa rainure de
+ * verre en ses montants et sa traverse) ; « Vider et séparer » vide d'abord un corps plein (épaisseur 0 : séparer seulement).
  * C'est une étape « Vider un corps » marquée `frame` ; son étape de l'historique
  * rouvre cet outil.
  */
@@ -25,6 +27,9 @@ const jointOf = (f: { joint?: ShellFeature["joint"]; pass?: ShellFeature["pass"]
 /** Kept for the session: the joint last chosen. */
 let lastJoint: Joint = "miter";
 let lastThickness = 18;
+/** « Séparer seulement » (the body cut as it is) or « Vider et séparer » (a solid body emptied first). */
+type Mode = "split" | "hollow";
+let lastMode: Mode = "hollow";
 
 /** A « Séparer les côtés » step: « Vider un corps » marked `frame` (or, the first ones, without a thickness). */
 export const isSideSplit = (f: { type: string; thickness?: number; sides?: string; faces?: unknown[]; back?: unknown; frame?: boolean }): boolean =>
@@ -39,6 +44,7 @@ export class SplitSidesTool extends PanelTool {
   private thickness: number;
   /** The way a solid body is opened: the normal of a face of it clicked (with the one facing it); null: top and bottom. */
   private open: Vec3 | null;
+  private mode: Mode;
 
   constructor(ctx: ToolContext, editing: ShellFeature | null, bodies: readonly string[] = []) {
     super(ctx, "Séparer les côtés", editing);
@@ -49,12 +55,13 @@ export class SplitSidesTool extends PanelTool {
     this.joint = editing ? jointOf(editing) : lastJoint;
     this.thickness = editing?.thickness || lastThickness;
     this.open = editing?.open ?? null;
+    this.mode = editing ? (editing.thickness === 0 ? "split" : "hollow") : lastMode;
   }
 
   protected feature(): ShellFeature | string {
     if (!this.target) return "Cliquez le corps à séparer en ses côtés : un cadre, un caisson sans fond, un contour extrudé, plein ou creux.";
     const [joint, pass] = this.joint.split(":") as ["miter" | "butt", ("sides" | "boards")?];
-    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: [], thickness: this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
+    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: [], thickness: this.mode === "split" ? 0 : this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -62,7 +69,12 @@ export class SplitSidesTool extends PanelTool {
     const name = this.target ? (findFeature(doc, this.target)?.name ?? bodyLabel(doc, this.target)) : null;
     return [
       this.info(name ? `Corps : « ${name} ». Cliquez-en un autre pour le changer.` : "Cliquez le corps à séparer en ses côtés."),
-      this.numberRow("Épaisseur des côtés", this.thickness, this.ctx.unit(), (v) => {
+      this.selectRow("Le corps", this.mode, [["split", "Séparer seulement (tel qu'il est)"], ["hollow", "Vider et séparer"]], (v) => {
+        this.mode = lastMode = v as Mode;
+        this.render();
+        this.schedulePreview();
+      }),
+      this.mode === "split" ? null : this.numberRow("Épaisseur des côtés", this.thickness, this.ctx.unit(), (v) => {
         this.thickness = lastThickness = v;
         this.render();
         this.schedulePreview();
@@ -72,9 +84,9 @@ export class SplitSidesTool extends PanelTool {
         this.render();
         this.schedulePreview();
       }),
-      this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous — ou, pour un panneau trop mince pour cela, par ses deux grandes faces. Pour l'ouvrir ailleurs, cliquez la face à vider sur le corps."),
-      this.open ? this.resetOpen() : null,
-      this.info("Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
+      this.mode === "split" ? null : this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous — ou, pour un panneau trop mince pour cela, par ses deux grandes faces. Pour l'ouvrir ailleurs, cliquez la face à vider sur le corps."),
+      this.open && this.mode === "hollow" ? this.resetOpen() : null,
+      this.info(this.mode === "split" ? "Le corps est coupé tel qu'il est, sans être vidé : un cadre en ses côtés, un caisson d'un seul corps en ses panneaux, une façade à cadre en U en ses deux montants et sa traverse (sa rainure de verre leur reste)." : "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
     ];
   }
 

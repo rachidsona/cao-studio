@@ -224,7 +224,7 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
     }
     const panels = boards();
     if (panels) return { kind: "solids", shapes: panels };
-    if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps est plein ; saisissez l'épaisseur de ses côtés pour le vider.`);
+    if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps ne se sépare pas tel qu'il est ; choisissez « Vider et séparer » et l'épaisseur de ses côtés.`);
     const ends = frameEnds(target, feature.open, feature.thickness);
     if (!ends) throw new GeometryError(feature.open ? `${feature.name} : la face choisie n'a pas de face plane en face d'elle à ouvrir aussi ; cliquez-en une autre.` : `${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
     const frame = hollowed(feature.name, target, ends, feature.thickness);
