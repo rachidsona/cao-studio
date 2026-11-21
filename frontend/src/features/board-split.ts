@@ -3,7 +3,8 @@
  * U — : un corps par panneau. Toutes ses faces sont planes et d'équerre avec les axes ; leurs plans quadrillent le corps
  * en cases, celles qui sont dans la matière sont regroupées en planches entières, la plus grande d'abord. Aux angles,
  * comme dans une Répartition : les côtés passent, ou le dessus et le dessous ; sans choix, la façon qui ne coupe aucun
- * panneau en deux (le moins de panneaux). Pas d'onglet : des panneaux joints se rejoignent bout à bout. Pur : des faces
+ * panneau en deux (le moins de panneaux). Bout à bout ; en onglet, un cadre plat a ses coins partagés sur leur diagonale
+ * (features/board-miter.ts), un caisson reste bout à bout. Pur : des faces
  * données par leurs contours, des boîtes rendues.
  */
 

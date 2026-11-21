@@ -212,7 +212,7 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
     const joint = feature.joint ?? "miter";
     // A body of square panels joined into one (a caisson, a U, a shelf unit): a body per panel (board-split.ts), when
     // it is not a frame of one profile (its sides would not be straight along its axis).
-    const boards = () => splitBoards(target, feature.pass ?? "largest");
+    const boards = () => splitBoards(target, feature.pass ?? "largest", joint === "miter");
     if (isFrame(target)) {
       try {
         return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };

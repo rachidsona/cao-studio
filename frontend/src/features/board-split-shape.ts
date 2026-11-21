@@ -7,6 +7,7 @@
  */
 import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Shape3D } from "replicad";
 import { arePanels, boardBoxes, hasGroove, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
+import { miterOutlines, type MiterOutlines } from "./board-miter";
 
 type P3 = [number, number, number];
 const dot = (a: P3, b: P3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -65,11 +66,24 @@ function prism([lo, hi]: Box, [u, v, w]: Frame): Shape3D {
   return basicFaceExtrusion(base, new Vector([w[0] * h, w[1] * h, w[2] * h])) as unknown as Shape3D;
 }
 
+/** A mitred piece's outline, through the frame's thickness, as a solid where it is in the world. */
+function outlinePrism(outline: readonly [number, number][], { axis, span, plane }: MiterOutlines, frame: Frame): Shape3D {
+  const at = (a: number, b: number, t: number): P3 => {
+    const c = [0, 0, 0];
+    [c[plane[0]], c[plane[1]], c[axis]] = [a, b, t];
+    return [0, 1, 2].map((k) => c[0]! * frame[0][k]! + c[1]! * frame[1][k]! + c[2]! * frame[2][k]!) as P3;
+  };
+  const base = makePolygon(outline.map(([a, b]) => at(a, b, span[0])));
+  const h = span[1] - span[0];
+  const d = frame[axis];
+  return basicFaceExtrusion(base, new Vector([d[0] * h, d[1] * h, d[2] * h])) as unknown as Shape3D;
+}
+
 /** Faces closer than this (mm) along an axis are read as one at a second try: a groove, not a panel. */
 const GROOVE = 6;
 
 /** The panels of a body made of square panels, a body each; null when it is not such a body (left to the other ways). */
-export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
+export function splitBoards(target: Shape3D, pass: Pass, miter = false): Shape3D[] | null {
   const read = axisFaces(target);
   if (!read) return null;
   const { faces, frame } = read;
@@ -83,8 +97,10 @@ export function splitBoards(target: Shape3D, pass: Pass): Shape3D[] | null {
   const boxes = panels(0) ?? (hasGroove(faces, GROOVE) ? panels(GROOVE) : null);
   if (!boxes) return null;
   const pieces: Shape3D[] = [];
-  for (const box of boxes) {
-    const block = prism(box, frame);
+  // In mitre, a flat frame's corners shared on their diagonals.
+  const mitred = miter ? miterOutlines(boxes) : null;
+  for (const [n, box] of boxes.entries()) {
+    const block = mitred ? outlinePrism(mitred.outlines[n]!, mitred, frame) : prism(box, frame);
     // Cut by the body: what it has of holes, chamfers and notches stays with each panel.
     const piece = block.intersect(target) as Shape3D;
     block.delete();

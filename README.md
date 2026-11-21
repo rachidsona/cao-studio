@@ -2353,8 +2353,11 @@ opération existante.
   il est redécoupé en ses panneaux, un corps chacun — les plans de ses faces le quadrillent, les cases dans la
   matière sont regroupées en planches entières, la plus grande d'abord (`features/board-split.ts`) ; sans choix, la
   façon qui ne coupe aucun panneau en deux (des côtés qui descendent au sol sous un dessous surélevé passent),
-  « les côtés passent » ou « le dessus et le dessous passent » suivis, pas d'onglet (des panneaux joints se rejoignent
-  bout à bout). Le repère des panneaux est lu sur le corps (sa plus grande face, puis la plus grande d'équerre) : un
+  « les côtés passent » ou « le dessus et le dessous passent » suivis, bout à bout ; **en onglet**, un cadre plat (une
+  façade à cadre en U, un cadre de porte) a chaque angle partagé sur sa diagonale, du coin extérieur au coin
+  intérieur, la moitié à chaque pièce — à 45° pour deux pièces de même largeur (`features/board-miter.ts`) —, un
+  caisson restant bout à bout. Le repère des panneaux est lu sur le corps (sa plus grande face, puis la plus grande
+  d'équerre) : un
   caisson **tourné de biais** se sépare comme un droit ; puis chaque panneau est recoupé par le corps, ses **perçages**,
   chanfreins, encoches et arrondis lui restent (`features/board-split-shape.ts`). **Corps plein** : il est d'abord vidé à l'« Épaisseur des
   côtés », ouvert aux deux bouts de son axe (le dessus et le dessous quand il en a, sinon ses deux plus grandes faces
