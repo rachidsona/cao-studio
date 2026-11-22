@@ -2461,8 +2461,9 @@ opération existante.
   X, Y ou Z, ou d'équerre ou parallèle à une face cliquée (`leanFace`) ; elles sont tournées dans leur plan avant d'aller aux parois
   (`sketcher/shelf-lean.ts`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
   est le rectangle prolongé vers les parois qu'il touche, recoupé par leurs faces (`sketcher/niche-outline.ts`), et
-  le tracé bleu de l'esquisse aussi : ses traits sur le bord de l'ouverture partent, une étagère va jusqu'aux parois
-  (`linesBetweenWalls`, `app/sketch-display.ts`) ; une
+  le tracé bleu de l'esquisse aussi, et son remplissage : ses traits et la bande des parois partent, une étagère et
+  une niche vont jusqu'aux parois (`linesBetweenWalls`, `regionsBetweenWalls`, `app/sketch-display.ts`) ; une
+  étagère tournée dans une niche bordée d'une cloison va jusqu'à elle, et jusqu'à la paroi de l'autre bout ; une
   porte ou un fond posé sur la niche va jusqu'au plan de chaque paroi qu'il longe, en prend la pente et garde son jeu
   ou son recouvrement (`toWallPlanes`), un tiroir reste droit. L'esquisse dépend de ses parois (`featureInputs`) :
   une paroi changée refait ce qui en sort.

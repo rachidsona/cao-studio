@@ -115,3 +115,23 @@ export function linesBetweenWalls<C extends { points: Vec2[] }>(curves: readonly
     return [{ ...curve, points: [[a[0] + d[0] * t0, a[1] + d[1] * t0], [a[0] + d[0] * t1, a[1] + d[1] * t1]] }];
   });
 }
+
+/**
+ * The areas of a body furnished's sketch as they are between its walls: those out in the walls (the band round the
+ * opening) left out, a rectangle on the edge of the opening drawn to the walls as its niche (`nicheOutline`); the
+ * others as they are.
+ */
+export function regionsBetweenWalls(regions: readonly { outer: Vec2[]; holes: Vec2[][] }[], box: readonly [number, number, number, number], lines: readonly WallLine[]): { outer: Vec2[]; holes: Vec2[][] }[] {
+  if (!lines.length) return [...regions];
+  const [u0, v0, u1, v1] = box;
+  return regions.flatMap((region) => {
+    const us = region.outer.map((p) => p[0]);
+    const vs = region.outer.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
+    // Out in the walls: they are there.
+    if (x0 < u0 - TOUCH || x1 > u1 + TOUCH || y0 < v0 - TOUCH || y1 > v1 + TOUCH) return [];
+    const square = region.outer.length === 4 && !region.holes.length && region.outer.every(([u, v]) => (Math.abs(u - x0) < 1e-6 || Math.abs(u - x1) < 1e-6) && (Math.abs(v - y0) < 1e-6 || Math.abs(v - y1) < 1e-6));
+    const outline = square ? nicheOutline({ x0, y0, x1, y1 }, box, lines) : null;
+    return [outline ? { outer: outline, holes: [] } : region];
+  });
+}

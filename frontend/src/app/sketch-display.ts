@@ -11,7 +11,7 @@ import * as THREE from "three";
 import type { CadDocument, SketchFeature } from "../document/types";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
-import { linesBetweenWalls, wallLines } from "../sketcher/niche-outline";
+import { linesBetweenWalls, regionsBetweenWalls, wallLines } from "../sketcher/niche-outline";
 import { latestBody } from "../document/operations";
 import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
@@ -98,7 +98,7 @@ export class SketchDisplay {
         frame: frameOf(f),
         curves: [...(f.host ? linesBetweenWalls(sketchCurves(f), f.host.box, wallLines(frameOf(f), walls(f))) : sketchCurves(f)), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
         points: sketchPoints(f),
-        regions: sketchRegions(f),
+        regions: f.host ? regionsBetweenWalls(sketchRegions(f), f.host.box, wallLines(frameOf(f), walls(f))) : sketchRegions(f),
         selected: f.id === selected,
       })),
     );

@@ -1,6 +1,6 @@
 /** La niche d'un corps aménagé suit ses parois, même en biais. */
 import { describe, expect, it } from "vitest";
-import { linesBetweenWalls, nicheOutline, type WallLine } from "../../frontend/src/sketcher/niche-outline";
+import { linesBetweenWalls, nicheOutline, regionsBetweenWalls, type WallLine } from "../../frontend/src/sketcher/niche-outline";
 
 const opening: [number, number, number, number] = [18, 18, 582, 382];
 /** Inner faces of a frame: its left one leaning (u from 18 at the bottom to 68 at the top), the others square. */
@@ -40,5 +40,13 @@ describe("la forme d'une niche entre les parois", () => {
       { id: "étagère", points: [[43, 200], [582, 200]] },
       { id: "cloison", points: [[300, 200], [300, 382]] },
     ]);
+  });
+
+  it("le remplissage : la bande des parois part, la niche prend sa forme entre elles", () => {
+    const ring = { outer: [[0, 0], [600, 0], [600, 400], [0, 400]] as [number, number][], holes: [[[18, 18], [582, 18], [582, 382], [18, 382]]] as [number, number][][] };
+    const niche = { outer: [[18, 18], [582, 18], [582, 382], [18, 382]] as [number, number][], holes: [] };
+    const filled = regionsBetweenWalls([ring, niche], opening, walls);
+    expect(filled).toHaveLength(1);
+    expect(round(filled[0]!.outer)).toEqual([[18, 18], [68, 382], [582, 18], [582, 382]]);
   });
 });

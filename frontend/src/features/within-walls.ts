@@ -36,7 +36,9 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
   const turned = lean ? leaned(prism, first, frame, lean, [(min[0]! + max[0]!) / 2, (min[1]! + max[1]!) / 2, (min[2]! + max[2]!) / 2]) : null;
   if (turned) prism = turned.prism;
   const axis = turned?.axis ?? first;
-  if (!ends.length) return prism;
+  // Turned, both ends are drawn out: one on a wall goes to it, the other back to where it stood (a cloison, a shelf).
+  const grow = turned ? [-1, 1] : ends;
+  if (!grow.length) return prism;
   const walls = host.bodies.flatMap((id) => {
     try {
       return [requireSolid(lookup, id).shape];
@@ -44,10 +46,10 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
       return [];
     }
   });
-  if (!walls.length) return prism;
+  if (!walls.length && !turned) return prism;
   // Drawn out by its end faces, then cut by the walls.
   let long: Shape3D = prism.clone() as Shape3D;
-  for (const sign of ends) {
+  for (const sign of grow) {
     const face = prism.faces.find((f) => {
       if (f.geomType !== "PLANE") return false;
       const n = f.normalAt(f.center);
@@ -63,6 +65,18 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
     long.delete();
     tail.delete();
     long = fused;
+  }
+  for (const sign of grow.filter((g) => !ends.includes(g))) {
+    // The plane square to its first length where that end stood, the element kept on its side.
+    const at = sign < 0 ? lo : hi;
+    const point = [0, 1, 2].map((i) => frame.origin[i]! + first[i]! * at) as Vec3;
+    const plane = new Plane(point, null, first.map((x) => -sign * x) as Vec3);
+    const slab = drawRectangle(2 * REACH, 2 * REACH).sketchOnPlane(plane).extrude(REACH) as Shape3D;
+    plane.delete();
+    const kept: Shape3D = long.intersect(slab);
+    long.delete();
+    slab.delete();
+    long = kept;
   }
   for (const wall of walls) {
     const cut: Shape3D = long.cut(wall);

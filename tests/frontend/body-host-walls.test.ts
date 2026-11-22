@@ -98,6 +98,23 @@ describe("un corps aux parois en biais, aménagé", () => {
     }
   }, 120_000);
 
+  it("tournée dans une niche bordée d'une cloison : elle va de la paroi penchée jusqu'à la cloison", () => {
+    const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(50) } as CadDocument;
+    const made = withBodyFurnished(base, opening, "Cadre", ["wl", "wr", "wb", "wf"]);
+    if (typeof made === "string") throw new Error(made);
+    const sketch = made.doc.features.find((f): f is SketchFeature => f.id === made.sketch && f.type === "sketch")!;
+    const partition = sketch.offsets!.find(isPartition)!.id;
+    const input = { count: 1, thickness: 18, mode: "equal" as const, fixed: 0 };
+    const filled = withRecipe(made.doc, { sketch: made.sketch, partition, path: [0] }, { steps: [{ at: [], input: { ...input, vertical: true } }, { at: [0], input: { ...input, lean: [364, -200, 0] } }], equipment: [] });
+    if (typeof filled === "string") throw new Error(filled);
+    const boxes = shelves(filled);
+    // The cloison (upright, in the middle) and the shelf turned in the niche at its left.
+    const shelf = boxes.find(([lo, hi]) => hi![0]! - lo![0]! > 100 && hi![1]! - lo![1]! < 200)!;
+    expect(shelf).toBeDefined();
+    expect(shelf[1]![0]).toBe(-9);
+    expect(shelf[1]![1]! - shelf[0]![1]!).toBeGreaterThan(40);
+  }, 120_000);
+
   /** The opening with one door over it (inset, 3 mm of gap): its volume and its box. */
   function door(lean: number): { volume: number; box: number[][] } {
     const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(lean) } as CadDocument;
