@@ -736,7 +736,8 @@ opération existante.
   n'avait pas la sienne — réglages de « Modules à glisser » et de l'outil Module, Répartition, Étagères, Niche, Réseau,
   panneaux de la cuisine… — reçoit un bouton « ⌨ » à sa droite : la calculatrice (`ui/calculator.ts`) s'ouvre sur sa
   valeur, un calcul ou des unités (« 60 cm − 2*18 mm »), et ✓ écrit le résultat dans le champ comme s'il était tapé
-  (évènements `input` et `change`). Une longueur (son nom dit son unité : « Hauteur (cm) ») se calcule en unités, un
+  (évènements `input` et `change`). Celle d'un champ de panneau s'ouvre **sous le champ, sur le panneau** (au-dessus
+  s'il n'y a pas la place), jamais sur la vue 3D qu'elle règle. Une longueur (son nom dit son unité : « Hauteur (cm) ») se calcule en unités, un
   nombre sans unité tel quel (`plain`). Les champs qui avaient déjà leur « ⌨ » (outils à panneau) n'en ont pas un
   second ; un champ tapé sur place (`data-no-keypad`) non plus. **Dans l'esquisse**, un clic sur une case de cote
   d'une forme en train d'être tracée (largeur, hauteur, longueur, angle, diamètre) ouvre la calculatrice : ✓ garde la

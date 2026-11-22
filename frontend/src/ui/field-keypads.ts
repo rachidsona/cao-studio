@@ -47,12 +47,18 @@ function attach(input: HTMLInputElement): void {
     const unit = unitOf(input);
     const shown = parseNumber(input.value) ?? 0;
     const r = keypad.getBoundingClientRect();
-    const container = (input.closest("main") ?? document.querySelector("#editor main") ?? document.body) as HTMLElement;
+    // In the 3D view (a field drawn there): beside it, kept inside the view. In a panel: under the field, over the
+    // panel — never over the 3D view it is set for.
+    const inPanel = input.closest<HTMLElement>('[role="dialog"]');
+    const container = (inPanel ? document.body : (input.closest("main") ?? document.querySelector("#editor main") ?? document.body)) as HTMLElement;
     const box = container.getBoundingClientRect();
+    const row = (input.closest("label") ?? pair).getBoundingClientRect();
+    const panel = (inPanel ?? pair).getBoundingClientRect();
     openCalculator({
       container,
       // Beside the field, kept inside the area.
       anchor: { x: Math.max(box.left + 8, Math.min(r.right + 8, box.right - 248)), y: r.top + r.height / 2 },
+      ...(inPanel ? { under: { left: Math.max(8, Math.min(panel.right - 248, row.right - 240)), top: row.top, bottom: row.bottom } } : {}),
       value: unit ? fromDisplay(shown, unit) : shown,
       unit: unit ?? "deg",
       plain: !unit,

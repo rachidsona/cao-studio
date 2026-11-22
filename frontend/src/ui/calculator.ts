@@ -13,6 +13,11 @@ export interface CalculatorOptions {
   container: HTMLElement;
   /** Screen point (client coordinates) the popup is placed next to. */
   anchor: { x: number; y: number };
+  /**
+   * A field of a panel (client coordinates of its row): the popup under it — over it when there is no room below —,
+   * from `left`, so that it covers the panel and not the 3D view.
+   */
+  under?: { left: number; top: number; bottom: number };
   /** Current value: mm for lengths, degrees for angles. */
   value: number;
   unit: ExpressionUnit;
@@ -200,6 +205,11 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
   let left = o.anchor.x - box.left + 16;
   let top = o.anchor.y - box.top - height / 2;
   if (left + width > box.width - 8) left = o.anchor.x - box.left - width - 16;
+  if (o.under) {
+    left = o.under.left - box.left;
+    top = o.under.bottom - box.top + 6;
+    if (top + height > box.height - 8) top = o.under.top - box.top - height - 6;
+  }
   left = Math.max(8, Math.min(left, box.width - width - 8));
   top = Math.max(8, Math.min(top, box.height - height - 8));
   popup.style.left = `${left}px`;

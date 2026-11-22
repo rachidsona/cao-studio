@@ -21,6 +21,9 @@ test("un champ sans calculatrice en reçoit une, et une cote du tracé s'ouvre d
   await keypad.click();
   const calc = page.getByRole("dialog", { name: "Espacement des étagères" });
   await expect(calc).toBeVisible();
+  // Under its field, over the panel: not over the 3D view.
+  const [c, v] = [(await calc.boundingBox())!, (await page.locator("canvas.cad-view").boundingBox())!];
+  expect(c.x).toBeGreaterThanOrEqual(v.x + v.width - 2);
   const expression = calc.locator("input[data-expression]");
   await expression.fill("30+5");
   await calc.getByRole("button", { name: "Valider" }).click();
