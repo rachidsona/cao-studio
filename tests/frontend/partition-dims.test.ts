@@ -40,9 +40,9 @@ describe("the dimensions of a Répartition", () => {
     expect(dims.find((d) => d.level === "chain" && d.from[1] < 0)?.witnesses[0]?.[0]).toEqual([18, 0, 0]);
   });
 
-  it("chains the right side of a divided column too, even with the same heights as the left", () => {
+  it("does not repeat on the right side the heights the left chain already gives", () => {
     const rights = partitionDims(plan).filter((d) => d.level === "chain" && d.from[0] > 1800).map((d) => Math.round(d.length));
-    expect(rights).toEqual([312, 312, 312, 482]);
+    expect(rights).toEqual([]);
   });
 
   it("leaves out the side opposite when it says the same", () => {

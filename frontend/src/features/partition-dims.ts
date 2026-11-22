@@ -85,10 +85,9 @@ export function partitionDims(plan: PartitionPlan, gap = ringGap(plan.outer)): P
     const left = spansOf(niches.filter((n) => near(n.x0, leftmost)).map(ySpan));
     const right = spansOf(niches.filter((n) => near(n.x1, rightmost)).map(ySpan));
 
-    // The chains: the top one when it says something else; the right one too when it does, or when the side is divided,
-    // because a column of shelves on the right is too far from the left chain to be read on it.
+    // The chains: the top one and the right one only when they say something else — the same heights are not repeated.
     const topChain = !sameSpans(top, bottom);
-    const rightChain = !sameSpans(right, left) || left.length > 1;
+    const rightChain = !sameSpans(right, left);
     for (const s of bottom) horizontal(s, outer.y0 - gap, outer.y0, "chain");
     for (const s of left) vertical(s, outer.x0 - gap, outer.x0, "chain");
     if (topChain) for (const s of top) horizontal(s, outer.y1 + gap, outer.y1, "chain");

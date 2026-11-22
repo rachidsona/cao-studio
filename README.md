@@ -3255,8 +3255,8 @@ opération existante.
 - **Cotes de plan d'une Répartition** (`features/partition-dims.ts`, `app/dressing/plan-dims-view.ts`) : pendant Répartition,
   Étagères, Cloisons, Penderie, Tiroirs, Module et l'assistant Dressing (chaque mur le sien), le meuble est coté comme sur un plan, mais en 3D et sans cacher le dessin.
   Autour du meuble, à l'extérieur : la largeur et la hauteur totales, puis les chaînes des niches (mesures libres entre
-  panneaux) en bas, à gauche et à droite dès qu'un côté est divisé, en haut seulement si elle dit autre chose que le
-  bas ; le socle ; la profondeur
+  panneaux) en bas et à gauche ; à droite et en haut seulement quand elles disent autre chose que celles de gauche et
+  du bas — les mêmes cotes ne sont jamais répétées ; le socle ; la profondeur
   quand on voit le meuble de biais. **Rien n'est écrit dans les niches** : une mesure qu'aucune chaîne ne donne (les
   hauteurs d'une colonne du milieu, les largeurs d'un rang) va dehors elle aussi, une seule fois, sur une ligne de cotes
   à elle — les hauteurs d'une colonne du côté le plus proche, au niveau de ses étagères, les largeurs dessous ou dessus —,
