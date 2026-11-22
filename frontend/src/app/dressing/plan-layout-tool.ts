@@ -6,7 +6,7 @@
  * Cliquer l'esquisse d'un plan, dans le navigateur ou la vue, ouvre l'outil sur ce plan.
  */
 import { planChecks } from "../../document/dressing-check";
-import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withPlanWalls, withZonePartition, withZoneSliding, zoneDone, zonesLost, zoneStep, type FillChoice } from "../../document/plan-layout";
+import { fillChoices, planOf, withCornerDoors, withPlan, withPlanChanged, withPlanWalls, withZonePartition, zoneDone, zonesLost, zoneStep, type FillChoice } from "../../document/plan-layout";
 import { avoidingPlan, linkedPlan, planObstacles, planRooms, roomOf, unlinkedPlan, type PlanObstacle } from "../../document/plan-room";
 import { pullDownState, withPullDowns } from "../../document/plan-pulldown";
 import { cornerJoints, PLAN, PLAN_MODELS, planLines, planProblem, planZones, type PlanField, type PlanModel, type PlanZone } from "../../document/plan-shapes";
@@ -23,7 +23,7 @@ import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 import { paintPrice } from "../workshop/live-price";
 import { needsPanel } from "./plan-needs-panel";
-import { wallsSection } from "./plan-walls-panel";
+import { zoneSettings } from "./plan-walls-panel";
 import { insideTools, topSection } from "./plan-top-panel";
 import { isolatedSketch, isolateZone, showAll } from "../zone-view";
 
@@ -312,9 +312,12 @@ export class PlanLayoutTool {
         isolateZone(plan, zone.id, zone.label);
         this.draw();
       });
-      // Its inside's tools (the zone alone, the tool open on it), in a card folded by its title (not by its buttons).
+      // Its settings (sliding doors, « Mes murs ») and its inside's tools (the zone alone, the tool open on it), in a card
+      // folded by its title (not by its buttons).
       const sketch = plan.made?.[zone.id];
-      const inside = done(zone) && sketch ? insideTools(zone.label, zone.id, sketch, this.editor, () => isolateZone(plan, zone.id, zone.label)) : null;
+      const tools = done(zone) && sketch ? insideTools(zone.label, zone.id, sketch, this.editor, () => isolateZone(plan, zone.id, zone.label)) : null;
+      const settings = zoneSettings(planId, plan, zone, this.editor, () => this.draw());
+      const inside = settings.length || tools ? el("div", { class: "space-y-1" }, ...settings, tools) : null;
       return zoneCard(`zone:${zone.label}`, zone.label, formatLength(zone.run.length, unit), [zone.kind === "run" && !done(zone) ? fill : null, done(zone) ? see : null, go], inside, { "data-zone-card": zone.id });
     };
     const showAllButton = el("button", { type: "button", class: "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
@@ -344,26 +347,13 @@ export class PlanLayoutTool {
       el("ul", { class: "space-y-2", "aria-label": "Zones du plan" }, ...zones.map(row)),
       isolatedSketch() ? showAllButton : null,
       needs,
-      ...this.sliding(planId, plan, zones),
       ...topSection(planId, plan, zones, this.editor, () => this.draw()),
-      ...wallsSection(planId, plan, zones, this.editor, () => this.draw()),
       ...this.pullDowns(planId, plan),
       ...this.checks(plan),
       zones.some((z) => z.kind === "corner") ? el("label", { class: "flex min-h-8 items-center gap-2", "data-panel-loose": "" }, door, PLAN_MODELS[plan.model].round ? "Porte cintrée sur l'arrondi" : PLAN_MODELS[plan.model].ell ? "Deux portes sur le coin en L" : "Porte sur le pan coupé") : null,
       change,
     ];
     return rows.filter((r): r is HTMLElement => r !== null);
-  }
-
-  /** Sliding doors, zone by zone: how many, or none. */
-  private sliding(planId: string, plan: DressingPlan, zones: PlanZone[]): HTMLElement[] {
-    const rows = zones.filter((z) => z.kind === "run").map((zone) => {
-      const count = plan.sliding?.[zone.id] ?? 0;
-      const choice = el("select", { class: "h-7 w-full border border-gray-300 bg-white px-1 text-xs disabled:opacity-40 dark:border-gray-600 dark:bg-gray-900", "aria-label": `Portes coulissantes, ${zone.label}`, disabled: plan.roof !== undefined }, ...[0, 2, 3, 4, 5, 6].map((n) => el("option", { value: String(n), selected: n === count }, n ? `${n} vantaux` : "Aucune")));
-      choice.addEventListener("change", () => void this.editor.change(withZoneSliding(this.editor.doc, planId, zone, Number(choice.value))).then(() => this.draw()));
-      return el("label", { class: ROW }, zone.label, choice);
-    });
-    return [el("h3", { class: "panel-title", title: plan.roof ? "Un rail de porte coulissante doit être de niveau : pas sous un rampant." : "Deux rails et des vantaux qui se recouvrent de 3 cm" }, "Portes coulissantes"), ...rows];
   }
 
   /** The rods out of reach: a pull-down rod for each, added or brought up to date in one click. */

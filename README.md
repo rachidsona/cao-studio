@@ -3150,8 +3150,9 @@ opération existante.
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
   Dans son panneau, chaque zone est une **carte pliable** (un clic sur son titre, pas sur ses boutons) : son nom (dans
   la couleur d'accent de la palette, comme les titres des cartes) et sa longueur, « Voir » et « Modifier », et dessous ses outils (Module, Étagères, Cloisons, Tiroirs, Portes, Penderie, et **Fond** : un clic pose un fond de 8 mm derrière tout le mur, un autre le retire — `document/partition-back.ts`) en une
-  rangée d'icônes nommées ; Portes coulissantes, Surmeubles, Mes murs et Penderies escamotables sont aussi des cartes
-  pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
+  rangée d'icônes nommées ; ses **réglages** aussi, dans sa carte : ses **portes coulissantes** (vantaux ou aucune) et
+  « Mes murs » — « Garder ce mur » sur une zone faite, un mur gardé à « Poser » sur une zone libre
+  (`app/dressing/plan-walls-panel.ts`). Surmeubles et Penderies escamotables sont aussi des cartes pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
   hauteur (20 à 100 cm) et leurs « Portes » (battantes, relevables ou sans), puis « Poser les surmeubles » — au-dessus de chaque zone faite, une
   Répartition « Surmeubles — mur A » de cette hauteur, aux mêmes cases que celle du dessous (largeurs, côtés), posée sur
   son dessus, sans socle ; au débit et au devis comme le reste. Ses portes sont des **Porte sur niches**, une par case,

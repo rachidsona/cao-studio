@@ -1,6 +1,6 @@
 /** Concevoir dans la vue, dans un vrai navigateur : menu de la niche, copie, cote tapée, étagère tirée, répétition, vue d'un mur, style. */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject, openCard } from "./helpers";
+import { newProject } from "./helpers";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 const tree = (page: Page) => page.getByLabel(/^Navigateur : corps/);
@@ -115,10 +115,12 @@ test("voir un mur, mes murs, style du dressing", async ({ page }) => {
   await tool.getByRole("button", { name: "Tout montrer" }).click();
   await expect(page.locator("[data-zone-isolated]")).toHaveCount(0);
 
-  await openCard(tool, "Mes murs");
-  await tool.getByRole("button", { name: "Garder" }).click();
+  // « Mes murs » in the zones' cards: Mur A kept, laid again on Mur B (its card opened).
+  await tool.getByRole("button", { name: "Garder ce mur" }).click();
   await expect(page.getByText(/^Mur gardé/)).toBeVisible();
-  await tool.getByRole("button", { name: "Poser" }).click();
+  const second = tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").nth(1);
+  await second.locator("[data-zone-title]").click();
+  await second.getByRole("button", { name: "Poser", exact: true }).click();
   await expect(page.getByText("Mur posé : Mur B.")).toBeVisible();
   await expect(tool.getByRole("list", { name: "Zones du plan" }).getByRole("listitem").nth(1)).toContainText("Modifier");
 

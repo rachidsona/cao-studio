@@ -1,14 +1,18 @@
-/** « Mes murs » dans le Plan de dressing : garder un mur fait, le reposer sur une zone libre. Gardés dans ce navigateur. */
+/**
+ * Les réglages d'une zone du Plan de dressing, dans sa carte : ses portes coulissantes (combien de vantaux, ou aucune),
+ * et « Mes murs » — un mur fait gardé (dans ce navigateur), ou un mur gardé reposé sur cette zone libre.
+ */
 import type { PlanZone } from "../../document/plan-shapes";
-import { zoneDone } from "../../document/plan-layout";
+import { withZoneSliding, zoneDone } from "../../document/plan-layout";
 import type { DressingPlan } from "../../document/types";
 import { readWall, withWall, type WallTemplate } from "../../document/wall-templates";
 import { el } from "../../ui/dom";
 import type { Editor } from "../editor";
 
 const KEY = "cao.my-walls";
-const SELECT = "h-7 min-w-0 flex-1 border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
+const SELECT = "h-7 min-w-0 flex-1 border border-gray-300 bg-white px-1 text-xs disabled:opacity-40 dark:border-gray-600 dark:bg-gray-900";
 const SMALL = "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
+const ROW = "flex min-h-8 items-center justify-between gap-2";
 
 function readWalls(): WallTemplate[] {
   try {
@@ -19,19 +23,22 @@ function readWalls(): WallTemplate[] {
   }
 }
 
-export function wallsSection(planId: string, plan: DressingPlan, zones: PlanZone[], editor: Editor, redraw: () => void): HTMLElement[] {
-  const runs = zones.filter((z) => z.kind === "run");
-  const done = runs.filter((z) => zoneDone(editor.doc, plan, z.id));
-  const free = runs.filter((z) => !zoneDone(editor.doc, plan, z.id));
-  const walls = readWalls();
+/** The settings of a zone, for its card (none for a corner). */
+export function zoneSettings(planId: string, plan: DressingPlan, zone: PlanZone, editor: Editor, redraw: () => void): HTMLElement[] {
+  if (zone.kind !== "run") return [];
   const rows: HTMLElement[] = [];
-  if (done.length) {
-    const from = el("select", { class: SELECT, "aria-label": "Mur à garder" }, ...done.map((z) => el("option", { value: z.id }, z.label)));
-    const keep = el("button", { type: "button", class: SMALL }, "Garder");
+  // Its sliding doors.
+  const count = plan.sliding?.[zone.id] ?? 0;
+  const sliding = el("select", { class: SELECT, "aria-label": `Portes coulissantes, ${zone.label}`, disabled: plan.roof !== undefined, title: plan.roof ? "Un rail de porte coulissante doit être de niveau : pas sous un rampant." : "Deux rails et des vantaux qui se recouvrent de 3 cm" }, ...[0, 2, 3, 4, 5, 6].map((n) => el("option", { value: String(n), selected: n === count }, n ? `${n} vantaux` : "Aucune")));
+  sliding.addEventListener("change", () => void editor.change(withZoneSliding(editor.doc, planId, zone, Number(sliding.value))).then(redraw));
+  rows.push(el("label", { class: ROW }, "Portes coulissantes", sliding));
+  // Kept (a wall made), or laid again (a wall kept, on this free zone).
+  const walls = readWalls();
+  if (zoneDone(editor.doc, plan, zone.id)) {
+    const keep = el("button", { type: "button", class: SMALL, title: "Garder ce mur dans « Mes murs » (ce navigateur), pour le reposer sur une autre zone ou un autre plan" }, "Garder ce mur");
     keep.addEventListener("click", () => {
-      const zone = done.find((z) => z.id === from.value);
-      const name = `${zone?.label ?? "Mur"} (${new Date().toLocaleDateString("fr-FR")})`;
-      const wall = zone ? readWall(editor.doc, plan.made?.[zone.id] as string, name) : null;
+      const name = `${zone.label} (${new Date().toLocaleDateString("fr-FR")})`;
+      const wall = readWall(editor.doc, plan.made?.[zone.id] as string, name);
       if (!wall) return;
       try {
         localStorage.setItem(KEY, JSON.stringify([...walls, wall]));
@@ -41,22 +48,19 @@ export function wallsSection(planId: string, plan: DressingPlan, zones: PlanZone
       }
       redraw();
     });
-    rows.push(el("div", { class: "flex gap-1" }, from, keep));
-  }
-  if (walls.length && free.length) {
-    const wall = el("select", { class: SELECT, "aria-label": "Mur gardé" }, ...walls.map((w, i) => el("option", { value: String(i) }, w.name)));
-    const to = el("select", { class: SELECT, "aria-label": "Zone où le poser" }, ...free.map((z) => el("option", { value: z.id }, z.label)));
+    rows.push(el("div", { class: ROW }, "Mes murs", keep));
+  } else if (walls.length) {
+    const wall = el("select", { class: SELECT, "aria-label": `Mur gardé à poser, ${zone.label}` }, ...walls.map((w, i) => el("option", { value: String(i) }, w.name)));
     const lay = el("button", { type: "button", class: SMALL }, "Poser");
     lay.addEventListener("click", () => {
-      const zone = free.find((z) => z.id === to.value);
       const template = walls[Number(wall.value)];
-      if (!zone || !template) return;
+      if (!template) return;
       const made = withWall(editor.doc, planId, zone, template);
       if (typeof made === "string") return editor.notify(made, "error");
       void editor.change(made).then(redraw);
       editor.notify(`Mur posé : ${zone.label}.`, "success");
     });
-    rows.push(el("div", { class: "flex gap-1" }, wall, to, lay));
+    rows.push(el("div", { class: "flex items-center gap-1" }, wall, lay));
   }
-  return rows.length ? [el("h3", { class: "panel-title" }, "Mes murs"), ...rows] : [];
+  return rows;
 }
