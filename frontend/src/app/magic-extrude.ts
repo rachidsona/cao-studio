@@ -62,20 +62,28 @@ export class FaceToReach {
 }
 
 /**
- * The grid (the floor, plane XY at 0) as a face to draw on where no body is under the pointer: no edges, no outline,
- * no body under it — the shape drawn is a sketch of its own, pulled into a new body.
+ * The grid as a face to draw on where no body is under the pointer — the floor (XY), the front (XZ) or the side (YZ)
+ * through the origin, as « Nouvelle esquisse » offers them: no edges, no outline, no body under it — the shape drawn is a
+ * sketch of its own, pulled into a new body.
  */
+export type GroundPlane = "XY" | "XZ" | "YZ";
+export const GROUND_PLANES: [GroundPlane, string][] = [["XY", "Dessus (XY)"], ["XZ", "Face (XZ)"], ["YZ", "Côté (YZ)"]];
+/** The plane chosen last, for the session. */
+let groundPlane: GroundPlane = "XY";
 export const GROUND = "ground";
-export function groundFace(): LoadedFace {
+export function groundFace(plane: GroundPlane = groundPlane): LoadedFace {
+  const frame = sketchFrame(plane, 0);
   return {
-    key: GROUND,
+    key: `${GROUND}:${plane}`,
     pick: { bodyId: "", faceIndex: -1 } as FacePick,
-    outline: { surface: "PLANE", center: [0, 0, 0], normal: [0, 0, 1], edges: [] },
-    frame: sketchFrame("XY", 0),
-    plane: "XY",
+    outline: { surface: "PLANE", center: [0, 0, 0], normal: frame.normal, edges: [] },
+    frame,
+    plane,
     offset: 0,
     polygon: [],
   };
 }
-export const isGround = (face: { key: string } | null | undefined): boolean => face?.key === GROUND;
-
+export const isGround = (face: { key: string } | null | undefined): boolean => !!face?.key.startsWith(GROUND);
+/** The panel's row « Sans corps, sur » (the plane the grid is drawn on); `changed`: the pointer read again. */
+export const groundRow = (select: (label: string, value: string, options: [string, string][], change: (v: string) => void) => HTMLElement, changed: () => void): HTMLElement =>
+  select("Sans corps, sur", groundPlane, GROUND_PLANES, (v) => ((groundPlane = v as GroundPlane), changed()));

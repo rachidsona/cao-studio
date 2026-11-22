@@ -1,4 +1,4 @@
-/** Magie extrusion sans corps : un rectangle dessiné directement sur la grille devient une esquisse à lui (plan XY). */
+/** Magie extrusion sans corps : un rectangle dessiné directement sur la grille — dessus (XY) ou face (XZ) — devient une esquisse à lui. */
 import { expect, test, type Page } from "@playwright/test";
 import { newProject } from "./helpers";
 
@@ -41,5 +41,22 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   expect(made.plane).toBe("XY");
   expect(made.support).toBeUndefined();
   expect(made.curves).toHaveLength(4);
+
+  // « Sans corps, sur : Face (XZ) », as « Nouvelle esquisse » offers it: seen from the front, a rectangle standing up.
+  // (The sketch kept closed the tool: opened again, on the rectangle.)
+  await click(page, '[data-action="face-strip"]');
+  await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("rectangle");
+  await tool.getByRole("combobox", { name: "Sans corps, sur" }).selectOption("XZ");
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(1200);
+  await page.mouse.move(x0, y0);
+  await page.mouse.move(x0 + 1, y0);
+  await page.mouse.click(x0 + 1, y0);
+  await page.mouse.move(x0 + 100, y0 + 60);
+  await page.mouse.click(x0 + 100, y0 + 60);
+  const front = await sketches();
+  expect(front).toHaveLength(before + 2);
+  expect(front.at(-1)!.plane).toBe("XZ");
+  expect(front.at(-1)!.support).toBeUndefined();
   expect(errors).toEqual([]);
 });
