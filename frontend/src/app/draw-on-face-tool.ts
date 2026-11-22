@@ -478,7 +478,7 @@ export class DrawOnFaceTool extends PanelTool {
         else this.draw();
       }),
       this.shape === "offset" ? this.selectRow("Décalage sur", last.roof ? "roof" : "face", [["face", "La face survolée"], ["roof", "Tout le toit (les deux pans)"]], (v) => ((last.roof = v === "roof"), this.lastEvent && this.move(this.lastEvent))) : null,
-      this.info(step), this.shape === "offset" ? null : groundRow((l, v, o, f) => this.selectRow(l, v, o, f), () => this.lastEvent && this.move(this.lastEvent)),
+      this.info(step), this.shape === "offset" ? null : groundRow((l, v, o, f) => this.selectRow(l, v, o, f), () => this.lastEvent && this.move(this.lastEvent), (l, c, f) => this.checkRow(l, c, f), this.ctx.viewport),
       this.shape === "line" ? this.checkRow("Couper le corps", last.cut, (v) => ((last.cut = v), this.render(), this.schedulePreview())) : null,
       this.closedShape
         ? this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {

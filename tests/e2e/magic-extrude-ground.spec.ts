@@ -28,6 +28,18 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   await tool.getByRole("combobox", { name: "Tracé" }).selectOption("rectangle");
   await expect(tool).toContainText("ou sur la grille");
   await tool.getByRole("checkbox", { name: "Puis tirer / pousser" }).uncheck();
+  // « Afficher les axes »: the three axes of the view, as in SketchUp — kept in this browser.
+  const axes = tool.getByRole("checkbox", { name: "Afficher les axes" });
+  await expect(axes).not.toBeChecked();
+  await axes.check();
+  expect(await page.evaluate(() => localStorage.getItem("cao.axes-visible"))).toBe("1");
+  if (process.env.SHOTS) {
+    await click(page, '[data-action="view"][data-view="iso"]');
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: `${process.env.SHOTS}/magie-axes.png` });
+    await click(page, '[data-action="view"][data-view="top"]');
+    await page.waitForTimeout(1200);
+  }
   // Away from anything: the upper left of the view, then a corner further on.
   const [x0, y0] = [view.x + view.w * 0.15, view.y + view.h * 0.2];
   await page.mouse.move(x0, y0);
@@ -46,6 +58,7 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   // (The sketch kept closed the tool: opened again, on the rectangle.)
   await click(page, '[data-action="face-strip"]');
   await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("rectangle");
+  await expect(tool.getByRole("checkbox", { name: "Afficher les axes" })).toBeChecked();
   await tool.getByRole("combobox", { name: "Sans corps, sur" }).selectOption("XZ");
   await click(page, '[data-action="view"][data-view="front"]');
   await page.waitForTimeout(1200);
@@ -59,4 +72,8 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   expect(front.at(-1)!.plane).toBe("XZ");
   expect(front.at(-1)!.support).toBeUndefined();
   expect(errors).toEqual([]);
+  // Hidden again: kept so.
+  await click(page, '[data-action="face-strip"]');
+  await tool.getByRole("checkbox", { name: "Afficher les axes" }).uncheck();
+  expect(await page.evaluate(() => localStorage.getItem("cao.axes-visible"))).toBe("0");
 });

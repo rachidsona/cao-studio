@@ -7,7 +7,9 @@
  */
 import type { FaceRef } from "../document/types";
 import { sketchFrame } from "../sketcher/frame";
-import type { FacePick } from "../viewport/viewport";
+import type { FacePick, Viewport } from "../viewport/viewport";
+import { axesVisible, setAxesVisible } from "../viewport/world-axes";
+import { el } from "../ui/dom";
 import type { LoadedFace } from "./face-strip-view";
 import type { ToolContext } from "./panel-tool";
 export const MAGIC_EXTRUDE = "Magie extrusion";
@@ -84,6 +86,16 @@ export function groundFace(plane: GroundPlane = groundPlane): LoadedFace {
   };
 }
 export const isGround = (face: { key: string } | null | undefined): boolean => !!face?.key.startsWith(GROUND);
-/** The panel's row « Sans corps, sur » (the plane the grid is drawn on); `changed`: the pointer read again. */
-export const groundRow = (select: (label: string, value: string, options: [string, string][], change: (v: string) => void) => HTMLElement, changed: () => void): HTMLElement =>
-  select("Sans corps, sur", groundPlane, GROUND_PLANES, (v) => ((groundPlane = v as GroundPlane), changed()));
+type Select = (label: string, value: string, options: [string, string][], change: (v: string) => void) => HTMLElement;
+type Check = (label: string, checked: boolean, change: (v: boolean) => void) => HTMLElement;
+/**
+ * The panel's rows « Sans corps, sur » (the plane the grid is drawn on; `changed`: the pointer read again) and
+ * « Afficher les axes » (the three axes of the view, as in SketchUp).
+ */
+export const groundRow = (select: Select, changed: () => void, check: Check, viewport: Viewport): HTMLElement =>
+  el(
+    "div",
+    { class: "space-y-1.5" },
+    select("Sans corps, sur", groundPlane, GROUND_PLANES, (v) => ((groundPlane = v as GroundPlane), changed())),
+    check("Afficher les axes", axesVisible(viewport), (v) => setAxesVisible(viewport, v)),
+  );

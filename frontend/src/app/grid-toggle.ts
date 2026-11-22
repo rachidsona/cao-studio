@@ -3,6 +3,7 @@
  * s'accroche toujours à son pas. Le choix est gardé dans ce navigateur.
  */
 import type { Viewport } from "../viewport/viewport";
+import { restoreAxes } from "../viewport/world-axes";
 
 const KEY = "cao.grid-visible";
 
@@ -24,5 +25,7 @@ export function bindGridToggle(root: HTMLElement, viewport: Viewport): void {
     // No storage: shown.
   }
   set(on);
+  // The three axes too (Magie extrusion's « Afficher les axes »), as they were left.
+  restoreAxes(viewport);
   button?.addEventListener("click", () => set(!viewport.gridVisible));
 }

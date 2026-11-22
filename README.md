@@ -1330,7 +1330,9 @@ opération existante.
   corps** : là où le pointeur ne survole aucun corps, la ligne, le rectangle ou le cercle se pose sur le plan choisi
   dans « Sans corps, sur » — *Dessus (XY)*, *Face (XZ)* ou *Côté (YZ)*, par l'origine, comme « Nouvelle esquisse » (ses
   coins s'accrochant aux coins des corps posés dans ce plan) — et devient une esquisse à lui, tirée en un corps nouveau
-  (`groundFace` de `app/magic-extrude.ts`). Choisissez *Ligne / polyligne*,
+  (`groundFace` de `app/magic-extrude.ts`). **Afficher les axes** (case du panneau) montre les trois axes de la vue
+  comme dans SketchUp — des droites par l'origine, rouge X, verte Y, bleue Z, pleines côté positif, en tirets côté
+  négatif (`viewport/world-axes.ts`) — ou les cache ; le choix est gardé dans ce navigateur (cachés au départ). Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
   ↕, ici en pointillés rouge et bleu avec leur valeur) s'affichent et peuvent être **saisies** (« Bord ↔ », « Bord ↕ »)
   pour placer le premier point exactement. Le **centre de la face** et le **milieu de chaque trait** (arête) sont marqués d'une
