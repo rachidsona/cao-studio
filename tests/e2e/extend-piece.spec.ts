@@ -38,6 +38,11 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   // Shown first, kept by OK.
   await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 8,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
   await expect(view).toHaveAttribute("data-chosen", "first second");
+  // A face of the preview clicked (the plinth already drawn longer): not taken — the preview goes, to click again.
+  await page.mouse.click(430, 735);
+  await expect(page.getByText("Cette face est celle de l'aperçu").first()).toBeVisible();
+  await expect(tool.locator("[data-extend-result]")).toHaveCount(0);
+  await expect(tool).toContainText("À prolonger : « Plinthe A »");
   // « Couvrir la face d'arrivée », off by default: ticked, the piece widens to it and its Direction no longer counts.
   const cover = tool.getByLabel("Couvrir la face d'arrivée");
   await expect(cover).not.toBeChecked();

@@ -18,7 +18,7 @@ import { bodyLabel, findFeature } from "../document/operations";
 import { extendable } from "../document/extend-element";
 import { extendBy, extendTo, linkBodies, onEnvelope, withoutLinks, type Extended, type FacePlane } from "../document/extend-reach";
 import { frameOf } from "../sketcher/frame";
-import type { CadDocument, FaceRef, Feature, Vec3 } from "../document/types";
+import { featureOfBody, type CadDocument, type FaceRef, type Feature, type Vec3 } from "../document/types";
 import { removing } from "./curic-common";
 import { el } from "../ui/dom";
 import { formatLength } from "../measurements/units";
@@ -93,6 +93,13 @@ export class ExtendTool extends PanelTool {
       if (aimed(this.way) && this.aiming) {
         [this.wayFace, this.aiming] = [side.plane.normal, false];
         return this.refresh();
+      }
+      // A face of the preview (the result not kept yet) is of no element of the project — reached, the extension would
+      // reach itself: the preview is taken away, to click the face meant.
+      if (!findFeature(this.ctx.doc(), featureOfBody(pick.bodyId))) {
+        this.made = null;
+        void this.ctx.preview(null).then(() => this.render());
+        return this.ctx.notify("Cette face est celle de l'aperçu, pas encore gardé : il est retiré, cliquez de nouveau la face voulue.", "info");
       }
       // The element itself clicked again (the piece itself, when it alone is extended): another face of it to extend.
       const again = this.moving && (this.piece ? pick.bodyId === this.moving.bodyId : this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId));
