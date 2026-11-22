@@ -27,6 +27,8 @@ export interface ShelfLayout {
   shelves: [number, number][];
   /** Cloisons: the intervals are along x. */
   vertical?: true;
+  /** ShelfParams.within: the niches as wide as they really are (`niches` are cut to the box), for what is said of them. */
+  real?: [number, number][];
 }
 
 /** « étagère » or « cloison », for the messages. */
@@ -71,7 +73,9 @@ export function shelfLayout(box: NicheBox, input: ShelfInput): ShelfLayout | str
   if (!Number.isInteger(count) || count < 1 || count > MAX_SHELVES) return `Le nombre de ${word}s va de 1 à ${MAX_SHELVES}.`;
   if (!(Number.isFinite(t) && t > 0)) return `Donnez une épaisseur de ${word} positive.`;
   // Cloisons divide along x what shelves divide along y.
-  const [start, end] = vertical ? [box.x0, box.x1] : [box.y0, box.y1];
+  const [first, last] = vertical ? [box.x0, box.x1] : [box.y0, box.y1];
+  // In a body furnished: the niche's real width shared (ShelfParams.within), the niches then cut to the box.
+  const [start, end] = input.within ?? [first, last];
   const free = end - start - count * t;
   if (free <= TOLERANCE) return `Les ${word}s prennent toute la ${vertical ? "largeur" : "hauteur"} de la niche : il n'y a plus de place pour les niches.`;
   let heights: number[];
@@ -97,7 +101,10 @@ export function shelfLayout(box: NicheBox, input: ShelfInput): ShelfLayout | str
       y += t;
     }
   });
-  return vertical ? { niches, shelves, vertical: true } : { niches, shelves };
+  if (shelves.some(([a, b]) => a < first - TOLERANCE || b > last + TOLERANCE)) return `Une ${word} tomberait hors de la niche : placez-les à nouveau.`;
+  if (!input.within) return vertical ? { niches, shelves, vertical: true } : { niches, shelves };
+  const kept = niches.map(([a, b]): [number, number] => [Math.max(a, first), Math.min(b, last)]);
+  return { niches: kept, shelves, ...(vertical ? { vertical: true as const } : {}), real: niches };
 }
 
 /** The box of an interval of a layout (a niche or a shelf) inside the niche divided. */

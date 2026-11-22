@@ -14,8 +14,10 @@ export interface WallLine {
   p: Vec2;
   n: Vec2;
 }
-/** Lines a niche's bottom (y0) or top (y1) is drawn to: the face of a turned shelf it sits against. */
+/** Lines a niche's left (x0), right (x1), bottom (y0) or top (y1) is drawn to: the face of a turned cloison or shelf it sits against. */
 export interface NicheSides {
+  x0?: WallLine;
+  x1?: WallLine;
   y0?: WallLine;
   y1?: WallLine;
 }
@@ -99,13 +101,13 @@ function clip(polygon: Vec2[], line: WallLine, inside: Vec2): Vec2[] {
 
 /**
  * The niche as it is between the walls: its sides on the opening drawn out and cut by them, a side on a turned shelf
- * drawn to its face (`sides`); null when it touches none (a rectangle, as it is) or nothing is left.
+ * or cloison drawn to its face (`sides`); null when it touches none (a rectangle, as it is) or nothing is left.
  */
 export function nicheOutline(box: NicheBox, [u0, v0, u1, v1]: readonly [number, number, number, number], lines: readonly WallLine[], sides: NicheSides = {}): Vec2[] | null {
   const wall = lines.length > 0;
   const ends = {
-    x0: wall && Math.abs(box.x0 - u0) < TOUCH,
-    x1: wall && Math.abs(box.x1 - u1) < TOUCH,
+    x0: (wall && Math.abs(box.x0 - u0) < TOUCH) || !!sides.x0,
+    x1: (wall && Math.abs(box.x1 - u1) < TOUCH) || !!sides.x1,
     y0: (wall && Math.abs(box.y0 - v0) < TOUCH) || !!sides.y0,
     y1: (wall && Math.abs(box.y1 - v1) < TOUCH) || !!sides.y1,
   };
@@ -114,7 +116,7 @@ export function nicheOutline(box: NicheBox, [u0, v0, u1, v1]: readonly [number, 
   const [y0, y1] = [ends.y0 ? box.y0 - FAR : box.y0, ends.y1 ? box.y1 + FAR : box.y1];
   const middle: Vec2 = [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2];
   let polygon: Vec2[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-  for (const line of [...lines, ...[sides.y0, sides.y1].filter((l): l is WallLine => !!l)]) {
+  for (const line of [...lines, ...[sides.x0, sides.x1, sides.y0, sides.y1].filter((l): l is WallLine => !!l)]) {
     polygon = clip(polygon, line, middle);
     if (polygon.length < 3) return null;
   }

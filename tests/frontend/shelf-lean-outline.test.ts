@@ -1,7 +1,8 @@
 /** Le tracé d'une étagère tournée d'un corps aménagé : tourné comme son volume, jusqu'aux parois ou à la cloison. */
 import { describe, expect, it } from "vitest";
 import { nicheOutline, type WallLine } from "../../frontend/src/sketcher/niche-outline";
-import { leanedOutline, leanedShelves, leanTurn, onShelfEdge, shelfSides } from "../../frontend/src/sketcher/shelf-lean-outline";
+import { leanedOutline, leanedShelves, leanTurn, onShelfEdge, outlinedParts, reachAcross, sharedWidth, shelfSides } from "../../frontend/src/sketcher/shelf-lean-outline";
+import { shelfLayout } from "../../frontend/src/sketcher/shelves";
 import { withBodyFurnished } from "../../frontend/src/document/body-opening";
 import { withRecipe } from "../../frontend/src/document/niche-recipe";
 import type { CadDocument, SketchFeature } from "../../frontend/src/document/types";
@@ -26,7 +27,7 @@ describe("le tracé d'une étagère tournée", () => {
   });
 
   it("d'une paroi à l'autre, tournée autour de son milieu", () => {
-    const outline = leanedOutline({ x0: 18, x1: 582, y0: 191, y1: 209 }, Math.atan2(100, 564), opening, walls)!;
+    const outline = leanedOutline({ box: { x0: 18, x1: 582, y0: 191, y1: 209 }, turn: Math.atan2(100, 564) }, opening, walls)!;
     const us = outline.map(([u]) => u);
     const vs = outline.map(([, v]) => v);
     expect([Math.min(...us), Math.max(...us)].map(Math.round)).toEqual([18, 582]);
@@ -35,7 +36,7 @@ describe("le tracé d'une étagère tournée", () => {
   });
 
   it("dans une niche bordée d'une cloison : son bout revient sur elle", () => {
-    const outline = leanedOutline({ x0: 18, x1: 291, y0: 191, y1: 209 }, 0.3, opening, walls)!;
+    const outline = leanedOutline({ box: { x0: 18, x1: 291, y0: 191, y1: 209 }, turn: 0.3 }, opening, walls)!;
     expect(Math.round(Math.max(...outline.map(([u]) => u)))).toBe(291);
   });
 
@@ -83,5 +84,58 @@ describe("le tracé d'une étagère tournée", () => {
     const turned = shelves([1, 0.3, 0]);
     expect(turned).toHaveLength(2);
     expect(turned[0]!.turn).toBeCloseTo(Math.atan2(0.3, 1), 9);
+  });
+});
+
+describe("les cloisons comme les étagères", () => {
+  const shelf = { box: { x0: 18, x1: 582, y0: 191, y1: 209 }, turn: Math.atan2(100, 564) };
+
+  it("une cloison tournée va du dessous au dessus, penchée ; son angle part de la verticale", () => {
+    expect(leanTurn([0, 1, 0], frame, Math.PI / 2)).toBeNull();
+    expect(leanTurn([0.2, 1, 0], frame, Math.PI / 2)).toBeCloseTo(-Math.atan2(0.2, 1), 9);
+    const outline = leanedOutline({ box: { x0: 291, x1: 309, y0: 18, y1: 382 }, turn: 0.2, vertical: true }, opening, walls)!;
+    const vs = outline.map(([, v]) => v);
+    expect([Math.min(...vs), Math.max(...vs)].map(Math.round)).toEqual([18, 382]);
+    const us = outline.map(([u]) => u);
+    expect(Math.max(...us) - Math.min(...us)).toBeGreaterThan(18 + 364 * Math.tan(0.2) - 1);
+  });
+
+  it("une cloison droite sous une étagère tournée monte jusqu'à sa face ; ses grands bords droits partent", () => {
+    const cloison = { box: { x0: 118, x1: 136, y0: 18, y1: 191 }, turn: 0, vertical: true };
+    const drawn = outlinedParts([shelf, cloison, { box: { x0: 400, x1: 418, y0: 209, y1: 382 }, turn: 0, vertical: true }]);
+    // The turned shelf, and the cloison under it; not the one above (it butts on the top face, here too: both).
+    const mine = drawn.find((d) => d.part === cloison)!;
+    expect(mine.sides.y1).toBeDefined();
+    const outline = leanedOutline(cloison, opening, walls, mine.sides)!;
+    const top = Math.max(...outline.map(([, v]) => v));
+    // Under the shelf's face at u 136: 191 at its middle, less 164 × 100 / 564.
+    expect(top).toBeCloseTo(200 - 9 / Math.cos(shelf.turn) - 164 * (100 / 564), 0);
+    expect(Math.min(...outline.map(([, v]) => v))).toBeCloseTo(18, 6);
+    expect(onShelfEdge([[118, 18], [118, 191]], [cloison])).toBe(true);
+    expect(onShelfEdge([[100, 18], [100, 191]], [cloison])).toBe(false);
+  });
+
+  it("les niches de part et d'autre d'une cloison tournée suivent ses faces", () => {
+    const cloison = { box: { x0: 291, x1: 309, y0: 18, y1: 382 }, turn: 0.2, vertical: true };
+    expect(shelfSides({ x0: 18, x1: 291, y0: 18, y1: 382 }, [cloison]).x1).toBeDefined();
+    expect(shelfSides({ x0: 309, x1: 582, y0: 18, y1: 382 }, [cloison]).x0).toBeDefined();
+    expect(shelfSides({ x0: 18, x1: 200, y0: 18, y1: 382 }, [cloison])).toEqual({});
+  });
+
+  it("les cloisons d'une niche se partagent sa vraie largeur, ses niches coupées à sa boîte", () => {
+    // A trapezoid 0 → 400 wide at the bottom, 100 → 300 at the top: 50 → 350 through its middle.
+    expect(reachAcross([[0, 0], [400, 0], [300, 200], [100, 200]], true)).toEqual([50, 350]);
+    expect(reachAcross(null, true)).toBeNull();
+    const input = { count: 1, thickness: 18, mode: "equal" as const, fixed: 0, vertical: true };
+    expect(sharedWidth({ x0: 100, x1: 300, y0: 0, y1: 200 }, input, [[0, 0], [400, 0], [300, 200], [100, 200]]).within).toEqual([50, 350]);
+    // Its box's width already, or shelves: nothing kept (an old one dropped).
+    expect(sharedWidth({ x0: 50, x1: 350, y0: 0, y1: 200 }, { ...input, within: [0, 1] }, [[0, 0], [400, 0], [300, 200], [100, 200]]).within).toBeUndefined();
+    expect(sharedWidth({ x0: 100, x1: 300, y0: 0, y1: 200 }, { ...input, vertical: false }, [[0, 0], [400, 0], [300, 200], [100, 200]]).within).toBeUndefined();
+    const layout = shelfLayout({ x0: 100, x1: 400, y0: 0, y1: 200 }, { count: 1, thickness: 18, mode: "equal", fixed: 0, vertical: true, within: [0, 418] });
+    if (typeof layout === "string") throw new Error(layout);
+    expect(layout.shelves).toEqual([[200, 218]]);
+    expect(layout.niches).toEqual([[100, 200], [218, 400]]);
+    expect(layout.real).toEqual([[0, 200], [218, 418]]);
+    expect(typeof shelfLayout({ x0: 100, x1: 400, y0: 0, y1: 200 }, { count: 1, thickness: 18, mode: "bottom", fixed: 50, vertical: true, within: [0, 418] })).toBe("string");
   });
 });

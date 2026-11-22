@@ -115,6 +115,28 @@ describe("un corps aux parois en biais, aménagé", () => {
     expect(shelf[1]![1]! - shelf[0]![1]!).toBeGreaterThan(40);
   }, 120_000);
 
+  it("une cloison sous une étagère tournée monte jusqu'à sa face ; tournée, elle va d'une paroi à l'autre", () => {
+    const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(0) } as CadDocument;
+    const made = withBodyFurnished(base, opening, "Cadre", ["wl", "wr", "wb", "wf"]);
+    if (typeof made === "string") throw new Error(made);
+    const sketch = made.doc.features.find((f): f is SketchFeature => f.id === made.sketch && f.type === "sketch")!;
+    const partition = sketch.offsets!.find(isPartition)!.id;
+    const fill = (cloison: object) => {
+      const filled = withRecipe(made.doc, { sketch: made.sketch, partition, path: [0] }, { steps: [{ at: [], input: { count: 1, thickness: 18, mode: "equal", fixed: 0, lean: [564, 100, 0] } }, { at: [0], input: { count: 1, thickness: 18, mode: "bottom", fixed: 100, vertical: true, ...cloison } }], equipment: [] });
+      if (typeof filled === "string") throw new Error(filled);
+      return shelves(filled).find(([lo, hi]) => hi![1]! - lo![1]! > 100 && hi![0]! - lo![0]! < 100)!;
+    };
+    // Straight, 100 from the left: from the bottom wall up to the shelf's slanted face, some 30 below where it stood.
+    const straight = fill({});
+    expect(straight[0]![1]).toBe(-182);
+    expect(straight[1]![1]!).toBeLessThan(-30);
+    expect(straight[1]![1]!).toBeGreaterThan(-45);
+    // Turned: leaning, from the bottom wall to the shelf still.
+    const turned = fill({ lean: [60, 364, 0] });
+    expect(turned[0]![1]).toBe(-182);
+    expect(turned[1]![0]! - turned[0]![0]!).toBeGreaterThan(30);
+  }, 120_000);
+
   /** The opening with one door over it (inset, 3 mm of gap): its volume and its box. */
   function door(lean: number): { volume: number; box: number[][] } {
     const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(lean) } as CadDocument;

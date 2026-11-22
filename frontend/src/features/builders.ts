@@ -32,6 +32,7 @@ import { buildFronts } from "./fronts";
 import { buildNiche } from "./niche";
 import { underCeiling } from "./sloped-ceiling";
 import { withinWalls } from "./within-walls";
+import { shelfParts } from "../sketcher/shelf-lean-outline";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
 
@@ -138,7 +139,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
   }
   if (feature.clip) prism = clipped(prism, feature.clip);
   if (feature.ceiling) prism = underCeiling(prism, feature.ceiling, feature.name);
-  if (feature.host) prism = withinWalls(prism, feature.host, frameOf(profile), lookup, feature.lean);
+  if (feature.host) prism = withinWalls(prism, feature.host, frameOf(profile), lookup, feature.lean, shelfParts(profile.geometry, frameOf(profile)));
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }
 

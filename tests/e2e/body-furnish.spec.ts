@@ -99,6 +99,14 @@ test("sans Répartition, Cloisons sur un cadre sélectionné l'aménage d'abord,
   const tool = page.getByRole("dialog", { name: "Cloisons" });
   await expect(tool).toBeVisible({ timeout: 30_000 });
   await expect(tool).toContainText("Niche choisie");
+  // Like the shelves, the cloisons of a body furnished may lean: « Debout » when straight.
+  const orientation = tool.getByLabel("Orientation");
+  await expect(orientation.locator("option")).toHaveText(["Debout", "Selon X", "Selon Y", "Selon Z", "D'équerre à une face (cliquez-la)", "Parallèle à une face (cliquez-la)"]);
+  await orientation.selectOption("y");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  const doc = async () => (await page.evaluate(async (url) => (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; host?: unknown; lean?: number[] }[] } }, api)).document.features;
+  await expect.poll(async () => (await doc()).filter((f) => f.type === "extrude" && f.host).map((f) => f.lean), { timeout: 30_000 }).toEqual([[0, 1, 0]]);
   expect(errors).toEqual([]);
 });
 

@@ -1,6 +1,6 @@
 /**
- * « Orientation » des étagères d'un corps aménagé (ShelfParams.lean) : à plat, selon X, Y ou Z, d'équerre à une face
- * cliquée, ou parallèle à elle — elles vont toujours d'une paroi à l'autre (features/within-walls.ts).
+ * « Orientation » des étagères et cloisons d'un corps aménagé (ShelfParams.lean) : droites, selon X, Y ou Z, d'équerre à
+ * une face cliquée, ou parallèles à elle — elles vont toujours d'une paroi à l'autre (features/within-walls.ts).
  */
 import { el } from "../ui/dom";
 
@@ -20,11 +20,14 @@ interface Host {
   notify(message: string, kind?: "info" | "success" | "error"): void;
 }
 
-/** The select: `set` gets the direction (none: flat) and the face's way; a face's choice waits for it clicked in the view. */
-export function leanSelect(lean: Lean | undefined, face: LeanFace | undefined, set: (lean?: Lean, face?: LeanFace) => void, host: Host): HTMLSelectElement {
+/**
+ * The select: `set` gets the direction (none: flat) and the face's way; a face's choice waits for it clicked in the view.
+ * `cloisons`: said of cloisons (upright when straight).
+ */
+export function leanSelect(lean: Lean | undefined, face: LeanFace | undefined, set: (lean?: Lean, face?: LeanFace) => void, host: Host, cloisons = false): HTMLSelectElement {
   const now = choiceOf(lean, face);
   const options: [string, string][] = [
-    ["", "À plat"],
+    ["", cloisons ? "Debout" : "À plat"],
     ["x", "Selon X"],
     ["y", "Selon Y"],
     ["z", "Selon Z"],
@@ -35,7 +38,8 @@ export function leanSelect(lean: Lean | undefined, face: LeanFace | undefined, s
   select.addEventListener("change", () => {
     const way = select.value;
     if (way !== "square" && way !== "parallel") return set(AXES[way]);
-    host.notify(way === "square" ? "Cliquez la face à laquelle les étagères seront d'équerre (un côté en biais)." : "Cliquez la face à laquelle les étagères seront parallèles (un dessus en pente).", "info");
+    const many = cloisons ? "cloisons" : "étagères";
+    host.notify(way === "square" ? `Cliquez la face à laquelle les ${many} seront d'équerre (${cloisons ? "un dessus en pente" : "un côté en biais"}).` : `Cliquez la face à laquelle les ${many} seront parallèles (${cloisons ? "un côté en biais" : "un dessus en pente"}).`, "info");
     host.aimFace?.((n) => {
       // Parallel: along the face's line in the sketch's plane (square to both normals).
       const p = host.planeNormal?.() ?? [0, 0, 1];

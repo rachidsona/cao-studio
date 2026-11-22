@@ -191,6 +191,12 @@ export interface ShelfParams {
   lean?: [number, number, number];
   /** `lean` given by a face clicked: square to it, or parallel to it (what the panel shows). */
   leanFace?: "square" | "parallel";
+  /**
+   * In a body furnished, cloisons: the niche's real width (from, to along u), through its middle, between slanted walls
+   * or turned pieces — what its cloisons share instead of its box's width; the niches are still cut to the box.
+   * shortcut: measured when the cloisons are placed, not again when the walls move — place them again then.
+   */
+  within?: [number, number];
 }
 
 /**

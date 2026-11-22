@@ -2461,7 +2461,11 @@ opération existante.
   X, Y ou Z, ou d'équerre ou parallèle à une face cliquée (`leanFace`) ; elles sont tournées dans leur plan avant d'aller aux parois
   (`sketcher/shelf-lean.ts`) ; leur tracé bleu est tourné de même, jusqu'aux parois ou à la cloison
   (`sketcher/shelf-lean-outline.ts`), et les niches posées dessus ou dessous suivent leur face (volume vert, remplissage
-  bleu, aperçu orange : `shelfSides`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
+  bleu, aperçu orange : `shelfSides`). Les cloisons ont la même « Orientation » (« Debout » au lieu de « À plat ») : tournée,
+  une cloison l'est aussi dans son tracé et les niches de chaque côté suivent sa face ; une pièce droite qui bute sur une
+  pièce tournée va jusqu'à sa face, son volume comme son tracé (`outlinedParts`, `withinWalls(…, parts)`). Dans une niche
+  aux parois en biais, des cloisons seules se partagent sa vraie largeur à mi-hauteur (`ShelfParams.within`,
+  `sharedWidth`), leurs niches coupées à la boîte et leurs largeurs dites telles quelles (`ShelfLayout.real`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
   est le rectangle prolongé vers les parois qu'il touche, recoupé par leurs faces (`sketcher/niche-outline.ts`), et
   le tracé bleu de l'esquisse aussi, et son remplissage : ses traits et la bande des parois partent, une étagère et
   une niche vont jusqu'aux parois (`linesBetweenWalls`, `regionsBetweenWalls`, `app/sketch-display.ts`) ; une

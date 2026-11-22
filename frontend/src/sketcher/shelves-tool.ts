@@ -21,6 +21,7 @@ import type { ExtrusionGroup, SketchExtrusion } from "./mode";
 import { boundaryCurves, regionAt } from "./region-pick";
 import { LAST, WORDS } from "./shelves-words";
 import { leanSelect, type LeanFace } from "./shelf-lean";
+import { sharedWidth } from "./shelf-lean-outline";
 import { addShelves, alignedInputs, MAX_SHELVES, nicheBox, partBox, quickDivision, shelfLayout, shelfLines, type NicheBox, type ShelfInput, type ShelfLayout, type ShelfMode } from "./shelves";
 import type { Preview } from "./tools";
 
@@ -43,6 +44,8 @@ export interface ShelvesHost {
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** In a body furnished: whether its shelves may lean (ShelfParams.lean), and the normal of the next face clicked. */
   orientable?(): boolean;
+  /** In a body furnished: a niche's outline between the walls and the turned pieces (null: its box). */
+  outline?(box: NicheBox): [number, number][] | null;
   aimFace?(done: (normal: [number, number, number]) => void): void;
   planeNormal?(): [number, number, number];
 }
@@ -186,7 +189,9 @@ export class ShelvesTool {
     const alone = this.niches.filter((n) => !spans.some((s) => s.members.some((m) => same(m, n.box))));
     const targets: { box: NicheBox; span?: NicheSpan }[] = [...alone.map((n) => ({ box: n.box })), ...spans.map((span) => ({ box: span.box, span }))];
     const inputs = this.lining(targets) && this.inLine ? alignedInputs(targets.map((t) => t.box), this.input) : targets.map(() => this.input);
-    return targets.map((t, i) => ({ ...t, input: inputs[i] as ShelfInput }));
+    // Cloisons alone in a niche of a body furnished share its real width (ShelfParams.within).
+    const outline = (box: NicheBox) => (this.kind === "cloisons" && !this.column && targets.length === 1 && !targets[0]!.span ? (this.host.outline?.(box) ?? null) : null);
+    return targets.map((t, i) => ({ ...t, input: sharedWidth(t.box, inputs[i] as ShelfInput, outline(t.box)) }));
   }
 
   /** Cloisons in niches of different widths can be brought onto one line. */
@@ -259,7 +264,7 @@ export class ShelvesTool {
       this.input = { ...rest, ...(lean ? { lean } : {}), ...(lean && face ? { leanFace: face } : {}) };
       this.recompute();
     };
-    const orient = this.kind === "shelves" && this.host.orientable?.() ? leanSelect(this.input.lean, this.input.leanFace, setLean, this.host) : null;
+    const orient = this.host.orientable?.() ? leanSelect(this.input.lean, this.input.leanFace, setLean, this.host, this.kind === "cloisons") : null;
     const check = (label: string, checked: boolean, set: (v: boolean) => void): HTMLElement => {
       const box = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked });
       box.addEventListener("change", () => set(box.checked));
@@ -273,7 +278,7 @@ export class ShelvesTool {
     const first = this.targets[0]?.box;
     const size = first ? `${formatLength(first.x1 - first.x0, unit)} × ${formatLength(first.y1 - first.y0, unit)}` : null;
     const problem = this.layouts.find((l): l is string => typeof l === "string");
-    const heightsOf = (layout: ShelfLayout | string | undefined) => (layout && typeof layout === "object" ? layout.niches.map(([a, b]) => formatLength(b - a, unit)).join(" · ") : "");
+    const heightsOf = (layout: ShelfLayout | string | undefined) => (layout && typeof layout === "object" ? (layout.real ?? layout.niches).map(([a, b]) => formatLength(b - a, unit)).join(" · ") : "");
     const shown = heightsOf(this.layouts[0]);
     const same = this.layouts.every((l) => heightsOf(l) === shown);
     const result =
@@ -462,7 +467,7 @@ export class ShelvesTool {
     if (!rec || !isShelves(rec)) return;
     const g = this.host.geometry();
     const depth = extrusionOption.on ? extrusionOption.depth : undefined;
-    const step = { kind: "shelves" as const, of: rec.step.of, niche: rec.step.niche, input: { ...this.input }, ...(depth !== undefined ? { depth } : {}) };
+    const step = { kind: "shelves" as const, of: rec.step.of, niche: rec.step.niche, input: { ...(this.targets[0]?.input ?? this.input) }, ...(depth !== undefined ? { depth } : {}) };
     const rebuilt = rebuildChain({ ...g, offsets: (g.offsets ?? []).map((r) => (r.id === rec.id ? { ...r, step } : r)) }, rec.step.of);
     if (typeof rebuilt === "string") return this.host.notify(rebuilt, "error");
     const groups = extrusionGroups(g.offsets ?? [], rebuilt);

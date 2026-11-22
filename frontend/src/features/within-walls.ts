@@ -3,11 +3,13 @@
  * en biais — une étagère d'un cadre aux côtés penchés en prend la pente à ses deux bouts — et les suivent à chaque
  * recalcul. Un élément qui touche le bord de l'ouverture (un bout d'étagère, le haut d'une cloison) y est allongé loin
  * dans son sens, puis recoupé par les parois : on garde le morceau où il était. Ce qui bute sur une cloison ou une
- * étagère de la Répartition reste comme il est.
+ * étagère tournée de la Répartition va jusqu'à sa face ; sur une droite, il reste comme il est.
  */
 import { basicFaceExtrusion, drawRectangle, measureVolume, Plane, Vector, type Shape3D } from "replicad";
 import type { BodyHost, Vec3 } from "../document/types";
 import type { SketchFrame } from "../sketcher/frame";
+import { shelfSides, type ShelfPart } from "../sketcher/shelf-lean-outline";
+import type { WallLine } from "../sketcher/niche-outline";
 import { requireSolid, type OutputLookup } from "./common";
 
 const dot = (a: Vec3, b: readonly number[]) => a[0] * b[0]! + a[1] * b[1]! + a[2] * b[2]!;
@@ -19,8 +21,9 @@ const REACH = 20000;
 /**
  * The element between the walls of `host` (the opening's box in the sketch's u, v), or as it is when it touches none.
  * `lean`: its length turned in the sketch's plane along this direction first (a shelf square to a slanted wall).
+ * `parts`: the shelves and cloisons of the sketch — an end that butts on a turned one goes to its face.
  */
-export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, lookup: OutputLookup, lean?: Vec3): Shape3D {
+export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, lookup: OutputLookup, lean?: Vec3, parts: readonly ShelfPart[] = []): Shape3D {
   const [min, max] = prism.boundingBox.bounds;
   const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [(k & 1 ? max : min)[0]!, (k & 2 ? max : min)[1]!, (k & 4 ? max : min)[2]!]);
   const span = (axis: Vec3) => {
@@ -33,11 +36,16 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
   const alongU = su[1] - su[0] >= sv[1] - sv[0];
   const [first, [lo, hi], [b0, b1]] = alongU ? [frame.u, su, [u0, u1]] : [frame.v, sv, [v0, v1]];
   const ends: number[] = [...(Math.abs(lo - b0) < TOUCH ? [-1] : []), ...(Math.abs(hi - b1) < TOUCH ? [1] : [])];
+  // An end off the opening butting on a turned shelf or cloison: drawn to its face.
+  const sides = shelfSides({ x0: su[0], x1: su[1], y0: sv[0], y1: sv[1] }, parts);
+  const stops = new Map<number, WallLine>();
+  for (const [sign, side] of [[-1, alongU ? sides.x0 : sides.y0], [1, alongU ? sides.x1 : sides.y1]] as const) if (side && !ends.includes(sign)) stops.set(sign, side);
+  const middle = [(su[0] + su[1]) / 2, (sv[0] + sv[1]) / 2];
   const turned = lean ? leaned(prism, first, frame, lean, [(min[0]! + max[0]!) / 2, (min[1]! + max[1]!) / 2, (min[2]! + max[2]!) / 2]) : null;
   if (turned) prism = turned.prism;
   const axis = turned?.axis ?? first;
   // Turned, both ends are drawn out: one on a wall goes to it, the other back to where it stood (a cloison, a shelf).
-  const grow = turned ? [-1, 1] : ends;
+  const grow = turned ? [-1, 1] : [...ends, ...stops.keys()];
   if (!grow.length) return prism;
   const walls = host.bodies.flatMap((id) => {
     try {
@@ -46,7 +54,7 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
       return [];
     }
   });
-  if (!walls.length && !turned) return prism;
+  if (!walls.length && !turned && !stops.size) return prism;
   // Drawn out by its end faces, then cut by the walls.
   let long: Shape3D = prism.clone() as Shape3D;
   for (const sign of grow) {
@@ -67,10 +75,17 @@ export function withinWalls(prism: Shape3D, host: BodyHost, frame: SketchFrame, 
     long = fused;
   }
   for (const sign of grow.filter((g) => !ends.includes(g))) {
-    // The plane square to its first length where that end stood, the element kept on its side.
+    // The face it butts on, or the plane square to its first length where that end stood: the element kept on its side.
+    const stop = stops.get(sign);
     const at = sign < 0 ? lo : hi;
-    const point = [0, 1, 2].map((i) => frame.origin[i]! + first[i]! * at) as Vec3;
-    const plane = new Plane(point, null, first.map((x) => -sign * x) as Vec3);
+    let point = [0, 1, 2].map((i) => frame.origin[i]! + first[i]! * at) as Vec3;
+    let normal = first.map((x) => -sign * x) as Vec3;
+    if (stop) {
+      const inward = (middle[0]! - stop.p[0]) * stop.n[0] + (middle[1]! - stop.p[1]) * stop.n[1] >= 0 ? 1 : -1;
+      point = [0, 1, 2].map((i) => frame.origin[i]! + frame.u[i]! * stop.p[0] + frame.v[i]! * stop.p[1]) as Vec3;
+      normal = [0, 1, 2].map((i) => inward * (frame.u[i]! * stop.n[0] + frame.v[i]! * stop.n[1])) as Vec3;
+    }
+    const plane = new Plane(point, null, normal);
     const slab = drawRectangle(2 * REACH, 2 * REACH).sketchOnPlane(plane).extrude(REACH) as Shape3D;
     plane.delete();
     const kept: Shape3D = long.intersect(slab);
