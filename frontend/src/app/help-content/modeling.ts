@@ -125,18 +125,6 @@ export const MODELING: HelpFamily[] = [
         tip: "Toutes les arêtes d'une même opération doivent appartenir au même corps. La distance est de 1 mm au départ.",
       },
       {
-        keys: ["data-action:shell"],
-        name: "Coque",
-        what: "Creuse un corps en gardant une paroi de l'épaisseur voulue (bac, tiroir, boîte).",
-        steps: [
-          "Sélectionnez une face du corps puis cliquez « Coque », ou cliquez « Coque » puis une face du corps.",
-          "Cliquez les autres faces à laisser ouvertes ; elles passent en orange. Recliquez une face pour la refermer.",
-          "Réglez l'« Épaisseur » de la paroi.",
-          "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
-        ],
-        tip: "Sans face ouverte, le corps devient creux et fermé. L'épaisseur est de 3 mm au départ. Pour vider un corps sans rien ouvrir, ou en faire un panneau par côté, prenez « Vider un corps ».",
-      },
-      {
         keys: ["data-action:hollow"],
         name: "Vider un corps",
         what: "Vide un corps à l'intérieur, quelle que soit sa forme (base en triangle, en carré, en cercle, côtés de biais), en gardant des côtés de l'épaisseur saisie — joints, ou chacun à part.",

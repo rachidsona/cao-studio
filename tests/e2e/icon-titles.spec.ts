@@ -7,11 +7,11 @@ test("la bulle d'une icône d'outil dit son nom seulement", async ({ page }) => 
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
   await newProject(page, "zz-bulles");
-  const shell = page.locator('[data-ribbon="model"] [data-action="shell"]');
-  await expect(shell).toHaveAttribute("data-tip", "Coque");
-  await expect(shell).toHaveAttribute("data-hint", /creuser le corps/);
-  await expect(shell).not.toHaveAttribute("title", /.*/);
-  await expect(page.locator('[data-ribbon="model"] [data-action="hollow"]')).toHaveAttribute("data-tip", "Vider un corps");
+  const hollow = page.locator('[data-ribbon="model"] [data-action="hollow"]');
+  await expect(hollow).toHaveAttribute("data-tip", "Vider un corps");
+  await expect(hollow).not.toHaveAttribute("title", /.*/);
+  // « Coque » is gone from the ribbon (its steps in a project still open).
+  await expect(page.locator('[data-action="shell"]')).toHaveCount(0);
   await expect(page.locator('[data-ribbon="model"] [data-action="fillet"]')).toHaveAttribute("data-tip", "Congé");
   // No icon of the model's ribbon keeps the browser's grey tooltip.
   const titled = await page.evaluate(() =>

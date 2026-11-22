@@ -756,7 +756,7 @@ opération existante.
   par-dessus la vue, où ils cachaient ce qu'on voulait cliquer ; les clics passent à travers eux (un bouton OK ou
   Terminer dessous reste cliquable) (`data-ref="toasts"` de
   `templates/editor/editor.html`, `toast` de `ui/dom.ts`).
-- **Survolée, une icône d'outil dit son nom seulement** (« Coque », « Vider un corps »), dans une **pastille au style
+- **Survolée, une icône d'outil dit son nom seulement** (« Congé », « Vider un corps »), dans une **pastille au style
   des cotes des pièces** (contour et texte orange #f8500a sur blanc, `.cad-icon-tip`), sous l'icône — au-dessus près
   du bas de la fenêtre. `ui/icon-titles.ts` ôte le `title` de chaque bouton-icône (une image, pas de texte) : son nom
   devient `data-tip` (et son `aria-label` s'il n'en avait pas), son explication `data-hint`, que « Outils » (Ctrl + K)
@@ -1360,7 +1360,7 @@ opération existante.
     - C'est une couronne dessinée sur le pignon et extrudée le long de la face, en une annulation
       (`features/curved-offset.ts`, `app/curved-offset.ts`).
     - Les autres tracés (ligne, rectangle, cercle) restent sur les faces planes ; pour évider tout le volume,
-      **Coque** (groupe Modifier).
+      **Vider un corps** (groupe Modifier).
   - **Décalage sur tout le toit** (choix « Décalage sur : Tout le toit (les deux pans) ») : en survolant un pan d'un
     toit à deux pans, le contour passe par-dessus le faîtage, à la même distance des deux égouts (le long des pans)
     et des deux pignons.
@@ -1517,7 +1517,7 @@ opération existante.
   Recouvrement, Copier l'aménagement, Stock de chutes, Fabrication groupée…, et en esquisse polygone, ovale, texte,
   projeter…). Le choix est mémorisé par barre (modèle, esquisse) dans le navigateur ; « Par défaut » dans un menu remet
   son groupe comme à l'origine. Les **icônes sont au trait seul**, vides dedans (aucun aplat ni dégradé : seulement les traits, les
-  points et les lettres) ; les outils 3D (Extruder, Panneau, Perçage, Congé, Chanfrein, Coque, Combiner, Scinder,
+  points et les lettres) ; les outils 3D (Extruder, Panneau, Perçage, Congé, Chanfrein, Combiner, Scinder,
   Réseau, Miroir, Coupe, Usinage…) sont de petits cubes en perspective comme dans Fusion, les autres une vue à plat **en trois couleurs** : le trait en couleur du texte (blanc en thème sombre), la géométrie
   en bleu (points, traits dessinés, contours des faces), et ce qui agit en orange (flèches, crayons, outils, plans de coupe) ; le
   bleu et l'orange ne changent pas avec la palette (`templates/editor/_icons.html`, `--ic-accent` et `--ic-action`). Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
@@ -2314,8 +2314,8 @@ opération existante.
       Helvetica standard ; `drawing/pdf-writer.ts`, `drawing/svg-pdf.ts`), *Imprimer* (toutes les feuilles), *DXF* de
       la feuille par calques (CADRE, CONTOUR, CACHE, COUPE, COTES, DESSIN), *SVG*.
     Le moteur est dans `drawing/` (projection, vues posées, cotes, SVG, DXF, PDF), l'écran dans `app/drawing/`.
-- **Coque** (groupe Modifier, comme Fusion) : le corps est creusé à une épaisseur de paroi, les faces planes
-  cliquées restant ouvertes (un bac, un tiroir, une boîte sans couvercle) ; sans face, il devient creux et fermé.
+- **Coque** : l'outil est retiré du logiciel (plus de bouton, ni de fiche d'aide) ; une étape Coque déjà dans un
+  projet se recalcule et se rouvre toujours depuis l'historique. Pour creuser un corps : **Vider un corps**.
 - **Magie extrude : départ et mesures tapées** (`app/face-strip-tool.ts`, `ui/typed-values.ts`) : « Départ » choisit d'où
   part le trait — *sur un trait* (les arêtes seules, même près d'un coin : un trait parallèle) ou *sur un point* (les
   coins seuls : un trait en travers). *Sur un trait* prend aussi un **tracé** fait avant sur la face (une ligne
@@ -2361,7 +2361,7 @@ opération existante.
   prend dès que le calcul est complet.
   Une valeur tapée qui fait sortir la forme de l'écran fait **reculer la vue** pour la montrer entière, avec ses
   cases (`showShape` de `sketcher/mode.ts`).
-- **Vider un corps** (groupe Modifier, après Coque ; `data-action="hollow"`) : un clic sur un corps le vide à
+- **Vider un corps** (groupe Modifier ; `data-action="hollow"`) : un clic sur un corps le vide à
   l'intérieur, **quelle que soit sa forme** — prisme à base de triangle, de carré, de cercle, côtés de biais, sphère,
   plaque percée. La face par laquelle on le prend est son **devant** ; **« Ouvertures »** dit ce qui s'ouvre :
   *devant et derrière* (au départ : un **caisson**, les côtés autour **tous de la même épaisseur**), *le devant seul*,
@@ -2483,7 +2483,7 @@ opération existante.
   sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,
   jusqu'à ce qu'on s'en serve une fois ; le navigateur retient ceux qu'on a utilisés. La liste est dans
   `ui/new-tools.ts` (`NEW_TOOLS`) : un outil qu'on ajoute à l'application s'y inscrit.
-- **Panneaux sur faces** (groupe Modifier, après Coque), dans l'historique : les faces planes cliquées d'un volume
+- **Panneaux sur faces** (groupe Modifier), dans l'historique : les faces planes cliquées d'un volume
   deviennent des panneaux de l'épaisseur voulue, pris dans le volume ; un clic prend aussi les **faces pareilles**
   (même aire, même périmètre, à plat : les côtés d'un seau à pans, les deux côtés d'un caisson, `app/face-twins.ts`),
   recliquer retire. Deux assemblages : **en onglet, à tout angle** (deux panneaux voisins se partagent leur coin par

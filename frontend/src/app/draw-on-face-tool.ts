@@ -232,7 +232,7 @@ export class DrawOnFaceTool extends PanelTool {
     const face = this.face ?? this.hoverFace;
     const p = this.cursor;
     if (!face && this.curved) {
-      this.box.show("Face courbe", "—", "Sur une face courbe : Rectangle, Cercle ou Décalage du contour (la ligne, sur une face plane). Pour évider tout le volume, outil Coque (Modifier).");
+      this.box.show("Face courbe", "—", "Sur une face courbe : Rectangle, Cercle ou Décalage du contour (la ligne, sur une face plane). Pour évider tout le volume, outil Vider un corps (Modifier).");
     } else if (!face || !p) {
       this.box.show("Mesures", "—", "Survolez une face du corps.");
     } else if (this.shape === "offset") {
