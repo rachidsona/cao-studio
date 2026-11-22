@@ -5,7 +5,7 @@
  */
 import * as THREE from "three";
 import { uniqueId, uniqueName } from "../document/operations";
-import type { Axis, CadDocument, Vec3 } from "../document/types";
+import { featureOfBody, type Axis, type CadDocument, type Vec3 } from "../document/types";
 import type { Box } from "../features/curic";
 import type { Viewport } from "../viewport/viewport";
 
@@ -53,6 +53,21 @@ export function freshFeatureIds(doc: CadDocument, prefix: string, base: string, 
   }
   return out;
 }
+
+/**
+ * Several bodies chosen one after the other for one OK: a click on a body not chosen adds it (changing a step: it
+ * replaces the one), Maj + clic on a chosen one — or on its preview, the body of a step whose id is in `ids`, in the
+ * order of `targets` — takes it off.
+ */
+export function chooseBody(targets: readonly string[], bodyId: string, ids: readonly string[], remove: boolean, editing: boolean): string[] {
+  const own = targets.indexOf(bodyId);
+  const at = own >= 0 ? own : ids.indexOf(featureOfBody(bodyId));
+  if (at >= 0 && at < targets.length) return remove && !editing ? targets.filter((_, i) => i !== at) : [...targets];
+  return editing ? [bodyId] : [...targets, bodyId];
+}
+
+/** Maj, Ctrl or Cmd held with a click: a chosen body taken off. */
+export const removing = (event: PointerEvent): boolean => event.shiftKey || event.ctrlKey || event.metaKey;
 
 /** A translucent plane perpendicular to an axis, drawn across a box (where a mirror or a stretch happens). */
 export class PlaneMarker {
