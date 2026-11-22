@@ -2457,7 +2457,11 @@ opération existante.
   bord de l'ouverture est allongée dans son sens puis recoupée par les parois — elle en prend la pente et les suit
   (`features/within-walls.ts`). « Orientation » des étagères d'un corps aménagé (`ShelfParams.lean`) : à plat, selon
   X, Y ou Z, ou d'équerre à une face cliquée ; elles sont tournées dans leur plan avant d'aller aux parois
-  (`sketcher/shelf-lean.ts`).
+  (`sketcher/shelf-lean.ts`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
+  est le rectangle prolongé vers les parois qu'il touche, recoupé par leurs faces (`sketcher/niche-outline.ts`) ; une
+  porte ou un fond posé sur la niche va jusqu'au plan de chaque paroi qu'il longe, en prend la pente et garde son jeu
+  ou son recouvrement (`toWallPlanes`), un tiroir reste droit. L'esquisse dépend de ses parois (`featureInputs`) :
+  une paroi changée refait ce qui en sort.
 - **Outils nouveaux** : un petit **point orange** marque un outil nouveau — sur son icône (ruban, colonne de droite,
   sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,
   jusqu'à ce qu'on s'en serve une fois ; le navigateur retient ceux qu'on a utilisés. La liste est dans

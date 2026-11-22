@@ -8,7 +8,7 @@
  */
 import type { OffsetRecord, SketchGeometry } from "../document/sketch";
 import { emptySketchGeometry } from "../document/sketch";
-import { findFeature } from "../document/operations";
+import { findFeature, latestBody } from "../document/operations";
 import { isEmptyPartition } from "../document/empty-partition";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature } from "../document/types";
 import * as THREE from "three";
@@ -20,6 +20,7 @@ import type { SketchExtrusion } from "../sketcher/mode";
 import { isPartition, leafNiches } from "../sketcher/partition-history";
 import { SketchPartitionTool } from "../sketcher/partition-tool";
 import type { NicheBox } from "../sketcher/shelves";
+import { nicheOutline, wallLines } from "../sketcher/niche-outline";
 import { ShelvesTool } from "../sketcher/shelves-tool";
 import { JoineryView, pieceKey } from "../viewport/joinery-view";
 import { ModuleTool } from "./dressing/module-tool";
@@ -314,10 +315,19 @@ export class Joinery3D implements PointerHandler {
     this.view.show(
       this.frame,
       depth || 1,
-      this.niches.map((n, i) => ({ box: n.box, state: chosen.some((c) => same(c, n.box)) ? "chosen" : i === this.hover ? "hover" : "free" })),
+      this.niches.map((n, i) => ({ box: n.box, state: chosen.some((c) => same(c, n.box)) ? "chosen" : i === this.hover ? "hover" : "free", outline: this.outline(n.box) })),
       tool instanceof ShelvesTool || tool instanceof ModuleTool || tool instanceof NicheHeightTool ? this.changed(tool.pieces().map((b): [number, number][] => [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]]), depth || 1) : [],
       tool instanceof NicheTool || tool instanceof ModuleTool ? tool.solids() : [],
     );
+  }
+
+  /** In a body furnished: the niche's shape between the walls (null: its box). */
+  private outline(box: NicheBox): [number, number][] | null {
+    const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
+    if (sketch?.type !== "sketch" || !sketch.host) return null;
+    const doc = this.host.doc();
+    const meshes = sketch.host.bodies.flatMap((id) => this.viewport.bodyMesh(latestBody(doc, id)) ?? this.viewport.bodyMesh(id) ?? []);
+    return nicheOutline(box, sketch.host.box, wallLines(this.frame, meshes));
   }
 
   // ---- pointer ------------------------------------------------------------------------

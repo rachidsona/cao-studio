@@ -270,7 +270,7 @@ export function buildFeature(feature: Feature, lookup: OutputLookup, featureOf: 
     }
     case "niche": {
       const sketch = featureOf(feature.sketch);
-      return buildNiche(feature, sketch?.type === "sketch" ? sketch : undefined);
+      return buildNiche(feature, sketch?.type === "sketch" ? sketch : undefined, lookup);
     }
     case "trim":
       return buildTrim(feature);

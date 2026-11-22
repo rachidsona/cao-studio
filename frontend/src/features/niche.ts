@@ -15,6 +15,8 @@ import { cutGrooves } from "./decor-cut";
 import { decorGrooves, isDecor } from "./door-decor";
 import { nicheGeometry, nicheParts, nicheProblem, nicheWorld, worldBox, type NicheGeometry, type NichePart } from "./niche-parts";
 import { underCeiling } from "./sloped-ceiling";
+import { toWallPlanes } from "./within-walls";
+import type { OutputLookup } from "./common";
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 
@@ -142,7 +144,7 @@ function partShape(part: NichePart, n: NicheGeometry, f: NicheFeature): Shape3D 
   return solid;
 }
 
-export function buildNiche(feature: NicheFeature, sketch: SketchFeature | undefined): SolidsOutput {
+export function buildNiche(feature: NicheFeature, sketch: SketchFeature | undefined, lookup?: OutputLookup): SolidsOutput {
   const n = nicheGeometry(feature, sketch);
   if (typeof n === "string") throw new GeometryError(`${feature.name} : ${n}`);
   const problem = nicheProblem(feature, n);
@@ -151,7 +153,10 @@ export function buildNiche(feature: NicheFeature, sketch: SketchFeature | undefi
   try {
     for (const part of nicheParts(feature, n)) {
       const shape = partShape(part, n, feature);
-      const solid = sketch?.ceiling ? underCeiling(shape, sketch.ceiling, part.name) : shape;
+      const under = sketch?.ceiling ? underCeiling(shape, sketch.ceiling, part.name) : shape;
+      // In a body furnished, a door or a back follows the walls round the niche, even slanted (a drawer stays square).
+      const follows = sketch?.host && lookup && (feature.fill === "door" || feature.fill === "doors" || feature.fill === "back") && part.kind === "box" && part.of === undefined;
+      const solid = follows ? toWallPlanes(under, [part.from, part.to], sketch.host!, n.frame, lookup) : under;
       if (!isShapeValid(solid)) {
         solid.delete();
         throw new GeometryError(`${feature.name} : la pièce « ${part.name} » est invalide.`);

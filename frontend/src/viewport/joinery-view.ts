@@ -1,7 +1,8 @@
 /**
  * The joinery of a « Répartition » seen in volume (3D view): the niches that can be divided, as light boxes between
  * the panels (the one under the pointer brighter, the chosen ones green), and the panels the tool would make, as
- * orange slabs. Each box is a rectangle of the sketch pushed along its normal by the depth of the panels.
+ * orange slabs. Each box is a rectangle of the sketch pushed along its normal by the depth of the panels; in a body
+ * furnished, the niche's shape between its walls.
  */
 import * as THREE from "three";
 import type { SketchFrame } from "../sketcher/frame";
@@ -90,10 +91,11 @@ export class JoineryView {
    * Draws the niches (each in its state) and the pieces (outlines of the sketch); `depth` along the sketch normal (mm).
    * `solids`: other pieces, as boxes of the world given by two opposite corners (the parts of a penderie or drawers).
    */
-  show(frame: SketchFrame, depth: number, niches: { box: NicheBox; state: NicheState }[], pieces: Vec2[][], solids: [Vec3, Vec3][] = []): void {
+  show(frame: SketchFrame, depth: number, niches: { box: NicheBox; state: NicheState; outline?: Vec2[] | null }[], pieces: Vec2[][], solids: [Vec3, Vec3][] = []): void {
     this.clear();
-    this.nicheMeshes = niches.map(({ box, state }, index) => {
-      const mesh = boxMesh(frame, depth, box, 0.6, STYLE[state]);
+    this.nicheMeshes = niches.map(({ box, state, outline }, index) => {
+      // In a body furnished: its shape between the walls (sketcher/niche-outline.ts), else its box.
+      const mesh = outline ? prismMesh(frame, depth, outline, STYLE[state]) : boxMesh(frame, depth, box, 0.6, STYLE[state]);
       // Its edges too: the ray meets the outline's lines as well as the box, and either names the niche (a click
       // near an edge found no niche, about one time in three: « Cliquez dans une niche »).
       mesh.traverse((o) => (o.userData.niche = index));

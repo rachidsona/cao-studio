@@ -1184,7 +1184,8 @@ export function createReferencePlate(): CadDocument {
 export function featureInputs(feature: Feature): string[] {
   switch (feature.type) {
     case "sketch":
-      return [];
+      // In a body furnished: its walls, so that what it makes follows them (features/within-walls.ts).
+      return feature.host ? [...feature.host.bodies] : [];
     case "extrude":
       if (feature.faces) return [...(feature.target ? [feature.target] : []), ...(feature.until ? [feature.until.body] : [])];
       return feature.target && feature.operation !== "new" ? [feature.sketch ?? "", feature.target] : [feature.sketch ?? ""];

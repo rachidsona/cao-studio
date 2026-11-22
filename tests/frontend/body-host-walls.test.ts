@@ -3,7 +3,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withBodyFurnished, type Opening } from "../../frontend/src/document/body-opening";
 import { withRecipe } from "../../frontend/src/document/niche-recipe";
 import type { SketchGeometry } from "../../frontend/src/document/sketch";
-import type { CadDocument, Feature, SketchFeature } from "../../frontend/src/document/types";
+import type { CadDocument, Feature, NicheFeature, SketchFeature } from "../../frontend/src/document/types";
+import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
 import { setupKernel } from "./kernel-setup";
@@ -85,5 +86,37 @@ describe("un corps aux parois en biais, aménagé", () => {
       expect(hi![0]).toBe(282);
       expect(lo![0]!).toBeGreaterThan(-283);
     }
+  }, 120_000);
+
+  /** The opening with one door over it (inset, 3 mm of gap): its volume and its box. */
+  function door(lean: number): { volume: number; box: number[][] } {
+    const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(lean) } as CadDocument;
+    const made = withBodyFurnished(base, opening, "Cadre", ["wl", "wr", "wb", "wf"]);
+    if (typeof made === "string") throw new Error(made);
+    const sketch = made.doc.features.find((f): f is SketchFeature => f.id === made.sketch && f.type === "sketch")!;
+    const partition = sketch.offsets!.find(isPartition)!.id;
+    const front: NicheFeature = { id: "po1", type: "niche", name: "Porte 1", sketch: made.sketch, partition, niche: [0], fill: "door", mount: "inset", diameter: 25, drop: 60, drawers: 1, gap: 3, thickness: 18, handles: false };
+    const doc = { ...made.doc, features: [...made.doc.features, front] };
+    const r = new Recomputer();
+    try {
+      const result = r.recompute(doc);
+      expect(result.statuses.filter((s) => s.state !== "ok")).toEqual([]);
+      const out = r.output("po1");
+      if (out?.kind !== "solids") throw new Error("pas de porte");
+      const big = out.shapes.reduce((a, b) => (bodyMetrics(b).volume > bodyMetrics(a).volume ? b : a));
+      return { volume: bodyMetrics(big).volume, box: big.boundingBox.bounds.map((p) => p.map((x) => Math.round(x))) };
+    } finally {
+      r.dispose();
+    }
+  }
+
+  it("la porte de la niche suit la paroi penchée, son jeu gardé ; droite, elle ne change pas", () => {
+    const square = door(0);
+    const slanted = door(50);
+    // Square: the opening less its 3 mm of gap on each side.
+    expect([square.box[0]![0], square.box[1]![0]]).toEqual([-279, 279]);
+    // Slanted: its left edge follows the wall 3 mm off it — a strip of 50 × 364 / 2 less, 18 thick.
+    expect(slanted.volume).toBeLessThan(square.volume - 0.8 * ((50 * 364) / 2) * 18);
+    expect(slanted.box[1]![0]).toBe(279);
   }, 120_000);
 });

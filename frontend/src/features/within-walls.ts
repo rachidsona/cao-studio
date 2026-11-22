@@ -5,7 +5,7 @@
  * dans son sens, puis recoupé par les parois : on garde le morceau où il était. Ce qui bute sur une cloison ou une
  * étagère de la Répartition reste comme il est.
  */
-import { basicFaceExtrusion, measureVolume, Vector, type Shape3D } from "replicad";
+import { basicFaceExtrusion, drawRectangle, measureVolume, Plane, Vector, type Shape3D } from "replicad";
 import type { BodyHost, Vec3 } from "../document/types";
 import type { SketchFrame } from "../sketcher/frame";
 import { requireSolid, type OutputLookup } from "./common";
@@ -104,4 +104,96 @@ function leaned(prism: Shape3D, axis: Vec3, frame: SketchFrame, lean: Vec3, cent
   // (rotate releases the shape it turns)
   const turned = prism.rotate((turn * 180) / Math.PI, center, n) as Shape3D;
   return { prism: turned, axis: [0, 1, 2].map((i) => c * axis[i]! + s * across[i]!) as Vec3 };
+}
+
+/** An edge of a door or a back farther than this from the edge of the opening is not on a wall (mm). */
+const NEAR = 30;
+
+/** The plane of the wall face met from `c` along `d` (the nearest, facing back), or null. */
+function wallPlane(walls: readonly Shape3D[], c: Vec3, d: Vec3, normal: Vec3): { point: Vec3; normal: Vec3 } | null {
+  let best: { point: Vec3; normal: Vec3; t: number } | null = null;
+  for (const wall of walls) {
+    for (const face of wall.faces) {
+      if (face.geomType !== "PLANE") continue;
+      const o = face.center;
+      const m = face.normalAt(o);
+      const [p, n]: [Vec3, Vec3] = [[o.x, o.y, o.z], [m.x, m.y, m.z]];
+      m.delete();
+      // Facing the element, across the sketch's plane (not the front or back of a board).
+      const facing = dot(n, d);
+      if (facing > -0.1 || Math.abs(dot(n, normal)) > 0.9) continue;
+      const t = (dot(n, p) - dot(n, c)) / facing;
+      const hit = [0, 1, 2].map((i) => c[i]! + d[i]! * t);
+      // Within the face, whatever its depth (a door in front of the walls is still bounded by them).
+      const [lo, hi] = face.boundingBox.bounds;
+      const inside = [0, 1, 2].every((i) => Math.abs(normal[i]!) > 0.9 || (hit[i]! > lo[i]! - 1 && hit[i]! < hi[i]! + 1));
+      if (inside && (!best || Math.abs(t) < Math.abs(best.t))) best = { point: p, normal: n, t };
+    }
+  }
+  return best;
+}
+
+/**
+ * A door or the back of a niche in a body furnished: each of its edges on a wall goes to that wall's face, taking its
+ * slope, and keeps the gap (or the overlay) it had at the edge of the opening. `from`, `to`: its box in the niche's
+ * frame (u, v, w). The others, and a drawer, as they are.
+ */
+export function toWallPlanes(solid: Shape3D, [from, to]: readonly [Vec3, Vec3], host: BodyHost, frame: SketchFrame, lookup: OutputLookup): Shape3D {
+  const [u0, v0, u1, v1] = host.box;
+  const lo: Vec3 = [Math.min(from[0], to[0]), Math.min(from[1], to[1]), Math.min(from[2], to[2])];
+  const hi: Vec3 = [Math.max(from[0], to[0]), Math.max(from[1], to[1]), Math.max(from[2], to[2])];
+  const world = (u: number, v: number, w: number): Vec3 => [0, 1, 2].map((i) => frame.origin[i]! + frame.u[i]! * u + frame.v[i]! * v + frame.normal[i]! * w) as Vec3;
+  // Each edge near the opening's: its way out, its middle, and its gap to the opening's edge (negative: overlaid).
+  const mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2] as const;
+  const edges = [
+    { d: frame.u.map((x) => -x) as Vec3, at: world(lo[0], mid[1], mid[2]), gap: lo[0] - u0 },
+    { d: frame.u, at: world(hi[0], mid[1], mid[2]), gap: u1 - hi[0] },
+    { d: frame.v.map((x) => -x) as Vec3, at: world(mid[0], lo[1], mid[2]), gap: lo[1] - v0 },
+    { d: frame.v, at: world(mid[0], hi[1], mid[2]), gap: v1 - hi[1] },
+  ].filter((e) => Math.abs(e.gap) < NEAR);
+  if (!edges.length) return solid;
+  const walls = host.bodies.flatMap((id) => {
+    try {
+      return [requireSolid(lookup, id).shape];
+    } catch {
+      return [];
+    }
+  });
+  for (const edge of edges) {
+    const plane = wallPlane(walls, edge.at, edge.d, frame.normal);
+    if (!plane) continue;
+    // The wall's face moved back by the gap: where this edge goes.
+    const n = plane.normal;
+    const q = [0, 1, 2].map((i) => plane.point[i]! + n[i]! * edge.gap) as Vec3;
+    const face = solid.faces.find((f) => {
+      if (f.geomType !== "PLANE") return false;
+      const m = f.normalAt(f.center);
+      const out = m.x * edge.d[0] + m.y * edge.d[1] + m.z * edge.d[2] > 0.9999;
+      m.delete();
+      return out;
+    });
+    if (!face) continue;
+    // Out to its farthest point on that plane, then cut by it: the edge takes the wall's slope.
+    const travel = Math.max(0, ...face.edges.flatMap((e) => [e.startPoint, e.endPoint]).map((v) => {
+      const p: Vec3 = [v.x, v.y, v.z];
+      v.delete();
+      return (dot(n, q) - dot(n, p)) / dot(n, edge.d);
+    }));
+    let next: Shape3D = solid;
+    if (travel > 1e-3) {
+      const way = new Vector(edge.d.map((x) => x * travel) as Vec3);
+      const tail = basicFaceExtrusion(face, way) as Shape3D;
+      way.delete();
+      next = solid.fuse(tail);
+      tail.delete();
+      solid.delete();
+    }
+    const cut = new Plane(q, null, n);
+    const slab = drawRectangle(2 * REACH, 2 * REACH).sketchOnPlane(cut).extrude(REACH) as Shape3D;
+    cut.delete();
+    solid = next.intersect(slab);
+    next.delete();
+    slab.delete();
+  }
+  return solid;
 }
