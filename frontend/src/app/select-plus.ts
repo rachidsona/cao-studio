@@ -11,6 +11,7 @@
  */
 import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, PART_SEPARATOR, type CadDocument } from "../document/types";
+import { drawerBodies, drawerOf } from "../document/drawer-pick";
 import { el } from "../ui/dom";
 import { TYPE_LABELS } from "../ui/feature-meta";
 import type { FacePick, SketchPick, Viewport } from "../viewport/viewport";
@@ -19,7 +20,7 @@ import { formatArea, formatLength } from "../measurements/units";
 const KEY = "cao-studio:select-plus";
 
 export interface SelectionLevel {
-  kind: "group" | "body" | "face" | "sketch" | "item";
+  kind: "group" | "drawer" | "body" | "face" | "sketch" | "item";
   label: string;
   /** What a click selects: whole bodies, one face, whole sketches, or one line or area of a sketch. */
   target: { bodies: string[] } | { face: FacePick } | { sketches: string[] } | { item: SketchPick };
@@ -38,7 +39,8 @@ export function sketchLevels(doc: CadDocument, sketchId: string, item: SketchPic
 
 /**
  * The levels under a face: the assembly its body belongs to (when the body is a part of a multi-body
- * operation still made of several displayed parts), the body, the face.
+ * operation still made of several displayed parts), the whole drawer it is part of (its front, frame and all), the
+ * body, the face.
  */
 export function selectionLevels(doc: CadDocument, displayed: string[], face: FacePick): SelectionLevel[] {
   const levels: SelectionLevel[] = [];
@@ -52,6 +54,9 @@ export function selectionLevels(doc: CadDocument, displayed: string[], face: Fac
     const feature = findFeature(doc, owner);
     if (feature && parts.length > 1) levels.push({ kind: "group", label: `${TYPE_LABELS[feature.type]} « ${feature.name} » — ${parts.length} pièces`, target: { bodies: parts } });
   }
+  const drawer = drawerOf(doc, face.bodyId);
+  const pieces = drawer ? drawerBodies(doc, face.bodyId, displayed) : [];
+  if (drawer && pieces.length > 1) levels.push({ kind: "drawer", label: `Tiroir ${drawer.n} entier — ${pieces.length} pièces`, target: { bodies: pieces } });
   levels.push({ kind: "body", label: bodyLabel(doc, face.bodyId), target: { bodies: [face.bodyId] } });
   levels.push({ kind: "face", label: `Face ${face.faceIndex + 1}`, target: { face } });
   return levels;

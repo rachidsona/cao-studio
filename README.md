@@ -1370,8 +1370,11 @@ opération existante.
   étagères, portes et tiroirs, une Répartition avec ses panneaux, portes et niches. Déplacer, Supprimer, Copier, les
   cotes prennent alors le meuble entier. Hors d'un outil et d'une esquisse ; une pièce seule reste seule.
 - **Sélection++** (comme Curic Select++ ; bouton en bas de la colonne Vue, sous « Affichage », pour l'allumer ou l'éteindre, retenu par le navigateur) : en survolant un corps à la souris, ses niveaux
-  s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), la pièce,
-  la face — et le niveau courant est en vert dans la vue. **Ctrl** descend d'un niveau (puis revient en haut) ; le
+  s'affichent près du pointeur — l'ensemble (toutes les pièces d'un caisson, de panneaux, d'une symétrie…), le **tiroir
+  entier** sur une pièce de tiroir (façade et son cadre séparé, côtés, arrière, fond, vitre, poignée :
+  `document/drawer-pick.ts`), la pièce, la face — et le niveau courant est en vert dans la vue. Dans le Navigateur, les
+  pièces de chaque tiroir sont rangées dans un dossier « Tiroir N » (`ui/body-kinds.ts` `groupByDrawer`), qu'un clic
+  sur son titre sélectionne en entier. **Ctrl** descend d'un niveau (puis revient en haut) ; le
   niveau choisi est gardé en passant d'une pièce à l'autre. Un clic sélectionne le niveau courant, Maj + clic l'ajoute.
   Actif avec les filtres « Auto » et « Corps » (en « Auto », une arête sous le pointeur garde son clic habituel) ;
   rien au doigt. Sur une esquisse, les niveaux sont

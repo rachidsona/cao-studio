@@ -13,7 +13,8 @@ import { PART_SEPARATOR, featureInputs, featureOfBody } from "../document/types"
 import type { CadDocument, Feature } from "../document/types";
 import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
-import { groupByCorps } from "../ui/body-kinds";
+import { groupByCorps, groupByDrawer } from "../ui/body-kinds";
+import { drawerOf } from "../document/drawer-pick";
 import { bindBrowserFilter, filterEntries, filterSketches, filtering, type BrowserFilter } from "../ui/browser-filter";
 import { askConfirm } from "../ui/confirm-dialog";
 import { ref } from "../ui/dom";
@@ -149,10 +150,16 @@ export class Navigator {
       return item ? { item, label: leaf.label, history } : null;
     };
     const corpsOf = (entry: BodyEntry) => {
-      const origin = "group" in entry ? entry.group.id : bodyOrigin(doc, entry.body.item.id);
+      // A drawer's folder: the feature that makes the drawer.
+      const origin = "group" in entry ? (entry.group.id.startsWith("drawer:") ? entry.group.id.split(":").at(-2)! : entry.group.id) : bodyOrigin(doc, entry.body.item.id);
       const feature = findFeature(doc, origin.includes(PART_SEPARATOR) ? featureOfBody(origin) : origin);
       const sketch = feature?.type === "extrude" || feature?.type === "niche" ? findFeature(doc, featureInputs(feature)[0] ?? "") : undefined;
       return sketch?.type === "sketch" && sketch.offsets?.some(isPartition) ? { id: sketch.id, name: sketch.name } : null;
+    };
+    // A drawer's pieces together (its front's frame too): its folder selects it whole.
+    const drawerKey = (bodyId: string) => {
+      const d = drawerOf(doc, bodyId);
+      return d ? { key: `${d.feature}:${d.n}`, name: `Tiroir ${d.n}` } : null;
     };
     // A folder per corps (a Répartition), its pieces inside in a folder per kind: Étagères, Côtés, Dessous…
     const build = (ids: string[], scope = ""): BodyEntry[] => {
@@ -164,7 +171,7 @@ export class Navigator {
         const rows = node.group.bodies.map(toRow).filter((r): r is BodyRow => r !== null);
         return [{ group: { id: node.group.id, name: node.group.name, entries: rows.map((body) => ({ body })) } }];
       });
-      return groupByCorps(entries, corpsOf, scope);
+      return groupByCorps(groupByDrawer(entries, drawerKey, scope), corpsOf, scope);
     };
     // The folders made by hand first (as in Fusion), each with its bodies; then the bodies in no folder.
     const index = folderIndex(doc);

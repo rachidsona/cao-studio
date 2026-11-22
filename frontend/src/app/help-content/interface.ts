@@ -295,13 +295,13 @@ export const SCREEN: HelpFamily[] = [
       },
       {
         keys: ["data-select-plus:"], name: "Sélection++",
-        what: "Au survol d'un corps, propose les niveaux ensemble, pièce et face, pour viser le bon d'un clic.",
+        what: "Au survol d'un corps, propose les niveaux ensemble, tiroir entier, pièce et face, pour viser le bon d'un clic.",
         steps: [
           "Survolez un corps : une carte liste les niveaux, et le niveau courant s'éclaire en vert dans la vue.",
           "Appuyez sur Ctrl, sans cliquer, pour descendre d'un niveau ; après la face, on revient en haut.",
           "Cliquez pour sélectionner le niveau vert ; Maj + clic l'ajoute à la sélection.",
         ],
-        tip: "Actif avec les filtres « Auto » et « Corps », à la souris seulement. En « Auto », un clic sur une arête reste un clic d'arête.",
+        tip: "Actif avec les filtres « Auto » et « Corps », à la souris seulement. En « Auto », un clic sur une arête reste un clic d'arête. Sur une pièce de tiroir, « Tiroir N entier » prend tout le tiroir : façade (son cadre séparé aussi), côtés, arrière, fond, vitre et poignée ; dans le Navigateur, chaque tiroir a aussi son dossier, qu'un clic sélectionne.",
       },
       {
         keys: ["data-action:fit"], name: "Ajuster",

@@ -68,3 +68,39 @@ export function groupByCorps(entries: BodyEntry[], corpsOf: (entry: BodyEntry) =
   });
   return groupByKind(out, scope);
 }
+
+/**
+ * Each drawer in a folder of its own (« Tiroir 2 »), its front split into a frame in it too, wherever its pieces were:
+ * one click on the folder selects the whole drawer. `drawerOf`: the drawer of a body (a key and its name), or null.
+ */
+export function groupByDrawer(entries: BodyEntry[], drawerOf: (bodyId: string) => { key: string; name: string } | null, scope = ""): BodyEntry[] {
+  const rows = new Map<string, { name: string; bodies: BodyRow[] }>();
+  const visit = (entry: BodyEntry) => {
+    if ("group" in entry) return entry.group.entries.forEach(visit);
+    const d = drawerOf(entry.body.item.id);
+    if (d) rows.set(d.key, { name: d.name, bodies: [...(rows.get(d.key)?.bodies ?? []), entry.body] });
+  };
+  entries.forEach(visit);
+  const drawers = [...rows].filter(([, d]) => d.bodies.length > 1);
+  if (!drawers.length) return entries;
+  const moved = new Map(drawers.flatMap(([key, d]) => d.bodies.map((b) => [b.item.id, key] as const)));
+  const folder = (key: string): BodyEntry => {
+    const d = rows.get(key)!;
+    return { group: { id: `drawer:${scope}${key}`, name: d.name, entries: d.bodies.map((body) => ({ body })) } };
+  };
+  const placed = new Set<string>();
+  // Each drawer's folder where its first piece was; the folders it emptied go.
+  const rebuild = (list: BodyEntry[]): BodyEntry[] =>
+    list.flatMap((entry): BodyEntry[] => {
+      if ("group" in entry) {
+        const inside = rebuild(entry.group.entries);
+        return inside.length ? [{ group: { ...entry.group, entries: inside } }] : [];
+      }
+      const key = moved.get(entry.body.item.id);
+      if (!key) return [entry];
+      if (placed.has(key)) return [];
+      placed.add(key);
+      return [folder(key)];
+    });
+  return rebuild(entries);
+}

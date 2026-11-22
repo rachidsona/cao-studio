@@ -779,6 +779,29 @@ test("Module Étagères : posé à côté d'étagères, il s'aligne sur elles", 
   expect(errors).toEqual([]);
 });
 
+test("un tiroir entier se choisit d'un clic sur son dossier du Navigateur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "Tiroir entier e2e");
+  await wall(page);
+  await click(page, '[data-action="tiroirs"]');
+  const tool = page.getByRole("dialog", { name: "Tiroirs" });
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(1000);
+  // Each drawer its folder: its front, sides, back, bottom, handle — one click selects them all.
+  const drawer = page.locator('[data-ref="tree"] [data-head^="group:drawer:"]').first();
+  await expect(drawer).toContainText("Tiroir 1");
+  const count = Number(await drawer.locator("span").last().textContent());
+  expect(count).toBeGreaterThanOrEqual(5);
+  await drawer.click();
+  await expect(page.locator('[data-ref="status-selection"]')).toContainText(`${count} corps`);
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
