@@ -353,7 +353,7 @@ export class Joinery3D implements PointerHandler {
   up(event: PointerEvent, isClick: boolean): boolean {
     if (!isClick || !this.tool) return false;
     if (this.aim) {
-      const normal = faceNormal(this.viewport, event);
+      const normal = faceNormal(this.viewport, event, this.frame.normal);
       if (!normal) return (this.host.notify("Cliquez une face plane d'un corps.", "info"), true);
       const done = this.aim;
       this.aim = null;
@@ -419,16 +419,33 @@ export class Joinery3D implements PointerHandler {
   }
 }
 
-/** The normal of the face clicked (from its first triangle), or null. */
-function faceNormal(viewport: Viewport, event: PointerEvent): [number, number, number] | null {
+/**
+ * The normal of the face clicked, or null. A face lying in the sketch's plane (`plane`: its normal) — the front of a
+ * shelf seen face on, its top hidden — stands for its piece: the normal of its largest face square to the plane, so
+ * « parallèle » follows the shelf clicked and « d'équerre » goes across it.
+ */
+function faceNormal(viewport: Viewport, event: PointerEvent, plane: readonly number[]): [number, number, number] | null {
   const pick = viewport.pickFace(event);
   const mesh = pick ? viewport.bodyMesh(pick.bodyId) : undefined;
   const group = pick && mesh?.faceGroups[pick.faceIndex];
   if (!mesh || !group) return null;
-  const at = (k: number) => [0, 1, 2].map((i) => mesh.vertices[3 * mesh.indices[group.start + k]! + i]!);
-  const [a, b, c] = [at(0), at(1), at(2)];
-  const [e, f] = [[0, 1, 2].map((i) => b[i]! - a[i]!), [0, 1, 2].map((i) => c[i]! - a[i]!)];
-  const n: [number, number, number] = [e[1]! * f[2]! - e[2]! * f[1]!, e[2]! * f[0]! - e[0]! * f[2]!, e[0]! * f[1]! - e[1]! * f[0]!];
-  const l = Math.hypot(...n);
-  return l > 1e-12 ? [n[0] / l, n[1] / l, n[2] / l] : null;
+  // A face's normal and area, from its triangles.
+  const measured = (g: { start: number; count: number }) => {
+    const at = (k: number) => [0, 1, 2].map((i) => mesh.vertices[3 * mesh.indices[g.start + k]! + i]!);
+    const sum: [number, number, number] = [0, 0, 0];
+    for (let k = 0; k + 2 < g.count; k += 3) {
+      const [a, b, c] = [at(k), at(k + 1), at(k + 2)];
+      const [e, f] = [[0, 1, 2].map((i) => b[i]! - a[i]!), [0, 1, 2].map((i) => c[i]! - a[i]!)];
+      sum[0] += e[1]! * f[2]! - e[2]! * f[1]!;
+      sum[1] += e[2]! * f[0]! - e[0]! * f[2]!;
+      sum[2] += e[0]! * f[1]! - e[1]! * f[0]!;
+    }
+    const l = Math.hypot(...sum);
+    return { n: (l > 1e-12 ? sum.map((x) => x / l) : null) as [number, number, number] | null, area: l / 2 };
+  };
+  const across = (n: readonly number[]) => Math.abs(n[0]! * plane[0]! + n[1]! * plane[1]! + n[2]! * plane[2]!);
+  const clicked = measured(group).n;
+  if (!clicked || across(clicked) < 0.9) return clicked;
+  const sides = mesh.faceGroups.map(measured).filter((m): m is { n: [number, number, number]; area: number } => !!m.n && across(m.n) < 0.1);
+  return sides.length ? sides.reduce((a, b) => (b.area > a.area ? b : a)).n : clicked;
 }

@@ -44,7 +44,11 @@ export function leanSelect(lean: Lean | undefined, face: LeanFace | undefined, s
       // Parallel: along the face's line in the sketch's plane (square to both normals).
       const p = host.planeNormal?.() ?? [0, 0, 1];
       const along: Lean = [p[1] * n[2] - p[2] * n[1], p[2] * n[0] - p[0] * n[2], p[0] * n[1] - p[1] * n[0]];
-      set(way === "square" ? n : along, way);
+      const chosen = way === "square" ? n : along;
+      // In the sketch's plane, nothing of it: no way to turn them (a face lying in that plane).
+      const k = chosen[0] * p[0] + chosen[1] * p[1] + chosen[2] * p[2];
+      if (Math.hypot(chosen[0] - k * p[0], chosen[1] - k * p[1], chosen[2] - k * p[2]) < 1e-6) return host.notify("Cette face ne donne pas de sens dans le plan : cliquez-en une autre.", "info");
+      set(chosen, way);
     });
   });
   return select;
