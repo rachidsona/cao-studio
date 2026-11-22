@@ -37,14 +37,14 @@ export function renderTimeline(
         class:
           `relative flex size-8 shrink-0 items-center justify-center ${isMarked ? "border-2 border-red-500 " : framed ? "border-2 border-[#63df0f] " : "border border-gray-300 dark:border-gray-600 "}` +
           (isMarked ? "bg-red-50 dark:bg-red-950/60" : selected ? "bg-sky-100 text-sky-950 dark:bg-sky-900/60 dark:text-sky-50" : "bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"),
-        title: item.message ?? `${item.name} (${TYPE_LABELS[item.type]}) — ${badge.label}`,
+        title: item.message ?? `${item.name} (${item.tool?.label ?? TYPE_LABELS[item.type]}) — ${badge.label}`,
         "aria-label": item.name,
         "aria-pressed": String(selected),
         ...(framed ? { "data-lit": "" } : {}),
         ...(isMarked ? { "data-marked": "" } : {}),
         "data-op": item.id,
       },
-      toolIcon(TYPE_SPRITES[item.type], `tool-icon size-5 ${item.suppressed ? "opacity-40 grayscale" : ""}`),
+      toolIcon(item.tool?.sprite ?? TYPE_SPRITES[item.type], `tool-icon size-5 ${item.suppressed ? "opacity-40 grayscale" : ""}`),
       // A problem or a disabled operation shows as a dot on the corner of its icon.
       item.state === "ok" ? null : el("span", { class: `absolute top-0.5 right-0.5 size-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${badge.dot}`, "aria-label": badge.label }),
     );

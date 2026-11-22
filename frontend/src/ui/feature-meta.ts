@@ -142,4 +142,6 @@ export interface NavItem {
   body?: { originId: string };
   /** An offset of a sketch (shown in the timeline), not a feature of its own. */
   offset?: { sketchId: string };
+  /** The tool that made it, when not the operation's own (« Prolonger élément » for an extrusion of faces). */
+  tool?: { label: string; sprite: string };
 }

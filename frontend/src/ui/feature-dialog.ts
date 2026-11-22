@@ -154,8 +154,8 @@ export class FeatureDialog {
       el(
         "div",
         { class: "flex items-center gap-1.5 border-b border-gray-200 px-2 py-1 dark:border-gray-700" },
-        item.body ? el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, "◼") : toolIcon(TYPE_SPRITES[item.type], "size-5 shrink-0"),
-        el("h2", { class: "text-3xs font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : TYPE_LABELS[item.type]),
+        item.body ? el("span", { class: "text-gray-500 dark:text-gray-400", "aria-hidden": "true" }, "◼") : toolIcon(item.tool?.sprite ?? TYPE_SPRITES[item.type], "size-5 shrink-0"),
+        el("h2", { class: "text-3xs font-semibold tracking-wide uppercase text-gray-600 dark:text-gray-300" }, item.body ? "Corps" : (item.tool?.label ?? TYPE_LABELS[item.type])),
         el("span", { class: `size-2 rounded-full ${badge.dot}`, title: badge.label, "aria-label": badge.label }),
         close,
       ),

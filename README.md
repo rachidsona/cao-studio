@@ -3716,8 +3716,9 @@ voisine où tomberait son ancien point ; si son contour a changé, l'extrusion d
   plus récente) : un clic sélectionne l'opération, « ⋯ » ouvre sa fenêtre. Ce qui est déplié est
   retenu par le navigateur web.
 - **Historique** (barre du bas) : les opérations dans l'ordre (extrusion, perçage, révolution, congé,
-  chanfrein, combinaison, et les décalages, placés où est leur esquisse), chacune par l'**icône de son outil** (le
-  nom, le type et l'état sont dans l'info-bulle ; une opération en erreur ou désactivée porte un point de couleur,
+  chanfrein, combinaison, et les décalages, placés où est leur esquisse), chacune par l'**icône de son outil** — l'outil réellement utilisé : un prolongement montre « Prolonger élément », des
+  côtés séparés « Séparer les côtés », pas l'extrusion ou le corps vidé qui les font (`ui/feature-tool.ts`) — (le
+  nom, l'outil et l'état sont dans l'info-bulle ; une opération en erreur ou désactivée porte un point de couleur,
   et la désactivée est grisée). Un clic **sélectionne dans la vue ce que l'opération a fait** (les corps qu'elle a
   faits ou changés, ceux d'une étape de Répartition) et ouvre une fenêtre pour
   **renommer**, **modifier** (rouvre l'outil de l'opération : flèche de l'extrusion, panneau de l'outil,

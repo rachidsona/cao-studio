@@ -15,6 +15,7 @@ import type { FeatureStatus } from "../history/recompute";
 import { renderBrowser, type BodyEntry, type BodyRow } from "../ui/browser";
 import { groupByCorps, groupByDrawer } from "../ui/body-kinds";
 import { drawerOf } from "../document/drawer-pick";
+import { toolOf } from "../ui/feature-tool";
 import { bindBrowserFilter, filterEntries, filterSketches, filtering, type BrowserFilter } from "../ui/browser-filter";
 import { askConfirm } from "../ui/confirm-dialog";
 import { ref } from "../ui/dom";
@@ -92,6 +93,7 @@ export class Navigator {
       ...(status?.message && state !== "ok" ? { message: status.message } : {}),
       suppressed: !!feature.suppressed,
       hidden: !!feature.hidden,
+      ...(toolOf(feature) ? { tool: toolOf(feature)! } : {}),
     };
   }
 
