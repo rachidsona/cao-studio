@@ -28,7 +28,7 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await click(page, '[data-action="extend-element"]');
   const tool = page.getByRole("dialog", { name: "Prolonger élément" });
   await expect(tool).toContainText("1. Cliquez la face à prolonger");
-  // The front of the plinth, under the doors; then the front of the worktop, 2,1 cm before it.
+  // The front of the plinth, under the doors; then the front of the worktop, 8,1 cm before it (the plinth 6 cm behind the doors, KICK_BACK.default).
   await page.mouse.click(430, 735);
   await expect(tool).toContainText("À prolonger : « Plinthe A »");
   // The face chosen stays marked (orange), then the face reached too (blue), until the tool closes.
@@ -36,7 +36,7 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await expect(view).toHaveAttribute("data-chosen", "first");
   await page.mouse.click(470, 596);
   // Shown first, kept by OK.
-  await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
+  await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 8,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
   await expect(view).toHaveAttribute("data-chosen", "first second");
   // « Couvrir la face d'arrivée », off by default: ticked, the piece widens to it and its Direction no longer counts.
   const cover = tool.getByLabel("Couvrir la face d'arrivée");
@@ -49,7 +49,7 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-faces-marquees.png` });
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
-  await expect(page.getByText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
+  await expect(page.getByText(/« Plinthe A » prolongé de 8,1 cm jusqu'à « Plan de travail A »/).first()).toBeVisible();
   // Kept: the tool is there afresh for another element; « Terminer » closes it.
   await expect(tool).toBeVisible();
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
@@ -57,7 +57,7 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await expect(view).toHaveAttribute("data-chosen", "");
   // An operation on the plinth, to change or take away like any other.
   await expect(page.getByRole("textbox", { name: "Nom", exact: true })).toHaveValue("Prolongement 1");
-  await expect(page.getByLabel(/^Distance/).first()).toHaveValue("2,1");
+  await expect(page.getByLabel(/^Distance/).first()).toHaveValue("8,1");
   await page.waitForTimeout(1500);
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-plinthe.png` });
