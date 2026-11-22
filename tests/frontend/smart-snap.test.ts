@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { SketchGeometry } from "../../frontend/src/document/sketch";
 import { alignmentPoints, pointerSnap, type SnapOptions } from "../../frontend/src/sketcher/smart-snap";
+import { DrawingTool } from "../../frontend/src/sketcher/tools";
 
 // A line from (100, 100) to (300, 100).
 const G: SketchGeometry = {
@@ -18,8 +19,18 @@ describe("accrochages du dessin", () => {
   it("à la géométrie : un point de l'esquisse est repris, un trait est suivi ; désactivé, le pointeur reste libre", () => {
     expect(pointerSnap(G, [102, 98], ALL)).toMatchObject({ pos: [100, 100], pointId: "p1", guides: [] });
     expect(pointerSnap(G, [173, 103], ALL)).toMatchObject({ pos: [173, 100], curveId: "l1" });
+    // Near the middle of the line: on the middle itself (a midpoint constraint), not just on the line.
+    expect(pointerSnap(G, [203, 102], ALL)).toMatchObject({ pos: [200, 100], curveId: "l1", middle: true });
     const off = pointerSnap(G, [173, 103], { ...ALL, geometry: false, smart: false, grid: null });
     expect(off).toEqual({ pos: [173, 103], guides: [] });
+  });
+
+  it("un trait commencé sur le milieu d'un trait y reste : contrainte « milieu »", () => {
+    const tool = new DrawingTool("line");
+    tool.click(G, pointerSnap(G, [203, 102], ALL));
+    const r = tool.click(G, { pos: [200, 300] });
+    if (r.kind !== "commit") throw new Error("pas de trait posé");
+    expect(r.geometry.constraints).toContainEqual(expect.objectContaining({ kind: "midpoint", line: "l1" }));
   });
 
   it("intelligent : même X ou même Y qu'un point (ou le milieu d'un trait), avec un guide en tirets depuis ce point", () => {

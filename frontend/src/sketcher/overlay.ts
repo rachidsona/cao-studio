@@ -80,7 +80,7 @@ const SMART_COLOR = 0xd946ef;
 
 export interface SnapMark {
   pos: Vec2;
-  kind: "grid" | "point" | "curve" | "smart";
+  kind: "grid" | "point" | "curve" | "middle" | "smart";
 }
 
 /** Colours of the dimension roles, from the theme (CSS variables). */
@@ -157,11 +157,15 @@ export class SketchOverlay {
     this.group.add(line);
   }
 
-  /** The pointer's snap indicator: a square (a diamond on a curve) with short arms, a few pixels wide on screen. */
+  /** The pointer's snap indicator: a square (a diamond on a curve, a triangle on a line's middle) with short arms, a few pixels wide on screen. */
   private snapMarker({ pos, kind }: SnapMark): void {
     const px = this.worldPerPixel();
     const [x, y] = pos;
     const color = kind === "curve" ? 0x16a34a : kind === "smart" ? SMART_COLOR : 0xf97316;
+    if (kind === "middle") {
+      for (const h of [7 * px, 8 * px]) this.polyline([[x - h, y - h * 0.8], [x + h, y - h * 0.8], [x, y + h], [x - h, y - h * 0.8]], color);
+      return;
+    }
     const diamond = kind === "curve";
     // Lines are one pixel wide: two nested outlines make a firmer mark.
     for (const half of [6 * px, 7 * px]) {

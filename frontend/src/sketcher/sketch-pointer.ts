@@ -131,7 +131,7 @@ export class SketchPointer {
       mode.preview = mode.tool.move(mode.geometry, s);
       // Snapped to the grid, a point or a curve: the cross becomes a square on the snap point (the pointer is hidden).
       this.guides = s.guides;
-      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.curveId ? { pos: s.pos, kind: "curve" } : s.guides.length ? { pos: s.pos, kind: "smart" } : mode.gridSnap ? { pos: s.pos, kind: "grid" } : null;
+      this.snapMark = s.pointId ? { pos: s.pos, kind: "point" } : s.middle ? { pos: s.pos, kind: "middle" } : s.curveId ? { pos: s.pos, kind: "curve" } : s.guides.length ? { pos: s.pos, kind: "smart" } : mode.gridSnap ? { pos: s.pos, kind: "grid" } : null;
       this.canvas.style.cursor = this.snapMark ? "none" : THIN_CROSSHAIR;
     } else if (mode.offset || mode.edgeOffset) {
       this.hover = hitTest(mode.geometry, p, mode.tolerance()).find((h) => findCurve(mode.geometry, h.id))?.id ?? null;

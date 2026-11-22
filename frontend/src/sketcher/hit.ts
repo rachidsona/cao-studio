@@ -64,6 +64,8 @@ export interface Snap {
   pointId?: string;
   /** Curve the position lies on (becomes a point-on-curve constraint). */
   curveId?: string;
+  /** The position is the middle of the line `curveId` (becomes a midpoint constraint). */
+  middle?: boolean;
 }
 
 export function snap(g: SketchGeometry, p: Vec2, tolerance: number, exclude: ReadonlySet<string> = new Set()): Snap {

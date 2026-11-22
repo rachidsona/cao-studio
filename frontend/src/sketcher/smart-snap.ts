@@ -1,6 +1,6 @@
 /**
  * Where the pointer of a drawing tool lands, with the three snaps of the sketch (as the buttons of Vectric Aspire):
- * - géométrie : on a point of the sketch (reused), else on a line or a curve;
+ * - géométrie : on a point of the sketch (reused), else on the middle of a line, else on a line or a curve;
  * - intelligent : in line with a point of the sketch, a middle of a line or a point just clicked — the same x, the
  *   same y, or both — shown by dashed guides from that point;
  * - grille : on the nearest grid point (on an axis the alignment did not take).
@@ -38,10 +38,28 @@ export function alignmentPoints(g: SketchGeometry, anchors: readonly Vec2[] = []
   return [...points, ...anchors];
 }
 
+/** The nearest middle of a line within `tolerance` of `p`. */
+function lineMiddle(g: SketchGeometry, p: Vec2, tolerance: number, exclude: ReadonlySet<string> = new Set()): Snap | null {
+  let best: Snap | null = null;
+  let reach = tolerance;
+  for (const c of g.curves) {
+    if (c.kind !== "line" || exclude.has(c.id)) continue;
+    const [a, b] = [pointPos(g, c.p1), pointPos(g, c.p2)];
+    const m: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const d = Math.hypot(m[0] - p[0], m[1] - p[1]);
+    if (d <= reach) [best, reach] = [{ pos: m, curveId: c.id, middle: true }, d];
+  }
+  return best;
+}
+
 export function pointerSnap(g: SketchGeometry, p: Vec2, o: SnapOptions): PointerSnap {
   if (o.geometry) {
     const s = snap(g, p, o.tolerance, o.exclude);
-    if (s.pointId || s.curveId) return { ...s, guides: [] };
+    if (s.pointId) return { ...s, guides: [] };
+    // The middle of a line, when the pointer is that near it: before the line itself.
+    const mid = lineMiddle(g, p, o.tolerance, o.exclude);
+    if (mid) return { ...mid, guides: [] };
+    if (s.curveId) return { ...s, guides: [] };
   }
   const free = o.grid ? gridPoint(p, o.grid) : p;
   if (!o.smart) return { pos: free, guides: [] };

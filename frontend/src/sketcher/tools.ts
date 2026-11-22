@@ -32,7 +32,8 @@ function resolve(g: SketchGeometry, s: Snap): string {
   const id = nextId(g, "p");
   g.points.push({ id, x: s.pos[0], y: s.pos[1] });
   if (s.curveId) {
-    const { geometry } = addConstraint(g, { kind: "pointOnCurve", point: id, curve: s.curveId } as never);
+    const constraint = s.middle ? { kind: "midpoint", point: id, line: s.curveId } : { kind: "pointOnCurve", point: id, curve: s.curveId };
+    const { geometry } = addConstraint(g, constraint as never);
     g.constraints = geometry.constraints;
   }
   return id;

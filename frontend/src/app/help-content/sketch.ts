@@ -461,10 +461,10 @@ export const SKETCH: HelpFamily[] = [
         ],
       }, {
         keys: ["data-sketch-command:geomsnap"], name: "Accrochage à la géométrie",
-        what: "Colle le pointeur aux points et aux traits de l'esquisse pendant le tracé.",
+        what: "Colle le pointeur aux points, aux milieux des traits et aux traits de l'esquisse pendant le tracé.",
         steps: [
           "Cliquez le bouton pour activer ou désactiver l'accrochage ; un message confirme.",
-          "Tracez : le pointeur devient un carré quand il est accroché.",
+          "Tracez : le pointeur devient un carré quand il est accroché à un point, un triangle sur le milieu d'un trait (le point posé y reste, contrainte « milieu »).",
         ],
         tip: "Activé au départ. Le même réglage existe dans la barre de modélisation : les deux boutons vont ensemble.",
       }, {
