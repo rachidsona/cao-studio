@@ -5,6 +5,7 @@
  * portes, étagères), et ce qu'on y fait reste quand le plan change.
  */
 import { topProblem, topStep, withTopUnitsSet } from "../../document/plan-layout";
+import { hasBack, withBack } from "../../document/partition-back";
 import type { PlanZone } from "../../document/plan-shapes";
 import type { DressingPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
@@ -22,18 +23,29 @@ const INSIDE_TOOLS: ["module" | "shelves" | "cloisons" | "drawers" | "door" | "r
   ["rod", "Penderie", "Une tringle dans une niche", "i-rod"],
 ];
 
-/** The row of these tools for the Répartition of sketch `sketch` (`before`: what is done first, a zone isolated). */
+/** The row of these tools for the Répartition of sketch `sketch` (`before`: what is done first, a zone isolated), and its back put or taken off. */
 export function insideTools(label: string, key: string, sketch: string, editor: Editor, before: () => void): HTMLElement {
-  return el("div", { class: "grid grid-cols-3 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${label}`, "data-zone-inside": key },
+  const BUTTON = "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 aria-pressed:bg-sky-100 aria-pressed:text-sky-900 dark:text-gray-200 dark:hover:bg-gray-800 dark:aria-pressed:bg-sky-950 dark:aria-pressed:text-sky-100 [&_svg]:size-6";
+  // The back: one click puts it (8 mm, one for the whole wall), another takes it off.
+  const back = el("button", { type: "button", class: BUTTON, "aria-label": "Fond", "aria-pressed": String(hasBack(editor.doc, sketch)), "data-zone-tool": "back", title: "Poser un panneau de fond derrière tout le mur, ou le retirer (réglages fins : Modifier, carte Fond)" }, toolIcon("i-board", "tool-icon"), el("span", { class: "max-w-full truncate" }, "Fond"));
+  back.addEventListener("click", () => {
+    const on = !hasBack(editor.doc, sketch);
+    void editor.change(withBack(editor.doc, sketch, on)).then(() => {
+      back.setAttribute("aria-pressed", String(hasBack(editor.doc, sketch)));
+      editor.notify(on ? `Fond posé derrière ${label.toLowerCase()} (8 mm, un seul panneau).` : `Fond retiré de ${label.toLowerCase()}.`, "success");
+    });
+  });
+  return el("div", { class: "grid grid-cols-4 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${label}`, "data-zone-inside": key },
     ...INSIDE_TOOLS.map(([tool, name, title, icon]) => {
-      const b = el("button", { type: "button", class: "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 [&_svg]:size-6", title, "aria-label": name, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, name));
+      const b = el("button", { type: "button", class: BUTTON, title, "aria-label": name, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, name));
       b.addEventListener("click", () => {
         before();
         if (tool === "shelves" || tool === "cloisons") editor.sketches.startJoinery(tool, sketch);
         else editor.sketches.startEquip(tool, sketch);
       });
       return b;
-    }));
+    }),
+    back);
 }
 
 const FIELD = "h-7 w-20 border border-gray-300 bg-white px-1 text-right text-xs dark:border-gray-600 dark:bg-gray-900";

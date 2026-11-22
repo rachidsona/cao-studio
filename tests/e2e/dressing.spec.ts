@@ -408,7 +408,15 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   await expect(page.getByText("Mur A — fileur", { exact: true }).first()).toBeVisible();
   // Its inside, straight from the plan: the tools of a niche, each opened on the zone.
   const inside = tool.locator("[data-zone-inside]").first();
-  await expect(inside.locator("[data-zone-tool]")).toHaveText(["Module", "Étagères", "Cloisons", "Tiroirs", "Portes", "Penderie"]);
+  await expect(inside.locator("[data-zone-tool]")).toHaveText(["Module", "Étagères", "Cloisons", "Tiroirs", "Portes", "Penderie", "Fond"]);
+  // The back of the zone, one click on, one click off.
+  const backTool = inside.locator('[data-zone-tool="back"]');
+  await backTool.click();
+  await expect(page.getByText(/Fond posé derrière/).first()).toBeVisible();
+  await expect(backTool).toHaveAttribute("aria-pressed", "true");
+  await backTool.click();
+  await expect(page.getByText(/Fond retiré de/).first()).toBeVisible();
+  await expect(backTool).toHaveAttribute("aria-pressed", "false");
   await inside.locator('[data-zone-tool="shelves"]').click();
   await expect(page.getByRole("dialog", { name: "Étagères" })).toBeVisible();
   await page.keyboard.press("Escape");
