@@ -11,6 +11,8 @@ import * as THREE from "three";
 import type { CadDocument, SketchFeature } from "../document/types";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
+import { linesBetweenWalls, wallLines } from "../sketcher/niche-outline";
+import { latestBody } from "../document/operations";
 import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
 
@@ -37,6 +39,8 @@ const MARGINS = [0.55, 0.65, 0.75, 0.85, 1];
 export class SketchDisplay {
   private shown: SketchFeature[] = [];
   private highlighted: string | null = null;
+  /** The meshes of the walls the lines of bodies furnished were drawn against. */
+  private wallsKey = "";
   private editing: string | null = null;
 
   constructor(
@@ -81,14 +85,18 @@ export class SketchDisplay {
     if (this.viewport.displayedBodies.length) box.union(this.viewport.bodiesBox());
     this.viewport.gridArea = box.isEmpty() ? null : [box.min.x, box.min.y, box.max.x, box.max.y];
     const selected = visible.find((f) => f.id === this.host.selected())?.id ?? null;
-    if (selected === this.highlighted && visible.length === this.shown.length && visible.every((f, i) => f === this.shown[i])) return;
+    // A body furnished: its lines follow its walls, drawn again when their meshes come or change.
+    const walls = (f: SketchFeature) => (f.host?.bodies ?? []).flatMap((id) => this.viewport.bodyMesh(latestBody(doc, id)) ?? this.viewport.bodyMesh(id) ?? []);
+    const wallsKey = visible.map((f) => walls(f).map((m) => `${m.bodyId}:${m.meshId ?? ""}`).join(",")).join(";");
+    if (selected === this.highlighted && wallsKey === this.wallsKey && visible.length === this.shown.length && visible.every((f, i) => f === this.shown[i])) return;
     this.shown = visible;
     this.highlighted = selected;
+    this.wallsKey = wallsKey;
     this.viewport.setSketchLines(
       visible.map((f) => ({
         id: f.id,
         frame: frameOf(f),
-        curves: [...sketchCurves(f), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
+        curves: [...(f.host ? linesBetweenWalls(sketchCurves(f), f.host.box, wallLines(frameOf(f), walls(f))) : sketchCurves(f)), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
         points: sketchPoints(f),
         regions: sketchRegions(f),
         selected: f.id === selected,

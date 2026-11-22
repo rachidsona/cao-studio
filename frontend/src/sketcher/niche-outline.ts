@@ -79,3 +79,39 @@ export function nicheOutline(box: NicheBox, [u0, v0, u1, v1]: readonly [number, 
   // Still drawn out far: a side with no wall to stop it, the rectangle then.
   return polygon.some(([u, v]) => Math.abs(u) > FAR / 2 || Math.abs(v) > FAR / 2) ? null : polygon;
 }
+
+/**
+ * The lines of a body furnished's sketch as they are between its walls: those on the edge of the opening (or out of
+ * it) left out — the walls are there —, the others drawn out from an end on that edge and cut by the walls (a
+ * shelf's line meets the slanted side). Other curves (arcs, texts) as they are.
+ */
+export function linesBetweenWalls<C extends { points: Vec2[] }>(curves: readonly C[], [u0, v0, u1, v1]: readonly [number, number, number, number], lines: readonly WallLine[]): C[] {
+  if (!lines.length) return [...curves];
+  const out = (p: Vec2) => [p[0] <= u0 + TOUCH, p[0] >= u1 - TOUCH, p[1] <= v0 + TOUCH, p[1] >= v1 - TOUCH];
+  return curves.flatMap((curve) => {
+    if (curve.points.length !== 2) return [curve];
+    const [a, b] = curve.points as [Vec2, Vec2];
+    // On the edge of the opening, or past it: the wall stands there.
+    const [oa, ob] = [out(a), out(b)];
+    if (oa.some((o, i) => o && ob[i])) return [];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (length < 1e-9) return [curve];
+    const d: Vec2 = [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+    // Drawn out from each end on the edge, then kept on the inside of every wall (the side of its middle).
+    let [t0, t1] = [oa.some(Boolean) ? -FAR : 0, ob.some(Boolean) ? length + FAR : length];
+    const middle: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    for (const line of lines) {
+      const side = (q: Vec2) => (q[0] - line.p[0]) * line.n[0] + (q[1] - line.p[1]) * line.n[1];
+      const sign = side(middle) >= 0 ? 1 : -1;
+      const s0 = sign * side(a);
+      const rate = sign * (d[0] * line.n[0] + d[1] * line.n[1]);
+      if (Math.abs(rate) < 1e-12) continue;
+      // Where the line's side changes along the curve: past it, the wall.
+      const t = -s0 / rate;
+      if (rate > 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+    }
+    if (t1 - t0 < 1e-6 || t0 < -FAR / 2 || t1 > length + FAR / 2) return [curve];
+    return [{ ...curve, points: [[a[0] + d[0] * t0, a[1] + d[1] * t0], [a[0] + d[0] * t1, a[1] + d[1] * t1]] }];
+  });
+}

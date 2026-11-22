@@ -1,6 +1,6 @@
 /** La niche d'un corps aménagé suit ses parois, même en biais. */
 import { describe, expect, it } from "vitest";
-import { nicheOutline, type WallLine } from "../../frontend/src/sketcher/niche-outline";
+import { linesBetweenWalls, nicheOutline, type WallLine } from "../../frontend/src/sketcher/niche-outline";
 
 const opening: [number, number, number, number] = [18, 18, 582, 382];
 /** Inner faces of a frame: its left one leaning (u from 18 at the bottom to 68 at the top), the others square. */
@@ -26,5 +26,19 @@ describe("la forme d'une niche entre les parois", () => {
   it("une niche loin des parois reste un rectangle ; sans paroi pour l'arrêter aussi", () => {
     expect(nicheOutline({ x0: 100, y0: 100, x1: 200, y1: 200 }, opening, walls)).toBeNull();
     expect(nicheOutline({ x0: 18, y0: 18, x1: 582, y1: 382 }, opening, walls.slice(1))).toBeNull();
+  });
+
+  it("le tracé : les traits sur le bord de l'ouverture partent, une étagère va jusqu'à la paroi penchée, une cloison reste", () => {
+    const curves = [
+      { id: "bord", points: [[18, 18], [18, 382]] as [number, number][] },
+      { id: "dehors", points: [[0, 0], [600, 0]] as [number, number][] },
+      { id: "étagère", points: [[18, 200], [582, 200]] as [number, number][] },
+      { id: "cloison", points: [[300, 200], [300, 382]] as [number, number][] },
+    ];
+    const drawn = linesBetweenWalls(curves, opening, walls).map((c) => ({ id: c.id, points: round(c.points) }));
+    expect(drawn).toEqual([
+      { id: "étagère", points: [[43, 200], [582, 200]] },
+      { id: "cloison", points: [[300, 200], [300, 382]] },
+    ]);
   });
 });
