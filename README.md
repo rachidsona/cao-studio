@@ -894,8 +894,9 @@ opération existante.
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
 - **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : **Direction** (une pièce seule) :
   perpendiculaire à sa face, **selon X, Y ou Z**, **droit vers la face d'arrivée** (une étagère en biais prolongée à
-  l'horizontale) ou **comme une autre face** (cliquée : perpendiculairement à elle, dans l'alignement d'une étagère
-  voisine), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
+  l'horizontale), **comme une autre face** (cliquée : perpendiculairement à elle, dans l'alignement d'une étagère
+  voisine) ou **parallèle à une face** (cliquée : dans son plan, le sens de la face prolongée ramené sur elle — la
+  pièce glisse le long ; une face parallèle à celle à prolonger est refusée), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
   `document/extend-reach.ts` `wayOf`, `features/face-until.ts`). **Couvrir la face d'arrivée** (une pièce seule, décochée
   d'office) : la pièce s'élargit jusqu'aux bords de la face d'arrivée au lieu de garder son contour — un dessus
   descendu jusqu'à une étagère plus large va jusqu'au côté en biais du cadre (`cover` de l'opération : l'enveloppe des

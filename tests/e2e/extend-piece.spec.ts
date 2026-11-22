@@ -46,6 +46,13 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   await expect(tool).toContainText("La pièce s'élargit jusqu'aux bords de la face d'arrivée");
   await expect(tool.getByLabel("Direction")).toHaveCount(0);
   await cover.uncheck();
+  // « Parallèle à une face »: a face clicked to slide along; the front of the worktop, parallel to the plinth's, is refused.
+  await tool.getByLabel("Direction").selectOption("parallel");
+  await expect(tool).toContainText("Cliquez la face à longer");
+  await page.mouse.click(470, 596);
+  await expect(tool).toContainText("Cette face est parallèle à celle à prolonger");
+  await tool.getByLabel("Direction").selectOption("normal");
+  await expect(tool.locator("[data-extend-result]")).toContainText(/prolongé de 8,1 cm/);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-faces-marquees.png` });
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
