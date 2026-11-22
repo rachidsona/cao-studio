@@ -11,6 +11,7 @@ import type { DressingPlan } from "../../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { toolIcon } from "../../ui/icons";
+import { zoneCard } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 
 /** The tools inside a Répartition of the plan (a zone, top units), each opened on it. */
@@ -77,15 +78,16 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
     apply(top);
   });
   const remove = now ? el("button", { type: "button", class: WIDE, "data-top-remove": "" }, "Retirer les surmeubles") : null;
-  // Each one made: « Modifier » opens its Répartition (its cases), and its tools inside, as a zone's — doors over niches too.
-  const rows = zones.flatMap((zone) => {
+  // Each one made, a card as a zone's: « Modifier » opens its Répartition (its cases), and its tools inside — doors over niches too.
+  const cards = zones.flatMap((zone) => {
     const at = topStep(editor.doc, plan, zone.id);
     if (!at) return [];
     const name = `Surmeubles — ${zone.label.toLowerCase()}`;
     const open = el("button", { type: "button", class: "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-top-edit": zone.id, title: "Ouvrir ces surmeubles dans l'outil Répartition : cases, côtés, dimensions" }, "Modifier");
     open.addEventListener("click", () => editor.sketches.editOffset(at.sketch, at.step));
-    return [el("div", { class: "space-y-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", "data-top-row": zone.id }, el("div", { class: "flex min-h-8 items-center justify-between gap-2" }, name, open), insideTools(name, `top:${zone.id}`, at.sketch, editor, () => undefined))];
+    return [zoneCard(`top:${zone.label}`, zone.label, `${trim(toDisplay(now?.height ?? 0, unit), 3)} ${UNIT_LABELS[unit]} de haut`, [open], insideTools(name, `top:${zone.id}`, at.sketch, editor, () => undefined), { "data-top-row": zone.id })];
   });
+  const rows = cards.length ? [el("ul", { class: "space-y-1.5", "aria-label": "Surmeubles posés" }, ...cards)] : [];
   remove?.addEventListener("click", () => apply(null));
   const all: (HTMLElement | null)[] = [
     el("h3", { class: "panel-title", title: plan.roof ? "Sous un rampant, le dessus suit déjà le plafond." : "Des caissons au-dessus du dressing, dans la continuité de ses cases" }, "Surmeubles"),
