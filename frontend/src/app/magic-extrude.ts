@@ -15,7 +15,7 @@ import type { ToolContext } from "./panel-tool";
 export const MAGIC_EXTRUDE = "Magie extrusion";
 
 /** The traces: the first two draw a line from an edge or a corner (face strip), the others a shape on a face. */
-export type Trace = "edge" | "corner" | "line" | "rectangle" | "circle" | "offset";
+export type Trace = "edge" | "corner" | "line" | "rectangle" | "circle" | "offset" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt";
 
 export const TRACES: [Trace, string][] = [
   ["edge", "Trait depuis une arête (parallèle)"],
@@ -24,7 +24,19 @@ export const TRACES: [Trace, string][] = [
   ["rectangle", "Rectangle"],
   ["circle", "Cercle"],
   ["offset", "Décalage du contour"],
+  ["rectangle-center", "Rectangle par le centre"],
+  ["rectangle-3pt", "Rectangle par 3 points (de biais)"],
+  ["circle-2pt", "Cercle par 2 points"],
+  ["circle-3pt", "Cercle par 3 points"],
+  ["arc", "Arc (centre, départ, fin)"],
+  ["arc-3pt", "Arc par 3 points"],
+  ["polygon", "Polygone"],
+  ["slot", "Oblong"],
+  ["oval", "Ovale"],
+  ["curve", "Courbe"],
 ];
+/** The traces drawn by the sketch's own tools (app/face-sketch-tool.ts). */
+export const isSketchTrace = (t: Trace): boolean => TRACES.findIndex(([v]) => v === t) > TRACES.findIndex(([v]) => v === "offset");
 
 /** Whether the trace is a line drawn from an edge or a corner, then pulled in its band. */
 export const isStripTrace = (t: Trace): t is "edge" | "corner" => t === "edge" || t === "corner";
@@ -101,3 +113,17 @@ export const groundRow = (select: Select, changed: () => void, check: Check, vie
   );
 /** The row « Afficher les axes » alone (every trace of Magie extrusion: a shape, an offset, a line from an edge or a corner). */
 export const axesRow = (check: Check, viewport: Viewport): HTMLElement => check("Afficher les axes", axesVisible(viewport), (v) => setAxesVisible(viewport, v));
+
+/**
+ * On the grid, where the pointer lands when nothing else holds it (`snap` free): on the axes of its plane (its two
+ * zero lines) within `reach`, else on the grid's step. A point held by a magnet (a corner of a body) is kept.
+ */
+export function groundSnap<K extends string>(snap: { point: [number, number]; kind: K | "free" }, step: number, reach: number): { point: [number, number]; kind: K | "free" | "corner" } {
+  if (snap.kind !== "free") return snap;
+  const on = (v: number) => Math.abs(v) <= reach;
+  const round = (v: number) => (step > 0 ? Math.round(v / step) * step + 0 : v);
+  const [x, y] = snap.point;
+  const point: [number, number] = [on(x) ? 0 : round(x), on(y) ? 0 : round(y)];
+  return { point, kind: on(x) || on(y) ? "corner" : "free" };
+}
+

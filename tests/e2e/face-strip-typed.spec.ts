@@ -27,7 +27,7 @@ test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteu
   // « Magie extrusion »: every trace in one choice — a line from an edge or a corner, or a shape on a face.
   const start = tool.getByRole("combobox", { name: "Tracé" });
   await expect(start).toHaveValue("edge");
-  await expect(start.locator("option")).toHaveText(["Trait depuis une arête (parallèle)", "Trait depuis un coin (en travers)", "Ligne / polyligne", "Rectangle", "Cercle", "Décalage du contour"]);
+  await expect(start.locator("option")).toHaveText(["Trait depuis une arête (parallèle)", "Trait depuis un coin (en travers)", "Ligne / polyligne", "Rectangle", "Cercle", "Décalage du contour", "Rectangle par le centre", "Rectangle par 3 points (de biais)", "Cercle par 2 points", "Cercle par 3 points", "Arc (centre, départ, fin)", "Arc par 3 points", "Polygone", "Oblong", "Ovale", "Courbe"]);
   const values = page.getByRole("status", { name: "Mesures" });
   await expect(values).toContainText("sur un trait");
   await start.selectOption("corner");

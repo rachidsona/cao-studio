@@ -37,6 +37,7 @@ import { PushTool } from "./push-tool";
 import { ApplianceTool } from "./appliances/appliance-tool";
 import { SweepTool } from "./sweep-tool";
 import { DrawOnFaceTool } from "./draw-on-face-tool";
+import { FaceSketchTool, isSketchShape } from "./face-sketch-tool";
 import { isStripTrace, lastMagicTrace } from "./magic-extrude";
 import { SplitTool } from "./split-tool";
 import { CombineTool, HoleTool, RevolveTool } from "./feature-tools";
@@ -54,7 +55,7 @@ import { LayoutCopyTool } from "./dressing/layout-copy-tool";
 import { KitchenTool } from "./kitchen/kitchen-tool";
 import { DressingTool } from "./dressing/dressing-tool";
 
-export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances" | "snack" | "splitSides" | "copyOps" | "bendOnto";
+export type PanelToolKind = "revolve" | "paneling" | "fillet" | "chamfer" | "combine" | "hole" | "faceExtrude" | "split" | "move" | "panels" | "cabinet" | "faceStrip" | "mirror" | "align" | "stretch" | "array" | "rotate" | "machining" | "sweep" | "rectArray" | "drawOnFace" | "faceSketch" | "shell" | "hollow" | "loft" | "modifier" | "fronts" | "assembly" | "overlap" | "layoutCopy" | "kitchen" | "dressing" | "coincide" | "trim" | "room" | "cutout" | "mate" | "lighting" | "gable" | "intersect" | "ffd" | "swap" | "extrudePath" | "spacing" | "pullFace" | "moveEdge" | "faceGlue" | "extend" | "push" | "appliances" | "snack" | "splitSides" | "copyOps" | "bendOnto";
 
 /** Bodies created before `featureId` that an extrusion may join or cut. */
 export function extrudeTargets(doc: CadDocument, featureId: string | null): { id: string; name: string }[] {
@@ -249,7 +250,8 @@ export class ToolLauncher {
       case "faceStrip": {
         // « Magie extrusion » opens on the trace chosen last: a shape on a face is drawn by the other half of it.
         if (!isStripTrace(lastMagicTrace())) {
-          this.active = new DrawOnFaceTool(ctx);
+          const trace = lastMagicTrace();
+          this.active = isSketchShape(trace) ? new FaceSketchTool(ctx, trace) : new DrawOnFaceTool(ctx);
           break;
         }
         const tool = new FaceStripTool(ctx);
@@ -310,6 +312,11 @@ export class ToolLauncher {
       case "drawOnFace":
         this.active = new DrawOnFaceTool(ctx);
         break;
+      case "faceSketch": {
+        const trace = lastMagicTrace();
+        this.active = new FaceSketchTool(ctx, isSketchShape(trace) ? trace : "polygon");
+        break;
+      }
       case "rectArray":
         this.active = new ArrayTool(ctx, null, options.bodies ?? [], options.sketches ?? [], "rect");
         break;

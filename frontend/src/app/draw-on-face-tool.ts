@@ -29,7 +29,7 @@ import { coplanarCorners, loadFace, planeAcross, type LoadedFace } from "./face-
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
-import { axesRow, groundFace, groundRow, isGround, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
+import { axesRow, groundFace, groundRow, groundSnap, isGround, isSketchTrace, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
 
 /** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
@@ -55,7 +55,7 @@ const NOTHING: Typed = { x: null, y: null, length: null, angle: null };
 const TYPING = /^[0-9.,;\- +*/()×÷]$/;
 
 export class DrawOnFaceTool extends PanelTool {
-  private shape: Shape = isStripTrace(lastMagicTrace()) ? last.shape : (lastMagicTrace() as Shape);
+  private shape: Shape = isStripTrace(lastMagicTrace()) || isSketchTrace(lastMagicTrace()) ? last.shape : (lastMagicTrace() as Shape);
   private thenPull = pullAfter();
   /** The face the drawing is on: set with the first point, which locks it. */
   private face: LoadedFace | null = null;
@@ -143,7 +143,7 @@ export class DrawOnFaceTool extends PanelTool {
       this.offsetOutline = offsetPolygon(face.polygon, this.offsetDistance);
       return raw;
     }
-    const snap = this.points.length === 0 && !pointInPolygon(raw, face.polygon) ? { point: raw, kind: "free" as SnapKind } : this.snapAt(face, raw, event);
+    const snap = isGround(face) ? groundSnap(this.snapAt(face, raw, event), this.ctx.viewport.gridStep, 10 * this.ctx.viewport.worldPerPixel()) : this.points.length === 0 && !pointInPolygon(raw, face.polygon) ? { point: raw, kind: "free" as SnapKind } : this.snapAt(face, raw, event);
     this.snapped = snap.kind;
     let p = snap.point;
     const first = this.points.at(-1);
@@ -467,7 +467,7 @@ export class DrawOnFaceTool extends PanelTool {
       this.selectRow("Tracé", this.shape, TRACES, (v) => {
         rememberTrace(v as Trace);
         // A line from an edge or a corner: the other way of « Magie extrusion ».
-        if (isStripTrace(v as Trace)) return this.ctx.switchTo?.("faceStrip");
+        if (isStripTrace(v as Trace) || isSketchTrace(v as Trace)) return this.ctx.switchTo?.(isStripTrace(v as Trace) ? "faceStrip" : "faceSketch");
         this.shape = last.shape = v as Shape;
         [this.points, this.snaps] = [[], []];
         this.face = null;

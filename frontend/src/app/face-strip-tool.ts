@@ -29,7 +29,7 @@ import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { WayChoice } from "./extrude-direction";
-import { axesRow, FaceToReach, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
+import { axesRow, FaceToReach, isSketchTrace, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
@@ -283,7 +283,7 @@ export class FaceStripTool extends PanelTool {
         this.selectRow("Tracé", this.departure, TRACES, (v) => {
           rememberTrace(v as Trace);
           // A shape on a face: the other way of « Magie extrusion ».
-          if (!isStripTrace(v as Trace)) return this.ctx.switchTo?.("drawOnFace");
+          if (!isStripTrace(v as Trace)) return this.ctx.switchTo?.(isSketchTrace(v as Trace) ? "faceSketch" : "drawOnFace");
           this.departure = last.start = v as Start;
           this.hover = null;
           changed();
