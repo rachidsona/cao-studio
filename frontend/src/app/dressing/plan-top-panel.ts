@@ -24,7 +24,7 @@ const INSIDE_TOOLS: ["module" | "shelves" | "cloisons" | "drawers" | "door" | "r
 
 /** The row of these tools for the Répartition of sketch `sketch` (`before`: what is done first, a zone isolated). */
 export function insideTools(label: string, key: string, sketch: string, editor: Editor, before: () => void): HTMLElement {
-  return el("div", { class: "grid grid-cols-6 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${label}`, "data-zone-inside": key },
+  return el("div", { class: "grid grid-cols-3 gap-1 border-t border-gray-100 pt-1.5 dark:border-gray-800", role: "group", "aria-label": `Dedans ${label}`, "data-zone-inside": key },
     ...INSIDE_TOOLS.map(([tool, name, title, icon]) => {
       const b = el("button", { type: "button", class: "flex min-w-0 flex-col items-center gap-0.5 rounded-sm px-0.5 py-1 text-3xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 [&_svg]:size-6", title, "aria-label": name, "data-zone-tool": tool }, toolIcon(icon, "tool-icon"), el("span", { class: "max-w-full truncate" }, name));
       b.addEventListener("click", () => {

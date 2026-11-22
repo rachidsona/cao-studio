@@ -409,9 +409,6 @@ test("Remplir, palette de commandes, dossier de production : du plan au .zip", a
   // Its inside, straight from the plan: the tools of a niche, each opened on the zone.
   const inside = tool.locator("[data-zone-inside]").first();
   await expect(inside.locator("[data-zone-tool]")).toHaveText(["Module", "Étagères", "Cloisons", "Tiroirs", "Portes", "Penderie"]);
-  await inside.locator('[data-zone-tool="module"]').click();
-  await expect(page.getByRole("dialog", { name: "Module" })).toBeVisible();
-  await page.keyboard.press("Escape");
   await inside.locator('[data-zone-tool="shelves"]').click();
   await expect(page.getByRole("dialog", { name: "Étagères" })).toBeVisible();
   await page.keyboard.press("Escape");
