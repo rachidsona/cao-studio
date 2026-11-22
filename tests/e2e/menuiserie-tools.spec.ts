@@ -830,6 +830,37 @@ test("des tiroirs posés qu'on modifie : chaque réglage est enregistré aussit�
   expect(errors).toEqual([]);
 });
 
+test("tout le dressing en noyer : la tringle garde son métal", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "Noyer e2e");
+  const looks = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    const info = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { bodyInfo?: Record<string, { appearance?: string }> } }).document.bodyInfo ?? {}, api);
+    return { rod: Object.entries(info).some(([k, v]) => k.startsWith("pd") && v.appearance), panels: Object.values(info).filter((v) => v.appearance === "wood-walnut").length };
+  };
+  await wall(page);
+  await click(page, '[data-action="penderie"]');
+  const tool = page.getByRole("dialog", { name: "Penderie" });
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await page.waitForTimeout(800);
+  // All of it selected, walnut given: the panels take it, the rod and its supports keep their metal.
+  await click(page, "[data-select-all]");
+  await page.getByRole("button", { name: "Apparence", exact: true }).click();
+  const panel = page.getByRole("dialog", { name: "Apparence" });
+  await panel.getByRole("searchbox", { name: "Rechercher une apparence" }).fill("noyer");
+  await panel.locator('[data-appearance-grid] [data-appearance="wood-walnut"]').click();
+  await expect(page.getByText(/de verre ou de métal .* gardent leur aspect/).first()).toBeVisible();
+  await expect.poll(async () => (await looks()).panels, { timeout: 30_000 }).toBeGreaterThan(3);
+  expect((await looks()).rod).toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
