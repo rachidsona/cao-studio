@@ -29,7 +29,7 @@ import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { WayChoice } from "./extrude-direction";
-import { FaceToReach, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
+import { axesRow, FaceToReach, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
@@ -290,7 +290,7 @@ export class FaceStripTool extends PanelTool {
         }),
         this.info(this.departure === "edge" ? "1. Survolez une arête (en vert) : le trait lui sera parallèle, copiable sur une autre face ; l'intérieur d'une face se tire ou se pousse." : "1. Survolez un coin (point orange) : le trait partira en travers ; l'intérieur d'une face se tire ou se pousse."),
         this.info(this.mode === "line" ? "Une ligne (Ctrl : double trait)." : "Double trait (Ctrl : une ligne)."),
-        this.checkRow("Puis tirer / pousser", pullAfter(), (v) => (rememberPull(v), changed())),
+        this.checkRow("Puis tirer / pousser", pullAfter(), (v) => (rememberPull(v), changed())), axesRow((l, c, f) => this.checkRow(l, c, f), this.ctx.viewport),
       ];
     }
     if (this.phase === "place") {

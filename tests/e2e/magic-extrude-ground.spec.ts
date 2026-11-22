@@ -72,8 +72,12 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   expect(front.at(-1)!.plane).toBe("XZ");
   expect(front.at(-1)!.support).toBeUndefined();
   expect(errors).toEqual([]);
-  // Hidden again: kept so.
+  // Hidden again: kept so — the box is there with every trace (an offset, a line from an edge too).
   await click(page, '[data-action="face-strip"]');
+  await tool.getByRole("combobox", { name: "Tracé" }).selectOption("offset");
+  await expect(tool.getByRole("checkbox", { name: "Afficher les axes" })).toBeChecked();
+  await tool.getByRole("combobox", { name: "Tracé" }).selectOption("edge");
+  await expect(tool.getByRole("checkbox", { name: "Afficher les axes" })).toBeChecked();
   await tool.getByRole("checkbox", { name: "Afficher les axes" }).uncheck();
   expect(await page.evaluate(() => localStorage.getItem("cao.axes-visible"))).toBe("0");
 });

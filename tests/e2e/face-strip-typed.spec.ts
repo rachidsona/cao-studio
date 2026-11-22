@@ -35,7 +35,7 @@ test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteu
   // A shape on a face: the same tool, its other way to draw, then back to the line from an edge.
   await start.selectOption("rectangle");
   await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("rectangle");
-  await expect(tool).toContainText("Cliquez sur une face du corps");
+  await expect(tool).toContainText("Cliquez sur une face d'un corps");
   await expect(page.locator("#editor")).toHaveAttribute("data-tool", "drawOnFace");
   await tool.getByRole("combobox", { name: "Tracé" }).selectOption("edge");
   await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("edge");

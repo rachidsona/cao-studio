@@ -97,5 +97,7 @@ export const groundRow = (select: Select, changed: () => void, check: Check, vie
     "div",
     { class: "space-y-1.5" },
     select("Sans corps, sur", groundPlane, GROUND_PLANES, (v) => ((groundPlane = v as GroundPlane), changed())),
-    check("Afficher les axes", axesVisible(viewport), (v) => setAxesVisible(viewport, v)),
+    axesRow(check, viewport),
   );
+/** The row « Afficher les axes » alone (every trace of Magie extrusion: a shape, an offset, a line from an edge or a corner). */
+export const axesRow = (check: Check, viewport: Viewport): HTMLElement => check("Afficher les axes", axesVisible(viewport), (v) => setAxesVisible(viewport, v));

@@ -29,7 +29,7 @@ import { coplanarCorners, loadFace, planeAcross, type LoadedFace } from "./face-
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
-import { groundFace, groundRow, isGround, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
+import { axesRow, groundFace, groundRow, isGround, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
 
 /** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
@@ -478,7 +478,7 @@ export class DrawOnFaceTool extends PanelTool {
         else this.draw();
       }),
       this.shape === "offset" ? this.selectRow("Décalage sur", last.roof ? "roof" : "face", [["face", "La face survolée"], ["roof", "Tout le toit (les deux pans)"]], (v) => ((last.roof = v === "roof"), this.lastEvent && this.move(this.lastEvent))) : null,
-      this.info(step), this.shape === "offset" ? null : groundRow((l, v, o, f) => this.selectRow(l, v, o, f), () => this.lastEvent && this.move(this.lastEvent), (l, c, f) => this.checkRow(l, c, f), this.ctx.viewport),
+      this.info(step), this.shape === "offset" ? axesRow((l, c, f) => this.checkRow(l, c, f), this.ctx.viewport) : groundRow((l, v, o, f) => this.selectRow(l, v, o, f), () => this.lastEvent && this.move(this.lastEvent), (l, c, f) => this.checkRow(l, c, f), this.ctx.viewport),
       this.shape === "line" ? this.checkRow("Couper le corps", last.cut, (v) => ((last.cut = v), this.render(), this.schedulePreview())) : null,
       this.closedShape
         ? this.checkRow("Puis tirer / pousser", this.thenPull, (v) => {
