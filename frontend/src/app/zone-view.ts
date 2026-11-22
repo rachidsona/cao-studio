@@ -1,6 +1,6 @@
 /**
- * « Voir ce mur » : une zone du plan isolée pour y travailler tranquille. La vue se met de face, seuls ses corps et ses
- * cotes restent ; les esquisses et les autres murs disparaissent, et les outils de niche ne voient qu'elle. L'isolement
+ * « Voir ce mur » : une zone du plan isolée pour y travailler tranquille. La vue se met de face, seuls ses corps
+ * restent (ses cotes seulement si on allume « Cotes des pièces ») ; les esquisses et les autres murs disparaissent, et les outils de niche ne voient qu'elle. L'isolement
  * tient pendant le travail, jusqu'à « Tout montrer ». La vue seulement : rien ne change dans le projet. Un linéaire du
  * Plan de cuisine s'isole de même (`isolateFeatures`) : ce que le plan a fait pour lui, vu de face, avec ses cotes ; et
  * un caisson seul (`isolateSketch`), pour l'aménager, comme « Isoler » de Fusion ; et plusieurs éléments choisis à la
@@ -128,7 +128,7 @@ export function isolateElements(keys: ReadonlySet<string>, text: string): void {
   if (!box.isEmpty()) viewport.fitBox(box, 1.15);
 }
 
-function isolate(key: string, label: string, keep: Focus["keep"], front: readonly number[], frame = true, pieceDims = true, more: Partial<Pick<Focus, "partition" | "shows" | "alive">> & { text?: string } = {}): void {
+function isolate(key: string, label: string, keep: Focus["keep"], front: readonly number[], frame = true, pieceDims = false, more: Partial<Pick<Focus, "partition" | "shows" | "alive">> & { text?: string } = {}): void {
   if (!context) return;
   const { viewport, editor, drawSketches } = context;
   focus?.bar.remove();

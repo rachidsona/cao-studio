@@ -802,6 +802,34 @@ test("un tiroir entier se choisit d'un clic sur son dossier du Navigateur", asyn
   expect(errors).toEqual([]);
 });
 
+test("des tiroirs posés qu'on modifie : chaque réglage est enregistré aussitôt, sans OK", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "Tiroirs en direct e2e");
+  const handles = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
+    return page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; fill?: string; handles?: boolean }[] } }).document.features.filter((f) => f.type === "niche" && f.fill === "drawers").map((f) => f.handles), api);
+  };
+  await wall(page);
+  await click(page, '[data-action="tiroirs"]');
+  const tool = page.getByRole("dialog", { name: "Tiroirs" });
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.33, box.y + box.height * 0.5);
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await tool.getByRole("button", { name: "Terminer" }).click();
+  await expect.poll(handles, { timeout: 30_000 }).toEqual([true]);
+  // Opened again from the history: the handles taken off, no OK — the model has it at once.
+  await page.getByRole("button", { name: "Tiroirs 1", exact: true }).last().click();
+  await page.getByRole("dialog", { name: "Équipement de niche Tiroirs 1" }).getByRole("button", { name: "Modifier" }).click();
+  const edit = page.getByRole("dialog", { name: "Tiroirs" });
+  await expect(edit).toContainText("Modifier : Tiroirs 1");
+  await edit.getByLabel("Trous de poignée (entraxe 128)").uncheck();
+  await expect.poll(handles, { timeout: 30_000 }).toEqual([false]);
+  expect(errors).toEqual([]);
+});
+
 test("une porte sur niches s'ouvre vers le haut, puis, par son menu, vers le bas", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

@@ -181,7 +181,7 @@ test("Module marche sur les étagères copiées et alignées, jusqu'au bord et s
   expect(errors).toEqual([]);
 });
 
-test("Voir isole un mur : seul avec ses cotes, et il le reste pendant le travail", async ({ page }) => {
+test("Voir isole un mur : seul, ses cotes d'un clic sur leur bouton, et il le reste pendant le travail", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -202,7 +202,11 @@ test("Voir isole un mur : seul avec ses cotes, et il le reste pendant le travail
   await page.waitForTimeout(800);
   const shown = await page.evaluate(() => document.querySelectorAll(".cad-piece-dim").length);
   expect(shown).toBe(0);
+  // Its dimensions only when « Cotes des pièces » is clicked.
+  await expect(page.locator(".cad-plan-dim")).toHaveCount(0);
+  await click(page, "[data-piece-dims]");
   await expect(page.locator(".cad-plan-dim").first()).toBeVisible();
+  await click(page, "[data-piece-dims]");
 
   // A tool from the ribbon works on that wall, and the wall stays alone after its OK.
   await tool.getByRole("button", { name: "Fermer", exact: true }).click();

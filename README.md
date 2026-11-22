@@ -1031,7 +1031,7 @@ opération existante.
   - **Les murs du dressing** (en haut du panneau, sous son titre, comme les linéaires de la cuisine) : pour une
     Répartition faite sur un Plan de dressing, un bouton par zone du plan (« Mur A », « Mur B », les coins…), celle
     qu'on règle marquée ; un clic ouvre la Répartition d'une autre zone — faite d'abord, en une étape, si elle ne
-    l'est pas encore. « Voir mur A isolé » la montre seule, de face, avec ses cotes (rien ne change dans le projet),
+    l'est pas encore. « Voir mur A isolé » la montre seule, de face — ses cotes seulement si l'on allume « Cotes des pièces » (rien ne change dans le projet),
     « Tout montrer » rend tout ; une autre zone ouverte pendant ce temps est celle qu'on voit seule.
   - **Le panneau et la 3D en même temps** : pendant qu'une Répartition déjà faite est ouverte dans son panneau, la
     vue 3D reste libre — sélectionner, tourner, tirer une étagère par sa poignée, supprimer un corps, ouvrir une
@@ -1177,6 +1177,9 @@ opération existante.
   du panneau passe de l'un à l'autre. Une niche choisie qui a déjà cet équipement montre **« Supprimer les tiroirs »** (la penderie, la
   porte, l'accessoire) : il est retiré seul, la niche, ses étagères, ses cloisons et le reste du meuble restant, en une
   annulation.
+  Un équipement déjà posé qu'on rouvre (« Modifier ») — tiroirs, penderie, porte sur niches, accessoire, et de même des
+  étagères ou des cloisons — est **enregistré à chaque réglage**, un instant après, sans attendre OK : la vue 3D montre
+  aussitôt le changement (une poignée ôtée disparaît), comme Module et la Répartition qu'on modifie (`ui/live-store.ts`).
   - **Penderie** : une **tringle Ø25** (diamètre réglable de 10 à 50 mm) d'un côté à l'autre de la niche, à
     **mi-profondeur**, son axe à **6 cm sous le haut** (réglable), sur **deux supports** contre les côtés. Le panneau
     donne la longueur de la tringle et sa hauteur au-dessus du bas de la niche. Tringle et supports comptent au

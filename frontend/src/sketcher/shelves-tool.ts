@@ -12,6 +12,7 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { el } from "../ui/dom";
 import { panelHeader } from "../ui/panel-close";
 import { placePanel } from "../ui/dock";
+import { liveStore } from "../ui/live-store";
 import type { Vec2 } from "./edit";
 import type { Region } from "./loops";
 import { extrusionOption } from "./extrusion-option";
@@ -61,6 +62,9 @@ export class ShelvesTool {
   /** Niches of different widths: their cloisons on one straight line, rather than each in its own middle. */
   private inLine = true;
   private done = false;
+  /** A division changed: each setting stored as soon as it settles. */
+  private readonly live = liveStore();
+  private liveKey = () => JSON.stringify([this.input, extrusionOption.on, extrusionOption.depth]);
   private readonly panel: HTMLElement;
   /** Cloisons through the whole column of the niche clicked, what it already holds kept in one of the new niches. */
   private column = false;
@@ -100,6 +104,7 @@ export class ShelvesTool {
       const node = typeof rebuilt === "string" ? undefined : rebuilt.niches.get(pathKey(this.editing.step.niche));
       if (node) this.niches = [{ box: node.box, curves: [] }];
       else this.host.notify(`La niche de ${this.words.these} n'existe plus.`, "error");
+      this.live.reset(this.liveKey());
     }
     this.recompute();
   }
@@ -198,6 +203,8 @@ export class ShelvesTool {
     });
     this.preview = lines.length ? { lines, circles: [], arcs: [] } : null;
     this.draw();
+    // A division changed: each setting stored as soon as it settles, without waiting for OK.
+    if (this.editing && !this.done && this.niches.length && !this.layouts.some((l) => typeof l === "string")) this.live.schedule(this.liveKey(), () => this.confirmEdit());
     this.host.changed();
   }
 
@@ -464,6 +471,7 @@ export class ShelvesTool {
   /** Removes the panel without notifying the host (the sketch mode is switching tools itself). */
   dispose(): void {
     this.done = true;
+    this.live.cancel();
     this.preview = null;
     this.panel.remove();
   }

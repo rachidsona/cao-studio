@@ -4,7 +4,7 @@
  * niche gets its own feature (« Penderie 1 », « Tiroirs 1 »), which follows the niche when the Répartition or its
  * divisions change; one OK is one undo step. « Porte sur niches » makes one door over all the niches chosen. « Accessoire »
  * puts a bought accessory of the catalogue (features/accessory-parts.ts) in each niche chosen. The tool stays to equip other niches until Échap. The parts are in
- * features/niche-parts.ts.
+ * features/niche-parts.ts. Un équipement posé qu'on modifie est enregistré à chaque réglage, sans attendre OK (ui/live-store.ts).
  */
 import type { SketchGeometry } from "../../document/sketch";
 import type { CadDocument, DisplayUnit, NicheFeature, SketchFeature, Vec3 } from "../../document/types";
@@ -22,6 +22,7 @@ import { chosenHardware } from "../../document/hardware-catalog";
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import { placePanel } from "../../ui/dock";
+import { liveStore } from "../../ui/live-store";
 import { accessoryResult, accessoryRows } from "./accessory-rows";
 
 export type NicheFill = Exclude<NicheFeature["fill"], "doors" | "back">;
@@ -74,6 +75,8 @@ export class NicheTool {
   /** Doors set aside by « Autre porte », made at OK with the one being set. */
   private pending: Pending[] = [];
   private done = false;
+  /** The equipment changed: each setting stored as soon as it settles. */
+  private readonly live = liveStore();
   private readonly panel: HTMLElement;
 
   /** `editing`: the equipment to change (its niche is chosen, its values come back). */
@@ -116,8 +119,11 @@ export class NicheTool {
         this.niches = [this.editing.niche, ...(this.editing.span ?? [])].map((path) => ({ partition: this.editing!.partition, path, box: box(path) }));
       }
     }
+    this.live.reset(this.liveKey());
     this.recompute();
   }
+
+  private liveKey = () => JSON.stringify([this.fill, this.settings, this.niches.map((n) => n.path), this.split]);
 
   /** The document changed under the tool (undo, redo): the niches chosen may be gone. */
   sync(): void {
@@ -229,6 +235,7 @@ export class NicheTool {
     if (!this.editing) Object.assign(LAST, this.settings);
     this.draw();
     this.host.changed();
+    if (this.editing && !this.done && this.niches.length && !this.checked().some((c) => c.problem)) this.live.schedule(this.liveKey(), () => this.confirm());
   }
 
   private draw(): void {
@@ -485,6 +492,7 @@ export class NicheTool {
 
   dispose(): void {
     this.done = true;
+    this.live.cancel();
     this.panel.remove();
   }
 }
