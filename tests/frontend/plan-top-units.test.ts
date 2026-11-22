@@ -6,6 +6,7 @@ import { createReferencePlate, type CadDocument, type DressingPlan, type NicheFe
 import { parseDocument } from "../../frontend/src/document/validate";
 import { isPartition } from "../../frontend/src/sketcher/partition-history";
 import { withOrganisationCopied } from "../../frontend/src/document/partition-copy";
+import { withTopUnitSet } from "../../frontend/src/document/plan-top";
 
 function dressing(): { doc: CadDocument; plan: string } {
   const made = withPlan({ ...createReferencePlate(), features: [] }, { ...PLAN, model: "I", lengthA: 2000, height: 2200 });
@@ -49,6 +50,27 @@ describe("surmeubles du plan de dressing", () => {
     const none = withTopUnitsSet(changed.doc, plan, null);
     expect(tops(none)).toHaveLength(0);
     expect(planOf(none, plan).top).toBeUndefined();
+  });
+
+  it("chacun sa hauteur et ses portes, au lieu de celles de tous ; « Mettre à jour » les remet tous pareils", () => {
+    const { doc, plan } = dressing();
+    const withTop = withTopUnitsSet(doc, plan, { height: 400, doors: true });
+    const zone = planZones(planOf(withTop, plan))[0]!;
+    const own = withTopUnitSet(withTop, plan, zone.id, { height: 600, doors: "lift" });
+    const [top] = tops(own);
+    expect(stepOf(top!).input.height).toBe(600);
+    expect(doorsOf(own, top!.id).every((d) => d.hinges?.[0] === "top")).toBe(true);
+    expect(planOf(own, plan).top).toEqual({ height: 400, doors: true, zones: { [zone.id]: { height: 600, doors: "lift" } } });
+    expect(() => parseDocument(JSON.parse(JSON.stringify(own)))).not.toThrow();
+    // The plan changed: it keeps its own height.
+    const changed = withPlanChanged(own, plan, { ...planOf(own, plan), height: 2400 });
+    if (typeof changed === "string") throw new Error(changed);
+    expect(stepOf(tops(changed.doc)[0]!).input.height).toBe(600);
+    // Back to those of all; and « Mettre à jour » gives all the same again.
+    expect(stepOf(tops(withTopUnitSet(own, plan, zone.id, null))[0]!).input.height).toBe(400);
+    const again = withTopUnitsSet(own, plan, { height: 450, doors: true });
+    expect(stepOf(tops(again)[0]!).input.height).toBe(450);
+    expect(planOf(again, plan).top).toEqual({ height: 450, doors: true });
   });
 
   it("sur un angle aussi : découpés à son contour comme dessous, avec leur dernier côté, ouverts", () => {

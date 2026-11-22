@@ -2,7 +2,8 @@
  * Les surmeubles d'un Plan de dressing (`top`, `tops` du plan) : au-dessus de chaque zone faite, une Répartition de leur
  * hauteur aux mêmes cases que celle du dessous, posée sur elle — faite une fois, puis gardée : le plan changé, elle est
  * seulement déplacée et mise à ses cotes, ce qu'on y a fait reste. Un angle : découpée à son contour, avec son dernier
- * côté, ouverte. Leurs portes sont des « Porte sur niches », une par case, battantes ou relevables. Pur.
+ * côté, ouverte. Leurs portes sont des « Porte sur niches », une par case, battantes ou relevables. Chacun peut avoir
+ * sa hauteur et ses portes à lui (`top.zones`), au lieu de celles de tous. Pur.
  */
 import { DOOR_DEFAULTS } from "./joinery-defaults";
 import { withEquipment } from "./equipment";
@@ -16,6 +17,11 @@ import { emptySketchGeometry } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, DressingPlan, NicheFeature, SketchFeature } from "./types";
 import { extrusionGroups, isPartition, partitionRecord, rebuildChain } from "../sketcher/partition-history";
+
+type Top = NonNullable<DressingPlan["top"]>;
+
+/** The settings of a zone's top units: its own when it has some, else those of all. */
+export const topOf = (top: Top, zoneId: string): Top => ({ ...top, ...top.zones?.[zoneId] });
 
 /**
  * Its top units' Répartition, at its zone's top, its sizes; `input`, `doors`: those it has kept (its edits) — its own
@@ -53,7 +59,7 @@ function withTopDoors(doc: CadDocument, sketch: string, step: string, zone: Plan
  */
 export function withTopOn(base: CadDocument, planId: string, zone: PlanZone, asked = false): CadDocument {
   const plan = planIn(base, planId) as DressingPlan;
-  const top = plan.top;
+  const top = plan.top && topOf(plan.top, zone.id);
   if (!top || plan.roof || !zoneDone(base, plan, zone.id)) return base;
   const kept = plan.tops?.[zone.id] ? findFeature(base, plan.tops[zone.id]!) : undefined;
   let doc = base;
@@ -121,6 +127,17 @@ export function topProblem(plan: DressingPlan, top: NonNullable<DressingPlan["to
   if (plan.roof) return "Pas de surmeubles sous un rampant : le dessus suit déjà le plafond.";
   if (!(top.height >= 200 && top.height <= 1000)) return "La hauteur des surmeubles va de 20 à 100 cm.";
   return null;
+}
+
+/** The top units of one zone at a height and with doors of their own (null: back to those of all), made again. */
+export function withTopUnitSet(base: CadDocument, planId: string, zoneId: string, own: { height: number; doors?: boolean | "lift" } | null): CadDocument {
+  const plan = planIn(base, planId) as DressingPlan;
+  const zone = planZones(plan).find((z) => z.id === zoneId);
+  if (!plan.top || !zone) return base;
+  const { [zoneId]: _old, ...others } = plan.top.zones ?? {};
+  const zones = own ? { ...others, [zoneId]: own } : others;
+  const top = { ...plan.top, ...(Object.keys(zones).length ? { zones } : { zones: undefined }) };
+  return withTopOn(withSettings(base, planId, { top: JSON.parse(JSON.stringify(top)) }), planId, zone, true);
 }
 
 /** Top units over every zone made, those made kept and brought to these settings; null: all taken away. */

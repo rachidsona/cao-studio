@@ -5,6 +5,7 @@
  * portes, étagères), et ce qu'on y fait reste quand le plan change.
  */
 import { topProblem, topStep, withTopUnitsSet } from "../../document/plan-layout";
+import { topOf, withTopUnitSet } from "../../document/plan-top";
 import { hasBack, withBack } from "../../document/partition-back";
 import type { PlanZone } from "../../document/plan-shapes";
 import type { DressingPlan } from "../../document/types";
@@ -56,8 +57,12 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
   const unit = editor.unit;
   const now = plan.top;
   const height = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(now?.height ?? 400, unit), 3), "aria-label": `Hauteur des surmeubles (${UNIT_LABELS[unit]})`, "data-top-height": "" });
-  const doors = el("select", { class: "h-7 border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": "Portes des surmeubles", "data-top-doors": "" },
-    ...([["side", "Battantes"], ["lift", "Relevables (en haut)"], ["none", "Sans portes"]] as const).map(([v, t]) => el("option", { value: v, selected: v === (now ? (now.doors === "lift" ? "lift" : now.doors ? "side" : "none") : "side") }, t)));
+  const doorChoice = (label: string, current: DressingPlan["top"] | undefined) =>
+    el("select", { class: "h-7 border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900", "aria-label": label },
+      ...([["side", "Battantes"], ["lift", "Relevables (en haut)"], ["none", "Sans portes"]] as const).map(([v, t]) => el("option", { value: v, selected: v === (current ? (current.doors === "lift" ? "lift" : current.doors ? "side" : "none") : "side") }, t)));
+  const doorsOf = (value: string): boolean | "lift" => (value === "lift" ? "lift" : value === "side");
+  const doors = doorChoice("Portes des surmeubles", now);
+  doors.dataset.topDoors = "";
   const apply = (top: DressingPlan["top"] | null) => {
     const problem = top ? topProblem(plan, top) : null;
     if (problem) return editor.notify(problem, "info");
@@ -68,10 +73,10 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
   };
   const read = (): DressingPlan["top"] | null => {
     const value = parseNumber(height.value);
-    return value === null ? null : { height: fromDisplay(value, unit), doors: doors.value === "lift" ? "lift" : doors.value === "side" };
+    return value === null ? null : { height: fromDisplay(value, unit), doors: doorsOf(doors.value) };
   };
   const put = el("button", { type: "button", class: WIDE, disabled: plan.roof !== undefined, "data-top-put": "" }, now ? "Mettre à jour les surmeubles" : "Poser les surmeubles");
-  put.title = "Au-dessus de chaque mur fait, des caissons aux mêmes cases que ceux du dessous, posés sur eux";
+  put.title = "Au-dessus de chaque mur fait, des caissons aux mêmes cases que ceux du dessous, posés sur eux — tous à cette hauteur et avec ces portes";
   put.addEventListener("click", () => {
     const top = read();
     if (!top) return editor.notify("Saisissez la hauteur des surmeubles.", "info");
@@ -85,14 +90,36 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
     const name = `Surmeubles — ${zone.label.toLowerCase()}`;
     const open = el("button", { type: "button", class: "h-7 shrink-0 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800", "data-top-edit": zone.id, title: "Ouvrir ces surmeubles dans l'outil Répartition : cases, côtés, dimensions" }, "Modifier");
     open.addEventListener("click", () => editor.sketches.editOffset(at.sketch, at.step));
-    return [zoneCard(`top:${zone.label}`, zone.label, `${trim(toDisplay(now?.height ?? 0, unit), 3)} ${UNIT_LABELS[unit]} de haut`, [open], insideTools(name, `top:${zone.id}`, at.sketch, editor, () => undefined), { "data-top-row": zone.id })];
+    // Its own height and doors, applied as soon as changed.
+    const own = now ? topOf(now, zone.id) : undefined;
+    const tall = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(own?.height ?? 400, unit), 3), "aria-label": `Hauteur — ${name} (${UNIT_LABELS[unit]})`, "data-top-zone-height": zone.id });
+    const kind = doorChoice(`Portes — ${name}`, own);
+    kind.dataset.topZoneDoors = zone.id;
+    const setOwn = () => {
+      const value = parseNumber(tall.value);
+      if (value === null) return editor.notify("Saisissez la hauteur de ces surmeubles.", "info");
+      const mine = { height: fromDisplay(value, unit), doors: doorsOf(kind.value) };
+      const problem = topProblem(plan, mine);
+      if (problem) return editor.notify(problem, "info");
+      void editor.change(withTopUnitSet(editor.doc, planId, zone.id, mine)).then(() => {
+        editor.notify(`${name} : ${trim(toDisplay(mine.height, unit), 3)} ${UNIT_LABELS[unit]} de haut.`, "success");
+        redraw();
+      });
+    };
+    tall.addEventListener("change", setOwn);
+    kind.addEventListener("change", setOwn);
+    const inside = el("div", { class: "space-y-1" },
+      el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, `Hauteur (${UNIT_LABELS[unit]})`, tall),
+      el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, "Portes", kind),
+      insideTools(name, `top:${zone.id}`, at.sketch, editor, () => undefined));
+    return [zoneCard(`top:${zone.label}`, zone.label, `${trim(toDisplay(own?.height ?? 0, unit), 3)} ${UNIT_LABELS[unit]} de haut`, [open], inside, { "data-top-row": zone.id })];
   });
   const rows = cards.length ? [el("ul", { class: "space-y-1.5", "aria-label": "Surmeubles posés" }, ...cards)] : [];
   remove?.addEventListener("click", () => apply(null));
   const all: (HTMLElement | null)[] = [
     el("h3", { class: "panel-title", title: plan.roof ? "Sous un rampant, le dessus suit déjà le plafond." : "Des caissons au-dessus du dressing, dans la continuité de ses cases" }, "Surmeubles"),
-    el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, `Hauteur (${UNIT_LABELS[unit]})`, height),
-    el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, "Portes", doors),
+    el("label", { class: "flex min-h-8 items-center justify-between gap-2", title: "Pour tous les surmeubles, avec « Poser » ou « Mettre à jour » ; chacun se règle aussi dans sa carte" }, `Hauteur de tous (${UNIT_LABELS[unit]})`, height),
+    el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, "Portes de tous", doors),
     ...rows,
     put,
     remove,
