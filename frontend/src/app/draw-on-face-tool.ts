@@ -29,7 +29,7 @@ import { coplanarCorners, loadFace, planeAcross, type LoadedFace } from "./face-
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
-import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
+import { groundFace, isGround, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
 
 /** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
@@ -167,7 +167,7 @@ export class DrawOnFaceTool extends PanelTool {
     let face = this.face;
     if (!face) {
       const pick = viewport.pickFace(event);
-      face = pick ? this.faceOf(pick) : null;
+      face = pick ? this.faceOf(pick) : this.shape === "offset" ? null : groundFace();
       this.hoverFace = face;
       // Loaded, but not flat: nothing is drawn on it (a curved roof, a round edge); an offset follows it though.
       this.curved = !!pick && !face && this.loaded.has(`${pick.bodyId}#${pick.faceIndex}`);
@@ -400,18 +400,18 @@ export class DrawOnFaceTool extends PanelTool {
   protected feature(): Feature | string {
     const curved = this.curvedOffset.locked ? this.curvedOffset.features(this.sketchId, this.sketchName) : null;
     if (curved) return typeof curved === "string" ? curved : curved[0]!;
-    if (!this.face) return this.shape === "offset" ? "Survolez une face : le contour décalé suit le pointeur ; cliquez pour le poser." : "Cliquez sur une face du corps pour poser le premier point.";
+    if (!this.face) return this.shape === "offset" ? "Survolez une face : le contour décalé suit le pointeur ; cliquez pour le poser." : "Cliquez sur une face d'un corps — ou sur la grille, sans corps — pour poser le premier point.";
     if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : this.shape === "circle" ? "Cliquez un point du cercle." : "Ce décalage est trop grand pour la face.";
     const g = this.geometry(this.face);
     if (!g) return "Ce dessin est impossible (longueur ou rayon nul).";
-    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...(this.face.slanted ? { frame: this.face.slanted } : {}), ...g, support: this.face.pick.bodyId };
+    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...(this.face.slanted ? { frame: this.face.slanted } : {}), ...g, ...(isGround(this.face) ? {} : { support: this.face.pick.bodyId }) };
     return sketch;
   }
 
   /** « Couper le corps »: the body split by the plane through the straight line, across the face (null: no cut asked). */
   private cut(): SplitFeature | string | null {
     const face = this.face;
-    if (this.shape !== "line" || !last.cut || !face || !this.ready()) return null;
+    if (this.shape !== "line" || !last.cut || !face || isGround(face) || !this.ready()) return null;
     if (this.points.length !== 2) return "Pour couper le corps, tracez une seule ligne droite (deux points).";
     const doc = this.ctx.doc();
     return { id: uniqueId(doc, "sp"), type: "split", name: uniqueName(doc, "Scission"), target: face.pick.bodyId, tool: { kind: "line", ...planeAcross(face, this.points as [Vec2, Vec2]) }, keep: "both" };
@@ -457,7 +457,7 @@ export class DrawOnFaceTool extends PanelTool {
       this.shape === "offset"
         ? "Survolez une face : le contour décalé suit le pointeur (sa distance au bord) ; cliquez pour le poser."
         : this.points.length === 0
-          ? "Cliquez sur une face du corps : les distances aux bords les plus proches s'affichent en bas."
+          ? "Cliquez sur une face d'un corps (les distances aux bords les plus proches s'affichent en bas), ou sur la grille : sans corps, le tracé devient un corps nouveau."
           : this.shape === "line"
             ? "Point suivant : cliquez ; Entrée termine."
             : this.shape === "rectangle"

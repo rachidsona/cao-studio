@@ -1326,7 +1326,10 @@ opération existante.
   (négative : un collet) ; OK les garde (`features/curved-offset.ts`, `app/curved-offset.ts`). La ligne seule reste
   sur une face plane.
 - **Magie extrusion — une forme sur une face** (anciennement « Dessiner sur le corps » ; comme les outils Ligne, Rectangle et Cercle de Curic DIO — *Draw In Object*) :
-  on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse. Choisissez *Ligne / polyligne*,
+  on trace directement sur une face d'un corps, depuis la vue 3D, sans ouvrir d'esquisse — ou **sur la grille, sans
+  corps** : là où le pointeur ne survole aucun corps, la ligne, le rectangle ou le cercle se pose sur le sol (plan XY à
+  0, ses coins s'accrochant aux coins des corps posés au sol) et devient une esquisse à lui, tirée en un corps nouveau
+  (`groundFace` de `app/magic-extrude.ts`). Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
   ↕, ici en pointillés rouge et bleu avec leur valeur) s'affichent et peuvent être **saisies** (« Bord ↔ », « Bord ↕ »)
   pour placer le premier point exactement. Le **centre de la face** et le **milieu de chaque trait** (arête) sont marqués d'une

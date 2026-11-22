@@ -6,6 +6,9 @@
  * l'autre sans fermer l'outil ; le dernier tracé choisi est repris à la prochaine ouverture.
  */
 import type { FaceRef } from "../document/types";
+import { sketchFrame } from "../sketcher/frame";
+import type { FacePick } from "../viewport/viewport";
+import type { LoadedFace } from "./face-strip-view";
 import type { ToolContext } from "./panel-tool";
 export const MAGIC_EXTRUDE = "Magie extrusion";
 
@@ -57,3 +60,22 @@ export class FaceToReach {
     }).catch(() => undefined);
   }
 }
+
+/**
+ * The grid (the floor, plane XY at 0) as a face to draw on where no body is under the pointer: no edges, no outline,
+ * no body under it — the shape drawn is a sketch of its own, pulled into a new body.
+ */
+export const GROUND = "ground";
+export function groundFace(): LoadedFace {
+  return {
+    key: GROUND,
+    pick: { bodyId: "", faceIndex: -1 } as FacePick,
+    outline: { surface: "PLANE", center: [0, 0, 0], normal: [0, 0, 1], edges: [] },
+    frame: sketchFrame("XY", 0),
+    plane: "XY",
+    offset: 0,
+    polygon: [],
+  };
+}
+export const isGround = (face: { key: string } | null | undefined): boolean => face?.key === GROUND;
+
