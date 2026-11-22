@@ -57,7 +57,7 @@ test("un cadre de 60 × 40 cm, 72 de haut, ouvert dessus et dessous : clic droit
   await shelves.getByRole("combobox").first().selectOption("2");
   // In a body furnished, the shelves may lean: here along X (as flat, seen from above).
   const orientation = shelves.getByLabel("Orientation");
-  await expect(orientation.locator("option")).toHaveText(["À plat", "Selon X", "Selon Y", "Selon Z", "D'équerre à une face (cliquez-la)"]);
+  await expect(orientation.locator("option")).toHaveText(["À plat", "Selon X", "Selon Y", "Selon Z", "D'équerre à une face (cliquez-la)", "Parallèle à une face (cliquez-la)"]);
   await orientation.selectOption("x");
   await shelves.getByRole("button", { name: "OK", exact: true }).click();
   await shelves.getByRole("button", { name: "Terminer" }).click();

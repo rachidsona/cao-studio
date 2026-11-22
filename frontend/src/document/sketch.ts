@@ -186,9 +186,11 @@ export interface ShelfParams {
   vertical?: boolean;
   /**
    * In a body furnished (« Aménager ce corps »): the shelves' length along this direction (world), turned in their
-   * plane — along X, Y or Z, or square to a face (its normal); they still go on to the walls. Absent: flat.
+   * plane — along X, Y or Z, or square or parallel to a face; they still go on to the walls. Absent: flat.
    */
   lean?: [number, number, number];
+  /** `lean` given by a face clicked: square to it, or parallel to it (what the panel shows). */
+  leanFace?: "square" | "parallel";
 }
 
 /**

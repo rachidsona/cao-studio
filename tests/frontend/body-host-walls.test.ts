@@ -88,6 +88,16 @@ describe("un corps aux parois en biais, aménagé", () => {
     }
   }, 120_000);
 
+  it("parallèles à la paroi penchée : chaque étagère est tournée le long d'elle, et va du dessous au dessus", () => {
+    // Along the wall's line in the plane: the sketch's normal × the wall's normal.
+    const boxes = shelves(furnished(50, [50, 364, 0]));
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const [lo, hi] of boxes) {
+      expect(hi![1]! - lo![1]!).toBeGreaterThan(300);
+      expect(hi![0]! - lo![0]!).toBeLessThan(100);
+    }
+  }, 120_000);
+
   /** The opening with one door over it (inset, 3 mm of gap): its volume and its box. */
   function door(lean: number): { volume: number; box: number[][] } {
     const base = { format: "cao-studio", schemaVersion: 2, units: "mm", parameters: {}, features: walls(lean) } as CadDocument;

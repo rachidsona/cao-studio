@@ -358,7 +358,7 @@ export const WOODWORKING: HelpFamily[] = [
         steps: [
           "Faites d'abord une Répartition et sélectionnez-la ; sinon l'outil travaille sur la dernière. Pour un corps à vous (un cadre fait avec « Séparer les côtés », un corps vidé), sélectionnez-le, ou cliquez-le l'outil ouvert : il est aménagé d'abord.",
           "Cliquez « Étagères » : les niches libres sont des volumes bleus. Cliquez-en une, ou plusieurs pour leur donner les mêmes étagères (un second clic retire).",
-          "Choisissez le nombre d'étagères (1 à 20), l'« Épaisseur » et le partage « Niches » : « Égales », « Celle du bas fixe » ou « Celle du haut fixe » avec sa « Hauteur fixe ». Dans un corps aménagé, « Orientation » les pose « À plat », « Selon X », « Selon Y » ou « Selon Z », ou « D'équerre à une face » que vous cliquez (un côté en biais).",
+          "Choisissez le nombre d'étagères (1 à 20), l'« Épaisseur » et le partage « Niches » : « Égales », « Celle du bas fixe » ou « Celle du haut fixe » avec sa « Hauteur fixe ». Dans un corps aménagé, « Orientation » les pose « À plat », « Selon X », « Selon Y » ou « Selon Z », « D'équerre à une face » ou « Parallèle à une face » que vous cliquez (un côté en biais, un dessus en pente).",
           "Plus vite, dans « Saisie rapide » : *3 fait 3 étagères, /4 fait 4 niches égales, 30;40;50 donne ces hauteurs de niches depuis le bas, dans l'unité du projet, et le reste à la dernière. Entrée applique.",
           "Cliquez « OK ». L'outil reste actif : cliquez une niche obtenue pour la diviser à son tour. « Terminer » (ou Échap) le ferme. Des étagères déjà posées qu'on rouvre (« Modifier ») sont enregistrées à chaque réglage, sans attendre OK.",
         ],

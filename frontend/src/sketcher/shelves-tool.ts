@@ -20,7 +20,7 @@ import { columnPath, extrusionGroups, idsFrom, isShelves, nicheAt, nicheSpans, p
 import type { ExtrusionGroup, SketchExtrusion } from "./mode";
 import { boundaryCurves, regionAt } from "./region-pick";
 import { LAST, WORDS } from "./shelves-words";
-import { leanSelect } from "./shelf-lean";
+import { leanSelect, type LeanFace } from "./shelf-lean";
 import { addShelves, alignedInputs, MAX_SHELVES, nicheBox, partBox, quickDivision, shelfLayout, shelfLines, type NicheBox, type ShelfInput, type ShelfLayout, type ShelfMode } from "./shelves";
 import type { Preview } from "./tools";
 
@@ -44,6 +44,7 @@ export interface ShelvesHost {
   /** In a body furnished: whether its shelves may lean (ShelfParams.lean), and the normal of the next face clicked. */
   orientable?(): boolean;
   aimFace?(done: (normal: [number, number, number]) => void): void;
+  planeNormal?(): [number, number, number];
 }
 
 const FIELD =
@@ -253,12 +254,12 @@ export class ShelvesTool {
       this.input.mode = mode.value as ShelfMode;
       this.recompute();
     });
-    const setLean = (lean?: [number, number, number]) => {
-      const { lean: _, ...rest } = this.input;
-      this.input = lean ? { ...rest, lean } : rest;
+    const setLean = (lean?: [number, number, number], face?: LeanFace) => {
+      const { lean: _, leanFace: __, ...rest } = this.input;
+      this.input = { ...rest, ...(lean ? { lean } : {}), ...(lean && face ? { leanFace: face } : {}) };
       this.recompute();
     };
-    const orient = this.kind === "shelves" && this.host.orientable?.() ? leanSelect(this.input.lean, setLean, this.host) : null;
+    const orient = this.kind === "shelves" && this.host.orientable?.() ? leanSelect(this.input.lean, this.input.leanFace, setLean, this.host) : null;
     const check = (label: string, checked: boolean, set: (v: boolean) => void): HTMLElement => {
       const box = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked });
       box.addEventListener("change", () => set(box.checked));

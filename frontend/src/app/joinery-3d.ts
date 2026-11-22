@@ -227,6 +227,7 @@ export class Joinery3D implements PointerHandler {
         return sketch?.type === "sketch" && !!sketch.host;
       },
       aimFace: (done: (normal: [number, number, number]) => void) => (this.aim = done),
+      planeNormal: () => [...this.frame.normal] as [number, number, number],
       flat: () => Math.abs(this.frame.normal[2]) > 0.9,
       changed: () => this.render(),
       fit: ([x0, y0]: [number, number], [x1, y1]: [number, number]) => {

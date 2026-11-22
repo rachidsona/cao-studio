@@ -2458,7 +2458,7 @@ opération existante.
   (`SketchFeature.host`, recopié sur chaque extrusion) ; à chaque recalcul, une étagère ou une cloison qui touche le
   bord de l'ouverture est allongée dans son sens puis recoupée par les parois — elle en prend la pente et les suit
   (`features/within-walls.ts`). « Orientation » des étagères d'un corps aménagé (`ShelfParams.lean`) : à plat, selon
-  X, Y ou Z, ou d'équerre à une face cliquée ; elles sont tournées dans leur plan avant d'aller aux parois
+  X, Y ou Z, ou d'équerre ou parallèle à une face cliquée (`leanFace`) ; elles sont tournées dans leur plan avant d'aller aux parois
   (`sketcher/shelf-lean.ts`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
   est le rectangle prolongé vers les parois qu'il touche, recoupé par leurs faces (`sketcher/niche-outline.ts`) ; une
   porte ou un fond posé sur la niche va jusqu'au plan de chaque paroi qu'il longe, en prend la pente et garde son jeu
