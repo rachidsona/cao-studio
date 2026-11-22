@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+*.pem
+*.key
+graphify-out/cache/
+# Hors du code de l'app : scripts des skills, sorties e2e, vidéos d'aide
+.claude/skills/
+.e2e-alt/
+static/videos/
