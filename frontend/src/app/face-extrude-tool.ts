@@ -5,11 +5,13 @@
  * opens it on one of the two faces along the edge (the smaller, the end of a board), the other one a choice away —
  * and only the strip of the face along the edge is pulled (as a line drawn on the face would split it), or the whole
  * face if asked. If another body stands in front of the face (a side of the cabinet, a wall), « Jusqu'au corps voisin »
- * pulls it right up to it (features/touch.ts).
+ * pulls it right up to it (features/touch.ts). Faces of several bodies (selected before, or Maj + clic on another body)
+ * are pulled alike, one step per body, in one undo; Maj + clic on a body chosen takes it off.
  */
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { uniqueId, uniqueName } from "../document/operations";
-import type { BooleanOperation, ExtrudeFeature, FaceRef, Vec3 } from "../document/types";
+import { featureOfBody, type BooleanOperation, type ExtrudeFeature, type FaceRef, type Vec3 } from "../document/types";
+import { freshFeatureIds, removing } from "./curic-common";
 import { formatLength, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { openCalculator } from "../ui/calculator";
 import { ArrowHandle } from "../viewport/arrow-handle";
@@ -33,6 +35,8 @@ export class FaceExtrudeTool extends PanelTool {
   private readonly name: string;
   private target: string | undefined;
   private faces: FaceRef[] = [];
+  /** The faces of the other bodies chosen, each body a step made with this one. */
+  private more: { target: string; faces: FaceRef[] }[] = [];
   private distance: number;
   private operation: BooleanOperation;
   /** The operation follows the direction until the user chooses one. */
@@ -88,18 +92,20 @@ export class FaceExtrudeTool extends PanelTool {
     this.start();
   }
 
-  /** The faces to pull (those of the body of the first one): read from the kernel. */
+  /** The faces to pull, by body (the first one's this step's, each other one a step with it): read from the kernel. */
   private async take(picks: FacePick[]): Promise<void> {
     this.reference.capture();
     const [first] = picks;
     if (!this.editing && first) {
       this.target = first.bodyId;
       try {
-        const refs = await Promise.all(
-          picks.filter((p) => p.bodyId === first.bodyId).map((p) => this.ctx.geometry.describe(p.bodyId, [], p.faceIndex)),
-        );
-        this.faces = refs.flatMap((r) => (r.face && r.face.type === "PLANE" ? [r.face] : []));
-        if (this.faces.length < refs.length) this.ctx.notify("Seules les faces planes peuvent être extrudées.", "info");
+        const groups = await Promise.all([...new Set(picks.map((p) => p.bodyId))].map(async (target) => {
+          const refs = await Promise.all(picks.filter((p) => p.bodyId === target).map((p) => this.ctx.geometry.describe(p.bodyId, [], p.faceIndex)));
+          return { target, faces: refs.flatMap((r) => (r.face && r.face.type === "PLANE" ? [r.face] : [])), all: refs.length };
+        }));
+        this.faces = groups[0]!.faces;
+        this.more = groups.slice(1).filter((g) => g.faces.length).map(({ target, faces }) => ({ target, faces }));
+        if (groups.some((g) => g.faces.length < g.all)) this.ctx.notify("Seules les faces planes peuvent être extrudées.", "info");
       } catch (error) {
         this.ctx.notify(error instanceof Error ? error.message : String(error), "error");
       }
@@ -152,8 +158,33 @@ export class FaceExtrudeTool extends PanelTool {
     this.schedulePreview();
   }
 
+  /** Maj + clic: a body chosen (or its preview) taken off, or the face clicked on another body pulled alike. */
+  private async toggleBody(pick: FacePick): Promise<void> {
+    const all = [...(this.target ? [{ target: this.target, faces: this.faces }] : []), ...this.more];
+    const own = all.findIndex((g) => g.target === pick.bodyId);
+    const at = own >= 0 ? own : this.ids().indexOf(featureOfBody(pick.bodyId));
+    if (at >= 0 && at < all.length) all.splice(at, 1);
+    else {
+      const ref = (await this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex)).face;
+      if (ref?.type !== "PLANE") return this.ctx.notify("Seules les faces planes peuvent être extrudées.", "info");
+      all.push({ target: pick.bodyId, faces: [ref] });
+    }
+    const [first, ...rest] = all;
+    this.target = first?.target;
+    this.faces = first?.faces ?? [];
+    this.more = rest;
+    this.placeArrow();
+    this.render();
+    this.schedulePreview();
+  }
+
   /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
   protected override click(event: PointerEvent): void {
+    if (removing(event) && !this.editing && !this.strip) {
+      const pick = this.ctx.viewport.pickFace(event);
+      if (pick) void this.toggleBody(pick).catch((e: unknown) => this.ctx.notify(e instanceof Error ? e.message : String(e), "error"));
+      return;
+    }
     const face = this.faces[0];
     // No face yet (the tool afresh after « OK »): the click takes the face to pull.
     if (!face) {
@@ -175,24 +206,36 @@ export class FaceExtrudeTool extends PanelTool {
     this.ctx.notify(`Distance prise : ${formatLength(Math.abs(taken.value), this.ctx.unit())} (${taken.what}).`, "info");
   }
 
+  private made(id: string, name: string, target: string, faces: FaceRef[]): ExtrudeFeature {
+    return { id, type: "extrude", name, faces, ...(this.strip && this.stripOnly && id === this.id ? { strip: this.strip } : {}), target, distance: this.distance, operation: this.operation };
+  }
+
   protected feature(): ExtrudeFeature | string {
     if (!this.target || this.faces.length === 0) return "Cliquez une face plane d'un corps à tirer ou pousser.";
-    return {
-      id: this.id,
-      type: "extrude",
-      name: this.name,
-      faces: this.faces,
-      ...(this.strip && this.stripOnly ? { strip: this.strip } : {}),
-      target: this.target,
-      distance: this.distance,
-      operation: this.operation,
-    };
+    return this.made(this.id, this.name, this.target, this.faces);
+  }
+
+  /** The steps of the other bodies chosen, ids after this one's. */
+  private steps(): { id: string; name: string }[] {
+    const doc = this.docBefore();
+    return freshFeatureIds({ ...doc, features: [...doc.features, this.made(this.id, this.name, this.target ?? "", this.faces)] }, "ex", "Extrusion", this.more.length);
+  }
+
+  private ids(): string[] {
+    return [this.id, ...this.steps().map((n) => n.id)];
+  }
+
+  protected override companions(): ExtrudeFeature[] {
+    return this.steps().map((n, i) => this.made(n.id, n.name, this.more[i]!.target, this.more[i]!.faces));
   }
 
   /** The kernel cannot pull the face so (its message is on the panel): OK waits, and the body stays as it is. */
   protected override blocker(): string | null {
-    const status = this.ctx.status(this.id);
-    return status && status.state !== "ok" ? (status.message ?? "Cette face ne peut pas être extrudée ainsi.") : null;
+    for (const id of this.ids()) {
+      const status = this.ctx.status(id);
+      if (status && status.state !== "ok") return status.message ?? "Cette face ne peut pas être extrudée ainsi.";
+    }
+    return null;
   }
 
   /** « Face tirée »: which face along the edge, named by where it looks. */
@@ -255,7 +298,8 @@ export class FaceExtrudeTool extends PanelTool {
       this.choiceRow(),
       this.stripRow(),
       this.touchRow(),
-      this.info(`${this.faces.length} face(s) — tirez la flèche ou saisissez la distance (négative pour creuser).`),
+      this.info(`${this.faces.length + this.more.reduce((n, g) => n + g.faces.length, 0)} face(s)${this.more.length ? ` sur ${this.more.length + 1} corps` : ""} — tirez la flèche ou saisissez la distance (négative pour creuser).`),
+      this.editing || this.strip ? null : this.info("Maj + clic sur la face d'un autre corps : elle est tirée de même, OK les fait toutes en une seule annulation ; Maj + clic sur un corps choisi le retire."),
       this.numberRow("Distance", this.distance, this.ctx.unit(), (v) => this.setDistance(v), true),
       this.info("Ou cliquez un point, une arête ou une face d'un corps : sa mesure devient la distance."),
       this.selectRow(

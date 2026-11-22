@@ -4,6 +4,8 @@
  * demande. Les portes sont plates, à cadre (panneau en retrait), cannelées, à tasseaux (rainures dans leur face,
  * features/door-decor.ts) ou vitrées (cadre en profilé alu autour d'un verre trempé, au choix du verre et du cadre). Une porte seule s'ouvre à gauche, à droite, vers le haut (relevable, sur compas) ou vers le bas (abattant) ;
  * « Sans poignée » remplace les poignées par une gorge en profilé alu derrière le chant haut de chaque façade. Aperçu du noyau, puis une opération « Façades » dans l'historique, liée au caisson (elle suit ses cotes).
+ * Un clic sur un caisson dans la vue le choisit ; d'autres cliqués ensuite reçoivent les mêmes façades, une opération
+ * chacun, en une seule annulation (Maj + clic retire un caisson choisi).
  */
 import { GLASS_FRAME, GLASS_KINDS, PROFILE_FINISHES, styleChange, type DoorStyle } from "../features/glass-door";
 import { DECOR_LABELS } from "../features/door-decor";
@@ -11,7 +13,8 @@ import { decorRows } from "../sketcher/partition-door-style";
 import { bodyInfo } from "../document/materials";
 import { uniqueId, uniqueName } from "../document/operations";
 import { cabinetStandard, frontsTo } from "../document/standards";
-import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "../document/types";
+import { featureOfBody, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "../document/types";
+import { chooseBody, freshFeatureIds, removing } from "./curic-common";
 import { frontMass } from "../document/hardware";
 import { frontsHardware, frontsMaterials, frontsParts, GORGE, liftStay } from "../features/fronts-parts";
 import { formatLength } from "../measurements/units";
@@ -22,6 +25,10 @@ export class FrontsTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
   private settings: Omit<FrontsFeature, "id" | "type" | "name">;
+  /** The other cabinets clicked, each given the same fronts, a step made with this one. */
+  private more: string[] = [];
+  /** A cabinet clicked yet: the first click replaces the one chosen by default, the next ones add theirs. */
+  private clicked = false;
 
   constructor(ctx: ToolContext, editing: FrontsFeature | null) {
     super(ctx, "Façades", editing);
@@ -44,27 +51,74 @@ export class FrontsTool extends PanelTool {
   }
 
   protected feature(): FrontsFeature | string {
-    if (!this.settings.cabinet) return "Créez d'abord un caisson (Meuble › Caisson) ou une Répartition.";
+    if (!this.settings.cabinet) return this.cabinets().length ? "Cliquez le caisson à habiller." : "Créez d'abord un caisson (Meuble › Caisson) ou une Répartition.";
     return { id: this.id, type: "fronts", name: this.name, ...this.settings };
+  }
+
+  /** The steps of the other cabinets chosen, ids after this one's. */
+  private others(): { id: string; name: string }[] {
+    const doc = this.docBefore();
+    return freshFeatureIds({ ...doc, features: [...doc.features, { id: this.id, type: "fronts", name: this.name, ...this.settings }] }, "fr", "Façades", this.more.length);
+  }
+
+  protected override companions(): FrontsFeature[] {
+    return this.others().map((n, i) => ({ id: n.id, type: "fronts", name: n.name, ...this.settings, cabinet: this.more[i]! }));
   }
 
   /** Parts without a material get the default one (the cabinet's for the fronts), so the cut list and quote are right. */
   protected override decorate(doc: CadDocument): CadDocument {
-    const f = doc.features.find((x) => x.id === this.id);
-    const cabinet = this.cabinets().find((c) => c.id === this.settings.cabinet);
-    if (f?.type !== "fronts" || !cabinet) return doc;
-    const materials = frontsMaterials(f, cabinet, bodyInfo(doc, `${cabinet.id}${PART_SEPARATOR}0`).material);
     const info = { ...doc.bodyInfo };
-    materials.forEach((material, i) => {
-      const id = `${this.id}${PART_SEPARATOR}${i}`;
-      if (!info[id]?.material) info[id] = { ...info[id], material };
-    });
+    for (const made of [this.id, ...this.others().map((n) => n.id)]) {
+      const f = doc.features.find((x) => x.id === made);
+      const cabinet = f?.type === "fronts" ? this.cabinets().find((c) => c.id === f.cabinet) : undefined;
+      if (f?.type !== "fronts" || !cabinet) continue;
+      frontsMaterials(f, cabinet, bodyInfo(doc, `${cabinet.id}${PART_SEPARATOR}0`).material).forEach((material, i) => {
+        const id = `${made}${PART_SEPARATOR}${i}`;
+        if (!info[id]?.material) info[id] = { ...info[id], material };
+      });
+    }
     return { ...doc, bodyInfo: info };
   }
 
   protected override blocker(): string | null {
-    const status = this.ctx.status(this.id);
-    return status && status.state !== "ok" ? (status.message ?? "Les façades sont impossibles.") : null;
+    for (const id of [this.id, ...this.others().map((n) => n.id)]) {
+      const status = this.ctx.status(id);
+      if (status && status.state !== "ok") return status.message ?? "Les façades sont impossibles.";
+    }
+    return null;
+  }
+
+  /** The cabinet a body is part of — one of its own, or of the fronts made for it — or null. */
+  private cabinetOf(bodyId: string): string | null {
+    const ids = [this.id, ...this.others().map((n) => n.id)];
+    const at = ids.indexOf(featureOfBody(bodyId));
+    if (at >= 0) return [this.settings.cabinet, ...this.more][at] ?? null;
+    const f = this.ctx.doc().features.find((x) => x.id === featureOfBody(bodyId));
+    return f?.type === "cabinet" ? f.id : f?.type === "fronts" ? f.cabinet : null;
+  }
+
+  /** A cabinet clicked in the view: chosen (the first click), added (the next ones), or, Maj + clic, taken off. */
+  protected override click(event: PointerEvent): void {
+    const face = this.ctx.viewport.pickFace(event);
+    const cabinet = face ? this.cabinetOf(face.bodyId) : null;
+    if (!cabinet) return;
+    const chosen = this.clicked || this.editing || this.more.length ? [this.settings.cabinet, ...this.more].filter(Boolean) : [];
+    const next = chooseBody(chosen, cabinet, [], removing(event), !!this.editing);
+    this.clicked = true;
+    this.settings.cabinet = next[0] ?? "";
+    this.more = next.slice(1);
+    this.render();
+    this.schedulePreview();
+  }
+
+  override move(event: PointerEvent): void {
+    const face = this.ctx.viewport.pickFace(event);
+    const cabinet = face ? this.cabinetOf(face.bodyId) : null;
+    this.ctx.viewport.setHoverHighlight(cabinet ? { bodies: this.ctx.viewport.displayedBodies.filter((id) => featureOfBody(id) === cabinet) } : null);
+  }
+
+  protected override dispose(): void {
+    this.ctx.viewport.setHoverHighlight(null);
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -89,8 +143,12 @@ export class FrontsTool extends PanelTool {
     const [high, mass] = door ? [door.to[2] - door.from[2], frontMass(doc, made, 0)] : [0, 0];
     const stay = door ? liftStay(high, mass) : null;
     const lift = door ? `Porte relevable de ${mass.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} kg, haute de ${formatLength(high, this.ctx.unit())} : facteur ${Math.round(high * mass)}${stay ? "" : " — plus qu'une paire de compas ne tient, voyez la fiche du fabricant"}.` : null;
+    const names = [s.cabinet, ...this.more].map((id) => `« ${this.cabinets().find((c) => c.id === id)?.name ?? id} »`);
     return [
-      this.selectRow("Caisson", s.cabinet, this.cabinets().map((c): [string, string] => [c.id, c.name]), (v) => set("cabinet", v)),
+      this.more.length
+        ? this.info(`${names.length} caissons : ${names.join(", ")}, les mêmes façades sur chacun. Cliquez-en d'autres pour les ajouter ; Maj + clic sur un caisson choisi le retire.`)
+        : this.selectRow("Caisson", s.cabinet, this.cabinets().map((c): [string, string] => [c.id, c.name]), (v) => set("cabinet", v)),
+      this.editing || this.more.length ? null : this.info("Ou cliquez le caisson dans la vue, puis d'autres l'un après l'autre : OK leur met à tous ces façades, en une seule annulation."),
       // Doors and drawers alike may be glazed: the style stays when one becomes the other.
       this.selectRow("Disposition", s.layout, [["door", "Une porte"], ["doors", "Deux portes"], ["drawers", "Tiroirs"]], (v) => {
         s.layout = v as FrontsFeature["layout"];

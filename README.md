@@ -889,7 +889,10 @@ opération existante.
   même niveau), **⌘** verticale ; le point d'arrivée s'affiche alors à la hauteur du point de départ (ou à sa
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
-- **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : on sélectionne (ou on clique,
+- **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : **plusieurs éléments** — Maj +
+  clic sur la face d'un autre élément l'ajoute (trois caissons à monter jusqu'au plafond) — vont tous jusqu'à la même
+  face d'arrivée, ou de la même mesure, chacun prolongé à son tour, OK les gardant en une seule annulation (Maj + clic
+  sur un élément choisi le retire). On sélectionne (ou on clique,
   l'outil ouvert) la face d'un caisson, d'une pièce d'une Répartition ou de toute autre pièce, du côté à prolonger,
   puis la face
   d'un autre élément : il s'allonge jusqu'à son plan, ou se raccourcit (`document/extend-element.ts`,
@@ -2454,11 +2457,15 @@ opération existante.
 - **Lissage** (groupe Modifier, comme Fusion) : un solide passant par les profils fermés de plusieurs esquisses, dans
   l'ordre de l'historique, courbe ou droit entre eux (pied galbé, trémie, moulure qui change de section) ; nouveau
   corps, joindre ou couper. Chaque profil doit être un seul contour fermé, sans trou, dans des plans séparés.
-- **Modificateur de planche** (groupe Modifier, comme les modificateurs de 3ds Max), dans l'historique : la planche
+- **Modificateur de planche** (groupe Modifier, comme les modificateurs de 3ds Max), dans l'historique : **plusieurs
+  planches** sélectionnées, ou cliquées l'une après l'autre, sont modifiées de même, une étape chacune, OK les faisant
+  toutes en une seule annulation (Maj + clic retire une planche choisie). La planche
   (une boîte droite) est reconstruite exactement depuis sa section — *cintrée* sur sa longueur (rayon au milieu de
   l'épaisseur, la longueur est gardée), *effilée* (section réduite à un pourcentage au bout) ou *vrillée* (section
   tournée jusqu'à un angle au bout).
-- **Déformer** (groupe Modifier, comme l'échelle centrée de SketchUp, Option · Ctrl), dans l'historique : un clic sur
+- **Déformer** (groupe Modifier, comme l'échelle centrée de SketchUp, Option · Ctrl), dans l'historique : **plusieurs
+  corps** — un clic sur une face d'un autre corps, le cadre posé — prennent la même échelle, chacun dans les sens de sa
+  face, une étape chacun, OK les faisant toutes en une seule annulation (Maj + clic retire un corps choisi). Un clic sur
   une face plane y pose un cadre jaune, aligné sur les axes du modèle, et ses poignées vertes. Tirer un coin agrandit
   ou réduit la face dans les deux sens, tirer le milieu d'un côté dans ce sens seulement, toujours depuis son centre
   (le point rouge) ; le champ « Échelle » la donne au chiffre. Les points du corps sur cette face s'écartent du
@@ -3451,7 +3458,9 @@ opération existante.
   - « Imprimer les bons » donne une page par fournisseur (numéro, projet, date, coordonnées, lignes, total) ;
     « Télécharger (.zip) » la page et un CSV par fournisseur. Le **Dossier de production** les contient aussi
     (`02-bons-de-commande.html`, `02-bon-<fournisseur>.csv`).
-- **Façades** (groupe « Meuble », après le caisson) : habille un caisson d'une porte, de deux portes ou de 1 à 8
+- **Façades** (groupe « Meuble », après le caisson) : **plusieurs caissons** cliqués dans la vue l'un après l'autre (le
+  premier clic remplace le caisson proposé) reçoivent les mêmes façades, une opération chacun, OK les faisant toutes en
+  une seule annulation (Maj + clic retire un caisson choisi). Habille un caisson d'une porte, de deux portes ou de 1 à 8
   tiroirs de même hauteur, en applique (devant le caisson) ou encastrés (dans l'ouverture), avec le jeu et l'épaisseur
   voulus. Chaque tiroir a son caisson (côtés, avant, arrière, fond) sur coulisses de 12,5 mm, de la longueur du
   commerce (250 à 600 mm) qui tient dans la profondeur. Charnières à boîtier Ø35 × 13 (2 à 4 selon la hauteur de la
@@ -3589,6 +3598,9 @@ opération existante.
     arêtes, extrusion ou perçage sur les faces.
 - **Extrusion de faces** (pousser-tirer) :
   - sélectionnez une ou plusieurs faces planes, puis Extrusion ;
+  - **plusieurs corps** : des faces de plusieurs corps sélectionnées, ou, l'outil ouvert, Maj + clic sur la face d'un
+    autre corps (le bout de trois étagères), sont tirées de même, une étape par corps, OK les faisant toutes en une
+    seule annulation (Maj + clic sur un corps choisi le retire) ;
   - tirez la flèche (ajout de matière) ou poussez-la (creusement), ou cliquez sa valeur pour la saisir ;
   - **depuis une arête** : une seule arête sélectionnée, le bouton « Tirer une face depuis cette arête » (panneau
     Sélection, toujours écrit en entier) ouvre l'extrusion sur

@@ -28,7 +28,7 @@ export const MODELING: HelpFamily[] = [
           "Choisissez l'« Opération » : « Nouveau corps », « Joindre », « Couper » ou « Intersection ». Pour les trois dernières, choisissez la « Cible » ; pour « Couper », « Tous les corps qu'elle touche » coupe d'un coup chaque corps que la forme traverse (une rainure à travers plusieurs panneaux, par exemple).",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
-        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée (« Extrusion de faces »), même sur une étagère d'un coin de dressing isolé : l'étagère reste en vue pendant qu'on règle la distance, la distance tapée reste même quand l'aperçu se termine pendant la frappe, et un nouveau corps tiré d'une face reste avec elle. Si la face ne peut pas être tirée ainsi, le panneau dit pourquoi et rien n'est enregistré. Après « OK », l'outil reste : cliquez la face suivante. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
+        tip: "Une face d'un corps sélectionnée avant le clic ne donne pas une extrusion d'esquisse : la face est tirée ou poussée (« Extrusion de faces »), même sur une étagère d'un coin de dressing isolé : l'étagère reste en vue pendant qu'on règle la distance, la distance tapée reste même quand l'aperçu se termine pendant la frappe, et un nouveau corps tiré d'une face reste avec elle. Si la face ne peut pas être tirée ainsi, le panneau dit pourquoi et rien n'est enregistré. Après « OK », l'outil reste : cliquez la face suivante. Maj + clic sur la face d'un autre corps (le bout de trois étagères) : elle est tirée de même, OK les faisant toutes en une seule annulation ; Maj + clic sur un corps choisi le retire. Des faces de plusieurs corps sélectionnées avant vont de même. Une esquisse faite de simples lignes ouvre « Toit » ou « Panneaux » à la place.",
       },
       {
         keys: ["data-action:gable"],
@@ -219,7 +219,7 @@ export const MODELING: HelpFamily[] = [
         name: "Déformer",
         what: "Agrandit ou réduit une face plane depuis son centre : les côtés du corps suivent bien droits, le dessus d'un prisme agrandi fait un seau à pans.",
         steps: [
-          "Cliquez « Déformer », puis la face plane à changer. Vous pouvez aussi sélectionner la face d'abord.",
+          "Cliquez « Déformer », puis la face plane à changer. Vous pouvez aussi sélectionner la face d'abord. Cliquez ensuite une face d'autres corps (les pieds d'une table) : elles prennent la même échelle et OK les déforme toutes, en une seule annulation ; Maj + clic sur un corps choisi le retire.",
           "Un cadre jaune se pose sur la face, avec ses poignées vertes et son centre en rouge.",
           "Tirez un coin vert pour agrandir ou réduire dans les deux sens, ou le milieu d'un côté pour un seul sens.",
           "Ou tapez le champ « Échelle » : 1,5 agrandit de moitié, 0,5 réduit de moitié.",
@@ -259,7 +259,7 @@ export const MODELING: HelpFamily[] = [
         name: "Modificateur",
         what: "Cintre, effile ou vrille une planche.",
         steps: [
-          "Sélectionnez la planche puis cliquez « Modificateur », ou cliquez l'outil puis la planche.",
+          "Sélectionnez la planche puis cliquez « Modificateur », ou cliquez l'outil puis la planche. Plusieurs planches sélectionnées, ou cliquées l'une après l'autre, sont modifiées de même : OK les fait toutes en une seule annulation ; Maj + clic sur une planche choisie la retire.",
           "Dans « Effet », choisissez « Cintrer », « Effiler » ou « Vriller ».",
           "Réglez la valeur : « Rayon », « Bout (%) » ou « Angle ».",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
@@ -338,7 +338,7 @@ export const MODELING: HelpFamily[] = [
         what: "Allonge un caisson, une Répartition entière (en largeur, en hauteur ou en profondeur), une étagère, une cloison ou une pièce (plinthe, fileur, plan de travail, planche) jusqu'à la face d'un autre élément, ou de la mesure tapée.",
         steps: [
           "Sélectionnez la face à prolonger — d'un caisson, d'une pièce de la Répartition, ou d'une autre pièce comme le bout d'une plinthe —, ou ouvrez l'outil et cliquez-la.",
-          "Cliquez « Prolonger élément », dans le groupe Modifier.",
+          "Cliquez « Prolonger élément », dans le groupe Modifier. Maj + clic sur la face d'autres éléments les ajoute (trois caissons à monter jusqu'au plafond) : ils vont tous jusqu'à la même face, ou de la même mesure, en une seule annulation ; Maj + clic sur un élément choisi le retire.",
           "Cliquez la face d'un autre élément, parallèle ou inclinée : le résultat s'affiche. La face à prolonger reste marquée en orange, la face d'arrivée en bleu.",
           "Ou, sans autre élément, tapez la mesure : « De » (de combien la face avance, négatif pour raccourcir) ou « Cote finale » (la taille voulue dans le sens de la face ; le panneau donne celle d'aujourd'hui).",
           "Laissez « Suivre l'autre élément » coché pour qu'il suive cet élément quand il change ensuite.",

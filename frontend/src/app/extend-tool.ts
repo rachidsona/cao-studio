@@ -7,12 +7,16 @@
  * en biais, un rampant), un caisson ou une Répartition va jusqu'à la toucher, une autre pièce en prend la pente. Le
  * résultat se voit avant d'être gardé : OK (ou Entrée) le garde en une annulation, l'outil restant pour un autre élément ; Terminer (ou Échap) ferme sans rien changer de plus.
  * « Suivre l'autre élément » : quand l'autre élément change ensuite, l'élément prolongé le suit (app/extend-follow.ts).
+ * Maj + clic sur la face d'un autre élément l'ajoute à ceux à prolonger (trois caissons jusqu'au plafond) : ils vont
+ * tous jusqu'à la même face d'arrivée, ou de la même mesure, OK les gardant en une annulation ; Maj + clic sur un
+ * élément choisi le retire.
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import { extendable } from "../document/extend-element";
 import { extendBy, extendTo, linkBodies, onEnvelope, withoutLinks, type Extended, type FacePlane } from "../document/extend-reach";
 import { frameOf } from "../sketcher/frame";
-import type { FaceRef, Feature, Vec3 } from "../document/types";
+import type { CadDocument, FaceRef, Feature, Vec3 } from "../document/types";
+import { removing } from "./curic-common";
 import { el } from "../ui/dom";
 import { formatLength } from "../measurements/units";
 import type { FacePick } from "../viewport/viewport";
@@ -38,6 +42,10 @@ let lastFollow = true;
 
 export class ExtendTool extends PanelTool {
   private moving: Side | null = null;
+  /** The other elements to extend (Maj + clic), each with whether only its piece goes. */
+  private more: (Side & { piece: boolean })[] = [];
+  /** The steps the result changed or made, one per element (their state says whether OK may keep it). */
+  private madeIds: string[] = [];
   private target: Side | null = null;
   private follow = lastFollow;
   /** The result shown, or why it cannot be. */
@@ -59,7 +67,7 @@ export class ExtendTool extends PanelTool {
   }
 
   /** The face to extend first; then the face to reach, and the result is shown. */
-  private async pick(pick: FacePick): Promise<void> {
+  private async pick(pick: FacePick, add = false): Promise<void> {
     try {
       const outline = await this.ctx.geometry.faceOutline(pick.bodyId, pick.faceIndex);
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
@@ -67,7 +75,17 @@ export class ExtendTool extends PanelTool {
       const side: Side = { bodyId: pick.bodyId, pick, plane: planeOf(outline), ...(ref ? { ref } : {}) };
       // The element itself clicked again (the piece itself, when it alone is extended): another face of it to extend.
       const again = this.moving && (this.piece ? pick.bodyId === this.moving.bodyId : this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId));
-      if (!this.moving || again) {
+      if (add && this.moving) {
+        // Maj + clic: an element chosen taken off (the next one becomes the first), another one added.
+        const at = this.more.findIndex((m) => (m.piece ? pick.bodyId === m.bodyId : this.elementOf(pick.bodyId) === this.elementOf(m.bodyId)));
+        if (again) {
+          const [next, ...rest] = this.more;
+          this.moving = next ?? null;
+          this.piece = next?.piece ?? false;
+          this.more = rest;
+        } else if (at >= 0) this.more.splice(at, 1);
+        else this.more.push({ ...side, piece: this.inside(side) });
+      } else if (!this.moving || again) {
         this.moving = side;
         this.target = null;
         this.typed = null;
@@ -103,14 +121,31 @@ export class ExtendTool extends PanelTool {
   /** The result made again from the faces chosen, and shown. */
   private refresh(): void {
     // The faces chosen stay marked: the one extended in orange, the one reached in blue.
-    this.ctx.viewport.setChosen([...(this.moving ? [{ face: this.moving.pick, role: "first" as const }] : []), ...(this.target ? [{ face: this.target.pick, role: "second" as const }] : [])]);
-    this.made = this.moving && this.target
-      ? extendTo(this.ctx.doc(), this.moving.bodyId, this.target.bodyId, this.moving.plane, this.target.plane, { from: this.moving.ref, to: this.target.ref }, this.follow, this.piece)
-      : this.moving && this.typed !== null
-        ? extendBy(this.ctx.doc(), this.moving.bodyId, this.moving.plane, this.typed, this.moving.ref, this.piece)
+    const moving = this.moving ? [this.moving, ...this.more] : [];
+    this.ctx.viewport.setChosen([...moving.map((m) => ({ face: m.pick, role: "first" as const })), ...(this.target ? [{ face: this.target.pick, role: "second" as const }] : [])]);
+    const target = this.target;
+    const typed = this.typed;
+    this.made = this.moving && target
+      ? this.chained((doc, s, piece) => extendTo(doc, s.bodyId, target.bodyId, s.plane, target.plane, { from: s.ref, to: target.ref }, this.follow, piece))
+      : this.moving && typed !== null
+        ? this.chained((doc, s, piece) => extendBy(doc, s.bodyId, s.plane, typed, s.ref, piece))
         : null;
     this.render();
     void this.ctx.preview(this.made && typeof this.made !== "string" ? this.made.doc : null).then(() => this.render());
+  }
+
+  /** Each element chosen extended in turn, each on the document the one before left: the first's id, every message. */
+  private chained(step: (doc: CadDocument, side: Side, piece: boolean) => Extended | string): Extended | string {
+    let made: Extended | null = null;
+    const ids: string[] = [];
+    for (const [side, piece] of [[this.moving!, this.piece] as const, ...this.more.map((m) => [m, m.piece] as const)]) {
+      const next = step(made?.doc ?? this.ctx.doc(), side, piece);
+      if (typeof next === "string") return next;
+      ids.push(next.id);
+      made = made ? { ...next, id: made.id, message: `${made.message} ${next.message}` } : next;
+    }
+    this.madeIds = ids;
+    return made!;
   }
 
   /** The size of what is extended along the clicked face's normal (mm): the whole element, or the piece alone. */
@@ -142,8 +177,11 @@ export class ExtendTool extends PanelTool {
   private problem(): string | null {
     if (!this.made) return this.moving ? SECOND : FIRST;
     if (typeof this.made === "string") return this.made;
-    const status = this.ctx.status(this.made.id);
-    return status && status.state !== "ok" ? (status.message ?? "Cet élément ne peut pas être prolongé ainsi.") : null;
+    for (const id of this.madeIds) {
+      const status = this.ctx.status(id);
+      if (status && status.state !== "ok") return status.message ?? "Cet élément ne peut pas être prolongé ainsi.";
+    }
+    return null;
   }
 
   private ok(): void {
@@ -187,7 +225,7 @@ export class ExtendTool extends PanelTool {
     const cancel = el("button", { type: "button", class: BUTTON, title: "Fermer l'outil ; ce qui n'a pas eu son OK n'est pas gardé (Échap)", "data-panel-done": "" }, "Terminer");
     cancel.addEventListener("click", () => this.cancel());
     const restart = el("button", { type: "button", class: `${BUTTON} w-full` }, "Recommencer");
-    restart.addEventListener("click", () => ((this.moving = this.target = null), (this.typed = null), this.refresh()));
+    restart.addEventListener("click", () => ((this.moving = this.target = null), (this.more = []), (this.typed = null), this.refresh()));
     const links = this.linkRows();
     const owner = this.moving ? extendable(doc, this.moving.bodyId) : null;
     const what = owner && this.moving
@@ -203,7 +241,8 @@ export class ExtendTool extends PanelTool {
           size !== null ? this.info(`Aujourd'hui : ${formatLength(size, unit)} dans le sens de la face cliquée. « De » : de combien elle avance (négatif : elle recule).`) : null)
       : null;
     return [
-      this.info(this.moving ? `À prolonger : « ${this.piece ? bodyLabel(doc, this.moving.bodyId) : name(this.moving)} », par la face cliquée.` : FIRST),
+      this.info(this.moving ? `À prolonger : ${[`« ${this.piece ? bodyLabel(doc, this.moving.bodyId) : name(this.moving)} »`, ...this.more.map((m) => `« ${m.piece ? bodyLabel(doc, m.bodyId) : name(m)} »`)].join(", ")}, par la face cliquée.` : FIRST),
+      this.moving ? this.info(this.more.length ? "Maj + clic sur un élément choisi le retire, sur un autre l'ajoute." : "Maj + clic sur la face d'un autre élément l'ajoute : tous vont jusqu'à la même face, ou de la même mesure, en une seule annulation.") : null,
       what,
       this.moving ? this.info(this.target ? `Jusqu'à : « ${name(this.target)} ».` : this.typed !== null ? "De la mesure tapée." : SECOND) : null,
       measures,
@@ -225,7 +264,7 @@ export class ExtendTool extends PanelTool {
 
   protected override click(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
-    if (face) void this.pick(face);
+    if (face) void this.pick(face, removing(event));
   }
 
   protected override dispose(): void {
