@@ -2460,7 +2460,8 @@ opération existante.
   (`features/within-walls.ts`). « Orientation » des étagères d'un corps aménagé (`ShelfParams.lean`) : à plat, selon
   X, Y ou Z, ou d'équerre ou parallèle à une face cliquée (`leanFace`) ; elles sont tournées dans leur plan avant d'aller aux parois
   (`sketcher/shelf-lean.ts`) ; leur tracé bleu est tourné de même, jusqu'aux parois ou à la cloison
-  (`sketcher/shelf-lean-outline.ts`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
+  (`sketcher/shelf-lean-outline.ts`), et les niches posées dessus ou dessous suivent leur face (volume vert, remplissage
+  bleu, aperçu orange : `shelfSides`). Par défaut, la niche suit aussi la forme du corps : le volume bleu des outils de niche
   est le rectangle prolongé vers les parois qu'il touche, recoupé par leurs faces (`sketcher/niche-outline.ts`), et
   le tracé bleu de l'esquisse aussi, et son remplissage : ses traits et la bande des parois partent, une étagère et
   une niche vont jusqu'aux parois (`linesBetweenWalls`, `regionsBetweenWalls`, `app/sketch-display.ts`) ; une

@@ -1,11 +1,11 @@
 /**
  * Le tracé des étagères tournées d'un corps aménagé (ShelfParams.lean) : chacune tournée dans le plan comme son volume
  * (features/within-walls.ts), ses bouts jusqu'à la paroi qu'ils touchent, ou jusqu'à la cloison où ils s'arrêtaient.
- * Ses traits droits de l'esquisse cèdent la place à ce contour. Pur.
+ * Ses traits droits de l'esquisse cèdent la place à ce contour, et les niches posées dessus ou dessous suivent sa face. Pur.
  */
 import type { SketchGeometry } from "../document/sketch";
 import type { SketchFrame } from "./frame";
-import type { WallLine } from "./niche-outline";
+import type { NicheSides, WallLine } from "./niche-outline";
 import { isPartition, isShelves, pathKey, rebuildChain } from "./partition-history";
 import { partBox, shelfLayout, type NicheBox } from "./shelves";
 
@@ -79,4 +79,18 @@ export function onShelfEdge(points: readonly Vec2[], shelves: readonly { box: Ni
   return shelves.some(({ box }) =>
     [box.y0, box.y1].some((y) => Math.abs(p[1] - y) < 1e-6 && Math.abs(q[1] - y) < 1e-6) && Math.min(p[0], q[0]) >= box.x0 - TOUCH && Math.max(p[0], q[0]) <= box.x1 + TOUCH,
   );
+}
+
+/** The faces of the turned shelves a niche sits on or under: its bottom or top is drawn to them (niche-outline.ts). */
+export function shelfSides(box: NicheBox, shelves: readonly { box: NicheBox; turn: number }[]): NicheSides {
+  const sides: NicheSides = {};
+  for (const { box: s, turn } of shelves) {
+    if (Math.min(box.x1, s.x1) - Math.max(box.x0, s.x0) < TOUCH) continue;
+    const c: Vec2 = [(s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2];
+    const n: Vec2 = [-Math.sin(turn), Math.cos(turn)];
+    const h = (s.y1 - s.y0) / 2;
+    if (Math.abs(box.y1 - s.y0) < TOUCH) sides.y1 = { p: [c[0] - n[0] * h, c[1] - n[1] * h], n };
+    if (Math.abs(box.y0 - s.y1) < TOUCH) sides.y0 = { p: [c[0] + n[0] * h, c[1] + n[1] * h], n };
+  }
+  return sides;
 }

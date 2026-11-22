@@ -12,7 +12,7 @@ import type { CadDocument, SketchFeature } from "../document/types";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
 import { linesBetweenWalls, regionsBetweenWalls, wallLines } from "../sketcher/niche-outline";
-import { leanedOutline, leanedShelves, onShelfEdge } from "../sketcher/shelf-lean-outline";
+import { leanedOutline, leanedShelves, onShelfEdge, shelfSides } from "../sketcher/shelf-lean-outline";
 import { latestBody } from "../document/operations";
 import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
@@ -112,7 +112,8 @@ const withTexts = (f: SketchFeature, drawn: Drawn): Drawn => ({ ...drawn, curves
 
 /**
  * A body furnished's sketch as it is between its walls (sketcher/niche-outline.ts): its lines and areas cut or drawn to
- * them, and its turned shelves drawn turned (sketcher/shelf-lean-outline.ts), as their bodies are.
+ * them, and its turned shelves drawn turned (sketcher/shelf-lean-outline.ts), as their bodies are, the niches on
+ * them following them.
  */
 function furnished(f: SketchFeature, box: [number, number, number, number], meshes: Parameters<typeof wallLines>[1]): Drawn {
   const frame = frameOf(f);
@@ -128,6 +129,6 @@ function furnished(f: SketchFeature, box: [number, number, number, number], mesh
       ...linesBetweenWalls(sketchCurves(f).filter((c) => !onShelfEdge(c.points, leaned)), box, lines),
       ...turned.flatMap((outline, k) => outline.map((p, i) => ({ id: `lean:${k}:${i}`, points: [p, outline[(i + 1) % outline.length]!] }))),
     ],
-    regions: [...regionsBetweenWalls(sketchRegions(f).filter((r) => !square(r)), box, lines), ...turned.map((outer) => ({ outer, holes: [] }))],
+    regions: [...regionsBetweenWalls(sketchRegions(f).filter((r) => !square(r)), box, lines, (b) => shelfSides(b, leaned)), ...turned.map((outer) => ({ outer, holes: [] }))],
   };
 }

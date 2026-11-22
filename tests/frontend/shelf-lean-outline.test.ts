@@ -1,7 +1,7 @@
 /** Le tracé d'une étagère tournée d'un corps aménagé : tourné comme son volume, jusqu'aux parois ou à la cloison. */
 import { describe, expect, it } from "vitest";
-import type { WallLine } from "../../frontend/src/sketcher/niche-outline";
-import { leanedOutline, leanedShelves, leanTurn, onShelfEdge } from "../../frontend/src/sketcher/shelf-lean-outline";
+import { nicheOutline, type WallLine } from "../../frontend/src/sketcher/niche-outline";
+import { leanedOutline, leanedShelves, leanTurn, onShelfEdge, shelfSides } from "../../frontend/src/sketcher/shelf-lean-outline";
 import { withBodyFurnished } from "../../frontend/src/document/body-opening";
 import { withRecipe } from "../../frontend/src/document/niche-recipe";
 import type { CadDocument, SketchFeature } from "../../frontend/src/document/types";
@@ -37,6 +37,26 @@ describe("le tracé d'une étagère tournée", () => {
   it("dans une niche bordée d'une cloison : son bout revient sur elle", () => {
     const outline = leanedOutline({ x0: 18, x1: 291, y0: 191, y1: 209 }, 0.3, opening, walls)!;
     expect(Math.round(Math.max(...outline.map(([u]) => u)))).toBe(291);
+  });
+
+  it("les niches dessous et dessus suivent ses faces ; une niche plus loin, non", () => {
+    const shelf = { box: { x0: 18, x1: 582, y0: 191, y1: 209 }, turn: Math.atan2(100, 564) };
+    const below = { x0: 18, x1: 582, y0: 18, y1: 191 };
+    const above = { x0: 18, x1: 582, y0: 209, y1: 382 };
+    const sides = shelfSides(below, [shelf]);
+    expect(sides.y1).toBeDefined();
+    expect(sides.y0).toBeUndefined();
+    expect(shelfSides(above, [shelf]).y0).toBeDefined();
+    expect(shelfSides({ x0: 18, x1: 582, y0: 18, y1: 100 }, [shelf])).toEqual({});
+    // Under it: its top climbs 100 from one wall to the other, around 191 at the middle.
+    const top = (polygon: [number, number][], u: number) => Math.max(...polygon.filter(([x]) => Math.abs(x - u) < 1e-6).map(([, v]) => v));
+    const outline = nicheOutline(below, opening, walls, sides)!;
+    expect(top(outline, 18)).toBeCloseTo(141, 0);
+    expect(top(outline, 582)).toBeCloseTo(241, 0);
+    // In a niche bordered by cloisons (no side on the opening): its top still follows the shelf.
+    const inner = nicheOutline({ x0: 100, x1: 500, y0: 100, y1: 191 }, opening, walls, shelfSides({ x0: 100, x1: 500, y0: 100, y1: 191 }, [shelf]))!;
+    expect(inner.length).toBe(4);
+    expect(top(inner, 500) - top(inner, 100)).toBeCloseTo(400 * (100 / 564), 0);
   });
 
   it("les traits droits sur ses grands bords sont ceux qu'il remplace, pas les autres", () => {

@@ -22,6 +22,7 @@ import { SketchPartitionTool } from "../sketcher/partition-tool";
 import type { NicheBox } from "../sketcher/shelves";
 import { nicheOutline, wallLines } from "../sketcher/niche-outline";
 import { ShelvesTool } from "../sketcher/shelves-tool";
+import { leanedShelves, shelfSides } from "../sketcher/shelf-lean-outline";
 import { JoineryView, pieceKey } from "../viewport/joinery-view";
 import { ModuleTool } from "./dressing/module-tool";
 import { NicheHeightTool } from "./dressing/niche-height-tool";
@@ -322,13 +323,13 @@ export class Joinery3D implements PointerHandler {
     );
   }
 
-  /** In a body furnished: the niche's shape between the walls (null: its box). */
+  /** In a body furnished: the niche's shape between the walls and the turned shelves it sits on (null: its box). */
   private outline(box: NicheBox): [number, number][] | null {
     const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
     if (sketch?.type !== "sketch" || !sketch.host) return null;
     const doc = this.host.doc();
     const meshes = sketch.host.bodies.flatMap((id) => this.viewport.bodyMesh(latestBody(doc, id)) ?? this.viewport.bodyMesh(id) ?? []);
-    return nicheOutline(box, sketch.host.box, wallLines(this.frame, meshes, sketch.host.box));
+    return nicheOutline(box, sketch.host.box, wallLines(this.frame, meshes, sketch.host.box), shelfSides(box, leanedShelves(this.geometry(), this.frame)));
   }
 
   // ---- pointer ------------------------------------------------------------------------
