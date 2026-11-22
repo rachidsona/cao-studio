@@ -175,6 +175,17 @@ describe("fond d'une répartition", () => {
     expect(backOf(withSketchExtrusion(made, "sk1", sketch(DOORS)))).toHaveLength(0);
     expect(doorsOf(withSketchExtrusion(made, "sk1", sketch(DOORS)))).toHaveLength(1);
   });
+
+  it("un fond coché dont la pièce avait été supprimée seule revient ; un fond par case dont une case seule est ôtée la garde ôtée", () => {
+    const made = syncPartitionDoors(doc(sketch(null, 400, { thickness: 4, split: "whole" })), "sk1");
+    const [back] = backOf(made);
+    const gone = { ...made, removedBodies: [`${back!.id}#0`, "autre#1"] };
+    expect(syncPartitionDoors(gone, "sk1").removedBodies).toEqual(["autre#1"]);
+    const cases = syncPartitionDoors(doc(sketch(null, 400, { thickness: 4, split: "cases" })), "sk1");
+    const [each] = backOf(cases);
+    const one = { ...cases, removedBodies: [`${each!.id}#0`] };
+    expect(syncPartitionDoors(one, "sk1").removedBodies).toEqual([`${each!.id}#0`]);
+  });
 });
 
 describe("une porte par case", () => {

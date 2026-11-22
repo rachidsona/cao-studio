@@ -1167,7 +1167,9 @@ opération existante.
   - la découpe : **un seul fond** pour tout le placard, ou **un fond par case**. Par case, le fond suit les côtés comme
     les portes : coupé au milieu d'un côté simple, entier sur un côté double, un seul pour des cases sans côté.
 
-  Une opération « Fond » le fabrique. Elle suit la répartition quand on la modifie ; décocher la rubrique, ou ne plus
+  Une opération « Fond » le fabrique. Un fond supprimé pièce par pièce (Suppr) alors que « Panneau de fond » reste
+  coché revient au prochain enregistrement de la Répartition (une case cochée, un réglage changé) ; une case seule
+  ôtée d'un fond par case reste ôtée (`document/partition-doors.ts` `withBackShown`). Elle suit la répartition quand on la modifie ; décocher la rubrique, ou ne plus
   extruder les panneaux, retire le fond.
 - **Penderie** et **Tiroirs** (groupe **Dressing**, pour les dressings) : on **équipe une niche** d'une répartition,
   dans la vue 3D comme avec Étagères — on clique une ou plusieurs niches (une niche choisie se reclique pour la
