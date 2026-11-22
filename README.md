@@ -2366,7 +2366,9 @@ opération existante.
   et le tube entre eux). **« Fond »** ferme l'ouverture de derrière d'un panneau à lui (« Corps vidé 1 — fond »,
   premier corps, HDF au départ), de l'épaisseur voulue (8 mm au départ) : *encastré entre les côtés*, au ras du
   dehors, ou *vissé derrière*, toute la face, les côtés s'arrêtant avant lui (`ShellFeature.back`, `backPanel`) —
-  un vrai caisson. Une face cliquée ensuite s'ouvre (orange) ou se referme. Un côté d'un corps déjà vidé ne se
+  un vrai caisson. Une face cliquée ensuite s'ouvre (orange) ou se referme. **Plusieurs corps** : un autre corps
+  cliqué, par sa face de devant, est vidé de même — mêmes réglages, ses ouvertures prises de sa face —, une étape
+  chacun pour un seul OK et une seule annulation ; Maj + clic sur l'un le retire. Un côté d'un corps déjà vidé ne se
   vide pas à son tour : l'outil le dit et renvoie à son étape de l'Historique. C'est une Coque qui dit ce que sont ses
   côtés (`ShellFeature.sides`, `joint`) : elle se rouvre depuis l'historique avec le même outil. Dans le noyau
   (`features/shell-loft.ts`), le corps est creusé par lui-même rentré de l'épaisseur (`makeOffset`, `carved`) quand

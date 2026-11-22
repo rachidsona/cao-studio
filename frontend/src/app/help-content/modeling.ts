@@ -148,6 +148,7 @@ export const MODELING: HelpFamily[] = [
           "Côtés seuls : choisissez l'« Assemblage », « Bout à bout » (les plus grands côtés passent : les montants d'un caisson vont sur toute sa hauteur) ou « En onglet (tout angle) ».",
           "« Fond » : « Encastré entre les côtés » ou « Vissé derrière (les côtés s'arrêtent avant) » ferme l'ouverture de derrière d'un panneau à lui (HDF au départ), de l'« Épaisseur du fond » voulue — un vrai caisson.",
           "Pour ouvrir ou refermer une autre face, cliquez-la : ouverte, elle passe en orange et n'a pas de côté.",
+          "Plusieurs corps : cliquez un autre corps par sa face de devant, il est vidé de même (une étape chacun, un seul OK, un seul Ctrl + Z) ; Maj + clic sur l'un le retire.",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
         tip: "Un côté d'un corps déjà vidé ne se vide pas à son tour : pour le régler ou l'ouvrir, cliquez son étape dans l'Historique, puis « Modifier ». Un côté courbe (le tour d'un cylindre) garde sa paroi d'un seul corps. L'épaisseur doit rester plus fine que la plus petite épaisseur du corps.",

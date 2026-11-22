@@ -1,6 +1,7 @@
 /**
- * Plusieurs corps avant un seul OK : Modificateur, Façades, Extrusion de faces, Déformer et Prolonger élément font la
- * même opération sur deux corps cliqués l'un après l'autre, une étape chacun, et une seule annulation les reprend.
+ * Plusieurs corps avant un seul OK : Modificateur, Façades, Extrusion de faces, Déformer, Prolonger élément et Vider un
+ * corps font la même opération sur deux corps cliqués l'un après l'autre, une étape chacun, et une seule annulation
+ * les reprend.
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { centeredRectangle } from "../../frontend/src/document/sketch";
@@ -166,5 +167,19 @@ test("Prolonger élément : deux caissons montés de 10 cm tapés, en une seule 
   await expect.poll(heights, { timeout: 30_000 }).toEqual([820, 820]);
   await click(page, '[data-action="undo"]');
   await expect.poll(heights, { timeout: 30_000 }).toEqual([720, 720]);
+  expect(errors).toEqual([]);
+});
+
+test("Vider un corps : deux blocs cliqués par leur devant sont vidés de même, en une seule annulation", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const saved = await project(page, "zz-plusieurs-vider", blocks());
+  await look(page, "front");
+  await click(page, '[data-action="hollow"]');
+  const tool = page.getByRole("dialog", { name: "Vider un corps" });
+  await across(page, says(tool, /Cliquez un autre corps/));
+  await expect(tool).toContainText("2 face(s) ouverte(s)");
+  await across(page, says(tool, /Et 1 autre/), true);
+  await okThenUndo(page, tool, saved, (f) => (f.type === "shell" && (f.faces?.length ?? 0) === 2 ? f.target : undefined), ["ex1", "ex2"]);
   expect(errors).toEqual([]);
 });

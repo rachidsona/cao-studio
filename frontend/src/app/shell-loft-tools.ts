@@ -8,7 +8,8 @@
  *   laquelle on prend le corps est son devant : « Ouvertures » l'ouvre avec celle d'en face — un caisson, ses côtés
  *   autour, tous de la même épaisseur —, seule, ou laisse le corps fermé. « Fond » ferme l'ouverture de derrière d'un
  *   panneau à lui (encastré entre les côtés, ou vissé derrière, les côtés s'arrêtant avant) : un vrai caisson. Une face cliquée ensuite s'ouvre ou se
- *   referme. Un côté d'un corps déjà vidé ne se vide pas à son tour : son étape de l'historique le reprend.
+ *   referme. Un côté d'un corps déjà vidé ne se vide pas à son tour : son étape de l'historique le reprend. Un
+ *   autre corps cliqué, par sa face de devant, est vidé de même (une étape chacun, un seul OK) ; Maj + clic le retire.
  * - Lissage : cochez les esquisses à relier (dans l'ordre de l'historique), droit ou courbe entre elles.
  */
 import * as THREE from "three";
@@ -20,6 +21,7 @@ import type { BodyMesh } from "../geometry/protocol";
 import { operationChoices } from "../ui/feature-meta";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
+import { freshFeatureIds, removing } from "./curic-common";
 
 const SIDES: [NonNullable<ShellFeature["sides"]>, string][] = [["joined", "Joints (un seul corps creux)"], ["separate", "Chaque côté seul (un corps par côté)"]];
 const JOINTS: [NonNullable<ShellFeature["joint"]>, string][] = [["miter", "En onglet (tout angle)"], ["butt", "Bout à bout"]];
@@ -30,6 +32,8 @@ const OPENINGS: [Opening, string][] = [["through", "Devant et derrière (caisson
 type BackMount = "none" | NonNullable<ShellFeature["back"]>["mount"];
 const BACKS: [BackMount, string][] = [["none", "Sans fond"], ["inset", "Encastré entre les côtés"], ["applied", "Vissé derrière (les côtés s'arrêtent avant)"]];
 /** Kept for the session: how the last body was emptied. */
+/** A body emptied: its snapshot, the face it was taken by, its open faces (and their references), the one behind. */
+type Taken = { target: string; mesh: BodyMesh; front: number; selected: number[]; refs: FaceRef[]; backFace: number | null };
 const LAST: { thickness: number; sides: NonNullable<ShellFeature["sides"]>; joint: NonNullable<ShellFeature["joint"]>; opening: Opening; back: BackMount; backThickness: number } = { thickness: 18, sides: "separate", joint: "butt", opening: "through", back: "none", backThickness: 8 };
 
 export class ShellTool extends PanelTool {
@@ -53,6 +57,8 @@ export class ShellTool extends PanelTool {
   private mesh: BodyMesh | null = null;
   private group = new THREE.Group();
   private describing = 0;
+  /** « Vider un corps »: the other bodies emptied the same way, a step each. */
+  private more: Taken[] = [];
 
   constructor(ctx: ToolContext, editing: ShellFeature | null, hollow = false) {
     // A body emptied says what its sides are: reopened, it is « Vider un corps » again.
@@ -104,6 +110,8 @@ export class ShellTool extends PanelTool {
       this.selected = preselected.filter((f) => f.bodyId === first.bodyId).map((f) => f.faceIndex);
       void this.describe();
     }
+    // Faces of other bodies picked beforehand: each body emptied the same way, taken by its face.
+    if (this.hollow && !editing && this.target) for (const pick of preselected.slice(1)) this.take(pick.bodyId, pick.faceIndex);
     this.redraw();
     this.start();
   }
@@ -116,8 +124,7 @@ export class ShellTool extends PanelTool {
   }
 
   /** The outward normal of a flat face of the snapshot, and how far out it lies along it; null for a curved one. */
-  private flat(face: number): { normal: THREE.Vector3; at: number } | null {
-    const mesh = this.mesh;
+  private flat(face: number, mesh = this.mesh): { normal: THREE.Vector3; at: number } | null {
     const group = mesh?.faceGroups[face];
     if (!mesh || !group) return null;
     let normal: THREE.Vector3 | null = null;
@@ -133,19 +140,52 @@ export class ShellTool extends PanelTool {
 
   /** The faces open for the front the body was taken by: it and the flat face behind it, it alone, or none. */
   private opened(): number[] {
-    const front = this.front === null ? null : this.flat(this.front);
-    this.backFace = null;
-    if (this.front === null || !front || this.opening === "none") return [];
-    if (this.opening === "face") return [this.front];
+    const { faces, back } = this.openFor(this.mesh, this.front);
+    this.backFace = back;
+    return faces;
+  }
+
+  /** The faces of a body open for its front, as « Ouvertures » says, and the one behind (its back closes it). */
+  private openFor(mesh: BodyMesh | null, frontFace: number | null): { faces: number[]; back: number | null } {
+    const front = frontFace === null ? null : this.flat(frontFace, mesh);
+    if (frontFace === null || !front || this.opening === "none") return { faces: [], back: null };
+    if (this.opening === "face") return { faces: [frontFace], back: null };
     // Behind it: the flat face turned the other way, the furthest one.
     let behind: { face: number; at: number } | null = null;
-    this.mesh?.faceGroups.forEach((_, face) => {
-      const other = face === this.front ? null : this.flat(face);
+    mesh?.faceGroups.forEach((_, face) => {
+      const other = face === frontFace ? null : this.flat(face, mesh);
       if (other && other.normal.dot(front.normal) < -0.999 && (!behind || other.at > behind.at)) behind = { face, at: other.at };
     });
-    if (!behind) return [this.front];
-    this.backFace = (behind as { face: number }).face;
-    return [this.front, this.backFace];
+    const back = behind ? (behind as { face: number }).face : null;
+    return { faces: back === null ? [frontFace] : [frontFace, back], back };
+  }
+
+  /** « Vider un corps »: another body, taken by a face (its front), emptied the same way. */
+  private take(bodyId: string, face: number): void {
+    const made = this.sideOf(bodyId);
+    if (made) return this.ctx.notify(`« ${bodyLabel(this.ctx.doc(), bodyId)} » est un côté de « ${made} », déjà vidé : il ne se vide pas à son tour.`, "info");
+    const mesh = this.ctx.viewport.bodyMesh(bodyId);
+    if (!mesh || face < 0 || bodyId === this.target || this.more.some((t) => t.target === bodyId)) return;
+    const { faces, back } = this.openFor(mesh, face);
+    const taken: Taken = { target: bodyId, mesh, front: face, selected: faces, refs: [], backFace: back };
+    this.more = [...this.more, taken];
+    void this.describeOther(taken);
+  }
+
+  /** A click on another body adds it; Maj + clic on one added (or its preview) takes it back. */
+  private other(event: PointerEvent): void {
+    const pick = this.ctx.viewport.pickFace(event);
+    if (!pick || pick.bodyId === this.target) return;
+    const step = [this.id, ...this.steps().map((n) => n.id)].indexOf(featureOfBody(pick.bodyId));
+    if (step === 0) return;
+    const at = this.more.findIndex((t) => t.target === pick.bodyId);
+    const own = at >= 0 ? at : step - 1;
+    if (own < 0) this.take(pick.bodyId, pick.faceIndex);
+    else if (removing(event)) this.more = this.more.filter((_, i) => i !== own);
+    else return;
+    this.redraw();
+    this.render();
+    this.schedulePreview();
   }
 
   /** The face of the snapshot whose triangles pass nearest a point (to find saved faces again). */
@@ -166,20 +206,35 @@ export class ShellTool extends PanelTool {
 
   protected feature(): ShellFeature | string {
     if (!this.target) return this.hollow ? "Cliquez le corps à vider." : "Cliquez une face du corps à creuser (elle restera ouverte).";
-    const shell: ShellFeature = { id: this.id, type: "shell", name: this.name, target: this.target, faces: this.refs, thickness: this.thickness };
+    return this.made(this.id, this.name, { target: this.target, selected: this.selected, refs: this.refs, backFace: this.backFace });
+  }
+
+  private made(id: string, name: string, t: Pick<Taken, "target" | "selected" | "refs" | "backFace">): ShellFeature {
+    const shell: ShellFeature = { id, type: "shell", name, target: t.target, faces: t.refs, thickness: this.thickness };
     if (!this.hollow) return shell;
     // The back closes the face behind, while it is open.
-    const at = this.backFace === null ? -1 : this.selected.indexOf(this.backFace);
-    const face = this.back !== "none" && at >= 0 ? this.refs[at] : undefined;
+    const at = t.backFace === null ? -1 : t.selected.indexOf(t.backFace);
+    const face = this.back !== "none" && at >= 0 ? t.refs[at] : undefined;
     return { ...shell, sides: this.sides, ...(this.sides === "separate" ? { joint: this.joint } : {}), ...(face && this.back !== "none" ? { back: { face, thickness: this.backThickness, mount: this.back } } : {}) };
   }
 
-  /** The back's body made of HDF, as a caisson's, unless given a material. */
+  /** The steps of the other bodies, ids after this one's. */
+  private steps(): { id: string; name: string }[] {
+    const doc = this.docBefore();
+    const first = this.feature();
+    return freshFeatureIds({ ...doc, features: [...doc.features, ...(typeof first === "string" ? [] : [first])] }, "sh", "Corps vidé", this.more.length);
+  }
+
+  protected override companions(): ShellFeature[] {
+    return this.steps().map((n, i) => this.made(n.id, n.name, this.more[i]!));
+  }
+
+  /** The backs' bodies made of HDF, as a caisson's, unless given a material. */
   protected override decorate(doc: CadDocument): CadDocument {
-    const made = this.feature();
-    if (typeof made === "string" || !made.back) return doc;
-    const id = `${made.id}${PART_SEPARATOR}0`;
-    return bodyInfo(doc, id).material ? doc : setBodyInfo(doc, [id], { material: "hdf" });
+    const first = this.feature();
+    const steps = [...(typeof first === "string" ? [] : [first]), ...this.companions()];
+    const bare = steps.flatMap((f) => (f.back ? [`${f.id}${PART_SEPARATOR}0`] : [])).filter((id) => !bodyInfo(doc, id).material);
+    return bare.length ? setBodyInfo(doc, bare, { material: "hdf" }) : doc;
   }
 
   /** « Vider un corps »: the thickness of its sides, and whether they are joined or each one a body. */
@@ -200,6 +255,10 @@ export class ShellTool extends PanelTool {
               : "Le corps est vidé, tous ses côtés gardés. Cliquez une face pour l'ouvrir (elle n'aura pas de côté)."
           : "Cliquez le corps à vider par sa face de devant : sa base peut être un triangle, un carré, un cercle, ses côtés de biais.",
       ),
+      this.more.length
+        ? this.info(`Et ${this.more.length} autre(s) corps vidé(s) de même : ${this.more.map((t) => `« ${bodyLabel(this.ctx.doc(), t.target)} »`).join(", ")}. Maj + clic sur l'un le retire.`)
+        : null,
+      this.target && !this.editing ? this.info("Cliquez un autre corps par sa face de devant : il est vidé de même.") : null,
       // What the face it is taken by opens: with the one behind it, a caisson — the sides around, front and back open.
       this.editing
         ? null
@@ -207,9 +266,13 @@ export class ShellTool extends PanelTool {
             this.opening = v as Opening;
             if (this.front !== null) {
               this.selected = this.opened();
-              this.redraw();
               void this.describe();
             }
+            for (const t of this.more) {
+              ({ faces: t.selected, back: t.backFace } = this.openFor(t.mesh, t.front));
+              void this.describeOther(t);
+            }
+            this.redraw();
             changed();
           }),
       this.numberRow("Épaisseur des côtés", this.thickness, this.ctx.unit(), (v) => {
@@ -269,19 +332,21 @@ export class ShellTool extends PanelTool {
         (child.material as THREE.Material[]).forEach((m) => m.dispose());
       }
     }
-    const mesh = this.mesh;
-    if (!mesh) return;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(mesh.vertices, 3));
-    geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
-    mesh.faceGroups.forEach((g, face) => geometry.addGroup(g.start, g.count, this.selected.includes(face) ? 1 : 0));
-    const materials = [
-      new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide }),
-      new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }),
-    ];
-    const shown = new THREE.Mesh(geometry, materials);
-    shown.renderOrder = 30;
-    this.group.add(shown);
+    if (!this.mesh) return;
+    // The first body's snapshot first: the one clicks hit. The others only show their open faces.
+    for (const { mesh, selected } of [{ mesh: this.mesh, selected: this.selected }, ...this.more]) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(mesh.vertices, 3));
+      geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+      mesh.faceGroups.forEach((g, face) => geometry.addGroup(g.start, g.count, selected.includes(face) ? 1 : 0));
+      const materials = [
+        new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide }),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }),
+      ];
+      const shown = new THREE.Mesh(geometry, materials);
+      shown.renderOrder = 30;
+      this.group.add(shown);
+    }
   }
 
   protected override click(event: PointerEvent): void {
@@ -292,8 +357,11 @@ export class ShellTool extends PanelTool {
       void this.open([{ bodyId: face.bodyId, faceIndex: face.faceIndex }]);
       return;
     }
-    const [hit] = this.ctx.viewport.intersect(event, this.group.children);
-    if (hit?.faceIndex === undefined || hit.faceIndex === null) return;
+    const [hit] = this.ctx.viewport.intersect(event, this.group.children.slice(0, 1));
+    if (hit?.faceIndex === undefined || hit.faceIndex === null) {
+      if (this.hollow && !this.editing) this.other(event);
+      return;
+    }
     const offset = hit.faceIndex * 3;
     const face = this.mesh.faceGroups.findIndex((g) => offset >= g.start && offset < g.start + g.count);
     if (face < 0) return;
@@ -322,8 +390,23 @@ export class ShellTool extends PanelTool {
     this.schedulePreview();
   }
 
+  /** The references of another body's open faces; a newer choice of its faces wins. */
+  private async describeOther(t: Taken): Promise<void> {
+    const faces = t.selected;
+    try {
+      const refs = await Promise.all(faces.map(async (face) => (await this.ctx.geometry.describe(t.target, [], face)).face as FaceRef));
+      if (t.selected !== faces) return;
+      t.refs = refs;
+    } catch (error) {
+      this.ctx.notify(error instanceof Error ? error.message : String(error), "error");
+    }
+    this.render();
+    this.schedulePreview();
+  }
+
   protected override dispose(): void {
     this.mesh = null;
+    this.more = [];
     this.redraw();
     this.ctx.viewport.scene.remove(this.group);
   }
