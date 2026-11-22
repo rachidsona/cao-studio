@@ -10,6 +10,7 @@
  * Maj + clic sur la face d'un autre élément l'ajoute à ceux à prolonger (trois caissons jusqu'au plafond) : ils vont
  * tous jusqu'à la même face d'arrivée, ou de la même mesure, OK les gardant en une annulation ; Maj + clic sur un
  * élément choisi le retire. « Direction » : une pièce seule avance perpendiculairement à sa face, ou selon X, Y ou Z, ou
+ * comme une autre face (la perpendiculaire d'une face cliquée pour cela), ou
  * droit vers la face d'arrivée — son bout en prend toujours la pente.
  */
 import { bodyLabel, findFeature } from "../document/operations";
@@ -42,7 +43,7 @@ const BUTTON = "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 
 let lastFollow = true;
 
 /** The way a piece goes: perpendicular to its face, along an axis, or straight to the face to reach. */
-type Way = "normal" | "x" | "y" | "z" | "target";
+type Way = "normal" | "x" | "y" | "z" | "target" | "face";
 let lastWay: Way = "normal";
 const AXES: Record<"x" | "y" | "z", Vec3> = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
 
@@ -61,6 +62,9 @@ export class ExtendTool extends PanelTool {
   /** How far the face goes, typed (mm, negative: in), instead of a face to reach. */
   private typed: number | null = null;
   private way: Way = lastWay;
+  /** « Comme une autre face »: the perpendicular of the face clicked for it, and whether that click is awaited. */
+  private wayFace: Vec3 | null = null;
+  private aiming = lastWay === "face";
 
   constructor(ctx: ToolContext, faces: readonly FacePick[]) {
     super(ctx, "Prolonger élément", null);
@@ -80,6 +84,11 @@ export class ExtendTool extends PanelTool {
       if (outline.surface !== "PLANE") return this.ctx.notify("Choisissez une face plane.", "info");
       const ref = (await this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex)).face ?? undefined;
       const side: Side = { bodyId: pick.bodyId, pick, plane: planeOf(outline), ...(ref ? { ref } : {}) };
+      // « Comme une autre face », waiting for it: the face clicked gives the way, nothing else.
+      if (this.way === "face" && this.aiming) {
+        [this.wayFace, this.aiming] = [side.plane.normal, false];
+        return this.refresh();
+      }
       // The element itself clicked again (the piece itself, when it alone is extended): another face of it to extend.
       const again = this.moving && (this.piece ? pick.bodyId === this.moving.bodyId : this.elementOf(pick.bodyId) === this.elementOf(this.moving.bodyId));
       if (add && this.moving) {
@@ -145,6 +154,7 @@ export class ExtendTool extends PanelTool {
   /** The way chosen (none: perpendicular to the face); straight to the face to reach: against its normal. */
   private direction(): Vec3 | undefined {
     if (this.way === "target") return this.target?.plane.normal;
+    if (this.way === "face") return this.wayFace ?? undefined;
     return this.way === "normal" ? undefined : AXES[this.way];
   }
 
@@ -248,7 +258,7 @@ export class ExtendTool extends PanelTool {
     // A piece alone: the way it goes.
     const alone = this.moving && (this.piece || !owner);
     const way = alone
-      ? this.selectRow("Direction", this.way, [["normal", "Perpendiculaire à la face"], ["x", "Selon X"], ["y", "Selon Y"], ["z", "Selon Z"], ["target", "Droit vers la face d'arrivée"]], (v) => ((this.way = lastWay = v as Way), this.refresh()))
+      ? this.selectRow("Direction", this.way, [["normal", "Perpendiculaire à la face"], ["x", "Selon X"], ["y", "Selon Y"], ["z", "Selon Z"], ["target", "Droit vers la face d'arrivée"], ["face", "Comme une autre face (cliquez-la)"]], (v) => ((this.way = lastWay = v as Way), (this.aiming = v === "face"), this.refresh()))
       : null;
     const size = this.sizeAlong();
     const unit = this.ctx.unit();
@@ -264,6 +274,7 @@ export class ExtendTool extends PanelTool {
       this.moving ? this.info(this.more.length ? "Maj + clic sur un élément choisi le retire, sur un autre l'ajoute." : "Maj + clic sur la face d'un autre élément l'ajoute : tous vont jusqu'à la même face, ou de la même mesure, en une seule annulation.") : null,
       what,
       way,
+      way && this.way === "face" && this.aiming ? this.info("Cliquez la face qui donne la direction : la pièce avancera perpendiculairement à elle.") : null,
       this.moving ? this.info(this.target ? `Jusqu'à : « ${name(this.target)} ».` : this.typed !== null ? "De la mesure tapée." : SECOND) : null,
       measures,
       this.typed !== null ? null : this.checkRow("Suivre l'autre élément", this.follow, (v) => ((this.follow = lastFollow = v), this.refresh())),

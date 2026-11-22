@@ -6,7 +6,8 @@
  * and only the strip of the face along the edge is pulled (as a line drawn on the face would split it), or the whole
  * face if asked. If another body stands in front of the face (a side of the cabinet, a wall), « Jusqu'au corps voisin »
  * pulls it right up to it (features/touch.ts). Faces of several bodies (selected before, or Maj + clic on another body)
- * are pulled alike, one step per body, in one undo; Maj + clic on a body chosen takes it off.
+ * are pulled alike, one step per body, in one undo; Maj + clic on a body chosen takes it off. « Direction »: square to
+ * the face, along X, Y or Z, or as another face clicked (app/extrude-direction.ts).
  */
 import { THIN_CROSSHAIR } from "../ui/cursor";
 import { uniqueId, uniqueName } from "../document/operations";
@@ -22,6 +23,7 @@ import { PanelTool, type ToolContext } from "./panel-tool";
 import { getEdgeTake, referenceDistance, ReferencePicker, setEdgeTake, type EdgeTake } from "./reference-measure";
 import { ReferenceMarker } from "./reference-marker";
 import { OPERATION_LABELS } from "../ui/feature-meta";
+import { WayChoice, WAYS, type Way } from "./extrude-direction";
 
 const OPERATIONS: [BooleanOperation, string][] = [
   ["join", `${OPERATION_LABELS.join} (ajouter)`],
@@ -54,6 +56,8 @@ export class FaceExtrudeTool extends PanelTool {
   /** The box of each face along the edge, and of the other bodies (as they were when the tool opened). */
   private choiceBoxes: (Box | null)[] = [];
   private others: Box[] = [];
+  /** The way the faces go: square to them, along an axis, or as another face. */
+  private readonly way: WayChoice;
 
   constructor(ctx: ToolContext, editing: ExtrudeFeature | null) {
     super(ctx, "Extrusion de faces", editing);
@@ -66,6 +70,7 @@ export class FaceExtrudeTool extends PanelTool {
     this.target = editing?.target;
     this.faces = editing?.faces ?? [];
     this.strip = editing?.strip ?? null;
+    this.way = new WayChoice(editing?.direction);
     this.reference = new ReferencePicker(ctx.viewport);
     this.marker = new ReferenceMarker(ctx.viewport);
     this.arrow = new ArrowHandle(ctx.viewport, (anchor) =>
@@ -146,7 +151,8 @@ export class FaceExtrudeTool extends PanelTool {
     const unit = this.ctx.unit();
     // Only the strip along the edge: the arrow stands on the edge.
     const at = this.strip && this.stripOnly ? ([0, 1, 2].map((i) => (this.strip!.from[i]! + this.strip!.to[i]!) / 2) as Vec3) : face.center;
-    this.arrow.place(at, face.normal, this.distance, `${trim(toDisplay(this.distance, unit), 3)} ${UNIT_LABELS[unit]}`);
+    const dir = this.way.for(face.normal);
+    this.arrow.place(at, typeof dir === "object" ? dir : face.normal, this.distance, `${trim(toDisplay(this.distance, unit), 3)} ${UNIT_LABELS[unit]}`);
   }
 
   private setDistance(value: number): void {
@@ -180,6 +186,17 @@ export class FaceExtrudeTool extends PanelTool {
 
   /** A click on a corner, an edge or a face of a body: its measure becomes the distance. */
   protected override click(event: PointerEvent): void {
+    // « Comme une autre face »: the face clicked gives the way.
+    if (this.way.aiming) {
+      const pick = this.ctx.viewport.pickFace(event, (id) => id === this.id || id.startsWith(`${this.id}#`));
+      if (pick) void this.ctx.geometry.describe(pick.bodyId, [], pick.faceIndex).then(({ face }) => {
+        if (face?.type !== "PLANE" || !this.way.take(face.normal)) return this.ctx.notify("Cliquez une face plane.", "info");
+        this.placeArrow();
+        this.render();
+        this.schedulePreview();
+      });
+      return;
+    }
     if (removing(event) && !this.editing && !this.strip) {
       const pick = this.ctx.viewport.pickFace(event);
       if (pick) void this.toggleBody(pick).catch((e: unknown) => this.ctx.notify(e instanceof Error ? e.message : String(e), "error"));
@@ -207,11 +224,15 @@ export class FaceExtrudeTool extends PanelTool {
   }
 
   private made(id: string, name: string, target: string, faces: FaceRef[]): ExtrudeFeature {
-    return { id, type: "extrude", name, faces, ...(this.strip && this.stripOnly && id === this.id ? { strip: this.strip } : {}), target, distance: this.distance, operation: this.operation };
+    const dir = faces[0] ? this.way.for(faces[0].normal) : undefined;
+    return { id, type: "extrude", name, faces, ...(this.strip && this.stripOnly && id === this.id ? { strip: this.strip } : {}), target, distance: this.distance, operation: this.operation, ...(typeof dir === "object" ? { direction: dir } : {}) };
   }
 
   protected feature(): ExtrudeFeature | string {
     if (!this.target || this.faces.length === 0) return "Cliquez une face plane d'un corps à tirer ou pousser.";
+    const dir = this.way.for(this.faces[0]!.normal);
+    if (typeof dir === "string") return `Impossible : ${dir}`;
+    if (this.way.aiming) return this.way.hint()!;
     return this.made(this.id, this.name, this.target, this.faces);
   }
 
@@ -301,6 +322,13 @@ export class FaceExtrudeTool extends PanelTool {
       this.info(`${this.faces.length + this.more.reduce((n, g) => n + g.faces.length, 0)} face(s)${this.more.length ? ` sur ${this.more.length + 1} corps` : ""} — tirez la flèche ou saisissez la distance (négative pour creuser).`),
       this.editing || this.strip ? null : this.info("Maj + clic sur la face d'un autre corps : elle est tirée de même, OK les fait toutes en une seule annulation ; Maj + clic sur un corps choisi le retire."),
       this.numberRow("Distance", this.distance, this.ctx.unit(), (v) => this.setDistance(v), true),
+      this.selectRow("Direction", this.way.way, WAYS, (v) => {
+        this.way.set(v as Way);
+        this.placeArrow();
+        this.render();
+        this.schedulePreview();
+      }),
+      this.way.aiming ? this.info(this.way.hint()!) : null,
       this.info("Ou cliquez un point, une arête ou une face d'un corps : sa mesure devient la distance."),
       this.selectRow(
         "Arête",

@@ -891,8 +891,9 @@ opération existante.
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
 - **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : **Direction** (une pièce seule) :
-  perpendiculaire à sa face, **selon X, Y ou Z**, ou **droit vers la face d'arrivée** (une étagère en biais prolongée à
-  l'horizontale), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
+  perpendiculaire à sa face, **selon X, Y ou Z**, **droit vers la face d'arrivée** (une étagère en biais prolongée à
+  l'horizontale) ou **comme une autre face** (cliquée : perpendiculairement à elle, dans l'alignement d'une étagère
+  voisine), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
   `document/extend-reach.ts` `wayOf`, `features/face-until.ts`). **plusieurs éléments** — Maj +
   clic sur la face d'un autre élément l'ajoute (trois caissons à monter jusqu'au plafond) — vont tous jusqu'à la même
   face d'arrivée, ou de la même mesure, chacun prolongé à son tour, OK les gardant en une seule annulation (Maj + clic
@@ -3613,6 +3614,9 @@ opération existante.
     autre corps (le bout de trois étagères), sont tirées de même, une étape par corps, OK les faisant toutes en une
     seule annulation (Maj + clic sur un corps choisi le retire) ;
   - tirez la flèche (ajout de matière) ou poussez-la (creusement), ou cliquez sa valeur pour la saisir ;
+  - **Direction** : perpendiculaire à la face, **selon X, Y ou Z**, ou **comme une autre face** (cliquée :
+    perpendiculairement à elle) ; refusée si elle longe la face (`app/extrude-direction.ts` `WayChoice`, `direction` de
+    l'extrusion) — la même dans Magie extrusion, une fois la face tirée ;
   - **depuis une arête** : une seule arête sélectionnée, le bouton « Tirer une face depuis cette arête » (panneau
     Sélection, toujours écrit en entier) ouvre l'extrusion sur
     une des deux faces le long de l'arête — la plus petite d'abord (le bout d'une planche), l'autre au choix dans
