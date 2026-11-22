@@ -41,8 +41,11 @@ export function prismUntil(face: Face, plane: { origin: Vec3; normal: Vec3 }, na
   const travel = travelTo(cornersOf(face, center), n, { point: plane.origin, normal: plane.normal });
   if (typeof travel === "string") throw new GeometryError(`${name} : ${travel}`);
   const eps = 1e-4;
+  // Flat on the plane when every corner goes as far (a way chosen straight to the plane is not enough: the face may
+  // still be slanted to it, and its end must then take the plane's slope).
+  const flat = travel.max - travel.min < 1e-3;
   let length: number;
-  if (travel.parallel) length = (travel.min + travel.max) / 2;
+  if (flat) length = (travel.min + travel.max) / 2;
   else if (travel.min >= -eps) length = travel.max;
   else if (travel.max <= eps) length = travel.min;
   else throw new GeometryError(`${name} : la face d'arrivée traverse la face à prolonger ; choisissez une face tout entière devant elle (ou derrière).`);
@@ -51,7 +54,7 @@ export function prismUntil(face: Face, plane: { origin: Vec3; normal: Vec3 }, na
   const vector = new Vector([n[0] * length, n[1] * length, n[2] * length]);
   let prism = basicFaceExtrusion(face, vector) as Shape3D;
   vector.delete();
-  if (!travel.parallel) {
+  if (!flat) {
     // Only what stands on the face's side of the plane: the end takes the slope.
     const m = unit(plane.normal);
     const side = Math.sign(dot(sub(center, plane.origin), m)) || 1;

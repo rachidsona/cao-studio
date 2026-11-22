@@ -12,6 +12,8 @@ import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { describeFace } from "../../frontend/src/geometry/references";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { setupKernel } from "./kernel-setup";
+import { makeBaseBox } from "replicad";
+import { prismUntil } from "../../frontend/src/features/face-until";
 
 beforeAll(setupKernel);
 
@@ -156,6 +158,21 @@ describe("dans le noyau", () => {
     expect(r.recompute(plate([{ ...free, direction: [1, 0, 0] }])).statuses.every((s) => s.state === "ok")).toBe(true);
     expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(150, 3);
     r.dispose();
+  });
+
+  it("droit vers une face inclinée (contre sa normale) : le bout en prend la pente, pas celle de la face prolongée", () => {
+    // A box 100 × 50 × 20, its end at x = 100; a plane leaning 15° from vertical, the way straight against its normal.
+    const solid = makeBaseBox(100, 50, 20).translate([50, 25, 0]);
+    const end = solid.faces.find((f) => f.normalAt().x > 0.99)!;
+    const m: Vec3 = [-Math.cos(Math.PI / 12), 0, Math.sin(Math.PI / 12)];
+    const made = prismUntil(end, { origin: [300, 25, 10], normal: m }, "t", [-m[0], 0, -m[2]]);
+    expect(made?.out).toBe(true);
+    // The end of what is added lies on the plane: every vertex on it or behind it, some on it.
+    const along = (p: { x: number; z: number }) => (p.x - 300) * m[0] + (p.z - 10) * m[2];
+    const vertices = made!.prism.edges.flatMap((e) => [e.startPoint, e.endPoint]);
+    expect(Math.min(...vertices.map((p) => Math.abs(along(p))))).toBeLessThan(1e-3);
+    expect(vertices.every((p) => along(p) > -1e-3)).toBe(true);
+    expect(vertices.filter((p) => Math.abs(along(p)) < 1e-3).length).toBeGreaterThanOrEqual(4);
   });
 
   it("l'étagère d'un caisson, seule, jusqu'à la planche devant : le caisson reste, l'étagère s'allonge", () => {
