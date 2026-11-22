@@ -198,6 +198,7 @@ export const MODELING: HelpFamily[] = [
           "Cliquez « Panneaux sur faces », puis une face du volume : elle passe en orange, et les faces pareilles avec elle.",
           "Cliquez d'autres faces, recliquez pour en retirer ; ou « Toutes les faces », puis retirez celles à laisser ouvertes. Une face cylindrique (l'extérieur ou l'intérieur d'un anneau, un arrondi) devient une planche cintrée.",
           "Réglez l'« Épaisseur » et l'« Assemblage » : « En onglet (tout angle) » ou « Bout à bout ».",
+          "Plusieurs volumes : cliquez une face d'un autre volume, il est mis en panneaux de même (une étape chacun, un seul OK, un seul Ctrl + Z) ; ses faces se choisissent comme celles du premier, et un volume dont on retire toutes les faces n'est plus pris.",
           "C'est enregistré dès que c'est valable : chaque face devient un panneau, prêt pour la liste de débit.",
         ],
         tip: "Décochez « Faces pareilles ensemble » pour prendre une seule face. En bout à bout, la première face cliquée passe et les autres s'arrêtent contre elle. Une face courbe et sa voisine se joignent toujours bout à bout, même en onglet : cliquez d'abord celle qui doit passer. Une sphère ou une forme libre ne devient pas un panneau.",

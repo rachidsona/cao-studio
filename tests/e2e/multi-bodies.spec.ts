@@ -1,7 +1,7 @@
 /**
- * Plusieurs corps avant un seul OK : Modificateur, Façades, Extrusion de faces, Déformer, Prolonger élément et Vider un
- * corps font la même opération sur deux corps cliqués l'un après l'autre, une étape chacun, et une seule annulation
- * les reprend.
+ * Plusieurs corps avant un seul OK : Modificateur, Façades, Extrusion de faces, Déformer, Prolonger élément, Vider un
+ * corps et Panneaux sur faces font la même opération sur deux corps cliqués l'un après l'autre, une étape chacun, et
+ * une seule annulation les reprend.
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { centeredRectangle } from "../../frontend/src/document/sketch";
@@ -181,5 +181,18 @@ test("Vider un corps : deux blocs cliqués par leur devant sont vidés de même,
   await expect(tool).toContainText("2 face(s) ouverte(s)");
   await across(page, says(tool, /Et 1 autre/), true);
   await okThenUndo(page, tool, saved, (f) => (f.type === "shell" && (f.faces?.length ?? 0) === 2 ? f.target : undefined), ["ex1", "ex2"]);
+  expect(errors).toEqual([]);
+});
+
+test("Panneaux sur faces : la face d'un autre bloc cliquée le met en panneaux de même, en une seule annulation", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const saved = await project(page, "zz-plusieurs-panneaux", blocks());
+  await look(page, "front");
+  await click(page, '[data-action="paneling"]');
+  const tool = page.getByRole("dialog", { name: "Panneaux sur faces" });
+  await across(page, says(tool, /Cliquez une face d'un autre volume/));
+  await across(page, says(tool, /2 volumes/), true);
+  await okThenUndo(page, tool, saved, (f) => (f.type === "paneling" ? f.target : undefined), ["ex1", "ex2"]);
   expect(errors).toEqual([]);
 });

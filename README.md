@@ -2469,7 +2469,9 @@ opération existante.
   le plan bissecteur de leurs faces — le seau à 8 pans, la boîte en onglets) ou **bout à bout** (la première face
   cliquée passe, les suivantes s'arrêtent contre les panneaux déjà faits). Les faces non choisies restent ouvertes ;
   les faces se prennent sur le volume d'avant l'opération, comme pour la Coque ; l'opération se rouvre pour la
-  reprendre (`features/paneling.ts`, `app/paneling-tool.ts`).
+  reprendre (`features/paneling.ts`, `app/paneling-tool.ts`). **Plusieurs volumes** : une face d'un autre volume
+  cliquée l'ajoute, mêmes épaisseur et assemblage, ses faces choisies de même sur sa propre copie ; une étape par
+  volume pour un seul OK et une seule annulation ; un volume dont on retire toutes les faces n'est plus pris.
   - **Faces cylindriques** : l'extérieur d'un fût ou d'un anneau, son intérieur, un angle arrondi, une façade cintrée
     deviennent une **planche cintrée** de l'épaisseur voulue, prise dans le volume — sous la face pour un volume
     plein, au-delà pour l'intérieur d'un anneau —, dans le seul secteur qu'occupe la face quand elle ne fait pas le
