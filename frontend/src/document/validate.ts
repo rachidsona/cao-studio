@@ -115,10 +115,8 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (feature.target !== undefined && typeof feature.target !== "string") errors.push(`${where} : corps des faces invalide.`);
       } else if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse source manquante.`);
       checkNumbers(feature, ["distance"], where, errors);
-      if (feature.until !== undefined) {
-        if (!isObject(feature.until) || typeof feature.until.body !== "string") errors.push(`${where} : face d'arrivée invalide.`);
-        else checkRefs(feature.until.face, "face", where, errors);
-      }
+      if (feature.until !== undefined && (!isObject(feature.until) || typeof feature.until.body !== "string")) errors.push(`${where} : face d'arrivée invalide.`);
+      else if (feature.until !== undefined) checkRefs(feature.until.face, "face", where, errors);
       if (feature.cover !== undefined && (feature.cover !== true || feature.until === undefined)) errors.push(`${where} : « Couvrir la face d'arrivée » invalide.`);
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (feature.direction !== undefined && !(isVec3(feature.direction) && (feature.direction as number[]).some((c) => c !== 0))) errors.push(`${where} : direction invalide.`);
