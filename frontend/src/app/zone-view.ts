@@ -117,7 +117,9 @@ export function isolateElements(keys: ReadonlySet<string>, text: string): void {
   const shown = () => context!.editor.previewDoc ?? context!.editor.doc;
   // A key is a whole element (a cabinet, a Répartition) or a piece of it alone (its body).
   const kept = (id: string) => keys.has(elementOf(shown(), id)) || keys.has(bodyOrigin(shown(), id));
-  isolate("selection", text, () => (_f, id) => kept(id) || !known.has(bodyOrigin(shown(), id)), [0, -1, 0], false, false, {
+  // A body made since (not known then, and in view) stays too — not a body a step has consumed since, hidden: the sides
+  // split from it would all come back through it.
+  isolate("selection", text, () => (_f, id) => kept(id) || (!known.has(bodyOrigin(shown(), id)) && viewport.displayedBodies.includes(id)), [0, -1, 0], false, false, {
     text,
     partition: keys.size === 1 && sketches.size === 1 ? [...sketches][0]! : null,
     shows: (id) => sketches.has(id),

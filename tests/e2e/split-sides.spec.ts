@@ -69,6 +69,14 @@ test("un cadre de 60 × 40 cm, ses côtés de 1,8 cm, devient quatre panneaux, e
   await page.keyboard.press("Escape");
   await page.waitForTimeout(800);
   await shot(page, "cotes-separes-bout-a-bout");
+  // One side chosen in the navigator and isolated: it alone stays in view, not its three neighbours.
+  await tree.getByText("côté 2", { exact: true }).first().click();
+  await page.locator("canvas.cad-view").hover();
+  await page.keyboard.press("i");
+  const bar = page.locator("[data-zone-isolated]");
+  await expect(bar).toContainText("côté 2");
+  await expect.poll(async () => Number(await bar.getAttribute("data-shown"))).toBe(1);
+  await bar.getByRole("button", { name: "Tout montrer" }).click();
   expect(errors).toEqual([]);
 });
 
