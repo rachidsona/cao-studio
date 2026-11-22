@@ -17,6 +17,7 @@ import { applyOperation, onProfilePlane, profileDrawing, requirePositive, requir
 import type { SolidOutput, SolidsOutput } from "./outputs";
 import { facePanels, faceSlab } from "./paneling";
 import { splitBoards } from "./board-split-shape";
+import { splitChain } from "./chain-sides";
 import { frameEnds, isFrame, splitRing } from "./ring-sides";
 
 /** Two faces are the same one when their centres are this close (mm). */
@@ -222,6 +223,9 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
         throw error;
       }
     }
+    // An open profile extruded (an L, a U, a V, a zigzag, any angles): cut at its bends.
+    const chain = splitChain(feature.name, target, joint, feature.pass, feature.corners);
+    if (chain) return { kind: "solids", shapes: chain };
     const panels = boards();
     if (panels) return { kind: "solids", shapes: panels };
     if (!(feature.thickness > 0)) throw new GeometryError(`${feature.name} : ce corps ne se sépare pas tel qu'il est ; choisissez « Vider et séparer » et l'épaisseur de ses côtés.`);

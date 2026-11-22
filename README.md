@@ -2401,7 +2401,12 @@ opération existante.
   « les côtés passent » ou « le dessus et le dessous passent » suivis, bout à bout ; **en onglet**, un cadre plat (une
   façade à cadre en U, un cadre de porte) a chaque angle partagé sur sa diagonale, du coin extérieur au coin
   intérieur, la moitié à chaque pièce — à 45° pour deux pièces de même largeur (`features/board-miter.ts`) —, un
-  caisson restant bout à bout. **Au choix en haut et en bas** (`corners` de l'étape) : les coins du haut (le dessus et
+  caisson restant bout à bout. Un **profil ouvert extrudé** — un L, un V, un U, un zigzag, autant de côtés et d'angles
+  qu'on veut (ses bouts deux faces planes de même aire, tournées l'une contre l'autre, le contour avec un coin
+  rentrant, toutes les autres faces d'équerre) — est coupé à chaque coude, du coin intérieur au coin extérieur (en
+  onglet) ou le long de la face du côté qui passe (bout à bout), avec les mêmes Joints (`features/chain-sides.ts`) ;
+  un profil en T (une étagère contre un côté) reste aux panneaux joints, et rien ne se perd (volume vérifié).
+  **Au choix en haut et en bas** (`corners` de l'étape) : les coins du haut (le dessus et
   les deux côtés) et ceux du bas (le dessous et les deux côtés) chacun en onglet, les côtés passant, ou le dessus
   (le dessous) passant sur (sous) les côtés — un cadre coin par coin, au-dessus ou au-dessous de son milieu ; des
   panneaux joints lus côtés passants, puis le dessus ou le dessous allongé au bout choisi (`lyingPass`), l'onglet

@@ -126,7 +126,7 @@ export class SplitSidesTool extends PanelTool {
       )),
       this.mode === "split" ? null : this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous — ou, pour un panneau trop mince pour cela, par ses deux grandes faces. Pour l'ouvrir ailleurs, cliquez la face à vider sur le corps."),
       this.open && this.mode === "hollow" ? this.resetOpen() : null,
-      this.info(this.mode === "split" ? "Le corps est coupé tel qu'il est, sans être vidé : un cadre en ses côtés, un caisson d'un seul corps en ses panneaux, une façade à cadre en U en ses deux montants et sa traverse (sa rainure de verre leur reste)." : "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
+      this.info(this.mode === "split" ? "Le corps est coupé tel qu'il est, sans être vidé : un cadre en ses côtés, un profil en L, en U ou en zigzag à ses coudes (tout angle), un caisson d'un seul corps en ses panneaux, une façade à cadre en U en ses deux montants et sa traverse (sa rainure de verre leur reste)." : "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien ; un profil ouvert extrudé (un L, un U, un zigzag, tout angle) est coupé à ses coudes. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),
     ];
   }
 

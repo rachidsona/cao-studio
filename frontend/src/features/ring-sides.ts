@@ -179,7 +179,7 @@ export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | r
 const STEP = 5;
 
 /** A planar face's outline loops, each its corners and its sides as points; null when a loop does not close. */
-function outlines(face: Face): P3[][][] | null {
+export function outlines(face: Face): P3[][][] | null {
   const out: P3[][][] = [];
   const same = (p: P3, q: P3) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 1e-5;
   for (const wire of face.wires) {
