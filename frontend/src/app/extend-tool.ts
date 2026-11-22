@@ -55,6 +55,8 @@ export class ExtendTool extends PanelTool {
   private madeIds: string[] = [];
   private target: Side | null = null;
   private follow = lastFollow;
+  /** « Couvrir la face d'arrivée » (a piece alone): it widens to the whole face reached. Off at each opening. */
+  private cover = false;
   /** The result shown, or why it cannot be. */
   private made: Extended | string | null = null;
   /** Only the piece clicked (a shelf, a cloison), not its cabinet or Répartition: by default for a face inside it. */
@@ -143,7 +145,7 @@ export class ExtendTool extends PanelTool {
     const typed = this.typed;
     const dir = this.direction();
     this.made = this.moving && target
-      ? this.chained((doc, s, piece) => extendTo(doc, s.bodyId, target.bodyId, s.plane, target.plane, { from: s.ref, to: target.ref }, this.follow, piece, dir))
+      ? this.chained((doc, s, piece) => extendTo(doc, s.bodyId, target.bodyId, s.plane, target.plane, { from: s.ref, to: target.ref }, this.follow, piece, this.cover ? undefined : dir, this.cover))
       : this.moving && typed !== null
         ? this.chained((doc, s, piece) => extendBy(doc, s.bodyId, s.plane, typed, s.ref, piece, dir))
         : null;
@@ -257,7 +259,7 @@ export class ExtendTool extends PanelTool {
       : null;
     // A piece alone: the way it goes.
     const alone = this.moving && (this.piece || !owner);
-    const way = alone
+    const way = alone && !this.cover
       ? this.selectRow("Direction", this.way, [["normal", "Perpendiculaire à la face"], ["x", "Selon X"], ["y", "Selon Y"], ["z", "Selon Z"], ["target", "Droit vers la face d'arrivée"], ["face", "Comme une autre face (cliquez-la)"]], (v) => ((this.way = lastWay = v as Way), (this.aiming = v === "face"), this.refresh()))
       : null;
     const size = this.sizeAlong();
@@ -277,6 +279,8 @@ export class ExtendTool extends PanelTool {
       way && this.way === "face" && this.aiming ? this.info("Cliquez la face qui donne la direction : la pièce avancera perpendiculairement à elle.") : null,
       this.moving ? this.info(this.target ? `Jusqu'à : « ${name(this.target)} ».` : this.typed !== null ? "De la mesure tapée." : SECOND) : null,
       measures,
+      alone && this.target ? this.checkRow("Couvrir la face d'arrivée", this.cover, (v) => ((this.cover = v), (this.aiming = this.aiming && !v), this.refresh())) : null,
+      alone && this.target && this.cover ? this.info("La pièce s'élargit jusqu'aux bords de la face d'arrivée (un dessus descendu jusqu'à une étagère plus large, jusqu'au côté en biais).") : null,
       this.typed !== null ? null : this.checkRow("Suivre l'autre élément", this.follow, (v) => ((this.follow = lastFollow = v), this.refresh())),
       this.made && typeof this.made !== "string" ? el("p", { class: "bg-sky-50 px-2 py-1.5 text-sky-900 dark:bg-sky-950 dark:text-sky-100", "data-extend-result": "" }, this.made.message) : null,
       problem && this.made ? el("p", { class: "bg-red-50 px-2 py-1.5 text-red-800 dark:bg-red-950 dark:text-red-200", role: "alert" }, problem) : null,

@@ -119,6 +119,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
         if (!isObject(feature.until) || typeof feature.until.body !== "string") errors.push(`${where} : face d'arrivée invalide.`);
         else checkRefs(feature.until.face, "face", where, errors);
       }
+      if (feature.cover !== undefined && (feature.cover !== true || feature.until === undefined)) errors.push(`${where} : « Couvrir la face d'arrivée » invalide.`);
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (feature.direction !== undefined && !(isVec3(feature.direction) && (feature.direction as number[]).some((c) => c !== 0))) errors.push(`${where} : direction invalide.`);
       if (feature.strip !== undefined && (!isObject(feature.strip) || !isVec3(feature.strip.from) || !isVec3(feature.strip.to))) errors.push(`${where} : bande de face invalide.`);

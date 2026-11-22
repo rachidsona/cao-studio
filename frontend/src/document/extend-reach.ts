@@ -78,9 +78,10 @@ export interface Extended {
 /**
  * The element of `fromBody` extended from its face up to the face of `toBody` (the faces as the kernel finds them,
  * `refs` their persistent references), kept on it when `follow`; or why it cannot be. `piece`: the piece alone, as any
- * other piece, the cabinet or Répartition it is part of staying as it is.
+ * other piece, the cabinet or Répartition it is part of staying as it is. `cover` (a piece): it widens to the whole
+ * face reached, up to its edges (features/face-until.ts).
  */
-export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean, piece = false, dir?: Vec3): Extended | string {
+export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean, piece = false, dir?: Vec3, cover = false): Extended | string {
   // `piece`: only the piece clicked (a shelf, a cloison of a cabinet or a Répartition), not the whole element.
   const owner = piece ? null : extendable(doc, fromBody);
   const reach = reachBy(from, to);
@@ -98,9 +99,9 @@ export function extendTo(doc: CadDocument, fromBody: string, toBody: string, fro
     const by = Math.round((exact.parallel && !dir ? dot(way, sub(to.point, from.point)) : exact.min >= 0 ? exact.max : exact.min) * 10) / 10;
     if (Math.abs(by) < 0.1) return "Ces deux faces sont déjà dans le même plan.";
     // A direction chosen: the end always goes to the face (its slope), wherever the way meets it.
-    const keep = (follow || reach.slanted || !!dir) && refs.to;
+    const keep = (follow || reach.slanted || !!dir || cover) && refs.to;
     const id = uniqueId(doc, "ex");
-    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, by > 0 ? "Prolongement" : "Raccourci"), faces: [refs.from], target: latestBody(doc, fromBody), distance: by, operation: by > 0 ? "join" : "cut", ...(dir ? { direction: way } : {}), ...(keep ? { until: { body: latestBody(doc, toBody), face: refs.to! } } : {}) };
+    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, by > 0 ? "Prolongement" : "Raccourci"), faces: [refs.from], target: latestBody(doc, fromBody), distance: by, operation: by > 0 ? "join" : "cut", ...(dir ? { direction: way } : {}), ...(keep ? { until: { body: latestBody(doc, toBody), face: refs.to! } } : {}), ...(keep && cover ? { cover: true as const } : {}) };
     return { doc: { ...doc, features: [...doc.features, feature] }, by, id, message: say(by, !!keep) };
   }
   if (Math.abs(reach.by) < 0.1 && !follow) return "Ces deux faces sont déjà dans le même plan.";

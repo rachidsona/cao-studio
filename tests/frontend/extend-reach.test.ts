@@ -194,6 +194,30 @@ describe("dans le noyau", () => {
     r.dispose();
   });
 
+  it("« Couvrir la face d'arrivée » : la pièce s'élargit jusqu'aux bords de la face d'arrivée, plus large qu'elle", () => {
+    const top = ref([50, 25, 20], [0.5, 0.5, 1], [0, 0, 1]);
+    const under = { body: "b#0", face: ref([80, 25, 80], [0.5, 0.5, 0], [0, 0, -1]) };
+    const wider: [Vec3, Vec3] = [[0, 0, 80], [160, 50, 100]];
+    const raise = (cover: boolean): ExtrudeFeature => ({ ...pull(under), faces: [top], ...(cover ? { cover: true as const } : {}) });
+    const r = new Recomputer();
+    expect(r.recompute(plate([raise(false)], wider)).statuses.every((s) => s.state === "ok")).toBe(true);
+    expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(100, 3);
+    const result = r.recompute(plate([raise(true)], wider));
+    expect(result.statuses.every((s) => s.state === "ok")).toBe(true);
+    const m = box(r, "ex1");
+    expect([m.bbox[1][0], m.bbox[1][2]].map((v) => Math.round(v * 1000) / 1000)).toEqual([160, 80]);
+    // The board, then a trapezoid from its 100 mm top to the 160 mm face reached, 60 mm higher.
+    expect(m.volume).toBeCloseTo(100 * 50 * 20 + ((100 + 160) / 2) * 60 * 50, 0);
+    // Its left side one face from bottom to top; on the right, the board's side then the slope.
+    expect(m.faceCount).toBe(7);
+    expect(validateDocument(plate([raise(true)], wider))).toEqual([]);
+    // As the tool makes it: the piece's face kept up to the face reached, to cover it.
+    const made = extendTo(plate([], wider), "a#0", "b#0", face([50, 25, 20], [0, 0, 1], [[0, 0, 20], [100, 50, 20]]), face([80, 25, 80], [0, 0, -1]), { from: top, to: under.face }, false, true, undefined, true);
+    if (typeof made === "string") throw new Error(made);
+    expect(made.doc.features.at(-1)).toMatchObject({ distance: 60, cover: true, until: { body: "b#0" } });
+    r.dispose();
+  });
+
   it("jusqu'à une face inclinée : le bout de la pièce en prend la pente", () => {
     const r = new Recomputer();
     const turn = { id: "rt1", type: "rotate", name: "Rotation", target: "b#0", axis: 2, angle: 30, center: [325, 25, 10] };

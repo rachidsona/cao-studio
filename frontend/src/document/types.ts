@@ -332,6 +332,11 @@ export interface ExtrudeFeature extends FeatureBase {
    * The way the faces go (« Prolonger élément », a direction chosen: an axis, straight to the face to reach), instead
    * of their normal; the end still takes the slope of `until`. Faces only.
    */
+  /**
+   * « Couvrir la face d'arrivée » : the faces go to the whole face of `until`, widening up to its edges (a top brought
+   * down to a wider shelf, up to a slanted side) instead of keeping their own outline. With `until` only.
+   */
+  cover?: true;
   direction?: Vec3;
   operation: BooleanOperation;
   /** Body consumed by "join" / "cut" operations. */

@@ -154,7 +154,9 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
   if (!feature.target) throw new GeometryError(`${feature.name} : corps des faces manquant.`);
   const target = requireSolid(lookup, feature.target).shape;
   // « Prolonger élément » gardé: up to the face of another body, as it is now.
-  const until = feature.until ? resolveFacePlane(requireSolid(lookup, feature.until.body).shape, feature.until.face) : null;
+  const reached = feature.until ? requireSolid(lookup, feature.until.body).shape : null;
+  const until = reached ? resolveFacePlane(reached, feature.until!.face) : null;
+  const arrival = reached && feature.cover ? resolveFace(reached, feature.until!.face) : undefined;
   let operation = feature.operation;
   let tool: Shape3D | null = null;
   try {
@@ -163,7 +165,7 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
       if (face.geomType !== "PLANE") throw new GeometryError(`${feature.name} : seules les faces planes peuvent être extrudées.`);
       let prism: Shape3D;
       if (until) {
-        const made = prismUntil(face, until, feature.name, feature.direction);
+        const made = prismUntil(face, until, feature.name, feature.direction, arrival);
         if (!made) continue;
         prism = made.prism;
         operation = made.out ? "join" : "cut";

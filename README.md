@@ -894,7 +894,10 @@ opération existante.
   perpendiculaire à sa face, **selon X, Y ou Z**, **droit vers la face d'arrivée** (une étagère en biais prolongée à
   l'horizontale) ou **comme une autre face** (cliquée : perpendiculairement à elle, dans l'alignement d'une étagère
   voisine), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
-  `document/extend-reach.ts` `wayOf`, `features/face-until.ts`). **plusieurs éléments** — Maj +
+  `document/extend-reach.ts` `wayOf`, `features/face-until.ts`). **Couvrir la face d'arrivée** (une pièce seule, décochée
+  d'office) : la pièce s'élargit jusqu'aux bords de la face d'arrivée au lieu de garder son contour — un dessus
+  descendu jusqu'à une étagère plus large va jusqu'au côté en biais du cadre (`cover` de l'opération : l'enveloppe des
+  coins des deux faces, `geometry/hull.ts`). **plusieurs éléments** — Maj +
   clic sur la face d'un autre élément l'ajoute (trois caissons à monter jusqu'au plafond) — vont tous jusqu'à la même
   face d'arrivée, ou de la même mesure, chacun prolongé à son tour, OK les gardant en une seule annulation (Maj + clic
   sur un élément choisi le retire). On sélectionne (ou on clique,

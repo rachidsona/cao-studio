@@ -38,6 +38,14 @@ test("prolonger élément : la face d'une plinthe de cuisine tirée jusqu'au pla
   // Shown first, kept by OK.
   await expect(tool.locator("[data-extend-result]")).toContainText(/« Plinthe A » prolongé de 2,1 cm jusqu'à « Plan de travail A », qu'il suivra/);
   await expect(view).toHaveAttribute("data-chosen", "first second");
+  // « Couvrir la face d'arrivée », off by default: ticked, the piece widens to it and its Direction no longer counts.
+  const cover = tool.getByLabel("Couvrir la face d'arrivée");
+  await expect(cover).not.toBeChecked();
+  await expect(tool.getByLabel("Direction")).toBeVisible();
+  await cover.check();
+  await expect(tool).toContainText("La pièce s'élargit jusqu'aux bords de la face d'arrivée");
+  await expect(tool.getByLabel("Direction")).toHaveCount(0);
+  await cover.uncheck();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/prolonger-faces-marquees.png` });
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
