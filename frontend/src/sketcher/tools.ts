@@ -39,7 +39,7 @@ function resolve(g: SketchGeometry, s: Snap): string {
 }
 
 export const TOOL_STEPS: Record<Exclude<ToolName, "select">, string[]> = {
-  line: ["Cliquez le premier point", "Cliquez le point suivant — ou tapez la longueur, Tab, l'angle, puis Entrée (Échap pour terminer)"],
+  line: ["Cliquez le premier point", "Cliquez le point d'arrivée — ou tapez la longueur, Tab, l'angle, puis Entrée ; Maj + clic : le trait suivant part de là"],
   rectangle: ["Cliquez un coin (Échap pour quitter l'outil)", "Cliquez le coin opposé — ou tapez la largeur, Tab, la hauteur, puis Entrée"],
   circle: ["Cliquez le centre (Échap pour quitter l'outil)", "Cliquez un point du cercle — ou tapez le diamètre, puis Entrée"],
   arc: ["Cliquez le centre", "Cliquez le point de départ", "Cliquez la fin (sens antihoraire)"],
@@ -249,7 +249,8 @@ export class DrawingTool {
     return preview;
   }
 
-  click(g: SketchGeometry, at: Snap): ToolResult {
+  /** `chain`: Maj held — a line goes on from its end (a polyline); without it, each line stands alone. */
+  click(g: SketchGeometry, at: Snap, chain = false): ToolResult {
     if (this.name === "curve") return this.curveClick(g, at);
     if (this.name === "joinery") {
       const { kind, values } = currentStamp();
@@ -274,11 +275,12 @@ export class DrawingTool {
         }
         const added = addLine(work, { pointId: p1 }, { pointId: p2 }, { construction: c });
         this.chainStart ??= p1;
-        const closed = p2 === this.chainStart;
-        // Polyline: the end becomes the start of the next segment, until the chain closes.
-        this.clicks = closed ? [] : [{ pos: pointPos(added.geometry, p2), pointId: p2 }];
-        if (closed) this.chainStart = null;
-        return { kind: "commit", geometry: added.geometry, created: added.created, done: closed };
+        // Maj held: a polyline, the end becomes the start of the next segment, until the chain closes; else the line
+        // stands alone and the next one starts afresh.
+        const goOn = chain && p2 !== this.chainStart;
+        this.clicks = goOn ? [{ pos: pointPos(added.geometry, p2), pointId: p2 }] : [];
+        if (!goOn) this.chainStart = null;
+        return { kind: "commit", geometry: added.geometry, created: added.created, done: !goOn };
       }
       case "oval": {
         const center = s1.pointId ? pointPos(work, s1.pointId) : s1.pos;

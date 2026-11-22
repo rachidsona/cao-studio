@@ -178,7 +178,8 @@ export class SketchPointer {
     const p = mode.toSketch(event);
     if (!p) return true;
     if (mode.tool) {
-      this.entry.lay(this.entry.landing(p));
+      // Maj + clic: the line goes on from there (a polyline).
+      this.entry.lay(this.entry.landing(p), event.shiftKey);
       return true;
     }
     if (mode.offset) {

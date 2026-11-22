@@ -89,7 +89,7 @@ export class ShapeEntry {
     else if (event.key === "Tab") this.typed.next(tool.name, mode.host.unit());
     else if (event.key === "Backspace") {
       if (!this.typed.erase(tool.name)) return false;
-    } else if (event.key === "Enter" && !this.typed.empty && this.cursor) return this.lay(this.landing(this.cursor)), true;
+    } else if (event.key === "Enter" && !this.typed.empty && this.cursor) return this.lay(this.landing(this.cursor), event.shiftKey), true;
     else return false;
     if (this.cursor) mode.preview = tool.move(mode.geometry, this.landing(this.cursor));
     // A value typed that takes the shape beyond the screen: the view steps back to show it whole, with its fields.
@@ -117,7 +117,7 @@ export class ShapeEntry {
         return true;
       }
       this.coords.clear();
-      this.lay({ pos, guides: [] });
+      this.lay({ pos, guides: [] }, event.shiftKey);
       return true;
     }
     const pos = this.coords.target(from, unit);
@@ -129,13 +129,13 @@ export class ShapeEntry {
   }
 
   /** A point of the shape, clicked or laid by Entrée: the shape goes on, or is made — with a dimension for each value typed. */
-  lay(at: PointerSnap): void {
+  lay(at: PointerSnap, chain = false): void {
     const { mode } = this;
     const tool = mode.tool;
     if (!tool) return;
     try {
       const values = this.typed.values(tool.name, mode.host.unit());
-      const result = tool.click(mode.geometry, at);
+      const result = tool.click(mode.geometry, at, chain);
       this.aligned(result.kind === "commit" ? null : at.pos);
       if (result.kind === "commit") {
         this.typed.reset();

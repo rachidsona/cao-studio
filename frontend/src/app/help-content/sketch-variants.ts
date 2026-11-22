@@ -18,7 +18,7 @@ export const DRAW_VARIANTS: ToolHelp[] = [
     steps: [
       "Un outil de dessin ouvert (ligne, rectangle, cercle…), tapez « @ » pour des coordonnées relatives (depuis le dernier point posé ; l'origine pour le premier), ou « # » pour des coordonnées absolues (depuis l'origine).",
       "Tapez « x;y » — par exemple @60;0 — ou « distance<angle » en polaire — par exemple @80<45, l'angle en degrés depuis l'horizontale.",
-      "Entrée pose le point ; le tracé continue au point suivant. Retour arrière efface, Échap annule la saisie.",
+      "Entrée pose le point ; avec la ligne, Maj + Entrée fait partir le trait suivant de là. Retour arrière efface, Échap annule la saisie.",
     ],
     tip: "Les longueurs sont dans l'unité du projet. « 600,0 » se lit x = 600, y = 0 ; pour un nombre à virgule, séparez par « ; » (12,5;30). Le point visé se voit pendant la frappe, et la barre d'état rappelle ce qui est tapé. Sur un clavier de PC, « @ » se tape avec AltGr + à.",
   },

@@ -380,7 +380,9 @@ serveur accepte les deux versions.
   - Limites : faces planes seulement (pas de face courbe), et la projection n'est pas associative (si le corps
     change, l'esquisse ne suit pas).
 - **Outils** : sélection (S), ligne et polyligne (L), rectangle (R), cercle (C), arc par centre (A),
-  décalage (O), construction (X).
+  décalage (O), construction (X). Ligne : le clic d'arrivée pose le trait, le suivant repart d'un premier point ;
+  Maj + clic (ou Maj + Entrée) le fait partir de là — une polyligne, fermée par Maj + clic sur son premier point
+  (`DrawingTool.click`, `chain`).
 - **Formes de menuiserie** (cachées par défaut) : une fenêtre choisit la forme et ses cotes, puis chaque clic la pose,
   contrainte et cotée comme un bloc réglable — découpe d'évier (angles arrondis), découpe de plaque de cuisson,
   encoche au bord, queue d'aronde (base, longueur, pente 1:n), rangée de trous système 32 (trous égaux et alignés,

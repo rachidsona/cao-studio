@@ -10,10 +10,11 @@ import { DrawingTool } from "../../frontend/src/sketcher/tools";
 
 const TOL = 0.5;
 
-function clickAll(tool: DrawingTool, start: SketchGeometry, clicks: [number, number][]): SketchGeometry {
+/** `chain`: Maj held at each click (a line goes on from its end). */
+function clickAll(tool: DrawingTool, start: SketchGeometry, clicks: [number, number][], chain = false): SketchGeometry {
   let g = start;
   for (const p of clicks) {
-    const result = tool.click(g, snap(g, p, TOL));
+    const result = tool.click(g, snap(g, p, TOL), chain);
     if (result.kind === "commit") g = result.geometry;
   }
   return g;
@@ -28,19 +29,32 @@ function command(id: string) {
 describe("outils de dessin", () => {
   beforeAll(() => initSolver());
 
-  it("trace une polyligne fermée qui partage ses sommets", () => {
+  it("Maj + clic : trace une polyligne fermée qui partage ses sommets", () => {
     const tool = new DrawingTool("line");
     const g = clickAll(tool, emptySketchGeometry(), [
       [5, 5],
       [35, 5.2],
       [20, 25],
       [5.1, 5.1], // snaps back onto the first point: closes the chain
-    ]);
+    ], true);
     expect(g.points).toHaveLength(3);
     expect(g.curves).toHaveLength(3);
     // The nearly horizontal first segment received a horizontal constraint.
     expect(g.constraints).toEqual([expect.objectContaining({ kind: "horizontal", line: "l1" })]);
     expect(extractLoops(g)).toHaveLength(1);
+    expect(tool.step).toBe("Cliquez le premier point");
+  });
+
+  it("sans Maj, chaque trait est seul : le clic d'arrivée le pose, le suivant repart d'un premier point", () => {
+    const tool = new DrawingTool("line");
+    const g = clickAll(tool, emptySketchGeometry(), [
+      [5, 5],
+      [35, 5],
+      [5, 20],
+      [35, 20],
+    ]);
+    expect(g.curves).toHaveLength(2);
+    expect(g.points).toHaveLength(4);
     expect(tool.step).toBe("Cliquez le premier point");
   });
 

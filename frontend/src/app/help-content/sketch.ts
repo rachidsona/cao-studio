@@ -45,13 +45,13 @@ export const SKETCH: HelpFamily[] = [
         tip: "Un point violet (repère projeté d'un corps) est fixe : on ne peut pas le tirer.",
       }, {
         keys: ["data-sketch-tool:line"], name: "Ligne",
-        what: "Trace une ligne ou une suite de lignes reliées (polyligne).",
+        what: "Trace une ligne, ou une suite de lignes reliées (polyligne) en tenant Maj.",
         steps: [
           "Cliquez le premier point.",
-          "Cliquez le point suivant : un trait est posé, et le suivant part de là.",
+          "Cliquez le point d'arrivée : le trait est posé, et l'outil attend le premier point du suivant.",
           "Ou tapez sa longueur — ou un calcul, (190+100)/2 — : elle s'écrit dans la case en bleu et le trait la prend, dans le sens de la souris. Tab passe à l'angle (sur l'horizontale), Entrée pose le trait.",
-          "Continuez ainsi, puis appuyez sur Échap pour terminer.",
-          "Pour fermer la forme, cliquez à nouveau le tout premier point.",
+          "Maj + clic (ou Maj + Entrée) sur le point d'arrivée : le trait suivant part de là. Continuez ainsi, puis Échap pour terminer.",
+          "Pour fermer la forme, Maj + clic à nouveau sur le tout premier point.",
         ],
         tip: "Cliquer sur un point existant le réutilise ; cliquer sur un trait y accroche le nouveau point. Les accrochages se règlent dans le groupe « Affichage ».",
       }, {
