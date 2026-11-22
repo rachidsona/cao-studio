@@ -75,13 +75,23 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
     const value = parseNumber(height.value);
     return value === null ? null : { height: fromDisplay(value, unit), doors: doorsOf(doors.value) };
   };
-  const put = el("button", { type: "button", class: WIDE, disabled: plan.roof !== undefined, "data-top-put": "" }, now ? "Mettre à jour les surmeubles" : "Poser les surmeubles");
-  put.title = "Au-dessus de chaque mur fait, des caissons aux mêmes cases que ceux du dessous, posés sur eux — tous à cette hauteur et avec ces portes";
-  put.addEventListener("click", () => {
+  // Not posed yet: « Poser les surmeubles ». Posed: the height and doors of all applied as soon as changed.
+  const put = now ? null : el("button", { type: "button", class: WIDE, disabled: plan.roof !== undefined, "data-top-put": "" }, "Poser les surmeubles");
+  if (put) put.title = "Au-dessus de chaque mur fait, des caissons aux mêmes cases que ceux du dessous, posés sur eux — tous à cette hauteur et avec ces portes";
+  put?.addEventListener("click", () => {
     const top = read();
     if (!top) return editor.notify("Saisissez la hauteur des surmeubles.", "info");
     apply(top);
   });
+  const applyAll = () => {
+    const top = read();
+    if (!top) return editor.notify("Saisissez la hauteur des surmeubles.", "info");
+    apply(top);
+  };
+  if (now) {
+    height.addEventListener("change", applyAll);
+    doors.addEventListener("change", applyAll);
+  }
   const remove = now ? el("button", { type: "button", class: WIDE, "data-top-remove": "" }, "Retirer les surmeubles") : null;
   // Each one made, a card as a zone's: « Modifier » opens its Répartition (its cases), and its tools inside — doors over niches too.
   const cards = zones.flatMap((zone) => {
@@ -118,7 +128,7 @@ export function topSection(planId: string, plan: DressingPlan, zones: PlanZone[]
   remove?.addEventListener("click", () => apply(null));
   const all: (HTMLElement | null)[] = [
     el("h3", { class: "panel-title", title: plan.roof ? "Sous un rampant, le dessus suit déjà le plafond." : "Des caissons au-dessus du dressing, dans la continuité de ses cases" }, "Surmeubles"),
-    el("label", { class: "flex min-h-8 items-center justify-between gap-2", title: "Pour tous les surmeubles, avec « Poser » ou « Mettre à jour » ; chacun se règle aussi dans sa carte" }, `Hauteur de tous (${UNIT_LABELS[unit]})`, height),
+    el("label", { class: "flex min-h-8 items-center justify-between gap-2", title: "Pour tous les surmeubles, appliquée dès qu'on la change (leurs réglages propres remplacés) ; chacun se règle aussi dans sa carte" }, `Hauteur de tous (${UNIT_LABELS[unit]})`, height),
     el("label", { class: "flex min-h-8 items-center justify-between gap-2" }, "Portes de tous", doors),
     ...rows,
     put,

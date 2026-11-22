@@ -3157,7 +3157,7 @@ opération existante.
   son dessus, sans socle ; au débit et au devis comme le reste. Ses portes sont des **Porte sur niches**, une par case,
   battantes à gauche puis à droite ou relevables (charnières en haut) : chacune se règle comme toute porte sur niche
   (pose, sur une étagère, jeu, épaisseur, style, charnières, trous de poignée). Chacun est une Répartition gardée
-  (`tops` du plan, `document/plan-top.ts`) : chacun a sa **carte pliable** (son mur et sa hauteur, une ouverte à la fois comme les zones) avec **sa propre hauteur et ses portes** (`top.zones` du plan, `withTopUnitSet`), appliquées dès qu'on les change — « Hauteur de tous » et « Mettre à jour les surmeubles » les remettent tous pareils —, « Modifier » l'ouvre dans l'outil Répartition (cases, côtés)
+  (`tops` du plan, `document/plan-top.ts`) : chacun a sa **carte pliable** (son mur et sa hauteur, une ouverte à la fois comme les zones) avec **sa propre hauteur et ses portes** (`top.zones` du plan, `withTopUnitSet`), appliquées dès qu'on les change — « Hauteur de tous » et « Portes de tous », appliquées elles aussi dès qu'on les change, les remettent tous pareils —, « Modifier » l'ouvre dans l'outil Répartition (cases, côtés)
   et ses outils — Module, Étagères, Cloisons, Tiroirs, Portes, Penderie, comme sous une zone — s'y ouvrent ; ce qu'on y fait
   reste ; quand le plan change, ils sont seulement déplacés et mis à sa longueur
   et à sa nouvelle hauteur ; une zone faite ensuite reçoit les siens ; « Retirer les surmeubles » les enlève. Sur un angle, ils sont découpés à son contour comme dessous, avec leur dernier côté, sans porte. Pas sous un
