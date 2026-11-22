@@ -5,6 +5,8 @@
  * les distances aux bords, puis tirés ou poussés (app/draw-on-face-tool.ts). Changer de tracé passe d'une manière à
  * l'autre sans fermer l'outil ; le dernier tracé choisi est repris à la prochaine ouverture.
  */
+import type { FaceRef } from "../document/types";
+import type { ToolContext } from "./panel-tool";
 export const MAGIC_EXTRUDE = "Magie extrusion";
 
 /** The traces: the first two draw a line from an edge or a corner (face strip), the others a shape on a face. */
@@ -34,4 +36,24 @@ let pull = true;
 export const pullAfter = (): boolean => pull;
 export function rememberPull(v: boolean): void {
   pull = v;
+}
+
+/** A face pulled with « Magie extrusion », the pointer on a flat face of another body: it goes up to it and follows it. */
+export class FaceToReach {
+  until: { body: string; face: FaceRef } | null = null;
+  private key = "";
+
+  /** The face under the pointer (none, or one of `own`, forgets it); `found` when it is read. */
+  aim(ctx: Pick<ToolContext, "viewport" | "geometry">, event: PointerEvent, own: string, found: () => void): void {
+    const hit = ctx.viewport.pickFace(event);
+    const key = hit && hit.bodyId !== own ? `${hit.bodyId}:${hit.faceIndex}` : "";
+    if (key === this.key) return;
+    [this.key, this.until] = [key, null];
+    if (!hit || !key) return;
+    void ctx.geometry.describe(hit.bodyId, [], hit.faceIndex).then(({ face }) => {
+      if (this.key !== key || face?.type !== "PLANE") return;
+      this.until = { body: hit.bodyId, face };
+      found();
+    }).catch(() => undefined);
+  }
 }

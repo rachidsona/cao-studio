@@ -1298,7 +1298,9 @@ opération existante.
   - La coupe (triangle ou arc) est une esquisse sur le pignon, extrudée sur toute la longueur du dessus. Une ligne
     hors du milieu donne deux pans inégaux.
   - Une annulation ; la ligne tracée est cachée (`features/gable.ts`, `app/gable-tool.ts`).
-- **Magie extrusion** (groupe « Modifier », `data-action="face-strip"`, `app/magic-extrude.ts`) : un seul outil réunit
+- **Magie extrusion** (groupe « Modifier », `data-action="face-strip"`, `app/magic-extrude.ts`) — **une face tirée sur la
+  face d'un autre corps** va jusqu'à elle et la suit toujours (« jusqu'à » gardé, `until` de l'extrusion, comme Prolonger
+  élément : sa pente, et là où elle ira ; `FaceToReach`) ; une hauteur tapée reste une hauteur. Un seul outil réunit
   les deux manières de tracer sur un corps puis d'extruder, décrites ci-dessous. Le premier choix de son panneau,
   « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
   puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme

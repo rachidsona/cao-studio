@@ -19,7 +19,7 @@
  * double line) and the height are typed on the keyboard as the pointer moves, as « Dessiner sur le corps »: they go
  * to the value box at the bottom of the view, and Entrée lays the line, or ends the pull (ui/typed-values.ts).
  */
-import { uniqueId, uniqueName } from "../document/operations";
+import { bodyLabel, uniqueId, uniqueName } from "../document/operations";
 import type { ExtrudeFeature, FaceRef, Feature, SketchFeature, Vec3 } from "../document/types";
 import { formatLength, fromDisplay } from "../measurements/units";
 import type { Vec2 } from "../sketcher/edit";
@@ -28,7 +28,7 @@ import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
 import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
-import { isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
+import { FaceToReach, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
 import { CurvedOffset } from "./curved-offset";
 import { Marks } from "./measure";
@@ -74,12 +74,12 @@ export class FaceStripTool extends PanelTool {
   /** A closed area of a sketch pulled (into a new body, or into the body the sketch lies on). */
   private area: SketchArea | null = null;
   private height = 0;
-  /** A typed height stops it following the pointer. */
-  private frozenHeight = false;
+  private frozenHeight = false; // a typed height stops it following the pointer
   private reversed = false;
   /** While pulling: what can be aimed at, and the corner or edge point aimed at (the pull stops at its level). */
   private targets: LevelTargets = { corners: [], segments: [] };
   private target: Vec3 | null = null;
+  private readonly reach = new FaceToReach(); // a face pulled up to another body's face follows it
   private lastEvent: PointerEvent | null = null;
   private readonly marks: StripMarks;
   /** The side of a cylinder: a line from its round rim, its band dug all round (curved-offset.ts). */
@@ -225,7 +225,7 @@ export class FaceStripTool extends PanelTool {
     const fresh = this.newBody;
     if (area) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: area.sketchId, regions: [area.probe], distance: this.height, operation: area.support && !fresh ? this.operation() : "new", ...(area.support && !fresh ? { target: area.support } : {}) };
     // A face pulled into a body of its own still reads the body it is on.
-    if (this.faceRef) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, faces: [this.faceRef], target: face.pick.bodyId, distance: this.height, operation: fresh ? "new" : this.operation() };
+    if (this.faceRef) return { id: this.extrudeId, type: "extrude", name: this.extrudeName, faces: [this.faceRef], target: face.pick.bodyId, distance: this.height, operation: fresh ? "new" : this.operation(), ...(this.reach.until && !this.frozenHeight ? { until: this.reach.until } : {}) };
     // Along the sketch normal, which may point into the body.
     const sign = dot3(face.outline.normal, face.frame.normal) >= 0 ? 1 : -1;
     return { id: this.extrudeId, type: "extrude", name: this.extrudeName, sketch: this.sketchId, distance: this.height * sign, operation: fresh ? "new" : this.operation(), ...(fresh ? {} : { target: face.pick.bodyId }) };
@@ -310,7 +310,7 @@ export class FaceStripTool extends PanelTool {
       this.info(Math.abs(this.height) < 1e-3 ? (this.newBody ? "Tirez ou poussez : ce qui est extrudé sera un nouveau corps." : "Tirez pour ajouter, poussez pour creuser.") : this.newBody || (this.area && !this.area.support) ? "Crée un nouveau corps (le corps cliqué reste tel quel)." : op === "join" ? "Ajoute de la matière (Joindre)." : "Creuse le corps (Couper)."),
       this.checkRow("Nouveau corps", this.newBody, (v) => ((this.newBody = last.newBody = v), changed())),
       this.newBody ? null : this.checkRow("Inverser tirer/pousser (Tab)", this.reversed, (v) => ((this.reversed = v), changed())),
-      this.info(`${this.target ? "Niveau visé (point vert)." : "Visez un coin ou un trait d'un corps pour vous arrêter à son niveau."} 3. Clic ou Entrée : terminer. Échap : revenir au tracé.`),
+      this.info(`${this.reach.until && !this.frozenHeight ? `Jusqu'à la face de « ${bodyLabel(this.ctx.doc(), this.reach.until.body)} » : l'extrusion la suit (sa pente, et là où elle ira).` : this.target ? "Niveau visé (point vert)." : "Visez la face d'un autre corps pour aller jusqu'à elle (et la suivre), ou un coin, un trait pour vous arrêter à son niveau."} 3. Clic ou Entrée : terminer. Échap : revenir au tracé.`),
     ];
   }
 
@@ -384,12 +384,12 @@ export class FaceStripTool extends PanelTool {
     if (this.phase === "pull") {
       const face = this.face;
       if (!face || this.frozenHeight) return;
-      const [base, n] = [this.pullBase(), face.outline.normal];
-      const { origin, direction } = this.ctx.viewport.rayFromEvent(event);
+      const [base, n, { origin, direction }] = [this.pullBase(), face.outline.normal, this.ctx.viewport.rayFromEvent(event)];
       this.target = aimAt(this.ctx.viewport, event, SNAP_PX, this.targets);
       const t = this.target ? dot3([this.target[0] - base[0], this.target[1] - base[1], this.target[2] - base[2]], n) : axisParameter(base, n, origin, direction);
       if (t === null) return;
       this.height = this.target ? Number(t.toFixed(4)) : roundTo(t, dragStep(this.ctx.viewport.worldPerPixel()));
+      if (this.faceRef) this.reach.aim(this.ctx, event, face.pick.bodyId, () => (this.render(), this.schedulePreview()));
     } else {
       const pick = this.ctx.viewport.pickFace(event);
       // A sketch area in front of the body faces is pulled like a face (as DIO's trowel on a face).
@@ -438,14 +438,14 @@ export class FaceStripTool extends PanelTool {
       return;
     }
     if (this.hover.kind === "region") {
-      [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [face.polygon, null, 0, false, null];
+      [this.band, this.faceRef, this.height, this.frozenHeight, this.target, this.reach.until] = [face.polygon, null, 0, false, null, null];
       [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
       return this.move(event);
     }
     if (this.hover.kind === "face") {
       void this.ctx.geometry.describe(face.pick.bodyId, [], face.pick.faceIndex).then(({ face: ref }) => {
         if (!ref || ref.type !== "PLANE") return this.ctx.notify("Seules les faces planes se tirent ou se poussent.", "error");
-        [this.faceRef, this.band, this.height, this.frozenHeight, this.target] = [ref, null, 0, false, null];
+        [this.faceRef, this.band, this.height, this.frozenHeight, this.target, this.reach.until] = [ref, null, 0, false, null, null];
         [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
         this.redraw();
         this.render();
@@ -464,7 +464,7 @@ export class FaceStripTool extends PanelTool {
   private lay(event?: PointerEvent): void {
     const band = this.currentBand();
     if (!band || !this.face) return this.ctx.notify("Le trait sort de la face : rapprochez-le.", "info");
-    [this.band, this.faceRef, this.height, this.frozenHeight, this.target] = [band, null, 0, false, null];
+    [this.band, this.faceRef, this.height, this.frozenHeight, this.target, this.reach.until] = [band, null, 0, false, null, null];
     [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
     if (!pullAfter()) return this.confirm();
     this.typed.clear();
