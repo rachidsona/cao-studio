@@ -1279,8 +1279,10 @@ opération existante.
   - *Épaisseur* (18 mm par défaut) et *profondeur* (le long de la normale de l'esquisse, signée) ;
   - *Côté* : sur le contour, les planches vont vers l'intérieur (les traits sont les cotes extérieures), sont
     centrées sur les traits, ou vont vers l'extérieur ; une ligne intérieure (étagère) est toujours centrée ;
-  - *Aux coins* : les montants passent (dessus, dessous et étagères s'arrêtent entre eux) ou l'inverse ; les
-    planches ne partagent jamais de matière ;
+  - *Aux coins* : les montants passent (dessus, dessous et étagères s'arrêtent entre eux), l'inverse, ou
+    *Coupe d'onglet (45°)* : deux traits qui finissent au même point sont coupés tous deux sur la bissectrice du
+    coin (45° d'équerre, la moitié de l'angle ailleurs), les étagères s'arrêtant contre le cadre ; les planches ne
+    partagent jamais de matière ;
   - les corps s'appellent « Panneaux 1 — panneau n » ; l'opération se modifie depuis l'historique ou le panneau
     Propriétés, et suit l'esquisse quand on la modifie.
   - **Le squelette d'un meuble devient une Répartition** : dessiné debout (de face ou de côté), un contour

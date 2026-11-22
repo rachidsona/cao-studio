@@ -129,6 +129,7 @@ export class PanelsTool extends PanelTool {
         [
           ["vertical", "Les montants passent"],
           ["horizontal", "Dessus et dessous passent"],
+          ["miter", "Coupe d'onglet (45°)"],
         ],
         (v) => {
           this.through = v as PanelsFeature["through"];

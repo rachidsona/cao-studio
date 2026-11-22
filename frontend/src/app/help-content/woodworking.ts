@@ -157,7 +157,7 @@ export const WOODWORKING: HelpFamily[] = [
           "Sélectionnez l'esquisse puis cliquez « Panneaux » ; sinon l'outil prend la dernière esquisse qui a des lignes (liste « Squelette »).",
           "Réglez l'« Épaisseur » et la « Profondeur ».",
           "Choisissez le « Côté » : vers l'intérieur (les traits sont les cotes extérieures), centré sur les traits ou vers l'extérieur.",
-          "Choisissez « Aux coins » : les montants passent, ou dessus et dessous passent. C'est enregistré aussitôt.",
+          "Choisissez « Aux coins » : les montants passent, dessus et dessous passent, ou « Coupe d'onglet (45°) » — les deux planches d'un coin sont coupées sur sa bissectrice (45° d'équerre). C'est enregistré aussitôt.",
         ],
         tip: "Dessiné debout (de face ou de côté), un contour rectangulaire devient une Répartition : un trait du bas au haut fait un côté entre deux cases, un trait d'un bord à l'autre d'une case une étagère, ou une cloison s'il est debout. Ses niches se remplissent ensuite comme celles d'une Répartition (étagères, tiroirs, penderie, portes), et le squelette est caché. Un trait en biais, une courbe, un contour ouvert, un trait qui s'arrête au milieu d'une niche ou un squelette tracé au sol donnent des planches, une par ligne, centrées sur leur trait pour les lignes intérieures.",
       },

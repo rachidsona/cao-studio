@@ -173,7 +173,7 @@ function panelsSection(feature: PanelsFeature, ctx: PropertiesContext): HTMLElem
     numberField({ label: "Épaisseur", value: feature.thickness, unit: ctx.unit, onCommit: (v) => patch({ thickness: v }) }),
     numberField({ label: "Profondeur", value: feature.depth, unit: ctx.unit, signed: true, onCommit: (v) => patch({ depth: v }) }),
     selectField("Côté", feature.align, [["inside", "Vers l'intérieur"], ["center", "Centré"], ["outside", "Vers l'extérieur"]], (v) => patch({ align: v as PanelsFeature["align"] })),
-    selectField("Aux coins", feature.through, [["vertical", "Les montants passent"], ["horizontal", "Dessus et dessous passent"]], (v) => patch({ through: v as PanelsFeature["through"] })),
+    selectField("Aux coins", feature.through, [["vertical", "Les montants passent"], ["horizontal", "Dessus et dessous passent"], ["miter", "Coupe d'onglet (45°)"]], (v) => patch({ through: v as PanelsFeature["through"] })),
   );
 }
 

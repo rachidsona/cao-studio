@@ -472,8 +472,8 @@ export interface PanelsFeature extends FeatureBase {
   depth: number;
   /** Side of the outline lines the boards lie on (inner lines are centred). */
   align: "inside" | "center" | "outside";
-  /** Boards kept whole at the corners; the others are cut against them. */
-  through: "vertical" | "horizontal";
+  /** Boards kept whole at the corners, the others cut against them; or mitred: two boards meeting at a corner both cut on its bisector (45° at a square corner). */
+  through: "vertical" | "horizontal" | "miter";
 }
 
 /**

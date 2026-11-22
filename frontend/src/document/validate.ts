@@ -187,7 +187,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.sketch !== "string") errors.push(`${where} : esquisse squelette manquante.`);
       checkNumbers(feature, ["thickness", "depth"], where, errors);
       if (!["inside", "center", "outside"].includes(feature.align as string)) errors.push(`${where} : côté des panneaux invalide.`);
-      if (!["vertical", "horizontal"].includes(feature.through as string)) errors.push(`${where} : priorité aux coins invalide.`);
+      if (!["vertical", "horizontal", "miter"].includes(feature.through as string)) errors.push(`${where} : priorité aux coins invalide.`);
       break;
     case "mirror":
       if (!Array.isArray(feature.targets) || !feature.targets.every((t) => typeof t === "string")) errors.push(`${where} : corps à copier invalides.`);
