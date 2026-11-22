@@ -890,7 +890,10 @@ opération existante.
   même niveau), **⌘** verticale ; le point d'arrivée s'affiche alors à la hauteur du point de départ (ou à sa
   verticale) avec un guide rose vers le point visé. Une seule annulation
   (`app/coincide-tool.ts`, `features/coincide.ts`, `app/axis-lock.ts`).
-- **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : **plusieurs éléments** — Maj +
+- **Prolonger élément** (bouton du groupe **Modifier**, après « Coller par face ») : **Direction** (une pièce seule) :
+  perpendiculaire à sa face, **selon X, Y ou Z**, ou **droit vers la face d'arrivée** (une étagère en biais prolongée à
+  l'horizontale), son bout prenant toujours la pente de la face d'arrivée (`direction` de l'opération,
+  `document/extend-reach.ts` `wayOf`, `features/face-until.ts`). **plusieurs éléments** — Maj +
   clic sur la face d'un autre élément l'ajoute (trois caissons à monter jusqu'au plafond) — vont tous jusqu'à la même
   face d'arrivée, ou de la même mesure, chacun prolongé à son tour, OK les gardant en une seule annulation (Maj + clic
   sur un élément choisi le retire). On sélectionne (ou on clique,

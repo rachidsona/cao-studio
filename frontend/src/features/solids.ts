@@ -163,15 +163,17 @@ export function buildFaceExtrude(feature: ExtrudeFeature, lookup: OutputLookup):
       if (face.geomType !== "PLANE") throw new GeometryError(`${feature.name} : seules les faces planes peuvent être extrudées.`);
       let prism: Shape3D;
       if (until) {
-        const made = prismUntil(face, until, feature.name);
+        const made = prismUntil(face, until, feature.name, feature.direction);
         if (!made) continue;
         prism = made.prism;
         operation = made.out ? "join" : "cut";
       } else {
-        const n = face.normalAt(face.center);
-        const length = Math.hypot(n.x, n.y, n.z) || 1;
+        const raw = face.normalAt(face.center);
+        const n = feature.direction ?? [raw.x, raw.y, raw.z];
+        raw.delete();
+        const length = Math.hypot(n[0], n[1], n[2]) || 1;
         const k = feature.distance / length;
-        const vector = new Vector([n.x * k, n.y * k, n.z * k]);
+        const vector = new Vector([n[0] * k, n[1] * k, n[2] * k]);
         prism = basicFaceExtrusion(face, vector) as Shape3D;
         vector.delete();
       }

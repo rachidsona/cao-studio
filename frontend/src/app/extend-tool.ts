@@ -9,7 +9,8 @@
  * « Suivre l'autre élément » : quand l'autre élément change ensuite, l'élément prolongé le suit (app/extend-follow.ts).
  * Maj + clic sur la face d'un autre élément l'ajoute à ceux à prolonger (trois caissons jusqu'au plafond) : ils vont
  * tous jusqu'à la même face d'arrivée, ou de la même mesure, OK les gardant en une annulation ; Maj + clic sur un
- * élément choisi le retire.
+ * élément choisi le retire. « Direction » : une pièce seule avance perpendiculairement à sa face, ou selon X, Y ou Z, ou
+ * droit vers la face d'arrivée — son bout en prend toujours la pente.
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import { extendable } from "../document/extend-element";
@@ -40,6 +41,11 @@ const BUTTON = "h-8 flex-1 border border-gray-300 font-medium hover:bg-gray-100 
 /** Kept for the session: whether the extended element follows the other one. */
 let lastFollow = true;
 
+/** The way a piece goes: perpendicular to its face, along an axis, or straight to the face to reach. */
+type Way = "normal" | "x" | "y" | "z" | "target";
+let lastWay: Way = "normal";
+const AXES: Record<"x" | "y" | "z", Vec3> = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+
 export class ExtendTool extends PanelTool {
   private moving: Side | null = null;
   /** The other elements to extend (Maj + clic), each with whether only its piece goes. */
@@ -54,6 +60,7 @@ export class ExtendTool extends PanelTool {
   private piece = false;
   /** How far the face goes, typed (mm, negative: in), instead of a face to reach. */
   private typed: number | null = null;
+  private way: Way = lastWay;
 
   constructor(ctx: ToolContext, faces: readonly FacePick[]) {
     super(ctx, "Prolonger élément", null);
@@ -125,13 +132,20 @@ export class ExtendTool extends PanelTool {
     this.ctx.viewport.setChosen([...moving.map((m) => ({ face: m.pick, role: "first" as const })), ...(this.target ? [{ face: this.target.pick, role: "second" as const }] : [])]);
     const target = this.target;
     const typed = this.typed;
+    const dir = this.direction();
     this.made = this.moving && target
-      ? this.chained((doc, s, piece) => extendTo(doc, s.bodyId, target.bodyId, s.plane, target.plane, { from: s.ref, to: target.ref }, this.follow, piece))
+      ? this.chained((doc, s, piece) => extendTo(doc, s.bodyId, target.bodyId, s.plane, target.plane, { from: s.ref, to: target.ref }, this.follow, piece, dir))
       : this.moving && typed !== null
-        ? this.chained((doc, s, piece) => extendBy(doc, s.bodyId, s.plane, typed, s.ref, piece))
+        ? this.chained((doc, s, piece) => extendBy(doc, s.bodyId, s.plane, typed, s.ref, piece, dir))
         : null;
     this.render();
     void this.ctx.preview(this.made && typeof this.made !== "string" ? this.made.doc : null).then(() => this.render());
+  }
+
+  /** The way chosen (none: perpendicular to the face); straight to the face to reach: against its normal. */
+  private direction(): Vec3 | undefined {
+    if (this.way === "target") return this.target?.plane.normal;
+    return this.way === "normal" ? undefined : AXES[this.way];
   }
 
   /** Each element chosen extended in turn, each on the document the one before left: the first's id, every message. */
@@ -231,6 +245,11 @@ export class ExtendTool extends PanelTool {
     const what = owner && this.moving
       ? this.selectRow("Prolonger", this.piece ? "piece" : "whole", [["whole", `Tout « ${owner.name} »`], ["piece", `Cette pièce seule (« ${bodyLabel(doc, this.moving.bodyId)} »)`]], (v) => ((this.piece = v === "piece"), this.refresh()))
       : null;
+    // A piece alone: the way it goes.
+    const alone = this.moving && (this.piece || !owner);
+    const way = alone
+      ? this.selectRow("Direction", this.way, [["normal", "Perpendiculaire à la face"], ["x", "Selon X"], ["y", "Selon Y"], ["z", "Selon Z"], ["target", "Droit vers la face d'arrivée"]], (v) => ((this.way = lastWay = v as Way), this.refresh()))
+      : null;
     const size = this.sizeAlong();
     const unit = this.ctx.unit();
     const measures = this.moving
@@ -244,6 +263,7 @@ export class ExtendTool extends PanelTool {
       this.info(this.moving ? `À prolonger : ${[`« ${this.piece ? bodyLabel(doc, this.moving.bodyId) : name(this.moving)} »`, ...this.more.map((m) => `« ${m.piece ? bodyLabel(doc, m.bodyId) : name(m)} »`)].join(", ")}, par la face cliquée.` : FIRST),
       this.moving ? this.info(this.more.length ? "Maj + clic sur un élément choisi le retire, sur un autre l'ajoute." : "Maj + clic sur la face d'un autre élément l'ajoute : tous vont jusqu'à la même face, ou de la même mesure, en une seule annulation.") : null,
       what,
+      way,
       this.moving ? this.info(this.target ? `Jusqu'à : « ${name(this.target)} ».` : this.typed !== null ? "De la mesure tapée." : SECOND) : null,
       measures,
       this.typed !== null ? null : this.checkRow("Suivre l'autre élément", this.follow, (v) => ((this.follow = lastFollow = v), this.refresh())),

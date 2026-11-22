@@ -328,6 +328,11 @@ export interface ExtrudeFeature extends FeatureBase {
    * (the end of the piece takes its slope), and the operation follows the way: join out, cut in. Faces only.
    */
   until?: { body: string; face: FaceRef };
+  /**
+   * The way the faces go (« Prolonger élément », a direction chosen: an axis, straight to the face to reach), instead
+   * of their normal; the end still takes the slope of `until`. Faces only.
+   */
+  direction?: Vec3;
   operation: BooleanOperation;
   /** Body consumed by "join" / "cut" operations. */
   target?: string;

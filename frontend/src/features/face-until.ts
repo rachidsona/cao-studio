@@ -31,11 +31,12 @@ function cornersOf(face: Face, center: Vec3): Vec3[] {
 }
 
 /** The solid between the face and the plane, and whether it is added (out) or dug (in); null: already on it. */
-export function prismUntil(face: Face, plane: { origin: Vec3; normal: Vec3 }, name: string): { prism: Shape3D; out: boolean } | null {
+export function prismUntil(face: Face, plane: { origin: Vec3; normal: Vec3 }, name: string, direction?: Vec3): { prism: Shape3D; out: boolean } | null {
   const c = face.center;
   const center: Vec3 = [c.x, c.y, c.z];
   const raw = face.normalAt(c);
-  const n = unit([raw.x, raw.y, raw.z]);
+  // Along its normal, or the way chosen (an axis, straight to the face to reach).
+  const n = unit(direction ?? [raw.x, raw.y, raw.z]);
   raw.delete();
   const travel = travelTo(cornersOf(face, center), n, { point: plane.origin, normal: plane.normal });
   if (typeof travel === "string") throw new GeometryError(`${name} : ${travel}`);

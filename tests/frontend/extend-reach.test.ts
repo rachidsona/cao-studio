@@ -4,7 +4,7 @@
  * refaite quand l'autre élément change.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { extendTo, followLink, onEnvelope, reachBy, travelTo, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
+import { extendBy, extendTo, followLink, onEnvelope, reachBy, travelTo, wayOf, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
 import { bodyLabel } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type TrimFeature, type Vec3 } from "../../frontend/src/document/types";
 import { validateDocument } from "../../frontend/src/document/validate";
@@ -72,6 +72,27 @@ describe("prolonger et garder", () => {
     expect(typeof slanted !== "string" && (slanted.doc.features.at(-1) as ExtrudeFeature).until).toBeTruthy();
   });
 
+  it("une pièce selon une direction choisie : un axe ou droit vers la face d'arrivée, son bout en prend la pente", () => {
+    const doc = createReferencePlate();
+    // The end of a slanted shelf: its face turned 30° from X; the wall at x = 100, facing −X.
+    const n: Vec3 = [Math.cos(Math.PI / 6), Math.sin(Math.PI / 6), 0];
+    const from = face([40, 0, 5], n, [[40, -25, 0], [40, 25, 10]]);
+    const refs = { from: ref([40, 0, 5], [1, 0.5, 0.5], n), to: ref([100, 0, 5], [0, 0.5, 0.5], [-1, 0, 0]) };
+    const along = extendTo(doc, "h1", "ex9", from, face([100, 0, 5], [-1, 0, 0]), refs, false, false, [1, 0, 0]);
+    if (typeof along === "string") throw new Error(along);
+    const f = along.doc.features.at(-1) as ExtrudeFeature;
+    // Along X: 60 mm to the wall, and up to it (its slope) whatever « follow » says.
+    expect([f.direction, f.distance, f.until?.body]).toEqual([[1, 0, 0], 60, "ex9"]);
+    // Straight to the face to reach: against its normal, turned outward.
+    const straight = extendTo(doc, "h1", "ex9", from, face([100, 0, 5], [-1, 0, 0]), refs, false, false, [-1, 0, 0]);
+    expect(typeof straight !== "string" && (straight.doc.features.at(-1) as ExtrudeFeature).direction).toEqual([1, 0, 0]);
+    // Along the face itself: refused; typed, the way kept.
+    expect(wayOf({ normal: [1, 0, 0] }, [0, 0, 1])).toMatch(/longe la face/);
+    const typed = extendBy(doc, "h1", from, 25, refs.from, false, [0, 1, 0]);
+    expect(typeof typed !== "string" && (typed.doc.features.at(-1) as ExtrudeFeature).direction).toEqual([0, 1, 0]);
+    expect(validateDocument({ ...along.doc, features: [...along.doc.features] }).length).toBe(0);
+  });
+
   it("une étagère, une cloison seule : son caisson ne change pas, elle reçoit son opération ; par défaut pour une face à l'intérieur", () => {
     const shelfEnd = face([600 - 18, 280, 360], [1, 0, 0], [[582, 20, 351], [582, 540, 369]]);
     const made = extendTo(withCabinet(), "c1#5", "c2#0", shelfEnd, face([900, 0, 0], [-1, 0, 0]), { from: ref([582, 280, 360], [1, 0.5, 0.5], [1, 0, 0]), to: ref([900, 0, 0], [0, 0.5, 0.5], [-1, 0, 0]) }, true, true);
@@ -118,6 +139,22 @@ describe("dans le noyau", () => {
     // Already on it: the body as it is.
     r.recompute(plate([pull(toB)], [[100, 60, 0], [150, 90, 20]]));
     expect(box(r, "ex1").volume).toBeCloseTo(100 * 50 * 20, 1);
+    r.dispose();
+  });
+
+  it("selon une direction choisie : la face avance de biais (selon X et Z) jusqu'à l'autre corps", () => {
+    const r = new Recomputer();
+    // Board a's end (x = 100) goes along (1, 0, 1)/√2 up to board b's face at x = 300: 200 mm along X, as much up.
+    const slant: ExtrudeFeature = { ...pull(toB), direction: [Math.SQRT1_2, 0, Math.SQRT1_2] };
+    const result = r.recompute(plate([slant]));
+    expect(result.statuses.every((s) => s.state === "ok")).toBe(true);
+    const m = box(r, "ex1");
+    expect(m.bbox[1][0]).toBeCloseTo(300, 3);
+    expect(m.bbox[1][2]).toBeCloseTo(220, 3);
+    // Without a face to reach: its distance along the way.
+    const free: ExtrudeFeature = { id: "ex1", type: "extrude", name: "Prolongement 1", faces: [ref([100, 25, 10], [1, 0.5, 0.5], [1, 0, 0])], target: "a#0", distance: 50, operation: "join", direction: [0, 0, 1] };
+    expect(r.recompute(plate([{ ...free, direction: [1, 0, 0] }])).statuses.every((s) => s.state === "ok")).toBe(true);
+    expect(box(r, "ex1").bbox[1][0]).toBeCloseTo(150, 3);
     r.dispose();
   });
 

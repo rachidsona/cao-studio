@@ -4,7 +4,9 @@
  * de leur premier coin ; une autre pièce va jusqu'à son plan et en prend la pente (features/face-until.ts). Gardé :
  * une pièce reçoit une opération qui va jusqu'à la face à chaque recalcul ; un caisson ou une Répartition, une
  * liaison (`extendLinks`) que l'éditeur refait quand l'autre élément change (app/extend-follow.ts). Ou de combien on
- * le tape (extendBy) : la face avance (ou recule) d'autant, sans autre élément. Pur.
+ * le tape (extendBy) : la face avance (ou recule) d'autant, sans autre élément. Une pièce seule peut aussi avancer selon
+ * une direction choisie (un axe X, Y ou Z, ou droit vers la face d'arrivée) au lieu de la perpendiculaire à sa face ; son
+ * bout prend toujours la pente de la face d'arrivée. Pur.
  */
 import { extendable, extendElement } from "./extend-element";
 import { bodyLabel, bodyOrigin, latestBody, uniqueId, uniqueName } from "./operations";
@@ -39,6 +41,16 @@ export function travelTo(points: readonly Vec3[], n: Vec3, to: { point: Vec3; no
   return { min: Math.min(...t), max: Math.max(...t), parallel: Math.abs(along) > PARALLEL };
 }
 
+/** The way a piece's face goes: `dir` turned to leave the face outward, or its normal; a string: along the face. */
+export function wayOf(from: Pick<FacePlane, "normal">, dir?: Vec3): Vec3 | string {
+  const n = unit(from.normal);
+  if (!dir) return n;
+  const d = unit(dir);
+  const along = dot(d, n);
+  if (Math.abs(along) < GRAZING) return "cette direction longe la face : elle ne la prolonge pas.";
+  return (along < 0 ? [-d[0], -d[1], -d[2]] : d).map((v) => v || 0) as Vec3;
+}
+
 /** How far the face of a box element goes: to the plane when parallel, until its first corner touches it when slanted. */
 export function reachBy(from: FacePlane, to: { point: Vec3; normal: Vec3 }): { by: number; slanted: boolean } | string {
   const n = unit(from.normal);
@@ -68,7 +80,7 @@ export interface Extended {
  * `refs` their persistent references), kept on it when `follow`; or why it cannot be. `piece`: the piece alone, as any
  * other piece, the cabinet or Répartition it is part of staying as it is.
  */
-export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean, piece = false): Extended | string {
+export function extendTo(doc: CadDocument, fromBody: string, toBody: string, from: FacePlane, to: FacePlane, refs: { from?: FaceRef; to?: FaceRef }, follow: boolean, piece = false, dir?: Vec3): Extended | string {
   // `piece`: only the piece clicked (a shelf, a cloison of a cabinet or a Répartition), not the whole element.
   const owner = piece ? null : extendable(doc, fromBody);
   const reach = reachBy(from, to);
@@ -79,13 +91,16 @@ export function extendTo(doc: CadDocument, fromBody: string, toBody: string, fro
   if (!owner) {
     // A piece: its face pulled, up to the face (and its slope) when kept or slanted.
     if (!refs.from) return "Cette face ne peut pas être prolongée.";
-    const exact = travelTo([from.point, ...from.points], unit(from.normal), to);
+    const way = wayOf(from, dir);
+    if (typeof way === "string") return `Impossible : ${way}`;
+    const exact = travelTo([from.point, ...from.points], way, to);
     if (typeof exact === "string") return `Impossible : ${exact}`;
-    const by = Math.round((exact.parallel ? dot(unit(from.normal), sub(to.point, from.point)) : exact.min >= 0 ? exact.max : exact.min) * 10) / 10;
+    const by = Math.round((exact.parallel && !dir ? dot(way, sub(to.point, from.point)) : exact.min >= 0 ? exact.max : exact.min) * 10) / 10;
     if (Math.abs(by) < 0.1) return "Ces deux faces sont déjà dans le même plan.";
-    const keep = (follow || reach.slanted) && refs.to;
+    // A direction chosen: the end always goes to the face (its slope), wherever the way meets it.
+    const keep = (follow || reach.slanted || !!dir) && refs.to;
     const id = uniqueId(doc, "ex");
-    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, by > 0 ? "Prolongement" : "Raccourci"), faces: [refs.from], target: latestBody(doc, fromBody), distance: by, operation: by > 0 ? "join" : "cut", ...(keep ? { until: { body: latestBody(doc, toBody), face: refs.to! } } : {}) };
+    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, by > 0 ? "Prolongement" : "Raccourci"), faces: [refs.from], target: latestBody(doc, fromBody), distance: by, operation: by > 0 ? "join" : "cut", ...(dir ? { direction: way } : {}), ...(keep ? { until: { body: latestBody(doc, toBody), face: refs.to! } } : {}) };
     return { doc: { ...doc, features: [...doc.features, feature] }, by, id, message: say(by, !!keep) };
   }
   if (Math.abs(reach.by) < 0.1 && !follow) return "Ces deux faces sont déjà dans le même plan.";
@@ -106,15 +121,17 @@ export function extendTo(doc: CadDocument, fromBody: string, toBody: string, fro
  * The element of `fromBody` extended from its face by `by` mm, typed (negative: shortened); or why it cannot be.
  * `ref`: the face as the kernel describes it, for a piece alone (its face pulled). `piece`: as in extendTo.
  */
-export function extendBy(doc: CadDocument, fromBody: string, from: FacePlane, by: number, ref: FaceRef | undefined, piece = false): Extended | string {
+export function extendBy(doc: CadDocument, fromBody: string, from: FacePlane, by: number, ref: FaceRef | undefined, piece = false, dir?: Vec3): Extended | string {
   const owner = piece ? null : extendable(doc, fromBody);
   const d = Math.round(by * 10) / 10;
   if (!Number.isFinite(d) || Math.abs(d) < 0.1) return "Tapez de combien prolonger (négatif : raccourcir), ou la cote voulue.";
   const message = `« ${owner?.name ?? bodyLabel(doc, fromBody)} » ${d > 0 ? "prolongé" : "raccourci"} de ${cm(Math.abs(d))}.`;
   if (!owner) {
     if (!ref) return "Cette face ne peut pas être prolongée.";
+    const way = wayOf(from, dir);
+    if (typeof way === "string") return `Impossible : ${way}`;
     const id = uniqueId(doc, "ex");
-    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, d > 0 ? "Prolongement" : "Raccourci"), faces: [ref], target: latestBody(doc, fromBody), distance: d, operation: d > 0 ? "join" : "cut" };
+    const feature: ExtrudeFeature = { id, type: "extrude", name: uniqueName(doc, d > 0 ? "Prolongement" : "Raccourci"), faces: [ref], target: latestBody(doc, fromBody), distance: d, operation: d > 0 ? "join" : "cut", ...(dir ? { direction: way } : {}) };
     return { doc: { ...doc, features: [...doc.features, feature] }, by: d, id, message };
   }
   const made = extendElement(doc, fromBody, from, planeAt(from, d));
