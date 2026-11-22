@@ -25,6 +25,9 @@ test("coin isolé : une face d'étagère extrudée de 3 cm, jointe puis en nouve
   await corner.getByRole("button", { name: "Voir" }).click();
   const bar = page.locator("[data-zone-isolated]");
   await expect(bar).toContainText("Angle droit isolé");
+  // On one line: the bar as high as its buttons, « Tout montrer » not wrapped.
+  expect((await bar.boundingBox())!.height).toBeLessThan(40);
+  expect((await bar.getByRole("button", { name: "Tout montrer" }).boundingBox())!.height).toBeLessThan(32);
   await page.keyboard.press("Escape");
   const box = (await page.locator("canvas.cad-view").boundingBox())!;
   const at = (x: number, y: number) => [box.x + box.width * x, box.y + box.height * y] as const;

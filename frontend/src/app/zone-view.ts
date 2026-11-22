@@ -132,7 +132,7 @@ function isolate(key: string, label: string, keep: Focus["keep"], front: readonl
   if (!context) return;
   const { viewport, editor, drawSketches } = context;
   focus?.bar.remove();
-  const bar = el("div", { class: "absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-gray-200 bg-white/95 px-2 py-1 text-xs shadow dark:border-gray-700 dark:bg-gray-900/95", "data-zone-isolated": "" }, el("span", { class: "font-medium" }, more.text ?? `${label} isolé`));
+  const bar = el("div", { class: "absolute bottom-2 left-1/2 z-20 flex w-max max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 whitespace-nowrap border border-gray-200 bg-white/95 px-2 py-1 text-xs shadow dark:border-gray-700 dark:bg-gray-900/95", "data-zone-isolated": "" }, el("span", { class: "font-medium" }, more.text ?? `${label} isolé`));
   const back = el("button", { type: "button", class: "h-7 border border-gray-300 px-2 font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800" }, "Tout montrer");
   back.addEventListener("click", () => showAll());
   // The view as it is framed, with its dimensions, on a page to print or send.
