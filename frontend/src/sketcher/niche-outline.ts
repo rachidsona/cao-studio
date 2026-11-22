@@ -20,8 +20,27 @@ const TOUCH = 0.5;
 /** How far a side on the opening is drawn out before the walls cut it (mm). */
 const FAR = 1e5;
 
-/** The lines of the walls' faces square to the sketch's plane, from their meshes (each face's first triangle). */
-export function wallLines(frame: SketchFrame, meshes: readonly { vertices: ArrayLike<number>; indices: ArrayLike<number>; faceGroups: readonly { start: number; count: number }[] }[]): WallLine[] {
+/** How long the segment from `a` to `b` runs inside the box (u0, v0, u1, v1), widened by TOUCH (Liang–Barsky). */
+function lengthInside(a: Vec2, b: Vec2, [u0, v0, u1, v1]: readonly [number, number, number, number]): number {
+  let [t0, t1] = [0, 1];
+  const d: Vec2 = [b[0] - a[0], b[1] - a[1]];
+  for (const [p, q] of [[-d[0], a[0] - (u0 - TOUCH)], [d[0], u1 + TOUCH - a[0]], [-d[1], a[1] - (v0 - TOUCH)], [d[1], v1 + TOUCH - a[1]]] as const) {
+    if (Math.abs(p) < 1e-12) {
+      if (q < 0) return 0;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) t0 = Math.max(t0, t);
+    else t1 = Math.min(t1, t);
+  }
+  return t1 > t0 ? (t1 - t0) * Math.hypot(...d) : 0;
+}
+
+/**
+ * The lines of the walls' faces square to the sketch's plane, from their meshes. `box`: the opening — only faces that
+ * run along it count (not a mitre at a corner, nor the end of a board: their lines would cut across the niche).
+ */
+export function wallLines(frame: SketchFrame, meshes: readonly { vertices: ArrayLike<number>; indices: ArrayLike<number>; faceGroups: readonly { start: number; count: number }[] }[], box?: readonly [number, number, number, number]): WallLine[] {
   const dot = (a: Vec3, b: readonly number[]) => a[0] * b[0]! + a[1] * b[1]! + a[2] * b[2]!;
   const out: WallLine[] = [];
   for (const m of meshes) {
@@ -37,8 +56,20 @@ export function wallLines(frame: SketchFrame, meshes: readonly { vertices: Array
       const nu = dot(n, frame.u) / l;
       const nv = dot(n, frame.v) / l;
       const k = Math.hypot(nu, nv);
-      const rel: Vec3 = [a[0] - frame.origin[0], a[1] - frame.origin[1], a[2] - frame.origin[2]];
-      out.push({ p: [dot(rel, frame.u), dot(rel, frame.v)], n: [nu / k, nv / k] });
+      const uv = (q: Vec3): Vec2 => {
+        const rel: Vec3 = [q[0] - frame.origin[0], q[1] - frame.origin[1], q[2] - frame.origin[2]];
+        return [dot(rel, frame.u), dot(rel, frame.v)];
+      };
+      const line: WallLine = { p: uv(a), n: [nu / k, nv / k] };
+      if (box) {
+        // The face's extent along its line, in the sketch's plane.
+        const along: Vec2 = [-line.n[1], line.n[0]];
+        const ts = Array.from({ length: g.count }, (_, i) => uv(at(g.start + i))).map((q) => (q[0] - line.p[0]) * along[0] + (q[1] - line.p[1]) * along[1]);
+        const [t0, t1] = [Math.min(...ts), Math.max(...ts)];
+        const end = (t: number): Vec2 => [line.p[0] + along[0] * t, line.p[1] + along[1] * t];
+        if (lengthInside(end(t0), end(t1), box) < 1) continue;
+      }
+      out.push(line);
     }
   }
   return out;

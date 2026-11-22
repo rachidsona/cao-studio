@@ -96,9 +96,9 @@ export class SketchDisplay {
       visible.map((f) => ({
         id: f.id,
         frame: frameOf(f),
-        curves: [...(f.host ? linesBetweenWalls(sketchCurves(f), f.host.box, wallLines(frameOf(f), walls(f))) : sketchCurves(f)), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
+        curves: [...(f.host ? linesBetweenWalls(sketchCurves(f), f.host.box, wallLines(frameOf(f), walls(f), f.host.box)) : sketchCurves(f)), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
         points: sketchPoints(f),
-        regions: f.host ? regionsBetweenWalls(sketchRegions(f), f.host.box, wallLines(frameOf(f), walls(f))) : sketchRegions(f),
+        regions: f.host ? regionsBetweenWalls(sketchRegions(f), f.host.box, wallLines(frameOf(f), walls(f), f.host.box)) : sketchRegions(f),
         selected: f.id === selected,
       })),
     );

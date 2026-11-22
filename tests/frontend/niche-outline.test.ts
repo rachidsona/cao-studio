@@ -1,6 +1,6 @@
 /** La niche d'un corps aménagé suit ses parois, même en biais. */
 import { describe, expect, it } from "vitest";
-import { linesBetweenWalls, nicheOutline, regionsBetweenWalls, type WallLine } from "../../frontend/src/sketcher/niche-outline";
+import { linesBetweenWalls, nicheOutline, regionsBetweenWalls, wallLines, type WallLine } from "../../frontend/src/sketcher/niche-outline";
 
 const opening: [number, number, number, number] = [18, 18, 582, 382];
 /** Inner faces of a frame: its left one leaning (u from 18 at the bottom to 68 at the top), the others square. */
@@ -48,5 +48,16 @@ describe("la forme d'une niche entre les parois", () => {
     const filled = regionsBetweenWalls([ring, niche], opening, walls);
     expect(filled).toHaveLength(1);
     expect(round(filled[0]!.outer)).toEqual([[18, 18], [68, 382], [582, 18], [582, 382]]);
+  });
+
+  it("seules comptent les faces qui longent l'ouverture : pas l'onglet d'un coin, dont la ligne couperait la niche", () => {
+    const frame = { origin: [0, 0, 0] as [number, number, number], u: [1, 0, 0] as [number, number, number], v: [0, 1, 0] as [number, number, number], normal: [0, 0, 1] as [number, number, number] };
+    /** A face square to the plane, from (a) to (b) in the plane, 100 deep: two triangles. */
+    const face = (a: [number, number], b: [number, number]) => [a[0], a[1], 0, b[0], b[1], 0, b[0], b[1], 100, a[0], a[1], 100];
+    const mesh = { vertices: [...face([18, 18], [0, 0]), ...face([18, 18], [18, 382])], indices: [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7], faceGroups: [{ start: 0, count: 6 }, { start: 6, count: 6 }] };
+    expect(wallLines(frame, [mesh])).toHaveLength(2);
+    const kept = wallLines(frame, [mesh], opening);
+    expect(kept).toHaveLength(1);
+    expect(Math.abs(kept[0]!.n[0])).toBeCloseTo(1, 6);
   });
 });
