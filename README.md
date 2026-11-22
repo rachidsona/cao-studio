@@ -3148,8 +3148,8 @@ opération existante.
   **Penderie** sur cette zone, isolée de face : on clique la niche à équiper, sans chercher l'outil dans le ruban.
   Cliquer l'esquisse « Plan du dressing », dans le navigateur ou la vue, rouvre l'outil sur ce plan
   (`document/plan-layout.ts`, `app/dressing/plan-layout-tool.ts`).
-  Dans son panneau, chaque zone est une **carte pliable** (un clic sur son titre, pas sur ses boutons) : son nom et sa
-  longueur, « Voir » et « Modifier », et dessous ses outils (Module, Étagères, Cloisons, Tiroirs, Portes, Penderie, et **Fond** : un clic pose un fond de 8 mm derrière tout le mur, un autre le retire — `document/partition-back.ts`) en une
+  Dans son panneau, chaque zone est une **carte pliable** (un clic sur son titre, pas sur ses boutons) : son nom (dans
+  la couleur d'accent de la palette, comme les titres des cartes) et sa longueur, « Voir » et « Modifier », et dessous ses outils (Module, Étagères, Cloisons, Tiroirs, Portes, Penderie, et **Fond** : un clic pose un fond de 8 mm derrière tout le mur, un autre le retire — `document/partition-back.ts`) en une
   rangée d'icônes nommées ; Portes coulissantes, Surmeubles, Mes murs et Penderies escamotables sont aussi des cartes
   pliables. **Surmeubles** (`app/dressing/plan-top-panel.ts`, `withTopUnitsSet` de `document/plan-layout.ts`) : leur
   hauteur (20 à 100 cm) et leurs « Portes » (battantes, relevables ou sans), puis « Poser les surmeubles » — au-dessus de chaque zone faite, une

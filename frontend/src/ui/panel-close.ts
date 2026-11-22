@@ -58,7 +58,7 @@ export const rememberCard = (title: string, open: boolean) => {
  * what it holds folded by its title (its buttons do not fold it), as kept; one open at a time.
  */
 export function zoneCard(key: string, label: string, length: string, buttons: (HTMLElement | null)[], inside: HTMLElement | null, mark: Record<string, string>): HTMLElement {
-  const head = el("summary", { class: "flex cursor-pointer list-none items-center justify-between gap-1.5 [&::-webkit-details-marker]:hidden" }, el("span", { class: "inline-block w-3 shrink-0 text-3xs text-gray-400 transition-transform group-open/zone:rotate-90", "aria-hidden": "true" }, inside ? "▶" : ""), el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold" }, label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${length}`)), ...buttons);
+  const head = el("summary", { class: "flex cursor-pointer list-none items-center justify-between gap-1.5 [&::-webkit-details-marker]:hidden" }, el("span", { class: "inline-block w-3 shrink-0 text-3xs text-gray-400 transition-transform group-open/zone:rotate-90", "aria-hidden": "true" }, inside ? "▶" : ""), el("span", { class: "min-w-0 flex-1 truncate" }, el("span", { class: "font-semibold text-sky-700 dark:text-sky-300", "data-zone-title": "" }, label), el("span", { class: "text-2xs text-gray-500 dark:text-gray-400" }, ` · ${length}`)), ...buttons);
   head.addEventListener("click", (event) => (event.target as Element).closest("button") && event.preventDefault());
   const card = el("details", { class: "group/zone space-y-1.5", "data-zone-card": "", ...(foldedCards().has(key) ? {} : { open: "" }) }, head, inside);
   card.addEventListener("toggle", () => rememberCard(key, card.open));
