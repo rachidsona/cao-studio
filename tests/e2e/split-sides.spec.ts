@@ -58,6 +58,13 @@ test("un cadre de 60 × 40 cm, ses côtés de 1,8 cm, devient quatre panneaux, e
   await tool.getByRole("combobox", { name: "Joints" }).selectOption("butt:boards");
   await expect.poll(async () => (await shell()) as unknown, { timeout: 30_000 }).toMatchObject({ joint: "butt", pass: "boards" });
   await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+  // Each end its own way: the top over the sides, then the bottom mitred.
+  await tool.getByRole("combobox", { name: "Joints" }).selectOption("mixed");
+  await expect.poll(async () => (await shell()) as unknown, { timeout: 30_000 }).toMatchObject({ joint: "butt", corners: { top: "boards", bottom: "sides" } });
+  await tool.getByRole("combobox", { name: "En bas (dessous et côtés)" }).selectOption("miter");
+  await expect.poll(async () => (await shell()) as unknown, { timeout: 30_000 }).toMatchObject({ corners: { top: "boards", bottom: "miter" } });
+  await expect(status).not.toContainText("erreur", { timeout: 30_000 });
+  await expect(tree.getByText("côté 4", { exact: true }).first()).toBeVisible();
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(800);

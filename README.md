@@ -2400,7 +2400,11 @@ opération existante.
   « les côtés passent » ou « le dessus et le dessous passent » suivis, bout à bout ; **en onglet**, un cadre plat (une
   façade à cadre en U, un cadre de porte) a chaque angle partagé sur sa diagonale, du coin extérieur au coin
   intérieur, la moitié à chaque pièce — à 45° pour deux pièces de même largeur (`features/board-miter.ts`) —, un
-  caisson restant bout à bout. Le repère des panneaux est lu sur le corps (sa plus grande face, puis la plus grande
+  caisson restant bout à bout. **Au choix en haut et en bas** (`corners` de l'étape) : les coins du haut (le dessus et
+  les deux côtés) et ceux du bas (le dessous et les deux côtés) chacun en onglet, les côtés passant, ou le dessus
+  (le dessous) passant sur (sous) les côtés — un cadre coin par coin, au-dessus ou au-dessous de son milieu ; des
+  panneaux joints lus côtés passants, puis le dessus ou le dessous allongé au bout choisi (`lyingPass`), l'onglet
+  d'un seul bout pour un cadre plat. Le repère des panneaux est lu sur le corps (sa plus grande face, puis la plus grande
   d'équerre) : un
   caisson **tourné de biais** se sépare comme un droit ; puis chaque panneau est recoupé par le corps, ses **perçages**,
   chanfreins, encoches et arrondis lui restent (`features/board-split-shape.ts`). **Corps plein** : il est d'abord vidé à l'« Épaisseur des

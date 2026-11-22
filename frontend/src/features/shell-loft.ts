@@ -212,10 +212,10 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
     const joint = feature.joint ?? "miter";
     // A body of square panels joined into one (a caisson, a U, a shelf unit): a body per panel (board-split.ts), when
     // it is not a frame of one profile (its sides would not be straight along its axis).
-    const boards = () => splitBoards(target, feature.pass ?? "largest", joint === "miter");
+    const boards = () => splitBoards(target, feature.pass ?? "largest", joint === "miter", feature.corners);
     if (isFrame(target)) {
       try {
-        return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass) };
+        return { kind: "solids", shapes: splitRing(feature.name, target, joint, feature.pass, feature.corners) };
       } catch (error) {
         const panels = error instanceof GeometryError ? boards() : null;
         if (panels) return { kind: "solids", shapes: panels };
@@ -229,7 +229,7 @@ export function buildShell(feature: ShellFeature, lookup: OutputLookup): SolidOu
     if (!ends) throw new GeometryError(feature.open ? `${feature.name} : la face choisie n'a pas de face plane en face d'elle à ouvrir aussi ; cliquez-en une autre.` : `${feature.name} : ce corps n'a pas deux faces planes qui se font face à ouvrir.`);
     const frame = hollowed(feature.name, target, ends, feature.thickness);
     try {
-      return { kind: "solids", shapes: splitRing(feature.name, frame, joint, feature.pass) };
+      return { kind: "solids", shapes: splitRing(feature.name, frame, joint, feature.pass, feature.corners) };
     } finally {
       frame.delete();
     }

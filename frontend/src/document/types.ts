@@ -458,6 +458,9 @@ export interface MoveFeature extends FeatureBase {
   translate: Vec3;
 }
 
+/** A corner of « Séparer les côtés »: mitred, the upright side passing, or the board across (the top, the bottom). */
+export type SideCorner = "miter" | "sides" | "boards";
+
 /**
  * Boards made from a skeleton sketch (furniture design): every line of the
  * sketch becomes a board of the given thickness, extruded by the depth along
@@ -699,6 +702,11 @@ export interface ShellFeature extends FeatureBase {
    * the bottom, or (missing) the longest ones.
    */
   pass?: "sides" | "boards";
+  /**
+   * « Séparer les côtés », its top corners (the top meeting the sides) and its bottom ones each their own way: mitred,
+   * the sides passing, or the top (the bottom) passing. Overrides `joint` and `pass`.
+   */
+  corners?: { top: SideCorner; bottom: SideCorner };
   /**
    * « Séparer les côtés » of a solid body: the way it is emptied through — the normal of a face clicked, opened with
    * the one facing it. Missing: its top and bottom (else its two largest faces facing each other).

@@ -25,6 +25,25 @@ function ring(outer: P2[], inner: P2[], h: number): Shape3D {
 }
 
 describe("séparer les côtés d'un cadre", () => {
+  it("en haut et en bas au choix : le dessus passe et le dessous entre les côtés, ou un bout en onglet", () => {
+    const outer: P2[] = [[0, 0], [600, 0], [600, 400], [0, 400]];
+    const inner: P2[] = [[18, 18], [582, 18], [582, 382], [18, 382]];
+    const ringArea = area(outer) - area(inner);
+    const walls = (top: "miter" | "sides" | "boards", bottom: "miter" | "sides" | "boards") => ringWalls(outer, inner, "butt", 0, { up: [0, 1], corners: { top, bottom } }) as P2[][];
+    // The top over the sides (600 × 18), the bottom between them (564 × 18), the sides up to the top (382 × 18).
+    const over = walls("boards", "sides");
+    expect(over.map(area).map(Math.round).sort((a, b) => a - b)).toEqual([6876, 6876, 10152, 10800]);
+    // The bottom under the sides, the top between them: the same, upside down.
+    expect(walls("sides", "boards").map(area).map(Math.round).sort((a, b) => a - b)).toEqual([6876, 6876, 10152, 10800]);
+    // Mitred at the top, the sides passing at the bottom: nothing lost, nothing shared.
+    for (const [top, bottom] of [["miter", "sides"], ["miter", "boards"], ["sides", "miter"], ["boards", "miter"]] as const) {
+      expect(walls(top, bottom).reduce((s, w) => s + area(w), 0)).toBeCloseTo(ringArea, 6);
+    }
+    // All mitred, all the sides passing: as « En onglet », as « les côtés passent ».
+    expect(walls("miter", "miter").map(area).map(Math.round).sort()).toEqual((ringWalls(outer, inner, "miter") as P2[][]).map(area).map(Math.round).sort());
+    expect(walls("sides", "sides").map(area).map(Math.round).sort((a, b) => a - b)).toEqual([7200, 7200, 10152, 10152]);
+  });
+
   it("en onglet, le cadre se partage sans reste ni recouvrement ; bout à bout, les grands côtés traversent", () => {
     const outer: P2[] = [[0, 0], [600, 0], [600, 400], [0, 400]];
     const inner: P2[] = [[18, 18], [582, 18], [582, 382], [18, 382]];

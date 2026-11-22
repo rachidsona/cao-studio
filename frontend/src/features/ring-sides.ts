@@ -11,6 +11,7 @@
  */
 import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Face, type Shape3D } from "replicad";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
+import type { SideCorner } from "../document/types";
 import { followWalls } from "./ring-follow";
 
 export type P2 = [number, number];
@@ -73,7 +74,7 @@ type Split = { at: P2; on: "corner" | "previous" | "next"; seg: number };
  * string: why the ring cannot be split so. `widen`: each wall pushed out of the ring by that much — along its joints
  * at the ends, square to its faces elsewhere —, so a boolean meets none of the body's faces edge-on.
  */
-export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | readonly P2[], joint: "miter" | "butt", widen = 0, pass?: { mode: "sides" | "boards"; up: P2 }): P2[][] | string {
+export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | readonly P2[], joint: "miter" | "butt", widen = 0, pass?: { mode?: "sides" | "boards"; up: P2; corners?: { top: SideCorner; bottom: SideCorner } }): P2[][] | string {
   const outer = ccw("corners" in outerIn ? outerIn : polygon(outerIn));
   const inner0 = ccw("corners" in innerIn ? innerIn : polygon(innerIn));
   const n = outer.corners.length;
@@ -108,17 +109,29 @@ export function ringWalls(outerIn: Outline | readonly P2[], innerIn: Outline | r
     const [t1, t2] = [unit(sub(a[a.length - 1]!, a[a.length - 2]!)), unit(sub(b[1]!, b[0]!))];
     return dot(t1, t2) < Math.cos((5 * Math.PI) / 180);
   };
+  // Each corner its own way (the top's and the bottom's apart): the side that runs through there, if any.
+  const centre: P2 = [outer.corners.reduce((s, p) => s + p[0], 0) / n, outer.corners.reduce((s, p) => s + p[1], 0) / n];
+  const passing = (k: number): "before" | "after" | null => {
+    const before = (k + n - 1) % n;
+    if (!pass?.corners) return through.has(before) && !through.has(k) ? "before" : through.has(k) && !through.has(before) ? "after" : null;
+    const rule = dot(sub(O(k), centre), pass.up) > 0 ? pass.corners.top : pass.corners.bottom;
+    const [b, a] = [upright(side(outer, before)), upright(side(outer, k))];
+    // Mitred, or two sides alike (both upright, both across): on the corner.
+    if (rule === "miter" || b === a) return null;
+    return (rule === "sides") === b ? "before" : "after";
+  };
   const splits: Split[] = Array.from({ length: n }, (_, k): Split => {
     const before = (k + n - 1) % n;
     // Where the sides meet tangent, nothing butts: the joint goes straight across.
     if (!sharp(k)) return { at: O(k), on: "corner", seg: 0 };
+    const passes = passing(k);
     // The side before runs through: the next one stops against its inside face (its tangent at the inner corner).
-    if (through.has(before) && !through.has(k)) {
+    if (passes === "before") {
       const sd = side(inner, before);
       const at = hit(I(k), unit(sub(sd[sd.length - 1]!, sd[sd.length - 2]!)), side(outer, k));
       if (at) return { at: at.at, on: "next", seg: at.seg };
     }
-    if (through.has(k) && !through.has(before)) {
+    if (passes === "after") {
       const sd = side(inner, k);
       const at = hit(I(k), unit(sub(sd[0]!, sd[1]!)), side(outer, before));
       if (at) return { at: at.at, on: "previous", seg: at.seg };
@@ -218,7 +231,7 @@ function outlines(face: Face): P3[][][] | null {
 }
 
 /** The body's sides, each a solid: the ring read on its top face, cut into its sides through its whole height. */
-export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt", pass?: "sides" | "boards"): Shape3D[] {
+export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt", pass?: "sides" | "boards", corners?: { top: SideCorner; bottom: SideCorner }): Shape3D[] {
   // The top: the largest flat face with a hole, and the one facing the other way at the bottom.
   const caps = target.faces
     .filter((f) => f.geomType === "PLANE" && f.wires.length === 2)
@@ -252,7 +265,7 @@ export function splitRing(name: string, target: Shape3D, joint: "miter" | "butt"
   // Up, as the frame stands: the world's up, or for a frame lying flat (its axis up) the depth (y), as seen from above.
   const up3: P3 = Math.abs(n[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
   const up: P2 = [up3[0] * u[0] + up3[1] * u[1] + up3[2] * u[2], up3[0] * v[0] + up3[1] * v[1] + up3[2] * v[2]];
-  const walls = ringWalls(outer, inner, joint, 1, pass ? { mode: pass, up } : undefined);
+  const walls = ringWalls(outer, inner, joint, 1, pass || corners ? { mode: pass, up, corners } : undefined);
   if (typeof walls === "string") throw new GeometryError(`${name} : ${walls}`);
   const shapes: Shape3D[] = [];
   try {

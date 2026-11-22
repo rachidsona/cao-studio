@@ -12,22 +12,27 @@
  * étape chacun, en une seule annulation.
  */
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
-import { featureOfBody, type ShellFeature, type Vec3 } from "../document/types";
+import { featureOfBody, type ShellFeature, type SideCorner, type Vec3 } from "../document/types";
 import { freshFeatureIds } from "./curic-common";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 /** The joints, and for butted ones which pass at the corners (as a Répartition's « Qui passe aux angles »). */
-type Joint = "miter" | "butt" | "butt:sides" | "butt:boards";
+type Joint = "miter" | "butt" | "butt:sides" | "butt:boards" | "mixed";
 const JOINTS: [Joint, string][] = [
   ["miter", "En onglet (tout angle)"],
   ["butt:sides", "Bout à bout : les côtés passent"],
   ["butt:boards", "Bout à bout : le dessus et le dessous passent"],
   ["butt", "Bout à bout : les plus longs passent"],
+  ["mixed", "Au choix en haut et en bas"],
 ];
-const jointOf = (f: { joint?: ShellFeature["joint"]; pass?: ShellFeature["pass"] }): Joint => (f.joint === "butt" ? (f.pass ? `butt:${f.pass}` : "butt") : "miter");
-/** Kept for the session: the joint last chosen. */
+/** « Au choix en haut et en bas »: the top's corners (the top and the two sides), the bottom's (the bottom and the two sides). */
+const TOP: [SideCorner, string][] = [["miter", "En onglet"], ["sides", "Les côtés passent"], ["boards", "Le dessus passe sur les côtés"]];
+const BOTTOM: [SideCorner, string][] = [["miter", "En onglet"], ["sides", "Les côtés passent"], ["boards", "Le dessous passe sous les côtés"]];
+const jointOf = (f: { joint?: ShellFeature["joint"]; pass?: ShellFeature["pass"]; corners?: ShellFeature["corners"] }): Joint => (f.corners ? "mixed" : f.joint === "butt" ? (f.pass ? `butt:${f.pass}` : "butt") : "miter");
+/** Kept for the session: the joint last chosen, and the two ends' when chosen apart. */
 let lastJoint: Joint = "miter";
+let lastCorners: { top: SideCorner; bottom: SideCorner } = { top: "boards", bottom: "sides" };
 let lastThickness = 18;
 /** « Séparer seulement » (the body cut as it is) or « Vider et séparer » (a solid body emptied first). */
 type Mode = "split" | "hollow";
@@ -43,6 +48,7 @@ export class SplitSidesTool extends PanelTool {
   /** The bodies to split, the first one this step's own, the others each a step made with it. */
   private targets: string[];
   private joint: Joint;
+  private corners: { top: SideCorner; bottom: SideCorner };
   /** The sides' thickness when the body is solid (it is emptied first); unused for a body already hollow. */
   private thickness: number;
   /** The way a solid body is opened: the normal of a face of it clicked (with the one facing it); null: top and bottom. */
@@ -56,14 +62,16 @@ export class SplitSidesTool extends PanelTool {
     this.name = editing?.name ?? uniqueName(doc, "Côtés séparés");
     this.targets = editing ? [editing.target] : [...new Set(bodies)];
     this.joint = editing ? jointOf(editing) : lastJoint;
+    this.corners = { ...(editing?.corners ?? lastCorners) };
     this.thickness = editing?.thickness || lastThickness;
     this.open = editing?.open ?? null;
     this.mode = editing ? (editing.thickness === 0 ? "split" : "hollow") : lastMode;
   }
 
   private split(id: string, name: string, target: string): ShellFeature {
-    const [joint, pass] = this.joint.split(":") as ["miter" | "butt", ("sides" | "boards")?];
-    return { id, type: "shell", name, target, faces: [], thickness: this.mode === "split" ? 0 : this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
+    const mixed = this.joint === "mixed";
+    const [joint, pass] = (mixed ? ["butt"] : this.joint.split(":")) as ["miter" | "butt", ("sides" | "boards")?];
+    return { id, type: "shell", name, target, faces: [], thickness: this.mode === "split" ? 0 : this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(mixed ? { corners: { ...this.corners } } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
   }
 
   protected feature(): ShellFeature | string {
@@ -108,6 +116,14 @@ export class SplitSidesTool extends PanelTool {
         this.render();
         this.schedulePreview();
       }),
+      ...(this.joint !== "mixed" ? [] : (["top", "bottom"] as const).map((end) =>
+        this.selectRow(end === "top" ? "En haut (dessus et côtés)" : "En bas (dessous et côtés)", this.corners[end], end === "top" ? TOP : BOTTOM, (v) => {
+          this.corners[end] = v as SideCorner;
+          lastCorners = { ...this.corners };
+          this.render();
+          this.schedulePreview();
+        }),
+      )),
       this.mode === "split" ? null : this.info(this.open ? "Ouvert par la face cliquée et celle d'en face. Cliquez une autre face du corps pour l'ouvrir ailleurs." : "Ouvert dessus et dessous — ou, pour un panneau trop mince pour cela, par ses deux grandes faces. Pour l'ouvrir ailleurs, cliquez la face à vider sur le corps."),
       this.open && this.mode === "hollow" ? this.resetOpen() : null,
       this.info(this.mode === "split" ? "Le corps est coupé tel qu'il est, sans être vidé : un cadre en ses côtés, un caisson d'un seul corps en ses panneaux, une façade à cadre en U en ses deux montants et sa traverse (sa rainure de verre leur reste)." : "Chaque côté devient un corps : 4 pour un cadre, 3 pour un triangle, autant que de côtés pour un polygone, un coin arrondi le sien. Un corps plein est vidé à l'épaisseur des côtés ; un corps déjà creux garde ses côtés tels qu'ils sont."),

@@ -178,3 +178,34 @@ export function arePanels(boxes: readonly Box[], thickest = 100, sticks = false)
     return sizes[0]! <= thickest && (sizes[0]! * 2 <= sizes[1]! || (sticks && sizes[1]! * 2 <= sizes[2]!));
   });
 }
+
+/**
+ * At the top (or the bottom) of the body, the lying boards there (the top, the bottom) run over (under) the upright
+ * ones they meet end to end, those stopping against them: the upright gives its end to the board. Pure; new boxes.
+ */
+export function lyingPass(boxes: readonly Box[], vertical: Axis, end: "top" | "bottom"): Box[] {
+  const out = boxes.map(([lo, hi]): Box => [[...lo], [...hi]]);
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-3;
+  const thin = ([lo, hi]: Box) => ([0, 1, 2] as const).reduce((best, k) => (hi[k]! - lo[k]! < hi[best]! - lo[best]! ? k : best), 0 as Axis);
+  const top = end === "top";
+  const tip = (b: Box) => (top ? b[1][vertical]! : b[0][vertical]!);
+  const extreme = top ? Math.max(...out.map(tip)) : Math.min(...out.map(tip));
+  for (const board of out) {
+    if (thin(board) !== vertical || !near(tip(board), extreme)) continue;
+    for (const side of out) {
+      const k = thin(side);
+      if (side === board || k === vertical || !near(tip(side), extreme)) continue;
+      // The upright goes past the board's inner face, and stands square against its end, as deep as it.
+      const j = ([0, 1, 2] as const).find((a) => a !== k && a !== vertical)!;
+      if (!(top ? side[0][vertical]! < board[0][vertical]! - 1e-3 : side[1][vertical]! > board[1][vertical]! + 1e-3)) continue;
+      if (!near(side[0][j]!, board[0][j]!) || !near(side[1][j]!, board[1][j]!)) continue;
+      const before = near(side[1][k]!, board[0][k]!);
+      if (!before && !near(side[0][k]!, board[1][k]!)) continue;
+      if (top) side[1][vertical] = board[0][vertical]!;
+      else side[0][vertical] = board[1][vertical]!;
+      if (before) board[0][k] = side[0][k]!;
+      else board[1][k] = side[1][k]!;
+    }
+  }
+  return out;
+}

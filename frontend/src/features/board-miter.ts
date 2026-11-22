@@ -36,8 +36,11 @@ function insert(outline: P2[], a: P2, b: P2, o: P2): boolean {
   return false;
 }
 
-/** The outlines of the pieces mitred at their corners; null: not a flat frame, or no corner to mitre. */
-export function miterOutlines(boxes: readonly Box[]): MiterOutlines | null {
+/**
+ * The outlines of the pieces mitred at their corners; null: not a flat frame, or no corner to mitre. `keep`: the
+ * corners mitred, by their outer point and the frame's plane (the others stay as the boxes are).
+ */
+export function miterOutlines(boxes: readonly Box[], keep: (outer: P2, plane: [Axis, Axis]) => boolean = () => true): MiterOutlines | null {
   const thin = ([lo, hi]: Box) => ([0, 1, 2] as const).reduce((best, k) => (hi[k]! - lo[k]! < hi[best]! - lo[best]! ? k : best), 0 as Axis);
   const axis = thin(boxes[0]!);
   const [t0, t1] = [boxes[0]![0][axis]!, boxes[0]![1][axis]!];
@@ -62,7 +65,7 @@ export function miterOutlines(boxes: readonly Box[]): MiterOutlines | null {
         const far = s < 0 ? B.lo[k] : B.hi[k];
         const [end, inner] = low ? [A.lo[m], A.hi[m]] : [A.hi[m], A.lo[m]];
         const at = (kv: number, mv: number): P2 => (k === 0 ? [kv, mv] : [mv, kv]);
-        corners.push({ a, b, i: at(edge, inner), p: at(edge, end), o: at(far, end), q: at(far, inner), m, low });
+        if (keep(at(far, end), plane)) corners.push({ a, b, i: at(edge, inner), p: at(edge, end), o: at(far, end), q: at(far, inner), m, low });
       }
     }
   }));

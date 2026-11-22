@@ -249,7 +249,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkRefs(feature.faces, "faces", where, errors);
       checkNumbers(feature, ["thickness"], where, errors);
       if (feature.sides !== undefined && !["joined", "separate"].includes(feature.sides as string)) errors.push(`${where} : côtés du corps vidé invalides.`);
-      if ((feature.joint !== undefined && !["miter", "butt"].includes(feature.joint as string)) || (feature.frame !== undefined && typeof feature.frame !== "boolean")) errors.push(`${where} : assemblage des côtés (ou « cadre ») invalide.`);
+      if ((feature.joint !== undefined && !["miter", "butt"].includes(feature.joint as string)) || (feature.frame !== undefined && typeof feature.frame !== "boolean") || (feature.corners !== undefined && !(isObject(feature.corners) && ["top", "bottom"].every((k) => ["miter", "sides", "boards"].includes((feature.corners as Record<string, unknown>)[k] as string))))) errors.push(`${where} : assemblage des côtés (ou « cadre ») invalide.`);
       if (feature.back !== undefined) {
         const back = feature.back;
         if (!isObject(back) || !["inset", "applied"].includes(back.mount as string) || !isFiniteNumber(back.thickness) || !((back.thickness as number) > 0)) errors.push(`${where} : fond invalide (pose « inset » ou « applied », épaisseur positive).`);

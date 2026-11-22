@@ -1,6 +1,7 @@
 /** « Séparer les côtés » d'un caisson fait de panneaux joints en un seul corps : un corps par panneau. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { boardBoxes, type AxisFace } from "../../frontend/src/features/board-split";
+import { miterOutlines } from "../../frontend/src/features/board-miter";
+import { boardBoxes, lyingPass, type AxisFace, type Box } from "../../frontend/src/features/board-split";
 import { setupKernel } from "./kernel-setup";
 
 beforeAll(() => setupKernel(), 120_000);
@@ -57,6 +58,64 @@ describe("un caisson d'un seul corps séparé en panneaux", () => {
     expect(status?.state).toBe("ok");
     expect(sizes).toContain("1200×580×18");
     expect(sizes).toHaveLength(7);
+  }, 120_000);
+});
+
+describe("en haut et en bas au choix", () => {
+  // A box of four boards: two sides to the floor, the top and the bottom between them, 400 deep.
+  const BOX: Box[] = [[[0, 0, 0], [18, 400, 800]], [[582, 0, 0], [600, 400, 800]], [[18, 0, 0], [582, 400, 18]], [[18, 0, 782], [582, 400, 800]]];
+  const size = ([lo, hi]: Box) => [0, 1, 2].map((a) => Math.round(hi[a]! - lo[a]!)).join("×");
+
+  it("le dessus passe sur les côtés, le dessous reste entre eux (et l'inverse)", () => {
+    expect(lyingPass(BOX, 2, "top").map(size).sort()).toEqual(["18×400×782", "18×400×782", "564×400×18", "600×400×18"]);
+    const under = lyingPass(BOX, 2, "bottom");
+    expect(under.map(size).sort()).toEqual(["18×400×782", "18×400×782", "564×400×18", "600×400×18"]);
+    expect(under[0]![0][2]).toBe(18); // the sides stand on the bottom
+    expect(BOX[0]![1][2]).toBe(800); // the boxes given are left as they are
+  });
+
+  it("un cadre plat (une façade) : l'onglet seulement aux coins du haut, ceux du bas restent bout à bout", () => {
+    // A door frame 20 thick (along y): two stiles, a top rail and a bottom rail between them, 60 wide.
+    const frame: Box[] = [[[0, 0, 0], [60, 20, 700]], [[440, 0, 0], [500, 20, 700]], [[60, 0, 640], [440, 20, 700]], [[60, 0, 0], [440, 20, 60]]];
+    const top = miterOutlines(frame, (o, plane) => o[plane.indexOf(2)]! > 350)!;
+    // Each stile: 5 points (mitred at the top, square at the bottom); the top rail mitred at both ends, the bottom one not.
+    expect(top.outlines.map((o) => o.length)).toEqual([5, 5, 6, 4]);
+  });
+
+  it("noyau : un caisson d'un seul corps, le dessus passant et le dessous entre les côtés", async () => {
+    const { Recomputer } = await import("../../frontend/src/history/recompute");
+    const { createReferencePlate } = await import("../../frontend/src/document/types");
+    const doc = { ...createReferencePlate(), features: [
+      ...board("1", [0, 0, 18, 400], 0, 800),
+      ...board("2", [582, 0, 600, 400], 0, 800),
+      ...board("3", [18, 0, 582, 400], 0, 18),
+      ...board("4", [18, 0, 582, 400], 782, 18),
+      { id: "cb1", type: "combine", name: "Caisson", target: "ex1", tools: ["ex2", "ex3", "ex4"], operation: "join" },
+      { id: "sh1", type: "shell", name: "Côtés séparés 1", target: "cb1", faces: [], thickness: 0, sides: "separate", joint: "butt", corners: { top: "boards", bottom: "sides" }, frame: true },
+    ] };
+    // Read back as it is; a corner of an unknown kind is refused.
+    const { parseDocument } = await import("../../frontend/src/document/validate");
+    expect(parseDocument(JSON.parse(JSON.stringify(doc))).features.at(-1)).toMatchObject({ corners: { top: "boards", bottom: "sides" } });
+    expect(() => parseDocument(JSON.parse(JSON.stringify(doc).replace('"top":"boards"', '"top":"dessus"')))).toThrow(/assemblage des côtés/);
+    const r = new Recomputer();
+    const made = r.recompute(doc as never);
+    const out = r.output("sh1");
+    const sizes = (out?.kind === "solids" ? out.shapes : []).map((p) => {
+      const [lo, hi] = p.boundingBox.bounds;
+      return [0, 1, 2].map((i) => Math.round(hi[i]! - lo[i]!)).join("×");
+    });
+    expect(made.statuses.find((x) => x.id === "sh1")?.state).toBe("ok");
+    // The way of square panels too (not the frame's): the top over the sides; the bottom's mitre, as « En onglet », only
+    // for a flat frame — here it stays between the sides.
+    const { splitBoards } = await import("../../frontend/src/features/board-split-shape");
+    const body = r.output("cb1");
+    const pieces = body?.kind === "solid" ? splitBoards(body.shape, "largest", false, { top: "boards", bottom: "miter" }) : null;
+    expect(pieces).toHaveLength(4);
+    const { measureVolume } = await import("replicad");
+    expect((pieces ?? []).reduce((v, p) => v + measureVolume(p), 0)).toBeCloseTo((2 * 18 * 800 + 2 * 564 * 18) * 400, -2);
+    expect((pieces ?? []).map((p) => { const [lo, hi] = p.boundingBox.bounds; return Math.round(hi[0]! - lo[0]!); }).sort((a, b) => a - b)).toEqual([18, 18, 564, 600]);
+    r.dispose();
+    expect(sizes.sort()).toEqual(["18×400×782", "18×400×782", "564×400×18", "600×400×18"]);
   }, 120_000);
 });
 

@@ -6,10 +6,12 @@
  * le corps : perçages, chanfreins, encoches et arrondis lui restent.
  */
 import { basicFaceExtrusion, makePolygon, measureArea, Vector, type Shape3D } from "replicad";
-import { arePanels, boardBoxes, hasGroove, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
+import type { SideCorner } from "../document/types";
+import { arePanels, boardBoxes, hasGroove, lyingPass, type Axis, type AxisFace, type Box, type Pass } from "./board-split";
 import { miterOutlines, type MiterOutlines } from "./board-miter";
 
 type P3 = [number, number, number];
+type P2 = [number, number];
 const dot = (a: P3, b: P3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a: P3, b: P3): P3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const vec = (v: { x: number; y: number; z: number }): P3 => [v.x, v.y, v.z];
@@ -83,7 +85,7 @@ function outlinePrism(outline: readonly [number, number][], { axis, span, plane 
 const GROOVE = 6;
 
 /** The panels of a body made of square panels, a body each; null when it is not such a body (left to the other ways). */
-export function splitBoards(target: Shape3D, pass: Pass, miter = false): Shape3D[] | null {
+export function splitBoards(target: Shape3D, pass: Pass, miter = false, corners?: { top: SideCorner; bottom: SideCorner }): Shape3D[] | null {
   const read = axisFaces(target);
   if (!read) return null;
   const { faces, frame } = read;
@@ -91,14 +93,27 @@ export function splitBoards(target: Shape3D, pass: Pass, miter = false): Shape3D
   const vertical = [0, 1, 2].reduce((best, k) => (Math.abs(frame[k]![2]) > Math.abs(frame[best]![2]) ? k : best), 0) as Axis;
   // A glazed frame's groove (a few mm) cuts it in slivers: read again over it — each panel keeps it when recut.
   const panels = (merge: number) => {
-    const found = boardBoxes(faces, pass, vertical, merge);
+    // Each end its own way: read with the sides passing, then the top (the bottom) put over (under) them there.
+    const found = boardBoxes(faces, corners ? "sides" : pass, vertical, merge);
     return typeof found === "string" || !arePanels(found, 100, merge > 0) ? null : found;
   };
-  const boxes = panels(0) ?? (hasGroove(faces, GROOVE) ? panels(GROOVE) : null);
-  if (!boxes) return null;
+  const found = panels(0) ?? (hasGroove(faces, GROOVE) ? panels(GROOVE) : null);
+  if (!found) return null;
+  const ends = ["top", "bottom"] as const;
+  const boxes = corners ? ends.reduce((b, end) => (corners[end] === "boards" ? lyingPass(b, vertical, end) : b), found) : found;
+  // Which end a corner is at: above or below the middle of the body, along the upright (or the plane's second axis).
+  const lo = Math.min(...boxes.map((b) => b[0][vertical]!));
+  const hi = Math.max(...boxes.map((b) => b[1][vertical]!));
+  const atTop = (o: P2, plane: [Axis, Axis]) => {
+    const i = plane.indexOf(vertical);
+    if (i >= 0) return o[i]! > (lo + hi) / 2;
+    const a = plane[1];
+    return o[1] > (Math.min(...boxes.map((b) => b[0][a]!)) + Math.max(...boxes.map((b) => b[1][a]!))) / 2;
+  };
+  const mitreAt = (o: P2, plane: [Axis, Axis]) => !corners || corners[atTop(o, plane) ? "top" : "bottom"] === "miter";
   const pieces: Shape3D[] = [];
-  // In mitre, a flat frame's corners shared on their diagonals.
-  const mitred = miter ? miterOutlines(boxes) : null;
+  // In mitre, a flat frame's corners shared on their diagonals (each end chosen: only there).
+  const mitred = miter || (corners && ends.some((e) => corners[e] === "miter")) ? miterOutlines(boxes, mitreAt) : null;
   for (const [n, box] of boxes.entries()) {
     const block = mitred ? outlinePrism(mitred.outlines[n]!, mitred, frame) : prism(box, frame);
     // Cut by the body: what it has of holes, chamfers and notches stays with each panel.
