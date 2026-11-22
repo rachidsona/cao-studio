@@ -12,6 +12,7 @@ import type { CadDocument, SketchFeature } from "../document/types";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves, sketchPoints, sketchRegions } from "../sketcher/polylines";
 import { linesBetweenWalls, regionsBetweenWalls, wallLines } from "../sketcher/niche-outline";
+import { leanedOutline, leanedShelves, onShelfEdge } from "../sketcher/shelf-lean-outline";
 import { latestBody } from "../document/operations";
 import { onTextFont, textOutlines } from "../sketcher/text-outline";
 import type { Viewport } from "../viewport/viewport";
@@ -96,11 +97,37 @@ export class SketchDisplay {
       visible.map((f) => ({
         id: f.id,
         frame: frameOf(f),
-        curves: [...(f.host ? linesBetweenWalls(sketchCurves(f), f.host.box, wallLines(frameOf(f), walls(f), f.host.box)) : sketchCurves(f)), ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))],
+        ...withTexts(f, f.host ? furnished(f, f.host.box, walls(f)) : { curves: sketchCurves(f), regions: sketchRegions(f) }),
         points: sketchPoints(f),
-        regions: f.host ? regionsBetweenWalls(sketchRegions(f), f.host.box, wallLines(frameOf(f), walls(f), f.host.box)) : sketchRegions(f),
         selected: f.id === selected,
       })),
     );
   }
+}
+
+type Drawn = { curves: { id: string; points: [number, number][] }[]; regions: { outer: [number, number][]; holes: [number, number][][] }[] };
+
+/** The letters of the sketch's texts drawn with its curves. */
+const withTexts = (f: SketchFeature, drawn: Drawn): Drawn => ({ ...drawn, curves: [...drawn.curves, ...(f.texts ?? []).flatMap((t) => textOutlines(t).map((points, k) => ({ id: `text:${t.id}:${k}`, points })))] });
+
+/**
+ * A body furnished's sketch as it is between its walls (sketcher/niche-outline.ts): its lines and areas cut or drawn to
+ * them, and its turned shelves drawn turned (sketcher/shelf-lean-outline.ts), as their bodies are.
+ */
+function furnished(f: SketchFeature, box: [number, number, number, number], meshes: Parameters<typeof wallLines>[1]): Drawn {
+  const frame = frameOf(f);
+  const lines = wallLines(frame, meshes, box);
+  const leaned = leanedShelves(f, frame);
+  const turned = leaned.flatMap(({ box: b, turn }) => {
+    const outline = leanedOutline(b, turn, box, lines);
+    return outline ? [outline] : [];
+  });
+  const square = (r: { outer: [number, number][] }) => leaned.some(({ box: b }) => r.outer.length === 4 && r.outer.every(([u, v]) => (Math.abs(u - b.x0) < 1e-6 || Math.abs(u - b.x1) < 1e-6) && (Math.abs(v - b.y0) < 1e-6 || Math.abs(v - b.y1) < 1e-6)));
+  return {
+    curves: [
+      ...linesBetweenWalls(sketchCurves(f).filter((c) => !onShelfEdge(c.points, leaned)), box, lines),
+      ...turned.flatMap((outline, k) => outline.map((p, i) => ({ id: `lean:${k}:${i}`, points: [p, outline[(i + 1) % outline.length]!] }))),
+    ],
+    regions: [...regionsBetweenWalls(sketchRegions(f).filter((r) => !square(r)), box, lines), ...turned.map((outer) => ({ outer, holes: [] }))],
+  };
 }
