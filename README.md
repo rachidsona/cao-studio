@@ -1517,10 +1517,11 @@ opération existante.
   rondes (flèche de défilement, points de couleur) restent rondes.
 - **Thèmes de « gestion menuiserie »** : l'interface reprend les thèmes de l'application de gestion (Atelier des
   Nobles). En sombre, la palette **Atelier** par défaut (fond bleu nuit #0B1428, accent cyan #08B8FF) ou l'une des
-  **treize palettes** : Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal
+  **quatorze palettes** : Navy Mirage, Ocean Sunset, Crimson Velvet, Amber Blaze, Crimson Braise, Royal Violet, Royal
   Charcoal, Crimson Terre, Mocha Mist (claire), **Forêt Profonde** (vert sapin, accent menthe), **Graphite Laiton**
-  (graphite, accent laiton), **Indigo Nuit** (indigo, accent pervenche) et **Chêne Sable** (claire : sable et chêne,
-  encre brun foncé, accent noyer) — chacune au moins 4,5:1 pour le texte et l'accent sur ses fonds, et pour le blanc
+  (graphite, accent laiton), **Indigo Nuit** (indigo, accent pervenche), **Chêne Sable** (claire : sable et chêne,
+  encre brun foncé, accent noyer) et **Velours rouge** (le motif de velours bordeaux lui-même en fond de la page, du
+  ruban, des colonnes et des cartes — `static/textures/themes/velours-rouge.jpg` —, accent rose) — chacune au moins 4,5:1 pour le texte et l'accent sur ses fonds, et pour le blanc
   sur ses boutons. On la choisit dans le menu **« ⋯ » → Palette**, sur des
   vignettes qui montrent son dégradé et son accent ; le choix est gardé dans le navigateur (`localStorage`
   « palette ») et posé avant le premier affichage, sur toutes les pages. Les cartes (barre d'outils, cartes du
