@@ -7,7 +7,7 @@
  */
 import { withCaissonPlaced } from "./caisson-spec";
 import { findFeature } from "./operations";
-import { consumedBodies, featureOfBody, PART_SEPARATOR, type CadDocument, type PlaneFrame, type Vec3 } from "./types";
+import { consumedBodies, featureOfBody, PART_SEPARATOR, type BodyHost, type CadDocument, type PlaneFrame, type Vec3 } from "./types";
 
 export interface BodyMesh {
   vertices: ArrayLike<number>;
@@ -107,14 +107,21 @@ export function openingOf(meshes: readonly BodyMesh[], outer: readonly [Vec3, Ve
   return { frame: { origin, xDir: u, normal }, width: r6(size[across]!), height: r6(size[upAxis]!), depth: r6(size[front.axis]!), wall };
 }
 
-/** The document with a Répartition in the opening; its sketch, or why it cannot be. */
-export function withBodyFurnished(doc: CadDocument, at: Opening, name: string): { doc: CadDocument; sketch: string } | string {
+/**
+ * The document with a Répartition in the opening; its sketch, or why it cannot be. `walls`: the bodies round it — what
+ * reaches the edge of the opening goes on to them, even slanted, and follows them (features/within-walls.ts).
+ */
+export function withBodyFurnished(doc: CadDocument, at: Opening, name: string, walls: readonly string[] = []): { doc: CadDocument; sketch: string } | string {
   const e = at.wall;
-  return withCaissonPlaced(doc, {
+  const made = withCaissonPlaced(doc, {
     input: { length: at.width + 2 * e, height: at.height + 2 * e, thickness: e, cases: 2, dividers: ["none"], boards: true, plinth: 0, outer: "board", single: "board", double: "side", inside: true },
     depth: at.depth,
     cases: [],
   }, { frame: at.frame, width: r6(at.width + 2 * e), height: r6(at.height + 2 * e), name });
+  if (typeof made === "string" || !walls.length) return made;
+  const host: BodyHost = { bodies: [...walls], box: [e, e, r6(at.width + e), r6(at.height + e)] };
+  const features = made.doc.features.map((f) => (f.id === made.sketch && f.type === "sketch") || (f.type === "extrude" && f.sketch === made.sketch) ? { ...f, host } : f);
+  return { ...made, doc: { ...made.doc, features } };
 }
 
 /** What a body is made from, back to where it was made: itself first. */

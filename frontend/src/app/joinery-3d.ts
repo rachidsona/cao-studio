@@ -75,6 +75,8 @@ export class Joinery3D implements PointerHandler {
 
   private readonly view: JoineryView;
   private tool: ShelvesTool | SketchPartitionTool | NicheTool | ModuleTool | NicheHeightTool | null = null;
+  /** « D'équerre à une face »: what the next face clicked gives its normal to. */
+  private aim: ((normal: [number, number, number]) => void) | null = null;
   /** The sketch worked in (null: a Répartition not yet made). */
   private sketchId: string | null;
   private frame: SketchFrame;
@@ -218,6 +220,12 @@ export class Joinery3D implements PointerHandler {
         return true;
       },
       offsetId: () => this.host.offsetId(),
+      // In a body furnished, shelves may lean: square to a face clicked (its normal).
+      orientable: () => {
+        const sketch = this.sketchId ? findFeature(this.host.doc(), this.sketchId) : null;
+        return sketch?.type === "sketch" && !!sketch.host;
+      },
+      aimFace: (done: (normal: [number, number, number]) => void) => (this.aim = done),
       flat: () => Math.abs(this.frame.normal[2]) > 0.9,
       changed: () => this.render(),
       fit: ([x0, y0]: [number, number], [x1, y1]: [number, number]) => {
@@ -331,6 +339,14 @@ export class Joinery3D implements PointerHandler {
 
   up(event: PointerEvent, isClick: boolean): boolean {
     if (!isClick || !this.tool) return false;
+    if (this.aim) {
+      const normal = faceNormal(this.viewport, event);
+      if (!normal) return (this.host.notify("Cliquez une face plane d'un corps.", "info"), true);
+      const done = this.aim;
+      this.aim = null;
+      done(normal);
+      return true;
+    }
     const picking = this.picking();
     if (picking) {
       const hit = this.viewport.intersect(event, this.view.targets())[0];
@@ -388,4 +404,18 @@ export class Joinery3D implements PointerHandler {
     this.viewport.releasePointerHandler(this);
     this.host.closed();
   }
+}
+
+/** The normal of the face clicked (from its first triangle), or null. */
+function faceNormal(viewport: Viewport, event: PointerEvent): [number, number, number] | null {
+  const pick = viewport.pickFace(event);
+  const mesh = pick ? viewport.bodyMesh(pick.bodyId) : undefined;
+  const group = pick && mesh?.faceGroups[pick.faceIndex];
+  if (!mesh || !group) return null;
+  const at = (k: number) => [0, 1, 2].map((i) => mesh.vertices[3 * mesh.indices[group.start + k]! + i]!);
+  const [a, b, c] = [at(0), at(1), at(2)];
+  const [e, f] = [[0, 1, 2].map((i) => b[i]! - a[i]!), [0, 1, 2].map((i) => c[i]! - a[i]!)];
+  const n: [number, number, number] = [e[1]! * f[2]! - e[2]! * f[1]!, e[2]! * f[0]! - e[0]! * f[2]!, e[0]! * f[1]! - e[1]! * f[0]!];
+  const l = Math.hypot(...n);
+  return l > 1e-12 ? [n[0] / l, n[1] / l, n[2] / l] : null;
 }

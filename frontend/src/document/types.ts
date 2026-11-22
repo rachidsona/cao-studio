@@ -39,6 +39,15 @@ interface FeatureBase {
   hidden?: boolean;
 }
 
+/**
+ * The body a Répartition is put in (« Aménager ce corps »): its walls, and its opening in the sketch (u0, v0, u1, v1,
+ * mm). What reaches the edge of the opening goes on to the walls, even slanted (features/within-walls.ts).
+ */
+export interface BodyHost {
+  bodies: string[];
+  box: [number, number, number, number];
+}
+
 /** A sloped ceiling: `height` at `at` along X or Y, rising by `rise` per mm, up to `cap`. */
 export interface SlopedCeiling {
   axis: "x" | "y";
@@ -245,6 +254,8 @@ export interface SketchFeature extends FeatureBase {
   clip?: [number, number][];
   /** What is extruded from this sketch stops under this ceiling, and what equips its niches too. */
   ceiling?: SlopedCeiling;
+  /** In a body furnished: what reaches the edge of its opening goes on to its walls. */
+  host?: BodyHost;
   /** Reference image under the sketch, to trace over (never built). */
   underlay?: SketchUnderlay;
   points: SketchPoint[];
@@ -310,6 +321,10 @@ export interface ExtrudeFeature extends FeatureBase {
   clip?: [number, number][];
   /** Only what is under this ceiling: the boards of a dressing under a slope. */
   ceiling?: SlopedCeiling;
+  /** In a body furnished (its sketch's `host`): up to its walls at the edge of the opening. */
+  host?: BodyHost;
+  /** In a body furnished: its length along this direction, turned in the sketch's plane (ShelfParams.lean). */
+  lean?: Vec3;
   /** Extrusion length along the sketch normal (mm, non-zero). */
   distance: number;
   /**

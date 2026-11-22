@@ -31,6 +31,7 @@ import { buildModifier } from "./modifiers";
 import { buildFronts } from "./fronts";
 import { buildNiche } from "./niche";
 import { underCeiling } from "./sloped-ceiling";
+import { withinWalls } from "./within-walls";
 
 export { MIN_LENGTH, type OutputLookup } from "./common";
 
@@ -137,6 +138,7 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
   }
   if (feature.clip) prism = clipped(prism, feature.clip);
   if (feature.ceiling) prism = underCeiling(prism, feature.ceiling, feature.name);
+  if (feature.host) prism = withinWalls(prism, feature.host, frameOf(profile), lookup, feature.lean);
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
 }
 

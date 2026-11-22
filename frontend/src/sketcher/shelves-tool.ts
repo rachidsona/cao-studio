@@ -20,6 +20,7 @@ import { columnPath, extrusionGroups, idsFrom, isShelves, nicheAt, nicheSpans, p
 import type { ExtrusionGroup, SketchExtrusion } from "./mode";
 import { boundaryCurves, regionAt } from "./region-pick";
 import { LAST, WORDS } from "./shelves-words";
+import { leanSelect } from "./shelf-lean";
 import { addShelves, alignedInputs, MAX_SHELVES, nicheBox, partBox, quickDivision, shelfLayout, shelfLines, type NicheBox, type ShelfInput, type ShelfLayout, type ShelfMode } from "./shelves";
 import type { Preview } from "./tools";
 
@@ -40,6 +41,9 @@ export interface ShelvesHost {
   /** The tool ended. */
   closed(): void;
   notify(message: string, kind?: "info" | "success" | "error"): void;
+  /** In a body furnished: whether its shelves may lean (ShelfParams.lean), and the normal of the next face clicked. */
+  orientable?(): boolean;
+  aimFace?(done: (normal: [number, number, number]) => void): void;
 }
 
 const FIELD =
@@ -249,6 +253,12 @@ export class ShelvesTool {
       this.input.mode = mode.value as ShelfMode;
       this.recompute();
     });
+    const setLean = (lean?: [number, number, number]) => {
+      const { lean: _, ...rest } = this.input;
+      this.input = lean ? { ...rest, lean } : rest;
+      this.recompute();
+    };
+    const orient = this.kind === "shelves" && this.host.orientable?.() ? leanSelect(this.input.lean, setLean, this.host) : null;
     const check = (label: string, checked: boolean, set: (v: boolean) => void): HTMLElement => {
       const box = el("input", { type: "checkbox", class: "size-4 accent-sky-600", checked });
       box.addEventListener("change", () => set(box.checked));
@@ -328,6 +338,7 @@ export class ShelvesTool {
       el("label", { class: ROW }, this.words.title, count),
       number("Épaisseur", this.input.thickness, (v) => ((this.input.thickness = v), this.recompute())),
       el("label", { class: ROW }, "Niches", mode),
+      orient ? el("label", { class: ROW }, "Orientation", orient) : null,
       this.input.mode === "bottom" || this.input.mode === "top" ? number(this.words.fixed, this.input.fixed, (v) => ((this.input.fixed = v), this.recompute())) : null,
       check(`Extruder les ${this.words.many}`, extrusionOption.on, (v) => ((extrusionOption.on = v), this.draw())),
       extrusionOption.on ? number("Profondeur", extrusionOption.depth, (v) => ((extrusionOption.depth = v), this.draw())) : null,

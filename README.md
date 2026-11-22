@@ -2452,7 +2452,12 @@ opération existante.
   plein est refusé (le vider d'abord) ; une ouverture compte dès 1 mm (un petit modèle d'un centimètre d'épaisseur).
   Les corps aménagés ensemble sont ceux tirés du même corps séparé, ou ceux sélectionnés ; un côté devenu lui-même un
   cadre propose « Aménager ce cadre » (le plus proche) et « Aménager tout « … » » (le cadre d'origine). `document/body-opening.ts` (`openingOf`, `withBodyFurnished`, `furnishedBodies`),
-  `app/body-furnish.ts`, `PartitionParams.inside`.
+  `app/body-furnish.ts`, `PartitionParams.inside`. Parois en biais : l'esquisse garde ses parois et son ouverture
+  (`SketchFeature.host`, recopié sur chaque extrusion) ; à chaque recalcul, une étagère ou une cloison qui touche le
+  bord de l'ouverture est allongée dans son sens puis recoupée par les parois — elle en prend la pente et les suit
+  (`features/within-walls.ts`). « Orientation » des étagères d'un corps aménagé (`ShelfParams.lean`) : à plat, selon
+  X, Y ou Z, ou d'équerre à une face cliquée ; elles sont tournées dans leur plan avant d'aller aux parois
+  (`sketcher/shelf-lean.ts`).
 - **Outils nouveaux** : un petit **point orange** marque un outil nouveau — sur son icône (ruban, colonne de droite,
   sept colonnes, Mes outils), sur sa ligne dans le menu de son groupe, et sur le nom du groupe quand il y est rangé —,
   jusqu'à ce qu'on s'en serve une fois ; le navigateur retient ceux qu'on a utilisés. La liste est dans

@@ -48,7 +48,7 @@ export async function furnishBody(editor: Editor, viewport: Viewport, bodyId: st
   const opening = openingOf(meshes, outer, eye, up);
   if (typeof opening === "string") return (editor.notify(opening, "info"), null);
   const name = bodyLabel(editor.doc, ids[0]!).replace(/\s+—\s+côté \d+$/, "");
-  const made = withBodyFurnished(editor.doc, opening, `Aménagement — ${name}`);
+  const made = withBodyFurnished(editor.doc, opening, `Aménagement — ${name}`, ids);
   if (typeof made === "string") return (editor.notify(made, "info"), null);
   await editor.change(made.doc);
   if (!quiet) editor.notify(`« ${name} » est prêt à aménager : clic droit dans son ouverture pour Étagères, Cloisons, Niche, Tiroirs, Penderie ou Porte.`, "success");

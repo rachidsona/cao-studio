@@ -24,7 +24,7 @@ test("un cadre de 60 × 40 cm, 72 de haut, ouvert dessus et dessous : clic droit
   await page.reload();
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   const status = page.locator('[data-ref="status-recompute"]');
-  type F = { id: string; type: string; offsets?: { step?: { kind: string; input?: { inside?: boolean } } }[] };
+  type F = { id: string; type: string; host?: { bodies: string[] }; lean?: number[]; offsets?: { step?: { kind: string; input?: { inside?: boolean } } }[] };
   const doc = async () => {
     await page.keyboard.press("Control+s");
     await expect(page.locator('[data-ref="status-save"]')).toHaveText(/Enregistré|Aucune modification/, { timeout: 30_000 });
@@ -55,9 +55,17 @@ test("un cadre de 60 × 40 cm, 72 de haut, ouvert dessus et dessous : clic droit
   const shelves = page.getByRole("dialog", { name: "Étagères" });
   await expect(shelves).toContainText("Niche choisie");
   await shelves.getByRole("combobox").first().selectOption("2");
+  // In a body furnished, the shelves may lean: here along X (as flat, seen from above).
+  const orientation = shelves.getByLabel("Orientation");
+  await expect(orientation.locator("option")).toHaveText(["À plat", "Selon X", "Selon Y", "Selon Z", "D'équerre à une face (cliquez-la)"]);
+  await orientation.selectOption("x");
   await shelves.getByRole("button", { name: "OK", exact: true }).click();
   await shelves.getByRole("button", { name: "Terminer" }).click();
   await expect.poll(async () => (await doc()).filter((f) => f.type === "extrude").length, { timeout: 30_000 }).toBeGreaterThan(extrudes);
+  // The shelves go on to the frame's walls (and follow them), turned as chosen.
+  const made = (await doc()).filter((f) => f.type === "extrude" && f.host);
+  expect(made).toHaveLength(2);
+  for (const f of made) expect([f.host!.bodies.length, f.lean]).toEqual([4, [1, 0, 0]]);
   await expect(status).not.toContainText("erreur", { timeout: 30_000 });
   await page.waitForTimeout(1000);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/amenager-corps.png` });
