@@ -8,10 +8,12 @@
  * « Séparer seulement » ne vide jamais : le corps est coupé tel qu'il est (une façade à cadre en U et sa rainure de
  * verre en ses montants et sa traverse) ; « Vider et séparer » vide d'abord un corps plein (épaisseur 0 : séparer seulement).
  * C'est une étape « Vider un corps » marquée `frame` ; son étape de l'historique
- * rouvre cet outil.
+ * rouvre cet outil. Plusieurs corps cliqués l'un après l'autre (les façades de trois tiroirs) sont séparés de même, une
+ * étape chacun, en une seule annulation.
  */
 import { bodyLabel, findFeature, uniqueId, uniqueName } from "../document/operations";
 import { featureOfBody, type ShellFeature, type Vec3 } from "../document/types";
+import { freshFeatureIds } from "./curic-common";
 import { el } from "../ui/dom";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
@@ -38,7 +40,8 @@ export const isSideSplit = (f: { type: string; thickness?: number; sides?: strin
 export class SplitSidesTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
-  private target: string | null;
+  /** The bodies to split, the first one this step's own, the others each a step made with it. */
+  private targets: string[];
   private joint: Joint;
   /** The sides' thickness when the body is solid (it is emptied first); unused for a body already hollow. */
   private thickness: number;
@@ -51,24 +54,45 @@ export class SplitSidesTool extends PanelTool {
     const doc = ctx.doc();
     this.id = editing?.id ?? uniqueId(doc, "sh");
     this.name = editing?.name ?? uniqueName(doc, "Côtés séparés");
-    this.target = editing?.target ?? bodies[0] ?? null;
+    this.targets = editing ? [editing.target] : [...new Set(bodies)];
     this.joint = editing ? jointOf(editing) : lastJoint;
     this.thickness = editing?.thickness || lastThickness;
     this.open = editing?.open ?? null;
     this.mode = editing ? (editing.thickness === 0 ? "split" : "hollow") : lastMode;
   }
 
-  protected feature(): ShellFeature | string {
-    if (!this.target) return "Cliquez le corps à séparer en ses côtés : un cadre, un caisson sans fond, un contour extrudé, plein ou creux.";
+  private split(id: string, name: string, target: string): ShellFeature {
     const [joint, pass] = this.joint.split(":") as ["miter" | "butt", ("sides" | "boards")?];
-    return { id: this.id, type: "shell", name: this.name, target: this.target, faces: [], thickness: this.mode === "split" ? 0 : this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
+    return { id, type: "shell", name, target, faces: [], thickness: this.mode === "split" ? 0 : this.thickness, sides: "separate", joint, ...(pass ? { pass } : {}), ...(this.open ? { open: this.open } : {}), frame: true };
+  }
+
+  protected feature(): ShellFeature | string {
+    if (!this.targets[0]) return "Cliquez le corps à séparer en ses côtés : un cadre, un caisson sans fond, un contour extrudé, plein ou creux.";
+    return this.split(this.id, this.name, this.targets[0]);
+  }
+
+  /** The steps of the other bodies chosen, ids after this one's. */
+  private others(): { id: string; name: string }[] {
+    const doc = this.docBefore();
+    const first = this.split(this.id, this.name, this.targets[0] ?? "");
+    return freshFeatureIds({ ...doc, features: [...doc.features, first] }, "sh", "Côtés séparés", Math.max(0, this.targets.length - 1));
+  }
+
+  protected override companions(): ShellFeature[] {
+    return this.others().map((n, i) => this.split(n.id, n.name, this.targets[i + 1]!));
   }
 
   protected rows(): (HTMLElement | null)[] {
     const doc = this.ctx.doc();
-    const name = this.target ? (findFeature(doc, this.target)?.name ?? bodyLabel(doc, this.target)) : null;
+    const names = this.targets.map((t) => `« ${findFeature(doc, t)?.name ?? bodyLabel(doc, t)} »`);
     return [
-      this.info(name ? `Corps : « ${name} ». Cliquez-en un autre pour le changer.` : "Cliquez le corps à séparer en ses côtés."),
+      this.info(
+        !names.length
+          ? "Cliquez le corps à séparer en ses côtés — ou plusieurs, l'un après l'autre : OK les sépare tous en une annulation."
+          : this.editing
+            ? `Corps : ${names[0]}. Cliquez-en un autre pour le changer.`
+            : `${names.length > 1 ? `${names.length} corps` : "Corps"} : ${names.join(", ")}. Cliquez d'autres corps pour les ajouter ; Maj + clic sur un corps choisi le retire.`,
+      ),
       this.selectRow("Le corps", this.mode, [["split", "Séparer seulement (tel qu'il est)"], ["hollow", "Vider et séparer"]], (v) => {
         this.mode = lastMode = v as Mode;
         this.render();
@@ -109,10 +133,13 @@ export class SplitSidesTool extends PanelTool {
   protected override click(event: PointerEvent): void {
     const face = this.ctx.viewport.pickFace(event);
     if (!face) return;
-    // The body chosen (or a side of its preview) clicked again: that face opened, with the one facing it.
-    const same = face.bodyId === this.target || featureOfBody(face.bodyId) === this.id;
-    if (!this.target || !same) {
-      this.target = face.bodyId;
+    // A body chosen (or a side of its preview) clicked again: Maj + clic (or « Séparer seulement ») takes it off,
+    // else that face opened, with the one facing it.
+    const ids = [this.id, ...this.others().map((n) => n.id)];
+    const at = this.targets.indexOf(face.bodyId) >= 0 ? this.targets.indexOf(face.bodyId) : ids.indexOf(featureOfBody(face.bodyId));
+    if (at < 0 || at >= this.targets.length || ((event.shiftKey || event.ctrlKey || event.metaKey || this.mode === "split") && !this.editing)) {
+      if (at >= 0 && at < this.targets.length) this.targets.splice(at, 1);
+      else this.targets = this.editing ? [face.bodyId] : [...this.targets, face.bodyId];
       this.open = null;
       this.render();
       this.schedulePreview();

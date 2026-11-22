@@ -2359,7 +2359,9 @@ opération existante.
   la coque du noyau ne donne rien — un corps fermé, un trou à travers une face ouverte —, la Coque en profite aussi ;
   des parois que plus rien ne tient ensemble font plusieurs corps ; les côtés plats viennent de `facePanels`
   (`features/paneling.ts`), les côtés courbes de ce qui reste de la paroi une fois ôtés les panneaux.
-- **Séparer les côtés** (groupe Modifier, rangé dans son menu ; `data-action="split-sides"`) : un clic sur un corps —
+- **Séparer les côtés** (groupe Modifier, rangé dans son menu ; `data-action="split-sides"`) : **plusieurs corps**
+  cliqués l'un après l'autre (les façades de trois tiroirs) sont séparés de même, une étape chacun, OK les faisant tous
+  en une seule annulation (Maj + clic retire un corps choisi). Un clic sur un corps —
   un cadre, un caisson sans fond, tout contour extrudé, carré, triangle, polygone, coins arrondis, de biais — et chacun
   de ses côtés devient un corps, un panneau par côté (4 pour un cadre, 3 pour un triangle, autant que de côtés pour un
   polygone ; un coin arrondi est un côté courbe à lui ; un contour à encoches dont le trou n'a pas autant de coins :
