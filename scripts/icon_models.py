@@ -1,8 +1,9 @@
 """
 Les modèles d'icônes de CAO Studio autres que les volumes en relief (scripts/icons3d.py) : les mêmes outils, redessinés
 sur 24 × 24 — « Studio » (petits solides en axonométrie, gris clair ombrés en dégradé, ce qui compte en bleu, ce qui
-agit en orange), « Glyphe » (formes plates grises, un accent) et « Croquis » (des solides vus plus de face, en
-couleurs vives et à plat, au trait noir qui dépasse des coins comme un croquis à main levée). Un fichier par modèle
+agit en orange), « Glyphe » (formes plates grises, un accent), « Croquis » (des solides vus plus de face, en
+couleurs vives et à plat, au trait noir qui dépasse des coins comme un croquis à main levée) et « Duo » (les solides
+de Studio à plat, en deux tons, sans trait de contour). Un fichier par modèle
 dans static/icons/, que l'éditeur charge quand on le choisit (menu « ⋯ » → Icônes, frontend/src/app/icon-models.ts) :
 chaque symbole y remplace celui du même nom de la page, tous les outils. Les dessins
 sont dans scripts/icon_models_set.py à _set4.py (Glyphe), scripts/icon_models_studio.py à _studio4.py (Studio,
@@ -48,6 +49,12 @@ MODELS = {
         "K": ("#e4f1fc", "#c3dcf3", "#a5c6e8"),
         "H": ("#ffd23f", "#f6b623", "#df9612"),
     }),
+    # Flat isometric in two tones, slate and blue, no outline: Studio's solids, each face one plain colour.
+    "duo": dict(width=1.0, flat=1.3, ink="#8b98ad", accent="#3b82f6", action="#f97316", ghost="#8b98ad", ink_fill=1, edges=False, faces={
+        "F": ("#e2e8f0", "#b4c0cf", "#8997ad"),
+        "K": ("#cfe3fd", "#a9cdfb", "#7fb2f5"),
+        "H": ("#60a5fa", "#3b82f6", "#1d4ed8"),
+    }),
 }
 DASH = ' stroke-dasharray="1.7 1.5"'
 # A kind of shape: its stroke (colour, width × the model's, dashed), or its fill (colour, opacity).
@@ -88,6 +95,9 @@ def face(kind, d, m):
     side = "<>".find(kind[1:]) + 1 if kind[1:] else 0
     if m["faces"] == "gradient":
         return f'<path d="{d}" fill="url(#icm-{kind[0]}{side})" {line}/>'
+    if m.get("edges") is False:  # no outline: a hairline of its own colour closes the seams between faces
+        colour = m["faces"][kind[0]][side]
+        return f'<path d="{d}" fill="{colour}" stroke="{colour}" stroke-width="0.35"/>'
     fill = f'<path d="{d}" fill="{m["faces"][kind[0]][side]}" stroke="none"/>'
     # A hand line past the corners where the outline is a few straight lines (M, L, z); a curved one keeps its own.
     straight = not re.search("[a-yA-KN-Y]", d) and d.count("L") <= 8  # a sampled round keeps its own line

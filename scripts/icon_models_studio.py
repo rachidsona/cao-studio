@@ -11,6 +11,7 @@ from icon_models_set import BRACKETS, C, R, SMALL_POINTER, STAR, arr, n
 SEEN = []
 # How a model looks at the space: screen x = ax X + ay Y, y = bx X + by Y - Z; and the drawing's scale.
 VIEWS = {"studio": dict(ax=1, ay=-1, bx=0.5, by=0.5), "croquis": dict(ax=0.92, ay=-0.5, bx=0.2, by=0.42)}
+VIEWS["duo"] = VIEWS["studio"]
 VIEW = dict(VIEWS["studio"], scale=1)
 
 

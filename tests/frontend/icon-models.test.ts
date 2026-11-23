@@ -12,7 +12,7 @@ const page = new Set(ids(readFileSync("templates/editor/_icons.html", "utf8")));
 const files = ICON_MODELS.map((model) => [model, readFileSync(`static/icons/${model}.svg`, "utf8")] as const);
 
 describe("modèles d'icônes", () => {
-  it("les trois modèles redessinent tous les outils de la page, et rien d'autre", () => {
+  it("tous les modèles redessinent tous les outils de la page, et rien d'autre", () => {
     const [first, ...others] = files.map(([, text]) => ids(text));
     for (const other of others) expect(other).toEqual(first);
     expect([...first!].sort()).toEqual([...page].sort());
