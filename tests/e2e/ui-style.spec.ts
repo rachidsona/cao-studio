@@ -104,7 +104,7 @@ test("style des icônes : Contour, Plein, Deux tons peignent autrement les même
   expect(errors).toEqual([]);
 });
 
-test("modèle des icônes : Glyphe et Duo redessinent les outils du ruban, gardés au rechargement ; « Volumes » rend les dessins de la page", async ({ page }) => {
+test("modèle des icônes : Glyphe, Duo, Pastille et Dégradé redessinent les outils du ruban, gardés au rechargement ; « Volumes » rend les dessins de la page", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -131,7 +131,7 @@ test("modèle des icônes : Glyphe et Duo redessinent les outils du ruban, gard�
   expect(volumes.cabinet).toContain("url(#kwt)");
 
   const seen = [volumes.cabinet];
-  for (const [name, model] of [["Glyphe", "glyphe"], ["Duo", "duo"]] as const) {
+  for (const [name, model] of [["Glyphe", "glyphe"], ["Duo", "duo"], ["Pastille", "pastille"], ["Dégradé", "degrade"]] as const) {
     await choose(name);
     await expect.poll(async () => (await look()).model).toBe(model);
     const now = await look();
@@ -145,8 +145,8 @@ test("modèle des icônes : Glyphe et Duo redessinent les outils du ruban, gard�
   }
   await page.reload();
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
-  await expect.poll(async () => (await look()).model).toBe("duo");
-  expect((await look()).cabinet).toBe(seen[2]);
+  await expect.poll(async () => (await look()).model).toBe("degrade");
+  expect((await look()).cabinet).toBe(seen[4]);
 
   await choose("Volumes");
   await expect.poll(async () => (await look()).cabinet).toBe(volumes.cabinet);

@@ -1,12 +1,12 @@
 /**
  * Le modèle des icônes de la barre d'outils (menu « ⋯ » → Icônes) : « Volumes » — les dessins de la page
- * (templates/editor/_icons.html) — ou un autre jeu, redessiné : « Glyphe », « Duo »
+ * (templates/editor/_icons.html) — ou un autre jeu, redessiné : « Glyphe », « Duo », « Pastille », « Dégradé »
  * (static/icons/*.svg, faits par scripts/icon_models.py). Un modèle choisi, son fichier est chargé et chacun de ses
  * symboles remplace le contenu du symbole du même nom dans la page : toutes les icônes qui en sont tirées (<use>)
  * changent d'un coup : chaque modèle redessine tous les outils. Gardé par le navigateur.
  */
 const KEY = "icon-model";
-export const ICON_MODELS = ["glyphe", "duo"] as const;
+export const ICON_MODELS = ["glyphe", "duo", "pastille", "degrade"] as const;
 
 /** What the page drew, for each symbol a model has replaced: to come back to « Volumes ». */
 const drawn = new Map<string, Node[]>();

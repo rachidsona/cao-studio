@@ -23,7 +23,7 @@ describe("modèles d'icônes", () => {
       const tags = new Set([...text.matchAll(/<([a-zA-Z]+)/g)].map((m) => m[1]));
       expect([...tags].filter((t) => !["defs", "linearGradient", "stop"].includes(t!)).sort(), model).toEqual(["g", "path", "svg", "symbol"]);
       const attributes = new Set([...text.matchAll(/\s([a-zA-Z:-]+)="/g)].map((m) => m[1]));
-      expect([...attributes].filter((a) => !["xmlns", "id", "viewBox", "d", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "x1", "y1", "x2", "y2", "offset", "stop-color"].includes(a!)), model).toEqual([]);
+      expect([...attributes].filter((a) => !["xmlns", "id", "viewBox", "d", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "transform", "gradientUnits", "x1", "y1", "x2", "y2", "offset", "stop-color"].includes(a!)), model).toEqual([]);
     }
   });
 
