@@ -1172,7 +1172,9 @@ opération existante.
   il alterne, gauche puis droite. Dans la vue 3D, un clic sur une porte l'**ouvre** (elle tourne de 100° vers l'avant
   autour de ses charnières) et un second clic la referme, comme les tiroirs. Un clic donné pendant qu'un outil
   est ouvert va à cet outil seul : il n'ouvre aucune porte, même si l'outil se ferme sur ce clic. Les portes sont fabriquées par une opération « Portes » qui suit la répartition quand on la
-  modifie ; décocher, ou ne plus extruder, les retire. Les charnières (2 à 4 par porte selon la hauteur) et les
+  modifie ; décocher, ou ne plus extruder, les retire — de même supprimer l'opération « Portes » (ou « Fond ») à la main
+  (Suppr, l'arbre) la décoche dans la répartition, sinon elle revenait à l'étagère ou à la cloison suivante
+  (`withoutAskedEquipment`). Les charnières (2 à 4 par porte selon la hauteur) et les
   poignées vont au devis (`document/partition-doors.ts`, `features/niche-parts.ts`).
 - **Fond de la Répartition** (rubrique « Fond », quand les panneaux sont extrudés) : « Panneau de fond » pose un fond
   en applique **derrière** les panneaux. Il couvre jusqu'à leurs bords le dessus, le dessous et les côtés, sur toute

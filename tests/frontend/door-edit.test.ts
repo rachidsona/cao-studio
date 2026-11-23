@@ -100,3 +100,18 @@ describe("le sens d'une porte de cuisine", () => {
     expect(again.doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.layout === "door")!.side).toBe("right");
   });
 });
+
+describe("les portes d'une Répartition supprimées à la main", () => {
+  it("ne reviennent pas quand la Répartition est enregistrée de nouveau (une étagère, une cloison ajoutée)", async () => {
+    const { removeWithShelves } = await import("../../frontend/src/document/shelf-removal");
+    const made = partition({ gap: 3, thickness: 18, handles: true });
+    const door = doorsOf(made);
+    const { next } = removeWithShelves(made, [door.id]);
+    expect(next.features.some((f) => f.type === "niche" && f.fill === "doors")).toBe(false);
+    // Its step asks for none any more: the next save of the Répartition makes none.
+    const sketch = next.features.find((f): f is SketchFeature => f.id === "sk1")!;
+    expect(sketch.offsets?.[0]?.step).not.toHaveProperty("doors");
+    const again = syncPartitionDoors(next, "sk1");
+    expect(again.features.some((f) => f.type === "niche" && f.fill === "doors")).toBe(false);
+  });
+});

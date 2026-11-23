@@ -68,3 +68,30 @@ export function syncPartitionDoors(base: CadDocument, sketchId: string): CadDocu
   const back = new Map(records.filter((r) => r.step.back).map((r) => [r.id, r.step.back!] as const));
   return syncEquipment(syncEquipment(base, sketchId, "doors", doors), sketchId, "back", back);
 }
+
+/**
+ * Doors or a back of a Répartition deleted by hand (the Suppr key, the browser): no longer asked in its step either —
+ * else the next save of the Répartition (a shelf, a cloison added) made them again. Before `ids` are deleted.
+ */
+export function withoutAskedEquipment(doc: CadDocument, ids: readonly string[]): CadDocument {
+  let next = doc;
+  for (const id of ids) {
+    const f = findFeature(doc, id);
+    if (f?.type !== "niche" || (f.fill !== "doors" && f.fill !== "back") || !f.partition) continue;
+    const fill = f.fill;
+    next = updateFeature(next, f.sketch, (s) =>
+      s.type !== "sketch"
+        ? s
+        : {
+            ...s,
+            offsets: (s.offsets ?? []).map((r) => {
+              if (r.id !== f.partition || !isPartition(r) || !r.step[fill]) return r;
+              const { [fill]: _asked, ...step } = r.step;
+              return { ...r, step };
+            }),
+          },
+    );
+  }
+  return next;
+}
+

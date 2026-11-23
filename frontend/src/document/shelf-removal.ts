@@ -10,6 +10,7 @@ import { removeOffsetFrom } from "../sketcher/offset";
 import { extrusionGroups, isPartition, isShelves, pathKey, rebuildChain } from "../sketcher/partition-history";
 import { shelfLayout } from "../sketcher/shelves";
 import { deleteFeatures, findFeature, updateFeature } from "./operations";
+import { withoutAskedEquipment } from "./partition-doors";
 import type { OffsetRecord } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, NicheFeature, SketchFeature } from "./types";
@@ -162,7 +163,8 @@ export function removeWithShelves(doc: CadDocument, ids: string[]): { next: CadD
       if (twin) left.add(twin.id);
     }
   }
-  const rest = deleteFeatures(result.next, [...left]);
+  // Doors or a back of a Répartition deleted: not asked again by its step.
+  const rest = deleteFeatures(withoutAskedEquipment(result.next, [...left]), [...left]);
   const swept = withoutEmptySketches(doc, rest.next);
   return { next: swept.next, lost: [...new Set([...result.lost, ...rest.lost, ...swept.lost])] };
 }
