@@ -129,6 +129,11 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   prise (le message dit combien le sont, et que l'œil du titre « Esquisses » les montre).
 - **Tout sélectionner, dans l'esquisse** (barre de l'esquisse, à côté de « Sélectionner les semblables » ; aussi
   Ctrl / ⌘ + A) : tout le dessin de l'esquisse ouverte d'un coup — traits, cercles, arcs, construction comprise.
+- **Cacher la sélection** (bouton de la colonne Vue, sous « Isoler la sélection ») : les éléments choisis — le meuble
+  entier dont on a choisi une pièce, comme pour « Isoler » — sont cachés d'un coup, dans le projet (une seule
+  annulation) ; le nombre d'éléments cachés s'affiche sur le bouton. Sans sélection, le bouton ouvre la liste des
+  éléments cachés, **rangés par meuble** (un caisson avec ses façades, une Répartition avec ses panneaux, sinon le
+  corps) : un clic en montre un, « Tout montrer » les rend tous (`app/hide-selection.ts`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble

@@ -65,6 +65,7 @@ import { bindIconModels } from "./app/icon-models";
 import { bindRibbonToggle } from "./app/ribbon-toggle";
 import { bindWallCutaway } from "./app/wall-cutaway";
 import { bindIsolateSelection } from "./app/isolate-selection";
+import { bindHideSelection } from "./app/hide-selection";
 import { bindSelectAll } from "./app/select-all";
 import { bindOrbit } from "./app/orbit-tool";
 import { bindPartTags } from "./app/part-tags";
@@ -237,6 +238,7 @@ async function start(): Promise<void> {
   bindHighStorage(root, editor);
   bindWallCutaway(root, viewport, editor);
   bindIsolateSelection(root, viewport, editor);
+  bindHideSelection(root, viewport, editor);
   bindSelectAll(root, viewport, editor);
   bindOrbit(root, viewport, (message) => editor.notify(message, "info"));
   bindPartTags(root, viewport, editor);

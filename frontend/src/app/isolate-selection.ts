@@ -38,7 +38,7 @@ export function selectedPieces(editor: Editor): Map<string, string> {
 const toIsolate = (editor: Editor) => (isolating() ? selectedPieces(editor) : selectedElements(editor));
 
 /** The name of an element: its cabinet's or its Répartition's, else its body's. */
-function elementName(doc: CadDocument, key: string, bodyId: string): string {
+export function elementName(doc: CadDocument, key: string, bodyId: string): string {
   const owner = key.includes(":") ? findFeature(doc, key.slice(key.indexOf(":") + 1)) : undefined;
   return owner?.name ?? bodyLabel(doc, bodyId);
 }

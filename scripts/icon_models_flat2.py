@@ -21,6 +21,8 @@ BUBBLE = "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4.5V16H5a2 2
 BIN = P(6, 8, 18, 8, 17, 21, 7, 21, close=True)
 
 FLAT2 = {
+    # « Cacher la sélection »: a cabinet gone dashed, an eye struck out.
+    "hide-selection": [("d", "M9 2.5l6.5 3.75v7.5L9 17.5l-6.5-3.75v-7.5zM2.5 6.25L9 10l6.5-3.75M9 10v7.5"), ("a", "M11.5 17.6s2.4-3.9 5.75-3.9S23 17.6 23 17.6s-2.4 3.9-5.75 3.9-5.75-3.9-5.75-3.9z" + C(17.25, 17.6, 1.45)), ("o", "M12.6 22.2l9.3-9.2")],
     # Pipette (Atelier): its bulb, its glass tube, a drop of colour at its tip.
     "pipette": [("F", P(14.6, 4.2, 16.6, 2.4, 18.8, 2.4, 21.6, 5.2, 21.6, 7.4, 19.8, 9.4, close=True)), ("K", P(11.4, 9.4, 14.6, 12.6, 7.2, 20, 4.4, 20.6, 5, 17.8, close=True)), ("s", P(12, 6.8, 17.2, 12) + P(4.6, 20.4, 2.6, 22.4)), ("A", P(5.4, 17.6, 8, 15, 9.6, 16.6, 7, 19.2, close=True))],
     # Pipette de forme (Atelier): the pipette, a small cabinet with its door at its tip (the form it takes).

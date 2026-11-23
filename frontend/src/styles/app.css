@@ -376,6 +376,11 @@
   [data-side-tools] .icon-btn {
     @apply min-h-9 min-w-9 px-1;
   }
+  /* « Cacher la sélection »: how many elements are hidden, on the button (app/hide-selection.ts). */
+  [data-hide-selection]:not([data-count="0"])[data-count]::after {
+    content: attr(data-count);
+    @apply absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-orange-500 px-1 text-center text-3xs leading-4 font-semibold text-white;
+  }
   [data-side-tools] .tool-icon {
     @apply size-6;
   }

@@ -76,3 +76,57 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await expect(bar).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("« Cacher la sélection » : deux caissons cachés d'un coup, listés par meuble, montrés un à un puis tous", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-cacher-selection");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await plan.getByRole("button", { name: "Créer le plan" }).click();
+  await plan.locator('[data-open-run="A"]').click();
+  const add = plan.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  for (let i = 0; i < 3; i++) await plan.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await plan.locator("[data-run-close]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  const button = page.locator("[data-hide-selection]");
+
+  // Nothing hidden, nothing selected: the button says what to do.
+  await button.click();
+  await expect(page.getByText(/Sélectionnez d'abord ce qu'il faut cacher/).first()).toBeVisible();
+  await expect(button).toHaveAttribute("data-count", "0");
+
+  // Two units: hidden at once, the count on the button.
+  await page.mouse.click(430, 660);
+  await page.keyboard.down("Shift");
+  await page.mouse.click(600, 660);
+  await page.keyboard.up("Shift");
+  await button.click();
+  await expect(page.getByText(/2 éléments cachés/).first()).toBeVisible();
+  await expect(button).toHaveAttribute("data-count", "2", { timeout: 30_000 });
+
+  // The list, one line per unit: one shown again, then all.
+  await button.click();
+  const list = page.getByRole("menu", { name: "Éléments cachés" });
+  await expect(list.locator("[data-show-hidden]")).toHaveCount(2);
+  await shot(page, "cacher-liste");
+  await list.locator("[data-show-hidden]").first().click();
+  await expect(button).toHaveAttribute("data-count", "1", { timeout: 30_000 });
+  await expect(list.locator("[data-show-hidden]")).toHaveCount(1);
+  await list.locator("[data-show-all-hidden]").click();
+  await expect(button).toHaveAttribute("data-count", "0", { timeout: 30_000 });
+  await expect(list).toHaveCount(0);
+
+  // « Tout montrer » is one undo step: Ctrl + Z hides that one again.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(button).toHaveAttribute("data-count", "1", { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
