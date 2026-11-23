@@ -1336,7 +1336,11 @@ opération existante.
   cercle par 2 ou 3 points, arc, arc par 3 points, polygone (« Côtés »), oblong, ovale, courbe — leurs **cotes**
   (longueurs, Ø, R) s'affichent dans la vue pendant le tracé, et une **mesure tapée** puis Entrée place le point
   suivant (une distance vers le pointeur, « distance;angle », « largeur;hauteur » d'un rectangle par le centre ou
-  d'un ovale, l'angle d'un arc, la largeur d'un oblong ou d'un rectangle de biais : `typedPoint`) ; une forme fermée se
+  d'un ovale, l'angle d'un arc, la largeur d'un oblong ou d'un rectangle de biais : `typedPoint`), et chaque mesure
+  tapée devient une **cote fixe** de l'esquisse, comme avec les outils de l'esquisse (largeur et hauteur d'un rectangle
+  par le centre, diamètre d'un cercle par 2 points, rayon des bouts d'un oblong, sinon distance entre les deux points ;
+  un angle oriente sans cote, l'ovale n'en prend pas ; une cote que l'esquisse ne tient pas est laissée :
+  `typedDimensions`) ; une forme fermée se
   tire ou se pousse ensuite. **Afficher les axes** (case du panneau) montre les trois axes de la vue
   comme dans SketchUp — des droites par l'origine, rouge X, verte Y, bleue Z, pleines côté positif, en tirets côté
   négatif (`viewport/world-axes.ts`) — ou les cache ; le choix est gardé dans ce navigateur (cachés au départ). Choisissez *Ligne / polyligne*,

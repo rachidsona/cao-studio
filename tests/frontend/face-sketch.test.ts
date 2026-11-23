@@ -1,5 +1,6 @@
 /** Magie extrusion, les formes de l'esquisse : le point placé par les mesures tapées, et l'accrochage sur la grille. */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { initSolver } from "../../frontend/src/constraints/solver";
 import { typedPoint } from "../../frontend/src/app/face-sketch-tool";
 import { groundSnap } from "../../frontend/src/app/magic-extrude";
 
@@ -30,5 +31,37 @@ describe("l'accrochage sur la grille", () => {
     expect(groundSnap({ point: [123, -4], kind: "free" }, 10, 5)).toEqual({ point: [120, 0], kind: "corner" });
     expect(groundSnap({ point: [123, 77], kind: "free" }, 10, 5)).toEqual({ point: [120, 80], kind: "free" });
     expect(groundSnap({ point: [1, 1], kind: "corner" }, 10, 5)).toEqual({ point: [1, 1], kind: "corner" });
+  });
+});
+
+describe("les cotes fixes des mesures tapées", () => {
+  beforeAll(() => initSolver());
+  const empty = () => ({ points: [], curves: [], constraints: [] });
+  const dims = (g: { constraints: { kind: string; value?: number }[] }) => g.constraints.filter((c) => c.value !== undefined).map((c) => [c.kind, Math.round(c.value!)]);
+
+  it("rectangle par le centre : sa largeur et sa hauteur ; cercle par 2 points : son diamètre", async () => {
+    const { DrawingTool } = await import("../../frontend/src/sketcher/tools");
+    const { typedDimensions } = await import("../../frontend/src/app/face-sketch-tool");
+    const rect = new DrawingTool("rectangle-center");
+    rect.click(empty(), { pos: [0, 0] });
+    const r = rect.click(empty(), { pos: [300, 200] });
+    if (r.kind !== "commit") throw new Error("pas de rectangle");
+    expect(dims(typedDimensions(r.geometry, "rectangle-center", [[0, 0], [300, 200]], [{ at: 1, values: [600, 400] }], r.created))).toEqual([["length", 600], ["length", 400]]);
+    const circle = new DrawingTool("circle-2pt");
+    circle.click(empty(), { pos: [0, 0] });
+    const c = circle.click(empty(), { pos: [80, 0] });
+    if (c.kind !== "commit") throw new Error("pas de cercle");
+    expect(dims(typedDimensions(c.geometry, "circle-2pt", [[0, 0], [80, 0]], [{ at: 1, values: [80] }], c.created))).toEqual([["diameter", 80]]);
+  });
+
+  it("polygone : la distance du centre au sommet ; rien de tapé, aucune cote", async () => {
+    const { DrawingTool } = await import("../../frontend/src/sketcher/tools");
+    const { typedDimensions } = await import("../../frontend/src/app/face-sketch-tool");
+    const poly = new DrawingTool("polygon");
+    poly.click(empty(), { pos: [0, 0] });
+    const p = poly.click(empty(), { pos: [0, 250] });
+    if (p.kind !== "commit") throw new Error("pas de polygone");
+    expect(dims(typedDimensions(p.geometry, "polygon", [[0, 0], [0, 250]], [{ at: 1, values: [250] }], p.created))).toEqual([["distance", 250]]);
+    expect(dims(typedDimensions(p.geometry, "polygon", [[0, 0], [0, 250]], [], p.created))).toEqual([]);
   });
 });

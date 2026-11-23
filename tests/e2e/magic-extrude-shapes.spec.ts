@@ -59,5 +59,8 @@ test("Magie extrusion : un polygone sur la grille, puis un rectangle par le cent
   const xs = rect.curves.filter((c) => c.kind === "line" && !c.construction).flatMap((c) => [c.p1, c.p2]).map((id) => rect.points.find((p) => p.id === id)!);
   const span = (k: "x" | "y") => Math.round(Math.max(...xs.map((p) => p[k])) - Math.min(...xs.map((p) => p[k])));
   expect([span("x"), span("y")]).toEqual([600, 400]);
+  // The values typed are fixed dimensions of the sketch, as the sketch's tools give.
+  const fixed = (rect as unknown as { constraints: { kind: string; value?: number }[] }).constraints.filter((c) => c.kind === "length").map((c) => Math.round(c.value!));
+  expect(fixed.sort((a, b) => a - b)).toEqual([400, 600]);
   expect(errors).toEqual([]);
 });

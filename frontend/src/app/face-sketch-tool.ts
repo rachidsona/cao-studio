@@ -8,12 +8,15 @@
  * corps et aux points posés. Une
  * forme fermée se tire ou se pousse ensuite, comme les autres tracés (« Puis tirer / pousser »).
  */
+import { solveSketch } from "../constraints/solver";
 import { uniqueId, uniqueName } from "../document/operations";
-import type { SketchGeometry } from "../document/sketch";
+import type { SketchConstraint, SketchGeometry } from "../document/sketch";
 import type { Feature, SketchFeature } from "../document/types";
 import { evaluateTyped } from "../measurements/typed-expression";
 import { formatLength, fromDisplay, trim, UNIT_LABELS } from "../measurements/units";
+import { addConstraint, findCurve } from "../sketcher/edit";
 import { markedPoints, parseTyped } from "../sketcher/face-draw";
+import { withTypedDimensions } from "../sketcher/typed-dims";
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { projectOutline } from "../sketcher/projection";
 import { DrawingTool, type Preview, type ToolName } from "../sketcher/tools";
@@ -62,6 +65,8 @@ export class FaceSketchTool extends PanelTool {
   private buffer: string | null = null;
   private lastEvent: PointerEvent | null = null;
   private done: SketchGeometry | null = null;
+  /** The values typed at each step (mm; an angle in degrees): the shape's fixed dimensions. */
+  private steps: TypedStep[] = [];
   private readonly marks: Marks;
   private readonly box: ValueBox;
   private readonly loaded = new Map<string, LoadedFace | null>();
@@ -157,7 +162,7 @@ export class FaceSketchTool extends PanelTool {
     if (result.kind === "commit") {
       this.base = result.geometry;
       if (result.done) {
-        this.done = result.geometry;
+        this.done = typedDimensions(result.geometry, this.shape, this.points, this.steps, result.created);
         return this.confirm();
       }
     }
@@ -255,8 +260,12 @@ export class FaceSketchTool extends PanelTool {
     if (!face || !last) return;
     const values = parseTyped(text, (p) => evaluateTyped(p)).filter((v): v is number => v !== null && v !== undefined);
     if (!values.length) return this.ctx.notify(`« ${text} » n'est pas une mesure.`, "error");
-    const p = typedPoint(this.shape, this.points, this.cursor ?? [last[0] + 1, last[1]], values, (v) => fromDisplay(v, this.ctx.unit()));
+    const mm = (v: number) => fromDisplay(v, this.ctx.unit());
+    const p = typedPoint(this.shape, this.points, this.cursor ?? [last[0] + 1, last[1]], values, mm);
     if (!p) return this.ctx.notify("Cette mesure ne s'applique pas ici.", "info");
+    // Kept as a fixed dimension of the sketch, as the sketch's tools do: lengths in mm, an angle in degrees.
+    const pair = this.shape === "rectangle-center" || this.shape === "oval";
+    this.steps.push({ at: this.points.length, values: [this.shape === "arc" && this.points.length === 2 ? values[0]! : mm(values[0]!), ...(values[1] === undefined ? [] : [pair ? mm(values[1]) : values[1]])] });
     this.place(face, p);
   }
 
@@ -300,6 +309,7 @@ export class FaceSketchTool extends PanelTool {
   private restart(): void {
     this.drawing.reset();
     [this.points, this.face, this.base, this.done, this.preview, this.buffer] = [[], null, null, null, null, null];
+    this.steps = [];
   }
 
   protected rows(): (HTMLElement | null)[] {
@@ -371,3 +381,43 @@ export function typedPoint(shape: SketchShape, points: readonly Vec2[], cursor: 
   }
   return toward(last, mm(a));
 }
+
+/** The values typed for the point `at` of a shape (mm; an angle in degrees). */
+export interface TypedStep {
+  at: number;
+  values: number[];
+}
+
+/**
+ * The shape drawn with a fixed dimension for each value typed, as the sketch's tools give: the width and height of a
+ * rectangle by its centre, the diameter of a circle by two points, the width of a slot (its ends' radius), else the
+ * distance between the two points the value placed. An angle orients without a dimension; an oval keeps its shape
+ * without one (shortcut: its pieces carry none, a dimension on them would come later). A dimension the sketch cannot
+ * take is left out: the shape stays as drawn. Pure.
+ */
+export function typedDimensions(g: SketchGeometry, shape: SketchShape, points: readonly Vec2[], steps: readonly TypedStep[], created: readonly string[]): SketchGeometry {
+  let out = g;
+  const pointAt = (p: Vec2 | undefined) => (p ? out.points.find((q) => Math.hypot(q.x - p[0], q.y - p[1]) < 1e-6)?.id : undefined);
+  const keep = (constraint: object) => {
+    const added = addConstraint(out, constraint as Omit<SketchConstraint, "id">).geometry;
+    try {
+      if (solveSketch(added).state === "ok") out = added;
+    } catch {
+      // Left out.
+    }
+  };
+  for (const { at, values } of steps) {
+    const [a, b] = values as [number, number?];
+    if (shape === "rectangle-center" && at === 1) out = withTypedDimensions(out, created, "rectangle-center", { w: a, h: b ?? a });
+    else if (shape === "circle-2pt" && at === 1) out = withTypedDimensions(out, created, "circle-2pt", { c: a });
+    else if (shape === "slot" && at === 2) {
+      const arc = created.find((id) => findCurve(out, id)?.kind === "arc");
+      if (arc) keep({ kind: "radius", curve: arc, value: a / 2 });
+    } else if (shape !== "oval" && !(shape === "arc" && at === 2)) {
+      const [p, q] = [pointAt(points[at - 1]), pointAt(points[at])];
+      if (p && q && p !== q) keep({ kind: "distance", a: p, b: q, value: a });
+    }
+  }
+  return out;
+}
+
