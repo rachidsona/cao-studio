@@ -35,6 +35,8 @@ export const axesVisible = (viewport: Viewport): boolean => made.get(viewport)?.
 
 export function setAxesVisible(viewport: Viewport, on: boolean): void {
   axesOf(viewport).visible = on;
+  // The « Axes » button beside the view follows (app/grid-toggle.ts), whoever showed them.
+  document.dispatchEvent(new CustomEvent("cad:axes-visible", { detail: on }));
   try {
     localStorage.setItem(KEY, on ? "1" : "0");
   } catch {

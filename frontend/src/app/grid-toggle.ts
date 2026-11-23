@@ -1,9 +1,10 @@
 /**
  * « Grille » (colonne Vue, à droite de la vue) : afficher ou cacher la grille de la vue 3D. Cachée, le dessin
- * s'accroche toujours à son pas. Le choix est gardé dans ce navigateur.
+ * s'accroche toujours à son pas. « Axes », juste dessous : les trois axes de la vue (viewport/world-axes.ts), comme la case
+ * « Afficher les axes » de Magie extrusion. Les choix sont gardés dans ce navigateur.
  */
 import type { Viewport } from "../viewport/viewport";
-import { restoreAxes } from "../viewport/world-axes";
+import { axesVisible, restoreAxes, setAxesVisible } from "../viewport/world-axes";
 
 const KEY = "cao.grid-visible";
 
@@ -26,6 +27,10 @@ export function bindGridToggle(root: HTMLElement, viewport: Viewport): void {
   }
   set(on);
   // The three axes too (Magie extrusion's « Afficher les axes »), as they were left.
+  const axes = root.querySelector<HTMLButtonElement>("[data-axes-toggle]");
+  document.addEventListener("cad:axes-visible", (event) => axes?.setAttribute("aria-pressed", String((event as CustomEvent<boolean>).detail)));
   restoreAxes(viewport);
+  axes?.setAttribute("aria-pressed", String(axesVisible(viewport)));
+  axes?.addEventListener("click", () => setAxesVisible(viewport, !axesVisible(viewport)));
   button?.addEventListener("click", () => set(!viewport.gridVisible));
 }

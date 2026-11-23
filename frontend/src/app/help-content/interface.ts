@@ -350,6 +350,14 @@ export const SCREEN: HelpFamily[] = [
           "Cachée, elle garde son pas : le dessin s'y accroche toujours.",
         ],
       },
+      {
+        keys: [], selector: "[data-axes-toggle]", name: "Axes",
+        what: "Montre ou cache les trois axes de la vue : rouge (X), vert (Y) et bleu (Z), pleins du côté positif, en tirets du côté négatif.",
+        steps: [
+          "Cliquez « Axes » : les trois axes traversent la vue par l'origine. Recliquez pour les cacher.",
+          "La case « Afficher les axes » de Magie extrusion fait la même chose ; le choix est retenu.",
+        ],
+      },
       ...SIDE_HELP,
       {
         keys: [], selector: "[data-xray]", name: "Rayons X",

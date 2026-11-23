@@ -80,4 +80,10 @@ test("Magie extrusion : un rectangle sur la grille, là où il n'y a aucun corps
   await expect(tool.getByRole("checkbox", { name: "Afficher les axes" })).toBeChecked();
   await tool.getByRole("checkbox", { name: "Afficher les axes" }).uncheck();
   expect(await page.evaluate(() => localStorage.getItem("cao.axes-visible"))).toBe("0");
+  // The « Axes » button beside the view: it followed the box, and shows them again.
+  const axesButton = page.locator("[data-side-tools] [data-axes-toggle]");
+  await expect(axesButton).toHaveAttribute("aria-pressed", "false");
+  await axesButton.click();
+  await expect(axesButton).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(() => localStorage.getItem("cao.axes-visible"))).toBe("1");
 });

@@ -8,6 +8,7 @@ import { toolKey } from "./tool-catalogue";
 
 /** The tools added lately, by key: the newest first. */
 export const NEW_TOOLS: readonly string[] = [
+  "data-axes-toggle:",
   "data-workshop:form-pipette",
   "data-workshop:pipette",
   "data-action:face-strip",

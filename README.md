@@ -111,7 +111,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   le meuble ; le profil fait l'**en-tête** de tous les documents imprimés (liste de débit, calepinage, devis, fiches,
   notice, étiquettes ; pas la mise en plan ni le dossier client, qui ont leur mise en page). Sans serveur à jour, les
   matières intégrées seules (`document/catalog.ts`, `persistence/catalog.ts`).
-- **Rayons X** (colonne Vue, sous « Grille ») : les corps translucides pour voir l'intérieur d'un meuble sans rien
+- **Axes** (colonne Vue, sous « Grille ») : montre ou cache les trois axes de la vue par l'origine — rouge X, vert Y,
+  bleu Z, en tirets du côté négatif —, comme la case « Afficher les axes » de Magie extrusion ; retenu
+  (`app/grid-toggle.ts`, `viewport/world-axes.ts`).
+- **Rayons X** (colonne Vue, sous « Axes ») : les corps translucides pour voir l'intérieur d'un meuble sans rien
   cacher (`app/display-toggles.ts`).
 - **Affichage par famille** (colonne Vue, à côté) : une case par famille de corps — façades, carcasse, fonds,
   étagères, plinthes et socles, pièce (murs), électroménager, autres —, **Vue de travail** (façades, murs et
