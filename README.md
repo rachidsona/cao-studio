@@ -2687,7 +2687,9 @@ opération existante.
     profondeur, de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
     relevante » (sur un meuble haut) et « Casquette sur colonne » (56 cm de profondeur) dans les meubles hauts du
-    catalogue se posent **sur** le meuble choisi, le suivant à côté (`above` de `document/kitchen-catalog.ts`).
+    catalogue se posent **sur** le meuble choisi, à sa hauteur, le suivant à côté (`above` de `document/kitchen-catalog.ts`),
+    même quand le projet a un Plan de cuisine ; choisies dans un linéaire du plan, elles mettent la casquette du plan en
+    caissons à porte relevante, de leur hauteur (`capUnits` de `app/kitchen/kitchen-catalog-view.ts`).
     L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)
     pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,

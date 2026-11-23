@@ -71,3 +71,25 @@ test("Meubles de cuisine, avec un Plan de cuisine : la casquette se pose sur le 
   expect(cap.origin).toEqual([unit.origin[0], unit.origin[1], unit.origin[2]! + unit.height]);
   expect(errors).toEqual([]);
 });
+
+test("dans un linéaire du Plan de cuisine, choisir une casquette met la casquette du plan en caissons", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-casquette-lineaire");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator("[data-propose]").click();
+  await expect(page.getByText(/Cuisine proposée/).first()).toBeVisible();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.locator('[data-add="wall-casquette-sur-colonne-400"]').click();
+  await expect(page.getByText(/Casquette en caissons à porte relevante/).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/ne tient pas sur ce linéaire/)).toHaveCount(0);
+  await expect(page.locator('[title^="Casquette"]').first()).toBeAttached({ timeout: 60_000 });
+  expect(errors).toEqual([]);
+});

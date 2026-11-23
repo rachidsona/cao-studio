@@ -4,13 +4,16 @@
  * ce qu'il contient et ses cotes ; survoler une largeur redessine le meuble à cette largeur, un clic l'ajoute. Une
  * autre largeur se tape (« Autre… »), ou se prend à la place libre du linéaire (« Place libre »). Les appareils (évier,
  * plaque, fours, lave-vaisselle, colonnes, hotte, micro-ondes) se montrent de même, à leurs largeurs seulement.
+ * Une casquette choisie dans un linéaire est la casquette du plan, en caissons (capUnits).
  */
 import { CATALOG, KINDS, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
+import { withKitchenBuilt } from "../../document/kitchen-floor";
 import type { DisplayUnit } from "../../document/types";
 import { APPLIANCES, itemEntry, modelOf } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { elevation, unitSummary } from "./unit-elevation";
+import type { Editor } from "../editor";
 
 const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
@@ -134,3 +137,17 @@ export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: Ca
   );
 }
 
+
+/**
+ * A casquette of the catalogue (« Casquette relevante », « sur colonne ») chosen in a run of the Plan de cuisine: not a
+ * unit of the run but the plan's casquette, in caissons with lift-up doors — one on each wall unit and column, as wide as
+ * it (document/kitchen-cap.ts) — at the model's height.
+ */
+export async function capUnits(editor: Editor, planId: string, entry: CatalogEntry, waiting: boolean): Promise<void> {
+  if (waiting) return editor.notify("Le linéaire est en train d'être enregistré : un instant, puis recommencez.", "info");
+  const made = withKitchenBuilt(editor.doc, planId, { cap: "units", ...(entry.height ? { capHeight: entry.height } : {}) });
+  if (typeof made === "string") return editor.notify(made, "error");
+  await editor.change(made.doc);
+  const what = "Casquette en caissons à porte relevante : un caisson sur chaque meuble haut et chaque colonne (à régler dans « Matières et finitions »).";
+  editor.notify([what, ...made.problems].join(" "), made.problems.length ? "info" : "success");
+}

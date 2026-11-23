@@ -19,7 +19,7 @@ import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 import { Folds } from "../../ui/fold";
-import { familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
+import { capUnits, familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
 import { kickOf, withCorner, type CornerChange, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerChoice, cornerChosen } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
@@ -54,6 +54,7 @@ const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["tall
 export interface RunEditorHost {
   editor: Editor;
   plan: KitchenFloorPlan;
+  planId: string;
   run: KitchenRun;
   room?: KitchenRoomInfo;
   /** The unit chosen when it opens, and the part of the panel open (the run made again under it: it stays as it was). */
@@ -74,7 +75,6 @@ export interface RunEditorHost {
   /** The cross: what is waiting is stored, and the run closes. */
   back(): void;
 }
-
 
 export class RunEditor {
   /** The corners chosen here, not yet applied. */
@@ -481,7 +481,7 @@ export class RunEditor {
   private catalog(): HTMLElement[] {
     const unit = this.host.editor.unit;
     const wall = this.host.run.wall;
-    const add = (e: CatalogEntry) => this.addEntry(e);
+    const add = (e: CatalogEntry) => (e.above ? void capUnits(this.host.editor, this.host.planId, e, this.dirty) : this.addEntry(e));
     // A width of one's own, or that of the room left in its row.
     const plan = this.current();
     const fill = this.fillOf();

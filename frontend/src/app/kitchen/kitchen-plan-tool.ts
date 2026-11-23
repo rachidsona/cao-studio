@@ -364,7 +364,7 @@ export class KitchenPlanTool {
     // Another wall opened while one is isolated: it is the one seen.
     if (show && seen && seen.run !== run.id && isolatedSketch() === planId) this.seeRun(planId, run);
     this.runEditor = new RunEditor({
-      editor: this.editor, plan, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen, fold, other, focus: !!document.activeElement?.closest("[data-run-strip]"),
+      editor: this.editor, plan, planId, run, room: kitchenRoomInfo(this.editor.doc, plan), chosen, fold, other, focus: !!document.activeElement?.closest("[data-run-strip]"),
       redraw: () => this.draw(),
       changed: () => this.storeRunSoon(planId, run),
       back: () => void this.leaveRun(planId, run),
