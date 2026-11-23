@@ -12,11 +12,11 @@
     <span class="absolute top-2.5 right-2.5">{% include "projects/_status.html" with status=project.status label=project.get_status_display %}</span>
     <span class="absolute bottom-2 left-2 rounded-tag bg-white/85 px-1.5 py-0.5 text-2xs font-semibold tracking-wide uppercase backdrop-blur dark:bg-gray-900/75" data-space="{{ project.space }}">{{ project.get_space_display }}</span>
   </div>
-  <div class="flex flex-1 flex-col gap-1 p-4">
+  <div class="flex flex-1 flex-col gap-1 p-4 text-center">
     <a href="{% url 'projects:editor' project_id=project.id %}" class="truncate text-base font-semibold text-gray-900 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none dark:text-gray-50" title="Ouvrir {{ project.name }}">{{ project.name }}</a>
     <p class="truncate text-sm text-gray-600 dark:text-gray-300">{% if project.client_name %}{{ project.client_name }}{% else %}<span class="text-gray-500">Sans client</span>{% endif %}{% if project.folder and not folder %} · <span data-in-folder>{% include "projects/_folder_icon.html" with class="size-3.5" %} {{ project.folder.name }}</span>{% endif %}</p>
     <p class="text-xs text-gray-500 dark:text-gray-400">Version {{ project.current_version }} · modifié le {{ project.updated_at|date:"j F Y à H:i" }}{% if project.install_date %} · pose le {{ project.install_date|date:"j F Y" }}{% endif %}</p>
-    <div class="mt-auto flex items-center justify-between gap-2 pt-3">
+    <div class="mt-auto flex flex-wrap items-center justify-center gap-3 pt-3">
       {% if project.price is not None %}<span class="font-mono text-sm font-semibold text-gray-900 dark:text-gray-50" data-price>{{ project.price|floatformat:"2g" }} MAD</span>{% else %}<span class="text-xs text-gray-500">Pas encore de devis</span>{% endif %}
       <span class="relative z-10 flex items-center gap-1.5">
         <a href="{% url 'projects:sheet' project_id=project.id %}" class="rounded-chip border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Fiche</a>
