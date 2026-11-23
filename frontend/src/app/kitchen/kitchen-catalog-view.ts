@@ -18,10 +18,12 @@ import type { Editor } from "../editor";
 const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
 /** The models of a family, each with its entries at their widths: the catalogue's (one per name) or the appliances. */
-export function familyModels(family: UnitKind | "appliance", wall = true): CatalogEntry[][] {
+export function familyModels(family: UnitKind | "appliance" | "cap", wall = true): CatalogEntry[][] {
   // The dishwasher drawn with its integrated door, as on the run's strip.
   if (family === "appliance") return APPLIANCES.filter((a) => wall || a.kind !== "wall").map((a) => a.widths.map((width) => ({ ...itemEntry({ id: "", model: a.model, width }), ...(a.role === "dishwasher" ? { layout: "door" as const } : {}) })));
-  return [...new Set(CATALOG.filter((e) => e.kind === family).map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
+  // The casquettes in their own tab, beside « Hauts ».
+  const models = CATALOG.filter((e) => (family === "cap" ? e.above : e.kind === family && !e.above));
+  return [...new Set(models.map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
 }
 
 /** Tabs of families: the one chosen underlined. */

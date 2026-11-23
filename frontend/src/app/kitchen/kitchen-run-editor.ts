@@ -48,8 +48,8 @@ const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-righ
 const SELECT = "h-7 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
 
-type Family = "base" | "wall" | "tall" | "appliance" | "mine";
-const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
+type Family = "base" | "wall" | "cap" | "tall" | "appliance" | "mine";
+const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["cap", "Casquettes"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
 
 export interface RunEditorHost {
   editor: Editor;
@@ -486,7 +486,7 @@ export class RunEditor {
     const plan = this.current();
     const fill = this.fillOf();
     const free = { limits: (e: CatalogEntry) => sizeLimits(plan, e).width, room: (e: CatalogEntry) => widestRoom(fill, rowOf(e)) || null };
-    const tabs = familyTabs(FAMILIES.filter(([f]) => wall || f !== "wall"), this.family, (f) => ((this.family = f), this.host.redraw()), "Ajouter");
+    const tabs = familyTabs(FAMILIES.filter(([f]) => wall || (f !== "wall" && f !== "cap")), this.family, (f) => ((this.family = f), this.host.redraw()), "Ajouter");
     let rows: HTMLElement[];
     if (this.family === "mine") {
       const own = myUnits().filter((e) => wall || e.kind !== "wall");

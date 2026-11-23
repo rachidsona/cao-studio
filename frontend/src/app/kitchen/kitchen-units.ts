@@ -12,7 +12,7 @@
  */
 import { withCabinetFurnished, withCaissonsPlaced } from "../../document/cabinet-furnish";
 import * as THREE from "three";
-import { CATALOG, KINDS, addKitchenUnit, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
+import { KINDS, addKitchenUnit, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
 import { kitchenPlanIn, kitchenPlanOf, withKitchenBuilt } from "../../document/kitchen-floor";
 import { addToKitchenPlan, planItemOf, planSpace, type PlanItem } from "../../document/kitchen-plan-add";
 import { spaceLeft } from "../../features/kitchen-run-items";
@@ -28,14 +28,14 @@ import type { Editor } from "../editor";
 import { cornerChoice } from "./kitchen-corner-choice";
 import { kitchenRunOpen } from "./kitchen-plan-tool";
 import { myUnitsSection } from "./my-units";
-import { modelRow } from "./kitchen-catalog-view";
+import { familyModels, modelRow } from "./kitchen-catalog-view";
 import { BRASS } from "./unit-elevation";
 import { floatingPanel } from "../workshop/workshop-ui";
 
-type Family = UnitKind | "mine" | "corner";
+type Family = UnitKind | "cap" | "mine" | "corner";
 /** « Mur A » → « mur A ». */
 const lower = (label: string) => label.charAt(0).toLowerCase() + label.slice(1);
-const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["tall", "Colonnes"], ["mine", "Mes meubles"]];
+const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["cap", "Casquettes"], ["tall", "Colonnes"], ["mine", "Mes meubles"]];
 
 export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   const button = root.querySelector<HTMLButtonElement>('[data-workshop="kitchen-units"]');
@@ -164,7 +164,7 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
       ? [corners]
       : family === "mine"
         ? [myUnitsSection({ doc: () => editor.doc, unit: () => editor.unit, selected: () => selectedCabinet(editor), add: (e) => void add(e), notify: (m, k) => editor.notify(m, k), refresh: render })]
-        : [...new Set(CATALOG.filter((e) => e.kind === family).map((e) => e.name))].map((name) => modelRow(CATALOG.filter((e) => e.name === name), editor.unit, (e) => void add(e), "data-unit", { limits: () => [100, 2400] }));
+        : familyModels(family as UnitKind | "cap").map((entries) => modelRow(entries, editor.unit, (e) => void add(e), "data-unit", { limits: () => [100, 2400] }));
     panel.body.style.setProperty("--brass", BRASS);
     panel.body.replaceChildren(
       tabs,

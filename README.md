@@ -2870,7 +2870,7 @@ opération existante.
       La bande dessine aussi la crédence, les retours du plan et les joues de finition, tels que la 3D les bâtit.
     - **Ajouter des meubles** montre le catalogue comme « Meubles de cuisine » (`app/kitchen/kitchen-catalog-view.ts`) :
       chaque modèle dessiné de face, ce qu'il contient, ses cotes, redessiné à la largeur survolée ; un clic l'ajoute
-      après le meuble choisi. Onglets Bas, Hauts, Colonnes, Électro. et Mes meubles.
+      après le meuble choisi. Onglets Bas, Hauts, Casquettes, Colonnes, Électro. et Mes meubles.
     - **Largeur libre** : après les largeurs du modèle, « Autre… » ouvre un champ où taper n'importe quelle largeur, dans
       l'unité du projet (28,6 cm par exemple). Entrée l'ajoute, Échap le referme ; une largeur hors limites (10 à 240 cm
       pour un meuble) est refusée. « Place libre · 91,4 » ajoute le meuble à la largeur exacte de la plus grande place

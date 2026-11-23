@@ -60,6 +60,9 @@ test("Meubles de cuisine, avec un Plan de cuisine : la casquette se pose sur le 
   await page.getByRole("tablist", { name: "Familles de meubles" }).getByRole("tab", { name: "Hauts" }).click();
   await page.locator('[data-unit="wall-haut-1-porte-600"]').click();
   await expect(page.getByText("Haut 1 porte 600 (A1)").first()).toBeVisible({ timeout: 60_000 });
+  // The casquettes in their own tab, beside « Hauts » (no longer among them).
+  await expect(page.locator('[data-unit="wall-casquette-relevante-600"]')).toHaveCount(0);
+  await page.getByRole("tablist", { name: "Familles de meubles" }).getByRole("tab", { name: "Casquettes" }).click();
   await page.locator('[data-unit="wall-casquette-relevante-600"]').click();
   await expect(page.getByText(/Casquette relevante 600 ajouté/).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
@@ -86,7 +89,7 @@ test("dans un linéaire du Plan de cuisine, choisir une casquette met la casquet
   await tool.locator('[data-open-run="A"]').click();
   const add = tool.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
-  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.getByRole("tab", { name: "Casquettes" }).click();
   await tool.locator('[data-add="wall-casquette-sur-colonne-400"]').click();
   await expect(page.getByText(/Casquette en caissons à porte relevante/).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/ne tient pas sur ce linéaire/)).toHaveCount(0);
