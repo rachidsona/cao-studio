@@ -79,3 +79,30 @@ test("la rangée des chiffres sans Maj tape des chiffres : dans un champ, dans l
   await expect(page.locator("#zz-number")).toHaveValue("3");
   expect(errors).toEqual([]);
 });
+
+test("Extrusion après la Magie extrusion : un menu du panneau choisi, les chiffres tapés vont quand même à la distance", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-chiffres-menu");
+  await click(page, '[data-action="view"][data-view="top"]');
+  await page.waitForTimeout(1200);
+  const v = (await page.locator("canvas.cad-view").boundingBox())!;
+  // A rectangle on the grid, pulled: the Extrusion opens.
+  await click(page, '[data-action="face-strip"]');
+  const magic = page.getByRole("dialog", { name: "Magie extrusion" });
+  await magic.getByRole("combobox", { name: "Tracé" }).selectOption("rectangle");
+  await magic.getByRole("checkbox", { name: "Puis tirer / pousser" }).check();
+  const [x0, y0] = [v.x + v.width * 0.15, v.y + v.height * 0.2];
+  await page.mouse.move(x0, y0);
+  await page.mouse.move(x0 + 1, y0);
+  await page.mouse.click(x0 + 1, y0);
+  await page.mouse.move(x0 + 120, y0 + 80);
+  await page.mouse.click(x0 + 120, y0 + 80);
+  await expect(page.locator("#editor")).toHaveAttribute("data-tool", "extrude", { timeout: 30_000 });
+  // « Opération » just chosen keeps the focus: « é ( » still go to the distance (25), without Maj.
+  await page.getByRole("combobox", { name: /Opération/ }).first().focus();
+  await typeAzerty(page, "25");
+  await expect(page.getByLabel(/^Distance/).first()).toHaveValue("25");
+  expect(errors).toEqual([]);
+});

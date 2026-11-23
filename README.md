@@ -2352,7 +2352,9 @@ opération existante.
   suite, chacune son étape d'annulation. **Échap** (ou l'outil Sélection) le quitte ; un second Échap, sans outil ni
   sélection, quitte l'esquisse, comme « Terminer l'esquisse ».
 - **Saisie directe dans les outils** (`ui/direct-entry.ts`, `measurements/typed-expression.ts`) : un outil ouvert,
-  ce qu'on tape sans cliquer de champ va dans le premier champ de nombre de sa fenêtre (entouré de bleu) ; Entrée
+  ce qu'on tape sans cliquer de champ va dans le premier champ de nombre de sa fenêtre (entouré de bleu) — même juste
+  après avoir choisi dans un menu, coché une case ou cliqué un bouton du panneau, et avec la rangée des chiffres sans
+  Maj d'un clavier AZERTY ; Entrée
   l'applique — comme si on l'avait tapé dans le champ —, Retour arrière efface, Échap abandonne, un clic ailleurs
   aussi. Ce peut être un **calcul** : `(190+100)/2`, `2*70`, `80-2,5` ; et tout champ de nombre tapé à la main prend un
   calcul de même, son résultat écrit à Entrée ou en quittant le champ, avant que l'outil le lise (les nombres tels

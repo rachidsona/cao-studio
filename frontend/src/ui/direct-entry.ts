@@ -81,7 +81,8 @@ export function bindDirectEntry(root: HTMLElement, toolOpen: () => boolean): voi
     "keydown",
     (event) => {
       const target = event.target as HTMLElement | null;
-      const inField = !!target?.closest?.("input, textarea, select, [contenteditable=true]");
+      // A field one types in (a menu, a box or a button just used keeps no keys: a value typed goes to the tool's field).
+      const inField = !!target?.closest?.('textarea, [contenteditable=true], input:not([type="checkbox"], [type="radio"], [type="button"], [type="range"], [type="color"])');
       // A calculation typed in a field by hand: its result written in before the tool reads it.
       if (inField) {
         if (typed) end();
