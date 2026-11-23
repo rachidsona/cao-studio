@@ -1543,7 +1543,8 @@ opération existante.
   Réseau, Miroir, Coupe, Usinage…) sont de petits cubes en perspective comme dans Fusion, les autres une vue à plat **en trois couleurs** : le trait en couleur du texte (blanc en thème sombre), la géométrie
   en bleu (points, traits dessinés, contours des faces), et ce qui agit en orange (flèches, crayons, outils, plans de coupe) ; le
   bleu et l'orange ne changent pas avec la palette (`templates/editor/_icons.html`, `--ic-accent` et `--ic-action`). Les **groupes changent de place** en faisant glisser leur nom (« CRÉER ▾ »…) ;
-  l'ordre est retenu. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
+  l'ordre est retenu. Les **icônes se rangent** en glissant l'une sur l'autre, même d'un groupe à l'autre (dans la
+  colonne de sélection et de vue, dans leur case) ; l'ordre est retenu, « Par défaut » remet celles d'un groupe. Un groupe dont tous les outils sont rangés garde son menu. La barre reste **sur une
   seule ligne** : quand la fenêtre est trop étroite, les icônes se replient une à une dans le menu de leur groupe —
   celles de **Client d'abord**, puis Fabrication, Atelier, Créer, Modifier, Pièce, Meuble et Dressing (en esquisse : Affichage, Contraintes, Cotes,
   Modifier, Créer), chaque groupe en commençant par sa dernière icône — et reviennent quand la fenêtre s'élargit.

@@ -8,7 +8,8 @@
  * menu), the groups of FOLD_ORDER first — the documents first of all, the furniture last — each from its last icon.
  *
  * The star ★ of a menu puts the tool in "Mes outils", the favourites bar at the left of the view (favorites.ts).
- * Groups change places by dragging their name; the order is remembered per toolbar. An icon dragged out of the bar is
+ * Groups change places by dragging their name; an icon, by dragging it onto another (even of another group); both
+ * orders are remembered per toolbar ("Par défaut" puts a group's icons back). An icon dragged out of the bar is
  * put away in its group's menu, as by its pin; dragged into another bar, it is put there too (ui/tool-drag.ts).
  *
  * Above the model's bar, the tabs of TABS, as Fusion's: each shows the groups of its work, has its own bar of
@@ -153,6 +154,18 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
     });
     return { group, name: group.getAttribute("aria-label") ?? "", tools };
   });
+  // Icons in the order the user chose, per group (dragged onto another icon, even of another group).
+  const rowOf = (g: (typeof groups)[number]) => g.group.querySelector<HTMLElement>(".ribbon-row");
+  const byButton = new Map(groups.flatMap((g) => g.tools.map((t) => [t.button, t] as const)));
+  const toolOf = (key: string) => [...byButton.values()].find((t) => t.key === key);
+  const original = new Map(groups.map((g) => [g, [...g.tools]]));
+  const regroup = () => groups.forEach((g) => (g.tools = [...(rowOf(g)?.children ?? [])].flatMap((c) => byButton.get(c as HTMLElement) ?? [])));
+  const saveIcons = () => (regroup(), groups.forEach((g) => writeOrder(`${name}:${g.name}`, g.tools.map((t) => t.key))));
+  for (const g of groups) for (const key of readOrder(`${name}:${g.name}`)) {
+    const button = toolOf(key)?.button;
+    if (button) rowOf(g)?.append(button);
+  }
+  regroup();
 
   /** Tools folded away for lack of room (not remembered: the window's width decides). */
   const folded = new Set<string>();
@@ -206,12 +219,30 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
   for (const t of groups.flatMap((g) => g.tools)) {
     draggableTool(t.button, () => ({ key: t.key, label: label(t.button), bar: toolbar, keep: true, remove: () => (hidden.add(t.key), save()) }));
   }
+  /** The icon of this bar under the pointer, and whether the dragged one goes before it. */
+  const spot = (event: DragEvent, key: string) => {
+    const over = (event.target as Element).closest<HTMLElement>(".ribbon-row > button");
+    const at = over && toolbar.contains(over) ? byButton.get(over)?.key : undefined;
+    if (!over || !at || at === key) return null;
+    const box = over.getBoundingClientRect();
+    return { over, first: event.clientX < box.left + box.width / 2 };
+  };
   registerBar({
     element: toolbar,
     accepts: (key) => own.has(key),
-    mark: (event) => (event ? (toolbar.dataset.drop = "end") : delete toolbar.dataset.drop),
-    drop: (key) => {
+    mark: (event, key) => {
+      for (const marked of toolbar.querySelectorAll<HTMLElement>("[data-drop]")) delete marked.dataset.drop;
+      delete toolbar.dataset.drop;
+      if (!event) return;
+      const at = spot(event, key);
+      if (at) at.over.dataset.drop = at.first ? "left" : "right";
+      else toolbar.dataset.drop = "end";
+    },
+    drop: (key, event) => {
       hidden.delete(key);
+      const at = spot(event, key);
+      const button = toolOf(key)?.button;
+      if (at && button) (at.first ? at.over.before(button) : at.over.after(button), saveIcons());
       save();
     },
   });
@@ -277,6 +308,9 @@ function bindToolbar(toolbar: HTMLElement, name: string): void {
       reset.title = "Remettre ce groupe comme à l'origine";
       reset.addEventListener("click", () => {
         const defaults = new Set(DEFAULT_HIDDEN[name] ?? []);
+        // Its icons back in it, in their first order.
+        for (const t of original.get(g) ?? []) rowOf(g)?.append(t.button);
+        saveIcons();
         for (const { key } of g.tools) {
           if (defaults.has(key)) hidden.add(key);
           else hidden.delete(key);

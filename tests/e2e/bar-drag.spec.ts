@@ -95,3 +95,35 @@ test("« Tout ouvrir » sort les tiroirs d'un bureau, un second clic les rentre"
   await expect(button).toHaveAttribute("aria-pressed", "false");
   expect(errors).toEqual([]);
 });
+
+test("ranger les icônes dans leur barre : le ruban (même d'un groupe à l'autre) et la colonne de droite, gardé", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await newProject(page, "zz-ranger-icones");
+  const keys = (selector: string) => page.locator(selector).evaluateAll((bs) => bs.filter((b) => !(b as HTMLElement).hidden).map((b) => (b as HTMLElement).dataset.action ?? (b as HTMLElement).getAttribute("aria-label")));
+  const ribbon = page.locator('[data-ribbon="model"]');
+  const modify = '[data-ribbon="model"] .ribbon-group[aria-label="Modifier"]:not([hidden]) .ribbon-row > button';
+  const before = await keys(modify);
+  // The third icon dropped on the left half of the first: it goes first.
+  const first = ribbon.locator(".ribbon-group[aria-label='Modifier'] .ribbon-row > button:visible").first();
+  await ribbon.locator(".ribbon-group[aria-label='Modifier'] .ribbon-row > button:visible").nth(2).dragTo(first, { targetPosition: { x: 3, y: 10 } });
+  expect(await keys(modify)).toEqual([before[2], before[0], before[1], ...before.slice(3)]);
+  // Into another group: on « Créer »'s first icon.
+  const create = ribbon.locator(".ribbon-group[aria-label='Créer'] .ribbon-row > button:visible").first();
+  await ribbon.locator(".ribbon-group[aria-label='Modifier'] .ribbon-row > button:visible").first().dragTo(create, { targetPosition: { x: 3, y: 10 } });
+  expect((await keys('[data-ribbon="model"] .ribbon-group[aria-label="Créer"] .ribbon-row > button'))[0]).toBe(before[2]);
+
+  // The column beside the view: Rayons X above « Ajuster ».
+  const side = page.locator("[data-side-tools]");
+  await side.locator("[data-xray]").dragTo(side.locator('[data-action="fit"]'), { targetPosition: { x: 10, y: 2 } });
+  const vue = side.locator('[role="group"][aria-label="Vue"] > button');
+  await expect(vue.first()).toHaveAttribute("data-xray", "");
+
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  expect((await keys('[data-ribbon="model"] .ribbon-group[aria-label="Créer"] .ribbon-row > button'))[0]).toBe(before[2]);
+  expect(await keys(modify)).toEqual([before[0], before[1], ...before.slice(3)]);
+  await expect(vue.first()).toHaveAttribute("data-xray", "");
+  expect(errors).toEqual([]);
+});
