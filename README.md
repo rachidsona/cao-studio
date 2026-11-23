@@ -2683,7 +2683,7 @@ opération existante.
     (280 cm) et s'arrête, dans un angle, au bord de la casquette du mur qui passe. En caisson : un dessus, un bandeau
     devant et un bout à chaque bout libre. Elle prévient quand une porte relevante dessous ne peut plus se lever et
     quand le plafond est trop bas (`document/kitchen-cap.ts`). **Caissons à porte relevante** (sur-meubles) : sur chaque
-    meuble haut et chaque colonne (pas la hotte, un fileur, un meuble d'angle), un caisson de sa largeur et de sa
+    meuble haut, chaque colonne et chaque bras d'un meuble haut d'angle, droit ou en L (pas la hotte, un fileur), un caisson de sa largeur et de sa
     profondeur, de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
     relevante » (sur un meuble haut) et « Casquette sur colonne » (56 cm de profondeur) dans les meubles hauts du

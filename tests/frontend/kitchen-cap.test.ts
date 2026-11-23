@@ -103,6 +103,20 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
     expect(caps(p)).toEqual([]);
   });
 
+  it("sur les meubles hauts d'angle aussi (droit ou en L), sans qu'aucun caisson n'en recouvre un autre", async () => {
+    const { cabinetBox } = await import("../../frontend/src/document/kitchen-catalog");
+    const list = (l: [string, number][]) => l.reduce<KitchenRunItem[]>((items, [m, w]) => [...items, newItem(items, m, w)], []);
+    for (const corner of ["unit", "l"] as const) {
+      const p: KitchenFloorPlan = { ...KITCHEN_PLAN, model: "L-left", lengthA: 3000, lengthB: 2500, cap: "units", wallCorners: { left: corner }, rest: { A: "end", B: "start" }, runs: { A: list([WALL]), B: list([WALL]) } };
+      const made = units(p);
+      expect(made.some((u) => u.name.startsWith("Casquette d'angle"))).toBe(true);
+      expect(made.every((u) => Math.abs(u.origin[2] - TOP) < 1e-6)).toBe(true);
+      const boxes = made.map((u) => cabinetBox(u));
+      const overlap = (a: (typeof boxes)[number], b: (typeof boxes)[number]) => [0, 1, 2].every((i) => Math.min(a[1][i]!, b[1][i]!) - Math.max(a[0][i]!, b[0][i]!) > 0.5);
+      expect(boxes.some((a, i) => boxes.some((b, j) => i < j && overlap(a, b)))).toBe(false);
+    }
+  });
+
   it("leur hauteur choisie, de 25 à 60 cm ; sous un plafond trop bas, pas de caisson et un mot", () => {
     expect(units(plan([WALL], { cap: "units", capHeight: 300 }))[0]!.height).toBe(300);
     expect(kitchenPlanProblem(plan([WALL], { cap: "units", capHeight: 100 }))).toMatch(/25 à 60 cm/);
