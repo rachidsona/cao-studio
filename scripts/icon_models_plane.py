@@ -1,6 +1,6 @@
 """
 Les outils plats (icon_models_flat.py) dans les modèles en volumes : le tracé posé sur un support vu de biais — une
-petite planche grise avec son épaisseur pour « Studio », une feuille crème vue presque de face pour « Croquis » ;
+petite planche avec son épaisseur pour « Duo » ;
 « Glyphe » le garde à plat. Chaque tracé y est réduit à des segments (arcs et courbes échantillonnés) puis projeté.
 """
 import re
@@ -11,10 +11,8 @@ from icon_models_set import n
 # The support seen from the front and above: screen = (ax u + ay v, bx u + by v) for (u, v) from the centre of the
 # 24 × 24 drawing; its thickness (0: a sheet). Its faces are of the kind F~: a face drawn in a fine grey line.
 PLANES = {
-    "studio": dict(ax=1, ay=-0.2, bx=0.1, by=0.72, depth=1.3),
-    "croquis": dict(ax=1, ay=-0.1, bx=0.05, by=0.86, depth=0),
+    "duo": dict(ax=1, ay=-0.2, bx=0.1, by=0.72, depth=1.3),
 }
-PLANES["duo"] = PLANES["studio"]
 EDGE = (1.5, 22.5)  # the support's sides, in the drawing's 24 × 24
 TOKEN = re.compile(r"[MLHVACSZmlhvacsz]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?")
 

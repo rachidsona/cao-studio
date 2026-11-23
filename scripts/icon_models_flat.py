@@ -1,6 +1,6 @@
 """
-Les outils plats par nature — tracés, contraintes et cotes d'esquisse — dessinés une fois pour les trois modèles
-d'icônes (scripts/icon_models.py) : à plat dans Glyphe, posés sur une planche (Studio) ou une feuille (Croquis) vues
+Les outils plats par nature — tracés, contraintes et cotes d'esquisse — dessinés une fois pour les deux modèles
+d'icônes (scripts/icon_models.py) : à plat dans Glyphe, posés sur une planche (Duo) vue
 de biais (icon_models_plane.py), chaque modèle avec ses couleurs. Mêmes sortes que icon_models_set.py ; F, K, H y sont des
 surfaces à plat (neutre, teinte de l'accent, accent), R une flèche qui agit, sa pointe pleine.
 """

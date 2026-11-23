@@ -1582,23 +1582,20 @@ opération existante.
   (« ⋯ », « Affichage ») passent toujours par-dessus.
 - **Modèle des icônes** (menu **« ⋯ » → Icônes (le dessin)**, gardé dans le navigateur, `localStorage` « icon-model ») :
   le dessin même des icônes. **Volumes** (par défaut : les dessins de la page, de petits volumes en relief) ou un
-  jeu **redessiné** sur 24 × 24 : **Studio** (petits solides en axonométrie, gris clair ombrés en dégradé, ce qui
-  compte en bleu, ce qui agit en orange aux flèches à pointe pleine), **Glyphe** (formes plates grises, un accent de
-  couleur), **Croquis** (les solides vus plus de face, la façade large, en couleurs vives à plat — crème, jaune,
-  bleu, rouge — au trait noir qui dépasse des coins comme un croquis à main levée) ou **Duo** (les solides de Studio
-  peints à plat en deux tons — gris ardoise, bleu pour ce qui compte, orange pour ce qui agit —, sans trait de
-  contour). Studio, Croquis et Duo ont des couleurs fixes, les mêmes en thème clair et sombre. Trois dessins différents de chaque outil, pas trois rendus du même
-  (`tests/frontend/icon-models.test.ts`), et **tous les outils** redessinés : ruban, colonne de sélection, esquisse
-  (tracés, contraintes, cotes), modélisation (extrusion, révolution, congés, coque, réseaux, coupe…), menuiserie
-  (caissons, niches, dressing, cuisine, quincaillerie, usinage…), vues et navigation, fabrication et documents. Les
-  dessins sont décrits dans `scripts/icon_models_set.py` à `_set4.py` (Glyphe : une suite de tracés par outil),
-  `scripts/icon_models_studio.py` à `_studio4.py` (Studio et Croquis : des volumes placés dans l'espace, projetés
-  selon la vue du modèle, mis à l'échelle de l'icône, chaque face peinte selon son côté ; les solides de forme libre —
-  tronc, toit, cylindre, planche cintrée — dans `icon_models_solid.py`) et `scripts/icon_models_flat.py` et
-  `_flat2.py` (les outils plats par nature — tracés, documents, historique — dessinés une fois : à plat dans Glyphe,
-  posés sur une petite planche grise vue en 3D dans Studio et sur une feuille crème vue de biais dans Croquis,
-  `scripts/icon_models_plane.py`) ;
-  `python3 scripts/icon_models.py` écrit `static/icons/studio.svg`, `glyphe.svg`, `croquis.svg`, `duo.svg`. Le modèle choisi, l'éditeur charge son fichier et remplace
+  jeu **redessiné** sur 24 × 24 : **Glyphe** (formes plates grises, un accent de couleur) ou **Duo** (de petits
+  solides en axonométrie peints à plat en deux tons — gris ardoise, bleu pour ce qui compte, orange pour ce qui agit
+  —, sans trait de contour ; ses couleurs sont fixes, les mêmes en thème clair et sombre). Deux dessins différents de
+  chaque outil, pas deux rendus du même (`tests/frontend/icon-models.test.ts`), et **tous les outils** redessinés :
+  ruban, colonne de sélection, esquisse (tracés, contraintes, cotes), modélisation (extrusion, révolution, congés,
+  coque, réseaux, coupe…), menuiserie (caissons, niches, dressing, cuisine, quincaillerie, usinage…), vues et
+  navigation, fabrication et documents. Les dessins sont décrits dans `scripts/icon_models_set.py` à `_set4.py`
+  (Glyphe : une suite de tracés par outil), `scripts/icon_models_studio.py` à `_studio4.py` (Duo : des volumes placés
+  dans l'espace, projetés en axonométrie, mis à l'échelle de l'icône, chaque face peinte selon son côté ; les solides
+  de forme libre — tronc, toit, cylindre, planche cintrée — dans `icon_models_solid.py`) et
+  `scripts/icon_models_flat.py` et `_flat2.py` (les outils plats par nature — tracés, documents, historique —
+  dessinés une fois : à plat dans Glyphe, posés sur une petite planche vue en 3D dans Duo,
+  `scripts/icon_models_plane.py`) ; `python3 scripts/icon_models.py` écrit `static/icons/glyphe.svg` et `duo.svg`.
+  Le modèle choisi, l'éditeur charge son fichier et remplace
   le contenu de chaque symbole du même nom dans la page (`app/icon-models.ts`) : toutes les icônes qui en sont tirées
   changent d'un coup, et « Volumes » rend les dessins de la page. Les rendus ci-dessous ne peignent que les volumes :
   ils sont grisés avec un autre modèle.

@@ -1,6 +1,6 @@
 """
 Les outils de menuiserie du modèle « Glyphe » (suite de icon_models_set.py, mêmes sortes) : les meubles vus de face,
-à plat, ce qui compte dans l'accent ; « Studio » et « Croquis » les dessinent en volumes (icon_models_studio3.py).
+à plat, ce qui compte dans l'accent ; « Duo » les dessine en volumes (icon_models_studio3.py).
 """
 from icon_models_set import C, STAR, R
 

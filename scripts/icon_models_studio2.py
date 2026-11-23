@@ -1,5 +1,5 @@
 """
-Les outils de modélisation en volumes des modèles « Studio » et « Croquis » (suite de icon_models_studio.py, mêmes
+Les outils de modélisation en volumes du modèle « Duo » (suite de icon_models_studio.py, mêmes
 sortes et même façon : un dessin est une fonction de l'origine o, mis à l'échelle de l'icône par fit()).
 """
 from math import cos, pi, radians, sin

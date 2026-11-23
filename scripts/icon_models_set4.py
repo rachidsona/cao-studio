@@ -1,6 +1,6 @@
 """
 Les outils de vue, de navigation et de contrôle du modèle « Glyphe » (suite de icon_models_set.py, mêmes sortes) ;
-« Studio » et « Croquis » les dessinent en volumes (icon_models_studio4.py).
+« Duo » les dessine en volumes (icon_models_studio4.py).
 """
 from icon_models_flat import turn
 from icon_models_set import C, CUBE, CUBE_IN, POINTER, SMALL_POINTER, STAR, R

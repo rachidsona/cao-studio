@@ -1,6 +1,6 @@
 """
 Les outils de modélisation en volumes du modèle « Glyphe » (suite de icon_models_set.py, mêmes sortes) : des formes
-plates grises, ce qui compte dans l'accent, ce qui agit en orange ; « Studio » et « Croquis » les dessinent en
+plates grises, ce qui compte dans l'accent, ce qui agit en orange ; « Duo » les dessine en
 volumes (icon_models_studio2.py).
 """
 from icon_models_flat import turn

@@ -1,7 +1,7 @@
 """
 Les outils de documents, de fabrication et d'historique — plats par nature, dessinés une fois pour les trois modèles
 d'icônes comme ceux de icon_models_flat.py (mêmes aides, mêmes sortes) : à plat dans Glyphe, posés sur une planche
-(Studio) ou une feuille (Croquis) vues de biais.
+(Duo) vue de biais.
 """
 from icon_models_flat import P, box, dim, dots, turn
 from icon_models_set import C, arr

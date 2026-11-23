@@ -1,6 +1,6 @@
 """
 Les dessins à plat des modèles d'icônes (scripts/icon_models.py) : pour chaque outil, « glyphe » (formes plates
-grises, un accent) sur 24 × 24 ; « studio » et « croquis » sont en volumes, dans icon_models_studio.py. Un dessin est
+grises, un accent) sur 24 × 24 ; « duo » est en volumes, dans icon_models_studio.py. Un dessin est
 une suite de (sorte, tracé) : la sorte dit le trait ou l'aplat (icon_models.py : s a o les traits encre, accent,
 orange ; d e p les mêmes en pointillés ; W b w en gras ; S A O les aplats ; T une teinte de l'accent, G un gris), le
 tracé est celui d'un <path>.

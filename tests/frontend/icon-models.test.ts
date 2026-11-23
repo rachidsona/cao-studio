@@ -29,10 +29,10 @@ describe("modèles d'icônes", () => {
 
   it("deux modèles ne dessinent pas un outil de la même façon", () => {
     const drawing = (text: string, id: string) => text.match(new RegExp(`<symbol id="${id}"[^>]*>(.*?)</symbol>`))![1]!.replace(/ stroke-(width|linecap|linejoin)="[^"]*"/g, "");
-    const [a, b, c] = files.map(([, text]) => text);
-    for (const id of ids(a!)) {
-      const [x, y, z] = [drawing(a!, id), drawing(b!, id), drawing(c!, id)];
-      expect(x === y || y === z || x === z, id).toBe(false);
+    const texts = files.map(([, text]) => text);
+    for (const id of ids(texts[0]!)) {
+      const drawings = texts.map((text) => drawing(text, id));
+      expect(new Set(drawings).size, id).toBe(drawings.length);
     }
   });
 });

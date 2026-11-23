@@ -1,7 +1,6 @@
 """
 Les modèles d'icônes en volumes (scripts/icon_models.py) : chaque outil en petits solides placés dans l'espace (X, Y
-au sol, Z en haut), vus d'en haut — « Studio » en axonométrie, « Croquis » plus de face, la façade large et le côté
-fuyant ; les faces pleines cachent ce qui est derrière, dessinées du fond vers l'avant. Un dessin est une fonction de
+au sol, Z en haut), vus d'en haut en axonométrie (« Duo ») ; les faces pleines cachent ce qui est derrière, dessinées du fond vers l'avant. Un dessin est une fonction de
 l'origine o (là où tombe le point X = Y = Z = 0) ; fit() choisit l'échelle et l'origine pour qu'il remplisse l'icône.
 Sortes en plus de icon_models_set.py : F une face neutre, K une face pâle de l'accent, H une face de l'accent, suivies
 de « < » pour une face tournée à gauche, « > » à droite ; R une flèche qui agit, sa pointe pleine.
@@ -10,9 +9,8 @@ from icon_models_set import BRACKETS, C, R, SMALL_POINTER, STAR, arr, n
 
 SEEN = []
 # How a model looks at the space: screen x = ax X + ay Y, y = bx X + by Y - Z; and the drawing's scale.
-VIEWS = {"studio": dict(ax=1, ay=-1, bx=0.5, by=0.5), "croquis": dict(ax=0.92, ay=-0.5, bx=0.2, by=0.42)}
-VIEWS["duo"] = VIEWS["studio"]
-VIEW = dict(VIEWS["studio"], scale=1)
+VIEWS = {"duo": dict(ax=1, ay=-1, bx=0.5, by=0.5)}
+VIEW = dict(VIEWS["duo"], scale=1)
 
 
 def pt(o, X, Y, Z):

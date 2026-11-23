@@ -1,5 +1,5 @@
 """
-Les outils de vue, de navigation et de contrôle en volumes des modèles « Studio » et « Croquis » (suite de
+Les outils de vue, de navigation et de contrôle en volumes du modèle « Duo » (suite de
 icon_models_studio.py) : vues de face, de droite, de dessus, orbites, visite, scènes, rendus, sélection, accrochage.
 """
 from math import cos, pi, sin

@@ -1,5 +1,5 @@
 """
-Les outils de menuiserie en volumes des modèles « Studio » et « Croquis » (suite de icon_models_studio.py) : caissons
+Les outils de menuiserie en volumes du modèle « Duo » (suite de icon_models_studio.py) : caissons
 ouverts vus de face et de dessus (la face avant est du côté Y), leurs étagères, tiroirs, niches et quincaillerie.
 """
 from math import cos, pi, sin
