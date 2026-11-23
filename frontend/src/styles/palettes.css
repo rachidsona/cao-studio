@@ -1,6 +1,6 @@
 /*
  * The themes of « gestion menuiserie » (Atelier des Nobles): a dark theme in deep blue with a cyan accent by default,
- * fourteen palettes built each on two colours (Velours rouge on a velvet picture too) (a class on <html>, chosen in the « ⋯ » menu and kept in localStorage
+ * twelve palettes built each on two colours (a class on <html>, chosen in the « ⋯ » menu and kept in localStorage
  * "palette"), and the light theme. A palette only redefines variables:
  *   --night, --night-light, --night-table  the page, the panels, the tables (r g b);
  *   --ink, --ink-muted, --edge              the text, the secondary text, the hairlines;
@@ -183,26 +183,6 @@
     --brand: 249 160 154;
   }
 
-  html.palette-violet {
-    /* Royal Violet : #02060E et #9303C5 */
-    --night: 2 4 8;
-    --night-light: 3 5 10;
-    --night-table: 104 24 132;
-    --brand-plein: 105 18 135;
-    --degrade-bas: #9303c5;
-    --degrade-milieu: #4a046a;
-    --degrade-haut: #02060e;
-    --bouton-1: #6c0c8d;
-    --bouton-2: #540a6e;
-    --bouton-3: #070b11;
-    --bouton-survol-1: #810fa9;
-    --bouton-survol-2: #670c87;
-    --bouton-survol-3: #090d15;
-  }
-  html.dark.palette-violet {
-    --brand: 208 102 245;
-  }
-
   html.palette-charbon {
     /* Royal Charcoal : #1E1F22 et #4C4E51 (the accent stays grey) */
     --night: 19 19 21;
@@ -366,36 +346,5 @@
     --s900: color-mix(in srgb, rgb(var(--brand)) 22%, rgb(var(--night-light)));
     --s950: color-mix(in srgb, rgb(var(--brand)) 12%, rgb(var(--night-light)));
   }
-
-  html.palette-velours {
-    /* Velours rouge : le motif de velours bordeaux tel quel (static/textures/themes/velours-rouge.jpg), ses tons pour le reste */
-    --night: 31 9 13;
-    --night-light: 45 15 20;
-    --night-table: 74 27 34;
-    --brand-plein: 122 38 49;
-    --degrade-bas: #4a1b23;
-    --degrade-milieu: #3a151b;
-    --degrade-haut: #260b10;
-    --bouton-1: #8f2a37;
-    --bouton-2: #6e1f2a;
-    --bouton-3: #3a141a;
-    --bouton-survol-1: #a8323f;
-    --bouton-survol-2: #842633;
-    --bouton-survol-3: #481a21;
-  }
-  html.dark.palette-velours {
-    --brand: 230 163 173;
-  }
 }
 
-/* Velours rouge: the velvet itself behind the page, the ribbon, the side columns and the cards (over the palette's tones). */
-html.dark.palette-velours #editor,
-html.dark.palette-velours #editor [data-ribbon],
-html.dark.palette-velours #editor [data-render-bar],
-html.dark.palette-velours #editor [data-ref="panel-tree"],
-html.dark.palette-velours #editor [data-project-organizer],
-html.dark.palette-velours #editor [data-ref="panel-properties"],
-html.dark.palette-velours #editor [data-side-tools],
-html.dark.palette-velours .cad-card {
-  background: rgb(var(--night)) url("/static/textures/themes/velours-rouge.jpg") center / cover no-repeat !important;
-}

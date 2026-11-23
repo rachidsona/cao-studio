@@ -106,6 +106,8 @@
     /* Palette buttons (data-palette: a class, or "" for the default one). */
     function showPalette() {
       var current = (document.documentElement.className.match(/palette-[a-z]+/) || [""])[0];
+      /* A palette kept from before it was removed: the default one is the one shown. */
+      if (!document.querySelector('[data-palette="' + current + '"]')) current = "";
       document.querySelectorAll("[data-palette]").forEach(function (b) {
         b.setAttribute("aria-pressed", String(b.getAttribute("data-palette") === current));
       });
