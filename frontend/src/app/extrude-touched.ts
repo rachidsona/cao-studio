@@ -94,15 +94,33 @@ export function touchedBodies(areas: readonly Area[], frame: SketchFrame, from: 
         return t !== null && t > 1e-6 && t < 1 - 1e-6;
       })) return true;
     }
-    // The prism wholly inside the body: one of its corners, halfway up, inside (a ray crosses its faces an odd number of times).
+    // The prism wholly inside the body: one of its corners, halfway up, inside.
     const corner = areas[0]!.outer[0]!;
-    const o: P3 = [corner[0], corner[1], middle];
-    const hits = triangles.filter(([p, q, r]) => {
-      const t = crossing(o, [1, 0.000123, 0.000457], p, q, r);
-      return t !== null && t > 0;
-    }).length;
-    return hits % 2 === 1;
+    return within([corner[0], corner[1], middle], triangles);
   }).map((body) => body.id);
+}
+
+/** Whether `o` is inside the closed mesh of these triangles: a ray from it crosses them an odd number of times. */
+function within(o: P3, triangles: readonly [P3, P3, P3][]): boolean {
+  const hits = triangles.filter(([p, q, r]) => {
+    const t = crossing(o, [1, 0.000123, 0.000457], p, q, r);
+    return t !== null && t > 0;
+  }).length;
+  return hits % 2 === 1;
+}
+
+/**
+ * Which way a sketch drawn on a face of `body` goes into it: 1 along its normal, −1 against it, 0 neither (not on
+ * the body). `at`: a point inside one of its areas (sketch coordinates).
+ */
+export function intoBody(frame: SketchFrame, at: P2, body: Omit<BodyShape, "id">): 1 | -1 | 0 {
+  const n = Math.floor(body.vertices.length / 3);
+  const pt = (i: number): P3 => [body.vertices[3 * i]!, body.vertices[3 * i + 1]!, body.vertices[3 * i + 2]!];
+  const triangles: [P3, P3, P3][] = [];
+  for (let i = 0; i + 2 < body.indices.length; i += 3) if (Math.max(body.indices[i]!, body.indices[i + 1]!, body.indices[i + 2]!) < n) triangles.push([pt(body.indices[i]!), pt(body.indices[i + 1]!), pt(body.indices[i + 2]!)]);
+  // Half a millimetre off the face, on either side.
+  const off = (h: number): P3 => [0, 1, 2].map((k) => frame.origin[k]! + frame.u[k]! * at[0] + frame.v[k]! * at[1] + frame.normal[k]! * h) as P3;
+  return within(off(0.5), triangles) ? 1 : within(off(-0.5), triangles) ? -1 : 0;
 }
 
 /**

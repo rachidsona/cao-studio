@@ -26,7 +26,7 @@ import type { PointerHandler, Viewport } from "../viewport/viewport";
 import { operationChoices } from "../ui/feature-meta";
 import { placePanel } from "../ui/dock";
 import { CLOSE_TITLE, panelFooter } from "../ui/panel-close";
-import { cutsOnEach, TOUCHED, touchedBodies } from "./extrude-touched";
+import { cutsOnEach, intoBody, TOUCHED, touchedBodies } from "./extrude-touched";
 
 export interface ExtrudeToolHost {
   doc(): CadDocument;
@@ -92,6 +92,8 @@ export class ExtrudeTool implements PointerHandler {
   private operation: BooleanOperation = "new";
   /** The user picked the operation: stop deriving it from the sketch's support face. */
   private operationChosen = false;
+  /** A sketch on a body's face: 1 when its normal goes into that body, −1 out of it; pushed in, it digs (0: no body). */
+  private inward: 1 | -1 | 0 = 0;
   private target: string | undefined;
   private editing: string | null = null;
   private hovered: Face | null = null;
@@ -250,11 +252,16 @@ export class ExtrudeTool implements PointerHandler {
     this.chosen = new Set(faces ?? (defaults.length > 1 && !this.editing ? [] : defaults));
     // A sketch drawn on a body face adds to that body by default.
     const support = profile.sketch.support;
+    this.inward = 0;
     if (!this.editing && !this.operationChosen && support) {
       const body = latestBody(this.host.doc(), support);
       if (this.host.bodies().some((b) => b.id === body)) {
         this.operation = "join";
         this.target = body;
+        const mesh = this.viewport.bodyMesh(body);
+        const area = (faces ?? defaults)[0] ?? profile.faces[0];
+        this.inward = mesh && area ? intoBody(profile.frame, area.probe, mesh) : 0;
+        this.followWay();
       }
     }
     if (!this.editing && this.operation !== "new" && !this.target) this.target = this.host.bodies().at(-1)?.id;
@@ -322,9 +329,18 @@ export class ExtrudeTool implements PointerHandler {
     this.arrow.place(base, this.selected.frame.normal, this.distance, `${trim(toDisplay(this.distance, unit), 3)} ${UNIT_LABELS[unit]}`);
   }
 
+  /** Pulled out of the body it is drawn on, it adds; pushed into it, it digs — until an operation is chosen. */
+  private followWay(): void {
+    if (this.editing || this.operationChosen || !this.inward) return;
+    this.operation = this.distance * this.inward > 0 ? "cut" : "join";
+    const select = this.dialog.querySelector<HTMLSelectElement>('select[aria-label="Opération"]');
+    if (select) select.value = this.operation;
+  }
+
   private setDistance(value: number): void {
     if (!Number.isFinite(value) || Math.abs(value) < 1e-3) return;
     this.distance = value;
+    this.followWay();
     this.updatePreview();
     const input = this.dialog.querySelector<HTMLInputElement>("[data-extrude-distance]");
     if (input && document.activeElement !== input) input.value = trim(toDisplay(value, this.host.unit()), 4);

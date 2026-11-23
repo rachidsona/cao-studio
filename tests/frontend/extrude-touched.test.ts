@@ -1,6 +1,6 @@
 /** « Tous les corps qu'elle touche » : les corps qu'une extrusion qui coupe traverse, lus sur leurs maillages. */
 import { describe, expect, it } from "vitest";
-import { cutsOnEach, touchedBodies } from "../../frontend/src/app/extrude-touched";
+import { cutsOnEach, intoBody, touchedBodies } from "../../frontend/src/app/extrude-touched";
 import { createReferencePlate, type CadDocument, type ExtrudeFeature } from "../../frontend/src/document/types";
 import type { SketchFrame } from "../../frontend/src/sketcher/frame";
 
@@ -45,5 +45,15 @@ describe("corps touchés par une extrusion", () => {
     const again = cutsOnEach(doc, values, ["h1", "b"], "ex1");
     expect(again.doc.features.find((f) => f.id === "ex1")).toMatchObject({ operation: "cut", target: "h1", distance: -58 });
     expect(again.doc.features.filter((f) => f.type === "extrude")).toHaveLength(2);
+  });
+
+  it("une esquisse posée sur une face : de quel côté de sa normale est le corps (pousser dedans creuse)", () => {
+    const board = box("b", [0, 0, 0], [600, 400, 100]);
+    // On the top, its normal outward: the body is behind it.
+    expect(intoBody(top, [300, 200], board)).toBe(-1);
+    // On the bottom, the same frame: the body is in front of it.
+    expect(intoBody({ ...top, origin: [0, 0, 0] }, [300, 200], board)).toBe(1);
+    // Beside the body: neither.
+    expect(intoBody(top, [900, 200], board)).toBe(0);
   });
 });

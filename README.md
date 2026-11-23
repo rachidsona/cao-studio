@@ -1348,7 +1348,9 @@ opération existante.
   `typedDimensions`) ; **Ligne**, **Rectangle** et **Cercle** aussi : la longueur tapée d'un segment, la largeur et
   la hauteur, le diamètre (le double du rayon tapé) deviennent des cotes fixes (`withFixed` de `app/magic-extrude.ts`) ;
   une forme fermée se
-  tire ou se pousse ensuite. **Afficher les axes** (case du panneau) montre les trois axes de la vue
+  tire ou se pousse ensuite — dans l'Extrusion qui suit, tirée hors du corps elle **ajoute**, poussée dedans (une
+  hauteur négative sur le dessus) elle le **creuse**, tant qu'aucune « Opération » n'est choisie à la main
+  (`intoBody` de `app/extrude-touched.ts`). **Afficher les axes** (case du panneau) montre les trois axes de la vue
   comme dans SketchUp — des droites par l'origine, rouge X, verte Y, bleue Z, pleines côté positif, en tirets côté
   négatif (`viewport/world-axes.ts`) — ou les cache ; le choix est gardé dans ce navigateur (cachés au départ). Choisissez *Ligne / polyligne*,
   *Rectangle* ou *Cercle*, survolez une face : les **distances aux bords les plus proches** (les « SnapDims » de DIO, ↔ et
