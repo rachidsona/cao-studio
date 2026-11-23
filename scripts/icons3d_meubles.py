@@ -66,11 +66,16 @@ def drawers(i):
 
 
 def rod(i):
+    """A hanging rod with three clothes on their hangers: a coat, a shirt, a dress."""
     carcass(i, 13, 6, 13)
-    i.round(-5.4, 0, 11, 0.45, 10.8, "orange", "x")
-    for x in (-3.2, -0.2, 2.8):
-        i.line((x, 0, 11), (x, 0, 10), "#64748b", 0.3)
-        i.box(x - 1, -0.2, 3.6, 2.1, 0.4, 6.4, "blue")
+    i.round(-5.4, 0, 10, 0.45, 10.8, "orange", "x")
+    for k, x in enumerate((-3.3, -0.1, 3.0)):
+        i.path([(x, 0.3, 10.3), (x + 0.35, 0.3, 10.1), (x, 0.3, 9.6)], "#475569", 0.3)
+        i.path([(x, 0.3, 9.6), (x - 1.4, 0.3, 8.7), (x + 1.4, 0.3, 8.7), (x, 0.3, 9.6)], "#475569", 0.3)
+        body = [(x - 0.5, 9.2), (x + 0.5, 9.2), (x + 1.45, 8.6), (x + 1.6, 5.8), (x + 1.1, 5.8), (x + 1.25, 2.8), (x - 1.25, 2.8), (x - 1.1, 5.8), (x - 1.6, 5.8), (x - 1.45, 8.6)]
+        if k == 2:  # a dress: no sleeves, flared
+            body = [(x - 0.5, 9.2), (x + 0.5, 9.2), (x + 0.85, 8.6), (x + 0.75, 6.8), (x + 1.45, 2.8), (x - 1.45, 2.8), (x - 0.75, 6.8), (x - 0.85, 8.6)]
+        i.face([(a, 0.2, b) for a, b in body], "bt" if k == 1 else "bl")
     closed(i, 13, 6, 13)
 
 
