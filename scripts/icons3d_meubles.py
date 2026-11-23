@@ -1,4 +1,5 @@
-"""Le dessin des icônes de meubles (caissons, Répartition, dressing) : `i` est une scène de scripts/icons3d.py."""
+"""Le dessin des icônes de meubles (caissons, Répartition, dressing) : `i` est une scène de scripts/icons3d.py.
+Penderie (i-rod) n'est plus ici : un pictogramme plat (un cintre et une silhouette), dessiné à la main dans le sprite."""
 
 
 def cube(i, t="white", s=8):
@@ -63,20 +64,6 @@ def drawers(i):
     i.box(-6, -3.5, 0, 12, 7, 13, "white")
     for k, z in enumerate((0.9, 4.9, 8.9)):
         i.box(-5.4, 3.5, z, 10.8, 0.4, 3.3, "blue" if k == 1 else "white").box(-1.4, 3.9, z + 1.4, 2.8, 0.2, 0.5, "orange")
-
-
-def rod(i):
-    """A hanging rod with three clothes on their hangers: a coat, a shirt, a dress."""
-    carcass(i, 13, 6, 13)
-    i.round(-5.4, 0, 10, 0.45, 10.8, "orange", "x")
-    for k, x in enumerate((-3.3, -0.1, 3.0)):
-        i.path([(x, 0.3, 10.3), (x + 0.35, 0.3, 10.1), (x, 0.3, 9.6)], "#475569", 0.3)
-        i.path([(x, 0.3, 9.6), (x - 1.4, 0.3, 8.7), (x + 1.4, 0.3, 8.7), (x, 0.3, 9.6)], "#475569", 0.3)
-        body = [(x - 0.5, 9.2), (x + 0.5, 9.2), (x + 1.45, 8.6), (x + 1.6, 5.8), (x + 1.1, 5.8), (x + 1.25, 2.8), (x - 1.25, 2.8), (x - 1.1, 5.8), (x - 1.6, 5.8), (x - 1.45, 8.6)]
-        if k == 2:  # a dress: no sleeves, flared
-            body = [(x - 0.5, 9.2), (x + 0.5, 9.2), (x + 0.85, 8.6), (x + 0.75, 6.8), (x + 1.45, 2.8), (x - 1.45, 2.8), (x - 0.75, 6.8), (x - 0.85, 8.6)]
-        i.face([(a, 0.2, b) for a, b in body], "bt" if k == 1 else "bl")
-    closed(i, 13, 6, 13)
 
 
 def dressing(i):
@@ -185,11 +172,11 @@ def live_check(i):
 
 
 # Drawn from the front: their insides show, as on the plan of a Répartition.
-FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "rod", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "doors-open", "piece-dims", "part-tags", "module-palette"}
+FACE = {"cabinet", "fronts", "partition", "shelves", "cloisons", "drawers", "dressing", "niche", "module", "niche-copy", "niche-align", "dressing-style", "door-fronts", "doors-open", "piece-dims", "part-tags", "module-palette"}
 
 MEUBLES = {
     "cabinet": cabinet, "fronts": fronts, "partition": partition, "shelves": shelves, "cloisons": cloisons, "drawers": drawers,
-    "rod": rod, "dressing": dressing, "niche": niche, "module": module, "dressing-plan": dressing_plan, "niche-copy": niche_copy,
+    "dressing": dressing, "niche": niche, "module": module, "dressing-plan": dressing_plan, "niche-copy": niche_copy,
     "niche-align": niche_align, "dressing-style": dressing_style, "door-fronts": door_fronts, "doors-open": doors_open, "drawers-open": drawers_open, "paneling": paneling, "edge-paint": edge_paint,
     "variants": variants, "live-check": live_check, "module-palette": module_palette,
 }
