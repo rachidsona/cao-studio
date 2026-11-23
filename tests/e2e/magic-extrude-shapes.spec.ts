@@ -64,3 +64,47 @@ test("Magie extrusion : un polygone sur la grille, puis un rectangle par le cent
   expect(fixed.sort((a, b) => a - b)).toEqual([400, 600]);
   expect(errors).toEqual([]);
 });
+
+test("Magie extrusion : un rectangle et un cercle aux mesures tapées gardent leurs cotes fixes", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-magie-cotes");
+  await click(page, '[data-action="view"][data-view="top"]');
+  await page.waitForTimeout(1200);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  type Sk = { type: string; curves: { kind: string; construction?: boolean }[]; constraints: { kind: string; value?: number }[] };
+  const last = async () => {
+    await page.waitForTimeout(1500);
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+    return (project.document.features as Sk[]).filter((f) => f.type === "sketch").at(-1)!;
+  };
+  const tool = page.getByRole("dialog", { name: "Magie extrusion" });
+  const [cx, cy] = [view.x + view.width * 0.2, view.y + view.height * 0.3];
+  const draw = async (shape: string, typed: string) => {
+    await click(page, '[data-action="face-strip"]');
+    await tool.getByRole("combobox", { name: "Tracé" }).selectOption(shape);
+    // An open line has no « Puis tirer / pousser ».
+    const pull = tool.getByRole("checkbox", { name: "Puis tirer / pousser" });
+    if (await pull.count()) await pull.uncheck();
+    await page.mouse.move(cx, cy);
+    await page.mouse.move(cx + 1, cy);
+    await page.mouse.click(cx + 1, cy);
+    await page.mouse.move(cx + 90, cy + 60);
+    await page.keyboard.type(typed);
+    await page.keyboard.press("Enter");
+  };
+  await draw("rectangle", "60;40");
+  const rect = await last();
+  expect(rect.constraints.filter((c) => c.kind === "length").map((c) => Math.round(c.value!)).sort((a, b) => a - b)).toEqual([400, 600]);
+  await draw("circle", "25");
+  const circle = await last();
+  expect(circle.constraints.filter((c) => c.kind === "diameter").map((c) => Math.round(c.value!))).toEqual([500]);
+  // A line: its length typed (its angle would only orient it), then Entrée ends it.
+  await draw("line", "50");
+  await page.keyboard.press("Enter");
+  const line = await last();
+  expect(line.constraints.filter((c) => c.kind === "length").map((c) => Math.round(c.value!))).toEqual([500]);
+  expect(errors).toEqual([]);
+});

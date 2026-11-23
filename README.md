@@ -1340,7 +1340,9 @@ opération existante.
   tapée devient une **cote fixe** de l'esquisse, comme avec les outils de l'esquisse (largeur et hauteur d'un rectangle
   par le centre, diamètre d'un cercle par 2 points, rayon des bouts d'un oblong, sinon distance entre les deux points ;
   un angle oriente sans cote, l'ovale n'en prend pas ; une cote que l'esquisse ne tient pas est laissée :
-  `typedDimensions`) ; une forme fermée se
+  `typedDimensions`) ; **Ligne**, **Rectangle** et **Cercle** aussi : la longueur tapée d'un segment, la largeur et
+  la hauteur, le diamètre (le double du rayon tapé) deviennent des cotes fixes (`withFixed` de `app/magic-extrude.ts`) ;
+  une forme fermée se
   tire ou se pousse ensuite. **Afficher les axes** (case du panneau) montre les trois axes de la vue
   comme dans SketchUp — des droites par l'origine, rouge X, verte Y, bleue Z, pleines côté positif, en tirets côté
   négatif (`viewport/world-axes.ts`) — ou les cache ; le choix est gardé dans ce navigateur (cachés au départ). Choisissez *Ligne / polyligne*,

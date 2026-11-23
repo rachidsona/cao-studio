@@ -29,7 +29,7 @@ import { coplanarCorners, loadFace, planeAcross, type LoadedFace } from "./face-
 import { PanelTool, type ToolContext } from "./panel-tool";
 import type { SketchGeometry } from "../document/sketch";
 import type { FacePick } from "../viewport/viewport";
-import { axesRow, groundFace, groundRow, groundSnap, isGround, isSketchTrace, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, rememberTrace, TRACES, type Trace, pullAfter, rememberPull } from "./magic-extrude";
+import { axesRow, forgetTyped, groundFace, groundRow, groundSnap, isGround, isSketchTrace, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, recordTyped, rememberTrace, TRACES, type Trace, pullAfter, rememberPull, withFixed } from "./magic-extrude";
 
 /** The shapes drawn on a face (the other traces of « Magie extrusion » are lines from an edge or a corner). */
 type Shape = "line" | "rectangle" | "circle" | "offset";
@@ -303,7 +303,7 @@ export class DrawOnFaceTool extends PanelTool {
     else if (this.shape === "line") this.typed = { ...NOTHING, length: length(a), angle: b ?? null };
     else if (this.shape === "rectangle") this.typed = { ...NOTHING, length: length(a), angle: length(b) };
     else this.typed = { ...NOTHING, length: length(a) };
-    if (this.lastEvent) this.move(this.lastEvent);
+    if (this.lastEvent) this.move(this.lastEvent), this.points.length && recordTyped(this, this.points.length, this.typed);
     if (!this.cursor) return this.ctx.notify("Survolez d'abord une face du corps.", "info");
     this.place();
   }
@@ -356,7 +356,7 @@ export class DrawOnFaceTool extends PanelTool {
   override handleKey(event: KeyboardEvent): boolean {
     if (event.key === "Escape") {
       if (this.points.length) {
-        [this.points, this.snaps] = [[], []];
+        [this.points, this.snaps] = [[], []], forgetTyped(this);
         this.face = null;
         this.typed = { ...NOTHING };
         this.render();
@@ -404,7 +404,7 @@ export class DrawOnFaceTool extends PanelTool {
     if (!this.ready()) return this.shape === "line" ? "Cliquez le point suivant ; Entrée (ou un clic sur le dernier point) termine." : this.shape === "rectangle" ? "Cliquez le coin opposé." : this.shape === "circle" ? "Cliquez un point du cercle." : "Ce décalage est trop grand pour la face.";
     const g = this.geometry(this.face);
     if (!g) return "Ce dessin est impossible (longueur ou rayon nul).";
-    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...(this.face.slanted ? { frame: this.face.slanted } : {}), ...g, ...(isGround(this.face) ? {} : { support: this.face.pick.bodyId }) };
+    const sketch: SketchFeature = { id: this.sketchId, type: "sketch", name: this.sketchName, plane: this.face.plane, offset: Number(this.face.offset.toFixed(6)), ...(this.face.slanted ? { frame: this.face.slanted } : {}), ...withFixed(this, g, this.shape, this.points), ...(isGround(this.face) ? {} : { support: this.face.pick.bodyId }) };
     return sketch;
   }
 
@@ -469,7 +469,7 @@ export class DrawOnFaceTool extends PanelTool {
         // A line from an edge or a corner: the other way of « Magie extrusion ».
         if (isStripTrace(v as Trace) || isSketchTrace(v as Trace)) return this.ctx.switchTo?.(isStripTrace(v as Trace) ? "faceStrip" : "faceSketch");
         this.shape = last.shape = v as Shape;
-        [this.points, this.snaps] = [[], []];
+        [this.points, this.snaps] = [[], []], forgetTyped(this);
         this.face = null;
         this.typed = { ...NOTHING };
         this.buffer = null;
