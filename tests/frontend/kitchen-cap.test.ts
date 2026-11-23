@@ -83,3 +83,31 @@ describe("casquette des meubles hauts", () => {
     expect(all.some((a, i) => all.some((b, j) => i < j && overlap(a, b)))).toBe(false);
   });
 });
+
+describe("casquette en caissons à porte relevante (sur-meubles)", () => {
+  const units = (p: KitchenFloorPlan) => kitchenFromPlan(p).units.filter((u) => u.name.startsWith("Casquette"));
+
+  it("un caisson par meuble haut et par colonne, de sa largeur et de sa profondeur, posé dessus ; pas sur la hotte", () => {
+    const p = plan([["tall-colonne-rangement", 600], WALL, ["app-hood", 600], ["wall-haut-1-porte", 400]], { cap: "units" });
+    const made = units(p);
+    expect(made.map((u) => [u.width, u.height, u.layout, u.side])).toEqual([
+      [600, 350, "door", "top"],
+      [600, 350, "door", "top"],
+      [400, 350, "door", "top"],
+    ]);
+    // On top of the wall row; the column's as deep as the column.
+    expect(made.every((u) => Math.abs(u.origin[2] - TOP) < 1e-6)).toBe(true);
+    expect(made[0]!.depth).toBe(kitchenSizes(p).cabinet);
+    expect(made[1]!.depth).toBe(p.wallDepth);
+    // No panels of a flat casquette.
+    expect(caps(p)).toEqual([]);
+  });
+
+  it("leur hauteur choisie, de 25 à 60 cm ; sous un plafond trop bas, pas de caisson et un mot", () => {
+    expect(units(plan([WALL], { cap: "units", capHeight: 300 }))[0]!.height).toBe(300);
+    expect(kitchenPlanProblem(plan([WALL], { cap: "units", capHeight: 100 }))).toMatch(/25 à 60 cm/);
+    const low = kitchenFromPlan(plan([WALL], { cap: "units", height: TOP + 200 }));
+    expect(low.units.filter((u) => u.name.startsWith("Casquette"))).toEqual([]);
+    expect(low.notes.join(" ")).toMatch(/pas de caisson là/);
+  });
+});

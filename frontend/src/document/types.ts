@@ -213,7 +213,7 @@ export interface KitchenFloorPlan {
   /** Finishing sides in the fronts' material at the free ends of the runs: the last column's and the last wall unit's. */
   endPanels?: boolean;
   /** A casquette on top of the wall row (document/kitchen-cap.ts): a plain panel or a caisson; its thickness, a caisson's height, how far it comes out (mm). */
-  cap?: "flat" | "box";
+  cap?: "flat" | "box" | "units";
   capThickness?: number;
   capHeight?: number;
   capOverhang?: number;

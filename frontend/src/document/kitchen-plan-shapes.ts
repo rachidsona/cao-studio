@@ -280,11 +280,12 @@ function bounds(outline: Point[]): [number, number, number, number] {
 }
 
 /** The casquette of the wall row (kitchen-cap.ts), its usual sizes (mm): a plain one's thickness, a caisson one's height, how far it comes out; a raw panel's length. */
-export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 2800 };
+export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 2800, unit: 350 };
 /** Why the casquette's sizes cannot be used, or null. */
 export function capProblem(p: KitchenFloorPlan): string | null {
   if (!p.cap) return null;
-  const [t, h, o] = [p.capThickness ?? CAP.thickness, p.capHeight ?? CAP.height, p.capOverhang ?? CAP.overhang];
+  const [t, h, o] = [p.capThickness ?? CAP.thickness, p.capHeight ?? (p.cap === "units" ? CAP.unit : CAP.height), p.capOverhang ?? CAP.overhang];
+  if (p.cap === "units") return h >= 250 && h <= 600 ? null : "Les caissons de casquette ont de 25 à 60 cm de hauteur.";
   if (p.cap === "flat" && !(t >= 16 && t <= 60)) return "La casquette a de 16 à 60 mm d'épaisseur.";
   if (p.cap === "box" && !(h >= 40 && h <= 200)) return "La casquette en caisson a de 4 à 20 cm de hauteur.";
   if (!(o >= 0 && o <= 100)) return "Le débord de la casquette va de 0 à 10 cm.";

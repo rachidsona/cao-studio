@@ -2682,7 +2682,12 @@ opération existante.
     profondeur change (une colonne a son morceau), est coupée au droit d'un côté de meuble au-delà d'un panneau brut
     (280 cm) et s'arrête, dans un angle, au bord de la casquette du mur qui passe. En caisson : un dessus, un bandeau
     devant et un bout à chaque bout libre. Elle prévient quand une porte relevante dessous ne peut plus se lever et
-    quand le plafond est trop bas (`document/kitchen-cap.ts`).
+    quand le plafond est trop bas (`document/kitchen-cap.ts`). **Caissons à porte relevante** (sur-meubles) : sur chaque
+    meuble haut et chaque colonne (pas la hotte, un fileur, un meuble d'angle), un caisson de sa largeur et de sa
+    profondeur, de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
+    plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
+    relevante » (sur un meuble haut) et « Casquette sur colonne » (56 cm de profondeur) dans les meubles hauts du
+    catalogue se posent **sur** le meuble choisi, le suivant à côté (`above` de `document/kitchen-catalog.ts`).
     L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)
     pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,

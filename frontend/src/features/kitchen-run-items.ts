@@ -94,7 +94,8 @@ export function itemEntry(item: KitchenRunItem): CatalogEntry {
 
 /** The models one adds to a run, by family: those of the catalogue (one per name), then the appliances. */
 export function runModels(): { model: string; name: string; kind: UnitKind; widths: number[]; appliance: boolean }[] {
-  const names = [...new Set(CATALOG.map((e) => modelOf(e)))];
+  // The casquette caissons are the plan's own casquette (« Caissons à porte relevante »), not units of a row.
+  const names = [...new Set(CATALOG.filter((e) => !e.above).map((e) => modelOf(e)))];
   const own = names.map((model) => {
     const entries = CATALOG.filter((e) => modelOf(e) === model);
     return { model, name: entries[0]!.name, kind: entries[0]!.kind, widths: entries.map((e) => e.width), appliance: false };

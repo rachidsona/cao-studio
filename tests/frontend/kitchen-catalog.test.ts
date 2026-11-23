@@ -115,3 +115,24 @@ describe("meubles de cuisine", () => {
     expect(e).toMatchObject({ kind: "wall", name: "Haut 2 portes 900", width: 900, height: 700, depth: 350, layout: "doors", custom: true });
   });
 });
+
+describe("caissons de casquette (sur-meubles)", () => {
+  it("posés sur le meuble haut choisi, sa porte relevante ; le suivant à côté ; sur une colonne, aussi profond qu'elle", async () => {
+    const { KINDS } = await import("../../frontend/src/document/kitchen-catalog");
+    const top = KINDS.wall.z + KINDS.wall.height;
+    const wall = addKitchenUnit(createReferencePlate(), entry("wall-haut-1-porte-600"));
+    const cap = addKitchenUnit(wall.doc, entry("wall-casquette-relevante-600"), wall.cabinet.id);
+    expect(cap.cabinet).toMatchObject({ width: 600, height: 350, origin: [wall.cabinet.origin[0], wall.cabinet.origin[1], top] });
+    expect(cap.fronts).toMatchObject({ layout: "door", side: "top" });
+    const next = addKitchenUnit(cap.doc, entry("wall-casquette-relevante-400"), cap.cabinet.id);
+    expect(next.cabinet.origin).toEqual([600, wall.cabinet.origin[1], top]);
+    const column = addKitchenUnit(createReferencePlate(), entry("tall-colonne-rangement-600"));
+    const over = addKitchenUnit(column.doc, entry("wall-casquette-sur-colonne-600"), column.cabinet.id);
+    expect(over.cabinet).toMatchObject({ depth: 560, origin: [column.cabinet.origin[0], column.cabinet.origin[1], top] });
+  });
+
+  it("le Plan de cuisine ne les propose pas dans ses rangées : il a sa casquette en caissons", async () => {
+    const { runModels } = await import("../../frontend/src/features/kitchen-run-items");
+    expect(runModels().some((m) => m.name.startsWith("Casquette"))).toBe(false);
+  });
+});

@@ -38,6 +38,11 @@ export interface CatalogEntry {
   round?: boolean;
   /** Height when not the kind's own (a short unit over the hood). */
   height?: number;
+  /**
+   * A casquette caisson (« sur-meuble »): set on top of the unit chosen — a wall unit, a column — instead of beside it,
+   * its bottom at the top of the wall row. Not offered in the Plan de cuisine, which has its own casquette.
+   */
+  above?: boolean;
   /** One's own units: their depth and plinth, and their name kept as it is (no width after it). */
   depth?: number;
   plinth?: number;
@@ -89,6 +94,8 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("wall", "Haut ouvert", [150, 200, 300, 400, 600, 800], { layout: "none", shelves: 2 }),
   ...entries("wall", "Haut terminal arrondi", [300, 350], { layout: "none", shelves: 1, round: true }),
   ...entries("wall", "Haut sur hotte", [600, 900], { layout: "door", shelves: 0, height: 350 }),
+  ...entries("wall", "Casquette relevante", [300, 400, 450, 500, 600, 800, 900, 1000, 1200], { layout: "door", side: "top", shelves: 0, height: 350, above: true }),
+  ...entries("wall", "Casquette sur colonne", [400, 450, 500, 600], { layout: "door", side: "top", shelves: 0, height: 350, depth: 560, above: true }),
   ...entries("tall", "Colonne rangement", [400, 450, 500, 600], { layout: "doors", shelves: 4 }),
   ...entries("tall", "Colonne garde-manger", [300, 400, 450, 500, 600], { layout: "door", shelves: 5 }),
   ...entries("tall", "Colonne coulissante étroite", [150, 200, 300, 400], { layout: "door", shelves: 5 }),
@@ -149,9 +156,10 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const { along, back } = cabinetAxes(rotation);
   // Beside the last of its kind along the anchor's wall; over (or beside) the anchor when of another kind.
   const sameWall = cabinets.filter((c) => (c.rotation ?? 0) === rotation);
-  const neighbour = anchor && kindOf(anchor) === entry.kind ? anchor : null;
+  // A casquette caisson goes over the unit chosen (beside it when that one is a casquette too), on the wall row's top.
+  const z = entry.above ? k.z + k.height : entry.kind === "wall" && entry.height ? k.z + k.height - height : k.z;
+  const neighbour = anchor && kindOf(anchor) === entry.kind && (!entry.above || anchor.origin[2] >= z - 1) ? anchor : null;
   let start = neighbour ? neighbour.width : 0;
-  const z = entry.kind === "wall" && entry.height ? k.z + k.height - height : k.z;
   const at = (s: number): Vec3 => {
     const base = anchor ? anchor.origin : ([0, 0, 0] as Vec3);
     // The origin is the front-left corner: the back plane, less the depth, then along the wall.

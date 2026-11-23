@@ -52,12 +52,14 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
   };
   /** The worktop's look, each shown by its sphere (look-picker.ts), or its material's own. */
   const look = (): HTMLElement => lookPicker({ label: "Aspect du plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop" });
-  /** The casquette of the wall units (document/kitchen-cap.ts): none, a plain panel or a caisson, and its sizes. */
+  /** The casquette of the wall units (document/kitchen-cap.ts): none, a plain panel, a caisson or caissons with lift-up doors, and its sizes. */
   const cap = (): HTMLElement[] => {
     const kind = host.plan().cap;
-    const choice = select("Casquette des meubles hauts", kind ?? "none", [["none", "Aucune"], ["flat", "Plate (un panneau épais)"], ["box", "En caisson (dessus et bandeau)"]], (v) => host.set({ cap: v === "none" ? undefined : (v as "flat" | "box") }));
+    const choice = select("Casquette des meubles hauts", kind ?? "none", [["none", "Aucune"], ["flat", "Plate (un panneau épais)"], ["box", "En caisson (dessus et bandeau)"], ["units", "Caissons à porte relevante (sur-meubles)"]], (v) => host.set({ cap: v === "none" ? undefined : (v as "flat" | "box" | "units") }));
     choice.querySelector("select")!.setAttribute("data-plan-cap", "");
     if (!kind) return [choice];
+    // Caissons: their height only (each as wide and deep as the unit under it).
+    if (kind === "units") return [choice, number("Hauteur des caissons", "capHeight", CAP.unit)];
     return [choice, kind === "box" ? number("Hauteur de la casquette", "capHeight", CAP.height) : number("Épaisseur de la casquette", "capThickness", CAP.thickness), number("Débord de la casquette", "capOverhang", CAP.overhang, true)];
   };
   return { number, check, select, look, cap };

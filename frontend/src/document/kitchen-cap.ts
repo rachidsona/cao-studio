@@ -5,13 +5,15 @@
  * (un dessus, un bandeau devant, et un bout aux bouts libres). Elle s'interrompt à la hotte (son conduit monte au plafond),
  * à la place laissée libre et là où la profondeur ou la hauteur du dessus change ; un morceau plus long qu'un panneau brut
  * est coupé au droit d'un côté de meuble. Contre le linéaire qui passe dans un angle, elle s'arrête au bord de sa
- * casquette. Elle prévient : une porte relevante dessous ne se lève plus, un plafond trop bas. Pur.
+ * casquette. Elle prévient : une porte relevante dessous ne se lève plus, un plafond trop bas. Ou en caissons à porte
+ * relevante (« sur-meubles ») : sur chaque meuble haut et chaque colonne, un caisson de sa largeur et de sa profondeur,
+ * de la hauteur choisie, sa porte se levant. Pur.
  */
 import { wallCornerSide } from "./kitchen-corners";
 import { CAP, capProblem, FRONT, kitchenSizes, type KitchenRun } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
 import { applianceOf, isFiller, itemSize, type RunFill } from "../features/kitchen-run-items";
-import type { Band, BoxOf } from "./kitchen-plan-build";
+import type { Band, BoxOf, CabinetOf } from "./kitchen-plan-build";
 
 /** Less than this between it and the ceiling (mm): it cannot be slid in place. */
 const TO_CEILING = 5;
@@ -20,8 +22,9 @@ const TO_CEILING = 5;
 type Under = { from: number; to: number; depth: number; top: number };
 
 /** The casquette of a run, its pieces put by `box`, what it warns of in `notes` (`wallRow`: the run has a wall row). */
-export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, band: Band, box: BoxOf, notes: string[]): void {
+export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, band: Band, box: BoxOf, notes: string[], cabinet?: CabinetOf): void {
   if (!p.cap || capProblem(p)) return;
+  if (p.cap === "units") return capUnits(p, run, fill, ceiling, notes, cabinet);
   const s = kitchenSizes(p);
   const overhang = p.capOverhang ?? CAP.overhang;
   const thick = p.cap === "box" ? (p.capHeight ?? CAP.height) : (p.capThickness ?? CAP.thickness);
@@ -102,3 +105,25 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
     if (ends.length > 2) notes.push(`Casquette ${run.id} : plus longue qu'un panneau (${CAP.panel / 10} cm), coupée au droit d'un côté de meuble.`);
   }
 }
+
+/**
+ * The casquette in caissons: over each wall unit and each column (not the hood, a filler, a corner unit — shortcut: a
+ * corner keeps none, to add by hand from the catalogue), a caisson of its width and depth, its lift-up door.
+ */
+function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, ceiling: number, notes: string[], cabinet?: CabinetOf): void {
+  if (!cabinet) return;
+  const h = p.capHeight ?? CAP.unit;
+  let n = 0;
+  for (const pl of fill.placed) {
+    const tall = pl.row === "base" && pl.entry.kind === "tall";
+    if ((pl.row !== "wall" && !tall) || applianceOf(pl.item)?.role === "hood" || isFiller(pl.item) || pl.entry.round) continue;
+    const size = itemSize(p, pl.item, pl.entry);
+    const z = size.z + size.height;
+    if (z + h > ceiling + 0.5) {
+      notes.push(`Casquette ${run.id} : ${Math.round(ceiling - z)} mm entre ${pl.entry.name} ${pl.item.width} et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
+      continue;
+    }
+    cabinet(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, size.depth, z, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
+  }
+}
+
