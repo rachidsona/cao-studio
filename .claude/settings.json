@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in \"$CLAUDE_PROJECT_DIR\"/*.ts|\"$CLAUDE_PROJECT_DIR\"/*.tsx|\"$CLAUDE_PROJECT_DIR\"/*.js|\"$CLAUDE_PROJECT_DIR\"/*.mjs|\"$CLAUDE_PROJECT_DIR\"/*.py|\"$CLAUDE_PROJECT_DIR\"/*.html) ;; *) exit 0;; esac; cd \"$CLAUDE_PROJECT_DIR\" || exit 0; L=graphify-out/.update.lock; find \"$L\" -maxdepth 0 -mmin +10 -exec rmdir {} \\; 2>/dev/null; mkdir \"$L\" 2>/dev/null || exit 0; trap 'rmdir \"$L\"' EXIT; /Users/rachidsanohotmail.fr/.local/bin/graphify update . >/dev/null 2>&1",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in \"$CLAUDE_PROJECT_DIR\"/*.ts|\"$CLAUDE_PROJECT_DIR\"/*.tsx|\"$CLAUDE_PROJECT_DIR\"/*.js|\"$CLAUDE_PROJECT_DIR\"/*.mjs|\"$CLAUDE_PROJECT_DIR\"/*.py|\"$CLAUDE_PROJECT_DIR\"/*.html) ;; *) exit 0;; esac; cd \"$CLAUDE_PROJECT_DIR\" || exit 0; lockf -s -t 0 graphify-out/.update.lock /Users/rachidsanohotmail.fr/.local/bin/graphify update . >/dev/null 2>&1; exit 0",
             "timeout": 120,
             "async": true
           }
