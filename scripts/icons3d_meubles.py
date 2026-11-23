@@ -1,5 +1,5 @@
 """Le dessin des icônes de meubles (caissons, Répartition, dressing) : `i` est une scène de scripts/icons3d.py.
-Penderie (i-rod) n'est plus ici : l'image donnée (un cintre et une silhouette), posée telle quelle dans le sprite."""
+Penderie (i-rod) n'est plus ici : l'image donnée (un cintre et une silhouette) sans son fond, en deux masques : le cintre à la couleur du texte, la silhouette en bleu."""
 
 
 def cube(i, t="white", s=8):
