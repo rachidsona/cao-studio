@@ -35,7 +35,7 @@
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Pièces et meubles modélisés en 3D : esquisses, volumes, assemblages, liste de débit et mise en plan.</p>
         </div>
       </div>
-      <form method="post" action="{% url 'projects:list' %}" class="mt-6 space-y-4 [&_input]:rounded-control [&_label]:text-center" novalidate>
+      <form method="post" action="{% url 'projects:list' %}" class="mt-6 space-y-4 [&_input]:rounded-control [&_input]:text-center [&_label]:text-center" novalidate>
         {% csrf_token %}
         {% include "registration/_field.html" with field=form.name %}
         <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-control btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer et ouvrir</button>
@@ -61,14 +61,14 @@
         <div class="space-y-1.5">
           <label for="space-name" class="block text-center text-sm font-medium text-gray-700 dark:text-gray-200">Nom de la cuisine ou du dressing</label>
           <input id="space-name" name="name" type="text" required maxlength="120" autocomplete="off" placeholder="Ex. : Cuisine M. Dupont"
-                 class="block min-h-11 w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                 class="block min-h-11 w-full rounded-control border border-gray-300 bg-white px-3 py-2 text-center text-base text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-2 focus:outline-sky-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <button type="submit" name="space" value="kitchen" class="inline-flex min-h-11 items-center justify-center rounded-control btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer une cuisine</button>
           <button type="submit" name="space" value="dressing" class="inline-flex min-h-11 items-center justify-center rounded-control btn-accent px-4 text-base font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">Créer un dressing</button>
         </div>
       </form>
-      <p class="pt-3 text-sm text-gray-500 dark:text-gray-400">Le projet s'ouvre sur son plan : les murs de la pièce d'abord, puis les linéaires et les meubles.</p>
+      <p class="pt-3 text-center text-sm text-gray-500 dark:text-gray-400">Le projet s'ouvre sur son plan : les murs de la pièce d'abord, puis les linéaires et les meubles.</p>
     </section>
   </div>
 
