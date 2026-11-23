@@ -131,6 +131,8 @@ DRAW = {
     "window": lambda o: box(o, 0, 0, 0, 6, 6, 6, "K", "H"),
     "fit": lambda o: box(o, 0, 0, 0, 5.5, 5.5, 6, "F", "H"),
     "piece-dims": lambda o: [*box(o, 0, 0, 0, 8, 5, 2, "F", "K"), ("a", line(o, (0, 6.5, 0), (8, 6.5, 0)) + line(o, (0, 5.8, 0), (0, 7.2, 0)) + line(o, (8, 5.8, 0), (8, 7.2, 0)) + line(o, (9.5, 0, 0), (9.5, 5, 0)) + line(o, (8.8, 0, 0), (10.2, 0, 0)) + line(o, (8.8, 5, 0), (10.2, 5, 0)))],
+    # The three axes of the view: X what acts, Y the accent, Z the ink, their negative side dashed.
+    "axes": lambda o: [("d", line(o, (0, 0, 0), (-4, 0, 0)) + line(o, (0, 0, 0), (0, -4, 0)) + line(o, (0, 0, 0), (0, 0, -4))), ("w", line(o, (0, 0, 0), (9, 0, 0))), ("b", line(o, (0, 0, 0), (0, 9, 0))), ("W", line(o, (0, 0, 0), (0, 0, 9)))],
     "grid": lambda o: [("F", iso(o, (0, 0, 0), (9, 0, 0), (9, 9, 0), (0, 9, 0))), ("s", line(o, (3, 0, 0), (3, 9, 0)) + line(o, (6, 0, 0), (6, 9, 0)) + line(o, (0, 3, 0), (9, 3, 0)) + line(o, (0, 6, 0), (9, 6, 0))), *box(o, 3, 3, 0, 3, 3, 2.5, "K", "H")],
     "select-all": lambda o: [*box(o, 0, 0, 0, 3.5, 3.5, 3.5, "K", "H"), *box(o, 5, 0, 0, 3.5, 3.5, 3.5, "K", "H"), *box(o, 0, 5, 0, 3.5, 3.5, 3.5, "K", "H")],
     "open-all": lambda o: doors(o, 8, [(0, -2, 9.5), (8, 11.5, 8.5)]),
