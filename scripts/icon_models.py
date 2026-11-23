@@ -1,8 +1,7 @@
 """
 Les modèles d'icônes de CAO Studio autres que les volumes en relief (scripts/icons3d.py) : les mêmes outils, redessinés
-sur 24 × 24 — « Glyphe » (formes plates grises, un accent), « Duo » (de petits solides en axonométrie, peints à plat
-en deux tons, sans trait de contour), « Pastille » (les dessins de Glyphe en blanc, chacun sur une tuile de couleur
-aux coins ronds) et « Dégradé » (les dessins de Glyphe dans un dégradé bleu-violet). Un fichier par modèle dans static/icons/, que l'éditeur charge quand on le
+sur 24 × 24 — « Glyphe » (formes plates grises, un accent) et « Duo » (de petits solides en axonométrie, peints à plat
+en deux tons, sans trait de contour). Un fichier par modèle dans static/icons/, que l'éditeur charge quand on le
 choisit (menu « ⋯ » → Icônes, frontend/src/app/icon-models.ts) : chaque symbole y remplace celui du même nom de la
 page, tous les outils. Les dessins sont dans scripts/icon_models_set.py à _set4.py (Glyphe), scripts/icon_models_studio.py
 à _studio4.py (les volumes de Duo, avec les solides de icon_models_solid.py) et scripts/icon_models_flat.py et
@@ -42,15 +41,7 @@ MODELS = {
         "K": ("#cfe3fd", "#a9cdfb", "#7fb2f5"),
         "H": ("#60a5fa", "#3b82f6", "#1d4ed8"),
     }),
-    # Glyphe's drawings in white, each on a rounded tile of its colour (TILES), as app icons.
-    "pastille": dict(width=1.7, flat=1.7, ink="#ffffff", accent="#ffffff", action="#fde68a", ghost="#ffffff", ink_fill=0.45, glyph=True, tile=True),
-    # Glyphe's drawings in a blue-to-violet gradient, the accent cyan-to-blue, what acts in orange.
-    "degrade": dict(width=1.6, flat=1.6, ink="url(#icm-grad)", accent="url(#icm-grad2)", action="#f97316", ghost="url(#icm-grad)", ink_fill=0.9, glyph=True, defs=(
-        '<defs><linearGradient id="icm-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>'
-        '<linearGradient id="icm-grad2" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>')),
 }
-# The tiles of « pastille », one colour per tool (always the same for a tool).
-TILES = ["#2563eb", "#0d9488", "#7c3aed", "#ea580c", "#0891b2", "#db2777", "#16a34a", "#4f46e5"]
 DASH = ' stroke-dasharray="1.7 1.5"'
 # A kind of shape: its stroke (colour, width × the model's, dashed), or its fill (colour, opacity).
 STROKES = {"s": ("ink", 1, ""), "a": ("accent", 1, ""), "o": ("action", 1, ""), "d": ("ghost", 0.8, DASH), "e": ("accent", 0.8, DASH), "p": ("action", 0.8, DASH), "W": ("ink", 1.6, ""), "b": ("accent", 1.6, ""), "w": ("action", 1.6, "")}
@@ -91,12 +82,9 @@ def shape(kind, d, m):
 def sprite(model):
     m = MODELS[model]
     out = ['<svg xmlns="http://www.w3.org/2000/svg">']
-    for i, (name, drawings) in enumerate(TOOLS.items()):
+    for name, drawings in TOOLS.items():
         if model in drawings:
             drawing, mm = drawings[model], m
-        elif m.get("glyph"):  # drawn as in Glyphe, in the model's colours
-            drawing = drawings.get("glyphe") or drawings["all"]
-            mm = m if "glyphe" in drawings else dict(m, width=m["flat"])
         elif name in DRAW:
             drawing, mm = scene(name, model), m
         else:
@@ -104,11 +92,6 @@ def sprite(model):
             drawing = on_plane(drawings["all"], model) if model in PLANES else drawings["all"]
             mm = dict(m, width=m["flat"])
         body = "".join(shape(kind, d, mm) for kind, d in drawing)
-        if m.get("tile"):
-            tile = TILES[sum(map(ord, name)) % len(TILES)]
-            body = f'<path d="M6 .5h12a5.5 5.5 0 0 1 5.5 5.5v12a5.5 5.5 0 0 1-5.5 5.5H6A5.5 5.5 0 0 1 .5 18V6A5.5 5.5 0 0 1 6 .5z" fill="{tile}" stroke="none"/><g transform="translate(4.2 4.2) scale(.65)">{body}</g>'
-        # The gradients once, in the first symbol: the page keeps every tool's symbol, so they are always there.
-        body = (m.get("defs", "") if i == 0 else "") + body
         out.append(f'<symbol id="i-{name}" viewBox="0 0 24 24"><g fill="none" stroke="{mm["ink"]}" stroke-width="{n(mm["width"])}" stroke-linecap="round" stroke-linejoin="round">{body}</g></symbol>')
     out.append("</svg>\n")
     return "\n".join(out)
