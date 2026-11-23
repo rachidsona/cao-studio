@@ -304,12 +304,12 @@
   [data-favorites] .tool-icon {
     @apply size-6;
   }
-  /* The four columns of tools between the navigator and the view (ui/tool-columns.ts): compact icons. */
+  /* The four columns of tools between the navigator and the view (ui/tool-columns.ts): icons of 28 px. */
   [data-tool-columns] .icon-btn {
-    @apply min-h-9 min-w-9 px-1;
+    @apply min-h-10 min-w-10 px-1;
   }
   [data-tool-columns] .icon-btn svg {
-    @apply size-6;
+    @apply size-7;
   }
   /* The Navigator folded away (ui/navigator-fold.ts): the view takes its room; on phones it stays the « Arbre » sheet. */
   @media (min-width: 1024px) {

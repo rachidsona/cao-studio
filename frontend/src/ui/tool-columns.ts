@@ -102,7 +102,7 @@ export function bindToolColumns(root: HTMLElement): void {
     const item = el(
       "div",
       {
-        class: `flex w-9 shrink-0 cursor-grab items-center justify-center outline-offset-[-2px] hover:outline hover:outline-1 hover:outline-dashed hover:outline-gray-400 focus-visible:outline-2 focus-visible:outline-sky-600 ${kind === "line" ? "h-3" : "h-9"}`,
+        class: `flex w-10 shrink-0 cursor-grab items-center justify-center outline-offset-[-2px] hover:outline hover:outline-1 hover:outline-dashed hover:outline-gray-400 focus-visible:outline-2 focus-visible:outline-sky-600 ${kind === "line" ? "h-3" : "h-10"}`,
         role: "separator",
         tabindex: "0",
         "aria-label": label,
@@ -111,7 +111,7 @@ export function bindToolColumns(root: HTMLElement): void {
         "data-separator": kind,
         draggable: "true",
       },
-      kind === "line" ? el("span", { class: "block h-px w-7 bg-gray-400 dark:bg-gray-500", "aria-hidden": "true" }) : null,
+      kind === "line" ? el("span", { class: "block h-px w-8 bg-gray-400 dark:bg-gray-500", "aria-hidden": "true" }) : null,
     );
     movable(item, column, key, label);
     return item;
@@ -120,6 +120,8 @@ export function bindToolColumns(root: HTMLElement): void {
   /** A column's icon: runs the tool's own button and mirrors its state. */
   const iconButton = (tool: Tool, column: number): HTMLElement => {
     const button = el("button", { type: "button", class: "tool-btn icon-btn", "aria-label": tool.label, title: `${tool.button.title || tool.label} — glisser pour changer sa place (Alt + ↑ / ↓) ; glisser hors des colonnes ou clic droit : retirer`, "data-tool-column-tool": tool.key, draggable: "true" }, iconOf(tool.button));
+    // Its own size here (the column's 28 px), whatever the size of the icon it was copied from.
+    button.querySelector("svg")?.classList.remove("size-4", "size-5", "size-6", "size-8");
     const sync = () => {
       button.disabled = (tool.button as HTMLButtonElement).disabled === true;
       const pressed = tool.button.getAttribute("aria-pressed");
@@ -213,7 +215,7 @@ export function bindToolColumns(root: HTMLElement): void {
     fold.addEventListener("click", () => save(toggleFold(state, index)));
     const head = el("div", { class: "flex w-full shrink-0 flex-col items-center border-b border-gray-100 pb-0.5 dark:border-gray-800" }, fold, nameOf(index));
     const section = el("section", {
-      class: "flex w-11 shrink-0 flex-col items-center border-r border-gray-100 last:border-r-0 dark:border-gray-800",
+      class: "flex w-12 shrink-0 flex-col items-center border-r border-gray-100 last:border-r-0 dark:border-gray-800",
       "aria-label": name,
       "data-tool-column": String(index),
     }, head);
