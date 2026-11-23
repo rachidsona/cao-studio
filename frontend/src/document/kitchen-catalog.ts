@@ -157,7 +157,11 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   // Beside the last of its kind along the anchor's wall; over (or beside) the anchor when of another kind.
   const sameWall = cabinets.filter((c) => (c.rotation ?? 0) === rotation);
   // A casquette caisson goes over the unit chosen (beside it when that one is a casquette too), on the wall row's top.
-  const z = entry.above ? k.z + k.height : entry.kind === "wall" && entry.height ? k.z + k.height - height : k.z;
+  // On the chosen wall unit or column, whatever its height; on a casquette already (a unit just under it): beside it.
+  const high = anchor && kindOf(anchor) !== "base" ? anchor : null;
+  const sitsOn = high && cabinets.some((c) => c !== high && Math.abs(c.origin[2] + c.height - high.origin[2]) < 1 && overlaps(cabinetBox({ ...c, height: c.height + 2 }), cabinetBox(high)));
+  const onTop = !high ? k.z + k.height : sitsOn ? high.origin[2] : high.origin[2] + high.height;
+  const z = entry.above ? onTop : entry.kind === "wall" && entry.height ? k.z + k.height - height : k.z;
   const neighbour = anchor && kindOf(anchor) === entry.kind && (!entry.above || anchor.origin[2] >= z - 1) ? anchor : null;
   let start = neighbour ? neighbour.width : 0;
   const at = (s: number): Vec3 => {

@@ -73,7 +73,8 @@ export function bindKitchenUnits(root: HTMLElement, viewport: Viewport, editor: 
       return editor.notify(`${entry.name} ajouté au linéaire en cours (Plan de cuisine).`, "success");
     }
     const anchor = selectedCabinet(editor);
-    const inPlan = addToKitchenPlan(editor.doc, entry, planAnchor());
+    // A casquette caisson goes on the unit chosen, not in a run (the plan has its own casquette).
+    const inPlan = entry.above ? null : addToKitchenPlan(editor.doc, entry, planAnchor());
     if (inPlan && typeof inPlan !== "string") {
       const selected = anchor?.id;
       // One of « Mes caissons »: made in its place.

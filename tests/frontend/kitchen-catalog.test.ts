@@ -131,6 +131,15 @@ describe("caissons de casquette (sur-meubles)", () => {
     expect(over.cabinet).toMatchObject({ depth: 560, origin: [column.cabinet.origin[0], column.cabinet.origin[1], top] });
   });
 
+  it("sur un meuble haut d'une autre hauteur (celui d'un Plan de cuisine) : posée sur son dessus", () => {
+    const wall = addKitchenUnit(createReferencePlate(), entry("wall-haut-1-porte-600"));
+    const high = { ...wall.cabinet, origin: [0, 0, 1450] as [number, number, number], height: 900 };
+    const doc = { ...wall.doc, features: wall.doc.features.map((f) => (f.id === high.id ? high : f)) };
+    const cap = addKitchenUnit(doc, entry("wall-casquette-relevante-600"), high.id);
+    expect(cap.cabinet.origin[2]).toBe(2350);
+    expect(addKitchenUnit(cap.doc, entry("wall-casquette-relevante-400"), cap.cabinet.id).cabinet.origin).toEqual([600, 0, 2350]);
+  });
+
   it("le Plan de cuisine ne les propose pas dans ses rangées : il a sa casquette en caissons", async () => {
     const { runModels } = await import("../../frontend/src/features/kitchen-run-items");
     expect(runModels().some((m) => m.name.startsWith("Casquette"))).toBe(false);
