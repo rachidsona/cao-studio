@@ -162,7 +162,13 @@ export function runStrip(host: StripHost): SVGSVGElement {
       }
     }
     const [a, b] = corner.cabinet ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
-    parts.push(`<text x="${(a + b) / 2}" y="${H + 120}" text-anchor="middle" font-size="80" class="fill-gray-500 dark:fill-gray-400" pointer-events="none"><title>${corner.name}</title>${corner.kind === "dead" ? "angle" : "angle ✓"}</text>`);
+    // The corner unit's whole width, dimensioned under it (its gap to the wall left out).
+    const size = corner.cabinet ? ` ${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")} cm` : "";
+    if (corner.cabinet) {
+      const tick = (x: number) => `<line x1="${x}" y1="${H + 15}" x2="${x}" y2="${H + 75}"/>`;
+      parts.push(`<g class="stroke-gray-500 dark:stroke-gray-400" stroke-width="2" vector-effect="non-scaling-stroke" pointer-events="none" data-corner-dim="${side}"><line x1="${a}" y1="${H + 45}" x2="${b}" y2="${H + 45}"/>${tick(a)}${tick(b)}</g>`);
+    }
+    parts.push(`<text x="${(a + b) / 2}" y="${H + 140}" text-anchor="middle" font-size="70" class="fill-gray-500 dark:fill-gray-400" pointer-events="none" data-corner-total="${side}"><title>${corner.name}</title>${corner.kind === "dead" ? "angle" : `angle ✓${size}`}</text>`);
   }
   // The splashback, the worktop's returns, the finishing sides and the casquette, where the 3D has them: along the run, and up.
   const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];

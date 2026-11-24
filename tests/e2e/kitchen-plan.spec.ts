@@ -428,6 +428,10 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   // (the number, its tip aside)
   expect((await strip.locator('[data-corner-width="door"]').allTextContents()).map((t) => t.replace(/^\D+/, "")).sort()).toEqual(["39,7", "59,7"]);
   await expect(strip.locator('[data-corner-width="blind"]').first()).toHaveText(/\d+(,\d)?$/);
+  // Under the corner unit, its whole width: 10 cm off the wall, its fixed part and its door of 60 cm.
+  await expect(strip.locator('[data-corner-dim="left"]')).toHaveCount(1);
+  const fixed = Number((await strip.locator('[data-corner-width="blind"]').last().textContent())!.replace(/^\D+/, "").replace(",", "."));
+  await expect(strip.locator('[data-corner-total="left"]')).toHaveText(new RegExp(`angle ✓ ${String(Math.round((fixed + 60) * 10) / 10).replace(".", ",")} cm$`));
   await shot(page, "14-hauts-angle");
   // Clicked on the strip, a corner unit is chosen as a unit is: « Meuble choisi » sets it, its shelves too.
   await strip.locator('[data-corner-front="blind"]').click({ position: { x: 4, y: 4 } });

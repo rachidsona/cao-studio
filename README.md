@@ -2661,7 +2661,9 @@ opération existante.
   - **Angles** (`document/kitchen-corners.ts`, `app/kitchen/kitchen-corner-choice.ts`) : chaque angle a sa solution, choisie
     dans l'éditeur de linéaire (bloc « L'angle », chaque solution dessinée vue de dessus), dans l'onglet « Angles » de
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
-    étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe ; **meuble d'angle LeMans**, même
+    étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe, à **10 cm du mur de l'angle** pris sur
+    sa partie fixe (62 cm de fixe deviennent 52 ; la porte ne bouge pas, `CORNER_WALL_GAP`) — de même pour LeMans et
+    Magic Corner ; sous la bande du linéaire, une cote donne la largeur entière du meuble d'angle (« angle ✓ 97,2 cm ») ; **meuble d'angle LeMans**, même
     caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **Magic Corner**, même
     caisson, deux paniers derrière la porte et deux au fond de l'angle qui viennent devant à l'ouverture ; **meuble
     d'angle en L 90 × 90**, un caisson sur chaque mur et une porte pliante ; **carrousel**, le même L avec deux
