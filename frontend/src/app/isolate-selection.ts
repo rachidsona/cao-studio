@@ -6,8 +6,9 @@
  * clic droit ; « Tout montrer » (ou I sans sélection) rend le reste. Quand quelque chose est déjà isolé (un mur vu
  * seul, un meuble), « Isoler » descend d'un cran : les pièces choisies seules (le cadre d'une façade de tiroir, une
  * étagère). La vue seulement : rien ne change dans le projet. Dans chaque menu du clic droit, « Modifier la sélection »
- * ouvre l'outil principal de l'élément choisi (ou celui cliqué) : pour ce que le Plan de cuisine a fait, le plan sur son
- * linéaire, son meuble choisi ; sinon l'outil qui l'a fait, comme un double-clic dans l'arbre.
+ * ouvre l'outil principal de l'élément choisi (ou celui cliqué) : Façades pour une porte ou un tiroir, le Plan de
+ * dressing pour des portes coulissantes, le Plan de cuisine sur son linéaire (son meuble choisi) pour ce qu'il a fait ;
+ * sinon l'outil qui l'a fait, comme un double-clic dans l'arbre.
  */
 import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, type CadDocument } from "../document/types";
@@ -63,23 +64,28 @@ export function isolateSelection(editor: Editor): void {
 }
 
 /**
- * « Modifier la sélection »: the main tool of the element chosen — the first selected, else the one clicked. Made by the
- * Plan de cuisine: the plan on its run, its unit chosen there, « Meuble choisi » open; else the tool that made it, as a
- * double click in the tree. Null when it was made by nothing one edits.
+ * « Modifier la sélection »: the main tool of the element clicked — else the first selected. A door or
+ * a drawer front: the Façades tool; sliding doors: the Plan de dressing. Made by the Plan de cuisine: the plan on its
+ * run, its unit chosen there, « Meuble choisi » open; else the tool that made it, as a double click in the tree. Null
+ * when it was made by nothing one edits.
  */
 export function modifyMenuItem(editor: Editor, viewport: Viewport, clicked?: string): [string, () => void] | null {
   const { bodies, faces, edges, vertices } = editor.picked.selection;
   const picked = [...bodies, ...faces.map((p) => p.bodyId), ...edges.map((p) => p.bodyId), ...vertices.map((p) => p.bodyId)];
-  const bodyId = picked[0] ?? clicked;
+  // The element the menu was opened on, else the first selected.
+  const bodyId = clicked ?? picked[0];
   const feature = bodyId ? findFeature(editor.doc, featureOfBody(bodyId)) : undefined;
   if (!bodyId || !feature) return null;
   const label = picked.length ? "Modifier la sélection" : `Modifier « ${bodyLabel(editor.doc, bodyId)} »`;
+  // A door or a drawer front: the Façades tool on its fronts; sliding doors: the Plan de dressing, where they are set.
+  if (feature.type === "fronts") return [label, () => editor.editFeature(feature.id)];
+  if (feature.type === "trim" && /coulissant/i.test(feature.name)) return [label, () => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click()];
   const owner = kitchenRunOf(editor.doc, feature.id);
   if (!owner) return [label, () => editor.editFeature(feature.id)];
   return [label, () => {
     // A body of the plan selected opens its run (app/kitchen/kitchen-plan-tool.ts); its unit then chosen there.
     viewport.selectLevel({ bodies: [bodyId] }, false);
-    const cabinet = feature.type === "cabinet" ? feature.id : feature.type === "fronts" ? feature.cabinet : null;
+    const cabinet = feature.type === "cabinet" ? feature.id : null;
     const item = cabinet ? planItemOf(editor.doc, cabinet)?.item : undefined;
     const open = kitchenRunOpen();
     if (item && open?.plan === owner.plan && open.run === owner.run) open.choose(item);

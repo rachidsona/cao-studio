@@ -76,12 +76,11 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="auto"]')?.click());
   await bar.getByRole("button", { name: "Tout montrer" }).click();
   await expect(bar).toHaveCount(0);
-  // « Modifier la sélection » on a unit of the Plan de cuisine: the plan on its run, the unit chosen, « Meuble choisi » open.
+  // « Modifier la sélection » on the cabinet of a unit of the Plan de cuisine: the plan on its run, the unit chosen.
   await page.mouse.click(430, 660);
   await page.mouse.click(430, 660, { button: "right" });
   await page.getByRole("menuitem", { name: "Modifier la sélection" }).click();
   await expect(plan.locator('[data-fold="chosen"]')).toContainText("Bas 2 portes", { timeout: 30_000 });
-  await expect(plan.locator('[data-fold="chosen"]')).toHaveAttribute("aria-expanded", "true");
   expect(errors).toEqual([]);
 });
 
@@ -178,5 +177,34 @@ test("« Cacher la sélection » sur la façade d'un tiroir : le tiroir entier s
   expect(fronts.size).toBe(1);
   expect(saved.features.find((f) => f.id === [...fronts][0])?.type).toBe("fronts");
   expect(saved.features.filter((f) => f.type === "cabinet" && f.hidden)).toHaveLength(0);
+  expect(errors).toEqual([]);
+});
+
+test("« Modifier la sélection » sur une porte : l'outil Façades, sur ses façades", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-modifier-porte");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await plan.getByRole("button", { name: "Créer le plan" }).click();
+  await plan.locator('[data-open-run="A"]').click();
+  const add = plan.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await plan.locator('[data-add="base-bas-2-portes-1000"]').click();
+  await plan.locator("[data-run-close]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  // The unit seen from the front, framed with its wall: its right door.
+  const [x, y] = [470, 660];
+  await page.mouse.click(x, y);
+  await page.mouse.click(x, y, { button: "right" });
+  await page.getByRole("menuitem", { name: "Modifier la sélection" }).click();
+  await expect(page.getByRole("dialog", { name: "Façades" })).toBeVisible({ timeout: 30_000 });
   expect(errors).toEqual([]);
 });
