@@ -25,6 +25,15 @@ function ownOk(own: unknown): boolean {
   );
 }
 
+/** What a unit keeps of what was changed on it in the 3D: its settings (numbers, words, yes or no, shares), its pieces' materials, its name. */
+function keepOk(keep: unknown): boolean {
+  if (!isObject(keep)) return false;
+  const value = (v: unknown) => isFiniteNumber(v) || shortText(v, 40) || typeof v === "boolean" || (Array.isArray(v) && v.length <= 20 && v.every(isFiniteNumber));
+  const settings = (o: unknown) => o === undefined || (isObject(o) && Object.keys(o).length <= 20 && Object.values(o).every(value));
+  const looks = (o: unknown) => o === undefined || (isObject(o) && Object.keys(o).length <= 200 && Object.entries(o).every(([k, v]) => k.length <= 200 && shortText(v, 200)));
+  return settings(keep.cabinet) && settings(keep.fronts) && looks(keep.carcass) && looks(keep.facing) && (keep.name === undefined || shortText(keep.name, 200));
+}
+
 function itemOk(item: unknown): boolean {
   return (
     isObject(item) &&
@@ -36,6 +45,7 @@ function itemOk(item: unknown): boolean {
     (item.side === undefined || ["left", "right", "top", "bottom"].includes(item.side as string)) &&
     (item.grip === undefined || item.grip === "gorge") &&
     (item.railFront === undefined || item.railFront === "edge") &&
+    (item.keep === undefined || keepOk(item.keep)) &&
     (item.facade === undefined || (isObject(item.facade) && glassFieldsProblem(item.facade, ["frame", "glass", "fluted", "slats"]) === null && ["frameDepth", "pitch"].every((k) => optionalNumber((item.facade as Json)[k])))) &&
     (item.furnished === undefined || shortText(item.furnished, 200)) &&
     (item.from === undefined || shortText(item.from, 200)) &&

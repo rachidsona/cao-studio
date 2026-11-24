@@ -11,7 +11,7 @@
  * (U) a sa face dans le plan X = longueur de A, vers −Y, ses meubles face à −X. Un angle est mort, fermé par deux
  * fileurs, ou occupé par un meuble d'angle (une porte de 45 cm, un panneau fixe dans l'angle).
  */
-import type { FrontStyle, Vec3 } from "../document/types";
+import type { FrontStyle, KitchenUnitKeep, Vec3 } from "../document/types";
 import { ergonomics, placeAppliances, type Slot } from "./kitchen-appliances";
 import { freeStretches, type RunInfo, type RunWall } from "./room-runs";
 import { CORNER_GAP, WALL_THICKNESS } from "../document/joinery-defaults";
@@ -101,6 +101,8 @@ export interface KitchenUnit {
   top?: "rails";
   /** Its front rail standing on its edge (the Caisson tool). */
   railFront?: "edge";
+  /** What was changed on it by hand in the 3D, made again so (document/kitchen-sync.ts). */
+  keep?: KitchenUnitKeep;
   /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */
   run?: string;
   item?: string;

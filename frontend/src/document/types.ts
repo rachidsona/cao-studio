@@ -119,6 +119,18 @@ export interface DressingPlan {
   tops?: Record<string, string>;
 }
 
+/**
+ * What was changed by hand in the 3D on a unit a kitchen plan makes: its caisson's and its fronts' settings, the
+ * material of its pieces (by their names), its name. The plan makes it again so.
+ */
+export interface KitchenUnitKeep {
+  cabinet?: Partial<Pick<CabinetFeature, "thickness" | "back" | "backThickness" | "plinth" | "construction" | "top" | "railWidth" | "shelfSetback">>;
+  fronts?: Partial<Pick<FrontsFeature, "mount" | "gap" | "thickness" | "hinges" | "drawerShares">>;
+  carcass?: Record<string, string>;
+  facing?: Record<string, string>;
+  name?: string;
+}
+
 /** A unit or an appliance of a kitchen run, in its row from left to right: a model at a width; one's own units carried whole. */
 export interface KitchenRunItem {
   id: string;
@@ -139,6 +151,8 @@ export interface KitchenRunItem {
   facade?: FrontStyle;
   /** Its front rail on its edge, chosen in the Caisson tool (a unit with two rails). */
   railFront?: CabinetFeature["railFront"];
+  /** What was changed on it by hand in the 3D, kept by the plan and made again so (document/kitchen-sync.ts). */
+  keep?: KitchenUnitKeep;
   /**
    * Its fronts and its inside chosen for this unit, over its model's (« Façades et intérieur » of the run's editor):
    * no fronts, one door, two, or drawers and how many; a drawer over the doors (its front's height, 0: none), English

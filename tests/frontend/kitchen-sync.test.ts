@@ -4,6 +4,7 @@ import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend
 import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
+import { parseDocument } from "../../frontend/src/document/validate";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { findFeature, updateFeature } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan, type KitchenRunItem } from "../../frontend/src/document/types";
@@ -232,5 +233,38 @@ describe("liens de Prolonger élément sur une cuisine refaite", () => {
     // Lying flat again: forgotten.
     const flat = syncKitchenPlans(again.doc, resized(again.doc, cab(again.doc).id, { railFront: undefined }));
     expect(kitchenPlanIn(flat, base.id)!.runs!.A![0]!.railFront).toBeUndefined();
+  });
+
+  it("ce qu'on change sur lui dans la 3D (caisson, façades, matières, nom) : le plan le garde, la cuisine refaite le refait ; revenu comme le plan le fait, il l'oublie", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} });
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "base-bas-2-portes", 800)] } });
+    if (typeof made === "string") throw new Error(made);
+    const cab = (d: CadDocument) => d.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    const fr = (d: CadDocument) => d.features.find((f): f is FrontsFeature => f.type === "fronts")!;
+    const c = cab(made.doc);
+    let changed = resized(made.doc, c.id, { shelves: 3, thickness: 19, back: "inset", plinth: 100 });
+    changed = updateFeature(changed, fr(changed).id, (f) => ({ ...f, gap: 4, mount: "inset", handles: false }) as FrontsFeature);
+    changed = { ...changed, bodyInfo: { ...changed.bodyInfo, [`${c.id}#0`]: { material: "melamine-oak" }, [`${fr(changed).id}#0`]: { material: "melamine-oak" } }, bodyNames: { ...changed.bodyNames, [c.id]: "Mon meuble" } };
+    const synced = syncKitchenPlans(made.doc, changed);
+    const item = kitchenPlanIn(synced, base.id)!.runs!.A![0]!;
+    expect(item).toMatchObject({ shelves: 3, handles: false, keep: { cabinet: { thickness: 19, back: "inset", plinth: 100 }, fronts: { gap: 4, mount: "inset" }, name: "Mon meuble" } });
+    expect(() => parseDocument(JSON.parse(JSON.stringify(synced)))).not.toThrow();
+    // Made again (an OK in a run): as it was changed.
+    const again = withKitchenBuilt(synced, base.id, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(cab(again.doc)).toMatchObject({ shelves: 3, thickness: 19, back: "inset", plinth: 100 });
+    expect(fr(again.doc)).toMatchObject({ gap: 4, mount: "inset", handles: false });
+    expect(again.doc.bodyInfo?.[`${cab(again.doc).id}#0`]?.material).toBe("melamine-oak");
+    expect(again.doc.bodyInfo?.[`${fr(again.doc).id}#0`]?.material).toBe("melamine-oak");
+    expect(again.doc.bodyNames?.[cab(again.doc).id]).toBe("Mon meuble");
+    // Nothing more to keep once rebuilt: the plan does not see its own work as a change.
+    expect(syncKitchenPlans(synced, again.doc)).toBe(again.doc);
+    // A plan-wide change (the plinth) is no choice of the unit's: not kept.
+    const plain = withKitchenBuilt(made.doc, base.id, { plinth: 120 });
+    if (typeof plain === "string") throw new Error(plain);
+    expect(kitchenPlanIn(syncKitchenPlans(made.doc, plain.doc), base.id)!.runs!.A![0]!.keep).toBeUndefined();
+    // Put back as the plan makes it: forgotten.
+    const back = resized(again.doc, cab(again.doc).id, { thickness: 18, back: "applied", plinth: 150 });
+    expect(kitchenPlanIn(syncKitchenPlans(again.doc, back), base.id)!.runs!.A![0]!.keep?.cabinet).toBeUndefined();
   });
 });

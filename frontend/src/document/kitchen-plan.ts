@@ -6,7 +6,7 @@
  * tournée et placée contre son mur A (features/room-runs.ts). Utilisé par l'outil Implantation et par l'assistant.
  */
 import { cabinetPartNames } from "../features/cabinet-parts";
-import { frontsMaterials } from "../features/fronts-parts";
+import { frontsMaterials, frontsPartNames } from "../features/fronts-parts";
 import { kitchenLayout, originOf, type KitchenLayout, type KitchenSettings } from "../features/kitchen-layout";
 import { applianceDef } from "../features/appliance-library";
 import { applianceParts } from "../features/appliance-parts";
@@ -72,18 +72,22 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
       // A sink unit on two rails: no back, the pipes come through.
       thickness: 18, back: u.top === "rails" && u.layout !== "drawers" ? "none" : "applied", backThickness: 3, shelves: u.shelves, ...(u.dividers ? { dividers: u.dividers } : {}), plinth: u.plinth, construction: "sides-through",
       ...(u.top ? { top: u.top } : {}), ...(u.railWidth ? { railWidth: u.railWidth } : {}), ...(u.railFront ? { railFront: u.railFront } : {}), ...(rotation ? { rotation } : {}),
+      // What was changed on it by hand in the 3D (document/kitchen-sync.ts).
+      ...u.keep?.cabinet,
     };
     push(cabinet);
-    cabinetPartNames(cabinet).forEach((name, i) => (plan.info[`${cabinet.id}${PART_SEPARATOR}${i}`] = { material: name === "Fond" ? "hdf" : "melamine-white" }));
+    cabinetPartNames(cabinet).forEach((name, i) => (plan.info[`${cabinet.id}${PART_SEPARATOR}${i}`] = { material: u.keep?.carcass?.[name] ?? (name === "Fond" ? "hdf" : "melamine-white") }));
+    if (u.keep?.name) plan.names[cabinet.id] = u.keep.name;
     if (u.layout === "none") continue;
     // Its fronts; more doors on the same cabinet (an oven column's, under the oven) each their own, in the same look.
     [{ ...u, layout: u.layout }, ...(u.more ?? []).map((m) => ({ ...u, ...m, layout: "door" as const }))].forEach((u, k) => {
       const fronts: FrontsFeature = {
         id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}),
-        mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false,
+        mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false, ...(k ? {} : u.keep?.fronts),
       };
       push(fronts);
-      frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material }));
+      const names = k ? [] : frontsPartNames(fronts, cabinet);
+      frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material: u.keep?.facing?.[names[i] ?? ""] ?? material }));
     });
   }
   for (const box of layout.boxes) {

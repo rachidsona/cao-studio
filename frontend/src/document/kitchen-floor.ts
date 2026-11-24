@@ -18,8 +18,8 @@ import { PART_SEPARATOR, featureInputs, featureOfBody, type CadDocument, type Fe
 import { isFiller, isSpace, itemEntry, rowOf } from "../features/kitchen-run-items";
 import { placePoint } from "../features/room-runs";
 
-const FRONT_MATERIAL = "lacquer-white";
-const WORKTOP_MATERIAL = "solid-oak";
+export const FRONT_MATERIAL = "lacquer-white";
+export const WORKTOP_MATERIAL = "solid-oak";
 
 /** The lines of the plan where it stands: in its room, or as they are. */
 function planSketch(p: KitchenFloorPlan) {

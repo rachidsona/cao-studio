@@ -2745,6 +2745,12 @@ opération existante.
     d'une colonne) de son meuble du linéaire, la porte ou le côté d'un meuble d'angle, bas ou haut. La cuisine est alors
     refaite avec lui dans la même annulation : les voisins se placent, fileurs et plan de travail suivent. Un clic sur
     un angle de la bande de face ouvre ses réglages.
+  - **Ce qu'on change sur un meuble dans la 3D, le plan le garde** (`document/kitchen-keep.ts`, `KitchenRunItem.keep`) :
+    réglages de son caisson (épaisseur, fond, socle, construction, traverses), de ses façades (pose, jeu, épaisseur,
+    charnières, parts des tiroirs), ses étagères et cloisons, ses poignées ôtées, la matière de chacune de ses pièces et
+    son nom ; la cuisine refaite le refait ainsi. On compare le meuble à ce que le plan en ferait : ce que le plan change
+    lui-même (le socle de toute la cuisine…) n'est pas un choix du meuble, et un réglage remis comme le plan le fait
+    est oublié. Seule sa rotation ne se garde pas : un meuble de linéaire regarde toujours la pièce.
   - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer, Coller par face) y reste : le linéaire garde la place libre
     qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
     (`document/kitchen-moves.ts`) ; l'espace gardé qui suit le dernier meuble poussé rétrécit d'autant (ou grandit),

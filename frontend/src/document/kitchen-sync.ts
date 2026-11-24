@@ -14,6 +14,9 @@ import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { itemsMoved, unitsMoved } from "./kitchen-moves";
 import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
+import { keptOf } from "./kitchen-keep";
+
+const sameKeep = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 import type { CabinetFeature, CadDocument, FrontStyle, FrontsFeature, KitchenRunItem } from "./types";
 import { applianceOf, hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
 
@@ -77,6 +80,21 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         if (k0 >= 0 && c.top === "rails" && runs[run.id]![k0]!.railFront !== c.railFront) {
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (c.railFront ? { ...it, railFront: c.railFront } : (({ railFront: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
+        }
+        if (k0 >= 0) {
+          const item = runs[run.id]![k0]!;
+          // Its shelves and upright boards (the Caisson tool), its handles taken off: on its item, as its run sets them.
+          const e = itemEntry(item);
+          const inside = hasInside(item) && e.layout !== "drawers" && (c.shelves !== e.shelves || (c.dividers ?? 0) !== (e.dividers ?? 0)) ? { shelves: c.shelves, dividers: c.dividers ?? 0 } : null;
+          const handles = fronts?.type === "fronts" && (fronts.handles === false) !== (item.handles === false) ? fronts.handles === false : null;
+          // The rest changed by hand (its caisson's and fronts' settings, its pieces' materials, its name): kept by it.
+          const keep = keptOf(doc, plan, u, c, fronts?.type === "fronts" && fronts.name === `Façades ${c.name}` ? fronts : undefined);
+          if (inside || handles !== null || !sameKeep(keep, item.keep)) {
+            const { keep: _old, handles: _h, ...rest } = item;
+            const next = { ...rest, ...(inside ?? {}), ...((handles ?? item.handles === false) ? { handles: false as const } : {}), ...(keep ? { keep } : {}) };
+            runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? next : it));
+            changed = true;
+          }
         }
         // Its fronts' layout and drawers (the Façades tool): the plan keeps them, as « Façades et intérieur » of its run.
         if (fronts?.type === "fronts" && k0 >= 0 && hasInside(runs[run.id]![k0]!)) {
