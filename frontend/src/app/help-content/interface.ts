@@ -72,7 +72,7 @@ export const SCREEN: HelpFamily[] = [
           "Dans le menu d'un groupe du ruban, cliquez l'étoile d'un outil pour l'ajouter.",
           "Cliquez une icône de la barre pour lancer l'outil, même rangé ou replié dans le ruban. Glissez-y une icône d'une autre barre pour l'ajouter ; glissez-en une hors des barres, ou clic droit : elle la quitte.",
           "Glissez la poignée à points pour déplacer la barre (double-clic : elle revient). « ⇄ » ou « ⇅ » la met à l'horizontale ou à la verticale.",
-          "Cliquez « – » pour cacher la barre : seule une étoile ★ reste à sa place ; cliquez-la pour la faire réapparaître.",
+          "Cliquez « – » pour cacher la barre : rien ne reste dans la vue. Pour la faire réapparaître, ajoutez-y un outil par l'étoile d'un menu de groupe.",
         ],
         tip: "Chaque onglet a la sienne : Conception 3D (vide au départ), Dressing et Cuisine (avec leurs outils de tous les jours, à changer à votre goût). Une autre sert à l'esquisse.",
       },

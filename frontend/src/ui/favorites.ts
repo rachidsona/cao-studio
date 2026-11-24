@@ -6,8 +6,8 @@
  * à la place marquée, et une des siennes plus loin dans la barre (ui/tool-drag.ts).
  * Une barre par mode (modèle, esquisse), et dans le modèle une par onglet du ruban (Conception 3D, Dressing, Cuisine :
  * use), retenue par le navigateur ; celles du Dressing et de la Cuisine commencent avec leurs outils de tous les jours. On la déplace où l'on veut par sa poignée ⠿, et on
- * la met à l'horizontale ou à la verticale (ui/movable.ts). Son « – » la cache : il n'en reste qu'une étoile ★, à sa
- * place, qui la fait réapparaître ; cachée ou non, c'est retenu par le navigateur, pour toutes les barres.
+ * la met à l'horizontale ou à la verticale (ui/movable.ts). Son « – » la cache tout entière, rien ne reste dans la vue ;
+ * un outil ajouté par l'étoile d'un menu de groupe la fait réapparaître. Cachée ou non, c'est retenu, pour toutes les barres.
  */
 import { makeMovable } from "./movable";
 import { draggableTool, registerBar } from "./tool-drag";
@@ -85,29 +85,21 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
   turn.className = "flex shrink-0 items-center justify-center text-2xs leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
   const list = document.createElement("div");
   list.className = "flex items-center gap-0.5";
-  // « – » hides the bar; only its star stays, at its place, to bring it back.
+  // « – » hides the whole bar; a tool starred in a group's menu brings it back.
   const iconClass = "flex size-6 shrink-0 items-center justify-center text-sm leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200";
   const hide = document.createElement("button");
   hide.type = "button";
   hide.className = iconClass;
   hide.textContent = "–";
-  hide.title = "Cacher ma barre (l'étoile ★ la fait réapparaître)";
+  hide.title = "Cacher ma barre (un outil ajouté par l'étoile d'un menu de groupe la fait réapparaître)";
   hide.setAttribute("aria-label", "Cacher ma barre");
-  const show = document.createElement("button");
-  show.type = "button";
-  show.className = `${iconClass} size-8 text-base text-amber-500 hover:text-amber-600`;
-  show.textContent = "★";
-  show.title = "Afficher ma barre (Mes outils)";
-  show.setAttribute("aria-label", "Afficher ma barre");
-  bar.append(grip, list, turn, hide, show);
+  bar.append(grip, list, turn, hide);
   const setHidden = (hidden: boolean) => {
     bar.dataset.hidden = String(hidden);
-    for (const part of [grip, list, turn, hide]) part.style.display = hidden ? "none" : "";
-    show.style.display = hidden ? "" : "none";
+    bar.style.display = hidden ? "none" : "";
     writeHidden(hidden);
   };
   hide.addEventListener("click", () => setHidden(true));
-  show.addEventListener("click", () => setHidden(false));
   setHidden(readHidden());
   host.append(bar);
   const movable = makeMovable(host, bar, grip, `${STORAGE}place.${first}`, (horizontal) => {
@@ -174,6 +166,8 @@ export function bindFavorites(host: HTMLElement, first: string, tools: Map<strin
   };
 
   const toggle = (key: string) => {
+    // A tool added: the bar shows again, to see it there.
+    if (!keys.includes(key) && bar.dataset.hidden === "true") setHidden(false);
     keys = keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key];
     write(name, keys);
     render();
