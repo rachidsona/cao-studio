@@ -112,6 +112,9 @@ test("Plan de cuisine : l'habillage de réfrigérateur pris dans l'onglet Colonn
   const add = tool.locator('[data-fold="add"]');
   if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
   await tool.getByRole("tab", { name: "Colonnes" }).click();
+  // Its widths, and one's own (made to measure, as a unit).
+  await expect(tool.locator('[data-add^="app-fridge-surround-"]')).toHaveCount(7);
+  await expect(tool.locator('[data-width-other^="app-fridge-surround-"]')).toBeVisible();
   await tool.locator('[data-add="app-fridge-surround-968"]').click();
   await tool.locator("[data-run-close]").click();
   await expect(page.locator('[title^="Côté gauche habillage"]').first()).toBeAttached({ timeout: 60_000 });

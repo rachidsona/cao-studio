@@ -49,7 +49,7 @@ describe("portes de cuisine en façades", () => {
 describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
   it("dans les Colonnes : deux côtés toute hauteur, un caisson à portes en haut, le réfrigérateur américain entre eux", async () => {
     const { familyModels } = await import("../../frontend/src/app/kitchen/kitchen-catalog-view");
-    expect(familyModels("tall").some((g) => g[0]!.id === "app-fridge-surround-968")).toBe(true);
+    expect(familyModels("tall").find((g) => g[0]!.id.startsWith("app-fridge-surround-"))!.map((e) => e.width)).toEqual([700, 800, 900, 968, 1000, 1100, 1200]);
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });
     const built = withKitchenBuilt(base.doc, base.id, {});
     if (typeof built === "string") throw new Error(built);

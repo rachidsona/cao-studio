@@ -2807,8 +2807,9 @@ opération existante.
     de « Mes meubles » ou un **appareil** — évier, plaque de cuisson, plaque et four, four sous plan, lave-vaisselle,
     colonne réfrigérateur, colonne four, hotte, micro-ondes, **habillage de réfrigérateur américain** (aussi dans
     l'onglet Colonnes : deux côtés toute hauteur dans la matière des façades, un caisson à portes de 40 cm en haut, le
-    réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; 96,8 cm pour un réfrigérateur de
-    91, 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi » : `SURROUND`) —, après celui qui est choisi ; on le glisse pour changer
+    réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; de 70 à 120 cm de large, 96,8 cm
+    pour un réfrigérateur de 91, ou à sa largeur à soi (« Autre… », « Place libre », comme un meuble : il se fait sur
+    mesure), 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi » : `SURROUND`) —, après celui qui est choisi ; on le glisse pour changer
     sa place, on l'échange contre un autre modèle. Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
     prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; un **clic sur
     une largeur écrite sur la bande** — sous un meuble, ou celle d'une porte d'angle, en bas comme en haut, la porte

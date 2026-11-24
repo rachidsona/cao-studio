@@ -37,7 +37,7 @@ export const APPLIANCES: ApplianceModel[] = [
   { model: "app-hob-oven", role: "hob-oven", name: "Plaque et four", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },
   { model: "app-oven", role: "oven", name: "Four sous plan", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },
   { model: "app-fridge", role: "fridge", name: "Colonne réfrigérateur", kind: "tall", widths: [600], cabinet: { layout: "door", shelves: 0 } },
-  { model: "app-fridge-surround", role: "fridge-surround", name: "Habillage réfrigérateur américain", kind: "tall", widths: [968, 1000], cabinet: null },
+  { model: "app-fridge-surround", role: "fridge-surround", name: "Habillage réfrigérateur américain", kind: "tall", widths: [700, 800, 900, 968, 1000, 1100, 1200], cabinet: null },
   { model: "app-oven-column", role: "oven-column", name: "Colonne four", kind: "tall", widths: [600], cabinet: { layout: "none", shelves: 1 } },
   { model: "app-hood", role: "hood", name: "Hotte", kind: "wall", widths: [600, 900], cabinet: null },
   { model: "app-microwave", role: "microwave", name: "Micro-ondes", kind: "wall", widths: [600], cabinet: { layout: "none", shelves: 0 } },

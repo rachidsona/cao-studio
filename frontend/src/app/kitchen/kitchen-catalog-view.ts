@@ -9,7 +9,7 @@
 import { CATALOG, KINDS, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
 import { withKitchenBuilt } from "../../document/kitchen-floor";
 import type { DisplayUnit } from "../../document/types";
-import { APPLIANCES, itemEntry, modelOf } from "../../features/kitchen-run-items";
+import { APPLIANCES, itemEntry, modelOf, SURROUND } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 import { elevation, unitSummary } from "./unit-elevation";
@@ -25,7 +25,8 @@ export function familyModels(family: UnitKind | "appliance" | "cap", wall = true
   const models = CATALOG.filter((e) => (family === "cap" ? e.above : e.kind === family && !e.above));
   const groups = [...new Set(models.map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
   // The fridge's surround among the columns too (made by the plan as one, sides, caisson and fridge).
-  return family === "tall" ? [...groups, ...familyModels("appliance").filter((g) => g[0]!.id.startsWith("app-fridge-surround-"))] : groups;
+  const surround = familyModels("appliance").filter((g) => g[0]!.id.startsWith("app-fridge-surround-")).map((g) => g.map((e) => ({ ...e, height: SURROUND.height, depth: SURROUND.depth })));
+  return family === "tall" ? [...groups, ...surround] : groups;
 }
 
 /** Tabs of families: the one chosen underlined. */
@@ -60,7 +61,8 @@ export interface FreeWidths {
   room?: (e: CatalogEntry) => number | null;
 }
 
-const isAppliance = (e: CatalogEntry) => e.id.startsWith("app-");
+/** An appliance comes in the widths it is sold in; a fridge's surround is made to measure, as a unit. */
+const isAppliance = (e: CatalogEntry) => e.id.startsWith("app-") && !e.id.startsWith("app-fridge-surround-");
 
 /** « Autre… » (a width typed) and « Place libre » (the room left), after the widths of the model. */
 function freeWidthButtons(usual: CatalogEntry, unit: DisplayUnit, add: (e: CatalogEntry) => void, show: (e: CatalogEntry) => void, free: FreeWidths): HTMLElement[] {
