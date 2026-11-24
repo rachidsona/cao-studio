@@ -62,4 +62,18 @@ describe("largeur libre d'un meuble ajouté", () => {
     // Nothing to settle: the same array.
     expect(settledItems(runGeometry({ ...p, runs: { A: items } }, run), items, { worktop: p.worktopHeight, wallBottom: 1450, wallTop: 2150 })).toBe(items);
   });
+
+  it("un meuble va dans la place gardée libre même quand ces places dépassent le linéaire (raccourci depuis) : un espace n'est pas un meuble poussé dehors", async () => {
+    const { noRoomFor } = await import("../../frontend/src/app/kitchen/kitchen-run-missing");
+    const { inKeptRoom } = await import("../../frontend/src/features/kitchen-run-items");
+    // More room kept free than the run has (2400): left by units deleted before it grew shorter.
+    let items: KitchenRunItem[] = [];
+    for (const w of [700, 1000, 1000]) items = [...items, newItem(items, "space", w)];
+    const unit = newItem(items, "base-bas-2-portes", 1000);
+    const next = inKeptRoom(items, unit)!;
+    expect(noRoomFor(fill(next), unit, "cm", fill(items))).toBeNull();
+    // Wider than the run itself: still refused.
+    const wide = newItem(items, "base-bas-2-portes", 3000);
+    expect(noRoomFor(fill(inKeptRoom(items, wide) ?? [...items, wide]), wide, "cm", fill(items))).toMatch(/ne tient pas/);
+  });
 });

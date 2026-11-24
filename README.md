@@ -2929,7 +2929,9 @@ opération existante.
     - **Un meuble prend la place gardée libre** : quand il ne reste pas de place ouverte, le meuble ajouté va dans un
       « Espace libre » de sa rangée (la place hachurée), à l'endroit de cet espace, qui garde ce qui reste de lui
       (`settledItems`). La place qu'un caisson aménagé tient n'est pas prise ; ce caisson supprimé, elle redevient libre
-      (`kitchenPlanIn` oublie le lien vers un caisson qui n'existe plus).
+      (`kitchenPlanIn` oublie le lien vers un caisson qui n'existe plus). Des places gardées plus longues que le linéaire
+      (raccourci depuis, par un meuble d'angle agrandi) n'empêchent pas d'y poser un meuble : un espace qui ne tient plus
+      n'est pas un meuble poussé dehors (`noRoomFor`), ni à revoir.
     - **Un meuble qui ne tient pas est refusé** à l'ajout, avec la place qui reste (« il reste 60 cm au plus en bas ») :
       il ne reste plus dans le linéaire sans être vu. Ceux qui s'y trouvent déjà sans place (ajoutés avant, un meuble
       élargi, le mur raccourci) sont listés sous « À revoir », chacun avec « Retirer »
