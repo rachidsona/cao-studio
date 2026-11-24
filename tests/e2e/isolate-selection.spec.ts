@@ -85,11 +85,11 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   expect(errors).toEqual([]);
 });
 
-test("« Cacher la sélection » : deux caissons cachés d'un coup, listés par meuble, montrés un à un puis tous", async ({ page }) => {
+test("« Cacher la sélection » : deux pièces cachées d'un coup (pas leurs caissons), listées par meuble, montrées une à une puis toutes", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1400, height: 900 });
-  await newProject(page, "zz-test-cacher-selection");
+  const api = await newProject(page, "zz-test-cacher-selection");
   await click(page, '[data-ribbon-tab="kitchen"]');
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
@@ -120,6 +120,11 @@ test("« Cacher la sélection » : deux caissons cachés d'un coup, listés par 
   await button.click();
   await expect(page.getByText(/2 éléments cachés/).first()).toBeVisible();
   await expect(button).toHaveAttribute("data-count", "2", { timeout: 30_000 });
+  // Only the two pieces clicked, not the whole cabinets: no cabinet hidden, two pieces in the hidden list.
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const saved = (await page.evaluate(async (url) => (await (await fetch(url, { headers: { Accept: "application/json" } })).json()).document, api)) as { hiddenBodies?: string[]; features: { type: string; hidden?: boolean }[] };
+  expect(saved.hiddenBodies ?? []).toHaveLength(2);
+  expect(saved.features.filter((f) => f.type === "cabinet" && f.hidden)).toHaveLength(0);
 
   // The list, one line per unit: one shown again, then all.
   await button.click();

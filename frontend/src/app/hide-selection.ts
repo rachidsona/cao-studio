@@ -1,7 +1,7 @@
 /**
- * « Cacher la sélection » (colonne Sélection et vue) : les éléments choisis — le meuble entier dont on a choisi une
- * pièce, une face ou une arête, comme « Isoler » — sont cachés d'un coup (une seule annulation), et restent cachés dans
- * le projet. Sans sélection, le bouton ouvre la liste des éléments cachés, rangés par meuble (un caisson avec ses
+ * « Cacher la sélection » (colonne Sélection et vue) : les pièces choisies seules — un tiroir, une étagère, un côté
+ * d'un caisson, pas le caisson entier ; tout le meuble quand il est choisi entier — sont cachées d'un coup (une seule
+ * annulation), et restent cachées dans le projet. Sans sélection, le bouton ouvre la liste des éléments cachés, rangés par meuble (un caisson avec ses
  * façades, une Répartition avec ses panneaux, sinon le corps) : « Montrer » en rend un, « Tout montrer » les rend tous.
  * Le nombre d'éléments cachés s'affiche sur le bouton.
  */
@@ -9,7 +9,7 @@ import { bodyOrigin, isBodyHidden, setHidden } from "../document/operations";
 import type { CadDocument } from "../document/types";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { elementName, selectedElements } from "./isolate-selection";
+import { elementName, selectedPieces } from "./isolate-selection";
 import { elementOf } from "./zone-view";
 
 interface HiddenGroup {
@@ -37,11 +37,6 @@ export function hiddenGroups(doc: CadDocument, bodyIds: readonly string[]): Hidd
     groups.set(key, group);
   }
   return [...groups.values()];
-}
-
-/** The ids to hide for the elements of `keys`: every body of each. */
-export function idsOfElements(doc: CadDocument, bodyIds: readonly string[], keys: ReadonlySet<string>): string[] {
-  return [...new Set(bodyIds.filter((id) => keys.has(elementOf(doc, id))).map((id) => bodyOrigin(doc, id)))];
 }
 
 export function bindHideSelection(root: HTMLElement, viewport: Viewport, editor: Editor): void {
@@ -124,12 +119,12 @@ export function bindHideSelection(root: HTMLElement, viewport: Viewport, editor:
   }
 
   button.addEventListener("click", () => {
-    const elements = selectedElements(editor);
-    if (elements.size) {
-      const ids = idsOfElements(editor.doc, bodyIds(), new Set(elements.keys()));
+    // The pieces chosen themselves (a drawer, a shelf, a side), not the whole cabinet they are of.
+    const pieces = selectedPieces(editor);
+    if (pieces.size) {
       viewport.clearSelection();
-      void editor.change(setHidden(editor.doc, ids, true));
-      const names = [...elements.values()];
+      void editor.change(setHidden(editor.doc, [...pieces.keys()], true));
+      const names = [...pieces.values()];
       return editor.notify(`${names.length === 1 ? `« ${names[0]} » caché` : `${names.length} éléments cachés`} : ce bouton, sans sélection, les liste pour les montrer à nouveau.`, "info");
     }
     if (menu) return menu.close();
