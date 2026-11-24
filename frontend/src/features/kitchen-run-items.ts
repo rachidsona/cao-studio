@@ -15,7 +15,10 @@ import { freeStretches } from "./room-runs";
 /** The widths a unit is sold in (mm). */
 export const WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
 
-export type Role = "sink" | "dishwasher" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave";
+export type Role = "sink" | "dishwasher" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave" | "fridge-surround";
+
+/** A freestanding fridge's surround (« Habillage réfrigérateur »): its usual height and depth, its top caisson's height, the air over the fridge and on its sides (mm). */
+export const SURROUND = { height: 2300, depth: 720, caisson: 400, air: 30, side: 10 };
 
 export interface ApplianceModel {
   model: string;
@@ -34,6 +37,7 @@ export const APPLIANCES: ApplianceModel[] = [
   { model: "app-hob-oven", role: "hob-oven", name: "Plaque et four", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },
   { model: "app-oven", role: "oven", name: "Four sous plan", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },
   { model: "app-fridge", role: "fridge", name: "Colonne réfrigérateur", kind: "tall", widths: [600], cabinet: { layout: "door", shelves: 0 } },
+  { model: "app-fridge-surround", role: "fridge-surround", name: "Habillage réfrigérateur américain", kind: "tall", widths: [968, 1000], cabinet: null },
   { model: "app-oven-column", role: "oven-column", name: "Colonne four", kind: "tall", widths: [600], cabinet: { layout: "none", shelves: 1 } },
   { model: "app-hood", role: "hood", name: "Hotte", kind: "wall", widths: [600, 900], cabinet: null },
   { model: "app-microwave", role: "microwave", name: "Micro-ondes", kind: "wall", widths: [600], cabinet: { layout: "none", shelves: 0 } },
@@ -123,6 +127,8 @@ export function itemSize(p: KitchenFloorPlan, item: KitchenRunItem, entry: Catal
     const height = item.height ?? entry.height ?? s.wallTop - s.wallBottom;
     return { height, depth: item.depth ?? own ?? p.wallDepth, z: s.wallTop - height };
   }
+  // A fridge's surround: as high as a freestanding fridge and its caisson ask, as deep as the fridge.
+  if (entry.id.startsWith("app-fridge-surround-")) return { height: item.height ?? Math.min(p.height, SURROUND.height), depth: item.depth ?? SURROUND.depth, z: 0 };
   if (entry.kind === "tall") return { height: item.height ?? s.wallTop, depth: item.depth ?? s.cabinet, z: 0 };
   return { height: s.base, depth: item.depth ?? own ?? s.cabinet, z: 0 };
 }
@@ -133,6 +139,7 @@ export function sizeLimits(p: KitchenFloorPlan, entry: CatalogEntry): { width: [
   if (entry.id.startsWith(`${SPACE}-`) || entry.id.startsWith(`${SPACE_WALL}-`)) return { width: [1, 6000], height: null, depth: [0, 0] };
   if (entry.id.startsWith(`${FILLER}-`) || entry.id.startsWith(`${FILLER_WALL}-`)) return { width: [10, 300], height: null, depth: [0, 0] };
   if (rowOf(entry) === "wall") return { width: [100, 2400], height: [200, s.wallTop - p.worktopHeight - 100], depth: [150, 600] };
+  if (entry.id.startsWith("app-fridge-surround-")) return { width: [700, 1400], height: [1600, p.height], depth: [500, 850] };
   if (entry.kind === "tall") return { width: [100, 2400], height: [1200, p.height], depth: [200, s.cabinet] };
   return { width: [100, 2400], height: null, depth: [200, s.cabinet] };
 }

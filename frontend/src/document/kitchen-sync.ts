@@ -15,7 +15,7 @@ import { itemsMoved, unitsMoved } from "./kitchen-moves";
 import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
 import type { CabinetFeature, CadDocument, FrontStyle, FrontsFeature, KitchenRunItem } from "./types";
-import { hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
+import { applianceOf, hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
 
 const NEAR = 0.05;
 const differs = (a: number, b: number) => Math.abs(a - b) > NEAR;
@@ -111,6 +111,8 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         const k = items.findIndex((it) => it.id === u.item);
         if (k < 0) return;
         const item = items[k]!;
+        // A fridge's surround: its caisson is narrower than it, set by the plan (its sizes are set in « Meuble choisi »).
+        if (applianceOf(item)?.role === "fridge-surround") return;
         const limits = sizeLimits(plan, itemEntry(item));
         const next: KitchenRunItem = { ...item };
         if (differs(c.width, u.width)) next.width = clamp(c.width, limits.width);

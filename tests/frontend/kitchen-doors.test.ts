@@ -45,3 +45,21 @@ describe("portes de cuisine en façades", () => {
     expect(plan.layout.boxes.some((b) => /^Porte/.test(b.name))).toBe(false);
   });
 });
+
+describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
+  it("dans les Colonnes : deux côtés toute hauteur, un caisson à portes en haut, le réfrigérateur américain entre eux", async () => {
+    const { familyModels } = await import("../../frontend/src/app/kitchen/kitchen-catalog-view");
+    expect(familyModels("tall").some((g) => g[0]!.id === "app-fridge-surround-968")).toBe(true);
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const doc = built.doc;
+    const sides = doc.features.filter((f) => f.type === "extrude" && /^Côté (gauche|droit) habillage/.test(f.name));
+    expect(sides.map((f) => (f.type === "extrude" ? f.distance : 0))).toEqual([2300, 2300]);
+    const cab = doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    expect([cab.width, cab.height, cab.origin[2], cab.depth]).toEqual([968 - 38, 400, 1900, 720]);
+    expect(doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === cab.id)!.layout).toBe("doors");
+    const fridge = doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
+    expect(fridge.type === "appliance" && [fridge.width, fridge.height, fridge.origin[2]]).toEqual([910, 1870, 0]);
+  });
+});

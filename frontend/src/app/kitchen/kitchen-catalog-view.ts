@@ -23,7 +23,9 @@ export function familyModels(family: UnitKind | "appliance" | "cap", wall = true
   if (family === "appliance") return APPLIANCES.filter((a) => wall || a.kind !== "wall").map((a) => a.widths.map((width) => ({ ...itemEntry({ id: "", model: a.model, width }), ...(a.role === "dishwasher" ? { layout: "door" as const } : {}) })));
   // The casquettes in their own tab, beside « Hauts ».
   const models = CATALOG.filter((e) => (family === "cap" ? e.above : e.kind === family && !e.above));
-  return [...new Set(models.map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
+  const groups = [...new Set(models.map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
+  // The fridge's surround among the columns too (made by the plan as one, sides, caisson and fridge).
+  return family === "tall" ? [...groups, ...familyModels("appliance").filter((g) => g[0]!.id.startsWith("app-fridge-surround-"))] : groups;
 }
 
 /** Tabs of families: the one chosen underlined. */

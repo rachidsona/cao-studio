@@ -98,3 +98,24 @@ test("dans un linéaire du Plan de cuisine, choisir une casquette met la casquet
   await expect(page.locator('[title^="Casquette"]').first()).toBeAttached({ timeout: 60_000 });
   expect(errors).toEqual([]);
 });
+
+test("Plan de cuisine : l'habillage de réfrigérateur pris dans l'onglet Colonnes, sans erreur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-habillage-plan");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await tool.getByRole("tab", { name: "Colonnes" }).click();
+  await tool.locator('[data-add="app-fridge-surround-968"]').click();
+  await tool.locator("[data-run-close]").click();
+  await expect(page.locator('[title^="Côté gauche habillage"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
