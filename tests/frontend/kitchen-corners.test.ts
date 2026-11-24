@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { CORNER_KINDS, CORNER_SHELVES, cornerSide, cornerSketch, wallCornerSide, withCorner } from "../../frontend/src/document/kitchen-corners";
-import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { fillerSized, kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { CORNER_DOOR, CORNER_WALL_GAP, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
@@ -52,7 +52,9 @@ describe("angles de cuisine", () => {
       // Boards cut to an outline (the corner cut at 45°) are not their bounds: checked in kitchen-shaped.test.ts.
       const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${kind} : ${i} et ${j}`).toBe(false);
-      if (isLCorner(kind) && kind !== "diagonal") expect(layout.boxes.filter((b) => b.name.startsWith("Porte pliante")).length).toBe(4);
+      // Every door is its cabinet's fronts (none for the one cut at 45°, built board by board): a folding door's leaves too.
+      if (kind !== "dead" && kind !== "diagonal") expect(corner.every((u) => u.layout === "door" && u.span), kind).toBe(true);
+      expect(layout.boxes.some((b) => /^Porte/.test(b.name)), kind).toBe(false);
       if (kind === "dead") expect(layout.boxes.filter((b) => b.name.startsWith("Fileur d'angle")).length).toBe(4);
     }
   });
@@ -191,20 +193,6 @@ describe("angles de cuisine", () => {
     // A board that is no door does not open.
     const panel = made.doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Panneau d'angle"))!;
     expect(doorSwing(made.doc, panel.id, [[0, 0, 0], [10, 10, 10]])).toBeNull();
-  });
-
-  it("une porte pliante bâtie avant que les portes connaissent leur charnière s'ouvre aussi : le plan la donne", () => {
-    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "l" }, runs: {}, made: {} }));
-    const made = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
-    if (typeof made === "string") throw new Error(made);
-    // As an older kitchen has it: the board, no hinge on it.
-    const old: CadDocument = { ...made.doc, features: made.doc.features.map((f) => (f.type === "extrude" && f.door ? { ...f, door: undefined } : f)) };
-    const door = old.features.find((f) => f.type === "extrude" && f.name.startsWith("Porte pliante"))!;
-    const b = kitchenFromPlan(kitchenPlanIn(old, base.id)!).boxes.find((x) => x.name === door.name)!;
-    const now = made.doc.features.find((f) => f.id === door.id)!;
-    expect(madeDoor(old, door.id)).toEqual(now.type === "extrude" ? now.door : null);
-    expect(doorSwing(old, door.id, [b.from, b.to])).toEqual(doorSwing(made.doc, door.id, [b.from, b.to]));
-    expect(madeDoor(old, old.features.find((f) => f.type === "extrude" && f.name.startsWith("Plinthe"))!.id)).toBeNull();
   });
 
   it("la plinthe passe aussi sous l'angle, sans chevaucher l'autre linéaire ni les meubles", () => {

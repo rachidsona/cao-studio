@@ -9,7 +9,6 @@ import { frontsParts, frontsProblem } from "../features/fronts-parts";
 import { styleChange, type DoorStyle } from "../features/glass-door";
 import { nichePartsIn } from "../features/niche-parts";
 import { withCaseDoor, withDoorSettings } from "./door-fronts";
-import { madeDoor } from "./kitchen-floor";
 import { bodyOrigin, deleteFeatures, findFeature, removePieces, updateFeature } from "./operations";
 import type { DoorSettings } from "./sketch";
 import { featureOfBody, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FrontsFeature, type NicheFeature, type SketchFeature } from "./types";
@@ -74,7 +73,7 @@ export function doorOf(doc: CadDocument, bodyId: string): DoorInfo | null {
     const h = f.hinges?.[index] ?? inTurn(count)[index]!;
     return { kind: f.fill === "door" ? "niche" : "partition", feature: f.id, index, hinge: h === "left" || h === "right" ? h : null, lift: h === "top" || h === "bottom" ? h : null, handles: f.handles };
   }
-  if (f?.type === "extrude" && (f.door || madeDoor(doc, f.id))) return { kind: "board", feature: f.id, index: 0, hinge: null, handles: null };
+  if (f?.type === "extrude" && f.door) return { kind: "board", feature: f.id, index: 0, hinge: null, handles: null };
   return null;
 }
 
@@ -96,7 +95,7 @@ export function withDoorFlipped(doc: CadDocument, bodyId: string): CadDocument |
   // A lift-up door becomes a flap, and the other way.
   if (door.kind === "niche" && f?.type === "niche") return updateFeature(doc, f.id, () => ({ ...f, hinges: [door.lift === "top" ? "bottom" : door.lift === "bottom" ? "top" : other(door.hinge ?? "left")] }) satisfies NicheFeature);
   if (door.kind === "board" && f?.type === "extrude") {
-    const made = f.door ?? madeDoor(doc, f.id);
+    const made = f.door;
     if (!made) return "Cette porte n'a pas de charnière.";
     return updateFeature(doc, f.id, () => ({ ...f, door: { ...made, hinge: made.hinge.map((c) => (c ? -c : 0)) as typeof made.hinge } }) satisfies ExtrudeFeature);
   }

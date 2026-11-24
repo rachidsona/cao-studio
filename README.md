@@ -2628,7 +2628,8 @@ opération existante.
   reste en fileur) ; meubles bas (hauteur, profondeur, socle réglables) avec leurs façades (tiroirs et portes en
   alternance, tiroirs ou portes partout ; deux portes au-delà de 600), plan de travail débordant de 20 mm, meubles
   hauts au-dessus si on veut, et les murs. En L, l'angle est un angle mort fermé par deux fileurs, pour que portes et
-  tiroirs s'ouvrent sans se heurter ; les meubles du mur B sont des caissons tournés de 90°. Tout arrive dans
+  tiroirs s'ouvrent sans se heurter ; les meubles du mur B sont des caissons tournés de 90° ; avec un meuble d'angle, sa porte est la façade de son
+  caisson, à côté du panneau d'angle. Tout arrive dans
   l'historique en une annulation et reste modifiable pièce par pièce ; les matières sont posées (caissons mélaminé
   blanc, fonds HDF, façades et plan de travail au choix), les murs vont sur le calque « Pièce », hors du débit, du
   devis et du fichier DXF.
@@ -2670,9 +2671,10 @@ opération existante.
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
     étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe, à **10 cm du mur de l'angle** pris sur
     sa partie fixe (62 cm de fixe deviennent 52 ; la porte ne bouge pas, `CORNER_WALL_GAP`) — de même pour LeMans et
-    Magic Corner ; la porte de ces meubles d'angle (et du haut d'angle à porte) est la **façade de leur caisson**, sur
-    une partie de sa largeur seulement (`FrontsFeature.span`), modifiable dans Façades : le plan garde son style et son
-    sens (`cornerSizes.look`, `wallLook`, par `document/kitchen-sync.ts`) ; sous la bande du linéaire, une cote donne la largeur entière du meuble d'angle (« angle ✓ 97,2 cm ») ; cliqué sur la bande, il
+    Magic Corner ; la porte de ces meubles d'angle (et du haut d'angle à porte), comme chaque vantail d'une porte
+    pliante (L, carrousel, haut d'angle en L), est la **façade de son caisson**, sur
+    une partie de sa largeur seulement (`FrontsFeature.span`), modifiable dans Façades : le plan garde son style, et le
+    sens d'une porte d'angle (`cornerSizes.look`, `wallLook`, par `document/kitchen-sync.ts`) ; sous la bande du linéaire, une cote donne la largeur entière du meuble d'angle (« angle ✓ 97,2 cm ») ; cliqué sur la bande, il
     se **supprime** comme un meuble (Suppr ou « Supprimer le meuble d'angle ») : l'angle redevient un angle mort, et en
     haut, plus de haut d'angle ; **meuble d'angle LeMans**, même
     caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **Magic Corner**, même
@@ -2715,7 +2717,10 @@ opération existante.
     pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
-    réfrigérateur, au bout libre).
+    réfrigérateur, au bout libre ; ses deux portes, sous le four et au-dessus, sont ses façades sur une partie de sa
+    hauteur, `FrontsFeature.rise`, la haute s'ouvrant comme choisi, relevable comprise). Toute porte d'un caisson de
+    la cuisine est ainsi une façade, modifiable dans Façades ; seul le meuble en biais, bâti planche par planche, garde
+    une porte en planche.
   **Aimant sur la pièce** : dans un projet qui a une Pièce relevée, un plan neuf s'y pose de lui-même — son mur A sur le
   mur qui le déplace le moins, ses cotes celles des murs —, pour qu'aucun meuble n'entre dans un mur ; une autre forme
   reprend ses cotes sur ses murs ; « Cotes tapées ici » le libère pour la visite (`planOnRoom`,
@@ -3295,7 +3300,7 @@ opération existante.
   ou Porte vitrée / pleine (porte d'un caisson), Portes plates / à cadre / vitrées (Répartition, porte sur niches) ;
   **Supprimer la porte**. Chaque choix est une
   annulation. Une porte de caisson (`FrontsFeature.side`), une porte de case de Répartition (son sens seul, dans
-  `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte pliante d'angle bâtie en panneau.
+  `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une planche qui a sa charnière (`ExtrudeFeature.door`).
 - **Menu des tiroirs** : un **clic droit sur un tiroir** (sa façade, une pièce de son caisson ou sa poignée) ouvre son menu.
   **Modifier les tiroirs…** ouvre, pour ceux d'un caisson, un petit panneau au pointeur — nombre (1 à 8), pose en
   applique ou encastrés, jeu, épaisseur, poignées —, chaque changement fait aussitôt et annulable ; pour ceux d'une niche

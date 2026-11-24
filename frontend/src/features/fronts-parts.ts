@@ -73,13 +73,14 @@ export const INNER_CLEAR = 25;
 /** And set back by this behind the door, clear of its hinge cups (mm). */
 export const INNER_BACK = 20;
 
-export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "frameDepth" | "pitch" | "grip" | "hinges" | "hw" | "side" | "topDrawer" | "innerDrawers" | "span">>, cabinet: CabinetFeature | undefined): string | null {
+export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap" | "thickness"> & Partial<Pick<FrontsFeature, "mount" | "style" | "frameWidth" | "frameDepth" | "pitch" | "grip" | "hinges" | "hw" | "side" | "topDrawer" | "innerDrawers" | "span" | "rise">>, cabinet: CabinetFeature | undefined): string | null {
   if (!cabinet || cabinet.type !== "cabinet") return "Choisissez le caisson à habiller.";
   const problem = cabinetProblem(cabinet);
   if (problem) return problem;
   if (!(f.thickness > 0)) return "L'épaisseur des façades doit être positive.";
   if (!(f.gap >= 0)) return "Le jeu ne peut pas être négatif.";
   if (f.span && !(f.span[0] >= 0 && f.span[1] <= cabinet.width && f.span[1] - f.span[0] >= 100)) return "La porte doit tenir dans la largeur du caisson (10 cm au moins).";
+  if (f.rise && !(f.rise[0] >= 0 && f.rise[1] <= cabinet.height && f.rise[1] - f.rise[0] >= 100)) return "La porte doit tenir dans la hauteur du caisson (10 cm au moins).";
   if (f.layout === "drawers" && (!Number.isInteger(f.drawers) || f.drawers < 1 || f.drawers > 8)) return "De 1 à 8 tiroirs.";
   if ((cabinet.dividers ?? 0) > 0 && (f.layout === "drawers" || f.topDrawer !== undefined || f.innerDrawers !== undefined)) return "Des tiroirs ne passent pas à travers les cloisons du caisson : ôtez les cloisons, ou aménagez-le case par case.";
   if (f.layout !== "drawers" && f.topDrawer !== undefined) {
@@ -120,7 +121,7 @@ export function frontsProblem(f: Pick<FrontsFeature, "layout" | "drawers" | "gap
  * Where the fronts of a cabinet go, relative to its origin: the area they cover across (x) and up (z), the height of
  * each drawer front and what lies between two of them (the gap, or a handleless front's finger space).
  */
-export function frontArea(f: Pick<FrontsFeature, "layout" | "drawers" | "gap"> & Partial<Pick<FrontsFeature, "mount" | "grip" | "span">>, cabinet: CabinetFeature): { x0: number; x1: number; z0: number; z1: number; h: number; between: number } {
+export function frontArea(f: Pick<FrontsFeature, "layout" | "drawers" | "gap"> & Partial<Pick<FrontsFeature, "mount" | "grip" | "span" | "rise">>, cabinet: CabinetFeature): { x0: number; x1: number; z0: number; z1: number; h: number; between: number } {
   const { width: W, height: H, thickness: t, plinth: p } = cabinet;
   const g = f.gap;
   const gorge = f.grip === "gorge";
@@ -128,9 +129,10 @@ export function frontArea(f: Pick<FrontsFeature, "layout" | "drawers" | "gap"> &
   const [x0, x1, z0, z1] = f.mount === "inset" ? [t + g, W - t - g, p + t + g, H - t - g] : [g / 2, W - g / 2, p + g / 2, gorge ? H - t - GORGE.space : H - g / 2];
   const between = gorge ? GORGE.space : g;
   const n = f.layout === "drawers" ? f.drawers : 1;
-  // Part of the width only (a corner unit's door): its edges as given.
+  // Part of the width or of the height only (a corner unit's door, an oven column's): its edges as given.
   const [a0, a1] = f.span ?? [x0, x1];
-  return { x0: a0, x1: a1, z0, z1, h: (z1 - z0 - (n - 1) * between) / n, between };
+  const [b0, b1] = f.rise ?? [z0, z1];
+  return { x0: a0, x1: a1, z0: b0, z1: b1, h: (b1 - b0 - (n - 1) * between) / n, between };
 }
 
 /**

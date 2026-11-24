@@ -50,11 +50,13 @@ describe("pipette de forme, portes de tout genre", () => {
 
   it("la porte haute d'une colonne four s'ouvre comme on l'a choisi : relevante, ou sur le côté", () => {
     const column = (side?: "top" | "right"): KitchenFloorPlan => ({ ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-oven-column", 600), ...(side ? { side } : {}) }] } });
-    const door = (p: KitchenFloorPlan) => kitchenFromPlan(p).boxes.find((b) => b.name === "Porte haute colonne four")!.door;
-    // Wall A along x, its fronts towards −y: hinged on the left by default, at its top when lift-up.
-    expect(door(column())).toEqual({ hinge: [-1, 0, 0], out: [0, -1, 0] });
-    expect(door(column("top"))).toEqual({ hinge: [0, 0, 1], out: [0, -1, 0] });
-    expect(door(column("right"))!.hinge).toEqual([1, 0, 0]);
+    const unit = (p: KitchenFloorPlan) => kitchenFromPlan(p).units.find((u) => u.name.startsWith("Colonne four"))!;
+    // Its fronts: the door over the oven as chosen (left by default, lift-up, right), the one under it on a side.
+    expect(unit(column())).toMatchObject({ layout: "door", rise: [1498, expect.any(Number)], more: [{ side: "left", rise: [expect.any(Number), 897] }] });
+    expect(unit(column()).side).toBeUndefined();
+    expect(unit(column("top"))).toMatchObject({ side: "top", more: [{ side: "left" }] });
+    expect(unit(column("right"))).toMatchObject({ side: "right", more: [{ side: "right" }] });
+    expect(kitchenFromPlan(column()).boxes.some((b) => /^Porte/.test(b.name))).toBe(false);
   });
 });
 

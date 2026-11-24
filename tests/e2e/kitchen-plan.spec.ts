@@ -451,7 +451,7 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Haut d'angle A").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Meuble d'angle A").first()).toBeVisible();
-  await expect(page.getByText("Porte d'angle haute A").first()).toBeVisible();
+  await expect(page.getByText("Façades Haut d'angle A").first()).toBeVisible();
   await page.keyboard.press("Control+s");
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
   const cabinets = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; name: string; shelves?: number }[] } }).document.features.filter((f) => f.type === "cabinet").map((f) => [f.name, f.shelves]), api);

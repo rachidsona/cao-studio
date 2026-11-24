@@ -76,12 +76,15 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     push(cabinet);
     cabinetPartNames(cabinet).forEach((name, i) => (plan.info[`${cabinet.id}${PART_SEPARATOR}${i}`] = { material: name === "Fond" ? "hdf" : "melamine-white" }));
     if (u.layout === "none") continue;
-    const fronts: FrontsFeature = {
-      id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}),
-      mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false,
-    };
-    push(fronts);
-    frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material }));
+    // Its fronts; more doors on the same cabinet (an oven column's, under the oven) each their own, in the same look.
+    [{ ...u, layout: u.layout }, ...(u.more ?? []).map((m) => ({ ...u, ...m, layout: "door" as const }))].forEach((u, k) => {
+      const fronts: FrontsFeature = {
+        id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}),
+        mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false,
+      };
+      push(fronts);
+      frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material }));
+    });
   }
   for (const box of layout.boxes) {
     const [from, to] = placeBox(place, box.from, box.to);

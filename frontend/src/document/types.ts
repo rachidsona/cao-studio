@@ -813,6 +813,8 @@ export interface FrontsFeature extends FeatureBase {
   innerDrawers?: number;
   /** Only part of the cabinet's width, from and to across it (mm from its left side): a corner unit's door beside its blind panel. */
   span?: [number, number];
+  /** Only part of its height, from and to up it (mm from the cabinet's bottom): an oven column's door under or over its oven. */
+  rise?: [number, number];
   thickness: number;
   hinges: boolean;
   handles: boolean;

@@ -12,7 +12,6 @@
  * « Ouvrir / fermer les portes » and « Ouvrir / fermer les tiroirs » (Dressing, Cuisine) do it for every door, or every
  * drawer, of the model at once; « Tout ouvrir » (the column beside the view) for every door, drawer and accessory.
  */
-import { madeDoor } from "../document/kitchen-floor";
 import { bodyLabel, findFeature } from "../document/operations";
 import { featureOfBody, type Axis, type CabinetFeature, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
 import { accessoryMoves } from "../features/accessory-open";
@@ -115,8 +114,7 @@ export function doorSwing(doc: CadDocument, bodyId: string, box?: Box | null): S
   const feature = findFeature(doc, featureOfBody(bodyId));
   if (feature?.type === "fronts") return frontSwing(doc, feature, bodyId);
   if (feature?.type === "extrude") {
-    // A corner door made by a kitchen plan before doors knew their hinge: the plan tells it.
-    const door = feature.door ?? (/^Porte (d'angle|pliante)/.test(feature.name) ? madeDoor(doc, feature.id) : null);
+    const door = feature.door;
     return door && box ? boardSwing(door, box) : null;
   }
   if (feature?.type !== "niche" || (feature.fill !== "doors" && feature.fill !== "door")) return null;

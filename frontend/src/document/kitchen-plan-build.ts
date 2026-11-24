@@ -8,8 +8,8 @@
  */
 import { cabinetAxes } from "./kitchen-catalog";
 import { cornerSide, kickOf, wallCornerSide, type CornerSide } from "./kitchen-corners";
-import { FRONT, isDoorCorner, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type CornerKind, type KitchenRun } from "./kitchen-plan-shapes";
-import type { CornerDoorLook, KitchenFloorPlan, KitchenRunItem, Vec3 } from "./types";
+import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
+import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } from "../features/kitchen-run-items";
@@ -112,7 +112,10 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       }
       if (entry.kind === "tall") {
         const size = itemSize(p, pl.item, entry);
-        cabinet(name, at, w, size.depth, 0, size.height, { plinth, ...look });
+        // An oven column: a door over the oven, its fronts, opening as chosen (a side, lift-up); one under it, on a side.
+        const under = look.side === "right" ? ("right" as const) : ("left" as const);
+        const oven = role === "oven-column" ? { layout: "door" as const, rise: [903 + OVEN, size.height - 1.5] as [number, number], more: [{ side: under, rise: [plinth + 1.5, 897] as [number, number] }] } : {};
+        cabinet(name, at, w, size.depth, 0, size.height, { plinth, ...look, ...oven });
         if (role === "fridge") {
           places.fridge ??= front(pl);
           // The built-in fridge in its column, behind the column's door.
@@ -121,8 +124,6 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         }
         if (role === "oven-column") {
           put("Four (colonne)", "oven-pyro", band(at + (w - 595) / 2, at + (w + 595) / 2, D - 548, D, 900, 900 + OVEN));
-          box("Porte basse colonne four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, plinth, 897));
-          box("Porte haute colonne four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, 903 + OVEN, s.wallTop - 1.5), { door: doorOn(run, pl.item.side) });
         }
         continue;
       }
@@ -191,14 +192,6 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
   return out;
 }
 
-/** How a door made as a board of this run opens: towards its hinge side (left, right; top: lift-up; bottom: a flap), out to the front. */
-function doorOn(run: KitchenRun, side: KitchenRunItem["side"] = "left"): { hinge: Vec3; out: Vec3 } {
-  const [o, e] = [runAt(run, 0, 0), runAt(run, 1, 0)];
-  const along: Vec3 = [e[0] - o[0], e[1] - o[1], 0];
-  const hinge: Vec3 = side === "top" ? [0, 0, 1] : side === "bottom" ? [0, 0, -1] : side === "right" ? along : [-along[0] || 0, -along[1] || 0, 0];
-  return { hinge, out: [run.zone.run.normal[0], run.zone.run.normal[1], 0] };
-}
-
 /** A stretch less the room left open in it. */
 function without([a, b]: [number, number], open: [number, number][]): [number, number][] {
   const parts: [number, number][] = [];
@@ -235,16 +228,18 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
     const lowEdit = corner.kind === "l" || corner.kind === "carousel" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
-    // A corner unit's door beside its panel: its own fronts (the Façades tool), hung away from the corner; the plan keeps
-    // its style and its side (kitchen-sync.ts).
+    // A corner unit's door (beside its panel, or a folding door's leaf): its own fronts (the Façades tool), hung away
+    // from the corner; the plan keeps its style and its side (kitchen-sync.ts). Not the one cut at 45°: no cabinet.
     const hung = (c: CornerSide, look?: CornerDoorLook): Pick<KitchenUnit, "layout" | "side" | "span" | "facade"> => {
       const d = c.fronts.find((f) => f.kind === "door");
       if (!c.cabinet || !d) return { layout: "none" };
-      const { side: hinge, ...style } = look ?? {};
+      const { side: kept, ...style } = look ?? {};
+      // A folding door's two leaves share their corner's look: each keeps its own side, away from the corner.
+      const hinge = d.name.startsWith("Porte pliante") ? undefined : kept;
       return { layout: "door", side: hinge ?? (side === "left" ? "right" : "left"), span: [d.from - c.cabinet[0], d.to - c.cabinet[0]], ...(style.style ? { facade: style } : {}) };
     };
     const own = p.cornerSizes?.[joint];
-    const lowDoor = isDoorCorner(corner.kind as CornerKind) ? hung(corner, own?.look) : { layout: "none" as const };
+    const lowDoor = hung(corner, own?.look);
     // Cut at 45°: its boards, its door and its piece of worktop, on the run that passes.
     if (corner.kind === "diagonal" && pass) {
       const L = run.length;
@@ -276,7 +271,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
       const [W, H] = [p.wallDepth, s.wallTop - s.wallBottom];
       const mark = high.cabinet ? { corner: true } : {};
       const highEdit = high.kind === "l" ? { joint, key: "wallArm" as const, less: pass ? 0 : -W } : { joint, key: "wallDoor" as const, less: wallCorner(p) };
-      const highDoor = high.kind === "unit" ? hung(high, own?.wallLook) : { layout: "none" as const };
+      const highDoor = hung(high, own?.wallLook);
       if (high.cabinet) cabinet(high.name, high.cabinet[0], high.cabinet[1] - high.cabinet[0], W, s.wallBottom, H, { plinth: 0, shelves: high.shelves, ...highDoor, corner: true, cornerEdit: highEdit });
       for (const f of high.fronts) {
         if (f.kind === "door" && highDoor.layout === "door") continue;

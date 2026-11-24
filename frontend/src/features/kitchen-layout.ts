@@ -93,6 +93,10 @@ export interface KitchenUnit {
   facade?: FrontStyle;
   /** Its door on part of its width only, from and to across it (a corner unit's, beside its panel: features/fronts-parts.ts). */
   span?: [number, number];
+  /** Its door on part of its height only (an oven column's, over its oven). */
+  rise?: [number, number];
+  /** More doors on the same cabinet, each its own fronts (an oven column's, under its oven). */
+  more?: Pick<KitchenUnit, "side" | "span" | "rise">[];
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
   /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */
@@ -222,7 +226,7 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
   const band = (r: RunWall, p: number, q: number, a: number, b: number, z0: number, z1: number): [Vec3, Vec3] =>
     r === "A" ? [[p, -b, z0], [q, -a, z1]] : r === "B" ? [[a, -q, z0], [b, -p, z1]] : [[LA - b, -q, z0], [LA - a, -p, z1]];
   const rotation: Record<RunWall, KitchenUnit["rotation"]> = { A: 0, B: 90, C: 270 };
-  const unit = (r: RunWall, name: string, p: number, w: number, depth: number, z: number, height: number, rest: Pick<KitchenUnit, "plinth" | "shelves" | "layout"> & { drawers?: number }): KitchenUnit => {
+  const unit = (r: RunWall, name: string, p: number, w: number, depth: number, z: number, height: number, rest: Pick<KitchenUnit, "plinth" | "shelves" | "layout"> & Partial<Pick<KitchenUnit, "drawers" | "side" | "span">>): KitchenUnit => {
     const [lo, hi] = band(r, p, p + w, 0, depth, z, z + height);
     return { name, origin: originOf(rotation[r], lo, hi), rotation: rotation[r], width: w, height, depth, ...rest };
   };
@@ -309,11 +313,10 @@ export function kitchenLayout(s: KitchenSettings, room?: Partial<Record<RunWall,
     const [p, q] = c.at === "start" ? [0, corner] : [LA - corner, LA];
     if (s.corner === "unit") {
       const [u0, u1] = c.at === "start" ? [0, corner + CORNER_DOOR] : [LA - corner - CORNER_DOOR, LA];
-      out.units.push(unit("A", `Meuble d'angle ${c.other}`, u0, u1 - u0, D, 0, H, { plinth: s.plinth, shelves: 1, layout: "none" }));
-      box(`Panneau d'angle ${c.other}`, "panel", band("A", p, q, D, D + T, s.plinth, H));
       const [d0, d1] = c.at === "start" ? [corner + 1.5, corner + CORNER_DOOR - 1.5] : [LA - corner - CORNER_DOOR + 1.5, LA - corner - 1.5];
-      // Hung on its edge away from the corner (wall A runs along X, its fronts face −Y).
-      box(`Porte d'angle ${c.other}`, "panel", band("A", d0, d1, D, D + T, s.plinth + 1.5, H - 1.5), { door: { hinge: [c.at === "start" ? 1 : -1, 0, 0], out: [0, -1, 0] } });
+      // Its door beside the panel, its fronts, hung on its edge away from the corner (wall A runs along X, its fronts face −Y).
+      out.units.push(unit("A", `Meuble d'angle ${c.other}`, u0, u1 - u0, D, 0, H, { plinth: s.plinth, shelves: 1, layout: "door", side: c.at === "start" ? "right" : "left", span: [d0 - u0, d1 - u0] }));
+      box(`Panneau d'angle ${c.other}`, "panel", band("A", p, q, D, D + T, s.plinth, H));
     } else box(`Fileur d'angle A${c.at === "end" ? " (droite)" : ""}`, "filler", band("A", c.at === "start" ? D : LA - corner, c.at === "start" ? corner : LA - D, D, D + T, s.plinth, H));
     box(`Fileur d'angle ${c.other}`, "filler", band(c.other, D + T, corner, D, D + T, s.plinth, H));
   }

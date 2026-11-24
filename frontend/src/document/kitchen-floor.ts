@@ -14,9 +14,9 @@ import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-s
 import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
-import { PART_SEPARATOR, featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature, type Vec3 } from "./types";
+import { PART_SEPARATOR, featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature } from "./types";
 import { isSpace } from "../features/kitchen-run-items";
-import { placePoint, turn } from "../features/room-runs";
+import { placePoint } from "../features/room-runs";
 
 const FRONT_MATERIAL = "lacquer-white";
 const WORKTOP_MATERIAL = "solid-oak";
@@ -195,25 +195,6 @@ function withLooksFollowing(doc: CadDocument, base: CadDocument, before: Map<str
     changed = true;
   }
   return changed ? { ...doc, bodyInfo: info } : doc;
-}
-
-/**
- * How a board door of a kitchen plan opens (its hinge side, the way it faces; world), from the plan that made it: for
- * a corner door built before doors knew theirs (ExtrudeFeature.door). Null when no plan made it a door.
- */
-export function madeDoor(doc: CadDocument, featureId: string): { hinge: Vec3; out: Vec3 } | null {
-  const feature = findFeature(doc, featureId);
-  for (const sketch of doc.features) {
-    if (sketch.type !== "sketch" || !sketch.kitchenPlan?.made) continue;
-    const run = Object.entries(sketch.kitchenPlan.made).find(([, ids]) => ids.includes(featureId))?.[0];
-    const plan = run && kitchenPlanIn(doc, sketch.id);
-    if (!plan || !feature) continue;
-    const box = kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.find((b) => b.run === run && b.name === feature.name && b.door);
-    if (!box?.door) return null;
-    const place = plan.place;
-    return place ? { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } : box.door;
-  }
-  return null;
 }
 
 /** The runs with units that this plan would no longer have. */

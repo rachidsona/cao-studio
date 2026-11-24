@@ -74,8 +74,10 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           changed = true;
         }
         // A corner unit's door (Façades, its menu): turned or restyled, the plan keeps it.
-        if (u.cornerEdit && u.span && fronts?.type === "fronts" && fronts.layout === "door" && ((fronts.side ?? "left") !== (u.side ?? "left") || JSON.stringify(frontStyle(fronts)) !== JSON.stringify(frontStyleOf(u.facade)))) {
-          const look = { ...frontStyle(fronts), side: fronts.side === "right" ? ("right" as const) : ("left" as const) };
+        // A folding door's leaf: its style only, the two leaves sharing it.
+        const leaf = u.cornerEdit?.key.endsWith("rm");
+        if (u.cornerEdit && u.span && fronts?.type === "fronts" && fronts.layout === "door" && ((!leaf && (fronts.side ?? "left") !== (u.side ?? "left")) || JSON.stringify(frontStyle(fronts)) !== JSON.stringify(frontStyleOf(u.facade)))) {
+          const look = { ...frontStyle(fronts), ...(leaf ? {} : { side: fronts.side === "right" ? ("right" as const) : ("left" as const) }) };
           corners = withCorner(corners, u.cornerEdit.joint, u.cornerEdit.key.startsWith("wall") ? { wallLook: look } : { look });
           changed = true;
         }
