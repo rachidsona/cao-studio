@@ -7,9 +7,9 @@
  * (`run`). Le triangle d'activité et le reste de l'ergonomie suivent (features/kitchen-appliances.ts). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
-import { cornerSide, kickOf, wallCornerSide } from "./kitchen-corners";
-import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
-import type { KitchenFloorPlan, KitchenRunItem, Vec3 } from "./types";
+import { cornerSide, kickOf, wallCornerSide, type CornerSide } from "./kitchen-corners";
+import { FRONT, isDoorCorner, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type CornerKind, type KitchenRun } from "./kitchen-plan-shapes";
+import type { CornerDoorLook, KitchenFloorPlan, KitchenRunItem, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, isFiller, itemSize, type Placed, type RunFill } from "../features/kitchen-run-items";
@@ -235,6 +235,16 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
     const lowEdit = corner.kind === "l" || corner.kind === "carousel" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
+    // A corner unit's door beside its panel: its own fronts (the Façades tool), hung away from the corner; the plan keeps
+    // its style and its side (kitchen-sync.ts).
+    const hung = (c: CornerSide, look?: CornerDoorLook): Pick<KitchenUnit, "layout" | "side" | "span" | "facade"> => {
+      const d = c.fronts.find((f) => f.kind === "door");
+      if (!c.cabinet || !d) return { layout: "none" };
+      const { side: hinge, ...style } = look ?? {};
+      return { layout: "door", side: hinge ?? (side === "left" ? "right" : "left"), span: [d.from - c.cabinet[0], d.to - c.cabinet[0]], ...(style.style ? { facade: style } : {}) };
+    };
+    const own = p.cornerSizes?.[joint];
+    const lowDoor = isDoorCorner(corner.kind as CornerKind) ? hung(corner, own?.look) : { layout: "none" as const };
     // Cut at 45°: its boards, its door and its piece of worktop, on the run that passes.
     if (corner.kind === "diagonal" && pass) {
       const L = run.length;
@@ -242,8 +252,9 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
       // Marked as the corner's: built even on a run with nothing else on it yet.
       diagonalCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], (name, kind, where, extra) => box(name, kind, where, { ...extra, corner: true }));
     }
-    if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, layout: "none", corner: true, cornerEdit: lowEdit });
+    if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, ...lowDoor, corner: true, cornerEdit: lowEdit });
     for (const f of corner.fronts) {
+      if (f.kind === "door" && lowDoor.layout === "door") continue;
       const inset = f.kind === "door" ? 1.5 : 0;
       box(f.name, f.kind === "filler" ? "filler" : "panel", band(f.from, f.to, D, D + FRONT, s.plinth + inset, s.base - inset), f.kind === "door" ? { ...unit, ...door } : unit);
     }
@@ -265,8 +276,10 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
       const [W, H] = [p.wallDepth, s.wallTop - s.wallBottom];
       const mark = high.cabinet ? { corner: true } : {};
       const highEdit = high.kind === "l" ? { joint, key: "wallArm" as const, less: pass ? 0 : -W } : { joint, key: "wallDoor" as const, less: wallCorner(p) };
-      if (high.cabinet) cabinet(high.name, high.cabinet[0], high.cabinet[1] - high.cabinet[0], W, s.wallBottom, H, { plinth: 0, shelves: high.shelves, layout: "none", corner: true, cornerEdit: highEdit });
+      const highDoor = high.kind === "unit" ? hung(high, own?.wallLook) : { layout: "none" as const };
+      if (high.cabinet) cabinet(high.name, high.cabinet[0], high.cabinet[1] - high.cabinet[0], W, s.wallBottom, H, { plinth: 0, shelves: high.shelves, ...highDoor, corner: true, cornerEdit: highEdit });
       for (const f of high.fronts) {
+        if (f.kind === "door" && highDoor.layout === "door") continue;
         const inset = f.kind === "door" ? 1.5 : 0;
         box(f.name, f.kind === "filler" ? "filler" : "panel", band(f.from, f.to, W, W + FRONT, s.wallBottom + inset, s.wallTop - inset), f.kind === "door" ? { ...mark, ...door } : mark);
       }

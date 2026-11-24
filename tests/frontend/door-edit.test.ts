@@ -70,16 +70,26 @@ describe("le menu d'une porte", () => {
     expect(doorsOf(doc(withDoorStyle(d, `${id}#0`))).style).toBe("frame");
   });
 
-  it("la porte d'un meuble d'angle s'ouvre de l'autre côté, et se retire", () => {
+  it("la porte d'un meuble d'angle s'ouvre de l'autre côté, change de style, se retire ; le Plan de cuisine garde son sens et son style", async () => {
+    const { syncKitchenPlans } = await import("../../frontend/src/document/kitchen-sync");
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "U", lengthA: 3600, corners: { left: "unit" }, runs: {}, made: {} });
     const built = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
     if (typeof built === "string") throw new Error(built);
     const made = built.doc;
-    const door = made.features.find((f) => f.type === "extrude" && f.name.startsWith("Porte d'angle"))!;
-    expect(doorOf(made, door.id)).toMatchObject({ kind: "board" });
-    const flipped = doc(withDoorFlipped(made, door.id)).features.find((f) => f.id === door.id)!;
-    expect(flipped.type === "extrude" && door.type === "extrude" && flipped.door!.hinge.map((c) => -c + 0)).toEqual(door.type === "extrude" ? door.door!.hinge.map((c) => c + 0) : null);
-    expect(doc(withDoorRemoved(made, door.id)).removedBodies).toEqual([door.id]);
+    const cab = made.features.find((f) => f.type === "cabinet" && f.name === "Meuble d'angle A")!;
+    const corner = (d: CadDocument) => d.features.find((f): f is FrontsFeature => f.type === "fronts" && f.name === "Façades Meuble d'angle A")!;
+    expect(corner(made).cabinet).toBe(cab.id);
+    const id = `${corner(made).id}#0`;
+    expect(doorOf(made, id)).toMatchObject({ hinge: "right" });
+    // Turned and framed in the 3D, made again (an OK in a run): the plan has kept both.
+    const changed = doc(withDoorStyle(doc(withDoorFlipped(made, id)), id, "frame"));
+    const synced = syncKitchenPlans(made, changed);
+    expect(kitchenPlanIn(synced, base.id)!.cornerSizes!.left!.look).toMatchObject({ side: "left", style: "frame" });
+    const again = withKitchenBuilt(synced, base.id, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(corner(again.doc)).toMatchObject({ side: "left", style: "frame" });
+    // Taken out as any single door: its fronts go, the panel stays.
+    expect(doc(withDoorRemoved(made, id)).features.some((f) => f.name === "Façades Meuble d'angle A")).toBe(false);
     expect(doorOf(made, made.features.find((f) => f.name.startsWith("Panneau d'angle"))!.id)).toBeNull();
   });
 });

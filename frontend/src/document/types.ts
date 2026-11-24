@@ -182,8 +182,8 @@ export interface KitchenFloorPlan {
   corners?: Partial<Record<"left" | "right", "dead" | "unit" | "lemans" | "magic" | "l" | "carousel" | "diagonal">>;
   /** By corner, up in the wall row: nothing, a wall corner unit with a door, or an L (document/kitchen-corners.ts). */
   wallCorners?: Partial<Record<"left" | "right", "none" | "unit" | "l">>;
-  /** By corner, its sizes as set (mm): the base corner unit's door or its L's side, the wall one's door or side. */
-  cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number; shelves?: number; wallShelves?: number }>>;
+  /** By corner, its sizes as set (mm): the base corner unit's door or its L's side, the wall one's door or side; the look of its door, low and up, as set in Façades. */
+  cornerSizes?: Partial<Record<"left" | "right", { door?: number; arm?: number; wallDoor?: number; wallArm?: number; shelves?: number; wallShelves?: number; look?: CornerDoorLook; wallLook?: CornerDoorLook }>>;
   room?: { id: string; wall: number };
   place?: { quarter: 0 | 1 | 2 | 3; origin: [number, number] };
   /** Walls B and C out of square with wall A, from the surveyed room: the corner's angle less 90° (°). */
@@ -811,6 +811,8 @@ export interface FrontsFeature extends FeatureBase {
   topDrawer?: number;
   /** Door or doors with drawers behind them, without fronts (« à l'anglaise »): how many. */
   innerDrawers?: number;
+  /** Only part of the cabinet's width, from and to across it (mm from its left side): a corner unit's door beside its blind panel. */
+  span?: [number, number];
   thickness: number;
   hinges: boolean;
   handles: boolean;
@@ -832,6 +834,9 @@ export interface FrontsFeature extends FeatureBase {
   /** By part, the hinges of a door heavier than its height asks for: copied in for the kernel only (document/hardware.ts stampHinges). */
   hingeCounts?: Record<number, number>;
 }
+
+/** A corner unit's door as the kitchen plan keeps it: its style and the side of its hinges. */
+export type CornerDoorLook = FrontStyle & { side?: "left" | "right" };
 
 /** How the fronts of a cabinet look: framed, fluted, slatted or glazed, with their sizes (features/door-decor.ts). */
 export type FrontStyle = Pick<FrontsFeature, "style" | "frameWidth" | "frameDepth" | "pitch" | "grooves" | "glass" | "profile">;

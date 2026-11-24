@@ -73,6 +73,12 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade || model?.facade ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
+        // A corner unit's door (Façades, its menu): turned or restyled, the plan keeps it.
+        if (u.cornerEdit && u.span && fronts?.type === "fronts" && fronts.layout === "door" && ((fronts.side ?? "left") !== (u.side ?? "left") || JSON.stringify(frontStyle(fronts)) !== JSON.stringify(frontStyleOf(u.facade)))) {
+          const look = { ...frontStyle(fronts), side: fronts.side === "right" ? ("right" as const) : ("left" as const) };
+          corners = withCorner(corners, u.cornerEdit.joint, u.cornerEdit.key.startsWith("wall") ? { wallLook: look } : { look });
+          changed = true;
+        }
         // Only a change made since: the plan's own rebuilds are what it builds.
         const before = findFeature(prev, c.id);
         if (before?.type === "cabinet" && !differs(before.width, c.width) && !differs(before.depth, c.depth) && !differs(before.height, c.height)) return;

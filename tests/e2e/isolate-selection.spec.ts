@@ -208,3 +208,62 @@ test("« Modifier la sélection » sur une porte : l'outil Façades, sur ses fa�
   await expect(page.getByRole("dialog", { name: "Façades" })).toBeVisible({ timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test("« Modifier la sélection » sur le panneau d'angle : Façades sur la porte d'angle, sans en ajouter une", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-test-modifier-porte-angle");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await plan.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await plan.getByRole("button", { name: "Créer le plan" }).click();
+  await plan.locator('[data-open-run="A"]').click();
+  const corners = plan.locator('[data-fold="corners"]');
+  if ((await corners.getAttribute("aria-expanded")) !== "true") await corners.click();
+  await plan.locator('[data-corner-choice="left"] [data-corner-kind="unit"]').click();
+  await plan.locator("[data-run-close]").click();
+  await expect(page.getByText("Meuble d'angle A").first()).toBeVisible({ timeout: 60_000 });
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
+  // The corner's panel alone in the view, framed from the front.
+  await page.evaluate(() => ([...document.querySelectorAll<HTMLElement>('[data-select^="body:"]')].find((b) => /Panneau d'angle A/.test(b.textContent ?? "")) as HTMLElement | undefined)?.click());
+  await page.keyboard.press("i");
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.waitForTimeout(1500);
+  await shot(page, "angle-panneau-isole");
+  // Where it shows: the middle of the white board, in the picture of the view (clear of its tool bars).
+  const canvas = page.locator("canvas.cad-view");
+  const view = (await canvas.boundingBox())!;
+  const at = await page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    [c.width, c.height] = [img.width, img.height];
+    const g = c.getContext("2d")!;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let [sx, sy, n] = [0, 0, 0];
+    for (let y = 0; y < c.height * 0.7; y++) for (let x = Math.round(c.width * 0.12); x < c.width; x++) {
+      const i = (y * c.width + x) * 4;
+      if (d[i]! > 225 && d[i + 1]! > 225 && d[i + 2]! > 225) [sx, sy, n] = [sx + x, sy + y, n + 1];
+    }
+    return n ? [sx / n / c.width, sy / n / c.height] : null;
+  }, (await canvas.screenshot()).toString("base64"));
+  expect(at).not.toBeNull();
+  await page.mouse.click(view.x + at![0]! * view.width, view.y + at![1]! * view.height, { button: "right" });
+  await shot(page, "angle-panneau-menu");
+  await page.getByRole("menuitem", { name: "Modifier « Panneau d'angle A »" }).click();
+  const fronts = page.getByRole("dialog", { name: "Façades" });
+  await expect(fronts).toBeVisible({ timeout: 30_000 });
+  await fronts.getByRole("button", { name: "OK", exact: true }).click();
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const made = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { id: string; type: string; name: string; cabinet?: string }[] } }).document.features, api);
+  const unit = made.find((f) => f.type === "cabinet" && f.name === "Meuble d'angle A")!;
+  // One door on the corner unit, its own: no board for it any more.
+  expect(made.filter((f) => f.type === "fronts" && f.cabinet === unit.id).map((f) => f.name)).toEqual(["Façades Meuble d'angle A"]);
+  expect(made.some((f) => f.type === "extrude" && f.name.startsWith("Porte d'angle"))).toBe(false);
+  expect(errors).toEqual([]);
+});

@@ -13,7 +13,7 @@
  * dessinent. Pur.
  */
 import { CORNER_WALL_GAP, FRONT, cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenSizes, lArm, wallArm, wallCorner, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "./kitchen-plan-shapes";
-import type { KitchenFloorPlan } from "./types";
+import type { CornerDoorLook, KitchenFloorPlan } from "./types";
 
 export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }> = {
   dead: { label: "Angle mort", summary: "Fermé par deux fileurs. Le moins cher ; la place de l'angle est perdue." },
@@ -48,6 +48,9 @@ export interface CornerChange {
   /** The shelves of its corner unit, low and up (« Meuble choisi » of the run's editor). */
   shelves?: number;
   wallShelves?: number;
+  /** Its door's look and side, low and up, as set in Façades (kitchen-sync.ts). */
+  look?: CornerDoorLook;
+  wallLook?: CornerDoorLook;
 }
 
 /** How many shelves a corner unit may have, low or up. */
@@ -57,7 +60,7 @@ export const shelvedCorner = (kind: CornerKind | WallCornerKind): boolean => kin
 
 /** The corner settings with this corner changed. */
 export function withCorner(p: CornerSetting, joint: Joint, c: CornerChange): CornerSetting {
-  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}), ...(c.shelves !== undefined ? { shelves: c.shelves } : {}), ...(c.wallShelves !== undefined ? { wallShelves: c.wallShelves } : {}) };
+  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}), ...(c.shelves !== undefined ? { shelves: c.shelves } : {}), ...(c.wallShelves !== undefined ? { wallShelves: c.wallShelves } : {}), ...(c.look ? { look: c.look } : {}), ...(c.wallLook ? { wallLook: c.wallLook } : {}) };
   return {
     corners: { ...p.corners, ...(c.kind ? { [joint]: c.kind } : {}) },
     wallCorners: { ...p.wallCorners, ...(c.wall ? { [joint]: c.wall } : {}) },

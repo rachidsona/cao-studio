@@ -6,7 +6,9 @@ import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../.
 import { fillerSized, kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { CORNER_DOOR, CORNER_WALL_GAP, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
-import { createReferencePlate, type CadDocument, type KitchenFloorPlan } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan } from "../../frontend/src/document/types";
+import { frontsParts } from "../../frontend/src/features/fronts-parts";
+import { turnedBox } from "../../frontend/src/features/turn-clear";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { doorSwing } from "../../frontend/src/app/drawer-toggle";
 import { poseOf } from "../../frontend/src/features/motion";
@@ -66,7 +68,7 @@ describe("angles de cuisine", () => {
     for (const f of fittings) expect(units.some((u) => within([f.from, f.to], u)), f.name).toBe(true);
     // Baskets low and half way up; the Magic Corner's door as a blind unit's.
     expect(new Set(fittings.filter((b) => b.name.startsWith("Panier")).map((b) => b.from[2])).size).toBe(2);
-    expect(layout.boxes.some((b) => b.name.startsWith("Porte d'angle"))).toBe(true);
+    expect(layout.units.find((u) => u.name.startsWith("Meuble d'angle Magic Corner"))!.layout).toBe("door");
     expect(cornerSketch("carousel")).toContain("<path");
   });
 
@@ -131,8 +133,8 @@ describe("angles de cuisine", () => {
     expect(layout.units.find((u) => u.name === "Meuble d'angle A")!.width).toBe(s.corner - CORNER_WALL_GAP + 600);
     const blind = layout.boxes.find((b) => b.name === "Panneau d'angle A")!;
     expect(Math.round(Math.max(blind.to[0] - blind.from[0], blind.to[1] - blind.from[1]))).toBe(s.corner - CORNER_WALL_GAP);
-    const door = layout.boxes.find((b) => b.name === "Porte d'angle A")!;
-    expect(Math.round(Math.max(door.to[0] - door.from[0], door.to[1] - door.from[1]))).toBe(597);
+    const span = layout.units.find((u) => u.name === "Meuble d'angle A")!.span!;
+    expect(Math.round(span[1] - span[0])).toBe(597);
     const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${i} et ${j}`).toBe(false);
   });
@@ -162,44 +164,47 @@ describe("angles de cuisine", () => {
     expect(b).toEqual({ corners: { left: "unit" }, wallCorners: { left: "l" }, cornerSizes: { left: { door: 500, wallArm: 650 } } });
   });
 
-  it("la porte d'un meuble d'angle s'ouvre : sur son bord loin de l'angle, vers l'avant ; en haut aussi", () => {
+  it("la porte d'un meuble d'angle est sa façade (outil Façades) : contre son panneau, sur son bord loin de l'angle ; en haut aussi", () => {
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "unit" }, wallCorners: { left: "unit" }, runs: {}, made: {} }));
     const made = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
     if (typeof made === "string") throw new Error(made);
-    const doors = made.doc.features.filter((f) => f.type === "extrude" && f.door);
-    expect(doors.length).toBeGreaterThanOrEqual(2);
     const layout = kitchenFromPlan(kitchenPlanIn(made.doc, base.id)!);
-    for (const f of doors) {
-      const b = layout.boxes.find((x) => x.name === f.name)!;
-      const swing = doorSwing(made.doc, `${f.id}`, [b.from, b.to])!;
-      expect(swing, f.name).not.toBeNull();
-      expect(swing.axis).toBe(2);
-      // Its free edge comes out in front of the door's face.
-      const { rotation: r, translation: t } = poseOf({ kind: "hinge", ...swing });
-      const free: number[] = [...swing.pivot];
-      const h = [0, 1].find((i) => Math.abs((f.type === "extrude" && f.door!.hinge[i]) || 0) > 0.5)!;
-      free[h] = free[h] === b.from[h] ? b.to[h]! : b.from[h]!;
-      const moved = [0, 1, 2].map((i) => r[i * 3]! * free[0]! + r[i * 3 + 1]! * free[1]! + r[i * 3 + 2]! * free[2]! + t[i]!);
-      const out = f.type === "extrude" ? f.door!.out : [0, 0, 0];
-      expect((moved[0]! - swing.pivot[0]) * out[0]! + (moved[1]! - swing.pivot[1]) * out[1]!, f.name).toBeGreaterThan(200);
+    for (const [unit, panel, width] of [["Meuble d'angle A", "Panneau d'angle A", CORNER_DOOR - 3], ["Haut d'angle A", "Panneau d'angle haut A", 297]] as const) {
+      const cab = made.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name === unit)!;
+      const fr = made.doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === cab.id)!;
+      expect(fr.layout, unit).toBe("door");
+      const part = frontsParts(fr, cab)[0]!;
+      const door = turnedBox([part.from, part.to], cab.rotation ?? 0, cab.origin);
+      const p = layout.boxes.find((b) => b.name === panel)!;
+      const along = Math.abs(door[1][0] - door[0][0]) > Math.abs(door[1][1] - door[0][1]) ? 0 : 1;
+      // As wide as set, 1.5 mm from its panel, in the same plane.
+      expect(Math.round(door[1][along] - door[0][along]), unit).toBe(width);
+      expect(Math.min(Math.abs(door[0][along] - p.to[along]), Math.abs(p.from[along] - door[1][along])), unit).toBeCloseTo(1.5, 3);
+      const across = 1 - along;
+      expect(door[1][across]! - door[0][across]!).toBeCloseTo(p.to[across]! - p.from[across]!, 3);
+      // Hinged on its edge away from the panel, its free edge out in front.
+      const swing = doorSwing(made.doc, `${fr.id}#0`)!;
+      const mid = (p.from[along] + p.to[along]) / 2;
+      expect(Math.abs(swing.pivot[along] - mid), unit).toBeGreaterThan(Math.abs((door[0][along] + door[1][along]) / 2 - mid));
     }
+    expect(made.doc.features.some((f) => f.type === "extrude" && f.name.startsWith("Porte d'angle"))).toBe(false);
     // A board that is no door does not open.
     const panel = made.doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Panneau d'angle"))!;
     expect(doorSwing(made.doc, panel.id, [[0, 0, 0], [10, 10, 10]])).toBeNull();
   });
 
-  it("une porte d'angle bâtie avant que les portes connaissent leur charnière s'ouvre aussi : le plan la donne", () => {
-    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "unit" }, runs: {}, made: {} }));
+  it("une porte pliante bâtie avant que les portes connaissent leur charnière s'ouvre aussi : le plan la donne", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "l" }, runs: {}, made: {} }));
     const made = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
     if (typeof made === "string") throw new Error(made);
     // As an older kitchen has it: the board, no hinge on it.
     const old: CadDocument = { ...made.doc, features: made.doc.features.map((f) => (f.type === "extrude" && f.door ? { ...f, door: undefined } : f)) };
-    const door = old.features.find((f) => f.type === "extrude" && f.name.startsWith("Porte d'angle"))!;
+    const door = old.features.find((f) => f.type === "extrude" && f.name.startsWith("Porte pliante"))!;
     const b = kitchenFromPlan(kitchenPlanIn(old, base.id)!).boxes.find((x) => x.name === door.name)!;
     const now = made.doc.features.find((f) => f.id === door.id)!;
     expect(madeDoor(old, door.id)).toEqual(now.type === "extrude" ? now.door : null);
     expect(doorSwing(old, door.id, [b.from, b.to])).toEqual(doorSwing(made.doc, door.id, [b.from, b.to]));
-    expect(madeDoor(old, old.features.find((f) => f.name.startsWith("Panneau d'angle"))!.id)).toBeNull();
+    expect(madeDoor(old, old.features.find((f) => f.type === "extrude" && f.name.startsWith("Plinthe"))!.id)).toBeNull();
   });
 
   it("la plinthe passe aussi sous l'angle, sans chevaucher l'autre linéaire ni les meubles", () => {

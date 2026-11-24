@@ -65,7 +65,7 @@ export function isolateSelection(editor: Editor): void {
 /**
  * « Modifier la sélection »: the main tool of the element clicked — else the first selected. A door or
  * a drawer front: the Façades tool; a shelf or a side of a cabinet: the Caisson tool; sliding doors: the Plan de
- * dressing; made by the Plan de cuisine: the plan on its run, « L'angle » open for a corner's door or panel, « Fileurs »
+ * dressing; a corner unit's panel: the Façades of its door; made by the Plan de cuisine: the plan on its run, « L'angle » open, « Fileurs »
  * for a filler;
  * else the tool that made it (a Répartition's niche: its tool), as a double click in the tree. Null when it was made
  * by nothing one edits.
@@ -82,9 +82,12 @@ export function modifyMenuItem(editor: Editor, viewport: Viewport, clicked?: str
   // sliding doors: the Plan de dressing, where they are set.
   if (feature.type === "fronts" || feature.type === "cabinet") return [label, () => editor.editFeature(feature.id)];
   if (feature.type === "trim" && /coulissant/i.test(feature.name)) return [label, () => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click()];
-  // A corner unit's door or panel of the Plan de cuisine: the Façades tool on its corner unit.
-  const corner = /^(Porte|Panneau) d'angle/.test(feature.name) ? editor.doc.features.find((f) => f.type === "cabinet" && f.name === feature.name.replace(/^(Porte|Panneau) d'angle/, "Meuble d'angle")) : undefined;
-  if (corner) return [label, () => editor.editFeature(corner.id, true)];
+  // A corner unit's panel of the Plan de cuisine: the Façades tool on the door beside it (never a new one).
+  // Its unit: « Meuble d'angle (LeMans, Magic Corner) A » low, « Haut d'angle A » up, at the same end of the run.
+  const m = /^(?:Porte|Panneau) d'angle( haute?)? (.+)$/.exec(feature.name);
+  const corner = m ? editor.doc.features.find((f) => f.type === "cabinet" && f.name.startsWith(m[1] ? "Haut d'angle" : "Meuble d'angle") && f.name.endsWith(` ${m[2]}`)) : undefined;
+  const door = corner && editor.doc.features.find((f) => f.type === "fronts" && f.cabinet === corner.id);
+  if (door) return [label, () => editor.editFeature(door.id)];
   // Made by the Plan de cuisine (a filler, the worktop): the plan on its run, the block that sets it open — « Fileurs »
   // for a filler, « L'angle » for another corner piece.
   const owner = kitchenRunOf(editor.doc, feature.id);

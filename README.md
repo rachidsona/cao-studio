@@ -138,8 +138,8 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 - **Modifier la sélection** (en tête de chaque menu du clic droit dans la vue : meuble, corps, niche, porte, tiroirs) :
   ouvre l'outil de l'élément cliqué — sinon du premier choisi : **Façades** pour une porte ou une façade de tiroir,
   **Caisson** pour une étagère, un côté, un dessus de caisson (ses étagères s'y règlent), son outil pour une niche de
-  Répartition, le **Plan de dressing** pour des portes coulissantes, **Façades** sur le meuble d'angle pour sa porte
-  ou son panneau ; pour ce que le Plan de cuisine a fait (fileur, plan de travail, plinthe), le plan sur son linéaire,
+  Répartition, le **Plan de dressing** pour des portes coulissantes, **Façades** en modification sur la porte d'angle,
+  depuis sa porte ou son panneau (jamais une porte de plus) ; pour ce que le Plan de cuisine a fait (fileur, plan de travail, plinthe), le plan sur son linéaire,
   la carte « Fileurs » ouverte et amenée dans la vue pour un fileur ; sinon l'outil qui l'a fait, comme un double-clic dans l'arbre (`app/isolate-selection.ts` `modifyMenuItem`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
@@ -2670,7 +2670,9 @@ opération existante.
     Meubles de cuisine, ou dans « Modifier le plan ». **Angle mort** fermé par deux fileurs ; **meuble d'angle à
     étagère**, panneau devant l'angle et porte de 45 cm, sur le mur qui passe, à **10 cm du mur de l'angle** pris sur
     sa partie fixe (62 cm de fixe deviennent 52 ; la porte ne bouge pas, `CORNER_WALL_GAP`) — de même pour LeMans et
-    Magic Corner ; sous la bande du linéaire, une cote donne la largeur entière du meuble d'angle (« angle ✓ 97,2 cm ») ; cliqué sur la bande, il
+    Magic Corner ; la porte de ces meubles d'angle (et du haut d'angle à porte) est la **façade de leur caisson**, sur
+    une partie de sa largeur seulement (`FrontsFeature.span`), modifiable dans Façades : le plan garde son style et son
+    sens (`cornerSizes.look`, `wallLook`, par `document/kitchen-sync.ts`) ; sous la bande du linéaire, une cote donne la largeur entière du meuble d'angle (« angle ✓ 97,2 cm ») ; cliqué sur la bande, il
     se **supprime** comme un meuble (Suppr ou « Supprimer le meuble d'angle ») : l'angle redevient un angle mort, et en
     haut, plus de haut d'angle ; **meuble d'angle LeMans**, même
     caisson, deux plateaux pivotants (sur le calque « Quincaillerie », hors débit et devis) ; **Magic Corner**, même
@@ -3293,7 +3295,7 @@ opération existante.
   ou Porte vitrée / pleine (porte d'un caisson), Portes plates / à cadre / vitrées (Répartition, porte sur niches) ;
   **Supprimer la porte**. Chaque choix est une
   annulation. Une porte de caisson (`FrontsFeature.side`), une porte de case de Répartition (son sens seul, dans
-  `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte d'angle bâtie en panneau.
+  `DoorSettings.hinges` ; supprimée, sa case reste ouverte), une porte sur niches, une porte pliante d'angle bâtie en panneau.
 - **Menu des tiroirs** : un **clic droit sur un tiroir** (sa façade, une pièce de son caisson ou sa poignée) ouvre son menu.
   **Modifier les tiroirs…** ouvre, pour ceux d'un caisson, un petit panneau au pointeur — nombre (1 à 8), pose en
   applique ou encastrés, jeu, épaisseur, poignées —, chaque changement fait aussitôt et annulable ; pour ceux d'une niche

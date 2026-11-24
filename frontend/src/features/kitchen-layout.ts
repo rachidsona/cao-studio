@@ -91,6 +91,8 @@ export interface KitchenUnit {
   handles?: false;
   /** The style of its fronts (missing: plain). */
   facade?: FrontStyle;
+  /** Its door on part of its width only, from and to across it (a corner unit's, beside its panel: features/fronts-parts.ts). */
+  span?: [number, number];
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
   /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */
