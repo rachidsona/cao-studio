@@ -77,9 +77,17 @@ export interface FurnitureBoard {
   outline?: [number, number][];
 }
 
+/** An appliance of the library set in it: its model, its size (width, height, depth) and its bottom left back corner. */
+export interface FurnitureAppliance {
+  model: string;
+  size: Vec3;
+  at: Vec3;
+}
+
 export interface FurnitureLayout {
   pieces: FurniturePiece[];
   boards: FurnitureBoard[];
+  appliances?: FurnitureAppliance[];
 }
 
 /** Thickness of the backs, in HDF (mm). */
@@ -212,7 +220,12 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
       const door = { type: "niche" as const, fill: "door" as const, diameter: 25, drop: 60, drawers: 1, gap: 3, sideGap: 3, thickness: t, handles: true, mount: "overlay" as const, hinges: ["right" as const] };
       const column: NicheRecipe = { steps: [{ at: [], input: { count: 3, thickness: t, mode: "set", fixed: 0, heights: [...OVEN_COLUMN.niches, null] } }], equipment: [{ at: [0], title: "Tiroirs", feature: drawers(2, t) }, { at: [3], title: "Porte", feature: door }] };
       const oven: FurniturePiece[] = withColumn(ask) ? [{ name: "Colonne four", at: [2 * t + inner, 0, 0], width: OVEN_COLUMN.width, height: top, spec: spec(carcass(OVEN_COLUMN.width, top, t, 1, OVEN_COLUMN.plinth), [column]) }] : [];
+      // The oven and the microwave in their niches, flush with the column's front, in the middle of its width.
+      const [cx, floor] = [2 * t + inner, OVEN_COLUMN.plinth + t];
+      const set = (model: string, size: Vec3, bottom: number): FurnitureAppliance => ({ model, size, at: [cx + (OVEN_COLUMN.width - size[0]) / 2, D - size[2], bottom] });
+      const appliances = withColumn(ask) ? [set("oven-pyro", [595, 595, 548], floor + OVEN_COLUMN.niches[0]! + t), set("microwave-builtin", [595, 390, 400], floor + OVEN_COLUMN.niches[0]! + OVEN_COLUMN.niches[1]! + 2 * t)] : [];
       return {
+        appliances,
         pieces: [{ name: "Caisson du haut", at: [t, 0, z], width: inner, height: top - z, spec: spec(carcass(inner, top - z, t, n, 0), Array.from({ length: n }, () => structuredClone(EMPTY)), option.startsWith("doors") ? { doors } : {}) }, ...oven],
         boards: [
           { name: "Côté gauche", from: [0, 0, 0], to: [t, D, top] },

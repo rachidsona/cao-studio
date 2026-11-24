@@ -2,7 +2,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { furnitureOf, withFurniture, withFurnitureRemade } from "../../frontend/src/document/furniture-build";
 import { FURNITURE, furnitureLayout, furnitureModel, furnitureProblem, furnitureSize, type FurnitureAsk, type FurnitureKind } from "../../frontend/src/document/furniture-models";
-import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type ApplianceFeature, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
@@ -51,7 +51,8 @@ describe("les modèles de meubles", () => {
         expect(lo[2], `${m.kind} ${option}`).toBeCloseTo(0, 3);
         expect(hi[2], `${m.kind} ${option}`).toBeCloseTo(H, 3);
         expect(hi[1], `${m.kind} ${option}`).toBeCloseTo(-50 + D, 3);
-        expect(lo[1], `${m.kind} ${option}`).toBeGreaterThan(-50 - 60);
+        // An oven's door and handle stand out a little more than a front's.
+        expect(lo[1], `${m.kind} ${option}`).toBeGreaterThan(-50 - 70);
       }
     }
   });
@@ -91,6 +92,17 @@ describe("les modèles de meubles", () => {
     // Without the option, no column; too low for its niches, refused.
     expect((furnitureLayout({ ...a, option: "doors" }) as { pieces: unknown[] }).pieces).toHaveLength(1);
     expect(furnitureProblem({ ...a, height: 1700, top: 2000 })).toMatch(/colonne four/);
+    // The oven and the microwave set in their niches: in the column, flush with its front, hors débit.
+    const made = withFurniture(empty(), a, [0, 0, 0], "melamine-oak");
+    if (typeof made === "string") throw new Error(made);
+    const appliances = made.doc.features.filter((f): f is ApplianceFeature => f.type === "appliance");
+    expect(appliances.map((f) => [f.model, f.origin[0], f.origin[2]])).toEqual([["oven-pyro", 966 + 2.5, 80 + 18 + 700 + 18], ["microwave-builtin", 966 + 2.5, 80 + 18 + 700 + 18 + 600 + 18]]);
+    expect(appliances.every((f) => f.origin[1] === 0 && made.doc.bodyInfo?.[`${f.id}#0`]?.room)).toBe(true);
+    expect(made.features).toEqual(expect.arrayContaining(appliances.map((f) => f.id)));
+    // Against a wall along +Y: turned with it, a quarter turn.
+    const turned = withFurniture(empty(), a, [0, 0, 0], "melamine-oak", { corner: [0, 0, 0], along: [0, 1] });
+    if (typeof turned === "string") throw new Error(turned);
+    expect(turned.doc.features.filter((f): f is ApplianceFeature => f.type === "appliance").map((f) => f.rotation)).toEqual([90, 90]);
   });
 
   it("le nombre de cases et d'étagères suit les cotes", () => {

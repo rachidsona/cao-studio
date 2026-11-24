@@ -160,6 +160,7 @@ test("un habillage de réfrigérateur de 187 cm : les cotes du réfrigérateur e
   await expect(page.getByText("« Habillage réfrigérateur 1 » posé")).toBeVisible();
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
   await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await expect(page.getByText(/Four encastrable pyrolyse/).first()).toBeAttached();
   await page.keyboard.press("Control+s");
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
   const asked = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { furniture: { ask: object }[] } }).document.furniture[0]!.ask, api);

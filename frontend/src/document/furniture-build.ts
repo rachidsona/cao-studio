@@ -11,7 +11,12 @@ import { BACK, furnitureLayout, furnitureModel, furnitureSize, type FurnitureAsk
 import { setBodyInfo } from "./materials";
 import { deleteFeatures, uniqueId, uniqueName } from "./operations";
 import { rectangleAt, type SketchGeometry } from "./sketch";
-import type { CadDocument, Feature, FurnitureRecord, TrimFeature, Vec3 } from "./types";
+import { PART_SEPARATOR, type ApplianceFeature, type CadDocument, type Feature, type FurnitureRecord, type TrimFeature, type Vec3 } from "./types";
+import { addLayer, layersOf } from "./layers";
+import { applianceDef } from "../features/appliance-library";
+import { applianceParts } from "../features/appliance-parts";
+
+const APPLIANCES = "Électroménager";
 
 /** A closed outline as a sketch: its points and lines (a board turned with a wall). */
 function outlineSketch(points: [number, number][]): SketchGeometry {
@@ -92,6 +97,21 @@ export function withFurniture(base: CadDocument, ask: FurnitureAsk, place: Vec3,
     boards.push(id);
   }
   if (boards.length) doc = setBodyInfo(doc, boards, { material });
+  // Its appliances (an oven, a microwave), turned with it by quarter turns, on the appliances' layer, out of the cut list.
+  const turn = ([[1, 0], [0, 1], [-1, 0], [0, -1]] as const).findIndex(([a, b]) => Math.abs(u[0] - a) < 1e-9 && Math.abs(u[1] - b) < 1e-9);
+  for (const a of turn < 0 ? [] : (layout.appliances ?? [])) {
+    const def = applianceDef(a.model);
+    if (!def) continue;
+    const [w, h, d] = a.size;
+    const id = uniqueId(doc, "ap");
+    const feature: ApplianceFeature = { id, type: "appliance", name: `${name} — ${def.name}`, model: a.model, origin: at(a.at[0], a.at[1] + d, a.at[2]), width: w, height: h, depth: d, finish: def.finishes[0]!, ...(turn ? { rotation: (turn * 90) as NonNullable<ApplianceFeature["rotation"]> } : {}) };
+    doc = { ...doc, features: [...doc.features, feature] };
+    let layer = layersOf(doc).find((l) => l.name === APPLIANCES)?.id;
+    if (!layer) ({ doc, id: layer } = addLayer(doc, APPLIANCES));
+    const info = { ...doc.bodyInfo };
+    applianceParts(feature).forEach((p, i) => (info[`${id}${PART_SEPARATOR}${i}`] = { appearance: p.look, room: true, layer }));
+    doc = { ...doc, bodyInfo: info };
+  }
   const features = doc.features.filter((x) => !known.has(x.id)).map((x) => x.id);
   const record: FurnitureRecord = { name, ask: { ...ask }, material, corner, along: [u[0], u[1]], features };
   doc = { ...doc, furniture: [...(doc.furniture ?? []).filter((r) => r.name !== name), record] };
