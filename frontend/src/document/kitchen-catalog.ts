@@ -187,7 +187,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const like = anchor ?? null;
   const cabinet: CabinetFeature = {
     id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth,
-    thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}),
+    thickness: like?.thickness ?? 18, back: entry.top === "rails" && entry.layout !== "drawers" ? "none" : (like?.back ?? "applied"), backThickness: like?.backThickness ?? 3, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}),
     plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through", ...(entry.top ? { top: entry.top } : {}), ...(entry.railWidth ? { railWidth: entry.railWidth } : {}),
     ...(rotation ? { rotation } : {}), ...(like?.standard ? { standard: like.standard } : {}),
   };

@@ -6,7 +6,7 @@ import type { CabinetFeature, Vec3 } from "../document/types";
 
 /** Smallest dimension accepted (mm), as the modeller's. */
 const MIN_LENGTH = 1e-3;
-/** Width of the rails that replace the top of a sink unit (mm). */
+/** Width of the rails that replace the top of a sink unit (mm): the front one lying flat, the back one on its edge. */
 const RAIL = 100;
 
 /** One part of the cabinet: its name and its box (two opposite corners, mm). */
@@ -76,7 +76,8 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
     const z = z0 + gap * (i + 1) + t * i;
     for (let j = 0; j <= n; j++) box(`Étagère ${i * (n + 1) + j + 1}`, t + j * (bay + t), t + j * (bay + t) + bay, front, boardDepth, z, z + t);
   }
-  if (rails) box("Traverse arrière", hx0, hx1, boardDepth - rail, boardDepth, H - t, H);
+  // The back rail stands on its edge, as high as a rail is wide, against the back (the wall when there is no back).
+  if (rails) box("Traverse arrière", hx0, hx1, boardDepth - t, boardDepth, H - Math.min(own, (H - p - t) / 3), H);
   // The upright boards last: the other bodies keep their numbers.
   for (let j = 1; j <= n; j++) box(`Cloison ${j}`, t + j * bay + (j - 1) * t, t + j * (bay + t), front, boardDepth, z0, H - t);
   return parts;

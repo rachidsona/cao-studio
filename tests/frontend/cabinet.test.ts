@@ -107,16 +107,17 @@ describe("caisson d'évier : deux traverses à la place du dessus", () => {
     expect(names).toEqual(["Côté gauche", "Côté droit", "Dessous", "Traverse avant", "Fond", "Traverse arrière"]);
     const [front, back] = [named(rails, "Traverse avant"), named(rails, "Traverse arrière")];
     expect([front.from[1], front.to[1]]).toEqual([0, 100]);
-    expect([back.from[1], back.to[1]]).toEqual([457, 557]);
-    expect(back.from[1] - front.to[1]).toBe(357);
+    // The back rail on its edge, 18 thick against the back.
+    expect([back.from[1], back.to[1]]).toEqual([539, 557]);
+    expect(back.from[1] - front.to[1]).toBe(439);
   });
 
-  it("les traverses vont d'un côté à l'autre, à la hauteur du dessus", () => {
+  it("les traverses vont d'un côté à l'autre, à la hauteur du dessus : l'avant couchée, l'arrière debout, 10 cm de haut", () => {
     const top = named(base(), "Dessus");
-    for (const name of ["Traverse avant", "Traverse arrière"]) {
-      const rail = named(rails, name);
-      expect([rail.from[0], rail.to[0], rail.from[2], rail.to[2]]).toEqual([top.from[0], top.to[0], top.from[2], top.to[2]]);
-    }
+    const front = named(rails, "Traverse avant");
+    expect([front.from[0], front.to[0], front.from[2], front.to[2]]).toEqual([top.from[0], top.to[0], top.from[2], top.to[2]]);
+    const back = named(rails, "Traverse arrière");
+    expect([back.from[0], back.to[0], back.from[2], back.to[2]]).toEqual([top.from[0], top.to[0], top.to[2] - 100, top.to[2]]);
   });
 
   it("garde le numéro des autres pièces : le fond reste le fond", () => {

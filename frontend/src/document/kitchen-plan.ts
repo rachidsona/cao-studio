@@ -69,7 +69,8 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     const rotation = ((u.rotation + place.quarter * 90) % 360) as NonNullable<CabinetFeature["rotation"]>;
     const cabinet: CabinetFeature = {
       id: uniqueId(probe, "cb"), type: "cabinet", name: u.name, origin: placePoint(place, u.origin), width: u.width, height: u.height, depth: u.depth,
-      thickness: 18, back: "applied", backThickness: 3, shelves: u.shelves, ...(u.dividers ? { dividers: u.dividers } : {}), plinth: u.plinth, construction: "sides-through",
+      // A sink unit on two rails: no back, the pipes come through.
+      thickness: 18, back: u.top === "rails" && u.layout !== "drawers" ? "none" : "applied", backThickness: 3, shelves: u.shelves, ...(u.dividers ? { dividers: u.dividers } : {}), plinth: u.plinth, construction: "sides-through",
       ...(u.top ? { top: u.top } : {}), ...(u.railWidth ? { railWidth: u.railWidth } : {}), ...(rotation ? { rotation } : {}),
     };
     push(cabinet);
