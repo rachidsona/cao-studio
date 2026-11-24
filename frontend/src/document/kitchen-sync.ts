@@ -15,7 +15,7 @@ import { itemsMoved, unitsMoved } from "./kitchen-moves";
 import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
 import type { CabinetFeature, CadDocument, FrontStyle, FrontsFeature, KitchenRunItem } from "./types";
-import { itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
+import { hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
 
 const NEAR = 0.05;
 const differs = (a: number, b: number) => Math.abs(a - b) > NEAR;
@@ -72,6 +72,16 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         if (fronts && k0 >= 0 && JSON.stringify(frontStyleOf(runs[run.id]![k0]!.facade ?? model?.facade)) !== JSON.stringify(facade)) {
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade || model?.facade ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
+        }
+        // Its fronts' layout and drawers (the Façades tool): the plan keeps them, as « Façades et intérieur » of its run.
+        if (fronts?.type === "fronts" && k0 >= 0 && hasInside(runs[run.id]![k0]!)) {
+          const e = itemEntry(runs[run.id]![k0]!);
+          const drawers = fronts.layout === "drawers";
+          if (e.layout !== fronts.layout || (drawers && (e.drawers ?? 3) !== fronts.drawers) || (!drawers && ((e.topDrawer ?? 0) !== (fronts.topDrawer ?? 0) || (e.innerDrawers ?? 0) !== (fronts.innerDrawers ?? 0)))) {
+            const inside = { layout: fronts.layout, ...(drawers ? { drawers: fronts.drawers } : { topDrawer: fronts.topDrawer ?? 0, innerDrawers: fronts.innerDrawers ?? 0 }) };
+            runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? { ...it, ...inside } : it));
+            changed = true;
+          }
         }
         // A corner unit's door (Façades, its menu): turned or restyled, the plan keeps it.
         // A folding door's leaf: its style only, the two leaves sharing it.

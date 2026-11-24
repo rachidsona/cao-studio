@@ -3642,6 +3642,9 @@ opération existante.
     tiroirs le prennent, avec ses cotes ; les portes coulissantes restent plates.
   - Le **Plan de cuisine** garde le style des façades d'un meuble (`KitchenRunItem.facade`, avec la porte relevable
     et la gorge) : la cuisine refaite le remet ; des façades redevenues plates le lui font oublier.
+  - Il garde aussi leur disposition et leurs tiroirs changés dans Façades (une porte, deux, des tiroirs et combien, un
+    tiroir au-dessus, des tiroirs à l'anglaise : `KitchenRunItem.layout`, `drawers`, `topDrawer`, `innerDrawers`, comme
+    « Façades et intérieur » du linéaire) : l'aperçu d'un linéaire et la cuisine refaite ne remettent plus ceux du modèle.
 - **Suivre-moi** (groupe « Atelier », comme Follow Me de SketchUp) : un profil fermé balayé le long du chemin (lignes
   et arcs) d'une autre esquisse — plinthe, moulure, corniche ; nouveau corps, union ou soustraction. Le profil se
   dessine dans un plan qui passe par un bout du chemin ; le balayage part de ce bout.

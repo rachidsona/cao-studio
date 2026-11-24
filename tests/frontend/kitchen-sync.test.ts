@@ -5,7 +5,7 @@ import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
 import { findFeature, updateFeature } from "../../frontend/src/document/operations";
-import { createReferencePlate, type CabinetFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan, type KitchenRunItem } from "../../frontend/src/document/types";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { withAppliance } from "../../frontend/src/document/appliance-place";
 import { handAppliances } from "../../frontend/src/document/kitchen-hand-appliances";
@@ -178,5 +178,25 @@ describe("liens de Prolonger élément sur une cuisine refaite", () => {
     const gone = withKitchenBuilt(again.doc, made.id, { runs: { A: [items[2]!] } });
     if (typeof gone === "string") throw new Error(gone);
     expect(gone.doc.extendLinks).toBeUndefined();
+  });
+
+  it("ses tiroirs changés dans Façades : le plan les garde, la cuisine refaite (un OK du linéaire) aussi", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} });
+    const items = [newItem([], "base-bas-2-tiroirs-et-casserolier-traverses", 900)];
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { A: items } });
+    if (typeof made === "string") throw new Error(made);
+    const fronts = (d: CadDocument) => d.features.find((f): f is FrontsFeature => f.type === "fronts")!;
+    expect(fronts(made.doc).drawers).toBe(3);
+    // Untouched, the plan stays as it is.
+    expect(syncKitchenPlans(made.doc, made.doc)).toBe(made.doc);
+    const two = updateFeature(made.doc, fronts(made.doc).id, (f) => ({ ...f, drawers: 2 }) as FrontsFeature);
+    const synced = syncKitchenPlans(made.doc, two);
+    expect(kitchenPlanIn(synced, base.id)!.runs!.A![0]).toMatchObject({ layout: "drawers", drawers: 2 });
+    const again = withKitchenBuilt(synced, base.id, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(fronts(again.doc).drawers).toBe(2);
+    // Made doors: the plan keeps them too.
+    const doors = syncKitchenPlans(again.doc, updateFeature(again.doc, fronts(again.doc).id, (f) => ({ ...f, layout: "doors" }) as FrontsFeature));
+    expect(kitchenPlanIn(doors, base.id)!.runs!.A![0]!.layout).toBe("doors");
   });
 });
