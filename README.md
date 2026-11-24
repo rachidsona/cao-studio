@@ -138,8 +138,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 - **Modifier la sélection** (en tête de chaque menu du clic droit dans la vue : meuble, corps, niche, porte, tiroirs) :
   ouvre l'outil de l'élément cliqué — sinon du premier choisi : **Façades** pour une porte ou une façade de tiroir,
   **Caisson** pour une étagère, un côté, un dessus de caisson (ses étagères s'y règlent), son outil pour une niche de
-  Répartition, le **Plan de dressing** pour des portes coulissantes ; pour ce que le Plan de cuisine a fait (fileur,
-  plan de travail, plinthe), le plan sur son linéaire, « Fileurs » déplié pour un fileur ; sinon l'outil qui l'a fait, comme un double-clic dans l'arbre (`app/isolate-selection.ts` `modifyMenuItem`).
+  Répartition, le **Plan de dressing** pour des portes coulissantes, **Façades** sur le meuble d'angle pour sa porte
+  ou son panneau ; pour ce que le Plan de cuisine a fait (fileur, plan de travail, plinthe), le plan sur son linéaire,
+  la carte « Fileurs » ouverte et amenée dans la vue pour un fileur ; sinon l'outil qui l'a fait, comme un double-clic dans l'arbre (`app/isolate-selection.ts` `modifyMenuItem`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble
@@ -2882,7 +2883,9 @@ opération existante.
       caisson ; le reste du mur se partage toujours autour. La liste « Fileurs posés », sous les boutons, les nomme
       (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
       Dessous, **Tous les fileurs du linéaire** — ceux du plan compris (fileur d'angle, reste du mur) — avec leur
-      largeur, leur hauteur, leur épaisseur et leur matière (`kitchen-run-fillers.ts` `runFillers`).
+      largeur, et leur **hauteur, épaisseur et matière à régler** : gardées par le plan (`fillerLook`, par nom de
+      fileur ; la hauteur garde le haut, l'épaisseur la face avant), la cuisine refaite d'un coup, une annulation
+      (`kitchen-run-fillers.ts` `runFillers`, `kitchen-plan-build.ts` `fillerSized`).
       Un fileur que le plan met dans le reste (jusqu'à 15 cm), cliqué sur la bande, devient un fileur posé à sa place
       — tous ceux du reste à la fois, pour que rien ne bouge —, choisi comme un meuble : Suppr, flèches, glisser, cote.
       Un fileur supprimé, sur la bande (Suppr) ou dans la 3D, laisse sa place libre (« Espace libre ») : il ne revient

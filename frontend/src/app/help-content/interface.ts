@@ -261,7 +261,7 @@ export const SCREEN: HelpFamily[] = [
           "« Tout montrer », en bas de la vue (ou I sans rien de sélectionné), rend le reste.",
           "« PDF », à côté, enregistre la vue cadrée telle qu'elle est, avec ses cotes, sur une page A4 paysage, fond blanc et sans grille, sous un cartouche (le projet, ce qui est montré, la date, l'unité des cotes) : un plan à imprimer ou à envoyer.",
         ],
-        tip: "Clic droit sur un élément choisi : « Modifier la sélection », en tête du menu, ouvre son outil : Façades pour une porte ou un tiroir, Caisson pour une étagère ou un côté, le Plan de dressing pour des portes coulissantes, le Plan de cuisine (« Fileurs ») pour un de ses fileurs ; sinon l'outil qui l'a fait. Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
+        tip: "Clic droit sur un élément choisi : « Modifier la sélection », en tête du menu, ouvre son outil : Façades pour une porte ou un tiroir, Caisson pour une étagère ou un côté, le Plan de dressing pour des portes coulissantes, Façades sur le meuble d'angle pour sa porte, le Plan de cuisine (carte « Fileurs » ouverte) pour un de ses fileurs ; sinon l'outil qui l'a fait. Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
       },
     ],
   },

@@ -206,6 +206,8 @@ export interface KitchenFloorPlan {
   kick?: boolean;
   /** The runs whose worktop was taken away (on the run's strip): no worktop there, nor its cut-outs. */
   noWorktop?: Record<string, boolean>;
+  /** A filler of the plan set by hand, by its name: its height and thickness (mm), its material. */
+  fillerLook?: Record<string, { height?: number; thickness?: number; material?: string }>;
   /** The worktop goes down to the floor at the free ends of the runs (in its material, over the units' sides). */
   worktopEnds?: boolean;
   /** How the worktop meets that return: running over it (absent), the return up its end, or both cut at 45°. */

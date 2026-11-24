@@ -5,10 +5,11 @@
  * l'ôter ; et tous les fileurs du linéaire, ceux du plan compris (angle, reste du mur), avec leur largeur, leur hauteur,
  * leur épaisseur et leur matière.
  */
-import { kitchenPlanIn } from "../../document/kitchen-floor";
+import { kitchenPlanIn, withKitchenBuilt } from "../../document/kitchen-floor";
 import { kitchenFromPlan } from "../../document/kitchen-plan-build";
 import { kitchenRoomInfo } from "../../document/kitchen-plan-room";
-import { bodyInfo, materialById } from "../../document/materials";
+import { bodyInfo, materialById, MATERIALS } from "../../document/materials";
+import type { Editor } from "../editor";
 import type { CadDocument, DisplayUnit, KitchenRunItem } from "../../document/types";
 import { FILLER, FILLER_WALL, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
@@ -20,8 +21,13 @@ const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-righ
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
 
 export interface FillerHost {
-  /** The document, its plan and the run: every filler of the run, with its sizes and its material. */
+  /** The document, its plan and the run: every filler of the run, with its sizes and its material, set here. */
   doc: CadDocument;
+  editor: Editor;
+  /** The run has changes not stored yet: a filler is set once they are. */
+  dirty: boolean;
+  /** Draws the run again (the fillers as just set). */
+  redraw(): void;
   planId: string;
   runId: string;
   items: KitchenRunItem[];
@@ -84,31 +90,74 @@ export interface FillerData {
   height: number;
   thickness: number;
   material: string;
+  /** Its material's id, when it has one of its own or the fronts'. */
+  materialId?: string;
 }
 
 /** Every filler of a run, the plan's own (corner, rest of the wall) and those put by hand, as the 3D has them. */
 export function runFillers(doc: CadDocument, planId: string, runId: string): FillerData[] {
   const plan = kitchenPlanIn(doc, planId);
   if (!plan) return [];
-  const made = doc.features.filter((f) => plan.made?.[runId]?.includes(f.id));
+  // Its body, by its name, among all the plan made (a corner's filler is made with the run beside it).
+  const ids = new Set(Object.values(plan.made ?? {}).flat());
+  const made = doc.features.filter((f) => ids.has(f.id));
   return kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.filter((b) => b.kind === "filler" && b.run === runId).map((b) => {
     const [dx, dy, dz] = [0, 1, 2].map((i) => Math.abs(b.to[i]! - b.from[i]!));
     const feature = made.find((f) => f.name === b.name);
-    const id = feature ? bodyInfo(doc, feature.id).material : undefined;
-    return { name: b.name, width: Math.max(dx!, dy!), height: dz!, thickness: Math.min(dx!, dy!), material: materialById(id)?.name ?? id ?? "celle des façades" };
+    // Set here (the plan keeps it), else as its body has it.
+    const id = b.material ?? (feature ? bodyInfo(doc, feature.id).material : undefined);
+    return { name: b.name, width: Math.max(dx!, dy!), height: dz!, thickness: Math.min(dx!, dy!), material: materialById(id)?.name ?? id ?? "celle des façades", ...(id ? { materialId: id } : {}) };
   });
 }
 
-/** The fillers of the run with all their sizes and their material. */
+/** The fillers of the run with all their sizes and their material: the height, the thickness and the material set here. */
 function fillerTable(host: FillerHost): HTMLElement {
+  const { unit } = host;
   const list = runFillers(host.doc, host.planId, host.runId);
-  const size = (mm: number) => formatLength(mm, host.unit);
   if (!list.length) return el("p", { class: "text-2xs text-gray-500 dark:text-gray-400", "data-fillers-all": "0" }, "Aucun fileur sur ce linéaire.");
+  // One change of the plan (one undo step): the kitchen made again with the filler as set.
+  const set = (name: string, patch: { height?: number; thickness?: number; material?: string }) => {
+    if (host.dirty) return host.notify("Le linéaire est en train d'être enregistré : un instant, puis recommencez.", "error");
+    const plan = kitchenPlanIn(host.editor.doc, host.planId);
+    if (!plan) return;
+    const made = withKitchenBuilt(host.editor.doc, host.planId, { fillerLook: { ...plan.fillerLook, [name]: { ...plan.fillerLook?.[name], ...patch } } });
+    if (typeof made === "string") return host.notify(made, "error");
+    // The panel is not drawn again while one of its fields has the focus: the value is taken, the field left.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    void host.editor.change(made.doc).then(() => host.redraw());
+  };
+  const field = (f: FillerData, key: "height" | "thickness", label: string, lo: number, hi: number) => {
+    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(f[key], unit), 4), "aria-label": `${label} de « ${f.name} » (${UNIT_LABELS[unit]})`, [`data-filler-${key}`]: f.name });
+    input.addEventListener("keydown", (event) => event.stopPropagation());
+    input.addEventListener("change", () => {
+      const parsed = parseNumber(input.value);
+      const mm = parsed === null ? NaN : Math.round(fromDisplay(parsed, unit) * 10) / 10;
+      if (!(mm >= lo && mm <= hi)) return input.setAttribute("aria-invalid", "true"), host.notify(`${label} : de ${formatLength(lo, unit)} à ${formatLength(hi, unit)}.`, "error");
+      set(f.name, { [key]: mm });
+    });
+    return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input);
+  };
+  const material = (f: FillerData) => {
+    const select = el("select", { class: FIELD.replace("text-right", "text-left"), "aria-label": `Matière de « ${f.name} »`, "data-filler-material": f.name }, ...MATERIALS.filter((m) => m.kind === "panel" || m.id === f.materialId).map((m) => el("option", { value: m.id, ...(m.id === f.materialId ? { selected: "" } : {}) }, m.name)));
+    select.addEventListener("change", () => set(f.name, { material: select.value }));
+    return el("label", { class: ROW }, "Matière", select);
+  };
   return el(
     "div",
-    { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-fillers-all": String(list.length) },
+    { class: "space-y-2 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-fillers-all": String(list.length) },
     el("p", { class: "font-medium" }, "Tous les fileurs du linéaire"),
-    ...list.map((f) => el("div", { class: "text-2xs", "data-filler-data": f.name }, el("p", { class: "font-medium" }, f.name), el("p", { class: "font-mono text-gray-600 dark:text-gray-300" }, `L ${size(f.width)} · H ${size(f.height)} · ép. ${size(f.thickness)}`), el("p", { class: "text-gray-500 dark:text-gray-400" }, `Matière : ${f.material}`))),
+    ...list.map((f) =>
+      el(
+        "div",
+        { class: "space-y-1 text-2xs", "data-filler-data": f.name },
+        el("p", { class: "font-medium" }, f.name),
+        el("p", { class: "font-mono text-gray-600 dark:text-gray-300" }, `L ${formatLength(f.width, unit)} · H ${formatLength(f.height, unit)} · ép. ${formatLength(f.thickness, unit)}`),
+        field(f, "height", "Hauteur", 10, 3000),
+        field(f, "thickness", "Épaisseur", 3, 100),
+        material(f),
+      ),
+    ),
+    el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, "La largeur d'un fileur posé se règle en le cliquant sur la bande ; celle d'un fileur du plan vient de la place qui reste."),
   );
 }
 

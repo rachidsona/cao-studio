@@ -82,6 +82,8 @@ export interface ToolOptions {
   axis?: Axis;
   /** Move: the whole the element belongs to, not the element alone. */
   whole?: boolean;
+  /** Façades: the cabinet they go on (a corner unit's door modified). */
+  cabinet?: string;
 }
 
 /** What a tool starts with: the sketch selected in the navigator, and what is picked in the 3D view. */
@@ -210,7 +212,7 @@ export class ToolLauncher {
         return;
       }
       case "fronts":
-        this.active = new FrontsTool(ctx, editing?.type === "fronts" ? editing : null);
+        this.active = new FrontsTool(ctx, editing?.type === "fronts" ? editing : null, options.cabinet);
         break;
       case "modifier":
         this.active =

@@ -2,13 +2,15 @@
  * Un titre pliable : un clic l'ouvre, un autre le ferme. Ceux d'un même panneau vont ensemble, un seul ouvert à la fois
  * (`Folds`) — ouvrir l'un ferme les autres — et tous sont fermés au départ. Le titre peut porter une valeur à droite (un
  * prix, un compte), visible même fermé. Le contenu n'est fait que s'il est ouvert. Chacun est une carte, détachée par
- * son ombre.
+ * son ombre. Une carte ouverte de l'extérieur (« Modifier la sélection ») est amenée dans la vue.
  */
 import { el } from "./dom";
 
 export class Folds {
   /** The one open, or none. */
   open: string | null = null;
+  /** The one to bring into view once drawn (opened from outside), or none. */
+  reveal: string | null = null;
 
   constructor(private readonly redraw: () => void) {}
 
@@ -28,6 +30,12 @@ export class Folds {
       aside ?? null,
     );
     head.addEventListener("click", () => this.toggle(key));
-    return el("section", { class: "my-2 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md shadow-gray-900/10 dark:border-white/10 dark:bg-white/5 dark:shadow-black/40", "data-fold-section": key }, head, open ? el("div", { class: "space-y-1.5 border-t border-gray-200 p-2 dark:border-white/10" }, ...content()) : null);
+    const section = el("section", { class: "my-2 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md shadow-gray-900/10 dark:border-white/10 dark:bg-white/5 dark:shadow-black/40", "data-fold-section": key }, head, open ? el("div", { class: "space-y-1.5 border-t border-gray-200 p-2 dark:border-white/10" }, ...content()) : null);
+    // Opened from outside: brought into view once it is in the panel, once.
+    if (this.reveal === key) {
+      this.reveal = null;
+      queueMicrotask(() => section.scrollIntoView({ block: "start", behavior: "smooth" }));
+    }
+    return section;
   }
 }

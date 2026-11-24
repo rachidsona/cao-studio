@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { CORNER_KINDS, CORNER_SHELVES, cornerSide, cornerSketch, wallCornerSide, withCorner } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
-import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
+import { fillerSized, kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { CORNER_DOOR, CORNER_WALL_GAP, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
 import { createReferencePlate, type CadDocument, type KitchenFloorPlan } from "../../frontend/src/document/types";
@@ -251,5 +251,21 @@ describe("les fileurs d'un linéaire, toutes leurs données", () => {
     expect(corner.thickness).toBe(19);
     expect(corner.material.length).toBeGreaterThan(0);
     expect(runFillers(made.doc, "inconnu", "A")).toEqual([]);
+  });
+
+  it("réglé à la main : sa hauteur (le haut gardé), son épaisseur (la face avant gardée), sa matière", () => {
+    // A filler 50 wide, 19 thick (y 0 to 19, the room towards +y), 150 to 860 high.
+    expect(fillerSized([[0, 0, 150], [50, 19, 860]], { height: 800, thickness: 25 }, [0, 1])).toEqual([[0, -6, 60], [50, 19, 860]]);
+    expect(fillerSized([[0, 0, 150], [50, 19, 860]], { thickness: 25 }, [0, -1])).toEqual([[0, 0, 150], [50, 25, 860]]);
+    // Out of range or not a number: left as it was.
+    expect(fillerSized([[0, 0, 150], [50, 19, 860]], { height: -5, thickness: "x" as unknown as number }, [0, 1])).toEqual([[0, 0, 150], [50, 19, 860]]);
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "dead" }, runs: {}, made: {} }));
+    const first = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
+    if (typeof first === "string") throw new Error(first);
+    const name = runFillers(first.doc, base.id, "A").find((f) => f.name.startsWith("Fileur d'angle"))!.name;
+    const set = withKitchenBuilt(first.doc, base.id, { fillerLook: { [name]: { height: 600, thickness: 25, material: "mdf" } } });
+    if (typeof set === "string") throw new Error(set);
+    const filler = runFillers(set.doc, base.id, "A").find((f) => f.name === name)!;
+    expect(filler).toMatchObject({ height: 600, thickness: 25, materialId: "mdf" });
   });
 });

@@ -82,8 +82,11 @@ export function modifyMenuItem(editor: Editor, viewport: Viewport, clicked?: str
   // sliding doors: the Plan de dressing, where they are set.
   if (feature.type === "fronts" || feature.type === "cabinet") return [label, () => editor.editFeature(feature.id)];
   if (feature.type === "trim" && /coulissant/i.test(feature.name)) return [label, () => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click()];
-  // Made by the Plan de cuisine (a corner's door or panel, a filler, the worktop): the plan on its run, the block that
-  // sets it open — « L'angle » for a corner's piece, « Fileurs » for a filler.
+  // A corner unit's door or panel of the Plan de cuisine: the Façades tool on its corner unit.
+  const corner = /^(Porte|Panneau) d'angle/.test(feature.name) ? editor.doc.features.find((f) => f.type === "cabinet" && f.name === feature.name.replace(/^(Porte|Panneau) d'angle/, "Meuble d'angle")) : undefined;
+  if (corner) return [label, () => editor.editFeature(corner.id, true)];
+  // Made by the Plan de cuisine (a filler, the worktop): the plan on its run, the block that sets it open — « Fileurs »
+  // for a filler, « L'angle » for another corner piece.
   const owner = kitchenRunOf(editor.doc, feature.id);
   if (!owner) return [label, () => editor.editFeature(feature.id)];
   return [label, () => {
@@ -91,7 +94,8 @@ export function modifyMenuItem(editor: Editor, viewport: Viewport, clicked?: str
     viewport.selectLevel({ bodies: [bodyId] }, false);
     const open = kitchenRunOpen();
     const name = `${feature.name} ${bodyLabel(editor.doc, bodyId)}`;
-    const fold = /d'angle/i.test(name) ? "corners" : /fileur/i.test(name) ? "fillers" : null;
+    // A filler first (a corner's filler too): its own card.
+    const fold = /fileur/i.test(name) ? "fillers" : /d'angle/i.test(name) ? "corners" : null;
     if (fold && open?.plan === owner.plan && open.run === owner.run) open.show(fold);
   }];
 }

@@ -30,13 +30,13 @@ export class FrontsTool extends PanelTool {
   /** A cabinet clicked yet: the first click replaces the one chosen by default, the next ones add theirs. */
   private clicked = false;
 
-  constructor(ctx: ToolContext, editing: FrontsFeature | null) {
+  constructor(ctx: ToolContext, editing: FrontsFeature | null, onCabinet?: string) {
     super(ctx, "Façades", editing);
     const doc = ctx.doc();
     this.id = editing?.id ?? uniqueId(doc, "fr");
     this.name = editing?.name ?? uniqueName(doc, "Façades");
     const { id: _id, type: _type, name: _name, ...rest } = editing ?? ({} as FrontsFeature);
-    this.settings = editing ? rest : { cabinet: this.cabinets().at(-1)?.id ?? "", layout: "door", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
+    this.settings = editing ? rest : { cabinet: onCabinet ?? this.cabinets().at(-1)?.id ?? "", layout: "door", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
     // New fronts take the mount, gap and thickness of their cabinet's standard.
     const cabinet = this.cabinets().find((c) => c.id === this.settings.cabinet);
     const standard = !editing && cabinet ? cabinetStandard(doc, cabinet, workshopStandards()) : undefined;

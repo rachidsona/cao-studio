@@ -337,13 +337,13 @@ export class Editor {
     void this.change(updateFeature(this.doc, this.selectedFeature, patch));
   }
 
-  /** Reopens the tool of a feature: the sketch editor, the extrusion arrow, or the panel tool. */
-  editFeature(id: string): void {
+  /** Reopens the tool of a feature: the sketch editor, the extrusion arrow, or the panel tool; `fronts`: Façades on a cabinet. */
+  editFeature(id: string, fronts = false): void {
     const feature = findFeature(this.doc, id);
     if (feature?.type === "sketch") this.sketches.open(id);
     else if (feature?.type === "extrude") this.extrudeCommand(id);
     else if (feature?.type === "niche") void (feature.fill === "doors" || feature.fill === "back" ? this.sketches.editOffset(feature.sketch, feature.partition) : this.sketches.startEquip(feature.fill, feature.sketch, feature));
-    else if (feature) this.tools.edit(id);
+    else if (feature) void (fronts && feature.type === "cabinet" ? this.tools.open("fronts", { cabinet: id }) : this.tools.edit(id));
   }
 
   /** Changes a sketch from outside the sketch mode; the sketch being edited is re-read so it cannot write back old data. */

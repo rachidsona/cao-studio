@@ -48,7 +48,12 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     };
     const back: [number, number] = [-run.zone.run.normal[0], -run.zone.run.normal[1]];
     const rotation = ([0, 90, 180, 270] as const).find((r) => cabinetAxes(r).back.every((c, i) => Math.abs(c - back[i]!) < 1e-9)) ?? 0;
-    const box = (name: string, kind: KitchenBox["kind"], [from, to]: [Vec3, Vec3], extra: Partial<KitchenBox> = {}) => out.boxes.push({ name, from, to, kind, run: run.id, ...extra });
+    const box = (name: string, kind: KitchenBox["kind"], at: [Vec3, Vec3], extra: Partial<KitchenBox> = {}) => {
+      // A filler set by hand (« Fileurs »): its height, its thickness, its material.
+      const look = kind === "filler" ? p.fillerLook?.[name] : undefined;
+      const [from, to] = look ? fillerSized(at, look, run.zone.run.normal) : at;
+      out.boxes.push({ name, from, to, kind, run: run.id, ...(look?.material ? { material: look.material } : {}), ...extra });
+    };
     // An appliance of the library in its box, turned as the run's cabinets.
     const put = (name: string, model: string, at: [Vec3, Vec3], finish = "inox") => box(name, "appliance", at, { appliance: { model, finish, rotation } });
     const cabinet = (name: string, u: number, w: number, depth: number, z: number, height: number, rest: Pick<KitchenUnit, "plinth" | "shelves" | "layout"> & Partial<KitchenUnit>) => {
@@ -432,4 +437,20 @@ function outlineCorners(points: [number, number][]): [number, number][] {
     });
   }
   return pts;
+}
+
+/**
+ * A filler box at the height and thickness set (mm, read from the saved document: numbers in range only): its top
+ * kept (under the worktop, at the wall units' top), its front kept (the face towards the room, along `normal`).
+ */
+export function fillerSized([from, to]: [Vec3, Vec3], look: { height?: number; thickness?: number }, normal: readonly number[]): [Vec3, Vec3] {
+  const [a, b]: [Vec3, Vec3] = [[...from], [...to]];
+  const ok = (v: unknown, lo: number, hi: number): v is number => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
+  if (ok(look.height, 10, 3000)) a[2] = b[2] - look.height;
+  if (ok(look.thickness, 3, 100)) {
+    const axis = Math.abs(normal[0]!) >= Math.abs(normal[1]!) ? 0 : 1;
+    if (normal[axis]! > 0) a[axis] = b[axis]! - look.thickness;
+    else b[axis] = a[axis]! + look.thickness;
+  }
+  return [a, b];
 }
