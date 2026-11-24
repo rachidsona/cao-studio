@@ -88,6 +88,21 @@ describe("supprimer la sélection (corps et esquisses)", () => {
     expect(deletionOf(without, { bodies: ["cb1#0", "cb1#1", "cb1#3"] }, shown)).toMatchObject({ features: ["cb1"], pieces: [] });
   });
 
+  it("une suppression est totale : l'esquisse dont il est fait part avec lui, sauf si autre chose s'en sert ; la fiche d'un meuble de l'assistant aussi", () => {
+    const base = doc();
+    // A second extrusion of the same sketch: the sketch stays while it is there.
+    const twice: CadDocument = { ...base, features: [...base.features, { id: "ex9", type: "extrude", name: "Copie", sketch: "sk1", distance: 5, operation: "new" }] };
+    expect(deletionOf(twice, { bodies: ["ex1"] }).features).toEqual(["ex1"]);
+    expect(deletionOf(twice, { bodies: ["ex1", "ex9"] }).features).toEqual(["ex1", "ex9", "sk1"]);
+    // A Répartition (it makes its own panels) and a kitchen's plan are never taken with what was made from them.
+    const plan: CadDocument = { ...base, features: base.features.map((f) => (f.id === "sk1" && f.type === "sketch" ? { ...f, offsets: [{ step: { kind: "partition" } } as never] } : f)) };
+    expect(deletionOf(plan, { bodies: ["ex1"] }).features).toEqual(["ex1"]);
+    // The assistant's record of a piece of furniture goes when nothing of it is left.
+    const kept: CadDocument = { ...base, furniture: [{ name: "Bureau 1", ask: { kind: "desk", width: 1400, height: 750, depth: 600, thickness: 18, option: "left" }, material: "melamine-oak", corner: [0, 0, 0], along: [1, 0], features: ["ex1", "cb1"] }] };
+    expect(deleteFeatures(kept, ["ex1"]).next.furniture?.[0]?.features).toEqual(["cb1"]);
+    expect(deleteFeatures(kept, ["ex1", "cb1"]).next.furniture).toBeUndefined();
+  });
+
   it("plusieurs à la fois, en une seule fois ; les opérations qui en dépendent partent avec", () => {
     const { next, lost } = deleteFeatures(doc(), ["ex1", "sk9", "cb1"]);
     expect(next.features.map((f) => f.id)).toEqual(["sk1"]);
@@ -98,7 +113,8 @@ describe("supprimer la sélection (corps et esquisses)", () => {
     const base = doc();
     const withRect: CadDocument = { ...base, features: base.features.map((f) => (f.id === "sk9" ? { ...f, ...rectangleAt(50, 25, 100, 50) } : f)) };
     const face = deletionOf(withRect, { faces: [{ bodyId: "h2", faceIndex: 0, point: new THREE.Vector3() }] });
-    expect(face.features).toEqual(["ex1"]);
+    // The extrusion goes with the sketch it was drawn from, which nothing else uses: nothing of it is left.
+    expect(face.features).toEqual(["ex1", "sk1"]);
     expect(face.implied).toEqual(["h2"]);
     expect(deletionQuestion(withRect, face)).toContain("le corps entier");
     const sketch = withRect.features.find((f) => f.id === "sk9");

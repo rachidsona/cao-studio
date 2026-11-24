@@ -6,14 +6,17 @@
  * drawer front with its handle and its glass; a Répartition with nothing left in view, with it; lines and points
  * of a sketch, taken out of it (with
  * their constraints). An area of a sketch is not deleted (its lines are, or
- * the whole sketch). Everything goes in one undo step.
+ * the whole sketch). What the deleted operations were made from goes with them when nothing else uses it — the
+ * sketch of an extrusion, a revolve, a sweep (not a Répartition, which makes its own panels, nor a kitchen's or a dressing's plan) —: nothing of them is left in the
+ * project. Everything goes in one undo step.
  */
-import { bodyLabel, bodyOrigin, featuresOfPick, findFeature } from "../document/operations";
+import { bodyLabel, bodyOrigin, deleteFeatures, featuresOfPick, findFeature } from "../document/operations";
 import { withHangingParts } from "../document/door-edit";
 import { emptiedPartitions } from "../document/empty-partition";
 export { removeStep, removeWithShelves } from "../document/shelf-removal";
-import { featureOfBody, type CadDocument, type SketchFeature } from "../document/types";
+import { featureInputs, featureOfBody, type CadDocument, type SketchFeature } from "../document/types";
 import { removeEntities } from "../sketcher/edit";
+import { isPartition } from "../sketcher/partition-history";
 import { askConfirm } from "../ui/confirm-dialog";
 import type { ModelSelection } from "../viewport/viewport";
 
@@ -55,7 +58,7 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>,
   const left = picked.pieces.filter((p) => !emptied.includes(featureOfBody(p)));
   // A Répartition whose panels are all out (a module kept with its pieces only), its last piece in view gone: it goes too.
   const empty = emptiedPartitions(doc, taken, left, displayed);
-  const ids = [...new Set([...taken, ...empty])];
+  const ids = withSources(doc, [...new Set([...taken, ...empty])]);
   const pieces = left.filter((p) => !empty.includes(featureOfBody(p)));
   const items = (selection.sketch ?? []).filter((p) => !whole.includes(p.sketchId));
   const edits = [...new Set(items.filter((p) => p.kind !== "region").map((p) => p.sketchId))].flatMap((sketchId) => {
@@ -65,6 +68,20 @@ export function deletionOf(doc: CadDocument, selection: Partial<ModelSelection>,
     return [{ ...sketch, ...removeEntities(sketch, gone) }];
   });
   return { features: ids, pieces, implied, edits, skipped: items.filter((p) => p.kind === "region").length };
+}
+
+/** The features with the sketches they were made from that nothing else would use once they are gone (not a plan's). */
+function withSources(doc: CadDocument, ids: string[]): string[] {
+  if (!ids.length) return ids;
+  const after = deleteFeatures(doc, ids).next;
+  const used = new Set(after.features.flatMap(featureInputs).map(featureOfBody));
+  const sources = new Set(doc.features.filter((f) => !findFeature(after, f.id)).flatMap(featureInputs).map(featureOfBody));
+  const orphans = [...sources].filter((id) => {
+    const s = findFeature(after, id);
+    // A Répartition makes its own panels: a body of its own, not a mere outline.
+    return s?.type === "sketch" && !used.has(id) && !s.kitchenPlan && !s.dressingPlan && !(s.offsets ?? []).some(isPartition);
+  });
+  return [...ids, ...orphans];
 }
 
 /** The question to ask before deleting more than what is picked, or null when nothing needs asking. */

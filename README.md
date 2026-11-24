@@ -3720,7 +3720,10 @@ opération existante.
     points d'esquisse choisis dans la vue, retirés de leur esquisse avec leurs contraintes (une zone ne se supprime
     pas : ses traits, ou l'esquisse entière). Les questions s'affichent dans la page (Entrée confirme, Échap annule), et
     non dans une boîte du navigateur, que certains navigateurs intégrés bloquent. Supprimer un corps supprime
-    l'opération qui l'a créé (son esquisse reste) ; une **pièce** d'un caisson, de façades, de panneaux ou d'une scission
+    l'opération qui l'a créé, et la suppression est **totale** : l'esquisse dont il était fait part avec lui quand
+    rien d'autre ne s'en sert (pas une Répartition, qui fait ses propres panneaux, ni un plan de cuisine ou de
+    dressing : `withSources` de `app/delete-selection.ts`), avec son nom, sa matière, son dossier, et la fiche d'un
+    meuble de l'Assistant meuble (ses cotes, sa place) dont plus rien ne reste ; une **pièce** d'un caisson, de façades, de panneaux ou d'une scission
     (le dessus d'un caisson…) est retirée **seule** — l'opération et ses autres pièces restent (`removedBodies` du
     document ; Ctrl+Z la fait revenir) ; une porte ou une façade de tiroir supprimée seule (dans la vue, ou par « ⋯ »
     du Navigateur) emporte sa poignée et sa vitre (`document/door-edit.ts` `withHangingParts`) — et les opérations qui dépendent de ce qui est supprimé partent avec (elles sont

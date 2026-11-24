@@ -140,6 +140,12 @@ export function deleteFeature(doc: CadDocument, id: string): CadDocument {
   if (next.bodyInfo) next = { ...next, bodyInfo: Object.fromEntries(Object.entries(next.bodyInfo).filter(([key]) => !gone(key))) };
   // Nor its place in a folder of the browser (audit of 11/11/2026): the folder keeps only what still exists.
   if (next.folders) next = { ...next, folders: next.folders.map((f) => ({ ...f, bodies: f.bodies.filter((key) => !gone(key)) })) };
+  // A piece of furniture of the assistant keeps only what is left of it; nothing left, nor its record (sizes, place).
+  if (next.furniture) {
+    const furniture = next.furniture.map((r) => ({ ...r, features: r.features.filter((f) => !removed.has(f)) })).filter((r) => r.features.length);
+    const { furniture: _all, ...rest } = next;
+    next = furniture.length ? { ...rest, furniture } : rest;
+  }
   return next;
 }
 
