@@ -4,6 +4,7 @@ import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend
 import { runCabinets } from "../../frontend/src/document/kitchen-plan-add";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
+import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { findFeature, updateFeature } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan, type KitchenRunItem } from "../../frontend/src/document/types";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -83,6 +84,24 @@ describe("un meuble poussé le long de son mur dans la 3D", () => {
     // Pushed back where it was: the room kept goes.
     const back = syncKitchenPlans(synced, pushed(synced, now, dir, -281));
     expect(kitchenPlanIn(back, id)!.runs!.A!.map((i) => i.model)).toEqual(["base-bas-1-porte", "base-bas-1-porte", "wall-haut-1-porte"]);
+  });
+
+  it("poussé sur la place gardée libre qui le suit (collé contre un autre meuble) : elle rétrécit, il reste là, sa plinthe le suit", async () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} });
+    const items = [newItem([], "base-bas-2-portes", 1000)];
+    items.push(newItem(items, "space", 38));
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { A: items } });
+    if (typeof made === "string") throw new Error(made);
+    const cab = cabinetOf(made.doc, base.id, items[0]!.id);
+    const { cabinetAxes } = await import("../../frontend/src/document/kitchen-catalog");
+    const dir = cabinetAxes(cab.rotation ?? 0).along;
+    const synced = syncKitchenPlans(made.doc, pushed(made.doc, cab, dir, 1500));
+    expect(kitchenPlanIn(synced, base.id)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["space", 1500], ["base-bas-2-portes", 1000]]);
+    const now = cabinetOf(synced, base.id, items[0]!.id);
+    expect(now.origin[0]).toBeCloseTo(cab.origin[0] + dir[0] * 1500, 3);
+    // The plinth under it, not where it was.
+    const kick = kitchenFromPlan(kitchenPlanIn(synced, base.id)!).boxes.find((b) => b.kind === "kick")!;
+    expect(Math.round(Math.min(kick.from[0], kick.to[0]))).toBe(Math.round(Math.min(now.origin[0], now.origin[0] + dir[0] * 1000)));
   });
 
   it("poussé dans son voisin : le plan ne peut pas le dire, il ne change pas", () => {

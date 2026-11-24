@@ -2745,9 +2745,10 @@ opération existante.
     d'une colonne) de son meuble du linéaire, la porte ou le côté d'un meuble d'angle, bas ou haut. La cuisine est alors
     refaite avec lui dans la même annulation : les voisins se placent, fileurs et plan de travail suivent. Un clic sur
     un angle de la bande de face ouvre ses réglages.
-  - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer) y reste : le linéaire garde la place libre
+  - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer, Coller par face) y reste : le linéaire garde la place libre
     qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
-    (`document/kitchen-moves.ts`). Les meubles poussés ensemble gardent leurs écarts. Le linéaire les liste dans
+    (`document/kitchen-moves.ts`) ; l'espace gardé qui suit le dernier meuble poussé rétrécit d'autant (ou grandit),
+    de sorte que le plan de travail et la plinthe le suivent même collé contre un autre meuble. Les meubles poussés ensemble gardent leurs écarts. Le linéaire les liste dans
     « Place libre » → « Espaces gardés », chacun à sa largeur tapée ou supprimé (ses meubles se resserrent). Poussé dans
     son voisin ou au-delà du mur, le plan ne peut pas le dire et ne change pas. Des meubles poussés avant que le plan
     ne les suive : le linéaire le signale, et « Garder leurs places » les reprend.
