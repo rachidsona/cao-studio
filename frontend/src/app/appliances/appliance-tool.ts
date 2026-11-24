@@ -25,6 +25,16 @@ let lastModel: string | null = null;
 const lastSize: Record<string, number> = {};
 const lastFinish: Record<string, string> = {};
 
+
+/**
+ * Whether a body's box (world) lies on a cabinet's top at `top` (mm), as a worktop: thin (10 to 80 mm), its bottom
+ * near that top and its own top above it — a board of the cabinet itself (a caisson's « Dessus ») stops at its top.
+ */
+export function liesOn(top: number, [lo, hi]: readonly [Vec3, Vec3]): boolean {
+  const thick = hi[2] - lo[2];
+  return Math.abs(lo[2] - top) <= 60 && hi[2] > top + 1 && thick >= 10 && thick <= 80;
+}
+
 export class ApplianceTool extends PanelTool {
   private category = lastCategory;
   private model = lastModel;
@@ -114,7 +124,7 @@ export class ApplianceTool extends PanelTool {
     return under.sort((a, b) => cabinetBox(b)[1][2] - cabinetBox(a)[1][2])[0] ?? null;
   }
 
-  /** The worktop over a cabinet: a thin body (not of a cabinet, nor an appliance) lying on its top, over its middle. */
+  /** The worktop over a cabinet: a thin body (not of a cabinet, nor an appliance) lying on its top, over its middle (liesOn). */
   private worktopOver(c: CabinetFeature): { body: string; box: [Vec3, Vec3] } | undefined {
     const doc = this.ctx.doc();
     const [lo, hi] = cabinetBox(c);
@@ -125,8 +135,7 @@ export class ApplianceTool extends PanelTool {
       if (!f || f.type === "cabinet" || f.type === "fronts" || f.type === "appliance") continue;
       const b = this.ctx.viewport.bodyMesh(id)?.metrics.bbox;
       if (!b) continue;
-      const thick = b[1][2] - b[0][2];
-      if (mx < b[0][0] || mx > b[1][0] || my < b[0][1] || my > b[1][1] || Math.abs(b[0][2] - hi[2]) > 60 || thick > 80 || thick < 10) continue;
+      if (mx < b[0][0] || mx > b[1][0] || my < b[0][1] || my > b[1][1] || !liesOn(hi[2], b)) continue;
       if (!best || b[0][2] < best.box[0][2]) best = { body: id, box: [[...b[0]] as Vec3, [...b[1]] as Vec3] };
     }
     return best;

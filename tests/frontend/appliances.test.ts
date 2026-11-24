@@ -108,3 +108,15 @@ describe("électroménager dans le noyau", () => {
     }
   });
 });
+
+describe("le plan de travail sous une plaque posée", () => {
+  it("le dessus du caisson (son propre panneau) n'est pas le plan de travail ; le plan posé dessus l'est", async () => {
+    const { liesOn } = await import("../../frontend/src/app/appliances/appliance-tool");
+    // A cabinet 860 high: its « Dessus » 842 to 860, the kitchen's worktop 860 to 900.
+    expect(liesOn(860, [[0, 0, 842], [600, 560, 860]])).toBe(false);
+    expect(liesOn(860, [[0, 0, 860], [600, 600, 900]])).toBe(true);
+    // Too thick, or far above: not a worktop.
+    expect(liesOn(860, [[0, 0, 860], [600, 600, 960]])).toBe(false);
+    expect(liesOn(860, [[0, 0, 1000], [600, 600, 1040]])).toBe(false);
+  });
+});
