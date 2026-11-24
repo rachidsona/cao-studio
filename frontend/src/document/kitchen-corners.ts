@@ -1,7 +1,8 @@
 /**
  * Les angles d'un plan de cuisine, comme un cuisiniste les propose, choisis angle par angle :
  * - l'angle mort, fermé par deux fileurs : la place de l'angle est perdue ;
- * - le meuble d'angle à étagère, sur le linéaire qui passe : un panneau devant l'angle et une porte de 45 cm ;
+ * - le meuble d'angle à étagère, sur le linéaire qui passe : un panneau devant l'angle et une porte de 45 cm, à 10 cm
+ *   du mur de l'angle (pris sur sa partie fixe : 62 cm de fixe deviennent 52) ;
  * - le meuble d'angle LeMans : le même caisson, ses deux plateaux pivotent et sortent, tout l'angle sert ;
  * - le meuble d'angle en L, 90 × 90 : un caisson sur chaque mur, une porte pliante qui ouvre l'angle en grand.
  * La porte du meuble d'angle et les côtés du L se règlent, angle par angle. En haut, dans la rangée des meubles hauts :
@@ -11,7 +12,7 @@
  * du linéaire depuis sa gauche, que la cuisine 3D (kitchen-plan-build.ts) et la bande de face (app/kitchen-run-strip.ts)
  * dessinent. Pur.
  */
-import { FRONT, cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenSizes, lArm, wallArm, wallCorner, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "./kitchen-plan-shapes";
+import { CORNER_WALL_GAP, FRONT, cornerDoor, cornerKind, isDoorCorner, isLCorner, jointOf, kitchenSizes, lArm, wallArm, wallCorner, wallCornerDoor, wallCornerKind, type CornerKind, type Joint, type KitchenRun, type WallCornerKind } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
 
 export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }> = {
@@ -91,6 +92,8 @@ export interface CornerSide {
   trays: [number, number][];
   /** How far the trays reach from the wall, across the run (missing: the whole depth). */
   across?: [number, number];
+  /** The space left empty between a corner unit and the corner's wall (CORNER_WALL_GAP). */
+  gap?: [number, number];
 }
 
 /** The corner at this end of the run, or null at a free end; a corner unit `off` the wall, a wall filler between. */
@@ -126,14 +129,17 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
     }
   } else if (end === "pass" && isDoorCorner(kind)) {
     const o = off >= 1 ? off : 0;
+    // Off the corner's wall by CORNER_WALL_GAP, its fixed part that much shorter: the door stays where it was.
+    const g = CORNER_WALL_GAP;
     if (o) out.fronts.push(front("filler", "Fileur mural", 0, o));
-    out.cabinet = span(o, o + c + door);
+    out.cabinet = span(o + g, o + c + door);
+    out.gap = span(o, o + g);
     out.name = `${kind === "lemans" ? "Meuble d'angle LeMans" : kind === "magic" ? "Meuble d'angle Magic Corner" : "Meuble d'angle"} ${tag}`;
     out.shelves = kind === "unit" ? 1 : 0;
-    out.fronts.push(front("blind", "Panneau d'angle", o, o + c), front("door", "Porte d'angle", o + c + 1.5, o + c + door - 1.5));
+    out.fronts.push(front("blind", "Panneau d'angle", o + g, o + c), front("door", "Porte d'angle", o + c + 1.5, o + c + door - 1.5));
     if (kind === "lemans") out.trays.push(span(o + c - 300, o + c + door - 30), span(o + c - 300, o + c + door - 30));
     // Magic Corner: two baskets behind the door, two more in the blind part, at the back.
-    if (kind === "magic") out.trays.push(span(o + c + 20, o + c + door - 30), span(o + c + 20, o + c + door - 30), span(o + 40, o + c - 20), span(o + 40, o + c - 20));
+    if (kind === "magic") out.trays.push(span(o + c + 20, o + c + door - 30), span(o + c + 20, o + c + door - 30), span(o + g + 40, o + c - 20), span(o + g + 40, o + c - 20));
   } else {
     out.fronts.push(front("filler", "Fileur d'angle", end === "pass" ? D : D + FRONT, c));
   }

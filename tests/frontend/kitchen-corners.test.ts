@@ -4,7 +4,7 @@ import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { CORNER_KINDS, CORNER_SHELVES, cornerSide, cornerSketch, wallCornerSide, withCorner } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, madeDoor, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { CORNER_DOOR, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
+import { CORNER_DOOR, CORNER_WALL_GAP, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
 import { createReferencePlate, type CadDocument, type KitchenFloorPlan } from "../../frontend/src/document/types";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -126,7 +126,10 @@ describe("angles de cuisine", () => {
     expect(runGeometry(p, run(p, "A")).base).toEqual([s.corner + 600, 3600 - 1000]);
     expect(runGeometry(p, run(p, "C")).base[0]).toBe(1000);
     const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
-    expect(layout.units.find((u) => u.name === "Meuble d'angle A")!.width).toBe(s.corner + 600);
+    // 10 cm off the corner's wall, taken from its fixed part: the door stays where it was.
+    expect(layout.units.find((u) => u.name === "Meuble d'angle A")!.width).toBe(s.corner - CORNER_WALL_GAP + 600);
+    const blind = layout.boxes.find((b) => b.name === "Panneau d'angle A")!;
+    expect(Math.round(Math.max(blind.to[0] - blind.from[0], blind.to[1] - blind.from[1]))).toBe(s.corner - CORNER_WALL_GAP);
     const door = layout.boxes.find((b) => b.name === "Porte d'angle A")!;
     expect(Math.round(Math.max(door.to[0] - door.from[0], door.to[1] - door.from[1]))).toBe(597);
     const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => b.kind === "filler" || b.kind === "panel").map((b): Box => [b.from, b.to])];

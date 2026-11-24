@@ -27,7 +27,9 @@ describe("cotes tapées sur un linéaire vu seul", () => {
     const run = kitchenRuns(plan).find((r) => r.id === "A")!;
     const dims = runDims(plan, run, runGeometry(plan, run), kitchenFromPlan(plan).fills.A!);
     const low = dims.filter((d) => d.axis === "u" && d.at === -150);
-    expect(low.map((d) => d.edit?.kind ?? "rien")).toEqual(["corner", "item", "item", "rien"]);
+    // First the 10 cm left empty between the corner unit and the wall, then the corner unit (its door).
+    expect(low.map((d) => d.edit?.kind ?? "rien")).toEqual(["rien", "corner", "item", "item", "rien"]);
+    expect(low[0]!.b - low[0]!.a).toBe(100);
     expect(dims.find((d) => d.at === -330)!.edit).toEqual({ kind: "plan", key: "lengthA" });
     expect(dims.filter((d) => d.axis === "z").map((d) => d.edit?.kind ?? "rien")).toEqual(["plan", "rien", "plan"]);
   });

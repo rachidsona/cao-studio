@@ -41,6 +41,8 @@ export const WORKTOP = 38;
 const PLINTH = 150;
 const OVERHANG = 21;
 export const CORNER_DOOR = 450;
+/** A corner unit with a door stands this far off the corner's wall, taken from its fixed part (mm). */
+export const CORNER_WALL_GAP = 100;
 const WALL_GAP = 550;
 const WALL_HEIGHT = 700;
 /** Kept free on both sides of a door's frame or a window (mm). */

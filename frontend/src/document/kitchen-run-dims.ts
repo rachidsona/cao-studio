@@ -7,7 +7,7 @@
  * longueur du mur, la hauteur du plan de travail ou du plafond ; un fileur, une place libre, la rangée haute, non. Pur.
  */
 import { cornerSide, wallCornerSide } from "./kitchen-corners";
-import { jointOf, kitchenSizes, wallCorner, type Joint, type KitchenRun, type RunGeometry } from "./kitchen-plan-shapes";
+import { CORNER_WALL_GAP, jointOf, kitchenSizes, wallCorner, type Joint, type KitchenRun, type RunGeometry } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
 import type { RunFill } from "../features/kitchen-run-items";
 
@@ -59,9 +59,9 @@ export function runDims(p: KitchenFloorPlan, run: KitchenRun, g: RunGeometry, fi
     const pass = run[side] === "pass";
     const corner = cornerSide(p, run, side, fill.walls[i]);
     if (corner) {
-      // A blind corner unit: its door is its width less the corner; an L: its side, from the wall.
-      if (corner.cabinet) low.push({ span: corner.cabinet, edit: corner.kind === "l" || corner.kind === "carousel" ? { kind: "corner", joint, key: "arm", less: pass ? 0 : -s.cabinet } : { kind: "corner", joint, key: "door", less: s.corner } });
-      low.push(...plain(corner.fronts.filter((f) => f.kind === "filler").map((f): [number, number] => [f.from, f.to])));
+      // A blind corner unit: its door is its width less its fixed part (the corner less its gap to the wall); an L: its side, from the wall.
+      if (corner.cabinet) low.push({ span: corner.cabinet, edit: corner.kind === "l" || corner.kind === "carousel" ? { kind: "corner", joint, key: "arm", less: pass ? 0 : -s.cabinet } : { kind: "corner", joint, key: "door", less: s.corner - CORNER_WALL_GAP } });
+      low.push(...plain(corner.fronts.filter((f) => f.kind === "filler").map((f): [number, number] => [f.from, f.to])), ...plain(corner.gap ? [corner.gap] : []));
     }
     const up = g.wall ? wallCornerSide(p, run, side) : null;
     if (up) {
