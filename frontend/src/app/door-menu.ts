@@ -85,7 +85,7 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
       : f?.type === "niche" && door.kind === "niche"
         ? () => editor.sketches.startEquip("door", f.sketch, f)
         : null;
-  const selection = modifyMenuItem(editor, bodyId);
+  const selection = modifyMenuItem(editor, viewport, bodyId);
   const items: TreeMenuItem[] = [
     { heading: name },
     ...(selection ? [{ label: selection[0], run: selection[1] }] : []),

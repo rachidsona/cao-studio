@@ -109,7 +109,7 @@ export function openDrawerMenu(event: MouseEvent, viewport: Viewport, editor: Ed
   };
   const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
   const name = f.type === "fronts" ? (findFeature(doc, f.cabinet)?.name ?? f.name) : f.name;
-  const selection = modifyMenuItem(editor, bodyId);
+  const selection = modifyMenuItem(editor, viewport, bodyId);
   const items: TreeMenuItem[] = [
     { heading: `Tiroirs — ${name}` },
     ...(selection ? [{ label: selection[0], run: selection[1] }] : []),

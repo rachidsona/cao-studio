@@ -120,10 +120,9 @@ export class RunEditor {
     return this.host.run.id;
   }
 
-  /** The item chosen on the strip. */
-  get chosenItem(): string | null {
-    return this.chosen;
-  }
+  /** The item chosen on the strip; `choose`: one chosen from outside (« Modifier la sélection »), « Meuble choisi » open. */
+  get chosenItem(): string | null { return this.chosen; }
+  choose(id: string): void { (this.chosen = id), (this.picked = []), (this.other = null), (this.folds.open = "chosen"), this.host.redraw(); }
 
   get openFold(): string | null {
     return this.folds.open;

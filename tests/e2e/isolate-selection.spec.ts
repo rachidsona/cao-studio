@@ -76,11 +76,12 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="auto"]')?.click());
   await bar.getByRole("button", { name: "Tout montrer" }).click();
   await expect(bar).toHaveCount(0);
-  // « Modifier la sélection » reopens the tool of the unit chosen.
+  // « Modifier la sélection » on a unit of the Plan de cuisine: the plan on its run, the unit chosen, « Meuble choisi » open.
   await page.mouse.click(430, 660);
   await page.mouse.click(430, 660, { button: "right" });
   await page.getByRole("menuitem", { name: "Modifier la sélection" }).click();
-  await expect(page.getByRole("dialog", { name: "Caisson" })).toBeVisible();
+  await expect(plan.locator('[data-fold="chosen"]')).toContainText("Bas 2 portes", { timeout: 30_000 });
+  await expect(plan.locator('[data-fold="chosen"]')).toHaveAttribute("aria-expanded", "true");
   expect(errors).toEqual([]);
 });
 

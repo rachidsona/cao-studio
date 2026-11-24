@@ -81,7 +81,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     // The elements selected: alone in the view, to work on them (app/isolate-selection.ts).
     const alone = isolateMenuItem(editor);
     // First in every menu: the tool that made the element chosen (or clicked), reopened.
-    const modify = modifyMenuItem(editor, face?.bodyId);
+    const modify = modifyMenuItem(editor, viewport, face?.bodyId);
     const first: [string, () => void][] = modify ? [modify] : [];
     if (cabinet && face) {
       // Straight to a tool: the cabinet isolated and furnished, the tool opened on the niche clicked.

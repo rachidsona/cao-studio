@@ -61,7 +61,7 @@ export interface OpenRun {
   chosen: string | null;
   /** Changed and not yet applied: a unit added goes in with the rest, at OK. */
   dirty: boolean;
-  add(entry: CatalogEntry): void;
+  add(entry: CatalogEntry): void; choose(item: string): void;
 }
 let current: KitchenPlanTool | null = null;
 /** « Cotes tapées ici » chosen: a new plan is no longer put on the room by itself (kept for the visit). */
@@ -138,7 +138,7 @@ export class KitchenPlanTool {
   openRunInfo(): OpenRun | null {
     const editor = this.runEditor;
     if (!editor || !this.runPlan) return null;
-    return { plan: this.runPlan, run: editor.runId, chosen: editor.chosenItem, dirty: editor.dirty, add: (entry) => editor.addEntry(entry) };
+    return { plan: this.runPlan, run: editor.runId, chosen: editor.chosenItem, dirty: editor.dirty, add: (entry) => editor.addEntry(entry), choose: (item) => editor.choose(item) };
   }
 
   close(): void {

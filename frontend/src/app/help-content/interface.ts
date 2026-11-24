@@ -261,7 +261,7 @@ export const SCREEN: HelpFamily[] = [
           "« Tout montrer », en bas de la vue (ou I sans rien de sélectionné), rend le reste.",
           "« PDF », à côté, enregistre la vue cadrée telle qu'elle est, avec ses cotes, sur une page A4 paysage, fond blanc et sans grille, sous un cartouche (le projet, ce qui est montré, la date, l'unité des cotes) : un plan à imprimer ou à envoyer.",
         ],
-        tip: "Clic droit sur un élément choisi : « Modifier la sélection », en tête du menu, rouvre l'outil qui l'a fait (comme un double-clic dans l'arbre). Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
+        tip: "Clic droit sur un élément choisi : « Modifier la sélection », en tête du menu, ouvre son outil principal : pour un meuble du Plan de cuisine, le plan sur son linéaire, le meuble choisi ; sinon l'outil qui l'a fait. Un élément est le meuble entier : cliquer une porte ou un côté suffit pour isoler son caisson avec ses façades, ou sa Répartition avec ses niches. Seule la vue change, pas le projet.",
       },
     ],
   },
