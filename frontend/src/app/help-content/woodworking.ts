@@ -220,10 +220,10 @@ export const WOODWORKING: HelpFamily[] = [
       {
         keys: ["data-workshop:furniture"],
         name: "Assistant meuble",
-        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, bureau d'angle, banc d'entrée, tête de lit, lit, placard sous escalier ou îlot de dressing.",
+        what: "Pose un meuble entier à vos cotes : meuble TV, bibliothèque, bureau, bureau d'angle, banc d'entrée, tête de lit, lit, placard sous escalier, îlot de dressing ou habillage de réfrigérateur.",
         steps: [
           "Cliquez « Assistant meuble » et choisissez le « Meuble » : il part de ses cotes usuelles, et une ligne dit comment il est fait.",
-          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, retour d'un bureau d'angle, cases d'un banc, chevets d'une tête de lit, tiroirs d'un lit, sens de la pente d'un sous-escalier (avec sa « Hauteur basse » au pied des marches), côtés d'un îlot de dressing (tiroirs des deux côtés, ou tiroirs d'un côté et étagères de l'autre).",
+          "Tapez sa « Largeur », sa « Hauteur » et sa « Profondeur » (la ligne grise donne les cotes permises), puis son choix : extrémités à portes ou à tiroirs d'un meuble TV, tiroirs en bas d'une bibliothèque, côté du caisson d'un bureau, retour d'un bureau d'angle, cases d'un banc, chevets d'une tête de lit, tiroirs d'un lit, sens de la pente d'un sous-escalier (avec sa « Hauteur basse » au pied des marches), caisson du haut d'un habillage de réfrigérateur, à portes ou ouvert (ses cotes sont celles du réfrigérateur, avec la « Hauteur totale » de ses côtés), côtés d'un îlot de dressing (tiroirs des deux côtés, ou tiroirs d'un côté et étagères de l'autre).",
           "Choisissez l'« Épaisseur des panneaux » et la « Matière ».",
           "Avec une Pièce, « Où le poser » le met contre un de ses murs, à la distance voulue de son début, ou un îlot « Au milieu de la pièce » ; sinon il va à droite de ce qui est déjà là, son dos contre le plan Y = 0. Pour un îlot, le panneau dit avant OK s'il reste moins de 60 cm pour passer d'un côté (jusqu'à un mur ou un meuble).",
           "Cliquez « OK », puis posez-en un autre, ou cliquez « Terminer ».",

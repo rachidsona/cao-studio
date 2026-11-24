@@ -56,6 +56,29 @@ describe("les modèles de meubles", () => {
     }
   });
 
+  it("l'habillage d'un réfrigérateur de 187 cm : deux côtés toute hauteur, le caisson au-dessus entre eux, 1 cm d'air autour et 3 au-dessus", () => {
+    const a = ask("fridge", { width: 910, height: 1870, depth: 650 });
+    const layout = furnitureLayout(a);
+    if (typeof layout === "string") throw new Error(layout);
+    const [left, right] = [layout.boards.find((b) => b.name === "Côté gauche")!, layout.boards.find((b) => b.name === "Côté droit")!];
+    // Usual height: the fridge, 3 cm of air, a 40 cm caisson.
+    expect(furnitureSize(a)).toEqual([910 + 20 + 36, 650, 1870 + 30 + 400]);
+    expect([left.to[2], right.to[2], left.to[1]]).toEqual([2300, 2300, 650]);
+    expect(right.from[0] - left.to[0]).toBe(930);
+    const cap = layout.pieces[0]!;
+    expect([cap.at[0], cap.at[2], cap.width, cap.height]).toEqual([18, 1900, 930, 400]);
+    // Its total height set: the caisson follows; too low to hold one, refused.
+    const tall = furnitureLayout({ ...a, top: 2500 });
+    if (typeof tall === "string") throw new Error(tall);
+    expect(tall.pieces[0]!.height).toBe(600);
+    expect(furnitureProblem({ ...a, top: 2000 })).toMatch(/hauteur totale/);
+    // Kept with its height, made again at a fridge's other sizes.
+    const made = withFurniture(empty(), { ...a, top: 2400 }, [0, 0, 0], "melamine-oak");
+    if (typeof made === "string") throw new Error(made);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(made.doc)))).not.toThrow();
+    expect(made.doc.furniture![0]!.ask).toMatchObject({ kind: "fridge", top: 2400 });
+  });
+
   it("le nombre de cases et d'étagères suit les cotes", () => {
     const cases = (a: FurnitureAsk) => {
       const l = furnitureLayout(a);

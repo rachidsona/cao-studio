@@ -3496,7 +3496,11 @@ opération existante.
     vers l'arrière, en retrait de 45 mm sous un dessus qui déborde, à tiroirs des deux côtés ou à tiroirs d'un côté et
     étagères de l'autre ; posé « Au milieu de la pièce » (le centre entre les murs d'une Pièce), le panneau mesure le
     passage de chacun de ses côtés jusqu'au mur ou au meuble en face et dit ceux de moins de 60 cm
-    (`document/passage.ts`, pur), avant OK et après.
+    (`document/passage.ts`, pur), avant OK et après. **Habillage réfrigérateur** : on tape les cotes du réfrigérateur
+    (largeur, hauteur, 187 cm par exemple, profondeur) et la « Hauteur totale » des côtés (le réfrigérateur, 3 cm d'air
+    et un caisson de 40 cm, d'habitude) : deux côtés toute hauteur, 1 cm d'air de chaque côté du réfrigérateur, et
+    entre eux, au-dessus de lui, un caisson à portes ou ouvert qui monte jusqu'à leur haut (20 cm au moins ;
+    `FRIDGE`, `fridgeTop`). Repris par l'assistant, il se refait aux cotes d'un autre réfrigérateur.
   - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
     qui est déjà là, son dos sur le plan Y = 0, ou **contre un mur d'une Pièce** (« Où le poser », « Depuis le début
     du mur » : il tourne avec le mur, son dos contre sa face ; refusé s'il en dépasse), en une seule annulation, et

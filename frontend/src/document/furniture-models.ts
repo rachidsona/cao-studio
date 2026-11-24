@@ -1,6 +1,6 @@
 /**
  * Les meubles de l'« Assistant meuble », en calcul pur : meuble TV, bibliothèque, bureau, bureau d'angle, banc
- * d'entrée, tête de lit, lit, placard sous escalier et îlot de dressing. Chacun, à la largeur, la hauteur et la profondeur demandées, est fait de caissons — des Répartitions, avec
+ * d'entrée, tête de lit, lit, placard sous escalier, îlot de dressing et habillage de réfrigérateur. Chacun, à la largeur, la hauteur et la profondeur demandées, est fait de caissons — des Répartitions, avec
  * leurs étagères, leurs tiroirs et leurs portes (document/caisson-spec.ts), qui se retouchent ensuite avec les outils
  * du dressing — et de planches libres (le plateau d'un bureau, le panneau d'une tête de lit). Le nombre de cases et
  * d'étagères suit les cotes. Tout est dit dans le repère du meuble : x en largeur depuis sa gauche, y en profondeur
@@ -12,7 +12,7 @@ import type { NicheRecipe } from "./niche-recipe";
 import type { DividerKind, PartitionParams, ShelfParams } from "./sketch";
 import type { Vec3 } from "./types";
 
-export type FurnitureKind = "tv" | "bookcase" | "desk" | "corner" | "bench" | "headboard" | "bed" | "stairs" | "island";
+export type FurnitureKind = "tv" | "bookcase" | "desk" | "corner" | "bench" | "headboard" | "bed" | "stairs" | "island" | "fridge";
 
 export interface FurnitureAsk {
   kind: FurnitureKind;
@@ -25,6 +25,8 @@ export interface FurnitureAsk {
   option: string;
   /** Under a staircase: the height at its low end (mm); `height` is at its high end. */
   low?: number;
+  /** A fridge's surround: the height of its sides (mm); `width`, `height`, `depth` are the fridge's. */
+  top?: number;
 }
 
 export interface FurnitureModel {
@@ -48,6 +50,7 @@ export const FURNITURE: FurnitureModel[] = [
   { kind: "island", label: "Îlot de dressing", size: { width: 1200, height: 900, depth: 900 }, limits: { width: [600, 2400], height: [700, 1100], depth: [600, 1200] }, choice: "Des deux côtés", options: [["drawers", "Tiroirs des deux côtés"], ["drawers-shelves", "Tiroirs d'un côté, étagères de l'autre"]], what: "Un meuble au milieu du dressing, ouvert des deux côtés : deux caissons dos à dos sous un dessus qui déborde de 2 cm ; il faut 60 cm de passage tout autour." },
   { kind: "bench", label: "Banc d'entrée", size: { width: 1000, height: 450, depth: 380 }, limits: { width: [600, 2000], height: [380, 550], depth: [300, 500] }, choice: "Cases", options: [["open", "Ouvertes (chaussures)"], ["drawers", "Tiroirs"], ["doors", "Portes"]], what: "Un banc où s'asseoir : une case tous les 40 cm environ, avec une étagère pour les chaussures." },
   { kind: "headboard", label: "Tête de lit", size: { width: 2400, height: 1100, depth: 350 }, limits: { width: [900, 3200], height: [800, 1500], depth: [250, 500] }, choice: "Chevets", options: [["with", "Deux chevets"], ["without", "Sans chevet"]], what: "Un panneau derrière le lit, coiffé d'une tablette, et deux chevets à un tiroir à ses extrémités (la profondeur est celle des chevets)." },
+  { kind: "fridge", label: "Habillage réfrigérateur", size: { width: 910, height: 1870, depth: 720 }, limits: { width: [500, 1200], height: [800, 2200], depth: [500, 850] }, choice: "Caisson du haut", options: [["doors", "Portes"], ["open", "Ouvert"]], what: "Deux côtés toute hauteur et un caisson entre eux, au-dessus du réfrigérateur. La largeur, la hauteur et la profondeur sont celles du réfrigérateur (1 cm d'air de chaque côté, 3 cm au-dessus) ; la hauteur totale, celle des côtés, se règle à part." },
   { kind: "bed", label: "Lit", size: { width: 1640, height: 400, depth: 2040 }, limits: { width: [900, 2000], height: [300, 550], depth: [1900, 2250] }, choice: "Dessous", options: [["plain", "Simple"], ["drawers", "Tiroirs au pied"]], what: "Un cadre de lit (deux côtés, une traverse de tête et une de pied) et un fond pour le sommier, 6 cm sous le haut du cadre ; ou des tiroirs au pied, sous le fond (la largeur et la longueur sont celles du cadre)." },
 ];
 
@@ -92,6 +95,10 @@ const PEDESTAL_DEPTH = 470;
 const SINK = 60;
 const BED_DRAWERS = 600;
 const SHELF = 150;
+/** Round a fridge: air on each side and over it, its top caisson's usual height (mm). */
+export const FRIDGE = { side: 10, air: 30, caisson: 400, least: 200 };
+/** A fridge surround's height (its sides'): as set, else the fridge, its air and a caisson. */
+export const fridgeTop = (ask: FurnitureAsk): number => ask.top ?? ask.height + FRIDGE.air + FRIDGE.caisson;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -107,6 +114,7 @@ export function furnitureProblem(ask: FurnitureAsk): string | null {
   if (!(ask.thickness >= 12 && ask.thickness <= 40)) return "L'épaisseur des panneaux va de 12 à 40 mm.";
   if (!m.options.some(([id]) => id === ask.option)) return `${m.label} : choix inconnu.`;
   if (ask.kind === "stairs" && !((ask.low ?? 0) >= 0 && (ask.low ?? 0) <= ask.height - 300)) return `Sous-escalier : la hauteur basse va de 0 à ${cm(ask.height - 300)} (30 cm de moins que la haute).`;
+  if (ask.kind === "fridge" && !(fridgeTop(ask) >= ask.height + FRIDGE.air + FRIDGE.least && fridgeTop(ask) <= 3000)) return `Habillage réfrigérateur : la hauteur totale va de ${cm(ask.height + FRIDGE.air + FRIDGE.least)} (${cm(FRIDGE.least)} de caisson au-dessus du réfrigérateur) à ${cm(3000)}.`;
   if (ask.kind === "headboard" && ask.option === "with" && ask.width < 2 * BEDSIDE.width + 800) return `Tête de lit : avec deux chevets, la largeur est d'au moins ${cm(2 * BEDSIDE.width + 800)}.`;
   return null;
 }
@@ -190,6 +198,20 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
         ],
       };
     }
+    case "fridge": {
+      // The sides to the full height, the fridge between them with air round it, the caisson over it up to their top.
+      const inner = W + 2 * FRIDGE.side;
+      const top = fridgeTop(ask);
+      const z = H + FRIDGE.air;
+      const n = inner > 700 ? 2 : 1;
+      return {
+        pieces: [{ name: "Caisson du haut", at: [t, 0, z], width: inner, height: top - z, spec: spec(carcass(inner, top - z, t, n, 0), Array.from({ length: n }, () => structuredClone(EMPTY)), option === "doors" ? { doors } : {}) }],
+        boards: [
+          { name: "Côté gauche", from: [0, 0, 0], to: [t, D, top] },
+          { name: "Côté droit", from: [t + inner, 0, 0], to: [2 * t + inner, D, top] },
+        ],
+      };
+    }
     case "bed": {
       const base = H - SINK;
       const boards: FurnitureBoard[] = [
@@ -266,5 +288,6 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
 
 /** How deep the furniture stands from its back to its front, and how wide and high (mm). */
 export function furnitureSize(ask: FurnitureAsk): Vec3 {
+  if (ask.kind === "fridge") return [ask.width + 2 * FRIDGE.side + 2 * ask.thickness, ask.depth, fridgeTop(ask)];
   return [ask.width, ask.kind === "headboard" && ask.option === "with" ? ask.thickness + ask.depth : ask.kind === "headboard" ? SHELF : ask.depth, ask.height];
 }

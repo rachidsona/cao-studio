@@ -8,7 +8,7 @@
  * recomptées), à sa place.
  */
 import { furnitureOf, withFurniture, withFurnitureRemade } from "../document/furniture-build";
-import { FURNITURE, furnitureModel, furnitureProblem, furnitureSize, type FurnitureAsk, type FurnitureKind } from "../document/furniture-models";
+import { FURNITURE, fridgeTop, furnitureModel, furnitureProblem, furnitureSize, type FurnitureAsk, type FurnitureKind } from "../document/furniture-models";
 import { bodyInfo, MATERIALS } from "../document/materials";
 import { bodyOrigin } from "../document/operations";
 import { passageProblem } from "../document/passage";
@@ -122,7 +122,7 @@ class FurnitureTool {
     if (lastWhere === "right") return null;
     const wall = this.walls().find((w) => w.id === lastWhere);
     if (!wall) return null;
-    if (lastFrom < 0 || lastFrom + last.width > wall.length + 0.5) return `Le meuble dépasse du mur : ${formatLength(wall.length, this.editor.unit)} de long, il en faut ${formatLength(lastFrom + last.width, this.editor.unit)} depuis son début.`;
+    if (lastFrom < 0 || lastFrom + furnitureSize(last)[0] > wall.length + 0.5) return `Le meuble dépasse du mur : ${formatLength(wall.length, this.editor.unit)} de long, il en faut ${formatLength(lastFrom + last.width, this.editor.unit)} depuis son début.`;
     return { corner: [wall.start[0] + wall.along[0] * lastFrom, wall.start[1] + wall.along[1] * lastFrom, 0], along: wall.along };
   }
 
@@ -181,6 +181,7 @@ class FurnitureTool {
     const places: [string, string][] = [["right", "À droite de ce qui est là"], ...(last.kind === "island" ? middles.map((m): [string, string] => [m.id, m.name]) : []), ...walls.map((w): [string, string] => [w.id, w.name])];
     if (!places.some(([id]) => id === lastWhere)) lastWhere = last.kind === "island" && middles.length ? middles[0]!.id : "right";
     const passage = problem ? null : this.passage(wall && typeof wall !== "string" ? wall : null);
+    const fridge = last.kind === "fridge";
     const range = (key: "width" | "height" | "depth") => model.limits[key].map((v) => formatLength(v, unit)).join(" à ");
     const rows: (HTMLElement | null)[] = [
       panelHeader(this.editing ? `Modifier : ${this.editing.name}` : "Assistant meuble", () => this.close()),
@@ -193,9 +194,10 @@ class FurnitureTool {
         if (m.kind === "island") lastWhere = this.middles()[0]?.id ?? lastWhere;
       }),
       el("p", { class: "text-gray-600 dark:text-gray-300", "data-furniture-what": "" }, model.what),
-      number("Largeur", last.width, (v) => (last = { ...last, width: v })),
-      number(last.kind === "stairs" ? "Hauteur haute (sous le haut de l'escalier)" : "Hauteur", last.height, (v) => (last = { ...last, height: v })),
-      number(last.kind === "headboard" ? "Profondeur des chevets" : "Profondeur", last.depth, (v) => (last = { ...last, depth: v })),
+      number(fridge ? "Largeur du réfrigérateur" : "Largeur", last.width, (v) => (last = { ...last, width: v })),
+      number(last.kind === "stairs" ? "Hauteur haute (sous le haut de l'escalier)" : fridge ? "Hauteur du réfrigérateur" : "Hauteur", last.height, (v) => (last = { ...last, height: v })),
+      number(last.kind === "headboard" ? "Profondeur des chevets" : fridge ? "Profondeur du réfrigérateur" : "Profondeur", last.depth, (v) => (last = { ...last, depth: v })),
+      fridge ? number("Hauteur totale (des côtés)", fridgeTop(last), (v) => (last = { ...last, top: v })) : null,
       last.kind === "stairs" ? number("Hauteur basse (au pied de l'escalier)", last.low ?? 0, (v) => (last = { ...last, low: v }), true) : null,
       el("p", { class: "text-2xs text-gray-500" }, `Largeur de ${range("width")}, hauteur de ${range("height")}, profondeur de ${range("depth")}.`),
       select(model.choice, last.option, model.options, (v) => (last = { ...last, option: v })),

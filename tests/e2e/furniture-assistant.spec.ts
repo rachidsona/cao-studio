@@ -138,6 +138,38 @@ test("un placard sous escalier : caissons sous la pente et habillage en biais, s
   expect(errors).toEqual([]);
 });
 
+test("un habillage de réfrigérateur de 187 cm : les cotes du réfrigérateur et la hauteur totale, sans erreur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-habillage-frigo");
+  await click(page, '[data-workshop="furniture"]');
+  const tool = page.getByRole("dialog", { name: "Assistant meuble" });
+  await tool.getByRole("combobox", { name: "Meuble" }).selectOption("fridge");
+  await expect(tool.locator("[data-furniture-what]")).toContainText("au-dessus du réfrigérateur");
+  const set = async (name: RegExp, value: string) => {
+    const box = tool.getByRole("textbox", { name });
+    await box.fill(value);
+    await box.press("Enter");
+  };
+  await set(/^Hauteur du réfrigérateur/, "187");
+  await set(/^Largeur du réfrigérateur/, "91");
+  await set(/^Hauteur totale/, "240");
+  await tool.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("« Habillage réfrigérateur 1 » posé")).toBeVisible();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  await tool.getByRole("button", { name: "Terminer", exact: true }).click();
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const asked = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { furniture: { ask: object }[] } }).document.furniture[0]!.ask, api);
+  expect(asked).toMatchObject({ kind: "fridge", width: 910, height: 1870, top: 2400 });
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  await shot(page, "habillage-frigo");
+  expect(errors).toEqual([]);
+});
+
 test("un îlot de dressing au milieu de la Pièce : le passage trop étroit est dit, puis posé à sa place", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
