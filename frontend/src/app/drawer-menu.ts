@@ -11,6 +11,7 @@ import type { CadDocument, FrontsFeature } from "../document/types";
 import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../measurements/units";
 import { el } from "../ui/dom";
 import { openTreeMenu, type TreeMenuItem } from "../ui/tree-menu";
+import { modifyMenuItem } from "./isolate-selection";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { wholeOf } from "./move-whole";
@@ -108,8 +109,10 @@ export function openDrawerMenu(event: MouseEvent, viewport: Viewport, editor: Ed
   };
   const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
   const name = f.type === "fronts" ? (findFeature(doc, f.cabinet)?.name ?? f.name) : f.name;
+  const selection = modifyMenuItem(editor, bodyId);
   const items: TreeMenuItem[] = [
     { heading: `Tiroirs — ${name}` },
+    ...(selection ? [{ label: selection[0], run: selection[1] }] : []),
     {
       label: "Modifier les tiroirs…",
       run: () => {

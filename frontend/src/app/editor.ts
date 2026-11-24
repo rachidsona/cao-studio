@@ -338,7 +338,7 @@ export class Editor {
   }
 
   /** Reopens the tool of a feature: the sketch editor, the extrusion arrow, or the panel tool. */
-  private editFeature(id: string): void {
+  editFeature(id: string): void {
     const feature = findFeature(this.doc, id);
     if (feature?.type === "sketch") this.sketches.open(id);
     else if (feature?.type === "extrude") this.extrudeCommand(id);

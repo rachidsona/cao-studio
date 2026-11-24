@@ -60,6 +60,8 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.waitForTimeout(1200);
   await page.mouse.click(430, 660);
   await page.mouse.click(430, 660, { button: "right" });
+  // First in the menu: « Modifier la sélection », the tool that made the unit.
+  await expect(page.getByRole("menuitem").first()).toHaveText("Modifier la sélection");
   await page.getByRole("menuitem", { name: "Isoler la sélection" }).click();
   await expect(bar).toContainText(/« Bas 2 portes 1000 \(A1\) » isolé/);
   const unit = Number(await bar.getAttribute("data-shown"));
@@ -74,6 +76,11 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="auto"]')?.click());
   await bar.getByRole("button", { name: "Tout montrer" }).click();
   await expect(bar).toHaveCount(0);
+  // « Modifier la sélection » reopens the tool of the unit chosen.
+  await page.mouse.click(430, 660);
+  await page.mouse.click(430, 660, { button: "right" });
+  await page.getByRole("menuitem", { name: "Modifier la sélection" }).click();
+  await expect(page.getByRole("dialog", { name: "Caisson" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

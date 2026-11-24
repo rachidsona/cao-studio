@@ -17,7 +17,7 @@ import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { wholeOf } from "./move-whole";
 import { furnishCabinet, openInCabinet, STRAIGHT_TOOLS } from "./cabinet-furnish";
-import { isolateMenuItem } from "./isolate-selection";
+import { isolateMenuItem, modifyMenuItem } from "./isolate-selection";
 import { openDoorsPanel } from "./door-panel";
 
 const SIDE = { left: "à gauche", right: "à droite" } as const;
@@ -85,8 +85,10 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
       : f?.type === "niche" && door.kind === "niche"
         ? () => editor.sketches.startEquip("door", f.sketch, f)
         : null;
+  const selection = modifyMenuItem(editor, bodyId);
   const items: TreeMenuItem[] = [
     { heading: name },
+    ...(selection ? [{ label: selection[0], run: selection[1] }] : []),
     ...(modify ? [{ label: "Modifier les portes…", run: modify }] : []),
     { label: "Ouvrir / fermer la porte", run: () => document.dispatchEvent(new CustomEvent("cad:toggle-door", { detail: bodyId })) },
     {

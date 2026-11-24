@@ -5,7 +5,7 @@
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
  */
-import { isolateMenuItem } from "../isolate-selection";
+import { isolateMenuItem, modifyMenuItem } from "../isolate-selection";
 import { keyOf } from "../../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
 import { openDoorMenu } from "../door-menu";
@@ -80,10 +80,14 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     const cabinet = !niche && face ? cabinetOfBody(editor.doc, face.bodyId) : null;
     // The elements selected: alone in the view, to work on them (app/isolate-selection.ts).
     const alone = isolateMenuItem(editor);
+    // First in every menu: the tool that made the element chosen (or clicked), reopened.
+    const modify = modifyMenuItem(editor, face?.bodyId);
+    const first: [string, () => void][] = modify ? [modify] : [];
     if (cabinet && face) {
       // Straight to a tool: the cabinet isolated and furnished, the tool opened on the niche clicked.
       const at = face.point.toArray() as [number, number, number];
       menu = popup(event, "Menu du caisson", cabinet.name, [
+        ...first,
         ["Isoler et aménager ce caisson", () => void furnishCabinet(editor, cabinet.id)],
         ...STRAIGHT_TOOLS.map(([tool, label]): [string, () => void] => [label, () => void openInCabinet(editor, cabinet.id, at, tool)]),
         ...(alone ? [alone] : []),
@@ -99,6 +103,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
         const whole = furnishChoices(editor, face.bodyId)?.all;
         const wholeName = whole ? bodyLabel(editor.doc, whole[0]!).replace(/\s+—\s+côté \d+$/, "") : "";
         menu = popup(event, "Menu du corps", "Son ouverture reçoit étagères, cloisons, tiroirs et portes ; ses parois en sont les côtés.", [
+          ...first,
           [whole ? "Aménager ce cadre" : "Aménager ce corps", () => void furnishBody(editor, viewport, face.bodyId)],
           ...(whole ? [[`Aménager tout « ${wholeName} »`, () => void furnishBody(editor, viewport, face.bodyId, false, "all")] as [string, () => void]] : []),
           ["Étagères…", go("shelves")],
@@ -109,11 +114,12 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
         ]);
         return;
       }
-      if (alone) menu = popup(event, "Menu de la sélection", null, [alone]);
+      if (alone || modify) menu = popup(event, "Menu de la sélection", null, [...first, ...(alone ? [alone] : [])]);
       return;
     }
     const sketchName = findFeature(editor.doc, niche.sketch)?.name ?? "Caisson";
     const items: [string, () => void][] = [
+      ...first,
       ...NICHE_ACTIONS.map(({ action, label }): [string, () => void] => [label, () => runNiche(editor, action, niche)]),
       ["Façade de cette case", () => openNicheFront(viewport, editor, niche)],
       ["Copier cette niche", () => openNicheCopy(viewport, editor, "all", niche)],

@@ -5,10 +5,11 @@
  * niches, sinon le corps lui-même. Ce qu'on crée pendant ce temps se voit aussi. Bouton de la colonne Vue, touche I,
  * clic droit ; « Tout montrer » (ou I sans sélection) rend le reste. Quand quelque chose est déjà isolé (un mur vu
  * seul, un meuble), « Isoler » descend d'un cran : les pièces choisies seules (le cadre d'une façade de tiroir, une
- * étagère). La vue seulement : rien ne change dans le projet.
+ * étagère). La vue seulement : rien ne change dans le projet. Dans chaque menu du clic droit, « Modifier la sélection » rouvre l'outil
+ * qui a fait l'élément choisi (ou celui cliqué), comme un double-clic dans l'arbre.
  */
 import { bodyLabel, bodyOrigin, findFeature } from "../document/operations";
-import type { CadDocument } from "../document/types";
+import { featureOfBody, type CadDocument } from "../document/types";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { elementOf, isolateElements, isolating, showAll } from "./zone-view";
@@ -55,6 +56,19 @@ export function isolateSelection(editor: Editor): void {
   }
   if (isolating()) return showAll();
   editor.notify("Sélectionnez d'abord les éléments à isoler : Ctrl ou Maj + clic pour en ajouter, ou une fenêtre de sélection.", "info");
+}
+
+/**
+ * « Modifier la sélection »: the tool that made the element chosen — the first selected, else the one clicked — reopened,
+ * as a double click in the tree; null when it was made by nothing one edits.
+ */
+export function modifyMenuItem(editor: Editor, clicked?: string): [string, () => void] | null {
+  const { bodies, faces, edges, vertices } = editor.picked.selection;
+  const picked = [...bodies, ...faces.map((p) => p.bodyId), ...edges.map((p) => p.bodyId), ...vertices.map((p) => p.bodyId)];
+  const bodyId = picked[0] ?? clicked;
+  const feature = bodyId ? findFeature(editor.doc, featureOfBody(bodyId)) : undefined;
+  if (!bodyId || !feature) return null;
+  return [picked.length ? "Modifier la sélection" : `Modifier « ${bodyLabel(editor.doc, bodyId)} »`, () => editor.editFeature(feature.id)];
 }
 
 /** The line of a menu that isolates the selection (or shows everything again), or null: nothing to do. */

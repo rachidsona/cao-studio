@@ -134,6 +134,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   annulation) ; le nombre d'éléments cachés s'affiche sur le bouton. Sans sélection, le bouton ouvre la liste des
   éléments cachés, **rangés par meuble** (un caisson avec ses façades, une Répartition avec ses panneaux, sinon le
   corps) : un clic en montre un, « Tout montrer » les rend tous (`app/hide-selection.ts`).
+- **Modifier la sélection** (en tête de chaque menu du clic droit dans la vue : meuble, corps, niche, porte, tiroirs) :
+  rouvre l'outil qui a fait l'élément choisi — sinon celui cliqué —, comme un double-clic dans l'arbre
+  (`app/isolate-selection.ts` `modifyMenuItem`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble
