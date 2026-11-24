@@ -3500,7 +3500,9 @@ opération existante.
     (largeur, hauteur, 187 cm par exemple, profondeur) et la « Hauteur totale » des côtés (le réfrigérateur, 3 cm d'air
     et un caisson de 40 cm, d'habitude) : deux côtés toute hauteur, 1 cm d'air de chaque côté du réfrigérateur, et
     entre eux, au-dessus de lui, un caisson à portes ou ouvert qui monte jusqu'à leur haut (20 cm au moins ;
-    `FRIDGE`, `fridgeTop`). Repris par l'assistant, il se refait aux cotes d'un autre réfrigérateur.
+    `FRIDGE`, `fridgeTop`). En option, à droite, une **colonne four et micro-ondes** de 60 cm, de la même hauteur, sur
+    un socle de 8 cm : deux tiroirs en bas (70 cm), la niche du four (60 cm), celle du micro-ondes (40 cm) et une porte
+    jusqu'en haut (`OVEN_COLUMN` ; les appareils ne sont pas posés, à ajouter depuis l'Électroménager). Repris par l'assistant, il se refait aux cotes d'un autre réfrigérateur.
   - Chaque modèle a ses cotes permises (le panneau les donne et refuse les autres). OK pose le meuble à droite de ce
     qui est déjà là, son dos sur le plan Y = 0, ou **contre un mur d'une Pièce** (« Où le poser », « Depuis le début
     du mur » : il tourne avec le mur, son dos contre sa face ; refusé s'il en dépasse), en une seule annulation, et

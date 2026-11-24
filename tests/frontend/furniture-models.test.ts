@@ -79,6 +79,20 @@ describe("les modèles de meubles", () => {
     expect(made.doc.furniture![0]!.ask).toMatchObject({ kind: "fridge", top: 2400 });
   });
 
+  it("l'habillage de réfrigérateur, en option, a sa colonne four et micro-ondes à droite : tiroirs, four, micro-ondes, porte", () => {
+    const a = ask("fridge", { width: 910, height: 1870, depth: 650, option: "doors-oven" });
+    const layout = furnitureLayout(a);
+    if (typeof layout === "string") throw new Error(layout);
+    const column = layout.pieces.find((p) => p.name === "Colonne four")!;
+    expect([column.at[0], column.width, column.height]).toEqual([910 + 20 + 36, 600, 2300]);
+    expect(furnitureSize(a)[0]).toBe(910 + 20 + 36 + 600);
+    expect(column.spec.cases[0]!.steps[0]!.input.heights).toEqual([700, 600, 400, null]);
+    expect(column.spec.cases[0]!.equipment.map((e) => [e.at, e.feature.fill])).toEqual([[[0], "drawers"], [[3], "door"]]);
+    // Without the option, no column; too low for its niches, refused.
+    expect((furnitureLayout({ ...a, option: "doors" }) as { pieces: unknown[] }).pieces).toHaveLength(1);
+    expect(furnitureProblem({ ...a, height: 1700, top: 2000 })).toMatch(/colonne four/);
+  });
+
   it("le nombre de cases et d'étagères suit les cotes", () => {
     const cases = (a: FurnitureAsk) => {
       const l = furnitureLayout(a);

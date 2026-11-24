@@ -50,7 +50,7 @@ export const FURNITURE: FurnitureModel[] = [
   { kind: "island", label: "Îlot de dressing", size: { width: 1200, height: 900, depth: 900 }, limits: { width: [600, 2400], height: [700, 1100], depth: [600, 1200] }, choice: "Des deux côtés", options: [["drawers", "Tiroirs des deux côtés"], ["drawers-shelves", "Tiroirs d'un côté, étagères de l'autre"]], what: "Un meuble au milieu du dressing, ouvert des deux côtés : deux caissons dos à dos sous un dessus qui déborde de 2 cm ; il faut 60 cm de passage tout autour." },
   { kind: "bench", label: "Banc d'entrée", size: { width: 1000, height: 450, depth: 380 }, limits: { width: [600, 2000], height: [380, 550], depth: [300, 500] }, choice: "Cases", options: [["open", "Ouvertes (chaussures)"], ["drawers", "Tiroirs"], ["doors", "Portes"]], what: "Un banc où s'asseoir : une case tous les 40 cm environ, avec une étagère pour les chaussures." },
   { kind: "headboard", label: "Tête de lit", size: { width: 2400, height: 1100, depth: 350 }, limits: { width: [900, 3200], height: [800, 1500], depth: [250, 500] }, choice: "Chevets", options: [["with", "Deux chevets"], ["without", "Sans chevet"]], what: "Un panneau derrière le lit, coiffé d'une tablette, et deux chevets à un tiroir à ses extrémités (la profondeur est celle des chevets)." },
-  { kind: "fridge", label: "Habillage réfrigérateur", size: { width: 910, height: 1870, depth: 720 }, limits: { width: [500, 1200], height: [800, 2200], depth: [500, 850] }, choice: "Caisson du haut", options: [["doors", "Portes"], ["open", "Ouvert"]], what: "Deux côtés toute hauteur et un caisson entre eux, au-dessus du réfrigérateur. La largeur, la hauteur et la profondeur sont celles du réfrigérateur (1 cm d'air de chaque côté, 3 cm au-dessus) ; la hauteur totale, celle des côtés, se règle à part." },
+  { kind: "fridge", label: "Habillage réfrigérateur", size: { width: 910, height: 1870, depth: 720 }, limits: { width: [500, 1200], height: [800, 2200], depth: [500, 850] }, choice: "Caisson du haut, colonne", options: [["doors", "Portes"], ["open", "Ouvert"], ["doors-oven", "Portes, colonne four et micro-ondes à droite"], ["open-oven", "Ouvert, colonne four et micro-ondes à droite"]], what: "Deux côtés toute hauteur et un caisson entre eux, au-dessus du réfrigérateur ; en option, à droite, une colonne de 60 cm : tiroirs, niche du four, niche du micro-ondes, porte en haut. La largeur, la hauteur et la profondeur sont celles du réfrigérateur (1 cm d'air de chaque côté, 3 cm au-dessus) ; la hauteur totale, celle des côtés, se règle à part." },
   { kind: "bed", label: "Lit", size: { width: 1640, height: 400, depth: 2040 }, limits: { width: [900, 2000], height: [300, 550], depth: [1900, 2250] }, choice: "Dessous", options: [["plain", "Simple"], ["drawers", "Tiroirs au pied"]], what: "Un cadre de lit (deux côtés, une traverse de tête et une de pied) et un fond pour le sommier, 6 cm sous le haut du cadre ; ou des tiroirs au pied, sous le fond (la largeur et la longueur sont celles du cadre)." },
 ];
 
@@ -99,6 +99,9 @@ const SHELF = 150;
 export const FRIDGE = { side: 10, air: 30, caisson: 400, least: 200 };
 /** A fridge surround's height (its sides'): as set, else the fridge, its air and a caisson. */
 export const fridgeTop = (ask: FurnitureAsk): number => ask.top ?? ask.height + FRIDGE.air + FRIDGE.caisson;
+/** The oven and microwave column beside it: its width, its plinth, its niches from the bottom (drawers, oven, microwave) and the least left for its top door (mm). */
+export const OVEN_COLUMN = { width: 600, plinth: 80, niches: [700, 600, 400], least: 200 };
+const withColumn = (ask: FurnitureAsk) => ask.kind === "fridge" && ask.option.endsWith("-oven");
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -115,6 +118,7 @@ export function furnitureProblem(ask: FurnitureAsk): string | null {
   if (!m.options.some(([id]) => id === ask.option)) return `${m.label} : choix inconnu.`;
   if (ask.kind === "stairs" && !((ask.low ?? 0) >= 0 && (ask.low ?? 0) <= ask.height - 300)) return `Sous-escalier : la hauteur basse va de 0 à ${cm(ask.height - 300)} (30 cm de moins que la haute).`;
   if (ask.kind === "fridge" && !(fridgeTop(ask) >= ask.height + FRIDGE.air + FRIDGE.least && fridgeTop(ask) <= 3000)) return `Habillage réfrigérateur : la hauteur totale va de ${cm(ask.height + FRIDGE.air + FRIDGE.least)} (${cm(FRIDGE.least)} de caisson au-dessus du réfrigérateur) à ${cm(3000)}.`;
+  if (withColumn(ask) && fridgeTop(ask) - OVEN_COLUMN.plinth - 2 * ask.thickness - 3 * ask.thickness - OVEN_COLUMN.niches.reduce((a, b) => a + b, 0) < OVEN_COLUMN.least) return `Habillage réfrigérateur : avec la colonne four et micro-ondes, la hauteur totale est d'au moins ${cm(Math.ceil(OVEN_COLUMN.plinth + 5 * ask.thickness + OVEN_COLUMN.niches.reduce((a, b) => a + b, 0) + OVEN_COLUMN.least))}.`;
   if (ask.kind === "headboard" && ask.option === "with" && ask.width < 2 * BEDSIDE.width + 800) return `Tête de lit : avec deux chevets, la largeur est d'au moins ${cm(2 * BEDSIDE.width + 800)}.`;
   return null;
 }
@@ -204,8 +208,12 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
       const top = fridgeTop(ask);
       const z = H + FRIDGE.air;
       const n = inner > 700 ? 2 : 1;
+      // Beside it on the right, the column: drawers, the oven's and the microwave's niches, a door up to the top.
+      const door = { type: "niche" as const, fill: "door" as const, diameter: 25, drop: 60, drawers: 1, gap: 3, sideGap: 3, thickness: t, handles: true, mount: "overlay" as const, hinges: ["right" as const] };
+      const column: NicheRecipe = { steps: [{ at: [], input: { count: 3, thickness: t, mode: "set", fixed: 0, heights: [...OVEN_COLUMN.niches, null] } }], equipment: [{ at: [0], title: "Tiroirs", feature: drawers(2, t) }, { at: [3], title: "Porte", feature: door }] };
+      const oven: FurniturePiece[] = withColumn(ask) ? [{ name: "Colonne four", at: [2 * t + inner, 0, 0], width: OVEN_COLUMN.width, height: top, spec: spec(carcass(OVEN_COLUMN.width, top, t, 1, OVEN_COLUMN.plinth), [column]) }] : [];
       return {
-        pieces: [{ name: "Caisson du haut", at: [t, 0, z], width: inner, height: top - z, spec: spec(carcass(inner, top - z, t, n, 0), Array.from({ length: n }, () => structuredClone(EMPTY)), option === "doors" ? { doors } : {}) }],
+        pieces: [{ name: "Caisson du haut", at: [t, 0, z], width: inner, height: top - z, spec: spec(carcass(inner, top - z, t, n, 0), Array.from({ length: n }, () => structuredClone(EMPTY)), option.startsWith("doors") ? { doors } : {}) }, ...oven],
         boards: [
           { name: "Côté gauche", from: [0, 0, 0], to: [t, D, top] },
           { name: "Côté droit", from: [t + inner, 0, 0], to: [2 * t + inner, D, top] },
@@ -288,6 +296,6 @@ export function furnitureLayout(ask: FurnitureAsk): FurnitureLayout | string {
 
 /** How deep the furniture stands from its back to its front, and how wide and high (mm). */
 export function furnitureSize(ask: FurnitureAsk): Vec3 {
-  if (ask.kind === "fridge") return [ask.width + 2 * FRIDGE.side + 2 * ask.thickness, ask.depth, fridgeTop(ask)];
+  if (ask.kind === "fridge") return [ask.width + 2 * FRIDGE.side + 2 * ask.thickness + (withColumn(ask) ? OVEN_COLUMN.width : 0), ask.depth, fridgeTop(ask)];
   return [ask.width, ask.kind === "headboard" && ask.option === "with" ? ask.thickness + ask.depth : ask.kind === "headboard" ? SHELF : ask.depth, ask.height];
 }
