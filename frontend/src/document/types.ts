@@ -220,6 +220,8 @@ export interface KitchenFloorPlan {
   cap?: "flat" | "box" | "units";
   capThickness?: number;
   capHeight?: number;
+  /** Caissons with lift-up doors (« units »): their depth off the wall (mm), 60 cm when missing. */
+  capDepth?: number;
   capOverhang?: number;
   /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */
   noWalls?: boolean;

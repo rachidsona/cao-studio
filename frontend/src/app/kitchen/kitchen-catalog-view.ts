@@ -147,7 +147,7 @@ export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: Ca
  */
 export async function capUnits(editor: Editor, planId: string, entry: CatalogEntry, waiting: boolean): Promise<void> {
   if (waiting) return editor.notify("Le linéaire est en train d'être enregistré : un instant, puis recommencez.", "info");
-  const made = withKitchenBuilt(editor.doc, planId, { cap: "units", ...(entry.height ? { capHeight: entry.height } : {}) });
+  const made = withKitchenBuilt(editor.doc, planId, { cap: "units", ...(entry.height ? { capHeight: entry.height } : {}), ...(entry.depth ? { capDepth: entry.depth } : {}) });
   if (typeof made === "string") return editor.notify(made, "error");
   await editor.change(made.doc);
   const what = "Casquette en caissons à porte relevante : un caisson sur chaque meuble haut et chaque colonne (à régler dans « Matières et finitions »).";

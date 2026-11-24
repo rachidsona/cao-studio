@@ -108,14 +108,15 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
 
 /**
  * The casquette in caissons: over each wall unit, each column and each arm of a wall corner unit (not the hood, a
- * filler), a caisson of its width and depth, its lift-up door.
+ * filler), a caisson of its width, 60 cm deep unless set (`capDepth`), its lift-up door.
  */
 function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], cabinet?: CabinetOf): void {
   if (!cabinet) return;
   const h = p.capHeight ?? CAP.unit;
+  const deep = p.capDepth ?? CAP.unitDepth;
   let n = 0;
   // Up in the corners: over the wall corner unit's arm along this run (the run that passes carries the corner itself).
-  // shortcut: one lift-up door across the whole arm, the part behind the other run's caisson included; a door over
+  // shortcut: the corner's caisson keeps the wall units' depth (deeper, it would run into the other run's); one lift-up door across the whole arm, the part behind the other run's caisson included; a door over
   // the open part alone would come with a front of its own.
   const top = kitchenSizes(p).wallTop;
   for (const side of ["left", "right"] as const) {
@@ -136,7 +137,7 @@ function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: 
       notes.push(`Casquette ${run.id} : ${Math.round(ceiling - z)} mm entre ${pl.entry.name} ${pl.item.width} et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
       continue;
     }
-    cabinet(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, size.depth, z, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
+    cabinet(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, deep, z, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
   }
 }
 

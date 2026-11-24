@@ -67,11 +67,13 @@ test("Meubles de cuisine, avec un Plan de cuisine : la casquette se pose sur le 
   await expect(page.getByText(/Casquette relevante 600 ajouté/).first()).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
   const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
-  type Cab = { type: string; name: string; origin: number[]; height: number };
+  type Cab = { type: string; name: string; origin: number[]; height: number; depth: number };
   const cabinets = (project.document.features as Cab[]).filter((f) => f.type === "cabinet");
   const unit = cabinets.find((c) => c.name === "Haut 1 porte 600 (A1)")!;
   const cap = cabinets.find((c) => c.name.startsWith("Casquette relevante 600"))!;
-  expect(cap.origin).toEqual([unit.origin[0], unit.origin[1], unit.origin[2]! + unit.height]);
+  // 60 cm deep, its back against the wall unit's: it comes out in front of it.
+  expect(cap.depth).toBe(600);
+  expect(cap.origin).toEqual([unit.origin[0], unit.origin[1]! - (600 - unit.depth), unit.origin[2]! + unit.height]);
   expect(errors).toEqual([]);
 });
 

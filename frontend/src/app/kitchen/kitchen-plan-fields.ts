@@ -8,7 +8,7 @@ import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-wall
 import type { Editor } from "../editor";
 
 
-export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang";
+export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels" | "splashbackHoodOnly";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -58,8 +58,8 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
     const choice = select("Casquette des meubles hauts", kind ?? "none", [["none", "Aucune"], ["flat", "Plate (un panneau épais)"], ["box", "En caisson (dessus et bandeau)"], ["units", "Caissons à porte relevante (sur-meubles)"]], (v) => host.set({ cap: v === "none" ? undefined : (v as "flat" | "box" | "units") }));
     choice.querySelector("select")!.setAttribute("data-plan-cap", "");
     if (!kind) return [choice];
-    // Caissons: their height only (each as wide and deep as the unit under it).
-    if (kind === "units") return [choice, number("Hauteur des caissons", "capHeight", CAP.unit)];
+    // Caissons: their height and depth (each as wide as the unit under it).
+    if (kind === "units") return [choice, number("Hauteur des caissons", "capHeight", CAP.unit), number("Profondeur des caissons", "capDepth", CAP.unitDepth)];
     return [choice, kind === "box" ? number("Hauteur de la casquette", "capHeight", CAP.height) : number("Épaisseur de la casquette", "capThickness", CAP.thickness), number("Débord de la casquette", "capOverhang", CAP.overhang, true)];
   };
   return { number, check, select, look, cap };

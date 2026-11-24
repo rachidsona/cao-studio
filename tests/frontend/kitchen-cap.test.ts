@@ -1,7 +1,7 @@
 /** La casquette des meubles hauts du Plan de cuisine (document/kitchen-cap.ts). */
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { KITCHEN_PLAN, kitchenPlanProblem, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
+import { KITCHEN_PLAN, capProblem, kitchenPlanProblem, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
@@ -87,7 +87,7 @@ describe("casquette des meubles hauts", () => {
 describe("casquette en caissons à porte relevante (sur-meubles)", () => {
   const units = (p: KitchenFloorPlan) => kitchenFromPlan(p).units.filter((u) => u.name.startsWith("Casquette"));
 
-  it("un caisson par meuble haut et par colonne, de sa largeur et de sa profondeur, posé dessus ; pas sur la hotte", () => {
+  it("un caisson par meuble haut et par colonne, de sa largeur, 60 cm de profondeur (réglable), posé dessus ; pas sur la hotte", () => {
     const p = plan([["tall-colonne-rangement", 600], WALL, ["app-hood", 600], ["wall-haut-1-porte", 400]], { cap: "units" });
     const made = units(p);
     expect(made.map((u) => [u.width, u.height, u.layout, u.side])).toEqual([
@@ -95,10 +95,11 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
       [600, 350, "door", "top"],
       [400, 350, "door", "top"],
     ]);
-    // On top of the wall row; the column's as deep as the column.
+    // On top of the wall row; 60 cm deep over a column and a wall unit alike, or as set.
     expect(made.every((u) => Math.abs(u.origin[2] - TOP) < 1e-6)).toBe(true);
-    expect(made[0]!.depth).toBe(kitchenSizes(p).cabinet);
-    expect(made[1]!.depth).toBe(p.wallDepth);
+    expect(made.map((u) => u.depth)).toEqual([600, 600, 600]);
+    expect(units({ ...p, capDepth: 450 }).map((u) => u.depth)).toEqual([450, 450, 450]);
+    expect(capProblem({ ...p, capDepth: 900 })).toMatch(/profondeur/);
     // No panels of a flat casquette.
     expect(caps(p)).toEqual([]);
   });
