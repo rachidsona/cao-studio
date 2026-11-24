@@ -3014,7 +3014,9 @@ opération existante.
     poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 56 cm ») ; survoler une largeur redessine
     le meuble à cette largeur (`app/kitchen/unit-elevation.ts`).
   - **Bas** : 1 porte (15 à 60 cm), 2 portes, 3, 4 et 5 tiroirs, 2 tiroirs et casserolier (deux petits tiroirs sur un grand,
-    `drawerShares` 1, 1, 2 : les tiroirs se partagent la hauteur selon leurs parts), casseroliers, tiroir et porte, tiroir et 2 portes,
+    `drawerShares` 1, 1, 2 : les tiroirs se partagent la hauteur selon leurs parts) et le même **sans dessus**, deux
+    traverses de 9 cm reliant les côtés devant et derrière (`top: "rails"`, `railWidth` 90 ; le plan n'y découpe
+    pas d'évier), casseroliers, tiroir et porte, tiroir et 2 portes,
     tiroirs à l'anglaise (derrière 2 portes), évier, four, coulissant bouteilles et épices (15 à 40 cm), poubelle
     coulissante, ouvert à étagères, terminal arrondi (quart de rond au bout du linéaire, ouvert ; le plan de travail
     s'arrondit au-dessus et la plinthe s'arrête avant son socle arrondi).

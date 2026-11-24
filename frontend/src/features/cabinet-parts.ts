@@ -58,7 +58,9 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
   box("Dessous", hx0, hx1, 0, boardDepth, p, p + t);
   // The front rail takes the place of the top, the back rail comes last: the other bodies keep their numbers.
   const rails = f.top === "rails";
-  const rail = Math.min(RAIL, boardDepth / 3);
+  // Its own width (read from the saved document: a number above 0), else 100 mm; a third of the depth at most.
+  const own = typeof f.railWidth === "number" && Number.isFinite(f.railWidth) && f.railWidth > 0 ? f.railWidth : RAIL;
+  const rail = Math.min(own, boardDepth / 3);
   if (rails) box("Traverse avant", hx0, hx1, 0, rail, H - t, H);
   else box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
   if (f.back === "applied") box("Fond", 0, W, D - bt, D, p, H);

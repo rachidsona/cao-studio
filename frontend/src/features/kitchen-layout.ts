@@ -76,6 +76,8 @@ export interface KitchenUnit {
   layout: "door" | "doors" | "drawers" | "none";
   drawers?: number;
   drawerShares?: number[];
+  /** Two rails for a top (« rails »): their width (mm) when not 100. */
+  railWidth?: number;
   /** A drawer over the door(s): its front's height; English drawers behind them: how many (features/fronts-parts.ts). */
   topDrawer?: number;
   innerDrawers?: number;

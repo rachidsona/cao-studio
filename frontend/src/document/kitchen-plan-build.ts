@@ -92,7 +92,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         continue;
       }
       const name = `${entry.name}${entry.custom ? "" : ` ${w}`} (${run.id}${++n})`;
-      const look = { item: pl.item.id, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}), layout: entry.layout, ...(pl.item.side ?? entry.side ? { side: pl.item.side ?? entry.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(pl.item.handles === false ? { handles: false as const } : {}), ...(pl.item.facade ?? entry.facade ? { facade: pl.item.facade ?? entry.facade } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.drawerShares ? { drawerShares: entry.drawerShares } : {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
+      const look = { item: pl.item.id, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}), layout: entry.layout, ...(pl.item.side ?? entry.side ? { side: pl.item.side ?? entry.side } : {}), ...(pl.item.grip ? { grip: pl.item.grip } : {}), ...(pl.item.handles === false ? { handles: false as const } : {}), ...(pl.item.facade ?? entry.facade ? { facade: pl.item.facade ?? entry.facade } : {}), ...(entry.drawers ? { drawers: entry.drawers } : {}), ...(entry.drawerShares ? { drawerShares: entry.drawerShares } : {}), ...(entry.railWidth ? { railWidth: entry.railWidth } : {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.top === "rails" ? { top: "rails" as const } : {}) };
       const plinth = entry.plinth ?? s.plinth;
       if (pl.row === "wall") {
         const { height, z, depth } = itemSize(p, pl.item, entry);
@@ -128,8 +128,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         continue;
       }
       cabinet(name, at, w, itemSize(p, pl.item, entry).depth, 0, s.base, { plinth, ...look });
-      // A sink base of the catalogue, or one's own on two rails: the worktop is cut over it too, for the sink to come.
-      if (!role && entry.top === "rails") hole(pl, w >= 800 ? "sink-1" : "sink-under", true);
+      // A sink base of the catalogue, or one's own on two rails: the worktop is cut over it too, for the sink to come
+      // (not over drawers on two rails: no sink goes through them).
+      if (!role && entry.top === "rails" && entry.layout !== "drawers") hole(pl, w >= 800 ? "sink-1" : "sink-under", true);
       if (role === "sink") {
         hole(pl, w >= 800 ? "sink-1" : "sink-under");
         places.sink ??= front(pl);

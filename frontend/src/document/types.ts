@@ -506,6 +506,8 @@ export interface CabinetFeature extends FeatureBase {
   construction: "sides-through" | "top-bottom-through";
   /** What closes its top: a full board (missing), or two rails, in front and at the back, under a sink. */
   top?: "panel" | "rails";
+  /** The rails' width when the top is two rails (mm): 100 when missing. */
+  railWidth?: number;
   /**
    * Turn about the vertical through the origin (degrees, counterclockwise seen from above): 0 faces −Y, 90 faces +X,
    * 180 faces +Y, 270 faces −X. Its fronts turn with it.

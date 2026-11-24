@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { CATALOG, addKitchenUnit, cabinetBox, customEntry, entryFromCabinet, slideCabinet, stickDelta, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 import { drawerHeights, frontsParts } from "../../frontend/src/features/fronts-parts";
+import { cabinetParts } from "../../frontend/src/features/cabinet-parts";
+import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
+import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
+import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
 const entry = (id: string) => CATALOG.find((e) => e.id === id)!;
 const cabinets = (doc: CadDocument) => doc.features.filter((f): f is CabinetFeature => f.type === "cabinet");
@@ -169,3 +173,33 @@ describe("tiroirs de hauteurs différentes", () => {
     expect(Math.abs(heights[2]! - 2 * heights[0]!)).toBeLessThanOrEqual(1);
   });
 });
+
+describe("deux tiroirs et un casserolier sous deux traverses", () => {
+  it("pas de dessus : deux traverses de 9 cm reliant les côtés, devant et derrière", () => {
+    const entry = CATALOG.find((e) => e.name === "Bas 2 tiroirs et casserolier, traverses" && e.width === 600)!;
+    expect(entry).toMatchObject({ layout: "drawers", drawers: 3, drawerShares: [1, 1, 2], top: "rails", railWidth: 90 });
+    const { doc, cabinet } = addKitchenUnit(createReferencePlate(), entry);
+    expect(cabinet).toMatchObject({ top: "rails", railWidth: 90 });
+    const parts = cabinetParts(cabinet);
+    expect(parts.some((p) => p.name === "Dessus")).toBe(false);
+    const rails = parts.filter((p) => p.name.startsWith("Traverse"));
+    expect(rails.map((p) => p.name)).toEqual(["Traverse avant", "Traverse arrière"]);
+    for (const r of rails) expect(Math.round(r.to[1] - r.from[1])).toBe(90);
+    // The sink unit keeps its 10 cm rails.
+    const sink = addKitchenUnit(createReferencePlate(), CATALOG.find((e) => e.name === "Bas évier" && e.width === 800)!).cabinet;
+    expect(cabinetParts(sink).filter((p) => p.name.startsWith("Traverse")).map((p) => Math.round(p.to[1] - p.from[1]))).toEqual([100, 100]);
+    expect(doc.features.some((f) => f.type === "fronts" && f.drawers === 3)).toBe(true);
+  });
+  it("dans le Plan de cuisine : ses traverses de 9 cm, et pas de découpe d'évier au-dessus de ses tiroirs", () => {
+    const sinkOver = (model: string) => {
+      const p = { ...KITCHEN_PLAN, model: "I" as const, lengthA: 2400, runs: { A: [newItem([], model, 800)] } };
+      const layout = kitchenFromPlan(p);
+      return { unit: layout.units.find((u) => u.name.startsWith(model === "base-bas-evier" ? "Bas évier" : "Bas 2 tiroirs"))!, holes: layout.boxes.flatMap((b) => b.holes ?? []) };
+    };
+    const drawers = sinkOver("base-bas-2-tiroirs-et-casserolier-traverses");
+    expect(drawers.unit).toMatchObject({ top: "rails", railWidth: 90, layout: "drawers", drawers: 3 });
+    expect(drawers.holes).toEqual([]);
+    expect(sinkOver("base-bas-evier").holes.length).toBe(1);
+  });
+});
+

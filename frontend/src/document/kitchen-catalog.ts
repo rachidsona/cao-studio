@@ -27,8 +27,9 @@ export interface CatalogEntry {
   shelves: number;
   /** Upright boards inside, evenly spaced. */
   dividers?: number;
-  /** Two rails instead of a top: the sink goes through. */
+  /** Two rails instead of a top: the sink goes through; their width (mm) when not 100. */
   top?: CabinetFeature["top"];
+  railWidth?: number;
   /** One door hinged along its top (« top »: a lift-up door, « relevante ») or its bottom (« bottom »: a flap). */
   side?: "top" | "bottom";
   /** Its fronts' style when not plain: glazed in an aluminium frame (a « vitré »). */
@@ -76,6 +77,7 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("base", "Bas 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 1 }),
   ...entries("base", "Bas 3 tiroirs", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, shelves: 0 }),
   ...entries("base", "Bas 2 tiroirs et casserolier", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, drawerShares: [1, 1, 2], shelves: 0 }),
+  ...entries("base", "Bas 2 tiroirs et casserolier, traverses", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, drawerShares: [1, 1, 2], shelves: 0, top: "rails", railWidth: 90 }),
   ...entries("base", "Bas 4 tiroirs", [300, 400, 500, 600, 800, 900], { layout: "drawers", drawers: 4, shelves: 0 }),
   ...entries("base", "Bas 5 tiroirs", [400, 600], { layout: "drawers", drawers: 5, shelves: 0 }),
   ...entries("base", "Bas casseroliers", [600, 800, 900], { layout: "drawers", drawers: 2, shelves: 0 }),
@@ -186,7 +188,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
   const cabinet: CabinetFeature = {
     id: uniqueId(doc, "cb"), type: "cabinet", name: uniqueKitchenName(doc, entry), origin: at(start), width: entry.width, height, depth,
     thickness: like?.thickness ?? 18, back: like?.back ?? "applied", backThickness: like?.backThickness ?? 3, shelves: entry.shelves, ...(entry.dividers ? { dividers: entry.dividers } : {}),
-    plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through", ...(entry.top ? { top: entry.top } : {}),
+    plinth: entry.plinth ?? k.plinth, construction: like?.construction ?? "sides-through", ...(entry.top ? { top: entry.top } : {}), ...(entry.railWidth ? { railWidth: entry.railWidth } : {}),
     ...(rotation ? { rotation } : {}), ...(like?.standard ? { standard: like.standard } : {}),
   };
   let next: CadDocument = { ...doc, features: [...doc.features, cabinet] };
