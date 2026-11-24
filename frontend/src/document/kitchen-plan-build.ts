@@ -12,7 +12,7 @@ import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, sk
 import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
-import { applianceOf, fillRun, isFiller, itemSize, SURROUND, type Placed, type RunFill } from "../features/kitchen-run-items";
+import { applianceOf, fillRun, isFiller, itemSize, openRoom, SURROUND, type Placed, type RunFill } from "../features/kitchen-run-items";
 import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
@@ -188,12 +188,13 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       if (p.splashbackHoodOnly) parts.flatMap(([a, b]) => hoods.map(([h0, h1]): [number, number] => [Math.max(a, h0), Math.min(b, h1)]).filter(([u0, u1]) => u1 - u0 >= 1)).forEach((part, i) => splashback(p, run, part, i, g.spans, hoodTop, band, box));
       else parts.forEach((part, i) => splashback(p, run, part, i, g.spans, full, band, box, { hoods, top: hoodTop }));
     }
-    // Under the units and fillers only: the room left open has none.
+    // Under the units, the fillers and the furnished caissons (on the same socle) only: the room left open has none.
     let kicks = 0;
     const kick = kickOf(p, run.id);
+    const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished);
     // A rounded end unit stands on its own rounded socle.
-    for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...fill.free, ...rounds.map((r) => r.span)]))) {
-      const used = fill.placed.some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
+    for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...openRoom(fill, "base"), ...rounds.map((r) => r.span)]))) {
+      const used = [...fill.placed, ...held].some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
       if (used && kick.on) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3));
     }
     if (run.wall && !room && !p.noWalls) box(`Mur ${run.id}`, "wall", band(run.id === "A" && run.left !== "free" ? -WALL_THICKNESS : 0, run.length + (run.id === "A" && run.right !== "free" ? WALL_THICKNESS : 0), -WALL_THICKNESS, 0, 0, p.height));

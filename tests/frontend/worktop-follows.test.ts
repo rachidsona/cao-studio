@@ -33,6 +33,10 @@ describe("plan de travail qui suit les meubles", () => {
     expect(spans(gap, "splashback")).toEqual([["Crédence A", 0, 1000], ["Crédence A2", 1600, 2200]]);
     // Held by a furnished caisson: the worktop runs over it.
     expect(spans(plan([["base-bas-2-portes", 1000], ["space", 600, { furnished: "sk9" }], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 2200]]);
+    // The plinth too runs under a furnished caisson (on the same socle), and under one at the end of the run; not under room kept free.
+    expect(spans(plan([["base-bas-2-portes", 1000], ["space", 600, { furnished: "sk9" }], ["base-bas-1-porte", 600]]), "kick")).toEqual([["Plinthe A", 0, 2200]]);
+    expect(spans(plan([["base-bas-2-portes", 1000], ["space", 900, { furnished: "sk9" }]]), "kick")).toEqual([["Plinthe A", 0, 1900]]);
+    expect(spans(gap, "kick")).toEqual([["Plinthe A", 0, 1000], ["Plinthe A2", 1600, 2200]]);
     // A dishwasher has no cabinet, but the worktop covers it; a column stops it.
     expect(spans(plan([["base-bas-2-portes", 1000], ["app-dishwasher", 600], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 2200]]);
     expect(spans(plan([["base-bas-2-portes", 1000], ["tall-colonne-rangement", 600], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 1000], ["Plan de travail A2", 1600, 2200]]);

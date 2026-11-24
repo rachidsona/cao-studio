@@ -2884,7 +2884,8 @@ opération existante.
       place vide** (un « Espace libre » de sa largeur, comme un meuble supprimé dans la 3D) : ses voisins ne bougent
       pas. On referme quand on le décide : « Resserrer les meubles » (toutes les places vides), un voisin glissé
       dans la place, ou « Place libre » › « Espaces gardés » › « Supprimer » pour une seule.
-    - **Plinthe** du linéaire : à **6 cm en retrait des façades** au départ (`KICK_BACK.default`), les côtés des
+    - **Plinthe** du linéaire : sous ses meubles, ses fileurs et ses **caissons aménagés** (sur le même socle), pas
+      sous la place gardée libre ; à **6 cm en retrait des façades** au départ (`KICK_BACK.default`), les côtés des
       caissons, qui descendent au sol, entaillés au socle pour la laisser passer (`document/kick-notches.ts`, pour le
       noyau seulement) ; la plinthe d'angle s'arrête contre celle du linéaire voisin, à son retrait. Cliquée sur la
       bande (sous les meubles), elle se **recule** ou s'**avance** par pas de 1 cm (jusqu'à 15 cm en retrait des façades), se **supprime** (Suppr) et se **remet**, et prend un **aspect**
