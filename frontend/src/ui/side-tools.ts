@@ -4,7 +4,8 @@
  * bas, à la place marquée, et lance l'outil d'origine en reprenant son état (enfoncé, grisé). Son « + », tout en bas,
  * ouvre la liste de tous les outils : un clic montre ou cache une des siennes, ajoute ou retire une des autres. Gardé
  * dans ce navigateur (ui/tool-drag.ts pour le glisser). Une de ses icônes glissée sur une autre de sa case s'y range,
- * avant ou après elle ; l'ordre est gardé aussi.
+ * avant ou après elle ; l'ordre est gardé aussi. Ses icônes sont rangées par tâche, chaque cadre une tâche : filtre,
+ * sélection, vue, affichage, voir dedans, puis les outils ajoutés.
  */
 import { el } from "./dom";
 import { catalogue, toolKey } from "./tool-catalogue";
@@ -61,7 +62,7 @@ export function bindSideTools(root: HTMLElement): void {
   state.hidden = state.hidden.filter((k) => own.has(k));
   const tools = () => new Map<string, Tool>(catalogue(root).map((t) => [t.key, t]));
 
-  const extras = el("div", { class: "flex flex-col items-center gap-1 empty:hidden", role: "group", "aria-label": "Outils ajoutés", "data-side-extra": "" });
+  const extras = el("div", { class: "flex flex-col items-center gap-1 border border-gray-200 p-0.5 empty:hidden dark:border-gray-700", role: "group", "aria-label": "Outils ajoutés", "data-side-extra": "" });
   const add = el("button", { type: "button", class: "tool-btn mt-1 min-h-8 min-w-8 shrink-0 px-1 text-lg leading-none text-gray-500 dark:text-gray-400", "aria-label": "Choisir les outils de la colonne Sélection et vue", title: "Choisir les outils de cette colonne : montrer ou cacher les siens, en ajouter d'autres barres (ou les y glisser)", "aria-haspopup": "dialog", "aria-expanded": "false", "data-bar-control": "", "data-side-add": "" }, "+");
   nav.append(extras, add);
   const watchers: MutationObserver[] = [];
@@ -125,8 +126,8 @@ export function bindSideTools(root: HTMLElement): void {
         delete button.dataset.sideHidden;
       }
     }
-    // A box whose buttons are all put away goes too.
-    for (const box of nav.querySelectorAll<HTMLElement>('[role="group"][aria-label="Filtre de sélection"]')) box.hidden = [...box.querySelectorAll("button")].every((b) => b.hidden);
+    // A box whose buttons are all put away goes too (the orbit's options are not counted).
+    for (const box of nav.querySelectorAll<HTMLElement>("[data-side-box]")) box.hidden = [...box.querySelectorAll(":scope > button")].every((b) => (b as HTMLElement).hidden);
     for (const w of watchers.splice(0)) w.disconnect();
     const byKey = tools();
     extras.replaceChildren(...state.extra.flatMap((key) => {

@@ -2942,6 +2942,8 @@ opération existante.
   - Le **prix TTC** du devis et l'**ergonomie** (triangle d'activité, passage devant l'îlot) s'affichent dans le panneau.
     Cliquer l'esquisse « Plan de la cuisine », ou un meuble fait par le plan, dans le navigateur ou la vue, rouvre l'outil
     sur son linéaire (`app/kitchen/kitchen-plan-tool.ts`).
+- **Colonne Sélection et vue**, à droite de la vue : ses icônes rangées par tâche, chacune dans son cadre — filtre de sélection,
+  sélection, vue, affichage, voir dedans, puis les outils ajoutés ; une icône se range dans son cadre.
 - **Tout ouvrir** (colonne de sélection et de vue, à droite de la vue) : un clic ouvre toutes les portes, sort tous
   les tiroirs et tous les accessoires intérieurs (paniers, porte-pantalons, plateaux tournants, demi-lunes, penderie
   escamotable…) d'un coup, et le bouton reste enfoncé ; un second clic referme tout. Un range-couverts dans un tiroir

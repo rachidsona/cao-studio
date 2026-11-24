@@ -114,10 +114,10 @@ test("ranger les icônes dans leur barre : le ruban (même d'un groupe à l'autr
   await ribbon.locator(".ribbon-group[aria-label='Modifier'] .ribbon-row > button:visible").first().dragTo(create, { targetPosition: { x: 3, y: 10 } });
   expect((await keys('[data-ribbon="model"] .ribbon-group[aria-label="Créer"] .ribbon-row > button'))[0]).toBe(before[2]);
 
-  // The column beside the view: Rayons X above « Ajuster ».
+  // The column beside the view: Rayons X above « Tout ouvrir », in their box « Voir dedans ».
   const side = page.locator("[data-side-tools]");
-  await side.locator("[data-xray]").dragTo(side.locator('[data-action="fit"]'), { targetPosition: { x: 10, y: 2 } });
-  const vue = side.locator('[role="group"][aria-label="Vue"] > button');
+  await side.locator("[data-xray]").dragTo(side.locator("[data-open-all]"), { targetPosition: { x: 10, y: 2 } });
+  const vue = side.locator('[role="group"][aria-label="Voir dedans"] > button');
   await expect(vue.first()).toHaveAttribute("data-xray", "");
 
   await page.reload();
