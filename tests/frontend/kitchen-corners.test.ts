@@ -10,6 +10,7 @@ import { createReferencePlate, type CadDocument, type KitchenFloorPlan } from ".
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { doorSwing } from "../../frontend/src/app/drawer-toggle";
 import { poseOf } from "../../frontend/src/features/motion";
+import { runFillers } from "../../frontend/src/app/kitchen/kitchen-run-fillers";
 
 /** A unit's box over its socle: its sides are notched there for the plinth set back (document/kick-notches.ts). */
 const overSocle = (u: Parameters<typeof cabinetBox>[0] & { plinth?: number }): [Box[0], Box[1]] => {
@@ -234,5 +235,21 @@ describe("angles de cuisine", () => {
     // Not beyond what a caisson holds; a LeMans keeps its trays.
     expect(cornerSide({ ...more, cornerSizes: { left: { shelves: 99 } } }, a, "left")!.shelves).toBe(CORNER_SHELVES);
     expect(cornerSide({ ...more, corners: { left: "lemans" } }, a, "left")!.shelves).toBe(0);
+  });
+});
+
+describe("les fileurs d'un linéaire, toutes leurs données", () => {
+  it("le fileur d'angle d'un angle mort : sa largeur, sa hauteur, son épaisseur et sa matière", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "dead" }, runs: {}, made: {} }));
+    const made = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
+    if (typeof made === "string") throw new Error(made);
+    const fillers = [...runFillers(made.doc, base.id, "A"), ...runFillers(made.doc, base.id, "B"), ...runFillers(made.doc, base.id, "C")];
+    const corner = fillers.find((f) => f.name.startsWith("Fileur d'angle"))!;
+    expect(corner).toBeDefined();
+    expect(corner.width).toBeGreaterThan(0);
+    expect(corner.height).toBeGreaterThan(500);
+    expect(corner.thickness).toBe(19);
+    expect(corner.material.length).toBeGreaterThan(0);
+    expect(runFillers(made.doc, "inconnu", "A")).toEqual([]);
   });
 });

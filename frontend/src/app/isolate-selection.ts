@@ -65,7 +65,8 @@ export function isolateSelection(editor: Editor): void {
 /**
  * « Modifier la sélection »: the main tool of the element clicked — else the first selected. A door or
  * a drawer front: the Façades tool; a shelf or a side of a cabinet: the Caisson tool; sliding doors: the Plan de
- * dressing; made by the Plan de cuisine (a filler, the worktop): the plan on its run, « Fileurs » open for a filler;
+ * dressing; made by the Plan de cuisine: the plan on its run, « L'angle » open for a corner's door or panel, « Fileurs »
+ * for a filler;
  * else the tool that made it (a Répartition's niche: its tool), as a double click in the tree. Null when it was made
  * by nothing one edits.
  */
@@ -81,14 +82,17 @@ export function modifyMenuItem(editor: Editor, viewport: Viewport, clicked?: str
   // sliding doors: the Plan de dressing, where they are set.
   if (feature.type === "fronts" || feature.type === "cabinet") return [label, () => editor.editFeature(feature.id)];
   if (feature.type === "trim" && /coulissant/i.test(feature.name)) return [label, () => document.querySelector<HTMLElement>('[data-workshop="dressing-plan"]')?.click()];
-  // Made by the Plan de cuisine (a filler, the worktop, the plinth): the plan on its run, « Fileurs » open for a filler.
+  // Made by the Plan de cuisine (a corner's door or panel, a filler, the worktop): the plan on its run, the block that
+  // sets it open — « L'angle » for a corner's piece, « Fileurs » for a filler.
   const owner = kitchenRunOf(editor.doc, feature.id);
   if (!owner) return [label, () => editor.editFeature(feature.id)];
   return [label, () => {
     // A body of the plan selected opens its run (app/kitchen/kitchen-plan-tool.ts).
     viewport.selectLevel({ bodies: [bodyId] }, false);
     const open = kitchenRunOpen();
-    if (open?.plan === owner.plan && open.run === owner.run && /fileur/i.test(`${feature.name} ${bodyLabel(editor.doc, bodyId)}`)) open.show("fillers");
+    const name = `${feature.name} ${bodyLabel(editor.doc, bodyId)}`;
+    const fold = /d'angle/i.test(name) ? "corners" : /fileur/i.test(name) ? "fillers" : null;
+    if (fold && open?.plan === owner.plan && open.run === owner.run) open.show(fold);
   }];
 }
 

@@ -2881,6 +2881,8 @@ opération existante.
       largeur se tape sur sa cote — et se bâtissent en panneaux, « Fileur posé A1 », « Fileur posé haut A2 », sans
       caisson ; le reste du mur se partage toujours autour. La liste « Fileurs posés », sous les boutons, les nomme
       (bas ou haut, largeur, place) avec un bouton **Supprimer** chacun, et **Supprimer les fileurs** les ôte tous.
+      Dessous, **Tous les fileurs du linéaire** — ceux du plan compris (fileur d'angle, reste du mur) — avec leur
+      largeur, leur hauteur, leur épaisseur et leur matière (`kitchen-run-fillers.ts` `runFillers`).
       Un fileur que le plan met dans le reste (jusqu'à 15 cm), cliqué sur la bande, devient un fileur posé à sa place
       — tous ceux du reste à la fois, pour que rien ne bouge —, choisi comme un meuble : Suppr, flèches, glisser, cote.
       Un fileur supprimé, sur la bande (Suppr) ou dans la 3D, laisse sa place libre (« Espace libre ») : il ne revient

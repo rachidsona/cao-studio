@@ -2,9 +2,14 @@
  * Les fileurs posés à la main sur un linéaire : en bas (entre socle et plan de travail) et en haut (la rangée haute),
  * au début de la rangée, après le meuble choisi ou à la fin, à la largeur tapée. Ils prennent leur place comme un
  * meuble ; le reste du mur est toujours partagé. Puis la liste de ceux qui sont posés, chacun avec son bouton pour
- * l'ôter.
+ * l'ôter ; et tous les fileurs du linéaire, ceux du plan compris (angle, reste du mur), avec leur largeur, leur hauteur,
+ * leur épaisseur et leur matière.
  */
-import type { DisplayUnit, KitchenRunItem } from "../../document/types";
+import { kitchenPlanIn } from "../../document/kitchen-floor";
+import { kitchenFromPlan } from "../../document/kitchen-plan-build";
+import { kitchenRoomInfo } from "../../document/kitchen-plan-room";
+import { bodyInfo, materialById } from "../../document/materials";
+import type { CadDocument, DisplayUnit, KitchenRunItem } from "../../document/types";
 import { FILLER, FILLER_WALL, insertItem, isFiller, isSpace, itemEntry, newItem, rowOf, type RunFill } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
@@ -15,6 +20,10 @@ const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-righ
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
 
 export interface FillerHost {
+  /** The document, its plan and the run: every filler of the run, with its sizes and its material. */
+  doc: CadDocument;
+  planId: string;
+  runId: string;
   items: KitchenRunItem[];
   chosen: string | null;
   /** The run has a wall row. */
@@ -64,7 +73,43 @@ export function fillerRows(host: FillerHost): HTMLElement[] {
       return el("div", { class: "space-y-1" }, el("p", { class: "font-medium" }, label), el("div", { class: "flex gap-1" }, button("start", "Au début"), button("after", "Après le choisi", !after), button("end", "À la fin")));
     }),
     placedFillers(host),
+    fillerTable(host),
   ];
+}
+
+/** A filler of the run, as built: its name, its width along the run, its height, its thickness (mm), its material. */
+export interface FillerData {
+  name: string;
+  width: number;
+  height: number;
+  thickness: number;
+  material: string;
+}
+
+/** Every filler of a run, the plan's own (corner, rest of the wall) and those put by hand, as the 3D has them. */
+export function runFillers(doc: CadDocument, planId: string, runId: string): FillerData[] {
+  const plan = kitchenPlanIn(doc, planId);
+  if (!plan) return [];
+  const made = doc.features.filter((f) => plan.made?.[runId]?.includes(f.id));
+  return kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.filter((b) => b.kind === "filler" && b.run === runId).map((b) => {
+    const [dx, dy, dz] = [0, 1, 2].map((i) => Math.abs(b.to[i]! - b.from[i]!));
+    const feature = made.find((f) => f.name === b.name);
+    const id = feature ? bodyInfo(doc, feature.id).material : undefined;
+    return { name: b.name, width: Math.max(dx!, dy!), height: dz!, thickness: Math.min(dx!, dy!), material: materialById(id)?.name ?? id ?? "celle des façades" };
+  });
+}
+
+/** The fillers of the run with all their sizes and their material. */
+function fillerTable(host: FillerHost): HTMLElement {
+  const list = runFillers(host.doc, host.planId, host.runId);
+  const size = (mm: number) => formatLength(mm, host.unit);
+  if (!list.length) return el("p", { class: "text-2xs text-gray-500 dark:text-gray-400", "data-fillers-all": "0" }, "Aucun fileur sur ce linéaire.");
+  return el(
+    "div",
+    { class: "space-y-1 border-t border-gray-200 pt-1.5 dark:border-gray-700", "data-fillers-all": String(list.length) },
+    el("p", { class: "font-medium" }, "Tous les fileurs du linéaire"),
+    ...list.map((f) => el("div", { class: "text-2xs", "data-filler-data": f.name }, el("p", { class: "font-medium" }, f.name), el("p", { class: "font-mono text-gray-600 dark:text-gray-300" }, `L ${size(f.width)} · H ${size(f.height)} · ép. ${size(f.thickness)}`), el("p", { class: "text-gray-500 dark:text-gray-400" }, `Matière : ${f.material}`))),
+  );
 }
 
 /** The fillers put by hand on this run, each with its button to take it out, and one to take them all out. */

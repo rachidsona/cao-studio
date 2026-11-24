@@ -473,7 +473,7 @@ export class RunEditor {
 
   /** Fillers put by hand, low and up, and those placed (kitchen-run-fillers.ts). */
   private fillerRows(): HTMLElement[] {
-    return fillerRows({ items: this.items, chosen: this.chosen, wall: this.host.run.wall, unit: this.host.editor.unit, width: this.fillerWidth, setWidth: (mm) => (this.fillerWidth = mm), change: (items, chosen) => this.change(items, chosen), notify: (m, k) => this.host.editor.notify(m, k) });
+    return fillerRows({ doc: this.host.editor.doc, planId: this.host.planId, runId: this.host.run.id, items: this.items, chosen: this.chosen, wall: this.host.run.wall, unit: this.host.editor.unit, width: this.fillerWidth, setWidth: (mm) => (this.fillerWidth = mm), change: (items, chosen) => this.change(items, chosen), notify: (m, k) => this.host.editor.notify(m, k) });
   }
 
   /** What one adds, as « Meubles de cuisine » shows it: each model drawn, by family; one's own; the appliances. */
