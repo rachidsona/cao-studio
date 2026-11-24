@@ -422,7 +422,7 @@ test("le catalogue de cuisine montre chaque meuble dessiné, par famille, à la 
   await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
   await click(page, '[data-workshop="kitchen-units"]');
   const families = page.getByRole("tablist", { name: "Familles de meubles" }).getByRole("tab");
-  await expect(families).toHaveText(["Bas", "Hauts", "Colonnes", "Mes meubles"]);
+  await expect(families).toHaveText(["Bas", "Hauts", "Casquettes", "Colonnes", "Mes meubles"]);
   const model = page.locator('article[data-model="Bas 2 portes"]');
   await expect(model.locator("svg")).toBeVisible();
   await expect(model).toContainText("2 portes · 1 étagère");
