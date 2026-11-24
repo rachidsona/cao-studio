@@ -258,6 +258,8 @@ export class CabinetTool extends PanelTool {
         ],
         (v) => this.set({ top: v as NonNullable<Settings["top"]> }),
       ),
+      // Two rails: the front one lying flat, or standing on its edge as the back one.
+      s.top === "rails" ? this.selectRow("Traverse avant", s.railFront ?? "flat", [["flat", "Couchée"], ["edge", "Debout (sur chant)"]], (v) => this.set({ railFront: v === "edge" ? "edge" : undefined })) : null,
       // A new cabinet with its doors: its Façades are made with it.
       this.editing ? null : this.selectRow("Portes", this.doors.kind, [["none", "Sans portes"], ["flat", "Pleines"], ["glass", "Vitrées (cadre alu)"]], (v) => this.setDoors({ kind: v as Doors["kind"] })),
       !this.editing && this.doors.kind === "glass" ? this.selectRow("Verre (trempé 4 mm)", this.doors.glass, [...GLASS_KINDS], (v) => this.setDoors({ glass: v as GlassKind })) : null,

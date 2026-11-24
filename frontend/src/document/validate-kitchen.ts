@@ -35,6 +35,7 @@ function itemOk(item: unknown): boolean {
     optionalNumber(item.depth) &&
     (item.side === undefined || ["left", "right", "top", "bottom"].includes(item.side as string)) &&
     (item.grip === undefined || item.grip === "gorge") &&
+    (item.railFront === undefined || item.railFront === "edge") &&
     (item.facade === undefined || (isObject(item.facade) && glassFieldsProblem(item.facade, ["frame", "glass", "fluted", "slats"]) === null && ["frameDepth", "pitch"].every((k) => optionalNumber((item.facade as Json)[k])))) &&
     (item.furnished === undefined || shortText(item.furnished, 200)) &&
     (item.from === undefined || shortText(item.from, 200)) &&

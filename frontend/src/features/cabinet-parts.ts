@@ -9,6 +9,12 @@ const MIN_LENGTH = 1e-3;
 /** Width of the rails that replace the top of a sink unit (mm): the front one lying flat, the back one on its edge. */
 const RAIL = 100;
 
+/** How high a rail on its edge stands (mm): as wide as a rail, a third of the inner height at most. */
+export function railRise(f: Pick<CabinetFeature, "height" | "plinth" | "thickness" | "railWidth">): number {
+  const own = typeof f.railWidth === "number" && Number.isFinite(f.railWidth) && f.railWidth > 0 ? f.railWidth : RAIL;
+  return Math.min(own, (f.height - f.plinth - f.thickness) / 3);
+}
+
 /** One part of the cabinet: its name and its box (two opposite corners, mm). */
 export interface CabinetPart {
   name: string;
@@ -61,7 +67,9 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
   // Its own width (read from the saved document: a number above 0), else 100 mm; a third of the depth at most.
   const own = typeof f.railWidth === "number" && Number.isFinite(f.railWidth) && f.railWidth > 0 ? f.railWidth : RAIL;
   const rail = Math.min(own, boardDepth / 3);
-  if (rails) box("Traverse avant", hx0, hx1, 0, rail, H - t, H);
+  // Lying flat, or standing on its edge against the front (« Traverse avant » of the Caisson tool).
+  if (rails && f.railFront === "edge") box("Traverse avant", hx0, hx1, 0, t, H - railRise(f), H);
+  else if (rails) box("Traverse avant", hx0, hx1, 0, rail, H - t, H);
   else box("Dessus", hx0, hx1, 0, boardDepth, H - t, H);
   if (f.back === "applied") box("Fond", 0, W, D - bt, D, p, H);
   else if (f.back === "inset") box("Fond", t, W - t, D - bt, D, p + t, H - t);
@@ -77,7 +85,7 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
     for (let j = 0; j <= n; j++) box(`Étagère ${i * (n + 1) + j + 1}`, t + j * (bay + t), t + j * (bay + t) + bay, front, boardDepth, z, z + t);
   }
   // The back rail stands on its edge, as high as a rail is wide, against the back (the wall when there is no back).
-  if (rails) box("Traverse arrière", hx0, hx1, boardDepth - t, boardDepth, H - Math.min(own, (H - p - t) / 3), H);
+  if (rails) box("Traverse arrière", hx0, hx1, boardDepth - t, boardDepth, H - railRise(f), H);
   // The upright boards last: the other bodies keep their numbers.
   for (let j = 1; j <= n; j++) box(`Cloison ${j}`, t + j * bay + (j - 1) * t, t + j * (bay + t), front, boardDepth, z0, H - t);
   return parts;

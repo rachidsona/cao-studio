@@ -199,4 +199,19 @@ describe("liens de Prolonger élément sur une cuisine refaite", () => {
     const doors = syncKitchenPlans(again.doc, updateFeature(again.doc, fronts(again.doc).id, (f) => ({ ...f, layout: "doors" }) as FrontsFeature));
     expect(kitchenPlanIn(doors, base.id)!.runs!.A![0]!.layout).toBe("doors");
   });
+
+  it("sa traverse avant mise debout dans Caisson : le plan la garde, la cuisine refaite aussi", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} });
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "base-bas-2-tiroirs-et-casserolier-traverses", 900)] } });
+    if (typeof made === "string") throw new Error(made);
+    const cab = (d: CadDocument) => d.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    const synced = syncKitchenPlans(made.doc, resized(made.doc, cab(made.doc).id, { railFront: "edge" }));
+    expect(kitchenPlanIn(synced, base.id)!.runs!.A![0]!.railFront).toBe("edge");
+    const again = withKitchenBuilt(synced, base.id, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(cab(again.doc).railFront).toBe("edge");
+    // Lying flat again: forgotten.
+    const flat = syncKitchenPlans(again.doc, resized(again.doc, cab(again.doc).id, { railFront: undefined }));
+    expect(kitchenPlanIn(flat, base.id)!.runs!.A![0]!.railFront).toBeUndefined();
+  });
 });

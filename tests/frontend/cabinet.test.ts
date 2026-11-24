@@ -1,7 +1,8 @@
 /** Parametric cabinet: every part is a board of its own, the parts never overlap, and they follow the dimensions. */
 import { beforeAll, describe, expect, it } from "vitest";
 import { bodyLabel } from "../../frontend/src/document/operations";
-import { createReferencePlate, type CabinetFeature, type CadDocument } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
+import { frontsParts } from "../../frontend/src/features/fronts-parts";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { cabinetParts, cabinetProblem, type CabinetPart } from "../../frontend/src/features/cabinet-parts";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
@@ -118,6 +119,21 @@ describe("caisson d'évier : deux traverses à la place du dessus", () => {
     expect([front.from[0], front.to[0], front.from[2], front.to[2]]).toEqual([top.from[0], top.to[0], top.from[2], top.to[2]]);
     const back = named(rails, "Traverse arrière");
     expect([back.from[0], back.to[0], back.from[2], back.to[2]]).toEqual([top.from[0], top.to[0], top.to[2] - 100, top.to[2]]);
+  });
+
+  it("la traverse avant se met debout, sur chant contre l'avant comme l'arrière ; les tiroirs passent dessous", () => {
+    const edge = { ...rails, railFront: "edge" as const };
+    const front = named(edge, "Traverse avant");
+    const back = named(edge, "Traverse arrière");
+    expect([front.from[1], front.to[1]]).toEqual([0, 18]);
+    expect([front.from[2], front.to[2]]).toEqual([back.from[2], back.to[2]]);
+    expect(cabinetParts(edge).map((p) => p.name)).toEqual(cabinetParts(rails).map((p) => p.name));
+    const fronts: FrontsFeature = { id: "fr", type: "fronts", name: "Façades", cabinet: edge.id, layout: "drawers", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
+    const boxes = frontsParts(fronts, edge).filter((p) => p.name.startsWith("Tiroir 1 "));
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const b of boxes) expect(Math.max(b.from[2], b.to[2])).toBeLessThanOrEqual(front.from[2]);
+    expect(() => parseDocument({ ...createReferencePlate(), features: [edge] })).not.toThrow();
+    expect(() => parseDocument({ ...createReferencePlate(), features: [{ ...edge, railFront: "biais" }] })).toThrow(/traverse avant/);
   });
 
   it("garde le numéro des autres pièces : le fond reste le fond", () => {

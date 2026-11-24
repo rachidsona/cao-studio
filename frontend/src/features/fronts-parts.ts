@@ -18,7 +18,7 @@
  *   l'anglaise (`innerDrawers`) derrière les portes, sans façade, en retrait des charnières, en bas du caisson.
  */
 import type { CabinetFeature, CabinetNotch, CadDocument, FrontsFeature, Vec3 } from "../document/types";
-import { cabinetProblem } from "./cabinet-parts";
+import { cabinetProblem, railRise } from "./cabinet-parts";
 import { ALU_HINGE, glassFrame, glassHardware, glassPane, glassProblem, isGlass, uFrame, woodFrame } from "./glass-door";
 import { decorProblem } from "./door-decor";
 
@@ -213,6 +213,8 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
     box(`Tiroir ${k} — fond`, [bx0 + DRAWER_SIDE, glazed ? ya : ya + DRAWER_SIDE, zb], [bx1 - DRAWER_SIDE, yb - DRAWER_SIDE, zb + DRAWER_BOTTOM]);
   };
   const slides: [number, number] = [t + SLIDE_PLAY, W - t - SLIDE_PLAY];
+  // Under a front rail on its edge: the drawer boxes stay below it.
+  const ceiling = cabinet.top === "rails" && cabinet.railFront === "edge" ? H - railRise(cabinet) - 5 : Infinity;
   // Under a drawer, the doors stop below it.
   const doorTop = f.layout !== "drawers" && f.topDrawer ? z1 - f.topDrawer - between : z1;
   if (f.layout === "door") box(f.side === "top" ? "Porte relevable" : f.side === "bottom" ? "Abattant" : "Porte", [x0, y0, z0], [x1, y1, doorTop], { kind: "door", hinge: f.side ?? "left" });
@@ -232,7 +234,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
       if (gorge) gorges.push(doorTop);
       box("Façade tiroir 1", [x0, y0, doorTop + between], [x1, y1, z1], { kind: "drawer" });
       const zb = doorTop + between + 10;
-      drawerBox("1", zb, Math.max(60, Math.min(f.topDrawer - 30, z1 - 15 - zb, gorge ? z1 - (GORGE.height - GORGE.space) - 5 - zb : Infinity)), slides);
+      drawerBox("1", zb, Math.max(60, Math.min(f.topDrawer - 30, z1 - 15 - zb, ceiling - zb, gorge ? z1 - (GORGE.height - GORGE.space) - 5 - zb : Infinity)), slides);
     }
     // English drawers: behind the doors, clear of the hinges, from the bottom up.
     const n = f.innerDrawers ?? 0;
@@ -254,7 +256,7 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
       // The box behind: 20 mm above the lower edge of the opening it uses, 30 mm lower than the front.
       const zb = Math.max(bottom, p + t) + 10;
       // Under the profile behind the top of a handleless front.
-      const height = Math.max(60, Math.min(h - 30, top - 15 - zb, gorge ? top - (GORGE.height - GORGE.space) - 5 - zb : Infinity));
+      const height = Math.max(60, Math.min(h - 30, top - 15 - zb, ceiling - zb, gorge ? top - (GORGE.height - GORGE.space) - 5 - zb : Infinity));
       drawerBox(String(k), zb, height, slides);
     }
   }

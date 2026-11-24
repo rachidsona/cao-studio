@@ -179,7 +179,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["width", "height", "depth", "thickness", "backThickness", "shelves", "plinth"], where, errors);
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
-      if (feature.top !== undefined && !["panel", "rails"].includes(feature.top as string)) errors.push(`${where} : haut du caisson invalide.`);
+      if (feature.top !== undefined && !["panel", "rails"].includes(feature.top as string)) errors.push(`${where} : haut du caisson invalide.`); if (feature.railFront !== undefined && feature.railFront !== "edge") errors.push(`${where} : traverse avant invalide.`);
       if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation du caisson invalide (0, 90, 180 ou 270°).`);
       if (feature.standard !== undefined && typeof feature.standard !== "string") errors.push(`${where} : standard de construction invalide.`);
       break;

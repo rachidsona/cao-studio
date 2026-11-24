@@ -99,6 +99,8 @@ export interface KitchenUnit {
   more?: Pick<KitchenUnit, "side" | "span" | "rise">[];
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
+  /** Its front rail standing on its edge (the Caisson tool). */
+  railFront?: "edge";
   /** The run of a kitchen plan it belongs to (document/kitchen-plan-build.ts), and the item of the run it is. */
   run?: string;
   item?: string;

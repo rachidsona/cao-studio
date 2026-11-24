@@ -137,6 +137,8 @@ export interface KitchenRunItem {
   handles?: false;
   /** The style of its fronts, chosen in the Façades tool (missing: plain). */
   facade?: FrontStyle;
+  /** Its front rail on its edge, chosen in the Caisson tool (a unit with two rails). */
+  railFront?: CabinetFeature["railFront"];
   /**
    * Its fronts and its inside chosen for this unit, over its model's (« Façades et intérieur » of the run's editor):
    * no fronts, one door, two, or drawers and how many; a drawer over the doors (its front's height, 0: none), English
@@ -510,6 +512,8 @@ export interface CabinetFeature extends FeatureBase {
   top?: "panel" | "rails";
   /** The rails' width when the top is two rails (mm): 100 when missing. */
   railWidth?: number;
+  /** Two rails: the front one stands on its edge, as the back one (missing: lying flat). */
+  railFront?: "edge";
   /**
    * Turn about the vertical through the origin (degrees, counterclockwise seen from above): 0 faces −Y, 90 faces +X,
    * 180 faces +Y, 270 faces −X. Its fronts turn with it.
