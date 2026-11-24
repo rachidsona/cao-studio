@@ -1,6 +1,6 @@
 /**
- * « Cacher la sélection » (colonne Sélection et vue) : les pièces choisies seules — un tiroir, une étagère, un côté
- * d'un caisson, pas le caisson entier ; tout le meuble quand il est choisi entier — sont cachées d'un coup (une seule
+ * « Cacher la sélection » (colonne Sélection et vue) : les pièces choisies seules — un tiroir (sa façade et son caisson),
+ * une étagère, un côté d'un caisson, pas le caisson entier ; tout le meuble quand il est choisi entier — sont cachées d'un coup (une seule
  * annulation), et restent cachées dans le projet. Sans sélection, le bouton ouvre la liste des éléments cachés, rangés par meuble (un caisson avec ses
  * façades, une Répartition avec ses panneaux, sinon le corps) : « Montrer » en rend un, « Tout montrer » les rend tous.
  * Le nombre d'éléments cachés s'affiche sur le bouton.
@@ -10,6 +10,7 @@ import type { CadDocument } from "../document/types";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
 import { elementName, selectedPieces } from "./isolate-selection";
+import { drawerBodies } from "../document/drawer-pick";
 import { elementOf } from "./zone-view";
 
 interface HiddenGroup {
@@ -119,11 +120,15 @@ export function bindHideSelection(root: HTMLElement, viewport: Viewport, editor:
   }
 
   button.addEventListener("click", () => {
-    // The pieces chosen themselves (a drawer, a shelf, a side), not the whole cabinet they are of.
+    // The pieces chosen themselves (a drawer, a shelf, a side), not the whole cabinet they are of; a drawer's piece
+    // (its front) takes the whole drawer: its box goes with it, as Sélection++ takes it (document/drawer-pick.ts).
     const pieces = selectedPieces(editor);
     if (pieces.size) {
+      const { bodies, faces, edges, vertices } = editor.picked.selection;
+      const picked = [...bodies, ...faces.map((p) => p.bodyId), ...edges.map((p) => p.bodyId), ...vertices.map((p) => p.bodyId)];
+      const whole = picked.flatMap((id) => drawerBodies(editor.doc, id, viewport.displayedBodies));
       viewport.clearSelection();
-      void editor.change(setHidden(editor.doc, [...pieces.keys()], true));
+      void editor.change(setHidden(editor.doc, [...new Set(whole.map((id) => bodyOrigin(editor.doc, id)))], true));
       const names = [...pieces.values()];
       return editor.notify(`${names.length === 1 ? `« ${names[0]} » caché` : `${names.length} éléments cachés`} : ce bouton, sans sélection, les liste pour les montrer à nouveau.`, "info");
     }

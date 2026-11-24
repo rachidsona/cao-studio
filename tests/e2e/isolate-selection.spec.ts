@@ -143,3 +143,40 @@ test("« Cacher la sélection » : deux pièces cachées d'un coup (pas leurs ca
   await expect(button).toHaveAttribute("data-count", "1", { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test("« Cacher la sélection » sur la façade d'un tiroir : le tiroir entier se cache, sa façade et son caisson, pas le meuble", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-test-cacher-tiroir");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await plan.getByRole("button", { name: "Créer le plan" }).click();
+  await plan.locator('[data-open-run="A"]').click();
+  const add = plan.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  for (let i = 0; i < 3; i++) await plan.locator('[data-add="base-bas-3-tiroirs-900"]').click();
+  await plan.locator("[data-run-close]").click();
+  await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
+  await plan.getByRole("button", { name: "Fermer", exact: true }).click();
+  await click(page, '[data-action="view"][data-view="front"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1500);
+  // A face of a drawer front chosen, then hidden.
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="face"]')?.click());
+  await page.mouse.click(430, 660);
+  await page.locator("[data-hide-selection]").click();
+  await expect(page.locator("[data-hide-selection]")).toHaveAttribute("data-count", "1", { timeout: 30_000 });
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const saved = (await page.evaluate(async (url) => (await (await fetch(url, { headers: { Accept: "application/json" } })).json()).document, api)) as { hiddenBodies?: string[]; features: { id: string; type: string; hidden?: boolean }[] };
+  const hidden = saved.hiddenBodies ?? [];
+  // Its front, its two sides, its back and its bottom at least, all of one fronts feature; no cabinet hidden.
+  expect(hidden.length).toBeGreaterThanOrEqual(5);
+  const fronts = new Set(hidden.map((id) => id.split("#")[0]));
+  expect(fronts.size).toBe(1);
+  expect(saved.features.find((f) => f.id === [...fronts][0])?.type).toBe("fronts");
+  expect(saved.features.filter((f) => f.type === "cabinet" && f.hidden)).toHaveLength(0);
+  expect(errors).toEqual([]);
+});
