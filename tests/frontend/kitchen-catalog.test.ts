@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, addKitchenUnit, cabinetBox, customEntry, entryFromCabinet, slideCabinet, stickDelta, turnCabinet } from "../../frontend/src/document/kitchen-catalog";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
+import { drawerHeights, frontsParts } from "../../frontend/src/features/fronts-parts";
 
 const entry = (id: string) => CATALOG.find((e) => e.id === id)!;
 const cabinets = (doc: CadDocument) => doc.features.filter((f): f is CabinetFeature => f.type === "cabinet");
@@ -143,5 +144,28 @@ describe("caissons de casquette (sur-meubles)", () => {
   it("le Plan de cuisine ne les propose pas dans ses rangées : il a sa casquette en caissons", async () => {
     const { runModels } = await import("../../frontend/src/features/kitchen-run-items");
     expect(runModels().some((m) => m.name.startsWith("Casquette"))).toBe(false);
+  });
+});
+
+describe("tiroirs de hauteurs différentes", () => {
+  it("deux petits tiroirs sur un casserolier : leurs parts 1, 1, 2 ; sans parts justes, tous égaux", () => {
+    expect(drawerHeights(700, 3, 3, [1, 1, 2])).toEqual([173.5, 173.5, 347]);
+    expect(drawerHeights(700, 3, 3)).toEqual([694 / 3, 694 / 3, 694 / 3]);
+    expect(drawerHeights(700, 3, 3, [1, 2])).toEqual([694 / 3, 694 / 3, 694 / 3]);
+    expect(drawerHeights(700, 3, 3, [1, "a", 2] as unknown as number[])).toEqual([694 / 3, 694 / 3, 694 / 3]);
+  });
+
+  it("« Bas 2 tiroirs et casserolier » : trois tiroirs, leurs parts gardées sur ses façades", () => {
+    const entry = CATALOG.find((e) => e.name === "Bas 2 tiroirs et casserolier" && e.width === 600)!;
+    expect(entry).toMatchObject({ layout: "drawers", drawers: 3, drawerShares: [1, 1, 2] });
+    const doc = addKitchenUnit(createReferencePlate(), entry).doc;
+    const fronts = doc.features.find((f): f is FrontsFeature => f.type === "fronts")!;
+    expect(fronts).toMatchObject({ layout: "drawers", drawers: 3, drawerShares: [1, 1, 2] });
+    // The fronts themselves: the bottom one (the pan drawer) twice as high as each of the two over it.
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    const heights = frontsParts(fronts, cabinet).filter((p) => p.name.startsWith("Façade tiroir")).map((p) => Math.round(p.to[2] - p.from[2]));
+    expect(heights).toHaveLength(3);
+    expect(heights[0]).toBe(heights[1]);
+    expect(Math.abs(heights[2]! - 2 * heights[0]!)).toBeLessThanOrEqual(1);
   });
 });

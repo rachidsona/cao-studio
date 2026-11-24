@@ -130,6 +130,18 @@ export function frontArea(f: Pick<FrontsFeature, "layout" | "drawers" | "gap"> &
   return { x0, x1, z0, z1, h: (z1 - z0 - (n - 1) * between) / n, between };
 }
 
+/**
+ * The height of each drawer front, from the top, in `room` (mm) with `between` between two: their shares when one is
+ * given per drawer (« 1, 1, 2 »: two small over a pan drawer), else all equal.
+ */
+export function drawerHeights(room: number, n: number, between: number, shares?: readonly number[]): number[] {
+  const free = room - (n - 1) * between;
+  // Read from the saved document: numbers above 0 only, one per drawer, else equal drawers.
+  const ok = Array.isArray(shares) && shares.length === n && shares.every((s) => typeof s === "number" && Number.isFinite(s) && s > 0);
+  const total = ok ? shares!.reduce((a, b) => a + b, 0) : n;
+  return Array.from({ length: n }, (_, i) => (free * (ok ? shares![i]! : 1)) / total);
+}
+
 /** Hinges a door of this height needs. */
 export function hingeCount(height: number): number {
   return height < 900 ? 2 : height < 1600 ? 3 : 4;
@@ -226,9 +238,10 @@ export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefine
     }
   } else {
     const n = f.drawers;
-    for (let i = 0; i < n; i++) {
-      // Drawers numbered from the top.
-      const top = z1 - i * (h + between);
+    const heights = drawerHeights(z1 - z0, n, between, f.drawerShares);
+    for (let i = 0, top = z1; i < n; top -= heights[i]! + between, i++) {
+      // Drawers numbered from the top, each its own height (all equal but for drawerShares).
+      const h = heights[i]!;
       const bottom = top - h;
       const k = i + 1;
       if (gorge && i > 0) gorges.push(top);

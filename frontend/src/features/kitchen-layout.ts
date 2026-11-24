@@ -75,6 +75,7 @@ export interface KitchenUnit {
   /** The fronts it gets (none: an appliance or panels in front). */
   layout: "door" | "doors" | "drawers" | "none";
   drawers?: number;
+  drawerShares?: number[];
   /** A drawer over the door(s): its front's height; English drawers behind them: how many (features/fronts-parts.ts). */
   topDrawer?: number;
   innerDrawers?: number;

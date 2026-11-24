@@ -799,6 +799,8 @@ export interface FrontsFeature extends FeatureBase {
    */
   grip?: "gorge";
   drawers: number;
+  /** Drawers of different heights: their shares of the room, from the top (« 1, 1, 2 »: two small over a pan drawer); missing or not one per drawer: all equal. */
+  drawerShares?: number[];
   mount: "overlay" | "inset";
   gap: number;
   /** Door or doors under a drawer: the height of its front, at the top of the cabinet (mm). */

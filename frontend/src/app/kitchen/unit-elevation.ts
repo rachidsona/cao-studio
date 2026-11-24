@@ -4,6 +4,7 @@
  * depuis ses cotes, sans le noyau. Les tons viennent du thème ; les poignées gardent leur laiton.
  */
 import { KINDS, type CatalogEntry, type UnitKind } from "../../document/kitchen-catalog";
+import { drawerHeights } from "../../features/fronts-parts";
 
 /** Laiton : the one colour that does not follow the theme, on the handles and what is chosen. */
 export const BRASS = "#b8975a";
@@ -55,11 +56,12 @@ function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
     return door(x0, middle - GAP / 2, middle - 45) + door(middle + GAP / 2, x1, middle + 45);
   }
   if (e.layout === "drawers") {
-    const n = e.drawers ?? 3;
-    const h = (bottom - top - (n - 1) * GAP) / n;
-    return Array.from({ length: n }, (_, i) => {
-      const y = top + i * (h + GAP);
-      return box(x0, y, x1 - x0, h, PANEL) + handle(x0 + (x1 - x0) * 0.3, y + 42, x1 - (x1 - x0) * 0.3, y + 42);
+    const heights = drawerHeights(bottom - top, e.drawers ?? 3, GAP, e.drawerShares);
+    let y = top;
+    return heights.map((h) => {
+      const front = box(x0, y, x1 - x0, h, PANEL) + handle(x0 + (x1 - x0) * 0.3, y + 42, x1 - (x1 - x0) * 0.3, y + 42);
+      y += h + GAP;
+      return front;
     }).join("");
   }
   // Open: its shelves, seen from the front.
@@ -72,11 +74,11 @@ function fronts(e: CatalogEntry, x0: number, x1: number, top: number, bottom: nu
 /** Its inside, its fronts taken off (« Sans portes » of the strip): shelves, uprights, drawers as their boxes. */
 function opened(e: CatalogEntry, x0: number, x1: number, top: number, bottom: number): string {
   const tray = (y: number, h: number) => box(x0 + 30, y, x1 - x0 - 60, h, `${BODY} [stroke-dasharray:6_4]`);
-  const stack = (n: number, from: number) => {
-    const h = (bottom - from - (n - 1) * GAP) / n;
-    return Array.from({ length: n }, (_, i) => tray(from + i * (h + GAP) + h * 0.35, h * 0.65)).join("");
+  const stack = (n: number, from: number, shares?: readonly number[]) => {
+    let y = from;
+    return drawerHeights(bottom - from, n, GAP, shares).map((h) => (y += h + GAP, tray(y - h - GAP + h * 0.35, h * 0.65))).join("");
   };
-  if (e.layout === "drawers") return stack(e.drawers ?? 3, top);
+  if (e.layout === "drawers") return stack(e.drawers ?? 3, top, e.drawerShares);
   // Under a sink: no top, its two rails, front and back, seen as one.
   if (e.top === "rails") return box(x0, top, x1 - x0, 60, PANEL);
   // A drawer over the doors; English drawers behind them, in their lower half.

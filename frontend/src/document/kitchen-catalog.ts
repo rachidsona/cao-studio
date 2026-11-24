@@ -22,6 +22,8 @@ export interface CatalogEntry {
   width: number;
   layout: FrontsFeature["layout"] | "none";
   drawers?: number;
+  /** Drawers of different heights: their shares, from the top (FrontsFeature.drawerShares). */
+  drawerShares?: number[];
   shelves: number;
   /** Upright boards inside, evenly spaced. */
   dividers?: number;
@@ -73,6 +75,7 @@ export const CATALOG: CatalogEntry[] = [
   ...entries("base", "Bas 1 porte", [150, 200, 300, 400, 450, 500, 600], { layout: "door", shelves: 1 }),
   ...entries("base", "Bas 2 portes", [800, 900, 1000, 1200], { layout: "doors", shelves: 1 }),
   ...entries("base", "Bas 3 tiroirs", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, shelves: 0 }),
+  ...entries("base", "Bas 2 tiroirs et casserolier", [400, 500, 600, 800, 900], { layout: "drawers", drawers: 3, drawerShares: [1, 1, 2], shelves: 0 }),
   ...entries("base", "Bas 4 tiroirs", [300, 400, 500, 600, 800, 900], { layout: "drawers", drawers: 4, shelves: 0 }),
   ...entries("base", "Bas 5 tiroirs", [400, 600], { layout: "drawers", drawers: 5, shelves: 0 }),
   ...entries("base", "Bas casseroliers", [600, 800, 900], { layout: "drawers", drawers: 2, shelves: 0 }),
@@ -197,7 +200,7 @@ export function addKitchenUnit(doc: CadDocument, entry: CatalogEntry, anchorId?:
     fronts = {
       id: uniqueId(next, "fr"), type: "fronts", name: `Façades ${cabinet.name}`, cabinet: cabinet.id, layout: entry.layout, drawers: entry.drawers ?? 3,
       mount: model?.mount ?? "overlay", gap: model?.gap ?? 3, thickness: model?.thickness ?? 19, hinges: model?.hinges ?? true, handles: model?.handles ?? true,
-      ...(model?.hw ? { hw: model.hw } : {}), ...(entry.side && entry.layout === "door" ? { side: entry.side } : {}), ...(entry.facade ?? {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}),
+      ...(model?.hw ? { hw: model.hw } : {}), ...(entry.side && entry.layout === "door" ? { side: entry.side } : {}), ...(entry.facade ?? {}), ...(entry.topDrawer ? { topDrawer: entry.topDrawer } : {}), ...(entry.innerDrawers ? { innerDrawers: entry.innerDrawers } : {}), ...(entry.drawerShares ? { drawerShares: entry.drawerShares } : {}),
     };
     next = { ...next, features: [...next.features, fronts] };
     const material = (model && doc.bodyInfo?.[`${model.id}${PART_SEPARATOR}0`]?.material) || "lacquer-white";
