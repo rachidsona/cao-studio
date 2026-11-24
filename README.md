@@ -2776,7 +2776,10 @@ opération existante.
     - Un **appareil posé à la main** (Électroménager), cliqué sur la bande, se supprime avec la découpe du plan de
       travail faite pour lui (`document/appliance-remove.ts`).
     - Le **plan de travail**, cliqué, se supprime pour ce linéaire (ni plan ni découpes ; la crédence reste) et se remet
-      par « Remettre le plan de travail ». La bande le dessine là où il est : au-dessus des meubles.
+      par « Remettre le plan de travail ». La bande le dessine là où il est : au-dessus des meubles. Il **suit
+      toujours les caissons** : un caisson supprimé l'emporte avec lui, et un caisson posé sur un linéaire dont le plan
+      de travail ou la plinthe avaient été ôtés les y remet (`withFollowing` de `document/kitchen-floor.ts`), sauf
+      s'ils sont ôtés dans le même changement.
     - Un meuble ajouté ou dupliqué qui pousserait un autre hors du linéaire est refusé, avec la place qui reste.
     - **Aligner sur le bas** (un meuble haut choisi ; aussi au clic droit) : son bord gauche vient au-dessus de celui
       du meuble bas qu'il recouvre le plus, sinon leurs bords droits, sinon il s'aligne sur le meuble bas suivant. Le

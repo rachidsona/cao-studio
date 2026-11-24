@@ -55,6 +55,26 @@ describe("plan de travail qui suit les meubles", () => {
     expect(tops.map((b) => [b.name, (b.holes ?? []).map((h) => h.appliance)])).toEqual([["Plan de travail A", ["sink-1"]], ["Plan de travail A2", ["hob-60"]]]);
   });
 
+  it("suit toujours les caissons : ôté d'un linéaire, un caisson posé l'y remet, la plinthe aussi ; sinon il reste ôté", async () => {
+    const { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } = await import("../../frontend/src/document/kitchen-floor");
+    const items = [newItem([], "base-bas-2-portes", 1000)];
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: items }, noWorktop: { A: true }, noKick: { A: true }, made: {} });
+    const off = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof off === "string") throw new Error(off);
+    const named = (d: CadDocument, start: string) => d.features.some((f) => f.type === "extrude" && f.name.startsWith(start));
+    // Rebuilt with nothing new: still none.
+    expect([named(off.doc, "Plan de travail"), named(off.doc, "Plinthe")]).toEqual([false, false]);
+    // A caisson put on the run: both come back, and stay.
+    const more = withKitchenBuilt(off.doc, base.id, { runs: { A: [...items, newItem(items, "base-bas-1-porte", 600)] } });
+    if (typeof more === "string") throw new Error(more);
+    expect([named(more.doc, "Plan de travail"), named(more.doc, "Plinthe")]).toEqual([true, true]);
+    expect(kitchenPlanIn(more.doc, base.id)!.noWorktop?.A).toBeUndefined();
+    // Taken away in the same change as a caisson put: it stays away.
+    const both = withKitchenBuilt(off.doc, base.id, { runs: { A: [...items, newItem(items, "base-bas-1-porte", 600)] }, noWorktop: { A: true } });
+    if (typeof both === "string") throw new Error(both);
+    expect(named(both.doc, "Plan de travail")).toBe(false);
+  });
+
   it("ôté d'un linéaire sur sa bande, il n'est plus bâti, ni ses découpes ; la crédence reste", () => {
     const p = { ...plan([["base-bas-1-porte", 600], ["app-sink", 800], ["base-bas-1-porte", 400]]), noWorktop: { A: true } };
     expect(spans(p, "worktop")).toEqual([]);

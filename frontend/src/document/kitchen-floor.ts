@@ -15,7 +15,7 @@ import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
 import { PART_SEPARATOR, featureInputs, featureOfBody, type CadDocument, type Feature, type KitchenFloorPlan, type KitchenRunItem, type SketchFeature } from "./types";
-import { isSpace } from "../features/kitchen-run-items";
+import { isFiller, isSpace, itemEntry, rowOf } from "../features/kitchen-run-items";
 import { placePoint } from "../features/room-runs";
 
 const FRONT_MATERIAL = "lacquer-white";
@@ -91,12 +91,33 @@ function withWorkBack(doc: CadDocument, before: CadDocument, work: Feature[], ma
 }
 
 /** The kitchen of the plan made again from it (its settings changed by `patch`), in place of what it made before. */
+/** The caissons of a run's base row: a unit, an appliance, a furnished caisson (not a filler nor room kept free). */
+const posed = (items: readonly KitchenRunItem[] = []) => new Set(items.filter((i) => (!isFiller(i) || (isSpace(i) && i.furnished)) && rowOf(itemEntry(i)) === "base").map((i) => `${i.id}:${i.furnished ?? ""}`));
+
+/**
+ * The worktop and the plinth follow the caissons: a caisson put on a run whose worktop or plinth was taken away brings
+ * them back (unless this same change takes them away).
+ */
+function withFollowing(old: KitchenFloorPlan, patch: Partial<KitchenFloorPlan>, plan: KitchenFloorPlan): KitchenFloorPlan {
+  const back = Object.keys(plan.runs ?? {}).filter((run) => {
+    const was = posed(old.runs?.[run]);
+    return [...posed(plan.runs?.[run])].some((k) => !was.has(k));
+  });
+  if (!back.length) return plan;
+  const kept = (key: "noWorktop" | "noKick") => {
+    const set = { ...plan[key] };
+    for (const run of back) if (patch[key]?.[run] !== true) delete set[run];
+    return set;
+  };
+  return { ...plan, noWorktop: kept("noWorktop"), noKick: kept("noKick") };
+}
+
 export function withKitchenBuilt(base: CadDocument, planId: string, patch: Partial<KitchenFloorPlan> = {}): { doc: CadDocument; problems: string[] } | string {
   const old = kitchenPlanIn(base, planId);
   if (!old) return "Ce plan n'existe plus.";
   // Its rooms kept for caissons furnished before they kept them, linked to them where they stand.
   const unlinked = Object.values(old.runs ?? {}).some((items) => items.some((i) => isSpace(i) && !i.furnished));
-  const plan: KitchenFloorPlan = unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch };
+  const plan: KitchenFloorPlan = withFollowing(old, patch, unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch });
   const madeBefore = Object.values(old.made ?? {}).flat();
   // What each piece made before is, to find it again once made anew (its ids are given out again).
   const before = madeKeys(base, old);
