@@ -848,12 +848,13 @@ test("linéaire : façades et intérieur du meuble choisi — étagères, cloiso
   const strip = tool.locator('[data-run-strip="A"]');
   const bar = tool.locator("[data-strip-actions]");
   await strip.locator("[data-kick]").first().click();
-  await expect(bar).toContainText("Plinthe");
+  // 6 cm behind the fronts at first (KICK_BACK.default), 1 cm more a click.
+  await expect(bar).toContainText("Plinthe · reculée de 6 cm");
   await bar.locator("[data-strip-kick-back]").click();
-  await expect(bar).toContainText("reculée de 1 cm");
+  await expect(bar).toContainText("reculée de 7 cm");
   // Stored (the kitchen made again): the plinth is still the one chosen.
   await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
-  await expect(bar).toContainText("reculée de 1 cm");
+  await expect(bar).toContainText("reculée de 7 cm");
   await bar.locator("[data-kick-looks] summary").click();
   await bar.locator('[data-kick-look="dekton-sirius"]').click();
   await expect(bar.locator("[data-kick-looks] summary")).toContainText("Dekton Sirius");
