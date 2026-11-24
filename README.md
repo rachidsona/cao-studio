@@ -2934,8 +2934,11 @@ opération existante.
       place devient un « Espace libre » de sa largeur : il ne revient pas quand la cuisine est refaite, ses voisins ne
       bougent pas, et le prochain meuble ajouté assez étroit va dans cette place (`inKeptRoom`), une seule fois — la
       place prise, un autre meuble est refusé. Un caisson aménagé dont on supprime les panneaux disparaît en entier,
-      son esquisse avec, et sa place redevient libre (`document/kitchen-delete-sync.ts`). Pour refermer le vide,
-      « Place libre » du linéaire retire l'espace.
+      son esquisse avec, et sa place redevient libre (`document/kitchen-delete-sync.ts`). Un **meuble d'angle**
+      supprimé : son angle n'en a plus (angle mort en bas, rien en haut) ; des **murs** supprimés : le plan n'en dessine
+      plus. Supprimés avec d'autres pièces (un plan de travail, un mur, toute la cuisine d'un coup), le plan les oublie
+      aussi, sans rien refaire : sa bande est vide comme la 3D. Pour refermer le vide, « Place libre » du linéaire
+      retire l'espace.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
     leur mur, façades, plan de travail **au-dessus des meubles** de chaque linéaire avec les découpes de l'évier et de
     la plaque, crédence, plinthes — qui passent aussi **sous chaque angle** (« Plinthe d'angle A ») jusqu'au bout de ses façades,

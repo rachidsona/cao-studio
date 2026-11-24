@@ -4,12 +4,14 @@
  * cuisine est refaite, ses voisins ne bougent pas, et un autre meuble peut prendre cette place
  * (features/kitchen-run-items.ts). Un caisson aménagé dont on supprime les panneaux disparaît en entier, son esquisse
  * avec ; la place qu'il tenait redevient libre. Un fileur du linéaire supprimé (posé à la main, ou celui que le plan met
- * dans le reste) laisse aussi sa place libre, sans fileur. Une plinthe supprimée : son linéaire n'en a plus. Toute la cuisine supprimée d'un coup n'est pas refaite. Pur.
+ * dans le reste) laisse aussi sa place libre, sans fileur. Une plinthe supprimée : son linéaire n'en a plus. Un meuble
+ * d'angle supprimé : son angle n'en a plus (angle mort, rien en haut). Des murs supprimés : le plan n'en dessine plus.
+ * Supprimés avec d'autres pièces de la cuisine (un plan de travail, un mur), le plan les oublie aussi, sans rien refaire. Pur.
  */
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { runCabinets } from "./kitchen-plan-add";
 import { deleteFeatures, findFeature, updateFeature } from "./operations";
-import type { CabinetFeature, CadDocument, KitchenRunItem } from "./types";
+import type { CabinetFeature, CadDocument, KitchenFloorPlan, KitchenRunItem } from "./types";
 import { FILLER, isFiller, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
 import { gapsAsItems } from "../features/kitchen-run-gaps";
 import { kitchenFromPlan } from "./kitchen-plan-build";
@@ -70,14 +72,32 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
         freed = true;
       }
     }
-    if (units.size && only) {
+    // A corner unit deleted: that corner has none any more (a dead corner low, nothing up).
+    let corners: Pick<KitchenFloorPlan, "corners" | "wallCorners"> = {};
+    if (units.size) {
+      const built = kitchenFromPlan(plan, kitchenRoomInfo(prev, plan)).units;
+      for (const [run, ids] of Object.entries(plan.made ?? {})) {
+        const cabinets = ids.filter((id) => findFeature(prev, id)?.type === "cabinet");
+        const own = built.filter((u) => u.run === run);
+        if (own.length !== cabinets.length) continue;
+        cabinets.forEach((id, i) => {
+          const edit = own[i]!.cornerEdit;
+          if (!units.has(id) || !edit) return;
+          if (edit.key.startsWith("wall")) corners = { ...corners, wallCorners: { ...plan.wallCorners, ...corners.wallCorners, [edit.joint]: "none" } };
+          else corners = { ...corners, corners: { ...plan.corners, ...corners.corners, [edit.joint]: "dead" } };
+        });
+      }
+    }
+    // The kitchen's walls deleted: it draws none any more.
+    const walls = deleted.some((id) => /^Mur [A-Z]+$/.test(findFeature(prev, id)?.name ?? "")) ? { noWalls: true } : {};
+    if (units.size) {
       for (const [run, ids] of Object.entries(plan.made ?? {})) {
         if (!ids.some((id) => units.has(id))) continue;
         const pairs = runCabinets(prev, sketch.id, run);
         for (const id of ids.filter((x) => units.has(x))) {
           const items = runs[run] ?? [];
           const item = items.find((i) => i.id === pairs.find((x) => x.cabinet === id)?.item);
-          // A corner unit is no unit of the run: it is made again with it.
+          // A corner unit is no unit of the run: its corner is set above.
           if (!item) continue;
           const c = findFeature(prev, id) as CabinetFeature;
           const wall = rowOf(itemEntry(item)) === "wall";
@@ -92,9 +112,14 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
       return held?.type === "sketch" && (held.offsets ?? []).some(isPartition) && !boards(doc, held.id) && boards(prev, held.id) ? [held.id] : [];
     });
     if (emptied.length) doc = deleteFeatures(doc, emptied).next;
-    if (freed || (noKick && only)) {
-      const built = withKitchenBuilt(doc, sketch.id, { runs, ...(noKick && only ? { noKick } : {}) });
+    const changed = freed || Object.keys(corners).length > 0 || "noWalls" in walls;
+    if (only && (changed || noKick)) {
+      const built = withKitchenBuilt(doc, sketch.id, { runs, ...corners, ...walls, ...(noKick ? { noKick } : {}) });
       if (typeof built !== "string") doc = built.doc;
+    } else if (changed || noKick) {
+      // Taken away with other pieces of it (a worktop, a wall): the plan follows, nothing is made again.
+      const made = Object.fromEntries(Object.entries(plan.made ?? {}).map(([run, ids]) => [run, ids.filter((id) => findFeature(doc, id))]));
+      doc = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, runs, ...corners, ...walls, ...(noKick ? { noKick } : {}), made } } : f));
     } else if (emptied.length) {
       // Its room, free again (kitchenPlanIn no longer sees it held).
       const free = kitchenPlanIn(doc, sketch.id)?.runs;
