@@ -120,9 +120,9 @@ export class RunEditor {
     return this.host.run.id;
   }
 
-  /** The item chosen on the strip; `choose`: one chosen from outside (« Modifier la sélection »), « Meuble choisi » open. */
+  /** The item chosen on the strip; `show`: a block opened from outside (« Modifier la sélection »), an item chosen in it. */
   get chosenItem(): string | null { return this.chosen; }
-  choose(id: string): void { (this.chosen = id), (this.picked = []), (this.other = null), (this.folds.open = "chosen"), this.host.redraw(); }
+  show(fold: string, item?: string): void { if (item) (this.chosen = item), (this.picked = []), (this.other = null); (this.folds.open = fold), this.host.redraw(); }
 
   get openFold(): string | null {
     return this.folds.open;

@@ -136,10 +136,10 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   éléments cachés, **rangés par meuble** (un caisson avec ses façades, une Répartition avec ses panneaux, sinon le
   corps) : un clic en montre un, « Tout montrer » les rend tous (`app/hide-selection.ts`).
 - **Modifier la sélection** (en tête de chaque menu du clic droit dans la vue : meuble, corps, niche, porte, tiroirs) :
-  ouvre l'outil principal de l'élément cliqué — sinon du premier choisi : **Façades** pour une porte ou une façade de
-  tiroir, le **Plan de dressing** pour des portes coulissantes ; pour ce que le Plan de cuisine a fait (meuble, fileur,
-  plan de travail), le plan sur son linéaire, le meuble choisi et « Meuble choisi » déplié, pour tout régler ; sinon
-  l'outil qui l'a fait, comme un double-clic dans l'arbre (`app/isolate-selection.ts` `modifyMenuItem`).
+  ouvre l'outil de l'élément cliqué — sinon du premier choisi : **Façades** pour une porte ou une façade de tiroir,
+  **Caisson** pour une étagère, un côté, un dessus de caisson (ses étagères s'y règlent), son outil pour une niche de
+  Répartition, le **Plan de dressing** pour des portes coulissantes ; pour ce que le Plan de cuisine a fait (fileur,
+  plan de travail, plinthe), le plan sur son linéaire, « Fileurs » déplié pour un fileur ; sinon l'outil qui l'a fait, comme un double-clic dans l'arbre (`app/isolate-selection.ts` `modifyMenuItem`).
 - **Isoler la sélection** (bouton de la colonne Vue, touche **I**, ou clic droit → « Isoler la sélection ») : les
   éléments choisis — un clic, puis Ctrl ou Maj + clic pour en ajouter, une fenêtre de sélection ou le navigateur —
   restent seuls dans la vue pour y travailler, les autres cachés, comme « Isoler » de Fusion. Un élément est le meuble

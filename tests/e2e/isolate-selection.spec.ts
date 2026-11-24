@@ -76,11 +76,11 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-select-filter="auto"]')?.click());
   await bar.getByRole("button", { name: "Tout montrer" }).click();
   await expect(bar).toHaveCount(0);
-  // « Modifier la sélection » on the cabinet of a unit of the Plan de cuisine: the plan on its run, the unit chosen.
+  // « Modifier la sélection » on a board of a cabinet (a side, a shelf): the Caisson tool, its shelves set there.
   await page.mouse.click(430, 660);
   await page.mouse.click(430, 660, { button: "right" });
   await page.getByRole("menuitem", { name: "Modifier la sélection" }).click();
-  await expect(plan.locator('[data-fold="chosen"]')).toContainText("Bas 2 portes", { timeout: 30_000 });
+  await expect(page.getByRole("dialog", { name: "Caisson" })).toBeVisible({ timeout: 30_000 });
   expect(errors).toEqual([]);
 });
 
