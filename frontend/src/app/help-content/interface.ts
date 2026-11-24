@@ -86,7 +86,7 @@ export const SCREEN: HelpFamily[] = [
           "Pour séparer des icônes, cliquez dans la liste du « + » « ＋ Ligne » (un trait fin) ou « ＋ Espace vide » (une place vide de la taille d'une icône) : il s'ajoute au bas de la colonne ; glissez-le entre les icônes voulues. Un clic droit le retire.",
           "Pour nommer une colonne, double-cliquez son nom, en haut sous la flèche (son numéro tant qu'elle n'en a pas) ; tapez-le et Entrée (Échap laisse l'ancien, un nom vide redonne le numéro). Les icônes se tiennent au milieu de la hauteur de leur colonne.", "La flèche ‹ en haut d'une colonne la replie : elle disparaît et la vue reprend sa place. Un petit onglet (son nom écrit debout, ou son numéro : › 1, › 2…) reste en bas du bord gauche de la vue ; cliquez-le pour rouvrir la colonne.",
         ],
-        tip: "Ce sont les mêmes colonnes en Conception 3D, en Dressing et en Cuisine : elles restent en place quand vous changez d'onglet. Vos choix et les colonnes repliées sont retenus. Les colonnes sont cachées pendant une esquisse, pendant le rendu et sur un écran étroit.",
+        tip: "Ce sont les mêmes colonnes en Conception 3D, en Dressing et en Cuisine : elles restent en place quand vous changez d'onglet. Vos choix, leurs noms et les colonnes repliées sont retenus par votre compte : vous les retrouvez dans un autre navigateur, sur un autre ordinateur ou à une autre adresse du serveur. Les colonnes sont cachées pendant une esquisse, pendant le rendu et sur un écran étroit.",
       },
       {
         keys: [], name: "Ruban : épingler et déplacer les groupes",

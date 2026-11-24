@@ -31,6 +31,14 @@ def test_kept_data_follows_the_account_and_only_it(client_logged, user, other_us
 
 
 @pytest.mark.django_db
+def test_the_interface_layout_follows_the_account(client_logged):
+    columns = json.dumps({"columns": [["data-action:extrude"]], "folded": [False], "names": ["meubles"]})
+    for key in ("cao.tool-columns", "cao.side-tools", "cao.ribbon-hidden.model", "cao.shortcuts"):
+        assert put(client_logged, key, columns).status_code == 200
+    assert client_logged.get("/api/kept/").json()["data"]["cao.tool-columns"] == columns
+
+
+@pytest.mark.django_db
 def test_kept_data_takes_known_keys_and_texts_only(client_logged):
     assert put(client_logged, "cao.anything", "x").status_code == 404
     assert put(client_logged, "cao.suppliers", 12).status_code == 400

@@ -1,7 +1,8 @@
 """What one keeps for all one's projects, kept by the server (session auth + CSRF, owner-only, JSON errors like api.py).
 
 « Mes caissons », « Mes modules », « Mes découpes », « Mes murs », the dressing styles, the suppliers, the quote's
-rates, the workshop's standards, the label, the G-code and DXF settings, the parts' tags, the render materials: each a
+rates, the workshop's standards, the label, the G-code and DXF settings, the parts' tags, the render materials, and
+the interface as arranged (tool columns, the selection column, the ribbon, the shortcuts): each a
 text the editor keeps under its key (frontend/src/persistence/kept-data.ts). Only these keys.
 
 - GET /api/kept/        → {"data": {key: text}}
@@ -31,6 +32,18 @@ KEYS = frozenset({
     "cao.part-tags",
     "cao.render-materials",
     "cao.worktop-bars",
+    # The interface as one has arranged it: the same in another browser or at another address of the server.
+    "cao.tool-columns",
+    "cao.side-tools",
+    "cao.ribbon-hidden.model",
+    "cao.ribbon-hidden.sketch",
+    "cao.ribbon-order.model",
+    "cao.ribbon-order.sketch",
+    "cao.ribbon-groups-3",
+    "cao.ribbon-shown",
+    "cao.steps-shown",
+    "cao.steps-ribbon",
+    "cao.shortcuts",
 })
 VALUE_MAX = 2_000_000
 

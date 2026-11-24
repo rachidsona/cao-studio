@@ -761,11 +761,16 @@ opération existante.
   valeur, comme Tab. Les icônes des outils de dessin disent aussi leur nom au survol.
 - **Ce qu'on garde pour tous ses projets suit le compte** : « Mes caissons », « Mes modules », « Mes découpes »,
   « Mes murs », les styles de dressing, les fournisseurs des bons de commande, les tarifs du devis, les standards de
-  l'atelier, l'étiquette, les réglages G-code et DXF, les étiquettes de pièces et les matières du rendu sont gardés
+  l'atelier, l'étiquette, les réglages G-code et DXF, les étiquettes de pièces, les matières du rendu et la
+  **disposition de l'interface** (les sept colonnes d'outils, leurs noms et celles repliées, la colonne Sélection et vue,
+  les outils du ruban et leur ordre, les raccourcis, le ruban et les étapes montrés) sont gardés
   par le serveur (`/api/kept/`, `apps/projects/kept.py`, modèle `KeptData`), plus seulement par le navigateur : ils
   reviennent sur un autre ordinateur ou après avoir vidé le navigateur. À l'ouverture de l'éditeur, la copie du
   serveur remplace celle du navigateur ; ce qu'il n'avait pas encore lui est envoyé ; chaque changement lui est
-  envoyé un instant après, un à la fois (`persistence/kept-data.ts`). Hors ligne, tout reste dans le navigateur.
+  envoyé un instant après, un à la fois (`persistence/kept-data.ts`). Changé juste avant de recharger, pas encore
+  envoyé (`cao.kept-pending`), c'est la copie du navigateur qui l'emporte et part au serveur. Le même compte retrouve
+  ainsi son interface dans un autre navigateur ou à une autre adresse du serveur (lancé depuis PyCharm, par
+  exemple). Hors ligne, tout reste dans le navigateur.
 - **Les messages de l'éditeur** (« Version 4 enregistrée », « Niche équipée », une modification refusée…)
   s'affichent **en bas à droite, en petit** (11 px), le plus récent en bas, au-dessus de la barre d'état — jamais
   par-dessus la vue, où ils cachaient ce qu'on voulait cliquer ; les clics passent à travers eux (un bouton OK ou

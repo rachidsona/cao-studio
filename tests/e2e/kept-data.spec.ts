@@ -22,3 +22,24 @@ test("les fournisseurs et Mes caissons gardés par le serveur reviennent après 
   expect(await page.evaluate(() => localStorage.getItem("cao.kitchen-own-units"))).toBe(JSON.stringify([{ name: "Mon caisson rangement" }]));
   expect(errors).toEqual([]);
 });
+
+test("la disposition de l'interface (colonnes d'outils et leurs noms) suit le compte, même changée juste avant de recharger", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-disposition-gardee");
+  const columns = (await page.evaluate(() => localStorage.getItem("cao.tool-columns"))) ?? "";
+  const named = JSON.stringify({ ...(columns ? JSON.parse(columns) : {}), names: ["meubles", "modifier", "finition"] });
+  // Changed, then the page reloaded at once: the change is not lost, and reaches the server.
+  await page.evaluate((v) => localStorage.setItem("cao.tool-columns", v), named);
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect
+    .poll(() => page.evaluate(async () => ((await (await fetch("/api/kept/")).json()) as { data: Record<string, string> }).data["cao.tool-columns"] ?? ""), { timeout: 10_000 })
+    .toContain("finition");
+  // Another browser (emptied): the same columns.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  expect(await page.evaluate(() => localStorage.getItem("cao.tool-columns"))).toContain("finition");
+  expect(errors).toEqual([]);
+});
