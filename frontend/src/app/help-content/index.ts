@@ -1,5 +1,6 @@
 /** Toutes les fiches de l'aide, dans l'ordre du sommaire : l'écran d'abord, puis le métier, puis le dessin et l'atelier. */
-import { CURIC, SCREEN } from "./interface";
+import { CURIC } from "./curic";
+import { SCREEN } from "./interface";
 import { MODELING } from "./modeling";
 import { SKETCH } from "./sketch";
 import type { HelpFamily } from "./types";
