@@ -456,6 +456,17 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
   const cabinets = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: { type: string; name: string; shelves?: number }[] } }).document.features.filter((f) => f.type === "cabinet").map((f) => [f.name, f.shelves]), api);
   expect(cabinets).toEqual(expect.arrayContaining([["Meuble d'angle A", 2], ["Haut d'angle A", 1]]));
+  // Deleted as the other units: the wall corner unit by Suppr, the base one by its button — a dead corner, fillers.
+  await tool.locator('[data-open-run="A"]').click();
+  await strip.locator('[data-wall-corner-front="blind"]').click({ position: { x: 4, y: 4 } });
+  await page.keyboard.press("Delete");
+  await expect(strip.locator("[data-wall-corner-front]")).toHaveCount(0);
+  await strip.locator('[data-corner-front="blind"]').click({ position: { x: 4, y: 4 } });
+  await tool.getByRole("button", { name: "Supprimer le meuble d'angle" }).click();
+  await expect(strip.locator('[data-corner-front="door"]')).toHaveCount(0);
+  await tool.locator("[data-run-close]").click();
+  await expect(page.getByText("Meuble d'angle A")).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByText("Haut d'angle A")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

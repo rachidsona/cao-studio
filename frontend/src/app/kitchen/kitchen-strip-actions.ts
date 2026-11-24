@@ -34,6 +34,8 @@ export interface StripActionsHost {
   /** A caisson furnished by hand (by the item keeping its room): isolated to be changed in the 3D, or deleted, its room left free. */
   openCaisson(id: string): void;
   removeCaisson(id: string): void;
+  /** The corner unit chosen taken away: a dead corner low, nothing up (its fillers close the corner). */
+  removeCorner(side: "left" | "right", row: "base" | "wall"): void;
   setWorktop(on: boolean): void;
   /** The run's plinth: built or not, how far back from the fronts (mm), its look; and what changes of it. */
   kick: { on: boolean; back: number; look: string | undefined };
@@ -101,8 +103,9 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       button("Supprimer", "data-strip-remove", "Ôte ce caisson avec ses panneaux et ses portes (Suppr) : sa place reste vide", () => host.removeCaisson(id)),
     ];
   } else if (host.other?.kind === "corner") {
-    label = `Angle ${host.other.side === "left" ? "de gauche" : "de droite"}${host.other.row === "wall" ? ", en haut" : ""} : réglé sous « Meuble choisi »`;
-    buttons = [];
+    const { side, row } = host.other;
+    label = `Angle ${side === "left" ? "de gauche" : "de droite"}${row === "wall" ? ", en haut" : ""} : réglé sous « Meuble choisi »`;
+    buttons = [button(row === "wall" ? "Supprimer le haut d'angle" : "Supprimer le meuble d'angle", "data-strip-remove", row === "wall" ? "Plus rien en haut dans cet angle (Suppr) ; il se remet sous « Meuble choisi »" : "Un angle mort à la place, fermé par deux fileurs (Suppr) ; il se remet sous « Meuble choisi »", () => host.removeCorner(side, row))];
   } else if (host.other?.kind === "worktop") {
     label = "Plan de travail";
     buttons = [button("Supprimer le plan de travail", "data-strip-remove", "Ce linéaire sans plan de travail ni découpes (Suppr) ; il se remet d'un clic", () => host.setWorktop(false))];
@@ -141,6 +144,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       if (event.key === "Delete" || event.key === "Backspace") {
         if (appliance) host.removeAppliance(appliance.id);
         else if (host.other?.kind === "caisson") host.removeCaisson(host.other.id);
+        else if (host.other?.kind === "corner") host.removeCorner(host.other.side, host.other.row);
         else if (host.other?.kind === "worktop") host.setWorktop(false);
         else if (host.other?.kind === "kick") host.setKick({ on: false });
         else if (ids.length) remove(ids);

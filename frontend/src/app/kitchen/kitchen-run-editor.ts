@@ -10,7 +10,7 @@ import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { itemSlid } from "../../document/kitchen-slide";
-import { kitchenSizes, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
+import { jointOf, kitchenSizes, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, joinedSpaces, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
@@ -246,7 +246,7 @@ export class RunEditor {
         void editor.change(withApplianceRemoved(editor.doc, id)).then(() => (this.host.redraw(), this.host.changed()));
       },
       ...caisson,
-      setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()),
+      setWorktop: (on) => ((this.worktop = on), (this.other = null), this.touched()), removeCorner: (side, row) => ((this.other = null), (this.corners = withCorner(this.current(), jointOf(run, side), row === "wall" ? { wall: "none" } : { kind: "dead" })), this.touched()),
       kick: { ...kickOf(plan, run.id), look: plan.kickLook },
       setKick: (change) => ((this.kick = { ...this.kick, ...change }), change.on === false ? (this.other = null) : 0, (this.focusStrip = true), this.touched()),
       align: (id) => {
