@@ -141,6 +141,8 @@ export interface KitchenRunItem {
   /** Sizes set for this unit (mm), over those of its model and the plan: a wall or tall unit's height, any depth. */
   height?: number;
   depth?: number;
+  /** A fridge's surround: the fridge's height (mm), its caisson taking the rest (missing: under a 40 cm caisson). */
+  fridge?: number;
   /** One door: the side of its hinges, chosen (missing: left; « top »: a lift-up door, « bottom »: a flap). */
   side?: FrontsFeature["side"];
   /** Its fronts without handles, on gorge profiles. */

@@ -6,7 +6,7 @@ import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 import { frontsParts } from "../../frontend/src/features/fronts-parts";
 import { KITCHEN } from "../../frontend/src/features/kitchen-layout";
-import { newItem } from "../../frontend/src/features/kitchen-run-items";
+import { newItem, surroundFridge } from "../../frontend/src/features/kitchen-run-items";
 import { turnedBox } from "../../frontend/src/features/turn-clear";
 
 /** A cabinet's door, as it stands in the model. */
@@ -61,5 +61,19 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === cab.id)!.layout).toBe("doors");
     const fridge = doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
     expect(fridge.type === "appliance" && [fridge.width, fridge.height, fridge.origin[2]]).toEqual([910, 1870, 0]);
+  });
+
+  it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
+    const build = (fridge: number) => {
+      const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge }] }, made: {} });
+      const built = withKitchenBuilt(base.doc, base.id, {});
+      if (typeof built === "string") throw new Error(built);
+      const cab = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+      const f = built.doc.features.find((x) => x.type === "appliance" && x.model === "fridge-american")!;
+      return [cab.height, cab.origin[2], f.type === "appliance" ? f.height : 0];
+    };
+    expect(build(1780)).toEqual([490, 1810, 1780]);
+    expect(build(2200)).toEqual([200, 2100, 2070]);
+    expect(surroundFridge(KITCHEN_PLAN, newItem([], "app-fridge-surround", 968))).toBe(1870);
   });
 });

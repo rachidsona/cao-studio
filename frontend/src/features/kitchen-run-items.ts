@@ -18,7 +18,7 @@ export const WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
 export type Role = "sink" | "dishwasher" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave" | "fridge-surround";
 
 /** A freestanding fridge's surround (« Habillage réfrigérateur »): its usual height and depth, its top caisson's height, the air over the fridge and on its sides (mm). */
-export const SURROUND = { height: 2300, depth: 720, caisson: 400, air: 30, side: 10 };
+export const SURROUND = { height: 2300, depth: 720, caisson: 400, air: 30, side: 10, least: 200, lowest: 1200 };
 
 export interface ApplianceModel {
   model: string;
@@ -131,6 +131,12 @@ export function itemSize(p: KitchenFloorPlan, item: KitchenRunItem, entry: Catal
   if (entry.id.startsWith("app-fridge-surround-")) return { height: item.height ?? Math.min(p.height, SURROUND.height), depth: item.depth ?? SURROUND.depth, z: 0 };
   if (entry.kind === "tall") return { height: item.height ?? s.wallTop, depth: item.depth ?? s.cabinet, z: 0 };
   return { height: s.base, depth: item.depth ?? own ?? s.cabinet, z: 0 };
+}
+
+/** The fridge's height in its surround (mm): its own when set, else under a 40 cm caisson; always 20 cm of caisson over it. */
+export function surroundFridge(p: KitchenFloorPlan, item: KitchenRunItem): number {
+  const { height } = itemSize(p, item);
+  return Math.min(item.fridge ?? height - SURROUND.caisson - SURROUND.air, height - SURROUND.air - SURROUND.least);
 }
 
 /** What a unit's sizes may be (mm): its width; its height (none for a base unit, under the worktop); its depth. */

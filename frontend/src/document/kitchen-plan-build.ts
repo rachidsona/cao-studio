@@ -12,7 +12,7 @@ import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, sk
 import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
-import { applianceOf, fillRun, isFiller, itemSize, openRoom, SURROUND, type Placed, type RunFill } from "../features/kitchen-run-items";
+import { applianceOf, fillRun, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../features/kitchen-run-items";
 import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
@@ -114,10 +114,10 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         // Two sides to the full height in the fronts' material, a caisson with doors at the top between them, the
         // fridge under it with air round it.
         const { height, depth } = itemSize(p, pl.item, entry);
-        const [inner, z] = [w - 2 * FRONT, height - SURROUND.caisson];
+        const [inner, z] = [w - 2 * FRONT, surroundFridge(p, pl.item) + SURROUND.air];
         box(`Côté gauche habillage (${run.id}${n})`, "panel", band(at, at + FRONT, 0, depth, 0, height));
         box(`Côté droit habillage (${run.id}${n})`, "panel", band(at + w - FRONT, at + w, 0, depth, 0, height));
-        cabinet(name, at + FRONT, inner, depth, z, SURROUND.caisson, { plinth: 0, shelves: 0, layout: inner > 600 ? "doors" : "door", item: pl.item.id });
+        cabinet(name, at + FRONT, inner, depth, z, height - z, { plinth: 0, shelves: 0, layout: inner > 600 ? "doors" : "door", item: pl.item.id });
         const fw = Math.min(910, inner - 2 * SURROUND.side);
         put("Réfrigérateur américain", "fridge-american", band(at + (w - fw) / 2, at + (w + fw) / 2, 0, depth, 0, z - SURROUND.air));
         places.fridge ??= front(pl);

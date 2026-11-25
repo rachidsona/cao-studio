@@ -42,6 +42,7 @@ function itemOk(item: unknown): boolean {
     isFiniteNumber(item.width) &&
     optionalNumber(item.height) &&
     optionalNumber(item.depth) &&
+    optionalNumber(item.fridge) &&
     (item.side === undefined || ["left", "right", "top", "bottom"].includes(item.side as string)) &&
     (item.grip === undefined || item.grip === "gorge") &&
     (item.railFront === undefined || item.railFront === "edge") &&

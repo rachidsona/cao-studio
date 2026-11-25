@@ -116,6 +116,13 @@ test("Plan de cuisine : l'habillage de réfrigérateur pris dans l'onglet Colonn
   await expect(tool.locator('[data-add^="app-fridge-surround-"]')).toHaveCount(7);
   await expect(tool.locator('[data-width-other^="app-fridge-surround-"]')).toBeVisible();
   await tool.locator('[data-add="app-fridge-surround-968"]').click();
+  // The fridge's height, set: its caisson takes the rest.
+  const chosen = tool.locator('[data-fold="chosen"]');
+  if ((await chosen.getAttribute("aria-expanded")) !== "true") await chosen.click();
+  await expect(tool.locator('[data-size="fridge"]')).toHaveValue("187");
+  await tool.locator('[data-size="fridge"]').fill("178");
+  await tool.locator('[data-size="fridge"]').press("Enter");
+  await expect(tool.locator('[data-size="fridge"]')).toHaveValue("178");
   await tool.locator("[data-run-close]").click();
   await expect(page.locator('[title^="Côté gauche habillage"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });

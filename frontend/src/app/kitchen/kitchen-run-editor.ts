@@ -440,10 +440,10 @@ export class RunEditor {
     const unit = this.host.editor.unit;
     const app = applianceOf(item);
     const replace = (patch: Partial<KitchenRunItem>) => this.change(this.items.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
-    // An appliance comes in its widths; a unit is made to measure: width, height (not under the worktop), depth.
+    // An appliance comes in its widths; a unit (and a fridge's surround) is made to measure: width, height (not under the worktop), depth.
     const widths = el("select", { class: SELECT, "aria-label": "Largeur" }, ...[...new Set([...(app?.widths ?? WIDTHS), item.width])].sort((a, b) => a - b).map((w) => el("option", { value: String(w), selected: w === item.width }, formatLength(w, unit))));
     widths.addEventListener("change", () => replace({ width: Number(widths.value) }));
-    const sizes = app ? [el("label", { class: ROW }, "Largeur", widths)] : sizeFields({ item, entry, plan: this.current(), unit, replace, redraw: () => this.host.redraw() });
+    const sizes = app && app.role !== "fridge-surround" ? [el("label", { class: ROW }, "Largeur", widths)] : sizeFields({ item, entry, plan: this.current(), unit, replace, redraw: () => this.host.redraw() });
     const row = rowOf(entry);
     const models = runModels().filter((m) => (m.kind === "wall") === (row === "wall"));
     const swap = el("select", { class: SELECT, "aria-label": "Échanger contre" }, ...(item.own ? [el("option", { value: "", selected: true }, entry.name)] : []), ...models.map((m) => el("option", { value: m.model, selected: m.model === item.model }, m.name)));

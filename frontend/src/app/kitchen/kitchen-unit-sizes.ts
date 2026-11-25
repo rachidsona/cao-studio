@@ -5,7 +5,7 @@
  */
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import type { DisplayUnit, KitchenFloorPlan, KitchenRunItem } from "../../document/types";
-import { isFiller, itemSize, sizeLimits, WIDTHS } from "../../features/kitchen-run-items";
+import { applianceOf, isFiller, itemSize, sizeLimits, SURROUND, surroundFridge, WIDTHS } from "../../features/kitchen-run-items";
 import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
 import { el } from "../../ui/dom";
 
@@ -28,7 +28,7 @@ export interface SizeHost {
 export function sizeFields({ item, entry, plan, unit, replace, redraw }: SizeHost): HTMLElement[] {
   const size = itemSize(plan, item, entry);
   const limits = sizeLimits(plan, entry);
-  const field = (label: string, key: "width" | "height" | "depth", value: number, [lo, hi]: [number, number]) => {
+  const field = (label: string, key: "width" | "height" | "depth" | "fridge", value: number, [lo, hi]: [number, number]) => {
     const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(value, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})`, "data-size": key });
     const apply = () => {
       const parsed = parseNumber(input.value);
@@ -54,19 +54,22 @@ export function sizeFields({ item, entry, plan, unit, replace, redraw }: SizeHos
   const usual = el(
     "div",
     { class: "flex flex-wrap justify-end gap-1", "aria-label": "Largeurs courantes" },
-    ...WIDTHS.map((w) => {
+    ...(applianceOf(item)?.widths ?? WIDTHS).map((w) => {
       const b = el("button", { type: "button", class: `${WIDTH} ${w === item.width ? "border-sky-500 text-gray-900 dark:text-white" : ""}`, "data-width": String(w) }, formatLength(w, unit).replace(/\s?(mm|cm|m)$/, ""));
       b.addEventListener("click", () => replace({ width: w }));
       return b;
     }),
   );
-  const own = item.height !== undefined || item.depth !== undefined;
+  // A fridge's surround: its fridge's height too, its caisson taking the rest.
+  const fridge = applianceOf(item)?.role === "fridge-surround" ? [field("Hauteur du réfrigérateur", "fridge", surroundFridge(plan, item), [SURROUND.lowest, size.height - SURROUND.air - SURROUND.least])] : [];
+  const own = item.height !== undefined || item.depth !== undefined || item.fridge !== undefined;
   const reset = el("button", { type: "button", class: SMALL, disabled: !own, title: "La hauteur et la profondeur du modèle et du plan" }, "Cotes du modèle");
-  reset.addEventListener("click", () => replace({ height: undefined, depth: undefined }));
+  reset.addEventListener("click", () => replace({ height: undefined, depth: undefined, fridge: undefined }));
   return [
     field("Largeur", "width", item.width, limits.width),
     usual,
     limits.height ? field("Hauteur", "height", size.height, limits.height) : el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, `Hauteur ${formatLength(size.height, unit)} : celle du plan de travail.`),
+    ...fridge,
     field("Profondeur", "depth", size.depth, limits.depth),
     el("div", { class: "flex justify-end" }, reset),
   ];

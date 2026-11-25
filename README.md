@@ -2809,7 +2809,8 @@ opération existante.
     l'onglet Colonnes : deux côtés toute hauteur dans la matière des façades, un caisson à portes de 40 cm en haut, le
     réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; de 70 à 120 cm de large, 96,8 cm
     pour un réfrigérateur de 91, ou à sa largeur à soi (« Autre… », « Place libre », comme un meuble : il se fait sur
-    mesure), 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi » : `SURROUND`) —, après celui qui est choisi ; on le glisse pour changer
+    mesure), 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi », comme la **hauteur du réfrigérateur**
+    (187 cm d'habitude, de 120 cm à 20 cm sous le haut : le caisson du dessus prend le reste) : `SURROUND`, `surroundFridge`) —, après celui qui est choisi ; on le glisse pour changer
     sa place, on l'échange contre un autre modèle. Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
     prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; un **clic sur
     une largeur écrite sur la bande** — sous un meuble, ou celle d'une porte d'angle, en bas comme en haut, la porte
