@@ -105,6 +105,29 @@ describe("un meuble poussé le long de son mur dans la 3D", () => {
     expect(Math.round(Math.min(kick.from[0], kick.to[0]))).toBe(Math.round(Math.min(now.origin[0], now.origin[0] + dir[0] * 1000)));
   });
 
+  it("une colonne au bout du mur poussée contre son voisin : le reste passe derrière elle, la plinthe s'arrête à elle ; poussée à moitié, le reste est partagé", async () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 1251, runs: {}, made: {} });
+    const items = [newItem([], "base-bas-1-porte", 600)];
+    items.push(newItem(items, "app-fridge", 600));
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { A: items } });
+    if (typeof made === "string") throw new Error(made);
+    // As the plan makes it: the column against the end of the wall, the 51 mm left between it and its neighbour.
+    const [low, col] = [cabinetOf(made.doc, base.id, items[0]!.id), cabinetOf(made.doc, base.id, items[1]!.id)];
+    const { cabinetAxes } = await import("../../frontend/src/document/kitchen-catalog");
+    const dir = cabinetAxes(col.rotation ?? 0).along;
+    expect(Math.hypot(col.origin[0] - low.origin[0], col.origin[1] - low.origin[1])).toBeCloseTo(651, 3);
+    const synced = syncKitchenPlans(made.doc, pushed(made.doc, col, dir, -51));
+    expect(kitchenPlanIn(synced, base.id)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["base-bas-1-porte", 600], ["app-fridge", 600], ["space", 51]]);
+    const now = cabinetOf(synced, base.id, items[1]!.id);
+    expect(now.origin[0]).toBeCloseTo(col.origin[0] - dir[0] * 51, 3);
+    const kick = kitchenFromPlan(kitchenPlanIn(synced, base.id)!).boxes.find((b) => b.kind === "kick")!;
+    expect(Math.round(Math.abs(kick.to[0] - kick.from[0]))).toBe(1200);
+    // Half way only: what is left of the rest before it, the other part behind it.
+    const half = syncKitchenPlans(made.doc, pushed(made.doc, col, dir, -30));
+    expect(kitchenPlanIn(half, base.id)!.runs!.A!.map((i) => [i.model, i.width])).toEqual([["base-bas-1-porte", 600], ["space", 21], ["app-fridge", 600], ["space", 30]]);
+    expect(cabinetOf(half, base.id, items[1]!.id).origin[0]).toBeCloseTo(col.origin[0] - dir[0] * 30, 3);
+  });
+
   it("poussé dans son voisin : le plan ne peut pas le dire, il ne change pas", () => {
     const { doc, id, items } = kitchen();
     const first = cabinetOf(doc, id, items[0]!.id);

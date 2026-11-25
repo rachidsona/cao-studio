@@ -15,8 +15,11 @@ type Heights = Parameters<typeof fillRun>[2];
 /** Less than this along the run (mm): not moved. */
 const STILL = 0.5;
 
-/** The items with `extra` more room kept just before `id` in its row (less when negative), or null when there is none to take. */
-function withRoomBefore(items: KitchenRunItem[], id: string, extra: number): KitchenRunItem[] | null {
+/**
+ * The items with `extra` more room kept just before `id` in its row (less when negative), or null when there is none to
+ * take; `open`: what is missing is taken from the room the run leaves open there (its rest, before a column at its end).
+ */
+function withRoomBefore(items: KitchenRunItem[], id: string, extra: number, open = false): KitchenRunItem[] | null {
   const k = items.findIndex((i) => i.id === id);
   if (k < 0) return null;
   const row = rowOf(itemEntry(items[k]!));
@@ -24,26 +27,37 @@ function withRoomBefore(items: KitchenRunItem[], id: string, extra: number): Kit
   while (j >= 0 && rowOf(itemEntry(items[j]!)) !== row) j--;
   const before = j >= 0 && isSpace(items[j]!) ? items[j]! : null;
   const width = Math.round(((before?.width ?? 0) + extra) * 10) / 10;
-  if (width < -STILL) return null;
+  if (width < -STILL) return open ? items.filter((i) => i !== before) : null;
   if (before) return width <= STILL ? items.filter((i) => i !== before) : items.map((i) => (i === before ? { ...i, width } : i));
   if (width <= STILL) return items;
   return [...items.slice(0, k), newItem(items, row === "wall" ? SPACE_WALL : SPACE, width), ...items.slice(k)];
 }
 
-/** The items with the room kept just after `id` in its row `delta` wider (narrower when negative, gone at none); a furnished caisson's is not touched. */
-function withRoomAfter(items: KitchenRunItem[], id: string, delta: number): KitchenRunItem[] {
+/**
+ * The items with the room kept just after `id` in its row `delta` wider (narrower when negative, gone at none); a
+ * furnished caisson's is not touched. `make`: with none there, room is kept after it (the run's rest, now behind it).
+ */
+function withRoomAfter(items: KitchenRunItem[], id: string, delta: number, make = false): KitchenRunItem[] {
   const k = items.findIndex((i) => i.id === id);
   const row = rowOf(itemEntry(items[k]!));
   let j = k + 1;
   while (j < items.length && rowOf(itemEntry(items[j]!)) !== row) j++;
   const after = j < items.length && isSpace(items[j]!) && !items[j]!.furnished ? items[j]! : null;
-  if (!after) return items;
+  if (!after) return make && delta > STILL ? [...items.slice(0, k + 1), newItem(items, row === "wall" ? SPACE_WALL : SPACE, Math.round(delta * 10) / 10), ...items.slice(k + 1)] : items;
   const width = Math.round(Math.max(0, after.width + delta) * 10) / 10;
   return width <= STILL ? items.filter((i) => i !== after) : items.map((i) => (i === after ? { ...i, width } : i));
 }
 
-/** The run's items with each unit `moved` (item id → mm along the run, towards its end) kept where it now stands, or null. */
+/**
+ * The run's items with each unit `moved` (item id → mm along the run, towards its end) kept where it now stands, or
+ * null. By the room kept free around it first; else by the room the run leaves open (a column at the end of the wall
+ * pushed back against its neighbour: the rest goes behind it, where the plinth and the finishing side then stop).
+ */
 export function itemsMoved(g: RunGeometry, items: KitchenRunItem[], heights: Heights, moved: Record<string, number>): KitchenRunItem[] | null {
+  return movedBy(g, items, heights, moved, false) ?? movedBy(g, items, heights, moved, true);
+}
+
+function movedBy(g: RunGeometry, items: KitchenRunItem[], heights: Heights, moved: Record<string, number>, open: boolean): KitchenRunItem[] | null {
   const fill = fillRun(g, items, heights);
   const shift = (id: string) => moved[id] ?? 0;
   let next: KitchenRunItem[] | null = items;
@@ -53,11 +67,14 @@ export function itemsMoved(g: RunGeometry, items: KitchenRunItem[], heights: Hei
     for (const pl of placed) {
       const extra = shift(pl.item.id) - previous;
       previous = shift(pl.item.id);
-      if (Math.abs(extra) > STILL) next = next && withRoomBefore(next, pl.item.id, extra);
+      if (Math.abs(extra) <= STILL) continue;
+      // What is left of the open room it was pushed into stays before it, kept (the rest is no longer there).
+      const gap = open && extra < 0 ? [...fill.fillers, ...fill.free, ...fill.wallFree].find(([, end]) => Math.abs(end - pl.at) < STILL) : undefined;
+      next = next && withRoomBefore(next, pl.item.id, gap ? gap[1] - gap[0] + extra : extra, open && !gap);
     }
     // The room kept after the last of the row gives what it was pushed into (takes back what it left).
     const last = placed.at(-1);
-    if (next && last && Math.abs(shift(last.item.id)) > STILL) next = withRoomAfter(next, last.item.id, -shift(last.item.id));
+    if (next && last && Math.abs(shift(last.item.id)) > STILL) next = withRoomAfter(next, last.item.id, -shift(last.item.id), open);
   }
   if (!next || next === items) return null;
   // Each unit where it was pushed, and nothing lost on the way.

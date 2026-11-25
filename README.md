@@ -2759,7 +2759,10 @@ opération existante.
     qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
     (`document/kitchen-moves.ts`) ; l'espace gardé qui suit le dernier meuble poussé rétrécit d'autant (ou grandit),
     de sorte que le plan de travail et la plinthe le suivent même collé contre un autre meuble. Les meubles poussés ensemble gardent leurs écarts. Le linéaire les liste dans
-    « Place libre » → « Espaces gardés », chacun à sa largeur tapée ou supprimé (ses meubles se resserrent). Poussé dans
+    « Place libre » → « Espaces gardés », chacun à sa largeur tapée ou supprimé (ses meubles se resserrent). Une
+    **colonne au bout du mur** (le linéaire la garde contre le bout, le reste entre elle et son voisin) poussée contre ce
+    voisin y reste aussi : le reste passe derrière elle en espace gardé, et la plinthe et la joue de finition s'arrêtent
+    à elle ; poussée à moitié, le reste est partagé devant et derrière. Poussé dans
     son voisin ou au-delà du mur, le plan ne peut pas le dire et ne change pas. Des meubles poussés avant que le plan
     ne les suive : le linéaire le signale, et « Garder leurs places » les reprend.
   - **L'électroménager posé à la main** (« Électroménager ») se voit sur la bande du linéaire devant lequel il est, en
