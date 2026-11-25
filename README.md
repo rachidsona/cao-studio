@@ -2723,7 +2723,7 @@ opération existante.
     (case) couvrent, dans la matière des façades, le côté qui se voit de la dernière colonne et du dernier meuble
     haut d'un linéaire (pas celui d'un meuble haut contre une colonne ; celui d'un bas est laissé au retour du
     plan). La **casquette des meubles hauts** (Aucune, Plate ou En caisson ; son épaisseur ou sa hauteur, son
-    débord, 38, 80 et 30 mm d'habitude) est posée à plat sur le haut des meubles hauts, des sur-hottes, des fileurs
+    débord, 38, 80 et 30 mm d'habitude ; en caisson, de 4 à 60 cm de hauteur) est posée à plat sur le haut des meubles hauts, des sur-hottes, des fileurs
     hauts, des meubles d'angle hauts et des colonnes, dans la matière des façades : elle déborde devant les façades et
     aux bouts libres (par-dessus la joue de finition), s'interrompt à la hotte, à la place libre et là où la
     profondeur change (une colonne a son morceau), est coupée au droit d'un côté de meuble au-delà d'un panneau brut

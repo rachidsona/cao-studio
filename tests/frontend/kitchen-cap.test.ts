@@ -68,7 +68,8 @@ describe("casquette des meubles hauts", () => {
 
   it("refuse des cotes hors des limites", () => {
     expect(kitchenPlanProblem(plan([WALL], { cap: "flat", capThickness: 80 }))).toBe("La casquette a de 16 à 60 mm d'épaisseur.");
-    expect(kitchenPlanProblem(plan([WALL], { cap: "box", capHeight: 300 }))).toBe("La casquette en caisson a de 4 à 20 cm de hauteur.");
+    expect(kitchenPlanProblem(plan([WALL], { cap: "box", capHeight: 700 }))).toBe("La casquette en caisson a de 4 à 60 cm de hauteur.");
+    expect(kitchenPlanProblem(plan([WALL], { cap: "box", capHeight: 400, height: 3000 }))).toBeNull();
     expect(kitchenPlanProblem(plan([WALL], { cap: "flat", capOverhang: 150 }))).toBe("Le débord de la casquette va de 0 à 10 cm.");
     expect(kitchenPlanProblem(plan([WALL]))).toBeNull();
   });
