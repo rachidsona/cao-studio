@@ -49,15 +49,15 @@ describe("modèles du plan de cuisine", () => {
   it("à l'angle, le mur qui passe va jusqu'au mur ; l'autre s'arrête contre lui", () => {
     const [a, b] = kitchenRuns(plan({ model: "L-left" }));
     expect([a!.left, b!.right]).toEqual(["pass", "stop"]);
-    expect(a!.zone.outline).toEqual([[0, -600], [3600, -600], [3600, 0], [0, 0]]);
-    expect(b!.zone.run.length).toBe(1800);
+    expect(a!.zone.outline).toEqual([[0, -640], [3600, -640], [3600, 0], [0, 0]]);
+    expect(b!.zone.run.length).toBe(1760);
     const [a2, b2] = kitchenRuns(plan({ model: "L-left", through: { left: true } }));
-    expect([a2!.left, b2!.right, a2!.zone.run.length, b2!.zone.run.length]).toEqual(["stop", "pass", 3000, 2400]);
+    expect([a2!.left, b2!.right, a2!.zone.run.length, b2!.zone.run.length]).toEqual(["stop", "pass", 2960, 2400]);
   });
 
   it("l'îlot fait face au mur A, au passage voulu, et ne touche rien", () => {
     const island = kitchenRuns(plan({ model: "I", island: true })).find((r) => r.id === "I")!;
-    expect(island.zone.outline).toEqual([[900, -2300], [2700, -2300], [2700, -1700], [900, -1700]]);
+    expect(island.zone.outline).toEqual([[900, -2340], [2700, -2340], [2700, -1740], [900, -1740]]);
     expect(island.zone.run.normal).toEqual([0, 1]);
     expect(kitchenPlanProblem(plan({ model: "U", island: true, lengthA: 2400 }))).toMatch(/L'îlot touche/);
     expect(kitchenPlanProblem(plan({ model: "I", island: true, passage: 500 }))).toMatch(/passage/);
@@ -94,7 +94,7 @@ describe("linéaire", () => {
 
 describe("« Proposer une cuisine » reproduit l'Implantation", () => {
   const compare = (layout: "I" | "L" | "U", model: KitchenModel) => {
-    const settings = { ...KITCHEN, layout, lengthA: 3400, lengthB: 2600, lengthC: 2200, baseDepth: 560, appliances: true, fridge: true, splashback: true, kick: true, corner: "dead" as const };
+    const settings = { ...KITCHEN, layout, lengthA: 3400, lengthB: 2600, lengthC: 2200, baseDepth: 580, appliances: true, fridge: true, splashback: true, kick: true, corner: "dead" as const };
     const p = plan({ model, lengthA: 3400, lengthB: 2600, lengthC: 2200, worktopHeight: 908 });
     const proposed = proposeKitchen(p);
     const ours = kitchenFromPlan({ ...p, ...proposed }).units.map((u) => `${Math.round(u.origin[0])},${Math.round(u.origin[1])},${u.width},${u.rotation},${u.layout}`).sort();

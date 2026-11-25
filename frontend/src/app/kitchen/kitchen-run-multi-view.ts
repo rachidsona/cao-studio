@@ -63,7 +63,7 @@ export function multiRows(host: MultiHost): (HTMLElement | null)[] {
     return el("label", { class: ROW }, `${label} (${UNIT_LABELS[unit]})`, input, go);
   };
   const first = chosen[0]!;
-  const size = (key: "width" | "height" | "depth") => chosen.map((i) => i[key]).find((v): v is number => typeof v === "number") ?? (key === "width" ? first.width : key === "height" ? 720 : 560);
+  const size = (key: "width" | "height" | "depth") => chosen.map((i) => i[key]).find((v): v is number => typeof v === "number") ?? (key === "width" ? first.width : key === "height" ? 720 : 580);
   const button = (text: string, attr: string, go: () => void, disabled = false) => {
     const b = el("button", { type: "button", class: `${SMALL} w-full`, disabled, [attr]: "" }, text);
     b.addEventListener("click", go);

@@ -188,8 +188,10 @@ export interface KitchenFloorPlan {
   /** In front of the island, from the front of wall A's run. */
   passage: number;
   height: number;
-  /** Base units (worktop included), wall units, and the top of the worktop. */
+  /** The worktop's depth, the wall units', and the top of the worktop. */
   depth: number;
+  /** The base units' and columns' caissons off the wall (mm), 58 cm when missing (no deeper than the worktop less the fronts). */
+  baseDepth?: number;
   wallDepth: number;
   worktopHeight: number;
   /** Square corners where the other run passes: B or C (or the peninsula) past wall A. */

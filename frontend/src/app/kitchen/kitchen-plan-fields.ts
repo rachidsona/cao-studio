@@ -8,7 +8,7 @@ import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-wall
 import type { Editor } from "../editor";
 
 
-export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth";
+export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth" | "baseDepth";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels" | "splashbackHoodOnly";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";

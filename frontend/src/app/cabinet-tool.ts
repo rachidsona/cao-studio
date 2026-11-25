@@ -28,7 +28,7 @@ type Doors = { kind: "none" | "flat" | "glass"; glass: GlassKind; profile: Profi
 const ONE_DOOR = 600;
 
 const PRESETS: { id: string; label: string; settings: Settings; doors?: Doors }[] = [
-  { id: "base", label: "Bas de cuisine 600 × 870 (socle 150)", settings: { width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" } },
+  { id: "base", label: "Bas de cuisine 600 × 870 (socle 150)", settings: { width: 600, height: 870, depth: 580, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" } },
   { id: "wall", label: "Haut de cuisine 600 × 700", settings: { width: 600, height: 700, depth: 350, thickness: 18, back: "applied", backThickness: 3, shelves: 2, plinth: 0, construction: "sides-through" } },
   { id: "tall", label: "Colonne 600 × 2200", settings: { width: 600, height: 2200, depth: 580, thickness: 18, back: "applied", backThickness: 3, shelves: 4, plinth: 150, construction: "sides-through" } },
   { id: "wardrobe", label: "Penderie 1000 × 2400", settings: { width: 1000, height: 2400, depth: 600, thickness: 19, back: "inset", backThickness: 8, shelves: 1, plinth: 80, construction: "sides-through" } },

@@ -12,16 +12,16 @@ const where = (p: KitchenFloorPlan) => (kitchenFromPlan(p).fills.B?.placed ?? []
 
 describe("fileur d'un reste choisi sur la bande", () => {
   it("devient un fileur posé à sa place : rien ne bouge, et il se déplace ou s'ôte comme un meuble", () => {
-    // Two columns from the start, a base unit pushed to the corner: the 71 mm left between them closed by a filler.
+    // Two columns from the start, a base unit pushed to the corner: the 51 mm left between them closed by a filler.
     const items = units([["tall-colonne-rangement", 600], ["tall-colonne-rangement", 600], ["base-bas-3-tiroirs", 600]]);
     const fill = kitchenFromPlan(plan(items)).fills.B!;
-    expect(fill.fillers.map(([a, b]) => Math.round(b - a))).toEqual([71]);
+    expect(fill.fillers.map(([a, b]) => Math.round(b - a))).toEqual([51]);
     const made = fillerFromGap(items, fill, fill.fillers[0]!);
     expect(made.items.map((i) => i.model)).toEqual(["tall-colonne-rangement", "tall-colonne-rangement", FILLER, "base-bas-3-tiroirs"]);
-    expect(made.items.find((i) => i.id === made.id)?.width).toBe(71);
+    expect(made.items.find((i) => i.id === made.id)?.width).toBe(51);
     // In its place: the units where they were, no filler left to the plan.
     const after = kitchenFromPlan(plan(made.items)).fills.B!;
     expect(after.fillers).toEqual([]);
-    expect(where(plan(made.items))).toEqual([["tall-colonne-rangement", 0, 600], ["tall-colonne-rangement", 600, 600], [FILLER, 1200, 71], ["base-bas-3-tiroirs", 1271, 600]]);
+    expect(where(plan(made.items))).toEqual([["tall-colonne-rangement", 0, 600], ["tall-colonne-rangement", 600, 600], [FILLER, 1200, 51], ["base-bas-3-tiroirs", 1251, 600]]);
   });
 });

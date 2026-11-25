@@ -138,7 +138,7 @@ describe("plan de travail qui suit les meubles", () => {
     // Wall A along x at y = 0, its splashback 10 mm off it; walls B (x = 0) and C (x = 3000) along y.
     expect([Math.round(a.from[1]), Math.round(b.to[1]), Math.round(c.to[1])]).toEqual([-10, -10, -10]);
     // The worktops still stop where wall A's starts.
-    expect(Math.round(at("Plan de travail B").to[1])).toBe(-600);
+    expect(Math.round(at("Plan de travail B").to[1])).toBe(-640);
   });
 
   it("sous la hotte, la crédence monte jusqu'à elle, d'un seul morceau ; ou, au choix, seulement là", () => {

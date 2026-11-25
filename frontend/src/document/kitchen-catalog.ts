@@ -56,9 +56,9 @@ export interface CatalogEntry {
 
 /** Height, depth, plinth and floor-to-bottom of each kind (those of the Implantation). */
 export const KINDS: Record<UnitKind, { label: string; height: number; depth: number; plinth: number; z: number }> = {
-  base: { label: "Meubles bas", height: 870, depth: 560, plinth: 150, z: 0 },
+  base: { label: "Meubles bas", height: 870, depth: 580, plinth: 150, z: 0 },
   wall: { label: "Meubles hauts", height: WALL_UNIT.height, depth: WALL_UNIT.depth, plinth: 0, z: WALL_UNIT.bottom },
-  tall: { label: "Colonnes", height: WALL_UNIT.bottom + WALL_UNIT.height, depth: 560, plinth: 150, z: 0 },
+  tall: { label: "Colonnes", height: WALL_UNIT.bottom + WALL_UNIT.height, depth: 580, plinth: 150, z: 0 },
 };
 
 /** « Bas 1 porte » → « bas-1-porte », « Bas évier » → « bas-evier ». */

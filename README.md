@@ -2663,7 +2663,8 @@ opération existante.
   comme un dressing. On choisit un modèle — droite, en L à gauche ou à droite, en U, **en G** (un mur B ou C et une
   **péninsule**, un retour libre au bout du mur A) ou **parallèle** (deux murs face à face, au passage voulu) —, avec ou
   sans **îlot** face au mur A (110 cm de passage proposés) ; les cotes des murs, la hauteur sous plafond, la profondeur
-  des bas (60) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
+  du plan de travail (64), des caissons bas et des colonnes (58, `BASE_DEPTH`, au plus le plan de travail moins les
+  façades) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par
   leurs côtés, comme les zones du Plan de dressing dont elle reprend les murs (`document/kitchen-plan-shapes.ts`). À
   chaque angle, on choisit le mur qui passe — il va jusqu'au mur et l'angle est à lui —, l'autre s'arrête contre lui.
@@ -3055,7 +3056,7 @@ opération existante.
 - **Meubles de cuisine** (groupe « Cuisine ») : la liste des meubles du commerce, chacun à ses largeurs.
   - Chaque modèle montre son **dessin de face** à l'échelle, comme sur une planche de cuisiniste (caisson, socle,
     portes, tiroirs, poignées, four, robinet de l'évier — tout calculé depuis ses cotes, aux tons du thème, les
-    poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 56 cm ») ; survoler une largeur redessine
+    poignées en laiton), ce qu'il contient et ses cotes (« L 80 · H 87 · P 58 cm ») ; survoler une largeur redessine
     le meuble à cette largeur (`app/kitchen/unit-elevation.ts`).
   - **Bas** : 1 porte (15 à 60 cm), 2 portes, 3, 4 et 5 tiroirs, 2 tiroirs et casserolier (deux petits tiroirs sur un grand,
     `drawerShares` 1, 1, 2 : les tiroirs se partagent la hauteur selon leurs parts) et le même **sans dessus**, deux

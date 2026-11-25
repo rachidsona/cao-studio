@@ -37,9 +37,14 @@ test("ajouter un meuble à une largeur tapée, puis un autre à la largeur de la
   await room.click();
   await expect(tool.locator('[data-fold="space"]')).toContainText("le bas est plein");
   await expect(room).toHaveCount(0);
-  // Appliances keep their widths only.
-  await tool.getByRole("tab", { name: "Électro." }).click();
-  await expect(tool.locator("[data-width-other]")).toHaveCount(0);
+  // Appliances keep their widths only (the fridge's surround, made to measure, aside).
+  // The panel is drawn again once the run is made: the tab clicked until it holds.
+  const electro = tool.getByRole("tab", { name: "Électro." });
+  await expect(async () => {
+    await electro.click();
+    await expect(tool.locator("[data-width-other]")).toHaveCount(1, { timeout: 2000 });
+    await expect(tool.locator('[data-width-other^="app-fridge-surround-"]')).toHaveCount(1);
+  }).toPass();
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Mur A aménagé").first()).toBeVisible({ timeout: 60_000 });
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/largeur-libre.png` });

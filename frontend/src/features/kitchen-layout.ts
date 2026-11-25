@@ -47,7 +47,7 @@ export interface KitchenSettings {
 }
 
 export const KITCHEN: KitchenSettings = {
-  layout: "I", lengthA: 3000, lengthB: 2400, lengthC: 2400, wallHeight: 2500, baseHeight: 870, baseDepth: 560, plinth: 150,
+  layout: "I", lengthA: 3000, lengthB: 2400, lengthC: 2400, wallHeight: 2500, baseHeight: 870, baseDepth: 580, plinth: 150,
   fronts: "mixed", worktopThickness: 38, wallUnits: true, frontThickness: 19,
 };
 

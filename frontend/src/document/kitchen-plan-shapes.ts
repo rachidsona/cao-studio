@@ -31,15 +31,16 @@ export const KITCHEN_MODELS: Record<KitchenModel, { label: string; fields: Parti
 
 export const KITCHEN_PLAN: KitchenFloorPlan = {
   model: "L-left", lengthA: 3600, lengthB: 2400, lengthC: 2400, lengthD: 1800, aisle: 1200, islandLength: 1800, islandDepth: 600, passage: 1100,
-  height: 2500, depth: 600, wallDepth: 350, worktopHeight: 900, corner: "dead",
+  height: 2500, depth: 640, wallDepth: 350, worktopHeight: 900, corner: "dead",
   plinth: 150, worktopThickness: 38, fronts: "mixed", wallUnits: true, appliances: true, fridge: true, ovenColumn: false, splashback: true, kick: true,
 };
 
 /** Fronts, worktop, the gap a dead corner keeps for the fronts to open, a corner unit's door, wall units (mm). */
 export const FRONT = 19;
+/** The base units' caissons off the wall, under a 64 cm worktop (mm). */
+export const BASE_DEPTH = 580;
 export const WORKTOP = 38;
 const PLINTH = 150;
-const OVERHANG = 21;
 export const CORNER_DOOR = 450;
 /** A corner unit with a door stands this far off the corner's wall, taken from its fixed part (mm). */
 export const CORNER_WALL_GAP = 100;
@@ -103,7 +104,7 @@ export function cornerReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): 
 
 /** The sizes that follow from the plan: the cabinets' depth, the base units' height, the wall units' bottom and top, a corner. */
 export function kitchenSizes(p: KitchenFloorPlan): { cabinet: number; base: number; wallBottom: number; wallTop: number; corner: number; plinth: number } {
-  const cabinet = p.depth - FRONT - OVERHANG;
+  const cabinet = Math.min(p.baseDepth ?? BASE_DEPTH, p.depth - FRONT);
   const wallBottom = p.worktopHeight + WALL_GAP;
   return { cabinet, base: p.worktopHeight - (p.worktopThickness ?? WORKTOP), wallBottom, wallTop: wallBottom + WALL_HEIGHT, corner: cabinet + FRONT + CORNER_GAP, plinth: p.plinth ?? PLINTH };
 }
@@ -297,7 +298,8 @@ export function capProblem(p: KitchenFloorPlan): string | null {
 /** Why this plan cannot be made, or null. */
 export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (!(p.height >= 2000 && p.height <= 4000)) return "La hauteur sous plafond va de 200 à 400 cm.";
-  if (!(p.depth >= 450 && p.depth <= 800)) return "La profondeur des meubles bas va de 45 à 80 cm.";
+  if (!(p.depth >= 450 && p.depth <= 800)) return "La profondeur du plan de travail va de 45 à 80 cm.";
+  if (p.baseDepth !== undefined && !(p.baseDepth >= 300 && p.baseDepth <= p.depth - FRONT)) return "Les caissons bas ont de 30 cm de profondeur à celle du plan de travail moins les façades.";
   if (!(p.wallDepth >= 200 && p.wallDepth <= 500)) return "La profondeur des meubles hauts va de 20 à 50 cm.";
   if (!(p.worktopHeight >= 700 && p.worktopHeight <= 1100)) return "Le plan de travail est de 70 à 110 cm du sol.";
   if (p.plinth !== undefined && !(p.plinth >= 50 && p.plinth <= 250)) return "Le socle va de 5 à 25 cm.";

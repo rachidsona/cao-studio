@@ -46,9 +46,9 @@ describe("meubles en forme", () => {
     expect(names).toEqual(["dessous", "étagère", "dessus", "côté", "côté (2)", "porte en biais", "plinthe", "plan de travail"]);
     const bottom = pieces.find((b) => b.name.endsWith("dessous"))!;
     expect(bottom.outline).toHaveLength(5);
-    // 90 × 90 on the walls.
-    expect(Math.round(bottom.to[0] - bottom.from[0])).toBe(900);
-    expect(Math.round(bottom.to[1] - bottom.from[1])).toBe(900);
+    // 92 × 92 on the walls (58 cm caissons).
+    expect(Math.round(bottom.to[0] - bottom.from[0])).toBe(920);
+    expect(Math.round(bottom.to[1] - bottom.from[1])).toBe(920);
     const s = kitchenSizes(p);
     expect(pieces.find((b) => b.name.endsWith("plan de travail"))).toMatchObject({ kind: "worktop" });
     expect(bottom.from[2]).toBe(s.plinth);

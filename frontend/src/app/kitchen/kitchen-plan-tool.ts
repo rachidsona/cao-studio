@@ -15,7 +15,7 @@ import { kitchenFromPlan } from "../../document/kitchen-plan-build";
 import { kitchenMarks, kitchenRoomInfo, linkedKitchen, unlinkedKitchen } from "../../document/kitchen-plan-room";
 import { planOnRoom } from "../../document/kitchen-room-fix";
 import { CORNER_KINDS, type CornerSetting } from "../../document/kitchen-corners";
-import { cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
+import { BASE_DEPTH, cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../document/kitchen-propose";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { MATERIALS } from "../../document/materials";
@@ -213,7 +213,7 @@ export class KitchenPlanTool {
       el("h3", { class: "panel-title" }, "Cotes"), plan.room ? el("p", { class: "text-gray-600 dark:text-gray-300" }, `Cotes de la pièce : mur A ${formatLength(plan.lengthA, this.editor.unit)}, plafond ${formatLength(plan.height, this.editor.unit)}.`) : this.fields.number("Longueur mur A", "lengthA"),
       ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.fields.number(label, key)),
       plan.room ? null : this.fields.number("Hauteur sous plafond", "height"),
-      this.fields.number("Profondeur des bas", "depth"),
+      this.fields.number("Profondeur du plan de travail", "depth"), this.fields.number("Profondeur des caissons bas", "baseDepth", BASE_DEPTH),
       this.fields.number("Profondeur des hauts", "wallDepth"),
       this.fields.number("Hauteur du plan de travail", "worktopHeight"),
       this.fields.number("Épaisseur du plan de travail", "worktopThickness"),

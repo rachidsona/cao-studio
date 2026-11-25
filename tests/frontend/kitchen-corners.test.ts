@@ -34,7 +34,7 @@ describe("angles de cuisine", () => {
     expect(runGeometry(p, run(p, "A")).base).toEqual([s.corner + CORNER_DOOR, 3600 - lArm(p)]);
     expect(runGeometry(p, run(p, "B")).base[1]).toBe(run(p, "B").length - s.corner);
     expect(runGeometry(p, run(p, "C")).base[0]).toBe(lArm(p));
-    expect(lArm(plan())).toBe(900);
+    expect(lArm(plan())).toBe(920);
     // B going through, its corner unit is on it.
     const through = plan({ corners: { left: "unit" }, through: { left: true } });
     expect(runGeometry(through, run(through, "B")).base[1]).toBe(run(through, "B").length - s.corner - CORNER_DOOR);
@@ -92,8 +92,8 @@ describe("angles de cuisine", () => {
     expect(cornerSide(p, run(p, "A"), "left")!.fronts.map((f) => f.kind)).toEqual(["blind", "door"]);
     const l = plan({ corners: { left: "l" } });
     const D = kitchenSizes(l).cabinet;
-    expect(cornerSide(l, run(l, "A"), "left")!.cabinet).toEqual([0, 900]);
-    expect(cornerSide(l, run(l, "B"), "right")!.cabinet).toEqual([run(l, "B").length - 900, run(l, "B").length - D]);
+    expect(cornerSide(l, run(l, "A"), "left")!.cabinet).toEqual([0, 920]);
+    expect(cornerSide(l, run(l, "B"), "right")!.cabinet).toEqual([run(l, "B").length - 920, run(l, "B").length - D]);
     expect(cornerSide(l, run(l, "A"), "right")!.kind).toBe("dead");
     expect(cornerSide(l, run(l, "A"), "right")).not.toBeNull();
     for (const kind of KINDS) expect(cornerSketch(kind)).toMatch(/^<svg/);
