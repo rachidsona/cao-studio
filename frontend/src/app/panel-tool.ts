@@ -95,6 +95,12 @@ export abstract class PanelTool implements PointerHandler {
     });
     this.panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     for (const type of ["input", "change"]) this.panel.addEventListener(type, this.touch, true);
+    // A choice made in a list of the panel (any): the panel drawn again at once, for this turn of events.
+    this.panel.addEventListener("change", (event) => {
+      if (!(event.target instanceof HTMLSelectElement)) return;
+      this.listChosen = true;
+      window.setTimeout(() => (this.listChosen = false), 0);
+    }, true);
     placePanel(ctx.container, this.panel);
   }
 
@@ -124,7 +130,7 @@ export abstract class PanelTool implements PointerHandler {
   }
 
   protected render(): void {
-    if (this.closedFlag) return;
+    if (this.closedFlag || this.listOpen()) return;
     const built = this.feature();
     const hint = typeof built === "string" ? built : null;
     const status = typeof built === "string" ? undefined : this.ctx.status(built.id);
@@ -166,6 +172,41 @@ export abstract class PanelTool implements PointerHandler {
       next.focus();
       if (next.type === "text") next.setSelectionRange(selectionStart, selectionEnd);
     };
+  }
+
+  /** A list of the panel chosen from just now: the panel is drawn at once with its new rows. */
+  private listChosen = false;
+  /** A redraw waiting for a list of the panel to be let go. */
+  private listWaiting = false;
+
+  /**
+   * A list of the panel open (it has the focus, nothing chosen in it yet): drawing the panel again — a preview ending,
+   * the result stored — would close it under the pointer and lose the choice. The panel waits until it is let go;
+   * after a click elsewhere (« OK »), once that click is done, so that it lands on the button it was aimed at.
+   */
+  private listOpen(): boolean {
+    const active = document.activeElement;
+    if (this.listChosen || !(active instanceof HTMLSelectElement) || !this.panel.contains(active)) return false;
+    if (!this.listWaiting) {
+      this.listWaiting = true;
+      const go = () => {
+        this.listWaiting = false;
+        this.render();
+      };
+      active.addEventListener("blur", () => {
+        let done = false;
+        const once = () => {
+          if (done) return;
+          done = true;
+          document.removeEventListener("click", once);
+          window.setTimeout(go, 0);
+        };
+        document.addEventListener("click", once);
+        // Let go by the keyboard (Tab): no click comes.
+        window.setTimeout(once, 400);
+      }, { once: true });
+    }
+    return true;
   }
 
   /** Further new features made with the main one (one per body for Aligner, Étirer), in the same undo step. */

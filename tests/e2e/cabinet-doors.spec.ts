@@ -102,3 +102,30 @@ test("Caisson : une porte de côté, à droite, puis passée à gauche, puis ôt
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });
+
+test("une liste d'un panneau ouverte pendant que l'aperçu se termine n'est pas refermée : le panneau attend qu'on la quitte", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-liste-ouverte");
+  await click(page, '[data-action="cabinet"]');
+  const tool = page.getByRole("dialog", { name: "Caisson" });
+  const doors = tool.getByRole("combobox", { name: "Portes" });
+  // A change that starts a preview, then the list of the doors taken at once (as when it is opened).
+  await tool.getByRole("combobox", { name: "Étagères" }).selectOption("3");
+  await doors.focus();
+  await doors.evaluate((s) => ((s as HTMLSelectElement & { mark?: number }).mark = 1));
+  await page.waitForTimeout(1500);
+  // Still the same list: not drawn again under the pointer.
+  expect(await doors.evaluate((s) => (s as HTMLSelectElement & { mark?: number }).mark ?? 0)).toBe(1);
+  // A choice in it: the panel follows it at once (the glass rows appear).
+  await doors.selectOption("glass");
+  await expect(tool.getByRole("combobox", { name: "Verre (trempé 4 mm)" })).toBeVisible();
+  // Let go: the panel is drawn again, its result stored.
+  await tool.getByRole("combobox", { name: "Étagères" }).focus();
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  await expect(page.getByLabel(/^Navigateur : corps/).getByText(/^Vitre porte/).first()).toBeVisible({ timeout: 30_000 });
+  expect(errors).toEqual([]);
+});

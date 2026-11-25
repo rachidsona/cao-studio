@@ -127,6 +127,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 - **Sélectionner les esquisses** (bouton de la colonne Vue, à côté) : de même, mais les esquisses seules — toutes
   celles montrées dans la vue, aucun corps —, comme le filtre « Corps » prend les corps ; une esquisse cachée n'est pas
   prise (le message dit combien le sont, et que l'œil du titre « Esquisses » les montre).
+- **Listes des outils** : une liste ouverte dans le panneau d'un outil (Façades, Caisson…) ne se referme plus quand
+  l'aperçu se termine : le panneau attend qu'on la quitte pour se redessiner ; un choix fait dedans le met à jour tout
+  de suite (`PanelTool.listOpen`).
 - **Champs de nombre** : un clic (ou Tab) dans un champ de nombre en sélectionne tout le contenu, pour taper la nouvelle
   valeur directement ; un deuxième clic place le curseur pour corriger un chiffre (`ui/select-on-focus.ts`).
 - **Supprimer la sélection** (bouton de la colonne Vue, à côté ; la touche Suppr en bouton) : tout ce qui est
