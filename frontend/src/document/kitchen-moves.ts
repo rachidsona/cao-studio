@@ -111,3 +111,32 @@ export function unitsMoved(doc: CadDocument, plan: KitchenFloorPlan, run: Kitche
   });
   return moved;
 }
+
+/** The island of a kitchen plan a feature is a piece of: its plan's sketch and all the plan made of it, or null. */
+export function islandOf(doc: CadDocument, feature: string): { plan: string; made: string[] } | null {
+  for (const f of doc.features) if (f.type === "sketch" && f.kitchenPlan?.made?.I?.includes(feature)) return { plan: f.id, made: f.kitchenPlan.made.I };
+  return null;
+}
+
+/**
+ * The island moved in the 3D since `since` — one of its units, or all the same way: it goes there whole. What the plan
+ * then keeps (how far off the middle of wall A, the passage before it), or null (not moved, or its units each their
+ * way). `units`: the island's, as the plan builds them, in the order it made them; measured from where the plan puts
+ * them, so that a plan that already follows is left alone.
+ */
+export function islandMoved(doc: CadDocument, plan: KitchenFloorPlan, units: KitchenUnit[], since: CadDocument): Pick<KitchenFloorPlan, "islandShift" | "passage"> | null {
+  const cabinets = (plan.made?.I ?? []).map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet");
+  if (!cabinets.length || units.length !== cabinets.length) return null;
+  const place = plan.place ?? { quarter: 0 as const, origin: [0, 0] as [number, number] };
+  const shifts = cabinets.flatMap((c, i) => {
+    const b = findFeature(since, c.id);
+    if (b?.type !== "cabinet" || Math.abs(c.width - b.width) > 0.05 || Math.hypot(c.origin[0] - b.origin[0], c.origin[1] - b.origin[1]) < STILL) return [];
+    const at = placePoint(place, units[i]!.origin);
+    return [[c.origin[0] - at[0], c.origin[1] - at[1]] as [number, number]];
+  });
+  const d = shifts[0];
+  if (!d || Math.hypot(...d) < STILL || shifts.some((x) => Math.hypot(x[0] - d[0], x[1] - d[1]) > STILL)) return null;
+  const [x, y] = [turn(place, [1, 0, 0]), turn(place, [0, 1, 0])];
+  const round = (v: number) => Math.round(v * 10) / 10;
+  return { islandShift: round((plan.islandShift ?? 0) + d[0] * x[0] + d[1] * x[1]), passage: round(plan.passage - (d[0] * y[0] + d[1] * y[1])) };
+}

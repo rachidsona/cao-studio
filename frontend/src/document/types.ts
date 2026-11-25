@@ -187,6 +187,8 @@ export interface KitchenFloorPlan {
   islandDepth: number;
   /** In front of the island, from the front of wall A's run. */
   passage: number;
+  /** The island off the middle of wall A, along it (mm): where it was moved in the 3D (document/kitchen-moves.ts). */
+  islandShift?: number;
   height: number;
   /** The worktop's depth, the wall units', and the top of the worktop. */
   depth: number;

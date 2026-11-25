@@ -9,7 +9,9 @@
 import { bodyLabel, findFeature } from "../document/operations";
 import { axisGap, measureGap, movesNeeded, spacingFeatures, spacingShifts, type Along, type Gap, type Mover, type Moving } from "../document/spacing";
 import { elementKey, type Box } from "../document/swap";
-import type { Feature, SketchFeature, Vec3 } from "../document/types";
+import type { CadDocument, Feature, SketchFeature, Vec3 } from "../document/types";
+import { islandOf } from "../document/kitchen-moves";
+import { syncKitchenPlans } from "../document/kitchen-sync";
 import { frameOf, toWorld } from "../sketcher/frame";
 import { sketchCurves } from "../sketcher/polylines";
 import { sketchBox } from "../sketcher/sketch-transform";
@@ -40,6 +42,8 @@ interface Side {
   box: Box;
   shape: MeasureShape;
   name: string;
+  /** A kitchen island taken whole: its cabinets, slid by their position. */
+  slide?: string[];
 }
 
 /** A sketch picked is kept as « sketch:<id> » among the bodies picked. */
@@ -96,19 +100,24 @@ export class SpacingTool extends PanelTool {
     const [a, b] = this.picks as [string, string];
     const keyOf = (pick: string) => this.sketchOf(pick)?.id ?? elementKey(doc, pick);
     const whole = keyOf(a) !== keyOf(b);
+    // A piece of a kitchen plan's island: the island whole (its units, worktop, plinth), unless both are pieces of it.
+    const isle = (pick: string) => (this.sketchOf(pick) ? null : islandOf(doc, elementKey(doc, pick)));
+    const apart = isle(a)?.plan !== isle(b)?.plan;
     const side = (id: string): Side | null => {
       const sketch = this.sketchOf(id);
       if (sketch) return this.sketchSide(sketch);
-      const key = whole ? elementKey(doc, id) : id;
-      const bodies = whole ? this.ctx.viewport.displayedBodies.filter((x) => elementKey(doc, x) === key) : [id];
+      const island = whole && apart ? isle(id) : null;
+      const slide = island?.made.filter((x) => findFeature(doc, x)?.type === "cabinet");
+      const key = slide?.length ? `${island!.plan}:I` : whole ? elementKey(doc, id) : id;
+      const bodies = slide?.length ? this.ctx.viewport.displayedBodies.filter((x) => island!.made.includes(elementKey(doc, x))) : whole ? this.ctx.viewport.displayedBodies.filter((x) => elementKey(doc, x) === key) : [id];
       const meshes = bodies.map((x) => this.ctx.viewport.bodyMesh(x)).filter((m) => m !== undefined);
       if (!meshes.length) return null;
       const boxes = meshes.map((m) => m.metrics.bbox);
       const box: Box = [[0, 1, 2].map((i) => Math.min(...boxes.map((x) => x[0][i]!))) as Vec3, [0, 1, 2].map((i) => Math.max(...boxes.map((x) => x[1][i]!))) as Vec3];
       const parts = meshes.map((m) => bodyPicked(m).shape);
       const shape: MeasureShape = { points: parts.flatMap((p) => p.points), segments: parts.flatMap((p) => p.segments), triangles: parts.flatMap((p) => p.triangles) };
-      const name = (whole ? findFeature(doc, key)?.name : undefined) ?? bodyLabel(doc, id);
-      return { key, bodies, whole, box, shape, name };
+      const name = slide?.length ? "Îlot" : ((whole ? findFeature(doc, key)?.name : undefined) ?? bodyLabel(doc, id));
+      return { key, bodies, whole, box, shape, name, ...(slide?.length ? { slide } : {}) };
     };
     const [sa, sb] = [side(a), side(b)];
     this.sides = sa && sb ? [sa, sb] : null;
@@ -135,7 +144,7 @@ export class SpacingTool extends PanelTool {
     const gap = this.gap();
     if (!gap || !this.sides) return [];
     const shifts = spacingShifts(gap, this.wanted, this.mover);
-    return this.sides.map((s, i) => ({ key: s.key, bodies: s.bodies, whole: s.whole, shift: shifts[i]! }));
+    return this.sides.map((s, i) => ({ key: s.key, bodies: s.bodies, whole: s.whole, shift: shifts[i]!, ...(s.slide ? { slide: s.slide } : {}) }));
   }
 
   private made(): Feature[] {
@@ -155,6 +164,11 @@ export class SpacingTool extends PanelTool {
 
   protected override companions(): Feature[] {
     return this.made().slice(1);
+  }
+
+  /** A unit of a kitchen plan moved: its plan follows at once (the island whole, with its worktop and plinth), as when it is stored. */
+  protected override decorate(doc: CadDocument): CadDocument {
+    return syncKitchenPlans(this.docBefore(), doc);
   }
 
   /** The cote, where the two elements will be once moved, and its value. */

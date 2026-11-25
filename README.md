@@ -2591,7 +2591,9 @@ opération existante.
   élément s'écarte ou se rapproche (ou le premier, ou les deux de moitié chacun), le long de la plus courte distance
   ou d'un axe X, Y, Z. Un caisson glisse par sa position (ses façades suivent) ; un autre corps, par un déplacement
   dans l'historique ; une **esquisse** aussi se clique (ou se sélectionne dans le navigateur) : elle glisse par son
-  plan, et ce qui en est extrudé la suit. Deux pièces d'un même caisson (deux étagères) bougent seules. L'outil s'ouvre aussi sur deux
+  plan, et ce qui en est extrudé la suit. Deux pièces d'un même caisson (deux étagères) bougent seules. L'**îlot d'un
+  Plan de cuisine** se prend en entier par une de ses pièces (un caisson, son retour de plan) : la cote part de son bord, ses
+  caissons glissent tous et son plan refait le reste, dans l'aperçu aussi (`Moving.slide`). L'outil s'ouvre aussi sur deux
   éléments déjà sélectionnés, ou depuis le Mètre ; une seule annulation (`document/spacing.ts`,
   `app/spacing-tool.ts`).
 - **Copie liée** (groupe Modifier, comme les composants de SketchUp) : une copie des corps sélectionnés, posée à côté,
@@ -2665,7 +2667,10 @@ opération existante.
 - **Plan de cuisine** (onglet Cuisine, groupe « Cuisine ») : une cuisine commence par son **plan vu de dessus**,
   comme un dressing. On choisit un modèle — droite, en L à gauche ou à droite, en U, **en G** (un mur B ou C et une
   **péninsule**, un retour libre au bout du mur A) ou **parallèle** (deux murs face à face, au passage voulu) —, avec ou
-  sans **îlot** face au mur A (110 cm de passage proposés) ; les cotes des murs, la hauteur sous plafond, la profondeur
+  sans **îlot** face au mur A (110 cm de passage proposés ; au milieu du mur, ou là où on le déplace dans la 3D — un de
+  ses meubles poussé, déplacé ou écarté par Espacement emmène l'îlot entier, son plan de travail et sa plinthe, et le
+  plan le garde là : `islandShift`, `islandMoved` de `document/kitchen-moves.ts` ; refusé contre un mur ou sur un autre
+  linéaire) ; les cotes des murs, la hauteur sous plafond, la profondeur
   du plan de travail (64), des caissons bas et des colonnes (58, `BASE_DEPTH`, au plus le plan de travail moins les
   façades) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par

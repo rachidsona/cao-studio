@@ -136,10 +136,10 @@ function proxy(p: KitchenFloorPlan): DressingPlan {
 
 const peninsulaOf = (p: KitchenFloorPlan) => (p.model === "G-left" ? "C" : p.model === "G-right" ? "B" : null);
 
-/** The island, facing wall A across the passage, in the middle of it. */
+/** The island, facing wall A across the passage, in the middle of it (or off it, where it was moved). */
 function islandRun(p: KitchenFloorPlan): KitchenRun {
   const y = -(p.depth + p.passage + p.islandDepth);
-  const x0 = (p.lengthA - p.islandLength) / 2;
+  const x0 = (p.lengthA - p.islandLength) / 2 + (p.islandShift ?? 0);
   const start = -(x0 + p.islandLength);
   const zone: PlanZone = {
     id: "I", label: "Îlot", kind: "run", outline: rect(x0, y, x0 + p.islandLength, y + p.islandDepth),

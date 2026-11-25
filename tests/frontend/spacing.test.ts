@@ -68,6 +68,13 @@ describe("espacement", () => {
     expect(spacingFeatures(d, shelves, [{ id: "mv1", name: "E" }])).toEqual([{ id: "mv1", name: "E", type: "move", target: "cb1#4", translate: [0, 0, 40] }]);
   });
 
+  it("un îlot de cuisine pris en entier : ses caissons glissent tous, aucun déplacement de corps (son plan refait le reste)", () => {
+    const d = doc([cabinet("cb1", 0), cabinet("cb2", 650)]);
+    const island = [{ key: "sk1:I", bodies: ["cb1#0", "cb2#0", "ex9"], whole: true, shift: [0, -120, 0] as [number, number, number], slide: ["cb1", "cb2"] }];
+    expect(movesNeeded(d, island)).toBe(0);
+    expect(spacingFeatures(d, island, []).map((f) => [f.id, (f as { origin: number[] }).origin])).toEqual([["cb1", [0, -120, 0]], ["cb2", [650, -120, 0]]]);
+  });
+
   it("une esquisse glisse par son plan : décalée dans le plan, ou montée le long de sa normale", () => {
     const sketch = { id: "s1", type: "sketch", name: "Rect", plane: "XY", offset: 0, points: [], curves: [], constraints: [] } as Feature;
     const [moved] = spacingFeatures(doc([sketch]), [{ key: "s1", bodies: [], whole: true, shift: [-120, 0, 0] }], []);

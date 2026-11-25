@@ -11,8 +11,8 @@ import { cornerLimits, withCorner, type CornerSetting } from "./kitchen-corners"
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
-import { itemsMoved, unitsMoved } from "./kitchen-moves";
-import { kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
+import { islandMoved, itemsMoved, unitsMoved } from "./kitchen-moves";
+import { kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
 import { keptOf } from "./kitchen-keep";
 
@@ -45,13 +45,17 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
     const units = kitchenFromPlan(plan, room).units;
     const runs: Record<string, KitchenRunItem[]> = { ...plan.runs };
     let corners: CornerSetting = { corners: plan.corners, wallCorners: plan.wallCorners, cornerSizes: plan.cornerSizes };
-    let changed = false;
+    // The island moved (one of its units, or all the same way): it goes there whole, its units as they were on it —
+    // unless the plan cannot have it there (against a wall, on another run).
+    const there = islandMoved(doc, plan, units.filter((u) => u.run === "I"), prev);
+    const island = there && !kitchenPlanProblem({ ...plan, ...there }) ? there : null;
+    let changed = !!island;
     for (const run of kitchenRuns(plan)) {
       const own = units.filter((u) => u.run === run.id);
       const cabinets = (plan.made?.[run.id] ?? []).map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet");
       if (own.length !== cabinets.length) continue;
       // Pushed along the run in the 3D: where it now stands, from where the plan puts it.
-      const moved = unitsMoved(doc, plan, run, own, prev);
+      const moved = island && run.id === "I" ? {} : unitsMoved(doc, plan, run, own, prev);
       cabinets.forEach((c, i) => {
         const u = own[i]!;
         // The side of its door, turned in the 3D (its menu): the plan keeps it.
@@ -151,7 +155,7 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
       }
     }
     if (!changed) continue;
-    const made = withKitchenBuilt(doc, sketch.id, { runs, ...corners });
+    const made = withKitchenBuilt(doc, sketch.id, { runs, ...corners, ...island });
     if (typeof made !== "string") doc = made.doc;
   }
   return doc;

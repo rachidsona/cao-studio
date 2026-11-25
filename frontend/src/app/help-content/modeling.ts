@@ -242,7 +242,7 @@ export const MODELING: HelpFamily[] = [
           "« Bouger » : « Le second (cliqué en dernier) », « Le premier » ou « Les deux, de moitié chacun ».",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
-        tip: "Deux éléments sélectionnés avant le clic sont pris tout de suite. Un nouveau clic dans la vue recommence avec deux autres éléments.",
+        tip: "Deux éléments sélectionnés avant le clic sont pris tout de suite. Un nouveau clic dans la vue recommence avec deux autres éléments. L'îlot d'un Plan de cuisine se prend en entier : cliquez une de ses pièces, il bouge tout entier, avec son plan de travail et sa plinthe.",
       },
       {
         keys: ["data-action:modifier"],

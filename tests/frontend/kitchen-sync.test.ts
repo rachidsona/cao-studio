@@ -136,6 +136,31 @@ describe("un meuble poussé le long de son mur dans la 3D", () => {
   });
 });
 
+describe("l'îlot déplacé dans la 3D", () => {
+  it("un de ses meubles bougé (Espacement, Pousser, Déplacer) : l'îlot entier y va, plan de travail et plinthe avec lui, et le plan le garde là", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, island: true, runs: {}, made: {} });
+    const items = [newItem([], "base-bas-1-porte", 600)];
+    items.push(newItem(items, "base-bas-3-tiroirs", 600));
+    const made = withKitchenBuilt(base.doc, base.id, { runs: { I: items } });
+    if (typeof made === "string") throw new Error(made);
+    const units = (doc: CadDocument) => (kitchenPlanIn(doc, base.id)!.made!.I ?? []).map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet");
+    const [first, second] = units(made.doc);
+    const top = (doc: CadDocument) => kitchenFromPlan(kitchenPlanIn(doc, base.id)!).boxes.find((b) => b.kind === "worktop" && b.name.endsWith(" I"))!;
+    const before = top(made.doc);
+    const synced = syncKitchenPlans(made.doc, resized(made.doc, first!.id, { origin: [first!.origin[0] + 200, first!.origin[1] - 150, 0] }));
+    const plan = kitchenPlanIn(synced, base.id)!;
+    expect([plan.islandShift, plan.passage]).toEqual([200, KITCHEN_PLAN.passage + 150]);
+    const now = units(synced);
+    expect(now.map((c) => [c.origin[0], c.origin[1]])).toEqual([[first!.origin[0] + 200, first!.origin[1] - 150], [second!.origin[0] + 200, second!.origin[1] - 150]]);
+    expect([top(synced).from[0] - before.from[0], top(synced).from[1] - before.from[1]]).toEqual([200, -150]);
+    // The plan follows already: seen again (a tool that stores what it showed), nothing more.
+    expect(syncKitchenPlans(made.doc, synced)).toBe(synced);
+    // Against wall A: the plan cannot have it there, nothing changes.
+    const near = resized(made.doc, first!.id, { origin: [first!.origin[0], first!.origin[1] + 900, 0] });
+    expect(syncKitchenPlans(made.doc, near)).toBe(near);
+  });
+});
+
 describe("l'électroménager posé à la main dans une cuisine du plan", () => {
   it("la bande de son linéaire le montre ; la cuisine refaite garde la découpe de son plan de travail, et ce qui est tiré d'une de ses pièces", () => {
     const { doc, id, items } = kitchen();

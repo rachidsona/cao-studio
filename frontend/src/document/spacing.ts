@@ -33,6 +33,8 @@ export interface Moving {
   bodies: string[];
   whole: boolean;
   shift: Vec3;
+  /** A kitchen island: its cabinets, each slid by its position — the plan then takes the whole island there (kitchen-moves.ts). */
+  slide?: string[];
 }
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -103,7 +105,7 @@ function slidingAppliance(doc: CadDocument, m: Moving): ApplianceFeature | null 
 
 /** How many new features (moves of bodies) the shifts need. */
 export function movesNeeded(doc: CadDocument, moving: readonly Moving[]): number {
-  return moving.filter(moves).reduce((n, m) => n + (slidingCabinet(doc, m) || slidingAppliance(doc, m) || findFeature(doc, m.key)?.type === "sketch" ? 0 : m.bodies.length), 0);
+  return moving.filter(moves).reduce((n, m) => n + (m.slide || slidingCabinet(doc, m) || slidingAppliance(doc, m) || findFeature(doc, m.key)?.type === "sketch" ? 0 : m.bodies.length), 0);
 }
 
 /**
@@ -119,10 +121,17 @@ export function spacingFeatures(doc: CadDocument, moving: readonly Moving[], slo
       out.push(moveSketchPlane(sketch, m.shift));
       continue;
     }
+    const slid = (cabinet: CabinetFeature): CabinetFeature => {
+      const expressions = Object.fromEntries(Object.entries(cabinet.expressions ?? {}).filter(([k]) => ![0, 1, 2].some((i) => k === `origin.${i}` && Math.abs(m.shift[i]!) > 1e-6)));
+      return { ...cabinet, origin: cabinet.origin.map((c, i) => round(c + m.shift[i]!)) as Vec3, ...(cabinet.expressions ? { expressions } : {}) };
+    };
+    if (m.slide) {
+      out.push(...m.slide.map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet").map(slid));
+      continue;
+    }
     const cabinet = slidingCabinet(doc, m);
     if (cabinet) {
-      const expressions = Object.fromEntries(Object.entries(cabinet.expressions ?? {}).filter(([k]) => ![0, 1, 2].some((i) => k === `origin.${i}` && Math.abs(m.shift[i]!) > 1e-6)));
-      out.push({ ...cabinet, origin: cabinet.origin.map((c, i) => round(c + m.shift[i]!)) as Vec3, ...(cabinet.expressions ? { expressions } : {}) });
+      out.push(slid(cabinet));
       continue;
     }
     const appliance = slidingAppliance(doc, m);
