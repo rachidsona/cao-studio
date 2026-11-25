@@ -50,6 +50,8 @@ const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
 
 type Family = "base" | "wall" | "cap" | "tall" | "appliance" | "mine";
 const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["cap", "Casquettes"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
+/** The family of « Ajouter » chosen last: kept when the run's editor is made again (the kitchen rebuilt), and from run to run. */
+let chosenFamily: Family = "base";
 
 export interface RunEditorHost {
   editor: Editor;
@@ -84,7 +86,6 @@ export class RunEditor {
   private chosen: string | null = null;
   /** The units chosen together (two or more), set as one (app/kitchen-run-multi-view.ts). */
   private picked: string[] = [];
-  private family: Family = "base";
   /** The width of the next filler put by hand (mm). */
   private fillerWidth = 50;
   /** What else is chosen on the strip: an appliance put by hand, or the worktop; the worktop taken away or put back here. */
@@ -485,12 +486,13 @@ export class RunEditor {
     const plan = this.current();
     const fill = this.fillOf();
     const free = { limits: (e: CatalogEntry) => sizeLimits(plan, e).width, room: (e: CatalogEntry) => widestRoom(fill, rowOf(e)) || null };
-    const tabs = familyTabs(FAMILIES.filter(([f]) => wall || (f !== "wall" && f !== "cap")), this.family, (f) => ((this.family = f), this.host.redraw()), "Ajouter");
+    const family = wall || (chosenFamily !== "wall" && chosenFamily !== "cap") ? chosenFamily : "base";
+    const tabs = familyTabs(FAMILIES.filter(([f]) => wall || (f !== "wall" && f !== "cap")), family, (f) => ((chosenFamily = f), this.host.redraw()), "Ajouter");
     let rows: HTMLElement[];
-    if (this.family === "mine") {
+    if (family === "mine") {
       const own = myUnits().filter((e) => wall || e.kind !== "wall");
       rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add", free)) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
-    } else rows = familyModels(this.family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free));
+    } else rows = familyModels(family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free));
     const box = el("div", {}, tabs, el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
     box.style.setProperty("--brass", BRASS);
     return [box];
