@@ -12,7 +12,7 @@ import { runCabinets } from "./kitchen-plan-add";
 import type { NicheRecipe } from "./niche-recipe";
 import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "./operations";
 import { featureOfBody, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature } from "./types";
-import { itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
+import { applianceOf, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
 
 /** The kitchen cabinet a body belongs to: one of its boards, or of its fronts; null for anything else. */
 export function cabinetOfBody(doc: CadDocument, bodyId: string): CabinetFeature | null {
@@ -37,6 +37,8 @@ function freedFromPlan(doc: CadDocument, c: CabinetFeature): { doc: CadDocument;
   const itemId = runCabinets(doc, owner.plan, owner.run).find((x) => x.cabinet === c.id)?.item;
   const item = items.find((i) => i.id === itemId);
   if (!item) return itemId === undefined && (plan.made?.[owner.run] ?? []).includes(c.id) ? "Un meuble d'angle ne s'aménage pas ainsi : choisissez un autre meuble du linéaire." : "Ce meuble n'est plus retrouvé dans son linéaire : refaites la cuisine, puis réessayez.";
+  // The caisson of a fridge's surround is a piece of it (its sides and its fridge stand round it): it stays the plan's.
+  if (applianceOf(item)?.role === "fridge-surround") return "Le caisson d'un habillage de réfrigérateur reste celui de l'habillage : changez ses étagères et ses portes avec les outils Caisson et Façades (l'habillage les garde).";
   const wall = rowOf(itemEntry(item)) === "wall";
   // Its depth, and up in the wall row its height: the room is where the cabinet was, the caisson in it.
   const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}), ...(item.own ? {} : { from: item.model }) };

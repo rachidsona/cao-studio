@@ -88,6 +88,15 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(sideNow(side.name)).toBeDefined();
   });
 
+  it("son caisson ne s'aménage pas à la main (il reste celui de l'habillage) : l'habillage ne disparaît pas", async () => {
+    const { withCabinetFurnished } = await import("../../frontend/src/document/cabinet-furnish");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const cab = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    expect(withCabinetFurnished(built.doc, cab.id)).toMatch(/habillage/);
+  });
+
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
     const build = (fridge: number) => {
       const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge }] }, made: {} });

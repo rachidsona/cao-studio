@@ -3161,7 +3161,8 @@ opération existante.
     - Ses finitions (« Finitions » posées sur lui seul : joues, fileurs, bandeau, plinthe, pieds) le suivent, déplacées,
       tournées, allongées avec lui (`document/caisson-trims.ts`).
     - Un caisson aménagé avant cette version est relié à sa place à la prochaine cuisine refaite, s'il s'y trouve
-      encore. Un meuble d'angle ne s'aménage pas ainsi.
+      encore. Un meuble d'angle ne s'aménage pas ainsi, ni le caisson d'un habillage de réfrigérateur (il resterait sans
+      ses côtés ni son réfrigérateur) : ses étagères et ses portes se changent avec Caisson et Façades, que l'habillage garde.
     - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
       (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
   - **Mes caissons** : un caisson aménagé se garde pour tous les projets, avec son intérieur.
