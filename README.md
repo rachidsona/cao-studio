@@ -2674,7 +2674,8 @@ opération existante.
   sans **îlot** face au mur A (110 cm de passage proposés ; au milieu du mur, ou là où on le déplace dans la 3D — un de
   ses meubles poussé, déplacé ou écarté par Espacement emmène l'îlot entier, son plan de travail et sa plinthe, et le
   plan le garde là : `islandShift`, `islandMoved` de `document/kitchen-moves.ts` ; refusé contre un mur ou sur un autre
-  linéaire) ; les cotes des murs, la hauteur sous plafond, la profondeur
+  linéaire ; ce décalage se tape aussi dans les Cotes du plan, « Décalage de l'îlot », 0 au milieu du mur A, en moins
+  d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la profondeur
   du plan de travail (64), des caissons bas et des colonnes (58, `BASE_DEPTH`, au plus le plan de travail moins les
   façades) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par

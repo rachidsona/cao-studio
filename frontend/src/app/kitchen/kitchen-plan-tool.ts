@@ -221,7 +221,7 @@ export class KitchenPlanTool {
       model.noIsland ? null : el("label", { class: "flex min-h-8 items-center gap-2" }, island, "Îlot face au mur A"),
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
-      islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null,
+      islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null, islandRows ? this.fields.number("Décalage de l'îlot (0 : au milieu du mur A)", "islandShift", 0, true, true) : null,
       el("h3", { class: "panel-title" }, "Matières et finitions"), this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
       this.fields.select("Plan de travail en", plan.worktopMaterial ?? "solid-oak", materials, (v) => this.set({ worktopMaterial: v })), this.fields.look(),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,

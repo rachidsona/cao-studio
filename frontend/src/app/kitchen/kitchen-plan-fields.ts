@@ -8,7 +8,7 @@ import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-wall
 import type { Editor } from "../editor";
 
 
-export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth" | "baseDepth";
+export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth" | "baseDepth" | "islandShift";
 export type Switch = "wallUnits" | "appliances" | "fridge" | "ovenColumn" | "splashback" | "kick" | "endPanels" | "splashbackHoodOnly";
 
 const FIELD = "h-8 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
@@ -17,12 +17,13 @@ const ROW = "grid grid-cols-[8rem_1fr] items-center gap-1.5";
 
 export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit; set(patch: Partial<KitchenFloorPlan>): void; draw(): void }) {
   /** `usual`: its value when not set; `zero`: 0 is a value it may take. */
-  const number = (label: string, key: Sized, usual = 0, zero = false): HTMLElement => {
+  /** `zero`: none is a value too; `signed`: so is less than none (the island, off the middle one way or the other). */
+  const number = (label: string, key: Sized, usual = 0, zero = false, signed = false): HTMLElement => {
     const unit = host.unit();
     const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(host.plan()[key] ?? KITCHEN_PLAN[key] ?? usual, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})` });
     const apply = () => {
       const parsed = parseNumber(input.value);
-      const ok = parsed !== null && (parsed > 0 || (zero && parsed === 0));
+      const ok = parsed !== null && (signed || parsed > 0 || (zero && parsed === 0));
       input.setAttribute("aria-invalid", String(!ok));
       if (ok && fromDisplay(parsed, unit) !== host.plan()[key]) host.set({ [key]: fromDisplay(parsed, unit) });
     };

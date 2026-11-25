@@ -315,6 +315,7 @@ export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
     if (!(p.passage >= 700)) return "Le passage devant l'îlot fait 70 cm au moins.";
     if (!(p.islandDepth >= 450 && p.islandDepth <= 1500)) return "La profondeur de l'îlot va de 45 à 150 cm.";
     if (!(p.islandLength >= 300 && p.islandLength <= p.lengthA)) return "L'îlot va de 30 cm à la longueur du mur A.";
+    if (!(Math.abs(p.islandShift ?? 0) <= p.lengthA)) return "L'îlot se décale d'au plus la longueur du mur A, d'un côté ou de l'autre de son milieu.";
     const [x0, y0, x1, y1] = bounds(island.zone.outline);
     const hit = runs.find((r) => {
       if (r === island) return false;

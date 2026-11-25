@@ -59,6 +59,9 @@ describe("modèles du plan de cuisine", () => {
     const island = kitchenRuns(plan({ model: "I", island: true })).find((r) => r.id === "I")!;
     expect(island.zone.outline).toEqual([[900, -2340], [2700, -2340], [2700, -1740], [900, -1740]]);
     expect(island.zone.run.normal).toEqual([0, 1]);
+    // Off the middle of wall A (typed in the plan, or where it was moved in the 3D); no further than the wall is long.
+    expect(kitchenRuns(plan({ model: "I", island: true, islandShift: -300 })).find((r) => r.id === "I")!.zone.outline[0]).toEqual([600, -2340]);
+    expect(kitchenPlanProblem(plan({ model: "I", island: true, islandShift: 4000 }))).toMatch(/L'îlot se décale/);
     expect(kitchenPlanProblem(plan({ model: "U", island: true, lengthA: 2400 }))).toMatch(/L'îlot touche/);
     expect(kitchenPlanProblem(plan({ model: "I", island: true, passage: 500 }))).toMatch(/passage/);
   });

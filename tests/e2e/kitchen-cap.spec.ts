@@ -129,3 +129,26 @@ test("Plan de cuisine : l'habillage de réfrigérateur pris dans l'onglet Colonn
   expect(errors).toEqual([]);
 });
 
+
+test("plan de cuisine : le décalage de l'îlot se tape, d'un côté ou de l'autre du milieu du mur A", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-ilot-decale");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Cotes");
+  await tool.getByRole("checkbox", { name: "Îlot", exact: true }).check();
+  const shift = tool.getByLabel(/^Décalage de l'îlot/);
+  await expect(shift).toHaveValue("0");
+  await shift.fill("-40");
+  await shift.press("Enter");
+  await expect(tool.getByLabel(/^Décalage de l'îlot/)).toHaveValue("-40");
+  await expect(tool.getByLabel(/^Décalage de l'îlot/)).not.toHaveAttribute("aria-invalid", "true");
+  // Too far: the plan says so, and cannot be made.
+  await tool.getByLabel(/^Décalage de l'îlot/).fill("900");
+  await tool.getByLabel(/^Décalage de l'îlot/).press("Enter");
+  await expect(tool.getByText(/L'îlot se décale d'au plus/).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
