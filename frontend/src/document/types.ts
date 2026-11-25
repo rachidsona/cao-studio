@@ -153,6 +153,8 @@ export interface KitchenRunItem {
   facade?: FrontStyle;
   /** Its front rail on its edge, chosen in the Caisson tool (a unit with two rails). */
   railFront?: CabinetFeature["railFront"];
+  /** A second door, on its left or right side (that side left without its board), besides its front. */
+  sideDoor?: CabinetFeature["open"];
   /** What was changed on it by hand in the 3D, kept by the plan and made again so (document/kitchen-sync.ts). */
   keep?: KitchenUnitKeep;
   /**
@@ -552,6 +554,8 @@ export interface CabinetFeature extends FeatureBase {
   railWidth?: number;
   /** Two rails: the front one stands on its edge, as the back one (missing: lying flat). */
   railFront?: "edge";
+  /** One side left without its board, closed by a door (a fronts' `face`): the unit opens on that side too. */
+  open?: "left" | "right";
   /**
    * Turn about the vertical through the origin (degrees, counterclockwise seen from above): 0 faces −Y, 90 faces +X,
    * 180 faces +Y, 270 faces −X. Its fronts turn with it.
@@ -873,6 +877,11 @@ export interface FrontsFeature extends FeatureBase {
   grooves?: "horizontal";
   glass?: GlassKind;
   profile?: ProfileFinish;
+  /**
+   * On a side of its cabinet, not its front: a door that closes the side left open (`CabinetFeature.open`), made as the
+   * fronts of the cabinet turned a quarter that way (fronts-parts.ts `frontsCabinet`).
+   */
+  face?: "left" | "right";
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
   hw?: HardwareSizes;
   /** By part, the hinges of a door heavier than its height asks for: copied in for the kernel only (document/hardware.ts stampHinges). */

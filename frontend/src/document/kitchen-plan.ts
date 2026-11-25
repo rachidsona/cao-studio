@@ -71,7 +71,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
       id: uniqueId(probe, "cb"), type: "cabinet", name: u.name, origin: placePoint(place, u.origin), width: u.width, height: u.height, depth: u.depth,
       // A sink unit on two rails: no back, the pipes come through.
       thickness: 18, back: u.top === "rails" && u.layout !== "drawers" ? "none" : "applied", backThickness: 3, shelves: u.shelves, ...(u.dividers ? { dividers: u.dividers } : {}), plinth: u.plinth, construction: "sides-through",
-      ...(u.top ? { top: u.top } : {}), ...(u.railWidth ? { railWidth: u.railWidth } : {}), ...(u.railFront ? { railFront: u.railFront } : {}), ...(rotation ? { rotation } : {}),
+      ...(u.top ? { top: u.top } : {}), ...(u.railWidth ? { railWidth: u.railWidth } : {}), ...(u.railFront ? { railFront: u.railFront } : {}), ...(u.sideDoor ? { open: u.sideDoor } : {}), ...(rotation ? { rotation } : {}),
       // What was changed on it by hand in the 3D (document/kitchen-sync.ts).
       ...u.keep?.cabinet,
     };
@@ -80,9 +80,11 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     if (u.keep?.name) plan.names[cabinet.id] = u.keep.name;
     if (u.layout === "none") continue;
     // Its fronts; more doors on the same cabinet (an oven column's, under the oven) each their own, in the same look.
-    [{ ...u, layout: u.layout }, ...(u.more ?? []).map((m) => ({ ...u, ...m, layout: "door" as const }))].forEach((u, k) => {
+    // A door on its side: hinged on its front edge, it opens towards the room.
+    const sideDoor = u.sideDoor ? [{ ...u, layout: "door" as const, side: u.sideDoor === "right" ? ("left" as const) : ("right" as const), face: u.sideDoor, span: undefined, rise: undefined, topDrawer: undefined, innerDrawers: undefined }] : [];
+    [{ ...u, layout: u.layout, face: undefined }, ...(u.more ?? []).map((m) => ({ ...u, ...m, layout: "door" as const, face: undefined })), ...sideDoor].forEach((u, k) => {
       const fronts: FrontsFeature = {
-        id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...((u.grip ?? (look.handles === "gorge" ? "gorge" : undefined)) ? { grip: "gorge" as const } : {}), ...(u.facade ?? look.style ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}),
+        id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...((u.grip ?? (look.handles === "gorge" ? "gorge" : undefined)) ? { grip: "gorge" as const } : {}), ...(u.facade ?? look.style ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}), ...(u.face ? { face: u.face } : {}),
         mount: look.mount ?? "overlay", gap: look.gap ?? 3, thickness: look.thickness ?? frontThickness, hinges: true, handles: u.handles !== false && look.handles !== "none", ...(k ? {} : u.keep?.fronts),
       };
       push(fronts);

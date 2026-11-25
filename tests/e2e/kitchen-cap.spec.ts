@@ -239,3 +239,30 @@ test("plan de cuisine : les façades de toute la cuisine — style, poignées, c
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : une colonne à deux portes, une de face et une sur son côté gauche, bâtie par le noyau", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-porte-cote");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const fold = async (name: string) => {
+    const f = tool.locator(`[data-fold="${name}"]`);
+    if ((await f.getAttribute("aria-expanded")) !== "true") await f.click();
+  };
+  await fold("add");
+  await tool.getByRole("tab", { name: "Colonnes" }).click();
+  await tool.locator('[data-add^="tall-colonne-rangement-"]').first().click();
+  await fold("chosen");
+  await tool.locator("[data-side-door]").selectOption("left");
+  await expect(tool.locator("[data-side-door]")).toHaveValue("left");
+  await tool.locator("[data-run-close]").click();
+  await expect(page.locator('[title^="Façades "][title*="(2)"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/porte-cote.png` });
+  expect(errors).toEqual([]);
+});

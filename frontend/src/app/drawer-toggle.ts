@@ -16,7 +16,7 @@ import { bodyLabel, findFeature } from "../document/operations";
 import { featureOfBody, type Axis, type CabinetFeature, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../document/types";
 import { accessoryMoves } from "../features/accessory-open";
 import { drawerNumber, drawerSlide, type Box } from "../features/drawer-open";
-import { frontsParts } from "../features/fronts-parts";
+import { frontsCabinet, frontsParts } from "../features/fronts-parts";
 import { poseOf, rotationMatrix } from "../features/motion";
 import { nicheGeometry, nicheParts, nichePartsIn, nicheWorld } from "../features/niche-parts";
 import type { Viewport } from "../viewport/viewport";
@@ -50,7 +50,8 @@ function outwards(axis: Axis, pivot: Vec3, free: Vec3, normal: Vec3, angle = DOO
 
 /** A door of a cabinet's fronts: they face −Y, then turn with the cabinet about the vertical through its origin. */
 function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0], bodyId: string): Swing | null {
-  const cabinet = findFeature(doc, fronts.cabinet) as CabinetFeature | undefined;
+  // A door on a side of its cabinet swings as the fronts of the cabinet turned that way.
+  const cabinet = frontsCabinet(fronts, findFeature(doc, fronts.cabinet) as CabinetFeature | undefined);
   const parts = frontsParts(fronts, cabinet);
   // The glass of a glazed door turns with its door.
   const own = parts[partNumber(bodyId)];

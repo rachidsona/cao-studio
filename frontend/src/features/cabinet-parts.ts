@@ -58,9 +58,10 @@ export function cabinetParts(f: CabinetFeature): CabinetPart[] {
     parts.push({ name, from: [ox + x0, oy + y0, oz + z0], to: [ox + x1, oy + y1, oz + z1] });
 
   const [sz0, sz1] = sidesThrough ? [0, H] : [p + t, H - t];
-  box("Côté gauche", 0, t, 0, sideDepth, sz0, sz1);
-  box("Côté droit", W - t, W, 0, sideDepth, sz0, sz1);
-  const [hx0, hx1] = sidesThrough ? [t, W - t] : [0, W];
+  // A side left open for a door (`open`): no board there, the top and the bottom run out to its edge.
+  if (f.open !== "left") box("Côté gauche", 0, t, 0, sideDepth, sz0, sz1);
+  if (f.open !== "right") box("Côté droit", W - t, W, 0, sideDepth, sz0, sz1);
+  const [hx0, hx1] = sidesThrough ? [f.open === "left" ? 0 : t, f.open === "right" ? W : W - t] : [0, W];
   box("Dessous", hx0, hx1, 0, boardDepth, p, p + t);
   // The front rail takes the place of the top, the back rail comes last: the other bodies keep their numbers.
   const rails = f.top === "rails";

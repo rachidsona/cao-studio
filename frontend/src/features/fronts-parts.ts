@@ -180,8 +180,26 @@ export function hingeHeights(z0: number, z1: number, n: number, shelves: readonl
   return { heights, blocked };
 }
 
+/**
+ * The cabinet the fronts are hung on as they see it: itself, or for a door on its side (`face`), itself turned a quarter
+ * that way — its side as its front, its depth as its width —, so the side door is made, drilled and opened as any.
+ */
+export function frontsCabinet(f: Pick<FrontsFeature, "face">, c: CabinetFeature | undefined): CabinetFeature | undefined {
+  if (!c || !f.face) return c;
+  const r = ((((c.rotation ?? 0) % 360) + 360) % 360) / 90;
+  const axes: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+  const [along, back] = [axes[r]!, axes[(r + 1) % 4]!];
+  // Its front-left corner as one faces that side: the front edge of the right side, the back edge of the left one.
+  const [u, v] = f.face === "right" ? [c.width, 0] : [0, c.depth];
+  const origin: CabinetFeature["origin"] = [c.origin[0] + along[0] * u + back[0] * v, c.origin[1] + along[1] * u + back[1] * v, c.origin[2]];
+  const rotation = (((c.rotation ?? 0) + (f.face === "right" ? 90 : 270)) % 360) as NonNullable<CabinetFeature["rotation"]>;
+  const { open: _open, notches: _notches, railFront: _rail, ...rest } = c;
+  return { ...rest, origin, rotation, width: c.depth, depth: c.width, shelves: 0, dividers: 0, top: "panel" };
+}
+
 /** Every part of the fronts, in body order; none when the cabinet or the settings are impossible. */
-export function frontsParts(f: FrontsFeature, cabinet: CabinetFeature | undefined): FrontPart[] {
+export function frontsParts(f: FrontsFeature, hung: CabinetFeature | undefined): FrontPart[] {
+  const cabinet = frontsCabinet(f, hung);
   if (frontsProblem(f, cabinet) || !cabinet) return [];
   const [ox, oy, oz] = cabinet.origin;
   const { width: W, height: H, depth: D, thickness: t, plinth: p } = cabinet;

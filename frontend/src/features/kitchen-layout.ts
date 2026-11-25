@@ -97,6 +97,8 @@ export interface KitchenUnit {
   rise?: [number, number];
   /** More doors on the same cabinet, each its own fronts (an oven column's, under its oven). */
   more?: Pick<KitchenUnit, "side" | "span" | "rise">[];
+  /** A second door on its left or right side, that side left without its board. */
+  sideDoor?: "left" | "right";
   /** Two rails instead of a top: the sink goes through. */
   top?: "rails";
   /** Its front rail standing on its edge (the Caisson tool). */

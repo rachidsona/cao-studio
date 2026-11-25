@@ -65,12 +65,17 @@ export function sizeFields({ item, entry, plan, unit, replace, redraw }: SizeHos
   const own = item.height !== undefined || item.depth !== undefined || item.fridge !== undefined;
   const reset = el("button", { type: "button", class: SMALL, disabled: !own, title: "La hauteur et la profondeur du modèle et du plan" }, "Cotes du modèle");
   reset.addEventListener("click", () => replace({ height: undefined, depth: undefined, fridge: undefined }));
+  // A second door on its left or right side, that side without its board (not for a fridge's surround).
+  const side = el("select", { class: FIELD.replace("text-right font-mono", ""), "aria-label": "Porte de côté", "data-side-door": "" }, ...([["", "Aucune"], ["left", "À gauche"], ["right", "À droite"]] as const).map(([v, text]) => el("option", { value: v, selected: v === (item.sideDoor ?? "") }, text)));
+  side.addEventListener("change", () => replace({ sideDoor: side.value === "left" || side.value === "right" ? side.value : undefined }));
+  const sideRow = applianceOf(item) ? null : el("label", { class: ROW }, "Porte de côté", side);
   return [
     field("Largeur", "width", item.width, limits.width),
     usual,
     limits.height ? field("Hauteur", "height", size.height, limits.height) : el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, `Hauteur ${formatLength(size.height, unit)} : celle du plan de travail.`),
     ...fridge,
     field("Profondeur", "depth", size.depth, limits.depth),
+    ...(sideRow ? [sideRow] : []),
     el("div", { class: "flex justify-end" }, reset),
   ];
 }

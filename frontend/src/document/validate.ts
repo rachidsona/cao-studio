@@ -179,7 +179,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       checkNumbers(feature, ["width", "height", "depth", "thickness", "backThickness", "shelves", "plinth"], where, errors);
       if (!["none", "applied", "inset"].includes(feature.back as string)) errors.push(`${where} : type de fond invalide.`);
       if (!["sides-through", "top-bottom-through"].includes(feature.construction as string)) errors.push(`${where} : construction du caisson invalide.`);
-      if (feature.top !== undefined && !["panel", "rails"].includes(feature.top as string)) errors.push(`${where} : haut du caisson invalide.`); if (feature.railFront !== undefined && feature.railFront !== "edge") errors.push(`${where} : traverse avant invalide.`);
+      if (feature.top !== undefined && !["panel", "rails"].includes(feature.top as string)) errors.push(`${where} : haut du caisson invalide.`); if (feature.open !== undefined && feature.open !== "left" && feature.open !== "right") errors.push(`${where} : côté ouvert inconnu.`); if (feature.railFront !== undefined && feature.railFront !== "edge") errors.push(`${where} : traverse avant invalide.`);
       if (feature.rotation !== undefined && ![0, 90, 180, 270].includes(feature.rotation as number)) errors.push(`${where} : orientation du caisson invalide (0, 90, 180 ou 270°).`);
       if (feature.standard !== undefined && typeof feature.standard !== "string") errors.push(`${where} : standard de construction invalide.`);
       break;
@@ -264,6 +264,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
       if (feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) errors.push(`${where} : côté des charnières inconnu.`);
       if (feature.grip !== undefined && feature.grip !== "gorge") errors.push(`${where} : prise de main inconnue.`);
+      if (feature.face !== undefined && feature.face !== "left" && feature.face !== "right") errors.push(`${where} : côté de la porte latérale inconnu.`);
       if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);
       if (feature.frameDepth !== undefined && !(isFiniteNumber(feature.frameDepth) && feature.frameDepth > 0)) errors.push(`${where} : « frameDepth » doit être un nombre positif.`);
       break;

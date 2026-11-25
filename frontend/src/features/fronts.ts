@@ -9,7 +9,7 @@
 import { makeBox, makeCompound, makeCylinder, type Shape3D } from "replicad";
 import type { CabinetFeature, FrontsFeature } from "../document/types";
 import { GeometryError, isShapeValid } from "../geometry/kernel";
-import { frontsParts, frontsProblem } from "./fronts-parts";
+import { frontsCabinet, frontsParts, frontsProblem } from "./fronts-parts";
 import { drillings, shelvesOf } from "./fronts-drillings";
 import { glassFrame, glassOpening, glassPane, isGlass, uFrame } from "./glass-door";
 import { cutGrooves } from "./decor-cut";
@@ -18,8 +18,10 @@ import type { OutputLookup } from "./common";
 import type { SolidsOutput } from "./outputs";
 import { turnedWith } from "./cabinet";
 
-export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, cabinet: CabinetFeature | undefined): SolidsOutput {
+export function buildFronts(feature: FrontsFeature, lookup: OutputLookup, hung: CabinetFeature | undefined): SolidsOutput {
   void lookup;
+  // A door on a side of its cabinet: made on the cabinet turned that way.
+  const cabinet = frontsCabinet(feature, hung);
   const problem = frontsProblem(feature, cabinet);
   if (problem) throw new GeometryError(`${feature.name} : ${problem}`);
   const shapes: Shape3D[] = [];
