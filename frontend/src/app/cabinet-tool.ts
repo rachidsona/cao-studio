@@ -11,7 +11,7 @@
  */
 import { cabinetKeptClear } from "../document/cabinet-clear";
 import { bodyInfo, setBodyInfo } from "../document/materials";
-import { uniqueId, uniqueName } from "../document/operations";
+import { deleteFeatures, uniqueId, uniqueName, updateFeature } from "../document/operations";
 import { cabinetStandard, cabinetTo, findStandard, frontsTo } from "../document/standards";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type GlassKind, type ProfileFinish, type Vec3 } from "../document/types";
 import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
@@ -114,18 +114,27 @@ export class CabinetTool extends PanelTool {
     return slots.map((slot, i) => ({ ...first, id: slot.id, name: slot.name, origin: first.origin.map((v, k) => Number((v + step[k]! * fill.width * (i + 1)).toFixed(3))) as Vec3 }));
   }
 
-  /** The doors of each new cabinet: its Façades, to its standard — one door up to 600 mm wide, two beyond. */
+  /**
+   * The doors of each new cabinet: its Façades, to its standard — one door up to 600 mm wide, two beyond —, and with a
+   * side left open (« Porte de côté »), the door on that side; a cabinet changed here: the door of its side when it has
+   * none yet.
+   */
   private fronts(cabinets: readonly CabinetFeature[]): FrontsFeature[] {
-    if (this.editing || this.doors.kind === "none") return [];
     // The document before this use of the tool: the same names however often it stores.
     const doc = this.docBefore();
-    return freshFeatureIds(doc, "fr", "Façades", cabinets.length).map((slot, i) => {
-      const cabinet = cabinets[i]!;
-      const plain: FrontsFeature = { ...slot, type: "fronts", cabinet: cabinet.id, layout: cabinet.width > ONE_DOOR ? "doors" : "door", drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true };
+    const front = !this.editing && this.doors.kind !== "none";
+    const sides = cabinets.filter((c) => c.open && !doc.features.some((f) => f.type === "fronts" && f.cabinet === c.id && f.face));
+    const slots = freshFeatureIds(doc, "fr", "Façades", (front ? cabinets.length : 0) + sides.length);
+    const made = (slot: { id: string; name: string }, cabinet: CabinetFeature, door: Pick<FrontsFeature, "layout"> & Partial<FrontsFeature>): FrontsFeature => {
+      const plain: FrontsFeature = { ...slot, type: "fronts", cabinet: cabinet.id, drawers: 3, mount: "overlay", gap: 3, thickness: 19, hinges: true, handles: true, ...door };
       const standard = cabinetStandard(doc, cabinet, workshopStandards());
-      const made = standard ? frontsTo(plain, standard) : plain;
-      return this.doors.kind === "glass" ? { ...made, style: "glass", frameWidth: GLASS_FRAME, glass: this.doors.glass, profile: this.doors.profile } : made;
-    });
+      const fitted = standard ? frontsTo(plain, standard) : plain;
+      return this.doors.kind === "glass" ? { ...fitted, style: "glass", frameWidth: GLASS_FRAME, glass: this.doors.glass, profile: this.doors.profile } : fitted;
+    };
+    const main = front ? cabinets.map((c, i) => made(slots[i]!, c, { layout: c.width > ONE_DOOR ? "doors" : "door" })) : [];
+    // Hinged on its front edge: it opens towards the room.
+    const side = sides.map((c, i) => made({ ...slots[main.length + i]!, name: `Porte de côté ${c.name}` }, c, { layout: "door", face: c.open, side: c.open === "right" ? "left" : "right" }));
+    return [...main, ...side];
   }
 
   /** The other cabinets of a filled width, then the doors of them all. */
@@ -136,13 +145,25 @@ export class CabinetTool extends PanelTool {
     return [...others, ...this.fronts([first, ...others])];
   }
 
+  /** A cabinet changed here: the door of a side no longer open goes, the one of a side turned to the other follows it. */
+  private sideKept(doc: CadDocument, made: CabinetFeature): CadDocument {
+    if (!this.editing) return doc;
+    const sides = doc.features.filter((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === made.id && !!f.face);
+    const gone = sides.filter((f) => !made.open || sides.indexOf(f) > 0).map((f) => f.id);
+    let next = gone.length ? deleteFeatures(doc, gone).next : doc;
+    const kept = made.open ? sides[0] : undefined;
+    if (kept && kept.face !== made.open) next = updateFeature(next, kept.id, (f) => (f.type === "fronts" ? { ...f, face: made.open, side: made.open === "right" ? "left" : "right" } : f));
+    return next;
+  }
+
   /**
    * A top changed into rails: the back rail, a body more, in the same material as the carcass. The doors made with
    * the cabinet: their boards in its material, so the cut list and the quote are right.
    */
-  protected override decorate(doc: CadDocument): CadDocument {
+  protected override decorate(given: CadDocument): CadDocument {
     const made = this.feature();
-    if (typeof made === "string") return doc;
+    if (typeof made === "string") return given;
+    const doc = this.sideKept(given, made);
     const rear = cabinetPartNames(made).indexOf("Traverse arrière");
     const carcass = bodyInfo(doc, `${made.id}${PART_SEPARATOR}0`).material;
     const id = `${made.id}${PART_SEPARATOR}${rear}`;
@@ -260,6 +281,8 @@ export class CabinetTool extends PanelTool {
       ),
       // Two rails: the front one lying flat, or standing on its edge as the back one.
       s.top === "rails" ? this.selectRow("Traverse avant", s.railFront ?? "flat", [["flat", "Couchée"], ["edge", "Debout (sur chant)"]], (v) => this.set({ railFront: v === "edge" ? "edge" : undefined })) : null,
+      // A second door on a side, that side without its board.
+      this.selectRow("Porte de côté", s.open ?? "", [["", "Aucune"], ["left", "À gauche"], ["right", "À droite"]], (v) => this.set({ open: v === "left" || v === "right" ? v : undefined })),
       // A new cabinet with its doors: its Façades are made with it.
       this.editing ? null : this.selectRow("Portes", this.doors.kind, [["none", "Sans portes"], ["flat", "Pleines"], ["glass", "Vitrées (cadre alu)"]], (v) => this.setDoors({ kind: v as Doors["kind"] })),
       !this.editing && this.doors.kind === "glass" ? this.selectRow("Verre (trempé 4 mm)", this.doors.glass, [...GLASS_KINDS], (v) => this.setDoors({ glass: v as GlassKind })) : null,

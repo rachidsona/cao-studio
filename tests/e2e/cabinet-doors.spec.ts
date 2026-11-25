@@ -56,3 +56,49 @@ test("un caisson arrive avec ses portes en verre noir, deux portes au-delà de 6
   expect(fronts[1]!.style).toBeUndefined();
   expect(errors).toEqual([]);
 });
+
+test("Caisson : une porte de côté, à droite, puis passée à gauche, puis ôtée — le côté sans panneau suit", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-caisson-porte-cote");
+  type Saved = { id: string; type: string; cabinet?: string; face?: string; side?: string; open?: string };
+  const saved = async () => {
+    await page.keyboard.press("Control+s");
+    await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+    const features = await page.evaluate(async (url) => ((await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { document: { features: Saved[] } }).document.features, api);
+    const cabinet = features.find((f) => f.type === "cabinet")!;
+    return { open: cabinet.open ?? null, doors: features.filter((f) => f.type === "fronts").map((f) => [f.face ?? "front", f.side ?? null]) };
+  };
+  await click(page, '[data-action="cabinet"]');
+  const tool = page.getByRole("dialog", { name: "Caisson" });
+  await tool.getByRole("combobox", { name: "Portes" }).selectOption("flat");
+  await tool.getByRole("combobox", { name: "Porte de côté" }).selectOption("right");
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await expect(tree.getByText(/^Porte de côté Caisson/).first()).toBeVisible();
+  expect(await saved()).toEqual({ open: "right", doors: [["front", null], ["right", "left"]] });
+  await click(page, '[data-action="view"][data-view="iso"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1000);
+  await shot(page, "caisson-porte-cote");
+
+  // The cabinet changed: its side door goes to the left with its open side, then away.
+  await page.getByRole("toolbar", { name: "Historique des opérations" }).locator('[data-op="cb1"]').click();
+  await page.getByRole("dialog", { name: /^Caisson/ }).getByRole("button", { name: "Modifier", exact: true }).click();
+  await expect(tool.getByRole("combobox", { name: "Porte de côté" })).toHaveValue("right");
+  await tool.getByRole("combobox", { name: "Porte de côté" }).selectOption("left");
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  expect(await saved()).toEqual({ open: "left", doors: [["front", null], ["left", "right"]] });
+  await page.getByRole("toolbar", { name: "Historique des opérations" }).locator('[data-op="cb1"]').click();
+  await page.getByRole("dialog", { name: /^Caisson/ }).getByRole("button", { name: "Modifier", exact: true }).click();
+  await tool.getByRole("combobox", { name: "Porte de côté" }).selectOption("");
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  expect(await saved()).toEqual({ open: null, doors: [["front", null]] });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
+  expect(errors).toEqual([]);
+});

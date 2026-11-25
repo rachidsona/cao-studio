@@ -3109,7 +3109,9 @@ opération existante.
     `drawerShares` 1, 1, 2 : les tiroirs se partagent la hauteur selon leurs parts) et le même **sans dessus**, deux
     traverses de 9 cm reliant les côtés (`top: "rails"`, `railWidth` 90 ; le plan n'y découpe pas d'évier) ; sur tout
     caisson à traverses, celle de devant est couchée, celle de derrière **debout** (sur chant, de la largeur d'une
-    traverse) ; « Traverse avant » de l'outil Caisson la met **debout** aussi, contre l'avant (`railFront: "edge"`,
+    traverse) ; « Porte de côté » de l'outil Caisson (aucune, à gauche, à droite) ôte ce côté et pose sa porte avec le
+    caisson neuf ; sur un caisson modifié, la porte est ajoutée, passée de l'autre côté ou ôtée avec lui
+    (`CabinetTool.sideKept`) ; « Traverse avant » de l'outil Caisson la met **debout** aussi, contre l'avant (`railFront: "edge"`,
     gardé par le Plan de cuisine ; les caissons des tiroirs passent dessous) ; le bas évier n'a **pas de fond** : les tuyaux passent derrière, casseroliers, tiroir et porte, tiroir et 2 portes,
     tiroirs à l'anglaise (derrière 2 portes), évier, four, coulissant bouteilles et épices (15 à 40 cm), poubelle
     coulissante, ouvert à étagères, terminal arrondi (quart de rond au bout du linéaire, ouvert ; le plan de travail
