@@ -42,6 +42,20 @@ describe("sélectionner l'élément entier", () => {
     expect(whole.bodies.some((b) => doc.features.find((f) => f.id === b.split("#")[0])?.type === "cabinet")).toBe(true);
   });
 
+  it("la pièce cliquée est suivie : une pièce du réfrigérateur sélectionne le réfrigérateur seul, une porte du caisson le caisson seul", () => {
+    const doc = kitchen();
+    const cab = doc.features.find((f) => f.type === "cabinet" && f.name.startsWith("Habillage"))!;
+    const fronts = doc.features.find((f) => f.type === "fronts" && f.cabinet === cab.id)!;
+    const fridge = doc.features.find((f) => f.type === "appliance" && f.name === "Réfrigérateur américain")!;
+    // The fridge in its parts (a body each).
+    const parts = [`${fridge.id}${PART_SEPARATOR}0`, `${fridge.id}${PART_SEPARATOR}1`];
+    const all = [...bodies(doc).filter((b) => b !== fridge.id), ...parts];
+    expect(wholeSelection(doc, all, parts[1]!)).toEqual({ name: "Réfrigérateur américain", bodies: parts });
+    const door = wholeSelection(doc, all, `${fronts.id}${PART_SEPARATOR}0`)!;
+    expect(door.name).toBe(cab.name);
+    expect(door.bodies.every((b) => b.startsWith(`${cab.id}#`) || b.startsWith(`${fronts.id}#`))).toBe(true);
+  });
+
   it("une pièce seule (le plan de travail) : rien à prendre de plus", () => {
     const doc = kitchen();
     const top = doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Plan de travail"))!;

@@ -2161,8 +2161,9 @@ opération existante.
     toujours le même pour une planche) : deux planches voisines ne montrent pas le même veinage, dans la vue, le rendu
     réaliste et le lien client (`appearance/assign.ts`).
   - **Sélectionner … entier** (clic droit sur n'importe quelle pièce : une porte, un côté, une étagère, le dessus, le
-    dessous…, ou double-clic) : tout l'élément dont elle est — un caisson avec ses façades, une Répartition, un habillage
-    de réfrigérateur avec ses côtés et son réfrigérateur, un appareil d'électroménager — (`app/whole-element.ts`).
+    dessous…, ou double-clic) : tout l'élément de la pièce cliquée — un caisson avec ses façades, une Répartition, un
+    appareil (une pièce du réfrigérateur : le réfrigérateur seul) ; une pièce seule dans son élément (un côté de
+    l'habillage de réfrigérateur) prend tout l'habillage (`app/whole-element.ts`).
   - *Apparence*, **donnée à toute une sélection** (un dressing entier) : le verre et le métal gardent leur aspect —
     vitres, tringles et leurs supports, poignées, cadres alu des façades vitrées (`document/own-look.ts`) ; un seul de
     ces corps choisi la prend quand même, et un message dit combien de pièces l'ont gardé. De même, **chaque pièce ne
