@@ -14,6 +14,7 @@ import { formatLength, fromDisplay, parseNumber, UNIT_LABELS } from "../../measu
 import { el } from "../../ui/dom";
 import { elevation, unitSummary } from "./unit-elevation";
 import type { Editor } from "../editor";
+import type { CardDepth } from "./kitchen-model-depth";
 
 const WIDTH = "h-6 min-w-7 border border-gray-200 px-1 font-mono text-2xs text-gray-600 transition-colors hover:border-[var(--brass)] hover:text-gray-900 focus-visible:border-[var(--brass)] focus-visible:outline-none dark:border-gray-600 dark:text-gray-300 dark:hover:text-white";
 
@@ -25,7 +26,7 @@ export function familyModels(family: UnitKind | "appliance" | "cap", wall = true
   const models = CATALOG.filter((e) => (family === "cap" ? e.above : e.kind === family && !e.above));
   const groups = [...new Set(models.map((e) => e.name))].map((name) => CATALOG.filter((e) => e.name === name));
   // The fridge's surround among the columns too (made by the plan as one, sides, caisson and fridge).
-  const surround = familyModels("appliance").filter((g) => g[0]!.id.startsWith("app-fridge-surround-")).map((g) => g.map((e) => ({ ...e, height: SURROUND.height, depth: SURROUND.depth })));
+  const surround = familyModels("appliance").filter((g) => g[0]!.id.startsWith("app-fridge-surround-")).map((g) => g.map((e) => ({ ...e, height: SURROUND.height })));
   return family === "tall" ? [...groups, ...surround] : groups;
 }
 
@@ -116,7 +117,7 @@ function freeWidthButtons(usual: CatalogEntry, unit: DisplayUnit, add: (e: Catal
  * One model: its drawing and what it is, at the width under the pointer; a click on a width adds it. With `free`, a
  * width of one's own too (not for an appliance: its widths are those it is sold in).
  */
-export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit", free?: FreeWidths): HTMLElement {
+export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: CatalogEntry) => void, attr = "data-unit", free?: FreeWidths, depth?: CardDepth): HTMLElement {
   const usual = entries.find((e) => e.width === 600) ?? entries[Math.floor(entries.length / 2)]!;
   const art = el("div", { class: "flex h-[92px] items-end justify-center border-b border-gray-300 dark:border-gray-600" });
   const summary = el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" });
@@ -124,9 +125,11 @@ export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: Ca
   const show = (e: CatalogEntry) => {
     art.innerHTML = elevation(e);
     summary.textContent = unitSummary(e);
-    size.textContent = sizes(e, unit);
+    size.textContent = sizes(depth ? { ...e, depth: depth.value(e) } : e, unit);
   };
   show(usual);
+  // Its depth typed (in the display unit), for all of the model or the next added (kitchen-model-depth.ts).
+  const deep = depth && !isAppliance(usual) ? depthField(usual, unit, depth) : null;
   const widths = entries.map((e) => {
     const label = formatLength(e.width, unit);
     const b = el("button", { type: "button", class: WIDTH, title: `Ajouter « ${e.name} » de ${label}`, "aria-label": `Ajouter ${e.name} de ${label}`, [attr]: e.id }, label.replace(/\s?(mm|cm|m)$/, ""));
@@ -139,10 +142,29 @@ export function modelRow(entries: CatalogEntry[], unit: DisplayUnit, add: (e: Ca
     "article",
     { class: "grid grid-cols-[92px_1fr] gap-3 border-t border-gray-200 py-3 first:border-t-0 dark:border-gray-700", "data-model": usual.name },
     art,
-    el("div", { class: "flex min-w-0 flex-col" }, el("h3", { class: "text-[13px] font-medium tracking-tight text-gray-900 dark:text-gray-50" }, usual.name), summary, size, el("div", { class: "mt-auto flex flex-wrap gap-1 pt-1.5" }, ...widths, ...(free && !isAppliance(usual) ? freeWidthButtons(usual, unit, add, show, free) : []))),
+    el("div", { class: "flex min-w-0 flex-col" }, el("h3", { class: "text-[13px] font-medium tracking-tight text-gray-900 dark:text-gray-50" }, usual.name), summary, size, deep, el("div", { class: "mt-auto flex flex-wrap gap-1 pt-1.5" }, ...widths, ...(free && !isAppliance(usual) ? freeWidthButtons(usual, unit, add, show, free) : []))),
   );
 }
 
+/** A card's depth: typed in the display unit, within what the model may be, Entrée or out of the field to keep it. */
+function depthField(usual: CatalogEntry, unit: DisplayUnit, depth: CardDepth): HTMLElement {
+  const [lo, hi] = depth.limits(usual);
+  const input = el("input", { type: "text", inputmode: "decimal", class: "h-6 w-16 border border-gray-300 bg-transparent px-1 text-right font-mono text-2xs focus:border-[var(--brass)] focus:outline-none aria-invalid:border-red-500 dark:border-gray-600", value: formatLength(depth.value(usual), unit).replace(/\s?(mm|cm|m)$/, ""), "aria-label": `Profondeur de « ${usual.name} » (${UNIT_LABELS[unit]})`, "data-card-depth": modelOf(usual) });
+  const take = () => {
+    const value = parseNumber(input.value);
+    const mm = value === null ? NaN : Math.round(fromDisplay(value, unit) * 10) / 10;
+    const ok = mm >= lo && mm <= hi;
+    input.setAttribute("aria-invalid", String(!ok));
+    input.title = ok ? "" : `Entre ${formatLength(lo, unit)} et ${formatLength(hi, unit)}.`;
+    if (ok && mm !== depth.value(usual)) depth.set(usual, mm);
+  };
+  input.addEventListener("change", take);
+  input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Enter") input.blur();
+  });
+  return el("label", { class: "flex items-center gap-1.5 pt-1 text-2xs text-gray-500 dark:text-gray-400" }, `Profondeur (${UNIT_LABELS[unit]})`, input);
+}
 
 /**
  * A casquette of the catalogue (« Casquette relevante », « sur colonne ») chosen in a run of the Plan de cuisine: not a

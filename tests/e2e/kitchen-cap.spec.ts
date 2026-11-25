@@ -266,3 +266,42 @@ test("plan de cuisine : une colonne à deux portes, une de face et une sur son c
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/porte-cote.png` });
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : la profondeur tapée sur une carte, pour tout ce modèle ou pour le prochain ajouté", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-profondeur-carte");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const fold = async (name: string) => {
+    const f = tool.locator(`[data-fold="${name}"]`);
+    if ((await f.getAttribute("aria-expanded")) !== "true") await f.click();
+  };
+  await fold("add");
+  await tool.getByRole("tab", { name: "Bas", exact: true }).click();
+  const card = tool.locator('[data-card-depth="base-bas-1-porte"]');
+  const unit = (await card.getAttribute("aria-label"))!.match(/\((\w+)\)$/)![1];
+  const typed = (mm: number) => (unit === "mm" ? String(mm) : unit === "m" ? String(mm / 1000).replace(".", ",") : String(mm / 10).replace(".", ","));
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  // For all of the model: the unit already put takes it.
+  await card.fill(typed(500));
+  await card.press("Enter");
+  await fold("chosen");
+  await expect(tool.locator('[data-size="depth"]')).toHaveValue(typed(500));
+  // For the next added only: that one takes it, the model keeps its own.
+  await fold("add");
+  await tool.locator("[data-depth-for]").selectOption("next");
+  await tool.locator('[data-card-depth="base-bas-1-porte"]').fill(typed(450));
+  await tool.locator('[data-card-depth="base-bas-1-porte"]').press("Enter");
+  await tool.locator('[data-add="base-bas-1-porte-400"]').click();
+  await expect(tool.locator('[data-card-depth="base-bas-1-porte"]')).toHaveValue(typed(500));
+  await fold("chosen");
+  await expect(tool.locator('[data-size="depth"]')).toHaveValue(typed(450));
+  await tool.locator("[data-run-close]").click();
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});

@@ -2850,10 +2850,12 @@ opération existante.
     l'onglet Colonnes : deux côtés toute hauteur dans la matière des façades, un caisson à portes de 40 cm en haut, le
     réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; de 70 à 120 cm de large, 96,8 cm
     pour un réfrigérateur de 91, ou à sa largeur à soi (« Autre… », « Place libre », comme un meuble : il se fait sur
-    mesure), 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi », comme la **hauteur du réfrigérateur**
+    mesure), 230 cm de haut d'habitude, la profondeur des colonnes (58 cm), sans plinthe dessous (il pose au sol), réglables dans « Meuble choisi », comme la **hauteur du réfrigérateur**
     (187 cm d'habitude, de 120 cm à 20 cm sous le haut : le caisson du dessus prend le reste, et l'habillage monté plus
     haut ne grandit que son caisson du dessus) : `SURROUND`, `surroundFridge`) —, après celui qui est choisi ; on le glisse pour changer
-    sa place, on l'échange contre un autre modèle. Un meuble choisi peut avoir une **porte de côté** (« Porte de côté » :
+    sa place, on l'échange contre un autre modèle. Chaque carte d'« Ajouter des meubles » a sa **profondeur**, tapée au choix pour **tout ce modèle** dans la
+    cuisine (ses meubles posés et ceux qu'on ajoute ensuite : `modelDepths` ; un meuble réglé à part garde la sienne) ou
+    pour **le prochain ajouté** seulement (« Profondeur tapée pour » : `app/kitchen/kitchen-model-depth.ts`). Un meuble choisi peut avoir une **porte de côté** (« Porte de côté » :
     à gauche ou à droite) : ce côté n'a plus de panneau, une deuxième façade le ferme, charnières côté devant pour
     s'ouvrir vers la pièce (`CabinetFeature.open`, `FrontsFeature.face`, bâtie sur le caisson tourné d'un quart :
     `frontsCabinet`). Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se

@@ -197,8 +197,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     let kicks = 0;
     const kick = kickOf(p, run.id);
     const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished);
-    // A rounded end unit stands on its own rounded socle.
-    for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...openRoom(fill, "base"), ...rounds.map((r) => r.span)]))) {
+    // A rounded end unit stands on its own rounded socle; a fridge's surround on the floor, its sides down to it.
+    const surrounds = fill.placed.filter((pl) => applianceOf(pl.item)?.role === "fridge-surround").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+    for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...openRoom(fill, "base"), ...rounds.map((r) => r.span), ...surrounds]))) {
       const used = [...fill.placed, ...held].some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
       if (used && kick.on) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3));
     }

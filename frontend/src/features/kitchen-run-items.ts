@@ -18,7 +18,7 @@ export const WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
 export type Role = "sink" | "dishwasher" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave" | "fridge-surround";
 
 /** A freestanding fridge's surround (« Habillage réfrigérateur »): its usual height and depth, its top caisson's height, the air over the fridge and on its sides (mm). */
-export const SURROUND = { height: 2300, depth: 720, caisson: 400, air: 30, side: 10, least: 200, lowest: 1200, fridge: 1870 };
+export const SURROUND = { height: 2300, caisson: 400, air: 30, side: 10, least: 200, lowest: 1200, fridge: 1870 };
 
 export interface ApplianceModel {
   model: string;
@@ -122,16 +122,17 @@ export const rowOf = (entry: CatalogEntry): "base" | "wall" => (entry.kind === "
 /** A unit's height, depth and bottom where it stands (mm): its own when set, else its model's at the plan's heights. */
 export function itemSize(p: KitchenFloorPlan, item: KitchenRunItem, entry: CatalogEntry = itemEntry(item)): { height: number; depth: number; z: number } {
   const s = kitchenSizes(p);
-  const own = entry.custom && entry.depth ? entry.depth : undefined;
+  // The depth given to its model in this kitchen (« Ajouter des meubles »), over the model's own.
+  const own = p.modelDepths?.[item.model] ?? (entry.custom && entry.depth ? entry.depth : undefined);
   if (rowOf(entry) === "wall") {
     const height = item.height ?? entry.height ?? s.wallTop - s.wallBottom;
     return { height, depth: item.depth ?? own ?? p.wallDepth, z: s.wallTop - height };
   }
   // Under a casquette of caissons, a column and a fridge's surround rise to the top of the caissons (none over them).
   const capTop = p.cap === "units" ? s.wallTop + (p.capHeight ?? CAP.unit) : null;
-  // A fridge's surround: as high as a freestanding fridge and its caisson ask, as deep as the fridge.
-  if (entry.id.startsWith("app-fridge-surround-")) return { height: item.height ?? Math.min(p.height, capTop ?? SURROUND.height), depth: item.depth ?? SURROUND.depth, z: 0 };
-  if (entry.kind === "tall") return { height: item.height ?? Math.min(p.height, capTop ?? s.wallTop), depth: item.depth ?? s.cabinet, z: 0 };
+  // A fridge's surround: as high as a freestanding fridge and its caisson ask, as deep as the other columns.
+  if (entry.id.startsWith("app-fridge-surround-")) return { height: item.height ?? Math.min(p.height, capTop ?? SURROUND.height), depth: item.depth ?? own ?? s.cabinet, z: 0 };
+  if (entry.kind === "tall") return { height: item.height ?? Math.min(p.height, capTop ?? s.wallTop), depth: item.depth ?? own ?? s.cabinet, z: 0 };
   return { height: s.base, depth: item.depth ?? own ?? s.cabinet, z: 0 };
 }
 

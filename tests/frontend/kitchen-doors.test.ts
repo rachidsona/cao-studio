@@ -57,10 +57,12 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     const sides = doc.features.filter((f) => f.type === "extrude" && /^Côté (gauche|droit) habillage/.test(f.name));
     expect(sides.map((f) => (f.type === "extrude" ? f.distance : 0))).toEqual([2300, 2300]);
     const cab = doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
-    expect([cab.width, cab.height, cab.origin[2], cab.depth]).toEqual([968 - 38, 400, 1900, 720]);
+    expect([cab.width, cab.height, cab.origin[2], cab.depth]).toEqual([968 - 38, 400, 1900, 580]);
     expect(doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === cab.id)!.layout).toBe("doors");
     const fridge = doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
     expect(fridge.type === "appliance" && [fridge.width, fridge.height, fridge.origin[2]]).toEqual([910, 1870, 0]);
+    // No plinth under it: it stands on the floor; as deep as the other columns.
+    expect(doc.features.filter((f) => f.type === "extrude" && /^Plinthe/.test(f.name))).toEqual([]);
   });
 
   it("ses côtés et son réfrigérateur sont de lui : collé par une de ses faces, il bouge en entier, le plan le refait autour de son caisson", async () => {
