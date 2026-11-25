@@ -1,6 +1,8 @@
 /** « Isoler la sélection » : ce qu'est un élément (le meuble entier d'une pièce choisie) et le texte de sa barre. */
 import { describe, expect, it } from "vitest";
+import { hiddenGroups } from "../../frontend/src/app/hide-selection";
 import { isolatedText } from "../../frontend/src/app/isolate-selection";
+import { setHidden } from "../../frontend/src/document/operations";
 import { elementOf } from "../../frontend/src/app/zone-view";
 import { withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
@@ -35,6 +37,23 @@ describe("isoler la sélection", () => {
     if (typeof zone === "string") throw new Error(zone);
     const panels = zone.doc.features.filter((f) => f.type === "extrude" && f.sketch === zone.sketch);
     expect(new Set(panels.map((f) => elementOf(zone.doc, f.id)))).toEqual(new Set([`sketch:${zone.sketch}`]));
+  });
+
+  it("la liste des éléments cachés détaille les pièces de chaque meuble, chacune nommée sans le nom du meuble", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: [newItem([], "base-bas-2-portes", 800)] } });
+    if (typeof built === "string") throw new Error(built);
+    const cabinet = built.doc.features.find((f) => f.type === "cabinet")!;
+    const fronts = built.doc.features.find((f) => f.type === "fronts" && f.cabinet === cabinet.id)!;
+    const hidden = [`${cabinet.id}${PART_SEPARATOR}0`, `${cabinet.id}${PART_SEPARATOR}1`, `${fronts.id}${PART_SEPARATOR}0`];
+    const doc = setHidden(built.doc, hidden, true);
+    const groups = hiddenGroups(doc, hidden);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.ids).toEqual(hidden);
+    expect(groups[0]!.pieces.map((p) => p.id)).toEqual(hidden);
+    // Each piece by its own name: no « Bas 2 portes 800 — » before it.
+    expect(groups[0]!.pieces.every((p) => p.name.length > 0 && !p.name.startsWith(groups[0]!.name))).toBe(true);
+    expect(groups[0]!.pieces.map((p) => p.name)).toContain("Côté gauche");
   });
 
   it("nomme l'élément seul, compte les autres", () => {

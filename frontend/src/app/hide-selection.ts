@@ -2,10 +2,12 @@
  * « Cacher la sélection » (colonne Sélection et vue) : les pièces choisies seules — un tiroir (sa façade et son caisson),
  * une étagère, un côté d'un caisson, pas le caisson entier ; tout le meuble quand il est choisi entier — sont cachées d'un coup (une seule
  * annulation), et restent cachées dans le projet. Sans sélection, le bouton ouvre la liste des éléments cachés, rangés par meuble (un caisson avec ses
- * façades, une Répartition avec ses panneaux, sinon le corps) : « Montrer » en rend un, « Tout montrer » les rend tous.
+ * façades, une Répartition avec ses panneaux, sinon le corps), chacun avec le détail de ses pièces cachées (côté,
+ * étagère, façade…) : un clic sur un meuble le rend en entier, un clic sur une de ses pièces la rend seule ; « Tout
+ * montrer » les rend tous.
  * Le nombre d'éléments cachés s'affiche sur le bouton.
  */
-import { bodyOrigin, isBodyHidden, setHidden } from "../document/operations";
+import { bodyLabel, bodyOrigin, isBodyHidden, setHidden } from "../document/operations";
 import type { CadDocument } from "../document/types";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
@@ -18,6 +20,8 @@ interface HiddenGroup {
   name: string;
   /** What setHidden shows again: the features and pieces of its bodies. */
   ids: string[];
+  /** Each of them by its name, without the element's (« Côté gauche », « Façade tiroir 2 »…). */
+  pieces: { id: string; name: string }[];
 }
 
 /** Whether a body is hidden by its own switch (not by its layer, which « Calques » shows again). */
@@ -32,9 +36,13 @@ export function hiddenGroups(doc: CadDocument, bodyIds: readonly string[]): Hidd
   for (const id of bodyIds) {
     if (!ownHidden(doc, id)) continue;
     const key = elementOf(doc, id);
-    const group = groups.get(key) ?? { key, name: elementName(doc, key, id), ids: [] };
+    const group = groups.get(key) ?? { key, name: elementName(doc, key, id), ids: [], pieces: [] };
     const origin = bodyOrigin(doc, id);
-    if (!group.ids.includes(origin)) group.ids.push(origin);
+    if (!group.ids.includes(origin)) {
+      group.ids.push(origin);
+      const label = bodyLabel(doc, id);
+      group.pieces.push({ id: origin, name: label.startsWith(`${group.name} — `) ? label.slice(group.name.length + 3) : label });
+    }
     groups.set(key, group);
   }
   return [...groups.values()];
@@ -68,19 +76,34 @@ export function bindHideSelection(root: HTMLElement, viewport: Viewport, editor:
     element.className = "ribbon-menu";
     element.setAttribute("role", "menu");
     element.setAttribute("aria-label", "Éléments cachés");
-    const rows = groups.map((g) => {
+    const rows = groups.flatMap((g) => {
       const row = document.createElement("div");
       row.className = "ribbon-menu-item";
       const show = document.createElement("button");
       show.type = "button";
       show.setAttribute("role", "menuitem");
-      show.className = "ribbon-menu-run";
+      show.className = "ribbon-menu-run font-medium";
       show.dataset.showHidden = g.key;
-      show.title = "Montrer à nouveau";
+      show.title = "Montrer à nouveau, en entier";
       show.textContent = g.ids.length > 1 ? `${g.name} (${g.ids.length} pièces)` : g.name;
       show.addEventListener("click", () => showAgain(g.ids));
       row.append(show);
-      return row;
+      if (g.pieces.length < 2) return [row];
+      // Its hidden pieces, each shown again alone.
+      return [row, ...g.pieces.map((p) => {
+        const piece = document.createElement("button");
+        piece.type = "button";
+        piece.setAttribute("role", "menuitem");
+        piece.className = "ribbon-menu-run min-h-7 pl-5 text-gray-600 dark:text-gray-300";
+        piece.dataset.showHiddenPiece = p.id;
+        piece.title = "Montrer cette pièce seule";
+        piece.textContent = p.name;
+        piece.addEventListener("click", () => showAgain([p.id]));
+        const line = document.createElement("div");
+        line.className = "ribbon-menu-item";
+        line.append(piece);
+        return line;
+      })];
     });
     const all = document.createElement("button");
     all.type = "button";

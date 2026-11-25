@@ -248,7 +248,7 @@ export const SCREEN: HelpFamily[] = [
         steps: [
           "Sélectionnez les éléments : cliquez le premier, puis Ctrl ou Maj + clic pour en ajouter (ou une fenêtre de sélection).",
           "Cliquez « Cacher la sélection » (colonne de droite) : seules les pièces choisies disparaissent — un tiroir (sa façade emporte son caisson), une étagère, un côté, pas tout le caisson ; le nombre d'éléments cachés s'affiche sur le bouton.",
-          "Sans rien de sélectionné, cliquez le bouton : la liste des éléments cachés, un par meuble. Un clic sur une ligne le montre à nouveau ; « Tout montrer » les rend tous.",
+          "Sans rien de sélectionné, cliquez le bouton : la liste des éléments cachés, un par meuble, avec sous chacun ses pièces cachées par leur nom (côté, étagère, façade…). Un clic sur un meuble le montre en entier, un clic sur une pièce la montre seule ; « Tout montrer » les rend tous.",
         ],
         tip: "Pour cacher tout un caisson, choisissez-le entier (« Sélectionner … entier » au clic droit). Les pièces restent cachées dans le projet ; Ctrl + Z annule.",
       },

@@ -129,6 +129,8 @@ test("« Cacher la sélection » : deux pièces cachées d'un coup (pas leurs ca
   await button.click();
   const list = page.getByRole("menu", { name: "Éléments cachés" });
   await expect(list.locator("[data-show-hidden]")).toHaveCount(2);
+  // One piece of each: no detail under them (a unit with several pieces hidden lists each).
+  await expect(list.locator("[data-show-hidden-piece]")).toHaveCount(0);
   await shot(page, "cacher-liste");
   await list.locator("[data-show-hidden]").first().click();
   await expect(button).toHaveAttribute("data-count", "1", { timeout: 30_000 });

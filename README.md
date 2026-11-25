@@ -137,7 +137,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
   caisson, pas le caisson entier ; tout le meuble quand il est choisi entier — sont
   cachées d'un coup, dans le projet (une seule annulation) ; le nombre d'éléments cachés s'affiche sur le bouton. Sans sélection, le bouton ouvre la liste des
   éléments cachés, **rangés par meuble** (un caisson avec ses façades, une Répartition avec ses panneaux, sinon le
-  corps) : un clic en montre un, « Tout montrer » les rend tous (`app/hide-selection.ts`).
+  corps), chacun **en détail** : sous un meuble dont plusieurs pièces sont cachées, chacune par son nom (côté, étagère,
+  façade, traverse…) ; un clic sur le meuble le rend en entier, un clic sur une pièce la rend seule, « Tout montrer »
+  les rend tous (`app/hide-selection.ts`).
 - **Modifier la sélection** (en tête de chaque menu du clic droit dans la vue : meuble, corps, niche, porte, tiroirs) :
   ouvre l'outil de l'élément cliqué — sinon du premier choisi : **Façades** pour une porte ou une façade de tiroir,
   **Caisson** pour une étagère, un côté, un dessus de caisson (ses étagères s'y règlent), son outil pour une niche de
