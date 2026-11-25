@@ -114,6 +114,20 @@ describe("supprimer un meuble de cuisine dans la 3D", () => {
     expect(Object.values(p.made ?? {}).flat()).toEqual([]);
   });
 
+  it("un meuble supprimé quand le plan a changé depuis qu'il est fait (des caissons de casquette en plus ou en moins) : reconnu par son nom, sa place libre", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 3000, cap: "units" });
+    let items: KitchenRunItem[] = [];
+    for (const [model, width] of [["base-bas-1-porte", 600], ["wall-haut-1-porte", 600], ["base-bas-3-tiroirs", 600]] as const) items = [...items, newItem(items, model, width)];
+    const built = withKitchenBuilt(base.doc, base.id, { runs: { A: items } });
+    if (typeof built === "string") throw new Error(built);
+    // The casquette taken away from the plan, the kitchen not made again: it lays out fewer cabinets than it made.
+    const changed = updateFeature(built.doc, base.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, cap: undefined } } : f));
+    const drawers = cabinet(changed, "Bas 3 tiroirs")!;
+    const fronts = changed.features.filter((f) => f.type === "fronts" && f.cabinet === drawers.id).map((f) => f.id);
+    const p = kitchenPlanIn(withDeletedFreed(changed, deleteFeatures(changed, [drawers.id, ...fronts]).next), base.id)!;
+    expect(p.runs!.A!.map((i) => i.model)).toEqual(["base-bas-1-porte", "wall-haut-1-porte", "space"]);
+  });
+
   it("un caisson aménagé dont on supprime les panneaux disparaît en entier, sa place libre à nouveau", () => {
     const { doc, plan } = kitchen();
     const made = withCabinetFurnished(doc, cabinet(doc, "Bas 2 portes")!.id);

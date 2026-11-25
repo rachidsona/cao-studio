@@ -2741,7 +2741,8 @@ opération existante.
     (280 cm) et s'arrête, dans un angle, au bord de la casquette du mur qui passe. En caisson : un dessus, un bandeau
     devant et un bout à chaque bout libre. Elle prévient quand une porte relevante dessous ne peut plus se lever et
     quand le plafond est trop bas (`document/kitchen-cap.ts`). **Caissons à porte relevante** (sur-meubles) : sur chaque
-    meuble haut, chaque colonne et chaque bras d'un meuble haut d'angle, droit ou en L (pas la hotte, un fileur), un caisson de sa largeur,
+    meuble haut et chaque bras d'un meuble haut d'angle, droit ou en L (pas la hotte, un fileur ; pas une colonne ni
+    l'habillage de réfrigérateur, qui montent eux-mêmes jusqu'en haut des caissons), un caisson de sa largeur,
     de la « Profondeur des caissons » (60 cm d'habitude, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
     angle garde la profondeur des hauts, pour ne pas entrer dans l'autre mur), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
@@ -2850,8 +2851,12 @@ opération existante.
     réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; de 70 à 120 cm de large, 96,8 cm
     pour un réfrigérateur de 91, ou à sa largeur à soi (« Autre… », « Place libre », comme un meuble : il se fait sur
     mesure), 230 cm de haut et 72 de profondeur d'habitude, réglables dans « Meuble choisi », comme la **hauteur du réfrigérateur**
-    (187 cm d'habitude, de 120 cm à 20 cm sous le haut : le caisson du dessus prend le reste) : `SURROUND`, `surroundFridge`) —, après celui qui est choisi ; on le glisse pour changer
-    sa place, on l'échange contre un autre modèle. Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
+    (187 cm d'habitude, de 120 cm à 20 cm sous le haut : le caisson du dessus prend le reste, et l'habillage monté plus
+    haut ne grandit que son caisson du dessus) : `SURROUND`, `surroundFridge`) —, après celui qui est choisi ; on le glisse pour changer
+    sa place, on l'échange contre un autre modèle. Un meuble choisi peut avoir une **porte de côté** (« Porte de côté » :
+    à gauche ou à droite) : ce côté n'a plus de panneau, une deuxième façade le ferme, charnières côté devant pour
+    s'ouvrir vers la pièce (`CabinetFeature.open`, `FrontsFeature.face`, bâtie sur le caisson tourné d'un quart :
+    `frontsCabinet`). Un meuble choisi se fait **sur mesure** : sa largeur se tape (ou se
     prend parmi les largeurs courantes) ou se **tire par son bord droit** sur la bande, au centimètre ; un **clic sur
     une largeur écrite sur la bande** — sous un meuble, ou celle d'une porte d'angle, en bas comme en haut, la porte
     pliante d'un L comprise (son bras suit) — ouvre la **calculatrice** à côté d'elle : une valeur ou un calcul, refusé

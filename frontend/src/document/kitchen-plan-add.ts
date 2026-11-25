@@ -27,8 +27,14 @@ export function runCabinets(doc: CadDocument, planId: string, runId: string): { 
   if (!plan) return [];
   const units = kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).units.filter((u) => u.run === runId);
   const cabinets = (plan.made?.[runId] ?? []).filter((id) => findFeature(doc, id)?.type === "cabinet");
-  // The room changed since the kitchen was made: the units no longer match.
-  if (units.length !== cabinets.length) return cabinets.map((cabinet) => ({ cabinet }));
+  // The plan changed since the kitchen was made (the room, a rule of how it lays out): one by one by order no longer
+  // holds; each cabinet is then its unit by its name, when one unit of the run has that name.
+  if (units.length !== cabinets.length) {
+    return cabinets.map((cabinet) => {
+      const named = units.filter((u) => u.name === findFeature(doc, cabinet)?.name);
+      return named.length === 1 && named[0]!.item ? { cabinet, item: named[0]!.item } : { cabinet };
+    });
+  }
   return cabinets.map((cabinet, i) => ({ cabinet, ...(units[i]!.item ? { item: units[i]!.item } : {}) }));
 }
 
