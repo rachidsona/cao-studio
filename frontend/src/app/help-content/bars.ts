@@ -30,6 +30,19 @@ const SELECT_SKETCHES_HELP: ToolHelp = {
   tip: "Une esquisse cachée n'est pas prise : l'œil du titre « Esquisses », dans l'arbre, les montre toutes d'abord.",
 };
 
+const DELETE_SELECTION_HELP: ToolHelp = {
+  keys: [],
+  selector: "[data-delete-selection]",
+  name: "Supprimer la sélection",
+  what: "Supprime d'un coup tout ce qui est sélectionné : corps, meubles, esquisses.",
+  steps: [
+    "Sélectionnez ce qui doit partir : un clic, Maj ou Ctrl + clic pour en ajouter, une fenêtre, ou « Tout sélectionner ».",
+    "Cliquez « Supprimer la sélection », dans la colonne à droite de la vue (ou la touche Suppr) ; une question s'affiche quand la suppression emporte beaucoup.",
+    "Ctrl + Z remet ce qui vient d'être supprimé.",
+  ],
+  tip: "Un meuble d'un Plan de cuisine supprimé ainsi quitte aussi son plan : sa place y reste libre.",
+};
+
 const OPEN_ALL_HELP: ToolHelp = {
   keys: [],
   selector: "[data-open-all]",
@@ -43,7 +56,7 @@ const OPEN_ALL_HELP: ToolHelp = {
 };
 
 /** In the family of the column beside the view. */
-export const SIDE_HELP: ToolHelp[] = [SELECT_ALL_HELP, SELECT_SKETCHES_HELP, OPEN_ALL_HELP];
+export const SIDE_HELP: ToolHelp[] = [SELECT_ALL_HELP, SELECT_SKETCHES_HELP, DELETE_SELECTION_HELP, OPEN_ALL_HELP];
 
 export const DRAG_HELP: ToolHelp = {
   keys: [],

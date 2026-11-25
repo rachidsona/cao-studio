@@ -127,6 +127,9 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 - **Sélectionner les esquisses** (bouton de la colonne Vue, à côté) : de même, mais les esquisses seules — toutes
   celles montrées dans la vue, aucun corps —, comme le filtre « Corps » prend les corps ; une esquisse cachée n'est pas
   prise (le message dit combien le sont, et que l'œil du titre « Esquisses » les montre).
+- **Supprimer la sélection** (bouton de la colonne Vue, à côté ; la touche Suppr en bouton) : tout ce qui est
+  sélectionné part d'un coup, avec la même question que Suppr quand la suppression emporte beaucoup ; rien de choisi,
+  il le dit (`Editor.deleteSelection`, `app/select-all.ts`).
 - **Tout sélectionner, dans l'esquisse** (barre de l'esquisse, à côté de « Sélectionner les semblables » ; aussi
   Ctrl / ⌘ + A) : tout le dessin de l'esquisse ouverte d'un coup — traits, cercles, arcs, construction comprise.
 - **Cacher la sélection** (bouton de la colonne Vue, sous « Isoler la sélection ») : les pièces choisies seules — un
@@ -2948,7 +2951,9 @@ opération existante.
       son esquisse avec, et sa place redevient libre (`document/kitchen-delete-sync.ts`). Un **meuble d'angle**
       supprimé : son angle n'en a plus (angle mort en bas, rien en haut) ; des **murs** supprimés : le plan n'en dessine
       plus. Supprimés avec d'autres pièces (un plan de travail, un mur, toute la cuisine d'un coup), le plan les oublie
-      aussi, sans rien refaire : sa bande est vide comme la 3D. Pour refermer le vide, « Place libre » du linéaire
+      aussi, sans rien refaire : sa bande est vide comme la 3D. Un linéaire dont il ne reste rien de ce qu'il a bâti
+      perd tous ses meubles, ses appareils et son meuble d'angle, même si le plan a changé depuis (un mur raccourci, des
+      caissons plus profonds : le compte des meubles ne tombe plus juste). Pour refermer le vide, « Place libre » du linéaire
       retire l'espace.
   - **OK** refait **toute la cuisine** en une seule annulation, ce que l'Implantation sait bâtir : caissons tournés selon
     leur mur, façades, plan de travail **au-dessus des meubles** de chaque linéaire avec les découpes de l'évier et de

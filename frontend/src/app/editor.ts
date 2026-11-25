@@ -352,6 +352,9 @@ export class Editor {
     this.sketches.sync();
   }
 
+  /** Suppr, or its button of the side column: what is picked, else the feature chosen in the tree; false: nothing to delete. */
+  deleteSelection(): boolean { return this.picked.empty ? (this.selectedFeature ? (void this.removeFeature(this.selectedFeature), true) : false) : (void this.removePicked(this.picked.selection), true); }
+
   /** Deletes what is picked (Suppr): bodies (also through a face, an edge or a corner), sketches, lines and points of sketches. */
   private async removePicked(selection: Parameters<typeof deletionOf>[1]): Promise<void> {
     const plan = deletionOf(this.doc, selection, this.viewport.displayedBodies);
@@ -520,7 +523,7 @@ export class Editor {
       undo: () => this.historyStep("undo"),
       redo: () => this.historyStep("redo"),
       escape: () => (this.viewport.clearSelection(), this.selectFeature(null)),
-      deleteSelected: () => (this.picked.empty ? this.selectedFeature && this.removeFeature(this.selectedFeature) : this.removePicked(this.picked.selection)),
+      deleteSelected: () => void this.deleteSelection(),
       fit: () => this.viewport.fit(),
       hole: () => this.openTool("hole"),
       extrude: () => this.extrudeCommand(),

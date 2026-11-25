@@ -38,5 +38,18 @@ test("un bureau posé, tout sélectionné par le bouton puis par Ctrl + A, et vi
   await page.mouse.move(700, 450);
   await page.keyboard.press("ControlOrMeta+a");
   await expect(status).toHaveText(all);
+
+  // « Supprimer la sélection », la touche Suppr en bouton : rien de choisi, il le dit ; tout choisi, tout part.
+  await page.keyboard.press("Escape");
+  await click(page, "[data-delete-selection]");
+  await expect(page.getByText(/^Rien à supprimer/).first()).toBeVisible();
+  await click(page, "[data-select-all]");
+  await expect(status).toHaveText(all);
+  await click(page, "[data-delete-selection]");
+  const sure = page.getByRole("button", { name: "Supprimer", exact: true });
+  await sure.click({ timeout: 5000 }).catch(() => undefined);
+  await expect(status).toHaveText("Aucune sélection");
+  await click(page, "[data-select-all]");
+  await expect(page.getByText(/^Rien à sélectionner/).first()).toBeVisible();
   expect(errors).toEqual([]);
 });

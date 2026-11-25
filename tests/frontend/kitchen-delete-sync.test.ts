@@ -5,7 +5,7 @@ import { withCaissonRemoved, withDeletedFreed } from "../../frontend/src/documen
 import { KICK_BACK } from "../../frontend/src/document/kitchen-corners";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import { deleteFeatures } from "../../frontend/src/document/operations";
+import { deleteFeatures, updateFeature } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type KitchenRunItem } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { inKeptRoom, newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -99,6 +99,19 @@ describe("supprimer un meuble de cuisine dans la 3D", () => {
     expect(Object.values(p.runs ?? {}).flat().every((i) => i.model === "space")).toBe(true);
     expect(p.corners?.left).toBe("dead");
     expect(p.noWalls).toBe(true);
+  });
+
+  it("toute la cuisine supprimée, le plan changé depuis qu'elle est faite (un meuble n'y tient plus) : rien ne reste, appareils compris", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "L-left", lengthA: 3000, lengthB: 2400, corners: { left: "unit" }, through: { left: true } });
+    const built = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "app-fridge", 600)], B: [newItem([], "base-bas-3-tiroirs", 600), newItem([], "app-fridge-surround", 1000)] } });
+    if (typeof built === "string") throw new Error(built);
+    // The wall shortened since: its units no longer all stand, the plan would lay out fewer than were made.
+    const changed = updateFeature(built.doc, base.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, lengthB: 1900 } } : f));
+    const all = Object.values(kitchenPlanIn(changed, base.id)!.made ?? {}).flat();
+    const p = kitchenPlanIn(withDeletedFreed(changed, deleteFeatures(changed, all).next), base.id)!;
+    expect(Object.values(p.runs ?? {}).flat().map((i) => i.model)).toEqual(["space", "space", "space"]);
+    expect(p.corners?.left).toBe("dead");
+    expect(Object.values(p.made ?? {}).flat()).toEqual([]);
   });
 
   it("un caisson aménagé dont on supprime les panneaux disparaît en entier, sa place libre à nouveau", () => {

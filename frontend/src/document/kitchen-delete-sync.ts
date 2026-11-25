@@ -12,7 +12,7 @@ import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { runCabinets } from "./kitchen-plan-add";
 import { deleteFeatures, findFeature, updateFeature } from "./operations";
 import type { CabinetFeature, CadDocument, KitchenFloorPlan, KitchenRunItem } from "./types";
-import { FILLER, isFiller, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
+import { FILLER, isFiller, isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
 import { gapsAsItems } from "../features/kitchen-run-gaps";
 import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -104,6 +104,19 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
           runs[run] = items.map((i) => (i === item ? { ...newItem(items, wall ? SPACE_WALL : SPACE, item.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}) } : i));
           freed = true;
         }
+      }
+    }
+    // A run with nothing left of what it made (the kitchen taken away): all its units and appliances leave it, and its
+    // corner units — whatever the plan would lay out today (its sizes may have changed since it was made).
+    for (const [run, ids] of Object.entries(plan.made ?? {})) {
+      if (!ids.some((id) => deleted.includes(id)) || ids.some((id) => findFeature(doc, id))) continue;
+      const items = runs[run] ?? [];
+      const emptied = items.map((i) => (isSpace(i) || i.furnished ? i : { ...newItem(items, rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE, i.width), id: i.id }));
+      if (emptied.some((i, k) => i !== items[k])) [runs[run], freed] = [emptied, true];
+      for (const u of kitchenFromPlan(plan, kitchenRoomInfo(prev, plan)).units) {
+        if (u.run !== run || !u.cornerEdit) continue;
+        if (u.cornerEdit.key.startsWith("wall")) corners = { ...corners, wallCorners: { ...plan.wallCorners, ...corners.wallCorners, [u.cornerEdit.joint]: "none" } };
+        else corners = { ...corners, corners: { ...plan.corners, ...corners.corners, [u.cornerEdit.joint]: "dead" } };
       }
     }
     // A furnished caisson with no panel left (they were there before): its sketch and what is left on it go too.

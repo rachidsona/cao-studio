@@ -36,6 +36,10 @@ export function selectAll(viewport: Viewport, editor: Editor): void {
 export function bindSelectAll(root: HTMLElement, viewport: Viewport, editor: Editor): void {
   root.querySelector<HTMLButtonElement>("[data-select-all]")?.addEventListener("click", () => selectAll(viewport, editor));
   root.querySelector<HTMLButtonElement>("[data-select-sketches]")?.addEventListener("click", () => selectSketches(viewport, editor));
+  // « Supprimer la sélection »: the Suppr key as a button.
+  root.querySelector<HTMLButtonElement>("[data-delete-selection]")?.addEventListener("click", () => {
+    if (!editor.deleteSelection()) editor.notify("Rien à supprimer : sélectionnez d'abord un élément (un clic, une fenêtre ou « Tout sélectionner »).", "info");
+  });
   window.addEventListener("keydown", (event) => {
     if (event.key.toLowerCase() !== "a" || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
     if (root.dataset.mode !== "model" || viewport.inSketch || root.dataset.tool) return;
