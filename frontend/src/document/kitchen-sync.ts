@@ -69,15 +69,19 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           changed = true;
         }
         // Its fronts made handleless, or given their handles back (the Façades tool): the plan keeps it too.
+        // (The kitchen's own handles, « Poignées » of the plan, are none of the unit's.)
         const grip = fronts?.type === "fronts" ? fronts.grip : undefined;
-        if (fronts && k0 >= 0 && runs[run.id]![k0]!.grip !== grip) {
-          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (grip ? { ...it, grip } : (({ grip: _gone, ...rest }) => rest)(it)) : it));
+        const planGrip = plan.frontLook?.handles === "gorge" ? "gorge" : undefined;
+        if (fronts && k0 >= 0 && (runs[run.id]![k0]!.grip ?? planGrip) !== grip) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (grip && grip !== planGrip ? { ...it, grip } : (({ grip: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
         // Its fronts' style (the Façades tool, the menu of a door): the plan keeps it.
         const facade = fronts?.type === "fronts" ? frontStyle(fronts) : undefined;
-        if (fronts && k0 >= 0 && JSON.stringify(frontStyleOf(runs[run.id]![k0]!.facade ?? model?.facade)) !== JSON.stringify(facade)) {
-          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (facade || model?.facade ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
+        const planStyle = model?.facade ?? plan.frontLook?.style;
+        if (fronts && k0 >= 0 && JSON.stringify(frontStyleOf(runs[run.id]![k0]!.facade ?? planStyle)) !== JSON.stringify(facade)) {
+          const same = JSON.stringify(frontStyleOf(planStyle)) === JSON.stringify(facade);
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (!same ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
         // Its front rail turned in the Caisson tool: the plan keeps it.
@@ -90,7 +94,7 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           // Its shelves and upright boards (the Caisson tool), its handles taken off: on its item, as its run sets them.
           const e = itemEntry(item);
           const inside = hasInside(item) && e.layout !== "drawers" && (c.shelves !== e.shelves || (c.dividers ?? 0) !== (e.dividers ?? 0)) ? { shelves: c.shelves, dividers: c.dividers ?? 0 } : null;
-          const handles = fronts?.type === "fronts" && (fronts.handles === false) !== (item.handles === false) ? fronts.handles === false : null;
+          const handles = fronts?.type === "fronts" && plan.frontLook?.handles !== "none" && (fronts.handles === false) !== (item.handles === false) ? fronts.handles === false : null;
           // The rest changed by hand (its caisson's and fronts' settings, its pieces' materials, its name): kept by it.
           const keep = keptOf(doc, plan, u, c, fronts?.type === "fronts" && fronts.name === `Façades ${c.name}` ? fronts : undefined);
           if (inside || handles !== null || !sameKeep(keep, item.keep)) {

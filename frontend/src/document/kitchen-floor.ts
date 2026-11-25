@@ -141,7 +141,7 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
     const cornered = layout.units.some((u) => u.run === run.id && u.corner);
     const sub = { ...layout, units: layout.units.filter((u) => u.run === run.id && (!empty || u.corner)), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall" || b.corner || (cornered && (b.kind === "worktop" || b.kind === "splashback")))) };
     if (!sub.units.length && !sub.boxes.length) continue;
-    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, cuts, plan.worktopLook, plan.kickLook);
+    const built = layoutPlan(doc, sub, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, cuts, plan.worktopLook, plan.kickLook, plan.frontLook);
     doc = decorateKitchen({ ...doc, features: [...doc.features, ...built.features] }, built);
     made[run.id] = built.features.map((f) => f.id);
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);

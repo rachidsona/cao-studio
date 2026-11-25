@@ -20,7 +20,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stri
 /** What of `c` (and its first fronts) differs from what the plan makes of `u`, or undefined: nothing. */
 export function keptOf(doc: CadDocument, plan: KitchenFloorPlan, u: KitchenUnit, c: CabinetFeature, fronts: FrontsFeature | undefined): KitchenUnitKeep | undefined {
   const layout: KitchenLayout = { units: [{ ...u, keep: undefined }], boxes: [], notes: [], ergonomics: { ok: [], warn: [] } };
-  const base = layoutPlan(doc, layout, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place);
+  const base = layoutPlan(doc, layout, FRONT, plan.frontMaterial ?? FRONT_MATERIAL, plan.worktopMaterial ?? WORKTOP_MATERIAL, plan.place, undefined, undefined, undefined, plan.frontLook);
   const cab = base.features.find((f): f is CabinetFeature => f.type === "cabinet");
   const fr = base.features.find((f): f is FrontsFeature => f.type === "fronts");
   if (!cab) return undefined;

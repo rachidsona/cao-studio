@@ -205,3 +205,37 @@ test("un champ de nombre cliqué a tout son contenu sélectionné : on tape la n
   await expect.poll(() => depth.evaluate((f) => (f as HTMLInputElement).selectionStart === (f as HTMLInputElement).selectionEnd)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : les façades de toute la cuisine — style, poignées, couleur, épaisseur — bâties par le noyau", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-facades-cuisine");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Matières et finitions");
+  // Only what fronts are made of: no backing panel, no batten.
+  const materials = await tool.getByLabel("Façades", { exact: true }).locator("option").evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
+  expect(materials).not.toContain("hdf");
+  expect(materials).not.toContain("pine-batten");
+  await tool.locator("[data-front-style]").selectOption("frame");
+  await tool.locator("[data-front-handles]").selectOption("none");
+  await tool.locator("[data-front-color]").evaluate((c) => {
+    (c as HTMLInputElement).value = "#2f5d50";
+    c.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  const thick = tool.locator("[data-front-thickness]");
+  await thick.fill(await thick.evaluate((f) => ((f as HTMLInputElement).getAttribute("aria-label") ?? "").includes("(mm)") ? "22" : "2,2"));
+  await thick.press("Enter");
+  await expect(tool.locator("[data-front-style]")).toHaveValue("frame");
+  await expect(tool.locator("[data-front-handles]")).toHaveValue("none");
+  await expect(tool.locator("[data-front-color-clear]")).toBeEnabled();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator("[data-propose]").click();
+  await expect(page.getByText(/Cuisine proposée/).first()).toBeVisible();
+  await expect(page.locator('[title^="Façades "]').first()).toBeAttached({ timeout: 60_000 });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/facades-cuisine.png` });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});

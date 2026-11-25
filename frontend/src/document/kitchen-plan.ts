@@ -6,7 +6,7 @@
  * tournée et placée contre son mur A (features/room-runs.ts). Utilisé par l'outil Implantation et par l'assistant.
  */
 import { cabinetPartNames } from "../features/cabinet-parts";
-import { frontsMaterials, frontsPartNames } from "../features/fronts-parts";
+import { frontsMaterials, frontsPartNames, frontsParts } from "../features/fronts-parts";
 import { kitchenLayout, originOf, type KitchenLayout, type KitchenSettings } from "../features/kitchen-layout";
 import { applianceDef } from "../features/appliance-library";
 import { applianceParts } from "../features/appliance-parts";
@@ -16,7 +16,7 @@ import { cabinetAxes } from "./kitchen-catalog";
 import { addLayer, layersOf } from "./layers";
 import { uniqueId, uniqueName } from "./operations";
 import { rectangleAt } from "./sketch";
-import { PART_SEPARATOR, type ApplianceFeature, type BodyInfo, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type MachiningFeature, type Vec3 } from "./types";
+import { PART_SEPARATOR, type ApplianceFeature, type BodyInfo, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type KitchenFrontLook, type MachiningFeature, type Vec3 } from "./types";
 
 const ROOM_LAYER = "Pièce";
 const APPLIANCE_LAYER = "Électroménager";
@@ -58,7 +58,7 @@ function cutByHand(doc: CadDocument, [x, y]: number[]): boolean {
 
 /** The features of a layout already made (a kitchen plan's, document/kitchen-plan-build.ts), turned and moved by `place`. */
 /** `kept`: the cut-outs each worktop had before (by its name), those put or changed by hand staying in it. */
-export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map(), worktopLook?: string, kickLook?: string): KitchenPlan {
+export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickness: number, frontMaterial: string, worktopMaterial: string, place: Placement = IDENTITY, kept: ReadonlyMap<string, readonly Cutout[]> = new Map(), worktopLook?: string, kickLook?: string, look: KitchenFrontLook = {}): KitchenPlan {
   let probe = doc;
   const plan: KitchenPlan = { features: [], info: {}, names: {}, layers: {}, layout, problems: [] };
   const push = (f: Feature) => {
@@ -82,12 +82,14 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     // Its fronts; more doors on the same cabinet (an oven column's, under the oven) each their own, in the same look.
     [{ ...u, layout: u.layout }, ...(u.more ?? []).map((m) => ({ ...u, ...m, layout: "door" as const }))].forEach((u, k) => {
       const fronts: FrontsFeature = {
-        id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...(u.grip ? { grip: u.grip } : {}), ...(u.facade ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}),
-        mount: "overlay", gap: 3, thickness: frontThickness, hinges: true, handles: u.handles !== false, ...(k ? {} : u.keep?.fronts),
+        id: uniqueId(probe, "fr"), type: "fronts", name: `Façades ${u.name}${k ? ` (${k + 1})` : ""}`, cabinet: cabinet.id, layout: u.layout, ...(u.side ? { side: u.side } : {}), ...((u.grip ?? (look.handles === "gorge" ? "gorge" : undefined)) ? { grip: "gorge" as const } : {}), ...(u.facade ?? look.style ?? {}), drawers: u.drawers ?? 3, ...(u.drawerShares ? { drawerShares: u.drawerShares } : {}), ...(u.topDrawer ? { topDrawer: u.topDrawer } : {}), ...(u.innerDrawers ? { innerDrawers: u.innerDrawers } : {}), ...(u.span ? { span: u.span } : {}), ...(u.rise ? { rise: u.rise } : {}),
+        mount: look.mount ?? "overlay", gap: look.gap ?? 3, thickness: look.thickness ?? frontThickness, hinges: true, handles: u.handles !== false && look.handles !== "none", ...(k ? {} : u.keep?.fronts),
       };
       push(fronts);
       const names = k ? [] : frontsPartNames(fronts, cabinet);
-      frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material: u.keep?.facing?.[names[i] ?? ""] ?? material }));
+      // A lacquer's colour chosen for the kitchen: each door and drawer front painted so (glass, profiles, drawer boxes kept).
+      const faces = look.color ? frontsParts(fronts, cabinet).map((p) => !!p.role) : [];
+      frontsMaterials(fronts, cabinet, frontMaterial).forEach((material, i) => (plan.info[`${fronts.id}${PART_SEPARATOR}${i}`] = { material: u.keep?.facing?.[names[i] ?? ""] ?? material, ...(faces[i] ? { appearance: "lacquer-satin", color: look.color } : {}) }));
     });
   }
   for (const box of layout.boxes) {

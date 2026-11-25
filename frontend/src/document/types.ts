@@ -172,6 +172,17 @@ export interface KitchenRunItem {
   from?: string;
 }
 
+/** How all the fronts of a kitchen plan are made and look (`KitchenFloorPlan.frontLook`). */
+export interface KitchenFrontLook {
+  mount?: FrontsFeature["mount"];
+  gap?: number;
+  thickness?: number;
+  style?: FrontStyle;
+  handles?: "none" | "gorge";
+  /** A lacquer's colour (sRGB hex), given to every front. */
+  color?: string;
+}
+
 /** The plan of a kitchen, seen from above (document/kitchen-plan-shapes.ts): its model, its sizes (mm), and each run's units. */
 export interface KitchenFloorPlan {
   model: "I" | "L-left" | "L-right" | "U" | "G-left" | "G-right" | "facing";
@@ -249,6 +260,11 @@ export interface KitchenFloorPlan {
   noKick?: Record<string, boolean>;
   kickSetback?: Record<string, number>;
   kickLook?: string;
+  /**
+   * The fronts of all its units (each unit's own, set in the 3D, over it): fitted over the carcass or into it, their
+   * gap and thickness (mm), their style, their handles (none: handleless; « gorge »: on profiles), a lacquer's colour.
+   */
+  frontLook?: KitchenFrontLook;
   /** The splashback only where the hood is, from the worktop up to it (else along the whole worktop, up to it under the hood). */
   splashbackHoodOnly?: boolean;
   /** By run: its units and appliances, and where what is left goes. */

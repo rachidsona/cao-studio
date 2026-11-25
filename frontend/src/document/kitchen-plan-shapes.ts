@@ -299,6 +299,9 @@ export function capProblem(p: KitchenFloorPlan): string | null {
 export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (!(p.height >= 2000 && p.height <= 4000)) return "La hauteur sous plafond va de 200 à 400 cm.";
   if (!(p.depth >= 450 && p.depth <= 800)) return "La profondeur du plan de travail va de 45 à 80 cm.";
+  const front = p.frontLook;
+  if (front?.thickness !== undefined && !(front.thickness >= 10 && front.thickness <= 40)) return "Les façades ont de 10 à 40 mm d'épaisseur.";
+  if (front?.gap !== undefined && !(front.gap >= 0 && front.gap <= 6)) return "Le jeu des façades va de 0 à 6 mm.";
   if (p.baseDepth !== undefined && !(p.baseDepth >= 300 && p.baseDepth <= p.depth - FRONT)) return "Les caissons bas ont de 30 cm de profondeur à celle du plan de travail moins les façades.";
   if (!(p.wallDepth >= 200 && p.wallDepth <= 500)) return "La profondeur des meubles hauts va de 20 à 50 cm.";
   if (!(p.worktopHeight >= 700 && p.worktopHeight <= 1100)) return "Le plan de travail est de 70 à 110 cm du sol.";
