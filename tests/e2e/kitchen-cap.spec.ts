@@ -305,3 +305,31 @@ test("plan de cuisine : la profondeur tapée sur une carte, pour tout ce modèle
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre fixé sous le plan ; fermée, les autres reviennent", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-carte-seule");
+  await page.evaluate(() => localStorage.removeItem("cao.fold-focus-off"));
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const heads = tool.locator("[data-fold]");
+  const all = await heads.count();
+  expect(all).toBeGreaterThan(3);
+  await tool.locator('[data-fold="add"]').click();
+  // Alone: the other cards wait.
+  await expect(heads).toHaveCount(1);
+  // Scrolled down: its title stays just under the fixed plan.
+  await tool.locator('[data-add]').last().scrollIntoViewIfNeeded();
+  const fixed = (await tool.locator("[data-run-fixed]").boundingBox())!;
+  const head = (await tool.locator('[data-fold="add"]').boundingBox())!;
+  expect(Math.abs(head.y - (fixed.y + fixed.height))).toBeLessThan(4);
+  // Closed: the others are back.
+  await tool.locator('[data-fold="add"]').click();
+  await expect(heads).toHaveCount(all);
+  expect(errors).toEqual([]);
+});

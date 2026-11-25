@@ -6,7 +6,7 @@
  * Chaque changement se voit aussitôt dans la 3D, en aperçu (app/kitchen-plan-tool.ts) ; rien ne change dans le projet avant
  * OK, qui le garde en refaisant toute la cuisine en une seule annulation (document/kitchen-floor.ts) ; Annuler revient.
  */
-import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
+import { fixedPlanClass, fixedPlanToggle, trackFixedPlan } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { itemSlid } from "../../document/kitchen-slide";
@@ -18,8 +18,8 @@ import { formatLength, fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } 
 import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
-import { Folds } from "../../ui/fold";
-import { capUnits, familyModels, familyTabs, modelRow } from "./kitchen-catalog-view";
+import { Folds, foldFocus } from "../../ui/fold";
+import { capUnits, familyModels, familyTabs, modelRow } from "./kitchen-catalog-view"; import { cardDepth, depthChoice, withNextDepth } from "./kitchen-model-depth";
 import { kickOf, withCorner, type CornerChange, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerChoice, cornerChosen } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
@@ -47,7 +47,6 @@ const WIDE = "h-8 w-full border border-gray-300 font-medium hover:bg-gray-100 da
 const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-2 text-right font-mono text-xs focus:border-sky-500 focus:outline-none aria-invalid:border-red-500 dark:border-gray-600 dark:bg-gray-900";
 const SELECT = "h-7 w-full border border-gray-300 bg-white px-1 text-xs dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[6rem_1fr] items-center gap-1.5";
-
 type Family = "base" | "wall" | "cap" | "tall" | "appliance" | "mine";
 const FAMILIES: [Family, string][] = [["base", "Bas"], ["wall", "Hauts"], ["cap", "Casquettes"], ["tall", "Colonnes"], ["appliance", "Électro."], ["mine", "Mes meubles"]];
 /** The family of « Ajouter » chosen last: kept when the run's editor is made again (the kitchen rebuilt), and from run to run. */
@@ -79,6 +78,7 @@ export interface RunEditorHost {
 }
 
 export class RunEditor {
+  /** The depths given here to models (« Ajouter des meubles », for all of a model), not yet applied. */ private depths?: Record<string, number>;
   /** The corners chosen here, not yet applied. */
   private corners: CornerSetting = {};
   private items: KitchenRunItem[];
@@ -95,7 +95,7 @@ export class RunEditor {
   private kick: { on?: boolean; back?: number; look?: string | null } = {};
   /** The strip takes the keyboard when it is drawn next: something on it was just chosen or changed. */
   private focusStrip = false;
-  private readonly folds = new Folds(() => this.host.redraw());
+  private readonly folds = new Folds(() => this.host.redraw(), foldFocus);
   /** Something changed and not stored yet (it is, a moment later). */
   dirty = false;
 
@@ -176,7 +176,7 @@ export class RunEditor {
 
   /** A unit of « Meubles de cuisine », added like one of the palette, not applied before OK. */
   addEntry(entry: CatalogEntry): void {
-    this.put(entryItem(this.items, entry));
+    this.put(withNextDepth(entryItem(this.items, entry)));
   }
 
   /** The item put at this place among those of its row. */
@@ -208,7 +208,7 @@ export class RunEditor {
     const k = this.kick;
     return {
       ...this.corners, ...(this.worktop === undefined ? {} : { noWorktop: { ...plan.noWorktop, [run.id]: !this.worktop } }),
-      ...(k.on === undefined ? {} : { noKick: { ...plan.noKick, [run.id]: !k.on } }), ...(k.back === undefined ? {} : { kickSetback: { ...plan.kickSetback, [run.id]: k.back } }), ...(k.look === undefined ? {} : { kickLook: k.look ?? undefined }),
+      ...(k.on === undefined ? {} : { noKick: { ...plan.noKick, [run.id]: !k.on } }), ...(k.back === undefined ? {} : { kickSetback: { ...plan.kickSetback, [run.id]: k.back } }), ...(k.look === undefined ? {} : { kickLook: k.look ?? undefined }), ...(this.depths ? { modelDepths: this.depths } : {}),
     };
   }
 
@@ -293,12 +293,12 @@ export class RunEditor {
     const rows: (HTMLElement | null)[] = [
       this.header(`Linéaire — ${run.label.toLowerCase()}`),
       // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan (« Plan fixe »).
-      el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
+      trackFixedPlan(el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
         // Fixed at the top while the panel scrolls, or scrolling with it (kept for the dressing too).
         el("div", { class: "flex items-center justify-end gap-3" }, doorsToggle(() => this.host.redraw()), fixedPlanToggle(() => this.host.redraw())),
         this.walls(),
         el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
-      ),
+      )),
       this.seeButton(),
       actions.bar,
       this.dirty ? null : this.keepMoves(),
@@ -482,8 +482,8 @@ export class RunEditor {
     const unit = this.host.editor.unit;
     const wall = this.host.run.wall;
     const add = (e: CatalogEntry) => (e.above ? void capUnits(this.host.editor, this.host.planId, e, this.dirty) : this.addEntry(e));
-    // A width of one's own, or that of the room left in its row.
-    const plan = this.current();
+    // A width of one's own, or that of the room left in its row; a depth for all of a model, or the next added.
+    const plan = this.current(), depth = cardDepth(plan, (model, mm) => ((this.depths = { ...plan.modelDepths, [model]: mm }), this.touched()), () => this.host.redraw());
     const fill = this.fillOf();
     const free = { limits: (e: CatalogEntry) => sizeLimits(plan, e).width, room: (e: CatalogEntry) => widestRoom(fill, rowOf(e)) || null };
     const family = wall || (chosenFamily !== "wall" && chosenFamily !== "cap") ? chosenFamily : "base";
@@ -491,9 +491,9 @@ export class RunEditor {
     let rows: HTMLElement[];
     if (family === "mine") {
       const own = myUnits().filter((e) => wall || e.kind !== "wall");
-      rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add", free)) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
-    } else rows = familyModels(family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free));
-    const box = el("div", {}, tabs, el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
+      rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add", free, depth)) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
+    } else rows = familyModels(family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free, depth));
+    const box = el("div", {}, tabs, depthChoice(() => this.host.redraw()), el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
     box.style.setProperty("--brass", BRASS);
     return [box];
   }

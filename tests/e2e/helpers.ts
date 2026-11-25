@@ -36,6 +36,8 @@ export async function newProject(page: Page, name: string): Promise<string> {
     localStorage.setItem("cao.tool-columns-off", "1");
     // And the ribbon and the steps at the top (hidden by default: their own test).
     localStorage.setItem("cao.ribbon-shown", "1");
+    // And every card of a run's editor in sight, one open at a time (an open card alone: its own test).
+    localStorage.setItem("cao.fold-focus-off", "1");
   });
   await page.fill("#id_name", name);
   await page.getByRole("button", { name: "Créer et ouvrir" }).click();

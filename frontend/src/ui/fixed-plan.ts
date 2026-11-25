@@ -24,6 +24,15 @@ export function setPlanFixed(on: boolean): void {
   }
 }
 
+/**
+ * The block of the plan, its height given to what is under it (`--fixed-plan-h`), so that the title of an open card
+ * stays fixed just under it (ui/fold.ts).
+ */
+export function trackFixedPlan(block: HTMLElement): HTMLElement {
+  requestAnimationFrame(() => block.parentElement?.style.setProperty("--fixed-plan-h", planFixed() ? `${block.offsetHeight}px` : "0px"));
+  return block;
+}
+
 /** The classes that keep the block of the plan at the top of its panel while it scrolls (none: it scrolls along). */
 export const fixedPlanClass = (): string => (planFixed() ? "sticky top-0 z-10" : "relative");
 
