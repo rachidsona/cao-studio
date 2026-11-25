@@ -37,11 +37,11 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     const mesh = viewport.bodyMesh(bodyId);
     return mesh ? faceMarks(mesh)[faceIndex] : undefined;
   };
-  /** The bodies that take it (glass and metal of a selection kept), said when some are kept. */
-  const takers = (bodyIds: string[]) => {
-    const kept = lookTargets(editor.doc, bodyIds);
+  /** The bodies that take it (of a selection, glass, metal, bought pieces and those of another sort are kept), said when some are kept. */
+  const takers = (bodyIds: string[], appearanceId: string | null) => {
+    const kept = lookTargets(editor.doc, bodyIds, appearanceId);
     const left = bodyIds.length - kept.length;
-    if (left) editor.notify(`${left} pièce${left > 1 ? "s" : ""} de verre ou de métal (vitres, tringles, poignées, cadres alu) garde${left > 1 ? "nt leur" : " son"} aspect.`, "info");
+    if (left) editor.notify(`${left} pièce${left > 1 ? "s" : ""} garde${left > 1 ? "nt leur" : " son"} aspect : cette apparence n'est pas de ${left > 1 ? "leur" : "sa"} sorte (électroménager, plan de travail, verre, métal…). Sélectionnée seule, une pièce la prend.`, "info");
     return kept;
   };
   const apply = (bodyIds: string[], appearanceId: string | null, color?: string) => {
@@ -52,9 +52,9 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
         const mark = markOf(f.bodyId, f.faceIndex);
         return mark ? [{ bodyId: f.bodyId, mark }] : [];
       });
-      const whole = bodies.length ? setBodyAppearance(editor.doc, takers(bodies), appearanceId, color) : editor.doc;
+      const whole = bodies.length ? setBodyAppearance(editor.doc, takers(bodies, appearanceId), appearanceId, color) : editor.doc;
       void editor.change(setFaceAppearance(whole, picks, appearanceId, color));
-    } else void editor.change(setBodyAppearance(editor.doc, takers(bodyIds), appearanceId, color));
+    } else void editor.change(setBodyAppearance(editor.doc, takers(bodyIds, appearanceId), appearanceId, color));
     showAppearances();
   };
   /** What a swatch dropped on this body goes to: all the selection when the body is in it, else this body. */
@@ -141,7 +141,7 @@ export function bindAppearance(root: HTMLElement, viewport: Viewport, editor: Ed
     // Dropped beside the bodies: the selection takes it, if there is one.
     const bodies = body ? droppedOn(body) : targets();
     if (bodies.length) {
-      void editor.change(setBodyAppearance(editor.doc, takers(bodies), dropped.id, dropped.color));
+      void editor.change(setBodyAppearance(editor.doc, takers(bodies, dropped.id), dropped.id, dropped.color));
       showAppearances();
     } else editor.notify("Lâchez l'apparence sur un corps.", "info");
   });

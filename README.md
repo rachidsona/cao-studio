@@ -2152,7 +2152,11 @@ opération existante.
     réaliste et le lien client (`appearance/assign.ts`).
   - *Apparence*, **donnée à toute une sélection** (un dressing entier) : le verre et le métal gardent leur aspect —
     vitres, tringles et leurs supports, poignées, cadres alu des façades vitrées (`document/own-look.ts`) ; un seul de
-    ces corps choisi la prend quand même, et un message dit combien de pièces l'ont gardé.
+    ces corps choisi la prend quand même, et un message dit combien de pièces l'ont gardé. De même, **chaque pièce ne
+    prend que l'apparence de sa sorte** : un bois, un mélaminé ou une laque vont aux panneaux, un marbre, un Dekton ou
+    un béton aux plans de travail (et à ce qui en a l'aspect) ; l'électroménager, les murs et les garnitures achetées
+    gardent le leur (`lookFamily`, `lookTargets`). Toute une cuisine sélectionnée prend ainsi un bois sur ses caissons et
+    ses façades, sans toucher au réfrigérateur ni au plan de travail.
   - *Apparence* (comme la bibliothèque d'apparences de Fusion) : plus de 100 apparences réelles, en vignettes
     sphériques, par catégorie et avec recherche (accents ignorés) : **bois** (chêne naturel, blanchi, fumé, verni,
     brut, noyer, noyer américain, hêtre, frêne, érable, merisier, pin, teck, wengé, acajou, bouleau, bambou, zebrano),
@@ -2920,7 +2924,8 @@ opération existante.
       noyau seulement) ; la plinthe d'angle s'arrête contre celle du linéaire voisin, à son retrait. Cliquée sur la
       bande (sous les meubles), elle se **recule** ou s'**avance** par pas de 1 cm (jusqu'à 15 cm en retrait des façades), se **supprime** (Suppr) et se **remet**, et prend un **aspect**
       de l'Apparence (marbres, Dekton, bétons, bois, chacun sur sa vignette : `app/kitchen/look-picker.ts`), commun à
-      toutes les plinthes du plan. Gardé par linéaire (`noKick`, `kickSetback`, `kickLook`) ; une plinthe supprimée
+      toutes les plinthes du plan ; sans aspect à elle, la plinthe prend celui du **plan de travail** (son marbre), et sans
+      aspect de plan de travail non plus, celui de la matière des façades. Gardé par linéaire (`noKick`, `kickSetback`, `kickLook`) ; une plinthe supprimée
       dans la 3D ne revient pas non plus. Le plan de travail ou la plinthe choisis le restent quand la cuisine est
       refaite.
     - **Fileurs** : des fileurs posés à la main, **en bas** (entre socle et plan de travail) et **en haut** (dans la

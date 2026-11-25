@@ -122,7 +122,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     // A filler set by hand keeps its own material, carcass or not.
     const material = box.material ?? (top ? worktopMaterial : box.carcass ? "melamine-white" : frontMaterial);
     // Walls, appliances and fittings (a LeMans's trays) are bought, not cut: out of the cut list and the quote.
-    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}), ...(box.kind === "kick" && kickLook ? { appearance: kickLook } : {}) };
+    plan.info[id] = box.kind === "wall" || box.kind === "appliance" || box.kind === "fitting" ? { room: true } : { material, ...(top && worktopLook ? { appearance: worktopLook } : {}), ...(box.kind === "kick" && (kickLook ?? worktopLook) ? { appearance: kickLook ?? worktopLook } : {}) };
     if (box.kind === "wall") plan.layers[id] = ROOM_LAYER;
     if (box.kind === "appliance") plan.layers[id] = APPLIANCE_LAYER;
     if (box.kind === "fitting") plan.layers[id] = FITTING_LAYER;

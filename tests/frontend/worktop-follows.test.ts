@@ -127,7 +127,12 @@ describe("plan de travail qui suit les meubles", () => {
     const info = (name: string) => built.info[Object.keys(built.names).find((id) => built.names[id] === name)!];
     expect(info("Plan de travail A")).toEqual({ material: "solid-oak", appearance: "dekton-aura" });
     expect(info("Crédence A")).toEqual({ material: "solid-oak", appearance: "dekton-aura" });
-    expect(info("Plinthe A")).toEqual({ material: "lacquer-white" });
+    // The plinth takes the worktop's look too, until it is given its own; with no look chosen, the fronts' material's.
+    expect(info("Plinthe A")).toEqual({ material: "lacquer-white", appearance: "dekton-aura" });
+    const own = layoutPlan(createReferencePlate(), kitchenFromPlan(p), 19, "lacquer-white", "solid-oak", undefined, undefined, "dekton-aura", "oak");
+    expect(own.info[Object.keys(own.names).find((id) => own.names[id] === "Plinthe A")!]).toEqual({ material: "lacquer-white", appearance: "oak" });
+    const none = layoutPlan(createReferencePlate(), kitchenFromPlan(p), 19, "lacquer-white", "solid-oak");
+    expect(none.info[Object.keys(none.names).find((id) => none.names[id] === "Plinthe A")!]).toEqual({ material: "lacquer-white" });
   });
 
   it("la crédence d'un mur qui s'arrête contre l'autre va jusque dans l'angle, contre la crédence du mur qui passe", () => {

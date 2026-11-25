@@ -855,7 +855,7 @@ test("tout le dressing en noyer : la tringle garde son métal", async ({ page })
   const panel = page.getByRole("dialog", { name: "Apparence" });
   await panel.getByRole("searchbox", { name: "Rechercher une apparence" }).fill("noyer");
   await panel.locator('[data-appearance-grid] [data-appearance="wood-walnut"]').click();
-  await expect(page.getByText(/de verre ou de métal .* gardent leur aspect/).first()).toBeVisible();
+  await expect(page.getByText(/gardent leur aspect : cette apparence n'est pas de leur sorte/).first()).toBeVisible();
   await expect.poll(async () => (await looks()).panels, { timeout: 30_000 }).toBeGreaterThan(3);
   expect((await looks()).rod).toBe(false);
   expect(errors).toEqual([]);

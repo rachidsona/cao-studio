@@ -1,6 +1,8 @@
 /** Une apparence donnée à tout un dressing laisse le verre et le métal : vitres, tringles, poignées, cadres alu. */
 import { describe, expect, it } from "vitest";
-import { keepsOwnLook, lookTargets } from "../../frontend/src/document/own-look";
+import { keepsOwnLook, lookFamily, lookTargets } from "../../frontend/src/document/own-look";
+import { APPEARANCES } from "../../frontend/src/appearance/library";
+import { setBodyInfo } from "../../frontend/src/document/materials";
 import { emptySketchGeometry, type PartitionParams } from "../../frontend/src/document/sketch";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
 import { nichePartsIn } from "../../frontend/src/features/niche-parts";
@@ -40,5 +42,29 @@ describe("le verre et le métal gardent leur aspect", () => {
     expect(keepsOwnLook(doc, "sk9#0")).toBe(false);
     expect(lookTargets(doc, ["sk9#0", "pd1#0", at("Vitre")])).toEqual(["sk9#0"]);
     expect(lookTargets(doc, [at("Vitre")])).toEqual([at("Vitre")]);
+  });
+
+  it("dans une sélection, chaque pièce ne prend que l'apparence de sa sorte : un bois va aux panneaux, pas au plan de travail en marbre ni à l'électroménager", () => {
+    const id = (category: string) => APPEARANCES.find((a) => a.category === category)!.id;
+    expect([lookFamily("wood"), lookFamily("melamine"), lookFamily("stone"), lookFamily("sintered"), lookFamily("metal"), lookFamily("custom")]).toEqual(["panel", "panel", "top", "top", "metal", null]);
+    const base = createReferencePlate();
+    const features = [
+      ...base.features,
+      { id: "ex1", type: "extrude", name: "Caisson", sketch: "s", distance: 18, operation: "new" },
+      { id: "ex2", type: "extrude", name: "Plan de travail", sketch: "s", distance: 38, operation: "new" },
+      { id: "ex3", type: "extrude", name: "Brut", sketch: "s", distance: 18, operation: "new" },
+      { id: "ap1", type: "appliance", name: "Réfrigérateur", model: "fridge-american", origin: [0, 0, 0], width: 910, height: 1780, depth: 700 },
+    ] as CadDocument["features"];
+    let doc: CadDocument = { ...base, features };
+    doc = setBodyInfo(doc, ["ex1"], { appearance: id("melamine") });
+    doc = setBodyInfo(doc, ["ex2"], { appearance: id("stone") });
+    const all = ["ex1", "ex2", "ex3", "ap1"];
+    // A wood: the panel and the bare body; a stone: the worktop and the bare body; never the appliance.
+    expect(lookTargets(doc, all, id("wood"))).toEqual(["ex1", "ex3"]);
+    expect(lookTargets(doc, all, id("stone"))).toEqual(["ex2", "ex3"]);
+    // Back to their material's look: all; one piece aimed alone takes anything.
+    expect(lookTargets(doc, all, null)).toEqual(all);
+    expect(lookTargets(doc, ["ex2"], id("wood"))).toEqual(["ex2"]);
+    expect(lookTargets(doc, ["ap1"], id("wood"))).toEqual(["ap1"]);
   });
 });

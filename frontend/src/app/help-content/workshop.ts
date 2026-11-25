@@ -121,7 +121,7 @@ export const WORKSHOP: HelpFamily[] = [
         what: "Donne aux corps un aspect de bois, verre, marbre (Statuario, Calacatta Oro, Arabescato, Emperador…), pierre frittée Dekton (Aura, Entzo, Laurent, Kelya, Sirius, Kreta…), métal, laque, tissu ou béton, ou une couleur ou une photo de votre choix.",
         steps: [
           "Sélectionnez les corps (dans le navigateur ou dans la vue, Ctrl pour plusieurs), puis cliquez « Apparence ».",
-          "Cherchez dans « Bibliothèque » (recherche et « Catégorie ») et cliquez une vignette, ou glissez-la sur un corps de la vue. Donnée à plusieurs corps (tout un dressing), elle laisse le verre et le métal tels qu'ils sont : vitres, tringles et leurs supports, poignées, cadres alu des façades vitrées ; un seul de ces corps choisi la prend quand même.",
+          "Cherchez dans « Bibliothèque » (recherche et « Catégorie ») et cliquez une vignette, ou glissez-la sur un corps de la vue. Donnée à plusieurs corps (tout un dressing), elle laisse le verre et le métal tels qu'ils sont : vitres, tringles et leurs supports, poignées, cadres alu des façades vitrées ; un seul de ces corps choisi la prend quand même. Chaque pièce ne prend aussi que l'apparence de sa sorte : un bois va aux panneaux, un marbre aux plans de travail, et l'électroménager garde le sien.",
           "Pour une couleur unie, réglez « Couleur au choix », le type de surface, puis cliquez « Appliquer ».",
           "Pour une photo, cliquez « Importer une image… » et donnez la largeur qu'elle couvre en mm ; elle reste dans « Mes motifs ».",
         ],
