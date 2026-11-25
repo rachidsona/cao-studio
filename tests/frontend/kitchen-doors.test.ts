@@ -63,6 +63,29 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(fridge.type === "appliance" && [fridge.width, fridge.height, fridge.origin[2]]).toEqual([910, 1870, 0]);
   });
 
+  it("ses côtés et son réfrigérateur sont de lui : collé par une de ses faces, il bouge en entier, le plan le refait autour de son caisson", async () => {
+    const { planUnitCabinet } = await import("../../frontend/src/document/kitchen-plan-add");
+    const { syncKitchenPlans } = await import("../../frontend/src/document/kitchen-sync");
+    const { glueKey } = await import("../../frontend/src/app/face-glue-tool");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [newItem([], "app-fridge-surround", 968), { ...newItem([{ id: "k1" } as never], "space", 600) }] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const doc = built.doc;
+    const cab = doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    const side = doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Côté gauche habillage"))!;
+    const fridge = doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
+    expect([planUnitCabinet(doc, side.id), planUnitCabinet(doc, fridge.id), planUnitCabinet(doc, cab.id)]).toEqual([cab.id, cab.id, null]);
+    // The body of its side and its caisson: one element to glue.
+    expect(glueKey(doc, side.id)).toBe(glueKey(doc, `${cab.id}#0`));
+    // Its caisson moved 300 mm along the wall: its sides and its fridge come with it.
+    const along = (f: { origin?: number[] } | undefined) => f?.origin?.[0] ?? 0;
+    const moved = syncKitchenPlans(doc, { ...doc, features: doc.features.map((f) => (f.id === cab.id ? { ...cab, origin: [cab.origin[0] + 300, cab.origin[1], cab.origin[2]] as typeof cab.origin } : f)) });
+    const fridgeNow = moved.features.find((f) => f.type === "appliance" && f.model === "fridge-american") as { origin: number[] };
+    expect(Math.round(fridgeNow.origin[0] - along(fridge as never))).toBe(300);
+    const sideNow = (name: string) => moved.features.find((f) => f.name === name);
+    expect(sideNow(side.name)).toBeDefined();
+  });
+
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
     const build = (fridge: number) => {
       const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge }] }, made: {} });

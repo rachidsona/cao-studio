@@ -115,11 +115,11 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         // fridge under it with air round it.
         const { height, depth } = itemSize(p, pl.item, entry);
         const [inner, z] = [w - 2 * FRONT, surroundFridge(p, pl.item) + SURROUND.air];
-        box(`Côté gauche habillage (${run.id}${n})`, "panel", band(at, at + FRONT, 0, depth, 0, height));
-        box(`Côté droit habillage (${run.id}${n})`, "panel", band(at + w - FRONT, at + w, 0, depth, 0, height));
+        box(`Côté gauche habillage (${run.id}${n})`, "panel", band(at, at + FRONT, 0, depth, 0, height), { item: pl.item.id });
+        box(`Côté droit habillage (${run.id}${n})`, "panel", band(at + w - FRONT, at + w, 0, depth, 0, height), { item: pl.item.id });
         cabinet(name, at + FRONT, inner, depth, z, height - z, { plinth: 0, shelves: 0, layout: inner > 600 ? "doors" : "door", item: pl.item.id });
         const fw = Math.min(910, inner - 2 * SURROUND.side);
-        put("Réfrigérateur américain", "fridge-american", band(at + (w - fw) / 2, at + (w + fw) / 2, 0, depth, 0, z - SURROUND.air));
+        box("Réfrigérateur américain", "appliance", band(at + (w - fw) / 2, at + (w + fw) / 2, 0, depth, 0, z - SURROUND.air), { appliance: { model: "fridge-american", finish: "inox", rotation }, item: pl.item.id });
         places.fridge ??= front(pl);
         continue;
       }

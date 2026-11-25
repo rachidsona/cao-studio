@@ -119,6 +119,8 @@ export interface KitchenBox {
   kind: "wall" | "worktop" | "filler" | "panel" | "appliance" | "splashback" | "kick" | "fitting";
   /** Part of a corner unit chosen for its corner. */
   corner?: boolean;
+  /** A piece of a unit of the run made of several (a fridge's surround: its sides, its fridge): that unit's item. */
+  item?: string;
   /**
    * A worktop's cut-outs (features/worktop-cutouts.ts): the appliance and the middle of the cut (kitchen frame).
    * `soft`: cut because the unit under it is made for it (a sink base), with no appliance of the plan's — left out when

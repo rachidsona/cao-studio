@@ -9,7 +9,9 @@
 import { bodyLabel, findFeature } from "../document/operations";
 import { movesNeeded, spacingFeatures, type Moving } from "../document/spacing";
 import { elementKey } from "../document/swap";
-import type { Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
+import { planUnitCabinet } from "../document/kitchen-plan-add";
+import { syncKitchenPlans } from "../document/kitchen-sync";
+import type { CadDocument, Feature, MoveFeature, RotateFeature, Vec3 } from "../document/types";
 import { glueShift, parallelFaces } from "../features/face-glue";
 import { faceOnFace, flushSlide, type FaceMate } from "../features/face-mate";
 import { alignWhole, elementEnvelope, wholeMate } from "./align-whole";
@@ -35,10 +37,16 @@ interface Laid {
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-/** The piece of furniture a body is in: a Répartition (its sketch, moved with all it holds), a cabinet with its fronts, else its feature. */
+/**
+ * The piece of furniture a body is in: a Répartition (its sketch, moved with all it holds), a cabinet with its fronts,
+ * a unit of a kitchen plan made of several pieces (a fridge's surround: its caisson, its sides, its fridge — the plan
+ * makes them again round the caisson moved), else its feature.
+ */
 export function glueKey(doc: Parameters<typeof elementKey>[0], bodyId: string): string {
   const owner = alignWhole(doc, bodyId);
-  return owner?.kind === "sketch" ? owner.id : elementKey(doc, bodyId);
+  if (owner?.kind === "sketch") return owner.id;
+  const key = elementKey(doc, bodyId);
+  return planUnitCabinet(doc, key) ?? key;
 }
 
 /** Kept for the session: whether the whole cabinet moves, and the gap. */
@@ -175,6 +183,11 @@ export class FaceGlueTool extends PanelTool {
   protected feature(): Feature | string {
     const made = this.made();
     return typeof made === "string" ? made : made[0]!;
+  }
+
+  /** A unit of a kitchen plan moved: its plan follows at once (a surround's sides and fridge round its caisson), as when it is stored. */
+  protected override decorate(doc: CadDocument): CadDocument {
+    return syncKitchenPlans(this.docBefore(), doc);
   }
 
   protected override companions(): Feature[] {

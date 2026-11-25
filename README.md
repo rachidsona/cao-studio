@@ -986,7 +986,9 @@ opération existante.
   d'un haut et le devant d'une colonne) : la face se **pose sur l'autre** — tournée d'abord s'il le faut, un caisson
   entier par quarts de tour autour de la verticale, une pièce seule de l'angle qu'il faut —, ses **bords affleurant
   ceux de l'autre au coin le plus proche du clic** ; pas seulement mise dans son plan. Des faces de même sens (deux
-  façades, deux dessus) affleurent seulement, le long de leur normale (`features/face-glue.ts`). Un caisson bouge avec
+  façades, deux dessus) affleurent seulement, le long de leur normale (`features/face-glue.ts`). Un **habillage de
+  réfrigérateur** d'un Plan de cuisine bouge en entier par n'importe laquelle de ses faces (un côté, le réfrigérateur) :
+  son caisson glisse et le plan refait ses côtés et son réfrigérateur autour (`planUnitCabinet`). Un caisson bouge avec
   ses façades — une **Répartition** avec tous ses panneaux, ses portes et ses niches, son esquisse déplacée d'un bloc
   (`glueKey`) —, par ses **faces extérieures** (la face cliquée ne dit que le côté, jamais il n'entre dans l'autre), ou
   la pièce seule (« Ce qui bouge ») ; deux faces d'un même caisson ne bougent que la pièce. Un « Jeu » écarte (ou met
@@ -2686,7 +2688,10 @@ opération existante.
   plan le garde là : `islandShift`, `islandMoved` de `document/kitchen-moves.ts` ; refusé contre un mur ou sur un autre
   linéaire ; ce décalage se tape aussi dans les Cotes du plan, « Décalage de l'îlot », 0 au milieu du mur A, en moins
   d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la matière des **façades** (seulement ce qui s'y prête : bois, mélaminé, MDF, HDF, stratifié, laque, verre — ni
-  marbre, ni métal, ni fond, ni tasseau : `frontChoices`), la profondeur
+  marbre, ni métal, ni fond, ni tasseau : `frontChoices`), les **façades de toute la cuisine** — pose (en applique ou
+  encastrées), style (plate, à cadre, rainurée, à lattes, vitrée), poignées (avec, sur profil gorge, sans), couleur de
+  laque (portes et façades de tiroirs seulement), épaisseur (10 à 40 mm) et jeu (0 à 6 mm) : `frontLook`,
+  `app/kitchen/kitchen-front-fields.ts` ; le style ou les poignées donnés à un meuble seul dans la 3D passent avant —, la profondeur
   du plan de travail (64), des caissons bas et des colonnes (58, `BASE_DEPTH`, au plus le plan de travail moins les
   façades) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par

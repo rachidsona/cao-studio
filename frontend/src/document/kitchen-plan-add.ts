@@ -40,6 +40,31 @@ export function planItemOf(doc: CadDocument, cabinetId: string): PlanItem | null
   return item ? { ...owner, item } : null;
 }
 
+/**
+ * The caisson of the unit a piece of a run belongs to, when that unit is made of several pieces (a fridge's surround:
+ * its sides, its fridge, its caisson); null for any other piece. The piece is found by its name among what the plan
+ * lays out on its run; two of the same name, of two units, tell nothing.
+ */
+export function planUnitCabinet(doc: CadDocument, featureId: string): string | null {
+  // Asked for each body shown: worked out once per document.
+  const known = unitCabinets.get(doc) ?? new Map<string, string | null>();
+  unitCabinets.set(doc, known);
+  if (!known.has(featureId)) known.set(featureId, unitCabinet(doc, featureId));
+  return known.get(featureId)!;
+}
+const unitCabinets = new WeakMap<CadDocument, Map<string, string | null>>();
+
+function unitCabinet(doc: CadDocument, featureId: string): string | null {
+  const owner = kitchenRunOf(doc, featureId);
+  const f = findFeature(doc, featureId);
+  if (!owner || !f || f.type === "cabinet" || f.type === "fronts") return null;
+  const plan = kitchenPlanIn(doc, owner.plan);
+  if (!plan) return null;
+  const items = [...new Set(kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.filter((b) => b.run === owner.run && b.name === f.name).map((b) => b.item))];
+  const item = items.length === 1 ? items[0] : undefined;
+  return item ? (runCabinets(doc, owner.plan, owner.run).find((c) => c.item === item)?.cabinet ?? null) : null;
+}
+
 export interface PlanAdd {
   doc: CadDocument;
   plan: string;
