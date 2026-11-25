@@ -119,11 +119,16 @@ test("ranger les icônes dans leur barre : le ruban (même d'un groupe à l'autr
   await side.locator("[data-xray]").dragTo(side.locator("[data-open-all]"), { targetPosition: { x: 10, y: 2 } });
   const vue = side.locator('[role="group"][aria-label="Voir dedans"] > button');
   await expect(vue.first()).toHaveAttribute("data-xray", "");
+  // Onto an icon of another card (the grid, in « Affichage »): it goes into that card, and stays there.
+  await side.locator("[data-open-all]").dragTo(side.locator("[data-grid-toggle]"), { targetPosition: { x: 10, y: 2 } });
+  const shown = side.locator('[role="group"][aria-label="Affichage"] > button');
+  await expect(shown.first()).toHaveAttribute("data-open-all", "");
 
   await page.reload();
   await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
   expect((await keys('[data-ribbon="model"] .ribbon-group[aria-label="Créer"] .ribbon-row > button'))[0]).toBe(before[2]);
   expect(await keys(modify)).toEqual([before[0], before[1], ...before.slice(3)]);
   await expect(vue.first()).toHaveAttribute("data-xray", "");
+  await expect(shown.first()).toHaveAttribute("data-open-all", "");
   expect(errors).toEqual([]);
 });

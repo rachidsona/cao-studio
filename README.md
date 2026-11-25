@@ -1766,10 +1766,14 @@ opération existante.
   l'état (enfoncé, grisé). On la **retire** en la glissant hors des colonnes (elle devient rouge) et en la lâchant
   ailleurs, ou par un clic droit ; Échap pendant le glisser l'annule. **L'ordre** des icônes se change en les glissant
   plus haut ou plus bas (un trait bleu montre où elle se pose), ou dans une autre colonne ; au clavier, **Alt + ↑ / ↓**
-  monte ou descend l'icône d'une place. Pour **séparer** les icônes, le « + » a en haut **« ＋ Ligne »** (un trait fin
-  entre deux icônes) et **« ＋ Espace vide »** (une place vide de la taille d'une icône) : ajoutés au bas de la colonne,
-  ils se glissent à leur place, se déplacent, se retirent (clic droit, ou glissés dehors) et sont retenus comme une
-  icône (« sep:line:1 », « sep:space:2 »). Chaque colonne a un **nom**, écrit en haut sous sa flèche (son numéro tant
+  monte ou descend l'icône d'une place. Les icônes d'une colonne sont rangées en **cartes**, des cadres comme ceux de la
+  colonne « Sélection et vue » : le « + » a en haut **« ＋ Carte »** (une carte vide au bas de la colonne, où glisser
+  des icônes) et **« ＋ Espace vide »** (une place vide de la taille d'une icône). Une icône se glisse d'une carte à
+  l'autre, sur une icône ou dans le vide de la carte ; la limite entre deux cartes (une bande fine entre elles) se
+  glisse aussi, pour couper une carte en deux, et se retire (clic droit, ou glissée dehors) pour n'en faire qu'une.
+  Limites et espaces sont retenus comme une icône (« sep:line:1 », « sep:space:2 » ; `cardsOf` de
+  `ui/tool-columns-store.ts`). Dans la colonne « Sélection et vue », une icône glissée sur une autre passe aussi dans
+  la carte de celle-ci (`box` de `cao.side-tools`). Chaque colonne a un **nom**, écrit en haut sous sa flèche (son numéro tant
   qu'elle n'en a pas) : un **double-clic** le change (Entrée garde, Échap laisse l'ancien, vide redonne le numéro), et
   ses icônes se tiennent **au milieu de sa hauteur**. La **flèche ‹** en haut d'une colonne la replie : elle disparaît sans laisser de bande et la vue
   reprend sa place ; seul un petit **onglet** reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir : le

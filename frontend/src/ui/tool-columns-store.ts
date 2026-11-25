@@ -78,6 +78,22 @@ export function separatorKind(key: string): SeparatorKind | null {
   return isSeparator(key) ? (key.split(":")[1] as SeparatorKind) : null;
 }
 
+/** A card of a column: the icons (and empty places) between two of its lines; `line`: the one before it (none: the first card). */
+export interface Card {
+  line: string | null;
+  keys: string[];
+}
+
+/** A column's cards, in their order: a line starts a new one (an empty first card with others after it is left out). */
+export function cardsOf(keys: readonly string[]): Card[] {
+  const cards: Card[] = [{ line: null, keys: [] }];
+  for (const key of keys) {
+    if (separatorKind(key) === "line") cards.push({ line: key, keys: [] });
+    else cards[cards.length - 1]!.keys.push(key);
+  }
+  return cards.filter((c) => c.line !== null || c.keys.length > 0);
+}
+
 /** Adds a line or an empty place at the end of the column, with a number no other separator has. */
 export function addSeparator(state: ColumnsState, column: number, kind: SeparatorKind): ColumnsState {
   const used = state.columns.flat().filter(isSeparator).map((k) => Number(k.split(":")[2]));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSeparator, columnName, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, renamed, separatorKind, toggleFold, toggleTool } from "../../frontend/src/ui/tool-columns-store";
+import { addSeparator, columnName, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, renamed, separatorKind, toggleFold, toggleTool, cardsOf } from "../../frontend/src/ui/tool-columns-store";
 
 const known = (key: string) => key !== "data-action:gone";
 
@@ -57,6 +57,14 @@ describe("barre à sept colonnes : ce qui est retenu", () => {
     expect(state.columns[0]).toEqual(["sep:space:2", "data-action:move", "sep:line:1"]);
     expect(normalize(JSON.parse(JSON.stringify({ ...state, columns: [[...state.columns[0]!, "data-action:gone"]] })), known).columns[0]).toEqual(state.columns[0]);
     expect(toggleTool(state, 0, "sep:line:1").columns[0]).toEqual(["sep:space:2", "data-action:move"]);
+  });
+
+  it("range les icônes d'une colonne en cartes : une ligne en commence une autre, une carte vide attend ses icônes", () => {
+    expect(cardsOf([])).toEqual([]);
+    expect(cardsOf(["a", "sep:space:1", "b"])).toEqual([{ line: null, keys: ["a", "sep:space:1", "b"] }]);
+    expect(cardsOf(["a", "sep:line:1", "b", "c", "sep:line:2"])).toEqual([{ line: null, keys: ["a"] }, { line: "sep:line:1", keys: ["b", "c"] }, { line: "sep:line:2", keys: [] }]);
+    // A line first: no empty card before it.
+    expect(cardsOf(["sep:line:1", "a"])).toEqual([{ line: "sep:line:1", keys: ["a"] }]);
   });
 
   it("chaque colonne a un nom, son numéro tant qu'on ne lui en donne pas, gardé d'une visite à l'autre", () => {

@@ -3,9 +3,9 @@
  * y est cachée ; une icône d'une autre barre (le ruban, Mes outils, les sept colonnes) glissée sur elle s'y ajoute, en
  * bas, à la place marquée, et lance l'outil d'origine en reprenant son état (enfoncé, grisé). Son « + », tout en bas,
  * ouvre la liste de tous les outils : un clic montre ou cache une des siennes, ajoute ou retire une des autres. Gardé
- * dans ce navigateur (ui/tool-drag.ts pour le glisser). Une de ses icônes glissée sur une autre de sa case s'y range,
- * avant ou après elle ; l'ordre est gardé aussi. Ses icônes sont rangées par tâche, chaque cadre une tâche : filtre,
- * sélection, vue, affichage, voir dedans, puis les outils ajoutés.
+ * dans ce navigateur (ui/tool-drag.ts pour le glisser). Une de ses icônes glissée sur une autre s'y range, avant ou
+ * après elle, dans sa carte ou dans une autre ; l'ordre et la carte sont gardés aussi. Ses icônes sont rangées par
+ * tâche, chaque carte une tâche : filtre, sélection, vue, affichage, voir dedans, puis les outils ajoutés.
  */
 import { el } from "./dom";
 import { catalogue, toolKey } from "./tool-catalogue";
@@ -19,8 +19,10 @@ interface SideState {
   hidden: string[];
   /** Tools of other bars put at its bottom, in their order. */
   extra: string[];
-  /** Its own tools in the order chosen (each stays in its box). */
+  /** Its own tools in the order chosen. */
   order: string[];
+  /** Its own tools moved to another card: the number of that card (the others stay in theirs). */
+  box: Record<string, number>;
 }
 
 function read(): SideState {
@@ -28,9 +30,10 @@ function read(): SideState {
     const raw: unknown = JSON.parse(localStorage.getItem(STORAGE) ?? "{}");
     const r = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof SideState, unknown>>;
     const list = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((k): k is string => typeof k === "string"))] : []);
-    return { hidden: list(r.hidden), extra: list(r.extra), order: list(r.order) };
+    const box = r.box && typeof r.box === "object" ? Object.fromEntries(Object.entries(r.box).filter(([, v]) => Number.isInteger(v))) : {};
+    return { hidden: list(r.hidden), extra: list(r.extra), order: list(r.order), box };
   } catch {
-    return { hidden: [], extra: [], order: [] };
+    return { hidden: [], extra: [], order: [], box: {} };
   }
 }
 
@@ -97,19 +100,21 @@ export function bindSideTools(root: HTMLElement): void {
     return button;
   };
 
-  /** Its own tools in the order chosen, each in its box; the orbit's options follow the orbit. */
+  const boxes = [...nav.querySelectorAll<HTMLElement>("[data-side-box]")];
+  const home = new Map([...own].map(([key, button]) => [key, button.parentElement]));
+  /** Its own tools in the order chosen, each in its card (its own, or the one it was moved to); the orbit's options follow the orbit. */
   const arrange = () => {
     for (const key of [...state.order.filter((k) => own.has(k)), ...[...own.keys()].filter((k) => !state.order.includes(k))]) {
       const button = own.get(key) as HTMLElement;
       const options = button.nextElementSibling?.matches("[data-orbit-options]") ? [button.nextElementSibling] : [];
-      button.parentElement?.append(button, ...options);
+      (boxes[state.box[key] ?? -1] ?? home.get(key))?.append(button, ...options);
     }
   };
-  /** One of its own tools under the pointer, in the same box as the dragged one: it goes before or after it. */
+  /** One of its own tools under the pointer, in any card: the dragged one goes before or after it, into its card. */
   const spot = (event: DragEvent, key: string) => {
     const over = (event.target as Element).closest<HTMLElement>("button");
     const at = over && [...own].find(([, b]) => b === over)?.[0];
-    if (!over || !at || at === key || over.parentElement !== own.get(key)?.parentElement) return null;
+    if (!over || !at || at === key) return null;
     const box = over.getBoundingClientRect();
     return { over, at, first: event.clientY < box.top + box.height / 2 };
   };
@@ -164,7 +169,7 @@ export function bindSideTools(root: HTMLElement): void {
       const at = own.has(key) ? spot(event, key) : null;
       if (at) {
         const shown = [...own].sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)).map(([k]) => k).filter((k) => k !== key);
-        return save({ ...state, hidden: state.hidden.filter((k) => k !== key), order: placed(shown, key, shown.indexOf(at.at) + (at.first ? 0 : 1)) });
+        return save({ ...state, hidden: state.hidden.filter((k) => k !== key), order: placed(shown, key, shown.indexOf(at.at) + (at.first ? 0 : 1)), box: { ...state.box, [key]: boxes.indexOf(at.over.parentElement as HTMLElement) } });
       }
       if (own.has(key)) return hide(key, false);
       save({ ...state, extra: placed(state.extra, key, place(event, key).index) });

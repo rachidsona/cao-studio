@@ -2,8 +2,9 @@
  * La barre à sept colonnes, entre le Navigateur et la vue : sept colonnes d'icônes d'outils, chacune avec les outils
  * qu'on y met soi-même par son « + » (ui/tool-columns-picker.ts) ; un clic droit sur une icône l'en retire, ou la
  * glisser hors des colonnes. Une icône se glisse plus haut ou plus bas dans sa colonne, ou dans une autre ; Alt + ↑ / ↓
- * la monte ou la descend. Le « + » ajoute aussi des séparateurs, au bas de la colonne : une ligne, ou un espace vide de
- * la taille d'une icône ; ils se glissent et se retirent comme une icône.
+ * la monte ou la descend. Ses icônes sont rangées en cartes (des cadres, comme la colonne Sélection et vue) : le « + »
+ * ajoute une carte vide au bas de la colonne, ou un espace vide de la taille d'une icône ; une icône se glisse d'une
+ * carte à l'autre, et la limite entre deux cartes se glisse et se retire comme une icône (tool-columns-store.ts).
  * Chaque icône lance l'outil du ruban (ou de la colonne Sélection et vue), le même, même caché ou replié, et en
  * reprend l'état (enfoncé, grisé). La flèche ‹ en haut d'une colonne la replie : elle disparaît sans laisser de bande,
  * et seul un petit onglet reste en bas du bord gauche de la vue, par-dessus, pour la rouvrir : son nom écrit debout
@@ -18,7 +19,7 @@ import { el } from "./dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
 import { catalogue } from "./tool-catalogue";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
-import { addSeparator, COLUMN_COUNT, columnName, insertTool, isSeparator, moveTool, NAME_LENGTH, readColumns, renamed, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
+import { addSeparator, cardsOf, COLUMN_COUNT, columnName, insertTool, isSeparator, moveTool, NAME_LENGTH, readColumns, renamed, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
 import { draggableTool, draggedTool, registerBar } from "./tool-drag";
 
 export function bindToolColumns(root: HTMLElement): void {
@@ -96,13 +97,13 @@ export function bindToolColumns(root: HTMLElement): void {
     });
   };
 
-  /** A separator: a thin line between two icons, or an empty place as big as an icon (its outline shows on hover). */
+  /** A separator: the limit between two cards (a thin strip), or an empty place as big as an icon (its outline shows on hover). */
   const separator = (key: string, kind: "line" | "space", column: number): HTMLElement => {
-    const label = kind === "line" ? "Ligne de séparation" : "Espace vide";
+    const label = kind === "line" ? "Limite entre deux cartes" : "Espace vide";
     const item = el(
       "div",
       {
-        class: `flex w-10 shrink-0 cursor-grab items-center justify-center outline-offset-[-2px] hover:outline hover:outline-1 hover:outline-dashed hover:outline-gray-400 focus-visible:outline-2 focus-visible:outline-sky-600 ${kind === "line" ? "h-3" : "h-10"}`,
+        class: `flex w-10 shrink-0 cursor-grab items-center justify-center outline-offset-[-2px] hover:outline hover:outline-1 hover:outline-dashed hover:outline-gray-400 focus-visible:outline-2 focus-visible:outline-sky-600 ${kind === "line" ? "h-2" : "h-10"}`,
         role: "separator",
         tabindex: "0",
         "aria-label": label,
@@ -111,7 +112,6 @@ export function bindToolColumns(root: HTMLElement): void {
         "data-separator": kind,
         draggable: "true",
       },
-      kind === "line" ? el("span", { class: "block h-px w-8 bg-gray-400 dark:bg-gray-500", "aria-hidden": "true" }) : null,
     );
     movable(item, column, key, label);
     return item;
@@ -223,11 +223,16 @@ export function bindToolColumns(root: HTMLElement): void {
     const list = el("div", { class: "cad-no-scrollbar flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto py-1" });
     const icons = el("div", { class: "my-auto flex flex-col items-center gap-0.5" });
     list.append(icons);
-    icons.append(...(state.columns[index] ?? []).flatMap((key) => {
-      const kind = separatorKind(key);
-      if (kind) return [separator(key, kind, index)];
-      const tool = byKey.get(key);
-      return tool ? [iconButton(tool, index)] : [];
+    // Its cards, as the boxes of the column « Sélection et vue »: the icons between two limits, an empty one waiting for icons.
+    icons.append(...cardsOf(state.columns[index] ?? []).flatMap((card, n) => {
+      const box = el("div", { class: "flex min-h-7 w-[46px] flex-col items-center gap-0.5 border border-gray-200 p-0.5 empty:border-dashed dark:border-gray-700", role: "group", "aria-label": `Carte ${n + 1}`, title: card.keys.length ? "" : "Carte vide : glissez-y des icônes", "data-tool-card": card.line ?? "" });
+      box.append(...card.keys.flatMap((key) => {
+        const kind = separatorKind(key);
+        if (kind) return [separator(key, kind, index)];
+        const tool = byKey.get(key);
+        return tool ? [iconButton(tool, index)] : [];
+      }));
+      return [...(card.line ? [separator(card.line, "line", index)] : []), box];
     }));
     const add = el(
       "button",
@@ -251,12 +256,18 @@ export function bindToolColumns(root: HTMLElement): void {
    * Where a dragged icon lands in a column: before or after the icon under the pointer (by its half), or at the end.
    * Returns the place among the column's tools without the dragged one, and the icon to mark.
    */
-  const dropPlace = (column: number, event: DragEvent): { index: number; over: HTMLElement | null; side: "before" | "after" } => {
+  const dropPlace = (column: number, event: DragEvent): { index: number; over: HTMLElement | null; side: "before" | "after"; card?: HTMLElement } => {
     const moving = dragging?.key ?? draggedTool()?.key;
     const keys = (state.columns[column] ?? []).filter((k) => k !== moving);
     const over = (event.target as HTMLElement).closest<HTMLElement>("[data-tool-column-tool]");
     const key = over?.dataset.toolColumnTool;
-    if (!over || !key || key === moving) return { index: keys.length, over: null, side: "after" };
+    if (!over || !key || key === moving) {
+      // In a card, not on an icon (an empty card, the room round its icons): at its end.
+      const box = (event.target as HTMLElement).closest<HTMLElement>("[data-tool-card]");
+      const card = box && cardsOf(keys).find((c) => (c.line ?? "") === box.dataset.toolCard);
+      const last = card && (card.keys.at(-1) ?? card.line);
+      return box && card ? { index: last ? keys.indexOf(last) + 1 : 0, over: null, side: "after", card: box } : { index: keys.length, over: null, side: "after" };
+    }
     const box = over.getBoundingClientRect();
     const side = event.clientY < box.top + box.height / 2 ? "before" : "after";
     return { index: keys.indexOf(key) + (side === "after" ? 1 : 0), over, side };
@@ -273,9 +284,9 @@ export function bindToolColumns(root: HTMLElement): void {
       unmarkAll();
       const section = event && columnAt(event.target);
       if (!event || !section) return;
-      const { over, side } = dropPlace(Number(section.dataset.toolColumn), event);
+      const { over, side, card } = dropPlace(Number(section.dataset.toolColumn), event);
       if (over) over.dataset.drop = side;
-      else section.dataset.drop = "end";
+      else (card ?? section).dataset.drop = "end";
     },
     drop: (key, event) => {
       const section = columnAt(event.target);

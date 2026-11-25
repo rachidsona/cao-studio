@@ -44,7 +44,7 @@ function separators(options: PickerOptions): HTMLElement {
   return el(
     "div",
     { class: "mb-1.5 flex gap-1.5", role: "group", "aria-label": "Séparateurs" },
-    add("line", "＋ Ligne", "Une ligne entre deux icônes, ajoutée au bas de la colonne : glissez-la à sa place"),
+    add("line", "＋ Carte", "Une nouvelle carte, vide, au bas de la colonne : glissez-y des icônes (sa limite se glisse aussi, pour couper une carte en deux)"),
     add("space", "＋ Espace vide", "Un espace vide de la taille d'une icône, ajouté au bas de la colonne : glissez-le à sa place"),
   );
 }
