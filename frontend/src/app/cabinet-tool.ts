@@ -12,6 +12,7 @@
 import { cabinetKeptClear } from "../document/cabinet-clear";
 import { bodyInfo, setBodyInfo } from "../document/materials";
 import { deleteFeatures, uniqueId, uniqueName, updateFeature } from "../document/operations";
+import { kitchenRunOf } from "../document/kitchen-floor";
 import { cabinetStandard, cabinetTo, findStandard, frontsTo } from "../document/standards";
 import { PART_SEPARATOR, type CabinetFeature, type CadDocument, type Feature, type FrontsFeature, type GlassKind, type ProfileFinish, type Vec3 } from "../document/types";
 import { cabinetPartNames, cabinetProblem } from "../features/cabinet-parts";
@@ -153,6 +154,8 @@ export class CabinetTool extends PanelTool {
     let next = gone.length ? deleteFeatures(doc, gone).next : doc;
     const kept = made.open ? sides[0] : undefined;
     if (kept && kept.face !== made.open) next = updateFeature(next, kept.id, (f) => (f.type === "fronts" ? { ...f, face: made.open, side: made.open === "right" ? "left" : "right" } : f));
+    // A side newly opened: its door, unless a Plan de cuisine made the cabinet (the plan makes it then, kitchen-sync.ts).
+    if (made.open && !sides.length && !kitchenRunOf(doc, made.id)) next = { ...next, features: [...next.features, ...this.fronts([made])] };
     return next;
   }
 

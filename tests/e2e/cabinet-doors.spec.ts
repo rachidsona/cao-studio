@@ -99,6 +99,13 @@ test("Caisson : une porte de côté, à droite, puis passée à gauche, puis ôt
   await page.waitForTimeout(800);
   await tool.getByRole("button", { name: "Fermer", exact: true }).click();
   expect(await saved()).toEqual({ open: null, doors: [["front", null]] });
+  // An existing cabinet given a side door later: the door comes with it.
+  await page.getByRole("toolbar", { name: "Historique des opérations" }).locator('[data-op="cb1"]').click();
+  await page.getByRole("dialog", { name: /^Caisson/ }).getByRole("button", { name: "Modifier", exact: true }).click();
+  await tool.getByRole("combobox", { name: "Porte de côté" }).selectOption("right");
+  await page.waitForTimeout(800);
+  await tool.getByRole("button", { name: "Fermer", exact: true }).click();
+  expect(await saved()).toEqual({ open: "right", doors: [["front", null], ["right", "left"]] });
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur");
   expect(errors).toEqual([]);
 });

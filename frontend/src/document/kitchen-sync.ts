@@ -84,6 +84,11 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (!same ? { ...it, facade: facade ?? { style: "flat" as const } } : (({ facade: _gone, ...rest }) => rest)(it)) : it));
           changed = true;
         }
+        // A side opened for a door in the Caisson tool (« Porte de côté »): the plan keeps it and makes its door.
+        if (k0 >= 0 && runs[run.id]![k0]!.sideDoor !== c.open) {
+          runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (c.open ? { ...it, sideDoor: c.open } : (({ sideDoor: _gone, ...rest }) => rest)(it)) : it));
+          changed = true;
+        }
         // Its front rail turned in the Caisson tool: the plan keeps it.
         if (k0 >= 0 && c.top === "rails" && runs[run.id]![k0]!.railFront !== c.railFront) {
           runs[run.id] = runs[run.id]!.map((it, j) => (j === k0 ? (c.railFront ? { ...it, railFront: c.railFront } : (({ railFront: _gone, ...rest }) => rest)(it)) : it));

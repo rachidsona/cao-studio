@@ -60,4 +60,19 @@ describe("porte de côté", () => {
     expect(fronts[1]!.side).toBe("right");
     expect(kitchenPlanIn(built.doc, base.id)!.runs!.A![0]!.sideDoor).toBe("left");
   });
+
+  it("un meuble du plan dont on ouvre un côté dans l'outil Caisson : le plan le garde et lui pose sa porte de côté", async () => {
+    const { syncKitchenPlans } = await import("../../frontend/src/document/kitchen-sync");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "tall-colonne-rangement", 600)] } });
+    if (typeof built === "string") throw new Error(built);
+    const cab = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    // As the Caisson tool stores it: the cabinet's left side open, no door yet.
+    const edited = { ...built.doc, features: built.doc.features.map((f) => (f.id === cab.id ? { ...cab, open: "left" as const } : f)) };
+    const synced = syncKitchenPlans(built.doc, edited);
+    expect(kitchenPlanIn(synced, base.id)!.runs!.A![0]!.sideDoor).toBe("left");
+    const now = synced.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    expect(now.open).toBe("left");
+    expect(synced.features.filter((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === now.id).map((f) => f.face ?? "front")).toEqual(["front", "left"]);
+  });
 });
