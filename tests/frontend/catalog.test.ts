@@ -1,7 +1,7 @@
 /** Le catalogue de l'atelier : matières du serveur, règles de quincaillerie comptées, en-tête. */
 import { describe, expect, it } from "vitest";
 import { autoHardware, companyHeaderHtml, furnitureCounts, registerCatalog, toMaterial } from "../../frontend/src/document/catalog";
-import { MATERIALS, materialById } from "../../frontend/src/document/materials";
+import { frontMaterial, MATERIALS, materialById } from "../../frontend/src/document/materials";
 import { DEFAULT_RATES, makeQuote } from "../../frontend/src/document/quote";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 import type { CatalogMaterial, HardwareRule, ServerCatalog } from "../../frontend/src/persistence/catalog";
@@ -27,9 +27,12 @@ function cabinetDoc(): CadDocument {
 
 describe("matières du serveur", () => {
   it("deviennent des matières de l'éditeur : le bois avec son fil, un fond mince en panneau de fond", () => {
-    expect(toMaterial(walnut)).toEqual({ id: "catalog-7", name: "Noyer américain", color: "#5a3a24", look: "wood", sheet: [2800, 2070], kind: "panel" });
+    expect(toMaterial(walnut)).toEqual({ id: "catalog-7", name: "Noyer américain", color: "#5a3a24", look: "wood", sheet: [2800, 2070], kind: "panel", category: "wood" });
     expect(toMaterial(hdf).kind).toBe("backing");
-    expect(toMaterial(marble)).toMatchObject({ look: "plain", kind: "panel" });
+    // Its family kept: a marble is no material for fronts.
+    expect(toMaterial(marble)).toMatchObject({ look: "plain", kind: "panel", category: "marble" });
+    expect(frontMaterial(toMaterial(marble))).toBe(false);
+    expect(frontMaterial(toMaterial(walnut))).toBe(true);
   });
 
   it("s'ajoutent aux matières intégrées, sans doublon, avec leur prix et ceux de la quincaillerie", () => {
