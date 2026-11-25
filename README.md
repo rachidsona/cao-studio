@@ -1772,7 +1772,7 @@ opération existante.
   l'autre, sur une icône ou dans le vide de la carte ; la limite entre deux cartes (une bande fine entre elles) se
   glisse aussi, pour couper une carte en deux, et se retire (clic droit, ou glissée dehors) pour n'en faire qu'une.
   Limites et espaces sont retenus comme une icône (« sep:line:1 », « sep:space:2 » ; `cardsOf` de
-  `ui/tool-columns-store.ts`). Chaque carte se **replie** par sa flèche ▾, en haut : il n'en reste que la flèche ▸ et
+  `ui/tool-columns-store.ts`). Une carte **vide** se supprime par sa croix × (ou un clic droit). Chaque carte se **replie** par sa flèche ▾, en haut : il n'en reste que la flèche ▸ et
   le nombre de ses icônes, un clic la déplie ; c'est gardé (`closed`, `toggleCard`). Dans la colonne « Sélection et vue », une icône glissée sur une autre passe aussi dans
   la carte de celle-ci (`box` de `cao.side-tools`). Chaque colonne a un **nom**, écrit en haut sous sa flèche (son numéro tant
   qu'elle n'en a pas) : un **double-clic** le change (Entrée garde, Échap laisse l'ancien, vide redonne le numéro), et

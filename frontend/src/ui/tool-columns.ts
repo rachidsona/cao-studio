@@ -225,7 +225,16 @@ export function bindToolColumns(root: HTMLElement): void {
     list.append(icons);
     // Its cards, as the boxes of the column « Sélection et vue »: the icons between two limits, an empty one waiting for icons.
     icons.append(...cardsOf(state.columns[index] ?? []).flatMap((card, n) => {
-      const box = el("div", { class: "flex min-h-7 w-[46px] flex-col items-center gap-0.5 border border-gray-200 p-0.5 empty:border-dashed dark:border-gray-700", role: "group", "aria-label": `Carte ${n + 1}`, title: card.keys.length ? "" : "Carte vide : glissez-y des icônes", "data-tool-card": card.line ?? "" });
+      const box = el("div", { class: `flex min-h-7 w-[46px] flex-col items-center justify-center gap-0.5 border border-gray-200 p-0.5 dark:border-gray-700 ${card.keys.length ? "" : "border-dashed"}`, role: "group", "aria-label": `Carte ${n + 1}`, title: card.keys.length ? "" : "Carte vide : glissez-y des icônes, ou supprimez-la (sa croix, ou clic droit)", "data-tool-card": card.line ?? "" });
+      // An empty card: its cross (or a right-click) takes it away — its limit goes, nothing else.
+      const line = card.keys.length ? null : card.line;
+      if (line) {
+        const away = el("button", { type: "button", class: "flex size-5 items-center justify-center text-xs leading-none text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-800", "aria-label": `Supprimer la carte vide ${n + 1}`, title: "Supprimer cette carte vide", "data-tool-card-remove": "" }, "×");
+        const remove = () => save(toggleTool(state, index, line));
+        away.addEventListener("click", remove);
+        box.addEventListener("contextmenu", (event) => (event.preventDefault(), remove()));
+        box.append(away);
+      }
       // Its arrow folds it away (how many icons it holds is left) and opens it again; an empty card has none.
       const closed = cardClosed(state, index, card);
       const count = card.keys.filter((k) => byKey.has(k)).length;

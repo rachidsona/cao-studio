@@ -119,6 +119,14 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   await column(0).locator('[data-tool-column-tool="sep:line:2"]').click({ button: "right" });
   await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts"]);
   await expect(cards).toHaveCount(2);
+  // An empty card goes by its cross.
+  await column(0).locator("[data-tool-column-add]").click();
+  await page.getByRole("dialog", { name: "Outils de la colonne 1" }).locator('[data-add-separator="line"]').click();
+  await page.keyboard.press("Escape");
+  await expect(cards).toHaveCount(3);
+  await cards.nth(2).locator("[data-tool-card-remove]").click();
+  await expect(cards).toHaveCount(2);
+  await expect.poll(order).toEqual(["data-workshop:kitchen-plan", "sep:line:1", "data-action:fronts"]);
 
   // Its icon runs the tool itself and shows its state.
   const grid = page.locator('[data-tool-column-tool="data-grid-toggle:"]');
