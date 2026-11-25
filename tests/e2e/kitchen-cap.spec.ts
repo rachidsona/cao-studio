@@ -182,3 +182,26 @@ test("plan de cuisine : un linéaire vidé oublie où allait son reste, son prem
   await expect(tool.locator('[data-rest="start"]')).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });
+
+test("un champ de nombre cliqué a tout son contenu sélectionné : on tape la nouvelle valeur directement", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-champ-selectionne");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Cotes");
+  const wall = tool.getByLabel(/^Longueur mur A/);
+  await wall.click();
+  await expect.poll(() => wall.evaluate((f) => [(f as HTMLInputElement).selectionStart, (f as HTMLInputElement).selectionEnd, (f as HTMLInputElement).value.length])).toEqual([0, 3, 3]);
+  await page.keyboard.type("420");
+  await page.keyboard.press("Enter");
+  await expect(tool.getByLabel(/^Longueur mur A/)).toHaveValue("420");
+  // A second click in the field already chosen puts the caret, to change one figure.
+  const depth = tool.getByLabel(/^Hauteur sous plafond/);
+  await depth.click();
+  await depth.click();
+  await expect.poll(() => depth.evaluate((f) => (f as HTMLInputElement).selectionStart === (f as HTMLInputElement).selectionEnd)).toBe(true);
+  expect(errors).toEqual([]);
+});

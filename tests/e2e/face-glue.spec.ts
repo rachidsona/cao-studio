@@ -157,12 +157,12 @@ test("prolonger élément : un haut s'allonge en profondeur jusqu'au plan de la 
   await at(0.505, 0.33);
   await expect(tool).toContainText("À prolonger : « Haut 1 porte 600 »");
   await at(0.505, 0.75);
-  await expect(tool.locator("[data-extend-result]")).toContainText(/« Haut 1 porte 600 » prolongé de 21 cm jusqu'à « Façades Bas 1 porte 600/);
+  await expect(tool.locator("[data-extend-result]")).toContainText(/« Haut 1 porte 600 » prolongé de 23 cm jusqu'à « Façades Bas 1 porte 600/);
   await expect(tool.locator("[data-extend-ok]")).toBeEnabled({ timeout: 30_000 });
   await tool.locator("[data-extend-ok]").click();
-  await expect(page.getByText(/« Haut 1 porte 600 » prolongé de 21 cm jusqu'à « Façades Bas 1 porte 600/).first()).toBeVisible();
-  // Its depth: 35 + 21 = 56 cm.
-  await expect(page.getByLabel(/^Profondeur/).first()).toHaveValue(/^56(,0+)?$/);
+  await expect(page.getByText(/« Haut 1 porte 600 » prolongé de 23 cm jusqu'à « Façades Bas 1 porte 600/).first()).toBeVisible();
+  // Its depth: 35 + 23 = 58 cm.
+  await expect(page.getByLabel(/^Profondeur/).first()).toHaveValue(/^58(,0+)?$/);
   // The base unit pushed 4 cm toward the room: the wall unit follows its front, in the same undo step.
   await page.waitForTimeout(1500);
   await click(page, '[data-action="push"]');
@@ -178,7 +178,7 @@ test("prolonger élément : un haut s'allonge en profondeur jusqu'au plan de la 
   const props = page.getByRole("complementary", { name: "Propriétés" });
   await page.getByRole("button", { name: "Haut 1 porte 600", exact: true }).last().click();
   await expect(props.getByLabel("Nom", { exact: true })).toHaveValue("Haut 1 porte 600");
-  await expect(props.getByLabel(/^Profondeur/).first()).toHaveValue(/^60(,0+)?$/);
+  await expect(props.getByLabel(/^Profondeur/).first()).toHaveValue(/^62(,0+)?$/);
   expect(errors).toEqual([]);
 });
 

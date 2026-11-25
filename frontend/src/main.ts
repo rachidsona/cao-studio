@@ -17,6 +17,7 @@ import { bindLiveCheck } from "./app/workshop/live-check";
 import { bindVariants } from "./app/workshop/variants-tool";
 import { bindModulePalette } from "./app/dressing/module-palette";
 import { bindIconTitles } from "./ui/icon-titles";
+import { bindSelectOnFocus } from "./ui/select-on-focus";
 import { bindFieldKeypads } from "./ui/field-keypads";
 import { bindDirectEntry } from "./ui/direct-entry";
 import { bindSketchBodies } from "./app/sketch-bodies";
@@ -270,6 +271,7 @@ async function start(): Promise<void> {
   bindModulePalette(root, viewport, editor);
   // The tooltip of a tool's icon says its name only (its description is in the Help, and in the tool search).
   bindIconTitles(document.body);
+  bindSelectOnFocus();
   // A calculator beside every number field (tools, panels, drawing), those without one of their own.
   bindFieldKeypads(document.body);
   // In a sketch, the bodies shown behind it or hidden (« Corps » of its Affichage).
