@@ -135,9 +135,9 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   const made: Record<string, string[]> = {};
   const problems: string[] = [];
   for (const run of kitchenRuns(plan)) {
-    // A run with nothing on it: only its wall, if it has one to draw, and the corner units chosen — a corner unit
+    // A run with nothing on it (no unit: places kept free are nothing): only its wall, if it has one to draw, and the corner units chosen — a corner unit
     // with its worktop and splashback over it, as any caisson.
-    const empty = !(plan.runs?.[run.id] ?? []).length;
+    const empty = !(plan.runs?.[run.id] ?? []).some((i) => !isSpace(i) || i.furnished);
     const cornered = layout.units.some((u) => u.run === run.id && u.corner);
     const sub = { ...layout, units: layout.units.filter((u) => u.run === run.id && (!empty || u.corner)), boxes: layout.boxes.filter((b) => b.run === run.id && (!empty || b.kind === "wall" || b.corner || (cornered && (b.kind === "worktop" || b.kind === "splashback")))) };
     if (!sub.units.length && !sub.boxes.length) continue;

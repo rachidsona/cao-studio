@@ -173,8 +173,13 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       }
     }
     fill.fillers.forEach(([a, b], i) => box(`Fileur ${run.id}${i ? i + 1 : ""}`, "filler", band(a, b, D, D + FRONT, s.plinth, s.base)));
+    // The run's corner units, along it: the worktop lies over them as over its units.
+    const cornerUnits = (["left", "right"] as const).flatMap((side, i): [number, number][] => {
+      const c = cornerSide(p, run, side, fill.walls[i])?.cabinet;
+      return c ? [[c[0], c[1]]] : [];
+    });
     corners(p, run, fill.walls, g.wall !== null, band, box, cabinet);
-    const covered = worktopSpans(run, fill);
+    const covered = worktopSpans(run, fill, cornerUnits);
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box, rounds);
     if (p.endPanels) endPanels(p, run, fill, band, box);
@@ -310,19 +315,20 @@ const NARROW = 50;
 /**
  * Where the worktop of a run lies, along it: it follows the units — none over the room left open, nor over a room
  * kept free that no furnished caisson holds, nor through a column, which stands from the floor to the top of the wall
- * units. The splashback follows it.
+ * units. Only over what stands: a stretch with no unit, no furnished caisson and no corner unit (`corners`, along the
+ * run) has none — nothing over the rest of a run beside a place kept free. The splashback follows it.
  */
-export function worktopSpans(run: KitchenRun, fill: RunFill): [number, number][] {
+export function worktopSpans(run: KitchenRun, fill: RunFill, corners: [number, number][] = []): [number, number][] {
   const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
   const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const units = [...fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind !== "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]), ...held];
   const [z0, z1] = zoneSpan(run);
   // Against a column or open room, it stops at the caisson's side, not over the filler beside it; at the run's ends it goes on to the wall or the corner.
-  return without([z0, z1], [...open, ...columns]).map(([a, b]): [number, number] => {
-    const inside = units.filter(([u0, u1]) => u1 > a + 1e-6 && u0 < b - 1e-6);
-    if (!inside.length) return [a, b];
-    return [a > z0 + 1e-6 ? Math.max(a, Math.min(...inside.map(([u0]) => u0))) : a, b < z1 - 1e-6 ? Math.min(b, Math.max(...inside.map(([, u1]) => u1))) : b];
+  return without([z0, z1], [...open, ...columns]).flatMap(([a, b]): [number, number][] => {
+    const inside = [...units, ...corners].filter(([u0, u1]) => u1 > a + 1e-6 && u0 < b - 1e-6);
+    if (!inside.length) return [];
+    return [[a > z0 + 1e-6 ? Math.max(a, Math.min(...inside.map(([u0]) => u0))) : a, b < z1 - 1e-6 ? Math.min(b, Math.max(...inside.map(([, u1]) => u1))) : b]];
   }).filter(([a, b]) => b - a >= 1);
 }
 

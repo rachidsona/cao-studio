@@ -122,6 +122,22 @@ describe("plan de travail qui suit les meubles", () => {
     expect(kitchenFromPlan({ ...p, endPanels: false }).boxes.some((b) => b.name.startsWith("Joue"))).toBe(false);
   });
 
+  it("seul ce qui est posé apparaît : ni fileur, ni plan de travail, ni retour au bout d'une place gardée libre", () => {
+    // A unit, a place kept free, 50 mm of rest at the free end: the filler there would stand beside nothing.
+    const p = { ...plan([["base-bas-1-porte", 600], ["space", 2950]]), worktopEnds: true };
+    expect(spans(p, "worktop")).toEqual([["Plan de travail A", -38, 600]]);
+    expect(spans(p, "filler")).toEqual([]);
+    expect(kitchenFromPlan(p).boxes.filter((b) => b.name.startsWith("Retour de plan")).map((b) => b.name)).toEqual(["Retour de plan A (gauche)"]);
+    // Beside a unit, the filler of the rest stands, with the worktop over it.
+    const closed = plan([["base-bas-1-porte", 600], ["space", 2350], ["base-bas-1-porte", 600]]);
+    expect(spans(closed, "filler")).toEqual([["Fileur A", 3550, 3600]]);
+    // Places kept free only: the run makes nothing but its wall.
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, worktopEnds: true, runs: {}, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "space", 600), newItem([{ id: "k1" } as KitchenRunItem], "space", 2950)] } });
+    if (typeof built === "string") throw new Error(built);
+    expect(built.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A"]);
+  });
+
   it("un meuble d'angle seul sur son linéaire (aucun autre meuble) a son plan de travail, sur lui seulement", () => {
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "L-left", lengthA: 3600, lengthB: 3600, corners: { left: "unit" }, through: { left: true }, splashback: false, runs: {}, made: {} });
     const built = withKitchenBuilt(base.doc, base.id, {});

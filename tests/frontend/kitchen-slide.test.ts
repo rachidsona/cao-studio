@@ -111,11 +111,11 @@ describe("supprimer un meuble sur la bande", () => {
     expect([where(first.id), where(held.id), where(last.id)]).toEqual([0, 1500, 3000]);
   });
 
-  it("une place gardée libre avant le fileur du bout : le fileur reste au bout, le meuble se glisse dans la place", () => {
+  it("une place gardée libre avant le reste du bout : pas de fileur là (rien ne s'y tient), le meuble se glisse dans la place", () => {
     const items = units([["base-bas-2-portes", 1000], ["base-bas-1-porte", 600], ["space", 500]]);
     const p = plan("end", items, 2150);
     const fill = fillOf(p, items);
-    expect(fill.fillers.length).toBe(1);
+    expect(fill.fillers.length).toBe(0);
     const made = itemSlid(p, run(p), undefined, items, heights(p), items[1]!.id, 300);
     if (typeof made === "string") throw new Error(made);
     const now = fillOf({ ...p, rest: { A: made.rest } }, made.items);

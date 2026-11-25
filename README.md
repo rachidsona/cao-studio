@@ -2809,7 +2809,11 @@ opération existante.
     - Le **plan de travail**, cliqué, se supprime pour ce linéaire (ni plan ni découpes ; la crédence reste) et se remet
       par « Remettre le plan de travail ». La bande le dessine là où il est : au-dessus des meubles. Il **suit
       toujours les caissons** : un caisson supprimé l'emporte avec lui, et un caisson posé sur un linéaire dont le plan
-      de travail ou la plinthe avaient été ôtés les y remet (`withFollowing` de `document/kitchen-floor.ts`) ; un
+      de travail ou la plinthe avaient été ôtés les y remet (`withFollowing` de `document/kitchen-floor.ts`). **Seul ce
+      qui est posé apparaît** : un morceau de plan de travail (et son retour au bout libre) ne se fait que sur un meuble,
+      un caisson aménagé ou un meuble d'angle ; un fileur du reste ne se met qu'à côté de l'un d'eux ou d'un angle, jamais
+      entre deux places gardées libres ; un linéaire qui n'a que des places libres ne bâtit que son mur (`fillRun`,
+      `worktopSpans`). Un
       **meuble d'angle seul** sur un linéaire sans autre meuble a lui aussi son plan de travail et sa crédence ; sauf
       s'ils sont ôtés dans le même changement.
     - Un meuble ajouté ou dupliqué qui pousserait un autre hors du linéaire est refusé, avec la place qui reste.

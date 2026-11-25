@@ -346,7 +346,11 @@ export function fillRun(g: RunGeometry, given: readonly KitchenRunItem[], height
   const most = Math.max(0, ...base.gaps.map(([a, b]) => b - a));
   for (const m of base.missing) problems.push(`${m.entry.name} ${cm(m.item.width)} ne tient pas : ${most >= 1 ? `il reste ${cm(most)} au plus` : "le mur est plein"}.`);
   for (const m of wall.missing) problems.push(g.wall ? `${m.entry.name} ${cm(m.item.width)} ne tient pas en haut.` : g.low ? `${m.entry.name} : le plafond est trop bas pour des meubles hauts.` : `${m.entry.name} : pas de mur derrière pour un meuble haut.`);
-  const fillers = base.gaps.filter(([a, b]) => b - a >= MIN_FILLER && b - a <= WIDE_FILLER);
+  // A filler closes a narrow rest beside what stands — a unit, a caisson furnished by hand, a corner — never between
+  // two places kept free, nor at a free end past one: that room is left open.
+  const stands = (x: number) => base.placed.some((pl) => (!isSpace(pl.item) || !!pl.item.furnished) && (Math.abs(pl.at - x) < 1e-6 || Math.abs(pl.at + pl.item.width - x) < 1e-6)) || g.ends.some((end, i) => end !== "free" && Math.abs(g.base[i]! - x) < 1e-6);
+  const narrow = base.gaps.filter(([a, b]) => b - a >= MIN_FILLER && b - a <= WIDE_FILLER);
+  const fillers = narrow.filter(([a, b]) => stands(a) || stands(b));
   // The room kept free stays open, whatever its width: nothing stands there, it is not closed by a filler.
   const spaced: Placed[] = [];
   const kept = (row: Placed[]) => {
@@ -355,7 +359,7 @@ export function fillRun(g: RunGeometry, given: readonly KitchenRunItem[], height
     row.splice(0, row.length, ...row.filter((pl) => !isSpace(pl.item)));
     return spaces;
   };
-  const free = joined([...base.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...kept(base.placed)]);
+  const free = joined([...base.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...narrow.filter((gap) => !fillers.includes(gap)), ...kept(base.placed)]);
   const wallFree = joined([...wall.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...kept(wall.placed)]);
   const placed = [...base.placed, ...wall.placed];
   problems.push(...constraints(placed, g, stretches));
