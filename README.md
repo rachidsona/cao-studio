@@ -872,7 +872,8 @@ opération existante.
     Rose = pivot, vert = cible ; « Changer le pivot » et « Changer la cible » recommencent un choix. Un
     pivot pris sur un autre corps fait de ce corps celui à déplacer. Raccourci : avec le filtre
     « Points », cliquez un sommet du corps puis un sommet d'un autre corps, puis « Déplacer ».
-  - **Type de déplacement** (boutons, comme Fusion 360) : « Point à point », « Translation » (ΔX, ΔY, ΔZ), « Sur un
+  - **Type de déplacement** (boutons, comme Fusion 360) : « Point à point », « Translation » (ΔX, ΔY, ΔZ), « Par
+    face » (Coller par face prend la main : une face de l'élément, puis la face d'un autre où le poser), « Sur un
     axe », « Position » (absolue, du centre). **Pivot** : boutons « Centre », « Bas », « Coin » (« Définir le pivot »
     de Fusion, le pivot de 3ds Max) en plus du point cliqué (`app/move-panel.ts`).
   - **À la façon de SketchUp** : le pivot pris, ce qu'on déplace **suit la souris** — jusqu'au point accroché (coin,

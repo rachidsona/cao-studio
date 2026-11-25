@@ -516,9 +516,8 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   // The whole starts as a new move does: the manipulator goes on a point clicked, not in the middle.
   await expect(page.locator('[data-move-mode="points"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/^Pivot : survolez une face du corps/)).toBeVisible();
-  const view = (await canvas(page).boundingBox())!;
-  await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
-  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2);
+  // The pivot put by its button (a click in the view needs one of the points shown, wherever the unit stands).
+  await page.locator('[data-pivot="Centre"]').click();
   await expect(page.getByRole("button", { name: "Changer le pivot" })).toBeVisible();
 
   const tree = page.getByLabel(/^Navigateur : corps/);
@@ -536,6 +535,12 @@ test("Déplacer prend l'élément sélectionné ou le corps entier", async ({ pa
   // Le meuble reste un seul meuble, sans une opération par pièce.
   await expect(tree.getByText("Porte gauche", { exact: true })).toBeVisible();
   await expect(tree.getByText(/Déplacement/)).toHaveCount(0);
+  // « Par face », among the types of move: Coller par face takes over.
+  await tree.getByText("Porte gauche", { exact: true }).click();
+  await click(page, '[data-action="move"]');
+  await page.locator('[data-move-mode="face"]').click();
+  await expect(page.getByRole("dialog", { name: "Coller par face" })).toBeVisible();
+  await expect(page.locator("[data-move-mode]")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

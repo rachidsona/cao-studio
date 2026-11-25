@@ -45,8 +45,8 @@ export interface ToolContext {
   notify(message: string, kind?: "info" | "success" | "error"): void;
   /** Selects what the tool made, once it closes (its fields shown in the properties). */
   select?(id: string): void;
-  /** « Magie extrusion »: from one of its ways to draw to the other (a line from an edge, a shape on a face). */
-  switchTo?(kind: "faceStrip" | "drawOnFace" | "faceSketch"): void;
+  /** « Magie extrusion »: from one of its ways to draw to the other (a line from an edge, a shape on a face); « Déplacer »: to « Coller par face ». */
+  switchTo?(kind: "faceStrip" | "drawOnFace" | "faceSketch" | "faceGlue"): void;
   /** The same tool afresh, for another operation (after « OK »): it stores nothing before it is touched. */
   again?(): void;
   closed(): void;

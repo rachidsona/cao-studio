@@ -516,7 +516,7 @@ export class MoveTool extends PanelTool {
       this.pickStep = this.source ? "reach" : "source";
       this.following = false;
       this.sync();
-    });
+    }, this.ctx.switchTo && (() => this.ctx.switchTo?.("faceGlue")));
   }
 
   private keysRows(): HTMLElement[] {

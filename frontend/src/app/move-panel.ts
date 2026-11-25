@@ -11,20 +11,25 @@ export type InputMode = "relative" | "distance" | "absolute" | "points";
 const BUTTON = "border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800";
 const PRESSED = "border border-sky-600 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200";
 
-/** As Fusion's types of move: one button each, the one in use pressed. */
-export function modeButtons(current: InputMode, choose: (mode: InputMode) => void): HTMLElement {
+/**
+ * As Fusion's types of move: one button each, the one in use pressed; « Par face » (`byFace`) hands over to « Coller
+ * par face » — a face of the element, then the face of another it is put on.
+ */
+export function modeButtons(current: InputMode, choose: (mode: InputMode) => void, byFace?: () => void): HTMLElement {
   const modes: [InputMode, string, string][] = [
     ["points", "Point à point", "Un point de l'objet, puis le point où l'amener (il suit la souris)"],
     ["relative", "Translation", "Décalage ΔX, ΔY, ΔZ (les flèches du manipulateur)"],
     ["distance", "Sur un axe", "Une distance le long d'un axe"],
     ["absolute", "Position", "La position absolue du centre"],
   ];
+  const face = byFace ? el("button", { type: "button", title: "Par face (Coller par face) : cliquez une face de l'élément à déplacer, puis la face d'un autre élément où la poser", "data-move-mode": "face", class: `col-span-2 h-7 text-2xs font-medium ${BUTTON}` }, "Par face") : null;
+  face?.addEventListener("click", () => byFace?.());
   return el("div", { class: "grid grid-cols-2 gap-1", role: "group", "aria-label": "Type de déplacement" }, ...modes.map(([mode, label, title]) => {
     const on = current === mode;
     const b = el("button", { type: "button", title, "aria-pressed": String(on), "data-move-mode": mode, class: `h-7 text-2xs font-medium ${on ? PRESSED : BUTTON}` }, label);
     b.addEventListener("click", () => choose(mode));
     return b;
-  }));
+  }), face);
 }
 
 /** The pivot put at the centre of the box, the middle of its bottom, or its lowest corner. */
