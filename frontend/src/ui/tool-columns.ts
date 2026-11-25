@@ -19,7 +19,7 @@ import { el } from "./dom";
 import { EDGE_TAB_CLASS, edgeTabs } from "./edge-tabs";
 import { catalogue } from "./tool-catalogue";
 import { iconOf, openPicker, type Tool } from "./tool-columns-picker";
-import { addSeparator, cardsOf, COLUMN_COUNT, columnName, insertTool, isSeparator, moveTool, NAME_LENGTH, readColumns, renamed, separatorKind, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
+import { addSeparator, cardClosed, cardsOf, COLUMN_COUNT, columnName, insertTool, isSeparator, moveTool, NAME_LENGTH, readColumns, renamed, separatorKind, toggleCard, toggleFold, toggleTool, writeColumns, type ColumnsState } from "./tool-columns-store";
 import { draggableTool, draggedTool, registerBar } from "./tool-drag";
 
 export function bindToolColumns(root: HTMLElement): void {
@@ -226,7 +226,15 @@ export function bindToolColumns(root: HTMLElement): void {
     // Its cards, as the boxes of the column « Sélection et vue »: the icons between two limits, an empty one waiting for icons.
     icons.append(...cardsOf(state.columns[index] ?? []).flatMap((card, n) => {
       const box = el("div", { class: "flex min-h-7 w-[46px] flex-col items-center gap-0.5 border border-gray-200 p-0.5 empty:border-dashed dark:border-gray-700", role: "group", "aria-label": `Carte ${n + 1}`, title: card.keys.length ? "" : "Carte vide : glissez-y des icônes", "data-tool-card": card.line ?? "" });
-      box.append(...card.keys.flatMap((key) => {
+      // Its arrow folds it away (how many icons it holds is left) and opens it again; an empty card has none.
+      const closed = cardClosed(state, index, card);
+      const count = card.keys.filter((k) => byKey.has(k)).length;
+      if (card.keys.length) {
+        const fold = el("button", { type: "button", class: "flex h-3.5 w-full shrink-0 items-center justify-center gap-0.5 text-2xs leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100", "aria-expanded": String(!closed), "aria-label": `${closed ? "Déplier" : "Replier"} la carte ${n + 1}`, title: closed ? `Déplier la carte : ${count} icône${count > 1 ? "s" : ""}` : "Replier la carte : ses icônes laissent leur place", "data-tool-card-fold": "" }, closed ? `▸ ${count}` : "▾");
+        fold.addEventListener("click", () => save(toggleCard(state, index, card)));
+        box.append(fold);
+      }
+      if (!closed) box.append(...card.keys.flatMap((key) => {
         const kind = separatorKind(key);
         if (kind) return [separator(key, kind, index)];
         const tool = byKey.get(key);

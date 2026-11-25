@@ -96,6 +96,17 @@ test("sept colonnes vides au départ, les mêmes dans les trois espaces ; un out
   const cards = column(0).locator("[data-tool-card]");
   await expect(cards).toHaveCount(2);
   await expect(cards.nth(1).locator("[data-tool-column-tool]")).toHaveCount(1);
+  // A card folds away by its arrow (how many icons it holds is left) and opens again; it stays so after a reload.
+  await cards.nth(1).locator("[data-tool-card-fold]").click();
+  await expect(cards.nth(1).locator("[data-tool-column-tool]")).toHaveCount(0);
+  await expect(cards.nth(1).locator("[data-tool-card-fold]")).toHaveText("▸ 1");
+  await expect(cards.nth(0).locator("[data-tool-column-tool]")).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await expect(cards.nth(1).locator("[data-tool-card-fold]")).toHaveAttribute("aria-expanded", "false");
+  await shot(page, "colonnes-carte-repliee");
+  await cards.nth(1).locator("[data-tool-card-fold]").click();
+  await expect(cards.nth(1).locator("[data-tool-column-tool]")).toHaveCount(1);
   await column(0).locator("[data-tool-column-add]").click();
   await page.getByRole("dialog", { name: "Outils de la colonne 1" }).locator('[data-add-separator="line"]').click();
   await page.keyboard.press("Escape");

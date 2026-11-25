@@ -16,6 +16,8 @@ export interface ColumnsState {
   folded: boolean[];
   /** The name given to each column (empty: its number). */
   names: string[];
+  /** The cards folded away (only their arrow and how many icons they hold are left): « column:line », the first card of a column « column: ». */
+  closed: string[];
 }
 
 /** A column's name as kept: on one line, at most this long. */
@@ -35,6 +37,7 @@ export function normalize(raw: unknown, known: (key: string) => boolean): Column
     }),
     folded: Array.from({ length: COLUMN_COUNT }, (_, i) => folded[i] === true),
     names: Array.from({ length: COLUMN_COUNT }, (_, i) => cleanName(names[i])),
+    closed: Array.isArray(source.closed) ? [...new Set(source.closed.filter((k): k is string => typeof k === "string" && /^\d+:(sep:line:\d+)?$/.test(k)))] : [],
   };
 }
 
@@ -92,6 +95,15 @@ export function cardsOf(keys: readonly string[]): Card[] {
     else cards[cards.length - 1]!.keys.push(key);
   }
   return cards.filter((c) => c.line !== null || c.keys.length > 0);
+}
+
+/** Whether a card is folded away. */
+export const cardClosed = (state: ColumnsState, column: number, card: Card): boolean => state.closed.includes(`${column}:${card.line ?? ""}`);
+
+/** Folds a card away, or opens it again. */
+export function toggleCard(state: ColumnsState, column: number, card: Card): ColumnsState {
+  const key = `${column}:${card.line ?? ""}`;
+  return { ...state, closed: state.closed.includes(key) ? state.closed.filter((k) => k !== key) : [...state.closed, key] };
 }
 
 /** Adds a line or an empty place at the end of the column, with a number no other separator has. */

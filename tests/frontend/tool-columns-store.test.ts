@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSeparator, columnName, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, renamed, separatorKind, toggleFold, toggleTool, cardsOf } from "../../frontend/src/ui/tool-columns-store";
+import { addSeparator, columnName, COLUMN_COUNT, isSeparator, moveTool, normalize, readColumns, renamed, separatorKind, toggleFold, toggleTool, cardsOf, cardClosed, toggleCard } from "../../frontend/src/ui/tool-columns-store";
 
 const known = (key: string) => key !== "data-action:gone";
 
@@ -65,6 +65,17 @@ describe("barre à sept colonnes : ce qui est retenu", () => {
     expect(cardsOf(["a", "sep:line:1", "b", "c", "sep:line:2"])).toEqual([{ line: null, keys: ["a"] }, { line: "sep:line:1", keys: ["b", "c"] }, { line: "sep:line:2", keys: [] }]);
     // A line first: no empty card before it.
     expect(cardsOf(["sep:line:1", "a"])).toEqual([{ line: "sep:line:1", keys: ["a"] }]);
+  });
+
+  it("une carte se replie et se déplie, chacune la sienne, et c'est gardé", () => {
+    const state = normalize({ columns: [["a", "sep:line:1", "b"]] }, () => true);
+    const [first, second] = cardsOf(state.columns[0]!);
+    expect(cardClosed(state, 0, second!)).toBe(false);
+    const folded = toggleCard(state, 0, second!);
+    expect([cardClosed(folded, 0, first!), cardClosed(folded, 0, second!), cardClosed(folded, 1, second!)]).toEqual([false, true, false]);
+    expect(normalize(JSON.parse(JSON.stringify(folded)), () => true).closed).toEqual(["0:sep:line:1"]);
+    expect(normalize({ closed: ["0:", "x", 3, "0:"] }, () => true).closed).toEqual(["0:"]);
+    expect(toggleCard(folded, 0, second!).closed).toEqual([]);
   });
 
   it("chaque colonne a un nom, son numéro tant qu'on ne lui en donne pas, gardé d'une visite à l'autre", () => {
