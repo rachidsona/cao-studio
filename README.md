@@ -2688,7 +2688,7 @@ opération existante.
   plan le garde là : `islandShift`, `islandMoved` de `document/kitchen-moves.ts` ; refusé contre un mur ou sur un autre
   linéaire ; ce décalage se tape aussi dans les Cotes du plan, « Décalage de l'îlot », 0 au milieu du mur A, en moins
   d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la matière des **façades** (seulement ce qui s'y prête : bois, mélaminé, MDF, HDF, stratifié, laque, verre — ni
-  marbre, ni métal, ni fond, ni tasseau : `frontChoices`), les **façades de toute la cuisine** — pose (en applique ou
+  marbre, ni métal, ni fond, ni tasseau : `frontChoices`), les **façades de toute la cuisine**, dans leur carte « Façades » à part — pose (en applique ou
   encastrées), style (plate, à cadre, rainurée, à lattes, vitrée), poignées (avec, sur profil gorge, sans), couleur de
   laque (portes et façades de tiroirs seulement), épaisseur (10 à 40 mm) et jeu (0 à 6 mm) : `frontLook`,
   `app/kitchen/kitchen-front-fields.ts` ; le style ou les poignées donnés à un meuble seul dans la 3D passent avant —, la profondeur

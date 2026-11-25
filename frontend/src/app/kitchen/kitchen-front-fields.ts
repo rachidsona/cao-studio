@@ -49,7 +49,6 @@ export function frontFields(plan: KitchenFloorPlan, unit: DisplayUnit, set: (pat
   const plain = el("button", { type: "button", class: "h-8 border border-gray-300 px-2 text-xs hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-800", disabled: !look.color, title: "Les façades dans la couleur de leur matière", "data-front-color-clear": "" }, "Celle de la matière");
   plain.addEventListener("click", () => put({ color: undefined }));
   return [
-    el("h4", { class: "pt-1 text-2xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400" }, "Façades de toute la cuisine"),
     select("Pose", "mount", look.mount ?? "overlay", [["overlay", "En applique (devant le caisson)"], ["inset", "Encastrées (dans le caisson)"]], (v) => put({ mount: v === "inset" ? "inset" : undefined })),
     select("Style", "style", look.style?.style ?? "flat", [["flat", "Plate"], ["frame", "À cadre (panneau en retrait)"], ...DECOR_LABELS, ["glass", "Vitrée (cadre alu)"]], (v) => put({ style: v === "flat" ? undefined : styleChange(v as DoorStyle, {}) })),
     select("Poignées", "handles", look.handles ?? "on", [["on", "Avec poignées"], ["gorge", "Sans, sur profil gorge"], ["none", "Sans poignée (pousser-ouvrir)"]], (v) => put({ handles: v === "none" || v === "gorge" ? v : undefined })),

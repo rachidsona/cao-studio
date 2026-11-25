@@ -214,9 +214,9 @@ test("plan de cuisine : les façades de toute la cuisine — style, poignées, c
   await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
-  await openCard(tool, "Matières et finitions");
+  await openCard(tool, /^Façades$/);
   // Only what fronts are made of: no backing panel, no batten.
-  const materials = await tool.getByLabel("Façades", { exact: true }).locator("option").evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
+  const materials = await tool.getByLabel("Matière des façades", { exact: true }).locator("option").evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
   expect(materials).not.toContain("hdf");
   expect(materials).not.toContain("pine-batten");
   await tool.locator("[data-front-style]").selectOption("frame");

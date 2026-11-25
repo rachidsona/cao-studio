@@ -81,7 +81,7 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     const along = (f: { origin?: number[] } | undefined) => f?.origin?.[0] ?? 0;
     const moved = syncKitchenPlans(doc, { ...doc, features: doc.features.map((f) => (f.id === cab.id ? { ...cab, origin: [cab.origin[0] + 300, cab.origin[1], cab.origin[2]] as typeof cab.origin } : f)) });
     const fridgeNow = moved.features.find((f) => f.type === "appliance" && f.model === "fridge-american") as { origin: number[] };
-    expect(Math.round(fridgeNow.origin[0] - along(fridge as never))).toBe(300);
+    expect(Math.round(fridgeNow.origin[0]! - along(fridge as never))).toBe(300);
     const sideNow = (name: string) => moved.features.find((f) => f.name === name);
     expect(sideNow(side.name)).toBeDefined();
   });

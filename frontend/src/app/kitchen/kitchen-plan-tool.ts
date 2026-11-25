@@ -222,7 +222,7 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null, islandRows ? this.fields.number("Décalage de l'îlot (0 : au milieu du mur A)", "islandShift", 0, true, true) : null,
-      el("h3", { class: "panel-title" }, "Matières et finitions"), this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)),
+      el("h3", { class: "panel-title" }, "Façades"), this.fields.select("Matière des façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)), el("h3", { class: "panel-title" }, "Matières et finitions"),
       this.fields.look(materials),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"), ...this.fields.cap(),
