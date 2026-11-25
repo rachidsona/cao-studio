@@ -127,6 +127,8 @@ Django reste disponible pour un superutilisateur. Ce que l'éditeur en fait :
 - **Sélectionner les esquisses** (bouton de la colonne Vue, à côté) : de même, mais les esquisses seules — toutes
   celles montrées dans la vue, aucun corps —, comme le filtre « Corps » prend les corps ; une esquisse cachée n'est pas
   prise (le message dit combien le sont, et que l'œil du titre « Esquisses » les montre).
+- **Champs de nombre** : un clic (ou Tab) dans un champ de nombre en sélectionne tout le contenu, pour taper la nouvelle
+  valeur directement ; un deuxième clic place le curseur pour corriger un chiffre (`ui/select-on-focus.ts`).
 - **Supprimer la sélection** (bouton de la colonne Vue, à côté ; la touche Suppr en bouton) : tout ce qui est
   sélectionné part d'un coup, avec la même question que Suppr quand la suppression emporte beaucoup ; rien de choisi,
   il le dit (`Editor.deleteSelection`, `app/select-all.ts`).
@@ -2683,7 +2685,8 @@ opération existante.
   ses meubles poussé, déplacé ou écarté par Espacement emmène l'îlot entier, son plan de travail et sa plinthe, et le
   plan le garde là : `islandShift`, `islandMoved` de `document/kitchen-moves.ts` ; refusé contre un mur ou sur un autre
   linéaire ; ce décalage se tape aussi dans les Cotes du plan, « Décalage de l'îlot », 0 au milieu du mur A, en moins
-  d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la profondeur
+  d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la matière des **façades** (seulement ce qui s'y prête : bois, mélaminé, MDF, HDF, stratifié, laque, verre — ni
+  marbre, ni métal, ni fond, ni tasseau : `frontChoices`), la profondeur
   du plan de travail (64), des caissons bas et des colonnes (58, `BASE_DEPTH`, au plus le plan de travail moins les
   façades) et des hauts (35), la hauteur du plan de travail (90) et les matières. « Créer le plan » pose une esquisse
   au sol « Plan de la cuisine », découpée en **linéaires** (un par mur, un pour la péninsule, un pour l'îlot) séparés par

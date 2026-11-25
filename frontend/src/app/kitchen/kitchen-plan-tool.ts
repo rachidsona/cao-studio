@@ -18,7 +18,7 @@ import { CORNER_KINDS, type CornerSetting } from "../../document/kitchen-corners
 import { BASE_DEPTH, cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../document/kitchen-propose";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
-import { MATERIALS } from "../../document/materials";
+import { frontChoices, MATERIALS } from "../../document/materials";
 import { bodyOrigin, findFeature } from "../../document/operations";
 import { planRooms } from "../../document/plan-room";
 import { featureOfBody, type KitchenFloorPlan, type SketchFeature } from "../../document/types";
@@ -222,7 +222,7 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null, islandRows ? this.fields.number("Décalage de l'îlot (0 : au milieu du mur A)", "islandShift", 0, true, true) : null,
-      el("h3", { class: "panel-title" }, "Matières et finitions"), this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", materials, (v) => this.set({ frontMaterial: v })),
+      el("h3", { class: "panel-title" }, "Matières et finitions"), this.fields.select("Façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })),
       this.fields.look(materials),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"), ...this.fields.cap(),

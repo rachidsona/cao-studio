@@ -27,7 +27,15 @@ export interface Material {
   bar?: number;
   /** Allowance added to the length and width of a solid wood part before planing (mm). */
   oversize?: [number, number];
+  /** The family of a material of the workshop's catalogue (marble, glass…), as the server gives it. */
+  category?: "melamine" | "wood" | "glass" | "marble" | "stone" | "metal" | "laminate" | "solid";
 }
+
+/** Whether fronts can be made of it: a board or solid wood — wood, melamine, MDF, HDF, laminate, lacquer, glass —, not stone, metal, a backing panel or battens. */
+export const frontMaterial = (m: Material): boolean => (m.kind === "panel" || m.kind === "solid") && !["marble", "stone", "metal"].includes(m.category ?? "");
+
+/** The materials offered for fronts, each [id, name]; the one in use kept, whatever it is. */
+export const frontChoices = (current?: string): [string, string][] => MATERIALS.filter((m) => frontMaterial(m) || m.id === current).map((m) => [m.id, m.name]);
 
 export const MATERIALS: Material[] = [
   { id: "melamine-white", name: "Mélaminé blanc", color: "#f3f4f6", look: "plain", sheet: [2800, 2070], kind: "panel" },
