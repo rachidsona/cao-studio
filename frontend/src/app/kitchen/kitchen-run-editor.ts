@@ -10,7 +10,7 @@ import { fixedPlanClass, fixedPlanToggle } from "../../ui/fixed-plan";
 import { kitchenFromPlan, worktopSpans, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { itemsMoved, unitsMoved } from "../../document/kitchen-moves";
 import { itemSlid } from "../../document/kitchen-slide";
-import { jointOf, kitchenSizes, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
+import { jointOf, kitchenSizes, restOf, runGeometry, type Joint, type KitchenRun, type RestSide } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { applianceOf, entryItem, fillRun, inKeptRoom, insertItem, isFiller, isSpace, itemEntry, joinedSpaces, newItem, openRoom, rowOf, runModels, sizeLimits, spaceLeft, widestRoom, WIDTHS, type RunFill } from "../../features/kitchen-run-items";
@@ -135,8 +135,8 @@ export class RunEditor {
 
   private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
     if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null]; // a caisson furnished by hand, moved
-    this.items = joinedSpaces(items);
-    this.chosen = chosen;
+    if (!items.length || !this.items.length) this.rest = restOf({ ...this.host.plan, rest: {} }, this.host.run); // emptied, or its first unit: the rest where the plan puts it of itself (units against the corner), not where an older arrangement left it
+    [this.items, this.chosen] = [joinedSpaces(items), chosen];
     this.picked = picked.filter((id) => items.some((i) => i.id === id));
     this.touched();
   }

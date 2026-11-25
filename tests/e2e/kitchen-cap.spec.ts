@@ -152,3 +152,33 @@ test("plan de cuisine : le décalage de l'îlot se tape, d'un côté ou de l'aut
   await expect(tool.getByText(/L'îlot se décale d'au plus/).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : un linéaire vidé oublie où allait son reste, son premier meuble se colle à l'angle", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-reste-oublie");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="B"]').click();
+  const fold = async (name: string) => {
+    const f = tool.locator(`[data-fold="${name}"]`);
+    if ((await f.getAttribute("aria-expanded")) !== "true") await f.click();
+  };
+  await fold("add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await fold("space");
+  // Of itself, wall B's rest is at its free end: its units stand against the corner.
+  await expect(tool.locator('[data-rest="start"]')).toHaveAttribute("aria-pressed", "true");
+  await tool.locator('[data-rest="end"]').click();
+  await expect(tool.locator('[data-rest="end"]')).toHaveAttribute("aria-pressed", "true");
+  // Emptied, then a unit again: back against the corner, not where the older arrangement left the rest.
+  await tool.getByRole("button", { name: "Vider le linéaire" }).click();
+  await fold("add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await fold("space");
+  await expect(tool.locator('[data-rest="start"]')).toHaveAttribute("aria-pressed", "true");
+  expect(errors).toEqual([]);
+});
