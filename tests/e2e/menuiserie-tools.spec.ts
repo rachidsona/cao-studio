@@ -485,6 +485,12 @@ test("un double-clic sur une pièce sélectionne le caisson entier, façades com
   await page.keyboard.press("Escape");
   await page.getByLabel(/^Navigateur : corps/).getByText("Étagère 1", { exact: true }).first().dblclick();
   await expect(page.getByText("8 corps sélectionné(s)")).toBeVisible();
+  // And by the right-click on any piece (here the top of its side): « Sélectionner … entier ».
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("Aucune sélection")).toBeVisible();
+  await page.mouse.click(view.x + view.width / 2, view.y + view.height / 2, { button: "right" });
+  await page.getByRole("menuitem", { name: "Sélectionner « Bas 2 portes 800 » entier" }).click();
+  await expect(page.getByText("8 corps sélectionné(s)")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

@@ -14,7 +14,7 @@ import { openTreeMenu, type TreeMenuItem } from "../ui/tree-menu";
 import { modifyMenuItem } from "./isolate-selection";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { wholeOf } from "./move-whole";
+import { wholeSelection } from "./whole-element";
 
 const FIELD = "h-7 w-full min-w-0 border border-gray-300 bg-white px-1.5 text-xs dark:border-gray-600 dark:bg-gray-900";
 const ROW = "grid grid-cols-[7rem_1fr] items-center gap-1.5";
@@ -107,7 +107,7 @@ export function openDrawerMenu(event: MouseEvent, viewport: Viewport, editor: Ed
     void editor.change(made);
     editor.notify(done, "success");
   };
-  const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
+  const whole = wholeSelection(doc, viewport.displayedBodies, bodyId);
   const name = f.type === "fronts" ? (findFeature(doc, f.cabinet)?.name ?? f.name) : f.name;
   const selection = modifyMenuItem(editor, viewport, bodyId);
   const items: TreeMenuItem[] = [

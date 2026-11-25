@@ -15,7 +15,7 @@ import { el } from "../ui/dom";
 import { openTreeMenu, type TreeMenuItem } from "../ui/tree-menu";
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { wholeOf } from "./move-whole";
+import { wholeSelection } from "./whole-element";
 import { furnishCabinet, openInCabinet, STRAIGHT_TOOLS } from "./cabinet-furnish";
 import { isolateMenuItem, modifyMenuItem } from "./isolate-selection";
 import { openDoorsPanel } from "./door-panel";
@@ -74,7 +74,7 @@ export function openDoorMenu(event: MouseEvent, viewport: Viewport, editor: Edit
   // Where the door was clicked: the niche behind it.
   const hit = viewport.pickFace(event as PointerEvent);
   const at = hit ? (hit.point.toArray() as [number, number, number]) : null;
-  const whole = wholeOf(doc, bodyId, viewport.displayedBodies);
+  const whole = wholeSelection(doc, viewport.displayedBodies, bodyId);
   // The elements selected, alone in the view (app/isolate-selection.ts).
   const alone = isolateMenuItem(editor);
   // Their settings: a cabinet's in a small panel at the pointer; a Répartition's or over niches in their tool.

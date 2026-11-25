@@ -6,7 +6,7 @@
  */
 import type { Viewport } from "../viewport/viewport";
 import type { Editor } from "./editor";
-import { wholeOf } from "./move-whole";
+import { wholeSelection } from "./whole-element";
 
 /** Two clicks closer than this are a double-click (ms). */
 const DOUBLE = 450;
@@ -15,7 +15,8 @@ export function bindSelectWhole(root: HTMLElement, viewport: Viewport, editor: E
   const free = () => root.dataset.mode === "model" && !viewport.inSketch && !root.dataset.tool;
   /** The whole of this body selected, in place of what was. */
   const selectWhole = (bodyId: string) => {
-    const whole = wholeOf(editor.doc, bodyId, viewport.displayedBodies);
+    // The same whole as the right-click's « Sélectionner … entier » (a surround, an appliance too: app/whole-element.ts).
+    const whole = wholeSelection(editor.doc, viewport.displayedBodies, bodyId);
     if (!whole) return;
     viewport.clearSelection();
     for (const id of whole.bodies) viewport.toggleInSelection("body", id);

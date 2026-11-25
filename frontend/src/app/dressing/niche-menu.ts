@@ -5,6 +5,7 @@
  * s'ouvre sur cette niche, déjà choisie. Répéter (touche R) relance le dernier outil du ruban avec ses réglages, sur la
  * niche sous le pointeur quand c'est un outil de niche.
  */
+import { selectWholeItem } from "../whole-element";
 import { isolateMenuItem, modifyMenuItem } from "../isolate-selection";
 import { keyOf } from "../../ui/ribbon-layout";
 import { openNicheFront } from "./door-fronts-tool";
@@ -82,7 +83,9 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
     const alone = isolateMenuItem(editor);
     // First in every menu: the tool that made the element chosen (or clicked), reopened.
     const modify = modifyMenuItem(editor, viewport, face?.bodyId);
-    const first: [string, () => void][] = modify ? [modify] : [];
+    // Then the whole element of the piece clicked: a side, a shelf, a top selects its cabinet, its surround, its appliance.
+    const whole = face ? selectWholeItem(viewport, editor.doc, face.bodyId) : null;
+    const first: [string, () => void][] = [...(modify ? [modify] : []), ...(whole ? [whole] : [])];
     if (cabinet && face) {
       // Straight to a tool: the cabinet isolated and furnished, the tool opened on the niche clicked.
       const at = face.point.toArray() as [number, number, number];
@@ -114,7 +117,7 @@ export function bindNicheMenu(root: HTMLElement, viewport: Viewport, editor: Edi
         ]);
         return;
       }
-      if (alone || modify) menu = popup(event, "Menu de la sélection", null, [...first, ...(alone ? [alone] : [])]);
+      if (alone || first.length) menu = popup(event, "Menu de la sélection", null, [...first, ...(alone ? [alone] : [])]);
       return;
     }
     const sketchName = findFeature(editor.doc, niche.sketch)?.name ?? "Caisson";
