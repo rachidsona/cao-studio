@@ -320,9 +320,11 @@ test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre
   const heads = tool.locator("[data-fold]");
   const all = await heads.count();
   expect(all).toBeGreaterThan(3);
+  await expect(tool.getByText(/^Cliquez un meuble, un appareil/)).toBeVisible();
   await tool.locator('[data-fold="add"]').click();
-  // Alone: the other cards wait.
+  // Alone: the other cards wait, and nothing stands between it and the plan (no hint, no buttons).
   await expect(heads).toHaveCount(1);
+  await expect(tool.getByText(/^Cliquez un meuble, un appareil/)).toHaveCount(0);
   // Scrolled down: its title stays just under the fixed plan.
   await tool.locator('[data-add]').last().scrollIntoViewIfNeeded();
   const fixed = (await tool.locator("[data-run-fixed]").boundingBox())!;

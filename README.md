@@ -2854,7 +2854,7 @@ opération existante.
     (187 cm d'habitude, de 120 cm à 20 cm sous le haut : le caisson du dessus prend le reste, et l'habillage monté plus
     haut ne grandit que son caisson du dessus) : `SURROUND`, `surroundFridge`) —, après celui qui est choisi ; on le glisse pour changer
     sa place, on l'échange contre un autre modèle. Avec « Plan fixe », la carte ouverte reste **seule**, son titre fixé juste sous le plan quand on
-    fait défiler ; les autres cartes reviennent quand on la ferme (`Folds` avec `foldFocus`, `trackFixedPlan`). Chaque carte d'« Ajouter des meubles » a sa **profondeur**, tapée au choix pour **tout ce modèle** dans la
+    fait défiler, sans rien entre eux (ni l'aide de la bande ni « Resserrer les meubles ») ; les autres cartes reviennent quand on la ferme (`Folds` avec `foldFocus`, `trackFixedPlan`). Chaque carte d'« Ajouter des meubles » a sa **profondeur**, tapée au choix pour **tout ce modèle** dans la
     cuisine (ses meubles posés et ceux qu'on ajoute ensuite : `modelDepths` ; un meuble réglé à part garde la sienne) ou
     pour **le prochain ajouté** seulement (« Profondeur tapée pour » : `app/kitchen/kitchen-model-depth.ts`). Un meuble choisi peut avoir une **porte de côté** (« Porte de côté » :
     à gauche ou à droite) : ce côté n'a plus de panneau, une deuxième façade le ferme, charnières côté devant pour

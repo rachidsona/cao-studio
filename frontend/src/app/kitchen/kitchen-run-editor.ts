@@ -300,8 +300,8 @@ export class RunEditor {
         el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
       )),
       this.seeButton(),
-      actions.bar,
-      this.dirty ? null : this.keepMoves(),
+      foldFocus() && f.open ? null : actions.bar, // a card open alone: right under the plan, nothing between
+      this.dirty || (foldFocus() && f.open) ? null : this.keepMoves(),
       // Every titled part folds; one open at a time, all closed at first.
       f.fold("space", `Place libre : ${spaceLeft(fill, (mm) => formatLength(mm, unit), run.wall)}`, () => [this.restChoice(), widenRows({ plan: this.current(), geometry: this.geometry(), items: this.items, unit, change: (items, id) => this.change(items, id), notify: (m) => this.host.editor.notify(m, "info") }), this.spaceRows()]),
       this.picked.length > 1
