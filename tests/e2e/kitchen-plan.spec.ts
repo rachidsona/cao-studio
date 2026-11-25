@@ -323,6 +323,11 @@ test("plan de cuisine : les réglages de l'Implantation, socle, plan, crédence,
   await tool.locator('[data-plan-switch="endPanels"]').check();
   // Each look by its sphere: the list opened, Dekton Aura clicked, shown as the one chosen.
   await tool.locator('[data-worktop-looks] summary').click();
+  // One field for the worktop: in the same menu, the material it is priced at, said on the closed menu beside the look.
+  await expect(tool.getByLabel("Plan de travail en")).toHaveCount(0);
+  await tool.locator("[data-worktop-material]").selectOption("melamine-oak");
+  await expect(tool.locator("[data-worktop-looks] [data-look-note]")).toHaveText("devis : Mélaminé chêne");
+  if (!(await tool.locator("[data-worktop-looks]").evaluate((d) => (d as HTMLDetailsElement).open))) await tool.locator('[data-worktop-looks] summary').click();
   await expect(tool.locator('[data-worktop-look="dekton-aura"] img')).toHaveAttribute("src", /^data:image\/png/);
   await tool.locator('[data-worktop-look="dekton-aura"]').click();
   await expect(tool.locator('[data-worktop-looks] summary')).toContainText("Dekton Aura");

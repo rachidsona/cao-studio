@@ -18,9 +18,13 @@ export interface LookHost {
   set(id: string | undefined): void;
   /** What it is the look of: « worktop », « kick » — its buttons are `data-<attr>-look`, its list `data-<attr>-looks`. */
   attr: string;
+  /** Said after the look chosen, on the closed menu (« devis : Marbre noir »). */
+  note?: string;
+  /** Shown first in the open menu, over the looks (the material of the quote). */
+  first?: HTMLElement;
 }
 
-export function lookPicker({ label, value, set, attr }: LookHost): HTMLElement {
+export function lookPicker({ label, value, set, attr, note, first }: LookHost): HTMLElement {
   const chosen = APPEARANCES.find((a) => a.id === value);
   const ball = (a: Appearance | undefined, size: string) => {
     const image = el("img", { alt: "", class: `${size} shrink-0 rounded-full bg-gray-100 dark:bg-gray-800`, draggable: "false" });
@@ -40,8 +44,8 @@ export function lookPicker({ label, value, set, attr }: LookHost): HTMLElement {
   const current = ball(chosen, "size-6");
   current.draw();
   const list = el("details", { class: "border border-gray-300 dark:border-gray-600", [`data-${attr}-looks`]: "" },
-    el("summary", { class: "flex cursor-pointer items-center gap-2 px-2 py-1 text-xs", "aria-label": label }, current.image, chosen?.name ?? "Celui de la matière"),
-    el("div", { class: "max-h-80 space-y-1 overflow-y-auto p-1" }, ...families));
+    el("summary", { class: "flex cursor-pointer items-center gap-2 px-2 py-1 text-xs", "aria-label": label }, current.image, el("span", { class: "min-w-0" }, chosen?.name ?? "Celui de la matière", note ? el("span", { class: "block text-2xs text-gray-500 dark:text-gray-400", "data-look-note": "" }, note) : null)),
+    el("div", { class: "max-h-80 space-y-1 overflow-y-auto p-1" }, first ?? null, ...families));
   list.addEventListener("toggle", () => list.open && tiles.forEach((t) => t.draw()));
   return el("div", { class: "space-y-1" }, el("p", {}, label), list);
 }

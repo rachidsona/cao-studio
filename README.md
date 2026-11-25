@@ -2739,7 +2739,8 @@ opération existante.
     même quand le projet a un Plan de cuisine ; choisies dans un linéaire du plan, elles mettent la casquette du plan en
     caissons à porte relevante, de leur hauteur et de leur profondeur (`capUnits` de `app/kitchen/kitchen-catalog-view.ts`).
     L'**aspect du plan de travail** se choisit dans l'Apparence (marbres et pierres, Dekton, bétons, bois, chacun sur sa vignette)
-    pour le plan et la crédence, la matière « Plan de travail en » restant celle du débit et du devis. Et ce que « Proposer une cuisine » met : les **façades des bas**
+    pour le plan et la crédence, la matière restant celle du débit et du devis : les deux se choisissent dans **un seul champ**, « Plan de travail » —
+    fermé, il montre l'aspect et, dessous, « devis : » la matière ; ouvert, la matière en tête puis les aspects (`lookPicker`, `first` et `note`). Et ce que « Proposer une cuisine » met : les **façades des bas**
     (tiroirs et portes en alternance, tiroirs partout, portes partout), les **meubles hauts**, l'**électroménager**,
     la **colonne réfrigérateur** et le **four en colonne** (la plaque seule dessous ; la colonne four à côté du
     réfrigérateur, au bout libre ; ses deux portes, sous le four et au-dessus, sont ses façades sur une partie de sa

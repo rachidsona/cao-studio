@@ -51,8 +51,16 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
     choice.addEventListener("change", () => change(choice.value));
     return el("label", { class: ROW }, label, choice);
   };
-  /** The worktop's look, each shown by its sphere (look-picker.ts), or its material's own. */
-  const look = (): HTMLElement => lookPicker({ label: "Aspect du plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop" });
+  /**
+   * The worktop in one field: its look, each shown by its sphere (look-picker.ts), or its material's own; and, in the
+   * same menu, the material it is cut from and priced at — said on the closed menu beside the look.
+   */
+  const look = (materials: [string, string][]): HTMLElement => {
+    const material = host.plan().worktopMaterial ?? "solid-oak";
+    const quote = select("Matière (débit et devis)", material, materials, (v) => host.set({ worktopMaterial: v }));
+    quote.querySelector("select")!.setAttribute("data-worktop-material", "");
+    return lookPicker({ label: "Plan de travail", value: host.plan().worktopLook, set: (id) => host.set({ worktopLook: id }), attr: "worktop", note: `devis : ${materials.find(([id]) => id === material)?.[1] ?? material}`, first: quote });
+  };
   /** The casquette of the wall units (document/kitchen-cap.ts): none, a plain panel, a caisson or caissons with lift-up doors, and its sizes. */
   const cap = (): HTMLElement[] => {
     const kind = host.plan().cap;
