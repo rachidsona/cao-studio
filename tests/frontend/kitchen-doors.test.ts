@@ -98,5 +98,7 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(build(1780)).toEqual([490, 1810, 1780]);
     expect(build(2200)).toEqual([200, 2100, 2070]);
     expect(surroundFridge(KITCHEN_PLAN, newItem([], "app-fridge-surround", 968))).toBe(1870);
+    // Made higher: the fridge stays as it is, the caisson on top grows.
+    expect(surroundFridge(KITCHEN_PLAN, { ...newItem([], "app-fridge-surround", 968), height: 2700 })).toBe(1870);
   });
 });

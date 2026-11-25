@@ -6,8 +6,9 @@
  * à la place laissée libre et là où la profondeur ou la hauteur du dessus change ; un morceau plus long qu'un panneau brut
  * est coupé au droit d'un côté de meuble. Contre le linéaire qui passe dans un angle, elle s'arrête au bord de sa
  * casquette. Elle prévient : une porte relevante dessous ne se lève plus, un plafond trop bas. Ou en caissons à porte
- * relevante (« sur-meubles ») : sur chaque meuble haut et chaque colonne, un caisson de sa largeur et de sa profondeur,
- * de la hauteur choisie, sa porte se levant. Pur.
+ * relevante (« sur-meubles ») : sur chaque meuble haut, un caisson de sa largeur et de sa profondeur, de la hauteur
+ * choisie, sa porte se levant ; les colonnes et l'habillage de réfrigérateur n'en ont pas, ils montent eux-mêmes jusqu'en
+ * haut des caissons (features/kitchen-run-items.ts `itemSize`). Pur.
  */
 import { wallCornerSide } from "./kitchen-corners";
 import { CAP, capProblem, FRONT, kitchenSizes, type KitchenRun } from "./kitchen-plan-shapes";
@@ -107,8 +108,8 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
 }
 
 /**
- * The casquette in caissons: over each wall unit, each column and each arm of a wall corner unit (not the hood, a
- * filler), a caisson of its width, 60 cm deep unless set (`capDepth`), its lift-up door.
+ * The casquette in caissons: over each wall unit and each arm of a wall corner unit (not the hood, a filler; not a
+ * column: it rises to their top itself), a caisson of its width, 60 cm deep unless set (`capDepth`), its lift-up door.
  */
 function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], cabinet?: CabinetOf): void {
   if (!cabinet) return;
@@ -129,8 +130,7 @@ function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: 
     cabinet(`Casquette d'angle ${Math.round(arm[1] - arm[0])} (${run.id}${side === "right" ? " droite" : ""})`, arm[0], arm[1] - arm[0], p.wallDepth, top, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
   }
   for (const pl of fill.placed) {
-    const tall = pl.row === "base" && pl.entry.kind === "tall";
-    if ((pl.row !== "wall" && !tall) || applianceOf(pl.item)?.role === "hood" || isFiller(pl.item) || pl.entry.round) continue;
+    if (pl.row !== "wall" || applianceOf(pl.item)?.role === "hood" || isFiller(pl.item) || pl.entry.round) continue;
     const size = itemSize(p, pl.item, pl.entry);
     const z = size.z + size.height;
     if (z + h > ceiling + 0.5) {

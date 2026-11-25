@@ -88,18 +88,26 @@ describe("casquette des meubles hauts", () => {
 describe("casquette en caissons à porte relevante (sur-meubles)", () => {
   const units = (p: KitchenFloorPlan) => kitchenFromPlan(p).units.filter((u) => u.name.startsWith("Casquette"));
 
-  it("un caisson par meuble haut et par colonne, de sa largeur, 60 cm de profondeur (réglable), posé dessus ; pas sur la hotte", () => {
+  it("un caisson par meuble haut, de sa largeur, 60 cm de profondeur (réglable), posé dessus ; pas sur la hotte ni sur une colonne, qui monte jusqu'en haut des caissons", () => {
     const p = plan([["tall-colonne-rangement", 600], WALL, ["app-hood", 600], ["wall-haut-1-porte", 400]], { cap: "units" });
     const made = units(p);
     expect(made.map((u) => [u.width, u.height, u.layout, u.side])).toEqual([
       [600, 350, "door", "top"],
-      [600, 350, "door", "top"],
       [400, 350, "door", "top"],
     ]);
-    // On top of the wall row; 60 cm deep over a column and a wall unit alike, or as set.
+    // On top of the wall row; 60 cm deep, or as set.
     expect(made.every((u) => Math.abs(u.origin[2] - TOP) < 1e-6)).toBe(true);
-    expect(made.map((u) => u.depth)).toEqual([600, 600, 600]);
-    expect(units({ ...p, capDepth: 450 }).map((u) => u.depth)).toEqual([450, 450, 450]);
+    expect(made.map((u) => u.depth)).toEqual([600, 600]);
+    expect(units({ ...p, capDepth: 450 }).map((u) => u.depth)).toEqual([450, 450]);
+    // The column as high as the caissons' top; without the caissons, as the wall units' top.
+    const column = (q: KitchenFloorPlan) => kitchenFromPlan(q).units.find((u) => u.name.startsWith("Colonne"))!;
+    expect(column(p).height).toBeCloseTo(TOP + 350, 6);
+    expect(column({ ...p, cap: undefined }).height).toBeCloseTo(TOP, 6);
+    // The fridge's surround too, its sides as high as the caissons' top.
+    const surround = plan([["app-fridge-surround", 968], WALL], { cap: "units" });
+    const side = kitchenFromPlan(surround).boxes.find((b) => b.name.startsWith("Côté gauche habillage"))!;
+    expect(side.to[2] - side.from[2]).toBeCloseTo(TOP + 350, 6);
+    expect(units(surround).map((u) => u.width)).toEqual([600]);
     expect(capProblem({ ...p, capDepth: 900 })).toMatch(/profondeur/);
     // No panels of a flat casquette.
     expect(caps(p)).toEqual([]);
