@@ -1,10 +1,11 @@
 /** Le plan de travail et la crédence d'un linéaire suivent ses meubles : rien au-dessus de la place libre ni à travers une colonne. */
 import { describe, expect, it } from "vitest";
+import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { layoutPlan } from "../../frontend/src/document/kitchen-plan";
 import { withApplianceRemoved } from "../../frontend/src/document/appliance-remove";
-import { createReferencePlate, type ApplianceFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type MachiningFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type ApplianceFeature, type CabinetFeature, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type MachiningFeature } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
 const plan = (list: [string, number, Partial<KitchenRunItem>?][], rest: "start" | "end" = "end"): KitchenFloorPlan => {
@@ -119,6 +120,24 @@ describe("plan de travail qui suit les meubles", () => {
       ["Joue de finition haute A (droite)", "panel", 1200, 1219, 1450],
     ]);
     expect(kitchenFromPlan({ ...p, endPanels: false }).boxes.some((b) => b.name.startsWith("Joue"))).toBe(false);
+  });
+
+  it("un meuble d'angle seul sur son linéaire (aucun autre meuble) a son plan de travail, sur lui seulement", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "L-left", lengthA: 3600, lengthB: 3600, corners: { left: "unit" }, through: { left: true }, splashback: false, runs: {}, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const made = (kitchenPlanIn(built.doc, base.id)!.made!.B ?? []).map((id) => built.doc.features.find((f) => f.id === id)!);
+    const corner = made.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    expect(made.filter((f) => f.type === "extrude").map((f) => f.name)).toContain("Plan de travail B");
+    // Over the corner unit, to the corner's wall — not along the empty wall.
+    const top = kitchenFromPlan(kitchenPlanIn(built.doc, base.id)!).boxes.find((b) => b.name === "Plan de travail B")!;
+    const length = Math.max(Math.abs(top.to[0] - top.from[0]), Math.abs(top.to[1] - top.from[1]));
+    expect(length).toBeGreaterThanOrEqual(corner.width);
+    expect(length).toBeLessThan(corner.width + 700);
+    // A bare run with no corner unit: still nothing but its wall.
+    const bare = withKitchenBuilt(withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} }).doc, base.id, {});
+    if (typeof bare === "string") throw new Error(bare);
+    expect(bare.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A"]);
   });
 
   it("prend l'aspect choisi (un marbre, un Dekton) sur le plan et la crédence, la matière restant celle du devis", () => {
