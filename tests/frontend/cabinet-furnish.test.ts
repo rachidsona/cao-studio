@@ -65,8 +65,12 @@ describe("caisson de cuisine aménagé", () => {
     expect(step.kind === "partition" && step.input.openTop).toBe(true);
     expect(step.kind === "partition" && step.back).toBeUndefined();
     const rails = doc.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === sinkSketch.id && f.fill === "accessory")!;
-    expect(rails.accessory).toEqual({ model: "sink-rails", lift: 0 });
-    expect(nichePartsIn(doc.features, rails).map((q) => q.name)).toEqual(["Traverse avant", "Traverse arrière"]);
+    // Both on their edge, as the sink unit's: 10 cm high, one board thick, level with the top of the sides.
+    expect(rails.accessory).toEqual({ model: "sink-rails-edge", lift: 0 });
+    const boards = nichePartsIn(doc.features, rails);
+    expect(boards.map((q) => q.name)).toEqual(["Traverse avant", "Traverse arrière"]);
+    expect(boards.map((q) => [Math.round(q.to[1] - q.from[1]), Math.round(q.to[2] - q.from[2])])).toEqual([[100, 18], [100, 18]]);
+    expect(boards[0]!.to[1]).toBeCloseTo(boards[1]!.to[1], 6);
     expect(doc.features.some((f) => f.type === "extrude" && f.sketch === sinkSketch.id && f.name === "Dessus")).toBe(false);
     expect(doc.features.some((f) => f.type === "niche" && f.sketch === sinkSketch.id && f.fill === "back")).toBe(false);
     // As the cabinet it was: its sides down to the floor (notched for the plinth by the kernel: kick-notches.test.ts).

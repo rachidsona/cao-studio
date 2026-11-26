@@ -69,7 +69,7 @@ function cabinetSpec(doc: CadDocument, c: CabinetFeature, fronts: FrontsFeature 
   }
   // A sink unit's top: two rails in place of the board (the pipes and the sink come through), its top open.
   const rails = c.top === "rails" && c.shelves === 0;
-  if (rails) inside.equipment.push({ at: [], title: "Traverses d'évier", feature: { type: "niche", fill: "accessory", accessory: { model: "sink-rails", lift: 0 }, diameter: 25, drop: 60, drawers: 1, gap: 0, thickness: c.thickness, handles: false } });
+  if (rails) inside.equipment.push({ at: [], title: "Traverses d'évier", feature: { type: "niche", fill: "accessory", accessory: { model: c.railFront === "edge" ? "sink-rails-edge" : "sink-rails", lift: 0 }, diameter: 25, drop: 60, drawers: 1, gap: 0, thickness: c.thickness, handles: false } });
   const pair = fronts?.layout === "doors";
   const carcass = doc.bodyInfo?.[`${c.id}${PART_SEPARATOR}0`]?.material ?? "melamine-white";
   const facing = fronts ? doc.bodyInfo?.[`${fronts.id}${PART_SEPARATOR}0`]?.material : undefined;

@@ -59,6 +59,8 @@ export const ACCESSORIES: AccessoryModel[] = [
   model({ id: "shelf", label: "Tablette coulissante", room: "dressing", shape: "shelf", width: [200, 1200], depth: 300, height: 60 }),
   // In place of the top of a sink's caisson (its top open): two rails of its panels' board, 10 cm wide, made in the workshop.
   model({ id: "sink-rails", label: "Traverses d'évier (à la place du dessus)", room: "kitchen", shape: "rails", width: [150, 2400], depth: 150, height: 100, hung: true }),
+  // The same, the front one standing on its edge as the back one: the sink's bowl has all the room between them.
+  model({ id: "sink-rails-edge", label: "Traverses d'évier sur chant (à la place du dessus)", room: "kitchen", shape: "rails", width: [150, 2400], depth: 150, height: 100, hung: true }),
 ];
 
 export const ROOMS: Record<AccessoryModel["room"], string> = { kitchen: "Cuisine", dressing: "Dressing" };
@@ -236,7 +238,8 @@ export function accessoryParts(f: Settings, n: Pick<NicheGeometry, "box" | "dept
       // As a sink unit's (features/cabinet-parts.ts): the front one lying flat, the back one on its edge — where the top
       // board would be, over the niche (its caisson's top is open: document/cabinet-furnish.ts), level with the sides' top.
       const t = f.thickness > 0 ? f.thickness : 18;
-      box("Traverse avant", [a, y1, n.depth - h], [b, y1 + t, n.depth], true);
+      if (m.id === "sink-rails-edge") box("Traverse avant", [a, y1 + t - h, n.depth - t], [b, y1 + t, n.depth], true);
+      else box("Traverse avant", [a, y1, n.depth - h], [b, y1 + t, n.depth], true);
       box("Traverse arrière", [a, y1 + t - h, 0], [b, y1 + t, t], true);
       break;
     }

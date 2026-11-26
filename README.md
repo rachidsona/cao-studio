@@ -2707,8 +2707,9 @@ opération existante.
   retrouve jusqu'au sol dès que la cuisine est refaite (`withCaissonsFollowing`). Sur la bande, l'habillage de réfrigérateur aménagé reste dessiné en habillage, la
   face de son caisson entre ses côtés, au-dessus du réfrigérateur ; « Meuble choisi » le nomme et « Remettre le meuble
   d'origine » remet l'habillage, pas un bas deux portes (`heldModel` reconnaît les appareils).
-  **Le caisson d'un évier garde ses deux traverses** à la place du dessus — celle de devant à plat, celle de derrière
-  sur chant, 10 cm, au ras du haut des côtés — et n'a ni dessus ni fond : son dessus est ouvert (`openTop`) et les
+  **Le caisson d'un évier garde ses deux traverses** à la place du dessus — toutes deux sur chant, 10 cm, au ras du
+  haut des côtés : le meuble d'évier du plan a d'office sa traverse avant debout, la cuve a toute la place entre les
+  deux (`sink-rails-edge` ; un autre meuble à traverses garde celle de devant à plat, `sink-rails`) — et n'a ni dessus ni fond : son dessus est ouvert (`openTop`) et les
   traverses sont un équipement de sa niche (`sink-rails`, `features/accessory-parts.ts`, hors de la liste des
   accessoires à choisir), refait avec lui à toute largeur. De même un meuble à traverses sans étagère.
   **Un caisson aménagé supprimé dans la 3D** (ses panneaux, ou lui entier) refait la cuisine : ni plan de travail ni
